@@ -11,7 +11,13 @@
       "Bash(echo \"EXIT: $?\")",
       "Bash(node -e \"const{execSync}=require\\(''child_process''\\);try{const r=execSync\\(''npx fourmeme create-instant --image=bobai-logo.png --name=BOBAIBuilder --short-name=BOBAI --desc=\"\"First AI agent token on BNB\"\" --label=AI'',{encoding:''utf8'',stdio:[''pipe'',''pipe'',''pipe'']}\\);console.log\\(''STDOUT:'',r\\)}catch\\(e\\){console.log\\(''STDOUT:'',e.stdout\\);console.log\\(''STDERR:'',e.stderr\\);console.log\\(''STATUS:'',e.status\\)}\")",
       "Bash(node:*)",
-      "Bash(npm init:*)"
+      "Bash(npm init:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh secret:*)",
+      "Bash(gh workflow:*)",
+      "Bash(gh api:*)",
+      "Bash(netlify status:*)",
+      "Bash(wrangler pages:*)"
     ]
   }
 }

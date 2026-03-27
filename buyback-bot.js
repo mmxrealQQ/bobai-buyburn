@@ -20,7 +20,7 @@ const MIN_BNB = parseEther('0.001');
 const GAS_RESERVE = parseEther('0.003');
 
 const ROUTER_ABI = parseAbi([
-  'function swapExactETHForTokens(uint amountOutMin, address[] path, address to, uint deadline) payable returns (uint[] amounts)',
+  'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable',
   'function getAmountsOut(uint amountIn, address[] path) view returns (uint[] amounts)',
 ]);
 
@@ -94,7 +94,7 @@ async function main() {
     const txHash = await walletClient.writeContract({
       address: PANCAKE_ROUTER_V2,
       abi: ROUTER_ABI,
-      functionName: 'swapExactETHForTokens',
+      functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
       args: [minOut, path, account.address, deadline],
       value: available,
     });

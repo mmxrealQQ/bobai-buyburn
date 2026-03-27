@@ -141,9 +141,9 @@
       <div class="sub">BOBAI on PancakeSwap</div>
     </div>
     <div class="stat-card">
-      <div class="label">Volume</div>
+      <div class="label">Liquidity</div>
       <div class="value" id="volume">—</div>
-      <div class="sub">total USD traded</div>
+      <div class="sub">total pool value</div>
     </div>
     <div class="stat-card">
       <div class="label">Buyback Wallet</div>
@@ -292,19 +292,46 @@
       }
     }
 
-    // Get token data from Four.meme API
+    // Get token data from PancakeSwap pair on-chain
     async function fetchTokenData() {
       try {
-        const res = await fetch('https://four.meme/meme-api/v1/private/token/get/v2?address=' + BOBAI_TOKEN);
-        const json = await res.json();
-        if (json.code === 0 && json.data) {
-          const tp = json.data.tokenPrice || {};
-          const mcap = parseFloat(tp.marketCap || '0');
-          const vol = parseFloat(tp.tradingUsd || '0');
+        const PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+        const TOTAL_SUPPLY = 1_000_000_000; // 1B BOBAI
 
-          document.getElementById('mcap').textContent = '$' + mcap.toLocaleString(undefined, {maximumFractionDigits: 0});
-          document.getElementById('volume').textContent = '$' + vol.toLocaleString(undefined, {maximumFractionDigits: 0});
-        }
+        // getReserves() selector: 0x0902f1ac
+        const reservesHex = await rpcCall('eth_call', [{ to: PAIR, data: '0x0902f1ac' }, 'latest']);
+        // Decode: reserve0 (uint112), reserve1 (uint112)
+        const r0 = BigInt('0x' + reservesHex.slice(2, 66));
+        const r1 = BigInt('0x' + reservesHex.slice(66, 130));
+
+        // token0() selector: 0x0dfe1681
+        const token0Hex = await rpcCall('eth_call', [{ to: PAIR, data: '0x0dfe1681' }, 'latest']);
+        const token0 = '0x' + token0Hex.slice(26).toLowerCase();
+        const bobaiIsToken0 = token0 === BOBAI_TOKEN;
+
+        const bobaiReserve = bobaiIsToken0 ? r0 : r1;
+        const wbnbReserve = bobaiIsToken0 ? r1 : r0;
+
+        // Get BNB price from BUSD pair
+        const BNB_BUSD_PAIR = '0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16';
+        const busdReservesHex = await rpcCall('eth_call', [{ to: BNB_BUSD_PAIR, data: '0x0902f1ac' }, 'latest']);
+        const br0 = BigInt('0x' + busdReservesHex.slice(2, 66));
+        const br1 = BigInt('0x' + busdReservesHex.slice(66, 130));
+        const busdToken0Hex = await rpcCall('eth_call', [{ to: BNB_BUSD_PAIR, data: '0x0dfe1681' }, 'latest']);
+        const busdToken0 = '0x' + busdToken0Hex.slice(26).toLowerCase();
+        // WBNB = 0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c
+        const wbnbIsBusdToken0 = busdToken0 === '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c';
+        const busdReserve = wbnbIsBusdToken0 ? br1 : br0;
+        const wbnbReserveBusd = wbnbIsBusdToken0 ? br0 : br1;
+        const bnbPrice = Number(busdReserve) / Number(wbnbReserveBusd);
+
+        const priceInBnb = Number(wbnbReserve) / Number(bobaiReserve);
+        const priceUsd = priceInBnb * bnbPrice;
+        const mcap = priceUsd * TOTAL_SUPPLY;
+        const liqUsd = (Number(wbnbReserve) / 1e18) * bnbPrice * 2;
+
+        document.getElementById('mcap').textContent = '$' + mcap.toLocaleString(undefined, {maximumFractionDigits: 0});
+        document.getElementById('volume').textContent = '$' + liqUsd.toLocaleString(undefined, {maximumFractionDigits: 0});
       } catch (e) {
         console.error('Token data fetch failed:', e);
       }

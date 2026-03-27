@@ -303,26 +303,26 @@
     // Check buyback wallet transactions for burn activity
     async function fetchBurnTxs() {
       try {
-        // Get recent logs from buyback wallet - Transfer events for BOB token to dead address
-        // Transfer topic: 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
         const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
         const fromPadded = '0x000000000000000000000000' + BUYBACK_WALLET.slice(2).toLowerCase();
         const toPadded = '0x000000000000000000000000000000000000000000000000000000000000dEaD';
 
+        // Get current block, scan last ~5000 blocks (~4h on BSC) in one call
+        const latestHex = await rpcCall('eth_blockNumber', []);
+        const latest = parseInt(latestHex, 16);
+        const fromBlock = '0x' + Math.max(latest - 4999, 0).toString(16);
+
         const logs = await rpcCall('eth_getLogs', [{
           address: BOB_TOKEN,
           topics: [transferTopic, fromPadded, toPadded],
-          fromBlock: '0x0',
+          fromBlock,
           toBlock: 'latest'
         }]);
 
+        const rows = [];
         if (logs && logs.length > 0) {
-          let total = 0n;
-          const rows = [];
-
           for (const log of logs.reverse()) {
             const amount = BigInt(log.data);
-            total += amount;
             const block = parseInt(log.blockNumber, 16);
             const formatted = (Number(amount) / 1e18).toLocaleString(undefined, {maximumFractionDigits: 0});
             rows.push(`<tr>
@@ -332,17 +332,35 @@
               <td><a class="tx-hash" href="https://bscscan.com/tx/${log.transactionHash}" target="_blank">${log.transactionHash.slice(0,10)}...${log.transactionHash.slice(-8)}</a></td>
             </tr>`);
           }
+        }
 
-          document.getElementById('burn-count').textContent = logs.length.toString();
-          document.getElementById('total-burned').textContent =
-            (Number(total) / 1e18).toLocaleString(undefined, {maximumFractionDigits: 0}) + ' BOB';
-
-          if (rows.length) {
-            document.getElementById('tx-body').innerHTML = rows.join('');
-          }
+        if (rows.length) {
+          document.getElementById('tx-body').innerHTML = rows.join('');
+        } else {
+          document.getElementById('tx-body').innerHTML =
+            '<tr><td colspan="4" class="loading">No burns in last ~4 hours — bot runs every 30 min when tax BNB available</td></tr>';
         }
       } catch (e) {
         console.error('Burn TX fetch failed:', e);
+      }
+    }
+
+    // Fetch total burn stats from BSC RPC (all-time, not limited by block range)
+    async function fetchBurnStats() {
+      try {
+        // Get BOB balance at dead address (= total ever burned by anyone)
+        await fetchBurnedBOB();
+
+        // Count burns from our buyback wallet via transaction count
+        // Use nonce of buyback wallet as rough indicator
+        const nonceHex = await rpcCall('eth_getTransactionCount', [BUYBACK_WALLET, 'latest']);
+        const nonce = parseInt(nonceHex, 16);
+        // Each bot cycle = 1 swap + 1 burn = 2 txs. Burns = floor(nonce / 2)
+        if (nonce > 0) {
+          document.getElementById('burn-count').textContent = Math.floor(nonce / 2).toString();
+        }
+      } catch (e) {
+        console.error('Burn stats failed:', e);
       }
     }
 
@@ -358,6 +376,7 @@
         fetchBuybackBalance(),
         fetchTokenData(),
         fetchBurnTxs(),
+        fetchBurnStats(),
       ]);
       updateTimestamp();
     }

@@ -240,10 +240,13 @@
     const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
     const DEAD = '0x000000000000000000000000000000000000dEaD';
     const BSC_RPC = 'https://bsc-dataseed.binance.org/';
+    const ANKR_RPC = 'https://rpc.ankr.com/bsc';
+    // Block when BOBAI graduated to PancakeSwap (start scanning from here)
+    const START_BLOCK = 88990000;
 
     // RPC call helper
-    async function rpcCall(method, params) {
-      const res = await fetch(BSC_RPC, {
+    async function rpcCall(method, params, rpc) {
+      const res = await fetch(rpc || BSC_RPC, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
@@ -300,36 +303,58 @@
       }
     }
 
-    // Fetch burn history from burns.json on GitHub
+    // Fetch burn transactions directly on-chain via Ankr RPC (no cache, no files)
     async function fetchBurnData() {
       try {
-        const res = await fetch('https://raw.githubusercontent.com/mmxrealQQ/bobai-buyburn/main/burns.json?t=' + Date.now());
-        const burns = await res.json();
+        const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+        const fromPadded = '0x000000000000000000000000' + BUYBACK_WALLET.slice(2).toLowerCase();
+        const toPadded = '0x000000000000000000000000000000000000000000000000000000000000dead';
 
-        if (burns && burns.length > 0) {
-          let totalBob = 0;
+        // Use Ankr RPC — supports large block ranges (100k+)
+        const logs = await rpcCall('eth_getLogs', [{
+          address: BOB_TOKEN,
+          topics: [transferTopic, fromPadded, toPadded],
+          fromBlock: '0x' + START_BLOCK.toString(16),
+          toBlock: 'latest'
+        }], ANKR_RPC);
+
+        if (logs && logs.length > 0) {
+          let totalBob = 0n;
           const rows = [];
 
-          for (const b of [...burns].reverse()) {
-            const bobAmount = parseFloat(b.bob);
-            totalBob += bobAmount;
-            const time = new Date(b.time).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-            const formatted = Math.round(bobAmount).toLocaleString();
+          // Get block timestamps for all burn blocks
+          const blockNums = [...new Set(logs.map(l => l.blockNumber))];
+          const blockTimes = {};
+          for (const bn of blockNums) {
+            try {
+              const block = await rpcCall('eth_getBlockByNumber', [bn, false], ANKR_RPC);
+              if (block) blockTimes[bn] = parseInt(block.timestamp, 16);
+            } catch(e) {}
+          }
+
+          for (const log of [...logs].reverse()) {
+            const amount = BigInt(log.data);
+            totalBob += amount;
+            const formatted = (Number(amount) / 1e18).toLocaleString(undefined, {maximumFractionDigits: 0});
+            const ts = blockTimes[log.blockNumber];
+            const time = ts ? new Date(ts * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'Block ' + parseInt(log.blockNumber, 16);
             rows.push(`<tr>
               <td>${time}</td>
               <td><span class="burn-tag">BURN</span></td>
               <td>${formatted} BOB</td>
-              <td><a class="tx-hash" href="https://bscscan.com/tx/${b.burnTx}" target="_blank">${b.burnTx.slice(0,10)}...${b.burnTx.slice(-8)}</a></td>
+              <td><a class="tx-hash" href="https://bscscan.com/tx/${log.transactionHash}" target="_blank">${log.transactionHash.slice(0,10)}...${log.transactionHash.slice(-8)}</a></td>
             </tr>`);
           }
 
-          document.getElementById('burn-count').textContent = burns.length.toString();
-          document.getElementById('total-burned').textContent = Math.round(totalBob).toLocaleString() + ' BOB';
+          document.getElementById('burn-count').textContent = logs.length.toString();
+          document.getElementById('total-burned').textContent = (Number(totalBob) / 1e18).toLocaleString(undefined, {maximumFractionDigits: 0}) + ' BOB';
           document.getElementById('tx-body').innerHTML = rows.join('');
+        } else {
+          // No burns yet from buyback wallet — show total from dead address
+          await fetchBurnedBOB();
         }
       } catch (e) {
-        console.error('Burn data fetch failed:', e);
-        // Fallback to on-chain check
+        console.error('On-chain burn fetch failed:', e);
         await fetchBurnedBOB();
       }
     }

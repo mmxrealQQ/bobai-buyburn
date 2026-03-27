@@ -2,8 +2,8 @@ name: BOB Auto Buy & Burn
 
 on:
   schedule:
-    # Run every 30 minutes
-    - cron: '*/30 * * * *'
+    # Run every 10 minutes (more reliable than 30 on GitHub Actions)
+    - cron: '*/10 * * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:

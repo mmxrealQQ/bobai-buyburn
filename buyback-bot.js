@@ -3,25 +3,36 @@
 //
 // Runs via GitHub Actions every 30 minutes:
 // 1. Checks buyback wallet for BNB from BOBAI tax fees
-// 2. Buys $BOB with available BNB
+// 2. Swaps BNB -> $BOB via PancakeSwap V2 Router
 // 3. Burns $BOB by sending to dead address
 //
 // 100% automatic, 100% transparent, 100% on-chain verifiable
 
 const { createPublicClient, createWalletClient, http, parseAbi, formatEther, parseEther } = require('viem');
-const { bsc } = require('viem');
+const { bsc } = require('viem/chains');
 const { privateKeyToAccount } = require('viem/accounts');
-const { execSync } = require('child_process');
 
 const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
+const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const DEAD_ADDRESS = '0x000000000000000000000000000000000000dEaD';
-const MIN_BNB = parseEther('0.001');     // Minimum BNB to trigger buyback
-const GAS_RESERVE = parseEther('0.003'); // Keep for gas (buy + burn = 2 txs)
+const PANCAKE_ROUTER_V2 = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
+const MIN_BNB = parseEther('0.001');
+const GAS_RESERVE = parseEther('0.003');
+
+const ROUTER_ABI = parseAbi([
+  'function swapExactETHForTokens(uint amountOutMin, address[] path, address to, uint deadline) payable returns (uint[] amounts)',
+  'function getAmountsOut(uint amountIn, address[] path) view returns (uint[] amounts)',
+]);
+
+const ERC20_ABI = parseAbi([
+  'function balanceOf(address) view returns (uint256)',
+  'function transfer(address to, uint256 amount) returns (bool)',
+]);
 
 async function main() {
   const privateKey = process.env.PRIVATE_KEY || process.env.BUYBACK_PRIVATE_KEY;
   if (!privateKey) {
-    console.log('[ERROR] No PRIVATE_KEY or BUYBACK_PRIVATE_KEY set');
+    console.log('[ERROR] No PRIVATE_KEY set');
     process.exit(1);
   }
 
@@ -33,13 +44,19 @@ async function main() {
   console.log(`Wallet: ${account.address}`);
   console.log('============================================');
 
-  // Step 1: Check BNB balance
-  const client = createPublicClient({
+  const publicClient = createPublicClient({
     chain: bsc,
     transport: http(rpcUrl),
   });
 
-  const balance = await client.getBalance({ address: account.address });
+  const walletClient = createWalletClient({
+    account,
+    chain: bsc,
+    transport: http(rpcUrl),
+  });
+
+  // Step 1: Check BNB balance
+  const balance = await publicClient.getBalance({ address: account.address });
   console.log(`BNB Balance: ${formatEther(balance)} BNB`);
 
   if (balance <= GAS_RESERVE + MIN_BNB) {
@@ -50,28 +67,51 @@ async function main() {
   const available = balance - GAS_RESERVE;
   console.log(`Available for buyback: ${formatEther(available)} BNB`);
 
-  // Step 2: Buy $BOB using fourmeme CLI
-  console.log(`\nBuying $BOB with ${formatEther(available)} BNB...`);
+  // Step 2: Get quote from PancakeSwap
+  const path = [WBNB, BOB_TOKEN];
+
+  let amountsOut;
   try {
-    const buyResult = execSync(
-      `npx fourmeme buy ${BOB_TOKEN} funds ${available.toString()} 0`,
-      {
-        encoding: 'utf8',
-        env: { ...process.env, PRIVATE_KEY: privateKey },
-        timeout: 60000,
-      }
-    );
-    console.log('Buy result:', buyResult);
+    amountsOut = await publicClient.readContract({
+      address: PANCAKE_ROUTER_V2,
+      abi: ROUTER_ABI,
+      functionName: 'getAmountsOut',
+      args: [available, path],
+    });
+    console.log(`Expected BOB output: ${formatEther(amountsOut[1])} BOB`);
   } catch (e) {
-    console.log(`Buy failed: ${e.message}`);
-    console.log('Will retry next cycle.');
+    console.log(`Quote failed: ${e.message}`);
     return;
   }
 
-  // Step 3: Check BOB balance
-  const bobBalance = await client.readContract({
+  // 5% slippage tolerance
+  const minOut = (amountsOut[1] * 95n) / 100n;
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 600); // 10 min
+
+  // Step 3: Swap BNB -> BOB via PancakeSwap
+  console.log(`\nSwapping ${formatEther(available)} BNB -> BOB on PancakeSwap...`);
+  try {
+    const txHash = await walletClient.writeContract({
+      address: PANCAKE_ROUTER_V2,
+      abi: ROUTER_ABI,
+      functionName: 'swapExactETHForTokens',
+      args: [minOut, path, account.address, deadline],
+      value: available,
+    });
+    console.log(`Swap TX: https://bscscan.com/tx/${txHash}`);
+
+    // Wait for confirmation
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    console.log(`Swap confirmed in block ${receipt.blockNumber}`);
+  } catch (e) {
+    console.log(`Swap failed: ${e.message}`);
+    return;
+  }
+
+  // Step 4: Check BOB balance
+  const bobBalance = await publicClient.readContract({
     address: BOB_TOKEN,
-    abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
+    abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: [account.address],
   });
@@ -83,18 +123,19 @@ async function main() {
     return;
   }
 
-  // Step 4: Burn - send all BOB to dead address
+  // Step 5: Burn - send all BOB to dead address
   console.log(`Burning ${formatEther(bobBalance)} BOB -> ${DEAD_ADDRESS}`);
   try {
-    const burnResult = execSync(
-      `npx fourmeme send ${DEAD_ADDRESS} ${bobBalance.toString()} ${BOB_TOKEN}`,
-      {
-        encoding: 'utf8',
-        env: { ...process.env, PRIVATE_KEY: privateKey },
-        timeout: 60000,
-      }
-    );
-    console.log('Burn result:', burnResult);
+    const burnHash = await walletClient.writeContract({
+      address: BOB_TOKEN,
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      args: [DEAD_ADDRESS, bobBalance],
+    });
+    console.log(`Burn TX: https://bscscan.com/tx/${burnHash}`);
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
+    console.log(`Burn confirmed in block ${receipt.blockNumber}`);
   } catch (e) {
     console.log(`Burn failed: ${e.message}`);
     return;

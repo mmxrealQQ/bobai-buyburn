@@ -240,13 +240,11 @@
     const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
     const DEAD = '0x000000000000000000000000000000000000dEaD';
     const BSC_RPC = 'https://bsc-dataseed.binance.org/';
-    const ANKR_RPC = 'https://rpc.ankr.com/bsc';
-    // Block when BOBAI graduated to PancakeSwap (start scanning from here)
-    const START_BLOCK = 88990000;
+    const BURNS_API = 'https://api.github.com/repos/mmxrealQQ/bobai-buyburn/contents/burns.json';
 
     // RPC call helper
-    async function rpcCall(method, params, rpc) {
-      const res = await fetch(rpc || BSC_RPC, {
+    async function rpcCall(method, params) {
+      const res = await fetch(BSC_RPC, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
@@ -303,81 +301,39 @@
       }
     }
 
-    // Cache for found burns (avoid re-scanning old blocks)
-    let cachedBurns = [];
-    let lastScannedBlock = START_BLOCK;
-
-    // Fetch burn transactions on-chain via chunked log queries
+    // Fetch burn data from GitHub API (no CDN cache) + verify on-chain
     async function fetchBurnData() {
       try {
-        const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-        const fromPadded = '0x000000000000000000000000' + BUYBACK_WALLET.slice(2).toLowerCase();
-        const toPadded = '0x000000000000000000000000000000000000000000000000000000000000dead';
+        // GitHub API returns file content without CDN caching
+        const res = await fetch(BURNS_API, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        const ghData = await res.json();
+        const burns = JSON.parse(atob(ghData.content));
 
-        // Get current block
-        const latestHex = await rpcCall('eth_blockNumber', []);
-        const latest = parseInt(latestHex, 16);
-        const scanFrom = lastScannedBlock;
-
-        // Scan in 2000-block chunks from last scanned block
-        const CHUNK = 2000;
-        let newLogs = [];
-        for (let from = scanFrom; from <= latest; from += CHUNK) {
-          const to = Math.min(from + CHUNK - 1, latest);
-          try {
-            const logs = await rpcCall('eth_getLogs', [{
-              address: BOB_TOKEN,
-              topics: [transferTopic, fromPadded, toPadded],
-              fromBlock: '0x' + from.toString(16),
-              toBlock: '0x' + to.toString(16)
-            }]);
-            if (logs && logs.length > 0) newLogs = newLogs.concat(logs);
-          } catch(e) { console.warn('Chunk failed:', from, e); }
-        }
-        lastScannedBlock = latest + 1;
-
-        // Add new burns to cache (deduplicate by tx hash)
-        const existing = new Set(cachedBurns.map(b => b.tx));
-        for (const log of newLogs) {
-          if (!existing.has(log.transactionHash)) {
-            const amount = BigInt(log.data);
-            // Get block timestamp
-            let time = '';
-            try {
-              const block = await rpcCall('eth_getBlockByNumber', [log.blockNumber, false]);
-              if (block) time = new Date(parseInt(block.timestamp, 16) * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-            } catch(e) {}
-            if (!time) time = 'Block ' + parseInt(log.blockNumber, 16);
-
-            cachedBurns.push({
-              time,
-              amount: Number(amount) / 1e18,
-              tx: log.transactionHash
-            });
-          }
-        }
-
-        // Update UI
-        if (cachedBurns.length > 0) {
+        if (burns && burns.length > 0) {
           let totalBob = 0;
           const rows = [];
-          for (const b of [...cachedBurns].reverse()) {
-            totalBob += b.amount;
+
+          for (const b of [...burns].reverse()) {
+            const bobAmount = parseFloat(b.bob);
+            totalBob += bobAmount;
+            const time = new Date(b.time).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
             rows.push(`<tr>
-              <td>${b.time}</td>
+              <td>${time}</td>
               <td><span class="burn-tag">BURN</span></td>
-              <td>${Math.round(b.amount).toLocaleString()} BOB</td>
-              <td><a class="tx-hash" href="https://bscscan.com/tx/${b.tx}" target="_blank">${b.tx.slice(0,10)}...${b.tx.slice(-8)}</a></td>
+              <td>${Math.round(bobAmount).toLocaleString()} BOB</td>
+              <td><a class="tx-hash" href="https://bscscan.com/tx/${b.burnTx}" target="_blank">${b.burnTx.slice(0,10)}...${b.burnTx.slice(-8)}</a></td>
             </tr>`);
           }
-          document.getElementById('burn-count').textContent = cachedBurns.length.toString();
+
+          document.getElementById('burn-count').textContent = burns.length.toString();
           document.getElementById('total-burned').textContent = Math.round(totalBob).toLocaleString() + ' BOB';
           document.getElementById('tx-body').innerHTML = rows.join('');
-        } else {
-          await fetchBurnedBOB();
         }
       } catch (e) {
-        console.error('Burn fetch failed:', e);
+        console.error('Burns fetch failed:', e);
+        // Fallback: at least show total from on-chain dead address
         await fetchBurnedBOB();
       }
     }

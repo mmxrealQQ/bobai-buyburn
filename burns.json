@@ -110,5 +110,13 @@
     "swapTx": "0x03a12aeadc661d05b755eafbe3ca83fea80509fef2cf7805a54e930d669cf33f",
     "burnTx": "0xd0ad0e9c2ecfb69bf89176e05ae8c00e4a1c7478a1b937e1e6de374b2fe1a1d2",
     "block": 89027048
+  },
+  {
+    "time": "2026-03-27T11:50:42.574Z",
+    "bnb": "0.004213743620665676",
+    "bob": "234635518.51035317140143479",
+    "swapTx": "0xe5aef7769ef705196afed045f9013bcb33614b0dae6137eb41cfcb7729ced60b",
+    "burnTx": "0x39155a7091ce5c8dd74f0b9875cd4701161e176fc57fa2a8bd151a88b35d4dfd",
+    "block": 89029704
   }
 ]

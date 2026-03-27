@@ -1,0 +1,29 @@
+name: BOB Auto Buy & Burn
+
+on:
+  schedule:
+    # Run every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  buyback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install viem @four-meme/four-meme-ai@latest
+
+      - name: Run Buy & Burn
+        env:
+          PRIVATE_KEY: ${{ secrets.BUYBACK_PRIVATE_KEY }}
+          BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
+        run: |
+          node buyback-bot.js

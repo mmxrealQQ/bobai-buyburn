@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "four-meme-ai": {
+      "source": "four-meme-community/four-meme-ai",
+      "sourceType": "github",
+      "computedHash": "44af661a804ec8d204ce75801f9a4b506c9d0f4357756b18f4ddf8b6cf8eb2d8"
+    }
+  }
+}

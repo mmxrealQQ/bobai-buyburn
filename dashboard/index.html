@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOBAI — Transparent BOB Buy & Burn Dashboard</title>
+  <style>
+    :root {
+      --gold: #F0B90B;
+      --gold-dim: rgba(240, 185, 11, 0.15);
+      --bg: #0a0a1a;
+      --card: #111128;
+      --border: #1e1e3a;
+      --text: #e0e0e0;
+      --text-dim: #888;
+      --green: #00c853;
+      --red: #ff1744;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .header {
+      text-align: center;
+      padding: 40px 20px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+    .header h1 span { color: var(--text); font-weight: 300; }
+    .header p {
+      color: var(--text-dim);
+      font-size: 0.95rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--gold-dim);
+      color: var(--gold);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-top: 12px;
+      border: 1px solid rgba(240, 185, 11, 0.3);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+    .stat-card .label {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .stat-card .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .stat-card .sub {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    .section {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+    .section h2 {
+      color: var(--gold);
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tx-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .tx-table th {
+      background: rgba(240, 185, 11, 0.08);
+      color: var(--gold);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 14px 16px;
+      text-align: left;
+    }
+    .tx-table td {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .tx-table tr:hover { background: rgba(240, 185, 11, 0.03); }
+    .tx-hash {
+      color: var(--gold);
+      text-decoration: none;
+      font-family: monospace;
+    }
+    .tx-hash:hover { text-decoration: underline; }
+    .burn-tag {
+      background: rgba(255, 23, 68, 0.15);
+      color: var(--red);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .buy-tag {
+      background: rgba(0, 200, 83, 0.15);
+      color: var(--green);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .wallet-info {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .wallet-info .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .wallet-info .row:last-child { border-bottom: none; }
+    .wallet-info .row .label { color: var(--text-dim); font-size: 0.85rem; }
+    .wallet-info .row .addr {
+      font-family: monospace;
+      font-size: 0.82rem;
+      color: var(--gold);
+      word-break: break-all;
+    }
+    .wallet-info .row a { color: var(--gold); text-decoration: none; }
+    .wallet-info .row a:hover { text-decoration: underline; }
+    .loading {
+      text-align: center;
+      color: var(--text-dim);
+      padding: 40px;
+      font-size: 0.9rem;
+    }
+    .footer {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+    .footer a { color: var(--gold); text-decoration: none; }
+    .live-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.8rem; }
+      .stat-card .value { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>BOB<span>AI</span></h1>
+    <p>100% AI-created token by Claude Opus 4.6. Every trade auto-buys and burns $BOB — permanently reducing supply.</p>
+    <div class="badge">FULLY AUTONOMOUS AI AGENT</div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">Total $BOB Burned</div>
+      <div class="value" id="total-burned">—</div>
+      <div class="sub">permanently removed from supply</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Total BNB Collected</div>
+      <div class="value" id="total-bnb">—</div>
+      <div class="sub">from 3% tax fees</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Burn Transactions</div>
+      <div class="value" id="burn-count">—</div>
+      <div class="sub">verified on-chain</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Buyback Wallet BNB</div>
+      <div class="value" id="wallet-bnb">—</div>
+      <div class="sub">pending next buyback</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>On-Chain Verification</h2>
+    <div class="wallet-info">
+      <div class="row">
+        <span class="label">BOBAI Token</span>
+        <span class="addr"><a id="bobai-link" href="#" target="_blank">Loading...</a></span>
+      </div>
+      <div class="row">
+        <span class="label">$BOB Token</span>
+        <span class="addr"><a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">0x51363f073b1e4920fda7aa9e9d84ba97ede1560e</a></span>
+      </div>
+      <div class="row">
+        <span class="label">Buyback Wallet</span>
+        <span class="addr"><a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank">0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce</a></span>
+      </div>
+      <div class="row">
+        <span class="label">Burn Address</span>
+        <span class="addr"><a href="https://bscscan.com/address/0x000000000000000000000000000000000000dEaD" target="_blank">0x000000000000000000000000000000000000dEaD</a></span>
+      </div>
+      <div class="row">
+        <span class="label">Tax Rate</span>
+        <span class="addr">3% per trade → 100% to buyback & burn</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="live-dot"></span> Recent Buy & Burn Transactions</h2>
+    <table class="tx-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>TX Hash</th>
+        </tr>
+      </thead>
+      <tbody id="tx-body">
+        <tr><td colspan="4" class="loading">Loading on-chain data...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>How It Works</h2>
+    <div class="wallet-info">
+      <div class="row">
+        <span class="label">Step 1</span>
+        <span class="addr">Someone buys or sells BOBAI</span>
+      </div>
+      <div class="row">
+        <span class="label">Step 2</span>
+        <span class="addr">3% tax fee is automatically sent to buyback wallet</span>
+      </div>
+      <div class="row">
+        <span class="label">Step 3</span>
+        <span class="addr">Bot auto-buys $BOB with collected BNB</span>
+      </div>
+      <div class="row">
+        <span class="label">Step 4</span>
+        <span class="addr">Purchased $BOB is sent to 0x...dEaD (burned forever)</span>
+      </div>
+      <div class="row">
+        <span class="label">Result</span>
+        <span class="addr" style="color: var(--green);">$BOB supply decreases → $BOB value increases</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>100% created by Claude Opus 4.6 — no human input on name, logo, code, or deployment.</p>
+    <p style="margin-top:8px;">
+      <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank">Verify on BscScan</a> |
+      <a href="https://dexscreener.com/bsc/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">$BOB on DexScreener</a>
+    </p>
+  </div>
+
+  <script>
+    const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
+    const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
+    const DEAD = '0x000000000000000000000000000000000000dEaD';
+    const BSCSCAN_API = 'https://api.bscscan.com/api';
+
+    // BOBAI token address will be set after deployment
+    let BOBAI_TOKEN = localStorage.getItem('bobai_token') || '';
+
+    async function fetchBNBBalance() {
+      try {
+        const res = await fetch(`${BSCSCAN_API}?module=account&action=balance&address=${BUYBACK_WALLET}&tag=latest`);
+        const data = await res.json();
+        if (data.status === '1') {
+          const bnb = (parseFloat(data.result) / 1e18).toFixed(6);
+          document.getElementById('wallet-bnb').textContent = `${bnb} BNB`;
+        }
+      } catch (e) {
+        document.getElementById('wallet-bnb').textContent = '—';
+      }
+    }
+
+    async function fetchBurnData() {
+      try {
+        // Get ERC20 transfers from buyback wallet to dead address (burns)
+        const res = await fetch(`${BSCSCAN_API}?module=account&action=tokentx&address=${BUYBACK_WALLET}&sort=desc&page=1&offset=50`);
+        const data = await res.json();
+
+        if (data.status !== '1' || !data.result.length) {
+          document.getElementById('tx-body').innerHTML =
+            '<tr><td colspan="4" class="loading">No transactions yet — waiting for first BOBAI trades</td></tr>';
+          document.getElementById('total-burned').textContent = '0';
+          document.getElementById('total-bnb').textContent = '0 BNB';
+          document.getElementById('burn-count').textContent = '0';
+          return;
+        }
+
+        let totalBurned = 0n;
+        let burnCount = 0;
+        const rows = [];
+
+        for (const tx of data.result) {
+          const isBOB = tx.contractAddress.toLowerCase() === BOB_TOKEN.toLowerCase();
+          const isDead = tx.to.toLowerCase() === DEAD.toLowerCase();
+          const isBuy = tx.to.toLowerCase() === BUYBACK_WALLET.toLowerCase() && isBOB;
+          const isBurn = tx.from.toLowerCase() === BUYBACK_WALLET.toLowerCase() && isDead && isBOB;
+
+          if (isBurn) {
+            totalBurned += BigInt(tx.value);
+            burnCount++;
+            const amount = (parseFloat(tx.value) / (10 ** parseInt(tx.tokenDecimal))).toLocaleString();
+            const time = new Date(parseInt(tx.timeStamp) * 1000).toLocaleString();
+            rows.push(`<tr>
+              <td>${time}</td>
+              <td><span class="burn-tag">BURN</span></td>
+              <td>${amount} BOB</td>
+              <td><a class="tx-hash" href="https://bscscan.com/tx/${tx.hash}" target="_blank">${tx.hash.slice(0,10)}...${tx.hash.slice(-8)}</a></td>
+            </tr>`);
+          } else if (isBuy) {
+            const amount = (parseFloat(tx.value) / (10 ** parseInt(tx.tokenDecimal))).toLocaleString();
+            const time = new Date(parseInt(tx.timeStamp) * 1000).toLocaleString();
+            rows.push(`<tr>
+              <td>${time}</td>
+              <td><span class="buy-tag">BUY</span></td>
+              <td>${amount} BOB</td>
+              <td><a class="tx-hash" href="https://bscscan.com/tx/${tx.hash}" target="_blank">${tx.hash.slice(0,10)}...${tx.hash.slice(-8)}</a></td>
+            </tr>`);
+          }
+        }
+
+        document.getElementById('burn-count').textContent = burnCount.toString();
+        document.getElementById('total-burned').textContent =
+          (parseFloat(totalBurned.toString()) / 1e18).toLocaleString() + ' BOB';
+
+        document.getElementById('tx-body').innerHTML = rows.length
+          ? rows.join('')
+          : '<tr><td colspan="4" class="loading">No buy/burn transactions yet</td></tr>';
+
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function fetchTotalBNBReceived() {
+      try {
+        const res = await fetch(`${BSCSCAN_API}?module=account&action=txlist&address=${BUYBACK_WALLET}&sort=desc&page=1&offset=100`);
+        const data = await res.json();
+        if (data.status === '1') {
+          let total = 0n;
+          for (const tx of data.result) {
+            if (tx.to.toLowerCase() === BUYBACK_WALLET.toLowerCase()) {
+              total += BigInt(tx.value);
+            }
+          }
+          document.getElementById('total-bnb').textContent =
+            (parseFloat(total.toString()) / 1e18).toFixed(6) + ' BNB';
+        }
+      } catch (e) {
+        document.getElementById('total-bnb').textContent = '—';
+      }
+    }
+
+    // Init
+    fetchBNBBalance();
+    fetchBurnData();
+    fetchTotalBNBReceived();
+
+    // Auto-refresh every 60 seconds
+    setInterval(() => {
+      fetchBNBBalance();
+      fetchBurnData();
+      fetchTotalBNBReceived();
+    }, 60000);
+  </script>
+</body>
+</html>

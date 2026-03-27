@@ -60,10 +60,17 @@
       color: var(--gold); font-size: 1.2rem; margin-bottom: 16px;
       display: flex; align-items: center; gap: 8px;
     }
+    .tx-scroll {
+      max-height: 420px; overflow-y: auto; border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .tx-scroll::-webkit-scrollbar { width: 6px; }
+    .tx-scroll::-webkit-scrollbar-track { background: var(--card); }
+    .tx-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     .tx-table {
       width: 100%; border-collapse: collapse; background: var(--card);
-      border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
     }
+    .tx-table thead th { position: sticky; top: 0; z-index: 1; }
     .tx-table th {
       background: rgba(240, 185, 11, 0.08); color: var(--gold);
       font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
@@ -183,6 +190,7 @@
 
   <div class="section">
     <h2><span class="live-dot"></span> Recent Buy & Burn Transactions</h2>
+    <div class="tx-scroll">
     <table class="tx-table">
       <thead>
         <tr>
@@ -196,6 +204,7 @@
         <tr><td colspan="4" class="loading">Bot runs every 30 min — first burn incoming...</td></tr>
       </tbody>
     </table>
+    </div>
   </div>
 
   <div class="section">

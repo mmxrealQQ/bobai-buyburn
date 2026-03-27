@@ -11,6 +11,7 @@
 const { createPublicClient, createWalletClient, http, parseAbi, formatEther, parseEther } = require('viem');
 const { bsc } = require('viem/chains');
 const { privateKeyToAccount } = require('viem/accounts');
+const fs = require('fs');
 
 const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
@@ -90,8 +91,9 @@ async function main() {
 
   // Step 3: Swap BNB -> BOB via PancakeSwap
   console.log(`\nSwapping ${formatEther(available)} BNB -> BOB on PancakeSwap...`);
+  let txHash, burnHash;
   try {
-    const txHash = await walletClient.writeContract({
+    txHash = await walletClient.writeContract({
       address: PANCAKE_ROUTER_V2,
       abi: ROUTER_ABI,
       functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
@@ -125,8 +127,9 @@ async function main() {
 
   // Step 5: Burn - send all BOB to dead address
   console.log(`Burning ${formatEther(bobBalance)} BOB -> ${DEAD_ADDRESS}`);
+  let receipt;
   try {
-    const burnHash = await walletClient.writeContract({
+    burnHash = await walletClient.writeContract({
       address: BOB_TOKEN,
       abi: ERC20_ABI,
       functionName: 'transfer',
@@ -134,11 +137,31 @@ async function main() {
     });
     console.log(`Burn TX: https://bscscan.com/tx/${burnHash}`);
 
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
+    receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
     console.log(`Burn confirmed in block ${receipt.blockNumber}`);
   } catch (e) {
     console.log(`Burn failed: ${e.message}`);
     return;
+  }
+
+  // Step 6: Log burn to burns.json
+  try {
+    let burns = [];
+    if (fs.existsSync('burns.json')) {
+      burns = JSON.parse(fs.readFileSync('burns.json', 'utf8'));
+    }
+    burns.push({
+      time: new Date().toISOString(),
+      bnb: formatEther(available),
+      bob: formatEther(bobBalance),
+      swapTx: txHash,
+      burnTx: burnHash,
+      block: Number(receipt.blockNumber),
+    });
+    fs.writeFileSync('burns.json', JSON.stringify(burns, null, 2));
+    console.log('Burn logged to burns.json');
+  } catch (e) {
+    console.log('Failed to log burn:', e.message);
   }
 
   console.log('\n============================================');

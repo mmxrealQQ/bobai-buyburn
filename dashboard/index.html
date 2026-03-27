@@ -300,67 +300,37 @@
       }
     }
 
-    // Check buyback wallet transactions for burn activity
-    async function fetchBurnTxs() {
+    // Fetch burn history from burns.json on GitHub
+    async function fetchBurnData() {
       try {
-        const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-        const fromPadded = '0x000000000000000000000000' + BUYBACK_WALLET.slice(2).toLowerCase();
-        const toPadded = '0x000000000000000000000000000000000000000000000000000000000000dEaD';
+        const res = await fetch('https://raw.githubusercontent.com/mmxrealQQ/bobai-buyburn/main/burns.json?t=' + Date.now());
+        const burns = await res.json();
 
-        // Get current block, scan last ~5000 blocks (~4h on BSC) in one call
-        const latestHex = await rpcCall('eth_blockNumber', []);
-        const latest = parseInt(latestHex, 16);
-        const fromBlock = '0x' + Math.max(latest - 4999, 0).toString(16);
+        if (burns && burns.length > 0) {
+          let totalBob = 0;
+          const rows = [];
 
-        const logs = await rpcCall('eth_getLogs', [{
-          address: BOB_TOKEN,
-          topics: [transferTopic, fromPadded, toPadded],
-          fromBlock,
-          toBlock: 'latest'
-        }]);
-
-        const rows = [];
-        if (logs && logs.length > 0) {
-          for (const log of logs.reverse()) {
-            const amount = BigInt(log.data);
-            const block = parseInt(log.blockNumber, 16);
-            const formatted = (Number(amount) / 1e18).toLocaleString(undefined, {maximumFractionDigits: 0});
+          for (const b of [...burns].reverse()) {
+            const bobAmount = parseFloat(b.bob);
+            totalBob += bobAmount;
+            const time = new Date(b.time).toLocaleString();
+            const formatted = Math.round(bobAmount).toLocaleString();
             rows.push(`<tr>
-              <td>Block ${block}</td>
+              <td>${time}</td>
               <td><span class="burn-tag">BURN</span></td>
               <td>${formatted} BOB</td>
-              <td><a class="tx-hash" href="https://bscscan.com/tx/${log.transactionHash}" target="_blank">${log.transactionHash.slice(0,10)}...${log.transactionHash.slice(-8)}</a></td>
+              <td><a class="tx-hash" href="https://bscscan.com/tx/${b.burnTx}" target="_blank">${b.burnTx.slice(0,10)}...${b.burnTx.slice(-8)}</a></td>
             </tr>`);
           }
-        }
 
-        if (rows.length) {
+          document.getElementById('burn-count').textContent = burns.length.toString();
+          document.getElementById('total-burned').textContent = Math.round(totalBob).toLocaleString() + ' BOB';
           document.getElementById('tx-body').innerHTML = rows.join('');
-        } else {
-          document.getElementById('tx-body').innerHTML =
-            '<tr><td colspan="4" class="loading">No burns in last ~4 hours — bot runs every 30 min when tax BNB available</td></tr>';
         }
       } catch (e) {
-        console.error('Burn TX fetch failed:', e);
-      }
-    }
-
-    // Fetch total burn stats from BSC RPC (all-time, not limited by block range)
-    async function fetchBurnStats() {
-      try {
-        // Get BOB balance at dead address (= total ever burned by anyone)
+        console.error('Burn data fetch failed:', e);
+        // Fallback to on-chain check
         await fetchBurnedBOB();
-
-        // Count burns from our buyback wallet via transaction count
-        // Use nonce of buyback wallet as rough indicator
-        const nonceHex = await rpcCall('eth_getTransactionCount', [BUYBACK_WALLET, 'latest']);
-        const nonce = parseInt(nonceHex, 16);
-        // Each bot cycle = 1 swap + 1 burn = 2 txs. Burns = floor(nonce / 2)
-        if (nonce > 0) {
-          document.getElementById('burn-count').textContent = Math.floor(nonce / 2).toString();
-        }
-      } catch (e) {
-        console.error('Burn stats failed:', e);
       }
     }
 
@@ -375,8 +345,7 @@
       await Promise.all([
         fetchBuybackBalance(),
         fetchTokenData(),
-        fetchBurnTxs(),
-        fetchBurnStats(),
+        fetchBurnData(),
       ]);
       updateTimestamp();
     }

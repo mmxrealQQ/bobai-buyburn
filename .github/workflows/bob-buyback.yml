@@ -27,3 +27,13 @@ jobs:
           BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
         run: |
           node buyback-bot.js
+
+      - name: Commit burn log
+        run: |
+          if [ -f burns.json ]; then
+            git config user.name "BOBAI Bot"
+            git config user.email "bot@bobai.buildonbnbgame.xyz"
+            git add burns.json
+            git diff --cached --quiet || git commit -m "Burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi

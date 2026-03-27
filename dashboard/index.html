@@ -313,7 +313,7 @@
           for (const b of [...burns].reverse()) {
             const bobAmount = parseFloat(b.bob);
             totalBob += bobAmount;
-            const time = new Date(b.time).toLocaleString();
+            const time = new Date(b.time).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
             const formatted = Math.round(bobAmount).toLocaleString();
             rows.push(`<tr>
               <td>${time}</td>
@@ -337,7 +337,7 @@
     // Update timestamp
     function updateTimestamp() {
       document.getElementById('last-update').textContent =
-        'Last update: ' + new Date().toLocaleTimeString() + ' — refreshes every 30s';
+        'Last update: ' + new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC — refreshes every 30s';
     }
 
     // Init

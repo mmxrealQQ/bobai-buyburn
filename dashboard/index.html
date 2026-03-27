@@ -344,13 +344,14 @@
         'Last update: ' + new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC — refreshes every 30s';
     }
 
-    // Init
+    // Init — balance & token data every 30s, burns every 5 min (GitHub API rate limit: 60/hr)
+    let burnRefreshCount = 0;
     async function refresh() {
-      await Promise.all([
-        fetchBuybackBalance(),
-        fetchTokenData(),
-        fetchBurnData(),
-      ]);
+      const tasks = [fetchBuybackBalance(), fetchTokenData()];
+      // Fetch burns on first load and then every 5 minutes (every 10th refresh)
+      if (burnRefreshCount % 10 === 0) tasks.push(fetchBurnData());
+      burnRefreshCount++;
+      await Promise.all(tasks);
       updateTimestamp();
     }
 

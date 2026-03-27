@@ -17,7 +17,8 @@
       "Bash(gh workflow:*)",
       "Bash(gh api:*)",
       "Bash(netlify status:*)",
-      "Bash(wrangler pages:*)"
+      "Bash(wrangler pages:*)",
+      "Bash(gh run:*)"
     ]
   }
 }

@@ -25,8 +25,8 @@ const MIN_BNB = parseEther('0.001');
 const GAS_RESERVE = parseEther('0.003');
 
 // Split ratios (must sum to 100)
-const CREATOR_SHARE = 50;  // 1.5% of trade -> creator revenue
-const BOB_BURN_SHARE = 33; // 1.0% of trade -> buy & burn $BOB
+const CREATOR_SHARE = 33;  // 1.0% of trade -> creator revenue
+const BOB_BURN_SHARE = 50; // 1.5% of trade -> buy & burn $BOB
 const BOBAI_BURN_SHARE = 17; // 0.5% of trade -> buy & burn $BOBAI
 
 const ROUTER_ABI = parseAbi([

@@ -1,10 +1,12 @@
-// BOB Auto Buy & Burn Bot
+// BOBAI Tax Distribution Bot
 // Created autonomously by Claude Opus 4.6
 //
-// Runs via GitHub Actions every 30 minutes:
-// 1. Checks buyback wallet for BNB from BOBAI tax fees
-// 2. Swaps BNB -> $BOB via PancakeSwap V2 Router
-// 3. Burns $BOB by sending to dead address
+// Runs via GitHub Actions every 10 minutes:
+// 1. Checks buyback wallet for BNB from BOBAI 3% tax
+// 2. Splits BNB three ways:
+//    - 50% (1.5%) -> Creator wallet (revenue)
+//    - 33% (1.0%) -> Buy $BOB + burn to dead address
+//    - 17% (0.5%) -> Buy $BOBAI + burn to dead address (deflationary)
 //
 // 100% automatic, 100% transparent, 100% on-chain verifiable
 
@@ -14,11 +16,18 @@ const { privateKeyToAccount } = require('viem/accounts');
 const fs = require('fs');
 
 const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
+const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const DEAD_ADDRESS = '0x000000000000000000000000000000000000dEaD';
+const CREATOR_WALLET = '0x15Ba17075ef5E0736292b030e3715d9100fe3d38';
 const PANCAKE_ROUTER_V2 = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
 const MIN_BNB = parseEther('0.001');
 const GAS_RESERVE = parseEther('0.003');
+
+// Split ratios (must sum to 100)
+const CREATOR_SHARE = 50;  // 1.5% of trade -> creator revenue
+const BOB_BURN_SHARE = 33; // 1.0% of trade -> buy & burn $BOB
+const BOBAI_BURN_SHARE = 17; // 0.5% of trade -> buy & burn $BOBAI
 
 const ROUTER_ABI = parseAbi([
   'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable',
@@ -29,6 +38,75 @@ const ERC20_ABI = parseAbi([
   'function balanceOf(address) view returns (uint256)',
   'function transfer(address to, uint256 amount) returns (bool)',
 ]);
+
+async function swapAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, tokenName) {
+  const path = [WBNB, tokenAddress];
+
+  let amountsOut;
+  try {
+    amountsOut = await publicClient.readContract({
+      address: PANCAKE_ROUTER_V2,
+      abi: ROUTER_ABI,
+      functionName: 'getAmountsOut',
+      args: [bnbAmount, path],
+    });
+    console.log(`  Expected ${tokenName} output: ${formatEther(amountsOut[1])}`);
+  } catch (e) {
+    console.log(`  Quote failed for ${tokenName}: ${e.message}`);
+    return null;
+  }
+
+  const minOut = (amountsOut[1] * 95n) / 100n;
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+
+  // Swap BNB -> token
+  let txHash;
+  try {
+    txHash = await walletClient.writeContract({
+      address: PANCAKE_ROUTER_V2,
+      abi: ROUTER_ABI,
+      functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
+      args: [minOut, path, account.address, deadline],
+      value: bnbAmount,
+    });
+    console.log(`  Swap TX: https://bscscan.com/tx/${txHash}`);
+    await publicClient.waitForTransactionReceipt({ hash: txHash });
+  } catch (e) {
+    console.log(`  Swap failed for ${tokenName}: ${e.message}`);
+    return null;
+  }
+
+  // Check token balance
+  const tokenBalance = await publicClient.readContract({
+    address: tokenAddress,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+
+  if (tokenBalance === 0n) {
+    console.log(`  No ${tokenName} to burn.`);
+    return null;
+  }
+
+  // Burn to dead address
+  let burnHash;
+  try {
+    burnHash = await walletClient.writeContract({
+      address: tokenAddress,
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      args: [DEAD_ADDRESS, tokenBalance],
+    });
+    console.log(`  Burn TX: https://bscscan.com/tx/${burnHash}`);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
+    console.log(`  Burned ${formatEther(tokenBalance)} ${tokenName} in block ${receipt.blockNumber}`);
+    return { txHash, burnHash, amount: formatEther(tokenBalance), block: Number(receipt.blockNumber) };
+  } catch (e) {
+    console.log(`  Burn failed for ${tokenName}: ${e.message}`);
+    return null;
+  }
+}
 
 async function main() {
   const privateKey = process.env.PRIVATE_KEY || process.env.BUYBACK_PRIVATE_KEY;
@@ -41,8 +119,9 @@ async function main() {
   const account = privateKeyToAccount(privateKey);
 
   console.log('============================================');
-  console.log(`[${new Date().toISOString()}] BOB Buy & Burn Bot`);
+  console.log(`[${new Date().toISOString()}] BOBAI Tax Distribution Bot`);
   console.log(`Wallet: ${account.address}`);
+  console.log(`Split: ${CREATOR_SHARE}% Creator | ${BOB_BURN_SHARE}% BOB Burn | ${BOBAI_BURN_SHARE}% BOBAI Burn`);
   console.log('============================================');
 
   const publicClient = createPublicClient({
@@ -61,112 +140,84 @@ async function main() {
   console.log(`BNB Balance: ${formatEther(balance)} BNB`);
 
   if (balance <= GAS_RESERVE + MIN_BNB) {
-    console.log('Balance too low for buyback. Waiting for more tax fees...');
+    console.log('Balance too low. Waiting for more tax fees...');
     return;
   }
 
   const available = balance - GAS_RESERVE;
-  console.log(`Available for buyback: ${formatEther(available)} BNB`);
+  console.log(`Available for distribution: ${formatEther(available)} BNB\n`);
 
-  // Step 2: Get quote from PancakeSwap
-  const path = [WBNB, BOB_TOKEN];
+  // Step 2: Calculate splits
+  const creatorAmount = (available * BigInt(CREATOR_SHARE)) / 100n;
+  const bobBurnAmount = (available * BigInt(BOB_BURN_SHARE)) / 100n;
+  const bobaiBurnAmount = available - creatorAmount - bobBurnAmount; // remainder to avoid rounding loss
 
-  let amountsOut;
+  console.log(`Creator share:    ${formatEther(creatorAmount)} BNB (${CREATOR_SHARE}%)`);
+  console.log(`BOB burn share:   ${formatEther(bobBurnAmount)} BNB (${BOB_BURN_SHARE}%)`);
+  console.log(`BOBAI burn share: ${formatEther(bobaiBurnAmount)} BNB (${BOBAI_BURN_SHARE}%)`);
+
+  // Step 3: Send creator share
+  console.log(`\n--- Sending ${formatEther(creatorAmount)} BNB to Creator ---`);
+  let creatorTxHash;
   try {
-    amountsOut = await publicClient.readContract({
-      address: PANCAKE_ROUTER_V2,
-      abi: ROUTER_ABI,
-      functionName: 'getAmountsOut',
-      args: [available, path],
+    creatorTxHash = await walletClient.sendTransaction({
+      to: CREATOR_WALLET,
+      value: creatorAmount,
     });
-    console.log(`Expected BOB output: ${formatEther(amountsOut[1])} BOB`);
+    console.log(`  TX: https://bscscan.com/tx/${creatorTxHash}`);
+    await publicClient.waitForTransactionReceipt({ hash: creatorTxHash });
+    console.log('  Creator payment sent!');
   } catch (e) {
-    console.log(`Quote failed: ${e.message}`);
+    console.log(`  Creator payment failed: ${e.message}`);
     return;
   }
 
-  // 5% slippage tolerance
-  const minOut = (amountsOut[1] * 95n) / 100n;
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 600); // 10 min
+  // Step 4: Buy & burn $BOB
+  console.log(`\n--- Buying & Burning $BOB (${formatEther(bobBurnAmount)} BNB) ---`);
+  const bobResult = await swapAndBurn(walletClient, publicClient, account, bobBurnAmount, BOB_TOKEN, 'BOB');
 
-  // Step 3: Swap BNB -> BOB via PancakeSwap
-  console.log(`\nSwapping ${formatEther(available)} BNB -> BOB on PancakeSwap...`);
-  let txHash, burnHash;
-  try {
-    txHash = await walletClient.writeContract({
-      address: PANCAKE_ROUTER_V2,
-      abi: ROUTER_ABI,
-      functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
-      args: [minOut, path, account.address, deadline],
-      value: available,
-    });
-    console.log(`Swap TX: https://bscscan.com/tx/${txHash}`);
+  // Step 5: Buy & burn $BOBAI
+  console.log(`\n--- Buying & Burning $BOBAI (${formatEther(bobaiBurnAmount)} BNB) ---`);
+  const bobaiResult = await swapAndBurn(walletClient, publicClient, account, bobaiBurnAmount, BOBAI_TOKEN, 'BOBAI');
 
-    // Wait for confirmation
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-    console.log(`Swap confirmed in block ${receipt.blockNumber}`);
-  } catch (e) {
-    console.log(`Swap failed: ${e.message}`);
-    return;
-  }
-
-  // Step 4: Check BOB balance
-  const bobBalance = await publicClient.readContract({
-    address: BOB_TOKEN,
-    abi: ERC20_ABI,
-    functionName: 'balanceOf',
-    args: [account.address],
-  });
-
-  console.log(`\nBOB balance to burn: ${formatEther(bobBalance)} BOB`);
-
-  if (bobBalance === 0n) {
-    console.log('No BOB to burn.');
-    return;
-  }
-
-  // Step 5: Burn - send all BOB to dead address
-  console.log(`Burning ${formatEther(bobBalance)} BOB -> ${DEAD_ADDRESS}`);
-  let receipt;
-  try {
-    burnHash = await walletClient.writeContract({
-      address: BOB_TOKEN,
-      abi: ERC20_ABI,
-      functionName: 'transfer',
-      args: [DEAD_ADDRESS, bobBalance],
-    });
-    console.log(`Burn TX: https://bscscan.com/tx/${burnHash}`);
-
-    receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
-    console.log(`Burn confirmed in block ${receipt.blockNumber}`);
-  } catch (e) {
-    console.log(`Burn failed: ${e.message}`);
-    return;
-  }
-
-  // Step 6: Log burn to burns.json
+  // Step 6: Log to burns.json
   try {
     let burns = [];
     if (fs.existsSync('burns.json')) {
       burns = JSON.parse(fs.readFileSync('burns.json', 'utf8'));
     }
-    burns.push({
+    const entry = {
       time: new Date().toISOString(),
-      bnb: formatEther(available),
-      bob: formatEther(bobBalance),
-      swapTx: txHash,
-      burnTx: burnHash,
-      block: Number(receipt.blockNumber),
-    });
+      totalBnb: formatEther(available),
+      creatorBnb: formatEther(creatorAmount),
+      creatorTx: creatorTxHash,
+    };
+    if (bobResult) {
+      entry.bobBurnBnb = formatEther(bobBurnAmount);
+      entry.bobBurned = bobResult.amount;
+      entry.bobSwapTx = bobResult.txHash;
+      entry.bobBurnTx = bobResult.burnHash;
+      entry.bobBlock = bobResult.block;
+    }
+    if (bobaiResult) {
+      entry.bobaiBurnBnb = formatEther(bobaiBurnAmount);
+      entry.bobaiBurned = bobaiResult.amount;
+      entry.bobaiSwapTx = bobaiResult.txHash;
+      entry.bobaiBurnTx = bobaiResult.burnHash;
+      entry.bobaiBlock = bobaiResult.block;
+    }
+    burns.push(entry);
     fs.writeFileSync('burns.json', JSON.stringify(burns, null, 2));
-    console.log('Burn logged to burns.json');
+    console.log('\nBurn logged to burns.json');
   } catch (e) {
-    console.log('Failed to log burn:', e.message);
+    console.log('Failed to log:', e.message);
   }
 
   console.log('\n============================================');
-  console.log(`[${new Date().toISOString()}] BUY & BURN COMPLETE`);
-  console.log(`${formatEther(bobBalance)} BOB permanently removed from supply`);
+  console.log(`[${new Date().toISOString()}] DISTRIBUTION COMPLETE`);
+  console.log(`Creator: ${formatEther(creatorAmount)} BNB`);
+  if (bobResult) console.log(`BOB burned: ${bobResult.amount}`);
+  if (bobaiResult) console.log(`BOBAI burned: ${bobaiResult.amount}`);
   console.log('============================================');
 }
 

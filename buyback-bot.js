@@ -68,6 +68,7 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
       functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
       args: [minOut, path, account.address, deadline],
       value: bnbAmount,
+      gas: 300000n,
     });
     console.log(`  Swap TX: https://bscscan.com/tx/${txHash}`);
     await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -97,6 +98,7 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
       abi: ERC20_ABI,
       functionName: 'transfer',
       args: [DEAD_ADDRESS, tokenBalance],
+      gas: 200000n,
     });
     console.log(`  Burn TX: https://bscscan.com/tx/${burnHash}`);
     const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });

@@ -357,18 +357,47 @@
 
         if (burns && burns.length > 0) {
           let totalBob = 0;
+          let totalBobai = 0;
           const rows = [];
 
           for (const b of [...burns].reverse()) {
-            const bobAmount = parseFloat(b.bob);
-            totalBob += bobAmount;
             const time = new Date(b.time).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-            rows.push(`<tr>
-              <td>${time}</td>
-              <td><span class="burn-tag">BURN</span></td>
-              <td>${Math.round(bobAmount).toLocaleString()} BOB</td>
-              <td><a class="tx-hash" href="https://bscscan.com/tx/${b.burnTx}" target="_blank">${b.burnTx.slice(0,10)}...${b.burnTx.slice(-8)}</a></td>
-            </tr>`);
+
+            // Old format (bob + burnTx) or new format (bobBurned + bobBurnTx)
+            const bobAmount = parseFloat(b.bob || b.bobBurned || 0);
+            const bobTx = b.burnTx || b.bobBurnTx;
+            if (bobAmount > 0 && bobTx) {
+              totalBob += bobAmount;
+              rows.push(`<tr>
+                <td>${time}</td>
+                <td><span class="burn-tag">BURN BOB</span></td>
+                <td>${Math.round(bobAmount).toLocaleString()} BOB</td>
+                <td><a class="tx-hash" href="https://bscscan.com/tx/${bobTx}" target="_blank">${bobTx.slice(0,10)}...${bobTx.slice(-8)}</a></td>
+              </tr>`);
+            }
+
+            // New format: BOBAI burns
+            const bobaiAmount = parseFloat(b.bobaiBurned || 0);
+            const bobaiTx = b.bobaiBurnTx;
+            if (bobaiAmount > 0 && bobaiTx) {
+              totalBobai += bobaiAmount;
+              rows.push(`<tr>
+                <td>${time}</td>
+                <td><span class="buy-tag">BURN BOBAI</span></td>
+                <td>${Math.round(bobaiAmount).toLocaleString()} BOBAI</td>
+                <td><a class="tx-hash" href="https://bscscan.com/tx/${bobaiTx}" target="_blank">${bobaiTx.slice(0,10)}...${bobaiTx.slice(-8)}</a></td>
+              </tr>`);
+            }
+
+            // New format: Creator payment
+            if (b.creatorTx) {
+              rows.push(`<tr>
+                <td>${time}</td>
+                <td><span style="background:rgba(240,185,11,0.15);color:#F0B90B;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">CREATOR</span></td>
+                <td>${parseFloat(b.creatorBnb).toFixed(4)} BNB</td>
+                <td><a class="tx-hash" href="https://bscscan.com/tx/${b.creatorTx}" target="_blank">${b.creatorTx.slice(0,10)}...${b.creatorTx.slice(-8)}</a></td>
+              </tr>`);
+            }
           }
 
           document.getElementById('burn-count').textContent = burns.length.toString();

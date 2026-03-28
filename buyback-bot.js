@@ -5,8 +5,8 @@
 // 1. Checks buyback wallet for BNB from BOBAI 3% tax
 // 2. Splits BNB three ways:
 //    - 50% (1.5%) -> Creator wallet (revenue)
-//    - 33% (1.0%) -> Buy $BOB + burn to dead address
-//    - 17% (0.5%) -> Buy $BOBAI + burn to dead address (deflationary)
+//    - 25% (0.75%) -> Buy $BOB + burn to dead address
+//    - 25% (0.75%) -> Buy $BOBAI + burn to dead address (deflationary)
 //
 // 100% automatic, 100% transparent, 100% on-chain verifiable
 
@@ -26,8 +26,8 @@ const GAS_RESERVE = parseEther('0.003');
 
 // Split ratios (must sum to 100)
 const CREATOR_SHARE = 50;  // 1.5% of trade -> creator revenue
-const BOB_BURN_SHARE = 33; // 1.0% of trade -> buy & burn $BOB
-const BOBAI_BURN_SHARE = 17; // 0.5% of trade -> buy & burn $BOBAI
+const BOB_BURN_SHARE = 25; // 0.75% of trade -> buy & burn $BOB
+const BOBAI_BURN_SHARE = 25; // 0.75% of trade -> buy & burn $BOBAI
 
 const ROUTER_ABI = parseAbi([
   'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable',

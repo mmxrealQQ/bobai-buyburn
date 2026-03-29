@@ -12,7 +12,7 @@ export default {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'BOBAI-Cron-Worker',
         },
-        body: JSON.stringify({ ref: 'master' }),
+        body: JSON.stringify({ ref: 'main' }),
       }
     );
     console.log(`Triggered workflow: HTTP ${res.status}`);

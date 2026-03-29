@@ -13,5 +13,20 @@
     "bobaiEstimated": "4004865.735313318924105406",
     "bobaiTx": "0x17bab05e28f2c8825b6968133e094f2f3448bed59b56239c526f6322ddbb99a5",
     "bobaiBlock": 89414439
+  },
+  {
+    "time": "2026-03-29T14:00:40.983Z",
+    "balanceBnb": "0.014639823792572349",
+    "availableBnb": "0.011639823792572349",
+    "personalBnb": "0.005819911896286174",
+    "personalTx": "0xcca823ec7540dfdb10fa3410999d30b038f92e8925da6fc12fcc33dcd43c546c",
+    "bobBuyBnb": "0.002909955948143087",
+    "bobEstimated": "178489816.40662781249896969",
+    "bobTx": "0x87b2a38e2ec217529bcf666b407b600495ee891542869c109160a79dee384dee",
+    "bobBlock": 89430433,
+    "bobaiBuyBnb": "0.002909955948143088",
+    "bobaiEstimated": "228389.615621141318518796",
+    "bobaiTx": "0xbdfb705ef29436bc124f03b50c5c8019e1a06ee4e212d4f1e5bd476e976f505a",
+    "bobaiBlock": 89430435
   }
 ]

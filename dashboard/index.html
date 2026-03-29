@@ -261,12 +261,8 @@
     const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
     const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
     const DEAD = '0x000000000000000000000000000000000000dEaD';
-    const CREATOR_WALLET = '0x15Ba17075ef5E0736292b030e3715d9100fe3d38';
     const BSC_RPC = 'https://bsc-dataseed.binance.org/';
-    const BSCSCAN_API = 'https://api.bscscan.com/api';
-    // Transfer(address,address,uint256) topic
-    const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-    const DEAD_TOPIC = '0x000000000000000000000000000000000000000000000000000000000000dEaD';
+    const BURNS_API = 'https://api.github.com/repos/mmxrealQQ/bobai-buyburn/contents/burns.json';
 
     // RPC call helper
     async function rpcCall(method, params) {
@@ -291,7 +287,7 @@
       }
     }
 
-    // Get burned token balance from dead address (on-chain, always accurate)
+    // Get burned token balances from dead address (on-chain, always accurate)
     async function fetchBurnedTokens() {
       try {
         const balanceOfData = '0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';
@@ -356,83 +352,61 @@
       }
     }
 
-    // Fetch burn transactions from BscScan (on-chain, no burns.json dependency)
-    async function fetchBurnTransactions() {
+    // Fetch burn log from GitHub + render transaction table
+    async function fetchBurnData() {
       try {
-        // Get token transfers FROM the buyback wallet
-        const url = `${BSCSCAN_API}?module=account&action=tokentx&address=${BUYBACK_WALLET}&startblock=0&endblock=999999999&sort=desc`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const res = await fetch(BURNS_API, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        const ghData = await res.json();
+        const burns = JSON.parse(atob(ghData.content));
 
-        if (data.status !== '1' || !data.result) {
-          console.error('BscScan API error:', data.message);
-          return;
-        }
+        if (burns && burns.length > 0) {
+          const rows = [];
 
-        const txs = data.result;
-        const rows = [];
-        let burnCount = 0;
+          for (const b of [...burns].reverse()) {
+            const time = new Date(b.time).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
-        for (const tx of txs) {
-          const to = tx.to.toLowerCase();
-          const from = tx.from.toLowerCase();
-          const buybackWallet = BUYBACK_WALLET.toLowerCase();
+            // Old format (bob + burnTx) or new format (bobBurned + bobBurnTx)
+            const bobAmount = parseFloat(b.bob || b.bobBurned || 0);
+            const bobTx = b.burnTx || b.bobBurnTx;
+            if (bobAmount > 0 && bobTx) {
+              rows.push(`<tr>
+                <td>${time}</td>
+                <td><span class="burn-tag">BURN BOB</span></td>
+                <td>${Math.round(bobAmount).toLocaleString()} BOB</td>
+                <td><a class="tx-hash" href="https://bscscan.com/tx/${bobTx}" target="_blank">${bobTx.slice(0,10)}...${bobTx.slice(-8)}</a></td>
+              </tr>`);
+            }
 
-          // Only show outgoing transfers from buyback wallet
-          if (from !== buybackWallet) continue;
+            // BOBAI burns
+            const bobaiAmount = parseFloat(b.bobaiBurned || 0);
+            const bobaiTx = b.bobaiBurnTx;
+            if (bobaiAmount > 0 && bobaiTx) {
+              rows.push(`<tr>
+                <td>${time}</td>
+                <td><span class="buy-tag">BURN BOBAI</span></td>
+                <td>${Math.round(bobaiAmount).toLocaleString()} BOBAI</td>
+                <td><a class="tx-hash" href="https://bscscan.com/tx/${bobaiTx}" target="_blank">${bobaiTx.slice(0,10)}...${bobaiTx.slice(-8)}</a></td>
+              </tr>`);
+            }
 
-          const time = new Date(parseInt(tx.timeStamp) * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-          const amount = Number(BigInt(tx.value)) / (10 ** parseInt(tx.tokenDecimal));
-          const tokenSymbol = tx.tokenSymbol;
-          const hash = tx.hash;
-
-          if (to === DEAD.toLowerCase()) {
-            // Burn transaction
-            burnCount++;
-            const isBob = tx.contractAddress.toLowerCase() === BOB_TOKEN.toLowerCase();
-            rows.push(`<tr>
-              <td>${time}</td>
-              <td><span class="${isBob ? 'burn-tag' : 'buy-tag'}">BURN ${tokenSymbol}</span></td>
-              <td>${Math.round(amount).toLocaleString()} ${tokenSymbol}</td>
-              <td><a class="tx-hash" href="https://bscscan.com/tx/${hash}" target="_blank">${hash.slice(0,10)}...${hash.slice(-8)}</a></td>
-            </tr>`);
-          }
-        }
-
-        // Also fetch normal BNB transactions for creator payments
-        const bnbUrl = `${BSCSCAN_API}?module=account&action=txlist&address=${BUYBACK_WALLET}&startblock=0&endblock=999999999&sort=desc`;
-        const bnbRes = await fetch(bnbUrl);
-        const bnbData = await bnbRes.json();
-
-        if (bnbData.status === '1' && bnbData.result) {
-          for (const tx of bnbData.result) {
-            if (tx.from.toLowerCase() !== BUYBACK_WALLET.toLowerCase()) continue;
-            if (tx.to.toLowerCase() === CREATOR_WALLET.toLowerCase() && tx.value !== '0') {
-              const time = new Date(parseInt(tx.timeStamp) * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-              const bnbAmount = Number(BigInt(tx.value)) / 1e18;
+            // Creator payment
+            if (b.creatorTx) {
               rows.push(`<tr>
                 <td>${time}</td>
                 <td><span style="background:rgba(240,185,11,0.15);color:#F0B90B;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">CREATOR</span></td>
-                <td>${bnbAmount.toFixed(4)} BNB</td>
-                <td><a class="tx-hash" href="https://bscscan.com/tx/${tx.hash}" target="_blank">${tx.hash.slice(0,10)}...${tx.hash.slice(-8)}</a></td>
+                <td>${parseFloat(b.creatorBnb).toFixed(4)} BNB</td>
+                <td><a class="tx-hash" href="https://bscscan.com/tx/${b.creatorTx}" target="_blank">${b.creatorTx.slice(0,10)}...${b.creatorTx.slice(-8)}</a></td>
               </tr>`);
             }
           }
-        }
 
-        // Sort rows by time (descending) — they're already sorted per-source but interleaved
-        rows.sort((a, b) => {
-          const timeA = a.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)?.[1] || '';
-          const timeB = b.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)?.[1] || '';
-          return timeB.localeCompare(timeA);
-        });
-
-        document.getElementById('burn-count').textContent = burnCount.toString();
-        if (rows.length > 0) {
+          document.getElementById('burn-count').textContent = burns.length.toString();
           document.getElementById('tx-body').innerHTML = rows.join('');
         }
       } catch (e) {
-        console.error('BscScan fetch failed:', e);
+        console.error('Burns fetch failed:', e);
       }
     }
 
@@ -442,13 +416,12 @@
         'Last update: ' + new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC — refreshes every 30s';
     }
 
-    // Init — balance, token data & burned totals every 30s, tx list every 2 min
-    let txRefreshCount = 0;
+    // Init — balance, token data & burned totals every 30s, burns every 5 min (GitHub API rate limit: 60/hr)
+    let burnRefreshCount = 0;
     async function refresh() {
       const tasks = [fetchBuybackBalance(), fetchTokenData(), fetchBurnedTokens()];
-      // Fetch tx list on first load and then every 2 minutes (every 4th refresh)
-      if (txRefreshCount % 4 === 0) tasks.push(fetchBurnTransactions());
-      txRefreshCount++;
+      if (burnRefreshCount % 10 === 0) tasks.push(fetchBurnData());
+      burnRefreshCount++;
       await Promise.all(tasks);
       updateTimestamp();
     }

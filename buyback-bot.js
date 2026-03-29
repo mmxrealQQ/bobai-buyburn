@@ -177,7 +177,12 @@ async function main() {
     transport: http(rpcUrl),
   });
 
-  // Step 1: Check BNB balance
+  // Step 1: Burn any existing token balances (clears accumulated failed burns)
+  console.log('\n--- Burning existing token balances ---');
+  const existingBobBurn = await burnExistingTokens(walletClient, publicClient, account, BOB_TOKEN, 'BOB');
+  const existingBobaiBurn = await burnExistingTokens(walletClient, publicClient, account, BOBAI_TOKEN, 'BOBAI');
+
+  // Step 2: Check BNB balance
   const balance = await publicClient.getBalance({ address: account.address });
   console.log(`BNB Balance: ${formatEther(balance)} BNB`);
 
@@ -214,20 +219,15 @@ async function main() {
     return;
   }
 
-  // Step 4: Burn any existing token balances (clears accumulated failed burns)
-  console.log('\n--- Burning existing token balances ---');
-  const existingBobBurn = await burnExistingTokens(walletClient, publicClient, account, BOB_TOKEN, 'BOB');
-  const existingBobaiBurn = await burnExistingTokens(walletClient, publicClient, account, BOBAI_TOKEN, 'BOBAI');
-
-  // Step 5: Buy & burn $BOB
+  // Step 4: Buy & burn $BOB
   console.log(`\n--- Buying & Burning $BOB (${formatEther(bobBurnAmount)} BNB) ---`);
   const bobResult = await swapAndBurn(walletClient, publicClient, account, bobBurnAmount, BOB_TOKEN, 'BOB');
 
-  // Step 6: Buy & burn $BOBAI
+  // Step 5: Buy & burn $BOBAI
   console.log(`\n--- Buying & Burning $BOBAI (${formatEther(bobaiBurnAmount)} BNB) ---`);
   const bobaiResult = await swapAndBurn(walletClient, publicClient, account, bobaiBurnAmount, BOBAI_TOKEN, 'BOBAI');
 
-  // Step 7: Log to burns.json
+  // Step 6: Log to burns.json
   try {
     let burns = [];
     if (fs.existsSync('burns.json')) {

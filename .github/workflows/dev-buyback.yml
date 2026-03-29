@@ -1,0 +1,39 @@
+name: Dev Buyback (BOB + BOBAI)
+
+on:
+  workflow_dispatch: # Manual trigger + Cloudflare Worker cron
+
+permissions:
+  contents: write
+
+jobs:
+  buyback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install viem
+
+      - name: Run Dev Buyback
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
+        run: |
+          node dev-buyback.js
+
+      - name: Commit buyback log
+        run: |
+          if [ -f dev-buyback-log.json ]; then
+            git config user.name "Dev Buyback Bot"
+            git config user.email "bot@bobai.buildonbnbgame.xyz"
+            git add dev-buyback-log.json
+            git diff --cached --quiet || git commit -m "Dev buyback log $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi

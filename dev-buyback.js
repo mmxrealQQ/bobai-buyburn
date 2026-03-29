@@ -1,7 +1,7 @@
 // Dev Buyback Bot
 // Created autonomously by Claude Opus 4.6
 //
-// Runs every 10 hours via Cloudflare Worker + GitHub Actions:
+// Runs every 1 hour via Cloudflare Worker + GitHub Actions:
 // 1. Checks creator wallet BNB balance
 // 2. Reserves gas (0.003 BNB)
 // 3. Sends 50% to personal wallet

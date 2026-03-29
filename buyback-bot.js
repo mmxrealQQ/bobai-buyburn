@@ -39,6 +39,35 @@ const ERC20_ABI = parseAbi([
   'function transfer(address to, uint256 amount) returns (bool)',
 ]);
 
+async function burnExistingTokens(walletClient, publicClient, account, tokenAddress, tokenName) {
+  const balance = await publicClient.readContract({
+    address: tokenAddress,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+
+  if (balance === 0n) return null;
+
+  console.log(`  Existing ${tokenName} balance: ${formatEther(balance)}`);
+  try {
+    const burnHash = await walletClient.writeContract({
+      address: tokenAddress,
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      args: [DEAD_ADDRESS, balance],
+      gas: 500000n,
+    });
+    console.log(`  Burn TX: https://bscscan.com/tx/${burnHash}`);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
+    console.log(`  Burned existing ${formatEther(balance)} ${tokenName} in block ${receipt.blockNumber}`);
+    return { burnHash, amount: formatEther(balance), block: Number(receipt.blockNumber) };
+  } catch (e) {
+    console.log(`  Burn existing ${tokenName} failed: ${e.message}`);
+    return null;
+  }
+}
+
 async function swapAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, tokenName) {
   const path = [WBNB, tokenAddress];
 
@@ -59,6 +88,14 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
   const minOut = (amountsOut[1] * 95n) / 100n;
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
 
+  // Balance before swap
+  const balanceBefore = await publicClient.readContract({
+    address: tokenAddress,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+
   // Swap BNB -> token
   let txHash;
   try {
@@ -77,33 +114,36 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
     return null;
   }
 
-  // Check token balance
-  const tokenBalance = await publicClient.readContract({
+  // Balance after swap — only burn what we just bought
+  const balanceAfter = await publicClient.readContract({
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: [account.address],
   });
 
-  if (tokenBalance === 0n) {
-    console.log(`  No ${tokenName} to burn.`);
+  const newTokens = balanceAfter - balanceBefore;
+  if (newTokens === 0n) {
+    console.log(`  No new ${tokenName} to burn.`);
     return null;
   }
 
-  // Burn to dead address
+  console.log(`  New ${tokenName} from swap: ${formatEther(newTokens)}`);
+
+  // Burn only newly bought tokens to dead address
   let burnHash;
   try {
     burnHash = await walletClient.writeContract({
       address: tokenAddress,
       abi: ERC20_ABI,
       functionName: 'transfer',
-      args: [DEAD_ADDRESS, tokenBalance],
-      gas: 200000n,
+      args: [DEAD_ADDRESS, newTokens],
+      gas: 500000n,
     });
     console.log(`  Burn TX: https://bscscan.com/tx/${burnHash}`);
     const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
-    console.log(`  Burned ${formatEther(tokenBalance)} ${tokenName} in block ${receipt.blockNumber}`);
-    return { txHash, burnHash, amount: formatEther(tokenBalance), block: Number(receipt.blockNumber) };
+    console.log(`  Burned ${formatEther(newTokens)} ${tokenName} in block ${receipt.blockNumber}`);
+    return { txHash, burnHash, amount: formatEther(newTokens), block: Number(receipt.blockNumber) };
   } catch (e) {
     console.log(`  Burn failed for ${tokenName}: ${e.message}`);
     return null;
@@ -174,15 +214,20 @@ async function main() {
     return;
   }
 
-  // Step 4: Buy & burn $BOB
+  // Step 4: Burn any existing token balances (clears accumulated failed burns)
+  console.log('\n--- Burning existing token balances ---');
+  const existingBobBurn = await burnExistingTokens(walletClient, publicClient, account, BOB_TOKEN, 'BOB');
+  const existingBobaiBurn = await burnExistingTokens(walletClient, publicClient, account, BOBAI_TOKEN, 'BOBAI');
+
+  // Step 5: Buy & burn $BOB
   console.log(`\n--- Buying & Burning $BOB (${formatEther(bobBurnAmount)} BNB) ---`);
   const bobResult = await swapAndBurn(walletClient, publicClient, account, bobBurnAmount, BOB_TOKEN, 'BOB');
 
-  // Step 5: Buy & burn $BOBAI
+  // Step 6: Buy & burn $BOBAI
   console.log(`\n--- Buying & Burning $BOBAI (${formatEther(bobaiBurnAmount)} BNB) ---`);
   const bobaiResult = await swapAndBurn(walletClient, publicClient, account, bobaiBurnAmount, BOBAI_TOKEN, 'BOBAI');
 
-  // Step 6: Log to burns.json
+  // Step 7: Log to burns.json
   try {
     let burns = [];
     if (fs.existsSync('burns.json')) {
@@ -194,6 +239,14 @@ async function main() {
       creatorBnb: formatEther(creatorAmount),
       creatorTx: creatorTxHash,
     };
+    if (existingBobBurn) {
+      entry.existingBobBurned = existingBobBurn.amount;
+      entry.existingBobBurnTx = existingBobBurn.burnHash;
+    }
+    if (existingBobaiBurn) {
+      entry.existingBobaiBurned = existingBobaiBurn.amount;
+      entry.existingBobaiBurnTx = existingBobaiBurn.burnHash;
+    }
     if (bobResult) {
       entry.bobBurnBnb = formatEther(bobBurnAmount);
       entry.bobBurned = bobResult.amount;

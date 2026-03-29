@@ -3,8 +3,8 @@
 //
 // Runs every 10 hours via Cloudflare Worker + GitHub Actions:
 // 1. Checks creator wallet BNB balance
-// 2. If above 0.01 BNB floor, takes the excess
-// 3. Keeps 50% as BNB reserve
+// 2. Reserves gas (0.003 BNB)
+// 3. Sends 50% to personal wallet
 // 4. Buys $BOB with 25% (hold, not burn)
 // 5. Buys $BOBAI with 25% (hold, not burn)
 //
@@ -19,7 +19,9 @@ const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const PANCAKE_ROUTER_V2 = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
-const BNB_FLOOR = parseEther('0.01');
+const PERSONAL_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C';
+const GAS_RESERVE = parseEther('0.003');
+const MIN_BNB = parseEther('0.001');
 
 const ROUTER_ABI = parseAbi([
   'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable',
@@ -78,8 +80,8 @@ async function main() {
   console.log('============================================');
   console.log(`[${new Date().toISOString()}] Dev Buyback Bot`);
   console.log(`Wallet: ${account.address}`);
-  console.log(`Floor: ${formatEther(BNB_FLOOR)} BNB`);
-  console.log(`Strategy: 50% hold BNB | 25% buy BOB | 25% buy BOBAI`);
+  console.log(`Gas Reserve: ${formatEther(GAS_RESERVE)} BNB`);
+  console.log(`Strategy: 50% -> personal wallet | 25% buy BOB | 25% buy BOBAI`);
   console.log('============================================');
 
   const publicClient = createPublicClient({
@@ -97,28 +99,44 @@ async function main() {
   const balance = await publicClient.getBalance({ address: account.address });
   console.log(`BNB Balance: ${formatEther(balance)} BNB`);
 
-  if (balance <= BNB_FLOOR) {
-    console.log(`Balance at or below floor (${formatEther(BNB_FLOOR)} BNB). Nothing to do.`);
+  if (balance <= GAS_RESERVE + MIN_BNB) {
+    console.log('Balance too low. Waiting for more BNB...');
     return;
   }
 
-  const excess = balance - BNB_FLOOR;
-  console.log(`Excess above floor: ${formatEther(excess)} BNB\n`);
+  const available = balance - GAS_RESERVE;
+  console.log(`Available after gas reserve: ${formatEther(available)} BNB\n`);
 
-  // Step 2: Calculate splits (50% hold, 25% BOB, 25% BOBAI)
-  const bobAmount = excess / 4n;
-  const bobaiAmount = excess / 4n;
-  const holdAmount = excess - bobAmount - bobaiAmount; // remainder stays as BNB
+  // Step 2: Calculate splits (50% personal, 25% BOB, 25% BOBAI)
+  const personalAmount = available / 2n;
+  const bobAmount = available / 4n;
+  const bobaiAmount = available - personalAmount - bobAmount; // remainder to avoid rounding loss
 
-  console.log(`Hold as BNB:  ${formatEther(holdAmount)} BNB (50%)`);
+  console.log(`Personal:     ${formatEther(personalAmount)} BNB (50%)`);
   console.log(`Buy BOB:      ${formatEther(bobAmount)} BNB (25%)`);
   console.log(`Buy BOBAI:    ${formatEther(bobaiAmount)} BNB (25%)`);
 
-  // Step 3: Buy $BOB (hold)
+  // Step 3: Send 50% to personal wallet
+  console.log(`\n--- Sending ${formatEther(personalAmount)} BNB to Personal Wallet ---`);
+  let personalTxHash;
+  try {
+    personalTxHash = await walletClient.sendTransaction({
+      to: PERSONAL_WALLET,
+      value: personalAmount,
+    });
+    console.log(`  TX: https://bscscan.com/tx/${personalTxHash}`);
+    await publicClient.waitForTransactionReceipt({ hash: personalTxHash });
+    console.log('  Personal payment sent!');
+  } catch (e) {
+    console.log(`  Personal payment failed: ${e.message}`);
+    return;
+  }
+
+  // Step 4: Buy $BOB (hold)
   console.log(`\n--- Buying $BOB (${formatEther(bobAmount)} BNB) ---`);
   const bobResult = await swapAndHold(walletClient, publicClient, account, bobAmount, BOB_TOKEN, 'BOB');
 
-  // Step 4: Buy $BOBAI (hold)
+  // Step 5: Buy $BOBAI (hold)
   console.log(`\n--- Buying $BOBAI (${formatEther(bobaiAmount)} BNB) ---`);
   const bobaiResult = await swapAndHold(walletClient, publicClient, account, bobaiAmount, BOBAI_TOKEN, 'BOBAI');
 
@@ -132,8 +150,9 @@ async function main() {
     const entry = {
       time: new Date().toISOString(),
       balanceBnb: formatEther(balance),
-      excessBnb: formatEther(excess),
-      heldBnb: formatEther(holdAmount),
+      availableBnb: formatEther(available),
+      personalBnb: formatEther(personalAmount),
+      personalTx: personalTxHash,
     };
     if (bobResult) {
       entry.bobBuyBnb = formatEther(bobAmount);
@@ -156,7 +175,7 @@ async function main() {
 
   console.log('\n============================================');
   console.log(`[${new Date().toISOString()}] DEV BUYBACK COMPLETE`);
-  console.log(`Held: ${formatEther(holdAmount)} BNB`);
+  console.log(`Personal: ${formatEther(personalAmount)} BNB`);
   if (bobResult) console.log(`BOB bought: ~${bobResult.estimatedAmount}`);
   if (bobaiResult) console.log(`BOBAI bought: ~${bobaiResult.estimatedAmount}`);
   console.log('============================================');

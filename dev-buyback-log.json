@@ -1,0 +1,17 @@
+[
+  {
+    "time": "2026-03-29T12:00:39.311Z",
+    "balanceBnb": "0.161904531736190306",
+    "availableBnb": "0.158904531736190306",
+    "personalBnb": "0.079452265868095153",
+    "personalTx": "0x0c91e8f37b56b82afcba99b924809f7a70cb6f7925539b4325499bf71490a9ad",
+    "bobBuyBnb": "0.039726132934047576",
+    "bobEstimated": "2414440059.25489727613589915",
+    "bobTx": "0x7f4bd715f8ac4a3694e12b7ac7ea44f7ef9de797f2d9d91a8138d53069913433",
+    "bobBlock": 89414437,
+    "bobaiBuyBnb": "0.039726132934047577",
+    "bobaiEstimated": "4004865.735313318924105406",
+    "bobaiTx": "0x17bab05e28f2c8825b6968133e094f2f3448bed59b56239c526f6322ddbb99a5",
+    "bobaiBlock": 89414439
+  }
+]

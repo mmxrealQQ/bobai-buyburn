@@ -42,7 +42,7 @@
       margin-top: 8px; border: 1px solid rgba(0,200,83,0.3);
     }
     .stats-grid {
-      display: grid; grid-template-columns: repeat(5, 1fr);
+      display: grid; grid-template-columns: repeat(3, 1fr);
       gap: 16px; max-width: 1000px; margin: 24px auto; padding: 0 20px;
     }
     .stat-card {
@@ -152,12 +152,17 @@
     </div>
     <div class="stat-card">
       <div class="label">Total $BOB Burned</div>
-      <div class="value" id="total-burned">0</div>
+      <div class="value" id="total-burned">—</div>
       <div class="sub">permanently removed</div>
     </div>
     <div class="stat-card">
+      <div class="label">Total $BOBAI Burned</div>
+      <div class="value" id="total-bobai-burned">—</div>
+      <div class="sub">deflationary</div>
+    </div>
+    <div class="stat-card">
       <div class="label">Burn Count</div>
-      <div class="value" id="burn-count">0</div>
+      <div class="value" id="burn-count">—</div>
       <div class="sub">on-chain transactions</div>
     </div>
   </div>
@@ -256,8 +261,12 @@
     const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
     const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
     const DEAD = '0x000000000000000000000000000000000000dEaD';
+    const CREATOR_WALLET = '0x15Ba17075ef5E0736292b030e3715d9100fe3d38';
     const BSC_RPC = 'https://bsc-dataseed.binance.org/';
-    const BURNS_API = 'https://api.github.com/repos/mmxrealQQ/bobai-buyburn/contents/burns.json';
+    const BSCSCAN_API = 'https://api.bscscan.com/api';
+    // Transfer(address,address,uint256) topic
+    const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+    const DEAD_TOPIC = '0x000000000000000000000000000000000000000000000000000000000000dEaD';
 
     // RPC call helper
     async function rpcCall(method, params) {
@@ -282,21 +291,28 @@
       }
     }
 
-    // Get ERC20 balance via RPC (for burned BOB)
-    async function fetchBurnedBOB() {
+    // Get burned token balance from dead address (on-chain, always accurate)
+    async function fetchBurnedTokens() {
       try {
-        // balanceOf(0x...dEaD) on BOB token
-        const data = '0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';
-        const hex = await rpcCall('eth_call', [{ to: BOB_TOKEN, data }, 'latest']);
-        if (hex && hex !== '0x') {
-          const balance = BigInt(hex);
-          const formatted = Number(balance) / 1e18;
-          if (formatted > 0) {
-            document.getElementById('total-burned').textContent = formatted.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' BOB';
+        const balanceOfData = '0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';
+        // BOB burned
+        const bobHex = await rpcCall('eth_call', [{ to: BOB_TOKEN, data: balanceOfData }, 'latest']);
+        if (bobHex && bobHex !== '0x') {
+          const bobBurned = Number(BigInt(bobHex)) / 1e18;
+          if (bobBurned > 0) {
+            document.getElementById('total-burned').textContent = bobBurned.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' BOB';
+          }
+        }
+        // BOBAI burned
+        const bobaiHex = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: balanceOfData }, 'latest']);
+        if (bobaiHex && bobaiHex !== '0x') {
+          const bobaiBurned = Number(BigInt(bobaiHex)) / 1e18;
+          if (bobaiBurned > 0) {
+            document.getElementById('total-bobai-burned').textContent = bobaiBurned.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' BOBAI';
           }
         }
       } catch (e) {
-        console.error('Burn check failed:', e);
+        console.error('Burned tokens fetch failed:', e);
       }
     }
 
@@ -306,13 +322,10 @@
         const PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
         const TOTAL_SUPPLY = 1_000_000_000; // 1B BOBAI
 
-        // getReserves() selector: 0x0902f1ac
         const reservesHex = await rpcCall('eth_call', [{ to: PAIR, data: '0x0902f1ac' }, 'latest']);
-        // Decode: reserve0 (uint112), reserve1 (uint112)
         const r0 = BigInt('0x' + reservesHex.slice(2, 66));
         const r1 = BigInt('0x' + reservesHex.slice(66, 130));
 
-        // token0() selector: 0x0dfe1681
         const token0Hex = await rpcCall('eth_call', [{ to: PAIR, data: '0x0dfe1681' }, 'latest']);
         const token0 = '0x' + token0Hex.slice(26).toLowerCase();
         const bobaiIsToken0 = token0 === BOBAI_TOKEN;
@@ -320,14 +333,12 @@
         const bobaiReserve = bobaiIsToken0 ? r0 : r1;
         const wbnbReserve = bobaiIsToken0 ? r1 : r0;
 
-        // Get BNB price from BUSD pair
         const BNB_BUSD_PAIR = '0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16';
         const busdReservesHex = await rpcCall('eth_call', [{ to: BNB_BUSD_PAIR, data: '0x0902f1ac' }, 'latest']);
         const br0 = BigInt('0x' + busdReservesHex.slice(2, 66));
         const br1 = BigInt('0x' + busdReservesHex.slice(66, 130));
         const busdToken0Hex = await rpcCall('eth_call', [{ to: BNB_BUSD_PAIR, data: '0x0dfe1681' }, 'latest']);
         const busdToken0 = '0x' + busdToken0Hex.slice(26).toLowerCase();
-        // WBNB = 0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c
         const wbnbIsBusdToken0 = busdToken0 === '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c';
         const busdReserve = wbnbIsBusdToken0 ? br1 : br0;
         const wbnbReserveBusd = wbnbIsBusdToken0 ? br0 : br1;
@@ -345,69 +356,83 @@
       }
     }
 
-    // Fetch burn data from GitHub API (no CDN cache) + verify on-chain
-    async function fetchBurnData() {
+    // Fetch burn transactions from BscScan (on-chain, no burns.json dependency)
+    async function fetchBurnTransactions() {
       try {
-        // GitHub API returns file content without CDN caching
-        const res = await fetch(BURNS_API, {
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
-        });
-        const ghData = await res.json();
-        const burns = JSON.parse(atob(ghData.content));
+        // Get token transfers FROM the buyback wallet
+        const url = `${BSCSCAN_API}?module=account&action=tokentx&address=${BUYBACK_WALLET}&startblock=0&endblock=999999999&sort=desc`;
+        const res = await fetch(url);
+        const data = await res.json();
 
-        if (burns && burns.length > 0) {
-          let totalBob = 0;
-          let totalBobai = 0;
-          const rows = [];
+        if (data.status !== '1' || !data.result) {
+          console.error('BscScan API error:', data.message);
+          return;
+        }
 
-          for (const b of [...burns].reverse()) {
-            const time = new Date(b.time).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+        const txs = data.result;
+        const rows = [];
+        let burnCount = 0;
 
-            // Old format (bob + burnTx) or new format (bobBurned + bobBurnTx)
-            const bobAmount = parseFloat(b.bob || b.bobBurned || 0);
-            const bobTx = b.burnTx || b.bobBurnTx;
-            if (bobAmount > 0 && bobTx) {
-              totalBob += bobAmount;
-              rows.push(`<tr>
-                <td>${time}</td>
-                <td><span class="burn-tag">BURN BOB</span></td>
-                <td>${Math.round(bobAmount).toLocaleString()} BOB</td>
-                <td><a class="tx-hash" href="https://bscscan.com/tx/${bobTx}" target="_blank">${bobTx.slice(0,10)}...${bobTx.slice(-8)}</a></td>
-              </tr>`);
-            }
+        for (const tx of txs) {
+          const to = tx.to.toLowerCase();
+          const from = tx.from.toLowerCase();
+          const buybackWallet = BUYBACK_WALLET.toLowerCase();
 
-            // New format: BOBAI burns
-            const bobaiAmount = parseFloat(b.bobaiBurned || 0);
-            const bobaiTx = b.bobaiBurnTx;
-            if (bobaiAmount > 0 && bobaiTx) {
-              totalBobai += bobaiAmount;
-              rows.push(`<tr>
-                <td>${time}</td>
-                <td><span class="buy-tag">BURN BOBAI</span></td>
-                <td>${Math.round(bobaiAmount).toLocaleString()} BOBAI</td>
-                <td><a class="tx-hash" href="https://bscscan.com/tx/${bobaiTx}" target="_blank">${bobaiTx.slice(0,10)}...${bobaiTx.slice(-8)}</a></td>
-              </tr>`);
-            }
+          // Only show outgoing transfers from buyback wallet
+          if (from !== buybackWallet) continue;
 
-            // New format: Creator payment
-            if (b.creatorTx) {
+          const time = new Date(parseInt(tx.timeStamp) * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+          const amount = Number(BigInt(tx.value)) / (10 ** parseInt(tx.tokenDecimal));
+          const tokenSymbol = tx.tokenSymbol;
+          const hash = tx.hash;
+
+          if (to === DEAD.toLowerCase()) {
+            // Burn transaction
+            burnCount++;
+            const isBob = tx.contractAddress.toLowerCase() === BOB_TOKEN.toLowerCase();
+            rows.push(`<tr>
+              <td>${time}</td>
+              <td><span class="${isBob ? 'burn-tag' : 'buy-tag'}">BURN ${tokenSymbol}</span></td>
+              <td>${Math.round(amount).toLocaleString()} ${tokenSymbol}</td>
+              <td><a class="tx-hash" href="https://bscscan.com/tx/${hash}" target="_blank">${hash.slice(0,10)}...${hash.slice(-8)}</a></td>
+            </tr>`);
+          }
+        }
+
+        // Also fetch normal BNB transactions for creator payments
+        const bnbUrl = `${BSCSCAN_API}?module=account&action=txlist&address=${BUYBACK_WALLET}&startblock=0&endblock=999999999&sort=desc`;
+        const bnbRes = await fetch(bnbUrl);
+        const bnbData = await bnbRes.json();
+
+        if (bnbData.status === '1' && bnbData.result) {
+          for (const tx of bnbData.result) {
+            if (tx.from.toLowerCase() !== BUYBACK_WALLET.toLowerCase()) continue;
+            if (tx.to.toLowerCase() === CREATOR_WALLET.toLowerCase() && tx.value !== '0') {
+              const time = new Date(parseInt(tx.timeStamp) * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+              const bnbAmount = Number(BigInt(tx.value)) / 1e18;
               rows.push(`<tr>
                 <td>${time}</td>
                 <td><span style="background:rgba(240,185,11,0.15);color:#F0B90B;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">CREATOR</span></td>
-                <td>${parseFloat(b.creatorBnb).toFixed(4)} BNB</td>
-                <td><a class="tx-hash" href="https://bscscan.com/tx/${b.creatorTx}" target="_blank">${b.creatorTx.slice(0,10)}...${b.creatorTx.slice(-8)}</a></td>
+                <td>${bnbAmount.toFixed(4)} BNB</td>
+                <td><a class="tx-hash" href="https://bscscan.com/tx/${tx.hash}" target="_blank">${tx.hash.slice(0,10)}...${tx.hash.slice(-8)}</a></td>
               </tr>`);
             }
           }
+        }
 
-          document.getElementById('burn-count').textContent = burns.length.toString();
-          document.getElementById('total-burned').textContent = Math.round(totalBob).toLocaleString() + ' BOB';
+        // Sort rows by time (descending) — they're already sorted per-source but interleaved
+        rows.sort((a, b) => {
+          const timeA = a.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)?.[1] || '';
+          const timeB = b.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)?.[1] || '';
+          return timeB.localeCompare(timeA);
+        });
+
+        document.getElementById('burn-count').textContent = burnCount.toString();
+        if (rows.length > 0) {
           document.getElementById('tx-body').innerHTML = rows.join('');
         }
       } catch (e) {
-        console.error('Burns fetch failed:', e);
-        // Fallback: at least show total from on-chain dead address
-        await fetchBurnedBOB();
+        console.error('BscScan fetch failed:', e);
       }
     }
 
@@ -417,13 +442,13 @@
         'Last update: ' + new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC — refreshes every 30s';
     }
 
-    // Init — balance & token data every 30s, burns every 5 min (GitHub API rate limit: 60/hr)
-    let burnRefreshCount = 0;
+    // Init — balance, token data & burned totals every 30s, tx list every 2 min
+    let txRefreshCount = 0;
     async function refresh() {
-      const tasks = [fetchBuybackBalance(), fetchTokenData()];
-      // Fetch burns on first load and then every 5 minutes (every 10th refresh)
-      if (burnRefreshCount % 10 === 0) tasks.push(fetchBurnData());
-      burnRefreshCount++;
+      const tasks = [fetchBuybackBalance(), fetchTokenData(), fetchBurnedTokens()];
+      // Fetch tx list on first load and then every 2 minutes (every 4th refresh)
+      if (txRefreshCount % 4 === 0) tasks.push(fetchBurnTransactions());
+      txRefreshCount++;
       await Promise.all(tasks);
       updateTimestamp();
     }

@@ -4,9 +4,8 @@
 // Runs every 1 hour via Cloudflare Worker + GitHub Actions:
 // 1. Checks creator wallet BNB balance
 // 2. Reserves gas (0.003 BNB)
-// 3. Sends 50% to personal wallet
-// 4. Buys $BOB with 25% (hold, not burn)
-// 5. Buys $BOBAI with 25% (hold, not burn)
+// 3. Sends 90% to personal wallet
+// 4. Buys $BOBAI with 10% (hold, not burn)
 //
 // Builds dev position over time — visible on-chain as creator buyback
 
@@ -81,7 +80,7 @@ async function main() {
   console.log(`[${new Date().toISOString()}] Dev Buyback Bot`);
   console.log(`Wallet: ${account.address}`);
   console.log(`Gas Reserve: ${formatEther(GAS_RESERVE)} BNB`);
-  console.log(`Strategy: 50% -> personal wallet | 25% buy BOB | 25% buy BOBAI`);
+  console.log(`Strategy: 90% -> personal wallet | 10% buy BOBAI`);
   console.log('============================================');
 
   const publicClient = createPublicClient({
@@ -107,16 +106,14 @@ async function main() {
   const available = balance - GAS_RESERVE;
   console.log(`Available after gas reserve: ${formatEther(available)} BNB\n`);
 
-  // Step 2: Calculate splits (50% personal, 25% BOB, 25% BOBAI)
-  const personalAmount = available / 2n;
-  const bobAmount = available / 4n;
-  const bobaiAmount = available - personalAmount - bobAmount; // remainder to avoid rounding loss
+  // Step 2: Calculate splits (90% personal, 10% BOBAI)
+  const personalAmount = (available * 90n) / 100n;
+  const bobaiAmount = available - personalAmount; // remainder to avoid rounding loss
 
-  console.log(`Personal:     ${formatEther(personalAmount)} BNB (50%)`);
-  console.log(`Buy BOB:      ${formatEther(bobAmount)} BNB (25%)`);
-  console.log(`Buy BOBAI:    ${formatEther(bobaiAmount)} BNB (25%)`);
+  console.log(`Personal:     ${formatEther(personalAmount)} BNB (90%)`);
+  console.log(`Buy BOBAI:    ${formatEther(bobaiAmount)} BNB (10%)`);
 
-  // Step 3: Send 50% to personal wallet
+  // Step 3: Send 90% to personal wallet
   console.log(`\n--- Sending ${formatEther(personalAmount)} BNB to Personal Wallet ---`);
   let personalTxHash;
   try {
@@ -132,15 +129,11 @@ async function main() {
     return;
   }
 
-  // Step 4: Buy $BOB (hold)
-  console.log(`\n--- Buying $BOB (${formatEther(bobAmount)} BNB) ---`);
-  const bobResult = await swapAndHold(walletClient, publicClient, account, bobAmount, BOB_TOKEN, 'BOB');
-
-  // Step 5: Buy $BOBAI (hold)
+  // Step 4: Buy $BOBAI (hold)
   console.log(`\n--- Buying $BOBAI (${formatEther(bobaiAmount)} BNB) ---`);
   const bobaiResult = await swapAndHold(walletClient, publicClient, account, bobaiAmount, BOBAI_TOKEN, 'BOBAI');
 
-  // Step 5: Log
+  // Step 5: Log (no BOB buying anymore)
   try {
     const logFile = 'dev-buyback-log.json';
     let logs = [];
@@ -154,12 +147,6 @@ async function main() {
       personalBnb: formatEther(personalAmount),
       personalTx: personalTxHash,
     };
-    if (bobResult) {
-      entry.bobBuyBnb = formatEther(bobAmount);
-      entry.bobEstimated = bobResult.estimatedAmount;
-      entry.bobTx = bobResult.txHash;
-      entry.bobBlock = bobResult.block;
-    }
     if (bobaiResult) {
       entry.bobaiBuyBnb = formatEther(bobaiAmount);
       entry.bobaiEstimated = bobaiResult.estimatedAmount;
@@ -176,7 +163,6 @@ async function main() {
   console.log('\n============================================');
   console.log(`[${new Date().toISOString()}] DEV BUYBACK COMPLETE`);
   console.log(`Personal: ${formatEther(personalAmount)} BNB`);
-  if (bobResult) console.log(`BOB bought: ~${bobResult.estimatedAmount}`);
   if (bobaiResult) console.log(`BOBAI bought: ~${bobaiResult.estimatedAmount}`);
   console.log('============================================');
 }

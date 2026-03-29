@@ -1,4 +1,4 @@
-name: Dev Buyback (BOB + BOBAI)
+name: Dev Buyback (90% Personal + 10% BOBAI)
 
 on:
   workflow_dispatch: # Manual trigger + Cloudflare Worker cron

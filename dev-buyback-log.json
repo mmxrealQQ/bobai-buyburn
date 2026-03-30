@@ -148,5 +148,20 @@
     "lpTokensBurned": "2.22914864015764481",
     "lpAddTx": "0x08208baeea6633536ebbca8ab4bc4cb28b96b01d56475b07c6b79bd274bf4bd9",
     "lpBurnTx": "0x51a4e8ab1f67029ea87438560b8ecc959ee96d2474b8b851535bec817297310c"
+  },
+  {
+    "time": "2026-03-30T23:00:51.857Z",
+    "balanceBnb": "0.005694858354377152",
+    "availableBnb": "0.002694858354377152",
+    "personalBnb": "0.002155886683501721",
+    "personalTx": "0x94e0be3b9795ea52b1679530cc2c34b89589626a0676be2c58b08fa67c31c09e",
+    "bobaiBuyBnb": "0.000269485835437715",
+    "bobaiEstimated": "22678.907895912682251629",
+    "bobaiTx": "0xa80750f42dcb310c8b9cca8b2da1b53e41117415f7ec26912a1eee6eea0d1e99",
+    "bobaiBlock": 89694302,
+    "lpBnb": "0.000269485835437716",
+    "lpTokensBurned": "1.167255161239879642",
+    "lpAddTx": "0x50c3b34b234ddc1fe36bb202b478fbe5597ad50d51e5eef841b56eb4a4e389c4",
+    "lpBurnTx": "0x725160481c74848e66fa7fc367dbda2e65db82667c4bbecbb1b745fff561b422"
   }
 ]

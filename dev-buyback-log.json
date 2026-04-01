@@ -238,5 +238,12 @@
     "lpTokensBurned": "1.470928220444310209",
     "lpAddTx": "0x6657db848d00b2a6683dbd17f9c6217454094aa7c788bfd763872554be514c38",
     "lpBurnTx": "0x2094cf6b1507260cb507d7cc14f650dea0afd3ce72c7d53b11fefd8f10f07d54"
+  },
+  {
+    "time": "2026-04-01T07:00:50.513Z",
+    "balanceBnb": "0.004661663567193592",
+    "availableBnb": "0.001661663567193592",
+    "personalBnb": "0.001661663567193592",
+    "personalTx": "0x2ace59cf7e7bfa1df2b0ad1d7992abf5fddf80f96692528c21ab24ee9b46f7bc"
   }
 ]

@@ -1,0 +1,10 @@
+name = "bobai-tg-bot"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "KV"
+id = "13bc5a0a65c34fe1839e806ae2d5e3fa"

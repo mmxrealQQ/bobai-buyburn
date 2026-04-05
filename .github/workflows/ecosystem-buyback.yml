@@ -1,0 +1,49 @@
+name: Ecosystem Auto Buy & Burn
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  buyback:
+    runs-on: ubuntu-latest
+    # Only run if a token is configured
+    if: ${{ secrets.ECOSYSTEM_TOKEN_ADDRESS != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install viem
+
+      - name: Run Ecosystem Bot
+        env:
+          ECOSYSTEM_BUYBACK_PRIVATE_KEY: ${{ secrets.ECOSYSTEM_BUYBACK_PRIVATE_KEY }}
+          BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
+          TOKEN_ADDRESS: ${{ secrets.ECOSYSTEM_TOKEN_ADDRESS }}
+          TOKEN_NAME: ${{ secrets.ECOSYSTEM_TOKEN_NAME }}
+        run: |
+          node ecosystem-bot.js
+
+      - name: Commit burn log
+        run: |
+          TOKEN_NAME="${{ secrets.ECOSYSTEM_TOKEN_NAME }}"
+          TOKEN_LOWER=$(echo "$TOKEN_NAME" | tr '[:upper:]' '[:lower:]')
+          LOG_FILE="burns-${TOKEN_LOWER}.json"
+          if [ -f "$LOG_FILE" ]; then
+            git config user.name "Ecosystem Bot"
+            git config user.email "bot@bobai.buildonbnbgame.xyz"
+            git add "$LOG_FILE"
+            git diff --cached --quiet || git commit -m "Ecosystem burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git pull --rebase || true
+            git push
+          fi

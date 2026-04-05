@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "buyback": "node -r dotenv/config buyback-bot.js",
+    "dev-buyback": "node -r dotenv/config dev-buyback.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,6 +13,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "canvas": "^3.2.2",
+    "dotenv": "^17.3.1",
     "viem": "^2.47.6"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
   }
 }

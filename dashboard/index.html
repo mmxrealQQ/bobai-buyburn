@@ -3,469 +3,378 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BOBAI — Transparent BOB Buy & Burn Dashboard</title>
-  <meta name="description" content="AI-powered deflationary token on BNB Chain. 3% tax → autonomous buyback & burn 24/7. LP locked. Owner renounced.">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="icon" type="image/png" href="/favicon.png">
-  <!-- Open Graph (Facebook, Telegram, Discord) -->
-  <meta property="og:title" content="BOBAI — AI-Powered Deflationary Token on BNB Chain">
-  <meta property="og:description" content="3% tax → autonomous buyback & burn every 10 min. LP locked. Owner renounced. All burns verifiable on-chain.">
+  <title>BOBAI — The Sweetest Meme Token with Real Brain Power</title>
+  <meta name="description" content="AI-powered deflationary token on BNB Chain. 3% tax fuels autonomous buyback & burn 24/7. Where Memes Meet Intelligence.">
+  <link rel="icon" type="image/png" href="favicon.png?v=2">
+  <meta property="og:title" content="BOBAI — Where Memes Meet Intelligence">
+  <meta property="og:description" content="3% tax. Autonomous buyback & burn every 10 min. LP locked. Owner renounced. Built entirely by AI.">
   <meta property="og:image" content="https://bobai.buildonbnbgame.xyz/og-image.png">
   <meta property="og:url" content="https://bobai.buildonbnbgame.xyz">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="BOBAI">
-  <!-- Twitter/X Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="BOBAI — AI-Powered Deflationary Token on BNB Chain">
-  <meta name="twitter:description" content="3% tax → autonomous buyback & burn every 10 min. LP locked. Owner renounced.">
+  <meta name="twitter:title" content="BOBAI — Where Memes Meet Intelligence">
+  <meta name="twitter:description" content="3% tax. Autonomous buyback & burn every 10 min. LP locked. Owner renounced.">
   <meta name="twitter:image" content="https://bobai.buildonbnbgame.xyz/og-image.png">
   <style>
-    :root {
-      --gold: #F0B90B;
-      --gold-dim: rgba(240, 185, 11, 0.15);
-      --bg: #0a0a1a;
-      --card: #111128;
-      --border: #1e1e3a;
-      --text: #e0e0e0;
-      --text-dim: #888;
-      --green: #00c853;
-      --red: #ff1744;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    :root{
+      --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
+      --red:#ff3028;--green:#00e676;--blue:#4040ff;--purple:#a040ff;
+      --bg:#050510;--card:rgba(12,12,28,.85);--border:rgba(240,185,11,.06);
+      --text:#e4e5f1;--muted:#7b7d9e;
+      --radius:14px;
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+    canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+    .page{position:relative;z-index:1}
+
+    /* NAV */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);backdrop-filter:blur(24px) saturate(1.2);border-bottom:1px solid var(--border)}
+    .nav{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px}
+    .nl{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.15rem}
+    .nl img{width:30px;height:30px;border-radius:8px;box-shadow:0 0 12px rgba(240,185,11,.2)}
+    .nl span{background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .nm{display:flex;gap:24px}
+    .nm a{color:var(--muted);text-decoration:none;font-size:.78rem;font-weight:500;transition:color .2s;letter-spacing:.2px}
+    .nm a:hover{color:var(--gold)}
+    .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:8px 22px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
+    .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
+
+    /* HERO */
+    .hero{position:relative;width:100%;margin-top:58px;overflow:hidden}
+    .hero img{width:100%;display:block;max-height:75vh;object-fit:cover}
+    .hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:180px;background:linear-gradient(to bottom,transparent,var(--bg));pointer-events:none}
+
+    /* LIVE BADGE */
+    .live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.15);padding:4px 12px;border-radius:20px;font-size:.65rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase}
+    .live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{opacity:.6;box-shadow:0 0 0 6px rgba(0,230,118,0)}}
+
+    /* STATS BAR */
+    .sbar{max-width:1100px;margin:-48px auto 0;padding:0 24px;position:relative;z-index:3}
+    .sg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+    .sc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:20px 12px;text-align:center;transition:all .3s;position:relative;overflow:hidden}
+    .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
+    .sc:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.12);box-shadow:0 8px 32px rgba(240,185,11,.04)}
+    .sc .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:6px}
+    .sc .v{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+
+    /* SECTIONS */
+    .sec{max-width:1100px;margin:0 auto;padding:72px 24px;position:relative}
+    .sep{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px;max-width:200px;margin:0 auto}
+    .sep-l{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.08),transparent)}
+    .sep-d{width:3px;height:3px;background:var(--gold);border-radius:50%;opacity:.25}
+    .sh{margin-bottom:36px}
+    .sh h2{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
+    .sh h2 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sh p{color:var(--muted);font-size:.84rem}
+
+    /* ABOUT — BRAIN LOGO + TEXT */
+    .about-hero{display:flex;align-items:center;gap:48px;margin-bottom:48px}
+    .about-logo{flex-shrink:0}
+    .about-logo img{width:180px;height:180px;border-radius:16px;box-shadow:0 0 60px rgba(240,185,11,.15),0 0 120px rgba(240,185,11,.06)}
+    .about-text h3{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:10px}
+    .about-text h3 em{font-style:normal;color:var(--gold)}
+    .about-text p{color:var(--muted);font-size:.88rem;line-height:1.7;max-width:540px}
+    .about-tags{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+    .about-tags span{font-size:.62rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+
+    /* TAX FLOW */
+    .tax{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:36px 28px;position:relative;overflow:hidden}
+    .tax::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.2),transparent)}
+    .tax h3{font-family:'Space Grotesk',sans-serif;font-size:.92rem;text-align:center;margin-bottom:20px;color:var(--gold)}
+    .tax-flow{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;position:relative;z-index:1}
+    .tf{background:rgba(240,185,11,.02);border:1px solid var(--border);border-radius:12px;padding:18px 22px;text-align:center;min-width:120px;transition:all .3s}
+    .tf:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.12)}
+    .tf .p{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700}
+    .tf .d{font-size:.68rem;color:var(--muted);margin-top:2px}
+    .ta{color:rgba(240,185,11,.18);font-size:1.1rem}
+
+    /* FLOW STEPS */
+    .fl{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .fs{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px 16px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
+    .fs:hover{border-color:rgba(240,185,11,.1);transform:translateY(-2px)}
+    .fn{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.78rem;margin:0 auto 10px;background:rgba(240,185,11,.06);color:var(--gold);border:1px solid rgba(240,185,11,.1)}
+    .fs h4{font-size:.82rem;margin-bottom:4px;font-weight:600}
+    .fs p{font-size:.72rem;color:var(--muted);line-height:1.5}
+    .fa{position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:rgba(240,185,11,.12);font-size:.85rem;z-index:2}
+
+    /* TOKEN CARDS */
+    .tg4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .tc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:26px 16px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
+    .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
+    .tc:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.1);box-shadow:0 8px 32px rgba(240,185,11,.03)}
+    .tc .b{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:3px;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .tc h4{font-size:.82rem;margin-bottom:4px;font-weight:600}
+    .tc p{font-size:.72rem;color:var(--muted);line-height:1.4}
+
+    /* VERIFY */
+    .vc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px;position:relative;overflow:hidden}
+    .vc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.15),transparent)}
+    .vr{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(240,185,11,.03);flex-wrap:wrap;gap:6px}
+    .vr:last-child{border-bottom:none}
+    .vr .l{color:var(--muted);font-size:.78rem;font-weight:500}
+    .vr .vl{font-family:'Space Grotesk',monospace;font-size:.76rem;color:var(--gold);word-break:break-all}
+    .vr a{color:var(--gold);text-decoration:none;transition:opacity .2s}
+    .vr a:hover{opacity:.7}
+
+    /* TX TABLE */
+    .txw{max-height:400px;overflow-y:auto;border-radius:var(--radius);border:1px solid var(--border)}
+    .txw::-webkit-scrollbar{width:4px}
+    .txw::-webkit-scrollbar-track{background:rgba(10,10,22,.9)}
+    .txw::-webkit-scrollbar-thumb{background:rgba(240,185,11,.12);border-radius:2px}
+    table{width:100%;border-collapse:collapse;background:var(--card);backdrop-filter:blur(16px)}
+    table thead th{position:sticky;top:0;z-index:1}
+    table th{background:rgba(240,185,11,.03);color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:12px 14px;text-align:left;font-weight:600}
+    table td{padding:10px 14px;border-top:1px solid rgba(240,185,11,.03);font-size:.76rem}
+    table tr:hover{background:rgba(240,185,11,.015)}
+    .txl{color:var(--gold);text-decoration:none;font-family:'Space Grotesk',monospace;font-size:.72rem}
+    .txl:hover{text-decoration:underline}
+    .tb{background:rgba(255,48,40,.07);color:var(--red);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .tba{background:rgba(0,230,118,.07);color:var(--green);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+
+    /* ROADMAP */
+    .rmg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .rm{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:all .3s}
+    .rm::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+    .rmd::before{background:linear-gradient(90deg,var(--gold),transparent)}
+    .rma::before{background:linear-gradient(90deg,var(--blue),transparent)}
+    .rmn::before{background:linear-gradient(90deg,rgba(240,185,11,.12),transparent)}
+    .rm:hover{border-color:rgba(240,185,11,.1);transform:translateY(-2px)}
+    .rp{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:6px}
+    .rmd .rp{color:var(--gold)}.rma .rp{color:var(--blue)}.rmn .rp{color:var(--muted)}
+    .rm h3{font-size:.88rem;margin-bottom:8px}
+    .rm ul{list-style:none}
+    .rm li{font-size:.72rem;color:var(--muted);padding:3px 0;display:flex;align-items:center;gap:6px}
+    .ck{color:var(--gold);font-weight:700}
+
+    /* CTA BANNER */
+    .cta{text-align:center;padding:48px 24px}
+    .cta-inner{max-width:600px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:48px 36px;position:relative;overflow:hidden}
+    .cta-inner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.25),transparent)}
+    .cta-inner::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center top,rgba(240,185,11,.03),transparent 70%);pointer-events:none}
+    .cta h2{font-family:'Space Grotesk',sans-serif;font-size:1.4rem;font-weight:700;margin-bottom:8px}
+    .cta p{color:var(--muted);font-size:.84rem;margin-bottom:24px}
+    .cta-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+    .cta-links a{padding:10px 24px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;letter-spacing:.3px}
+    .cta-links .primary{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;box-shadow:0 2px 20px rgba(240,185,11,.2)}
+    .cta-links .primary:hover{box-shadow:0 4px 32px rgba(240,185,11,.35);transform:translateY(-1px)}
+    .cta-links .secondary{border:1px solid rgba(240,185,11,.15);color:var(--gold);background:transparent}
+    .cta-links .secondary:hover{border-color:var(--gold);background:rgba(240,185,11,.04)}
+
+    /* FOOTER */
+    footer{border-top:1px solid var(--border);padding:36px 24px;text-align:center;position:relative;overflow:hidden}
+    footer::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.1),transparent)}
+    .fi2{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+    .fb{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px}
+    .fb img{width:22px;height:22px;border-radius:6px}
+    .fb span{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.92rem;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .fl2{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+    .fl2 a{color:var(--muted);text-decoration:none;font-size:.72rem;transition:color .2s}
+    .fl2 a:hover{color:var(--gold)}
+    .fm{color:var(--muted);font-size:.62rem;line-height:1.9}
+    .fm a{color:var(--gold);text-decoration:none}
+    .ll{margin-top:18px;color:var(--muted);font-size:.54rem;text-transform:uppercase;letter-spacing:2px;font-weight:600}
+    .lr{display:flex;justify-content:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+    .lr a{display:flex;align-items:center;gap:5px;color:var(--muted);text-decoration:none;font-size:.68rem;padding:5px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);transition:all .2s}
+    .lr a:hover{border-color:var(--gold);color:var(--gold)}
+    .lr img{width:13px;height:13px;border-radius:2px}
+
+    @media(max-width:900px){
+      .sg{grid-template-columns:repeat(3,1fr)}
+      .tg4,.fl{grid-template-columns:repeat(2,1fr)}
+      .fa{display:none}
+      .rmg{grid-template-columns:1fr}
+      .about-hero{flex-direction:column;text-align:center;gap:24px}
+      .about-text p{max-width:100%}
+      .about-tags{justify-content:center}
     }
-    .header {
-      text-align: center;
-      padding: 40px 20px 20px;
-      border-bottom: 1px solid var(--border);
+    @media(max-width:600px){
+      .sg{grid-template-columns:repeat(2,1fr)}
+      .tg4,.fl{grid-template-columns:1fr}
+      .nm{display:none}
+      .sec{padding:48px 16px}
+      .tax-flow{flex-direction:column}
+      .ta{transform:rotate(90deg)}
+      .about-logo img{width:140px;height:140px}
+      .cta-inner{padding:32px 20px}
     }
-    .header h1 { font-size: 2.5rem; color: var(--gold); margin-bottom: 8px; }
-    .header h1 span { color: var(--text); font-weight: 300; }
-    .header p { color: var(--text-dim); font-size: 0.95rem; max-width: 600px; margin: 0 auto; }
-    .badge {
-      display: inline-block; background: var(--gold-dim); color: var(--gold);
-      padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
-      margin-top: 12px; border: 1px solid rgba(240, 185, 11, 0.3);
-    }
-    .badge-green {
-      display: inline-block; background: rgba(0,200,83,0.15); color: var(--green);
-      padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
-      margin-top: 8px; border: 1px solid rgba(0,200,83,0.3);
-    }
-    .stats-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 16px; max-width: 1000px; margin: 24px auto; padding: 0 20px;
-    }
-    .stat-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 24px; text-align: center;
-    }
-    .stat-card .label {
-      color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase;
-      letter-spacing: 1px; margin-bottom: 8px;
-    }
-    .stat-card .value { font-size: 1.6rem; font-weight: 700; color: var(--gold); }
-    .stat-card .sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; }
-    .section { max-width: 1000px; margin: 20px auto; padding: 0 20px; }
-    .section h2 {
-      color: var(--gold); font-size: 1.2rem; margin-bottom: 16px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .tx-scroll {
-      max-height: 420px; overflow-y: auto; border-radius: 12px;
-      border: 1px solid var(--border);
-    }
-    .tx-scroll::-webkit-scrollbar { width: 6px; }
-    .tx-scroll::-webkit-scrollbar-track { background: var(--card); }
-    .tx-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .tx-table {
-      width: 100%; border-collapse: collapse; background: var(--card);
-    }
-    .tx-table thead th { position: sticky; top: 0; z-index: 1; }
-    .tx-table th {
-      background: rgba(240, 185, 11, 0.08); color: var(--gold);
-      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
-      padding: 14px 16px; text-align: left;
-    }
-    .tx-table td {
-      padding: 12px 16px; border-top: 1px solid var(--border); font-size: 0.85rem;
-    }
-    .tx-table tr:hover { background: rgba(240, 185, 11, 0.03); }
-    .tx-hash { color: var(--gold); text-decoration: none; font-family: monospace; }
-    .tx-hash:hover { text-decoration: underline; }
-    .burn-tag {
-      background: rgba(255, 23, 68, 0.15); color: var(--red);
-      padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;
-    }
-    .buy-tag {
-      background: rgba(0, 200, 83, 0.15); color: var(--green);
-      padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;
-    }
-    .wallet-info {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 20px;
-    }
-    .wallet-info .row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 8px 0; border-bottom: 1px solid var(--border);
-      flex-wrap: wrap; gap: 8px;
-    }
-    .wallet-info .row:last-child { border-bottom: none; }
-    .wallet-info .row .label { color: var(--text-dim); font-size: 0.85rem; }
-    .wallet-info .row .addr {
-      font-family: monospace; font-size: 0.82rem; color: var(--gold); word-break: break-all;
-    }
-    .wallet-info .row a { color: var(--gold); text-decoration: none; }
-    .wallet-info .row a:hover { text-decoration: underline; }
-    .loading { text-align: center; color: var(--text-dim); padding: 30px; font-size: 0.9rem; }
-    .footer {
-      text-align: center; padding: 40px 20px; color: var(--text-dim);
-      font-size: 0.75rem; border-top: 1px solid var(--border); margin-top: 40px;
-    }
-    .footer a { color: var(--gold); text-decoration: none; }
-    .listed-on { margin-top: 16px; color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; }
-    .badge-row {
-      display: flex; justify-content: center; align-items: center; gap: 20px;
-      margin-top: 10px; flex-wrap: wrap;
-    }
-    .badge-row a {
-      display: flex; align-items: center; gap: 6px;
-      color: var(--text-dim); text-decoration: none; font-size: 0.75rem;
-      padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
-      background: var(--card); transition: border-color 0.2s;
-    }
-    .badge-row a:hover { border-color: var(--gold); color: var(--text); }
-    .badge-row img { width: 16px; height: 16px; border-radius: 3px; }
-    .live-dot {
-      display: inline-block; width: 8px; height: 8px;
-      background: var(--green); border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    @media (max-width: 600px) {
-      .header h1 { font-size: 1.8rem; }
-      .stat-card .value { font-size: 1.3rem; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-    }
+    .fi{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}.fi.vi{opacity:1;transform:translateY(0)}
   </style>
 </head>
 <body>
+<canvas id="bg"></canvas>
+<div class="page">
 
-  <div class="header">
-    <h1>BOB<span>AI</span></h1>
-    <p>100% AI-created token by Claude Opus 4.6. 3% tax on every trade: ~1% creator revenue, ~1% burns $BOB, ~1% burns $BOBAI.</p>
-    <div class="badge">FULLY AUTONOMOUS AI AGENT</div>
-    <div class="badge-green" id="status-badge"><span class="live-dot"></span> GRADUATED — Tax Distribution Bot ACTIVE</div>
+  <nav><div class="nav">
+    <a href="#" class="nl"><img src="logo-sm.png?v=2" alt="BOBAI"> <span>BOBAI</span></a>
+    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#roadmap">Roadmap</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">Chart</a><a href="https://t.me/bobai_official" target="_blank">Telegram</a><a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">GitHub</a></div>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
+  </div></nav>
+
+  <section class="hero">
+    <img src="hero.png?v=2" alt="BOBAI — Where Memes Meet Intelligence">
+  </section>
+
+  <section class="sbar" id="stats"><div class="sg">
+    <div class="sc fi"><div class="l">Market Cap</div><div class="v" id="mcap">--</div></div>
+    <div class="sc fi"><div class="l">Liquidity</div><div class="v" id="volume">--</div></div>
+    <div class="sc fi"><div class="l">Buyback</div><div class="v" id="wallet-bnb">--</div></div>
+    <div class="sc fi"><div class="l">$BOB Burned</div><div class="v" id="total-burned">--</div></div>
+    <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v" id="total-bobai-burned">--</div></div>
+    <div class="sc fi"><div class="l">Burns</div><div class="v" id="burn-count">--</div></div>
+  </div></section>
+
+  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+
+  <section class="sec" id="about">
+    <div class="about-hero fi">
+      <div class="about-logo"><img src="logo.png?v=2" alt="BOBAI"></div>
+      <div class="about-text">
+        <h3><em>Brain On BNB AI</em> — The Smartest Drip on BSC</h3>
+        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous buyback bot running 24/7 on Cloudflare Workers. No human intervention. No dev tokens. Just relentless, transparent burns.</p>
+        <div class="about-tags">
+          <span>AI-Built</span>
+          <span>Deflationary</span>
+          <span>24/7 Autonomous</span>
+          <span>Open Source</span>
+          <span>Owner Renounced</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sh fi"><h2>How <em>It Works</em></h2><p>Every trade burns supply. Automatically.</p></div>
+    <div class="fl">
+      <div class="fs fi"><div class="fn">1</div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">2</div><h4>Collect</h4><p>Tax accumulates in buyback wallet.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">3</div><h4>Split</h4><p>Bot runs every 10 min. Splits ~1/1/1.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">4</div><h4>Burn</h4><p>$BOB + $BOBAI sent to dead address.</p></div>
+    </div>
+    <div class="tax fi">
+      <h3>3% Tax Split</h3>
+      <div class="tax-flow">
+        <div class="tf"><div class="p" style="color:var(--gold)">~1%</div><div class="d">Creator</div></div>
+        <div class="ta">&#x2192;</div>
+        <div class="tf"><div class="p" style="color:var(--red)">~1%</div><div class="d">Burn $BOB</div></div>
+        <div class="ta">&#x2192;</div>
+        <div class="tf"><div class="p" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+
+  <section class="sec" id="tokenomics">
+    <div class="sh fi"><h2><em>Token</em>omics</h2></div>
+    <div class="tg4">
+      <div class="tc fi"><div class="b">1B</div><h4>Total Supply</h4><p>Fixed. No mint function.</p></div>
+      <div class="tc fi"><div class="b">0%</div><h4>Dev Tokens</h4><p>All burned. Fully community.</p></div>
+      <div class="tc fi"><div class="b">24/7</div><h4>Buyback Bot</h4><p>Cloudflare Workers. Autonomous.</p></div>
+      <div class="tc fi"><div class="b" id="supply-burned-pct">--</div><h4>Supply Burned</h4><p>$BOBAI sent to dead address.</p></div>
+    </div>
+  </section>
+
+  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+
+  <section class="sec" id="burns">
+    <div class="sh fi">
+      <h2>On-Chain <em>Verification</em></h2>
+      <p>Don't trust, verify. <span class="live-badge"><span class="live-dot"></span>Live</span></p>
+    </div>
+    <div class="vc fi">
+      <div class="vr"><span class="l">$BOBAI</span><span class="vl"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c386dcfed896f5c346107596141e5edcbffff</a></span></div>
+      <div class="vr"><span class="l">$BOB</span><span class="vl"><a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">0x51363f073b1e4920fda7aa9e9d84ba97ede1560e</a></span></div>
+      <div class="vr"><span class="l">Buyback</span><span class="vl"><a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank">0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce</a></span></div>
+      <div class="vr"><span class="l">Burn</span><span class="vl"><a href="https://bscscan.com/address/0x000000000000000000000000000000000000dEaD" target="_blank">0x...dEaD</a></span></div>
+      <div class="vr"><span class="l">LP</span><span class="vl" style="color:var(--green)">Locked</span></div>
+      <div class="vr"><span class="l">Owner</span><span class="vl" style="color:var(--green)">Renounced</span></div>
+      <div class="vr"><span class="l">Code</span><span class="vl"><a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">github.com/mmxrealQQ/bobai-buyburn</a></span></div>
+    </div>
+    <div class="sh fi" style="margin-top:40px"><h2>Live <em>Burns</em></h2></div>
+    <div class="txw fi">
+      <table><thead><tr><th>Time</th><th>Type</th><th>Amount</th><th>TX</th></tr></thead>
+      <tbody id="tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading burns...</td></tr></tbody></table>
+    </div>
+  </section>
+
+  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+
+  <section class="sec" id="roadmap">
+    <div class="sh fi"><h2><em>Road</em>map</h2></div>
+    <div class="rmg">
+      <div class="rm rmd fi"><div class="rp">Phase 1 — Done</div><h3>Genesis</h3><ul>
+        <li><span class="ck">&#x2713;</span> Built entirely by AI</li>
+        <li><span class="ck">&#x2713;</span> Fair launch on Four.Meme</li>
+        <li><span class="ck">&#x2713;</span> Migrated to PancakeSwap</li>
+        <li><span class="ck">&#x2713;</span> LP locked, owner renounced</li>
+        <li><span class="ck">&#x2713;</span> Massive initial $BOB burns</li>
+      </ul></div>
+      <div class="rm rma fi"><div class="rp">Phase 2 — Active</div><h3>Burn Machine</h3><ul>
+        <li><span class="ck">&#x2713;</span> Buyback bot live 24/7</li>
+        <li><span class="ck">&#x2713;</span> 1/1/1 tax split running</li>
+        <li><span class="ck">&#x2713;</span> On-chain transparency</li>
+        <li><span class="ck">&#x2713;</span> Open source everything</li>
+        <li><span class="ck">&#x2713;</span> Telegram community</li>
+      </ul></div>
+      <div class="rm rmn fi"><div class="rp">Phase 3 — Next</div><h3>Scale</h3><ul>
+        <li><span style="color:var(--muted)">&#x25cb;</span> 100K daily volume target</li>
+        <li><span style="color:var(--muted)">&#x25cb;</span> Accelerate $BOB burns</li>
+        <li><span style="color:var(--muted)">&#x25cb;</span> Grow deflationary pressure</li>
+        <li><span style="color:var(--muted)">&#x25cb;</span> Expand ecosystem visibility</li>
+        <li><span style="color:var(--muted)">&#x25cb;</span> Community-driven growth</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <div class="cta">
+    <div class="cta-inner fi">
+      <h2>Join the Smartest Drip</h2>
+      <p>Every trade burns. Every burn compounds. The bot never sleeps.</p>
+      <div class="cta-links">
+        <a class="primary" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
+        <a class="secondary" href="https://t.me/bobai_official" target="_blank">Join Telegram</a>
+        <a class="secondary" href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">View Chart</a>
+      </div>
+    </div>
   </div>
+</div>
 
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="label">Market Cap</div>
-      <div class="value" id="mcap">—</div>
-      <div class="sub">BOBAI on PancakeSwap</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Liquidity</div>
-      <div class="value" id="volume">—</div>
-      <div class="sub">total pool value</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Buyback Wallet</div>
-      <div class="value" id="wallet-bnb">—</div>
-      <div class="sub">BNB pending next burn</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Total $BOB Burned</div>
-      <div class="value" id="total-burned">—</div>
-      <div class="sub">permanently removed</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Total $BOBAI Burned</div>
-      <div class="value" id="total-bobai-burned">—</div>
-      <div class="sub">deflationary</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Burn Count</div>
-      <div class="value" id="burn-count">—</div>
-      <div class="sub">on-chain transactions</div>
-    </div>
-  </div>
+<footer><div class="fi2">
+  <div class="fb"><img src="logo-sm.png?v=2" alt="BOBAI"><span>BOBAI</span></div>
+  <div class="fl2"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">BscScan</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Four.Meme</a><a href="https://dexscreener.com/bsc/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">DexScreener</a><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Binance Web3</a><a href="mailto:bobai@buildonbnbgame.xyz">Contact</a></div>
+  <p class="ll">Listed on</p>
+  <div class="lr"><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="https://www.geckoterminal.com/images/icons/120x120.png" alt="">GeckoTerminal</a><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="https://bin.bnbstatic.com/static/images/common/favicon.ico" alt="">Binance Web3</a></div>
+  <div class="fm" style="margin-top:18px"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
+</div></footer>
 
-  <div class="section">
-    <h2>On-Chain Verification</h2>
-    <div class="wallet-info">
-      <div class="row">
-        <span class="label">$BOBAI Token</span>
-        <span class="addr"><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c386dcfed896f5c346107596141e5edcbffff</a></span>
-      </div>
-      <div class="row">
-        <span class="label">$BOB Token</span>
-        <span class="addr"><a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">0x51363f073b1e4920fda7aa9e9d84ba97ede1560e</a></span>
-      </div>
-      <div class="row">
-        <span class="label">Buyback Wallet</span>
-        <span class="addr"><a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank">0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce</a></span>
-      </div>
-      <div class="row">
-        <span class="label">Burn Address</span>
-        <span class="addr"><a href="https://bscscan.com/address/0x000000000000000000000000000000000000dEaD" target="_blank">0x000000000000000000000000000000000000dEaD</a></span>
-      </div>
-      <div class="row">
-        <span class="label">Tax</span>
-        <span class="addr" style="color: var(--green);">3% per trade — ~1% creator | ~1% burns $BOB | ~1% burns $BOBAI</span>
-      </div>
-    </div>
-  </div>
+<script>
+// === BACKGROUND: Neural network particles ===
+!function(){const c=document.getElementById('bg'),x=c.getContext('2d');let w,h,N=[];
+const cols=['rgba(240,185,11,','rgba(240,185,11,','rgba(64,64,255,','rgba(160,64,255,'];
+function R(){w=c.width=innerWidth;h=c.height=innerHeight;N=[];const n=Math.min(Math.floor(w*h/30000),45);
+for(let i=0;i<n;i++)N.push({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.1,vy:(Math.random()-.5)*.1,r:Math.random()+.3,c:cols[Math.floor(Math.random()*cols.length)]})}
+function D(){x.clearRect(0,0,w,h);for(let i=0;i<N.length;i++){const a=N[i];a.x+=a.vx;a.y+=a.vy;if(a.x<0||a.x>w)a.vx*=-1;if(a.y<0||a.y>h)a.vy*=-1;
+x.beginPath();x.arc(a.x,a.y,a.r,0,6.28);x.fillStyle=a.c+'0.25)';x.fill();
+for(let j=i+1;j<N.length;j++){const b=N[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+if(d<130){x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.strokeStyle=a.c+(0.035*(1-d/130))+')';x.lineWidth=.3;x.stroke()}}}
+requestAnimationFrame(D)}addEventListener('resize',R);R();D()}();
 
-  <div class="section">
-    <h2><span class="live-dot"></span> Recent Buy & Burn Transactions</h2>
-    <div class="tx-scroll">
-    <table class="tx-table">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Type</th>
-          <th>Amount</th>
-          <th>TX Hash</th>
-        </tr>
-      </thead>
-      <tbody id="tx-body">
-        <tr><td colspan="4" class="loading">Bot runs every 30 min — first burn incoming...</td></tr>
-      </tbody>
-    </table>
-    </div>
-  </div>
+// Fade-in observer
+const ob=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('vi')}),{threshold:.08});
+document.querySelectorAll('.fi').forEach(el=>ob.observe(el));
 
-  <div class="section">
-    <h2>How It Works</h2>
-    <div class="wallet-info">
-      <div class="row">
-        <span class="label">1</span>
-        <span class="addr">Someone buys or sells BOBAI on PancakeSwap</span>
-      </div>
-      <div class="row">
-        <span class="label">2</span>
-        <span class="addr">3% tax is automatically collected to buyback wallet</span>
-      </div>
-      <div class="row">
-        <span class="label">3</span>
-        <span class="addr">Bot distributes BNB every 10 min:</span>
-      </div>
-      <div class="row">
-        <span class="label">3a</span>
-        <span class="addr">~1% → Creator wallet (revenue)</span>
-      </div>
-      <div class="row">
-        <span class="label">3b</span>
-        <span class="addr">~1% → Buy $BOB + burn to dead address</span>
-      </div>
-      <div class="row">
-        <span class="label">3c</span>
-        <span class="addr">~1% → Buy $BOBAI + burn to dead address (deflationary)</span>
-      </div>
-      <div class="row">
-        <span class="label">=</span>
-        <span class="addr" style="color: var(--green);">$BOB supply decreases, $BOBAI becomes deflationary, creator earns</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="footer">
-    <p>100% created by Claude Opus 4.6 — name, logo, code, deployment: zero human input.</p>
-    <p style="margin-top:8px;">
-      <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">BOBAI on Four.meme</a> |
-      <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank">Verify Buyback Wallet</a> |
-      <a href="https://dexscreener.com/bsc/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">$BOB Chart</a>
-    </p>
-    <p style="margin-top:8px;">
-      <a href="https://t.me/bobai_official" target="_blank">Telegram</a> |
-      Contact: bobai@buildonbnbgame.xyz
-    </p>
-    <p class="listed-on">Listed on</p>
-    <div class="badge-row">
-      <a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">
-        <img src="https://www.geckoterminal.com/images/icons/120x120.png" alt="GeckoTerminal">GeckoTerminal
-      </a>
-    </div>
-    <p style="margin-top:12px;" id="last-update">Auto-refreshes every 30s</p>
-  </div>
-
-  <script>
-    const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
-    const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
-    const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
-    const DEAD = '0x000000000000000000000000000000000000dEaD';
-    const BSC_RPC = 'https://bsc-dataseed.binance.org/';
-    const BURNS_API = 'https://api.github.com/repos/mmxrealQQ/bobai-buyburn/contents/burns.json';
-
-    // RPC call helper
-    async function rpcCall(method, params) {
-      const res = await fetch(BSC_RPC, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
-      });
-      const data = await res.json();
-      return data.result;
-    }
-
-    // Get BNB balance via RPC
-    async function fetchBuybackBalance() {
-      try {
-        const hex = await rpcCall('eth_getBalance', [BUYBACK_WALLET, 'latest']);
-        const wei = BigInt(hex);
-        const bnb = Number(wei) / 1e18;
-        document.getElementById('wallet-bnb').textContent = bnb.toFixed(4) + ' BNB';
-      } catch (e) {
-        console.error('Balance fetch failed:', e);
-      }
-    }
-
-    // Get burned token balances from dead address (on-chain, always accurate)
-    async function fetchBurnedTokens() {
-      try {
-        const balanceOfData = '0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';
-        // BOB burned
-        const bobHex = await rpcCall('eth_call', [{ to: BOB_TOKEN, data: balanceOfData }, 'latest']);
-        if (bobHex && bobHex !== '0x') {
-          const bobBurned = Number(BigInt(bobHex)) / 1e18;
-          if (bobBurned > 0) {
-            document.getElementById('total-burned').textContent = bobBurned.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' BOB';
-          }
-        }
-        // BOBAI burned
-        const bobaiHex = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: balanceOfData }, 'latest']);
-        if (bobaiHex && bobaiHex !== '0x') {
-          const bobaiBurned = Number(BigInt(bobaiHex)) / 1e18;
-          if (bobaiBurned > 0) {
-            document.getElementById('total-bobai-burned').textContent = bobaiBurned.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' BOBAI';
-          }
-        }
-      } catch (e) {
-        console.error('Burned tokens fetch failed:', e);
-      }
-    }
-
-    // Get token data from PancakeSwap pair on-chain
-    async function fetchTokenData() {
-      try {
-        const PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
-        const TOTAL_SUPPLY = 1_000_000_000; // 1B BOBAI
-
-        const reservesHex = await rpcCall('eth_call', [{ to: PAIR, data: '0x0902f1ac' }, 'latest']);
-        const r0 = BigInt('0x' + reservesHex.slice(2, 66));
-        const r1 = BigInt('0x' + reservesHex.slice(66, 130));
-
-        const token0Hex = await rpcCall('eth_call', [{ to: PAIR, data: '0x0dfe1681' }, 'latest']);
-        const token0 = '0x' + token0Hex.slice(26).toLowerCase();
-        const bobaiIsToken0 = token0 === BOBAI_TOKEN;
-
-        const bobaiReserve = bobaiIsToken0 ? r0 : r1;
-        const wbnbReserve = bobaiIsToken0 ? r1 : r0;
-
-        const BNB_BUSD_PAIR = '0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16';
-        const busdReservesHex = await rpcCall('eth_call', [{ to: BNB_BUSD_PAIR, data: '0x0902f1ac' }, 'latest']);
-        const br0 = BigInt('0x' + busdReservesHex.slice(2, 66));
-        const br1 = BigInt('0x' + busdReservesHex.slice(66, 130));
-        const busdToken0Hex = await rpcCall('eth_call', [{ to: BNB_BUSD_PAIR, data: '0x0dfe1681' }, 'latest']);
-        const busdToken0 = '0x' + busdToken0Hex.slice(26).toLowerCase();
-        const wbnbIsBusdToken0 = busdToken0 === '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c';
-        const busdReserve = wbnbIsBusdToken0 ? br1 : br0;
-        const wbnbReserveBusd = wbnbIsBusdToken0 ? br0 : br1;
-        const bnbPrice = Number(busdReserve) / Number(wbnbReserveBusd);
-
-        const priceInBnb = Number(wbnbReserve) / Number(bobaiReserve);
-        const priceUsd = priceInBnb * bnbPrice;
-        const mcap = priceUsd * TOTAL_SUPPLY;
-        const liqUsd = (Number(wbnbReserve) / 1e18) * bnbPrice * 2;
-
-        document.getElementById('mcap').textContent = '$' + mcap.toLocaleString(undefined, {maximumFractionDigits: 0});
-        document.getElementById('volume').textContent = '$' + liqUsd.toLocaleString(undefined, {maximumFractionDigits: 0});
-      } catch (e) {
-        console.error('Token data fetch failed:', e);
-      }
-    }
-
-    // Fetch burn log from GitHub + render transaction table
-    async function fetchBurnData() {
-      try {
-        const res = await fetch(BURNS_API, {
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
-        });
-        const ghData = await res.json();
-        const burns = JSON.parse(atob(ghData.content));
-
-        if (burns && burns.length > 0) {
-          const rows = [];
-
-          for (const b of [...burns].reverse()) {
-            const time = new Date(b.time).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-
-            // Old format (bob + burnTx) or new format (bobBurned + bobBurnTx)
-            const bobAmount = parseFloat(b.bob || b.bobBurned || 0);
-            const bobTx = b.burnTx || b.bobBurnTx;
-            if (bobAmount > 0 && bobTx) {
-              rows.push(`<tr>
-                <td>${time}</td>
-                <td><span class="burn-tag">BURN BOB</span></td>
-                <td>${Math.round(bobAmount).toLocaleString()} BOB</td>
-                <td><a class="tx-hash" href="https://bscscan.com/tx/${bobTx}" target="_blank">${bobTx.slice(0,10)}...${bobTx.slice(-8)}</a></td>
-              </tr>`);
-            }
-
-            // BOBAI burns
-            const bobaiAmount = parseFloat(b.bobaiBurned || 0);
-            const bobaiTx = b.bobaiBurnTx;
-            if (bobaiAmount > 0 && bobaiTx) {
-              rows.push(`<tr>
-                <td>${time}</td>
-                <td><span class="buy-tag">BURN BOBAI</span></td>
-                <td>${Math.round(bobaiAmount).toLocaleString()} BOBAI</td>
-                <td><a class="tx-hash" href="https://bscscan.com/tx/${bobaiTx}" target="_blank">${bobaiTx.slice(0,10)}...${bobaiTx.slice(-8)}</a></td>
-              </tr>`);
-            }
-
-            // Creator payment
-            if (b.creatorTx) {
-              rows.push(`<tr>
-                <td>${time}</td>
-                <td><span style="background:rgba(240,185,11,0.15);color:#F0B90B;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">CREATOR</span></td>
-                <td>${parseFloat(b.creatorBnb).toFixed(4)} BNB</td>
-                <td><a class="tx-hash" href="https://bscscan.com/tx/${b.creatorTx}" target="_blank">${b.creatorTx.slice(0,10)}...${b.creatorTx.slice(-8)}</a></td>
-              </tr>`);
-            }
-          }
-
-          document.getElementById('burn-count').textContent = burns.length.toString();
-          document.getElementById('tx-body').innerHTML = rows.join('');
-        }
-      } catch (e) {
-        console.error('Burns fetch failed:', e);
-      }
-    }
-
-    // Update timestamp
-    function updateTimestamp() {
-      document.getElementById('last-update').textContent =
-        'Last update: ' + new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC — refreshes every 30s';
-    }
-
-    // Init — balance, token data & burned totals every 30s, burns every 5 min (GitHub API rate limit: 60/hr)
-    let burnRefreshCount = 0;
-    async function refresh() {
-      const tasks = [fetchBuybackBalance(), fetchTokenData(), fetchBurnedTokens()];
-      if (burnRefreshCount % 10 === 0) tasks.push(fetchBurnData());
-      burnRefreshCount++;
-      await Promise.all(tasks);
-      updateTimestamp();
-    }
-
-    refresh();
-    setInterval(refresh, 30000);
-  </script>
+// === ON-CHAIN DATA ===
+const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',RPC='https://bsc-dataseed.binance.org/',BURNS='https://api.github.com/repos/mmxrealQQ/bobai-buyburn/contents/burns.json';
+async function rpc(m,p){const r=await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:m,params:p})});return(await r.json()).result}
+async function bal(){try{const h=await rpc('eth_getBalance',[BW,'latest']);document.getElementById('wallet-bnb').textContent=(Number(BigInt(h))/1e18).toFixed(4)+' BNB'}catch(e){}}
+async function burned(){try{const d='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';const b=await rpc('eth_call',[{to:BOB,data:d},'latest']);if(b&&b!=='0x'){const v=Number(BigInt(b))/1e18;if(v>0)document.getElementById('total-burned').textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' BOB'}const a=await rpc('eth_call',[{to:BOBAI,data:d},'latest']);if(a&&a!=='0x'){const v=Number(BigInt(a))/1e18;if(v>0){document.getElementById('total-bobai-burned').textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' BOBAI';const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}}catch(e){}}
+async function token(){try{const P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',rH=await rpc('eth_call',[{to:P,data:'0x0902f1ac'},'latest']),r0=BigInt('0x'+rH.slice(2,66)),r1=BigInt('0x'+rH.slice(66,130)),t0=await rpc('eth_call',[{to:P,data:'0x0dfe1681'},'latest']),is0=('0x'+t0.slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',bH=await rpc('eth_call',[{to:BP,data:'0x0902f1ac'},'latest']),b0=BigInt('0x'+bH.slice(2,66)),b1=BigInt('0x'+bH.slice(66,130)),bt=await rpc('eth_call',[{to:BP,data:'0x0dfe1681'},'latest']),w0=('0x'+bt.slice(26).toLowerCase())==='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),pU=(Number(wR)/Number(bR))*bnbP;document.getElementById('mcap').textContent='$'+(pU*1e9).toLocaleString(undefined,{maximumFractionDigits:0});document.getElementById('volume').textContent='$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0})}catch(e){}}
+async function bdata(){try{const r=await fetch(BURNS,{headers:{'Accept':'application/vnd.github.v3+json'}}),g=await r.json(),b=JSON.parse(atob(g.content));if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}document.getElementById('burn-count').textContent=b.length.toString();document.getElementById('tx-body').innerHTML=rows.join('')}}catch(e){}}
+let cnt=0;async function go(){const t=[bal(),token(),burned()];if(cnt++%10===0)t.push(bdata());await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
+go();setInterval(go,30000);
+</script>
 </body>
 </html>

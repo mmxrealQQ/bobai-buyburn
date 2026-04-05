@@ -1,6 +1,6 @@
-name = "dev-buyback-cron"
+name = "bobai-cron-trigger"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
 [triggers]
-crons = ["0 * * * *"]
+crons = ["*/10 * * * *"]

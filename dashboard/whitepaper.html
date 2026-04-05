@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOBAI Lite Paper — Brain On BNB AI</title>
+  <meta name="description" content="Brain On BNB AI ($BOBAI) Lite Paper. AI-built deflationary meme token on BNB Chain.">
+  <link rel="icon" type="image/png" href="favicon.png?v=2">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    :root{
+      --gold:#F0B90B;--gold2:#ffd54f;
+      --bg:#050510;--card:rgba(12,12,28,.85);--border:rgba(240,185,11,.08);
+      --text:#e4e5f1;--muted:#7b7d9e;
+      --radius:14px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;line-height:1.7}
+    .page{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+    .back{display:inline-block;color:var(--muted);text-decoration:none;font-size:.85rem;margin-bottom:32px;transition:color .2s}
+    .back:hover{color:var(--gold)}
+    .logo-row{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+    .logo-row img{width:48px;height:48px;border-radius:12px;box-shadow:0 0 16px rgba(240,185,11,.2)}
+    h1{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .subtitle{color:var(--muted);font-size:.9rem;margin-bottom:48px}
+    h2{font-family:'Space Grotesk',sans-serif;font-size:1.25rem;font-weight:600;color:var(--gold);margin:40px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+    h3{font-size:1rem;font-weight:600;margin:24px 0 8px;color:var(--text)}
+    p{margin-bottom:16px;color:var(--text);font-size:.95rem}
+    ul{margin:0 0 16px 20px;color:var(--text);font-size:.95rem}
+    li{margin-bottom:8px}
+    .highlight{color:var(--gold);font-weight:600}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:20px 0}
+    .card h3{margin-top:0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    table th,table td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);font-size:.9rem}
+    table th{color:var(--gold);font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px}
+    table td{color:var(--text)}
+    .addr{font-family:monospace;font-size:.82rem;word-break:break-all;color:var(--muted)}
+    .tag{display:inline-block;background:rgba(240,185,11,.08);color:var(--gold);padding:3px 10px;border-radius:6px;font-size:.78rem;font-weight:600;margin-right:6px}
+    .footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--border);text-align:center;color:var(--muted);font-size:.8rem}
+    .footer a{color:var(--gold);text-decoration:none}
+    a{color:var(--gold)}
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <a href="/" class="back">&larr; Back to Dashboard</a>
+
+  <div class="logo-row">
+    <img src="logo-sm.png?v=2" alt="BOBAI Logo">
+    <div>
+      <h1>BOBAI Lite Paper</h1>
+    </div>
+  </div>
+  <p class="subtitle">Brain On BNB AI &mdash; Where Memes Meet Intelligence &bull; Version 1.0 &bull; April 2026</p>
+
+  <!-- 1. INTRODUCTION -->
+  <h2>1. Introduction</h2>
+  <p>Brain On BNB AI (<span class="highlight">$BOBAI</span>) is a deflationary meme token on BNB Smart Chain, built entirely by AI. The project explores what happens when artificial intelligence handles every aspect of a token &mdash; from smart contract deployment to an autonomous buyback &amp; burn mechanism that runs 24/7 without human intervention.</p>
+  <p>BOBAI was fair-launched on <a href="https://four.meme" target="_blank">Four.Meme</a> on March 27, 2026 with no presale, no team allocation, and no vesting. 100% of the token supply went to the open market.</p>
+
+  <!-- 2. TOKENOMICS -->
+  <h2>2. Tokenomics</h2>
+
+  <div class="card">
+    <table>
+      <tr><th>Parameter</th><th>Value</th></tr>
+      <tr><td>Token Name</td><td>Brain On BNB AI</td></tr>
+      <tr><td>Symbol</td><td>BOBAI</td></tr>
+      <tr><td>Chain</td><td>BNB Smart Chain (BEP-20)</td></tr>
+      <tr><td>Total Supply</td><td>1,000,000,000</td></tr>
+      <tr><td>Decimals</td><td>18</td></tr>
+      <tr><td>Launch</td><td>100% Fair Launch via Four.Meme</td></tr>
+      <tr><td>Presale / Team / Vesting</td><td>None</td></tr>
+      <tr><td>Liquidity</td><td>Locked (PancakeSwap V2)</td></tr>
+      <tr><td>Ownership</td><td>Renounced</td></tr>
+    </table>
+  </div>
+
+  <h3>On-Chain Tax: 3%</h3>
+  <p>Every buy and sell transaction incurs a <span class="highlight">3% tax</span>, split three ways:</p>
+  <ul>
+    <li><span class="highlight">1% Creator</span> &mdash; sent to the creator wallet, used to fund the autonomous buyback bot operations</li>
+    <li><span class="highlight">1% Burn (BOB)</span> &mdash; tokens burned and sent to the dead address</li>
+    <li><span class="highlight">1% Burn (BOBAI)</span> &mdash; tokens burned and sent to the dead address</li>
+  </ul>
+  <p>The result: <span class="highlight">2% of every trade is permanently burned</span>, continuously reducing the circulating supply. The tax is hardcoded in the smart contract and cannot be changed after deployment.</p>
+
+  <!-- 3. BUYBACK & BURN -->
+  <h2>3. Buyback &amp; Burn Mechanism</h2>
+  <p>The core of BOBAI is its autonomous buyback &amp; burn bot. This bot runs as a <a href="https://developers.cloudflare.com/workers/" target="_blank">Cloudflare Worker</a> on a cron schedule, executing every 10 minutes.</p>
+
+  <h3>How It Works</h3>
+  <ol style="margin:0 0 16px 20px;font-size:.95rem">
+    <li style="margin-bottom:8px">The 3% tax accumulates in the token contract</li>
+    <li style="margin-bottom:8px">When the threshold is reached, the bot triggers a dispatch</li>
+    <li style="margin-bottom:8px">The buyback portion is swapped for BOBAI via PancakeSwap</li>
+    <li style="margin-bottom:8px">Purchased tokens are sent to the <span class="addr">0x000...dEaD</span> burn address</li>
+    <li style="margin-bottom:8px">Each burn is a verifiable on-chain transaction</li>
+  </ol>
+  <p>The result: <span class="highlight">supply decreases over time</span>. Every trade contributes to reducing the circulating supply permanently.</p>
+
+  <div class="card">
+    <h3>Bot Infrastructure</h3>
+    <p style="margin-bottom:8px">The buyback bot runs on Cloudflare Workers with a cron trigger &mdash; no server to maintain, no downtime. The bot's source code is fully open source.</p>
+    <p><span class="tag">Serverless</span> <span class="tag">24/7</span> <span class="tag">Open Source</span> <span class="tag">Autonomous</span></p>
+  </div>
+
+  <!-- 4. SECURITY -->
+  <h2>4. Security</h2>
+  <ul>
+    <li><strong>Contract Verified</strong> &mdash; source code verified on BscScan</li>
+    <li><strong>Owner Renounced</strong> &mdash; no admin functions, no minting, no pausing</li>
+    <li><strong>LP Locked</strong> &mdash; liquidity locked on PancakeSwap</li>
+    <li><strong>No Proxy</strong> &mdash; contract is not upgradeable</li>
+    <li><strong>Open Source</strong> &mdash; all bot code is public on GitHub</li>
+    <li><strong>Tax Immutable</strong> &mdash; 3% rate is hardcoded, cannot be modified</li>
+  </ul>
+
+  <!-- 5. BUILT BY AI -->
+  <h2>5. Built by AI</h2>
+  <p>Every component of BOBAI was created with the assistance of AI:</p>
+  <ul>
+    <li>Token deployment and configuration</li>
+    <li>Buyback &amp; burn bot logic</li>
+    <li>Dashboard and website</li>
+    <li>Telegram community bot</li>
+    <li>Marketing copy and branding</li>
+  </ul>
+  <p>BOBAI is an experiment in AI-driven token creation and management &mdash; exploring how far autonomous systems can go in the crypto space.</p>
+
+  <!-- 6. CONTRACT -->
+  <h2>6. Contract Details</h2>
+  <div class="card">
+    <table>
+      <tr><td>Contract</td><td class="addr">0x245c386dcfed896f5c346107596141e5edcbffff</td></tr>
+      <tr><td>Pair (BOBAI/WBNB)</td><td class="addr">0x6eadd4cb786898b34929444988380ed0cc6fd9a6</td></tr>
+      <tr><td>DEX</td><td>PancakeSwap V2</td></tr>
+      <tr><td>Compiler</td><td>Solidity 0.8.20</td></tr>
+    </table>
+  </div>
+
+  <!-- 7. LINKS -->
+  <h2>7. Links</h2>
+  <ul>
+    <li><a href="https://bobai.buildonbnbgame.xyz" target="_blank">Website / Dashboard</a></li>
+    <li><a href="https://t.me/bobai_official" target="_blank">Telegram</a></li>
+    <li><a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">GitHub (Open Source)</a></li>
+    <li><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">BscScan</a></li>
+    <li><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">GeckoTerminal</a></li>
+    <li><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Trade on PancakeSwap</a></li>
+  </ul>
+
+  <!-- 8. DISCLAIMER -->
+  <h2>8. Disclaimer</h2>
+  <p style="color:var(--muted);font-size:.85rem">BOBAI is a meme token and an experimental project. It is not financial advice and should not be treated as an investment. Cryptocurrency is volatile and you may lose your entire investment. Do your own research before interacting with any token or smart contract. There is no team, no roadmap promises, and no guaranteed returns.</p>
+
+  <div class="footer">
+    <p>Brain On BNB AI &bull; <a href="/">bobai.buildonbnbgame.xyz</a> &bull; 2026</p>
+  </div>
+
+</div>
+</body>
+</html>

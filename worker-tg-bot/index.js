@@ -23,8 +23,8 @@ const RPC_ENDPOINTS = [
 ];
 
 // Photo file_ids (uploaded once via bot, reusable)
-const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AANnactY3vctq2vDjQJ3cBq_kZ4wz04AAsoMaxuyqWBSkTFz5ct_ZaMBAAMCAAN4AAM6BA';
-const PHOTO_BIGBUY = 'AgACAgQAAyEGAATh_8g_AANmactYtSf4P5VC1OfCnVq8SC8wGSwAAskMaxuyqWBS5od-vrTm0nABAAMCAAN4AAM6BA';
+const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AAPfadI1EORIV-4JDTPKnQmo3il3NPsAAkYNaxtDCplSMrzv51Lm4QEBAAMCAAN4AAM7BA';
+const PHOTO_BIGBUY = 'AgACAgQAAyEGAATh_8g_AAPgadI1EEm5Qa4VhE6mqWf0m6PuFMYAAkcNaxtDCplSLzBgWf5z1mMBAAMCAAN4AAM7BA';
 
 // Known bot/system wallets to ignore in buy alerts
 const IGNORED_WALLETS = new Set([
@@ -312,7 +312,7 @@ async function handleCommand(msg) {
 🐸 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 
 <b>Step 3:</b> Set slippage to 4-5%
-<i>(3% tax: buyback & burn)</i>
+<i>(3% tax: 1% creator, 2% burn)</i>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;
@@ -365,8 +365,8 @@ async function handleCommand(msg) {
 
 ⚙️ <b>How it works:</b>
 ♻️ 3% tax on every buy & sell
-🤖 Autonomous buyback & burn 24/7
-🔒 LP tokens permanently burned
+🔥 1% BOB burn + 1% BOBAI burn
+💰 1% to creator (funds the bot)
 👤 Contract ownership renounced
 
 💡 <i>Every trade makes BOBAI more scarce!</i>

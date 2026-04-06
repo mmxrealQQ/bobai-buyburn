@@ -29,6 +29,11 @@ const CREATOR_SHARE = 34;  // ~1% of trade -> creator revenue
 const BOB_BURN_SHARE = 33; // ~1% of trade -> buy & burn $BOB
 const BOBAI_BURN_SHARE = 33; // ~1% of trade -> buy & burn $BOBAI
 
+const WBNB_ABI = parseAbi([
+  'function balanceOf(address) view returns (uint256)',
+  'function withdraw(uint256 wad)',
+]);
+
 const ROUTER_ABI = parseAbi([
   'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable',
   'function getAmountsOut(uint amountIn, address[] path) view returns (uint[] amounts)',
@@ -136,6 +141,31 @@ async function main() {
     chain: bsc,
     transport: http(rpcUrl),
   });
+
+  // Step 0: Unwrap any WBNB to native BNB
+  const wbnbBalance = await publicClient.readContract({
+    address: WBNB,
+    abi: WBNB_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+  if (wbnbBalance > 0n) {
+    console.log(`Found ${formatEther(wbnbBalance)} WBNB — unwrapping to native BNB...`);
+    try {
+      const unwrapHash = await walletClient.writeContract({
+        address: WBNB,
+        abi: WBNB_ABI,
+        functionName: 'withdraw',
+        args: [wbnbBalance],
+        gas: 50000n,
+      });
+      console.log(`  Unwrap TX: https://bscscan.com/tx/${unwrapHash}`);
+      await publicClient.waitForTransactionReceipt({ hash: unwrapHash });
+      console.log(`  Unwrapped ${formatEther(wbnbBalance)} WBNB → BNB`);
+    } catch (e) {
+      console.log(`  Unwrap failed: ${e.message}`);
+    }
+  }
 
   // Step 1: Check BNB balance
   const balance = await publicClient.getBalance({ address: account.address });

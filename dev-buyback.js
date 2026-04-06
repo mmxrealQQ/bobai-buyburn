@@ -6,9 +6,15 @@
 // 2. Reserves gas (0.003 BNB)
 // 3. Sends 100% to personal (Binance) wallet
 
-const { createPublicClient, createWalletClient, http, formatEther, parseEther } = require('viem');
+const { createPublicClient, createWalletClient, http, formatEther, parseEther, parseAbi } = require('viem');
 const { bsc } = require('viem/chains');
 const { privateKeyToAccount } = require('viem/accounts');
+
+const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+const WBNB_ABI = parseAbi([
+  'function balanceOf(address) view returns (uint256)',
+  'function withdraw(uint256 wad)',
+]);
 const fs = require('fs');
 
 const PERSONAL_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C';
@@ -42,6 +48,31 @@ async function main() {
     chain: bsc,
     transport: http(rpcUrl),
   });
+
+  // Step 0: Unwrap any WBNB to native BNB
+  const wbnbBalance = await publicClient.readContract({
+    address: WBNB,
+    abi: WBNB_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+  if (wbnbBalance > 0n) {
+    console.log(`Found ${formatEther(wbnbBalance)} WBNB — unwrapping to native BNB...`);
+    try {
+      const unwrapHash = await walletClient.writeContract({
+        address: WBNB,
+        abi: WBNB_ABI,
+        functionName: 'withdraw',
+        args: [wbnbBalance],
+        gas: 50000n,
+      });
+      console.log(`  Unwrap TX: https://bscscan.com/tx/${unwrapHash}`);
+      await publicClient.waitForTransactionReceipt({ hash: unwrapHash });
+      console.log(`  Unwrapped ${formatEther(wbnbBalance)} WBNB → BNB`);
+    } catch (e) {
+      console.log(`  Unwrap failed: ${e.message}`);
+    }
+  }
 
   // Step 1: Check BNB balance
   const balance = await publicClient.getBalance({ address: account.address });

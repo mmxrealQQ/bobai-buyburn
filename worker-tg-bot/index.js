@@ -223,7 +223,7 @@ async function handleNewMember(msg, env) {
       messageId: result.result?.message_id,
       name,
       timestamp: Date.now(),
-    }), { expirationTtl: 120 });
+    }), { expirationTtl: 600 });
   }
 }
 
@@ -282,11 +282,16 @@ async function cleanupExpiredCaptchas(env) {
       const userId = key.name.replace('captcha_', '');
       await env.KV.delete(key.name);
       try {
-        await tg('banChatMember', { chat_id: TG_CHAT_ID, user_id: parseInt(userId) });
-        await tg('unbanChatMember', { chat_id: TG_CHAT_ID, user_id: parseInt(userId) });
         if (entry.messageId) {
           await tg('deleteMessage', { chat_id: TG_CHAT_ID, message_id: entry.messageId });
         }
+        await tg('sendMessage', {
+          chat_id: TG_CHAT_ID,
+          text: `👋 <b>${entry.name}</b> didn't verify in time. Bye bye!`,
+          parse_mode: 'HTML',
+        });
+        await tg('banChatMember', { chat_id: TG_CHAT_ID, user_id: parseInt(userId) });
+        await tg('unbanChatMember', { chat_id: TG_CHAT_ID, user_id: parseInt(userId) });
       } catch {}
     }
   }
@@ -526,8 +531,8 @@ export default {
       await env.KV.put('posted_txs', JSON.stringify(postedArr));
     }
 
-    // Only cleanup captchas every ~10 minutes to save KV ops
-    if (new Date().getMinutes() % 10 === 0) {
+    // Cleanup expired captchas every 2 minutes
+    if (new Date().getMinutes() % 2 === 0) {
       await cleanupExpiredCaptchas(env);
     }
   },

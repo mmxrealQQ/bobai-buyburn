@@ -1,5 +1,5 @@
 // BOBAI Telegram Bot — Cloudflare Worker
-// Combined: Buy Alert Bot + Anti-Spam Guard Bot
+// Combined: Buy Alert Bot + Burn Alert Bot + Anti-Spam Guard Bot
 // Runs 24/7 via cron (every minute) + Telegram Webhook
 
 const TG_BOT_TOKEN = '8559357851:AAE7-WZS3SIWBPjuxrq1ow-RKsFPWXPBMKY';
@@ -25,6 +25,7 @@ const RPC_ENDPOINTS = [
 // Photo file_ids (uploaded once via bot, reusable)
 const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AAPfadI1EORIV-4JDTPKnQmo3il3NPsAAkYNaxtDCplSMrzv51Lm4QEBAAMCAAN4AAM7BA';
 const PHOTO_BIGBUY = 'AgACAgQAAyEGAATh_8g_AAPgadI1EEm5Qa4VhE6mqWf0m6PuFMYAAkcNaxtDCplSLzBgWf5z1mMBAAMCAAN4AAM7BA';
+const PHOTO_BURN = 'AgACAgQAAyEGAATh_8g_AAIB0mnWDmHKwNjMTlDUC3WLJRO30ii_AAKBDGsbUeywUgNqPnsGFkssAQADAgADeAADOwQ';
 
 // Known bot/system wallets to ignore in buy alerts
 const IGNORED_WALLETS = new Set([
@@ -118,16 +119,22 @@ async function fetchRecentTrades() {
 
 // ==================== BURN STATS ====================
 
+async function getBurnedTokens() {
+  const balanceData = '0x70a08231' + DEAD.slice(2).padStart(64, '0');
+  const burnedHex = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: balanceData }, 'latest']);
+  return Number(hexToBigInt(burnedHex)) / 1e18;
+}
+
+async function getTotalSupply() {
+  const totalData = '0x18160ddd';
+  const totalHex = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: totalData }, 'latest']);
+  return Number(hexToBigInt(totalHex)) / 1e18;
+}
+
 async function getBurnStats() {
   try {
-    const balanceData = '0x70a08231' + DEAD.slice(2).padStart(64, '0');
-    const burnedHex = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: balanceData }, 'latest']);
-    const totalData = '0x18160ddd';
-    const totalHex = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: totalData }, 'latest']);
-    const burned = Number(hexToBigInt(burnedHex));
-    const total = Number(hexToBigInt(totalHex));
-    const burnedTokens = burned / 1e18;
-    const percent = total > 0 ? (burned / total * 100).toFixed(1) : '?';
+    const [burnedTokens, totalSupply] = await Promise.all([getBurnedTokens(), getTotalSupply()]);
+    const percent = totalSupply > 0 ? (burnedTokens / totalSupply * 100).toFixed(1) : '?';
     return { burnedTokens, percent };
   } catch {
     return { burnedTokens: 0, percent: '?' };
@@ -136,30 +143,44 @@ async function getBurnStats() {
 
 // ==================== BUY BOT ====================
 
-function getBuyEmojis(bnbAmount) {
-  if (bnbAmount >= 2.0) return { bar: '🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩', icon: '🐋 WHALE BUY!', fire: '🔥🔥🔥' };
-  if (bnbAmount >= 1.0) return { bar: '🟩🟩🟩🟩🟩🟩🟩🟩', icon: '🚀 HUGE BUY!', fire: '🔥🔥' };
-  if (bnbAmount >= 0.5) return { bar: '🟩🟩🟩🟩🟩🟩', icon: '💎 BIG BUY!', fire: '🔥' };
-  if (bnbAmount >= 0.1) return { bar: '🟩🟩🟩🟩', icon: '💰 NICE BUY!', fire: '' };
-  if (bnbAmount >= 0.01) return { bar: '🟩🟩', icon: '🟢 BUY', fire: '' };
-  return { bar: '🟩', icon: '🟢 BUY', fire: '' };
+function getBuyEmojis(usdValue) {
+  // Each 🧠 = $10, no max
+  const count = Math.max(Math.floor(usdValue / 10), 1);
+  const bar = '🧠'.repeat(count);
+  let icon;
+  if (usdValue >= 500) icon = '🐋 WHALE BUY!';
+  else if (usdValue >= 250) icon = '🚀 HUGE BUY!';
+  else if (usdValue >= 150) icon = '💎 BIG BUY!';
+  else icon = '💰 NICE BUY!';
+  return { bar, icon };
+}
+
+function getBurnEmojis(usdValue) {
+  // Each 🔥 = $0.50, no max
+  const count = Math.max(Math.floor(usdValue / 0.5), 1);
+  const bar = '🔥'.repeat(count);
+  let icon;
+  if (usdValue >= 15) icon = '💀 MEGA BURN!';
+  else if (usdValue >= 10) icon = '🌋 BIG BURN!';
+  else icon = '♻️ BURN';
+  return { bar, icon };
 }
 
 async function postBuyAlert(trade, burnedPct) {
   try {
     const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
-    const { bar, icon, fire } = getBuyEmojis(bnbAmount);
+    const { bar, icon } = getBuyEmojis(usdValue);
     const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
 
     const message = `${bar}
-<b>${icon}</b> ${fire}
+<b>${icon}</b>
 
 🪙 <b>${formatNumber(bobaiAmount)} BOBAI</b>
 💎 ${bnbAmount.toFixed(4)} BNB <b>(${formatUsd(usdValue)})</b>
 💵 Price: $${pricePerToken.toFixed(8)}
 👤 <a href="https://bscscan.com/address/${buyer}">${shortenAddress(buyer)}</a>
 
-🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a> · <a href="https://dexscreener.com/bsc/${BOBAI_PAIR}">Chart</a> · <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
+🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 
 🔥 Burned: ${burnedPct}% of supply`;
 
@@ -172,6 +193,39 @@ async function postBuyAlert(trade, burnedPct) {
     return result?.ok === true;
   } catch (err) {
     console.error('[POST BUY ERROR]', err.message || err);
+    return false;
+  }
+}
+
+// ==================== BURN BOT ====================
+
+async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice) {
+  try {
+    const burnedDelta = newBurned - prevBurned;
+    const burnedUsd = burnedDelta * tokenPrice;
+    const percent = totalSupply > 0 ? (newBurned / totalSupply * 100).toFixed(1) : '?';
+    const { bar, icon } = getBurnEmojis(burnedUsd);
+
+    const message = `${bar}
+<b>${icon}</b>
+
+🪙 <b>+${formatNumber(burnedDelta)} BOBAI</b> burned <b>(${formatUsd(burnedUsd)})</b>
+📊 Total burned: <b>${formatNumber(newBurned)} BOBAI</b>
+🔥 That's <b>${percent}%</b> of total supply!
+
+💡 <i>Every trade makes BOBAI more scarce!</i>
+
+🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
+
+    const result = await tg('sendPhoto', {
+      chat_id: TG_CHAT_ID,
+      photo: PHOTO_BURN,
+      caption: message,
+      parse_mode: 'HTML',
+    });
+    return result?.ok === true;
+  } catch (err) {
+    console.error('[POST BURN ERROR]', err.message || err);
     return false;
   }
 }
@@ -194,6 +248,29 @@ function generateButtons(correctAnswer) {
   const shuffled = [...options].sort(() => Math.random() - 0.5);
   return [shuffled.map(n => ({ text: n.toString(), callback_data: `cap_${n}` }))];
 }
+
+// ==================== CAPTCHA INDEX HELPERS ====================
+
+async function getCaptchaIndex(env) {
+  const raw = await env.KV.get('captcha_index');
+  return raw ? JSON.parse(raw) : [];
+}
+
+async function addToCaptchaIndex(env, userId) {
+  const index = await getCaptchaIndex(env);
+  if (!index.includes(userId)) {
+    index.push(userId);
+    await env.KV.put('captcha_index', JSON.stringify(index));
+  }
+}
+
+async function removeFromCaptchaIndex(env, userId) {
+  const index = await getCaptchaIndex(env);
+  const filtered = index.filter(id => id !== userId);
+  await env.KV.put('captcha_index', JSON.stringify(filtered));
+}
+
+// ==================== GUARD BOT HANDLERS ====================
 
 async function handleNewMember(msg, env) {
   const members = msg.new_chat_members || [];
@@ -224,6 +301,8 @@ async function handleNewMember(msg, env) {
       name,
       timestamp: Date.now(),
     }), { expirationTtl: 600 });
+
+    await addToCaptchaIndex(env, userId);
   }
 }
 
@@ -243,6 +322,7 @@ async function handleCallback(callback, env) {
 
   if (selected === entry.answer) {
     await env.KV.delete(`captcha_${userId}`);
+    await removeFromCaptchaIndex(env, userId);
 
     await tg('restrictChatMember', {
       chat_id: TG_CHAT_ID,
@@ -263,6 +343,7 @@ async function handleCallback(callback, env) {
     });
   } else {
     await env.KV.delete(`captcha_${userId}`);
+    await removeFromCaptchaIndex(env, userId);
     await tg('answerCallbackQuery', { callback_query_id: callback.id, text: '❌ Wrong answer. Try joining again.' });
     await tg('banChatMember', { chat_id: TG_CHAT_ID, user_id: userId });
     await tg('unbanChatMember', { chat_id: TG_CHAT_ID, user_id: userId });
@@ -273,14 +354,19 @@ async function handleCallback(callback, env) {
 }
 
 async function cleanupExpiredCaptchas(env) {
-  const list = await env.KV.list({ prefix: 'captcha_' });
-  for (const key of list.keys) {
-    const data = await env.KV.get(key.name);
-    if (!data) continue;
+  // Uses captcha_index (KV.get = read) instead of KV.list (= write-category)
+  const index = await getCaptchaIndex(env);
+  const remaining = [];
+
+  for (const userId of index) {
+    const data = await env.KV.get(`captcha_${userId}`);
+    if (!data) {
+      // Already expired via TTL or handled — skip
+      continue;
+    }
     const entry = JSON.parse(data);
     if (Date.now() - entry.timestamp > CAPTCHA_TIMEOUT * 1000) {
-      const userId = key.name.replace('captcha_', '');
-      await env.KV.delete(key.name);
+      await env.KV.delete(`captcha_${userId}`);
       try {
         if (entry.messageId) {
           await tg('deleteMessage', { chat_id: TG_CHAT_ID, message_id: entry.messageId });
@@ -293,7 +379,14 @@ async function cleanupExpiredCaptchas(env) {
         await tg('banChatMember', { chat_id: TG_CHAT_ID, user_id: parseInt(userId) });
         await tg('unbanChatMember', { chat_id: TG_CHAT_ID, user_id: parseInt(userId) });
       } catch {}
+    } else {
+      remaining.push(userId);
     }
+  }
+
+  // Update index to only keep active captchas
+  if (remaining.length !== index.length) {
+    await env.KV.put('captcha_index', JSON.stringify(remaining));
   }
 }
 
@@ -355,7 +448,7 @@ async function handleCommand(msg) {
 
 🔥 Burned: ${burn.percent}% (${formatNumber(burn.burnedTokens)} BOBAI)
 
-📈 <a href="https://dexscreener.com/bsc/${BOBAI_PAIR}">Chart</a> · 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>`;
+📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>`;
       break;
     }
 
@@ -388,7 +481,7 @@ async function handleCommand(msg) {
       reply = `🌐 <b>BOBAI — All Links</b>
 
 🌍 <a href="https://bobai.buildonbnbgame.xyz">Website & Dashboard</a>
-📊 <a href="https://dexscreener.com/bsc/${BOBAI_PAIR}">DexScreener</a>
+📊 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DexScreener</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
 🐸 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
@@ -425,9 +518,9 @@ Here's what I can do:
 🌐 /social — All project links
 📋 /ca — Contract address
 
-💡 <i>I also post alerts for buys over $100!</i>
+💡 <i>I also post alerts for buys & burns!</i>
 
-🌍 <a href="https://bobai.buildonbnbgame.xyz">Website</a> · 📈 <a href="https://dexscreener.com/bsc/${BOBAI_PAIR}">Chart</a>`;
+🌍 <a href="https://bobai.buildonbnbgame.xyz">Website</a> · 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
       break;
     }
   }
@@ -471,14 +564,14 @@ export default {
   },
 
   // Cron handler (every 1 min)
-  // KV budget: 1 read/cron (1,440/day) + writes ONLY on actual buys (~few/day)
   async scheduled(event, env) {
+    // === BUY ALERTS ===
     // Read posted txs for deduplication (1 KV read per cron)
     const postedRaw = await env.KV.get('posted_txs');
     const postedSet = new Set(postedRaw ? JSON.parse(postedRaw) : []);
     const prevSize = postedSet.size;
 
-    // Fetch recent trades from GeckoTerminal API (reliable, no RPC needed)
+    // Fetch recent trades from GeckoTerminal API
     try {
       const trades = await fetchRecentTrades();
       let burnedPct = null; // lazy-load only when needed
@@ -489,7 +582,7 @@ export default {
         const attr = trade.attributes;
         if (attr.kind !== 'buy') continue;
 
-        // Only process trades from the last 5 minutes (prevents old trades on deploy/restart)
+        // Only process trades from the last 5 minutes
         const tradeTime = new Date(attr.block_timestamp).getTime();
         if (now - tradeTime > 5 * 60 * 1000) continue;
 
@@ -525,13 +618,37 @@ export default {
       console.error('[BUY BOT ERROR]', err.message || err);
     }
 
-    // Only write KV if we actually posted new buys (saves ~1,400 writes/day)
+    // Only write KV if we actually posted new buys
     if (postedSet.size > prevSize) {
       const postedArr = [...postedSet].slice(-50);
       await env.KV.put('posted_txs', JSON.stringify(postedArr));
     }
 
-    // Cleanup expired captchas every 2 minutes
+    // === BURN ALERTS ===
+    // Check if burned amount increased since last check (1 KV read + RPC calls)
+    try {
+      const [currentBurned, totalSupply, lastBurnedRaw, poolData] = await Promise.all([
+        getBurnedTokens(),
+        getTotalSupply(),
+        env.KV.get('last_burned'),
+        fetchPoolData(),
+      ]);
+
+      const lastBurned = lastBurnedRaw ? parseFloat(lastBurnedRaw) : 0;
+      const tokenPrice = poolData ? parseFloat(poolData.base_token_price_usd) : 0;
+
+      // Only alert if burn increased by at least 1000 BOBAI (avoid spam from rounding)
+      if (currentBurned > lastBurned + 1000) {
+        const sent = await postBurnAlert(currentBurned, lastBurned, totalSupply, tokenPrice);
+        if (sent) {
+          await env.KV.put('last_burned', currentBurned.toString());
+        }
+      }
+    } catch (err) {
+      console.error('[BURN BOT ERROR]', err.message || err);
+    }
+
+    // === CAPTCHA CLEANUP (every 2 min) ===
     if (new Date().getMinutes() % 2 === 0) {
       await cleanupExpiredCaptchas(env);
     }

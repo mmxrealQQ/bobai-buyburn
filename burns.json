@@ -1907,5 +1907,11 @@
     "bobaiSwapTx": "0x717dd140d22409dbf1406d1ce390af2819462e2db9ce18e063f66328226dc9cf",
     "bobaiBurnTx": "0x9df0c1046fc00351783b8383f896df8d518183e5c09007fcb868fb9896243e90",
     "bobaiBlock": 91958936
+  },
+  {
+    "time": "2026-04-11T20:40:54.918Z",
+    "totalBnb": "0.023680567206067141",
+    "creatorBnb": "0.008051392850062827",
+    "creatorTx": "0x915153eddfc6cef1da7fe015d5098cc8fdd1a9b26c223690c4f5a697df07a151"
   }
 ]

@@ -406,5 +406,12 @@
     "availableBnb": "0.002762510863403006",
     "personalBnb": "0.002762510863403006",
     "personalTx": "0xfd68a5c304b89fc021e097d899a63c02d96a5377fe179c4137b758f02de69a3f"
+  },
+  {
+    "time": "2026-04-11T09:00:27.217Z",
+    "balanceBnb": "0.00664770680668469",
+    "availableBnb": "0.00364770680668469",
+    "personalBnb": "0.00364770680668469",
+    "personalTx": "0x138da13865edac4abf1d354a133578aab00d030e5a0770d51881fd7c4af899a3"
   }
 ]

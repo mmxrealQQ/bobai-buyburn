@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BOBAI — The Sweetest Meme Token with Real Brain Power</title>
+  <title>BOBAI — Where Memes Meet Intelligence</title>
   <meta name="description" content="AI-powered deflationary token on BNB Chain. 3% tax fuels autonomous buyback & burn 24/7. Where Memes Meet Intelligence.">
   <link rel="icon" type="image/png" href="favicon.png?v=2">
   <meta property="og:title" content="BOBAI — Where Memes Meet Intelligence">
@@ -137,7 +137,7 @@
     .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
 
     /* ROADMAP */
-    .rmg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .rmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
     .rm{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:all .3s}
     .rm::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
     .rmd::before{background:linear-gradient(90deg,var(--gold),transparent)}
@@ -148,8 +148,11 @@
     .rmd .rp{color:var(--gold)}.rma .rp{color:var(--blue)}.rmn .rp{color:var(--muted)}
     .rm h3{font-size:.88rem;margin-bottom:8px}
     .rm ul{list-style:none}
-    .rm li{font-size:.72rem;color:var(--muted);padding:3px 0;display:flex;align-items:center;gap:6px}
+    .rm li{font-size:.72rem;color:var(--muted);padding:3px 0;display:flex;align-items:flex-start;gap:6px;line-height:1.5}
+    .rm li>span:first-child{flex-shrink:0;line-height:1.5}
+    .rm li>span:last-child{flex:1}
     .ck{color:var(--gold);font-weight:700}
+    .rm li code{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--gold);background:rgba(240,185,11,.06);padding:1px 5px;border-radius:4px}
 
     /* CTA BANNER */
     .cta{text-align:center;padding:48px 24px}
@@ -211,7 +214,7 @@
 
   <nav><div class="nav">
     <a href="#" class="nl"><img src="logo-sm.png?v=2" alt="BOBAI"> <span>BOBAI</span></a>
-    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#roadmap">Roadmap</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">Chart</a><a href="https://t.me/bobai_official" target="_blank">Telegram</a><a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">GitHub</a></div>
+    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#roadmap">Roadmap</a><a href="https://t.me/bobai_official" target="_blank">Telegram</a></div>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
   </div></nav>
 
@@ -234,7 +237,7 @@
     <div class="about-hero fi">
       <div class="about-logo"><img src="logo.png?v=2" alt="BOBAI"></div>
       <div class="about-text">
-        <h3><em>Brain On BNB AI</em> — The Smartest Drip on BSC</h3>
+        <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
         <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous buyback bot running 24/7 on Cloudflare Workers. No human intervention. No dev tokens. Just relentless, transparent burns.</p>
         <div class="about-tags">
           <span>AI-Built</span>
@@ -319,24 +322,37 @@
         <li><span class="ck">&#x2713;</span> Open source everything</li>
         <li><span class="ck">&#x2713;</span> Telegram community</li>
       </ul></div>
-      <div class="rm rmn fi"><div class="rp">Phase 3 — Next</div><h3>Scale</h3><ul>
+      <div class="rm rma fi"><div class="rp">Phase 3 — Ongoing</div><h3>Scale</h3><ul>
+        <li><span class="ck">&#x2713;</span> Accelerate $BOB burns</li>
+        <li><span class="ck">&#x2713;</span> Grow deflationary pressure</li>
         <li><span style="color:var(--muted)">&#x25cb;</span> 100K daily volume target</li>
-        <li><span style="color:var(--muted)">&#x25cb;</span> Accelerate $BOB burns</li>
-        <li><span style="color:var(--muted)">&#x25cb;</span> Grow deflationary pressure</li>
         <li><span style="color:var(--muted)">&#x25cb;</span> Expand ecosystem visibility</li>
         <li><span style="color:var(--muted)">&#x25cb;</span> Community-driven growth</li>
+      </ul></div>
+      <div class="rm rmn fi"><div class="rp">Phase 4 — Next</div><h3>Creator Cashout Ladder</h3><ul>
+        <li><span class="ck">&#x2713;</span><span>Creator tax accumulates $BNB at <code>0x…d38</code></span></li>
+        <li><span class="ck">&#x2713;</span><span>Hourly auto-forward to <code>0x…c3C</code> (Binance Web3), manual $BOBAI buy</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>$BOBAI <img src="logo-sm.png?v=2" alt="" style="width:11px;height:11px;border-radius:2px;vertical-align:-1px"> ~$30 worth → back to creator, add LP → perma-burn</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Repeat add LP at ~$300</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Repeat add LP at ~$3,000</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Repeat add LP at ~$30,000</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Cash out ~$300,000 worth to bank</span></li>
+      </ul></div>
+      <div class="rm rmn fi"><div class="rp">Phase 5 — Future</div><h3>Infinite Loop</h3><ul>
+        <li><span style="color:var(--muted)">&#x25cb;</span> Repeat Phase 4</li>
+        <li><span style="color:var(--muted)">&#x25cb;</span> Repeat Phase 4 &times;10</li>
+        <li><span style="color:var(--muted)">&#x25cb;</span> Repeat Phase 4 &times;100</li>
+        <li><span style="color:var(--muted)">&#x25cb;</span> …</li>
       </ul></div>
     </div>
   </section>
 
   <div class="cta">
     <div class="cta-inner fi">
-      <h2>Join the Smartest Drip</h2>
+      <h2>Join A Smart Drip</h2>
       <p>Every trade burns. Every burn compounds. The bot never sleeps.</p>
       <div class="cta-links">
-        <a class="primary" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
         <a class="secondary" href="https://t.me/bobai_official" target="_blank">Join Telegram</a>
-        <a class="secondary" href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">View Chart</a>
       </div>
     </div>
   </div>
@@ -347,7 +363,7 @@
   <div class="fl2"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">BscScan</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Four.Meme</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">DexScreener</a><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Binance Web3</a><a href="mailto:bobai@buildonbnbgame.xyz">Contact</a></div>
   <p class="ll">Listed on</p>
   <div class="lr"><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="https://www.geckoterminal.com/images/icons/120x120.png" alt="">GeckoTerminal</a><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="https://bin.bnbstatic.com/static/images/common/favicon.ico" alt="">Binance Web3</a></div>
-  <div class="fm" style="margin-top:18px"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
+  <div class="fm" style="margin-top:18px"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a> &middot; <a href="whitepaper.html">Lite Paper</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer>
 
 <script>

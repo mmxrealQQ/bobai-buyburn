@@ -1910,9 +1910,16 @@
   },
   {
     "time": "2026-04-11T20:40:54.918Z",
-    "totalBnb": "0.023680567206067141",
-    "creatorBnb": "0.008051392850062827",
-    "creatorTx": "0x915153eddfc6cef1da7fe015d5098cc8fdd1a9b26c223690c4f5a697df07a151"
+    "totalBnb": "0.023917372878127810",
+    "creatorBnb": "0.016102785700125654",
+    "creatorTx": "0xe9c384cb1ba163d2610bc87069efb175225b1754744599fced3db4fd31f23f46",
+    "creatorTx2": "0x915153eddfc6cef1da7fe015d5098cc8fdd1a9b26c223690c4f5a697df07a151",
+    "bobBurnBnb": "0.007814587178002156",
+    "bobBurned": "381520429.841704258488863594",
+    "bobSwapTx": "0x2aa661ce1e184d48c010ab921608e71af3e2a42f81178314299ec0397e5d6ee1",
+    "bobBurnTx": "0x5c578e35297afb1acf683e3d0699c91437bce546dc0ca6d16c4d60920d18a01c",
+    "bobBlock": 91976960,
+    "note": "BOBAI buy failed (slippage), BNB sent to creator instead"
   },
   {
     "time": "2026-04-12T02:20:41.686Z",

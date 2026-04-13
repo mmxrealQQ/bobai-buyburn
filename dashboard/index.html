@@ -208,24 +208,9 @@
       .cta-inner{padding:32px 20px}
     }
     .fi{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}.fi.vi{opacity:1;transform:translateY(0)}
-  /* Popup overlay */
-  .popup-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-  .popup-box{background:var(--card);border:1px solid var(--gold);border-radius:var(--radius);padding:2rem;max-width:420px;width:90%;text-align:center;box-shadow:0 0 40px rgba(240,185,11,.15)}
-  .popup-box h2{color:var(--gold);font-family:'Space Grotesk',sans-serif;font-size:1.3rem;margin-bottom:.8rem}
-  .popup-box p{color:var(--text);font-size:.95rem;line-height:1.5;margin-bottom:1.4rem}
-  .popup-box .date-highlight{color:var(--gold);font-weight:700}
-  .popup-box button{background:var(--gold);color:#000;border:none;padding:.6rem 2rem;border-radius:8px;font-weight:700;font-size:.95rem;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:opacity .2s}
-  .popup-box button:hover{opacity:.85}
   </style>
 </head>
 <body>
-<div class="popup-overlay" id="popup">
-  <div class="popup-box">
-    <h2>Important Notice</h2>
-    <p>Starting <span class="date-highlight">May 30, 2026</span>, $BOB burns will be discontinued. The BOBAI burn mechanism remains unaffected.</p>
-    <button onclick="document.getElementById('popup').remove()">Understood</button>
-  </div>
-</div>
 <canvas id="bg"></canvas>
 <div class="page">
 

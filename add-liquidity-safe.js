@@ -16,10 +16,7 @@ const PANCAKE_ROUTER_V2 = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
 const PANCAKE_PAIR = '0x6eaDD4CB786898B34929444988380ed0CC6fD9A6'; // BOBAI/WBNB V2
 
 // --- CONFIG ---
-// FULL RUN: remaining BOBAI on wallet
-const TOTAL_BOBAI = parseEther('711528');
-const SWAP_AMOUNT = TOTAL_BOBAI / 2n; // Half to swap for BNB
-const LIQUIDITY_BOBAI = TOTAL_BOBAI - SWAP_AMOUNT; // Other half for liquidity
+const KEEP_BOBAI = parseEther('1'); // Keep exactly 1 BOBAI on wallet
 const SLIPPAGE_PERCENT = 2; // 2% max slippage (MEV protection)
 const SWAP_CHUNKS = 3; // Split swap into 3 chunks for MEV protection
 const GAS_LIMIT = 500000n;
@@ -59,9 +56,7 @@ async function main() {
   console.log('============================================');
   console.log('BOBAI Safe Liquidity Add + LP Burn');
   console.log(`Wallet: ${account.address}`);
-  console.log(`Total BOBAI: ${formatEther(TOTAL_BOBAI)}`);
-  console.log(`Swap half:   ${formatEther(SWAP_AMOUNT)} BOBAI → BNB`);
-  console.log(`Add liq:     ${formatEther(LIQUIDITY_BOBAI)} BOBAI + BNB`);
+  console.log(`Keep:   ${formatEther(KEEP_BOBAI)} BOBAI`);
   console.log(`Slippage:    ${SLIPPAGE_PERCENT}%`);
   console.log(`Swap chunks: ${SWAP_CHUNKS}`);
   console.log('============================================\n');
@@ -86,10 +81,14 @@ async function main() {
   });
   console.log(`BOBAI balance: ${formatEther(bobaiBalance)}`);
 
-  if (bobaiBalance < TOTAL_BOBAI) {
-    console.log(`[ERROR] Not enough BOBAI. Have ${formatEther(bobaiBalance)}, need ${formatEther(TOTAL_BOBAI)}`);
+  if (bobaiBalance <= KEEP_BOBAI) {
+    console.log(`[ERROR] Not enough BOBAI. Have ${formatEther(bobaiBalance)}, need more than ${formatEther(KEEP_BOBAI)}`);
     process.exit(1);
   }
+
+  const TOTAL_BOBAI = bobaiBalance - KEEP_BOBAI;
+  const SWAP_AMOUNT = TOTAL_BOBAI / 2n;
+  const LIQUIDITY_BOBAI = TOTAL_BOBAI - SWAP_AMOUNT;
 
   const bnbBefore = await publicClient.getBalance({ address: account.address });
   console.log(`BNB balance:   ${formatEther(bnbBefore)}`);

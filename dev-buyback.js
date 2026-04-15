@@ -4,7 +4,7 @@
 // Runs every 1 hour via Cloudflare Worker + GitHub Actions:
 // 1. Checks creator wallet BNB balance
 // 2. Reserves gas (0.003 BNB)
-// 3. Splits: 84% personal (Binance), 8% builder #1, 8% builder #2
+// 3. Splits: 76% personal (Binance), 8% builder #1, 8% builder #2, 8% builder #3
 
 const { createPublicClient, createWalletClient, http, formatEther, parseEther, parseAbi } = require('viem');
 const { bsc } = require('viem/chains');
@@ -20,6 +20,7 @@ const fs = require('fs');
 const PERSONAL_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C';
 const BUILDER_1 = '0xede0e2bf714b50f131869c6a39abc5bed1e6ce47';
 const BUILDER_2 = '0x7abada2b8430eee0acdce7ce9fc3f83bddb609b6';
+const BUILDER_3 = '0x4fa13c52724bcadffefef91676cc429fa6216a48';
 const GAS_RESERVE = parseEther('0.003');
 const MIN_BNB = parseEther('0.001');
 
@@ -37,7 +38,7 @@ async function main() {
   console.log(`[${new Date().toISOString()}] Dev Buyback Bot`);
   console.log(`Wallet: ${account.address}`);
   console.log(`Gas Reserve: ${formatEther(GAS_RESERVE)} BNB`);
-  console.log(`Strategy: 84% -> personal (Binance), 8% -> builder #1, 8% -> builder #2`);
+  console.log(`Strategy: 76% -> personal (Binance), 8% -> builder #1, 8% -> builder #2, 8% -> builder #3`);
   console.log('============================================');
 
   const publicClient = createPublicClient({
@@ -88,15 +89,17 @@ async function main() {
   const available = balance - GAS_RESERVE;
   console.log(`Available after gas reserve: ${formatEther(available)} BNB\n`);
 
-  // Split: 84% personal, 8% builder #1, 8% builder #2
+  // Split: 76% personal, 8% builder #1, 8% builder #2, 8% builder #3
   const builder1Amount = (available * 8n) / 100n;
   const builder2Amount = (available * 8n) / 100n;
-  const personalAmount = available - builder1Amount - builder2Amount;
+  const builder3Amount = (available * 8n) / 100n;
+  const personalAmount = available - builder1Amount - builder2Amount - builder3Amount;
 
   const sends = [
-    { label: 'Binance Wallet (84%)', to: PERSONAL_WALLET, value: personalAmount },
+    { label: 'Binance Wallet (76%)', to: PERSONAL_WALLET, value: personalAmount },
     { label: 'Builder #1 (8%)', to: BUILDER_1, value: builder1Amount },
     { label: 'Builder #2 (8%)', to: BUILDER_2, value: builder2Amount },
+    { label: 'Builder #3 (8%)', to: BUILDER_3, value: builder3Amount },
   ];
 
   let personalTxHash;
@@ -128,6 +131,7 @@ async function main() {
       personalBnb: formatEther(personalAmount),
       builder1Bnb: formatEther(builder1Amount),
       builder2Bnb: formatEther(builder2Amount),
+      builder3Bnb: formatEther(builder3Amount),
       personalTx: personalTxHash,
     });
     fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
@@ -138,7 +142,7 @@ async function main() {
 
   console.log('\n============================================');
   console.log(`[${new Date().toISOString()}] DEV BUYBACK COMPLETE`);
-  console.log(`Sent: ${formatEther(personalAmount)} BNB Binance / ${formatEther(builder1Amount)} #1 / ${formatEther(builder2Amount)} #2`);
+  console.log(`Sent: ${formatEther(personalAmount)} BNB Binance / ${formatEther(builder1Amount)} #1 / ${formatEther(builder2Amount)} #2 / ${formatEther(builder3Amount)} #3`);
   console.log('============================================');
 }
 

@@ -43,6 +43,11 @@
     .nm a:hover{color:var(--gold)}
     .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:8px 22px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
     .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
+    .nb-group{display:flex;gap:8px;align-items:center}
+    .nb2{position:relative;background:transparent;color:var(--gold);padding:8px 18px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:1px solid rgba(240,185,11,.45);letter-spacing:.3px;overflow:hidden}
+    .nb2::before{content:'';position:absolute;inset:0;border-radius:10px;box-shadow:0 0 0 0 rgba(240,185,11,.45);animation:nb2pulse 2.4s ease-out infinite;pointer-events:none}
+    .nb2:hover{background:rgba(240,185,11,.08);border-color:var(--gold);transform:translateY(-1px)}
+    @keyframes nb2pulse{0%{box-shadow:0 0 0 0 rgba(240,185,11,.32)}70%{box-shadow:0 0 0 10px rgba(240,185,11,0)}100%{box-shadow:0 0 0 0 rgba(240,185,11,0)}}
 
     /* HERO */
     .hero{position:relative;width:100%;margin-top:58px;overflow:hidden}
@@ -217,7 +222,10 @@
   <nav><div class="nav">
     <a href="#" class="nl"><img src="logo-sm.png?v=2" alt="BOBAI"> <span>BOBAI</span></a>
     <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#roadmap">Roadmap</a><a href="https://t.me/bobai_official" target="_blank">Telegram</a></div>
-    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
+    <div class="nb-group">
+      <a class="nb2" href="listing.html">Listing?</a>
+      <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
+    </div>
   </div></nav>
 
   <section class="hero">

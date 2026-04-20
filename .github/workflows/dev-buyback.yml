@@ -33,9 +33,14 @@ jobs:
           if [ -f dev-buyback-log.json ]; then
             git config user.name "Dev Buyback Bot"
             git config user.email "bot@bobai.buildonbnbgame.xyz"
-            git fetch origin main
-            git reset --soft origin/main
-            git add dev-buyback-log.json
-            git diff --cached --quiet || git commit -m "Dev buyback log $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push origin main
+            cp dev-buyback-log.json /tmp/dev-buyback-log.json
+            for i in 1 2 3; do
+              git fetch origin main
+              git reset --hard origin/main
+              cp /tmp/dev-buyback-log.json dev-buyback-log.json
+              git add dev-buyback-log.json
+              git diff --cached --quiet && break
+              git commit -m "Dev buyback log $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              git push origin main && break || sleep 5
+            done
           fi

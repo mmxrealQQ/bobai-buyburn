@@ -35,8 +35,15 @@ jobs:
         run: |
           git config user.name "BOBAI Bot"
           git config user.email "bot@bobai.buildonbnbgame.xyz"
-          git fetch origin main
-          git reset --soft origin/main
-          git add burns.json liq-boost-log.json
-          git diff --cached --quiet || git commit -m "Burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push origin main
+          cp burns.json /tmp/burns.json
+          [ -f liq-boost-log.json ] && cp liq-boost-log.json /tmp/liq-boost-log.json
+          for i in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/burns.json burns.json
+            [ -f /tmp/liq-boost-log.json ] && cp /tmp/liq-boost-log.json liq-boost-log.json
+            git add burns.json liq-boost-log.json
+            git diff --cached --quiet && break
+            git commit -m "Burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push origin main && break || sleep 5
+          done

@@ -42,9 +42,14 @@ jobs:
           if [ -f "$LOG_FILE" ]; then
             git config user.name "Ecosystem Bot"
             git config user.email "bot@bobai.buildonbnbgame.xyz"
-            git fetch origin main
-            git reset --soft origin/main
-            git add "$LOG_FILE"
-            git diff --cached --quiet || git commit -m "Ecosystem burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push origin main
+            cp "$LOG_FILE" "/tmp/$LOG_FILE"
+            for i in 1 2 3; do
+              git fetch origin main
+              git reset --hard origin/main
+              cp "/tmp/$LOG_FILE" "$LOG_FILE"
+              git add "$LOG_FILE"
+              git diff --cached --quiet && break
+              git commit -m "Ecosystem burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              git push origin main && break || sleep 5
+            done
           fi

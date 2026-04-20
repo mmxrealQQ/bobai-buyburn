@@ -143,6 +143,23 @@
     .tba{background:rgba(0,230,118,.07);color:var(--green);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
 
+    /* LIQ BOOST */
+    .liq-boost{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
+    .lb-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(0,230,118,.12);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
+    .lb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.4),var(--gold),rgba(0,230,118,.4),transparent)}
+    .lb-card::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,230,118,.03),transparent 70%);pointer-events:none}
+    .lb-title{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
+    .lb-title em{font-style:normal;background:linear-gradient(135deg,var(--green),var(--gold));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lb-sub{text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:20px}
+    .lb-countdown{display:flex;justify-content:center;gap:16px;margin-bottom:24px}
+    .lb-cd-unit{text-align:center}
+    .lb-cd-val{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--green),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1}
+    .lb-cd-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:4px}
+    .lb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .lb-stat{background:rgba(0,230,118,.03);border:1px solid rgba(0,230,118,.08);border-radius:10px;padding:16px 12px;text-align:center}
+    .lb-stat .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
+    .lb-stat .v{font-family:'Space Grotesk',sans-serif;font-size:1.05rem;font-weight:700;color:var(--green)}
+
     /* ROADMAP */
     .rmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
     .rm{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:all .3s}
@@ -240,6 +257,29 @@
     <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v" id="total-bobai-burned">--</div></div>
     <div class="sc fi"><div class="l">Burns</div><div class="v" id="burn-count">--</div></div>
   </div></section>
+
+  <section class="liq-boost fi">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOB Permalocked Liquidity Boost</em></div>
+      <div class="lb-sub">0.5% of every trade permanently added to BOB/BNB liquidity pool</div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lb-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lb-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="lb-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="lb-count">0</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="lb-bnb">0.0000</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="lb-lp">0</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+        <div class="txw">
+          <table><thead><tr><th>Time</th><th>BNB</th><th>LP Burned</th><th>TX</th></tr></thead>
+          <tbody id="lb-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Starts April 21, 00:01 UTC</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
 
@@ -385,8 +425,51 @@ async function bal(){try{const h=await rpc('eth_getBalance',[BW,'latest']);const
 async function burned(){try{const d='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';const b=await rpc('eth_call',[{to:BOB,data:d},'latest']);if(b&&b!=='0x'){const v=Number(BigInt(b))/1e18;if(v>0)document.getElementById('total-burned').textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' BOB'}const a=await rpc('eth_call',[{to:BOBAI,data:d},'latest']);if(a&&a!=='0x'){const v=Number(BigInt(a))/1e18;if(v>0){document.getElementById('total-bobai-burned').textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' BOBAI';const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}}catch(e){}}
 async function token(){try{const P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',rH=await rpc('eth_call',[{to:P,data:'0x0902f1ac'},'latest']),r0=BigInt('0x'+rH.slice(2,66)),r1=BigInt('0x'+rH.slice(66,130)),t0=await rpc('eth_call',[{to:P,data:'0x0dfe1681'},'latest']),is0=('0x'+t0.slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',bH=await rpc('eth_call',[{to:BP,data:'0x0902f1ac'},'latest']),b0=BigInt('0x'+bH.slice(2,66)),b1=BigInt('0x'+bH.slice(66,130)),bt=await rpc('eth_call',[{to:BP,data:'0x0dfe1681'},'latest']),w0=('0x'+bt.slice(26).toLowerCase())==='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),pU=(Number(wR)/Number(bR))*bnbP;document.getElementById('mcap').textContent='$'+(pU*1e9).toLocaleString(undefined,{maximumFractionDigits:0});document.getElementById('volume').textContent='$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0})}catch(e){}}
 async function bdata(){try{const r=await fetch(BURNS,{headers:{'Accept':'application/vnd.github.v3+json'}}),g=await r.json(),b=JSON.parse(atob(g.content));if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}document.getElementById('burn-count').textContent=b.length.toString();document.getElementById('tx-body').innerHTML=rows.join('')}}catch(e){}}
-let cnt=0;async function go(){const t=[bal(),token(),burned()];if(cnt++%10===0)t.push(bdata());await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
+let cnt=0;async function go(){const t=[bal(),token(),burned()];if(cnt++%10===0){t.push(bdata());t.push(lbdata())}await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
 go();setInterval(go,30000);
+
+// === LIQ BOOST DATA ===
+const LB_LOG='https://api.github.com/repos/mmxrealQQ/bobai-buyburn/contents/liq-boost-log.json';
+async function lbdata(){try{
+  const r=await fetch(LB_LOG,{headers:{'Accept':'application/vnd.github.v3+json'}});
+  const g=await r.json();
+  const entries=JSON.parse(atob(g.content));
+  if(!entries||entries.length===0)return;
+  document.getElementById('lb-count').textContent=entries.length;
+  let totalBnb=0;
+  const rows=[];
+  for(const x of[...entries].reverse()){
+    const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';
+    const bnb=parseFloat(x.bnb||0);
+    totalBnb+=bnb;
+    const lp=x.lpBurned||'--';
+    const tx=x.addLiqTx||'';
+    rows.push(`<tr><td>${t}</td><td>${bnb.toFixed(4)} BNB</td><td>${lp}</td><td>${tx?`<a class="txl" href="https://bscscan.com/tx/${tx}" target="_blank">${tx.slice(0,10)}...${tx.slice(-6)}</a>`:'--'}</td></tr>`);
+  }
+  document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';
+  document.getElementById('lb-lp').textContent=entries.length;
+  document.getElementById('lb-tx-body').innerHTML=rows.join('');
+}catch(e){}}
+
+// === LIQ BOOST COUNTDOWN ===
+!function(){
+  const START=new Date('2026-04-21T00:01:00Z').getTime();
+  const END=new Date('2026-06-04T23:59:00Z').getTime();
+  function tick(){
+    const now=Date.now();
+    let diff;
+    if(now<START){diff=END-START}
+    else if(now>=END){diff=0}
+    else{diff=END-now}
+    const d=Math.floor(diff/86400000);
+    const h=Math.floor((diff%86400000)/3600000);
+    const m=Math.floor((diff%3600000)/60000);
+    document.getElementById('lb-days').textContent=d;
+    document.getElementById('lb-hours').textContent=h;
+    document.getElementById('lb-mins').textContent=m;
+  }
+  tick();setInterval(tick,60000);
+}();
 </script>
 </body>
 </html>

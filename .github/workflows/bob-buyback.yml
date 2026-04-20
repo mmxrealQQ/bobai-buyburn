@@ -33,12 +33,10 @@ jobs:
 
       - name: Commit burn log
         run: |
-          if [ -f burns.json ]; then
-            git config user.name "BOBAI Bot"
-            git config user.email "bot@bobai.buildonbnbgame.xyz"
-            git fetch origin main
-            git reset --soft origin/main
-            git add burns.json
-            git diff --cached --quiet || git commit -m "Burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push origin main
-          fi
+          git config user.name "BOBAI Bot"
+          git config user.email "bot@bobai.buildonbnbgame.xyz"
+          git fetch origin main
+          git reset --soft origin/main
+          git add burns.json liq-boost-log.json
+          git diff --cached --quiet || git commit -m "Burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin main

@@ -1,10 +1,7 @@
 name: BOB Auto Buy & Burn
 
 on:
-  schedule:
-    # Run every 10 minutes (more reliable than 30 on GitHub Actions)
-    - cron: '*/10 * * * *'
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch: # Triggered by Cloudflare Worker cron (every 10 min) — no schedule here to prevent double runs
 
 permissions:
   contents: write

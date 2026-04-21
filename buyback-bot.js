@@ -384,7 +384,8 @@ async function main() {
 
   // Step 3b: Liq Add (only during boost campaign)
   let liqResult = null;
-  if (liqBoostActive && liqAddAmount > MIN_BNB) {
+  const MIN_LIQ = parseEther('0.0003');
+  if (liqBoostActive && liqAddAmount > MIN_LIQ) {
     console.log(`\n--- Adding BOB/BNB Liquidity (${formatEther(liqAddAmount)} BNB) → LP to Dead ---`);
     liqResult = await addLiquidityAndBurn(walletClient, publicClient, account, liqAddAmount);
     if (liqResult) {

@@ -486,6 +486,7 @@ async function handleCommand(msg) {
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
 🐸 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
+🐦 <a href="https://x.com/BrainOnBNBAI">X / Twitter</a>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;

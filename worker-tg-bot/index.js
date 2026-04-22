@@ -480,7 +480,7 @@ async function handleCommand(msg) {
     case 'links': {
       reply = `🌐 <b>BOBAI — All Links</b>
 
-🌍 <a href="https://bobai.buildonbnbgame.xyz">Website & Dashboard</a>
+🌍 <a href="https://brainonbnb.ai">Website & Dashboard</a>
 📊 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DexScreener</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
@@ -521,7 +521,7 @@ Here's what I can do:
 
 💡 <i>I also post alerts for buys & burns!</i>
 
-🌍 <a href="https://bobai.buildonbnbgame.xyz">Website</a> · 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
+🌍 <a href="https://brainonbnb.ai">Website</a> · 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
       break;
     }
   }

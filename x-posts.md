@@ -60,7 +60,7 @@ Built a live dashboard for $BOBAI
 
 No hidden wallets. No secret allocations.
 
-bobai.buildonbnbgame.xyz
+brainonbnb.ai
 TG: t.me/bobai_official
 
 #BNBChain #BSC #DeFi #AI

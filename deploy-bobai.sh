@@ -12,7 +12,7 @@ npx fourmeme create-instant \
   --short-name=BOBAI \
   --desc="100% created by AI (Claude Opus 4.6). 3% tax on every trade auto-buys and BURNS \$BOB (Build On BNB) - permanently reducing BOB supply. Every BOBAI trade makes BOB more scarce and more valuable. The first AI agent that actively builds value for BOB on BNB Chain." \
   --label=AI \
-  --web-url=https://bobai.buildonbnbgame.xyz \
+  --web-url=https://brainonbnb.ai \
   --tax-token \
   --tax-fee-rate=3 \
   --tax-burn-rate=0 \

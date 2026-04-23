@@ -703,5 +703,16 @@
     "builder3Bnb": "0.000668868653971871",
     "builder4Bnb": "0.000668868653971871",
     "personalTx": "0xcc5175bf69416012affa19074f92fa98de97ee9b61db8d757d5bcd8f13fbedbe"
+  },
+  {
+    "time": "2026-04-23T13:01:00.683Z",
+    "balanceBnb": "0.005906573576977104",
+    "availableBnb": "0.002906573576977104",
+    "personalBnb": "0.001976470032344432",
+    "builder1Bnb": "0.000232525886158168",
+    "builder2Bnb": "0.000232525886158168",
+    "builder3Bnb": "0.000232525886158168",
+    "builder4Bnb": "0.000232525886158168",
+    "personalTx": "0x6cb4b7bb43191d4717c35bb9bbdbf0cd1c34bc7c544861a0054c8b4168bfb229"
   }
 ]

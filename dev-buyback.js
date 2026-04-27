@@ -4,7 +4,7 @@
 // Runs every 1 hour via Cloudflare Worker + GitHub Actions:
 // 1. Checks creator wallet BNB balance
 // 2. Reserves gas (0.003 BNB)
-// 3. Splits: 68% personal (Binance), 8% builder #1, 8% builder #2, 8% builder #3, 8% builder #4
+// 3. Splits: 84% personal (Binance), 4% builder #1, 4% builder #2, 4% builder #3, 4% builder #4
 
 const { createPublicClient, createWalletClient, http, formatEther, parseEther, parseAbi } = require('viem');
 const { bsc } = require('viem/chains');
@@ -39,7 +39,7 @@ async function main() {
   console.log(`[${new Date().toISOString()}] Dev Buyback Bot`);
   console.log(`Wallet: ${account.address}`);
   console.log(`Gas Reserve: ${formatEther(GAS_RESERVE)} BNB`);
-  console.log(`Strategy: 68% -> personal (Binance), 8% -> builder #1-#4`);
+  console.log(`Strategy: 84% -> personal (Binance), 4% -> builder #1-#4`);
   console.log('============================================');
 
   const publicClient = createPublicClient({
@@ -90,19 +90,19 @@ async function main() {
   const available = balance - GAS_RESERVE;
   console.log(`Available after gas reserve: ${formatEther(available)} BNB\n`);
 
-  // Split: 68% personal, 8% each builder #1-#4
-  const builder1Amount = (available * 8n) / 100n;
-  const builder2Amount = (available * 8n) / 100n;
-  const builder3Amount = (available * 8n) / 100n;
-  const builder4Amount = (available * 8n) / 100n;
+  // Split: 84% personal, 4% each builder #1-#4
+  const builder1Amount = (available * 4n) / 100n;
+  const builder2Amount = (available * 4n) / 100n;
+  const builder3Amount = (available * 4n) / 100n;
+  const builder4Amount = (available * 4n) / 100n;
   const personalAmount = available - builder1Amount - builder2Amount - builder3Amount - builder4Amount;
 
   const sends = [
-    { label: 'Binance Wallet (68%)', to: PERSONAL_WALLET, value: personalAmount },
-    { label: 'Builder #1 (8%)', to: BUILDER_1, value: builder1Amount },
-    { label: 'Builder #2 (8%)', to: BUILDER_2, value: builder2Amount },
-    { label: 'Builder #3 (8%)', to: BUILDER_3, value: builder3Amount },
-    { label: 'Builder #4 (8%)', to: BUILDER_4, value: builder4Amount },
+    { label: 'Binance Wallet (84%)', to: PERSONAL_WALLET, value: personalAmount },
+    { label: 'Builder #1 (4%)', to: BUILDER_1, value: builder1Amount },
+    { label: 'Builder #2 (4%)', to: BUILDER_2, value: builder2Amount },
+    { label: 'Builder #3 (4%)', to: BUILDER_3, value: builder3Amount },
+    { label: 'Builder #4 (4%)', to: BUILDER_4, value: builder4Amount },
   ];
 
   let personalTxHash;

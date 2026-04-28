@@ -27,6 +27,7 @@
       --text:#e4e5f1;--muted:#7b7d9e;
       --radius:14px;
     }
+    .bob-sub{font-size:.65em;opacity:.45;font-weight:400;margin-left:2px}
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased}
     canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none}
@@ -250,14 +251,14 @@
     <div class="sc fi"><div class="l">Market Cap</div><div class="v" id="mcap">--</div></div>
     <div class="sc fi"><div class="l">Liquidity</div><div class="v" id="volume">--</div></div>
     <div class="sc fi"><div class="l">Buyback</div><div class="v" id="wallet-bnb">--</div></div>
-    <div class="sc fi"><div class="l">$BOB Burned</div><div class="v" id="total-burned">--</div></div>
+    <div class="sc fi"><div class="l">$BOB <span class="bob-sub">(Build On BNB)</span> Burned</div><div class="v" id="total-burned">--</div></div>
     <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v" id="total-bobai-burned">--</div></div>
     <div class="sc fi"><div class="l">Burns</div><div class="v" id="burn-count">--</div></div>
   </div></section>
 
   <section class="liq-boost fi">
     <div class="lb-card">
-      <div class="lb-title"><em>$BOB Permalocked Liquidity Boost</em></div>
+      <div class="lb-title"><em>$BOB <span class="bob-sub">(Build On BNB)</span> Permalocked Liquidity Boost</em></div>
       <div class="lb-sub">0.5% of every trade permanently added to BOB/BNB liquidity pool</div>
       <div class="lb-countdown">
         <div class="lb-cd-unit"><div class="lb-cd-val" id="lb-days">--</div><div class="lb-cd-lbl">Days</div></div>
@@ -301,14 +302,14 @@
       <div class="fs fi"><div class="fn">1</div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">2</div><h4>Collect</h4><p>Tax accumulates in buyback wallet.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">3</div><h4>Split</h4><p>Bot runs every 10 min. Splits ~1/1/1.</p><span class="fa">&#x2192;</span></div>
-      <div class="fs fi"><div class="fn">4</div><h4>Burn</h4><p>$BOB + $BOBAI sent to dead address.</p></div>
+      <div class="fs fi"><div class="fn">4</div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
     </div>
     <div class="tax fi">
       <h3>3% Tax Split</h3>
       <div class="tax-flow">
         <div class="tf"><div class="p" style="color:var(--blue)">~1%</div><div class="d">Creator</div></div>
         <div class="ta">&#x2192;</div>
-        <div class="tf"><div class="p" style="color:var(--red)">~1%</div><div class="d">Burn $BOB</div></div>
+        <div class="tf"><div class="p" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span></div></div>
         <div class="ta">&#x2192;</div>
         <div class="tf"><div class="p" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI</div></div>
       </div>
@@ -336,7 +337,7 @@
     </div>
     <div class="vc fi">
       <div class="vr"><span class="l">$BOBAI</span><span class="vl"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c386dcfed896f5c346107596141e5edcbffff</a></span></div>
-      <div class="vr"><span class="l">$BOB</span><span class="vl"><a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">0x51363f073b1e4920fda7aa9e9d84ba97ede1560e</a></span></div>
+      <div class="vr"><span class="l">$BOB <span class="bob-sub">(Build On BNB)</span></span><span class="vl"><a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">0x51363f073b1e4920fda7aa9e9d84ba97ede1560e</a></span></div>
       <div class="vr"><span class="l">Buyback</span><span class="vl"><a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank">0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce</a></span></div>
       <div class="vr"><span class="l">Burn</span><span class="vl"><a href="https://bscscan.com/address/0x000000000000000000000000000000000000dEaD" target="_blank">0x...dEaD</a></span></div>
       <div class="vr"><span class="l">LP</span><span class="vl" style="color:var(--green)">Locked</span></div>
@@ -360,7 +361,7 @@
         <li><span class="ck">&#x2713;</span> Fair launch on Four.Meme</li>
         <li><span class="ck">&#x2713;</span> Migrated to PancakeSwap</li>
         <li><span class="ck">&#x2713;</span> LP locked, owner renounced</li>
-        <li><span class="ck">&#x2713;</span> Massive initial $BOB burns</li>
+        <li><span class="ck">&#x2713;</span> Massive initial $BOB <span class="bob-sub">(Build On BNB)</span> burns</li>
       </ul></div>
       <div class="rm rma fi"><div class="rp">Phase 2 — Active</div><h3>Burn Machine</h3><ul>
         <li><span class="ck">&#x2713;</span> Buyback bot live 24/7</li>
@@ -370,7 +371,7 @@
         <li><span class="ck">&#x2713;</span> Telegram community</li>
       </ul></div>
       <div class="rm rma fi"><div class="rp">Phase 3 — Ongoing</div><h3>Scale</h3><ul>
-        <li><span class="ck">&#x2713;</span> Accelerate $BOB burns</li>
+        <li><span class="ck">&#x2713;</span> Accelerate $BOB <span class="bob-sub">(Build On BNB)</span> burns</li>
         <li><span class="ck">&#x2713;</span> Grow deflationary pressure</li>
         <li><span style="color:var(--muted)">&#x25cb;</span> 100K daily volume target</li>
         <li><span style="color:var(--muted)">&#x25cb;</span> Expand ecosystem visibility</li>

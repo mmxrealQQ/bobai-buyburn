@@ -516,24 +516,20 @@ async function handleCommand(msg) {
       reply = `🔔 <b>BOBAI Alert Tiers</b>
 
 🧠 <b>Buy Alert Tiers</b>
-<pre>
- $100+   →  💰 NICE BUY!
- $150+   →  💎 BIG BUY!
- $250+   →  🚀 HUGE BUY!
- $500+   →  🐋 WHALE BUY!
- $1000+  →  ⚡ THUNDER BUY!
- $2500+  →  🦑 KRAKEN BUY!
-</pre>
+💰 $100+ → NICE BUY!
+💎 $150+ → BIG BUY!
+🚀 $250+ → HUGE BUY!
+🐋 $500+ → WHALE BUY!
+⚡ $1000+ → THUNDER BUY!
+🦑 $2500+ → KRAKEN BUY!
 
 🔥 <b>Burn Alert Tiers</b>
-<pre>
- &lt; $5    →  ♻️ BURN
- $5+     →  🔥 NICE BURN!
- $15+    →  🌋 BIG BURN!
- $50+    →  💀 MEGA BURN!
- $150+   →  ☄️ APOCALYPSE BURN!
- $250+   →  💥 SUPERNOVA BURN!
-</pre>
+♻️ &lt; $5 → BURN
+🔥 $5+ → NICE BURN!
+🌋 $15+ → BIG BURN!
+💀 $50+ → MEGA BURN!
+☄️ $150+ → APOCALYPSE BURN!
+💥 $250+ → SUPERNOVA BURN!
 
 💡 <i>Buys under $100 are not alerted.</i>`;
       break;

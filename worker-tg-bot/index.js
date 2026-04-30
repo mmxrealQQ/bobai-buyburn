@@ -148,7 +148,9 @@ function getBuyEmojis(usdValue) {
   const count = Math.max(Math.floor(usdValue / 10), 1);
   const bar = '🧠'.repeat(count);
   let icon;
-  if (usdValue >= 500) icon = '🐋 WHALE BUY!';
+  if (usdValue >= 2500) icon = '🦑 KRAKEN BUY!';
+  else if (usdValue >= 1000) icon = '⚡ THUNDER BUY!';
+  else if (usdValue >= 500) icon = '🐋 WHALE BUY!';
   else if (usdValue >= 250) icon = '🚀 HUGE BUY!';
   else if (usdValue >= 150) icon = '💎 BIG BUY!';
   else icon = '💰 NICE BUY!';
@@ -156,12 +158,14 @@ function getBuyEmojis(usdValue) {
 }
 
 function getBurnEmojis(usdValue) {
-  // Each 🔥 = $0.50, no max
-  const count = Math.max(Math.floor(usdValue / 0.5), 1);
+  const count = Math.max(Math.floor(usdValue / 2), 1);
   const bar = '🔥'.repeat(count);
   let icon;
-  if (usdValue >= 15) icon = '💀 MEGA BURN!';
-  else if (usdValue >= 10) icon = '🌋 BIG BURN!';
+  if (usdValue >= 250) icon = '💥 SUPERNOVA BURN!';
+  else if (usdValue >= 150) icon = '☄️ APOCALYPSE BURN!';
+  else if (usdValue >= 50) icon = '💀 MEGA BURN!';
+  else if (usdValue >= 15) icon = '🌋 BIG BURN!';
+  else if (usdValue >= 5) icon = '🔥 NICE BURN!';
   else icon = '♻️ BURN';
   return { bar, icon };
 }
@@ -481,7 +485,7 @@ async function handleCommand(msg) {
       reply = `🌐 <b>BOBAI — All Links</b>
 
 🌍 <a href="https://brainonbnb.ai">Website & Dashboard</a>
-📊 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DexScreener</a>
+🦅 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DexScreener</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
 🐸 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
@@ -507,6 +511,34 @@ async function handleCommand(msg) {
       break;
     }
 
+    case '/alerts':
+    case 'alerts': {
+      reply = `🔔 <b>BOBAI Alert Tiers</b>
+
+🧠 <b>Buy Alert Tiers</b>
+<pre>
+ $100+   →  💰 NICE BUY!
+ $150+   →  💎 BIG BUY!
+ $250+   →  🚀 HUGE BUY!
+ $500+   →  🐋 WHALE BUY!
+ $1000+  →  ⚡ THUNDER BUY!
+ $2500+  →  🦑 KRAKEN BUY!
+</pre>
+
+🔥 <b>Burn Alert Tiers</b>
+<pre>
+ &lt; $5    →  ♻️ BURN
+ $5+     →  🔥 NICE BURN!
+ $15+    →  🌋 BIG BURN!
+ $50+    →  💀 MEGA BURN!
+ $150+   →  ☄️ APOCALYPSE BURN!
+ $250+   →  💥 SUPERNOVA BURN!
+</pre>
+
+💡 <i>Buys under $100 are not alerted.</i>`;
+      break;
+    }
+
     case '/help':
     case 'help':
     case '/start': {
@@ -519,6 +551,7 @@ Here's what I can do:
 🔥 /burn — Burn stats & progress
 🌐 /social — All project links
 📋 /ca — Contract address
+🔔 /alerts — Buy & burn alert tiers
 
 💡 <i>I also post alerts for buys & burns!</i>
 

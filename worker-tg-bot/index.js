@@ -105,7 +105,7 @@ async function fetchPoolData() {
 
 async function fetchRecentTrades() {
   try {
-    const res = await fetch(GECKO_TRADES_URL, {
+    const res = await fetch(`${GECKO_TRADES_URL}?_=${Date.now()}`, {
       headers: { 'Accept': 'application/json' },
     });
     if (!res.ok) return [];

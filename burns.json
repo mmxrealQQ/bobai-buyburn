@@ -3437,5 +3437,21 @@
     "bobaiSwapTx": "0xd277df987f9531b0b73793b2c4e858c97d4ca33a0de3889f32c63ff1c2c0a2d8",
     "bobaiBurnTx": "0x95d7052434504ddff2e7cdd5e5e4ce10601cbbff4c18f10ac9b478440150f325",
     "bobaiBlock": 95634430
+  },
+  {
+    "time": "2026-05-01T08:21:14.726Z",
+    "totalBnb": "0.087155932157648265",
+    "creatorBnb": "0.014816508466800205",
+    "creatorTx": "0x849aeb212778fd53fafe416cc74021a410a87ff0bf0978fba40995258bf02142",
+    "bobBurnBnb": "0.028761457612023927",
+    "bobBurned": "1442304182.435419404508275588",
+    "bobSwapTx": "0xed4a1a69bdebcd29e70bc5dbf386d13ddc5c26760b6bf43093d2a7af53e56138",
+    "bobBurnTx": "0x1b6f93a5cb54efe7184ae0e6e6eecc65573acf9ec9e1c9ab448d6940c45b4b4b",
+    "bobBlock": 95713003,
+    "bobaiBurnBnb": "0.028761457612023928",
+    "bobaiBurned": "136759.602526713546056799",
+    "bobaiSwapTx": "0x59171afc6522d57e93033250b9486a27213f577579a6b661dd85589da5a3973c",
+    "bobaiBurnTx": "0x86f2a7c028d4d12607f63b334c0335584b39bb7e4fbbad0a48ee5bb15ea0af2d",
+    "bobaiBlock": 95713007
   }
 ]

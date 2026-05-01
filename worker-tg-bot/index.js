@@ -410,8 +410,9 @@ async function handleCommand(msg) {
 <i>MetaMask, Trust Wallet, or Binance Web3</i>
 
 <b>Step 2:</b> Swap BNB → BOBAI
+🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Wallet</a>
+🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
-🐸 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 
 <b>Step 3:</b> Set slippage to 4-5%
 <i>(3% tax: 1% creator, 2% burn)</i>
@@ -482,14 +483,18 @@ async function handleCommand(msg) {
     case 'socials':
     case '/links':
     case 'links': {
-      reply = `🌐 <b>BOBAI — All Links</b>
+      reply = `🧠 <b>BOBAI — All Links</b>
 
 🌍 <a href="https://brainonbnb.ai">Website & Dashboard</a>
+
+🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
 🦅 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DexScreener</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
-🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
+
+🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Wallet</a>
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
+
 🐦 <a href="https://x.com/BrainOnBNB">X Official</a>
 🗣 <a href="https://x.com/BrainOnBNBAI">X Community</a>
 
@@ -545,7 +550,7 @@ Here's what I can do:
 📊 /price — Live price, volume & market stats
 🛒 /buy — How to buy BOBAI
 🔥 /burn — Burn stats & progress
-🌐 /social — All project links
+🧠 /social — All project links
 📋 /ca — Contract address
 🔔 /alerts — Buy & burn alert tiers
 

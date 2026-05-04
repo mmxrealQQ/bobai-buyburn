@@ -488,6 +488,7 @@ async function handleCommand(msg) {
 🌍 <a href="https://brainonbnb.ai">Website & Dashboard</a>
 
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
+🦎 <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai">CoinGecko</a>
 🦅 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DexScreener</a>
 🌐 <a href="https://www.dextools.io/token/bobai">DEXTools</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>

@@ -2,7 +2,7 @@
 // Combined: Buy Alert Bot + Burn Alert Bot + Anti-Spam Guard Bot
 // Runs 24/7 via cron (every minute) + Telegram Webhook
 
-const TG_BOT_TOKEN = '8559357851:AAE7-WZS3SIWBPjuxrq1ow-RKsFPWXPBMKY';
+let TG_BOT_TOKEN = '';
 const TG_CHAT_ID = '-1003791636543';
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -578,6 +578,7 @@ Here's what I can do:
 export default {
   // Webhook handler (Telegram sends updates here)
   async fetch(request, env) {
+    TG_BOT_TOKEN = env.BOT_TOKEN;
     if (request.method === 'POST') {
       try {
         const update = await request.json();
@@ -603,6 +604,7 @@ export default {
 
   // Cron handler (every 1 min)
   async scheduled(event, env) {
+    TG_BOT_TOKEN = env.BOT_TOKEN;
     // === BUY ALERTS ===
     // Read posted txs for deduplication (1 KV read per cron)
     const postedRaw = await env.KV.get('posted_txs');

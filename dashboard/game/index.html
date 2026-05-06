@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Brain On BNB AI — Burn & Add Liq</title>
+<meta name="description" content="Jump through the BNB Chain, burn tokens, dodge the dumps. Play now at brainonbnb.ai/game">
+<link rel="icon" type="image/png" href="logo-256x256.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://brainonbnb.ai/game/">
+<meta property="og:title" content="Brain On BNB AI — Burn & Add Liq">
+<meta property="og:description" content="Doodle-Jump style BNB Chain game. Burn tokens, add liquidity, dodge the dumps.">
+<meta property="og:image" content="https://brainonbnb.ai/game/logo-256x256.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Brain On BNB AI — Burn & Add Liq">
+<meta name="twitter:description" content="Jump through the BNB Chain, burn tokens, dodge the dumps.">
+<meta name="theme-color" content="#f3ba2f">
+<style>
+:root{--gold:#f3ba2f;--bg:#020208;--bg2:#0a0a2a;--bg-card:rgba(14,14,32,0.95);--cyan:#00e5ff;--purple:#a855f7;--red:#ff1744;--text:rgba(255,255,255,0.85);--text-dim:rgba(255,255,255,0.4)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;height:100dvh;display:flex;justify-content:center;align-items:center}
+
+#gameContainer{position:relative;width:420px;height:100vh;height:100dvh;display:flex;flex-direction:column;background:var(--bg)}
+
+.game-header{flex-shrink:0;padding:8px 14px 5px;background:linear-gradient(180deg,rgba(12,12,38,0.98),rgba(6,6,22,0.95));border-bottom:1px solid rgba(243,186,47,0.2);position:relative;z-index:10}
+.game-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 10%,var(--gold) 50%,transparent 90%);opacity:0.7}
+.game-header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:8px;background:linear-gradient(180deg,rgba(243,186,47,0.06),transparent);pointer-events:none}
+
+.header-brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:3px}
+.brand-title{font-size:17px;font-weight:800;color:var(--gold);letter-spacing:2.5px;text-shadow:0 0 14px rgba(243,186,47,0.3)}
+.brand-sub{font-size:8px;color:var(--cyan);letter-spacing:3px;text-transform:uppercase;opacity:0.6;text-align:center;margin-top:1px}
+.brand-logo{width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(243,186,47,0.5);box-shadow:0 0 10px rgba(243,186,47,0.15);object-fit:cover}
+
+.score-row{display:flex;align-items:center;justify-content:center;gap:6px;margin:4px 0 3px}
+.back-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:rgba(243,186,47,0.08);border:1px solid rgba(243,186,47,0.2);color:var(--gold);font-size:10px;font-weight:600;text-decoration:none;transition:all 0.2s;flex-shrink:0;letter-spacing:0.3px}
+.back-btn:active{background:rgba(243,186,47,0.25);border-color:var(--gold)}
+.back-btn span{font-size:13px}
+.score-value{font-size:26px;font-weight:800;color:var(--gold);text-shadow:0 0 14px rgba(243,186,47,0.35);letter-spacing:1px}
+.score-label{font-size:9px;color:var(--text-dim);letter-spacing:2px;align-self:flex-end;margin-bottom:4px;margin-left:2px}
+
+.hud{display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;color:var(--text-dim);padding:3px 0;flex-wrap:wrap}
+.hud-item{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.hud-item b{color:#fff;font-weight:700}
+.hud-sep{width:1px;height:14px;background:rgba(243,186,47,0.15);flex-shrink:0}
+.hud-btn{background:rgba(243,186,47,0.1);border:1px solid rgba(243,186,47,0.3);color:var(--gold);font-size:9px;font-weight:bold;padding:3px 8px;border-radius:4px;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;white-space:nowrap}
+.hud-btn:active{background:rgba(243,186,47,0.3);border-color:var(--gold)}
+
+.fud-bar-wrap{margin-top:2px;display:flex;align-items:center;gap:6px}
+#fudLabel{font-size:8px;letter-spacing:1px;color:rgba(168,85,247,0.5);text-transform:uppercase;white-space:nowrap;transition:color 0.3s}
+.fud-track{flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+#fudFill{height:100%;width:0%;background:linear-gradient(90deg,var(--purple),var(--cyan));border-radius:2px;transition:width 0.3s}
+#fudTimer{font-size:10px;font-weight:bold;white-space:nowrap;min-width:44px;text-align:center;padding:3px 8px;border-radius:5px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);color:rgba(168,85,247,0.5);transition:all 0.3s;cursor:pointer}
+#fudTimer.ready{color:#00e5ff;border-color:rgba(0,229,255,0.4);background:rgba(0,229,255,0.08)}
+#fudTimer.active{color:#a855f7;border-color:rgba(168,85,247,0.5);background:rgba(168,85,247,0.15);animation:fudPulse 1s ease-in-out infinite}
+@keyframes fudPulse{0%,100%{box-shadow:0 0 4px rgba(168,85,247,0.2)}50%{box-shadow:0 0 12px rgba(168,85,247,0.5)}}
+.play-area{flex:1;position:relative;overflow:hidden;border-top:1px solid rgba(243,186,47,0.08)}
+.play-area canvas{width:100%;height:100%;display:block}
+
+#mobileControls{display:none;position:absolute;bottom:30px;left:0;right:0;justify-content:space-between;align-items:center;padding:0 12px;pointer-events:none;z-index:5}
+.ctrl-btn{pointer-events:auto;width:110px;height:110px;border-radius:50%;background:rgba(243,186,47,0.08);border:2px solid rgba(243,186,47,0.25);display:flex;align-items:center;justify-content:center;font-size:38px;color:rgba(243,186,47,0.6);user-select:none;-webkit-user-select:none;touch-action:none;transition:background 0.1s,border-color 0.1s}
+.ctrl-btn:active,.ctrl-btn.pressed{background:rgba(243,186,47,0.25);border-color:rgba(243,186,47,0.7)}
+#btnFud{width:110px;height:110px;font-size:14px;font-weight:bold;letter-spacing:0.5px;background:rgba(168,85,247,0.08);border-color:rgba(168,85,247,0.3);color:rgba(168,85,247,0.6);line-height:1.3;text-align:center}
+#btnFud.pressed,#btnFud:active{background:rgba(168,85,247,0.3);border-color:rgba(168,85,247,0.8)}
+#btnFud.disabled{opacity:0.3;border-color:rgba(255,255,255,0.1)}
+
+.overlay{position:fixed;inset:0;background:rgba(2,2,8,0.92);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;overflow-y:auto;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.popup{position:relative;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;background:linear-gradient(180deg,#0e0e25,#080818);border:2px solid rgba(243,186,47,0.3);border-radius:16px;padding:24px;text-align:center;animation:popIn 0.3s ease-out;box-shadow:0 0 60px rgba(243,186,47,0.06),0 20px 60px rgba(0,0,0,0.5)}
+.popup::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);border-radius:16px 16px 0 0;opacity:0.7}
+@keyframes popIn{from{transform:scale(0.9);opacity:0}to{transform:scale(1);opacity:1}}
+.popup h2{color:var(--gold);font-size:24px;font-weight:bold;text-shadow:0 0 20px rgba(243,186,47,0.3);margin-bottom:4px;letter-spacing:2px}
+.popup h3{color:var(--gold);font-size:20px;font-weight:bold;margin-bottom:12px;letter-spacing:1px}
+.popup .subtitle{color:var(--cyan);font-size:10px;letter-spacing:4px;text-transform:uppercase;opacity:0.7;margin-bottom:16px}
+.close-btn{position:absolute;top:10px;right:10px;background:rgba(243,186,47,0.1);border:1px solid rgba(243,186,47,0.3);color:var(--gold);font-size:16px;width:32px;height:32px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;z-index:2}
+.close-btn:active{background:rgba(243,186,47,0.3)}
+
+.popup-btn{width:100%;padding:12px;background:linear-gradient(135deg,rgba(243,186,47,0.15),rgba(243,186,47,0.08));border:2px solid rgba(243,186,47,0.4);border-radius:10px;color:var(--gold);font-size:14px;font-weight:bold;cursor:pointer;letter-spacing:1px;transition:all 0.2s;margin-top:8px}
+.popup-btn:active{background:rgba(243,186,47,0.3);border-color:var(--gold)}
+.popup-btn.primary{background:linear-gradient(135deg,var(--gold),#e6a800);color:#0a0a2a;border-color:var(--gold);box-shadow:0 0 20px rgba(243,186,47,0.2)}
+.popup-btn.primary:active{box-shadow:0 0 10px rgba(243,186,47,0.3)}
+.popup-btn.share{background:rgba(0,229,255,0.1);border-color:rgba(0,229,255,0.4);color:var(--cyan)}
+.popup-btn.share:active{background:rgba(0,229,255,0.25)}
+
+.welcome-content{text-align:left;font-size:12px;line-height:1.7;color:var(--text);padding:16px;background:rgba(0,0,0,0.3);border:1px solid rgba(243,186,47,0.1);border-radius:10px;margin:12px 0;max-height:45vh;overflow-y:auto}
+.welcome-content strong{color:var(--gold);font-size:13px;display:block;margin:12px 0 4px}
+.welcome-content strong:first-child{margin-top:0}
+.legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:8px 0}
+.legend-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim)}
+.legend-dot{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:8px;flex-shrink:0}
+.controls-hint{text-align:center;color:var(--text-dim);font-size:10px;margin-top:8px}
+
+.hs-tabs{display:flex;gap:6px;margin:12px 0 8px;justify-content:center}
+.tab-btn{padding:7px 14px;background:rgba(255,255,255,0.04);color:var(--text-dim);border:1px solid rgba(243,186,47,0.15);font-size:10px;font-weight:bold;letter-spacing:1px;border-radius:6px;cursor:pointer;transition:all 0.2s;flex:1;max-width:100px;text-align:center}
+.tab-btn:active{background:rgba(243,186,47,0.15)}
+.tab-btn.active{background:rgba(243,186,47,0.12);color:var(--gold);border-color:rgba(243,186,47,0.4)}
+.hs-list{border:1px solid rgba(243,186,47,0.15);border-radius:8px;overflow:hidden;margin:8px 0;background:rgba(0,0,0,0.2)}
+.hs-head{display:grid;grid-template-columns:40px 1fr 70px;gap:6px;padding:8px 10px;background:rgba(243,186,47,0.08);border-bottom:1px solid rgba(243,186,47,0.15);font-size:9px;font-weight:bold;letter-spacing:1px;color:var(--gold)}
+.hs-entries{max-height:200px;overflow-y:auto}
+.hs-entry{display:grid;grid-template-columns:40px 1fr 70px;gap:6px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;color:var(--text-dim);font-family:monospace;align-items:center}
+.hs-entry:last-child{border-bottom:none}
+.hs-rank{text-align:center;font-weight:bold;color:var(--gold)}
+.hs-name{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-score{text-align:right;font-weight:bold;color:#fff}
+.hs-empty{padding:16px;text-align:center;color:var(--text-dim);font-size:11px}
+
+.go-score{font-size:48px;font-weight:bold;color:var(--gold);text-shadow:0 0 30px rgba(243,186,47,0.3);margin:8px 0}
+.go-stats{display:flex;justify-content:center;gap:16px;font-size:11px;color:var(--text-dim);margin:8px 0;flex-wrap:wrap}
+.go-stickers{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin:8px 0}
+.go-stickers span{padding:3px 10px;border-radius:10px;font-size:10px;font-weight:bold;border:1px solid;display:inline-block}
+.go-new-high{color:var(--cyan);font-size:14px;font-weight:bold;text-shadow:0 0 10px rgba(0,229,255,0.4);margin:4px 0}
+.name-input{width:100%;padding:10px;background:rgba(0,0,0,0.3);border:2px solid rgba(243,186,47,0.3);color:#fff;border-radius:8px;font-size:13px;font-family:monospace;margin:8px 0;text-align:center;letter-spacing:0.5px;font-weight:bold}
+.name-input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 12px rgba(243,186,47,0.2)}
+.name-input::placeholder{color:var(--text-dim)}
+#rankDisplay{font-size:10px;color:var(--text-dim);margin:2px 0 8px}
+
+#startOverlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(2,2,8,0.92);z-index:8;cursor:pointer;padding:30px;text-align:center;backdrop-filter:blur(3px)}
+#startOverlay h1{color:var(--gold);font-size:28px;text-shadow:0 0 25px rgba(243,186,47,0.3);margin-bottom:2px}
+#startOverlay .subtitle{color:var(--cyan);font-size:10px;letter-spacing:4px;opacity:0.7;margin-bottom:16px}
+#startOverlay .hint{color:var(--text-dim);font-size:11px;margin-bottom:16px}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--gold);color:var(--gold);padding:10px 20px;border-radius:8px;font-size:12px;font-weight:bold;z-index:200;opacity:0;pointer-events:none;transition:opacity 0.3s;letter-spacing:0.5px}
+.toast.show{opacity:1}
+
+.hidden{display:none!important}
+
+@media (pointer:coarse),(max-width:600px){
+  #mobileControls{display:flex}
+  #gameContainer{width:100vw;height:100vh;height:100dvh}
+  .play-area canvas{border-radius:0}
+  .game-header{padding:4px 10px 3px}
+  .brand-logo{width:24px;height:24px}
+  .brand-title{font-size:12px;letter-spacing:2px}
+  .brand-sub{font-size:6px;letter-spacing:2px}
+  .score-value{font-size:18px}
+  .back-btn{padding:3px 6px;font-size:8px}
+  .back-btn span{font-size:10px}
+  .score-label{font-size:7px}
+  .hud{font-size:9px;gap:5px}
+  .hud-btn{font-size:8px;padding:2px 6px}
+  .fud-bar-wrap{margin-top:1px}
+  .popup{max-width:95vw;padding:20px}
+}
+
+@media (pointer:coarse) and (max-height:700px){
+  .game-header{padding:3px 8px 2px}
+  .header-brand{margin-bottom:0}
+  .brand-logo{width:20px;height:20px}
+  .brand-title{font-size:10px;letter-spacing:1.5px}
+  .brand-sub{display:none}
+  .score-row{margin:1px 0}
+  .score-value{font-size:15px}
+  .back-btn{padding:2px 5px;font-size:7px}
+  .back-btn span{font-size:9px}
+  .score-label{font-size:6px}
+  .hud{font-size:8px;padding:2px 0;gap:4px}
+  .hud-btn{padding:2px 5px;font-size:7px}
+  .fud-track{height:3px}
+  #fudLabel{font-size:7px}
+  #fudTimer{font-size:7px;min-width:28px}
+}
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <header class="game-header">
+    <div class="header-brand">
+      <a href="../" class="back-btn"><span>&#9664;</span> Dashboard</a>
+      <div>
+        <div class="brand-title">BRAIN ON BNB AI</div>
+        <div class="brand-sub">Burn & Add Liq</div>
+      </div>
+      <img src="logo-256x256.png" alt="BOBAI" class="brand-logo">
+    </div>
+    <div class="score-row">
+      <span class="score-value" id="score">0</span>
+      <span class="score-label">SCORE</span>
+    </div>
+    <div class="hud">
+      <span class="hud-item">HI <b id="hiScore">0</b></span>
+      <span class="hud-sep"></span>
+      <span class="hud-item" id="burnCount">🔥 0</span>
+      <span class="hud-item" id="liqCount">💧 0</span>
+      <span class="hud-sep"></span>
+      <button class="hud-btn" id="hsBtn">HIGH SCORE</button>
+    </div>
+    <div class="fud-bar-wrap">
+      <span id="fudLabel">ANTI FUD</span>
+      <div class="fud-track"><div id="fudFill"></div></div>
+      <span id="fudTimer" onclick="activateAntiFud()">🛡 0/3</span>
+    </div>
+  </header>
+
+  <div class="play-area">
+    <canvas id="game" width="400" height="700"></canvas>
+    <div id="startOverlay">
+      <h1>Brain On BNB AI</h1>
+      <div class="subtitle">Burn & Add Liq</div>
+      <p class="hint">Desktop: Arrow Keys + Space<br>Mobile: Buttons below</p>
+      <div class="popup-btn primary" style="max-width:200px">START BURNING</div>
+    </div>
+  </div>
+
+  <div id="mobileControls">
+    <div class="ctrl-btn" id="btnLeft">&#9664;</div>
+    <div class="ctrl-btn" id="btnFud">ANTI<br>FUD</div>
+    <div class="ctrl-btn" id="btnRight">&#9654;</div>
+  </div>
+</div>
+
+<!-- Welcome Popup -->
+<div id="welcomeOverlay" class="overlay" style="display:none">
+  <div class="popup">
+    <button class="close-btn" onclick="closeWelcome()">&#10006;</button>
+    <h2>Brain On BNB AI</h2>
+    <div class="subtitle">Burn & Add Liq</div>
+    <div class="welcome-content">
+      <strong>🎮 HOW TO PLAY</strong>
+      <p>You are the Brain — rising through the BNB Chain.<br>
+      Jump on platforms, burn tokens, add liquidity, dodge the dumps.<br>
+      The higher you climb, the harder it gets.</p>
+
+      <strong>🎯 ITEMS & HAZARDS</strong>
+      <div class="legend-grid">
+        <div class="legend-row"><div class="legend-dot" style="background:#1a1a35;border:1px solid rgba(243,186,47,0.4);color:var(--gold);">&#9644;</div> Chain Blocks</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#001520;border:1px solid rgba(0,229,255,0.4);color:var(--cyan);">&#128167;</div> +50 Liquidity</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#2a1500;border:1px solid rgba(255,109,0,0.4);color:#ff6d00;">🔥</div> +100 Burn</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#002530;border:1px solid rgba(0,229,255,0.6);color:var(--cyan);">&#9889;</div> Boost Jump</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#3a0000;border:1px solid rgba(255,23,68,0.4);color:var(--red);">&#11043;</div> DUMP (&#8722;pts)</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#2a1500;border:1px solid rgba(255,109,0,0.4);color:#ff6d00;">&#10227;</div> Chain Spin (kill)</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#2d1054;border:1px solid rgba(168,85,247,0.4);color:var(--purple);">🛡</div> ANTI FUD</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#3a2a00;border:1px solid rgba(243,186,47,0.3);color:var(--gold);">&#9733;</div> Milestones</div>
+      </div>
+
+      <strong>🛡 ANTI FUD</strong>
+      <p>Collect Burns & Liquidity to charge ANTI FUD. Minimum 3 charges to activate (Space / middle button). All charges are consumed — each charge = 1 second of immunity!</p>
+
+      <strong>🏆 HIGH SCORES</strong>
+      <p>Daily, Monthly, and All-Time leaderboards. Enter your name when you achieve a high score and share it!</p>
+    </div>
+    <p class="controls-hint">Desktop: Arrow Keys + Space &bull; Mobile: Buttons below</p>
+    <button class="popup-btn primary" onclick="closeWelcome()">GET STARTED</button>
+  </div>
+</div>
+
+<!-- Highscore Popup -->
+<div id="highscoreOverlay" class="overlay" style="display:none">
+  <div class="popup">
+    <button class="close-btn" onclick="closeHighscorePopup()">&#10006;</button>
+    <h3>HIGH SCORES</h3>
+    <div class="hs-tabs">
+      <button class="tab-btn active" data-tab="daily" data-ctx="hs">DAILY</button>
+      <button class="tab-btn" data-tab="monthly" data-ctx="hs">MONTHLY</button>
+      <button class="tab-btn" data-tab="alltime" data-ctx="hs">ALL TIME</button>
+    </div>
+    <div class="hs-list" id="hsList-daily-hs">
+      <div class="hs-head"><span>RANK</span><span>NAME</span><span>SCORE</span></div>
+      <div class="hs-entries" id="hsEntries-daily-hs"></div>
+    </div>
+    <div class="hs-list" id="hsList-monthly-hs" style="display:none">
+      <div class="hs-head"><span>RANK</span><span>NAME</span><span>SCORE</span></div>
+      <div class="hs-entries" id="hsEntries-monthly-hs"></div>
+    </div>
+    <div class="hs-list" id="hsList-alltime-hs" style="display:none">
+      <div class="hs-head"><span>RANK</span><span>NAME</span><span>SCORE</span></div>
+      <div class="hs-entries" id="hsEntries-alltime-hs"></div>
+    </div>
+    <button class="popup-btn primary" onclick="closeHighscorePopup()" style="margin-top:12px">BACK TO GAME</button>
+  </div>
+</div>
+
+<!-- Game Over Popup -->
+<div id="gameOverOverlay" class="overlay" style="display:none">
+  <div class="popup">
+    <img src="score.jpg" alt="" style="width:56px;height:56px;border-radius:12px;margin:0 auto 6px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.2)">
+    <h2 style="color:var(--gold);text-shadow:0 0 20px rgba(243,186,47,0.3);font-size:18px;letter-spacing:1px">GOOD JOB!</h2>
+    <p style="color:var(--text-dim);font-size:11px;margin:4px 0 8px">You burned some tokens & added some liq. Try again!</p>
+    <div class="go-score" id="finalScore">0</div>
+    <div class="go-stats">
+      <span id="endBurns">🔥 0</span>
+      <span id="endLiq">💧 0</span>
+      <span id="endFud">🛡 0</span>
+    </div>
+    <div class="go-stickers" id="endStickers"></div>
+    <div class="go-new-high hidden" id="newHigh">NEW HIGHSCORE!</div>
+
+    <input type="text" id="playerName" placeholder="Enter your name" maxlength="42" class="name-input" style="display:none" autocomplete="name">
+    <div id="rankDisplay"></div>
+    <button class="popup-btn primary" id="saveScoreBtn" onclick="handleSaveScore()" style="display:none">SAVE SCORE</button>
+    <button class="popup-btn share" id="shareScoreBtn" onclick="shareScore()" style="display:none">SHARE SCORE</button>
+
+    <div class="hs-tabs">
+      <button class="tab-btn active" data-tab="daily" data-ctx="go">DAILY</button>
+      <button class="tab-btn" data-tab="monthly" data-ctx="go">MONTHLY</button>
+      <button class="tab-btn" data-tab="alltime" data-ctx="go">ALL TIME</button>
+    </div>
+    <div class="hs-list" id="hsList-daily-go">
+      <div class="hs-head"><span>RANK</span><span>NAME</span><span>SCORE</span></div>
+      <div class="hs-entries" id="hsEntries-daily-go"></div>
+    </div>
+    <div class="hs-list" id="hsList-monthly-go" style="display:none">
+      <div class="hs-head"><span>RANK</span><span>NAME</span><span>SCORE</span></div>
+      <div class="hs-entries" id="hsEntries-monthly-go"></div>
+    </div>
+    <div class="hs-list" id="hsList-alltime-go" style="display:none">
+      <div class="hs-head"><span>RANK</span><span>NAME</span><span>SCORE</span></div>
+      <div class="hs-entries" id="hsEntries-alltime-go"></div>
+    </div>
+
+    <button class="popup-btn primary" onclick="restartGame()" style="margin-top:12px">BURN AGAIN</button>
+    <a href="../" class="popup-btn" style="display:block;text-align:center;margin-top:6px;text-decoration:none;color:var(--gold);background:rgba(243,186,47,0.08);border:1px solid rgba(243,186,47,0.2)">&#9664; Back to Dashboard</a>
+  </div>
+</div>
+
+<!-- External libs -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<!-- Supabase + Highscore + Share -->
+<script>
+const SUPABASE_URL = 'https://aerffjhdsbxpvuulkryr.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ne0MFzyCQb6MvFWur2X-Vw_vG9JH76_';
+const TABLE = 'bobai_scores';
+const API = SUPABASE_URL + '/rest/v1/' + TABLE;
+const HEADERS = {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json'};
+
+const scoreCardImg = new Image();
+scoreCardImg.src = 'score.jpg';
+
+let highscores = { daily: [], monthly: [], alltime: [] };
+window.currentScore = 0;
+window.currentPlayerName = '';
+
+async function dbSelect(params) {
+  try {
+    const url = API + '?select=name,score,created_at&' + params;
+    const res = await fetch(url, {headers: HEADERS});
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) { console.error('DB select:', e); return []; }
+}
+
+async function loadHighscores() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const [d, m, a] = await Promise.all([
+      dbSelect('created_at=gte.' + today + '&order=score.desc&limit=20'),
+      dbSelect('created_at=gte.' + monthStart + '&order=score.desc&limit=30'),
+      dbSelect('order=score.desc&limit=50')
+    ]);
+    highscores.daily = d.map((e, i) => ({ rank: i+1, name: e.name, score: e.score }));
+    highscores.monthly = m.map((e, i) => ({ rank: i+1, name: e.name, score: e.score }));
+    highscores.alltime = a.map((e, i) => ({ rank: i+1, name: e.name, score: e.score }));
+  } catch (e) { console.error('Load highscores:', e); }
+  renderAllHighscores();
+}
+
+function renderHighscores(type, ctx) {
+  const entries = highscores[type] || [];
+  const container = document.getElementById('hsEntries-' + type + '-' + ctx);
+  if (!container) return;
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="hs-empty">No scores yet</div>';
+    return;
+  }
+  const cs = window.currentScore || 0;
+  const isGo = ctx === 'go';
+  container.innerHTML = entries.map(e => {
+    const hl = isGo && e.score === cs ? ' style="border-left:3px solid var(--gold);padding-left:7px;"' : '';
+    return `<div class="hs-entry"${hl}><span class="hs-rank">${e.rank}</span><span class="hs-name">${e.name}</span><span class="hs-score">${e.score}</span></div>`;
+  }).join('');
+}
+
+function renderAllHighscores() {
+  ['daily','monthly','alltime'].forEach(t => { renderHighscores(t, 'hs'); renderHighscores(t, 'go'); });
+}
+
+function switchTab(tab, ctx) {
+  const parent = ctx === 'hs' ? document.getElementById('highscoreOverlay') : document.getElementById('gameOverOverlay');
+  if (!parent) return;
+  parent.querySelectorAll('.tab-btn[data-ctx="'+ctx+'"]').forEach(b => b.classList.remove('active'));
+  parent.querySelectorAll('.hs-list').forEach(l => l.style.display = 'none');
+  const btn = parent.querySelector('[data-tab="'+tab+'"][data-ctx="'+ctx+'"]');
+  if (btn) btn.classList.add('active');
+  const list = document.getElementById('hsList-' + tab + '-' + ctx);
+  if (list) { list.style.display = 'block'; renderHighscores(tab, ctx); }
+  if (ctx === 'go') updateRankDisplay();
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab, btn.dataset.ctx));
+});
+
+async function checkIfScoreQualifies(score) {
+  if (!score) return false;
+  await loadHighscores();
+  const dMin = highscores.daily.length < 20 ? 0 : (highscores.daily[highscores.daily.length-1]?.score || 0);
+  const mMin = highscores.monthly.length < 30 ? 0 : (highscores.monthly[highscores.monthly.length-1]?.score || 0);
+  const aMin = highscores.alltime.length < 50 ? 0 : (highscores.alltime[highscores.alltime.length-1]?.score || 0);
+  return score > dMin || score > mMin || score > aMin;
+}
+
+async function saveScore(name, score) {
+  if (!name?.trim()) return false;
+  try {
+    const res = await fetch(API, {method: 'POST', headers: {...HEADERS, 'Prefer': 'return=representation'}, body: JSON.stringify([{name: name.trim(), score}])});
+    if (!res.ok) { const err = await res.json().catch(() => ({})); showToast('DB: ' + (err.message || res.status)); return false; }
+    await loadHighscores();
+    return true;
+  } catch (e) { showToast('Error: ' + e.message); console.error('Save score:', e); return false; }
+}
+
+function calculateRank(score, type, playerName) {
+  const entries = highscores[type] || [];
+  if (entries.length === 0) return score > 0 ? 1 : null;
+  const name = (playerName || '').trim().toLowerCase();
+  const exact = entries.find(e => e.score === score && (!name || String(e.name||'').trim().toLowerCase() === name));
+  if (exact?.rank) return exact.rank;
+  for (let i = 0; i < entries.length; i++) { if (score > entries[i].score) return i + 1; }
+  const max = type === 'daily' ? 20 : type === 'monthly' ? 30 : 50;
+  if (entries.length < max) return entries.length + 1;
+  return null;
+}
+
+function updateRankDisplay() {
+  const el = document.getElementById('rankDisplay');
+  const nameInput = document.getElementById('playerName');
+  const cs = window.currentScore || 0;
+  if (!el || !cs) return;
+  const pn = nameInput?.value?.trim() || window.currentPlayerName || '';
+  const dr = calculateRank(cs, 'daily', pn);
+  const mr = calculateRank(cs, 'monthly', pn);
+  const ar = calculateRank(cs, 'alltime', pn);
+  const ranks = [];
+  if (dr) ranks.push('Daily #' + dr);
+  if (mr) ranks.push('Monthly #' + mr);
+  if (ar) ranks.push('All Time #' + ar);
+  el.textContent = ranks.length ? ranks.join(' • ') : '';
+}
+
+async function handleSaveScore() {
+  const nameInput = document.getElementById('playerName');
+  if (!nameInput?.value?.trim()) { showToast('Please enter your name'); return; }
+  const cs = window.currentScore || 0;
+  if (!cs) return;
+  const savedName = nameInput.value.trim();
+  const ok = await saveScore(savedName, cs);
+  if (ok) {
+    window.currentPlayerName = savedName;
+    nameInput.style.display = 'none';
+    document.getElementById('saveScoreBtn').style.display = 'none';
+    document.getElementById('shareScoreBtn').style.display = 'block';
+    showToast('Score saved!');
+    updateRankDisplay();
+  } else { showToast('Could not save score'); }
+}
+
+document.getElementById('playerName').addEventListener('keypress', e => { if (e.key === 'Enter') handleSaveScore(); });
+document.getElementById('playerName').addEventListener('input', updateRankDisplay);
+
+async function checkAndShowNameInput(score) {
+  const qualifies = await checkIfScoreQualifies(score);
+  document.getElementById('playerName').style.display = qualifies ? 'block' : 'none';
+  document.getElementById('saveScoreBtn').style.display = qualifies ? 'block' : 'none';
+  document.getElementById('shareScoreBtn').style.display = qualifies ? 'none' : 'block';
+  if (qualifies) setTimeout(() => document.getElementById('playerName').focus(), 200);
+  updateRankDisplay();
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function openHighscorePopup() {
+  document.getElementById('highscoreOverlay').style.display = 'flex';
+  loadHighscores().then(() => switchTab('daily', 'hs'));
+}
+function closeHighscorePopup() { document.getElementById('highscoreOverlay').style.display = 'none'; }
+document.getElementById('hsBtn').addEventListener('click', openHighscorePopup);
+
+function openWelcome() { document.getElementById('welcomeOverlay').style.display = 'flex'; }
+function closeWelcome() {
+  document.getElementById('welcomeOverlay').style.display = 'none';
+  localStorage.setItem('bobai_welcomeShown', '2');
+}
+window.closeWelcome = closeWelcome;
+
+async function shareScore() {
+  if (typeof html2canvas === 'undefined') { showToast('Loading... try again'); return; }
+  await loadHighscores();
+  const cs = window.currentScore || 0;
+  const pn = window.currentPlayerName || '';
+  const el = document.createElement('div');
+  el.style.cssText = 'position:absolute;top:0;left:0;width:380px;background:#0e0e25;border:3px solid #f3ba2f;border-radius:16px;padding:28px 24px 24px;text-align:center;z-index:99999;transform:translateX(-9999px);opacity:0;pointer-events:none;color:#fff;font-family:Segoe UI,system-ui,sans-serif;overflow:hidden;';
+
+  const t = document.createElement('h2'); t.style.cssText = 'font-size:18px;color:#f3ba2f;margin:0 0 4px;letter-spacing:3px;text-transform:uppercase;'; t.textContent = 'BRAIN ON BNB AI'; el.appendChild(t);
+  const sub = document.createElement('p'); sub.style.cssText = 'font-size:9px;color:#00e5ff;letter-spacing:2px;margin:0 0 12px;opacity:0.6;'; sub.textContent = 'BURN & ADD LIQ'; el.appendChild(sub);
+
+  if (scoreCardImg.complete && scoreCardImg.naturalWidth > 0) {
+    const img = document.createElement('img'); img.src = scoreCardImg.src;
+    img.style.cssText = 'width:56px;height:56px;border-radius:10px;margin:0 auto 8px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.25);';
+    el.appendChild(img);
+  }
+
+  if (pn) { const n = document.createElement('p'); n.style.cssText = 'font-size:14px;margin:0 0 4px;color:rgba(255,255,255,0.7);font-weight:600;letter-spacing:0.5px;'; n.textContent = pn; el.appendChild(n); }
+
+  const s = document.createElement('p'); s.style.cssText = 'font-size:42px;font-weight:800;color:#fff;margin:4px 0 2px;text-shadow:0 0 20px rgba(243,186,47,0.3);'; s.textContent = cs.toLocaleString('de-CH'); el.appendChild(s);
+  const sl = document.createElement('p'); sl.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:2px;margin:0 0 12px;'; sl.textContent = 'SCORE'; el.appendChild(sl);
+
+  const dr = calculateRank(cs, 'daily', pn); const mr = calculateRank(cs, 'monthly', pn); const ar = calculateRank(cs, 'alltime', pn);
+  const ranks = []; if (dr) ranks.push('Daily #'+dr); if (mr) ranks.push('Monthly #'+mr); if (ar) ranks.push('All Time #'+ar);
+  if (ranks.length) { const r = document.createElement('p'); r.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.5);margin:0 0 14px;'; r.textContent = ranks.join('  •  '); el.appendChild(r); }
+
+  const statsRow = document.createElement('div'); statsRow.style.cssText = 'display:flex;justify-content:center;gap:16px;margin:0 0 14px;padding:10px 0;border-top:1px solid rgba(243,186,47,0.15);border-bottom:1px solid rgba(243,186,47,0.15);';
+  const statItems = [
+    { icon: '🔥', val: burns, label: 'Burns' },
+    { icon: '💧', val: liqAdds, label: 'Liq' },
+    { icon: '🛡', val: antiFudUsed, label: 'Anti FUD' }
+  ];
+  for (const si of statItems) {
+    const sd = document.createElement('div'); sd.style.cssText = 'text-align:center;';
+    const sv = document.createElement('p'); sv.style.cssText = 'font-size:18px;font-weight:bold;color:#fff;margin:0;'; sv.textContent = si.icon + ' ' + si.val; sd.appendChild(sv);
+    const sn = document.createElement('p'); sn.style.cssText = 'font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin:2px 0 0;'; sn.textContent = si.label.toUpperCase(); sd.appendChild(sn);
+    statsRow.appendChild(sd);
+  }
+  el.appendChild(statsRow);
+
+  const earned = MILESTONES.filter(m => cs >= m.score);
+  if (earned.length) {
+    const stickerRow = document.createElement('div'); stickerRow.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:0 0 14px;';
+    for (const m of earned) {
+      const badge = document.createElement('span'); badge.style.cssText = 'padding:3px 10px;border-radius:10px;font-size:10px;font-weight:bold;border:1px solid ' + m.color + ';color:' + m.color + ';background:' + m.bg + ';'; badge.textContent = m.label;
+      stickerRow.appendChild(badge);
+    }
+    el.appendChild(stickerRow);
+  }
+
+  const u = document.createElement('p'); u.style.cssText = 'font-size:10px;margin:0;padding-top:10px;color:rgba(243,186,47,0.5);font-weight:600;letter-spacing:1px;'; u.textContent = 'brainonbnb.ai/game'; el.appendChild(u);
+
+  document.body.appendChild(el);
+  await new Promise(r => setTimeout(r, 200));
+  el.style.transform = 'translateX(0)'; el.style.opacity = '1';
+  await new Promise(r => setTimeout(r, 100));
+  try {
+    const canvas = await html2canvas(el, { backgroundColor: null, scale: 2, logging: false, useCORS: true, width: el.offsetWidth, height: el.offsetHeight });
+    el.remove();
+    const blob = await new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej('no blob'), 'image/png'));
+    if (navigator.share) {
+      const file = new File([blob], 'bobai-score-' + Date.now() + '.png', { type: 'image/png' });
+      try { await navigator.share({ title: 'Brain On BNB AI', text: 'I scored ' + cs + ' in Brain On BNB AI! 🧠🔥\nbrainonbnb.ai/game', files: [file] }); } catch (e) { if (e.name !== 'AbortError') showToast('Share failed'); }
+    } else { showToast('Share not available on this device'); }
+  } catch (e) { el.remove(); showToast('Screenshot error'); console.error(e); }
+}
+window.shareScore = shareScore;
+
+function restartGame() {
+  document.getElementById('gameOverOverlay').style.display = 'none';
+  document.getElementById('shareScoreBtn').style.display = 'none';
+  document.getElementById('playerName').style.display = 'none';
+  document.getElementById('playerName').value = '';
+  document.getElementById('saveScoreBtn').style.display = 'none';
+  window.currentPlayerName = '';
+  state = 'playing';
+  init();
+}
+window.restartGame = restartGame;
+
+loadHighscores();
+</script>
+
+<!-- Game Logic -->
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = 400, H = 700;
+
+const dpr = window.devicePixelRatio || 1;
+canvas.width = W * dpr;
+canvas.height = H * dpr;
+
+const playerImg = new Image();
+playerImg.src = 'sticker.jpg';
+
+let state = 'start';
+let score = 0;
+let burns = 0;
+let liqAdds = 0;
+let antiFudCharge = 0;
+let antiFudUsed = 0;
+let antiFudActive = 0;
+const ANTI_FUD_MIN = 3;
+const FPS = 60;
+let highScore = parseInt(localStorage.getItem('bobai_highscore') || '0');
+let player, platforms, liqDrops, burnTokens, dumps, spinners, particles, camera, time;
+let chainNodes = [];
+let stickers = [];
+let lastMilestone = 0;
+let platformCount = 0;
+let screenShake = 0;
+
+const MILESTONES = [
+  { score: 200, label: 'DEGEN', color: '#a855f7', bg: '#2d1054' },
+  { score: 500, label: 'WAGMI', color: '#00e5ff', bg: '#002a35' },
+  { score: 1000, label: 'MOON', color: '#f3ba2f', bg: '#3a2a00' },
+  { score: 1500, label: 'CZ BUY', color: '#f3ba2f', bg: '#2a2000' },
+  { score: 2000, label: 'DIAMOND HANDS', color: '#64b5f6', bg: '#0d2040' },
+  { score: 3000, label: 'ALPHA', color: '#4caf50', bg: '#0a2a10' },
+  { score: 4000, label: 'GIGABRAIN', color: '#ff6d00', bg: '#2a1500' },
+  { score: 5000, label: '100X', color: '#ff1744', bg: '#2a0510' },
+  { score: 7000, label: 'VALHALLA', color: '#e040fb', bg: '#2a0530' },
+  { score: 10000, label: 'SATOSHI', color: '#ffd700', bg: '#3a3000' },
+];
+
+document.getElementById('hiScore').textContent = highScore;
+
+function initChainNodes() {
+  chainNodes = [];
+  for (let i = 0; i < 30; i++) {
+    chainNodes.push({ x: Math.random() * W, y: Math.random() * H, connections: [], pulse: Math.random() * Math.PI * 2, size: Math.random() * 2 + 0.5 });
+  }
+  for (let i = 0; i < chainNodes.length; i++) {
+    for (let j = i + 1; j < chainNodes.length; j++) {
+      let dx = chainNodes[i].x - chainNodes[j].x, dy = chainNodes[i].y - chainNodes[j].y;
+      if (Math.sqrt(dx*dx + dy*dy) < 100) chainNodes[i].connections.push(j);
+    }
+  }
+}
+initChainNodes();
+
+function init() {
+  player = { x: 175, y: 580, w: 42, h: 42, vy: 0, vx: 0, trail: [], invincible: 0 };
+  platforms = []; liqDrops = []; burnTokens = []; dumps = []; spinners = []; particles = []; stickers = [];
+  camera = 0; score = 0; burns = 0; liqAdds = 0; antiFudCharge = 0; antiFudUsed = 0; antiFudActive = 0;
+  time = 0; lastMilestone = 0; platformCount = 0; screenShake = 0;
+  updateFudUI();
+  document.getElementById('liqCount').textContent = '💧 0';
+  for (let i = 0; i < 9; i++) platforms.push(createPlatform(i * -72 + 560));
+  platforms[8].x = 170; platforms[8].y = 610; platforms[8].type = 'normal';
+  document.getElementById('score').textContent = '0';
+  document.getElementById('burnCount').textContent = '🔥 0';
+}
+
+function getDifficulty() { return Math.min(score / 1500, 1); }
+
+function createPlatform(y) {
+  let type = 'normal', r = Math.random(), diff = getDifficulty();
+  if (r < 0.1 + diff * 0.15) type = 'moving';
+  else if (r < 0.15 + diff * 0.2) type = 'breaking';
+  else if (r < 0.18 + diff * 0.03) type = 'boost';
+  let chainLabels = ['BRAIN', 'ON', 'BNB'];
+  let p = {
+    x: Math.random() * (W - (105 - diff * 35)),
+    y: y, w: 105 - diff * 35, h: 14, type: type,
+    dir: Math.random() < 0.5 ? 1 : -1, speed: 1.5 + diff * 2.5,
+    broken: false, breakTimer: 0, glow: Math.random() * Math.PI * 2,
+    label: chainLabels[platformCount % 3]
+  };
+  platformCount++;
+  if (Math.random() < 0.25 - diff * 0.1) liqDrops.push({ x: p.x + 30, y: p.y - 32, w: 22, h: 22, collected: false, pulse: Math.random() * Math.PI * 2 });
+  if (Math.random() < 0.1 - diff * 0.03) burnTokens.push({ x: p.x + Math.random() * 40, y: p.y - 45 - Math.random() * 20, w: 26, h: 26, collected: false, pulse: Math.random() * Math.PI * 2 });
+  if (score > 150 && Math.random() < 0.06 + diff * 0.18) dumps.push({ x: Math.random() * (W - 22), y: y - 40 - Math.random() * 30, w: 22 + diff * 6, h: 22 + diff * 6, active: true, pulse: Math.random() * Math.PI * 2, vx: (Math.random() - 0.5) * (1.5 + diff * 2) });
+  if (score > 300 && Math.random() < 0.05 + diff * 0.12) spinners.push({ x: Math.random() * (W - 80) + 40, y: y - 50 - Math.random() * 40, length: 30 + diff * 25 + Math.random() * 15, angle: Math.random() * Math.PI * 2, speed: (Math.random() < 0.5 ? 1 : -1) * (0.02 + diff * 0.03), active: true });
+  return p;
+}
+
+function activateAntiFud() {
+  if (state !== 'playing') return;
+  if (antiFudCharge >= ANTI_FUD_MIN && antiFudActive <= 0) {
+    let duration = antiFudCharge * FPS;
+    antiFudCharge = 0;
+    antiFudActive = duration;
+    antiFudUsed++;
+    player.invincible = duration;
+    screenShake = 8;
+    addParticles(player.x + player.w/2, player.y + player.h/2, '#a855f7', 25, 4);
+    stickers.push({ label: 'ANTI FUD ' + Math.round(duration / FPS) + 's!', color: '#a855f7', bg: '#2d1054', life: 90, y: player.y - 40, scale: 0 });
+    updateFudUI();
+  }
+}
+
+function updateFudUI() {
+  let pct = Math.min((antiFudCharge / ANTI_FUD_MIN) * 100, 100);
+  document.getElementById('fudFill').style.width = pct + '%';
+  let ready = antiFudCharge >= ANTI_FUD_MIN;
+  let active = antiFudActive > 0;
+
+  let timerEl = document.getElementById('fudTimer');
+  timerEl.classList.remove('ready', 'active');
+  if (active) {
+    let secs = Math.ceil(antiFudActive / FPS);
+    timerEl.innerHTML = '🛡 ' + secs + 's';
+    timerEl.classList.add('active');
+  } else if (ready) {
+    timerEl.innerHTML = '🛡 ' + antiFudCharge + 's';
+    timerEl.classList.add('ready');
+  } else {
+    timerEl.innerHTML = '🛡 ' + antiFudCharge + '/' + ANTI_FUD_MIN;
+  }
+
+  document.getElementById('fudLabel').style.color = (ready || active) ? 'rgba(168,85,247,0.9)' : 'rgba(168,85,247,0.4)';
+
+  let btn = document.getElementById('btnFud');
+  if (active) {
+    let secs = Math.ceil(antiFudActive / FPS);
+    btn.classList.remove('disabled');
+    btn.innerHTML = 'ANTI<br>FUD<br><span style="font-size:18px;color:#a855f7;">' + secs + 's</span>';
+  } else if (ready) {
+    btn.classList.remove('disabled');
+    btn.innerHTML = 'ANTI<br>FUD<br><span style="font-size:18px;color:#00e5ff;">' + antiFudCharge + 's</span>';
+  } else {
+    btn.classList.add('disabled');
+    btn.innerHTML = 'ANTI<br>FUD<br><span style="font-size:12px;opacity:0.5;">' + antiFudCharge + '/' + ANTI_FUD_MIN + '</span>';
+  }
+}
+
+let keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); activateAntiFud(); }
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+let btnLeft = document.getElementById('btnLeft');
+let btnRight = document.getElementById('btnRight');
+let btnFud = document.getElementById('btnFud');
+btnLeft.addEventListener('touchstart', e => { e.preventDefault(); keys['ArrowLeft'] = true; btnLeft.classList.add('pressed'); });
+btnLeft.addEventListener('touchend', e => { e.preventDefault(); keys['ArrowLeft'] = false; btnLeft.classList.remove('pressed'); });
+btnLeft.addEventListener('touchcancel', () => { keys['ArrowLeft'] = false; btnLeft.classList.remove('pressed'); });
+btnRight.addEventListener('touchstart', e => { e.preventDefault(); keys['ArrowRight'] = true; btnRight.classList.add('pressed'); });
+btnRight.addEventListener('touchend', e => { e.preventDefault(); keys['ArrowRight'] = false; btnRight.classList.remove('pressed'); });
+btnRight.addEventListener('touchcancel', () => { keys['ArrowRight'] = false; btnRight.classList.remove('pressed'); });
+btnFud.addEventListener('touchstart', e => { e.preventDefault(); btnFud.classList.add('pressed'); activateAntiFud(); });
+btnFud.addEventListener('touchend', e => { e.preventDefault(); btnFud.classList.remove('pressed'); });
+btnFud.addEventListener('touchcancel', () => { btnFud.classList.remove('pressed'); });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); });
+
+document.getElementById('startOverlay').addEventListener('click', () => {
+  if (state === 'start') { state = 'playing'; init(); document.getElementById('startOverlay').style.display = 'none'; }
+});
+document.getElementById('startOverlay').addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (state === 'start') { state = 'playing'; init(); document.getElementById('startOverlay').style.display = 'none'; }
+});
+
+function update(dt) {
+  if (state !== 'playing') return;
+  time += dt;
+  if (keys['ArrowLeft']) player.vx = -5.5;
+  else if (keys['ArrowRight']) player.vx = 5.5;
+  else player.vx *= Math.pow(0.82, dt);
+  player.x += player.vx * dt;
+  if (player.x < -player.w) player.x = W;
+  if (player.x > W) player.x = -player.w;
+  player.vy += 0.44 * dt;
+  player.y += player.vy * dt;
+  if (player.invincible > 0) player.invincible = Math.max(0, player.invincible - dt);
+  if (antiFudActive > 0) { antiFudActive = Math.max(0, antiFudActive - dt); updateFudUI(); }
+  if (screenShake > 0) screenShake *= Math.pow(0.85, dt);
+
+  if (Math.abs(player.vy) > 3) {
+    let trailColor = antiFudActive > 0 ? '#a855f7' : '#f3ba2f';
+    player.trail.push({ x: player.x + player.w/2, y: player.y + player.h/2, alpha: 1, color: trailColor });
+  }
+  player.trail = player.trail.filter(t => { t.alpha -= 0.04 * dt; return t.alpha > 0; });
+
+  if (player.vy > 0) {
+    for (let p of platforms) {
+      if (p.broken) continue;
+      if (player.x + player.w > p.x + 5 && player.x < p.x + p.w - 5 && player.y + player.h > p.y && player.y + player.h < p.y + p.h + 12 && player.vy > 0) {
+        if (p.type === 'breaking') { player.vy = -12; p.broken = true; p.breakTimer = 15; addParticles(p.x + p.w/2, p.y, '#ff5722', 6, 2); }
+        else if (p.type === 'boost') { player.vy = -17; player.invincible = Math.max(player.invincible, 20); addParticles(player.x + player.w/2, player.y + player.h, '#00e5ff', 12, 3); }
+        else { player.vy = -12; addParticles(player.x + player.w/2, player.y + player.h, '#f3ba2f', 4, 2); }
+      }
+    }
+  }
+
+  for (let p of platforms) {
+    if (p.type === 'moving') { p.x += p.dir * p.speed * dt; if (p.x < 0 || p.x > W - p.w) p.dir *= -1; }
+    if (p.broken) { p.breakTimer -= dt; p.y += 5 * dt; }
+    p.glow += 0.03 * dt;
+  }
+
+  for (let c of liqDrops) {
+    if (c.collected) continue; c.pulse += 0.07 * dt;
+    if (player.x + player.w > c.x && player.x < c.x + c.w && player.y + player.h > c.y && player.y < c.y + c.h) {
+      c.collected = true; score += 50; liqAdds++; antiFudCharge++; addParticles(c.x + c.w/2, c.y + c.h/2, '#00e5ff', 8, 2);
+      document.getElementById('liqCount').textContent = '💧 ' + liqAdds;
+      updateFudUI();
+    }
+  }
+
+  for (let b of burnTokens) {
+    if (b.collected) continue; b.pulse += 0.09 * dt;
+    if (player.x + player.w > b.x && player.x < b.x + b.w && player.y + player.h > b.y && player.y < b.y + b.h) {
+      b.collected = true; score += 100; burns++; antiFudCharge++; player.vy = Math.min(player.vy, -8);
+      addParticles(b.x + b.w/2, b.y + b.h/2, '#ff6d00', 15, 3);
+      document.getElementById('burnCount').textContent = '🔥 ' + burns;
+      updateFudUI();
+    }
+  }
+
+  for (let d of dumps) {
+    if (!d.active) continue; d.pulse += 0.05 * dt; d.x += d.vx * dt; if (d.x < 0 || d.x > W - d.w) d.vx *= -1;
+    if (player.invincible <= 0 && player.x + player.w > d.x + 5 && player.x + 5 < d.x + d.w && player.y + player.h > d.y + 5 && player.y + 5 < d.y + d.h) {
+      d.active = false; let penalty = Math.floor(75 + getDifficulty() * 200);
+      score = Math.max(0, score - penalty); player.vy = -6; player.invincible = 40; screenShake = 6;
+      addParticles(d.x + d.w/2, d.y + d.h/2, '#ff1744', 12, 3);
+      stickers.push({ label: '-' + penalty, color: '#ff1744', bg: '#2a0000', life: 60, y: player.y - 30, scale: 0 });
+      if (score <= 0) { gameOver(); return; }
+    }
+  }
+
+  for (let s of spinners) {
+    if (!s.active) continue; s.angle += s.speed * dt;
+    if (player.invincible > 0) continue;
+    let cos = Math.cos(s.angle), sin = Math.sin(s.angle), px = player.x + player.w/2, py = player.y + player.h/2;
+    for (let t = -1; t <= 1; t += 0.15) {
+      let lx = s.x + cos * s.length * t, ly = s.y + sin * s.length * t;
+      let dx = px - lx, dy = py - ly;
+      if (dx*dx + dy*dy < (player.w/2 + 3) * (player.w/2 + 3)) { s.active = false; screenShake = 10; addParticles(lx, ly, '#ff6d00', 10, 2); gameOver(); return; }
+    }
+  }
+
+  if (player.y < H / 2.3) {
+    let diff = H / 2.3 - player.y; player.y = H / 2.3; camera += diff; score += Math.floor(diff * 0.4);
+    for (let p of platforms) p.y += diff;
+    for (let c of liqDrops) c.y += diff;
+    for (let b of burnTokens) b.y += diff;
+    for (let d of dumps) d.y += diff;
+    for (let s of spinners) s.y += diff;
+    for (let p of particles) p.y += diff;
+    for (let t of player.trail) t.y += diff;
+  }
+
+  platforms = platforms.filter(p => p.y < H + 50);
+  liqDrops = liqDrops.filter(c => c.y < H + 50 && !c.collected);
+  burnTokens = burnTokens.filter(b => b.y < H + 50 && !b.collected);
+  dumps = dumps.filter(d => d.y < H + 50 && d.active);
+  spinners = spinners.filter(s => s.y < H + 50 && s.active);
+
+  while (platforms.length < 9) {
+    let highest = Math.min(...platforms.map(p => p.y));
+    let d = getDifficulty();
+    let gap = 65 + d * 50 + Math.random() * (20 + d * 25);
+    platforms.push(createPlatform(highest - gap));
+  }
+
+  particles = particles.filter(p => p.life > 0);
+  for (let p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.06 * dt; p.life -= dt; }
+  if (player.y > H + 50) gameOver();
+
+  for (let m of MILESTONES) {
+    if (score >= m.score && lastMilestone < m.score) {
+      lastMilestone = m.score;
+      stickers.push({ label: m.label, color: m.color, bg: m.bg, life: 120, y: H/2 - 50, scale: 0 });
+      addParticles(W/2, H/2 - 50, m.color, 20, 3);
+    }
+  }
+
+  for (let s of stickers) { s.life -= dt; if (s.scale < 1) s.scale = Math.min(s.scale + 0.08 * dt, 1); if (s.life < 30) s.scale = s.life / 30; }
+  stickers = stickers.filter(s => s.life > 0);
+  document.getElementById('score').textContent = score;
+}
+
+function addParticles(x, y, color, count, size) {
+  for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.7) * 4, life: 25 + Math.random() * 15, color, size: Math.random() * size + 1 });
+}
+
+function gameOver() {
+  state = 'over';
+  let isNew = false;
+  if (score > highScore) { highScore = score; localStorage.setItem('bobai_highscore', highScore); isNew = true; }
+  document.getElementById('hiScore').textContent = highScore;
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('endBurns').textContent = '🔥 Burned: ' + burns;
+  document.getElementById('endLiq').textContent = '💧 Liquidity: ' + liqAdds;
+  document.getElementById('endFud').textContent = '🛡 Anti FUD: ' + antiFudUsed;
+  let earned = MILESTONES.filter(m => score >= m.score).map(m => `<span style="color:${m.color};background:${m.bg};border-color:${m.color};">${m.label}</span>`).join('');
+  document.getElementById('endStickers').innerHTML = earned || '<span style="color:var(--text-dim);border:none;">No milestones yet</span>';
+  document.getElementById('newHigh').classList.toggle('hidden', !isNew);
+  window.currentScore = score;
+  checkAndShowNameInput(score);
+  loadHighscores().then(() => switchTab('daily', 'go'));
+  document.getElementById('gameOverOverlay').style.display = 'flex';
+}
+
+function draw() {
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (screenShake > 0.5) ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+
+  let grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#020208'); grad.addColorStop(0.3, '#060618'); grad.addColorStop(0.6, '#0a0a2a'); grad.addColorStop(1, '#0d0520');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  for (let node of chainNodes) {
+    node.pulse += 0.015;
+    let ny = (node.y + camera * 0.02) % H; if (ny < 0) ny += H;
+    let alpha = 0.12 + Math.sin(node.pulse) * 0.04;
+    for (let ci of node.connections) {
+      let other = chainNodes[ci]; let ony = (other.y + camera * 0.02) % H; if (ony < 0) ony += H;
+      if (Math.abs(ny - ony) < 200) { ctx.strokeStyle = `rgba(243,186,47,${alpha*0.25})`; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(node.x, ny); ctx.lineTo(other.x, ony); ctx.stroke(); }
+    }
+    ctx.fillStyle = `rgba(243,186,47,${alpha})`; ctx.beginPath(); ctx.arc(node.x, ny, node.size, 0, Math.PI*2); ctx.fill();
+  }
+
+  let fireGrad = ctx.createLinearGradient(0, H-100, 0, H);
+  fireGrad.addColorStop(0, 'rgba(255,60,0,0)'); fireGrad.addColorStop(0.6, 'rgba(255,40,0,0.03)'); fireGrad.addColorStop(1, 'rgba(255,20,0,0.08)');
+  ctx.fillStyle = fireGrad; ctx.fillRect(0, H-100, W, 100);
+
+  if (antiFudActive > 0) { let aA = 0.03 + Math.sin(time*0.15)*0.02; ctx.fillStyle = `rgba(168,85,247,${aA})`; ctx.fillRect(0,0,W,H); }
+  if (state === 'start') { ctx.restore(); return; }
+
+  for (let tr of player.trail) {
+    let hex = tr.color; let rv = parseInt(hex.slice(1,3),16), gv = parseInt(hex.slice(3,5),16), bv = parseInt(hex.slice(5,7),16);
+    ctx.fillStyle = `rgba(${rv},${gv},${bv},${tr.alpha*0.3})`; ctx.beginPath(); ctx.arc(tr.x, tr.y, 4*tr.alpha, 0, Math.PI*2); ctx.fill();
+  }
+
+  for (let p of platforms) {
+    if (p.broken && p.breakTimer <= 0) continue;
+    ctx.save(); let pulse = Math.sin(p.glow)*0.3 + 0.7;
+    if (p.type === 'breaking') { ctx.shadowColor = '#ff5722'; ctx.shadowBlur = 6; drawChainBlock(p, '#2a1000', '#3d1800', '#ff5722', pulse*0.5); }
+    else if (p.type === 'moving') { ctx.shadowColor = '#f3ba2f'; ctx.shadowBlur = 8*pulse; drawChainBlock(p, '#1a1200', '#2a1e00', '#f3ba2f', pulse*0.7); }
+    else if (p.type === 'boost') { ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 12*pulse; drawChainBlock(p, '#001520', '#002530', '#00e5ff', pulse); }
+    else { ctx.shadowColor = '#f3ba2f'; ctx.shadowBlur = 5*pulse; drawChainBlock(p, '#0e0e20', '#16162e', '#f3ba2f', pulse*0.35); }
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = `rgba(243,186,47,${pulse*0.15})`; ctx.fillRect(p.x-2, p.y+4, 2, 6); ctx.fillRect(p.x+p.w, p.y+4, 2, 6);
+    ctx.font = 'bold 8px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (p.type === 'boost') { ctx.fillStyle = '#00e5ff'; ctx.fillText('⚡ BOOST', p.x+p.w/2, p.y+p.h/2); }
+    else if (p.type === 'breaking') { ctx.fillStyle = '#ff5722'; ctx.fillText(p.label, p.x+p.w/2, p.y+p.h/2); }
+    else { ctx.fillStyle = `rgba(243,186,47,${pulse*0.55})`; ctx.fillText(p.label, p.x+p.w/2, p.y+p.h/2); }
+    ctx.restore();
+  }
+
+  for (let c of liqDrops) {
+    if (c.collected) continue; let sc = 1 + Math.sin(c.pulse)*0.12, cx = c.x+c.w/2, cy = c.y+c.h/2;
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 10;
+    ctx.fillStyle = '#003050'; ctx.beginPath(); ctx.moveTo(0,-10); ctx.bezierCurveTo(7,-3,8,5,0,10); ctx.bezierCurveTo(-8,5,-7,-3,0,-10); ctx.fill();
+    ctx.fillStyle = '#00e5ff'; ctx.beginPath(); ctx.moveTo(0,-7); ctx.bezierCurveTo(5,-2,5,4,0,7); ctx.bezierCurveTo(-5,4,-5,-2,0,-7); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.font = 'bold 5px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('LIQ', 0, 1);
+    ctx.restore();
+  }
+
+  for (let b of burnTokens) {
+    if (b.collected) continue; let flicker = Math.sin(b.pulse*3)*0.2+0.8, bx = b.x+b.w/2, by = b.y+b.h/2;
+    ctx.save(); ctx.translate(bx, by); ctx.shadowColor = '#ff6d00'; ctx.shadowBlur = 16*flicker;
+    ctx.fillStyle = '#4a2000'; ctx.beginPath(); ctx.moveTo(0,-13); ctx.bezierCurveTo(9,-6,11,5,6,11); ctx.bezierCurveTo(3,13,-3,13,-6,11); ctx.bezierCurveTo(-11,5,-9,-6,0,-13); ctx.fill();
+    ctx.fillStyle = `rgba(255,109,0,${flicker})`; ctx.beginPath(); ctx.moveTo(0,-9); ctx.bezierCurveTo(6,-4,7,3,4,8); ctx.bezierCurveTo(2,10,-2,10,-4,8); ctx.bezierCurveTo(-7,3,-6,-4,0,-9); ctx.fill();
+    ctx.fillStyle = '#ffab00'; ctx.beginPath(); ctx.moveTo(0,-5); ctx.bezierCurveTo(3,-2,3,3,0,5); ctx.bezierCurveTo(-3,3,-3,-2,0,-5); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.font = 'bold 5px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BURN', 0, 1);
+    ctx.restore();
+  }
+
+  for (let d of dumps) {
+    if (!d.active) continue; let dx = d.x+d.w/2, dy = d.y+d.h/2;
+    ctx.save(); ctx.translate(dx, dy); ctx.rotate(d.pulse*0.3); ctx.shadowColor = '#ff1744'; ctx.shadowBlur = 10;
+    ctx.fillStyle = '#3a0000'; ctx.beginPath();
+    for (let i = 0; i < 6; i++) { let a = (Math.PI/3)*i - Math.PI/6, pr = 10+(d.w-22)*0.3, px = Math.cos(a)*pr, py = Math.sin(a)*pr; if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); }
+    ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#ff1744'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#ff1744'; ctx.font = 'bold 6px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('DUMP', 0, 0);
+    ctx.restore();
+  }
+
+  for (let s of spinners) {
+    if (!s.active) continue;
+    ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.shadowColor = '#ff6d00'; ctx.shadowBlur = 8;
+    let segs = 6;
+    for (let i = -segs; i <= segs; i++) { let sx = (i/segs)*s.length, segA = 0.6+Math.sin(time*0.05+i)*0.3; ctx.fillStyle = `rgba(255,109,0,${segA})`; ctx.fillRect(sx-3,-2.5,6,5); ctx.strokeStyle = `rgba(255,171,0,${segA*0.4})`; ctx.lineWidth = 0.5; ctx.strokeRect(sx-3,-2.5,6,5); }
+    ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ff6d00'; ctx.beginPath(); ctx.arc(0,0,2.5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ff3d00'; ctx.beginPath(); ctx.arc(-s.length,0,4.5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.length,0,4.5,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.save();
+  let pcx = player.x+player.w/2, pcy = player.y+player.h/2, tilt = player.vx*0.02;
+  ctx.translate(pcx, pcy); ctx.rotate(tilt);
+  if (antiFudActive > 0) {
+    let sp = Math.sin(time*0.2)*0.2+0.6; ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 25;
+    ctx.strokeStyle = `rgba(168,85,247,${sp})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0,0,player.w/2+10,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = `rgba(0,229,255,${sp*0.5})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0,0,player.w/2+6,0,Math.PI*2); ctx.stroke();
+    ctx.shadowBlur = 0;
+  } else if (player.invincible > 0) {
+    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 18;
+    ctx.strokeStyle = `rgba(0,229,255,${0.4+Math.sin(time*0.3)*0.2})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0,0,player.w/2+7,0,Math.PI*2); ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  ctx.shadowColor = '#f3ba2f'; ctx.shadowBlur = 10; ctx.strokeStyle = 'rgba(243,186,47,0.3)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0,0,player.w/2+3,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.shadowBlur = 5; ctx.beginPath(); ctx.arc(0,0,player.w/2+1.5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+  if (playerImg.complete && playerImg.naturalWidth > 0) { ctx.beginPath(); ctx.arc(0,0,player.w/2,0,Math.PI*2); ctx.clip(); ctx.drawImage(playerImg, -player.w/2, -player.h/2, player.w, player.h); }
+  else { ctx.fillStyle = '#f3ba2f'; ctx.beginPath(); ctx.arc(0,0,player.w/2,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#0a0a2a'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('AI',0,0); }
+  ctx.restore();
+
+  for (let p of particles) { ctx.globalAlpha = p.life/40; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+
+  for (let s of stickers) {
+    ctx.save(); ctx.translate(W/2, s.y); ctx.scale(s.scale, s.scale); ctx.globalAlpha = Math.min(s.life/20, 1);
+    ctx.font = 'bold 20px Segoe UI'; let tw = ctx.measureText(s.label).width, sw = tw+44, sh = 42;
+    ctx.shadowColor = s.color; ctx.shadowBlur = 25; ctx.fillStyle = s.bg; ctx.beginPath(); ctx.roundRect(-sw/2,-sh/2,sw,sh,12); ctx.fill();
+    ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = s.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s.label, 0, 0);
+    ctx.globalAlpha = 1; ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawChainBlock(p, darkColor, lightColor, borderColor, alpha) {
+  let r = 6, g = ctx.createLinearGradient(p.x, p.y, p.x, p.y+p.h);
+  g.addColorStop(0, lightColor); g.addColorStop(1, darkColor); ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(p.x+r,p.y); ctx.lineTo(p.x+p.w-r,p.y); ctx.arcTo(p.x+p.w,p.y,p.x+p.w,p.y+r,r);
+  ctx.lineTo(p.x+p.w,p.y+p.h-r); ctx.arcTo(p.x+p.w,p.y+p.h,p.x+p.w-r,p.y+p.h,r);
+  ctx.lineTo(p.x+r,p.y+p.h); ctx.arcTo(p.x,p.y+p.h,p.x,p.y+p.h-r,r); ctx.lineTo(p.x,p.y+r); ctx.arcTo(p.x,p.y,p.x+r,p.y,r);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = `rgba(${hexToRgb(borderColor)},${alpha})`; ctx.lineWidth = 1.2; ctx.stroke();
+}
+
+function hexToRgb(hex) { return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`; }
+
+let lastFrameTime = 0;
+function loop(now) {
+  if (!lastFrameTime) lastFrameTime = now;
+  let rawDt = (now - lastFrameTime) / (1000 / FPS);
+  let dt = Math.min(rawDt, 3);
+  lastFrameTime = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+
+<!-- Init -->
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const VER = '5';
+  const storedVer = localStorage.getItem('bobai_appVersion');
+  if (storedVer !== VER) { localStorage.removeItem('bobai_welcomeShown'); localStorage.setItem('bobai_appVersion', VER); }
+  if (!localStorage.getItem('bobai_welcomeShown')) setTimeout(openWelcome, 300);
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (document.getElementById('highscoreOverlay').style.display !== 'none') closeHighscorePopup();
+      if (document.getElementById('welcomeOverlay').style.display !== 'none') closeWelcome();
+    }
+  });
+});
+</script>
+</body>
+</html>

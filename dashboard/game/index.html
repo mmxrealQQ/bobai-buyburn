@@ -269,7 +269,8 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
 
 <!-- Game Over Popup -->
 <div id="gameOverOverlay" class="overlay" style="display:none">
-  <div class="popup">
+  <div class="popup" style="position:relative">
+    <button id="closeGoBtn" onclick="restartGame()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1;padding:4px" title="Close">&times;</button>
     <img src="score.jpg" alt="" style="width:56px;height:56px;border-radius:12px;margin:0 auto 6px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.2)">
     <h2 style="color:var(--gold);text-shadow:0 0 20px rgba(243,186,47,0.3);font-size:18px;letter-spacing:1px">GOOD JOB!</h2>
     <p style="color:var(--text-dim);font-size:11px;margin:4px 0 8px">You burned some tokens & added some liq. Try again!</p>
@@ -305,7 +306,7 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
       <div class="hs-entries" id="hsEntries-alltime-go"></div>
     </div>
 
-    <button class="popup-btn primary" onclick="restartGame()" style="margin-top:12px">BURN AGAIN</button>
+    <button class="popup-btn primary" id="burnAgainBtn" onclick="restartGame()" style="margin-top:12px">BURN AGAIN</button>
     <a href="../" class="popup-btn" style="display:block;text-align:center;margin-top:6px;text-decoration:none;color:var(--gold);background:rgba(243,186,47,0.08);border:1px solid rgba(243,186,47,0.2)">&#9664; Back to Dashboard</a>
   </div>
 </div>
@@ -506,7 +507,7 @@ async function shareScore() {
 
   if (pn) { const n = document.createElement('p'); n.style.cssText = 'font-size:14px;margin:0 0 4px;color:rgba(255,255,255,0.7);font-weight:600;letter-spacing:0.5px;'; n.textContent = pn; el.appendChild(n); }
 
-  const s = document.createElement('p'); s.style.cssText = 'font-size:42px;font-weight:800;color:#fff;margin:4px 0 2px;text-shadow:0 0 20px rgba(243,186,47,0.3);'; s.textContent = cs.toLocaleString('de-CH'); el.appendChild(s);
+  const s = document.createElement('p'); s.style.cssText = 'font-size:42px;font-weight:800;color:#fff;margin:4px 0 2px;text-shadow:0 0 20px rgba(243,186,47,0.3);'; s.textContent = cs; el.appendChild(s);
   const sl = document.createElement('p'); sl.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:2px;margin:0 0 12px;'; sl.textContent = 'SCORE'; el.appendChild(sl);
 
   const dr = calculateRank(cs, 'daily', pn); const mr = calculateRank(cs, 'monthly', pn); const ar = calculateRank(cs, 'alltime', pn);
@@ -885,6 +886,9 @@ function gameOver() {
   checkAndShowNameInput(score);
   loadHighscores().then(() => switchTab('daily', 'go'));
   document.getElementById('gameOverOverlay').style.display = 'flex';
+  const ba = document.getElementById('burnAgainBtn');
+  ba.disabled = true; ba.style.opacity = '0.4';
+  setTimeout(() => { ba.disabled = false; ba.style.opacity = '1'; }, 500);
 }
 
 function draw() {

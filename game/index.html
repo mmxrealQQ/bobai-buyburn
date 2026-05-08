@@ -214,27 +214,35 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
     <div class="subtitle">Burn & Add Liq</div>
     <div class="welcome-content">
       <strong>🎮 HOW TO PLAY</strong>
-      <p>You are the Brain — rising through the BNB Chain.<br>
-      Jump on platforms, burn tokens, add liquidity, dodge the dumps.<br>
-      The higher you climb, the harder it gets.</p>
+      <p>Jump up through the BNB Chain — collect 🔥 Burns (+100) and 💧 Liquidity (+50), dodge 📉 Dumps and ☠️ Spinners. You can wrap through the left/right edges! The higher you go, the harder it gets.</p>
 
-      <strong>🎯 ITEMS & HAZARDS</strong>
+      <strong>🎯 ITEMS</strong>
       <div class="legend-grid">
         <div class="legend-row"><div class="legend-dot" style="background:#1a1a35;border:1px solid rgba(243,186,47,0.4);color:var(--gold);">&#9644;</div> Chain Blocks</div>
         <div class="legend-row"><div class="legend-dot" style="background:#001520;border:1px solid rgba(0,229,255,0.4);color:var(--cyan);">&#128167;</div> +50 Liquidity</div>
         <div class="legend-row"><div class="legend-dot" style="background:#2a1500;border:1px solid rgba(255,109,0,0.4);color:#ff6d00;">🔥</div> +100 Burn</div>
         <div class="legend-row"><div class="legend-dot" style="background:#002530;border:1px solid rgba(0,229,255,0.6);color:var(--cyan);">&#9889;</div> Boost Jump</div>
         <div class="legend-row"><div class="legend-dot" style="background:#3a0000;border:1px solid rgba(255,23,68,0.4);color:var(--red);">&#11043;</div> DUMP (&#8722;pts)</div>
-        <div class="legend-row"><div class="legend-dot" style="background:#2a1500;border:1px solid rgba(255,109,0,0.4);color:#ff6d00;">&#10227;</div> Chain Spin (kill)</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#2a1500;border:1px solid rgba(255,109,0,0.4);color:#ff6d00;">&#10227;</div> Spinner (kill)</div>
         <div class="legend-row"><div class="legend-dot" style="background:#2d1054;border:1px solid rgba(168,85,247,0.4);color:var(--purple);">🛡</div> ANTI FUD</div>
-        <div class="legend-row"><div class="legend-dot" style="background:#3a2a00;border:1px solid rgba(243,186,47,0.3);color:var(--gold);">&#9733;</div> Milestones</div>
       </div>
 
       <strong>🛡 ANTI FUD</strong>
-      <p>Collect Burns & Liquidity to charge ANTI FUD. Minimum 3 charges to activate (Space / middle button). All charges are consumed — each charge = 1 second of immunity!</p>
+      <p>Burns & Liq charge your shield. 3+ charges → activate with Space / middle button. Each charge = 1s immunity!</p>
 
-      <strong>🏆 HIGH SCORES</strong>
-      <p>Daily, Monthly, and All-Time leaderboards. Enter your name when you achieve a high score and share it!</p>
+      <strong>🏆 MILESTONES</strong>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin:6px 0;font-size:10px;">
+        <span style="color:#4caf50;">100 — SER PAMP IT</span>
+        <span style="color:#8d6e63;">250 — APE BRAIN</span>
+        <span style="color:#ff9800;">500 — BURN ADDICT</span>
+        <span style="color:#ff1744;">750 — CANT DUMP ME</span>
+        <span style="color:#a855f7;">1K — FULL DEGEN</span>
+        <span style="color:#4dd0e1;">1.5K — SIGMA GRINDSET</span>
+        <span style="color:#f3ba2f;">2K — CHAD ON CHAIN</span>
+        <span style="color:#ff6d00;">3K — GIGA BURNER</span>
+        <span style="color:#e040fb;">4K — BUILT DIFFERENT</span>
+        <span style="color:#ffd700;">5K — CZ APPROVED</span>
+      </div>
     </div>
     <p class="controls-hint">Desktop: Arrow Keys + Space &bull; Mobile: Buttons below</p>
     <button class="popup-btn primary" onclick="closeWelcome()">GET STARTED</button>
@@ -271,9 +279,9 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
 <div id="gameOverOverlay" class="overlay" style="display:none">
   <div class="popup" style="position:relative">
     <button onclick="restartGame()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1;padding:4px" title="Close">&times;</button>
-    <img src="score.jpg" alt="" style="width:56px;height:56px;border-radius:12px;margin:0 auto 6px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.2)">
-    <h2 style="color:var(--gold);text-shadow:0 0 20px rgba(243,186,47,0.3);font-size:18px;letter-spacing:1px">GOOD JOB!</h2>
-    <p style="color:var(--text-dim);font-size:11px;margin:4px 0 8px">You burned some tokens & added some liq. Try again!</p>
+    <img src="score.jpg" alt="" style="width:80px;height:80px;border-radius:14px;margin:0 auto 6px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.2)">
+    <h2 id="goTitle" style="color:var(--gold);text-shadow:0 0 20px rgba(243,186,47,0.3);font-size:18px;letter-spacing:1px">GOOD JOB!</h2>
+    <p id="goSubtitle" style="color:var(--text-dim);font-size:11px;margin:4px 0 8px">You burned some tokens & added some liq. Try again!</p>
     <div class="go-score" id="finalScore">0</div>
     <div class="go-stats">
       <span id="endBurns">🔥 0</span>
@@ -501,7 +509,7 @@ async function shareScore() {
 
   if (scoreCardImg.complete && scoreCardImg.naturalWidth > 0) {
     const img = document.createElement('img'); img.src = scoreCardImg.src;
-    img.style.cssText = 'width:56px;height:56px;border-radius:10px;margin:0 auto 8px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.25);';
+    img.style.cssText = 'width:80px;height:80px;border-radius:12px;margin:0 auto 10px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.25);';
     el.appendChild(img);
   }
 
@@ -550,7 +558,9 @@ async function shareScore() {
     const blob = await new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej('no blob'), 'image/png'));
     if (navigator.share) {
       const file = new File([blob], 'bobai-score-' + Date.now() + '.png', { type: 'image/png' });
-      try { await navigator.share({ title: 'Brain On BNB AI', text: 'I scored ' + cs + ' in Brain On BNB AI! 🧠🔥\nbrainonbnb.ai/game', files: [file] }); } catch (e) { if (e.name !== 'AbortError') showToast('Share failed'); }
+      const topM = MILESTONES.slice().reverse().find(m => cs >= m.score);
+    const shareMsg = topM ? "I'm " + topM.label + "! " + cs + "pts in Brain On BNB AI! 🧠🔥\nbrainonbnb.ai/game" : "I scored " + cs + " in Brain On BNB AI! 🧠🔥\nbrainonbnb.ai/game";
+    try { await navigator.share({ title: 'Brain On BNB AI', text: shareMsg, files: [file] }); } catch (e) { if (e.name !== 'AbortError') showToast('Share failed'); }
     } else { showToast('Share not available on this device'); }
   } catch (e) { el.remove(); showToast('Screenshot error'); console.error(e); }
 }
@@ -602,16 +612,16 @@ let platformCount = 0;
 let screenShake = 0;
 
 const MILESTONES = [
-  { score: 200, label: 'DEGEN', color: '#a855f7', bg: '#2d1054' },
-  { score: 500, label: 'WAGMI', color: '#00e5ff', bg: '#002a35' },
-  { score: 1000, label: 'MOON', color: '#f3ba2f', bg: '#3a2a00' },
-  { score: 1500, label: 'CZ BUY', color: '#f3ba2f', bg: '#2a2000' },
-  { score: 2000, label: 'DIAMOND HANDS', color: '#64b5f6', bg: '#0d2040' },
-  { score: 3000, label: 'ALPHA', color: '#4caf50', bg: '#0a2a10' },
-  { score: 4000, label: 'GIGABRAIN', color: '#ff6d00', bg: '#2a1500' },
-  { score: 5000, label: '100X', color: '#ff1744', bg: '#2a0510' },
-  { score: 7000, label: 'VALHALLA', color: '#e040fb', bg: '#2a0530' },
-  { score: 10000, label: 'SATOSHI', color: '#ffd700', bg: '#3a3000' },
+  { score: 100, label: 'SER PAMP IT', color: '#4caf50', bg: '#0a2a10' },
+  { score: 250, label: 'APE BRAIN', color: '#8d6e63', bg: '#2a1a10' },
+  { score: 500, label: 'BURN ADDICT', color: '#ff9800', bg: '#2a1800' },
+  { score: 750, label: 'CANT DUMP ME', color: '#ff1744', bg: '#2a0510' },
+  { score: 1000, label: 'FULL DEGEN', color: '#a855f7', bg: '#2d1054' },
+  { score: 1500, label: 'SIGMA GRINDSET', color: '#4dd0e1', bg: '#0a2a30' },
+  { score: 2000, label: 'CHAD ON CHAIN', color: '#f3ba2f', bg: '#3a2a00' },
+  { score: 3000, label: 'GIGA BURNER', color: '#ff6d00', bg: '#2a1500' },
+  { score: 4000, label: 'BUILT DIFFERENT', color: '#e040fb', bg: '#2a0530' },
+  { score: 5000, label: 'CZ APPROVED', color: '#ffd700', bg: '#3a3000' },
 ];
 
 document.getElementById('hiScore').textContent = highScore;
@@ -870,11 +880,23 @@ function addParticles(x, y, color, count, size) {
   for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.7) * 4, life: 25 + Math.random() * 15, color, size: Math.random() * size + 1 });
 }
 
+function getGameOverText(s) {
+  if (s >= 5000) return ['GODLIKE!', 'CZ personally approves'];
+  if (s >= 3000) return ['LEGENDARY!', 'few understand this level'];
+  if (s >= 1000) return ['ABSOLUTE UNIT!', 'the chain respects you'];
+  if (s >= 500) return ['NICE BAGS!', "you're getting degen"];
+  if (s >= 100) return ['NOT BAD!', 'keep burning ser'];
+  return ['REKT!', 'ngmi... try again ser'];
+}
+
 function gameOver() {
   state = 'over';
   let isNew = false;
   if (score > highScore) { highScore = score; localStorage.setItem('bobai_highscore', highScore); isNew = true; }
   document.getElementById('hiScore').textContent = highScore;
+  const [goT, goS] = getGameOverText(score);
+  document.getElementById('goTitle').textContent = goT;
+  document.getElementById('goSubtitle').textContent = goS;
   document.getElementById('finalScore').textContent = score;
   document.getElementById('endBurns').textContent = '🔥 Burned: ' + burns;
   document.getElementById('endLiq').textContent = '💧 Liquidity: ' + liqAdds;
@@ -1042,7 +1064,7 @@ requestAnimationFrame(loop);
 <!-- Init -->
 <script>
 window.addEventListener('DOMContentLoaded', () => {
-  const VER = '5';
+  const VER = '6';
   const storedVer = localStorage.getItem('bobai_appVersion');
   if (storedVer !== VER) { localStorage.removeItem('bobai_welcomeShown'); localStorage.setItem('bobai_appVersion', VER); }
   if (!localStorage.getItem('bobai_welcomeShown')) setTimeout(openWelcome, 300);

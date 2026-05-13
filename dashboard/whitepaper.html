@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BOBAI Lite Paper — Brain On BNB AI</title>
-  <meta name="description" content="Brain On BNB AI ($BOBAI) is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous buyback & burn cycle - 24/7, no human intervention. LP locked. Owner renounced.">
+  <title>Brain On BNB AI ($BOBAI) Lite Paper — Tokenomics & Architecture</title>
+  <meta name="description" content="Brain On BNB AI ($BOBAI) Lite Paper — full tokenomics, 3% tax mechanics, and autonomous buyback & burn architecture for the BNB Chain meme token.">
+  <meta name="keywords" content="Brain On BNB AI whitepaper, BOBAI lite paper, BOBAI tokenomics, Brain On BNB tokenomics, BOBAI burn mechanism, BOBAI architecture">
+  <link rel="canonical" href="https://brainonbnb.ai/whitepaper.html">
+  <meta property="og:title" content="Brain On BNB AI ($BOBAI) Lite Paper">
+  <meta property="og:description" content="Full tokenomics and autonomous buyback & burn architecture for Brain On BNB AI ($BOBAI).">
+  <meta property="og:url" content="https://brainonbnb.ai/whitepaper.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Brain On BNB AI">
   <link rel="icon" type="image/png" href="favicon.png?v=4">
   <link rel="shortcut icon" type="image/png" href="favicon.png?v=4">
   <link rel="apple-touch-icon" href="logo.png?v=4">
@@ -59,7 +66,36 @@
       .footer a{color:#333}
       a{color:#1a0dab}
       .logo-row img{box-shadow:none}
+      body::before,body::after{display:none}
     }
+
+    /* === POLISH LAYER === */
+    @keyframes wpBreathe{0%,100%{box-shadow:0 0 16px rgba(240,185,11,.22)}50%{box-shadow:0 0 28px rgba(240,185,11,.42),0 0 56px rgba(240,185,11,.1)}}
+    @keyframes wpHalo{0%,100%{opacity:.55;transform:translate(0,0)}50%{opacity:.9;transform:translate(10px,-8px)}}
+
+    body::before{content:'';position:fixed;top:-220px;right:-220px;width:620px;height:620px;background:radial-gradient(circle,rgba(240,185,11,.045) 0%,transparent 60%);pointer-events:none;z-index:0;animation:wpHalo 16s ease-in-out infinite}
+    body::after{content:'';position:fixed;bottom:-220px;left:-220px;width:520px;height:520px;background:radial-gradient(circle,rgba(240,185,11,.03) 0%,transparent 60%);pointer-events:none;z-index:0;animation:wpHalo 22s ease-in-out infinite reverse}
+    .page{position:relative;z-index:1}
+
+    .logo-row img{animation:wpBreathe 4.5s ease-in-out infinite}
+
+    .card{transition:border-color .3s ease,box-shadow .3s ease,transform .3s ease}
+    .card:hover{border-color:rgba(240,185,11,.2);box-shadow:0 8px 32px rgba(240,185,11,.05);transform:translateY(-2px)}
+
+    .tag{transition:background .25s,color .25s,transform .2s,box-shadow .25s}
+    .tag:hover{background:rgba(240,185,11,.18);transform:translateY(-1px);box-shadow:0 4px 14px rgba(240,185,11,.08)}
+
+    a{transition:color .2s,text-shadow .2s}
+    p a:hover,li a:hover,.footer a:hover{text-shadow:0 0 10px rgba(240,185,11,.4)}
+
+    .back{transition:color .2s,transform .25s}
+    .back:hover{transform:translateX(-4px)}
+
+    table tr{transition:background .2s}
+    table tr:hover td{background:rgba(240,185,11,.025)}
+
+    h1{background-size:200% 100%;animation:wpShimmer 10s linear infinite}
+    @keyframes wpShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
   </style>
 </head>
 <body>

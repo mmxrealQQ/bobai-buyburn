@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>List $BOBAI — Exchange Listing Program</title>
-  <meta name="description" content="Brain On BNB AI ($BOBAI) listing program for DEXs and CEXs. 60% of creator-fee redirected to listing partners across three boost windows.">
+  <title>Brain On BNB AI ($BOBAI) Listing Program — DEX & CEX Partner Rewards</title>
+  <meta name="description" content="Brain On BNB AI ($BOBAI) exchange listing program — 60% of creator-fee redirected to listing partners across three boost windows.">
+  <meta name="keywords" content="Brain On BNB AI listing, BOBAI listing, list BOBAI, BOBAI exchange listing, Brain On BNB exchange, BOBAI DEX listing, BOBAI CEX listing">
+  <link rel="canonical" href="https://brainonbnb.ai/listing.html">
+  <meta property="og:title" content="Brain On BNB AI ($BOBAI) Listing Program">
+  <meta property="og:description" content="Exchange listing partner program for Brain On BNB AI ($BOBAI) — 60% of creator-fee to listing partners.">
+  <meta property="og:url" content="https://brainonbnb.ai/listing.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Brain On BNB AI">
   <link rel="icon" type="image/png" href="favicon.png?v=4">
   <link rel="shortcut icon" type="image/png" href="favicon.png?v=4">
   <link rel="apple-touch-icon" href="logo.png?v=4">
@@ -78,6 +85,44 @@
       .tl{grid-template-columns:1fr;gap:6px}
       .split{grid-template-columns:1fr}
     }
+
+    /* === POLISH LAYER === */
+    @keyframes lsBreathe{0%,100%{box-shadow:0 0 16px rgba(240,185,11,.22)}50%{box-shadow:0 0 28px rgba(240,185,11,.42),0 0 56px rgba(240,185,11,.1)}}
+    @keyframes lsHalo{0%,100%{opacity:.55;transform:translate(0,0)}50%{opacity:.9;transform:translate(10px,-8px)}}
+    @keyframes lsBoostPulse{0%,100%{border-color:rgba(240,185,11,.25);box-shadow:0 0 0 0 rgba(240,185,11,.15)}50%{border-color:rgba(240,185,11,.45);box-shadow:0 0 0 4px rgba(240,185,11,.04)}}
+    @keyframes lsShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+
+    body::before{content:'';position:fixed;top:-220px;right:-220px;width:620px;height:620px;background:radial-gradient(circle,rgba(240,185,11,.045) 0%,transparent 60%);pointer-events:none;z-index:0;animation:lsHalo 16s ease-in-out infinite}
+    body::after{content:'';position:fixed;bottom:-220px;left:-220px;width:520px;height:520px;background:radial-gradient(circle,rgba(240,185,11,.03) 0%,transparent 60%);pointer-events:none;z-index:0;animation:lsHalo 22s ease-in-out infinite reverse}
+    .page{position:relative;z-index:1}
+
+    .logo-row img{animation:lsBreathe 4.5s ease-in-out infinite}
+    h1{background-size:200% 100%;animation:lsShimmer 10s linear infinite}
+
+    .card{transition:border-color .3s ease,box-shadow .3s ease,transform .3s ease}
+    .card:hover{border-color:rgba(240,185,11,.2);box-shadow:0 8px 32px rgba(240,185,11,.05);transform:translateY(-2px)}
+
+    .tag{transition:background .25s,color .25s,transform .2s,box-shadow .25s}
+    .tag:hover{background:rgba(240,185,11,.18);transform:translateY(-1px);box-shadow:0 4px 14px rgba(240,185,11,.08)}
+
+    .tl-cell{transition:transform .25s ease,border-color .25s}
+    .tl-cell:hover{transform:translateY(-2px)}
+    .tl-boost{animation:lsBoostPulse 3.5s ease-in-out infinite}
+
+    .steps li::before{transition:transform .25s ease,box-shadow .25s ease,background .25s}
+    .steps li:hover::before{transform:scale(1.1);background:rgba(240,185,11,.16);box-shadow:0 0 14px rgba(240,185,11,.25)}
+
+    a{transition:color .2s,text-shadow .2s}
+    p a:hover,li a:hover,.footer a:hover{text-shadow:0 0 10px rgba(240,185,11,.4)}
+
+    .back{transition:color .2s,transform .25s}
+    .back:hover{transform:translateX(-4px)}
+
+    table tr{transition:background .2s}
+    table tr:hover td{background:rgba(240,185,11,.025)}
+
+    .code{transition:background .2s,box-shadow .2s}
+    .code:hover{background:rgba(240,185,11,.14);box-shadow:0 0 12px rgba(240,185,11,.25)}
   </style>
 </head>
 <body>

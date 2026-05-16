@@ -31,15 +31,20 @@
       return { error: 'Passwords do not match.' };
     }
 
-    // 1) Create auth user with real email.
-    //    If "Confirm email" is enabled in Supabase, this sends a confirmation
-    //    link and the user must verify before they can sign in.
+    // Create auth user with real email. The DB trigger wc_handle_new_user()
+    // creates the matching wc_users profile row server-side, so we never have
+    // to do a client-side insert (which would fail when "Confirm email" is on,
+    // since there's no session yet). Username uniqueness is enforced by the
+    // unique index on wc_users.username_lc → trigger raises → signUp fails.
     const { data: signUp, error: signUpErr } = await sb.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: window.location.origin + '/worldcup/app/',
-        data: { username },
+        data: {
+          username,
+          country: country || null,
+        },
       },
     });
     if (signUpErr) {
@@ -47,41 +52,19 @@
       if (m.includes('already registered') || m.includes('already in use')) {
         return { error: 'Email already registered. Try signing in or use password reset.' };
       }
+      // Trigger failed on unique-username collision → Supabase returns a
+      // generic "Database error saving new user" message.
+      if (m.includes('database error') || m.includes('saving new user') || m.includes('duplicate') || m.includes('unique')) {
+        return { error: 'Username already taken. Please pick another.' };
+      }
       return { error: signUpErr.message };
     }
     if (!signUp.user) {
       return { error: 'Sign-up failed (no user returned).' };
     }
 
-    // 2) Insert profile row. RLS only allows insert when auth.uid() matches
-    //    auth_id, which works because signUp also created an active session
-    //    (unless email confirmation is on — then we still try and let it
-    //    succeed via the existing session OR fall through with a clear msg).
-    const { error: profileErr } = await sb.from('wc_users').insert({
-      auth_id: signUp.user.id,
-      username,
-      avatar_country: country || null,
-    });
-    if (profileErr) {
-      const m = (profileErr.message || '').toLowerCase();
-      // Username uniqueness collision (case-insensitive via username_lc index)
-      if (m.includes('duplicate') || m.includes('unique')) {
-        // Don't sign out — they may still want to verify their email and try a different username later.
-        return { error: 'Username already taken. Please pick another.' };
-      }
-      // Email confirmation flow: no session yet → RLS rejects insert.
-      // We'll let the user finish confirmation and create the profile on first sign-in (see ensureProfile()).
-      if (m.includes('row-level security') || m.includes('rls')) {
-        return {
-          ok: true,
-          needsConfirmation: true,
-          pendingProfile: { username, country: country || null },
-        };
-      }
-      return { error: profileErr.message };
-    }
-
-    // If there's no session (confirmation required), tell the UI.
+    // If there's no session (Confirm Email is on), tell the UI to show the
+    // "check your email" message.
     const { data: s } = await sb.auth.getSession();
     if (!s.session) {
       return { ok: true, needsConfirmation: true };

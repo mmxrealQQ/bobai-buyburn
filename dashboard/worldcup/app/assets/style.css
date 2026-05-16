@@ -69,6 +69,18 @@ h1 .accent{background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 60%,#ff
 /* BETA BANNER */
 .beta-banner{background:rgba(255,48,40,.08);border-bottom:1px solid rgba(255,48,40,.25);color:#ff8580;text-align:center;padding:8px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
 
+/* DESIGNER PLACEHOLDER — hot pink callout so the illustrator can spot
+   every spot that needs art at a glance. Remove this whole block once
+   all illustrations have landed in /worldcup/app/illus/. */
+.dp{position:relative;padding:14px 16px;margin:8px 0 14px;background:repeating-linear-gradient(45deg,rgba(255,64,180,.06),rgba(255,64,180,.06) 10px,rgba(255,64,180,.10) 10px,rgba(255,64,180,.10) 20px);border:2px dashed #ff40b4;border-radius:10px}
+.dp .dp-badge{position:absolute;top:-10px;left:14px;background:#ff40b4;color:#050510;font-size:10px;font-weight:800;letter-spacing:1.5px;padding:3px 10px;border-radius:6px;text-transform:uppercase;font-family:'Space Grotesk'}
+.dp .dp-title{color:#ff40b4;font-family:'Space Grotesk';font-weight:700;font-size:13px;margin-bottom:4px;letter-spacing:.3px}
+.dp .dp-body{color:var(--text);font-size:12px;line-height:1.5;opacity:.85}
+.dp .dp-body code{background:rgba(0,0,0,.4);padding:1px 6px;border-radius:4px;font-size:11px;color:#ffb1de;font-family:'Space Grotesk'}
+.dp .dp-body a{color:#ff8fd0;text-decoration:underline}
+.dp.dp-inline{display:inline-block;margin:4px 6px;padding:8px 12px}
+.dp.dp-inline .dp-title{margin-bottom:0}
+
 @media (max-width: 600px){
   main{padding:24px 16px}
   .card{padding:24px 20px}

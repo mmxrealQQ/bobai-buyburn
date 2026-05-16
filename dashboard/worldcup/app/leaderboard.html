@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Leaderboard</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=6">
+  <link rel="stylesheet" href="./assets/style.css?v=10">
   <style>
     .container.wide{max-width:920px}
 
@@ -84,9 +84,17 @@
           <h1><span class="accent">Leaderboard</span></h1>
           <p class="sub">Pool live · username only · ⚽ = verified wallet</p>
 
+          <div class="dp">
+            <div class="dp-badge">🎨 Art needed</div>
+            <div class="dp-title">Pool-card flourish (optional)</div>
+            <div class="dp-body">
+              Small <b>trophy + BOBAI</b> illustration anchored opposite the pool total below. ~<code>300×300</code>, transparent.
+              Filename <code>illus/pool-trophy.webp</code>. Full brief: <a href="./for-designer.html">/for-designer.html</a>.
+            </div>
+          </div>
+
           <!-- POOL CARD -->
           <div class="pool">
-            <!-- 🎨 PLACEHOLDER for illus/pool-trophy.webp — see for-designer.html -->
             <div class="pool-head">
               <div class="pool-title">🏆 Prize Pool</div>
               <div style="font-size:10.5px;color:var(--muted)" id="pool-updated">pool fills from kickoff</div>
@@ -140,6 +148,14 @@
           <!-- SUB-SELECTOR (for Groups + Crypto) -->
           <div id="sub-selector" class="sub-selector hidden"></div>
 
+          <div class="dp">
+            <div class="dp-badge">🎨 Art needed</div>
+            <div class="dp-title">User-avatar column → BOBAI in national jersey</div>
+            <div class="dp-body">
+              Each leaderboard row shows the user's country flag as a placeholder avatar. Final: <b>$BOBAI illustration in that country's jersey</b> (same 48 art files used on the dashboard). Filename <code>illus/avatars/avatar-&lt;CODE&gt;.webp</code>. We'll swap the markup once art lands.
+            </div>
+          </div>
+
           <!-- LIST -->
           <div id="list" class="list">
             <div class="empty">Loading…</div>
@@ -150,10 +166,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=6"></script>
-  <script src="./assets/countries.js?v=6"></script>
-  <script src="./assets/auth.js?v=6"></script>
-  <script src="./assets/profile.js?v=6"></script>
+  <script src="./assets/config.js?v=10"></script>
+  <script src="./assets/countries.js?v=10"></script>
+  <script src="./assets/auth.js?v=10"></script>
+  <script src="./assets/profile.js?v=10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=1"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];

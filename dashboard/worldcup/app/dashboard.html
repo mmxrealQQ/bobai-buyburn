@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Dashboard</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=2">
+  <link rel="stylesheet" href="./assets/style.css?v=10">
   <style>
     .container.wide{max-width:780px}
     .profile-card{display:flex;align-items:center;gap:18px;padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:20px}
@@ -65,6 +65,16 @@
             </div>
           </div>
 
+          <div class="dp">
+            <div class="dp-badge">🎨 Art needed</div>
+            <div class="dp-title">User avatar — BOBAI in national jersey</div>
+            <div class="dp-body">
+              The circle above currently shows the user's <b>selected country flag</b>. Final art: <b>$BOBAI character wearing that country's football kit</b>. 1 illustration per country (48 total).
+              Specs: <code>512×512</code> WebP/PNG, transparent bg, naming <code>avatar-&lt;CODE&gt;.webp</code> (e.g. <code>avatar-BR.webp</code>).
+              Drop into <code>dashboard/worldcup/app/illus/avatars/</code>. Full brief: <a href="./for-designer.html">/for-designer.html</a>.
+            </div>
+          </div>
+
           <div id="alert"></div>
 
           <!-- AVATAR / COUNTRY EDIT -->
@@ -72,7 +82,7 @@
             <h3>Your avatar</h3>
             <p class="sub" style="text-align:left;margin-bottom:10px">Pick the team you'll represent on the leaderboard. You can change this anytime.</p>
             <div id="country-grid" class="country-grid"></div>
-            <p style="font-size:11px;color:var(--muted);margin-top:8px">🎨 Flags shown are placeholders — final art will be <b>$BOBAI in each national jersey</b> (<a href="./for-designer.html" style="color:var(--gold)">illustrator brief</a>).</p>
+            <p style="font-size:11px;color:var(--muted);margin-top:8px">Pick a country — the team flag is shown here in the picker; your <b>avatar circle</b> above will be rendered as <b>$BOBAI in that country's national jersey</b> (illustrator brief in progress).</p>
             <button id="save-country" class="btn sm" style="margin-top:10px" disabled>Save avatar</button>
           </div>
 
@@ -158,10 +168,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=2"></script>
-  <script src="./assets/countries.js?v=2"></script>
-  <script src="./assets/auth.js?v=2"></script>
-  <script src="./assets/profile.js?v=2"></script>
+  <script src="./assets/config.js?v=10"></script>
+  <script src="./assets/countries.js?v=10"></script>
+  <script src="./assets/auth.js?v=10"></script>
+  <script src="./assets/profile.js?v=10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=1"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];

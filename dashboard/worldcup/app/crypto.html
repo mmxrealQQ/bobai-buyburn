@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Crypto Predictions</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=5">
+  <link rel="stylesheet" href="./assets/style.css?v=10">
   <style>
     .container.wide{max-width:680px}
     .ck{margin-bottom:22px;padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
@@ -71,6 +71,14 @@
             <b>How it works:</b> Predict the USD price of BTC, BNB and $BOBAI <b>at the exact moment of the World Cup Final kickoff</b> (estimated 19 July 2026, 19:00 UTC). The closest guess on each coin wins <b>5% of the total prize pool</b> (15% total — split BTC/BNB/BOBAI evenly).
           </div>
 
+          <div class="dp">
+            <div class="dp-badge">🎨 Art needed (optional)</div>
+            <div class="dp-title">Coin icons for the 3 cards below</div>
+            <div class="dp-body">
+              Currently ₿ / Ⓑ / B as text glyphs. Optional upgrade: 3 small <b>BOBAI-style coin icons</b>, ~<code>64×64</code>, transparent. Filenames <code>illus/coin-btc.webp</code>, <code>illus/coin-bnb.webp</code>, <code>illus/coin-bobai.webp</code>. Brief: <a href="./for-designer.html">/for-designer.html</a>.
+            </div>
+          </div>
+
           <div id="alert"></div>
 
           <!-- BTC -->
@@ -128,9 +136,11 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=5"></script>
-  <script src="./assets/auth.js?v=5"></script>
-  <script src="./assets/profile.js?v=5"></script>
+  <script src="./assets/config.js?v=10"></script>
+  <script src="./assets/auth.js?v=10"></script>
+  <script src="./assets/profile.js?v=10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=1"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];

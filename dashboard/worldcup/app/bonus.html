@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Bonus Questions</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=3">
+  <link rel="stylesheet" href="./assets/style.css?v=10">
   <style>
     .container.wide{max-width:780px}
     .q{margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
@@ -65,6 +65,16 @@
           <div class="summary">
             Each correct prediction is worth <b>10 points</b> and counts toward your overall leaderboard score.
             You can edit your answers any time before the first match kicks off.
+          </div>
+
+          <div class="dp">
+            <div class="dp-badge">🎨 Art needed (optional)</div>
+            <div class="dp-title">Bonus-questions hero banner</div>
+            <div class="dp-body">
+              Optional decorative banner above the questions list. ~<code>1200×300</code> WebP, transparent, dark-mode compatible. Idea: BOBAI looking thoughtfully at a tournament bracket with a crystal ball / question mark. Filename <code>illus/bonus-hero.webp</code>. Brief: <a href="./for-designer.html">/for-designer.html</a>.
+              <br><br>
+              ⚠ Country grids below stay as <b>flags</b> (team selection, not user avatar).
+            </div>
           </div>
 
           <div id="alert"></div>
@@ -129,10 +139,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=3"></script>
-  <script src="./assets/countries.js?v=3"></script>
-  <script src="./assets/auth.js?v=3"></script>
-  <script src="./assets/profile.js?v=3"></script>
+  <script src="./assets/config.js?v=10"></script>
+  <script src="./assets/countries.js?v=10"></script>
+  <script src="./assets/auth.js?v=10"></script>
+  <script src="./assets/profile.js?v=10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=1"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];

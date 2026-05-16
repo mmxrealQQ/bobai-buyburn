@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$BOBAI Worldcup '26 — Rules &amp; FAQ</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=7">
+  <style>
+    .container.wide{max-width:760px}
+    .toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;padding:12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
+    .toc a{font-size:12px;padding:6px 10px;background:rgba(240,185,11,.07);border:1px solid rgba(240,185,11,.2);border-radius:6px;color:var(--gold);text-decoration:none;font-weight:600;letter-spacing:.3px}
+    .toc a:hover{background:rgba(240,185,11,.15)}
+
+    h2{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);margin:36px 0 12px;letter-spacing:-.01em;scroll-margin-top:80px}
+    h2:first-of-type{margin-top:0}
+    h3{font-family:'Space Grotesk';font-weight:600;font-size:15px;color:var(--text);margin:18px 0 8px}
+    p{color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:12px}
+    p b, li b{color:var(--text)}
+    ul, ol{color:var(--muted);font-size:14px;line-height:1.7;margin:0 0 12px 22px}
+    li{margin-bottom:4px}
+    code{background:rgba(0,0,0,.4);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--gold);font-family:'Space Grotesk'}
+    .callout{padding:14px 16px;border-radius:10px;font-size:13px;line-height:1.6;margin:14px 0}
+    .callout.warn{background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.25);color:#ffc066}
+    .callout.danger{background:rgba(255,48,40,.06);border:1px solid rgba(255,48,40,.25);color:#ff8580}
+    .callout.info{background:rgba(64,64,255,.06);border:1px solid rgba(64,64,255,.25);color:#9090ff}
+    .callout.ok{background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.2);color:#5fffa0}
+    .scoring-table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:13px}
+    .scoring-table th, .scoring-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+    .scoring-table th{color:var(--gold);font-family:'Space Grotesk';font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+    .scoring-table td{color:var(--text)}
+    .scoring-table td:last-child{text-align:right;color:var(--gold);font-family:'Space Grotesk';font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
+
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
+        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
+        <span style="width:80px"></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div class="card">
+          <h1><span class="accent">Rules &amp; FAQ</span></h1>
+          <p class="sub">Read this before you play. Especially if it's your first crypto-tipgame.</p>
+
+          <nav class="toc">
+            <a href="#disclaimer">⚠ Disclaimer</a>
+            <a href="#register">Register</a>
+            <a href="#bonus">Bonus questions</a>
+            <a href="#tips">Match tips</a>
+            <a href="#crypto">Crypto predictions</a>
+            <a href="#scoring">Scoring</a>
+            <a href="#pool">Prize pool</a>
+            <a href="#payouts">Payouts</a>
+            <a href="#donations">Donations</a>
+            <a href="#security">Security</a>
+            <a href="#contact">Contact</a>
+          </nav>
+
+          <!-- DISCLAIMER -->
+          <h2 id="disclaimer">⚠ Disclaimer — read first</h2>
+          <div class="callout danger">
+            <b>$BOBAI Worldcup '26 is a community fan project.</b> Not affiliated with FIFA, BNB Chain, Binance, or any of the listed teams or players. Names, flags and competition data are used for descriptive purposes only.
+          </div>
+          <div class="callout warn">
+            <b>No responsibility, no guarantees.</b> Participation is entirely at your own risk. We do not provide financial, investment, or legal advice. Predictions are entertainment, not a strategy.
+            <br><br>
+            • If you don't know what you're doing — <b>don't do it.</b><br>
+            • Never send funds you can't afford to lose.<br>
+            • Smart contracts and wallets can have bugs. Networks can be congested. Transactions can fail.<br>
+            • Prize-pool distribution depends on on-chain conditions (gas, slippage, network availability). Payout timing is a target, not a promise.<br>
+            • You are responsible for your own taxes wherever you live.<br>
+            • If gambling is restricted in your jurisdiction or you are under the local legal age — <b>do not participate.</b>
+          </div>
+          <p>By creating an account, sending donations or claiming payouts you accept these terms. If you don't agree — close this page and don't take part. The dev team reserves the right to fix bugs, correct match results, and adjust scoring rules transparently if data sources disagree.</p>
+
+          <!-- REGISTER -->
+          <h2 id="register">1. Register</h2>
+          <p>Create an account with a <b>username + password</b>. No email required. Pick a country (you'll get a $BOBAI in that national jersey as your avatar once the illustrator delivers).</p>
+          <p>Optionally connect a <b>BEP-20 wallet</b> (MetaMask, Trust Wallet, Binance Web3). The wallet is only needed if you want to be <b>eligible for prize-pool payouts</b>. You can play purely for fun without one — your username will still appear on the leaderboard, just without the ⚽ icon.</p>
+          <div class="callout info">
+            Wallet ownership is verified via signature <b>before any payout</b>. We never ask for your seed phrase or private key — only an on-chain signature.
+          </div>
+
+          <!-- BONUS QUESTIONS -->
+          <h2 id="bonus">2. Bonus questions (one-time)</h2>
+          <p>Five long-shot predictions, each worth <b>10 points</b>. Lockable <b>at the first match's kickoff</b>:</p>
+          <ol>
+            <li>Who wins the World Cup? (single team)</li>
+            <li>Team with the most goals scored across the tournament</li>
+            <li>Team with the fewest goals scored</li>
+            <li>Top scorer's country (Golden Boot)</li>
+            <li>Total red cards bracket: &lt;20 / 20–30 / 30–40 / 40–50 / &gt;50</li>
+          </ol>
+          <p>You can edit your answers any time before the first kickoff. After kickoff: locked — no changes.</p>
+
+          <!-- TIPS -->
+          <h2 id="tips">3. Match tips</h2>
+          <p>For every match you tip the <b>exact score</b> (e.g. 2:1). All 72 group-stage matches plus 32 knockout matches.</p>
+          <p>Each match locks <b>15 minutes before kickoff</b>. After that: no edits possible (enforced at database level — you literally can't get around it).</p>
+          <p>Knockout matches start as <i>TBD vs TBD</i> in the UI and become tippable once the draw resolves them.</p>
+
+          <!-- CRYPTO -->
+          <h2 id="crypto">4. Crypto predictions</h2>
+          <p>Predict the USD price of <b>BTC, BNB and $BOBAI</b> at the exact moment of the World Cup Final kickoff. Live current prices are shown for reference; you can edit anytime until kickoff.</p>
+          <p>Scoring is based on <b>absolute difference</b> to the actual price at the snapshot moment — the closest guess on each coin wins that coin's share of the crypto pot.</p>
+
+          <!-- SCORING -->
+          <h2 id="scoring">5. Scoring</h2>
+          <h3>Match scoring (per match)</h3>
+          <table class="scoring-table">
+            <tr><th>Outcome</th><th>Example</th><th>Raw points</th></tr>
+            <tr><td>Exact result</td><td>Tipped 2:1 → actual 2:1</td><td>5</td></tr>
+            <tr><td>Correct winner + correct goal difference</td><td>Tipped 2:1 → actual 3:2</td><td>3</td></tr>
+            <tr><td>Correct winner only</td><td>Tipped 2:1 → actual 4:0</td><td>1</td></tr>
+            <tr><td>Wrong winner / wrong direction</td><td>Tipped 2:1 → actual 0:1</td><td>0</td></tr>
+          </table>
+          <h3>Phase multiplier</h3>
+          <p>Knockout matches matter more. Raw points get multiplied by the phase:</p>
+          <table class="scoring-table">
+            <tr><th>Phase</th><th>Multiplier</th></tr>
+            <tr><td>Group stage</td><td>×1</td></tr>
+            <tr><td>Round of 32 · Round of 16</td><td>×2</td></tr>
+            <tr><td>Quarter-finals · Semi-finals</td><td>×3</td></tr>
+            <tr><td>Third-place match · Final</td><td>×4</td></tr>
+          </table>
+          <h3>Bonus &amp; Crypto</h3>
+          <p>Bonus questions: <b>10 pts each</b> if correct. Crypto: <b>not counted in points</b> — winners are determined by closest absolute price difference (own pot).</p>
+          <h3>Tie-breaker</h3>
+          <p>If two players have the exact same point total in a payout group, the player with <b>more $BOBAI in their connected wallet at payout time</b> wins. Players without a connected wallet automatically rank below players with one in case of a tie.</p>
+
+          <!-- POOL -->
+          <h2 id="pool">6. Prize pool</h2>
+          <h3>Where the BOBAI comes from</h3>
+          <p>Two sources feed the prize-pool wallet (<code id="addr-hint">0x5E41…D105</code>):</p>
+          <ul>
+            <li><b>Token tax routing</b>: starting <b>11 June 2026</b> (kickoff), 26 % of the 1 % creator buy/sell tax flows into the prize-pool wallet automatically. The remaining 74 % keeps funding the existing buyback bot and creator operations.</li>
+            <li><b>Donations</b>: anyone can send BNB or USDT (BEP-20) to the prize-pool wallet. Incoming funds are auto-swapped to $BOBAI via PancakeSwap and added on-chain. Any amount welcome — see <a href="#donations" style="color:var(--gold)">below</a>.</li>
+          </ul>
+          <p>Everything is verifiable on BscScan. The pool figure displayed on the leaderboard reads the actual on-chain BOBAI balance — there's nothing in a back-office database we could fudge.</p>
+          <h3>Pool split</h3>
+          <p>How each incoming BOBAI gets allocated depends on the tournament phase at the moment it arrives:</p>
+          <ul>
+            <li><b>During group-stage matches</b>: 45 % → Group Pot · 40 % → End Pool · 15 % → Crypto Pot</li>
+            <li><b>From R32 onwards</b>: 85 % → End Pool · 15 % → Crypto Pot (Group Pot stops growing — it's paid out before KO starts)</li>
+          </ul>
+
+          <!-- PAYOUTS -->
+          <h2 id="payouts">7. Payouts</h2>
+          <h3>Group Pot (45 % of group-stage collection)</h3>
+          <p>Paid <b>one day after the last group-stage match</b>. Split across <b>32 winners</b>:</p>
+          <ul>
+            <li>Top 2 finishers in each of the 12 groups (24 winners)</li>
+            <li>8 best 3rd-placed finishers across all groups (8 winners)</li>
+          </ul>
+          <p>Each player's share is <b>proportional to their points</b> within their winning bracket (top-2 or best-3rd). No fixed prizes — your share = your points ÷ sum of all qualifying players' points × bracket pool.</p>
+          <h3>End Pool (KO-phase pot)</h3>
+          <p>Paid <b>one day after the Final</b>. Top 4 overall — based on total score across all phases including bonus questions.</p>
+          <h3>Crypto Pot (15 %)</h3>
+          <p>Paid <b>one day after the Final</b>, alongside the End Pool. Split into 3 equal slots:</p>
+          <ul>
+            <li>5 % to the closest BTC guess</li>
+            <li>5 % to the closest BNB guess</li>
+            <li>5 % to the closest $BOBAI guess</li>
+          </ul>
+          <p>The same player can win multiple Crypto Pot slots if they have the best guess on more than one coin.</p>
+          <h3>Eligibility</h3>
+          <div class="callout warn">
+            Only players with a <b>verified wallet</b> at payout time receive transfers. Players without a connected wallet keep their leaderboard position for bragging rights, but their share is redistributed proportionally to the eligible winners in that pot.
+          </div>
+          <h3>How the payouts run</h3>
+          <p>Payout transactions are <b>triggered manually</b> by the project admin (not fully autonomous) — the code computes the exact split, then the admin signs and broadcasts the batch. This is a deliberate safety design: an off-by-one bug should never auto-drain the pool.</p>
+
+          <!-- DONATIONS -->
+          <h2 id="donations">8. Donations</h2>
+          <p>The prize-pool wallet accepts <b>BNB</b> and <b>USDT (BEP-20)</b> on BNB Smart Chain. Address is shown on the <a href="./leaderboard.html" style="color:var(--gold)">Leaderboard</a> page with a copy button.</p>
+          <div class="callout danger">
+            <b>BSC only.</b> If you send USDT on Ethereum, Tron, Solana or any other network — funds are <b>lost</b>. There's no human in the loop to recover them.
+          </div>
+          <p>How it works:</p>
+          <ol>
+            <li>You send X BNB or USDT to the prize wallet</li>
+            <li>The pool sync worker detects the new balance</li>
+            <li>BNB/USDT is auto-swapped to $BOBAI via PancakeSwap</li>
+            <li>The new $BOBAI is added to the pool (verifiable on BscScan)</li>
+            <li>Pool display updates within ~5 minutes</li>
+          </ol>
+          <p>Any amount welcome. For gas efficiency we suggest at least the equivalent of ~$5, but anything works.</p>
+
+          <!-- SECURITY -->
+          <h2 id="security">9. Security &amp; manipulation safety</h2>
+          <ul>
+            <li><b>Tip lock</b>: 15 minutes before kickoff, enforced at the database level — not just in the UI.</li>
+            <li><b>Bonus &amp; crypto lock</b>: enforced at the database level when the relevant match kicks off.</li>
+            <li><b>Match results</b>: only the sync worker (using a service-role key, never exposed to users) can write results. Players cannot edit goals.</li>
+            <li><b>Scoring</b>: runs in a database trigger after match results are written. The trigger overwrites any user-side `points` value, so nobody can self-award points.</li>
+            <li><b>Wallet verification</b>: required before any payout. We never ask for your seed phrase or private key — only a signature.</li>
+            <li><b>Tie-breaker by BOBAI balance</b>: read live from the blockchain at payout time, not from a database — un-fakeable.</li>
+            <li><b>Payouts</b>: manually triggered by admin, not autonomous. An admin error or bug can be caught before signing.</li>
+            <li><b>Prize wallet</b>: a fresh dedicated wallet. Private key is only stored in encrypted Cloudflare Worker secrets — never in code, never on a server you can SSH into.</li>
+          </ul>
+          <div class="callout danger">
+            <b>Admins NEVER DM you first.</b> Anyone offering you to "double your winnings", "verify your account", "claim your payout faster" via Telegram/X DM is a scammer. Block + report.
+          </div>
+
+          <!-- CONTACT -->
+          <h2 id="contact">10. Contact</h2>
+          <p>Questions, bug reports, suggestions:</p>
+          <ul>
+            <li>Telegram: <a href="https://t.me/bobai_official" style="color:var(--gold)">@bobai_official</a></li>
+            <li>X: <a href="https://x.com/BrainOnBNB" style="color:var(--gold)">@BrainOnBNB</a></li>
+            <li>Website: <a href="https://brainonbnb.ai" style="color:var(--gold)">brainonbnb.ai</a></li>
+          </ul>
+          <p style="font-size:11.5px;color:var(--muted);margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
+            Last updated: 16 May 2026. Rules may be refined for clarity before launch on 4 June 2026; any change with material effect on scoring or payouts will be announced in the official Telegram with at least 24 hours' notice.
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="./assets/config.js?v=7"></script>
+  <script>
+    // Replace the short address hint with the real configured one
+    const addrHint = document.getElementById('addr-hint');
+    const a = window.WC_CONFIG?.PRIZE_WALLET;
+    if (a && addrHint) addrHint.textContent = a.slice(0,6) + '…' + a.slice(-4);
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+name = "bobai-worldcup-sync"
+main = "index.js"
+compatibility_date = "2026-05-16"
+
+# Sync every 5 minutes during tournament
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Secrets (set via `wrangler secret put <NAME>`):
+#   SUPABASE_SERVICE_ROLE_KEY  — Supabase service-role JWT (Project Settings → API → service_role)
+#   FOOTBALL_DATA_API_KEY      — free key from football-data.org/client/register
+#   ADMIN_TOKEN                — long random string for manual /admin/* endpoints
+
+# Public env vars (safe to commit):
+[vars]
+SUPABASE_URL = "https://aerffjhdsbxpvuulkryr.supabase.co"
+# football-data.org competition code for 2026 WC (override if FIFA's official ID differs)
+FOOTBALL_DATA_COMPETITION = "WC"

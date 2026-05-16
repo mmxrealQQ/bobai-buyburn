@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$BOBAI Worldcup '26 — Beta</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=2">
+  <style>
+    .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:240px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
+    .country-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer;transition:all .15s;color:var(--text)}
+    .country-cell:hover{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.15)}
+    .country-cell.sel{background:var(--gold-glow);border-color:var(--gold)}
+    .country-cell .fl{font-size:22px;line-height:1}
+    .country-cell .nm{font-size:9.5px;color:var(--muted);text-align:center;line-height:1.2}
+    .country-cell.sel .nm{color:var(--gold)}
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
+
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="/worldcup/" aria-label="Back to Worldcup">
+          <span>←</span> Worldcup
+        </a>
+        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
+        <span style="width:80px"></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container">
+        <div class="card">
+          <h1><span class="accent">Welcome</span></h1>
+          <p class="sub">Sign in to place tips, or create a new account.</p>
+
+          <div class="tabs">
+            <button class="tab active" data-tab="login">Sign in</button>
+            <button class="tab" data-tab="register">Register</button>
+          </div>
+
+          <div id="alert"></div>
+
+          <!-- LOGIN -->
+          <form id="form-login" class="tab-pane">
+            <div class="field">
+              <label>Username</label>
+              <input type="text" name="username" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input type="password" name="password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn">Sign in</button>
+          </form>
+
+          <!-- REGISTER -->
+          <form id="form-register" class="tab-pane hidden">
+            <div class="field">
+              <label>Username</label>
+              <input type="text" name="username" autocomplete="username" required>
+              <div class="hint">3–20 chars, letters/numbers/underscore. Shown on the leaderboard.</div>
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input type="password" name="password" autocomplete="new-password" minlength="6" required>
+              <div class="hint">Min 6 chars. No email needed.</div>
+            </div>
+            <div class="field">
+              <label>Pick your country (avatar)</label>
+              <div id="country-grid" class="country-grid"></div>
+              <input type="hidden" name="country" id="country-input">
+              <div class="hint">You can change this later. 🎨 Final avatars: <b>$BOBAI in each national jersey</b> — illustrator delivery pending (<a href="./for-designer.html" style="color:var(--gold)">brief</a>). Flags here are placeholders.</div>
+            </div>
+            <button type="submit" class="btn">Create account</button>
+          </form>
+
+          <p class="sub" style="margin-top:24px;margin-bottom:0">
+            Registration opens publicly on <b>4 June 2026</b>. Beta access for testing only.
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=2"></script>
+  <script src="./assets/countries.js?v=2"></script>
+  <script src="./assets/auth.js?v=2"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    function showAlert(type, msg){
+      const el = $('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+
+    // Render country grid
+    const grid = $('#country-grid');
+    const cInput = $('#country-input');
+    window.WC_COUNTRIES.forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'country-cell';
+      b.dataset.code = c.code;
+      b.innerHTML = `<span class="fl">${c.flag}</span><span class="nm">${c.name}</span>`;
+      b.addEventListener('click', ()=>{
+        $$('.country-cell').forEach(x=>x.classList.remove('sel'));
+        b.classList.add('sel');
+        cInput.value = c.code;
+      });
+      grid.appendChild(b);
+    });
+
+    // Tabs
+    $$('.tab').forEach(t=>t.addEventListener('click',()=>{
+      $$('.tab').forEach(x=>x.classList.toggle('active', x===t));
+      const which = t.dataset.tab;
+      $('#form-login').classList.toggle('hidden', which!=='login');
+      $('#form-register').classList.toggle('hidden', which!=='register');
+      showAlert();
+    }));
+
+    // Login
+    $('#form-login').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      const r = await window.WC_AUTH.login({
+        username: fd.get('username'),
+        password: fd.get('password'),
+      });
+      btn.disabled = false; btn.textContent = 'Sign in';
+      if (r.error) { showAlert('error', r.error); return; }
+      window.location.href = './dashboard.html';
+    });
+
+    // Register
+    $('#form-register').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Creating…';
+      const r = await window.WC_AUTH.register({
+        username: fd.get('username'),
+        password: fd.get('password'),
+        country: fd.get('country'),
+      });
+      btn.disabled = false; btn.textContent = 'Create account';
+      if (r.error) { showAlert('error', r.error); return; }
+      showAlert('ok', 'Account created — redirecting…');
+      setTimeout(()=>{ window.location.href = './dashboard.html'; }, 700);
+    });
+
+    // If already logged in, jump to dashboard
+    (async ()=>{
+      const p = await window.WC_AUTH.currentProfile();
+      if (p) window.location.href = './dashboard.html';
+    })();
+  </script>
+</body>
+</html>

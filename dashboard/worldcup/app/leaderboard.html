@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$BOBAI Worldcup '26 — Leaderboard</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=6">
+  <style>
+    .container.wide{max-width:920px}
+
+    /* POOL CARD */
+    .pool{background:linear-gradient(135deg,rgba(240,185,11,.06),rgba(64,64,255,.04));border:1px solid rgba(240,185,11,.25);border-radius:14px;padding:20px;margin-bottom:24px}
+    .pool-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+    .pool-title{font-family:'Space Grotesk';font-weight:700;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)}
+    .pool-total{font-family:'Space Grotesk';font-weight:700;font-size:34px;color:var(--text);line-height:1.05;margin-bottom:2px}
+    .pool-usd{font-size:14px;color:var(--muted);margin-bottom:14px}
+    .pool-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .pool-cell{padding:10px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;text-align:center}
+    .pool-cell .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+    .pool-cell .val{font-family:'Space Grotesk';font-weight:700;font-size:15px;color:var(--text);line-height:1.05}
+    .pool-cell .pct{font-size:10px;color:var(--gold)}
+
+    /* TABS */
+    .lbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;background:rgba(0,0,0,.3);padding:5px;border-radius:10px}
+    .lbar button{flex:1;min-width:80px;padding:9px 8px;font-size:12px;font-weight:600;border:none;background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit}
+    .lbar button.active{background:var(--gold-glow);color:var(--gold)}
+
+    /* GROUP/COIN SELECTOR */
+    .sub-selector{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+    .sub-selector button{padding:7px 12px;font-size:11px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.5px}
+    .sub-selector button:hover{border-color:rgba(240,185,11,.3)}
+    .sub-selector button.active{background:var(--gold-glow);color:var(--gold);border-color:var(--gold)}
+
+    /* LIST */
+    .list{display:flex;flex-direction:column;gap:6px}
+    .row{display:grid;grid-template-columns:42px 32px 1fr auto;gap:10px;align-items:center;padding:12px 14px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;transition:all .15s}
+    .row.me{border-color:var(--gold);background:rgba(240,185,11,.07)}
+    .row.top1{background:linear-gradient(90deg,rgba(240,185,11,.15),rgba(0,0,0,.25));border-color:rgba(240,185,11,.4)}
+    .row.top2{background:linear-gradient(90deg,rgba(192,192,192,.08),rgba(0,0,0,.25));border-color:rgba(192,192,192,.25)}
+    .row.top3{background:linear-gradient(90deg,rgba(205,127,50,.08),rgba(0,0,0,.25));border-color:rgba(205,127,50,.25)}
+
+    .rank{font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--muted);text-align:center}
+    .row.top1 .rank{color:var(--gold);font-size:18px}
+    .row.top2 .rank{color:#cccccc;font-size:16px}
+    .row.top3 .rank{color:#cd7f32;font-size:16px}
+    .ava-sm{font-size:22px;text-align:center;line-height:1}
+    .uinfo{min-width:0}
+    .uname{font-weight:600;color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
+    .uname .ball{font-size:13px}
+    .umeta{font-size:11px;color:var(--muted)}
+    .pts{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--gold);white-space:nowrap}
+    .pts .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-left:4px;font-weight:500}
+    .pts.diff{font-size:14px;color:var(--text)}
+
+    .empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:13px;background:rgba(0,0,0,.2);border:1px dashed var(--border);border-radius:10px}
+
+    @media (max-width: 560px){
+      .pool-total{font-size:26px}
+      .pool-breakdown{grid-template-columns:1fr 1fr;gap:6px}
+      .row{grid-template-columns:32px 26px 1fr auto;gap:8px;padding:10px 12px}
+      .uname{font-size:13px}
+      .pts{font-size:15px}
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
+
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
+        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
+        <span style="width:80px"></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div class="card">
+          <h1><span class="accent">Leaderboard</span></h1>
+          <p class="sub">Pool live · username only · ⚽ = verified wallet</p>
+
+          <!-- POOL CARD -->
+          <div class="pool">
+            <!-- 🎨 PLACEHOLDER for illus/pool-trophy.webp — see for-designer.html -->
+            <div class="pool-head">
+              <div class="pool-title">🏆 Prize Pool</div>
+              <div style="font-size:10.5px;color:var(--muted)" id="pool-updated">pool fills from kickoff</div>
+            </div>
+            <div class="pool-total" id="pool-bobai">0 BOBAI</div>
+            <div class="pool-usd" id="pool-usd">≈ $0.00</div>
+            <div class="pool-breakdown">
+              <div class="pool-cell">
+                <div class="lbl">Group pot · 45 %</div>
+                <div class="val" id="pool-group">0</div>
+                <div class="pct">paid 1 day after group stage</div>
+              </div>
+              <div class="pool-cell">
+                <div class="lbl">End pool · 40/85 %</div>
+                <div class="val" id="pool-end">0</div>
+                <div class="pct">paid 1 day after Final</div>
+              </div>
+              <div class="pool-cell">
+                <div class="lbl">Crypto pot · 15 %</div>
+                <div class="val" id="pool-crypto">0</div>
+                <div class="pct">paid 1 day after Final</div>
+              </div>
+            </div>
+
+            <!-- DONATION BOX -->
+            <div style="margin-top:16px;padding:14px;background:rgba(0,0,0,.35);border:1px solid rgba(0,230,118,.15);border-radius:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+                <div style="font-family:'Space Grotesk';font-weight:600;font-size:12px;color:#5fffa0;letter-spacing:.5px">💚 DONATIONS WELCOME</div>
+                <a href="./rules.html#donations" style="font-size:11px;color:var(--muted);text-decoration:underline">how it works</a>
+              </div>
+              <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px">
+                Send <b>BNB</b> or <b>USDT (BEP-20)</b> to grow the pool. Incoming funds are auto-swapped to $BOBAI and added on-chain. Any amount welcome.
+              </div>
+              <div style="background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+                <code id="prize-addr" style="flex:1;font-size:12px;color:var(--text);word-break:break-all;font-family:'Space Grotesk'">…</code>
+                <button id="copy-addr" class="btn" style="width:auto;padding:7px 12px;font-size:11px">Copy</button>
+              </div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:8px">
+                BSC (BNB Smart Chain) only. Sending other networks = lost funds.
+              </div>
+            </div>
+          </div>
+
+          <!-- TABS -->
+          <div class="lbar" id="lbar">
+            <button data-view="overall" class="active">Overall</button>
+            <button data-view="groups">Groups</button>
+            <button data-view="crypto">Crypto</button>
+          </div>
+
+          <!-- SUB-SELECTOR (for Groups + Crypto) -->
+          <div id="sub-selector" class="sub-selector hidden"></div>
+
+          <!-- LIST -->
+          <div id="list" class="list">
+            <div class="empty">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=6"></script>
+  <script src="./assets/countries.js?v=6"></script>
+  <script src="./assets/auth.js?v=6"></script>
+  <script src="./assets/profile.js?v=6"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    function countryFlag(code){
+      const c = window.WC_COUNTRIES.find(x => x.code === code);
+      return c ? c.flag : '⚪';
+    }
+    function countryName(code){
+      const c = window.WC_COUNTRIES.find(x => x.code === code);
+      return c ? c.name : '—';
+    }
+    function fmtBobai(n){
+      if (n == null) return '0';
+      const v = Number(n);
+      if (v >= 1_000_000) return (v/1_000_000).toFixed(2) + 'M';
+      if (v >= 1_000)     return (v/1_000).toFixed(1) + 'K';
+      return v.toFixed(0);
+    }
+    function fmtUsd(n){
+      if (n == null || !isFinite(n)) return '$0.00';
+      if (n >= 1_000_000) return '$' + (n/1_000_000).toFixed(2) + 'M';
+      if (n >= 1_000)     return '$' + (n/1_000).toFixed(1) + 'K';
+      return '$' + n.toFixed(2);
+    }
+    function fmtCryptoPrice(coin, n){
+      if (n == null) return '—';
+      const v = Number(n);
+      if (coin === 'bobai') return '$' + v.toFixed(10).replace(/0+$/,'').replace(/\.$/,'');
+      if (coin === 'btc')   return '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    }
+
+    let me = null;
+    let view = 'overall';
+    let subView = null; // group letter or coin
+    const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+    const COINS = [{ code:'btc', label:'BTC' }, { code:'bnb', label:'BNB' }, { code:'bobai', label:'$BOBAI' }];
+
+    async function loadPool(){
+      const r = await window.WC_PROFILE.loadPool();
+      if (r.error) return;
+      const p = r.pool || {};
+      const total = parseFloat(p.total_bobai) || 0;
+      const px    = parseFloat(p.bobai_price_usd) || 0;
+      $('#pool-bobai').textContent = fmtBobai(total) + ' BOBAI';
+      $('#pool-usd').textContent   = '≈ ' + fmtUsd(total * px);
+      $('#pool-group').textContent  = fmtBobai(p.group_pot);
+      $('#pool-end').textContent    = fmtBobai(p.endpool);
+      $('#pool-crypto').textContent = fmtBobai(p.crypto_pot);
+      if (p.updated_at && total > 0) {
+        $('#pool-updated').textContent = 'updated ' + new Date(p.updated_at).toLocaleString();
+      }
+    }
+
+    // Render prize-wallet donation address
+    (() => {
+      const addr = window.WC_CONFIG?.PRIZE_WALLET;
+      if (!addr) return;
+      $('#prize-addr').textContent = addr;
+      $('#copy-addr').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(addr);
+          const b = $('#copy-addr');
+          const orig = b.textContent;
+          b.textContent = '✓ Copied';
+          setTimeout(() => { b.textContent = orig; }, 1500);
+        } catch { /* ignore */ }
+      });
+    })();
+
+    function rowClass(rank, userId){
+      let c = 'row';
+      if (rank === 1) c += ' top1';
+      else if (rank === 2) c += ' top2';
+      else if (rank === 3) c += ' top3';
+      if (me && me.id === userId) c += ' me';
+      return c;
+    }
+
+    function userRow(r, rank, ptsLabel, ptsValue, ptsClass=''){
+      const flag = countryFlag(r.avatar_country);
+      const country = countryName(r.avatar_country);
+      const ball = r.has_wallet ? '<span class="ball">⚽</span>' : '';
+      return `<div class="${rowClass(rank, r.user_id)}">
+        <div class="rank">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#'+rank}</div>
+        <div class="ava-sm">${flag}</div>
+        <div class="uinfo">
+          <div class="uname">${escapeHtml(r.username)}${ball}</div>
+          <div class="umeta">${country}</div>
+        </div>
+        <div class="pts ${ptsClass}">${ptsValue}<span class="lbl">${ptsLabel}</span></div>
+      </div>`;
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);
+    }
+
+    async function renderOverall(){
+      $('#sub-selector').classList.add('hidden');
+      $('#list').innerHTML = '<div class="empty">Loading…</div>';
+      const r = await window.WC_PROFILE.loadOverallLeaderboard();
+      if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
+      if (!r.rows.length) { $('#list').innerHTML = '<div class="empty">No players yet.</div>'; return; }
+      const html = r.rows.map((row, i) => userRow(row, i+1, 'pts', row.total_points || 0)).join('');
+      $('#list').innerHTML = html;
+    }
+
+    async function renderGroup(letter){
+      $('#list').innerHTML = '<div class="empty">Loading…</div>';
+      const r = await window.WC_PROFILE.loadGroupLeaderboard(letter);
+      if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
+      if (!r.rows.length) { $('#list').innerHTML = `<div class="empty">No tips in Group ${letter} yet.</div>`; return; }
+      const html = r.rows.map((row, i) => userRow(row, i+1, 'pts', row.group_points || 0)).join('');
+      $('#list').innerHTML = html;
+    }
+
+    async function renderCrypto(coin){
+      $('#list').innerHTML = '<div class="empty">Loading…</div>';
+      const r = await window.WC_PROFILE.loadCryptoLeaderboard(coin);
+      if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
+      if (!r.rows.length) { $('#list').innerHTML = '<div class="empty">No predictions yet.</div>'; return; }
+      const priceKey = coin + '_price';
+      const diffKey  = coin + '_diff';
+      const html = r.rows.map((row, i) => {
+        // Sort: unresolved diffs go to end; for display show prediction + diff if resolved
+        const px = row[priceKey];
+        const df = row[diffKey];
+        const valHtml = df != null
+          ? `${fmtCryptoPrice(coin, px)} <span style="color:var(--muted);font-size:11px">Δ${fmtCryptoPrice(coin, df)}</span>`
+          : px != null
+            ? `${fmtCryptoPrice(coin, px)} <span style="color:var(--muted);font-size:11px">pending</span>`
+            : '<span style="color:var(--muted)">—</span>';
+        return userRow(row, i+1, '', valHtml, 'diff');
+      }).join('');
+      $('#list').innerHTML = html;
+    }
+
+    function showGroupSelector(){
+      const sel = $('#sub-selector');
+      sel.classList.remove('hidden');
+      sel.innerHTML = GROUP_LETTERS.map(L =>
+        `<button data-letter="${L}" class="${subView===L?'active':''}">Group ${L}</button>`
+      ).join('');
+      $$('#sub-selector button').forEach(b => b.addEventListener('click', () => {
+        subView = b.dataset.letter;
+        showGroupSelector(); // re-render to update active state
+        renderGroup(subView);
+      }));
+    }
+
+    function showCoinSelector(){
+      const sel = $('#sub-selector');
+      sel.classList.remove('hidden');
+      sel.innerHTML = COINS.map(c =>
+        `<button data-coin="${c.code}" class="${subView===c.code?'active':''}">${c.label}</button>`
+      ).join('');
+      $$('#sub-selector button').forEach(b => b.addEventListener('click', () => {
+        subView = b.dataset.coin;
+        showCoinSelector();
+        renderCrypto(subView);
+      }));
+    }
+
+    function switchView(v){
+      view = v;
+      $$('#lbar button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+      if (v === 'overall') {
+        subView = null;
+        renderOverall();
+      } else if (v === 'groups') {
+        if (!subView || !GROUP_LETTERS.includes(subView)) subView = 'A';
+        showGroupSelector();
+        renderGroup(subView);
+      } else {
+        if (!subView || !['btc','bnb','bobai'].includes(subView)) subView = 'btc';
+        showCoinSelector();
+        renderCrypto(subView);
+      }
+    }
+
+    $$('#lbar button').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+
+    (async ()=>{
+      me = await window.WC_AUTH.currentProfile();
+      // not requiring login — leaderboard is public-ish via RLS, but currentProfile() helps highlight "me"
+      await loadPool();
+      switchView('overall');
+      setInterval(loadPool, 30000); // refresh pool every 30s
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$BOBAI Worldcup '26 — Tips</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=4">
+  <style>
+    .container.wide{max-width:920px}
+    .tipbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;background:rgba(0,0,0,.3);padding:5px;border-radius:10px}
+    .tipbar button{flex:1;min-width:80px;padding:9px 8px;font-size:12px;font-weight:600;border:none;background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit}
+    .tipbar button.active{background:var(--gold-glow);color:var(--gold)}
+
+    .group-card{background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+    .group-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .group-title{font-family:'Space Grotesk';font-weight:700;font-size:15px;color:var(--gold);letter-spacing:.5px}
+    .group-meta{font-size:11px;color:var(--muted)}
+
+    .match-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;padding:10px 4px;border-top:1px solid var(--border)}
+    .match-row.first{border-top:none}
+    .match-meta{grid-column:1/-1;font-size:10.5px;color:var(--muted);text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;padding-bottom:4px}
+    .match-meta .multi{padding:1px 6px;border-radius:4px;font-weight:700;font-size:9px;letter-spacing:.5px}
+    .match-meta .multi.x1{background:rgba(123,125,158,.2);color:var(--muted)}
+    .match-meta .multi.x2{background:rgba(64,64,255,.15);color:#9090ff}
+    .match-meta .multi.x3{background:rgba(160,64,255,.15);color:#c590ff}
+    .match-meta .multi.x4{background:rgba(240,185,11,.18);color:var(--gold)}
+    .match-meta .lockicon{color:#ff8580}
+    .match-meta .open{color:#5fffa0}
+    .match-meta .resolved{color:var(--gold)}
+
+    .team{display:flex;align-items:center;gap:8px;min-width:0}
+    .team.away{justify-content:flex-end}
+    .team .fl{font-size:22px;line-height:1;flex-shrink:0}
+    .team .nm{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .score-cell{display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .score-input{width:42px;padding:7px 6px;background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center;font-family:'Space Grotesk'}
+    .score-input:focus{outline:none;border-color:var(--gold)}
+    .score-input:disabled{opacity:.45;cursor:not-allowed}
+    .score-dash{color:var(--muted);font-weight:700}
+
+    .save-tag{font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);min-width:40px;text-align:right}
+    .save-tag.dirty{color:#ffc066}
+    .save-tag.ok{color:#5fffa0}
+    .save-tag.err{color:#ff8580}
+    .save-tag.locked{color:#ff8580}
+
+    .points-pill{font-size:10px;font-weight:700;color:var(--gold);background:var(--gold-glow);padding:2px 7px;border-radius:99px;margin-left:6px}
+
+    @media (max-width: 560px){
+      .team .nm{font-size:11.5px}
+      .score-input{width:36px;padding:6px 4px;font-size:13px}
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
+
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
+        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
+        <span style="width:80px"></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div class="card">
+          <h1><span class="accent">Match Tips</span></h1>
+          <p class="sub">5 pts exact · 3 pts winner+diff · 1 pt winner only · locks 15 min before kickoff</p>
+
+          <div id="alert"></div>
+
+          <!-- View switcher -->
+          <div class="tipbar" id="phase-bar">
+            <button data-view="group" class="active">Groups</button>
+            <button data-view="r32">R32</button>
+            <button data-view="r16">R16</button>
+            <button data-view="qf">QF</button>
+            <button data-view="sf">SF</button>
+            <button data-view="3rd">3rd Place</button>
+            <button data-view="final">Final</button>
+          </div>
+
+          <div id="list">Loading matches…</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=4"></script>
+  <script src="./assets/countries.js?v=4"></script>
+  <script src="./assets/auth.js?v=4"></script>
+  <script src="./assets/profile.js?v=4"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    const LOCK_MIN = 15;
+
+    function showAlert(type, msg){
+      const el = $('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+
+    function countryLookup(code){
+      return window.WC_COUNTRIES.find(c => c.code === code);
+    }
+
+    function teamCell(code, alignRight){
+      if (!code || code === 'TBD') {
+        return `<div class="team ${alignRight?'away':''}">
+          <span class="fl">⚪</span><span class="nm" style="color:var(--muted)">TBD</span>
+        </div>`;
+      }
+      const c = countryLookup(code);
+      const flag = c ? c.flag : '🏳';
+      const name = c ? c.name : code;
+      if (alignRight) {
+        return `<div class="team away"><span class="nm">${name}</span><span class="fl">${flag}</span></div>`;
+      }
+      return `<div class="team"><span class="fl">${flag}</span><span class="nm">${name}</span></div>`;
+    }
+
+    function fmtKickoff(iso){
+      const d = new Date(iso);
+      // Local TZ for display
+      const opts = { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' };
+      return d.toLocaleString(undefined, opts);
+    }
+
+    function isLocked(iso){
+      const kickoff = new Date(iso).getTime();
+      return Date.now() >= kickoff - LOCK_MIN * 60 * 1000;
+    }
+
+    function multiplierLabel(m){
+      return `<span class="multi x${m}">×${m}</span>`;
+    }
+
+    let allMatches = [];
+    let myTips = {};
+    let currentView = 'group';
+
+    function render(){
+      const list = $('#list');
+      list.innerHTML = '';
+
+      let filtered;
+      if (currentView === 'group') {
+        filtered = allMatches.filter(m => m.phase === 'group');
+        // group by group_letter
+        const byG = {};
+        filtered.forEach(m => {
+          byG[m.group_letter] = byG[m.group_letter] || [];
+          byG[m.group_letter].push(m);
+        });
+        const letters = Object.keys(byG).sort();
+        if (!letters.length) {
+          list.innerHTML = '<div class="alert info">No matches loaded yet. Run the Phase D seed in Supabase.</div>';
+          return;
+        }
+        letters.forEach(letter => {
+          const card = document.createElement('div');
+          card.className = 'group-card';
+          card.innerHTML = `
+            <div class="group-head">
+              <div class="group-title">Group ${letter}</div>
+              <div class="group-meta">${byG[letter].length} matches</div>
+            </div>
+            <div class="rows"></div>`;
+          const rows = card.querySelector('.rows');
+          byG[letter].forEach((m, idx) => {
+            rows.appendChild(buildMatchRow(m, idx === 0));
+          });
+          list.appendChild(card);
+        });
+      } else {
+        filtered = allMatches.filter(m => m.phase === currentView);
+        if (!filtered.length) {
+          list.innerHTML = '<div class="alert info">No matches in this phase yet.</div>';
+          return;
+        }
+        const card = document.createElement('div');
+        card.className = 'group-card';
+        const phaseName = ({ r32:'Round of 32', r16:'Round of 16', qf:'Quarter-Finals', sf:'Semi-Finals', '3rd':'Third Place', final:'Final' })[currentView] || currentView.toUpperCase();
+        card.innerHTML = `<div class="group-head"><div class="group-title">${phaseName}</div><div class="group-meta">${filtered.length} matches</div></div><div class="rows"></div>`;
+        const rows = card.querySelector('.rows');
+        filtered.forEach((m, idx) => rows.appendChild(buildMatchRow(m, idx === 0)));
+        list.appendChild(card);
+      }
+    }
+
+    function buildMatchRow(m, isFirst){
+      const wrap = document.createElement('div');
+      wrap.className = 'match-row' + (isFirst ? ' first' : '');
+      const tip = myTips[m.id];
+      const locked = isLocked(m.kickoff_utc);
+      const resolved = !!(tip && tip.resolved);
+
+      const status = resolved
+        ? `<span class="resolved">✓ resolved <span class="points-pill">+${tip.points_final||0}</span></span>`
+        : locked
+          ? `<span class="lockicon">🔒 locked</span>`
+          : `<span class="open">⏱ open</span>`;
+
+      wrap.innerHTML = `
+        <div class="match-meta">
+          <span>${fmtKickoff(m.kickoff_utc)}</span>
+          ${multiplierLabel(m.multiplier)}
+          ${status}
+        </div>
+        ${teamCell(m.team_home, false)}
+        <div class="score-cell">
+          <input class="score-input s-home" type="number" min="0" max="30" inputmode="numeric"
+                 value="${tip ? tip.tip_home : ''}" ${locked ? 'disabled' : ''} placeholder="–">
+          <span class="score-dash">:</span>
+          <input class="score-input s-away" type="number" min="0" max="30" inputmode="numeric"
+                 value="${tip ? tip.tip_away : ''}" ${locked ? 'disabled' : ''} placeholder="–">
+        </div>
+        ${teamCell(m.team_away, true)}
+        <div class="match-meta" style="padding-top:2px"><span class="save-tag ${locked?'locked':''}" data-mid="${m.id}">${locked?'locked':''}</span></div>
+      `;
+
+      // disable inputs if either team is TBD
+      if (m.team_home === 'TBD' || m.team_away === 'TBD') {
+        wrap.querySelectorAll('.score-input').forEach(i => { i.disabled = true; i.placeholder = '–'; });
+        wrap.querySelector('.save-tag').textContent = 'awaiting draw';
+      }
+
+      const inH = wrap.querySelector('.s-home');
+      const inA = wrap.querySelector('.s-away');
+      const tag = wrap.querySelector('.save-tag');
+
+      const trySave = async () => {
+        const vH = inH.value.trim(), vA = inA.value.trim();
+        if (vH === '' || vA === '') return;
+        const nh = parseInt(vH, 10), na = parseInt(vA, 10);
+        if (!Number.isInteger(nh) || !Number.isInteger(na)) return;
+        tag.className = 'save-tag dirty';
+        tag.textContent = 'saving…';
+        const r = await window.WC_PROFILE.saveTip(m.id, nh, na);
+        if (r.error) {
+          tag.className = 'save-tag err';
+          tag.textContent = 'failed';
+          showAlert('error', `Match ${m.id}: ${r.error}`);
+          return;
+        }
+        myTips[m.id] = { match_id: m.id, tip_home: nh, tip_away: na, points_final: 0, resolved: false };
+        tag.className = 'save-tag ok';
+        tag.textContent = '✓ saved';
+        setTimeout(()=>{ if (tag.textContent === '✓ saved') tag.textContent = ''; tag.className = 'save-tag'; }, 1800);
+      };
+
+      inH.addEventListener('change', trySave);
+      inA.addEventListener('change', trySave);
+      inH.addEventListener('blur', trySave);
+      inA.addEventListener('blur', trySave);
+
+      return wrap;
+    }
+
+    $$('#phase-bar button').forEach(b => b.addEventListener('click', () => {
+      $$('#phase-bar button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      currentView = b.dataset.view;
+      render();
+    }));
+
+    (async ()=>{
+      const me = await window.WC_AUTH.currentProfile();
+      if (!me) { window.location.href = './index.html'; return; }
+      const [mr, tr] = await Promise.all([
+        window.WC_PROFILE.loadMatches(),
+        window.WC_PROFILE.loadMyTips(),
+      ]);
+      if (mr.error) { showAlert('error', mr.error); return; }
+      if (tr.error) { showAlert('error', tr.error); return; }
+      allMatches = mr.matches;
+      myTips = tr.tips;
+      render();
+    })();
+  </script>
+</body>
+</html>

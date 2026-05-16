@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$BOBAI Worldcup '26 — Bonus Questions</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=3">
+  <style>
+    .container.wide{max-width:780px}
+    .q{margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+    .q:last-of-type{border-bottom:none}
+    .q .q-num{font-family:'Space Grotesk';font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+    .q .q-title{font-family:'Space Grotesk';font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3}
+    .q .q-hint{font-size:12px;color:var(--muted);margin-bottom:14px}
+    .q .q-points{color:var(--gold);font-weight:600}
+
+    .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;max-height:260px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
+    .country-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer;transition:all .15s;color:var(--text)}
+    .country-cell:hover{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.15)}
+    .country-cell.sel{background:var(--gold-glow);border-color:var(--gold)}
+    .country-cell .fl{font-size:24px;line-height:1}
+    .country-cell .nm{font-size:10px;color:var(--muted);text-align:center;line-height:1.2}
+    .country-cell.sel .nm{color:var(--gold)}
+
+    .bracket-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+    .br-btn{padding:14px;background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+    .br-btn:hover{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.2)}
+    .br-btn.sel{background:var(--gold-glow);border-color:var(--gold);color:var(--gold)}
+
+    .summary{padding:14px;background:rgba(64,64,255,.06);border:1px solid rgba(64,64,255,.2);border-radius:10px;color:#9090ff;font-size:12px;line-height:1.5;margin-bottom:24px}
+    .save-bar{position:sticky;bottom:16px;padding:14px;background:var(--bg);border:1px solid var(--gold);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;backdrop-filter:blur(8px)}
+    .save-bar .info{font-size:12px;color:var(--muted)}
+    .save-bar .info b{color:var(--text)}
+
+    .locked-banner{padding:16px;background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.3);border-radius:10px;color:#ffc066;font-size:13px;text-align:center;margin-bottom:20px}
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
+
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="./dashboard.html" aria-label="Back to dashboard">
+          <span>←</span> Dashboard
+        </a>
+        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
+        <span style="width:80px"></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+        <div class="card">
+          <h1><span class="accent">Bonus Questions</span></h1>
+          <p class="sub">5 predictions · 10 points each · locked at kickoff (11 June 2026, 21:00 Zurich)</p>
+
+          <div id="locked" class="locked-banner hidden">
+            🔒 Bonus questions are locked — tournament has started.
+          </div>
+
+          <div class="summary">
+            Each correct prediction is worth <b>10 points</b> and counts toward your overall leaderboard score.
+            You can edit your answers any time before the first match kicks off.
+          </div>
+
+          <div id="alert"></div>
+
+          <!-- Q1: Champion -->
+          <div class="q" data-field="champion">
+            <div class="q-num">Question 1 · <span class="q-points">10 pts</span></div>
+            <div class="q-title">🏆 Who wins the World Cup?</div>
+            <div class="q-hint">Pick the country you think will lift the trophy.</div>
+            <div class="country-grid" data-grid="champion"></div>
+          </div>
+
+          <!-- Q2: Most goals -->
+          <div class="q" data-field="most_goals_team">
+            <div class="q-num">Question 2 · <span class="q-points">10 pts</span></div>
+            <div class="q-title">⚽ Team with the most goals scored</div>
+            <div class="q-hint">Total goals across all of their matches.</div>
+            <div class="country-grid" data-grid="most_goals_team"></div>
+          </div>
+
+          <!-- Q3: Fewest goals -->
+          <div class="q" data-field="fewest_goals_team">
+            <div class="q-num">Question 3 · <span class="q-points">10 pts</span></div>
+            <div class="q-title">🥅 Team with the fewest goals scored</div>
+            <div class="q-hint">Lowest total goals scored across their matches.</div>
+            <div class="country-grid" data-grid="fewest_goals_team"></div>
+          </div>
+
+          <!-- Q4: Top scorer country -->
+          <div class="q" data-field="topscorer_country">
+            <div class="q-num">Question 4 · <span class="q-points">10 pts</span></div>
+            <div class="q-title">👑 Top scorer's country</div>
+            <div class="q-hint">Which nation's player ends up with the most goals (Golden Boot)?</div>
+            <div class="country-grid" data-grid="topscorer_country"></div>
+          </div>
+
+          <!-- Q5: Red cards -->
+          <div class="q" data-field="red_cards_bracket">
+            <div class="q-num">Question 5 · <span class="q-points">10 pts</span></div>
+            <div class="q-title">🟥 Total red cards in the tournament</div>
+            <div class="q-hint">Pick the bracket that the final total will fall into.</div>
+            <div class="bracket-grid">
+              <button class="br-btn" data-val="<20">&lt; 20</button>
+              <button class="br-btn" data-val="20-30">20 – 30</button>
+              <button class="br-btn" data-val="30-40">30 – 40</button>
+              <button class="br-btn" data-val="40-50">40 – 50</button>
+              <button class="br-btn" data-val=">50">&gt; 50</button>
+            </div>
+          </div>
+
+          <!-- Save bar -->
+          <div class="save-bar">
+            <div class="info">
+              <div><b id="answered-count">0/5</b> answered</div>
+              <div id="save-status">Unsaved changes — pick at least one option to enable Save.</div>
+            </div>
+            <button id="btn-save" class="btn" style="width:auto;padding:12px 22px" disabled>Save answers</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=3"></script>
+  <script src="./assets/countries.js?v=3"></script>
+  <script src="./assets/auth.js?v=3"></script>
+  <script src="./assets/profile.js?v=3"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    function showAlert(type, msg){
+      const el = $('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+
+    // State: pending answers (in-memory until Save)
+    const FIELDS = ['champion','most_goals_team','fewest_goals_team','red_cards_bracket','topscorer_country'];
+    let pending = {};   // {field: value}
+    let saved   = {};   // last-saved snapshot
+    let locked = false;
+
+    function isLocked(){
+      const cfgK = new Date(window.WC_CONFIG.KICKOFF_UTC).getTime();
+      return Date.now() >= cfgK;
+    }
+
+    function renderCountryGrid(field){
+      const grid = document.querySelector(`[data-grid="${field}"]`);
+      grid.innerHTML = '';
+      window.WC_COUNTRIES.forEach(c => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'country-cell' + (pending[field] === c.code ? ' sel' : '');
+        b.dataset.code = c.code;
+        b.innerHTML = `<span class="fl">${c.flag}</span><span class="nm">${c.name}</span>`;
+        if (locked) b.disabled = true;
+        b.addEventListener('click', ()=>{
+          if (locked) return;
+          [...grid.children].forEach(x=>x.classList.remove('sel'));
+          b.classList.add('sel');
+          pending[field] = c.code;
+          updateSaveBar();
+        });
+        grid.appendChild(b);
+      });
+    }
+
+    function renderBracket(){
+      $$('.br-btn').forEach(btn => {
+        btn.classList.toggle('sel', pending.red_cards_bracket === btn.dataset.val);
+        if (locked) btn.disabled = true;
+        btn.addEventListener('click', ()=>{
+          if (locked) return;
+          $$('.br-btn').forEach(x=>x.classList.remove('sel'));
+          btn.classList.add('sel');
+          pending.red_cards_bracket = btn.dataset.val;
+          updateSaveBar();
+        }, { once: false });
+      });
+    }
+
+    function updateSaveBar(){
+      const answered = FIELDS.filter(f => pending[f]).length;
+      $('#answered-count').textContent = `${answered}/5`;
+      const dirty = FIELDS.some(f => (pending[f] || null) !== (saved[f] || null));
+      $('#btn-save').disabled = !dirty || locked;
+      $('#save-status').textContent =
+        locked ? '🔒 Locked — tournament started.'
+        : dirty ? 'Unsaved changes.'
+        : answered === 0 ? 'Pick at least one option.'
+        : '✅ All up to date.';
+    }
+
+    $('#btn-save').addEventListener('click', async ()=>{
+      const btn = $('#btn-save');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const r = await window.WC_PROFILE.saveBonus(pending);
+      btn.textContent = 'Save answers';
+      if (r.error) {
+        showAlert('error', r.error);
+        btn.disabled = false;
+        return;
+      }
+      saved = { ...pending };
+      showAlert('ok', 'Answers saved.');
+      updateSaveBar();
+      setTimeout(()=>showAlert(), 2500);
+    });
+
+    (async ()=>{
+      const me = await window.WC_AUTH.currentProfile();
+      if (!me) { window.location.href = './index.html'; return; }
+
+      locked = isLocked();
+      if (locked) $('#locked').classList.remove('hidden');
+
+      const r = await window.WC_PROFILE.getBonus();
+      if (r.bonus) {
+        saved = { ...r.bonus };
+        FIELDS.forEach(f => { if (r.bonus[f]) pending[f] = r.bonus[f]; });
+      }
+      // Render
+      renderCountryGrid('champion');
+      renderCountryGrid('most_goals_team');
+      renderCountryGrid('fewest_goals_team');
+      renderCountryGrid('topscorer_country');
+      renderBracket();
+      updateSaveBar();
+    })();
+  </script>
+</body>
+</html>

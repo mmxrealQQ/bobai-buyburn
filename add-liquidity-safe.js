@@ -93,7 +93,7 @@ async function main() {
   const bnbBefore = await publicClient.getBalance({ address: account.address });
   console.log(`BNB balance:   ${formatEther(bnbBefore)}`);
 
-  const minGas = parseEther('0.002');
+  const minGas = parseEther('0.0015');
   if (bnbBefore < minGas) {
     console.log(`[ERROR] Brauche mindestens ${formatEther(minGas)} BNB für Gas! Bitte BNB auf die Wallet senden.`);
     process.exit(1);

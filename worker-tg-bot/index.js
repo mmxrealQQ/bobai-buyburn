@@ -394,6 +394,33 @@ async function cleanupExpiredCaptchas(env) {
   }
 }
 
+// ==================== BOT COMMAND MENU SETUP ====================
+
+const BOT_COMMANDS = [
+  { command: 'alerts',   description: 'Buy & burn alert tiers' },
+  { command: 'burn',     description: 'Burn stats & progress' },
+  { command: 'buy',      description: 'How to buy BOBAI' },
+  { command: 'ca',       description: 'Contract address' },
+  { command: 'help',     description: 'Show all commands' },
+  { command: 'price',    description: 'Live price, volume & market stats' },
+  { command: 'security', description: 'Anti-scam reminder & official links' },
+  { command: 'social',   description: 'All project links' },
+];
+
+const COMMANDS_VERSION = 'v3-security';
+
+async function ensureCommandsRegistered(env) {
+  const current = await env.KV.get('commands_version');
+  if (current === COMMANDS_VERSION) return;
+  const res = await tg('setMyCommands', { commands: BOT_COMMANDS });
+  if (res?.ok) {
+    await env.KV.put('commands_version', COMMANDS_VERSION);
+    console.log('[COMMANDS] Registered', COMMANDS_VERSION);
+  } else {
+    console.error('[COMMANDS] Failed:', JSON.stringify(res));
+  }
+}
+
 // ==================== CHAT COMMANDS ====================
 
 async function handleCommand(msg) {
@@ -487,10 +514,11 @@ async function handleCommand(msg) {
 
 🌍 <a href="https://brainonbnb.ai">Website & Dashboard</a>
 
+🔷 <a href="https://blockspot.io/coin/brain-on-bnb-ai/">Blockspot.io</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
 🦎 <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai">CoinGecko</a>
 🦅 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DEX Screener</a>
-🌐 <a href="https://www.dextools.io/token/bobai">DEXTools</a>
+🌐 <a href="https://www.dextools.io/token/bobai">DEXTools.io</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
 
 🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Wallet</a>
@@ -515,6 +543,29 @@ async function handleCommand(msg) {
 <i>Tap to copy — paste in your DEX</i>
 
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">View on BscScan</a>`;
+      break;
+    }
+
+    case '/security':
+    case 'security':
+    case '/scam':
+    case 'scam': {
+      reply = `⚠️ <b>BOBAI Security Notice</b>
+
+🚫 Admins will <b>NEVER</b> DM you first
+🚫 <b>NEVER</b> share your seed phrase or private key
+🚫 <b>NEVER</b> connect your wallet to unknown sites
+🚫 No giveaways, no presales, no airdrops via DM
+
+✅ <b>Official Links Only</b>
+🌍 brainonbnb.ai
+💬 t.me/bobai_official
+🐦 x.com/BrainOnBNB
+
+📋 <b>Official CA:</b>
+<code>${BOBAI_TOKEN}</code>
+
+<i>Anything else = scam. Stay safe.</i>`;
       break;
     }
 
@@ -549,12 +600,13 @@ async function handleCommand(msg) {
 
 Here's what I can do:
 
-📊 /price — Live price, volume & market stats
-🛒 /buy — How to buy BOBAI
-🔥 /burn — Burn stats & progress
-🧠 /social — All project links
-📋 /ca — Contract address
 🔔 /alerts — Buy & burn alert tiers
+🔥 /burn — Burn stats & progress
+🛒 /buy — How to buy BOBAI
+📋 /ca — Contract address
+📊 /price — Live price, volume & market stats
+⚠️ /security — Anti-scam reminder & official links
+🧠 /social — All project links
 
 💡 <i>I also post alerts for buys & burns!</i>
 
@@ -605,6 +657,10 @@ export default {
   // Cron handler (every 1 min)
   async scheduled(event, env) {
     TG_BOT_TOKEN = env.BOT_TOKEN;
+
+    // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===
+    await ensureCommandsRegistered(env);
+
     // === BUY ALERTS ===
     // Read posted txs for deduplication (1 KV read per cron)
     const postedRaw = await env.KV.get('posted_txs');

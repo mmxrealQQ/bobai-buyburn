@@ -48,14 +48,17 @@
           <!-- LOGIN -->
           <form id="form-login" class="tab-pane">
             <div class="field">
-              <label>Username</label>
-              <input type="text" name="username" autocomplete="username" required>
+              <label>Username or Email</label>
+              <input type="text" name="identifier" autocomplete="username" required>
             </div>
             <div class="field">
               <label>Password</label>
               <input type="password" name="password" autocomplete="current-password" required>
             </div>
             <button type="submit" class="btn">Sign in</button>
+            <p class="sub" style="margin-top:14px;margin-bottom:0;font-size:12px">
+              <a href="#" id="link-forgot" style="color:var(--gold)">Forgot password?</a>
+            </p>
           </form>
 
           <!-- REGISTER -->
@@ -66,9 +69,19 @@
               <div class="hint">3–20 chars, letters/numbers/underscore. Shown on the leaderboard.</div>
             </div>
             <div class="field">
+              <label>Email</label>
+              <input type="email" name="email" autocomplete="email" required>
+              <div class="hint">Used only for password reset. Never shown publicly, never spammed.</div>
+            </div>
+            <div class="field">
               <label>Password</label>
               <input type="password" name="password" autocomplete="new-password" minlength="6" required>
-              <div class="hint">Min 6 chars. No email needed.</div>
+              <div class="hint">Min 6 characters.</div>
+            </div>
+            <div class="field">
+              <label>Confirm password</label>
+              <input type="password" name="password_confirm" autocomplete="new-password" minlength="6" required>
+              <div class="hint">Re-enter the same password.</div>
             </div>
             <div class="field">
               <label>Pick your country (avatar)</label>
@@ -77,6 +90,19 @@
               <div class="hint">You can change this later. 🎨 Final avatars: <b>$BOBAI in each national jersey</b> — illustrator delivery pending (<a href="./for-designer.html" style="color:var(--gold)">brief</a>). Flags here are placeholders.</div>
             </div>
             <button type="submit" class="btn">Create account</button>
+          </form>
+
+          <!-- FORGOT PASSWORD -->
+          <form id="form-forgot" class="tab-pane hidden">
+            <div class="field">
+              <label>Email</label>
+              <input type="email" name="email" autocomplete="email" required>
+              <div class="hint">We'll send you a reset link.</div>
+            </div>
+            <button type="submit" class="btn">Send reset link</button>
+            <p class="sub" style="margin-top:14px;margin-bottom:0;font-size:12px">
+              <a href="#" id="link-back-login" style="color:var(--gold)">← Back to sign in</a>
+            </p>
           </form>
 
           <p class="sub" style="margin-top:24px;margin-bottom:0">
@@ -88,9 +114,9 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=2"></script>
+  <script src="./assets/config.js?v=8"></script>
   <script src="./assets/countries.js?v=2"></script>
-  <script src="./assets/auth.js?v=2"></script>
+  <script src="./assets/auth.js?v=8"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -117,14 +143,17 @@
       grid.appendChild(b);
     });
 
-    // Tabs
-    $$('.tab').forEach(t=>t.addEventListener('click',()=>{
-      $$('.tab').forEach(x=>x.classList.toggle('active', x===t));
-      const which = t.dataset.tab;
+    // Tab switching (login/register only; forgot is a separate pane)
+    function showPane(which){
+      $$('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===which));
       $('#form-login').classList.toggle('hidden', which!=='login');
       $('#form-register').classList.toggle('hidden', which!=='register');
+      $('#form-forgot').classList.toggle('hidden', which!=='forgot');
       showAlert();
-    }));
+    }
+    $$('.tab').forEach(t=>t.addEventListener('click',()=>showPane(t.dataset.tab)));
+    $('#link-forgot').addEventListener('click', (e)=>{ e.preventDefault(); showPane('forgot'); });
+    $('#link-back-login').addEventListener('click', (e)=>{ e.preventDefault(); showPane('login'); });
 
     // Login
     $('#form-login').addEventListener('submit', async (e)=>{
@@ -134,7 +163,7 @@
       const btn = e.target.querySelector('button[type="submit"]');
       btn.disabled = true; btn.textContent = 'Signing in…';
       const r = await window.WC_AUTH.login({
-        username: fd.get('username'),
+        identifier: fd.get('identifier'),
         password: fd.get('password'),
       });
       btn.disabled = false; btn.textContent = 'Sign in';
@@ -151,13 +180,32 @@
       btn.disabled = true; btn.textContent = 'Creating…';
       const r = await window.WC_AUTH.register({
         username: fd.get('username'),
+        email: fd.get('email'),
         password: fd.get('password'),
+        passwordConfirm: fd.get('password_confirm'),
         country: fd.get('country'),
       });
       btn.disabled = false; btn.textContent = 'Create account';
       if (r.error) { showAlert('error', r.error); return; }
+      if (r.needsConfirmation) {
+        showAlert('ok', 'Account created — check your email to confirm, then sign in.');
+        return;
+      }
       showAlert('ok', 'Account created — redirecting…');
       setTimeout(()=>{ window.location.href = './dashboard.html'; }, 700);
+    });
+
+    // Forgot password
+    $('#form-forgot').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      showAlert();
+      const fd = new FormData(e.target);
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      const r = await window.WC_AUTH.resetPasswordRequest(fd.get('email'));
+      btn.disabled = false; btn.textContent = 'Send reset link';
+      if (r.error) { showAlert('error', r.error); return; }
+      showAlert('ok', 'If an account exists for that email, a reset link has been sent. Check your inbox.');
     });
 
     // If already logged in, jump to dashboard

@@ -7,16 +7,23 @@
 
 BEGIN;
 
--- 1) Drop all user-created game data (cascades from wc_users via ON DELETE CASCADE)
-DELETE FROM wc_donations;   -- donation log
-DELETE FROM wc_tips;        -- match tips
-DELETE FROM wc_bonus;       -- bonus answers
-DELETE FROM wc_crypto;      -- crypto predictions
-DELETE FROM wc_users;       -- profile rows
+-- 1) Drop donation log (no FK to wc_users)
+DELETE FROM wc_donations;
 
--- 2) Delete the Supabase auth users tied to our synthetic email domain
---    (otherwise usernames stay reserved in auth.users and re-registering fails)
+-- 2) Delete every Supabase auth user that has a wc_users profile.
+--    FK chain: auth.users → wc_users (CASCADE) → wc_tips/wc_bonus/wc_crypto (CASCADE)
+--    so this one DELETE wipes everything user-related in one shot.
+DELETE FROM auth.users WHERE id IN (SELECT auth_id FROM wc_users);
+
+-- Safety net for the historical synthetic-email accounts (pre-Phase-H).
+-- These had no matching wc_users row in some failed-registration cases.
 DELETE FROM auth.users WHERE email LIKE '%@worldcup.bobai.app';
+
+-- Belt-and-suspenders: if any orphan game rows survived the cascade, kill them.
+DELETE FROM wc_tips;
+DELETE FROM wc_bonus;
+DELETE FROM wc_crypto;
+DELETE FROM wc_users;
 
 -- 3) Reset pool counters (kept for now; will start filling from kickoff)
 UPDATE wc_pool SET

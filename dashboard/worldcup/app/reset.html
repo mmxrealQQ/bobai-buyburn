@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password — $BOBAI Worldcup '26</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=2">
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
+
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="./index.html" aria-label="Back to sign in">
+          <span>←</span> Sign in
+        </a>
+        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
+        <span style="width:80px"></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container">
+        <div class="card">
+          <h1><span class="accent">Reset password</span></h1>
+          <p class="sub">Choose a new password for your account.</p>
+
+          <div id="alert"></div>
+
+          <form id="form-reset">
+            <div class="field">
+              <label>New password</label>
+              <input type="password" name="password" autocomplete="new-password" minlength="6" required>
+              <div class="hint">Min 6 characters.</div>
+            </div>
+            <div class="field">
+              <label>Confirm new password</label>
+              <input type="password" name="password_confirm" autocomplete="new-password" minlength="6" required>
+            </div>
+            <button type="submit" class="btn">Update password</button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=8"></script>
+  <script src="./assets/auth.js?v=8"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    function showAlert(type, msg){
+      const el = $('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+
+    // Supabase parses the recovery token from the URL hash automatically
+    // and emits a PASSWORD_RECOVERY event. We just need to wait for it (or
+    // for an existing session) before allowing the form submit.
+    let ready = false;
+    window.WC_SB.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        ready = true;
+      }
+    });
+
+    // Also check on load — direct navigations may already have a session.
+    (async () => {
+      const { data } = await window.WC_SB.auth.getSession();
+      if (data.session) ready = true;
+      if (!ready) {
+        // Give the SDK ~500ms to process the recovery hash
+        setTimeout(async () => {
+          const { data } = await window.WC_SB.auth.getSession();
+          if (data.session) ready = true;
+        }, 500);
+      }
+    })();
+
+    $('#form-reset').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showAlert();
+      if (!ready) {
+        showAlert('error', 'Reset link expired or invalid. Request a new one from the sign-in page.');
+        return;
+      }
+      const fd = new FormData(e.target);
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Updating…';
+      const r = await window.WC_AUTH.updatePassword(
+        fd.get('password'),
+        fd.get('password_confirm'),
+      );
+      btn.disabled = false; btn.textContent = 'Update password';
+      if (r.error) { showAlert('error', r.error); return; }
+      showAlert('ok', 'Password updated — redirecting to sign in…');
+      await window.WC_AUTH.logout();
+      setTimeout(() => { window.location.href = './index.html'; }, 1000);
+    });
+  </script>
+</body>
+</html>

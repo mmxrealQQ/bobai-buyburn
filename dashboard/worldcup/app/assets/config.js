@@ -2,8 +2,8 @@
 window.WC_CONFIG = {
   SUPABASE_URL: 'https://aerffjhdsbxpvuulkryr.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_ne0MFzyCQb6MvFWur2X-Vw_vG9JH76_',
-  // Auth uses synthetic email <username>@worldcup.bobai.app — never sent anywhere
-  AUTH_EMAIL_DOMAIN: 'worldcup.bobai.app',
+  // Auth uses the user's real email (required for password reset).
+  // Login accepts username OR email; see auth.js for the username→email resolver.
   // Kickoff & registration windows (UTC)
   REG_OPEN_UTC:  '2026-06-04T12:00:00Z',
   KICKOFF_UTC:   '2026-06-11T19:00:00Z',

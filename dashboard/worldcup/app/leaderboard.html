@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Leaderboard</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=10">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
   <style>
     .container.wide{max-width:920px}
 
@@ -35,46 +35,152 @@
 
     /* LIST */
     .list{display:flex;flex-direction:column;gap:6px}
-    .row{display:grid;grid-template-columns:42px 32px 1fr auto;gap:10px;align-items:center;padding:12px 14px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;transition:all .15s}
+    .list.scroll-cap{max-height:600px;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
+    .list.scroll-cap::-webkit-scrollbar{width:6px}
+    .list.scroll-cap::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
+    .row{display:grid;grid-template-columns:38px 30px 1fr minmax(82px,108px) auto;gap:10px;align-items:center;padding:12px 14px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;transition:all .15s}
     .row.me{border-color:var(--gold);background:rgba(240,185,11,.07)}
     .row.top1{background:linear-gradient(90deg,rgba(240,185,11,.15),rgba(0,0,0,.25));border-color:rgba(240,185,11,.4)}
     .row.top2{background:linear-gradient(90deg,rgba(192,192,192,.08),rgba(0,0,0,.25));border-color:rgba(192,192,192,.25)}
     .row.top3{background:linear-gradient(90deg,rgba(205,127,50,.08),rgba(0,0,0,.25));border-color:rgba(205,127,50,.25)}
+    .row.closest{background:linear-gradient(90deg,rgba(240,185,11,.18),rgba(240,185,11,.06));border-color:var(--gold);box-shadow:0 0 24px rgba(240,185,11,.12)}
 
     .rank{font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--muted);text-align:center}
     .row.top1 .rank{color:var(--gold);font-size:18px}
     .row.top2 .rank{color:#cccccc;font-size:16px}
     .row.top3 .rank{color:#cd7f32;font-size:16px}
-    .ava-sm{font-size:22px;text-align:center;line-height:1}
+    .row.closest .rank{color:var(--gold);font-size:18px}
+    .ava-sm{display:flex;align-items:center;justify-content:center;font-size:22px;line-height:1}
     .uinfo{min-width:0}
     .uname{font-weight:600;color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
     .uname .ball{font-size:13px}
     .umeta{font-size:11px;color:var(--muted)}
-    .pts{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--gold);white-space:nowrap}
+    .pts{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--gold);white-space:nowrap;text-align:right}
     .pts .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-left:4px;font-weight:500}
     .pts.diff{font-size:14px;color:var(--text)}
 
+    /* Prize cell — between username and pts */
+    .prize-cell{text-align:right;font-family:'Space Grotesk';line-height:1.1;min-width:0}
+    .prize-cell .pz-pct{font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.3px}
+    .prize-cell .pz-bobai{font-size:10.5px;color:var(--text);font-weight:600;margin-top:1px;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .prize-cell .pz-usd{font-size:10px;color:var(--muted);font-weight:500;margin-top:1px}
+    .prize-cell.zero .pz-pct{color:var(--muted);font-weight:600}
+    .prize-cell.zero .pz-bobai,.prize-cell.zero .pz-usd{color:rgba(123,125,158,.55)}
+
+    /* Rank gap (between top-N and "your row") */
+    .rank-gap{text-align:center;color:var(--muted);padding:6px;letter-spacing:6px;font-weight:700;opacity:.5}
+
+    /* "Your rank" footer */
+    .me-footer{margin-top:14px;padding:12px 16px;background:linear-gradient(90deg,rgba(240,185,11,.08),rgba(240,185,11,.02));border:1px solid rgba(240,185,11,.3);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px}
+    .me-footer .mf-left{display:flex;align-items:center;gap:10px;color:var(--text)}
+    .me-footer .mf-rank{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--gold)}
+    .me-footer .mf-status{color:var(--muted)}
+    .me-footer .mf-status.qualified{color:#5fffa0;font-weight:600}
+    .me-footer .mf-status.need{color:#ffc066;font-weight:600}
+
+    /* Bracket-as-list (one phase shown at a time) */
+    .br-list{display:flex;flex-direction:column;gap:8px}
+    .br-list .br-match{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:12px 16px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
+    .br-list .br-match.played{border-color:rgba(240,185,11,.25)}
+    .br-list .br-match.final{border-color:var(--gold);background:rgba(240,185,11,.06)}
+    .br-list .br-team{display:flex;align-items:center;gap:8px;min-width:0}
+    .br-list .br-team.away{justify-content:flex-end}
+    .br-list .br-team .fl{font-size:20px;flex-shrink:0}
+    .br-list .br-team .nm{color:var(--text);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .br-list .br-team.tbd .nm{color:var(--muted)}
+    .br-list .br-team.win .nm{font-weight:700;color:var(--gold)}
+    .br-list .br-center{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px}
+    .br-list .br-score{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--text)}
+    .br-list .br-score.played{color:var(--gold)}
+    .br-list .br-vs{font-size:11px;color:var(--muted);letter-spacing:1px}
+    .br-list .br-time{font-size:10px;color:var(--muted);margin-top:2px}
+
+    /* Crypto stack — closest in middle */
+    .crypto-divider{display:flex;align-items:center;gap:10px;margin:8px 0;color:var(--muted);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600}
+    .crypto-divider::before,.crypto-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+    .crypto-divider.up{color:#5fffa0}
+    .crypto-divider.up::before,.crypto-divider.up::after{background:rgba(0,230,118,.2)}
+    .crypto-divider.down{color:#ff8580}
+    .crypto-divider.down::before,.crypto-divider.down::after{background:rgba(255,80,80,.2)}
+
     .empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:13px;background:rgba(0,0,0,.2);border:1px dashed var(--border);border-radius:10px}
+
+    /* FIFA STANDINGS TABLE */
+    .section-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 4px 8px;font-family:'Space Grotesk';font-weight:600;font-size:11.5px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase}
+    .section-h .right{color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:none;font-size:11px}
+    .standings{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:6px}
+    .standings table{width:100%;border-collapse:collapse;font-size:13px}
+    .standings th,.standings td{padding:9px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)}
+    .standings th{font-family:'Space Grotesk';font-weight:600;font-size:10.5px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;background:rgba(0,0,0,.4)}
+    .standings tbody tr:last-child td{border-bottom:none}
+    .standings .team-cell{text-align:left;padding-left:10px;display:flex;align-items:center;gap:8px;min-width:0}
+    .standings .team-cell .fl{font-size:18px;line-height:1;flex-shrink:0}
+    .standings .team-cell .nm{color:var(--text);font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .standings .pos{font-weight:700;color:var(--muted);width:24px}
+    .standings .pts{color:var(--gold);font-weight:700;font-family:'Space Grotesk'}
+    .standings .gd-pos{color:#5fffa0}
+    .standings .gd-neg{color:#ff7a7a}
+    .standings tr.q1,.standings tr.q2{background:rgba(240,185,11,.04)}
+    .standings tr.q1 .pos,.standings tr.q2 .pos{color:var(--gold)}
+    .standings tr.q3{background:rgba(123,125,158,.04)}
+    .standings .q-note{font-size:10px;color:var(--muted);padding:8px 12px;background:rgba(0,0,0,.4);text-align:left;border-top:1px solid rgba(255,255,255,.04)}
+
+    /* KO BRACKET */
+    .bracket-wrap{overflow-x:auto;padding:6px 2px 12px;-webkit-overflow-scrolling:touch}
+    .bracket{display:flex;gap:14px;min-width:max-content}
+    .br-col{display:flex;flex-direction:column;gap:10px;min-width:170px}
+    .br-col-h{font-family:'Space Grotesk';font-weight:600;font-size:11px;color:var(--gold);letter-spacing:1.2px;text-transform:uppercase;text-align:center;padding-bottom:4px;border-bottom:1px solid var(--border)}
+    .br-match{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11.5px;line-height:1.4;flex:1;display:flex;flex-direction:column;justify-content:center;min-height:62px}
+    .br-match.played{border-color:rgba(240,185,11,.25)}
+    .br-match.final{border-color:var(--gold);background:rgba(240,185,11,.06)}
+    .br-team{display:flex;align-items:center;gap:6px;min-width:0}
+    .br-team .fl{font-size:14px;flex-shrink:0}
+    .br-team .nm{flex:1;min-width:0;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .br-team.tbd .nm{color:var(--muted)}
+    .br-team.win .nm{font-weight:700;color:var(--gold)}
+    .br-team .sc{font-family:'Space Grotesk';font-weight:700;color:var(--text);font-size:12.5px;min-width:14px;text-align:right}
+    .br-team.win .sc{color:var(--gold)}
+    .br-meta{font-size:9.5px;color:var(--muted);letter-spacing:.4px;margin-top:5px;text-align:right}
 
     @media (max-width: 560px){
       .pool-total{font-size:26px}
       .pool-breakdown{grid-template-columns:1fr 1fr;gap:6px}
-      .row{grid-template-columns:32px 26px 1fr auto;gap:8px;padding:10px 12px}
+      .row{grid-template-columns:28px 26px 1fr minmax(70px,84px) auto;gap:7px;padding:10px 10px}
       .uname{font-size:13px}
       .pts{font-size:15px}
+      .prize-cell .pz-pct{font-size:12px}
+      .prize-cell .pz-bobai{font-size:9.5px}
+      .prize-cell .pz-usd{font-size:9px}
+      .standings th,.standings td{padding:7px 4px;font-size:12px}
+      .standings .team-cell .nm{font-size:11.5px}
+      .standings .team-cell{padding-left:6px;gap:5px}
+      .standings .team-cell .fl{font-size:15px}
+      .br-col{min-width:150px}
+      .br-list .br-match{grid-template-columns:1fr auto 1fr;padding:10px 12px;gap:8px}
+      .br-list .br-team .nm{font-size:12px}
+      .br-list .br-center{min-width:54px}
+      .br-list .br-score{font-size:16px}
+      .me-footer{padding:10px 12px;font-size:12px}
+      .me-footer .mf-rank{font-size:16px}
     }
   </style>
 </head>
 <body>
   <div class="bg-grad"></div>
   <div class="page">
-    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
-
     <nav>
       <div class="nav">
-        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
-        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
-        <span style="width:80px"></span>
+        <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
+        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
@@ -82,16 +188,7 @@
       <div class="container wide">
         <div class="card">
           <h1><span class="accent">Leaderboard</span></h1>
-          <p class="sub">Pool live · username only · ⚽ = verified wallet</p>
-
-          <div class="dp">
-            <div class="dp-badge">🎨 Art needed</div>
-            <div class="dp-title">Pool-card flourish (optional)</div>
-            <div class="dp-body">
-              Small <b>trophy + BOBAI</b> illustration anchored opposite the pool total below. ~<code>300×300</code>, transparent.
-              Filename <code>illus/pool-trophy.webp</code>. Full brief: <a href="./for-designer.html">/for-designer.html</a>.
-            </div>
-          </div>
+          <p class="sub">Pool live · username only · ⚽ = wallet linked</p>
 
           <!-- POOL CARD -->
           <div class="pool">
@@ -142,22 +239,15 @@
           <div class="lbar" id="lbar">
             <button data-view="overall" class="active">Overall</button>
             <button data-view="groups">Groups</button>
+            <button data-view="bracket">Bracket</button>
             <button data-view="crypto">Crypto</button>
           </div>
 
           <!-- SUB-SELECTOR (for Groups + Crypto) -->
           <div id="sub-selector" class="sub-selector hidden"></div>
 
-          <div class="dp">
-            <div class="dp-badge">🎨 Art needed</div>
-            <div class="dp-title">User-avatar column → BOBAI in national jersey</div>
-            <div class="dp-body">
-              Each leaderboard row shows the user's country flag as a placeholder avatar. Final: <b>$BOBAI illustration in that country's jersey</b> (same 48 art files used on the dashboard). Filename <code>illus/avatars/avatar-&lt;CODE&gt;.webp</code>. We'll swap the markup once art lands.
-            </div>
-          </div>
-
-          <!-- LIST -->
-          <div id="list" class="list">
+          <!-- LIST (generic wrapper; each view fills with its own layout) -->
+          <div id="list">
             <div class="empty">Loading…</div>
           </div>
         </div>
@@ -166,24 +256,48 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=10"></script>
-  <script src="./assets/countries.js?v=10"></script>
-  <script src="./assets/auth.js?v=10"></script>
-  <script src="./assets/profile.js?v=10"></script>
+  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=12"></script>
+  <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/avatar.js?v=4"></script>
+  <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-  <script src="./assets/twemojify.js?v=1"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 
-    function countryFlag(code){
-      const c = window.WC_COUNTRIES.find(x => x.code === code);
-      return c ? c.flag : '⚪';
-    }
-    function countryName(code){
-      const c = window.WC_COUNTRIES.find(x => x.code === code);
-      return c ? c.name : '—';
-    }
+    // ============== CONSTANTS ==============
+    const POOL_SPLIT = {
+      groupTop1:  0.55,  // 1st-of-each-group bracket (12 winners)
+      groupTop2:  0.30,  // 2nd-of-each-group bracket (12 winners)
+      groupBest3: 0.15,  // 8 best 3rd-placed players
+      endTopN: 4,        // End-pool: top 4 share proportional to points
+    };
+    const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+    const COINS = [{ code:'btc', label:'BTC' }, { code:'bnb', label:'BNB' }, { code:'bobai', label:'BOBAI' }];
+    const KO_PHASES = [
+      { key:'r32',   label:'Round of 32' },
+      { key:'r16',   label:'Round of 16' },
+      { key:'qf',    label:'Quarter-finals' },
+      { key:'sf',    label:'Semi-finals' },
+      { key:'3rd',   label:'Third place' },
+      { key:'final', label:'Final' },
+    ];
+
+    // ============== STATE ==============
+    let me = null;
+    let view = 'overall';
+    let subView = null;
+    let allMatches = null;
+    let pool = { total:0, group:0, end:0, crypto:0, price:0 };
+    let allGroupData = null;
+    let livePrices = { btc:null, bnb:null, bobai:null };
+
+    // ============== FORMATTERS ==============
+    function countryFlag(code){ const c = window.WC_COUNTRIES.find(x => x.code === code); return c ? c.flag : '⚪'; }
+    function countryName(code){ const c = window.WC_COUNTRIES.find(x => x.code === code); return c ? c.name : '—'; }
     function fmtBobai(n){
       if (n == null) return '0';
       const v = Number(n);
@@ -204,30 +318,170 @@
       if (coin === 'btc')   return '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       return '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
     }
+    function fmtPct(p){
+      if (p == null || !isFinite(p)) return '—';
+      if (p === 0) return '0%';
+      if (p < 0.01) return '<0.01%';
+      if (p < 0.1)  return p.toFixed(2) + '%';
+      if (p < 10)   return p.toFixed(1)  + '%';
+      return p.toFixed(0) + '%';
+    }
+    function fmtKickoffShort(iso){
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) + ' · ' +
+             d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+    }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]); }
+    function coinDisplay(c){ return c === 'bobai' ? 'BOBAI' : c.toUpperCase(); }
 
-    let me = null;
-    let view = 'overall';
-    let subView = null; // group letter or coin
-    const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-    const COINS = [{ code:'btc', label:'BTC' }, { code:'bnb', label:'BNB' }, { code:'bobai', label:'$BOBAI' }];
+    // ============== PRIZE MATH ==============
+    // End-pool: top N share proportional to total_points (equal split when all 0)
+    function computeEndPoolShares(rows){
+      const shares = new Map();
+      const top = rows.slice(0, POOL_SPLIT.endTopN);
+      const sum = top.reduce((s,r) => s + (r.total_points || 0), 0);
+      if (sum === 0) {
+        const each = top.length ? pool.end / top.length : 0;
+        top.forEach(r => shares.set(r.user_id, each));
+      } else {
+        top.forEach(r => shares.set(r.user_id, ((r.total_points || 0) / sum) * pool.end));
+      }
+      return shares;
+    }
 
+    // Group pot: 55/30/15 across {top1, top2, best-3rd}. Keyed by `${user_id}|${letter}`.
+    function computeGroupShares(allGroups){
+      const shares = new Map();
+      if (pool.group <= 0) return shares;
+      const top1s = [], top2s = [], best3candidates = [];
+      allGroups.forEach(g => {
+        const r = g.rows;
+        if (r[0]) top1s.push({ ...r[0], _letter: g.letter });
+        if (r[1]) top2s.push({ ...r[1], _letter: g.letter });
+        if (r[2]) best3candidates.push({ ...r[2], _letter: g.letter });
+      });
+      const best3 = best3candidates
+        .sort((a,b) => (b.group_points||0) - (a.group_points||0))
+        .slice(0, 8);
+      function distribute(bracket, fraction){
+        const total = bracket.reduce((s,r) => s + (r.group_points || 0), 0);
+        const potPart = pool.group * fraction;
+        bracket.forEach(r => {
+          const share = total > 0
+            ? ((r.group_points || 0) / total) * potPart
+            : (bracket.length ? potPart / bracket.length : 0);
+          shares.set(`${r.user_id}|${r._letter}`, share);
+        });
+      }
+      distribute(top1s, POOL_SPLIT.groupTop1);
+      distribute(top2s, POOL_SPLIT.groupTop2);
+      distribute(best3, POOL_SPLIT.groupBest3);
+      return shares;
+    }
+
+    // Crypto: each coin pot ≈ 5% of total (= crypto_pot / 3); winner-take-all
+    function computeCryptoWinnerShare(){ return pool.crypto / 3; }
+
+    // ============== UI HELPERS ==============
+    function prizeCellHtml(bobai){
+      const totalPool = pool.total || 0;
+      const pct = totalPool > 0 ? (bobai / totalPool * 100) : 0;
+      const usd = bobai * (pool.price || 0);
+      const isZero = !(bobai > 0);
+      return `<div class="prize-cell ${isZero ? 'zero' : ''}">
+        <div class="pz-pct">${isZero ? '—' : fmtPct(pct)}</div>
+        <div class="pz-bobai">${isZero ? '0 BOBAI' : fmtBobai(bobai) + ' BOBAI'}</div>
+        <div class="pz-usd">${isZero ? '$0' : fmtUsd(usd)}</div>
+      </div>`;
+    }
+
+    function rowClass(rank, userId, extra){
+      let c = 'row';
+      if (rank === 1) c += ' top1';
+      else if (rank === 2) c += ' top2';
+      else if (rank === 3) c += ' top3';
+      if (me && me.id === userId) c += ' me';
+      if (extra) c += ' ' + extra;
+      return c;
+    }
+
+    function rankLabel(rank){
+      if (rank === 1) return '🥇';
+      if (rank === 2) return '🥈';
+      if (rank === 3) return '🥉';
+      return '#' + rank;
+    }
+
+    function userRow(r, rank, opts){
+      const country = countryName(r.avatar_country);
+      const ball = r.has_wallet ? '<span class="ball">⚽</span>' : '';
+      const href = './user.html?u=' + encodeURIComponent(r.username);
+      const ava = window.WC_AVATAR
+        ? window.WC_AVATAR.avatarHtml(r.avatar_country, 'sm')
+        : `<span style="font-size:22px">${countryFlag(r.avatar_country)}</span>`;
+      const prize = (opts.prizeBobai != null)
+        ? prizeCellHtml(opts.prizeBobai)
+        : `<div class="prize-cell zero"><div class="pz-pct">—</div><div class="pz-bobai">0 BOBAI</div><div class="pz-usd">$0</div></div>`;
+      const ptsLabel = opts.ptsLabel ? `<span class="lbl">${opts.ptsLabel}</span>` : '';
+      const pts = `<div class="pts ${opts.ptsClass || ''}">${opts.ptsValue}${ptsLabel}</div>`;
+      return `<a href="${href}" class="${rowClass(rank, r.user_id, opts.extraClass)}" style="text-decoration:none;color:inherit">
+        <div class="rank">${rankLabel(rank)}</div>
+        <div class="ava-sm">${ava}</div>
+        <div class="uinfo">
+          <div class="uname">${escapeHtml(r.username)}${ball}</div>
+          <div class="umeta">${country}</div>
+        </div>
+        ${prize}
+        ${pts}
+      </a>`;
+    }
+
+    function meFooterHtml({ rank, totalRows, qualifierRank, qualifierPts, myPts, qualifiedCopy, needCopy }){
+      if (!me) {
+        return `<div class="me-footer"><div class="mf-left"><span class="mf-status">Sign in to see your own rank here.</span></div></div>`;
+      }
+      if (rank == null) {
+        return `<div class="me-footer"><div class="mf-left"><span class="mf-status">You don't have entries in this view yet.</span></div></div>`;
+      }
+      const qualified = rank <= qualifierRank;
+      const need = Math.max(1, (qualifierPts || 0) - (myPts || 0) + 1);
+      const statusHtml = qualified
+        ? `<span class="mf-status qualified">${qualifiedCopy}</span>`
+        : `<span class="mf-status need">${needCopy.replace('{n}', need)}</span>`;
+      return `<div class="me-footer">
+        <div class="mf-left">
+          <span class="mf-rank">#${rank}</span>
+          <span class="mf-status">of ${totalRows} player${totalRows===1?'':'s'}</span>
+        </div>
+        <div>${statusHtml}</div>
+      </div>`;
+    }
+
+    // ============== POOL ==============
     async function loadPool(){
       const r = await window.WC_PROFILE.loadPool();
       if (r.error) return;
       const p = r.pool || {};
       const total = parseFloat(p.total_bobai) || 0;
       const px    = parseFloat(p.bobai_price_usd) || 0;
+      pool = {
+        total,
+        group:  parseFloat(p.group_pot)  || 0,
+        end:    parseFloat(p.endpool)    || 0,
+        crypto: parseFloat(p.crypto_pot) || 0,
+        price:  px,
+      };
       $('#pool-bobai').textContent = fmtBobai(total) + ' BOBAI';
       $('#pool-usd').textContent   = '≈ ' + fmtUsd(total * px);
-      $('#pool-group').textContent  = fmtBobai(p.group_pot);
-      $('#pool-end').textContent    = fmtBobai(p.endpool);
-      $('#pool-crypto').textContent = fmtBobai(p.crypto_pot);
+      $('#pool-group').textContent  = fmtBobai(pool.group);
+      $('#pool-end').textContent    = fmtBobai(pool.end);
+      $('#pool-crypto').textContent = fmtBobai(pool.crypto);
       if (p.updated_at && total > 0) {
         $('#pool-updated').textContent = 'updated ' + new Date(p.updated_at).toLocaleString();
       }
     }
 
-    // Render prize-wallet donation address
+    // Donation address copy
     (() => {
       const addr = window.WC_CONFIG?.PRIZE_WALLET;
       if (!addr) return;
@@ -243,73 +497,340 @@
       });
     })();
 
-    function rowClass(rank, userId){
-      let c = 'row';
-      if (rank === 1) c += ' top1';
-      else if (rank === 2) c += ' top2';
-      else if (rank === 3) c += ' top3';
-      if (me && me.id === userId) c += ' me';
-      return c;
+    // ============== MATCHES + FIFA STANDINGS ==============
+    async function loadAllMatches(){
+      if (allMatches) return allMatches;
+      const r = await window.WC_PROFILE.loadMatches();
+      allMatches = r.matches || [];
+      return allMatches;
     }
 
-    function userRow(r, rank, ptsLabel, ptsValue, ptsClass=''){
-      const flag = countryFlag(r.avatar_country);
-      const country = countryName(r.avatar_country);
-      const ball = r.has_wallet ? '<span class="ball">⚽</span>' : '';
-      return `<div class="${rowClass(rank, r.user_id)}">
-        <div class="rank">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#'+rank}</div>
-        <div class="ava-sm">${flag}</div>
-        <div class="uinfo">
-          <div class="uname">${escapeHtml(r.username)}${ball}</div>
-          <div class="umeta">${country}</div>
-        </div>
-        <div class="pts ${ptsClass}">${ptsValue}<span class="lbl">${ptsLabel}</span></div>
-      </div>`;
-    }
-    function escapeHtml(s){
-      return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);
+    function computeStandings(matches, groupLetter){
+      const teams = {};
+      const gm = matches.filter(m => m.phase === 'group' && m.group_letter === groupLetter);
+      gm.forEach(m => {
+        [m.team_home, m.team_away].forEach(t => {
+          if (t && t !== 'TBD' && !teams[t]) teams[t] = { code:t, P:0, W:0, D:0, L:0, GF:0, GA:0, GD:0, Pts:0 };
+        });
+        if (!m.played || m.goals_home == null || m.goals_away == null) return;
+        const H = teams[m.team_home], A = teams[m.team_away];
+        if (!H || !A) return;
+        H.P++; A.P++;
+        H.GF += m.goals_home; H.GA += m.goals_away;
+        A.GF += m.goals_away; A.GA += m.goals_home;
+        H.GD = H.GF - H.GA; A.GD = A.GF - A.GA;
+        if (m.goals_home > m.goals_away)      { H.W++; H.Pts += 3; A.L++; }
+        else if (m.goals_home < m.goals_away) { A.W++; A.Pts += 3; H.L++; }
+        else                                  { H.D++; A.D++; H.Pts++; A.Pts++; }
+      });
+      return Object.values(teams).sort((a,b) =>
+        b.Pts - a.Pts || b.GD - a.GD || b.GF - a.GF || a.code.localeCompare(b.code)
+      );
     }
 
+    function renderStandingsTable(rows, letter){
+      if (!rows.length) return `<div class="empty">Group ${letter} teams not seeded yet.</div>`;
+      const head = `<tr><th class="pos">#</th><th class="team-cell" style="text-align:left">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF:GA</th><th>GD</th><th>Pts</th></tr>`;
+      const body = rows.map((t, i) => {
+        const rank = i + 1;
+        const cls = rank <= 2 ? 'q'+rank : (rank === 3 ? 'q3' : '');
+        const gdCls = t.GD > 0 ? 'gd-pos' : (t.GD < 0 ? 'gd-neg' : '');
+        const gdTxt = t.GD > 0 ? '+'+t.GD : t.GD;
+        return `<tr class="${cls}"><td class="pos">${rank}</td>
+          <td><div class="team-cell"><span class="fl">${countryFlag(t.code)}</span><span class="nm">${countryName(t.code)}</span></div></td>
+          <td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td><td>${t.GF}:${t.GA}</td>
+          <td class="${gdCls}">${gdTxt}</td><td class="pts">${t.Pts}</td></tr>`;
+      }).join('');
+      return `<div class="standings"><table><thead>${head}</thead><tbody>${body}</tbody></table>
+        <div class="q-note">Top 2 advance to Round of 32. Best 3rd-placed teams may also qualify per FIFA seeding rules.</div></div>`;
+    }
+
+    // ============== OVERALL ==============
     async function renderOverall(){
       $('#sub-selector').classList.add('hidden');
       $('#list').innerHTML = '<div class="empty">Loading…</div>';
       const r = await window.WC_PROFILE.loadOverallLeaderboard();
       if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
       if (!r.rows.length) { $('#list').innerHTML = '<div class="empty">No players yet.</div>'; return; }
-      const html = r.rows.map((row, i) => userRow(row, i+1, 'pts', row.total_points || 0)).join('');
-      $('#list').innerHTML = html;
+      const rows = r.rows;
+      const shares = computeEndPoolShares(rows);
+      const html = rows.map((row, i) => userRow(row, i+1, {
+        ptsLabel: 'pts',
+        ptsValue: row.total_points || 0,
+        prizeBobai: shares.get(row.user_id) || 0,
+      })).join('');
+      const scrollCls = rows.length > 10 ? 'list scroll-cap' : 'list';
+      const myIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;
+      const cutoff = rows[POOL_SPLIT.endTopN - 1];
+      const footer = meFooterHtml({
+        rank: myIdx >= 0 ? myIdx + 1 : null,
+        totalRows: rows.length,
+        qualifierRank: POOL_SPLIT.endTopN,
+        qualifierPts: cutoff ? (cutoff.total_points || 0) : 0,
+        myPts: myIdx >= 0 ? (rows[myIdx].total_points || 0) : 0,
+        qualifiedCopy: `✓ You're in the End-Pool top ${POOL_SPLIT.endTopN}`,
+        needCopy: `+{n} pts to enter the End-Pool top ${POOL_SPLIT.endTopN}`,
+      });
+      $('#list').innerHTML = `<div class="${scrollCls}">${html}</div>${footer}`;
+    }
+
+    // ============== GROUPS ==============
+    async function loadAllGroupData(){
+      if (allGroupData) return allGroupData;
+      const arr = await Promise.all(GROUP_LETTERS.map(async L => {
+        const r = await window.WC_PROFILE.loadGroupLeaderboard(L);
+        return { letter: L, rows: r.rows || [] };
+      }));
+      allGroupData = arr;
+      return arr;
     }
 
     async function renderGroup(letter){
       $('#list').innerHTML = '<div class="empty">Loading…</div>';
-      const r = await window.WC_PROFILE.loadGroupLeaderboard(letter);
-      if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
-      if (!r.rows.length) { $('#list').innerHTML = `<div class="empty">No tips in Group ${letter} yet.</div>`; return; }
-      const html = r.rows.map((row, i) => userRow(row, i+1, 'pts', row.group_points || 0)).join('');
-      $('#list').innerHTML = html;
+      const [allG, matches] = await Promise.all([ loadAllGroupData(), loadAllMatches() ]);
+      const standings = computeStandings(matches, letter);
+      const standingsHtml =
+        `<div class="section-h"><span>Group ${letter} — FIFA standings</span><span class="right">${standings.reduce((a,t)=>a+t.P,0) ? 'live results' : 'matches not played yet'}</span></div>` +
+        renderStandingsTable(standings, letter);
+
+      const myGroup = allG.find(g => g.letter === letter);
+      const rows = myGroup ? myGroup.rows : [];
+      const shares = computeGroupShares(allG);
+      const best3InThisGroup = rows[2];
+      const best3HasShare = best3InThisGroup
+        && shares.has(`${best3InThisGroup.user_id}|${letter}`)
+        && (shares.get(`${best3InThisGroup.user_id}|${letter}`) > 0);
+
+      const playerSection = `<div class="section-h"><span>Group ${letter} — players (top 5)</span><span class="right">55 / 30 / 15 % split of group pot</span></div>`;
+      let playerListHtml;
+      let footer = '';
+      if (!rows.length) {
+        playerListHtml = `<div class="empty">No tips in Group ${letter} yet.</div>`;
+      } else {
+        const top5 = rows.slice(0, 5);
+        const meIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;
+        const meRowData = (meIdx >= 5) ? rows[meIdx] : null;
+        const listHtml = top5.map((r0, i) => userRow(r0, i+1, {
+          ptsLabel: 'pts',
+          ptsValue: r0.group_points || 0,
+          prizeBobai: shares.get(`${r0.user_id}|${letter}`) || 0,
+        })).join('');
+        const meHtml = meRowData
+          ? `<div class="rank-gap">···</div>` + userRow(meRowData, meIdx + 1, {
+              ptsLabel: 'pts',
+              ptsValue: meRowData.group_points || 0,
+              prizeBobai: shares.get(`${meRowData.user_id}|${letter}`) || 0,
+            })
+          : '';
+        playerListHtml = `<div class="list">${listHtml}${meHtml}</div>`;
+
+        const cutoffPlayer = rows[1] || rows[0];
+        const cutoffPts = cutoffPlayer ? (cutoffPlayer.group_points || 0) : 0;
+        const myPts = (meIdx >= 0) ? (rows[meIdx].group_points || 0) : 0;
+        const myRank = (meIdx >= 0) ? meIdx + 1 : null;
+        const qualifiedCopy = myRank === 1
+          ? `✓ You're 1st in Group ${letter} — top-1 share`
+          : `✓ You're 2nd in Group ${letter} — top-2 share`;
+        const needCopy = (myRank === 3 && best3HasShare)
+          ? `Currently qualifies as best-3rd · +{n} pts to lock top 2`
+          : `+{n} pts to enter Group ${letter} top 2`;
+        footer = meFooterHtml({
+          rank: myRank, totalRows: rows.length,
+          qualifierRank: 2, qualifierPts: cutoffPts, myPts,
+          qualifiedCopy, needCopy,
+        });
+      }
+
+      $('#list').innerHTML = standingsHtml + playerSection + playerListHtml + footer;
+      if (window.twemoji) try { window.twemoji.parse($('#list'), { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
+    }
+
+    // ============== BRACKET ==============
+    function brTeam(code, align){
+      const tbd = !code || code === 'TBD';
+      const cls = ['br-team']; if (tbd) cls.push('tbd'); if (align === 'right') cls.push('away');
+      const flag = tbd ? '⚪' : countryFlag(code);
+      const name = tbd ? 'TBD' : countryName(code);
+      if (align === 'right') return `<div class="${cls.join(' ')}"><span class="nm">${name}</span><span class="fl">${flag}</span></div>`;
+      return `<div class="${cls.join(' ')}"><span class="fl">${flag}</span><span class="nm">${name}</span></div>`;
+    }
+    function brTeamWithWin(code, align, isWin){
+      const html = brTeam(code, align);
+      if (!isWin) return html;
+      return html.replace('br-team', 'br-team win');
+    }
+    function renderBracketMatchRow(m){
+      const played = m.played && m.goals_home != null && m.goals_away != null;
+      let hWin = false, aWin = false;
+      if (played) { hWin = m.goals_home > m.goals_away; aWin = m.goals_home < m.goals_away; }
+      const isFinal = m.phase === 'final';
+      const time = m.kickoff_utc ? fmtKickoffShort(m.kickoff_utc) : '';
+      const center = played
+        ? `<div class="br-score played">${m.goals_home} : ${m.goals_away}</div><div class="br-time">${time}</div>`
+        : `<div class="br-vs">VS</div><div class="br-time">${time}</div>`;
+      return `<div class="br-match ${played?'played':''} ${isFinal?'final':''}">
+        ${brTeamWithWin(m.team_home, 'left',  hWin)}
+        <div class="br-center">${center}</div>
+        ${brTeamWithWin(m.team_away, 'right', aWin)}
+      </div>`;
+    }
+
+    async function renderBracket(){
+      showPhaseSelector();
+      $('#list').innerHTML = '<div class="empty">Loading bracket…</div>';
+      const matches = await loadAllMatches();
+      const phase = KO_PHASES.find(p => p.key === subView) || KO_PHASES[0];
+      const phaseMatches = matches.filter(m => m.phase === phase.key)
+        .sort((a,b) => new Date(a.kickoff_utc) - new Date(b.kickoff_utc));
+      const matchListHtml = phaseMatches.length
+        ? `<div class="br-list">${phaseMatches.map(renderBracketMatchRow).join('')}</div>`
+        : `<div class="empty">No ${phase.label} matches scheduled yet.</div>`;
+
+      // Overall standings below — from KO onwards only End Pool matters
+      const r = await window.WC_PROFILE.loadOverallLeaderboard();
+      const overallRows = r.rows || [];
+      const shares = computeEndPoolShares(overallRows);
+      const overallHtml = overallRows.length
+        ? overallRows.map((row, i) => userRow(row, i+1, {
+            ptsLabel: 'pts',
+            ptsValue: row.total_points || 0,
+            prizeBobai: shares.get(row.user_id) || 0,
+          })).join('')
+        : '<div class="empty">No players yet.</div>';
+      const scrollCls = overallRows.length > 10 ? 'list scroll-cap' : 'list';
+      const myIdx = me ? overallRows.findIndex(r0 => r0.user_id === me.id) : -1;
+      const cutoff = overallRows[POOL_SPLIT.endTopN - 1];
+      const footer = meFooterHtml({
+        rank: myIdx >= 0 ? myIdx + 1 : null,
+        totalRows: overallRows.length,
+        qualifierRank: POOL_SPLIT.endTopN,
+        qualifierPts: cutoff ? (cutoff.total_points || 0) : 0,
+        myPts: myIdx >= 0 ? (overallRows[myIdx].total_points || 0) : 0,
+        qualifiedCopy: `✓ You're in the End-Pool top ${POOL_SPLIT.endTopN}`,
+        needCopy: `+{n} pts to enter the End-Pool top ${POOL_SPLIT.endTopN}`,
+      });
+
+      $('#list').innerHTML = `
+        <div class="section-h"><span>${phase.label}</span><span class="right">${phaseMatches.length} match${phaseMatches.length===1?'':'es'}</span></div>
+        ${matchListHtml}
+        <div class="section-h" style="margin-top:26px"><span>End-Pool projection — overall standings</span><span class="right">share of end pool</span></div>
+        <div class="${scrollCls}">${overallHtml}</div>
+        ${footer}`;
+      if (window.twemoji) try { window.twemoji.parse($('#list'), { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
+    }
+
+    // ============== CRYPTO ==============
+    async function refreshLivePrices(){
+      try { const r = await window.WC_PROFILE.fetchLivePrices(); if (r) livePrices = r; } catch (e) {}
     }
 
     async function renderCrypto(coin){
       $('#list').innerHTML = '<div class="empty">Loading…</div>';
-      const r = await window.WC_PROFILE.loadCryptoLeaderboard(coin);
+      const [r] = await Promise.all([ window.WC_PROFILE.loadCryptoLeaderboard(coin), refreshLivePrices() ]);
       if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
       if (!r.rows.length) { $('#list').innerHTML = '<div class="empty">No predictions yet.</div>'; return; }
+
       const priceKey = coin + '_price';
-      const diffKey  = coin + '_diff';
-      const html = r.rows.map((row, i) => {
-        // Sort: unresolved diffs go to end; for display show prediction + diff if resolved
-        const px = row[priceKey];
-        const df = row[diffKey];
-        const valHtml = df != null
-          ? `${fmtCryptoPrice(coin, px)} <span style="color:var(--muted);font-size:11px">Δ${fmtCryptoPrice(coin, df)}</span>`
-          : px != null
-            ? `${fmtCryptoPrice(coin, px)} <span style="color:var(--muted);font-size:11px">pending</span>`
-            : '<span style="color:var(--muted)">—</span>';
-        return userRow(row, i+1, '', valHtml, 'diff');
-      }).join('');
-      $('#list').innerHTML = html;
+      const livePx = livePrices[coin];
+      const display = coinDisplay(coin);
+
+      // Sort all by tip price ASC
+      const all = r.rows
+        .filter(row => row[priceKey] != null)
+        .map(row => ({ ...row, _tip: parseFloat(row[priceKey]) }))
+        .filter(row => isFinite(row._tip))
+        .sort((a,b) => a._tip - b._tip);
+
+      if (!all.length) { $('#list').innerHTML = `<div class="empty">No valid ${display} predictions yet.</div>`; return; }
+
+      // Closest to live (by absolute diff)
+      let closestIdx = 0;
+      if (livePx != null && isFinite(livePx)) {
+        let bestDiff = Infinity;
+        all.forEach((row, i) => {
+          const d = Math.abs(row._tip - livePx);
+          if (d < bestDiff) { bestDiff = d; closestIdx = i; }
+        });
+      }
+      // Rank by absolute distance to live (closest = #1)
+      const rankByUserId = new Map();
+      if (livePx != null && isFinite(livePx)) {
+        all.map((row, i) => ({ row, dist: Math.abs(row._tip - livePx) }))
+           .sort((a,b) => a.dist - b.dist)
+           .forEach((x, rank) => rankByUserId.set(x.row.user_id, rank + 1));
+      } else {
+        all.forEach((row, i) => rankByUserId.set(row.user_id, i + 1));
+      }
+
+      const above = all.slice(closestIdx + 1, closestIdx + 4); // higher tips
+      const below = all.slice(Math.max(0, closestIdx - 3), closestIdx); // lower tips
+      const aboveDisplay = above.slice().reverse(); // highest tip first (top of display)
+      const belowDisplay = below.slice().reverse(); // closest-of-below first (just under closest)
+      const winnerPrize = computeCryptoWinnerShare();
+      const closestRow = all[closestIdx];
+
+      function buildRow(row, isClosest){
+        const rank = rankByUserId.get(row.user_id) || '—';
+        const diff = (livePx != null) ? Math.abs(row._tip - livePx) : null;
+        const tipPx = fmtCryptoPrice(coin, row._tip);
+        const diffHtml = diff != null
+          ? `<br><span style="font-size:10px;color:${isClosest?'var(--gold)':'var(--muted)'};font-weight:${isClosest?700:500}">Δ ${fmtCryptoPrice(coin, diff)}</span>`
+          : `<br><span style="font-size:10px;color:var(--muted)">no live</span>`;
+        return userRow(row, rank, {
+          ptsLabel: '',
+          ptsValue: tipPx + diffHtml,
+          ptsClass: 'diff',
+          prizeBobai: isClosest ? winnerPrize : 0,
+          extraClass: isClosest ? 'closest' : '',
+        });
+      }
+
+      const liveBadge = livePx != null
+        ? `<div style="text-align:center;padding:10px;background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#5fffa0">📈 Live ${display}: <b>${fmtCryptoPrice(coin, livePx)}</b> · winner-take-all on the closest guess at Final kickoff</div>`
+        : `<div style="text-align:center;padding:10px;background:rgba(255,180,0,.04);border:1px solid rgba(255,180,0,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#ffc066">⚠ Live ${display} price unavailable — showing predictions only</div>`;
+
+      const aboveSection = aboveDisplay.length
+        ? `<div class="crypto-divider up">▲ ${display} wins if price rises</div>` +
+          aboveDisplay.map(row => buildRow(row, false)).join('')
+        : '';
+      const closestHtml = buildRow(closestRow, true);
+      const belowSection = belowDisplay.length
+        ? belowDisplay.map(row => buildRow(row, false)).join('') +
+          `<div class="crypto-divider down">▼ ${display} wins if price falls</div>`
+        : '';
+
+      // "Me" handling: if not in the shown set, append separately
+      const shownIds = new Set([closestRow.user_id, ...aboveDisplay.map(r0=>r0.user_id), ...belowDisplay.map(r0=>r0.user_id)]);
+      const meRowData = me ? all.find(r0 => r0.user_id === me.id) : null;
+      const meExtraHtml = (me && meRowData && !shownIds.has(me.id))
+        ? `<div class="rank-gap">···</div>` + buildRow(meRowData, false)
+        : '';
+
+      // Footer
+      let footer = '';
+      if (me) {
+        if (meRowData) {
+          const meRank = rankByUserId.get(meRowData.user_id);
+          const myDiff = livePx != null ? Math.abs(meRowData._tip - livePx) : null;
+          const closestDiff = livePx != null ? Math.abs(closestRow._tip - livePx) : null;
+          const gap = (myDiff != null && closestDiff != null) ? myDiff - closestDiff : null;
+          const status = meRank === 1
+            ? `<span class="mf-status qualified">✓ Currently closest — would win the ${display} pot</span>`
+            : (gap != null
+                ? `<span class="mf-status need">${fmtCryptoPrice(coin, gap)} closer needed to take #1</span>`
+                : `<span class="mf-status">live price unavailable</span>`);
+          footer = `<div class="me-footer">
+            <div class="mf-left"><span class="mf-rank">#${meRank}</span><span class="mf-status">of ${all.length} prediction${all.length===1?'':'s'}</span></div>
+            <div>${status}</div></div>`;
+        } else {
+          footer = `<div class="me-footer"><div class="mf-left"><span class="mf-status">You haven't set a ${display} prediction yet.</span></div></div>`;
+        }
+      }
+
+      $('#list').innerHTML = liveBadge + aboveSection + closestHtml + belowSection + meExtraHtml + footer;
     }
 
+    // ============== SUB-SELECTORS ==============
     function showGroupSelector(){
       const sel = $('#sub-selector');
       sel.classList.remove('hidden');
@@ -317,12 +838,19 @@
         `<button data-letter="${L}" class="${subView===L?'active':''}">Group ${L}</button>`
       ).join('');
       $$('#sub-selector button').forEach(b => b.addEventListener('click', () => {
-        subView = b.dataset.letter;
-        showGroupSelector(); // re-render to update active state
-        renderGroup(subView);
+        subView = b.dataset.letter; showGroupSelector(); renderGroup(subView);
       }));
     }
-
+    function showPhaseSelector(){
+      const sel = $('#sub-selector');
+      sel.classList.remove('hidden');
+      sel.innerHTML = KO_PHASES.map(p =>
+        `<button data-phase="${p.key}" class="${subView===p.key?'active':''}">${p.label}</button>`
+      ).join('');
+      $$('#sub-selector button').forEach(b => b.addEventListener('click', () => {
+        subView = b.dataset.phase; showPhaseSelector(); renderBracket();
+      }));
+    }
     function showCoinSelector(){
       const sel = $('#sub-selector');
       sel.classList.remove('hidden');
@@ -330,9 +858,7 @@
         `<button data-coin="${c.code}" class="${subView===c.code?'active':''}">${c.label}</button>`
       ).join('');
       $$('#sub-selector button').forEach(b => b.addEventListener('click', () => {
-        subView = b.dataset.coin;
-        showCoinSelector();
-        renderCrypto(subView);
+        subView = b.dataset.coin; showCoinSelector(); renderCrypto(subView);
       }));
     }
 
@@ -340,16 +866,16 @@
       view = v;
       $$('#lbar button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
       if (v === 'overall') {
-        subView = null;
-        renderOverall();
+        subView = null; $('#sub-selector').classList.add('hidden'); renderOverall();
       } else if (v === 'groups') {
         if (!subView || !GROUP_LETTERS.includes(subView)) subView = 'A';
-        showGroupSelector();
-        renderGroup(subView);
+        showGroupSelector(); renderGroup(subView);
+      } else if (v === 'bracket') {
+        if (!subView || !KO_PHASES.find(p => p.key === subView)) subView = 'r32';
+        showPhaseSelector(); renderBracket();
       } else {
         if (!subView || !['btc','bnb','bobai'].includes(subView)) subView = 'btc';
-        showCoinSelector();
-        renderCrypto(subView);
+        showCoinSelector(); renderCrypto(subView);
       }
     }
 
@@ -357,10 +883,9 @@
 
     (async ()=>{
       me = await window.WC_AUTH.currentProfile();
-      // not requiring login — leaderboard is public-ish via RLS, but currentProfile() helps highlight "me"
       await loadPool();
       switchView('overall');
-      setInterval(loadPool, 30000); // refresh pool every 30s
+      setInterval(loadPool, 30000);
     })();
   </script>
 </body>

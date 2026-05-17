@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Tips</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=10">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
   <style>
     .container.wide{max-width:920px}
     .tipbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;background:rgba(0,0,0,.3);padding:5px;border-radius:10px}
@@ -26,6 +26,13 @@
     .match-meta .multi.x2{background:rgba(64,64,255,.15);color:#9090ff}
     .match-meta .multi.x3{background:rgba(160,64,255,.15);color:#c590ff}
     .match-meta .multi.x4{background:rgba(240,185,11,.18);color:var(--gold)}
+    .match-meta .multi.x5{background:rgba(255,140,40,.18);color:#ffb070}
+    .match-meta .multi.x6{background:rgba(255,80,80,.20);color:#ff9080}
+    .match-meta .multi.x7{background:linear-gradient(90deg,var(--gold) 0%,#ff7040 100%);color:#000;font-weight:800}
+
+    .tab-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;background:var(--gold);color:#000;border-radius:99px;font-size:10px;font-weight:800;line-height:1.4;vertical-align:1px}
+    .tab-badge:empty{display:none}
+    #phase-bar button.active .tab-badge{background:#000;color:var(--gold)}
     .match-meta .lockicon{color:#ff8580}
     .match-meta .open{color:#5fffa0}
     .match-meta .resolved{color:var(--gold)}
@@ -58,13 +65,19 @@
 <body>
   <div class="bg-grad"></div>
   <div class="page">
-    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
-
     <nav>
       <div class="nav">
-        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
-        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
-        <span style="width:80px"></span>
+        <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
+        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
@@ -72,13 +85,14 @@
       <div class="container wide">
         <div class="card">
           <h1><span class="accent">Match Tips</span></h1>
-          <p class="sub">5 pts exact · 3 pts winner+diff · 1 pt winner only · locks 15 min before kickoff</p>
+          <p class="sub">2 pts winner · +1 goal diff · +2 exact (5 max) · ×1…×7 by phase · locks 15 min before kickoff</p>
 
           <div id="alert"></div>
 
           <!-- View switcher -->
           <div class="tipbar" id="phase-bar">
-            <button data-view="group" class="active">Groups</button>
+            <button data-view="next48" class="active">⏰ Next 48h <span class="tab-badge" id="badge-next48"></span></button>
+            <button data-view="group">Groups</button>
             <button data-view="r32">R32</button>
             <button data-view="r16">R16</button>
             <button data-view="qf">QF</button>
@@ -94,12 +108,13 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=10"></script>
-  <script src="./assets/countries.js?v=10"></script>
-  <script src="./assets/auth.js?v=10"></script>
-  <script src="./assets/profile.js?v=10"></script>
+  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=12"></script>
+  <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-  <script src="./assets/twemojify.js?v=1"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -148,11 +163,58 @@
 
     let allMatches = [];
     let myTips = {};
-    let currentView = 'group';
+    let currentView = 'next48';
+
+    function hasTip(m){
+      const t = myTips[m.id];
+      return !!(t && Number.isInteger(t.tip_home) && Number.isInteger(t.tip_away));
+    }
+
+    function isNext48(m){
+      if (m.team_home === 'TBD' || m.team_away === 'TBD') return false;
+      if (isLocked(m.kickoff_utc)) return false;
+      const t = new Date(m.kickoff_utc).getTime();
+      const now = Date.now();
+      return t > now - 60*1000 && t <= now + 48*60*60*1000; // ~now to +48h
+    }
+
+    function next48Untipped(){
+      return allMatches
+        .filter(m => isNext48(m) && !hasTip(m))
+        .sort((a,b)=> new Date(a.kickoff_utc) - new Date(b.kickoff_utc));
+    }
+
+    function refreshBadge(){
+      const b = $('#badge-next48');
+      const n = next48Untipped().length;
+      b.textContent = n ? String(n) : '';
+    }
 
     function render(){
       const list = $('#list');
       list.innerHTML = '';
+      refreshBadge();
+
+      if (currentView === 'next48') {
+        const items = next48Untipped();
+        if (!items.length) {
+          // Differentiate: nothing scheduled vs. everything already tipped
+          const anyIn48 = allMatches.some(isNext48);
+          if (anyIn48) {
+            list.innerHTML = '<div class="alert ok" style="text-align:center;line-height:1.6">🎉 <b>You\'re up to date.</b><br><span style="opacity:.85">All matches in the next 48 hours are tipped. Switch to <b>Groups</b> / <b>R32</b> / … to plan further ahead.</span></div>';
+          } else {
+            list.innerHTML = '<div class="alert info" style="text-align:center;line-height:1.6">⏳ <b>No matches in the next 48 hours.</b><br><span style="opacity:.85">Check back closer to kickoff, or browse <b>Groups</b> / <b>R32</b> / … to place your tips early.</span></div>';
+          }
+          return;
+        }
+        const card = document.createElement('div');
+        card.className = 'group-card';
+        card.innerHTML = `<div class="group-head"><div class="group-title">⏰ Next 48 hours</div><div class="group-meta">${items.length} ${items.length===1?'match':'matches'} to tip</div></div><div class="rows"></div>`;
+        const rows = card.querySelector('.rows');
+        items.forEach((m, idx) => rows.appendChild(buildMatchRow(m, idx===0)));
+        list.appendChild(card);
+        return;
+      }
 
       let filtered;
       if (currentView === 'group') {
@@ -257,7 +319,13 @@
         myTips[m.id] = { match_id: m.id, tip_home: nh, tip_away: na, points_final: 0, resolved: false };
         tag.className = 'save-tag ok';
         tag.textContent = '✓ saved';
-        setTimeout(()=>{ if (tag.textContent === '✓ saved') tag.textContent = ''; tag.className = 'save-tag'; }, 1800);
+        refreshBadge();
+        setTimeout(()=>{
+          if (tag.textContent === '✓ saved') tag.textContent = '';
+          tag.className = 'save-tag';
+          // On the Next-48h view, the just-tipped match should drop out of the list
+          if (currentView === 'next48') render();
+        }, 1800);
       };
 
       inH.addEventListener('change', trySave);

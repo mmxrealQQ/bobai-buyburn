@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Crypto Predictions</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=10">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
   <style>
     .container.wide{max-width:680px}
     .ck{margin-bottom:22px;padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
@@ -30,11 +30,16 @@
     .ck-input-wrap .pfx{color:var(--muted);font-family:'Space Grotesk';font-weight:600;font-size:15px}
     .ck-input-wrap input{flex:1;padding:14px 8px;background:transparent;border:none;color:var(--text);font-family:'Space Grotesk';font-weight:700;font-size:16px;outline:none}
     .ck-input-wrap input::placeholder{color:var(--muted);font-weight:400}
-    .ck-input-wrap .use-live{padding:8px 12px;font-size:11px;font-weight:600;color:var(--gold);background:transparent;border:1px solid rgba(240,185,11,.3);border-radius:8px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase;font-family:inherit}
-    .ck-input-wrap .use-live:hover{background:rgba(240,185,11,.08)}
-    .ck-input-wrap .use-live:disabled{opacity:.4;cursor:not-allowed}
 
-    .ck-hint{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4}
+    .ck-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .ck-presets .preset-btn{padding:7px 11px;font-size:11px;font-weight:700;color:var(--gold);background:transparent;border:1px solid rgba(240,185,11,.3);border-radius:8px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase;font-family:inherit;transition:all .12s}
+    .ck-presets .preset-btn:hover{background:rgba(240,185,11,.08);border-color:rgba(240,185,11,.55)}
+    .ck-presets .preset-btn.live{border-color:var(--gold);background:rgba(240,185,11,.08)}
+    .ck-presets .preset-btn.down{color:#ff8580;border-color:rgba(255,80,80,.3)}
+    .ck-presets .preset-btn.down:hover{background:rgba(255,80,80,.08);border-color:rgba(255,80,80,.55)}
+    .ck-presets .preset-btn.up{color:#5fffa0;border-color:rgba(0,230,118,.3)}
+    .ck-presets .preset-btn.up:hover{background:rgba(0,230,118,.08);border-color:rgba(0,230,118,.55)}
+    .ck-presets .preset-btn:disabled{opacity:.4;cursor:not-allowed}
 
     .save-bar{position:sticky;bottom:16px;padding:14px;background:var(--bg);border:1px solid var(--gold);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;backdrop-filter:blur(8px);margin-top:24px}
     .save-bar .info{font-size:12px;color:var(--muted)}
@@ -47,13 +52,19 @@
 <body>
   <div class="bg-grad"></div>
   <div class="page">
-    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
-
     <nav>
       <div class="nav">
-        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
-        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
-        <span style="width:80px"></span>
+        <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
+        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
@@ -71,14 +82,6 @@
             <b>How it works:</b> Predict the USD price of BTC, BNB and $BOBAI <b>at the exact moment of the World Cup Final kickoff</b> (estimated 19 July 2026, 19:00 UTC). The closest guess on each coin wins <b>5% of the total prize pool</b> (15% total — split BTC/BNB/BOBAI evenly).
           </div>
 
-          <div class="dp">
-            <div class="dp-badge">🎨 Art needed (optional)</div>
-            <div class="dp-title">Coin icons for the 3 cards below</div>
-            <div class="dp-body">
-              Currently ₿ / Ⓑ / B as text glyphs. Optional upgrade: 3 small <b>BOBAI-style coin icons</b>, ~<code>64×64</code>, transparent. Filenames <code>illus/coin-btc.webp</code>, <code>illus/coin-bnb.webp</code>, <code>illus/coin-bobai.webp</code>. Brief: <a href="./for-designer.html">/for-designer.html</a>.
-            </div>
-          </div>
-
           <div id="alert"></div>
 
           <!-- BTC -->
@@ -90,9 +93,16 @@
             <div class="ck-input-wrap">
               <span class="pfx">$</span>
               <input type="number" step="0.01" min="0" placeholder="your prediction" data-input="btc">
-              <button type="button" class="use-live" data-uselive="btc">use live</button>
             </div>
-            <div class="ck-hint">Final kickoff price · 5% of pool to the closest guess</div>
+            <div class="ck-presets">
+              <button type="button" class="preset-btn live" data-preset="btc" data-pct="0">use live</button>
+              <button type="button" class="preset-btn down" data-preset="btc" data-pct="-50">-50%</button>
+              <button type="button" class="preset-btn down" data-preset="btc" data-pct="-25">-25%</button>
+              <button type="button" class="preset-btn up"   data-preset="btc" data-pct="25">+25%</button>
+              <button type="button" class="preset-btn up"   data-preset="btc" data-pct="50">+50%</button>
+              <button type="button" class="preset-btn up"   data-preset="btc" data-pct="100">+100%</button>
+              <button type="button" class="preset-btn up"   data-preset="btc" data-pct="200">+200%</button>
+            </div>
           </div>
 
           <!-- BNB -->
@@ -104,23 +114,37 @@
             <div class="ck-input-wrap">
               <span class="pfx">$</span>
               <input type="number" step="0.0001" min="0" placeholder="your prediction" data-input="bnb">
-              <button type="button" class="use-live" data-uselive="bnb">use live</button>
             </div>
-            <div class="ck-hint">5% of pool to the closest guess</div>
+            <div class="ck-presets">
+              <button type="button" class="preset-btn live" data-preset="bnb" data-pct="0">use live</button>
+              <button type="button" class="preset-btn down" data-preset="bnb" data-pct="-50">-50%</button>
+              <button type="button" class="preset-btn down" data-preset="bnb" data-pct="-25">-25%</button>
+              <button type="button" class="preset-btn up"   data-preset="bnb" data-pct="25">+25%</button>
+              <button type="button" class="preset-btn up"   data-preset="bnb" data-pct="50">+50%</button>
+              <button type="button" class="preset-btn up"   data-preset="bnb" data-pct="100">+100%</button>
+              <button type="button" class="preset-btn up"   data-preset="bnb" data-pct="200">+200%</button>
+            </div>
           </div>
 
           <!-- BOBAI -->
           <div class="ck" data-coin="bobai">
             <div class="ck-head">
-              <div class="ck-asset"><div class="icon bobai">🧠</div><div><div class="nm">$BOBAI</div><div class="sym">BOBAI</div></div></div>
+              <div class="ck-asset"><div class="icon bobai">🧠</div><div><div class="nm">BOBAI</div><div class="sym">BOBAI</div></div></div>
               <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="bobai">…</div></div>
             </div>
             <div class="ck-input-wrap">
               <span class="pfx">$</span>
               <input type="number" step="0.0000000001" min="0" placeholder="your prediction" data-input="bobai">
-              <button type="button" class="use-live" data-uselive="bobai">use live</button>
             </div>
-            <div class="ck-hint">5% of pool to the closest guess</div>
+            <div class="ck-presets">
+              <button type="button" class="preset-btn live" data-preset="bobai" data-pct="0">use live</button>
+              <button type="button" class="preset-btn down" data-preset="bobai" data-pct="-50">-50%</button>
+              <button type="button" class="preset-btn down" data-preset="bobai" data-pct="-25">-25%</button>
+              <button type="button" class="preset-btn up"   data-preset="bobai" data-pct="25">+25%</button>
+              <button type="button" class="preset-btn up"   data-preset="bobai" data-pct="50">+50%</button>
+              <button type="button" class="preset-btn up"   data-preset="bobai" data-pct="100">+100%</button>
+              <button type="button" class="preset-btn up"   data-preset="bobai" data-pct="200">+200%</button>
+            </div>
           </div>
 
           <div class="save-bar">
@@ -136,11 +160,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=10"></script>
-  <script src="./assets/auth.js?v=10"></script>
-  <script src="./assets/profile.js?v=10"></script>
+  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/auth.js?v=12"></script>
+  <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-  <script src="./assets/twemojify.js?v=1"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -204,14 +229,21 @@
       });
     }
 
-    // wire "use live" buttons
-    $$('[data-uselive]').forEach(btn => btn.addEventListener('click', () => {
-      const k = btn.dataset.uselive;
+    // Helper: format a numeric price for the input field at coin-appropriate precision
+    function formatForInput(coin, n){
+      if (coin === 'bobai') return n.toFixed(10).replace(/0+$/,'').replace(/\.$/,'');
+      return n.toFixed(coin === 'btc' ? 2 : 4);
+    }
+
+    // wire preset buttons (use live + ±% deltas)
+    $$('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
+      const k = btn.dataset.preset;
+      const pct = parseFloat(btn.dataset.pct);
       if (live[k] == null) return;
+      const target = live[k] * (1 + pct / 100);
+      if (!isFinite(target) || target < 0) return;
       const inp = $(`[data-input="${k}"]`);
-      inp.value = (k === 'bobai')
-        ? live[k].toFixed(10).replace(/0+$/,'').replace(/\.$/,'')
-        : live[k].toFixed(k === 'btc' ? 2 : 4);
+      inp.value = formatForInput(k, target);
       readInputs(); updateSaveBar();
     }));
 
@@ -236,7 +268,7 @@
 
       locked = isLocked();
       if (locked) $('#locked').classList.remove('hidden');
-      if (locked) $$('[data-input], [data-uselive]').forEach(el => el.disabled = true);
+      if (locked) $$('[data-input], [data-preset]').forEach(el => el.disabled = true);
 
       const r = await window.WC_PROFILE.getCrypto();
       if (r.crypto) {

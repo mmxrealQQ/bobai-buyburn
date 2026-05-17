@@ -31,7 +31,7 @@ CREATE TABLE wc_matches (
   goals_home INT,                     -- NULL until played
   goals_away INT,
   played BOOLEAN DEFAULT FALSE,
-  multiplier INT DEFAULT 1            -- group=1, r32/r16=2, qf/sf=3, final/3rd=4
+  multiplier INT DEFAULT 1            -- group=1, r32=2, r16=3, qf=4, sf=5, 3rd=6, final=7 (rebalanced 17 May 2026, see migration_phase_j)
 );
 CREATE INDEX wc_matches_kickoff ON wc_matches (kickoff_utc);
 CREATE INDEX wc_matches_phase ON wc_matches (phase);

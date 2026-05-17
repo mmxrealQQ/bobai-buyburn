@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Rules &amp; FAQ</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=10">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
   <style>
     .container.wide{max-width:760px}
     .toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;padding:12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
@@ -36,13 +36,19 @@
 <body>
   <div class="bg-grad"></div>
   <div class="page">
-    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
-
     <nav>
       <div class="nav">
-        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
-        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
-        <span style="width:80px"></span>
+        <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
+        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
@@ -85,10 +91,11 @@
 
           <!-- REGISTER -->
           <h2 id="register">1. Register</h2>
-          <p>Create an account with a <b>username + password</b>. No email required. Pick a country (you'll get a $BOBAI in that national jersey as your avatar once the illustrator delivers).</p>
-          <p>Optionally connect a <b>BEP-20 wallet</b> (MetaMask, Trust Wallet, Binance Web3). The wallet is only needed if you want to be <b>eligible for prize-pool payouts</b>. You can play purely for fun without one — your username will still appear on the leaderboard, just without the ⚽ icon.</p>
-          <div class="callout info">
-            Wallet ownership is verified via signature <b>before any payout</b>. We never ask for your seed phrase or private key — only an on-chain signature.
+          <p>Create an account with a <b>username + email + password</b>. Pick a country (you'll get a $BOBAI in that national jersey as your avatar once the illustrator delivers). Email is used only for confirmation + password reset — never shown publicly, never spammed.</p>
+          <p>Before the account is created you'll see a short <b>security briefing</b> (anti-scam, anti-phishing, game disclaimer) that you have to acknowledge. After confirming, a confirmation link is sent to your inbox — click it once and you're in.</p>
+          <p>Optionally link a <b>BEP-20 wallet</b> (MetaMask, Trust Wallet, Binance Web3, hardware — any wallet works). You just paste the address — no signing, no app install, no gas. The wallet is only needed if you want to be <b>eligible for prize-pool payouts</b>. You can play purely for fun without one — your username will still appear on the leaderboard, just without the ⚽ icon.</p>
+          <div class="callout warn">
+            A linked wallet is <b>permanent</b> and <b>unique</b>: it cannot be changed or removed after linking, and the same wallet cannot be used on two different accounts. Double-check the address before confirming.
           </div>
 
           <!-- BONUS QUESTIONS -->
@@ -117,26 +124,32 @@
           <!-- SCORING -->
           <h2 id="scoring">5. Scoring</h2>
           <h3>Match scoring (per match)</h3>
+          <p>Raw points stack — first you get points for calling the <b>winner (1/X/2)</b>, then a bonus on top if you also got the <b>goal difference</b>, and another bonus on top if you nailed the <b>exact score</b>:</p>
           <table class="scoring-table">
-            <tr><th>Outcome</th><th>Example</th><th>Raw points</th></tr>
-            <tr><td>Exact result</td><td>Tipped 2:1 → actual 2:1</td><td>5</td></tr>
-            <tr><td>Correct winner + correct goal difference</td><td>Tipped 2:1 → actual 3:2</td><td>3</td></tr>
-            <tr><td>Correct winner only</td><td>Tipped 2:1 → actual 4:0</td><td>1</td></tr>
-            <tr><td>Wrong winner / wrong direction</td><td>Tipped 2:1 → actual 0:1</td><td>0</td></tr>
+            <tr><th>Outcome</th><th>Example (tipped 2:1)</th><th>Raw points</th></tr>
+            <tr><td>Correct winner only (1 / X / 2)</td><td>Actual 4:0 — right side, wrong margin</td><td>2</td></tr>
+            <tr><td>Correct winner <b>+ correct goal difference</b></td><td>Actual 3:2 — right side, 1-goal margin matches (+1)</td><td>3</td></tr>
+            <tr><td>Correct winner + GD <b>+ exact result</b></td><td>Actual 2:1 — nailed it (+2)</td><td>5</td></tr>
+            <tr><td>Wrong winner / wrong direction</td><td>Actual 0:1 or 1:1</td><td>0</td></tr>
           </table>
+          <p style="font-size:12.5px">A correct draw tip (X) only counts if the actual result is also a draw — the score doesn't have to match exactly to get the 2 base points, but you need an actual draw for the <b>+1</b> GD bonus and an exact draw score for the <b>+2</b> exact bonus.</p>
           <h3>Phase multiplier</h3>
-          <p>Knockout matches matter more. Raw points get multiplied by the phase:</p>
+          <p>Knockout matches matter more. Raw points get multiplied by the phase — the deeper the tournament, the bigger the swing on the leaderboard:</p>
           <table class="scoring-table">
             <tr><th>Phase</th><th>Multiplier</th></tr>
             <tr><td>Group stage</td><td>×1</td></tr>
-            <tr><td>Round of 32 · Round of 16</td><td>×2</td></tr>
-            <tr><td>Quarter-finals · Semi-finals</td><td>×3</td></tr>
-            <tr><td>Third-place match · Final</td><td>×4</td></tr>
+            <tr><td>Round of 32</td><td>×2</td></tr>
+            <tr><td>Round of 16</td><td>×3</td></tr>
+            <tr><td>Quarter-finals</td><td>×4</td></tr>
+            <tr><td>Semi-finals</td><td>×5</td></tr>
+            <tr><td>Third-place match</td><td>×6</td></tr>
+            <tr><td>Final</td><td>×7</td></tr>
           </table>
+          <p style="font-size:12.5px">A perfect exact-score tip in the Final is worth <b>5 × 7 = 35 points</b> — enough to flip the leaderboard on a single match, which is exactly the point.</p>
           <h3>Bonus &amp; Crypto</h3>
           <p>Bonus questions: <b>10 pts each</b> if correct. Crypto: <b>not counted in points</b> — winners are determined by closest absolute price difference (own pot).</p>
           <h3>Tie-breaker</h3>
-          <p>If two players have the exact same point total in a payout group, the player with <b>more $BOBAI in their connected wallet at payout time</b> wins. Players without a connected wallet automatically rank below players with one in case of a tie.</p>
+          <p>If two players have the exact same point total in a payout group, the player with <b>more $BOBAI in their linked wallet at payout time</b> wins. Players without a linked wallet automatically rank below players with one in case of a tie.</p>
 
           <!-- POOL -->
           <h2 id="pool">6. Prize pool</h2>
@@ -157,14 +170,17 @@
           <!-- PAYOUTS -->
           <h2 id="payouts">7. Payouts</h2>
           <h3>Group Pot (45 % of group-stage collection)</h3>
-          <p>Paid <b>one day after the last group-stage match</b>. Split across <b>32 winners</b>:</p>
-          <ul>
-            <li>Top 2 finishers in each of the 12 groups (24 winners)</li>
-            <li>8 best 3rd-placed finishers across all groups (8 winners)</li>
-          </ul>
-          <p>Each player's share is <b>proportional to their points</b> within their winning bracket (top-2 or best-3rd). No fixed prizes — your share = your points ÷ sum of all qualifying players' points × bracket pool.</p>
+          <p>Paid <b>one day after the last group-stage match</b>. Split across <b>32 winners</b> from three sub-brackets:</p>
+          <table class="scoring-table">
+            <tr><th>Sub-bracket</th><th>Who qualifies</th><th>Share of group pot</th></tr>
+            <tr><td>Group 1st</td><td>1st-placed player in each of the 12 groups</td><td>55 %</td></tr>
+            <tr><td>Group 2nd</td><td>2nd-placed player in each of the 12 groups</td><td>30 %</td></tr>
+            <tr><td>Best 3rds</td><td>8 best 3rd-placed players across all groups</td><td>15 %</td></tr>
+          </table>
+          <p>Within each sub-bracket, your share is <b>proportional to your group_points</b> — so a 1st with more tipping points takes a bigger slice of the 55 % than a 1st with fewer points. The bracket weights guarantee that being 1st of your group always pays more than being 2nd, and being 2nd always pays more than just sneaking into best-3rd.</p>
+          <p>Formula: <code>share = your_group_points ÷ sum(group_points of all players in your sub-bracket) × (sub_bracket_pct × group_pot)</code>.</p>
           <h3>End Pool (KO-phase pot)</h3>
-          <p>Paid <b>one day after the Final</b>. Top 4 overall — based on total score across all phases including bonus questions.</p>
+          <p>Paid <b>one day after the Final</b>. Top 4 overall — based on total score across all phases <b>including bonus questions</b>. Within the top 4, each player's share is <b>proportional to their total points</b>: <code>share = your_total_points ÷ sum(total_points of top 4) × end_pool</code>.</p>
           <h3>Crypto Pot (15 %)</h3>
           <p>Paid <b>one day after the Final</b>, alongside the End Pool. Split into 3 equal slots:</p>
           <ul>
@@ -175,10 +191,37 @@
           <p>The same player can win multiple Crypto Pot slots if they have the best guess on more than one coin.</p>
           <h3>Eligibility</h3>
           <div class="callout warn">
-            Only players with a <b>verified wallet</b> at payout time receive transfers. Players without a connected wallet keep their leaderboard position for bragging rights, but their share is redistributed proportionally to the eligible winners in that pot.
+            Only players with a <b>linked wallet</b> at payout time receive transfers. Players without a linked wallet keep their leaderboard position for bragging rights, but their share is redistributed proportionally to the eligible winners in that pot.
           </div>
+
+          <h3>Holder-balance cap: max 26× your $BOBAI</h3>
+          <p>Each individual payout to a winner is capped at <b>26× the $BOBAI balance held in their linked wallet at the moment of payout</b>. Examples:</p>
+          <table class="scoring-table">
+            <tr><th>Your wallet holds</th><th>Maximum single payout</th></tr>
+            <tr><td>$1 in $BOBAI</td><td>$26</td></tr>
+            <tr><td>$100 in $BOBAI</td><td>$2,600</td></tr>
+            <tr><td>$1,000 in $BOBAI</td><td>$26,000</td></tr>
+            <tr><td>$10,000 in $BOBAI</td><td>$260,000</td></tr>
+          </table>
+          <div class="callout info">
+            <b>Why this exists.</b> This is an <b>anti-abuse rule</b> that protects the people who actually believe in <b>$BOBAI / Brain On BNB AI</b> — the holders, supporters, and long-term believers. Without a cap, anyone could spin up an empty wallet, place a random tip, and try to siphon a pool that was built by real supporters. The 26× rule ties payouts to actual skin in the game.
+          </div>
+          <p><b>Don't worry about being "capped out".</b> Nobody knows in advance how big the prize pool will be — but if the pool grows, your <b>$BOBAI balance grows with it</b> (same token, same chart). So the cap scales with you. Holding more $BOBAI literally raises your ceiling.</p>
+          <p>The balance is read <b>live from the blockchain</b> at payout time — there's no snapshot to game and no way to fake it.</p>
+
+          <h3>Cap overflow — cascading redistribution</h3>
+          <p>If a winner's computed share exceeds their personal 26× cap, the excess does <b>not</b> stay with that winner and is <b>not</b> burned. It flows to the rest of the eligible winners in the same pot:</p>
+          <ol>
+            <li>Compute every winner's raw share based on points / closest-guess logic.</li>
+            <li>Apply each winner's 26× cap. Sum up the overflow from anyone who got capped.</li>
+            <li>Redistribute that overflow <b>proportionally</b> to the remaining (uncapped) winners.</li>
+            <li>If that redistribution pushes a new winner over their cap, repeat step 2 — the cascade continues until either every dollar is paid out within someone's cap, or no eligible uncapped winner remains.</li>
+            <li>Any residual that nobody can absorb rolls into the <b>next pot</b> (Group → End Pool, End → Crypto carry-over) as a final fallback. It is never burned and never kept by the team.</li>
+          </ol>
+          <p style="font-size:12.5px">The cascading logic is implemented in the same payout-computation code that the admin runs before signing. The full split (raw share, cap applied, redistribution rounds) will be published on-chain alongside each payout batch so anyone can verify it.</p>
+
           <h3>How the payouts run</h3>
-          <p>Payout transactions are <b>triggered manually</b> by the project admin (not fully autonomous) — the code computes the exact split, then the admin signs and broadcasts the batch. This is a deliberate safety design: an off-by-one bug should never auto-drain the pool.</p>
+          <p>Payout transactions are <b>triggered manually</b> by the project admin (not fully autonomous) — the code computes the exact split (including cap and cascade), then the admin signs and broadcasts the batch. This is a deliberate safety design: an off-by-one bug should never auto-drain the pool.</p>
 
           <!-- DONATIONS -->
           <h2 id="donations">8. Donations</h2>
@@ -221,16 +264,16 @@
             <li>Website: <a href="https://brainonbnb.ai" style="color:var(--gold)">brainonbnb.ai</a></li>
           </ul>
           <p style="font-size:11.5px;color:var(--muted);margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
-            Last updated: 16 May 2026. Rules may be refined for clarity before launch on 4 June 2026; any change with material effect on scoring or payouts will be announced in the official Telegram with at least 24 hours' notice.
+            Last updated: 17 May 2026 (registration flow + group-pot 55/30/15 split formalized). Rules may be refined for clarity before launch on 4 June 2026; any change with material effect on scoring or payouts will be announced in the official Telegram with at least 24 hours' notice.
           </p>
         </div>
       </div>
     </main>
   </div>
 
-  <script src="./assets/config.js?v=10"></script>
+  <script src="./assets/config.js?v=11"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-  <script src="./assets/twemojify.js?v=1"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
   <script>
     // Replace the short address hint with the real configured one
     const addrHint = document.getElementById('addr-hint');

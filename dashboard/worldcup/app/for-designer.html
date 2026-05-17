@@ -3,39 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>$BOBAI Worldcup '26 — Illustrator Brief</title>
+  <title>$BOBAI Worldcup '26 — Illustrator Checklist</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=10">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
   <style>
-    .container.wide{max-width:860px}
-    h2{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);margin:36px 0 12px;letter-spacing:-.01em}
+    .container.wide{max-width:980px}
+    h2{font-family:'Space Grotesk';font-weight:700;font-size:20px;color:var(--gold);margin:32px 0 12px;letter-spacing:-.01em}
     h2:first-of-type{margin-top:0}
-    h3{font-family:'Space Grotesk';font-weight:600;font-size:14px;color:var(--text);margin:14px 0 6px;letter-spacing:.3px}
-    p, li{color:var(--muted);font-size:14px;line-height:1.7}
-    ul, ol{margin:0 0 12px 22px}
-    code{background:rgba(0,0,0,.4);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--gold);font-family:'Space Grotesk'}
-    .spec-card{padding:16px 18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;margin:12px 0}
-    .spec-card .lbl{font-size:11px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:8px}
-    .spec-card .val{color:var(--text);font-size:13.5px;line-height:1.55}
-    .check{color:#5fffa0}
-    .miss{color:#ffc066}
-    .grid48{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin:14px 0}
-    .grid48 .cell{padding:10px 8px;background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text)}
-    .grid48 .cell .fl{font-size:20px;line-height:1}
-    .grid48 .cell .nm{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
-    .grid48 .cell code{font-size:10px;padding:1px 5px}
+    p, li{color:var(--muted);font-size:13.5px;line-height:1.65}
+    code{background:rgba(0,0,0,.5);padding:1px 6px;border-radius:4px;font-size:12px;color:#ffb1de;font-family:'Space Grotesk','Courier New',monospace}
+
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+    .stat-card{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;padding:14px}
+    .stat-card .lbl{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:600}
+    .stat-card .val{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);line-height:1.1}
+    .stat-card.ok .val{color:var(--green)}
+    .stat-card.warn .val{color:#ffc066}
+
+    .filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;background:rgba(0,0,0,.3);padding:5px;border-radius:10px}
+    .filter-bar button{flex:1;min-width:90px;padding:8px;font-size:11.5px;font-weight:600;border:none;background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;font-family:inherit;letter-spacing:.4px}
+    .filter-bar button.active{background:var(--gold-glow);color:var(--gold)}
+
+    .checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+    .item{position:relative;padding:14px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px;transition:all .15s}
+    .item.done{background:rgba(0,230,118,.05);border-color:rgba(0,230,118,.3)}
+    .item.missing{background:rgba(255,180,0,.04);border-color:rgba(255,180,0,.2)}
+    .item.pending{opacity:.55}
+    .item .preview{flex-shrink:0;width:56px;height:56px;display:flex;align-items:center;justify-content:center}
+    .item .preview img{width:56px;height:56px;border-radius:8px;object-fit:cover;background:rgba(0,0,0,.4)}
+    .item .preview .ph{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:30px;background:rgba(0,0,0,.4);border-radius:8px;line-height:1}
+    .item .info{min-width:0;flex:1}
+    .item .info .name{font-family:'Space Grotesk';font-weight:600;font-size:13px;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .item .info .file{font-family:'Space Grotesk','Courier New',monospace;font-size:11px;color:#ffb1de;background:rgba(0,0,0,.4);padding:1px 6px;border-radius:4px;display:inline-block}
+    .item .info .status{font-size:10.5px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+    .item.done .status{color:var(--green)}
+    .item.missing .status{color:#ffc066}
+    .copy-btn{position:absolute;top:8px;right:8px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;font-family:inherit;letter-spacing:.5px;text-transform:uppercase}
+    .copy-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+    /* Other illustrations — larger cards */
+    .illus-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+    .illus-card{padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
+    .illus-card.done{border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.04)}
+    .illus-card .badge-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .illus-card .ttl{font-family:'Space Grotesk';font-weight:700;font-size:14.5px;color:var(--text);margin-bottom:6px}
+    .illus-card .lbl{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;color:var(--gold)}
+    .illus-card .specs{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px}
+    .illus-card .file{font-family:'Space Grotesk','Courier New',monospace;font-size:11.5px;color:#ffb1de;background:rgba(0,0,0,.4);padding:5px 10px;border-radius:6px;display:inline-block;margin-bottom:8px;word-break:break-all}
+    .illus-card .used{font-size:11px;color:var(--muted)}
+    .illus-card.done .lbl{color:var(--green)}
+
+    .stage-block{background:rgba(64,64,255,.05);border:1px solid rgba(64,64,255,.2);border-radius:10px;padding:14px 18px;color:#9090ff;font-size:12.5px;line-height:1.65;margin-bottom:24px}
+    .stage-block b{color:#b0b0ff}
+
+    .design-toggle{position:fixed;bottom:18px;right:18px;padding:12px 18px;background:rgba(255,64,180,.15);border:1px solid #ff40b4;color:#ff40b4;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border-radius:10px;cursor:pointer;font-family:'Space Grotesk';z-index:50;backdrop-filter:blur(8px)}
+    .design-toggle:hover{background:rgba(255,64,180,.25)}
   </style>
 </head>
 <body>
   <div class="bg-grad"></div>
   <div class="page">
-    <div class="beta-banner">🎨 ILLUSTRATOR BRIEF · BETA · INTERNAL</div>
-
     <nav>
       <div class="nav">
-        <a class="back-btn" href="./dashboard.html"><span>←</span> Back</a>
-        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
+        <a class="back-btn" href="./dashboard.html"><span>←</span> Dashboard</a>
+        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
         <span style="width:80px"></span>
       </div>
     </nav>
@@ -43,114 +75,216 @@
     <main>
       <div class="container wide">
         <div class="card">
-          <h1><span class="accent">Illustrator Brief</span></h1>
-          <p class="sub">Everything you need to deliver illustrations for the tipgame. Hand-off as WebP (preferred) or transparent PNG.</p>
+          <h1><span class="accent">Illustrator Checklist</span></h1>
+          <p class="sub">Live status of every illustration slot. Drop files into the right folder — page auto-detects them on reload.</p>
 
-          <!-- 1) BOBAI AVATARS -->
-          <h2>1. National-team BOBAI avatars (48 illustrations)</h2>
-
-          <div class="spec-card">
-            <div class="lbl">Concept</div>
-            <div class="val">
-              The existing <b>$BOBAI</b> character (same brain-on-BNB style as the welcome-page illustrations) wearing the football kit of each of the 48 qualified national teams. One illustration per country.
-            </div>
+          <!-- LIVE STATS -->
+          <div class="stats-row">
+            <div class="stat-card ok"><div class="lbl">Done</div><div class="val" id="st-done">0</div></div>
+            <div class="stat-card warn"><div class="lbl">Missing</div><div class="val" id="st-missing">0</div></div>
+            <div class="stat-card"><div class="lbl">Total slots</div><div class="val" id="st-total">0</div></div>
+            <div class="stat-card"><div class="lbl">% complete</div><div class="val" id="st-pct">0%</div></div>
           </div>
 
-          <div class="spec-card">
-            <div class="lbl">Style notes</div>
-            <div class="val">
-              <ul style="margin-top:0">
-                <li>Same character, same proportions across all 48 — only the kit changes.</li>
-                <li>Front-facing 3/4 portrait, character chest-up. Kit colour + crest visible.</li>
-                <li>Background: <b>transparent</b> (so we can place on dark dashboard cards).</li>
-                <li>No realistic human faces (per BOBAI brand rules).</li>
-                <li>Use the colours/stripes the national team is famous for. Don't reproduce trademarked club crests — abstract "BOB" emblem on the chest is fine if you want a focal element.</li>
-              </ul>
-            </div>
+          <!-- HOW IT WORKS -->
+          <div class="stage-block">
+            <b>How this works:</b><br>
+            1. Each card below points to a file. Deliver as <b>WebP</b> (preferred) or <b>transparent PNG</b>.<br>
+            2. Drop the file into <code>dashboard/worldcup/app/illus/</code> (avatars go in the <code>avatars/</code> subfolder).<br>
+            3. Reload this page → the card flips to <b style="color:var(--green)">✓ DELIVERED</b> and the new art shows up automatically across the whole app.<br>
+            4. No code changes needed on our side.<br>
+            <span style="display:inline-block;margin-top:8px">Want to preview where the art will land?</span>
+            <a href="?design=1" style="color:#ff40b4">→ enable Designer Mode</a> (highlights every slot across the app in magenta with filenames).
           </div>
 
-          <div class="spec-card">
-            <div class="lbl">Specs</div>
-            <div class="val">
-              · Format: <code>.webp</code> (preferred) or <code>.png</code><br>
-              · Size: <b>512 × 512 px</b>, square, transparent background<br>
-              · Naming: <code>avatar-&lt;CODE&gt;.webp</code> using the codes below (e.g. <code>avatar-BR.webp</code>, <code>avatar-ENG.webp</code>)<br>
-              · Drop into: <code>dashboard/worldcup/app/illus/avatars/</code>
-            </div>
+          <!-- AVATARS -->
+          <h2>1. National-team BOBAI avatars (48 files · required)</h2>
+          <p>One illustration per qualified country. <b>$BOBAI character wearing that team's national kit.</b> 512×512 WebP, transparent background. Same character + proportions across all 48 — only the kit changes. No realistic human faces.</p>
+          <p>Used on: <b>Dashboard profile · Leaderboard rows · Public profile · Bonus → Champion picker</b>. Until each avatar is delivered, the slot shows the country flag emoji as a fallback.</p>
+
+          <div class="filter-bar">
+            <button data-filter="all" class="active">All 48</button>
+            <button data-filter="missing">Missing only</button>
+            <button data-filter="done">Delivered only</button>
           </div>
+          <div id="avatar-list" class="checklist"></div>
 
-          <div class="spec-card">
-            <div class="lbl">Why it matters</div>
-            <div class="val">
-              These are the user avatars across the entire app — register page, dashboard profile, leaderboard rows. Currently we use flag emojis as placeholders.
-            </div>
-          </div>
+          <!-- OTHER ILLUSTRATIONS -->
+          <h2>2. Decorative illustrations (nice-to-have)</h2>
+          <div id="illus-list" class="illus-list"></div>
 
-          <h3>The 48 teams</h3>
-          <div id="grid48" class="grid48"></div>
-
-          <!-- 2) DECORATIVE -->
-          <h2>2. Decorative illustrations (small, nice-to-have)</h2>
-
-          <div class="spec-card">
-            <div class="lbl">A) Pool-card flourish (Leaderboard page)</div>
-            <div class="val">
-              Small <b>trophy + BOBAI</b> illustration to anchor the "🏆 Prize Pool" card. Square, ~300 × 300 px, transparent. Place opposite the pool figure. Should communicate "growing pool" — coins, sparkles, BOBAI lifting a small trophy.<br>
-              Filename: <code>illus/pool-trophy.webp</code>
-            </div>
-          </div>
-
-          <div class="spec-card">
-            <div class="lbl">B) Bonus-questions hero (Bonus page)</div>
-            <div class="val">
-              Optional decorative banner above the bonus questions list. ~1200 × 300 px, transparent, dark-mode compatible. Idea: BOBAI looking thoughtfully at a tournament bracket with a crystal ball / question mark above. Subtle, not loud.<br>
-              Filename: <code>illus/bonus-hero.webp</code>
-            </div>
-          </div>
-
-          <div class="spec-card">
-            <div class="lbl">C) Crypto-predictions accents (Crypto page)</div>
-            <div class="val">
-              Tiny coin-style icons for the 3 cards (BTC, BNB, $BOBAI). 64 × 64 px each, transparent. Right now we use simple unicode/text. Filenames: <code>illus/coin-btc.webp</code>, <code>illus/coin-bnb.webp</code>, <code>illus/coin-bobai.webp</code>.<br>
-              Style: same iconographic feel as the rest of BOBAI — playful but readable.
-            </div>
-          </div>
-
-          <!-- 3) WORKFLOW -->
-          <h2>3. Workflow</h2>
-          <ol>
-            <li>Look at the live app pages to see exactly where everything lands:
-              <ul>
-                <li><a href="./index.html" style="color:var(--gold)">Register</a> — flag grid (avatars go here)</li>
-                <li><a href="./dashboard.html" style="color:var(--gold)">Dashboard</a> — profile card (big avatar)</li>
-                <li><a href="./bonus.html" style="color:var(--gold)">Bonus questions</a> — optional hero banner</li>
-                <li><a href="./crypto.html" style="color:var(--gold)">Crypto predictions</a> — coin icons</li>
-                <li><a href="./leaderboard.html" style="color:var(--gold)">Leaderboard</a> — pool-card flourish + avatars in rows</li>
-              </ul>
+          <!-- WORKFLOW -->
+          <h2>3. Quick links</h2>
+          <ul>
+            <li>Live preview of every slot in <b>Designer Mode</b>: <a href="?design=1" style="color:var(--gold)">enable here</a> · <a href="?design=0" style="color:var(--gold)">disable</a> (also affects all other pages in this session)</li>
+            <li>See where avatars land in production:
+              <a href="./index.html" style="color:var(--gold)">Register</a> ·
+              <a href="./dashboard.html" style="color:var(--gold)">Dashboard</a> ·
+              <a href="./bonus.html" style="color:var(--gold)">Bonus / Champion</a> ·
+              <a href="./leaderboard.html" style="color:var(--gold)">Leaderboard</a> ·
+              <a href="./user.html?u=mmx_QQ" style="color:var(--gold)">Public profile</a>
             </li>
-            <li>Deliver files into <code>dashboard/worldcup/app/illus/</code> following the naming above.</li>
-            <li>We swap ~10 lines of HTML/CSS to point at the new files. No rework of the avatar grid needed.</li>
-          </ol>
+            <li>Specs reminder: WebP preferred (smaller), PNG fine. Always <b>transparent background</b>. Square unless specified.</li>
+          </ul>
 
-          <p style="font-size:12px;color:var(--muted);margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
-            Questions? <a href="https://t.me/bobai_official" style="color:var(--gold)">@bobai_official</a> on Telegram.
+          <p style="font-size:11.5px;color:var(--muted);margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
+            Questions / hand-off? <a href="https://t.me/bobai_official" style="color:var(--gold)">@bobai_official</a> on Telegram.
           </p>
         </div>
       </div>
     </main>
   </div>
 
-  <script src="./assets/countries.js?v=10"></script>
+  <button class="design-toggle" onclick="toggleDesign()">🎨 Designer Mode: <span id="dm-state">OFF</span></button>
+
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/avatar.js?v=4"></script>
+  <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-  <script src="./assets/twemojify.js?v=1"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
   <script>
-    const grid = document.getElementById('grid48');
-    window.WC_COUNTRIES.forEach(c => {
-      const d = document.createElement('div');
-      d.className = 'cell';
-      d.innerHTML = `<span class="fl">${c.flag}</span><span class="nm">${c.name}</span><code>${c.code}</code>`;
-      grid.appendChild(d);
-    });
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    // Designer mode toggle button
+    $('#dm-state').textContent = window.WC_AVATAR.designOn ? 'ON' : 'OFF';
+    function toggleDesign(){
+      const nowOn = !window.WC_AVATAR.designOn;
+      if (nowOn) localStorage.setItem('wc_design', '1');
+      else       localStorage.removeItem('wc_design');
+      window.location.href = window.location.pathname + (nowOn ? '?design=1' : '');
+    }
+
+    // Inventory all illustration slots, then HEAD-check each in parallel
+    const inv = window.WC_AVATAR.inventory();
+    const avatars = inv.filter(x => x.kind === 'avatar');
+    const illus   = inv.filter(x => x.kind === 'illus');
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]); }
+    async function copyToClipboard(text, btn){
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(()=>{ btn.textContent = orig; }, 1200);
+      } catch (e) { /* noop */ }
+    }
+
+    function renderAvatars(filter){
+      const list = $('#avatar-list');
+      const rows = avatars
+        .filter(a => filter === 'all' || a._state === filter)
+        .map(a => {
+          const stateCls = a._state || 'pending';
+          const stateLabel = stateCls === 'done' ? `✓ delivered (.${a._ext})`
+                          : stateCls === 'missing' ? 'pending'
+                          : 'checking…';
+          const preview = stateCls === 'done'
+            ? `<img src="${a.basePath}.${a._ext}" alt="">`
+            : `<div class="ph">${a.flag}</div>`;
+          const justFile = a.filename.split('/').pop();
+          const fileLabel = stateCls === 'done'
+            ? `${justFile}.${a._ext}`
+            : `${justFile}.{webp | png | jpg}`;
+          return `<div class="item ${stateCls}">
+            <button class="copy-btn" data-copy="${justFile}.webp">📋</button>
+            <div class="preview">${preview}</div>
+            <div class="info">
+              <div class="name">${escapeHtml(a.name)}</div>
+              <div class="file">${fileLabel}</div>
+              <div class="status">${stateLabel}</div>
+            </div>
+          </div>`;
+        })
+        .join('');
+      list.innerHTML = rows || '<p style="grid-column:1/-1;text-align:center;padding:30px">No avatars match this filter.</p>';
+      $$('#avatar-list .copy-btn').forEach(b => {
+        b.addEventListener('click', e => {
+          e.stopPropagation();
+          copyToClipboard(b.dataset.copy, b);
+        });
+      });
+    }
+
+    function renderIllus(){
+      const list = $('#illus-list');
+      list.innerHTML = illus.map(i => {
+        const cls = i._state === 'done' ? 'done' : '';
+        const stateLabel = i._state === 'done' ? `✓ DELIVERED (.${i._ext})`
+                        : i._state === 'missing' ? 'PENDING'
+                        : 'checking…';
+        const justFile = i.filename.split('/').pop();
+        const fileLabel = i._state === 'done'
+          ? `${i.filename}.${i._ext}`
+          : `${i.filename}.{webp | png | jpg}`;
+        return `<div class="illus-card ${cls}" data-file="${i.filename}">
+          <div class="badge-row">
+            <span class="lbl">${stateLabel}</span>
+            <button class="copy-btn" data-copy="${justFile}.webp" style="position:static">📋 Copy filename</button>
+          </div>
+          <div class="ttl">${escapeHtml(i.name)}</div>
+          <div class="file">${fileLabel}</div>
+          <div class="specs">${escapeHtml(i.specs)}</div>
+          <div class="used">Used on: ${escapeHtml(i.usedOn)}</div>
+        </div>`;
+      }).join('');
+      $$('#illus-list .copy-btn').forEach(b => {
+        b.addEventListener('click', e => {
+          e.stopPropagation();
+          copyToClipboard(b.dataset.copy, b);
+        });
+      });
+    }
+
+    function updateStats(){
+      const all = inv.filter(x => x._state); // only counted once HEAD-checked
+      const done = all.filter(x => x._state === 'done').length;
+      const miss = all.filter(x => x._state === 'missing').length;
+      $('#st-done').textContent = done;
+      $('#st-missing').textContent = miss;
+      $('#st-total').textContent = inv.length;
+      const pct = inv.length ? Math.round((done / inv.length) * 100) : 0;
+      $('#st-pct').textContent = pct + '%';
+    }
+
+    // Run HEAD checks. findFormat() probes all formats in parallel per slot,
+    // so each slot only takes one round-trip. We still limit concurrency so we
+    // don't open hundreds of sockets at once.
+    async function checkAll(){
+      const queue = [...inv];
+      const CONC = 16;
+      const workers = Array.from({ length: CONC }, async () => {
+        while (queue.length) {
+          const it = queue.shift();
+          const ext = await window.WC_AVATAR.findFormat(it.basePath);
+          if (ext) { it._state = 'done'; it._ext = ext; }
+          else     { it._state = 'missing'; it._ext = null; }
+        }
+      });
+      const renderInterval = setInterval(()=>{
+        renderAvatars(currentFilter);
+        renderIllus();
+        updateStats();
+      }, 250);
+      await Promise.all(workers);
+      clearInterval(renderInterval);
+      renderAvatars(currentFilter);
+      renderIllus();
+      updateStats();
+    }
+
+    let currentFilter = 'all';
+    $$('.filter-bar button').forEach(b => b.addEventListener('click', ()=>{
+      $$('.filter-bar button').forEach(x => x.classList.toggle('active', x === b));
+      currentFilter = b.dataset.filter;
+      renderAvatars(currentFilter);
+    }));
+
+    // Initial render (all pending) then start checking
+    renderAvatars(currentFilter);
+    renderIllus();
+    updateStats();
+    checkAll();
   </script>
 </body>
 </html>

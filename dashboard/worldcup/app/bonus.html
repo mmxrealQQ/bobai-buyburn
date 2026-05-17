@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Bonus Questions</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=10">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
   <style>
     .container.wide{max-width:780px}
     .q{margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
@@ -24,6 +24,19 @@
     .country-cell .nm{font-size:10px;color:var(--muted);text-align:center;line-height:1.2}
     .country-cell.sel .nm{color:var(--gold)}
 
+    /* Champion picker — uses BOBAI-in-jersey avatars (flag fallback until art lands) */
+    .champ-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:520px;overflow-y:auto;padding:12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
+    .champ-cell{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px 10px;border-radius:12px;background:rgba(0,0,0,.25);border:1.5px solid transparent;cursor:pointer;transition:all .15s;color:var(--text);position:relative}
+    .champ-cell:hover{background:rgba(240,185,11,.05);border-color:rgba(240,185,11,.25);transform:translateY(-1px)}
+    .champ-cell.sel{background:linear-gradient(135deg,rgba(240,185,11,.12),rgba(240,185,11,.04));border-color:var(--gold);box-shadow:0 4px 16px rgba(240,185,11,.18)}
+    .champ-cell.sel::after{content:'✓ Your champion';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--gold);color:#050510;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 8px;border-radius:6px;font-family:'Space Grotesk';text-transform:uppercase;white-space:nowrap}
+    .champ-cell .champ-ava-wrap{display:flex;align-items:center;justify-content:center;width:80px;height:80px;margin-bottom:2px}
+    .champ-cell .nm{font-size:12px;color:var(--text);text-align:center;line-height:1.2;font-weight:500}
+    .champ-cell.sel .nm{color:var(--gold);font-weight:700}
+    /* Avatar inside champion picker grows to fill its 80×80 wrap */
+    .champ-ava-wrap .wc-ava{width:80px !important;height:80px !important}
+    .champ-cell:disabled,.champ-cell.locked{opacity:.5;cursor:not-allowed}
+
     .bracket-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
     .br-btn{padding:14px;background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
     .br-btn:hover{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.2)}
@@ -40,15 +53,19 @@
 <body>
   <div class="bg-grad"></div>
   <div class="page">
-    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
-
     <nav>
       <div class="nav">
-        <a class="back-btn" href="./dashboard.html" aria-label="Back to dashboard">
-          <span>←</span> Dashboard
-        </a>
-        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
-        <span style="width:80px"></span>
+        <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
+        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
@@ -67,24 +84,14 @@
             You can edit your answers any time before the first match kicks off.
           </div>
 
-          <div class="dp">
-            <div class="dp-badge">🎨 Art needed (optional)</div>
-            <div class="dp-title">Bonus-questions hero banner</div>
-            <div class="dp-body">
-              Optional decorative banner above the questions list. ~<code>1200×300</code> WebP, transparent, dark-mode compatible. Idea: BOBAI looking thoughtfully at a tournament bracket with a crystal ball / question mark. Filename <code>illus/bonus-hero.webp</code>. Brief: <a href="./for-designer.html">/for-designer.html</a>.
-              <br><br>
-              ⚠ Country grids below stay as <b>flags</b> (team selection, not user avatar).
-            </div>
-          </div>
-
           <div id="alert"></div>
 
           <!-- Q1: Champion -->
           <div class="q" data-field="champion">
             <div class="q-num">Question 1 · <span class="q-points">10 pts</span></div>
             <div class="q-title">🏆 Who wins the World Cup?</div>
-            <div class="q-hint">Pick the country you think will lift the trophy.</div>
-            <div class="country-grid" data-grid="champion"></div>
+            <div class="q-hint">Pick the country you think will lift the trophy. The card shows <b>$BOBAI in that team's kit</b> (placeholder flag until illustrator delivers).</div>
+            <div class="champ-grid" data-grid="champion"></div>
           </div>
 
           <!-- Q2: Most goals -->
@@ -139,12 +146,14 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=10"></script>
-  <script src="./assets/countries.js?v=10"></script>
-  <script src="./assets/auth.js?v=10"></script>
-  <script src="./assets/profile.js?v=10"></script>
+  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=12"></script>
+  <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/avatar.js?v=4"></script>
+  <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-  <script src="./assets/twemojify.js?v=1"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -168,12 +177,21 @@
     function renderCountryGrid(field){
       const grid = document.querySelector(`[data-grid="${field}"]`);
       grid.innerHTML = '';
+      const isChampion = field === 'champion';
       window.WC_COUNTRIES.forEach(c => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'country-cell' + (pending[field] === c.code ? ' sel' : '');
         b.dataset.code = c.code;
-        b.innerHTML = `<span class="fl">${c.flag}</span><span class="nm">${c.name}</span>`;
+        if (isChampion) {
+          b.className = 'champ-cell' + (pending[field] === c.code ? ' sel' : '');
+          const avaHtml = window.WC_AVATAR
+            ? window.WC_AVATAR.avatarHtml(c.code, 'xl')
+            : `<span style="font-size:48px">${c.flag}</span>`;
+          b.innerHTML = `<div class="champ-ava-wrap">${avaHtml}</div><span class="nm">${c.name}</span>`;
+        } else {
+          b.className = 'country-cell' + (pending[field] === c.code ? ' sel' : '');
+          b.innerHTML = `<span class="fl">${c.flag}</span><span class="nm">${c.name}</span>`;
+        }
         if (locked) b.disabled = true;
         b.addEventListener('click', ()=>{
           if (locked) return;
@@ -230,7 +248,7 @@
 
     (async ()=>{
       const me = await window.WC_AUTH.currentProfile();
-      if (!me) { window.location.href = './index.html'; return; }
+      if (!me) { window.location.href = '/worldcup/'; return; }
 
       locked = isLocked();
       if (locked) $('#locked').classList.remove('hidden');

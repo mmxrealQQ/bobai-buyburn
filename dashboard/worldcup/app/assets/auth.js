@@ -144,7 +144,7 @@
     if (!authUser) return null;
     const { data: existing } = await sb
       .from('wc_users')
-      .select('id, username, avatar_country, wallet, wallet_verified')
+      .select('id, username, avatar_country, wallet')
       .eq('auth_id', authUser.id)
       .maybeSingle();
     if (existing) return existing;
@@ -160,7 +160,7 @@
         username,
         avatar_country: meta.country || null,
       })
-      .select('id, username, avatar_country, wallet, wallet_verified')
+      .select('id, username, avatar_country, wallet')
       .single();
     if (error) return null;
     return row;
@@ -171,7 +171,7 @@
     if (!s.session) return null;
     const { data, error } = await sb
       .from('wc_users')
-      .select('id, username, avatar_country, wallet, wallet_verified')
+      .select('id, username, avatar_country, wallet')
       .eq('auth_id', s.session.user.id)
       .maybeSingle();
     if (error) return null;

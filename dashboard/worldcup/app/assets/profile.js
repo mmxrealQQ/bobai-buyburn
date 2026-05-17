@@ -13,67 +13,37 @@
     return { ok: true };
   }
 
-  // Sets wallet address ONLY. wallet_verified stays FALSE (DB trigger blocks user from elevating).
-  // Real signature verification happens in Phase H before any payout.
-  async function setWalletClaim(address){
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-      return { error: 'Invalid BEP-20 address.' };
+  // Link a BEP-20 wallet to the current account.
+  // Server enforces: (a) wallet is UNIQUE across all accounts; (b) once set,
+  // it cannot be changed. So this call is effectively a one-shot — UI must
+  // confirm the address with the user before invoking it.
+  async function saveWallet(address){
+    const addr = (address || '').trim().toLowerCase();
+    if (!/^0x[a-f0-9]{40}$/.test(addr)) {
+      return { error: 'Invalid BEP-20 address. It must start with 0x and contain 40 hex characters.' };
     }
     const p = await window.WC_AUTH.currentProfile();
     if (!p) return { error: 'Not signed in.' };
-    const { error } = await sb
-      .from('wc_users')
-      .update({ wallet: address.toLowerCase() })
-      .eq('id', p.id);
-    if (error) return { error: error.message };
-    return { ok: true };
-  }
-
-  async function clearWallet(){
-    const p = await window.WC_AUTH.currentProfile();
-    if (!p) return { error: 'Not signed in.' };
-    const { error } = await sb
-      .from('wc_users')
-      .update({ wallet: null })
-      .eq('id', p.id);
-    if (error) return { error: error.message };
-    return { ok: true };
-  }
-
-  // Connect via window.ethereum (MetaMask / Trust Wallet / Binance Web3)
-  async function connectWallet(){
-    if (!window.ethereum) {
-      return { error: 'No wallet detected. Install MetaMask, Trust Wallet, or Binance Web3.' };
+    if (p.wallet) {
+      return { error: 'Your account already has a wallet linked. The wallet is permanent.' };
     }
-    try {
-      // Ensure BSC chain (id 56)
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x38' }],
-        });
-      } catch (e) {
-        // 4902 = chain not added — try to add
-        if (e && e.code === 4902) {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: '0x38',
-              chainName: 'BNB Smart Chain',
-              nativeCurrency: { name:'BNB', symbol:'BNB', decimals:18 },
-              rpcUrls: ['https://bsc-dataseed.binance.org'],
-              blockExplorerUrls: ['https://bscscan.com'],
-            }],
-          });
-        }
-        // other errors: continue anyway, user may already be on BSC via wallet UI
+    const { error } = await sb
+      .from('wc_users')
+      .update({ wallet: addr })
+      .eq('id', p.id);
+    if (error) {
+      // Surface the UNIQUE-violation as a friendly message — Postgres returns
+      // 23505 with a constraint name we don't want to leak to the user.
+      if ((error.code === '23505') || /duplicate|unique/i.test(error.message)) {
+        return { error: 'This wallet is already linked to another account. Each wallet can only be used once.' };
       }
-      const accts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (!accts || !accts.length) return { error: 'No account returned by wallet.' };
-      return await setWalletClaim(accts[0]);
-    } catch (e) {
-      return { error: e.message || 'Wallet connection failed.' };
+      // Server immutability trigger fires if someone tries a second update.
+      if (/permanent once linked/i.test(error.message)) {
+        return { error: 'Wallet is permanent once linked — contact support to correct it.' };
+      }
+      return { error: error.message };
     }
+    return { ok: true };
   }
 
   // ============== BONUS QUESTIONS ==============
@@ -247,7 +217,8 @@
   }
 
   window.WC_PROFILE = {
-    updateAvatar, setWalletClaim, clearWallet, connectWallet,
+    updateAvatar,
+    saveWallet,
     getBonus, saveBonus,
     loadMatches, loadMyTips, saveTip,
     getCrypto, saveCrypto, fetchLivePrices,

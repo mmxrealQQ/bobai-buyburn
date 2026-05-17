@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$BOBAI Worldcup '26 — Player</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/favicon.png?v=4">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
+  <style>
+    .container.wide{max-width:920px}
+    .card + .card{margin-top:14px}
+    .profile-card{display:flex;align-items:center;gap:16px}
+    .profile-meta{flex:1;min-width:0}
+    .profile-meta .uname{font-family:'Space Grotesk';font-weight:700;font-size:20px;color:var(--text);margin-bottom:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .profile-meta .country{font-size:12.5px;color:var(--muted)}
+
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+    .badge.gold{background:var(--gold-glow);color:var(--gold);border:1px solid rgba(240,185,11,.3)}
+    .badge.muted{background:rgba(123,125,158,.1);color:var(--muted);border:1px solid rgba(123,125,158,.2)}
+    .badge.you{background:rgba(0,230,118,.1);color:#5fffa0;border:1px solid rgba(0,230,118,.3)}
+
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+    .stat{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;padding:14px}
+    .stat .lbl{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:600}
+    .stat .val{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);line-height:1.1}
+    .stat .sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+    .card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px}
+    .card-h h3{font-family:'Space Grotesk';font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin:0}
+
+    .subtabs{display:flex;gap:4px;margin-bottom:14px;background:rgba(0,0,0,.3);padding:4px;border-radius:10px;flex-wrap:wrap}
+    .subtabs button{flex:1;min-width:90px;padding:9px 8px;font-size:12px;font-weight:600;border:none;background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;font-family:inherit}
+    .subtabs button.active{background:var(--gold-glow);color:var(--gold)}
+
+    .tip-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;padding:10px 4px;border-top:1px solid var(--border)}
+    .tip-row.first{border-top:none}
+    .tip-meta{grid-column:1/-1;font-size:10.5px;color:var(--muted);text-align:center;padding-bottom:4px}
+    .team{display:flex;align-items:center;gap:8px;min-width:0}
+    .team.away{justify-content:flex-end}
+    .team .fl{font-size:22px;line-height:1;flex-shrink:0}
+    .team .nm{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .score-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;background:rgba(0,0,0,.5);font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--text);min-width:60px;justify-content:center}
+    .score-pill.locked{color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
+
+    .locked-cell{padding:12px;background:rgba(255,180,0,.05);border:1px dashed rgba(255,180,0,.25);border-radius:10px;color:#ffc066;text-align:center;font-size:12px}
+    .pick-list{display:flex;flex-direction:column;gap:8px}
+    .pick-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;font-size:13px}
+    .pick-item .lbl{color:var(--muted);font-size:11.5px;letter-spacing:.5px;text-transform:uppercase}
+    .pick-item .val{color:var(--text);font-weight:600}
+
+    .empty-state{padding:30px 14px;text-align:center;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="bg-grad"></div>
+  <div class="page">
+    <nav>
+      <div class="nav">
+        <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
+        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
+      </div>
+    </nav>
+
+    <main>
+      <div class="container wide">
+
+        <!-- PROFILE -->
+        <div class="card">
+          <div id="alert"></div>
+          <div class="profile-card">
+            <div id="t-ava"></div>
+            <div class="profile-meta">
+              <div class="uname">
+                <span id="t-uname">…</span>
+                <span id="t-self-badge" class="badge you hidden">that's you</span>
+                <span id="t-wallet-badge" class="badge muted">no wallet</span>
+              </div>
+              <div class="country" id="t-country">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATS -->
+        <div class="card">
+          <div class="card-h"><h3>Stats</h3></div>
+          <div class="stats-grid">
+            <div class="stat"><div class="lbl">Total points</div><div class="val" id="s-total">0</div><div class="sub">match + bonus</div></div>
+            <div class="stat"><div class="lbl">Rank</div><div class="val" id="s-rank">—</div><div class="sub" id="s-rank-sub">of — players</div></div>
+            <div class="stat"><div class="lbl">Match tips placed</div><div class="val" id="s-tips">0</div><div class="sub">of 104</div></div>
+            <div class="stat"><div class="lbl">Bonus answered</div><div class="val" id="s-bonus">0</div><div class="sub">of 5</div></div>
+          </div>
+        </div>
+
+        <!-- PICKS -->
+        <div class="card">
+          <div class="card-h"><h3>Picks</h3></div>
+          <div class="subtabs" id="pick-tabs">
+            <button data-view="tips" class="active">⚽ Match tips</button>
+            <button data-view="bonus">🏆 Bonus</button>
+            <button data-view="crypto">📈 Crypto</button>
+          </div>
+          <div id="pane-tips">Loading…</div>
+          <div id="pane-bonus" class="hidden">Loading…</div>
+          <div id="pane-crypto" class="hidden">Loading…</div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=12"></script>
+  <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/avatar.js?v=4"></script>
+  <script src="./assets/nav.js?v=2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
+  <script>
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+    function showAlert(type, msg){
+      const el = $('#alert');
+      el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
+    }
+    function findCountry(code){ return window.WC_COUNTRIES.find(c => c.code === code) || null; }
+    function fmtKickoff(iso){
+      return new Date(iso).toLocaleString(undefined, { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function teamCell(code, alignRight){
+      if (!code || code === 'TBD') {
+        return `<div class="team ${alignRight?'away':''}"><span class="fl">⚪</span><span class="nm" style="color:var(--muted)">TBD</span></div>`;
+      }
+      const c = findCountry(code);
+      const flag = c ? c.flag : '🏳';
+      const name = c ? c.name : code;
+      if (alignRight) return `<div class="team away"><span class="nm">${name}</span><span class="fl">${flag}</span></div>`;
+      return `<div class="team"><span class="fl">${flag}</span><span class="nm">${name}</span></div>`;
+    }
+
+    /* Parse ?u= */
+    const params = new URLSearchParams(window.location.search);
+    const targetUsername = (params.get('u') || '').trim();
+
+    let myProfile = null;        // current logged-in user
+    let target = null;           // wc_users row of the user we're viewing
+    let isSelf = false;
+
+    /* Match-tip + bonus + crypto reveal rules:
+       - Own picks: always visible
+       - Others' match tips: only after each match kickoff
+       - Others' bonus picks: only after first match (id=1) kickoff
+       - Others' crypto picks: only after the Final kickoff
+       Even though the DB currently exposes them publicly, we honour these
+       rules in the UI so visitors can't copy-tip before kickoff. */
+    let firstMatchKickoff = null;
+    let finalKickoff = null;
+
+    function canSeeTipFor(match){
+      if (isSelf) return true;
+      return Date.now() >= new Date(match.kickoff_utc).getTime();
+    }
+    function canSeeBonus(){
+      if (isSelf) return true;
+      return firstMatchKickoff && Date.now() >= firstMatchKickoff;
+    }
+    function canSeeCrypto(){
+      if (isSelf) return true;
+      // Crypto predictions lock at first-match kickoff (same as bonus),
+      // so reveal them publicly at that moment.
+      return firstMatchKickoff && Date.now() >= firstMatchKickoff;
+    }
+
+    async function loadTarget(){
+      const sb = window.WC_SB;
+      if (!targetUsername) { showAlert('error', 'No user specified. Add ?u=USERNAME to the URL.'); return false; }
+      const { data, error } = await sb.from('wc_users')
+        .select('id, username, avatar_country, wallet')
+        .ilike('username', targetUsername)
+        .maybeSingle();
+      if (error || !data) { showAlert('error', 'Player "' + targetUsername + '" not found.'); return false; }
+      target = data;
+      return true;
+    }
+
+    function renderHeader(){
+      const c = findCountry(target.avatar_country);
+      $('#t-ava').innerHTML = window.WC_AVATAR.avatarHtml(target.avatar_country, 'lg');
+      $('#t-uname').textContent = target.username;
+      $('#t-country').textContent = c ? c.name : 'no country';
+      const wb = $('#t-wallet-badge');
+      if (target.wallet) wb.outerHTML = '<span id="t-wallet-badge" class="badge gold">⚽ wallet linked</span>';
+      else               wb.outerHTML = '<span id="t-wallet-badge" class="badge muted">no wallet</span>';
+      $('#t-self-badge').classList.toggle('hidden', !isSelf);
+      document.title = '$BOBAI Worldcup \'26 — ' + target.username;
+    }
+
+    async function loadStats(){
+      const sb = window.WC_SB;
+      const [{ data: lb }, { count: totalUsers }, { count: tipCount }, { data: bonusRow }] = await Promise.all([
+        sb.from('wc_leaderboard').select('user_id,total_points').order('total_points', { ascending: false }).limit(500),
+        sb.from('wc_users').select('id', { count: 'exact', head: true }),
+        sb.from('wc_tips').select('id', { count: 'exact', head: true }).eq('user_id', target.id),
+        sb.from('wc_bonus').select('champion,most_goals_team,fewest_goals_team,red_cards_bracket,topscorer_country').eq('user_id', target.id).maybeSingle(),
+      ]);
+      let pts = 0, rank = '—';
+      if (lb && lb.length) {
+        const idx = lb.findIndex(r => r.user_id === target.id);
+        if (idx >= 0) { pts = lb[idx].total_points || 0; rank = idx + 1; }
+      }
+      $('#s-total').textContent = pts;
+      $('#s-rank').textContent = rank;
+      $('#s-rank-sub').textContent = 'of ' + (totalUsers || 1) + ' player' + ((totalUsers || 1) === 1 ? '' : 's');
+      $('#s-tips').textContent = tipCount || 0;
+      const bonusFilled = bonusRow ? ['champion','most_goals_team','fewest_goals_team','red_cards_bracket','topscorer_country'].filter(k => bonusRow[k]).length : 0;
+      $('#s-bonus').textContent = bonusFilled;
+    }
+
+    /* ============== TIPS ============== */
+    async function renderTipsPane(){
+      const sb = window.WC_SB;
+      const [{ data: matches }, { data: tips }] = await Promise.all([
+        sb.from('wc_matches').select('id, phase, group_letter, team_home, team_away, kickoff_utc, goals_home, goals_away, played').order('kickoff_utc', { ascending: true }),
+        sb.from('wc_tips').select('match_id, tip_home, tip_away, points_final, resolved').eq('user_id', target.id),
+      ]);
+      // pick first kickoff + final kickoff (used by reveal helpers)
+      if (matches && matches.length) {
+        const first = matches.find(m => m.id === 1);
+        firstMatchKickoff = first ? new Date(first.kickoff_utc).getTime() : null;
+        const finals = matches.filter(m => m.phase === 'final').sort((a,b)=>new Date(b.kickoff_utc)-new Date(a.kickoff_utc));
+        finalKickoff = finals[0] ? new Date(finals[0].kickoff_utc).getTime() : null;
+      }
+      const byMatch = {};
+      (tips || []).forEach(t => { byMatch[t.match_id] = t; });
+
+      const pane = $('#pane-tips');
+      if (!matches || !matches.length) { pane.innerHTML = '<div class="empty-state">No matches loaded yet.</div>'; return; }
+
+      let visibleTipCount = 0;
+      let html = '';
+      let lastPhase = null;
+      matches.forEach((m, i) => {
+        const t = byMatch[m.id];
+        if (!t) return;
+        const visible = canSeeTipFor(m);
+        if (visible) visibleTipCount++;
+        const phaseLabel = m.phase === 'group' ? ('Group ' + m.group_letter) : m.phase.toUpperCase();
+        if (m.phase !== lastPhase) {
+          html += `<div style="margin:14px 0 6px;font-family:'Space Grotesk';font-weight:600;font-size:12px;color:var(--gold);letter-spacing:1px;text-transform:uppercase">${m.phase.toUpperCase()}</div>`;
+          lastPhase = m.phase;
+        }
+        let scoreCell;
+        if (!visible) {
+          scoreCell = `<span class="score-pill locked">🔒 reveals at kickoff</span>`;
+        } else {
+          const points = m.played && t.points_final != null ? `<span style="font-size:10px;color:var(--gold);margin-left:6px">+${t.points_final}p</span>` : '';
+          scoreCell = `<span class="score-pill">${t.tip_home} – ${t.tip_away}${points}</span>`;
+        }
+        html += `<div class="tip-row">
+          <div class="tip-meta">${phaseLabel} · ${fmtKickoff(m.kickoff_utc)}${m.played ? ' · played '+m.goals_home+'–'+m.goals_away : ''}</div>
+          ${teamCell(m.team_home, false)}
+          <div>${scoreCell}</div>
+          ${teamCell(m.team_away, true)}
+        </div>`;
+      });
+      if (!html) {
+        pane.innerHTML = '<div class="empty-state">No match tips placed yet.</div>';
+      } else {
+        if (!isSelf) {
+          const total = (tips || []).length;
+          const hidden = total - visibleTipCount;
+          if (hidden > 0) {
+            html = `<div class="locked-cell" style="margin-bottom:12px">${hidden} of ${total} tips are still hidden — they reveal one by one as each match kicks off.</div>` + html;
+          }
+        }
+        pane.innerHTML = html;
+      }
+      if (window.twemoji) try { window.twemoji.parse(pane, { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
+    }
+
+    /* ============== BONUS ============== */
+    async function renderBonusPane(){
+      const pane = $('#pane-bonus');
+      if (!canSeeBonus()) {
+        pane.innerHTML = '<div class="locked-cell">🔒 Bonus picks reveal once the first match (id 1) has kicked off.</div>';
+        return;
+      }
+      const sb = window.WC_SB;
+      const { data, error } = await sb.from('wc_bonus')
+        .select('champion,most_goals_team,fewest_goals_team,red_cards_bracket,topscorer_country,points,resolved')
+        .eq('user_id', target.id).maybeSingle();
+      if (error) { pane.innerHTML = '<div class="empty-state">Could not load bonus picks.</div>'; return; }
+      if (!data) { pane.innerHTML = '<div class="empty-state">No bonus picks yet.</div>'; return; }
+      const cn = code => { const c = findCountry(code); return c ? `${c.flag} ${c.name}` : (code || '—'); };
+      pane.innerHTML = `
+        <div class="pick-list">
+          <div class="pick-item"><span class="lbl">Champion</span><span class="val">${cn(data.champion)}</span></div>
+          <div class="pick-item"><span class="lbl">Most goals (team)</span><span class="val">${cn(data.most_goals_team)}</span></div>
+          <div class="pick-item"><span class="lbl">Fewest goals (team)</span><span class="val">${cn(data.fewest_goals_team)}</span></div>
+          <div class="pick-item"><span class="lbl">Red-cards bracket</span><span class="val">${data.red_cards_bracket || '—'}</span></div>
+          <div class="pick-item"><span class="lbl">Top scorer (country)</span><span class="val">${cn(data.topscorer_country)}</span></div>
+          ${data.resolved ? `<div class="pick-item"><span class="lbl">Bonus points</span><span class="val" style="color:var(--gold)">${data.points || 0}</span></div>` : ''}
+        </div>`;
+      if (window.twemoji) try { window.twemoji.parse(pane, { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
+    }
+
+    /* ============== CRYPTO ============== */
+    async function renderCryptoPane(){
+      const pane = $('#pane-crypto');
+      if (!canSeeCrypto()) {
+        pane.innerHTML = '<div class="locked-cell">🔒 Crypto predictions reveal at tournament kickoff (11 June 2026, 19:00 UTC).</div>';
+        return;
+      }
+      const sb = window.WC_SB;
+      const { data, error } = await sb.from('wc_crypto')
+        .select('btc_price,bnb_price,bobai_price,btc_diff,bnb_diff,bobai_diff,resolved')
+        .eq('user_id', target.id).maybeSingle();
+      if (error) { pane.innerHTML = '<div class="empty-state">Could not load crypto picks.</div>'; return; }
+      if (!data) { pane.innerHTML = '<div class="empty-state">No crypto picks yet.</div>'; return; }
+      const fmt = (v, dp) => v == null ? '—' : '$' + Number(v).toFixed(dp);
+      pane.innerHTML = `
+        <div class="pick-list">
+          <div class="pick-item"><span class="lbl">Bitcoin (BTC)</span><span class="val">${fmt(data.btc_price, 2)}</span></div>
+          <div class="pick-item"><span class="lbl">BNB</span><span class="val">${fmt(data.bnb_price, 4)}</span></div>
+          <div class="pick-item"><span class="lbl">$BOBAI</span><span class="val">${fmt(data.bobai_price, 10)}</span></div>
+          ${data.resolved ? `<div class="pick-item"><span class="lbl">Absolute diffs</span><span class="val">${fmt(data.btc_diff,2)} · ${fmt(data.bnb_diff,4)} · ${fmt(data.bobai_diff,10)}</span></div>` : ''}
+        </div>`;
+    }
+
+    /* Tab switching */
+    let loadedPanes = { tips: false, bonus: false, crypto: false };
+    $$('#pick-tabs button').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const v = btn.dataset.view;
+        $$('#pick-tabs button').forEach(x => x.classList.toggle('active', x === btn));
+        $('#pane-tips').classList.toggle('hidden', v !== 'tips');
+        $('#pane-bonus').classList.toggle('hidden', v !== 'bonus');
+        $('#pane-crypto').classList.toggle('hidden', v !== 'crypto');
+        if (!loadedPanes[v]) {
+          loadedPanes[v] = true;
+          if (v === 'tips') await renderTipsPane();
+          if (v === 'bonus') await renderBonusPane();
+          if (v === 'crypto') await renderCryptoPane();
+        }
+      });
+    });
+
+    (async () => {
+      myProfile = await window.WC_AUTH.currentProfile();
+      if (!myProfile) { window.location.href = '/worldcup/'; return; }
+
+      const ok = await loadTarget();
+      if (!ok) return;
+
+      isSelf = myProfile.id === target.id;
+      renderHeader();
+      await loadStats();
+      // load default (tips) pane
+      loadedPanes.tips = true;
+      await renderTipsPane();
+    })();
+  </script>
+</body>
+</html>

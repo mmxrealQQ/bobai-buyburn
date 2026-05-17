@@ -25,11 +25,42 @@ nav{position:sticky;top:0;z-index:100;background:rgba(5,5,16,.88);backdrop-filte
 .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
 .back-btn span{font-size:14px;line-height:1}
 .nav .brand{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;color:var(--gold);white-space:nowrap}
-.nav .user{font-size:12px;color:var(--muted)}
+.brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;color:var(--gold);white-space:nowrap;text-decoration:none}
+.brand-link:hover{opacity:.85}
+.nav .user{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%}
 .nav .user b{color:var(--text)}
+.nav .user a{color:var(--gold);text-decoration:none}
+.nav .user a:hover{text-decoration:underline}
+
+/* Tab navigation under the top bar */
+.tabbar{max-width:1200px;margin:0 auto;display:flex;gap:0;overflow-x:auto;padding:0 16px;scrollbar-width:none}
+.tabbar::-webkit-scrollbar{display:none}
+.tabbar a{padding:11px 14px;font-size:11.5px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;transition:color .15s, border-color .15s;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:6px}
+.tabbar a:hover{color:var(--text)}
+.tabbar a.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tabbar a .ic{font-size:13px;line-height:1}
+
+@media(max-width:560px){
+  .nav{padding:0 14px;height:50px}
+  .nav .brand,.brand-link{font-size:12px}
+  .nav .user{font-size:11px}
+  .tabbar{padding:0 8px}
+  .tabbar a{padding:10px 10px;font-size:10.5px;letter-spacing:.3px}
+  .tabbar a .ic{font-size:12px}
+}
 
 main{flex:1;padding:48px 24px}
 .container{max-width:520px;margin:0 auto}
+
+/* Inline back row injected by nav.js. Sits between tabbar and main content. */
+.back-row{max-width:1200px;margin:0 auto;padding:10px 24px 0}
+.back-row button{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:inherit;font-size:11.5px;font-weight:600;letter-spacing:.4px;cursor:pointer;transition:transform .15s ease,color .15s,border-color .15s,background .15s}
+.back-row button:hover{color:var(--gold);border-color:rgba(240,185,11,.3);background:rgba(240,185,11,.06);transform:translateX(-2px)}
+.back-row button .ic{font-size:13px;line-height:1}
+@media(max-width:560px){
+  .back-row{padding:8px 14px 0}
+  .back-row button{font-size:11px;padding:5px 9px}
+}
 
 /* CARD */
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:32px}
@@ -66,8 +97,32 @@ h1 .accent{background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 60%,#ff
 /* HIDDEN */
 .hidden{display:none !important}
 
-/* BETA BANNER */
-.beta-banner{background:rgba(255,48,40,.08);border-bottom:1px solid rgba(255,48,40,.25);color:#ff8580;text-align:center;padding:8px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
+/* TWEMOJI — keep Twitter SVG flags + emojis at glyph-size instead of natural pixel size */
+img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;display:inline-block}
+
+/* SHARED AVATAR / ILLUSTRATION SLOTS (assets/avatar.js)
+   .wc-ava wraps a country avatar in a circle. The <img> shows the BOBAI
+   illustration when delivered; on 404 it auto-fallbacks to a flag emoji span.
+   .wc-illus is for non-avatar illustrations (trophy, hero banner, coin icons). */
+.wc-ava{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(240,185,11,.06);border:2px solid var(--gold);overflow:hidden;line-height:1;flex-shrink:0;position:relative}
+.wc-ava-img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
+.wc-ava[data-empty]{border-style:dashed;border-color:rgba(123,125,158,.4);background:rgba(0,0,0,.2);color:var(--muted)}
+.wc-ava-xs{border-width:1px}
+.wc-ava-sm{border-width:1.5px}
+
+/* Designer mode (?design=1) — show missing-illustration placeholders explicitly */
+.wc-ava-design{border-style:dashed !important;border-color:#ff40b4 !important;background:rgba(255,64,180,.06) !important}
+.wc-ava-design.wc-has-art{border-style:solid !important;border-color:var(--gold) !important;background:rgba(240,185,11,.06) !important}
+.wc-ava-design .wc-ava-fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%;opacity:.6}
+.wc-ava-design.wc-has-art .wc-ava-fallback{display:none}
+.wc-ava-design .wc-ava-tag{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#ff40b4;font-family:'Space Grotesk',monospace;letter-spacing:.3px;white-space:nowrap;background:rgba(0,0,0,.85);padding:2px 6px;border-radius:4px;pointer-events:none}
+.wc-ava-design.wc-has-art .wc-ava-tag{display:none}
+
+.wc-illus{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.wc-illus-design{border:2px dashed #ff40b4;background:repeating-linear-gradient(45deg,rgba(255,64,180,.04),rgba(255,64,180,.04) 8px,rgba(255,64,180,.08) 8px,rgba(255,64,180,.08) 16px);border-radius:10px;min-height:80px}
+.wc-illus-design.wc-has-art{border:none;background:none}
+.wc-illus-design .wc-illus-tag{position:absolute;top:6px;left:6px;font-size:10px;font-weight:700;color:#ff40b4;font-family:'Space Grotesk',monospace;background:rgba(0,0,0,.85);padding:3px 8px;border-radius:4px;pointer-events:none}
+.wc-illus-design.wc-has-art .wc-illus-tag{display:none}
 
 /* DESIGNER PLACEHOLDER — hot pink callout so the illustrator can spot
    every spot that needs art at a glance. Remove this whole block once

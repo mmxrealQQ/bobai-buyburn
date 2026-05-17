@@ -6,7 +6,7 @@
   <title>$BOBAI Worldcup '26 — Beta</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=10">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
   <style>
     .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:240px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
     .country-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer;transition:all .15s;color:var(--text)}
@@ -20,8 +20,6 @@
 <body>
   <div class="bg-grad"></div>
   <div class="page">
-    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
-
     <nav>
       <div class="nav">
         <a class="back-btn" href="/worldcup/" aria-label="Back to Worldcup">
@@ -114,11 +112,11 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=10"></script>
-  <script src="./assets/countries.js?v=10"></script>
-  <script src="./assets/auth.js?v=10"></script>
+  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=12"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-  <script src="./assets/twemojify.js?v=1"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];

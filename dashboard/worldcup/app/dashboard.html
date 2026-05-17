@@ -6,17 +6,32 @@
   <title>$BOBAI Worldcup '26 — Dashboard</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=10">
+  <link rel="stylesheet" href="./assets/style.css?v=14">
   <style>
     .container.wide{max-width:780px}
-    .profile-card{display:flex;align-items:center;gap:18px;padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:20px}
-    .ava{width:80px;height:80px;border-radius:50%;background:rgba(240,185,11,.08);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:44px;line-height:1;flex-shrink:0}
-    .profile-meta .uname{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--text);margin-bottom:4px}
-    .profile-meta .country{font-size:13px;color:var(--muted)}
+    .card + .card{margin-top:14px}
+    .profile-card{display:flex;align-items:center;gap:16px}
+    .profile-meta{flex:1;min-width:0}
+    .profile-meta .uname{font-family:'Space Grotesk';font-weight:700;font-size:20px;color:var(--text);margin-bottom:2px}
+    .profile-meta .country{font-size:12.5px;color:var(--muted);margin-bottom:8px}
+    .profile-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .profile-actions a, .profile-actions button{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:7px;background:rgba(240,185,11,.06);border:1px solid rgba(240,185,11,.2);color:var(--gold);font-size:11px;font-weight:600;letter-spacing:.3px;text-decoration:none;cursor:pointer;font-family:inherit}
+    .profile-actions a:hover, .profile-actions button:hover{background:rgba(240,185,11,.14)}
     .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
     .badge.gold{background:var(--gold-glow);color:var(--gold);border:1px solid rgba(240,185,11,.3)}
     .badge.warn{background:rgba(255,180,0,.1);color:#ffc066;border:1px solid rgba(255,180,0,.3)}
     .badge.muted{background:rgba(123,125,158,.1);color:var(--muted);border:1px solid rgba(123,125,158,.2)}
+
+    /* Stats grid */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+    .stat{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;padding:14px}
+    .stat .lbl{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:600}
+    .stat .val{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);line-height:1.1}
+    .stat .sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+    .card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px}
+    .card-h h3{font-family:'Space Grotesk';font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin:0}
+    .card-h .right{font-size:11.5px;color:var(--muted)}
 
     .section{margin-bottom:24px}
     .section h3{font-family:'Space Grotesk';font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
@@ -31,149 +46,143 @@
 
     .wallet-box{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;padding:14px}
     .wallet-addr{font-family:'Space Grotesk';font-size:13px;color:var(--text);word-break:break-all;margin-bottom:8px}
-    .wallet-actions{display:flex;gap:8px;flex-wrap:wrap}
     .btn.sm{padding:8px 14px;font-size:12px;width:auto;display:inline-flex}
 
-    .stub{padding:20px;background:rgba(64,64,255,.06);border:1px solid rgba(64,64,255,.2);border-radius:10px;color:#9090ff;font-size:13px;line-height:1.6}
+    .lock-note{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,180,0,.06);border:1px solid rgba(255,180,0,.2);border-radius:8px;color:#ffc066;font-size:12px;line-height:1.5;margin-top:10px}
+    .lock-note .ic{flex-shrink:0;font-size:14px;line-height:1.2}
+
+    /* Confirm modal */
+    .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+    .modal-back.open{display:flex}
+    .modal{max-width:440px;width:100%;background:var(--bg);border:1px solid var(--gold);border-radius:14px;padding:22px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+    .modal h4{font-family:'Space Grotesk';font-size:15px;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin:0 0 12px}
+    .modal .confirm-addr{font-family:'Space Grotesk','Courier New',monospace;background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text);word-break:break-all;margin:10px 0 14px}
+    .modal .check-row{display:flex;align-items:flex-start;gap:9px;margin:8px 0;font-size:12.5px;color:var(--text);line-height:1.5;cursor:pointer}
+    .modal .check-row input{margin-top:2px;flex-shrink:0;accent-color:var(--gold);cursor:pointer}
+    .modal .actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
   </style>
 </head>
 <body>
   <div class="bg-grad"></div>
   <div class="page">
-    <div class="beta-banner">⚠ BETA · INTERNAL · NOT PUBLIC</div>
-
     <nav>
       <div class="nav">
-        <a class="back-btn" href="/worldcup/" aria-label="Back to Worldcup">
-          <span>←</span> Worldcup
-        </a>
-        <div class="brand">$BOBAI Worldcup <span style="opacity:.55;margin:0 4px">·</span> '26</div>
-        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout" style="color:var(--gold)">logout</a></div>
+        <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
+        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
     <main>
       <div class="container wide">
+
+        <!-- 1. PROFILE -->
         <div class="card">
-          <!-- PROFILE HEADER -->
           <div class="profile-card">
-            <div class="ava" id="ava-icon">⚪</div>
+            <div id="ava-icon"></div>
             <div class="profile-meta">
               <div class="uname" id="p-username">…</div>
               <div class="country" id="p-country">no country picked yet</div>
-              <div style="margin-top:6px"><span id="p-wallet-badge" class="badge muted">no wallet</span></div>
+              <div class="profile-actions">
+                <button id="btn-edit-avatar" type="button">🎨 Edit avatar</button>
+                <a id="link-pub-profile" href="#">🔗 View public profile</a>
+              </div>
             </div>
           </div>
+          <div id="alert" style="margin-top:14px"></div>
 
-          <div class="dp">
-            <div class="dp-badge">🎨 Art needed</div>
-            <div class="dp-title">User avatar — BOBAI in national jersey</div>
-            <div class="dp-body">
-              The circle above currently shows the user's <b>selected country flag</b>. Final art: <b>$BOBAI character wearing that country's football kit</b>. 1 illustration per country (48 total).
-              Specs: <code>512×512</code> WebP/PNG, transparent bg, naming <code>avatar-&lt;CODE&gt;.webp</code> (e.g. <code>avatar-BR.webp</code>).
-              Drop into <code>dashboard/worldcup/app/illus/avatars/</code>. Full brief: <a href="./for-designer.html">/for-designer.html</a>.
-            </div>
-          </div>
-
-          <div id="alert"></div>
-
-          <!-- AVATAR / COUNTRY EDIT -->
-          <div class="section">
-            <h3>Your avatar</h3>
+          <!-- Avatar picker (hidden until "Edit avatar" is clicked) -->
+          <div id="avatar-edit" class="hidden" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
             <p class="sub" style="text-align:left;margin-bottom:10px">Pick the team you'll represent on the leaderboard. You can change this anytime.</p>
             <div id="country-grid" class="country-grid"></div>
-            <p style="font-size:11px;color:var(--muted);margin-top:8px">Pick a country — the team flag is shown here in the picker; your <b>avatar circle</b> above will be rendered as <b>$BOBAI in that country's national jersey</b> (illustrator brief in progress).</p>
-            <button id="save-country" class="btn sm" style="margin-top:10px" disabled>Save avatar</button>
-          </div>
-
-          <!-- WALLET -->
-          <div class="section">
-            <h3>BEP-20 Wallet (optional)</h3>
-            <p class="sub" style="text-align:left;margin-bottom:10px">
-              Connect a wallet to be eligible for prize-pool payouts. Ownership verification (signature) is required before any payout — happens automatically before the first distribution. Without a wallet you can still play for fun.
-            </p>
-            <div id="wallet-box" class="wallet-box">
-              <div id="wallet-empty">
-                <p class="sub" style="text-align:left;margin:0 0 10px">No wallet connected.</p>
-                <div class="wallet-actions">
-                  <button class="btn sm" id="btn-connect">Connect wallet</button>
-                </div>
-              </div>
-              <div id="wallet-set" class="hidden">
-                <div class="wallet-addr" id="w-addr">—</div>
-                <div class="wallet-actions">
-                  <button class="btn sm ghost" id="btn-disconnect">Disconnect</button>
-                </div>
-              </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button id="save-country" class="btn sm" disabled>Save avatar</button>
+              <button id="btn-cancel-avatar" class="btn sm ghost" type="button">Cancel</button>
             </div>
           </div>
+        </div>
 
-          <!-- PREDICTIONS -->
-          <div class="section">
-            <h3>Predictions</h3>
-            <a href="./bonus.html" style="display:block;padding:18px;background:rgba(240,185,11,.06);border:1px solid rgba(240,185,11,.25);border-radius:10px;text-decoration:none;color:var(--text);transition:all .15s;margin-bottom:10px" onmouseover="this.style.background='rgba(240,185,11,.12)'" onmouseout="this.style.background='rgba(240,185,11,.06)'">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-                <div>
-                  <div style="font-family:'Space Grotesk';font-weight:600;font-size:15px;color:var(--gold);margin-bottom:4px">🏆 Bonus Questions</div>
-                  <div style="font-size:12px;color:var(--muted)">5 predictions · 10 pts each · locks at kickoff</div>
-                </div>
-                <div style="color:var(--gold);font-size:20px">→</div>
-              </div>
-            </a>
-            <a href="./tips.html" style="display:block;padding:18px;background:rgba(64,64,255,.06);border:1px solid rgba(64,64,255,.25);border-radius:10px;text-decoration:none;color:var(--text);transition:all .15s;margin-bottom:10px" onmouseover="this.style.background='rgba(64,64,255,.12)'" onmouseout="this.style.background='rgba(64,64,255,.06)'">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-                <div>
-                  <div style="font-family:'Space Grotesk';font-weight:600;font-size:15px;color:#9090ff;margin-bottom:4px">⚽ Match Tips</div>
-                  <div style="font-size:12px;color:var(--muted)">104 matches · 5/3/1 pts · ×1/2/3/4 phase multiplier · locks 15 min before kickoff</div>
-                </div>
-                <div style="color:#9090ff;font-size:20px">→</div>
-              </div>
-            </a>
-            <a href="./crypto.html" style="display:block;padding:18px;background:rgba(160,64,255,.06);border:1px solid rgba(160,64,255,.25);border-radius:10px;text-decoration:none;color:var(--text);transition:all .15s" onmouseover="this.style.background='rgba(160,64,255,.12)'" onmouseout="this.style.background='rgba(160,64,255,.06)'">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-                <div>
-                  <div style="font-family:'Space Grotesk';font-weight:600;font-size:15px;color:#c590ff;margin-bottom:4px">📈 Crypto Predictions</div>
-                  <div style="font-size:12px;color:var(--muted)">BTC · BNB · $BOBAI at final kickoff · 15% of pool · locks when Final starts</div>
-                </div>
-                <div style="color:#c590ff;font-size:20px">→</div>
-              </div>
-            </a>
-          </div>
-
-          <!-- LEADERBOARD -->
-          <div class="section">
-            <h3>Standings</h3>
-            <a href="./leaderboard.html" style="display:block;padding:18px;background:linear-gradient(135deg,rgba(240,185,11,.08),rgba(0,230,118,.04));border:1px solid rgba(240,185,11,.3);border-radius:10px;text-decoration:none;color:var(--text);transition:all .15s;margin-bottom:10px" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-                <div>
-                  <div style="font-family:'Space Grotesk';font-weight:600;font-size:15px;color:var(--gold);margin-bottom:4px">🏆 Leaderboard &amp; Pool</div>
-                  <div style="font-size:12px;color:var(--muted)">Live BOBAI prize pool · overall + per-group + per-coin standings · donation address</div>
-                </div>
-                <div style="color:var(--gold);font-size:20px">→</div>
-              </div>
-            </a>
-            <a href="./rules.html" style="display:block;padding:14px 18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;text-decoration:none;color:var(--text);transition:all .15s" onmouseover="this.style.background='rgba(240,185,11,.04)';this.style.borderColor='rgba(240,185,11,.2)'" onmouseout="this.style.background='rgba(0,0,0,.3)';this.style.borderColor='var(--border)'">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-                <div>
-                  <div style="font-family:'Space Grotesk';font-weight:600;font-size:14px;color:var(--text);margin-bottom:2px">📖 Rules &amp; FAQ</div>
-                  <div style="font-size:11.5px;color:var(--muted)">How everything works · scoring · payouts · disclaimer</div>
-                </div>
-                <div style="color:var(--muted);font-size:18px">→</div>
-              </div>
-            </a>
+        <!-- 2. STATS -->
+        <div class="card">
+          <div class="card-h"><h3>Your stats</h3><span class="right" id="stats-meta">live · auto-updates after each match</span></div>
+          <div class="stats-grid">
+            <div class="stat"><div class="lbl">Total points</div><div class="val" id="s-total">0</div><div class="sub" id="s-total-sub">— match + bonus</div></div>
+            <div class="stat"><div class="lbl">Rank</div><div class="val" id="s-rank">—</div><div class="sub" id="s-rank-sub">of — players</div></div>
+            <div class="stat"><div class="lbl">Match tips</div><div class="val" id="s-tips">0</div><div class="sub" id="s-tips-sub">of 104 placed</div></div>
+            <div class="stat"><div class="lbl">Bonus answered</div><div class="val" id="s-bonus">0</div><div class="sub" id="s-bonus-sub">of 5 questions</div></div>
+            <div class="stat"><div class="lbl">Crypto picks</div><div class="val" id="s-crypto">0</div><div class="sub" id="s-crypto-sub">of 3 coins</div></div>
+            <div class="stat"><div class="lbl">Wallet</div><div class="val" id="s-wallet" style="font-size:14px">—</div><div class="sub" id="s-wallet-sub">required for payouts</div></div>
           </div>
         </div>
+
+        <!-- 3. WALLET -->
+        <div class="card">
+          <div class="card-h"><h3>Wallet (for payouts)</h3><span class="right" id="p-wallet-badge"><span class="badge muted">no wallet</span></span></div>
+          <p class="sub" style="text-align:left;margin-bottom:10px">
+            To be eligible for prize-pool payouts, link a BNB Smart Chain (BEP-20) wallet. Each wallet can be used only once across all accounts, and a linked wallet is <b>permanent</b> — no disconnect. Without a wallet you can still play for fun.
+          </p>
+          <div id="wallet-box" class="wallet-box">
+
+            <!-- NOT LINKED YET -->
+            <div id="wallet-empty">
+              <label for="w-addr-in" style="display:block;font-size:12px;color:var(--muted);letter-spacing:.5px;margin-bottom:6px">Your BNB Smart Chain (BEP-20) address</label>
+              <input id="w-addr-in" type="text" placeholder="0x…" autocomplete="off" spellcheck="false" style="width:100%;padding:12px 14px;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:'Space Grotesk','Courier New',monospace">
+              <button id="w-link" type="button" class="btn sm" style="margin-top:10px" disabled>Link wallet…</button>
+              <div class="lock-note">
+                <span class="ic">⚠</span>
+                <span>Double-check the address before confirming. Once linked it cannot be changed or removed — only the owner of this account can use this wallet for payouts.</span>
+              </div>
+            </div>
+
+            <!-- LINKED -->
+            <div id="wallet-set" class="hidden">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <span style="color:var(--green);font-size:16px">✓</span>
+                <strong style="font-size:14px">Wallet linked</strong>
+              </div>
+              <div class="wallet-addr" id="w-addr">—</div>
+              <p class="hint" style="margin:4px 0 0">Permanent link — this wallet now belongs to your account for all payouts.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confirm modal -->
+        <div id="confirm-modal" class="modal-back" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+          <div class="modal">
+            <h4 id="confirm-title">Confirm wallet link</h4>
+            <p style="font-size:13px;color:var(--text);line-height:1.5;margin:0 0 4px">You're about to permanently link this address to your account:</p>
+            <div class="confirm-addr" id="confirm-addr">—</div>
+            <label class="check-row"><input type="checkbox" id="confirm-c1"><span>The address above is correct and I control this wallet.</span></label>
+            <label class="check-row"><input type="checkbox" id="confirm-c2"><span>I understand the link is <b>permanent</b> — I cannot switch or remove this wallet later.</span></label>
+            <label class="check-row"><input type="checkbox" id="confirm-c3"><span>I am not using this wallet on another $BOBAI Worldcup account.</span></label>
+            <div class="actions">
+              <button id="confirm-cancel" type="button" class="btn sm ghost">Cancel</button>
+              <button id="confirm-go" type="button" class="btn sm" disabled>Link wallet permanently</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=10"></script>
-  <script src="./assets/countries.js?v=10"></script>
-  <script src="./assets/auth.js?v=10"></script>
-  <script src="./assets/profile.js?v=10"></script>
+  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/countries.js?v=11"></script>
+  <script src="./assets/auth.js?v=12"></script>
+  <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/avatar.js?v=4"></script>
+  <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-  <script src="./assets/twemojify.js?v=1"></script>
+  <script src="./assets/twemojify.js?v=2"></script>
   <script>
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -195,27 +204,85 @@
       $('#me-name').textContent = me.username;
       $('#p-username').textContent = me.username;
       const c = findCountry(me.avatar_country);
-      $('#ava-icon').textContent = c ? c.flag : '⚪';
+      $('#ava-icon').innerHTML = window.WC_AVATAR.avatarHtml(me.avatar_country, 'lg');
       $('#p-country').textContent = c ? c.name : 'no country picked yet';
+      $('#link-pub-profile').href = './user.html?u=' + encodeURIComponent(me.username);
 
-      // Wallet
+      // Wallet badge (top-right of wallet card)
       const wb = $('#p-wallet-badge');
       if (me.wallet) {
         $('#wallet-empty').classList.add('hidden');
         $('#wallet-set').classList.remove('hidden');
         $('#w-addr').textContent = me.wallet;
-        if (me.wallet_verified) {
-          wb.className = 'badge gold';
-          wb.textContent = '⚽ wallet verified';
-        } else {
-          wb.className = 'badge warn';
-          wb.textContent = 'wallet pending verification';
-        }
+        wb.innerHTML = '<span class="badge gold">⚽ linked</span>';
       } else {
         $('#wallet-empty').classList.remove('hidden');
         $('#wallet-set').classList.add('hidden');
-        wb.className = 'badge muted';
-        wb.textContent = 'no wallet';
+        if ($('#w-addr-in')) $('#w-addr-in').value = '';
+        if ($('#w-link')) $('#w-link').disabled = true;
+        wb.innerHTML = '<span class="badge muted">not linked</span>';
+      }
+
+      // Stats card — wallet cell
+      const sw = $('#s-wallet');
+      const sws = $('#s-wallet-sub');
+      if (me.wallet) {
+        sw.textContent = '✓ linked';
+        sw.style.color = 'var(--green)';
+        sws.textContent = me.wallet.slice(0,6) + '…' + me.wallet.slice(-4);
+      } else {
+        sw.textContent = '— missing';
+        sw.style.color = 'var(--muted)';
+        sws.textContent = 'required for payouts';
+      }
+    }
+
+    async function loadMyStats(){
+      if (!me) return;
+      const sb = window.WC_SB;
+      try {
+        // Leaderboard row + total players
+        const [{ data: lb }, { count: totalUsers }, { count: tipCount }, { data: bonusRow }, { data: cryptoRow }] = await Promise.all([
+          sb.from('wc_leaderboard').select('user_id,total_points').order('total_points', { ascending: false }).limit(500),
+          sb.from('wc_users').select('id', { count: 'exact', head: true }),
+          sb.from('wc_tips').select('id', { count: 'exact', head: true }).eq('user_id', me.id),
+          sb.from('wc_bonus').select('champion,most_goals_team,fewest_goals_team,red_cards_bracket,topscorer_country').eq('user_id', me.id).maybeSingle(),
+          sb.from('wc_crypto').select('btc_price,bnb_price,bobai_price').eq('user_id', me.id).maybeSingle(),
+        ]);
+        let myPoints = 0, myRank = '—';
+        if (lb && lb.length) {
+          const idx = lb.findIndex(r => r.user_id === me.id);
+          if (idx >= 0) {
+            myPoints = lb[idx].total_points || 0;
+            myRank = idx + 1;
+          }
+        }
+        $('#s-total').textContent = myPoints;
+        $('#s-rank').textContent = myRank;
+        $('#s-rank-sub').textContent = 'of ' + (totalUsers || 1) + ' player' + ((totalUsers || 1) === 1 ? '' : 's');
+
+        const tipsPlaced = tipCount || 0;
+        const tipsMissing = 104 - tipsPlaced;
+        $('#s-tips').textContent = tipsPlaced;
+        $('#s-tips-sub').innerHTML = tipsMissing > 0
+          ? `${tipsMissing} missing — <a href="./tips.html" style="color:var(--gold);font-weight:600">place your tips →</a>`
+          : 'All 104 placed ✓';
+
+        const bonusFilled = bonusRow ? ['champion','most_goals_team','fewest_goals_team','red_cards_bracket','topscorer_country'].filter(k => bonusRow[k]).length : 0;
+        const bonusMissing = 5 - bonusFilled;
+        $('#s-bonus').textContent = bonusFilled;
+        $('#s-bonus-sub').innerHTML = bonusMissing > 0
+          ? `${bonusMissing} missing — <a href="./bonus.html" style="color:var(--gold);font-weight:600">answer them →</a>`
+          : 'All 5 answered ✓';
+
+        const cryptoFilled = cryptoRow ? ['btc_price','bnb_price','bobai_price'].filter(k => cryptoRow[k] != null).length : 0;
+        const cryptoMissing = 3 - cryptoFilled;
+        $('#s-crypto').textContent = cryptoFilled;
+        $('#s-crypto-sub').innerHTML = cryptoMissing > 0
+          ? `${cryptoMissing} missing — <a href="./crypto.html" style="color:var(--gold);font-weight:600">predict prices →</a>`
+          : 'All 3 set ✓';
+      } catch (e) {
+        $('#stats-meta').textContent = 'stats unavailable';
       }
     }
 
@@ -238,6 +305,23 @@
       });
     }
 
+    /* Avatar-edit toggle */
+    $('#btn-edit-avatar').addEventListener('click', ()=>{
+      const block = $('#avatar-edit');
+      const opening = block.classList.contains('hidden');
+      block.classList.toggle('hidden');
+      if (opening) {
+        pendingCountry = me.avatar_country;
+        renderGrid();
+        $('#save-country').disabled = true;
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+    $('#btn-cancel-avatar').addEventListener('click', ()=>{
+      $('#avatar-edit').classList.add('hidden');
+      pendingCountry = me.avatar_country;
+    });
+
     $('#save-country').addEventListener('click', async ()=>{
       if (pendingCountry === me.avatar_country) return;
       const btn = $('#save-country');
@@ -247,44 +331,78 @@
       if (r.error) { showAlert('error', r.error); btn.disabled = false; return; }
       me.avatar_country = pendingCountry;
       renderProfile();
+      $('#avatar-edit').classList.add('hidden');
       showAlert('ok', 'Avatar updated.');
       clearAlertSoon();
     });
 
-    $('#btn-connect').addEventListener('click', async ()=>{
-      const btn = $('#btn-connect');
-      btn.disabled = true; btn.textContent = 'Connecting…';
-      const r = await window.WC_PROFILE.connectWallet();
-      btn.disabled = false; btn.textContent = 'Connect wallet';
-      if (r.error) { showAlert('error', r.error); return; }
-      // refresh
+    /* Wallet link: enter address → confirm-modal with 3 acknowledgements → save */
+    const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
+    let pendingAddr = null;
+
+    function validateAddrInput(){
+      const raw = ($('#w-addr-in').value || '').trim();
+      $('#w-link').disabled = !ADDR_RE.test(raw);
+    }
+    $('#w-addr-in').addEventListener('input', validateAddrInput);
+
+    function openConfirm(addr){
+      pendingAddr = addr.toLowerCase();
+      $('#confirm-addr').textContent = pendingAddr;
+      ['confirm-c1','confirm-c2','confirm-c3'].forEach(id => { $('#'+id).checked = false; });
+      $('#confirm-go').disabled = true;
+      $('#confirm-modal').classList.add('open');
+    }
+    function closeConfirm(){
+      $('#confirm-modal').classList.remove('open');
+      pendingAddr = null;
+    }
+
+    $('#w-link').addEventListener('click', ()=>{
+      const raw = ($('#w-addr-in').value || '').trim();
+      if (!ADDR_RE.test(raw)) {
+        showAlert('error', 'Enter a valid BEP-20 address (0x + 40 hex characters).');
+        return;
+      }
+      showAlert();
+      openConfirm(raw);
+    });
+
+    ['confirm-c1','confirm-c2','confirm-c3'].forEach(id => {
+      $('#'+id).addEventListener('change', ()=>{
+        $('#confirm-go').disabled = !($('#confirm-c1').checked && $('#confirm-c2').checked && $('#confirm-c3').checked);
+      });
+    });
+
+    $('#confirm-cancel').addEventListener('click', closeConfirm);
+    // Close on backdrop click (but not when clicking inside the modal)
+    $('#confirm-modal').addEventListener('click', (e)=>{ if (e.target === $('#confirm-modal')) closeConfirm(); });
+
+    $('#confirm-go').addEventListener('click', async ()=>{
+      if (!pendingAddr) return;
+      const btn = $('#confirm-go');
+      btn.disabled = true; btn.textContent = 'Linking…';
+      const r = await window.WC_PROFILE.saveWallet(pendingAddr);
+      btn.textContent = 'Link wallet permanently';
+      if (r.error) {
+        showAlert('error', r.error);
+        closeConfirm();
+        return;
+      }
+      closeConfirm();
       me = await window.WC_AUTH.currentProfile();
       renderProfile();
-      showAlert('ok', 'Wallet linked. Ownership verification will be requested before payouts.');
+      showAlert('ok', 'Wallet linked. This wallet is now permanently tied to your account.');
       clearAlertSoon();
     });
 
-    $('#btn-disconnect').addEventListener('click', async ()=>{
-      if (!confirm('Disconnect wallet? You can re-connect anytime.')) return;
-      const r = await window.WC_PROFILE.clearWallet();
-      if (r.error) { showAlert('error', r.error); return; }
-      me = await window.WC_AUTH.currentProfile();
-      renderProfile();
-      showAlert('ok', 'Wallet disconnected.');
-      clearAlertSoon();
-    });
-
-    $('#logout').addEventListener('click', async (e)=>{
-      e.preventDefault();
-      await window.WC_AUTH.logout();
-      window.location.href = './index.html';
-    });
+    /* logout handler is wired by nav.js */
 
     (async ()=>{
       me = await window.WC_AUTH.currentProfile();
-      if (!me) { window.location.href = './index.html'; return; }
+      if (!me) { window.location.href = '/worldcup/'; return; }
       renderProfile();
-      renderGrid();
+      loadMyStats();   // async, populates the stats card
     })();
   </script>
 </body>

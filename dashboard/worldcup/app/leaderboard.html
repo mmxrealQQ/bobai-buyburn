@@ -270,11 +270,13 @@
 
     // ============== CONSTANTS ==============
     const POOL_SPLIT = {
-      groupTop1:  0.55,  // 1st-of-each-group bracket (12 winners)
-      groupTop2:  0.30,  // 2nd-of-each-group bracket (12 winners)
-      groupBest3: 0.15,  // 8 best 3rd-placed players
-      endTopN: 4,        // End-pool: top 4 share proportional to points
+      groupTop1:  0.55,  // 1st-of-each-group bracket (12 winners, flat split)
+      groupTop2:  0.30,  // 2nd-of-each-group bracket (12 winners, flat split)
+      groupBest3: 0.15,  // 8 best 3rd-placed players (flat split)
+      // End-pool: fixed tiered weights for top 4 overall
+      endTiers: [0.50, 0.25, 0.15, 0.10],
     };
+    const END_TOP_N = POOL_SPLIT.endTiers.length;
     const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const COINS = [{ code:'btc', label:'BTC' }, { code:'bnb', label:'BNB' }, { code:'bobai', label:'BOBAI' }];
     const KO_PHASES = [
@@ -335,21 +337,19 @@
     function coinDisplay(c){ return c === 'bobai' ? 'BOBAI' : c.toUpperCase(); }
 
     // ============== PRIZE MATH ==============
-    // End-pool: top N share proportional to total_points (equal split when all 0)
+    // End-pool: fixed tiered weights (50 / 25 / 15 / 10 %) for top 4 by total_points.
     function computeEndPoolShares(rows){
       const shares = new Map();
-      const top = rows.slice(0, POOL_SPLIT.endTopN);
-      const sum = top.reduce((s,r) => s + (r.total_points || 0), 0);
-      if (sum === 0) {
-        const each = top.length ? pool.end / top.length : 0;
-        top.forEach(r => shares.set(r.user_id, each));
-      } else {
-        top.forEach(r => shares.set(r.user_id, ((r.total_points || 0) / sum) * pool.end));
-      }
+      const top = rows.slice(0, END_TOP_N);
+      top.forEach((r, i) => {
+        const tier = POOL_SPLIT.endTiers[i] || 0;
+        shares.set(r.user_id, tier * pool.end);
+      });
       return shares;
     }
 
-    // Group pot: 55/30/15 across {top1, top2, best-3rd}. Keyed by `${user_id}|${letter}`.
+    // Group pot: 55/30/15 across {top1, top2, best-3rd}. Within each sub-bracket the
+    // share is split EQUALLY across all members. Keyed by `${user_id}|${letter}`.
     function computeGroupShares(allGroups){
       const shares = new Map();
       if (pool.group <= 0) return shares;
@@ -364,14 +364,9 @@
         .sort((a,b) => (b.group_points||0) - (a.group_points||0))
         .slice(0, 8);
       function distribute(bracket, fraction){
-        const total = bracket.reduce((s,r) => s + (r.group_points || 0), 0);
-        const potPart = pool.group * fraction;
-        bracket.forEach(r => {
-          const share = total > 0
-            ? ((r.group_points || 0) / total) * potPart
-            : (bracket.length ? potPart / bracket.length : 0);
-          shares.set(`${r.user_id}|${r._letter}`, share);
-        });
+        if (!bracket.length) return;
+        const each = (pool.group * fraction) / bracket.length;
+        bracket.forEach(r => shares.set(`${r.user_id}|${r._letter}`, each));
       }
       distribute(top1s, POOL_SPLIT.groupTop1);
       distribute(top2s, POOL_SPLIT.groupTop2);
@@ -561,15 +556,15 @@
       })).join('');
       const scrollCls = rows.length > 10 ? 'list scroll-cap' : 'list';
       const myIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;
-      const cutoff = rows[POOL_SPLIT.endTopN - 1];
+      const cutoff = rows[END_TOP_N - 1];
       const footer = meFooterHtml({
         rank: myIdx >= 0 ? myIdx + 1 : null,
         totalRows: rows.length,
-        qualifierRank: POOL_SPLIT.endTopN,
+        qualifierRank: END_TOP_N,
         qualifierPts: cutoff ? (cutoff.total_points || 0) : 0,
         myPts: myIdx >= 0 ? (rows[myIdx].total_points || 0) : 0,
-        qualifiedCopy: `✓ You're in the End-Pool top ${POOL_SPLIT.endTopN}`,
-        needCopy: `+{n} pts to enter the End-Pool top ${POOL_SPLIT.endTopN}`,
+        qualifiedCopy: `✓ You're in the End-Pool top ${END_TOP_N}`,
+        needCopy: `+{n} pts to enter the End-Pool top ${END_TOP_N}`,
       });
       $('#list').innerHTML = `<div class="${scrollCls}">${html}</div>${footer}`;
     }
@@ -699,15 +694,15 @@
         : '<div class="empty">No players yet.</div>';
       const scrollCls = overallRows.length > 10 ? 'list scroll-cap' : 'list';
       const myIdx = me ? overallRows.findIndex(r0 => r0.user_id === me.id) : -1;
-      const cutoff = overallRows[POOL_SPLIT.endTopN - 1];
+      const cutoff = overallRows[END_TOP_N - 1];
       const footer = meFooterHtml({
         rank: myIdx >= 0 ? myIdx + 1 : null,
         totalRows: overallRows.length,
-        qualifierRank: POOL_SPLIT.endTopN,
+        qualifierRank: END_TOP_N,
         qualifierPts: cutoff ? (cutoff.total_points || 0) : 0,
         myPts: myIdx >= 0 ? (overallRows[myIdx].total_points || 0) : 0,
-        qualifiedCopy: `✓ You're in the End-Pool top ${POOL_SPLIT.endTopN}`,
-        needCopy: `+{n} pts to enter the End-Pool top ${POOL_SPLIT.endTopN}`,
+        qualifiedCopy: `✓ You're in the End-Pool top ${END_TOP_N}`,
+        needCopy: `+{n} pts to enter the End-Pool top ${END_TOP_N}`,
       });
 
       $('#list').innerHTML = `

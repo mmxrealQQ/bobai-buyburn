@@ -177,10 +177,24 @@
             <tr><td>Group 2nd</td><td>2nd-placed player in each of the 12 groups</td><td>30 %</td></tr>
             <tr><td>Best 3rds</td><td>8 best 3rd-placed players across all groups</td><td>15 %</td></tr>
           </table>
-          <p>Within each sub-bracket, your share is <b>proportional to your group_points</b> — so a 1st with more tipping points takes a bigger slice of the 55 % than a 1st with fewer points. The bracket weights guarantee that being 1st of your group always pays more than being 2nd, and being 2nd always pays more than just sneaking into best-3rd.</p>
-          <p>Formula: <code>share = your_group_points ÷ sum(group_points of all players in your sub-bracket) × (sub_bracket_pct × group_pot)</code>.</p>
+          <p>Within each sub-bracket, the share is <b>split equally</b> among its members — every group 1st gets the same slice of the 55 %, every group 2nd gets the same slice of the 30 %, and every best-3rd gets the same slice of the 15 %. The bracket weights still guarantee that being 1st always pays more than being 2nd, and being 2nd always pays more than just sneaking into best-3rd.</p>
+          <table class="scoring-table">
+            <tr><th>Position</th><th>Share per player</th></tr>
+            <tr><td>Group 1st (×12)</td><td>55 % ÷ 12 ≈ <b>4.58 %</b> of group pot each</td></tr>
+            <tr><td>Group 2nd (×12)</td><td>30 % ÷ 12 ≈ <b>2.50 %</b> of group pot each</td></tr>
+            <tr><td>Best 3rd (×8)</td><td>15 % ÷ 8 ≈ <b>1.88 %</b> of group pot each</td></tr>
+          </table>
+          <p style="font-size:12.5px">Flat split inside the bracket = no &ldquo;winner-take-most&rdquo; effect; finishing 1st of your group with 30 group_points pays the same as finishing 1st with 60. The only thing that matters is which position you finished.</p>
           <h3>End Pool (KO-phase pot)</h3>
-          <p>Paid <b>one day after the Final</b>. Top 4 overall — based on total score across all phases <b>including bonus questions</b>. Within the top 4, each player's share is <b>proportional to their total points</b>: <code>share = your_total_points ÷ sum(total_points of top 4) × end_pool</code>.</p>
+          <p>Paid <b>one day after the Final</b>. Top 4 overall — based on total score across all phases <b>including bonus questions</b>. Within the top 4 the split is <b>tiered by position</b>:</p>
+          <table class="scoring-table">
+            <tr><th>Overall finish</th><th>Share of end pool</th></tr>
+            <tr><td>🥇 1st</td><td><b>50 %</b></td></tr>
+            <tr><td>🥈 2nd</td><td><b>25 %</b></td></tr>
+            <tr><td>🥉 3rd</td><td><b>15 %</b></td></tr>
+            <tr><td>4th</td><td><b>10 %</b></td></tr>
+          </table>
+          <p style="font-size:12.5px">Fixed percentages — climbing one position is always worth a meaningful jump. Bonus questions count in the total points that determine your rank, so don't skip them.</p>
           <h3>Crypto Pot (15 %)</h3>
           <p>Paid <b>one day after the Final</b>, alongside the End Pool. Split into 3 equal slots:</p>
           <ul>

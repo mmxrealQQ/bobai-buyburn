@@ -20,8 +20,10 @@ if (!API_KEY) { console.error('Missing OPENAI_API_KEY'); process.exit(1); }
 
 const COUNTRIES_JS = path.resolve(__dirname, '..', 'app', 'assets', 'countries.js');
 const AVATARS_DIR  = path.resolve(__dirname, '..', 'app', 'illus', 'avatars');
-const ANCHOR_IMG   = path.resolve(__dirname, '..', 'app', 'illus', 'avatars', 'avatar-DZ.jpg');
+const ANCHOR_IMG   = path.resolve(__dirname, '..', '_refs', 'avatar-DZ.jpg');
 const CHAR_REF_2   = path.resolve(__dirname, '..', '_refs', 'argentinia.jpg');
+const CHAR_REF_3   = path.resolve(__dirname, '..', '_refs', '1.jpg');
+const CHAR_REF_4   = path.resolve(__dirname, '..', '_refs', '2.jpg');
 const JERSEYS_DIR  = path.resolve(__dirname, '..', '_refs', 'jerseys');
 const API_EDIT = 'https://api.openai.com/v1/images/edits';
 
@@ -77,6 +79,59 @@ const KIT = {
   UZ: { primary: 'white', accent: 'blue', desc: 'white jersey with sky blue trim' },
 };
 
+// One small cultural motif per country — held as a subtle prop, accessory, or background hint
+// (not dominating the figure). Object-like and recognizable, no religious/political symbols.
+const MOTIF = {
+  DZ: 'a small fennec fox by the feet',
+  AR: 'a small yerba mate gourd in one hand',
+  AU: 'a small wooden boomerang in one hand',
+  AT: 'a tiny edelweiss flower pinned to the jersey',
+  BE: 'a small Belgian waffle held casually',
+  BA: 'a tiny traditional kafa coffee pot at the feet',
+  BR: 'a tiny Christ the Redeemer statuette in the background, plus a small samba shaker in hand',
+  CA: 'a small red maple leaf floating beside the head',
+  CV: 'a small acoustic morna guitar slung over the shoulder',
+  CO: 'a small steaming coffee cup in one hand',
+  HR: 'a tiny red-and-white checkered scarf around the neck',
+  CW: 'a tiny tropical parrot perched on the shoulder',
+  CZ: 'a small frothy pilsner mug in one hand',
+  CD: 'a subtle leopard-print sweatband on the wrist',
+  EC: 'a tiny equator-line monument behind the figure',
+  EG: 'a tiny pyramid silhouette in the background',
+  ENG: 'a small porcelain teacup in one hand',
+  FR: 'a tiny Eiffel Tower silhouette in the background',
+  DE: 'a small soft pretzel in one hand',
+  GH: 'a tiny kente-cloth patterned wristband',
+  HT: 'a small hand drum tucked under one arm',
+  IR: 'a small pomegranate held in one hand',
+  IQ: 'a small bunch of dates in one hand',
+  CI: 'a small open cocoa pod in one hand',
+  JP: 'a single pink cherry blossom petal drifting beside the head',
+  JO: 'a tiny Petra rock-cut facade in the background',
+  MX: 'a small straw sombrero tilted on the head, plus a tiny cactus at the feet',
+  MA: 'a small clay tagine pot at the feet',
+  NL: 'a small orange tulip held in one hand',
+  NZ: 'a small silver fern leaf beside the head',
+  NO: 'a tiny fjord and pine silhouette in the background',
+  PA: 'a tiny canal-lock silhouette in the background',
+  PY: 'a small carved wooden harp at the feet',
+  PT: 'a small custard tart (pastel de nata) in one hand',
+  QA: 'a small falcon perched on the gloved hand',
+  SA: 'a small bunch of dates in one hand',
+  SCO: 'a small purple thistle flower pinned to the jersey',
+  SN: 'a tiny baobab tree silhouette in the background',
+  ZA: 'a small protea flower held in one hand',
+  KR: 'a small pink rose of Sharon flower pinned to the jersey',
+  ES: 'a small flamenco fan in one hand',
+  SE: 'a small cinnamon bun held in one hand',
+  CH: 'a tiny Matterhorn peak silhouette in the background, plus a small cowbell on the belt',
+  TN: 'a small white jasmine flower pinned to the jersey',
+  TR: 'a small red tulip held in one hand',
+  UY: 'a small yerba mate gourd in one hand',
+  US: 'a tiny torch-of-liberty silhouette in the background',
+  UZ: 'a small pomegranate held in one hand',
+};
+
 function loadCountries() {
   const src = fs.readFileSync(COUNTRIES_JS, 'utf8');
   const list = [];
@@ -86,16 +141,20 @@ function loadCountries() {
   return list;
 }
 
-function buildPrompt(name, kit, hasJerseyRef) {
-  const jerseyImgIdx = hasJerseyRef ? 3 : null;
+function buildPrompt(name, kit, motif, charRefCount, hasJerseyRef) {
+  const jerseyImgIdx = hasJerseyRef ? charRefCount + 1 : null;
   const refNote = jerseyImgIdx
     ? ` Use image ${jerseyImgIdx} as the exact jersey design reference — copy its colors, pattern, stripes, and collar style precisely.`
     : '';
-  return `Images 1 and 2 are character references showing the BOBAI mascot in Algeria and Argentina kits. ` +
-    `Keep the EXACT same character identity as in images 1 and 2: same body, same pose, same friendly face, same overall mascot proportions and style. Do NOT change the character — only the outfit. ` +
-    `Refine the brain on top of the head a little: keep its shape from images 1 and 2 but make it slightly cuter and more detailed, with a soft glossy surface and subtle vibrant RGB color highlights (faint cyan, magenta and yellow tints on the brain edges) — the signature BOBAI holographic look, but kept tasteful and subtle, not glitchy. ` +
-    `Re-skin the character so it wears the official ${name} national football team home kit (${kit.desc}). Jersey, shorts and socks must match the ${name} colors.${refNote} ` +
-    `Centered, full body visible, friendly confident pose. Plain transparent background. No shadows, no extras, no text, no sponsor logos.`;
+  const motifNote = motif
+    ? ` Include ${motif} as a small cultural element that hints at ${name}'s identity. The motif must stay subtle and not dominate the figure — the mascot is the hero.`
+    : '';
+  const refRange = charRefCount === 1 ? 'image 1' : `images 1 through ${charRefCount}`;
+  return `${refRange === 'image 1' ? 'Image 1 is a character reference' : `Images 1 through ${charRefCount} are character references`} showing the BOBAI mascot. ` +
+    `Keep the EXACT same character identity as in ${refRange}: same body, same pose, same friendly face, same overall mascot proportions and style. Do NOT change the character — only the outfit and accessories. ` +
+    `Refine the brain on top of the head a little: keep its shape from the references but make it slightly cuter and more detailed, with a soft glossy surface and subtle vibrant RGB color highlights (faint cyan, magenta and yellow tints on the brain edges) — the signature BOBAI holographic look, but kept tasteful and subtle, not glitchy. ` +
+    `Re-skin the character so it wears the official ${name} national football team FIFA 2026 World Cup home kit (${kit.desc}). Jersey, shorts and socks must match the ${name} home colors precisely.${refNote}${motifNote} ` +
+    `Centered, full body visible, friendly confident pose. Plain transparent background. No shadows, no extras, no text, no sponsor logos, no FIFA wordmark.`;
 }
 
 function findJerseyRef(code) {
@@ -112,11 +171,12 @@ async function pngBuffer(filePath) {
   return await sharp(buf).png().toBuffer();
 }
 
-async function openaiEdit(charPng1, charPng2, jerseyPng, prompt, quality) {
+async function openaiEdit(charPngs, jerseyPng, prompt, quality) {
   const fd = new FormData();
   fd.append('model', 'gpt-image-1');
-  fd.append('image[]', new Blob([charPng1], { type: 'image/png' }), 'character1.png');
-  fd.append('image[]', new Blob([charPng2], { type: 'image/png' }), 'character2.png');
+  charPngs.forEach((png, i) => {
+    fd.append('image[]', new Blob([png], { type: 'image/png' }), `character${i+1}.png`);
+  });
   if (jerseyPng) {
     fd.append('image[]', new Blob([jerseyPng], { type: 'image/png' }), 'jersey.png');
   }
@@ -139,7 +199,7 @@ async function openaiEdit(charPng1, charPng2, jerseyPng, prompt, quality) {
   return Buffer.from(b64, 'base64');
 }
 
-async function processCountry(c, anchorPng, charRef2Png, opts) {
+async function processCountry(c, charPngs, opts) {
   const { force, quality } = opts;
   const outPath = path.join(AVATARS_DIR, `avatar-${c.code}.png`);
   if (fs.existsSync(outPath) && !force) {
@@ -153,14 +213,15 @@ async function processCountry(c, anchorPng, charRef2Png, opts) {
     return { code: c.code, status: 'skipped' };
   }
 
+  const motif = MOTIF[c.code] || null;
   const jerseyPath = findJerseyRef(c.code);
   const jerseyPng = jerseyPath ? await pngBuffer(jerseyPath) : null;
-  const prompt = buildPrompt(c.name, kit, !!jerseyPng);
+  const prompt = buildPrompt(c.name, kit, motif, charPngs.length, !!jerseyPng);
 
   const tag = jerseyPng ? '[gen+jersey]' : '[gen]       ';
   console.log(`  ${tag} ${c.code} ${c.name} (quality=${quality})...`);
 
-  const raw = await openaiEdit(anchorPng, charRef2Png, jerseyPng, prompt, quality);
+  const raw = await openaiEdit(charPngs, jerseyPng, prompt, quality);
   const out = await sharp(raw)
     .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
@@ -173,8 +234,9 @@ async function processCountry(c, anchorPng, charRef2Png, opts) {
 
 async function main() {
   if (!fs.existsSync(AVATARS_DIR)) fs.mkdirSync(AVATARS_DIR, { recursive: true });
+  const charRefPaths = [ANCHOR_IMG, CHAR_REF_2, CHAR_REF_3, CHAR_REF_4].filter(p => fs.existsSync(p));
   if (!fs.existsSync(ANCHOR_IMG)) { console.error(`Anchor image not found: ${ANCHOR_IMG}`); process.exit(1); }
-  if (!fs.existsSync(CHAR_REF_2)) { console.error(`Char ref 2 not found: ${CHAR_REF_2}`); process.exit(1); }
+  if (charRefPaths.length < 2) { console.error(`Need at least 2 character refs (got ${charRefPaths.length})`); process.exit(1); }
 
   const args = process.argv.slice(2);
   const force = args.includes('--force');
@@ -187,7 +249,7 @@ async function main() {
   const all = loadCountries();
   const target = codesArg.length
     ? all.filter(c => codesArg.includes(c.code))
-    : all.filter(c => c.code !== 'DZ'); // Algeria IS the anchor
+    : all; // generate all 48 — DZ uses its own JPG ref as char-1, OpenAI doesn't mind the self-reference
 
   if (codesArg.length && target.length !== codesArg.length) {
     const found = target.map(t => t.code);
@@ -196,13 +258,11 @@ async function main() {
     process.exit(1);
   }
 
-  const anchorPng    = await pngBuffer(ANCHOR_IMG);
-  const charRef2Png  = await pngBuffer(CHAR_REF_2);
+  const charPngs = await Promise.all(charRefPaths.map(pngBuffer));
 
   console.log('=================================');
   console.log('OpenAI gpt-image-1 Avatar Generation');
-  console.log('Char ref 1:', path.basename(ANCHOR_IMG));
-  console.log('Char ref 2:', path.basename(CHAR_REF_2));
+  charRefPaths.forEach((p, i) => console.log(`Char ref ${i+1}:`, path.basename(p)));
   console.log('Quality:   ', quality);
   console.log('Jersey refs dir:', fs.existsSync(JERSEYS_DIR) ? 'yes' : 'no');
   console.log('Targets:   ', target.length, 'countries');
@@ -211,7 +271,7 @@ async function main() {
   const results = [];
   for (const c of target) {
     try {
-      results.push(await processCountry(c, anchorPng, charRef2Png, { force, quality }));
+      results.push(await processCountry(c, charPngs, { force, quality }));
     } catch (e) {
       console.error(`  [err]     ${c.code}:`, e.message);
       results.push({ code: c.code, status: 'error', error: e.message });

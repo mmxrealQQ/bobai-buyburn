@@ -240,11 +240,59 @@
     return items;
   }
 
+  // Click-to-zoom on any delivered avatar (wrapper has .wc-has-art once the img
+  // actually loaded). Also catches plain .item.done .preview img on for-designer.
+  // Lightbox markup is injected lazily on first open.
+  function ensureLightbox(){
+    if (document.getElementById('wc-lightbox')) return;
+    const lb = document.createElement('div');
+    lb.id = 'wc-lightbox';
+    lb.setAttribute('aria-hidden', 'true');
+    lb.innerHTML = '<button class="lb-close" aria-label="Close">&times;</button><div class="lb-cap"></div><img alt="">';
+    document.body.appendChild(lb);
+    lb.addEventListener('click', e => {
+      if (e.target === lb || e.target.classList.contains('lb-close')) closeLightbox();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && lb.classList.contains('open')) closeLightbox();
+    });
+  }
+  function openLightbox(src, caption){
+    ensureLightbox();
+    const lb = document.getElementById('wc-lightbox');
+    lb.querySelector('img').src = src;
+    lb.querySelector('.lb-cap').textContent = caption || '';
+    lb.classList.add('open');
+    lb.setAttribute('aria-hidden', 'false');
+  }
+  function closeLightbox(){
+    const lb = document.getElementById('wc-lightbox');
+    if (!lb) return;
+    lb.classList.remove('open');
+    lb.setAttribute('aria-hidden', 'true');
+    lb.querySelector('img').src = '';
+  }
+  document.addEventListener('click', e => {
+    const img = e.target.closest('.wc-ava.wc-has-art .wc-ava-img, .item.done .preview img, .illus-card img');
+    if (!img) return;
+    e.preventDefault();
+    e.stopPropagation();
+    let caption = img.alt || '';
+    // Try to enrich caption with the username if inside a leaderboard row
+    const row = img.closest('a.row, .item');
+    if (row) {
+      const uname = row.querySelector('.uname-text, .uname, .name, .info .name');
+      if (uname && uname.textContent.trim()) caption = uname.textContent.trim();
+    }
+    openLightbox(img.src, caption);
+  });
+
   window.WC_AVATAR = {
     designOn, formats: FORMATS,
     avatarUrl, avatarHtml,
     illusUrl, illusHtml,
     exists, findFormat, inventory,
     imgError,
+    openLightbox, closeLightbox,
   };
 })();

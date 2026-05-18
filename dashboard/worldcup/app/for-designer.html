@@ -6,7 +6,7 @@
   <title>BOBAI Worldcup '26 — Illustrator Checklist</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=14">
+  <link rel="stylesheet" href="./assets/style.css?v=15">
   <style>
     .container.wide{max-width:980px}
     h2{font-family:'Space Grotesk';font-weight:700;font-size:20px;color:var(--gold);margin:32px 0 12px;letter-spacing:-.01em}
@@ -59,6 +59,8 @@
 
     .design-toggle{position:fixed;bottom:18px;right:18px;padding:12px 18px;background:rgba(255,64,180,.15);border:1px solid #ff40b4;color:#ff40b4;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border-radius:10px;cursor:pointer;font-family:'Space Grotesk';z-index:50;backdrop-filter:blur(8px)}
     .design-toggle:hover{background:rgba(255,64,180,.25)}
+    .item.done .preview img{cursor:zoom-in;transition:transform .15s}
+    .item.done:hover .preview img{transform:scale(1.06)}
   </style>
 </head>
 <body>
@@ -138,7 +140,7 @@
   <button class="design-toggle" onclick="toggleDesign()">🎨 Designer Mode: <span id="dm-state">OFF</span></button>
 
   <script src="./assets/countries.js?v=11"></script>
-  <script src="./assets/avatar.js?v=4"></script>
+  <script src="./assets/avatar.js?v=5"></script>
   <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>
@@ -285,6 +287,7 @@
     renderIllus();
     updateStats();
     checkAll();
+    // Click-to-zoom handled centrally by avatar.js (matches .item.done .preview img + .wc-ava-img)
   </script>
 </body>
 </html>

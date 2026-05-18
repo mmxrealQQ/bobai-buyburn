@@ -118,6 +118,17 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
 .wc-ava-design .wc-ava-tag{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#ff40b4;font-family:'Space Grotesk',monospace;letter-spacing:.3px;white-space:nowrap;background:rgba(0,0,0,.85);padding:2px 6px;border-radius:4px;pointer-events:none}
 .wc-ava-design.wc-has-art .wc-ava-tag{display:none}
 
+/* Click-to-zoom on delivered BOBAI avatars — applies everywhere avatar.js runs */
+.wc-ava.wc-has-art{cursor:zoom-in}
+.wc-ava.wc-has-art .wc-ava-img{transition:transform .15s}
+.wc-ava.wc-has-art:hover .wc-ava-img{transform:scale(1.06)}
+#wc-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(6px);cursor:zoom-out;padding:24px}
+#wc-lightbox.open{display:flex}
+#wc-lightbox img{max-width:min(640px,90vw);max-height:85vh;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:rgba(255,255,255,.02)}
+#wc-lightbox .lb-cap{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-family:'Space Grotesk';font-weight:700;color:var(--gold);font-size:14px;letter-spacing:.5px;text-align:center;pointer-events:none}
+#wc-lightbox .lb-close{position:absolute;top:14px;right:18px;background:transparent;border:none;color:#fff;font-size:32px;cursor:pointer;line-height:1;opacity:.7;padding:6px 12px}
+#wc-lightbox .lb-close:hover{opacity:1}
+
 .wc-illus{position:relative;display:inline-flex;align-items:center;justify-content:center}
 .wc-illus-design{border:2px dashed #ff40b4;background:repeating-linear-gradient(45deg,rgba(255,64,180,.04),rgba(255,64,180,.04) 8px,rgba(255,64,180,.08) 8px,rgba(255,64,180,.08) 16px);border-radius:10px;min-height:80px}
 .wc-illus-design.wc-has-art{border:none;background:none}

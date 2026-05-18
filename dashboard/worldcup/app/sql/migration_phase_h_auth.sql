@@ -1,4 +1,4 @@
--- $BOBAI Worldcup '26 — Phase H Auth Migration
+-- BOBAI Worldcup '26 — Phase H Auth Migration
 -- Switch from synthetic-email auth (<username>@worldcup.bobai.app)
 -- to real-email auth (user provides their own email; can log in via
 -- username OR email; password reset via email).

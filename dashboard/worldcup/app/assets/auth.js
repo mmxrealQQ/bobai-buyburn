@@ -1,4 +1,4 @@
-// $BOBAI Worldcup '26 — Auth helpers
+// BOBAI Worldcup '26 — Auth helpers
 // Real-email auth: users sign up with their own email; login accepts
 // username OR email; password reset via email link.
 

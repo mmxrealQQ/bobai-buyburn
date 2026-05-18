@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>$BOBAI Worldcup '26 — Player</title>
+  <title>BOBAI Worldcup '26 — Player</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=14">
@@ -58,7 +58,7 @@
     <nav>
       <div class="nav">
         <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
-        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
         <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
       </div>
       <div class="tabbar">
@@ -204,7 +204,7 @@
       if (target.wallet) wb.outerHTML = '<span id="t-wallet-badge" class="badge gold">⚽ wallet linked</span>';
       else               wb.outerHTML = '<span id="t-wallet-badge" class="badge muted">no wallet</span>';
       $('#t-self-badge').classList.toggle('hidden', !isSelf);
-      document.title = '$BOBAI Worldcup \'26 — ' + target.username;
+      document.title = 'BOBAI Worldcup \'26 — ' + target.username;
     }
 
     async function loadStats(){
@@ -334,7 +334,7 @@
         <div class="pick-list">
           <div class="pick-item"><span class="lbl">Bitcoin (BTC)</span><span class="val">${fmt(data.btc_price, 2)}</span></div>
           <div class="pick-item"><span class="lbl">BNB</span><span class="val">${fmt(data.bnb_price, 4)}</span></div>
-          <div class="pick-item"><span class="lbl">$BOBAI</span><span class="val">${fmt(data.bobai_price, 10)}</span></div>
+          <div class="pick-item"><span class="lbl">BOBAI</span><span class="val">${fmt(data.bobai_price, 10)}</span></div>
           ${data.resolved ? `<div class="pick-item"><span class="lbl">Absolute diffs</span><span class="val">${fmt(data.btc_diff,2)} · ${fmt(data.bnb_diff,4)} · ${fmt(data.bobai_diff,10)}</span></div>` : ''}
         </div>`;
     }

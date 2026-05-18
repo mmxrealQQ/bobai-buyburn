@@ -1,4 +1,4 @@
--- $BOBAI Worldcup '26 — Phase H: wallet signature columns
+-- BOBAI Worldcup '26 — Phase H: wallet signature columns
 -- Adds storage for ECDSA signature + signed message + timestamp on wc_users.
 -- The user produces this signature in their own wallet (MetaMask, Trust, hardware, etc.);
 -- client-side ethers.verifyMessage prevents bad data, but the authoritative check

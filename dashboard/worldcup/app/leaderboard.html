@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>$BOBAI Worldcup '26 — Leaderboard</title>
+  <title>BOBAI Worldcup '26 — Leaderboard</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=14">
@@ -29,9 +29,11 @@
 
     /* GROUP/COIN SELECTOR */
     .sub-selector{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
-    .sub-selector button{padding:7px 12px;font-size:11px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.5px}
+    .sub-selector button{padding:7px 12px;font-size:11px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.5px;display:inline-flex;align-items:center;gap:6px}
     .sub-selector button:hover{border-color:rgba(240,185,11,.3)}
     .sub-selector button.active{background:var(--gold-glow);color:var(--gold);border-color:var(--gold)}
+    .sub-selector button .coin-ic{width:16px;height:16px;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle}
+    .coin-badge{width:18px;height:18px;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:-4px;margin-right:6px}
 
     /* LIST */
     .list{display:flex;flex-direction:column;gap:6px}
@@ -52,8 +54,9 @@
     .row.closest .rank{color:var(--gold);font-size:18px}
     .ava-sm{display:flex;align-items:center;justify-content:center;font-size:22px;line-height:1}
     .uinfo{min-width:0}
-    .uname{font-weight:600;color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
-    .uname .ball{font-size:13px}
+    .uname{font-weight:600;color:var(--text);font-size:14px;display:flex;align-items:center;gap:4px;min-width:0}
+    .uname .uname-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .uname .ball{font-size:13px;flex-shrink:0}
     .umeta{font-size:11px;color:var(--muted)}
     .pts{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--gold);white-space:nowrap;text-align:right}
     .pts .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-left:4px;font-weight:500}
@@ -171,7 +174,7 @@
     <nav>
       <div class="nav">
         <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
-        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
         <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
       </div>
       <div class="tabbar">
@@ -223,7 +226,7 @@
                 <a href="./rules.html#donations" style="font-size:11px;color:var(--muted);text-decoration:underline">how it works</a>
               </div>
               <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px">
-                Send <b>BNB</b> or <b>USDT (BEP-20)</b> to grow the pool. Incoming funds are auto-swapped to $BOBAI and added on-chain. Any amount welcome.
+                Send <b>BNB</b> or <b>USDT (BEP-20)</b> to grow the pool. Incoming funds are auto-swapped to BOBAI and added on-chain. Any amount welcome.
               </div>
               <div style="background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">
                 <code id="prize-addr" style="flex:1;font-size:12px;color:var(--text);word-break:break-all;font-family:'Space Grotesk'">…</code>
@@ -278,7 +281,11 @@
     };
     const END_TOP_N = POOL_SPLIT.endTiers.length;
     const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-    const COINS = [{ code:'btc', label:'BTC' }, { code:'bnb', label:'BNB' }, { code:'bobai', label:'BOBAI' }];
+    const COINS = [
+      { code:'btc',   label:'BTC',   icon:'./illus/coins/btc.png' },
+      { code:'bnb',   label:'BNB',   icon:'./illus/coins/bnb.png' },
+      { code:'bobai', label:'BOBAI', icon:'./illus/coins/bobai.png' },
+    ];
     const KO_PHASES = [
       { key:'r32',   label:'Round of 32' },
       { key:'r16',   label:'Round of 16' },
@@ -335,6 +342,7 @@
     }
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]); }
     function coinDisplay(c){ return c === 'bobai' ? 'BOBAI' : c.toUpperCase(); }
+    function coinIconPath(c){ const m = COINS.find(x => x.code === c); return m ? m.icon : ''; }
 
     // ============== PRIZE MATH ==============
     // End-pool: fixed tiered weights (50 / 25 / 15 / 10 %) for top 4 by total_points.
@@ -423,7 +431,7 @@
         <div class="rank">${rankLabel(rank)}</div>
         <div class="ava-sm">${ava}</div>
         <div class="uinfo">
-          <div class="uname">${escapeHtml(r.username)}${ball}</div>
+          <div class="uname"><span class="uname-text">${escapeHtml(r.username)}</span>${ball}</div>
           <div class="umeta">${country}</div>
         </div>
         ${prize}
@@ -721,13 +729,18 @@
 
     async function renderCrypto(coin){
       $('#list').innerHTML = '<div class="empty">Loading…</div>';
-      const [r] = await Promise.all([ window.WC_PROFILE.loadCryptoLeaderboard(coin), refreshLivePrices() ]);
+      const [r, matches] = await Promise.all([ window.WC_PROFILE.loadCryptoLeaderboard(coin), loadAllMatches(), refreshLivePrices() ]);
       if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
       if (!r.rows.length) { $('#list').innerHTML = '<div class="empty">No predictions yet.</div>'; return; }
 
       const priceKey = coin + '_price';
       const livePx = livePrices[coin];
       const display = coinDisplay(coin);
+
+      // Reveal crypto tips publicly at first-match kickoff (match id=1), same gate as profile page.
+      const firstMatch = (matches || []).find(m => m.id === 1);
+      const firstKickoffMs = firstMatch ? new Date(firstMatch.kickoff_utc).getTime() : null;
+      const cryptoRevealed = firstKickoffMs != null && Date.now() >= firstKickoffMs;
 
       // Sort all by tip price ASC
       const all = r.rows
@@ -766,23 +779,33 @@
 
       function buildRow(row, isClosest){
         const rank = rankByUserId.get(row.user_id) || '—';
-        const diff = (livePx != null) ? Math.abs(row._tip - livePx) : null;
-        const tipPx = fmtCryptoPrice(coin, row._tip);
-        const diffHtml = diff != null
-          ? `<br><span style="font-size:10px;color:${isClosest?'var(--gold)':'var(--muted)'};font-weight:${isClosest?700:500}">Δ ${fmtCryptoPrice(coin, diff)}</span>`
-          : `<br><span style="font-size:10px;color:var(--muted)">no live</span>`;
+        const isMe = !!(me && row.user_id === me.id);
+        const reveal = cryptoRevealed || isMe;
+        const showClosest = isClosest && reveal;
+        let ptsValue;
+        if (reveal) {
+          const diff = (livePx != null) ? Math.abs(row._tip - livePx) : null;
+          const tipPx = fmtCryptoPrice(coin, row._tip);
+          const diffHtml = diff != null
+            ? `<br><span style="font-size:10px;color:${showClosest?'var(--gold)':'var(--muted)'};font-weight:${showClosest?700:500}">Δ ${fmtCryptoPrice(coin, diff)}</span>`
+            : `<br><span style="font-size:10px;color:var(--muted)">no live</span>`;
+          ptsValue = tipPx + diffHtml;
+        } else {
+          ptsValue = `<span style="color:var(--muted)">🔒</span><br><span style="font-size:10px;color:var(--muted)">locked</span>`;
+        }
         return userRow(row, rank, {
           ptsLabel: '',
-          ptsValue: tipPx + diffHtml,
+          ptsValue,
           ptsClass: 'diff',
-          prizeBobai: isClosest ? winnerPrize : 0,
-          extraClass: isClosest ? 'closest' : '',
+          prizeBobai: showClosest ? winnerPrize : 0,
+          extraClass: showClosest ? 'closest' : '',
         });
       }
 
+      const coinImg = `<img class="coin-badge" src="${coinIconPath(coin)}" alt="">`;
       const liveBadge = livePx != null
-        ? `<div style="text-align:center;padding:10px;background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#5fffa0">📈 Live ${display}: <b>${fmtCryptoPrice(coin, livePx)}</b> · winner-take-all on the closest guess at Final kickoff</div>`
-        : `<div style="text-align:center;padding:10px;background:rgba(255,180,0,.04);border:1px solid rgba(255,180,0,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#ffc066">⚠ Live ${display} price unavailable — showing predictions only</div>`;
+        ? `<div style="text-align:center;padding:10px;background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#5fffa0">${coinImg}Live ${display}: <b>${fmtCryptoPrice(coin, livePx)}</b> · winner-take-all on the closest guess at Final kickoff</div>`
+        : `<div style="text-align:center;padding:10px;background:rgba(255,180,0,.04);border:1px solid rgba(255,180,0,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#ffc066">${coinImg}Live ${display} price unavailable — showing predictions only</div>`;
 
       const aboveSection = aboveDisplay.length
         ? `<div class="crypto-divider up">▲ ${display} wins if price rises</div>` +
@@ -806,13 +829,20 @@
       if (me) {
         if (meRowData) {
           const meRank = rankByUserId.get(meRowData.user_id);
-          const myDiff = livePx != null ? Math.abs(meRowData._tip - livePx) : null;
-          const closestDiff = livePx != null ? Math.abs(closestRow._tip - livePx) : null;
-          const gap = (myDiff != null && closestDiff != null) ? myDiff - closestDiff : null;
+          // To flip to #1, live price must cross the midpoint between my tip and the leader's tip
+          // (since leader is currently closer, midpoint lies on "my" side of live price).
+          let flipMoveAbs = null;
+          let flipDirVerb = null; // 'rise' | 'fall'
+          if (livePx != null && isFinite(livePx) && meRowData._tip !== closestRow._tip) {
+            const midpoint = (meRowData._tip + closestRow._tip) / 2;
+            const moveSigned = midpoint - livePx;
+            flipMoveAbs = Math.abs(moveSigned);
+            flipDirVerb = moveSigned >= 0 ? 'rise' : 'fall';
+          }
           const status = meRank === 1
             ? `<span class="mf-status qualified">✓ Currently closest — would win the ${display} pot</span>`
-            : (gap != null
-                ? `<span class="mf-status need">${fmtCryptoPrice(coin, gap)} closer needed to take #1</span>`
+            : (flipMoveAbs != null
+                ? `<span class="mf-status need">${display} needs to ${flipDirVerb} ${fmtCryptoPrice(coin, flipMoveAbs)} to flip #1</span>`
                 : `<span class="mf-status">live price unavailable</span>`);
           footer = `<div class="me-footer">
             <div class="mf-left"><span class="mf-rank">#${meRank}</span><span class="mf-status">of ${all.length} prediction${all.length===1?'':'s'}</span></div>
@@ -850,7 +880,7 @@
       const sel = $('#sub-selector');
       sel.classList.remove('hidden');
       sel.innerHTML = COINS.map(c =>
-        `<button data-coin="${c.code}" class="${subView===c.code?'active':''}">${c.label}</button>`
+        `<button data-coin="${c.code}" class="${subView===c.code?'active':''}"><img class="coin-ic" src="${c.icon}" alt="">${c.label}</button>`
       ).join('');
       $$('#sub-selector button').forEach(b => b.addEventListener('click', () => {
         subView = b.dataset.coin; showCoinSelector(); renderCrypto(subView);

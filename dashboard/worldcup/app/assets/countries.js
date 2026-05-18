@@ -1,4 +1,4 @@
-// $BOBAI Worldcup '26 — Qualified Teams (FIFA WC 2026)
+// BOBAI Worldcup '26 — Qualified Teams (FIFA WC 2026)
 // 48 teams, alphabetical. Source: FIFA / UEFA / CONMEBOL official qualification (as of 2026-05).
 window.WC_COUNTRIES = [
   // CAF (10)

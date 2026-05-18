@@ -1,4 +1,4 @@
--- $BOBAI Worldcup '26 — Reset all user/test data
+-- BOBAI Worldcup '26 — Reset all user/test data
 -- Run BEFORE public registration opens (04.06) if you want a clean slate.
 -- Keeps wc_matches + wc_pool (reference data); wipes all user-created rows.
 --

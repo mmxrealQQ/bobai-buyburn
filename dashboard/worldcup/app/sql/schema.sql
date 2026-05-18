@@ -1,4 +1,4 @@
--- $BOBAI Worldcup '26 — Beta Schema
+-- BOBAI Worldcup '26 — Beta Schema
 -- Run in Supabase SQL Editor (same project as buildonbnbgame)
 -- All tables prefixed wc_ to keep app data isolated
 

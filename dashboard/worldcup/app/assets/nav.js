@@ -1,4 +1,4 @@
-// $BOBAI Worldcup '26 — Shared nav behavior
+// BOBAI Worldcup '26 — Shared nav behavior
 // Activates the current tab, wires logout, and fills the "Hi <user>" slot.
 // Pages that include this script just need the <nav> markup with `.tabbar a[data-tab]`
 // items plus optional #me-name + #logout elements.

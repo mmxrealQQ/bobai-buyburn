@@ -1,4 +1,4 @@
--- $BOBAI Worldcup '26 — Phase I: simple wallet linking
+-- BOBAI Worldcup '26 — Phase I: simple wallet linking
 -- Removes the ECDSA-signature flow. New rules:
 --   1. User just types their BEP-20 address — no signing, no gas.
 --   2. Each wallet can be linked to AT MOST ONE account (UNIQUE).

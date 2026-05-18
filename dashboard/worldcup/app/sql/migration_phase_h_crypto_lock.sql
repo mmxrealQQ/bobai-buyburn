@@ -1,4 +1,4 @@
--- $BOBAI Worldcup '26 — Phase H follow-up: lock crypto predictions at tournament start
+-- BOBAI Worldcup '26 — Phase H follow-up: lock crypto predictions at tournament start
 --
 -- Previously crypto predictions stayed editable until the FINAL kickoff, which
 -- meant they could not be revealed on public profiles until after the Final.

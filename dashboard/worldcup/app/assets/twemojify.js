@@ -1,4 +1,4 @@
-// $BOBAI Worldcup '26 — Twemoji parser
+// BOBAI Worldcup '26 — Twemoji parser
 // Windows browsers don't ship a flag-emoji font (and most don't ship any
 // color-emoji font at all), so flag glyphs render as black squares with
 // country codes. Twemoji replaces emoji text nodes with Twitter's SVG

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>$BOBAI Worldcup '26 — Crypto Predictions</title>
+  <title>BOBAI Worldcup '26 — Crypto Predictions</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=14">
@@ -12,10 +12,8 @@
     .ck{margin-bottom:22px;padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
     .ck-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
     .ck-asset{display:flex;align-items:center;gap:10px}
-    .ck-asset .icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
-    .ck-asset .icon.btc{background:rgba(247,147,26,.15);color:#f7931a}
-    .ck-asset .icon.bnb{background:rgba(240,185,11,.15);color:var(--gold)}
-    .ck-asset .icon.bobai{background:rgba(64,64,255,.15);color:#9090ff}
+    .ck-asset .icon{width:34px;height:34px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);box-shadow:0 0 0 1px rgba(255,255,255,.06) inset}
+    .ck-asset .icon img{width:100%;height:100%;object-fit:cover;display:block}
     .ck-asset .nm{font-family:'Space Grotesk';font-weight:700;font-size:16px;color:var(--text)}
     .ck-asset .sym{font-size:11px;color:var(--muted);letter-spacing:.5px}
 
@@ -55,7 +53,7 @@
     <nav>
       <div class="nav">
         <a class="back-btn" href="/" title="Back to brainonbnb.ai"><span>&larr;</span> brainonbnb.ai</a>
-        <a class="brand-link" href="/worldcup/">$BOBAI Worldcup '26</a>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
         <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
       </div>
       <div class="tabbar">
@@ -79,7 +77,7 @@
           </div>
 
           <div class="info-banner">
-            <b>How it works:</b> Predict the USD price of BTC, BNB and $BOBAI <b>at the exact moment of the World Cup Final kickoff</b> (estimated 19 July 2026, 19:00 UTC). The closest guess on each coin wins <b>5% of the total prize pool</b> (15% total — split BTC/BNB/BOBAI evenly).
+            <b>How it works:</b> Predict the USD price of BTC, BNB and BOBAI <b>at the exact moment of the World Cup Final kickoff</b> (estimated 19 July 2026, 19:00 UTC). The closest guess on each coin wins <b>5% of the total prize pool</b> (15% total — split BTC/BNB/BOBAI evenly).
           </div>
 
           <div id="alert"></div>
@@ -87,7 +85,7 @@
           <!-- BTC -->
           <div class="ck" data-coin="btc">
             <div class="ck-head">
-              <div class="ck-asset"><div class="icon btc">₿</div><div><div class="nm">Bitcoin</div><div class="sym">BTC</div></div></div>
+              <div class="ck-asset"><div class="icon btc"><img src="./illus/coins/btc.png" alt="BTC"></div><div><div class="nm">Bitcoin</div><div class="sym">BTC</div></div></div>
               <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="btc">…</div></div>
             </div>
             <div class="ck-input-wrap">
@@ -108,7 +106,7 @@
           <!-- BNB -->
           <div class="ck" data-coin="bnb">
             <div class="ck-head">
-              <div class="ck-asset"><div class="icon bnb">●</div><div><div class="nm">BNB</div><div class="sym">BNB</div></div></div>
+              <div class="ck-asset"><div class="icon bnb"><img src="./illus/coins/bnb.png" alt="BNB"></div><div><div class="nm">BNB</div><div class="sym">BNB</div></div></div>
               <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="bnb">…</div></div>
             </div>
             <div class="ck-input-wrap">
@@ -129,7 +127,7 @@
           <!-- BOBAI -->
           <div class="ck" data-coin="bobai">
             <div class="ck-head">
-              <div class="ck-asset"><div class="icon bobai">🧠</div><div><div class="nm">BOBAI</div><div class="sym">BOBAI</div></div></div>
+              <div class="ck-asset"><div class="icon bobai"><img src="./illus/coins/bobai.png" alt="BOBAI"></div><div><div class="nm">Brain On BNB AI</div><div class="sym">BOBAI</div></div></div>
               <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="bobai">…</div></div>
             </div>
             <div class="ck-input-wrap">

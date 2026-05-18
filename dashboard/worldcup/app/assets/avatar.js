@@ -1,4 +1,4 @@
-// $BOBAI Worldcup '26 — Shared avatar / illustration helper.
+// BOBAI Worldcup '26 — Shared avatar / illustration helper.
 //
 // Single source of truth for every illustration slot in the app. The
 // designer drops a file into the right path, and this helper picks it up
@@ -186,7 +186,7 @@
         flag: c.flag,
         filename: 'avatars/avatar-' + c.code,
         basePath: AVATAR_BASE + 'avatar-' + c.code,
-        specs: '512×512 transparent. $BOBAI in the ' + c.name + ' national kit. Any format (WebP / PNG / JPG / SVG).',
+        specs: '512×512 transparent. BOBAI in the ' + c.name + ' national kit. Any format (WebP / PNG / JPG / SVG).',
         usedOn: 'Dashboard · Leaderboard · Public profile · Champion pick',
         required: true,
       });
@@ -230,7 +230,7 @@
     });
     items.push({
       kind: 'illus',
-      name: '$BOBAI coin icon',
+      name: 'BOBAI coin icon',
       filename: 'coin-bobai',
       basePath: BASE + 'coin-bobai',
       specs: '64×64, transparent. The brain icon, mark-style. Any format.',

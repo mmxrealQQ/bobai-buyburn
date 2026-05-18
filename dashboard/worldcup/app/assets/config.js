@@ -1,4 +1,4 @@
-// $BOBAI Worldcup '26 — App Config (public-safe values only)
+// BOBAI Worldcup '26 — App Config (public-safe values only)
 window.WC_CONFIG = {
   SUPABASE_URL: 'https://aerffjhdsbxpvuulkryr.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_ne0MFzyCQb6MvFWur2X-Vw_vG9JH76_',

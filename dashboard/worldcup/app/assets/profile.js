@@ -1,4 +1,4 @@
-// $BOBAI Worldcup '26 — Profile + Wallet helpers
+// BOBAI Worldcup '26 — Profile + Wallet helpers
 (function(){
   const sb = window.WC_SB;
 

@@ -161,11 +161,11 @@
 
     /* Match-tip + bonus + crypto reveal rules:
        - Own picks: always visible
-       - Others' match tips: only after each match kickoff
+       - Others' match tips: only after each match kickoff (= 15min-locked)
        - Others' bonus picks: only after first match (id=1) kickoff
-       - Others' crypto picks: only after the Final kickoff
+       - Others' crypto picks: only after first match (id=1) kickoff
        Even though the DB currently exposes them publicly, we honour these
-       rules in the UI so visitors can't copy-tip before kickoff. */
+       rules in the UI so visitors can't copy-tip before lock. */
     let firstMatchKickoff = null;
     let finalKickoff = null;
 

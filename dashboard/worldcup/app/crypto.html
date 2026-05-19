@@ -77,7 +77,7 @@
           <p class="sub">BTC · BNB · BOBAI · prices at final kickoff</p>
 
           <div id="locked" class="locked-banner hidden">
-            🔒 Locked — Final has started.
+            🔒 Locked — tournament has started.
           </div>
 
           <div class="info-banner">
@@ -191,10 +191,10 @@
     let locked = false;
 
     function isLocked(){
-      // Use the configured final kickoff — refined once football-data sync sets it
-      // For beta we hardcode an estimated final date; the actual lock is DB-enforced.
-      const final = new Date('2026-07-19T19:00:00Z').getTime();
-      return Date.now() >= final;
+      // Crypto predictions lock at the opening-match kickoff (same as bonus,
+      // DB-enforced via wc_matches id=1). After lock, picks become public.
+      const kickoff = new Date(window.WC_CONFIG.KICKOFF_UTC).getTime();
+      return Date.now() >= kickoff;
     }
 
     function updateSaveBar(){
@@ -203,7 +203,7 @@
       const dirty = ['btc','bnb','bobai'].some(k => (pending[k] || null) !== (saved[k] || null));
       $('#btn-save').disabled = !dirty || locked;
       $('#save-status').textContent =
-        locked ? '🔒 Locked — Final has started.'
+        locked ? '🔒 Locked — tournament has started.'
         : dirty ? 'Unsaved changes.'
         : filled === 0 ? 'Pick at least one.'
         : '✅ Up to date.';

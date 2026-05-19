@@ -371,21 +371,19 @@
       const tbody = $('#payout-body');
       const rows = [];
 
-      // Group pot — 55/30/15 across {top1, top2, best-3rd}, flat within each bracket.
-      // share = PER-SLOT share of the group pot (bracket-total split by slot count).
+      // Pool share = % of the pot named in the section header (group/end/crypto).
+      // Group brackets are FLAT within: 12 winners share the bracket pot equally.
       rows.push({ section: 'Group pot · paid 1 day after group stage' });
-      rows.push({ icon:'🥇', label:'Group 1st',   slots:12, share:0.55/12, bobai: (group*0.55)/12 });
-      rows.push({ icon:'🥈', label:'Group 2nd',   slots:12, share:0.30/12, bobai: (group*0.30)/12 });
-      rows.push({ icon:'🥉', label:'Best 3rd',    slots:8,  share:0.15/8,  bobai: (group*0.15)/8  });
+      rows.push({ icon:'🥇', label:'Group 1st',   slots:12, share:0.55, bobai: (group*0.55)/12 });
+      rows.push({ icon:'🥈', label:'Group 2nd',   slots:12, share:0.30, bobai: (group*0.30)/12 });
+      rows.push({ icon:'🥉', label:'Best 3rd',    slots:8,  share:0.15, bobai: (group*0.15)/8  });
 
-      // End pool — tiered 50/25/15/10 for top 4 overall (1 slot each, share is per-slot)
       rows.push({ section: 'End pool · paid 1 day after Final' });
       rows.push({ icon:'🥇', label:'Overall 1st', slots:1, share:0.50, bobai: end*0.50 });
       rows.push({ icon:'🥈', label:'Overall 2nd', slots:1, share:0.25, bobai: end*0.25 });
       rows.push({ icon:'🥉', label:'Overall 3rd', slots:1, share:0.15, bobai: end*0.15 });
       rows.push({ icon:'4️⃣', label:'Overall 4th', slots:1, share:0.10, bobai: end*0.10 });
 
-      // Crypto pot — 3 equal slots (BTC / BNB / BOBAI closest guess), share is per-slot
       rows.push({ section: 'Crypto pot · paid 1 day after Final' });
       rows.push({ icon:'₿',  label:'Closest BTC guess',   slots:1, share:1/3, bobai: crypto/3 });
       rows.push({ icon:'🟡', label:'Closest BNB guess',   slots:1, share:1/3, bobai: crypto/3 });

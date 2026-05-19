@@ -369,14 +369,28 @@ async function readBobaiBalance(address){
   return Number(whole) + Number(frac) / 1e18;
 }
 
+// BOBAI/WBNB pool — used for the price feed (same endpoint the TG bot polls)
+const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+
 async function fetchBobaiPriceUsd(){
   try {
-    const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/bsc/tokens/${BOBAI_TOKEN}`);
-    if (!r.ok) return null;
+    // Pool endpoint, same as TG bot (proven to work from CF Workers).
+    // Accept header is required — GeckoTerminal returns 406 without it.
+    const r = await fetch(
+      `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}?_=${Date.now()}`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (!r.ok) {
+      console.log('[price] geckoterminal HTTP', r.status);
+      return null;
+    }
     const d = await r.json();
-    const p = parseFloat(d?.data?.attributes?.price_usd);
+    const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
     return isFinite(p) ? p : null;
-  } catch { return null; }
+  } catch (e) {
+    console.log('[price] error:', e.message);
+    return null;
+  }
 }
 
 function computePots(total, now){

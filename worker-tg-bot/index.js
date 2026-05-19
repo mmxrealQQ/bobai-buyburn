@@ -13,6 +13,11 @@ const CAPTCHA_TIMEOUT = 60;
 const GECKO_TRADES_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}/trades`;
 const GECKO_POOL_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}`;
 
+// Worldcup tipgame (Supabase — public anon key, RLS-protected)
+const WORLDCUP_URL = 'https://brainonbnb.ai/worldcup';
+const SUPABASE_URL = 'https://aerffjhdsbxpvuulkryr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ne0MFzyCQb6MvFWur2X-Vw_vG9JH76_';
+
 // Multiple BSC RPC endpoints for burn queries
 const RPC_ENDPOINTS = [
   'https://bsc-dataseed1.binance.org',
@@ -115,6 +120,53 @@ async function fetchRecentTrades() {
     console.error('[GECKO API ERROR]', err.message || err);
     return [];
   }
+}
+
+// ==================== WORLDCUP TIPGAME ====================
+
+// ISO country code → flag emoji. Special-cased UK constituents (ENG/SCT/WAL).
+function isoToFlag(iso) {
+  if (!iso) return '🏳️';
+  if (iso === 'ENG') return '🏴󠁧󠁢󠁥󠁮󠁧󠁿';
+  if (iso === 'SCT') return '🏴󠁧󠁢󠁳󠁣󠁴󠁿';
+  if (iso === 'WAL') return '🏴󠁧󠁢󠁷󠁬󠁳󠁿';
+  if (iso.length !== 2) return '🏳️';
+  return iso.toUpperCase()
+    .split('')
+    .map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65))
+    .join('');
+}
+
+async function sbSelect(table, query) {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/${table}?${query}`;
+    const res = await fetch(url, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) {
+    console.error('[SB]', e.message || e);
+    return [];
+  }
+}
+
+async function fetchWorldcupPool() {
+  const rows = await sbSelect('wc_pool', 'id=eq.1&select=total_bobai,group_pot,endpool,crypto_pot,bobai_price_usd,updated_at');
+  return rows[0] || null;
+}
+
+async function fetchWorldcupLeaderboard(n = 10) {
+  return sbSelect('wc_leaderboard', `select=username,avatar_country,total_points,has_wallet&order=total_points.desc&limit=${n}`);
+}
+
+// Returns last N rows; `taxOnly` true → TAX only, false → BNB+USDT (donations), null → both.
+async function fetchWorldcupDonations(n = 3, taxOnly = null) {
+  let tokenFilter = '';
+  if (taxOnly === true)  tokenFilter = '&token=eq.TAX';
+  if (taxOnly === false) tokenFilter = '&token=in.(BNB,USDT)';
+  return sbSelect('wc_donations',
+    `select=token,amount_in,amount_bobai,swap_tx_hash,created_at${tokenFilter}&order=created_at.desc&limit=${n}`);
 }
 
 // ==================== BURN STATS ====================
@@ -405,9 +457,10 @@ const BOT_COMMANDS = [
   { command: 'price',    description: 'Live price, volume & market stats' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
+  { command: 'worldcup', description: 'Tipgame pool, top 10 & latest credits' },
 ];
 
-const COMMANDS_VERSION = 'v3-security';
+const COMMANDS_VERSION = 'v4-worldcup';
 
 async function ensureCommandsRegistered(env) {
   const current = await env.KV.get('commands_version');
@@ -607,10 +660,85 @@ Here's what I can do:
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
+🏆 /worldcup — Tipgame pool, top 10 & latest credits
 
 💡 <i>I also post alerts for buys & burns!</i>
 
 🌍 <a href="https://brainonbnb.ai">Website</a> · 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
+      break;
+    }
+
+    case '/worldcup':
+    case 'worldcup':
+    case '/wc':
+    case 'wc': {
+      const [pool, top10, donations, taxAdds] = await Promise.all([
+        fetchWorldcupPool(),
+        fetchWorldcupLeaderboard(10),
+        fetchWorldcupDonations(3, false),
+        fetchWorldcupDonations(3, true),
+      ]);
+
+      const total = pool ? parseFloat(pool.total_bobai) || 0 : 0;
+      const price = pool ? parseFloat(pool.bobai_price_usd) || 0 : 0;
+      const totalUsd = total * price;
+      const groupPot  = pool ? parseFloat(pool.group_pot)  || 0 : 0;
+      const endPool   = pool ? parseFloat(pool.endpool)    || 0 : 0;
+      const cryptoPot = pool ? parseFloat(pool.crypto_pot) || 0 : 0;
+
+      let leaderboardLines;
+      if (top10.length === 0) {
+        leaderboardLines = '<i>No players yet — be the first!</i>';
+      } else {
+        const medals = ['🥇','🥈','🥉'];
+        leaderboardLines = top10.map((r, i) => {
+          const rank = medals[i] || `<code>#${String(i+1).padStart(2,' ')}</code>`;
+          const flag = isoToFlag(r.avatar_country);
+          const wallet = r.has_wallet ? ' ⚽' : '';
+          const pts = (r.total_points || 0);
+          return `${rank} ${flag} <b>${r.username}</b>${wallet} — ${pts} pts`;
+        }).join('\n');
+      }
+
+      const fmtTxLine = (row) => {
+        const when = new Date(row.created_at).toISOString().slice(5,16).replace('T',' ');
+        const inAmt = parseFloat(row.amount_in) || 0;
+        const bobai = parseFloat(row.amount_bobai) || 0;
+        const unit  = row.token === 'TAX' ? 'BNB' : row.token;
+        const link  = row.swap_tx_hash
+          ? `<a href="https://bscscan.com/tx/${row.swap_tx_hash}">↗</a>`
+          : '';
+        return `<code>${when}</code> · ${inAmt.toFixed(4)} ${unit} → ${formatNumber(bobai)} BOBAI ${link}`;
+      };
+
+      const donLines = donations.length
+        ? donations.map(fmtTxLine).join('\n')
+        : '<i>None yet</i>';
+      const taxLines = taxAdds.length
+        ? taxAdds.map(fmtTxLine).join('\n')
+        : '<i>Tax routing starts 11 June 2026</i>';
+
+      reply = `🏆 <b>BOBAI Worldcup '26 — Prize Pool</b>
+
+💰 <b>${formatNumber(total)} BOBAI</b> ≈ ${formatUsd(totalUsd)}
+
+📊 <b>Pots</b>
+🅰️ Group · 45 %: ${formatNumber(groupPot)} BOBAI (${formatUsd(groupPot*price)})
+🏁 End pool · 40/85 %: ${formatNumber(endPool)} BOBAI (${formatUsd(endPool*price)})
+📈 Crypto · 15 %: ${formatNumber(cryptoPot)} BOBAI (${formatUsd(cryptoPot*price)})
+
+🏅 <b>Top 10 Overall</b>
+${leaderboardLines}
+
+💚 <b>Latest donations</b>
+${donLines}
+
+⚙️ <b>Latest tax adds</b>
+${taxLines}
+
+🎮 <a href="${WORLDCUP_URL}">Play & connect wallet at brainonbnb.ai/worldcup</a>
+
+<i>⚽ = wallet linked (payout-eligible)</i>`;
       break;
     }
   }

@@ -423,19 +423,18 @@ async function fetchBobaiPriceUsd(){
 }
 
 function computePots(total, now){
-  // Pre-kickoff + Group phase: 45/40/15 split (live preview so donors see where it goes)
+  // Pre-kickoff + Group phase: 60/30/10 split (live preview so donors see where it goes)
   if (now < GROUP_END_UTC) return {
-    group:  total * 0.45,
-    end:    total * 0.40,
-    crypto: total * 0.15,
+    group:  total * 0.60,
+    end:    total * 0.30,
+    crypto: total * 0.10,
     phase:  now < KICKOFF_UTC ? 'pre-kickoff' : 'group',
   };
-  // Post-group: group_pot would be frozen-then-paid; for now allocate 0/85/15 of total.
-  // (Refined once group-payout logic lands — see PHASE_H_PLAN.md.)
+  // Post-group: group_pot frozen-then-paid; remaining inflow allocates 0/90/10.
   if (now < FINAL_END_UTC) return {
     group:  0,
-    end:    total * 0.85,
-    crypto: total * 0.15,
+    end:    total * 0.90,
+    crypto: total * 0.10,
     phase:  'ko',
   };
   // Post-final: freeze whatever's there (payouts handled by payout engine)

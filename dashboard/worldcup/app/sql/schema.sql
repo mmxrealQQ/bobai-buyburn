@@ -94,9 +94,9 @@ CREATE TABLE wc_crypto (
 CREATE TABLE wc_pool (
   id INT PRIMARY KEY DEFAULT 1,
   total_bobai NUMERIC DEFAULT 0,
-  group_pot NUMERIC DEFAULT 0,        -- 45% during group phase
-  endpool NUMERIC DEFAULT 0,          -- 40% group / 85% KO
-  crypto_pot NUMERIC DEFAULT 0,       -- 15% always
+  group_pot NUMERIC DEFAULT 0,        -- 60% during group phase
+  endpool NUMERIC DEFAULT 0,          -- 30% group / 90% KO
+  crypto_pot NUMERIC DEFAULT 0,       -- 10% always
   bobai_price_usd NUMERIC,            -- cached for display
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CHECK (id = 1)                      -- enforce single row

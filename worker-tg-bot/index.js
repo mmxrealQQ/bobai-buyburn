@@ -723,9 +723,9 @@ Here's what I can do:
 💰 <b>${formatNumber(total)} BOBAI</b> ≈ ${formatUsd(totalUsd)}
 
 📊 <b>Pots</b>
-🅰️ Group · 45 %: ${formatNumber(groupPot)} BOBAI (${formatUsd(groupPot*price)})
-🏁 End pool · 40/85 %: ${formatNumber(endPool)} BOBAI (${formatUsd(endPool*price)})
-📈 Crypto · 15 %: ${formatNumber(cryptoPot)} BOBAI (${formatUsd(cryptoPot*price)})
+🅰️ Group · 60 %: ${formatNumber(groupPot)} BOBAI (${formatUsd(groupPot*price)})
+🏁 End pool · 30/90 %: ${formatNumber(endPool)} BOBAI (${formatUsd(endPool*price)})
+📈 Crypto · 10 %: ${formatNumber(cryptoPot)} BOBAI (${formatUsd(cryptoPot*price)})
 
 🏅 <b>Top 10 Overall</b>
 ${leaderboardLines}

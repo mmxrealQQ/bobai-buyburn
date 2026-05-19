@@ -296,12 +296,143 @@ export default {
   },
 
   async scheduled(event, env){
-    // Only run sync if API key configured
-    if (!env.FOOTBALL_DATA_API_KEY) {
-      console.log('[CRON] FOOTBALL_DATA_API_KEY not set — skipping sync.');
-      return;
+    // 1. Match sync (skip if no API key)
+    if (env.FOOTBALL_DATA_API_KEY) {
+      const r = await syncMatches(env);
+      console.log('[CRON] match sync:', JSON.stringify(r));
+    } else {
+      console.log('[CRON] FOOTBALL_DATA_API_KEY not set — skipping match sync.');
     }
-    const r = await syncMatches(env);
-    console.log('[CRON] sync result:', JSON.stringify(r));
+
+    // 2. Prize pool sync — read on-chain BOBAI balance + price, compute pots, update wc_pool
+    try {
+      const pool = await syncPool(env);
+      console.log('[CRON] pool sync:', JSON.stringify(pool));
+    } catch (e) {
+      console.log('[CRON] pool sync error:', e.message);
+    }
+
+    // 3. Dispatch worldcup-bot workflow (does the actual swap with signing)
+    try {
+      const dispatched = await dispatchWorldcupBot(env);
+      console.log('[CRON] bot dispatch:', dispatched);
+    } catch (e) {
+      console.log('[CRON] bot dispatch error:', e.message);
+    }
   },
 };
+
+// ============================================================
+// PRIZE POOL SYNC — read on-chain BOBAI balance + compute pot split
+// ============================================================
+const PRIZE_WALLET = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+const BOBAI_TOKEN  = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const BSC_RPCS = [
+  'https://bsc-dataseed.binance.org/',
+  'https://bsc-dataseed1.binance.org/',
+  'https://bsc-dataseed2.binance.org/',
+];
+
+// Tournament timing (UTC) — anchors the allocation split.
+// Pre-kickoff donations sit in `total_bobai` but aren't allocated to pots yet
+// (admin decides at kickoff how to seed initial pots).
+const KICKOFF_UTC   = new Date('2026-06-11T19:00:00Z').getTime();
+const GROUP_END_UTC = new Date('2026-06-27T00:00:00Z').getTime();   // ~1d after last group match
+const FINAL_END_UTC = new Date('2026-07-20T00:00:00Z').getTime();
+
+async function rpcCall(method, params){
+  for (const rpc of BSC_RPCS) {
+    try {
+      const res = await fetch(rpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      });
+      if (!res.ok) continue;
+      const j = await res.json();
+      if (j.result !== undefined) return j.result;
+    } catch (e) { /* try next */ }
+  }
+  throw new Error('all BSC RPCs failed for ' + method);
+}
+
+// Read ERC-20 balance via raw eth_call (no ethers/viem dep in Worker).
+async function readBobaiBalance(address){
+  // balanceOf(address) selector = 0x70a08231
+  const data = '0x70a08231' + address.toLowerCase().replace('0x','').padStart(64, '0');
+  const hex  = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data }, 'latest']);
+  // 18-decimal token → divide by 1e18 as bigint→string for precision
+  const wei = BigInt(hex);
+  const whole = wei / (10n ** 18n);
+  const frac  = wei % (10n ** 18n);
+  // Return as plain JS number (precision OK for display; if pool ever exceeds 2^53 BOBAI we'd switch to string)
+  return Number(whole) + Number(frac) / 1e18;
+}
+
+async function fetchBobaiPriceUsd(){
+  try {
+    const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/bsc/tokens/${BOBAI_TOKEN}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const p = parseFloat(d?.data?.attributes?.price_usd);
+    return isFinite(p) ? p : null;
+  } catch { return null; }
+}
+
+function computePots(total, now){
+  // Pre-kickoff: pool grows but pots stay 0 (held in reserve, allocated at kickoff)
+  if (now < KICKOFF_UTC) return { group: 0, end: 0, crypto: 0, phase: 'pre-kickoff' };
+  // Group phase: 45/40/15
+  if (now < GROUP_END_UTC) return {
+    group:  total * 0.45,
+    end:    total * 0.40,
+    crypto: total * 0.15,
+    phase:  'group',
+  };
+  // Post-group: group_pot would be frozen-then-paid; for now allocate 0/85/15 of total.
+  // (Refined once group-payout logic lands — see PHASE_H_PLAN.md.)
+  if (now < FINAL_END_UTC) return {
+    group:  0,
+    end:    total * 0.85,
+    crypto: total * 0.15,
+    phase:  'ko',
+  };
+  // Post-final: freeze whatever's there (payouts handled by payout engine)
+  return { group: 0, end: 0, crypto: 0, phase: 'post-final' };
+}
+
+async function syncPool(env){
+  const total = await readBobaiBalance(PRIZE_WALLET);
+  const price = await fetchBobaiPriceUsd();
+  const pots  = computePots(total, Date.now());
+  const update = {
+    total_bobai:     total,
+    group_pot:       pots.group,
+    endpool:         pots.end,
+    crypto_pot:      pots.crypto,
+    bobai_price_usd: price,
+    updated_at:      new Date().toISOString(),
+  };
+  await sbReq(env, 'PATCH', 'wc_pool?id=eq.1', update);
+  return { total, price, phase: pots.phase, pots };
+}
+
+// ============================================================
+// WORLDCUP-BOT DISPATCH — kicks the GitHub Actions workflow that signs the swap
+// ============================================================
+async function dispatchWorldcupBot(env){
+  if (!env.GH_TOKEN || !env.GH_REPO) {
+    return 'skipped (GH_TOKEN/GH_REPO not configured)';
+  }
+  const url = `https://api.github.com/repos/${env.GH_REPO}/actions/workflows/worldcup-bot.yml/dispatches`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.GH_TOKEN}`,
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'bobai-worldcup-sync',
+    },
+    body: JSON.stringify({ ref: 'main' }),
+  });
+  return `HTTP ${res.status}`;
+}

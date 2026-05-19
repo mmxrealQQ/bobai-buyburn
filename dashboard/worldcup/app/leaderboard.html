@@ -6,21 +6,9 @@
   <title>BOBAI Worldcup '26 — Leaderboard</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=15">
+  <link rel="stylesheet" href="./assets/style.css?v=17">
   <style>
     .container.wide{max-width:920px}
-
-    /* POOL CARD */
-    .pool{background:linear-gradient(135deg,rgba(240,185,11,.06),rgba(64,64,255,.04));border:1px solid rgba(240,185,11,.25);border-radius:14px;padding:20px;margin-bottom:24px}
-    .pool-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
-    .pool-title{font-family:'Space Grotesk';font-weight:700;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)}
-    .pool-total{font-family:'Space Grotesk';font-weight:700;font-size:34px;color:var(--text);line-height:1.05;margin-bottom:2px}
-    .pool-usd{font-size:14px;color:var(--muted);margin-bottom:14px}
-    .pool-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .pool-cell{padding:10px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;text-align:center}
-    .pool-cell .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
-    .pool-cell .val{font-family:'Space Grotesk';font-weight:700;font-size:15px;color:var(--text);line-height:1.05}
-    .pool-cell .pct{font-size:10px;color:var(--gold)}
 
     /* TABS */
     .lbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;background:rgba(0,0,0,.3);padding:5px;border-radius:10px}
@@ -147,8 +135,6 @@
     .br-meta{font-size:9.5px;color:var(--muted);letter-spacing:.4px;margin-top:5px;text-align:right}
 
     @media (max-width: 560px){
-      .pool-total{font-size:26px}
-      .pool-breakdown{grid-template-columns:1fr 1fr;gap:6px}
       .row{grid-template-columns:28px 26px 1fr minmax(70px,84px) auto;gap:7px;padding:10px 10px}
       .uname{font-size:13px}
       .pts{font-size:15px}
@@ -184,60 +170,18 @@
         <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
         <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
         <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
         <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
     <main>
       <div class="container wide">
+        <div data-hero="leaderboard-hero"></div>
         <div class="card">
+          <div data-card-accent="pool-trophy"></div>
           <h1><span class="accent">Leaderboard</span></h1>
-          <p class="sub">Pool live · username only · ⚽ = wallet linked</p>
-
-          <!-- POOL CARD -->
-          <div class="pool">
-            <div class="pool-head">
-              <div class="pool-title">🏆 Prize Pool</div>
-              <div style="font-size:10.5px;color:var(--muted)" id="pool-updated">pool fills from kickoff</div>
-            </div>
-            <div class="pool-total" id="pool-bobai">0 BOBAI</div>
-            <div class="pool-usd" id="pool-usd">≈ $0.00</div>
-            <div class="pool-breakdown">
-              <div class="pool-cell">
-                <div class="lbl">Group pot · 45 %</div>
-                <div class="val" id="pool-group">0</div>
-                <div class="pct">paid 1 day after group stage</div>
-              </div>
-              <div class="pool-cell">
-                <div class="lbl">End pool · 40/85 %</div>
-                <div class="val" id="pool-end">0</div>
-                <div class="pct">paid 1 day after Final</div>
-              </div>
-              <div class="pool-cell">
-                <div class="lbl">Crypto pot · 15 %</div>
-                <div class="val" id="pool-crypto">0</div>
-                <div class="pct">paid 1 day after Final</div>
-              </div>
-            </div>
-
-            <!-- DONATION BOX -->
-            <div style="margin-top:16px;padding:14px;background:rgba(0,0,0,.35);border:1px solid rgba(0,230,118,.15);border-radius:10px">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
-                <div style="font-family:'Space Grotesk';font-weight:600;font-size:12px;color:#5fffa0;letter-spacing:.5px">💚 DONATIONS WELCOME</div>
-                <a href="./rules.html#donations" style="font-size:11px;color:var(--muted);text-decoration:underline">how it works</a>
-              </div>
-              <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px">
-                Send <b>BNB</b> or <b>USDT (BEP-20)</b> to grow the pool. Incoming funds are auto-swapped to BOBAI and added on-chain. Any amount welcome.
-              </div>
-              <div style="background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">
-                <code id="prize-addr" style="flex:1;font-size:12px;color:var(--text);word-break:break-all;font-family:'Space Grotesk'">…</code>
-                <button id="copy-addr" class="btn" style="width:auto;padding:7px 12px;font-size:11px">Copy</button>
-              </div>
-              <div style="font-size:10.5px;color:var(--muted);margin-top:8px">
-                BSC (BNB Smart Chain) only. Sending other networks = lost funds.
-              </div>
-            </div>
-          </div>
+          <p class="sub">Live shares update with the <a href="./prize-pool.html" style="color:var(--gold)">prize pool</a> · ⚽ = wallet linked</p>
 
           <!-- TABS -->
           <div class="lbar" id="lbar">
@@ -264,7 +208,7 @@
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=12"></script>
   <script src="./assets/profile.js?v=13"></script>
-  <script src="./assets/avatar.js?v=5"></script>
+  <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>
@@ -283,9 +227,9 @@
     const END_TOP_N = POOL_SPLIT.endTiers.length;
     const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const COINS = [
-      { code:'btc',   label:'BTC',   icon:'./illus/coins/btc.png' },
-      { code:'bnb',   label:'BNB',   icon:'./illus/coins/bnb.png' },
-      { code:'bobai', label:'BOBAI', icon:'./illus/coins/bobai.png' },
+      { code:'btc',   label:'BTC',   icon:'./illus/coin-btc.webp' },
+      { code:'bnb',   label:'BNB',   icon:'./illus/coin-bnb.webp' },
+      { code:'bobai', label:'BOBAI', icon:'./illus/coin-bobai.webp' },
     ];
     const KO_PHASES = [
       { key:'r32',   label:'Round of 32' },
@@ -466,40 +410,14 @@
       const r = await window.WC_PROFILE.loadPool();
       if (r.error) return;
       const p = r.pool || {};
-      const total = parseFloat(p.total_bobai) || 0;
-      const px    = parseFloat(p.bobai_price_usd) || 0;
       pool = {
-        total,
-        group:  parseFloat(p.group_pot)  || 0,
-        end:    parseFloat(p.endpool)    || 0,
-        crypto: parseFloat(p.crypto_pot) || 0,
-        price:  px,
+        total:  parseFloat(p.total_bobai)     || 0,
+        group:  parseFloat(p.group_pot)       || 0,
+        end:    parseFloat(p.endpool)         || 0,
+        crypto: parseFloat(p.crypto_pot)      || 0,
+        price:  parseFloat(p.bobai_price_usd) || 0,
       };
-      $('#pool-bobai').textContent = fmtBobai(total) + ' BOBAI';
-      $('#pool-usd').textContent   = '≈ ' + fmtUsd(total * px);
-      $('#pool-group').textContent  = fmtBobai(pool.group);
-      $('#pool-end').textContent    = fmtBobai(pool.end);
-      $('#pool-crypto').textContent = fmtBobai(pool.crypto);
-      if (p.updated_at && total > 0) {
-        $('#pool-updated').textContent = 'updated ' + new Date(p.updated_at).toLocaleString();
-      }
     }
-
-    // Donation address copy
-    (() => {
-      const addr = window.WC_CONFIG?.PRIZE_WALLET;
-      if (!addr) return;
-      $('#prize-addr').textContent = addr;
-      $('#copy-addr').addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(addr);
-          const b = $('#copy-addr');
-          const orig = b.textContent;
-          b.textContent = '✓ Copied';
-          setTimeout(() => { b.textContent = orig; }, 1500);
-        } catch { /* ignore */ }
-      });
-    })();
 
     // ============== MATCHES + FIFA STANDINGS ==============
     async function loadAllMatches(){

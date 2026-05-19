@@ -13,14 +13,19 @@
   <meta property="og:type" content="article">
   <meta name="robots" content="index, follow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=15">
+  <link rel="stylesheet" href="./assets/style.css?v=17">
   <style>
     .container.wide{max-width:760px}
-    .toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;padding:12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
+    /* Sticky TOC — clings to the top of the viewport just below the global nav (.nav 58px + .tabbar ~37px ≈ 96px).
+       z-index stays below the nav (which is 100) so the back-button remains clickable above the TOC. */
+    .toc{position:sticky;top:96px;z-index:50;display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;padding:12px;background:rgba(5,5,16,.92);backdrop-filter:blur(20px) saturate(1.2);border:1px solid var(--border);border-radius:10px}
     .toc a{font-size:12px;padding:6px 10px;background:rgba(240,185,11,.07);border:1px solid rgba(240,185,11,.2);border-radius:6px;color:var(--gold);text-decoration:none;font-weight:600;letter-spacing:.3px}
     .toc a:hover{background:rgba(240,185,11,.15)}
+    @media (max-width: 600px){
+      .toc{top:90px}
+    }
 
-    h2{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);margin:36px 0 12px;letter-spacing:-.01em;scroll-margin-top:80px}
+    h2{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);margin:36px 0 12px;letter-spacing:-.01em;scroll-margin-top:200px}
     h2:first-of-type{margin-top:0}
     h3{font-family:'Space Grotesk';font-weight:600;font-size:15px;color:var(--text);margin:18px 0 8px}
     p{color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:12px}
@@ -55,12 +60,14 @@
         <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
         <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
         <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
         <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
     <main>
       <div class="container wide">
+        <div data-hero="rules-hero"></div>
         <div class="card">
           <h1><span class="accent">Rules &amp; FAQ</span></h1>
           <p class="sub">Read this before you play. Especially if it's your first crypto-tipgame.</p>
@@ -294,6 +301,7 @@
   </div>
 
   <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>

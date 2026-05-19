@@ -135,6 +135,37 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
 .wc-illus-design .wc-illus-tag{position:absolute;top:6px;left:6px;font-size:10px;font-weight:700;color:#ff40b4;font-family:'Space Grotesk',monospace;background:rgba(0,0,0,.85);padding:3px 8px;border-radius:4px;pointer-events:none}
 .wc-illus-design.wc-has-art .wc-illus-tag{display:none}
 
+/* Hero banner — full-width landscape illustration above page heading.
+   Shown when /illus/<slot>.{webp|png|jpg} exists. In designer mode the
+   slot shows a magenta dashed placeholder with the expected filename. */
+.wc-hero{display:block;width:100%;margin:0 0 18px;position:relative;text-align:center}
+.wc-hero img{max-width:100%;height:auto;max-height:240px;display:inline-block;object-fit:contain}
+.wc-hero-design{min-height:120px;border:2px dashed #ff40b4;background:repeating-linear-gradient(45deg,rgba(255,64,180,.05),rgba(255,64,180,.05) 10px,rgba(255,64,180,.10) 10px,rgba(255,64,180,.10) 20px);border-radius:12px;padding:14px}
+.wc-hero-design.wc-has-art{border:none;background:none;padding:0}
+.wc-hero-design .wc-hero-tag{position:absolute;top:8px;left:10px;font-size:10px;font-weight:700;color:#ff40b4;font-family:'Space Grotesk',monospace;background:rgba(0,0,0,.85);padding:3px 8px;border-radius:4px;pointer-events:none}
+.wc-hero-design.wc-has-art .wc-hero-tag{display:none}
+@media (max-width: 600px){
+  .wc-hero img{max-height:160px}
+}
+
+/* Pool-card corner trophy accent (positioned absolutely in .pool top-right). */
+.pool{position:relative}
+.pool .wc-pool-trophy{position:absolute;top:-18px;right:-10px;width:96px;height:96px;pointer-events:none;z-index:1}
+.pool .wc-pool-trophy img{width:100%;height:100%;object-fit:contain}
+@media (max-width: 600px){
+  .pool .wc-pool-trophy{width:64px;height:64px;top:-12px;right:-6px}
+}
+
+/* Generic card corner accent — small BOBAI decoration in top-right of a .card.
+   Same positioning recipe as .wc-pool-trophy. Use <div data-card-accent="slot"></div>
+   placed directly inside a .card to wire it up. */
+.card{position:relative}
+.wc-card-accent{position:absolute;top:-18px;right:-10px;width:88px;height:88px;pointer-events:none;z-index:1}
+.wc-card-accent img{width:100%;height:100%;object-fit:contain}
+@media (max-width: 600px){
+  .wc-card-accent{width:60px;height:60px;top:-12px;right:-6px}
+}
+
 /* DESIGNER PLACEHOLDER — hot pink callout so the illustrator can spot
    every spot that needs art at a glance. Remove this whole block once
    all illustrations have landed in /worldcup/app/illus/. */

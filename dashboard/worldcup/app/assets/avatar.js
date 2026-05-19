@@ -146,6 +146,74 @@
                  onerror="this.style.display='none'">`;
   }
 
+  // Hero banner helper — emits a full-width landscape illustration for the
+  // top of a tab page. `slot` is the filename stem (e.g. 'dashboard-hero').
+  // If the file doesn't exist (and we're not in designer mode), the wrapper
+  // collapses silently so the page just shows its normal heading.
+  function heroHtml(slot){
+    const base = BASE + slot;
+    const fmts = FORMATS.join(',');
+    if (designOn) {
+      return `<div class="wc-hero wc-hero-design">
+        <img alt="" style="max-width:100%;max-height:240px;display:inline-block"
+             src="${base}.${FORMATS[0]}"
+             data-f-base="${base}" data-f-fmts="${fmts}" data-f-idx="0"
+             onload="this.parentElement.classList.add('wc-has-art')"
+             onerror="window.WC_AVATAR.heroError(this)">
+        <span class="wc-hero-tag">${slot}.{webp|png|jpg}</span>
+      </div>`;
+    }
+    return `<div class="wc-hero">
+      <img alt="" src="${base}.${FORMATS[0]}"
+           data-f-base="${base}" data-f-fmts="${fmts}" data-f-idx="0"
+           onload="this.parentElement.classList.add('wc-has-art')"
+           onerror="window.WC_AVATAR.heroError(this)">
+    </div>`;
+  }
+  // Fallback chain for hero images. Walks through formats, then hides the
+  // wrapper entirely so missing art doesn't leave a broken-image gap.
+  function heroError(img){
+    const base = img.dataset.fBase;
+    const fmts = (img.dataset.fFmts || FORMATS.join(',')).split(',');
+    let idx = parseInt(img.dataset.fIdx || '0', 10);
+    idx++;
+    if (idx < fmts.length) {
+      img.dataset.fIdx = idx;
+      img.src = base + '.' + fmts[idx];
+      return;
+    }
+    img.onerror = null;
+    const wrap = img.parentElement;
+    if (wrap && wrap.classList.contains('wc-hero') && !wrap.classList.contains('wc-hero-design')) {
+      wrap.style.display = 'none';
+    } else {
+      img.style.display = 'none';
+    }
+  }
+
+  // Same idea as heroHtml but for the small pool-card corner trophy accent.
+  function poolTrophyHtml(){
+    const base = BASE + 'pool-trophy';
+    const fmts = FORMATS.join(',');
+    return `<div class="wc-pool-trophy">
+      <img alt="" src="${base}.${FORMATS[0]}"
+           data-f-base="${base}" data-f-fmts="${fmts}" data-f-idx="0"
+           onerror="window.WC_AVATAR.heroError(this)">
+    </div>`;
+  }
+
+  // Generic card-corner accent (e.g. bonus-crystal, tips-ball). Same fallback
+  // chain as heroHtml; positioned absolute top-right of the parent .card.
+  function cardAccentHtml(slot){
+    const base = BASE + slot;
+    const fmts = FORMATS.join(',');
+    return `<div class="wc-card-accent" data-slot="${slot}">
+      <img alt="" src="${base}.${FORMATS[0]}"
+           data-f-base="${base}" data-f-fmts="${fmts}" data-f-idx="0"
+           onerror="window.WC_AVATAR.heroError(this)">
+    </div>`;
+  }
+
   // Programmatic single-URL check — returns Promise<boolean>.
   // We can't just trust `response.ok`: CF Pages may serve the project's 404
   // HTML page with a 200 status for missing static files. So we also verify
@@ -191,50 +259,81 @@
         required: true,
       });
     });
-    // Other slots
+    // Page hero banners — one per tab. Landscape format, transparent.
+    const HEROES = [
+      { name: 'Dashboard hero',    filename: 'dashboard-hero',  usedOn: 'Dashboard page (top banner)' },
+      { name: 'Tips hero',         filename: 'tips-hero',       usedOn: 'Tips page (top banner)' },
+      { name: 'Bonus-questions hero banner', filename: 'bonus-hero', usedOn: 'Bonus page (above questions)' },
+      { name: 'Crypto hero',       filename: 'crypto-hero',     usedOn: 'Crypto predictions page (top banner)' },
+      { name: 'Leaderboard hero',  filename: 'leaderboard-hero',usedOn: 'Leaderboard page (top banner)' },
+      { name: 'Prize Pool hero',   filename: 'prize-pool-hero', usedOn: 'Prize Pool page (top banner)' },
+      { name: 'Rules hero',        filename: 'rules-hero',      usedOn: 'Rules page (top banner)' },
+    ];
+    HEROES.forEach(h => items.push({
+      kind: 'illus',
+      name: h.name,
+      filename: h.filename,
+      basePath: BASE + h.filename,
+      specs: '~1500×1000, transparent, dark-mode compatible. BOBAI mascot themed for the section. Any format.',
+      usedOn: h.usedOn,
+      required: false,
+    }));
+
+    // Decorative accents
     items.push({
       kind: 'illus',
       name: 'Pool-card trophy flourish',
       filename: 'pool-trophy',
       basePath: BASE + 'pool-trophy',
-      specs: '~300×300, transparent. BOBAI lifting a small trophy, coins/sparkles. Any format.',
-      usedOn: 'Leaderboard pool card (top-right corner)',
+      specs: '~512×512, transparent. BOBAI lifting a small trophy, coins/sparkles. Any format.',
+      usedOn: 'Leaderboard + Prize Pool pool-card corner accent',
       required: false,
     });
     items.push({
       kind: 'illus',
-      name: 'Bonus-questions hero banner',
-      filename: 'bonus-hero',
-      basePath: BASE + 'bonus-hero',
-      specs: '~1200×300, transparent, dark-mode compatible. BOBAI staring at a bracket / crystal ball.',
-      usedOn: 'Bonus page (above questions)',
+      name: 'Bonus crystal-ball accent',
+      filename: 'bonus-crystal',
+      basePath: BASE + 'bonus-crystal',
+      specs: '~512×512, transparent. BOBAI peering into a glowing crystal ball. Any format.',
+      usedOn: 'Bonus Questions card (top-right corner)',
       required: false,
     });
     items.push({
       kind: 'illus',
-      name: 'BTC coin icon',
+      name: 'Tips ball-kick accent',
+      filename: 'tips-ball',
+      basePath: BASE + 'tips-ball',
+      specs: '~512×512, transparent. BOBAI kicking a small football. Any format.',
+      usedOn: 'Tips card (top-right corner)',
+      required: false,
+    });
+
+    // BOBAI-style coin icons (re-skin of BTC / BNB / BOBAI marks)
+    items.push({
+      kind: 'illus',
+      name: 'BTC coin icon (BOBAI style)',
       filename: 'coin-btc',
       basePath: BASE + 'coin-btc',
-      specs: '64×64, transparent. BOBAI-style Bitcoin icon. Any format.',
-      usedOn: 'Crypto predictions page',
+      specs: '~512×512, transparent. BOBAI-style Bitcoin icon. Any format.',
+      usedOn: 'Crypto predictions page · Leaderboard crypto view',
       required: false,
     });
     items.push({
       kind: 'illus',
-      name: 'BNB coin icon',
+      name: 'BNB coin icon (BOBAI style)',
       filename: 'coin-bnb',
       basePath: BASE + 'coin-bnb',
-      specs: '64×64, transparent. BOBAI-style BNB icon. Any format.',
-      usedOn: 'Crypto predictions page',
+      specs: '~512×512, transparent. BOBAI-style BNB icon. Any format.',
+      usedOn: 'Crypto predictions page · Leaderboard crypto view',
       required: false,
     });
     items.push({
       kind: 'illus',
-      name: 'BOBAI coin icon',
+      name: 'BOBAI coin icon (mark)',
       filename: 'coin-bobai',
       basePath: BASE + 'coin-bobai',
-      specs: '64×64, transparent. The brain icon, mark-style. Any format.',
-      usedOn: 'Crypto predictions page',
+      specs: '~512×512, transparent. The brain icon, mark-style. Any format.',
+      usedOn: 'Crypto predictions page · Leaderboard crypto view',
       required: false,
     });
     return items;
@@ -287,10 +386,37 @@
     openLightbox(img.src, caption);
   });
 
+  // Auto-wire any declarative markup so each page only needs one line.
+  //   <div data-hero="dashboard-hero"></div>   → renders dashboard-hero banner
+  //   <div data-pool-trophy></div>             → renders the pool-card trophy accent
+  function autoWire(){
+    document.querySelectorAll('[data-hero]').forEach(el => {
+      if (el.dataset.wired) return;
+      el.dataset.wired = '1';
+      el.outerHTML = heroHtml(el.dataset.hero);
+    });
+    document.querySelectorAll('[data-pool-trophy]').forEach(el => {
+      if (el.dataset.wired) return;
+      el.dataset.wired = '1';
+      el.outerHTML = poolTrophyHtml();
+    });
+    document.querySelectorAll('[data-card-accent]').forEach(el => {
+      if (el.dataset.wired) return;
+      el.dataset.wired = '1';
+      el.outerHTML = cardAccentHtml(el.dataset.cardAccent);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoWire);
+  } else {
+    autoWire();
+  }
+
   window.WC_AVATAR = {
     designOn, formats: FORMATS,
     avatarUrl, avatarHtml,
     illusUrl, illusHtml,
+    heroHtml, heroError, poolTrophyHtml, cardAccentHtml,
     exists, findFormat, inventory,
     imgError,
     openLightbox, closeLightbox,

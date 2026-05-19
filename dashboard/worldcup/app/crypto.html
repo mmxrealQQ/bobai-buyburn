@@ -6,7 +6,7 @@
   <title>BOBAI Worldcup '26 — Crypto Predictions</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=15">
+  <link rel="stylesheet" href="./assets/style.css?v=17">
   <style>
     .container.wide{max-width:680px}
     .ck{margin-bottom:22px;padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
@@ -63,13 +63,16 @@
         <a href="./bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
         <a href="./crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
         <a href="./leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
         <a href="./rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
     <main>
       <div class="container wide">
+        <div data-hero="crypto-hero"></div>
         <div class="card">
+          <div data-card-accent="bonus-crystal"></div>
           <h1><span class="accent">Crypto Predictions</span></h1>
           <p class="sub">BTC · BNB · BOBAI · prices at final kickoff</p>
 
@@ -86,7 +89,7 @@
           <!-- BTC -->
           <div class="ck" data-coin="btc">
             <div class="ck-head">
-              <div class="ck-asset"><div class="icon btc"><img src="./illus/coins/btc.png" alt="BTC"></div><div><div class="nm">Bitcoin</div><div class="sym">BTC</div></div></div>
+              <div class="ck-asset"><div class="icon btc"><img src="./illus/coin-btc.webp" alt="BTC"></div><div><div class="nm">Bitcoin</div><div class="sym">BTC</div></div></div>
               <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="btc">…</div></div>
             </div>
             <div class="ck-input-wrap">
@@ -107,7 +110,7 @@
           <!-- BNB -->
           <div class="ck" data-coin="bnb">
             <div class="ck-head">
-              <div class="ck-asset"><div class="icon bnb"><img src="./illus/coins/bnb.png" alt="BNB"></div><div><div class="nm">BNB</div><div class="sym">BNB</div></div></div>
+              <div class="ck-asset"><div class="icon bnb"><img src="./illus/coin-bnb.webp" alt="BNB"></div><div><div class="nm">BNB</div><div class="sym">BNB</div></div></div>
               <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="bnb">…</div></div>
             </div>
             <div class="ck-input-wrap">
@@ -128,7 +131,7 @@
           <!-- BOBAI -->
           <div class="ck" data-coin="bobai">
             <div class="ck-head">
-              <div class="ck-asset"><div class="icon bobai"><img src="./illus/coins/bobai.png" alt="BOBAI"></div><div><div class="nm">Brain On BNB AI</div><div class="sym">BOBAI</div></div></div>
+              <div class="ck-asset"><div class="icon bobai"><img src="./illus/coin-bobai.webp" alt="BOBAI"></div><div><div class="nm">Brain On BNB AI</div><div class="sym">BOBAI</div></div></div>
               <div class="ck-live"><div class="lbl">Live</div><div class="px" data-live="bobai">…</div></div>
             </div>
             <div class="ck-input-wrap">
@@ -162,6 +165,7 @@
   <script src="./assets/config.js?v=11"></script>
   <script src="./assets/auth.js?v=12"></script>
   <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>

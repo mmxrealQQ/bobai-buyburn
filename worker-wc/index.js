@@ -262,6 +262,17 @@ export default {
       return json(r, r.ok ? 200 : 500);
     }
 
+    // Admin: manual pool sync — reads on-chain balance + live BOBAI price → wc_pool
+    if (url.pathname === '/admin/sync-pool') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      try {
+        const r = await syncPool(env);
+        return json({ ok: true, ...r });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     // Admin: manually set a match result (for beta testing / FIFA-result corrections)
     // POST /admin/set-result?token=...  Body: { id, goals_home, goals_away }
     if (url.pathname === '/admin/set-result' && request.method === 'POST') {
@@ -373,24 +384,42 @@ async function readBobaiBalance(address){
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 
 async function fetchBobaiPriceUsd(){
+  // 1) GeckoTerminal pool (primary — same as TG bot)
   try {
-    // Pool endpoint, same as TG bot (proven to work from CF Workers).
-    // Accept header is required — GeckoTerminal returns 406 without it.
     const r = await fetch(
       `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}?_=${Date.now()}`,
       { headers: { 'Accept': 'application/json' } }
     );
-    if (!r.ok) {
+    if (r.ok) {
+      const d = await r.json();
+      const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
+      if (isFinite(p) && p > 0) return p;
+      console.log('[price] geckoterminal returned invalid price');
+    } else {
       console.log('[price] geckoterminal HTTP', r.status);
-      return null;
     }
-    const d = await r.json();
-    const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
-    return isFinite(p) ? p : null;
   } catch (e) {
-    console.log('[price] error:', e.message);
-    return null;
+    console.log('[price] geckoterminal error:', e.message);
   }
+
+  // 2) DexScreener fallback
+  try {
+    const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI_TOKEN}`);
+    if (r.ok) {
+      const d = await r.json();
+      const pair = (d?.pairs || []).find(p => p.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase())
+                || (d?.pairs || [])[0];
+      const p = parseFloat(pair?.priceUsd);
+      if (isFinite(p) && p > 0) return p;
+      console.log('[price] dexscreener returned no usable price');
+    } else {
+      console.log('[price] dexscreener HTTP', r.status);
+    }
+  } catch (e) {
+    console.log('[price] dexscreener error:', e.message);
+  }
+
+  return null;
 }
 
 function computePots(total, now){

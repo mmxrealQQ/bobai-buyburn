@@ -423,14 +423,12 @@ async function fetchBobaiPriceUsd(){
 }
 
 function computePots(total, now){
-  // Pre-kickoff: pool grows but pots stay 0 (held in reserve, allocated at kickoff)
-  if (now < KICKOFF_UTC) return { group: 0, end: 0, crypto: 0, phase: 'pre-kickoff' };
-  // Group phase: 45/40/15
+  // Pre-kickoff + Group phase: 45/40/15 split (live preview so donors see where it goes)
   if (now < GROUP_END_UTC) return {
     group:  total * 0.45,
     end:    total * 0.40,
     crypto: total * 0.15,
-    phase:  'group',
+    phase:  now < KICKOFF_UTC ? 'pre-kickoff' : 'group',
   };
   // Post-group: group_pot would be frozen-then-paid; for now allocate 0/85/15 of total.
   // (Refined once group-payout logic lands — see PHASE_H_PLAN.md.)

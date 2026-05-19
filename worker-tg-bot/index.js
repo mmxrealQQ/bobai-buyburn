@@ -736,7 +736,7 @@ ${donLines}
 ⚙️ <b>Latest tax adds</b>
 ${taxLines}
 
-🎮 <a href="${WORLDCUP_URL}">Play & connect wallet at brainonbnb.ai/worldcup</a>
+🎮 <a href="${WORLDCUP_URL}">Play at brainonbnb.ai/worldcup</a>
 
 <i>⚽ = wallet linked (payout-eligible)</i>`;
       break;

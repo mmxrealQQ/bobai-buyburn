@@ -23,7 +23,8 @@ const WBNB            = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const USDT            = '0x55d398326f99059fF775485246999027B3197955';
 const PANCAKE_ROUTER  = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
 
-const GAS_RESERVE      = parseEther('0.003');       // keep 0.003 BNB for future gas
+const GAS_RESERVE      = parseEther('0.003');       // keep 0.003 BNB after a BNB swap
+const MIN_SWAP_GAS     = parseEther('0.0008');      // single swap costs ~0.0005-0.0007 BNB; 0.0008 is plenty
 const MIN_SWAP_BNB     = parseEther('0.01');        // swap only if ≥0.01 BNB after reserve
 const MIN_SWAP_USDT    = parseUnits('5', 18);       // swap only if ≥5 USDT (BSC USDT = 18 dec)
 const SLIPPAGE_BPS     = 1000n;                     // 10 % (covers BOBAI 3 % tax + market slip)
@@ -146,8 +147,10 @@ async function main(){
   }
 
   // ─── USDT → BNB → BOBAI (multi-hop) ───────────────────────────────────────
+  // Only need ~0.0007 BNB gas for the swap, not the full GAS_RESERVE — checking
+  // against MIN_SWAP_GAS lets us swap even if a prior BNB-swap tx nibbled the reserve.
   const bnbAfter = await publicClient.getBalance({ address: account.address });
-  if (usdtBalance >= MIN_SWAP_USDT && bnbAfter >= GAS_RESERVE) {
+  if (usdtBalance >= MIN_SWAP_USDT && bnbAfter >= MIN_SWAP_GAS) {
     console.log(`\n--- Swapping ${formatUnits(usdtBalance, 18)} USDT → BNB → BOBAI ---`);
     try {
       // Approve USDT to router if needed
@@ -198,7 +201,7 @@ async function main(){
       console.log(`USDT swap failed: ${e.message}`);
     }
   } else if (usdtBalance >= MIN_SWAP_USDT) {
-    console.log(`USDT swap skipped — not enough BNB for gas (${formatEther(bnbAfter)} < ${formatEther(GAS_RESERVE)}).`);
+    console.log(`USDT swap skipped — not enough BNB for gas (${formatEther(bnbAfter)} < ${formatEther(MIN_SWAP_GAS)}).`);
   } else {
     console.log(`USDT below threshold (need ${formatUnits(MIN_SWAP_USDT, 18)} USDT) — skipping.`);
   }

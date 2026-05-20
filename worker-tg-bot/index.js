@@ -31,6 +31,9 @@ const RPC_ENDPOINTS = [
 const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AAPfadI1EORIV-4JDTPKnQmo3il3NPsAAkYNaxtDCplSMrzv51Lm4QEBAAMCAAN4AAM7BA';
 const PHOTO_BIGBUY = 'AgACAgQAAyEGAATh_8g_AAPgadI1EEm5Qa4VhE6mqWf0m6PuFMYAAkcNaxtDCplSLzBgWf5z1mMBAAMCAAN4AAM7BA';
 const PHOTO_BURN = 'AgACAgQAAyEGAATh_8g_AAIB0mnWDmHKwNjMTlDUC3WLJRO30ii_AAKBDGsbUeywUgNqPnsGFkssAQADAgADeAADOwQ';
+// Donation illus served by URL (TG caches them server-side after first fetch)
+const PHOTO_DONATION_BNB  = 'https://brainonbnb.ai/worldcup/app/illus/donation-bnb.webp';
+const PHOTO_DONATION_USDT = 'https://brainonbnb.ai/worldcup/app/illus/donation-usdt.webp';
 
 // Known bot/system wallets to ignore in buy alerts
 const IGNORED_WALLETS = new Set([
@@ -222,6 +225,20 @@ function getBurnEmojis(usdValue) {
   return { bar, icon };
 }
 
+function getDonationEmojis(usdValue, token) {
+  const symbol = token === 'BNB' ? '🟡' : '💵';
+  const count = Math.max(Math.floor(usdValue / 2), 1);
+  const bar = symbol.repeat(count);
+  let icon;
+  if (usdValue >= 250)      icon = '🐐 GOAT!';
+  else if (usdValue >= 100) icon = '🏆 CHAMPION!';
+  else if (usdValue >= 50)  icon = '🎯 HAT-TRICK!';
+  else if (usdValue >= 25)  icon = '🥅 GOAL!';
+  else if (usdValue >= 10)  icon = '🎽 SUPPORTER!';
+  else                      icon = '🏟️ KICKOFF!';
+  return { bar, icon };
+}
+
 async function postBuyAlert(trade, burnedPct) {
   try {
     const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
@@ -282,6 +299,45 @@ async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice) {
     return result?.ok === true;
   } catch (err) {
     console.error('[POST BURN ERROR]', err.message || err);
+    return false;
+  }
+}
+
+// ==================== DONATION BOT ====================
+
+async function postDonationAlert(donation, pool, bobaiPriceUsd) {
+  try {
+    const token     = donation.token; // 'BNB' or 'USDT'
+    const amountIn  = parseFloat(donation.amount_in)    || 0;
+    const bobaiAdd  = parseFloat(donation.amount_bobai) || 0;
+    const usdValue  = bobaiAdd * bobaiPriceUsd;
+    const { bar, icon } = getDonationEmojis(usdValue, token);
+
+    const totalPool    = pool ? parseFloat(pool.total_bobai) || 0 : 0;
+    const totalPoolUsd = totalPool * bobaiPriceUsd;
+    const symbol       = token === 'BNB' ? '🟡' : '💵';
+    const amountStr    = token === 'BNB' ? amountIn.toFixed(6) : amountIn.toFixed(2);
+
+    const message = `${bar}
+<b>${icon}</b>
+
+🪙 <b>+${formatNumber(bobaiAdd)} BOBAI</b> donated <b>(${formatUsd(usdValue)})</b>
+${symbol} Donation: <b>${amountStr} ${token}</b>
+🏆 Prize Pool: <b>${formatNumber(totalPool)} BOBAI</b> (${formatUsd(totalPoolUsd)})
+
+💡 <i>Every donation fuels the World Cup prize pool!</i>
+
+🔗 <a href="https://bscscan.com/tx/${donation.swap_tx_hash}">TX</a> · <a href="${WORLDCUP_URL}#prize-pool">Donate</a> · <a href="${WORLDCUP_URL}">Worldcup</a>`;
+
+    const result = await tg('sendPhoto', {
+      chat_id: TG_CHAT_ID,
+      photo: token === 'BNB' ? PHOTO_DONATION_BNB : PHOTO_DONATION_USDT,
+      caption: message,
+      parse_mode: 'HTML',
+    });
+    return result?.ok === true;
+  } catch (err) {
+    console.error('[POST DONATION ERROR]', err.message || err);
     return false;
   }
 }
@@ -580,6 +636,8 @@ async function handleCommand(msg) {
 
 🐦 <a href="https://x.com/BrainOnBNB">X Official</a>
 🗣 <a href="https://x.com/BrainOnBNBAI">X Community</a>
+🎮 <a href="https://brainonbnb.ai/game">Game</a>
+⚽ <a href="https://brainonbnb.ai/worldcup">Worldcup '26</a>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;
@@ -642,7 +700,16 @@ async function handleCommand(msg) {
 ☄️ $150+ → APOCALYPSE BURN!
 💥 $250+ → SUPERNOVA BURN!
 
-💡 <i>Buys under $100 are not alerted.</i>`;
+⚽ <b>Worldcup Donation Tiers</b>
+🏟️ $5+ → KICKOFF!
+🎽 $10+ → SUPPORTER!
+🥅 $25+ → GOAL!
+🎯 $50+ → HAT-TRICK!
+🏆 $100+ → CHAMPION!
+🐐 $250+ → GOAT!
+
+💡 <i>Buys under $100 are not alerted.</i>
+💡 <i>Donation symbols: 🟡 BNB · 💵 USDT</i>`;
       break;
     }
 
@@ -870,6 +937,46 @@ export default {
       }
     } catch (err) {
       console.error('[BURN BOT ERROR]', err.message || err);
+    }
+
+    // === DONATION ALERTS ===
+    try {
+      const postedDonRaw = await env.KV.get('posted_donations');
+      const isBootstrap  = postedDonRaw === null;
+      const postedDonSet = new Set(postedDonRaw ? JSON.parse(postedDonRaw) : []);
+      const prevDonSize  = postedDonSet.size;
+
+      // Fetch last 10 BNB/USDT donations (TAX excluded)
+      const donations = await fetchWorldcupDonations(10, false);
+      if (donations.length > 0) {
+        const pool = isBootstrap ? null : await fetchWorldcupPool();
+        const bobaiPriceUsd = pool ? parseFloat(pool.bobai_price_usd) || 0 : 0;
+
+        // Process oldest-first so the chat order is chronological
+        for (const don of donations.slice().reverse()) {
+          const txHash = don.swap_tx_hash;
+          if (!txHash || postedDonSet.has(txHash)) continue;
+
+          if (isBootstrap) {
+            // First run: mark existing donations as seen, don't alert
+            postedDonSet.add(txHash);
+            continue;
+          }
+
+          const sent = await postDonationAlert(don, pool, bobaiPriceUsd);
+          if (sent) postedDonSet.add(txHash);
+        }
+
+        if (postedDonSet.size > prevDonSize) {
+          const postedDonArr = [...postedDonSet].slice(-50);
+          await env.KV.put('posted_donations', JSON.stringify(postedDonArr));
+        }
+      } else if (isBootstrap) {
+        // No donations yet — seed empty array so we don't re-bootstrap next cron
+        await env.KV.put('posted_donations', '[]');
+      }
+    } catch (err) {
+      console.error('[DONATION BOT ERROR]', err.message || err);
     }
 
     // === CAPTCHA CLEANUP (every 2 min) ===

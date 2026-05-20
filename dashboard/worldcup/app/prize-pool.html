@@ -28,7 +28,10 @@
     .section-h .right{color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:none;font-size:11px}
 
     /* PAYOUT TABLE */
-    .ptable{width:100%;border-collapse:collapse;font-size:12.5px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px}
+    .ptable-wrap{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:24px;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
+    .ptable-wrap::-webkit-scrollbar{height:6px}
+    .ptable-wrap::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
+    .ptable{width:100%;border-collapse:collapse;font-size:12.5px}
     .ptable thead{background:rgba(0,0,0,.4)}
     .ptable th{padding:9px 10px;text-align:left;font-family:'Space Grotesk';font-weight:600;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.04)}
     .ptable td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text);vertical-align:middle}
@@ -41,6 +44,9 @@
 
     /* TX TABLE */
     .txwrap{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px}
+    .txscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
+    .txscroll::-webkit-scrollbar{height:6px}
+    .txscroll::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
     .txfilter{display:flex;gap:4px;padding:8px;background:rgba(0,0,0,.4);border-bottom:1px solid var(--border)}
     .txfilter button{padding:6px 11px;font-size:11px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--muted);border-radius:6px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.3px}
     .txfilter button:hover{border-color:rgba(240,185,11,.3)}
@@ -170,21 +176,23 @@
             <span>💎 Expected payouts per position</span>
             <span class="right">live — recalculated as pool grows</span>
           </div>
-          <table class="ptable">
-            <thead>
-              <tr>
-                <th></th>
-                <th>Position</th>
-                <th>Slots</th>
-                <th class="pct-cell" style="text-align:right">Pool share</th>
-                <th class="tnum" style="text-align:right">BOBAI per slot</th>
-                <th class="tusd" style="text-align:right">$ per slot</th>
-              </tr>
-            </thead>
-            <tbody id="payout-body">
-              <tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">Loading…</td></tr>
-            </tbody>
-          </table>
+          <div class="ptable-wrap">
+            <table class="ptable">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Position</th>
+                  <th>Slots</th>
+                  <th class="pct-cell" style="text-align:right">Pool share</th>
+                  <th class="tnum" style="text-align:right">BOBAI per slot</th>
+                  <th class="tusd" style="text-align:right">$ per slot</th>
+                </tr>
+              </thead>
+              <tbody id="payout-body">
+                <tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
 
           <!-- TX HISTORY -->
           <div class="section-h">
@@ -198,21 +206,23 @@
               <button data-filter="tax">⚙️ Tax adds</button>
               <span class="right"><a id="addr-link" href="#" target="_blank" rel="noopener">verify on BscScan ↗</a></span>
             </div>
-            <table class="txtable">
-              <thead>
-                <tr>
-                  <th>Time (UTC)</th>
-                  <th>Type</th>
-                  <th class="tnum" style="text-align:right">Amount in</th>
-                  <th class="tnum" style="text-align:right">BOBAI added</th>
-                  <th class="tusd" style="text-align:right">$ Value</th>
-                  <th>Tx</th>
-                </tr>
-              </thead>
-              <tbody id="tx-body">
-                <tr><td colspan="6" class="txempty">Loading…</td></tr>
-              </tbody>
-            </table>
+            <div class="txscroll">
+              <table class="txtable">
+                <thead>
+                  <tr>
+                    <th>Time (UTC)</th>
+                    <th>Type</th>
+                    <th class="tnum" style="text-align:right">Amount in</th>
+                    <th class="tnum" style="text-align:right">BOBAI added</th>
+                    <th class="tusd" style="text-align:right">$ Value</th>
+                    <th>Tx</th>
+                  </tr>
+                </thead>
+                <tbody id="tx-body">
+                  <tr><td colspan="6" class="txempty">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- AUSZAHLUNGSERKLÄRUNG -->
@@ -256,8 +266,8 @@
               <div class="flow-step">
                 <div class="num">5</div>
                 <div class="body">
-                  <b>Apply 26× holder cap</b> per winner. Excess flows to remaining uncapped winners proportionally.
-                  <span class="muted">Cascade repeats until all dollars land within someone's cap or pot is exhausted.</span>
+                  <b>Apply 26× holder cap</b> per winner, <b>per pot independently</b>. Excess flows to remaining uncapped winners proportionally within the same pot — never crosses pot boundaries.
+                  <span class="muted">Cascade repeats until every dollar lands within someone's cap. Any residual that no eligible winner can absorb is added as <b>permanent BOBAI/BNB liquidity</b> on PancakeSwap with LP burned to the dead address — never refunded, never kept.</span>
                 </div>
               </div>
               <div class="flow-step">
@@ -439,7 +449,7 @@
       }
       tbody.innerHTML = rows.map(r => {
         const chipClass = r.token === 'TAX' ? 'tax' : (r.token === 'BNB' ? 'bnb' : 'usdt');
-        const chipLabel = r.token === 'TAX' ? '⚙️ Tax' : (r.token === 'BNB' ? '💚 BNB' : '💚 USDT');
+        const chipLabel = r.token === 'TAX' ? '⚙️ Tax' : (r.token === 'BNB' ? '🟡 BNB' : '💵 USDT');
         const bobai = parseFloat(r.amount_bobai) || 0;
         const usdValue = bobai * livePrice;
         return `<tr>

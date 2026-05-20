@@ -167,9 +167,18 @@
 
     // State: pending answers (in-memory until Save)
     const FIELDS = ['champion','most_goals_team','fewest_goals_team','red_cards_bracket','topscorer_country'];
+    const VALID_BRACKETS = new Set(['<5','5-9','10-14','15-19','>19']);
     let pending = {};   // {field: value}
     let saved   = {};   // last-saved snapshot
     let locked = false;
+
+    // A field counts as "answered" only if its value is still valid.
+    // Red-card brackets changed mid-beta; old DB values like '<20' no longer match a button.
+    function isAnswered(field, val) {
+      if (!val) return false;
+      if (field === 'red_cards_bracket') return VALID_BRACKETS.has(val);
+      return true;
+    }
 
     function isLocked(){
       const cfgK = new Date(window.WC_CONFIG.KICKOFF_UTC).getTime();
@@ -221,7 +230,7 @@
     }
 
     function updateSaveBar(){
-      const answered = FIELDS.filter(f => pending[f]).length;
+      const answered = FIELDS.filter(f => isAnswered(f, pending[f])).length;
       $('#answered-count').textContent = `${answered}/5`;
       const dirty = FIELDS.some(f => (pending[f] || null) !== (saved[f] || null));
       $('#btn-save').disabled = !dirty || locked;
@@ -229,6 +238,7 @@
         locked ? '🔒 Locked — tournament started.'
         : dirty ? 'Unsaved changes.'
         : answered === 0 ? 'Pick at least one option.'
+        : answered < 5  ? 'Pick the remaining answers.'
         : '✅ All up to date.';
     }
 

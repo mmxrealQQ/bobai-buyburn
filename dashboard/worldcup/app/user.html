@@ -225,7 +225,12 @@
       $('#s-rank').textContent = rank;
       $('#s-rank-sub').textContent = 'of ' + (totalUsers || 1) + ' player' + ((totalUsers || 1) === 1 ? '' : 's');
       $('#s-tips').textContent = tipCount || 0;
-      const bonusFilled = bonusRow ? ['champion','most_goals_team','fewest_goals_team','red_cards_bracket','topscorer_country'].filter(k => bonusRow[k]).length : 0;
+      const VALID_BRACKETS = new Set(['<5','5-9','10-14','15-19','>19']);
+      const isValidBonus = (k, v) => v && (k !== 'red_cards_bracket' || VALID_BRACKETS.has(v));
+      const bonusFilled = bonusRow
+        ? ['champion','most_goals_team','fewest_goals_team','red_cards_bracket','topscorer_country']
+            .filter(k => isValidBonus(k, bonusRow[k])).length
+        : 0;
       $('#s-bonus').textContent = bonusFilled;
     }
 
@@ -310,7 +315,7 @@
           <div class="pick-item"><span class="lbl">Champion</span><span class="val">${cn(data.champion)}</span></div>
           <div class="pick-item"><span class="lbl">Most goals (team)</span><span class="val">${cn(data.most_goals_team)}</span></div>
           <div class="pick-item"><span class="lbl">Fewest goals (team)</span><span class="val">${cn(data.fewest_goals_team)}</span></div>
-          <div class="pick-item"><span class="lbl">Red-cards bracket</span><span class="val">${data.red_cards_bracket || '—'}</span></div>
+          <div class="pick-item"><span class="lbl">Red-cards bracket</span><span class="val">${(['<5','5-9','10-14','15-19','>19'].includes(data.red_cards_bracket)) ? data.red_cards_bracket : '—'}</span></div>
           <div class="pick-item"><span class="lbl">Top scorer (country)</span><span class="val">${cn(data.topscorer_country)}</span></div>
           ${data.resolved ? `<div class="pick-item"><span class="lbl">Bonus points</span><span class="val" style="color:var(--gold)">${data.points || 0}</span></div>` : ''}
         </div>`;

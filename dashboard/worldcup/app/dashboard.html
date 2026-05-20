@@ -270,7 +270,12 @@
           ? `${tipsMissing} missing — <a href="./tips.html" style="color:var(--gold);font-weight:600">place your tips →</a>`
           : 'All 104 placed ✓';
 
-        const bonusFilled = bonusRow ? ['champion','most_goals_team','fewest_goals_team','red_cards_bracket','topscorer_country'].filter(k => bonusRow[k]).length : 0;
+        const VALID_BRACKETS = new Set(['<5','5-9','10-14','15-19','>19']);
+        const isValidBonus = (k, v) => v && (k !== 'red_cards_bracket' || VALID_BRACKETS.has(v));
+        const bonusFilled = bonusRow
+          ? ['champion','most_goals_team','fewest_goals_team','red_cards_bracket','topscorer_country']
+              .filter(k => isValidBonus(k, bonusRow[k])).length
+          : 0;
         const bonusMissing = 5 - bonusFilled;
         $('#s-bonus').textContent = bonusFilled;
         $('#s-bonus-sub').innerHTML = bonusMissing > 0

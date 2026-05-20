@@ -62,6 +62,79 @@ async function sbInsert(table, row){
   } catch (e) { console.log(`[sb] insert error: ${e.message}`); }
 }
 
+async function sbPatch(table, query, row){
+  if (!SUPABASE_URL || !SB_KEY) { console.log('[sb] missing credentials — skipping patch'); return; }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SB_KEY,
+        Authorization: `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) console.log(`[sb] patch ${table} failed: ${res.status} ${await res.text()}`);
+  } catch (e) { console.log(`[sb] patch error: ${e.message}`); }
+}
+
+// ─── Prize-pool sync (mirrors worker-wc syncPool — keep in lockstep!) ───────
+// Why inline: worker-wc cron runs */10 independently of this script. Without
+// this, dashboards & TG alerts would show stale total_bobai for up to 10 min
+// after a swap. Patching wc_pool here BEFORE the wc_donations insert means
+// any reader who notices the new donation row also sees the fresh pool total.
+const BOBAI_PAIR  = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+const KICKOFF_UTC   = new Date('2026-06-11T19:00:00Z').getTime();
+const GROUP_END_UTC = new Date('2026-06-27T00:00:00Z').getTime();
+const FINAL_END_UTC = new Date('2026-07-20T00:00:00Z').getTime();
+
+function computePots(total, now){
+  if (now < GROUP_END_UTC) return { group: total*0.60, end: total*0.30, crypto: total*0.10 };
+  if (now < FINAL_END_UTC) return { group: 0,           end: total*0.90, crypto: total*0.10 };
+  return { group: 0, end: 0, crypto: 0 };
+}
+
+async function fetchBobaiPriceUsd(){
+  try {
+    const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}?_=${Date.now()}`,
+      { headers: { Accept: 'application/json' } });
+    if (r.ok) {
+      const d = await r.json();
+      const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
+      if (isFinite(p) && p > 0) return p;
+    }
+  } catch (e) { console.log(`[price] gecko: ${e.message}`); }
+  try {
+    const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI}`);
+    if (r.ok) {
+      const d = await r.json();
+      const pair = (d?.pairs || []).find(p => p.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase()) || (d?.pairs || [])[0];
+      const p = parseFloat(pair?.priceUsd);
+      if (isFinite(p) && p > 0) return p;
+    }
+  } catch (e) { console.log(`[price] dexscreener: ${e.message}`); }
+  return null;
+}
+
+async function syncPool(publicClient){
+  try {
+    const balWei = await publicClient.readContract({ address: BOBAI, abi: ERC20_ABI, functionName: 'balanceOf', args: [PRIZE_WALLET] });
+    const total  = Number(balWei) / 1e18;
+    const price  = await fetchBobaiPriceUsd();
+    const pots   = computePots(total, Date.now());
+    await sbPatch('wc_pool', 'id=eq.1', {
+      total_bobai:     total,
+      group_pot:       pots.group,
+      endpool:         pots.end,
+      crypto_pot:      pots.crypto,
+      bobai_price_usd: price,
+      updated_at:      new Date().toISOString(),
+    });
+    console.log(`[pool] synced: ${total.toFixed(0)} BOBAI @ $${price ?? '?'}`);
+  } catch (e) { console.log(`[pool] sync failed: ${e.message}`); }
+}
+
 // ─── Receipt parsing — extract BOBAI received from Transfer logs ────────────
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 function parseBobaiReceived(receipt, recipient){
@@ -130,6 +203,10 @@ async function main(){
       const got = parseBobaiReceived(receipt, account.address);
       console.log(`Received: ${formatEther(got)} BOBAI`);
 
+      // Sync wc_pool BEFORE inserting the donation row so any reader who sees
+      // the new wc_donations entry also sees the matching total_bobai.
+      await syncPool(publicClient);
+
       await sbInsert('wc_donations', {
         from_address: account.address,
         token: 'BNB',
@@ -187,6 +264,9 @@ async function main(){
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       const got = parseBobaiReceived(receipt, account.address);
       console.log(`Received: ${formatEther(got)} BOBAI`);
+
+      // Sync wc_pool BEFORE inserting the donation row (see BNB branch).
+      await syncPool(publicClient);
 
       await sbInsert('wc_donations', {
         from_address: account.address,

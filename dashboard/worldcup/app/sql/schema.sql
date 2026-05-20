@@ -63,7 +63,7 @@ CREATE TABLE wc_bonus (
   champion TEXT,                      -- predicted winner (ISO code)
   most_goals_team TEXT,
   fewest_goals_team TEXT,
-  red_cards_bracket TEXT,             -- '<20','20-30','30-40','40-50','>50'
+  red_cards_bracket TEXT,             -- '<5','5-9','10-14','15-19','>19'
   q5 TEXT,                            -- placeholder
   q6 TEXT,                            -- placeholder
   points INT DEFAULT 0,

@@ -218,12 +218,19 @@
 
     // ============== CONSTANTS ==============
     const POOL_SPLIT = {
-      groupTop1:  0.55,  // 1st-of-each-group bracket (12 winners, flat split)
-      groupTop2:  0.30,  // 2nd-of-each-group bracket (12 winners, flat split)
-      groupBest3: 0.15,  // 8 best 3rd-placed players (flat split)
+      groupTop1:  0.55,  // 1st-of-each-group bracket (split flat across GROUP_SLOTS_TOP1=12)
+      groupTop2:  0.30,  // 2nd-of-each-group bracket (split flat across GROUP_SLOTS_TOP2=12)
+      groupBest3: 0.15,  // 8 best 3rd-placed players (split flat across GROUP_SLOTS_BEST3=8)
       // End-pool: fixed tiered weights for top 4 overall
       endTiers: [0.50, 0.25, 0.15, 0.10],
     };
+    // Fixed slot counts — per-player share is always (fraction * group_pot) / slots,
+    // regardless of how many slots are actually filled at projection time. This matches
+    // the published rules (Group 1st × 12 → 55 %/12 ≈ 4.58 % etc.) and avoids inflating
+    // a single early leader to look like they'd win the whole bracket.
+    const GROUP_SLOTS_TOP1  = 12;
+    const GROUP_SLOTS_TOP2  = 12;
+    const GROUP_SLOTS_BEST3 = 8;
     const END_TOP_N = POOL_SPLIT.endTiers.length;
     const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const COINS = [
@@ -301,8 +308,12 @@
       return shares;
     }
 
-    // Group pot: 55/30/15 across {top1, top2, best-3rd}. Within each sub-bracket the
-    // share is split EQUALLY across all members. Keyed by `${user_id}|${letter}`.
+    // Group pot: 55/30/15 across {top1, top2, best-3rd}. Per-player share = (fraction *
+    // group_pot) / FIXED slots (12/12/8) — NOT divided by actually-filled slots. Empty
+    // slots don't inflate the remaining players' projections; any unallocated share is
+    // resolved at payout time within the SAME pot (cap-cascade first; if residual remains
+    // after every winner is capped, leftover → permanent BOBAI/BNB liquidity + LP burn).
+    // Keyed by `${user_id}|${letter}`.
     function computeGroupShares(allGroups){
       const shares = new Map();
       if (pool.group <= 0) return shares;
@@ -315,15 +326,15 @@
       });
       const best3 = best3candidates
         .sort((a,b) => (b.group_points||0) - (a.group_points||0))
-        .slice(0, 8);
-      function distribute(bracket, fraction){
-        if (!bracket.length) return;
-        const each = (pool.group * fraction) / bracket.length;
+        .slice(0, GROUP_SLOTS_BEST3);
+      function distribute(bracket, fraction, slots){
+        if (!bracket.length || slots <= 0) return;
+        const each = (pool.group * fraction) / slots;
         bracket.forEach(r => shares.set(`${r.user_id}|${r._letter}`, each));
       }
-      distribute(top1s, POOL_SPLIT.groupTop1);
-      distribute(top2s, POOL_SPLIT.groupTop2);
-      distribute(best3, POOL_SPLIT.groupBest3);
+      distribute(top1s, POOL_SPLIT.groupTop1,  GROUP_SLOTS_TOP1);
+      distribute(top2s, POOL_SPLIT.groupTop2,  GROUP_SLOTS_TOP2);
+      distribute(best3, POOL_SPLIT.groupBest3, GROUP_SLOTS_BEST3);
       return shares;
     }
 
@@ -331,9 +342,12 @@
     function computeCryptoWinnerShare(){ return pool.crypto / 3; }
 
     // ============== UI HELPERS ==============
-    function prizeCellHtml(bobai){
-      const totalPool = pool.total || 0;
-      const pct = totalPool > 0 ? (bobai / totalPool * 100) : 0;
+    // contextPot: the pot this row is paid out of (end / group / crypto). The percentage
+    // is the share of THAT pot — so Overall 1st reads 50% (of end pool), Crypto winner 33%
+    // (of crypto pot), Group top1 ≈ 4.6% (of group pot, since 12 winners share the 55% bracket).
+    function prizeCellHtml(bobai, contextPot){
+      const pot = contextPot || 0;
+      const pct = pot > 0 ? (bobai / pot * 100) : 0;
       const usd = bobai * (pool.price || 0);
       const isZero = !(bobai > 0);
       return `<div class="prize-cell ${isZero ? 'zero' : ''}">
@@ -368,7 +382,7 @@
         ? window.WC_AVATAR.avatarHtml(r.avatar_country, 'sm')
         : `<span style="font-size:22px">${countryFlag(r.avatar_country)}</span>`;
       const prize = (opts.prizeBobai != null)
-        ? prizeCellHtml(opts.prizeBobai)
+        ? prizeCellHtml(opts.prizeBobai, opts.contextPot)
         : `<div class="prize-cell zero"><div class="pz-pct">—</div><div class="pz-bobai">0 BOBAI</div><div class="pz-usd">$0</div></div>`;
       const ptsLabel = opts.ptsLabel ? `<span class="lbl">${opts.ptsLabel}</span>` : '';
       const pts = `<div class="pts ${opts.ptsClass || ''}">${opts.ptsValue}${ptsLabel}</div>`;
@@ -480,6 +494,7 @@
         ptsLabel: 'pts',
         ptsValue: row.total_points || 0,
         prizeBobai: shares.get(row.user_id) || 0,
+        contextPot: pool.end,
       })).join('');
       const scrollCls = rows.length > 10 ? 'list scroll-cap' : 'list';
       const myIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;
@@ -536,12 +551,14 @@
           ptsLabel: 'pts',
           ptsValue: r0.group_points || 0,
           prizeBobai: shares.get(`${r0.user_id}|${letter}`) || 0,
+          contextPot: pool.group,
         })).join('');
         const meHtml = meRowData
           ? `<div class="rank-gap">···</div>` + userRow(meRowData, meIdx + 1, {
               ptsLabel: 'pts',
               ptsValue: meRowData.group_points || 0,
               prizeBobai: shares.get(`${meRowData.user_id}|${letter}`) || 0,
+              contextPot: pool.group,
             })
           : '';
         playerListHtml = `<div class="list">${listHtml}${meHtml}</div>`;
@@ -617,6 +634,7 @@
             ptsLabel: 'pts',
             ptsValue: row.total_points || 0,
             prizeBobai: shares.get(row.user_id) || 0,
+            contextPot: pool.end,
           })).join('')
         : '<div class="empty">No players yet.</div>';
       const scrollCls = overallRows.length > 10 ? 'list scroll-cap' : 'list';
@@ -700,24 +718,26 @@
         const rank = rankByUserId.get(row.user_id) || '—';
         const isMe = !!(me && row.user_id === me.id);
         const reveal = cryptoRevealed || isMe;
-        const showClosest = isClosest && reveal;
         let ptsValue;
         if (reveal) {
           const diff = (livePx != null) ? Math.abs(row._tip - livePx) : null;
           const tipPx = fmtCryptoPrice(coin, row._tip);
           const diffHtml = diff != null
-            ? `<br><span style="font-size:10px;color:${showClosest?'var(--gold)':'var(--muted)'};font-weight:${showClosest?700:500}">Δ ${fmtCryptoPrice(coin, diff)}</span>`
+            ? `<br><span style="font-size:10px;color:${isClosest?'var(--gold)':'var(--muted)'};font-weight:${isClosest?700:500}">Δ ${fmtCryptoPrice(coin, diff)}</span>`
             : `<br><span style="font-size:10px;color:var(--muted)">no live</span>`;
           ptsValue = tipPx + diffHtml;
         } else {
           ptsValue = `<span style="color:var(--muted)">🔒</span><br><span style="font-size:10px;color:var(--muted)">locked</span>`;
         }
+        // Prize % (33% of crypto pot) is public — derives from rank, which is also public.
+        // Only the actual tip price stays hidden until first-match kickoff.
         return userRow(row, rank, {
           ptsLabel: '',
           ptsValue,
           ptsClass: 'diff',
-          prizeBobai: showClosest ? winnerPrize : 0,
-          extraClass: showClosest ? 'closest' : '',
+          prizeBobai: isClosest ? winnerPrize : 0,
+          contextPot: pool.crypto,
+          extraClass: isClosest ? 'closest' : '',
         });
       }
 

@@ -22,7 +22,8 @@
     .toc a{font-size:12px;padding:6px 10px;background:rgba(240,185,11,.07);border:1px solid rgba(240,185,11,.2);border-radius:6px;color:var(--gold);text-decoration:none;font-weight:600;letter-spacing:.3px}
     .toc a:hover{background:rgba(240,185,11,.15)}
     @media (max-width: 600px){
-      .toc{top:90px}
+      .toc{top:90px;padding:8px;gap:5px}
+      .toc a{font-size:10.5px;padding:5px 7px;letter-spacing:.2px}
     }
 
     h2{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--gold);margin:36px 0 12px;letter-spacing:-.01em;scroll-margin-top:200px}
@@ -43,6 +44,156 @@
     .scoring-table th{color:var(--gold);font-family:'Space Grotesk';font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase}
     .scoring-table td{color:var(--text)}
     .scoring-table td:last-child{text-align:right;color:var(--gold);font-family:'Space Grotesk';font-weight:600}
+
+    /* ─── Cap-overflow explainer ─── */
+    .cap-h3-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 8px}
+    .cap-h3-row h3{margin:0}
+    .cap-modal-btn{
+      display:inline-flex;align-items:center;gap:7px;
+      background:linear-gradient(135deg,rgba(240,185,11,.18),rgba(240,185,11,.08));
+      border:1px solid rgba(240,185,11,.45);color:var(--gold);
+      font-family:'Space Grotesk';font-weight:600;font-size:12px;letter-spacing:.3px;
+      padding:7px 13px;border-radius:999px;cursor:pointer;
+      transition:all .2s;text-decoration:none;
+    }
+    .cap-modal-btn:hover{background:linear-gradient(135deg,rgba(240,185,11,.32),rgba(240,185,11,.15));border-color:var(--gold);transform:translateY(-1px)}
+    .cap-modal-btn .ic{font-size:14px;line-height:1}
+
+    /* The "old" example block — now lives inside the modal */
+    .cap-example{background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:16px;margin:14px 0 18px}
+    .cap-example .lead{font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.65}
+    .cap-example .lead b{color:var(--gold)}
+    .cap-case{margin-bottom:18px}
+    .cap-case:last-child{margin-bottom:0}
+    .cap-case-title{font-family:'Space Grotesk';font-weight:600;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;padding:7px 12px;border-radius:8px;margin-bottom:10px;display:inline-block}
+    .cap-case-title.ok{background:rgba(0,230,118,.07);color:#5fffa0;border:1px solid rgba(0,230,118,.25)}
+    .cap-case-title.bad{background:rgba(255,180,0,.07);color:#ffc066;border:1px solid rgba(255,180,0,.25)}
+    .cap-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    @media (max-width:600px){.cap-row{grid-template-columns:repeat(2,1fr);gap:6px}}
+    .cap-card{background:rgba(5,5,16,.6);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11.5px;line-height:1.45;color:var(--muted);position:relative}
+    .cap-card.capped{border-color:rgba(255,48,40,.3);background:rgba(255,48,40,.04)}
+    .cap-card.bonus{border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.04)}
+    .cap-card .h{font-family:'Space Grotesk';font-weight:600;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--text);margin-bottom:6px}
+    .cap-card .line{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+    .cap-card .line + .line{margin-top:2px}
+    .cap-card .line span{color:var(--muted);font-size:10.5px}
+    .cap-card .line b{color:var(--text);font-family:'Space Grotesk';font-weight:600;font-size:11.5px}
+    .cap-card .line.pay{margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)}
+    .cap-card .line.pay b{color:var(--gold);font-size:13px}
+    .cap-card .line.strike b{color:#ff8580;text-decoration:line-through;font-size:10.5px}
+    .cap-card .stamp{position:absolute;top:-7px;right:-7px;background:rgba(255,48,40,.92);color:#fff;font-family:'Space Grotesk';font-weight:700;font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:4px;transform:rotate(8deg);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+    .cap-card .overflow-tag{margin-top:6px;padding:4px 6px;background:rgba(255,180,0,.08);border:1px dashed rgba(255,180,0,.3);border-radius:5px;font-size:10px;color:#ffc066;text-align:center;font-weight:600;letter-spacing:.2px}
+    .cap-card .bonus-tag{margin:5px 0;padding:4px 6px;background:rgba(0,230,118,.08);border:1px dashed rgba(0,230,118,.3);border-radius:5px;font-size:10px;color:#5fffa0;text-align:center;font-weight:600;letter-spacing:.2px}
+    .cap-foot{margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.55}
+    .cap-foot b{color:var(--text)}
+
+    /* ─── Cap-overflow MODAL (lightbox) ─── */
+    .cap-modal{position:fixed;inset:0;z-index:300;display:none;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto}
+    .cap-modal[aria-hidden="false"]{display:flex;animation:capFade .2s ease-out}
+    @keyframes capFade{from{opacity:0}to{opacity:1}}
+    .cap-modal-backdrop{position:fixed;inset:0;background:rgba(2,2,8,.85);backdrop-filter:blur(8px) saturate(1.3);z-index:-1}
+    .cap-modal-box{
+      position:relative;max-width:920px;width:100%;
+      background:linear-gradient(180deg,rgba(15,15,30,.98),rgba(5,5,16,.98));
+      border:1px solid rgba(240,185,11,.35);border-radius:18px;
+      box-shadow:0 16px 60px rgba(0,0,0,.6),0 0 0 1px rgba(240,185,11,.08) inset;
+      padding:0;animation:capPop .25s cubic-bezier(.2,.9,.3,1.1);
+      margin:auto;
+    }
+    @keyframes capPop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+    .cap-modal-close{
+      position:absolute;top:14px;right:14px;z-index:5;
+      width:36px;height:36px;border-radius:50%;
+      background:rgba(0,0,0,.55);border:1px solid var(--border);color:var(--text);
+      font-size:22px;line-height:1;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:all .15s;
+    }
+    .cap-modal-close:hover{background:rgba(255,48,40,.25);border-color:rgba(255,48,40,.5);color:#ff8580;transform:rotate(90deg)}
+    .cap-modal-header{
+      position:relative;
+      padding:28px 60px 18px;
+      display:grid;grid-template-columns:90px 1fr 90px;align-items:center;gap:14px;
+      border-bottom:1px solid var(--border);
+      background:
+        radial-gradient(ellipse at top, rgba(240,185,11,.10), transparent 60%),
+        linear-gradient(180deg,rgba(240,185,11,.04),transparent);
+      border-radius:18px 18px 0 0;
+    }
+    .cap-modal-header h2{
+      grid-column:2;text-align:center;
+      font-family:'Space Grotesk';font-weight:700;font-size:24px;letter-spacing:-.01em;
+      color:var(--gold);margin:0;line-height:1.15;
+    }
+    .cap-modal-header .sub{
+      grid-column:2;text-align:center;
+      font-size:12.5px;color:var(--muted);margin:6px 0 0;letter-spacing:.3px;
+    }
+    .cap-modal-header .sub b{color:var(--text)}
+    .cap-illus{
+      width:90px;height:90px;display:flex;align-items:center;justify-content:center;
+    }
+    .cap-illus img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4))}
+    .cap-illus.left{grid-column:1}
+    .cap-illus.right{grid-column:3}
+    .cap-modal-body{padding:22px 28px 28px}
+    .cap-modal-body .cap-example{margin:0;background:transparent;border:none;padding:0}
+    .cap-modal-body .cap-row{grid-template-columns:repeat(4,1fr);gap:10px}
+    .cap-modal-body .cap-case{margin-bottom:24px}
+    .cap-modal-body .cap-case:last-child{margin-bottom:0}
+    .cap-modal-body .lead{font-size:14px;line-height:1.7;margin:0 0 18px;padding:14px 16px;background:rgba(240,185,11,.05);border:1px solid rgba(240,185,11,.18);border-radius:10px}
+    .cap-divider{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      margin:14px 0 18px;
+    }
+    .cap-divider img{
+      width:140px;height:140px;object-fit:contain;
+      filter:drop-shadow(0 8px 22px rgba(240,185,11,.18));
+    }
+    .cap-divider .lbl{
+      margin-top:4px;font-size:10px;color:rgba(240,185,11,.55);
+      font-family:'Space Grotesk';font-weight:600;letter-spacing:3px;text-transform:uppercase;
+    }
+    .cap-case-titlebar{
+      display:flex;align-items:center;gap:12px;margin-bottom:10px;
+    }
+    .cap-case-titlebar .ic{
+      flex-shrink:0;width:64px;height:64px;display:flex;align-items:center;justify-content:center;
+    }
+    .cap-case-titlebar .ic img{
+      max-width:100%;max-height:100%;object-fit:contain;
+      filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));
+    }
+    .cap-case-titlebar .cap-case-title{margin-bottom:0}
+    .cap-modal-footer{
+      padding:18px 28px 22px;border-top:1px solid var(--border);
+      font-size:12.5px;color:var(--muted);line-height:1.65;
+      display:grid;grid-template-columns:90px 1fr;align-items:center;gap:16px;text-align:left;
+    }
+    .cap-footer-illus{
+      width:90px;height:90px;object-fit:contain;
+      filter:drop-shadow(0 6px 14px rgba(0,0,0,.4));
+    }
+    .cap-modal-footer b{color:var(--gold)}
+
+    @media (max-width: 720px){
+      .cap-modal{padding:12px 6px}
+      .cap-modal-box{border-radius:14px}
+      .cap-modal-header{grid-template-columns:60px 1fr 60px;padding:22px 50px 14px;gap:8px}
+      .cap-modal-header h2{font-size:18px}
+      .cap-modal-header .sub{font-size:11.5px}
+      .cap-illus{width:60px;height:60px}
+      .cap-modal-body{padding:18px 14px 18px}
+      .cap-modal-body .cap-row{grid-template-columns:repeat(2,1fr);gap:8px}
+      .cap-modal-body .lead{font-size:13px;padding:12px}
+      .cap-modal-footer{padding:14px 18px 18px;grid-template-columns:1fr;text-align:center;gap:10px}
+      .cap-footer-illus{width:72px;height:72px;justify-self:center}
+      .cap-divider img{width:110px;height:110px}
+      .cap-case-titlebar .ic{width:48px;height:48px}
+    }
+
+    /* Lock background scroll while modal is open */
+    body.cap-modal-open{overflow:hidden}
   </style>
 </head>
 <body>
@@ -75,9 +226,9 @@
           <nav class="toc">
             <a href="#disclaimer">⚠ Disclaimer</a>
             <a href="#register">Register</a>
-            <a href="#bonus">Bonus questions</a>
-            <a href="#tips">Match tips</a>
-            <a href="#crypto">Crypto predictions</a>
+            <a href="#bonus">Bonus</a>
+            <a href="#tips">Tips</a>
+            <a href="#crypto">Crypto</a>
             <a href="#scoring">Scoring</a>
             <a href="#pool">Prize pool</a>
             <a href="#payouts">Payouts</a>
@@ -227,6 +378,7 @@
           <table class="scoring-table">
             <tr><th>Your wallet holds</th><th>Maximum single payout</th></tr>
             <tr><td>$1 in BOBAI</td><td>$26</td></tr>
+            <tr><td>$10 in BOBAI</td><td>$260</td></tr>
             <tr><td>$100 in BOBAI</td><td>$2,600</td></tr>
             <tr><td>$1,000 in BOBAI</td><td>$26,000</td></tr>
             <tr><td>$10,000 in BOBAI</td><td>$260,000</td></tr>
@@ -237,14 +389,19 @@
           <p><b>Don't worry about being "capped out".</b> Nobody knows in advance how big the prize pool will be — but if the pool grows, your <b>BOBAI balance grows with it</b> (same token, same chart). So the cap scales with you. Holding more BOBAI literally raises your ceiling.</p>
           <p>The balance is read <b>live from the blockchain</b> at payout time — there's no snapshot to game and no way to fake it.</p>
 
-          <h3>Cap overflow — cascading redistribution</h3>
-          <p>If a winner's computed share exceeds their personal 26× cap, the excess does <b>not</b> stay with that winner and is <b>not</b> burned. It flows to the rest of the eligible winners in the same pot:</p>
+          <div class="cap-h3-row">
+            <h3>Cap overflow — cascading redistribution</h3>
+            <button type="button" class="cap-modal-btn" onclick="openCapModal()" aria-haspopup="dialog" aria-controls="cap-modal">
+              <span class="ic">⚽</span> See a visual walk-through
+            </button>
+          </div>
+          <p>If a winner's computed share exceeds their personal 26× cap, the excess does <b>not</b> stay with that winner and is <b>not</b> kept by the team. It flows to the rest of the eligible winners <b>in the same pot</b>. Each pot (Group, End Pool, and the three Crypto pots) is evaluated <b>independently</b> — overflow never crosses pot boundaries.</p>
           <ol>
             <li>Compute every winner's raw share based on points / closest-guess logic.</li>
             <li>Apply each winner's 26× cap. Sum up the overflow from anyone who got capped.</li>
-            <li>Redistribute that overflow <b>proportionally</b> to the remaining (uncapped) winners.</li>
+            <li>Redistribute that overflow <b>proportionally</b> to the remaining (uncapped) winners <b>within the same pot</b>.</li>
             <li>If that redistribution pushes a new winner over their cap, repeat step 2 — the cascade continues until either every dollar is paid out within someone's cap, or no eligible uncapped winner remains.</li>
-            <li>Any residual that nobody can absorb rolls into the <b>next pot</b> (Group → End Pool, End → Crypto carry-over) as a final fallback. It is never burned and never kept by the team.</li>
+            <li>If after the full cascade <b>residual still remains</b> (every winner in that pot is capped out), the leftover BOBAI is added as <b>permanent liquidity</b> to the BOBAI/BNB PancakeSwap pool, and the resulting LP tokens are <b>burned to the dead address</b>. It is never carried into another pot, never refunded, never kept by the team — the value flows back to every BOBAI holder through a deeper, tighter market.</li>
           </ol>
           <p style="font-size:12.5px">The cascading logic is implemented in the same payout-computation code that the admin runs before signing. The full split (raw share, cap applied, redistribution rounds) will be published on-chain alongside each payout batch so anyone can verify it.</p>
 
@@ -300,6 +457,124 @@
     </main>
   </div>
 
+  <!-- ─── Cap-overflow modal (opened via the "See a visual walk-through" button in §7) ─── -->
+  <div id="cap-modal" class="cap-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cap-modal-title">
+    <div class="cap-modal-backdrop" onclick="closeCapModal()"></div>
+    <div class="cap-modal-box">
+      <button type="button" class="cap-modal-close" aria-label="Close" onclick="closeCapModal()">×</button>
+
+      <div class="cap-modal-header">
+        <div class="cap-illus left">
+          <img alt="" src="./illus/pool-trophy.webp"
+               onerror="this.onerror=null;this.src='./illus/pool-trophy.png'">
+        </div>
+        <h2 id="cap-modal-title">The 26× Cap — Visual Walk-Through</h2>
+        <p class="sub">A <b>Group-Phase scenario</b> showing how overflow cascades within a single pot</p>
+        <div class="cap-illus right">
+          <img alt="" src="./illus/tips-ball.webp"
+               onerror="this.onerror=null;this.src='./illus/tips-ball.png'">
+        </div>
+      </div>
+
+      <div class="cap-modal-body">
+        <div class="cap-example">
+          <p class="lead">
+            Imagine the <b>Group Pot</b> has grown to <b>$24,000</b>. The top-1 sub-bracket holds <b>55% = $13,200</b>, split equally among the <b>12 group winners</b> → each one is entitled to <b>$1,100</b>. Below are <b>4 representative winners</b> with very different BOBAI balances.
+          </p>
+
+          <div class="cap-case">
+            <div class="cap-case-title ok">Case A — Everyone holds enough BOBAI</div>
+            <div class="cap-row">
+              <div class="cap-card">
+                <div class="h">Winner 1</div>
+                <div class="line"><span>Holds</span><b>$500</b></div>
+                <div class="line"><span>26× cap</span><b>$13,000</b></div>
+                <div class="line pay"><span>Paid</span><b>$1,100 ✓</b></div>
+              </div>
+              <div class="cap-card">
+                <div class="h">Winner 2</div>
+                <div class="line"><span>Holds</span><b>$1,000</b></div>
+                <div class="line"><span>26× cap</span><b>$26,000</b></div>
+                <div class="line pay"><span>Paid</span><b>$1,100 ✓</b></div>
+              </div>
+              <div class="cap-card">
+                <div class="h">Winner 3</div>
+                <div class="line"><span>Holds</span><b>$200</b></div>
+                <div class="line"><span>26× cap</span><b>$5,200</b></div>
+                <div class="line pay"><span>Paid</span><b>$1,100 ✓</b></div>
+              </div>
+              <div class="cap-card">
+                <div class="h">Winner 4</div>
+                <div class="line"><span>Holds</span><b>$1,500</b></div>
+                <div class="line"><span>26× cap</span><b>$39,000</b></div>
+                <div class="line pay"><span>Paid</span><b>$1,100 ✓</b></div>
+              </div>
+            </div>
+            <div class="cap-foot">Every cap respected. All 12 group winners are paid in full — <b>$13,200 distributed, nothing held back</b>.</div>
+          </div>
+
+          <div class="cap-divider">
+            <img src="./illus/wallet-cascade.webp" alt="cascade flow">
+            <div class="lbl">↓ &nbsp; The overflow cascade &nbsp; ↓</div>
+          </div>
+
+          <div class="cap-case">
+            <div class="cap-case-titlebar">
+              <div class="ic"><img src="./illus/wallet-overflow.webp" alt=""></div>
+              <div class="cap-case-title bad">Case B — Two winners hit the 26× cap → cascade</div>
+            </div>
+            <div class="cap-row">
+              <div class="cap-card capped">
+                <span class="stamp">CAPPED</span>
+                <div class="h">Winner 1</div>
+                <div class="line"><span>Holds</span><b>$5</b></div>
+                <div class="line"><span>26× cap</span><b>$130</b></div>
+                <div class="line strike"><span>Share was</span><b>$1,100</b></div>
+                <div class="line pay"><span>Paid</span><b>$130</b></div>
+                <div class="overflow-tag">Overflow $970 ↓</div>
+              </div>
+              <div class="cap-card capped">
+                <span class="stamp">CAPPED</span>
+                <div class="h">Winner 2</div>
+                <div class="line"><span>Holds</span><b>$20</b></div>
+                <div class="line"><span>26× cap</span><b>$520</b></div>
+                <div class="line strike"><span>Share was</span><b>$1,100</b></div>
+                <div class="line pay"><span>Paid</span><b>$520</b></div>
+                <div class="overflow-tag">Overflow $580 ↓</div>
+              </div>
+              <div class="cap-card bonus">
+                <div class="h">Winner 3</div>
+                <div class="line"><span>Holds</span><b>$200</b></div>
+                <div class="line"><span>26× cap</span><b>$5,200</b></div>
+                <div class="line"><span>Base share</span><b>$1,100</b></div>
+                <div class="bonus-tag">+ Cascade bonus $155</div>
+                <div class="line pay"><span>Paid</span><b>$1,255 ✓</b></div>
+              </div>
+              <div class="cap-card bonus">
+                <div class="h">Winner 4</div>
+                <div class="line"><span>Holds</span><b>$1,500</b></div>
+                <div class="line"><span>26× cap</span><b>$39,000</b></div>
+                <div class="line"><span>Base share</span><b>$1,100</b></div>
+                <div class="bonus-tag">+ Cascade bonus $155</div>
+                <div class="line pay"><span>Paid</span><b>$1,255 ✓</b></div>
+              </div>
+            </div>
+            <div class="cap-foot">
+              Total overflow from the 2 capped winners = <b>$1,550</b>. That overflow cascades to the <b>10 uncapped winners</b>, +$155 each — all stay well under their personal caps. The full <b>$13,200</b> sub-bracket is paid out <b>within this same pot</b>, fully absorbed by the cascade.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cap-modal-footer">
+        <img class="cap-footer-illus" src="./illus/liquidity-lock.webp" alt="">
+        <div>
+          <b>Extreme edge case.</b> If every winner in a pot is capped out and a residual still remains, that leftover BOBAI is added as <b>permanent liquidity</b> to the BOBAI/BNB PancakeSwap pool, and the resulting LP tokens are <b>burned to the dead address</b>. It <b>never</b> crosses into another pot, <b>never</b> refunds, <b>never</b> stays with the team — value flows back to every BOBAI holder via a tighter market.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="./assets/config.js?v=11"></script>
   <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=2"></script>
@@ -310,6 +585,31 @@
     const addrHint = document.getElementById('addr-hint');
     const a = window.WC_CONFIG?.PRIZE_WALLET;
     if (a && addrHint) addrHint.textContent = a.slice(0,6) + '…' + a.slice(-4);
+
+    // ─── Cap-overflow modal ───
+    function openCapModal(){
+      const m = document.getElementById('cap-modal');
+      if (!m) return;
+      m.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('cap-modal-open');
+      // Focus the close button for keyboard users
+      const close = m.querySelector('.cap-modal-close');
+      if (close) setTimeout(()=>close.focus(), 50);
+    }
+    function closeCapModal(){
+      const m = document.getElementById('cap-modal');
+      if (!m) return;
+      m.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('cap-modal-open');
+    }
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        const m = document.getElementById('cap-modal');
+        if (m && m.getAttribute('aria-hidden') === 'false') closeCapModal();
+      }
+    });
+    window.openCapModal = openCapModal;
+    window.closeCapModal = closeCapModal;
   </script>
 </body>
 </html>

@@ -13,6 +13,14 @@
     .tipbar button{flex:1;min-width:80px;padding:9px 8px;font-size:12px;font-weight:600;border:none;background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit}
     .tipbar button.active{background:var(--gold-glow);color:var(--gold)}
 
+    /* Subtle group A–L jump bar — shows only when Groups view is active */
+    .group-sub{display:flex;flex-wrap:wrap;gap:4px;margin:-8px 0 14px;padding:0 2px;align-items:center}
+    .group-sub .lbl{font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-right:4px}
+    .group-sub button{padding:4px 9px;font-size:10.5px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--muted);border-radius:6px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.3px}
+    .group-sub button:hover{border-color:rgba(240,185,11,.3);color:var(--text)}
+    .group-sub button.active{background:var(--gold-glow);color:var(--gold);border-color:rgba(240,185,11,.5)}
+    .group-sub.hidden{display:none}
+
     .group-card{background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
     .group-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
     .group-title{font-family:'Space Grotesk';font-weight:700;font-size:15px;color:var(--gold);letter-spacing:.5px}
@@ -104,6 +112,12 @@
             <button data-view="final">Final</button>
           </div>
 
+          <!-- Quick-jump to a single group, shown only when Groups view is active -->
+          <div class="group-sub hidden" id="group-sub">
+            <span class="lbl">Jump to</span>
+            <button data-letter="all" class="active">All</button>
+          </div>
+
           <div id="list">Loading matches…</div>
         </div>
       </div>
@@ -168,6 +182,8 @@
     let allMatches = [];
     let myTips = {};
     let currentView = 'next48';
+    let currentGroupLetter = 'all';
+    const GROUP_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
 
     function hasTip(m){
       const t = myTips[m.id];
@@ -194,10 +210,17 @@
       b.textContent = n ? String(n) : '';
     }
 
+    function parseEmoji(){
+      if (!window.twemoji) return;
+      try { window.twemoji.parse($('#list'), { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
+    }
+
     function render(){
       const list = $('#list');
       list.innerHTML = '';
       refreshBadge();
+      // Re-parse twemoji after DOM is built — covers every early-return path.
+      queueMicrotask(parseEmoji);
 
       if (currentView === 'next48') {
         const items = next48Untipped();
@@ -229,11 +252,14 @@
           byG[m.group_letter] = byG[m.group_letter] || [];
           byG[m.group_letter].push(m);
         });
-        const letters = Object.keys(byG).sort();
-        if (!letters.length) {
+        const allLetters = Object.keys(byG).sort();
+        if (!allLetters.length) {
           list.innerHTML = '<div class="alert info">No matches loaded yet. Run the Phase D seed in Supabase.</div>';
           return;
         }
+        const letters = currentGroupLetter === 'all'
+          ? allLetters
+          : allLetters.filter(L => L === currentGroupLetter);
         letters.forEach(letter => {
           const card = document.createElement('div');
           card.className = 'group-card';
@@ -340,14 +366,43 @@
       return wrap;
     }
 
+    function updateGroupSubBarVisibility(){
+      $('#group-sub').classList.toggle('hidden', currentView !== 'group');
+    }
+
+    function buildGroupSubBar(){
+      const bar = $('#group-sub');
+      if (!bar.querySelector('[data-letter="A"]')) {
+        GROUP_LETTERS.forEach(L => {
+          const btn = document.createElement('button');
+          btn.dataset.letter = L;
+          btn.textContent = L;
+          bar.appendChild(btn);
+        });
+      }
+      bar.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.letter === currentGroupLetter);
+      });
+      bar.querySelectorAll('button').forEach(b => {
+        b.onclick = () => {
+          currentGroupLetter = b.dataset.letter;
+          buildGroupSubBar();
+          render();
+        };
+      });
+    }
+
     $$('#phase-bar button').forEach(b => b.addEventListener('click', () => {
       $$('#phase-bar button').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       currentView = b.dataset.view;
+      updateGroupSubBarVisibility();
       render();
     }));
 
     (async ()=>{
+      buildGroupSubBar();
+      updateGroupSubBarVisibility();
       const me = await window.WC_AUTH.currentProfile();
       if (!me) { window.location.href = './index.html'; return; }
       const [mr, tr] = await Promise.all([

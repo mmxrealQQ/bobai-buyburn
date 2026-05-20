@@ -176,6 +176,11 @@
       e.preventDefault();
       showAlert();
       const fd = new FormData(e.target);
+      if (!fd.get('country')) {
+        showAlert('error', 'Please pick your country flag below.');
+        document.getElementById('country-grid').scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
       const btn = e.target.querySelector('button[type="submit"]');
       btn.disabled = true; btn.textContent = 'Creating…';
       const r = await window.WC_AUTH.register({

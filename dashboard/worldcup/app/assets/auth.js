@@ -59,12 +59,10 @@
       }
       return { error: signUpErr.message };
     }
-    if (!signUp.user) {
-      return { error: 'Sign-up failed (no user returned).' };
-    }
-
-    // If there's no session (Confirm Email is on), tell the UI to show the
-    // "check your email" message.
+    // Confirm Email is on → no immediate session, user must click the email
+    // link. Supabase's anti-enumeration may also return a null/empty user
+    // even on successful signup; since signUpErr would have fired on a real
+    // failure, treat "no error" as success and tell the user to check mail.
     const { data: s } = await sb.auth.getSession();
     if (!s.session) {
       return { ok: true, needsConfirmation: true };

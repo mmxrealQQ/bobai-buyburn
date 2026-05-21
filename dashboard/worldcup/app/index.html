@@ -111,6 +111,22 @@
     </main>
   </div>
 
+  <!-- Post-signup "check your email" modal -->
+  <div id="confirm-modal" class="modal-back" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+    <div class="modal">
+      <div class="modal-body" style="text-align:center">
+        <div style="font-size:48px;line-height:1;margin-bottom:10px">📧</div>
+        <h4 id="confirm-modal-title">Check your email</h4>
+        <p class="lead">We just sent a confirmation link to <b id="confirm-modal-email" style="color:var(--gold);word-break:break-all"></b>.</p>
+        <p>Click the link in the email to activate your account, then come back and sign in.</p>
+        <p class="hint" style="margin-top:16px">Don't see it? Check your spam folder.</p>
+      </div>
+      <div class="modal-actions" style="justify-content:center">
+        <button type="button" class="btn" id="confirm-ok">Got it</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./assets/config.js?v=11"></script>
   <script src="./assets/countries.js?v=11"></script>
@@ -193,12 +209,22 @@
       btn.disabled = false; btn.textContent = 'Create account';
       if (r.error) { showAlert('error', r.error); return; }
       if (r.needsConfirmation) {
-        showAlert('ok', 'Account created — check your email to confirm, then sign in.');
+        openConfirmModal(fd.get('email'));
         return;
       }
       showAlert('ok', 'Account created — redirecting…');
       setTimeout(()=>{ window.location.href = './dashboard.html'; }, 700);
     });
+
+    /* Post-signup confirm-email modal */
+    const confirmModal = $('#confirm-modal');
+    function openConfirmModal(email){
+      $('#confirm-modal-email').textContent = email || '';
+      confirmModal.classList.add('open');
+    }
+    function closeConfirmModal(){ confirmModal.classList.remove('open'); }
+    $('#confirm-ok').addEventListener('click', closeConfirmModal);
+    confirmModal.addEventListener('click', (e)=>{ if (e.target === confirmModal) closeConfirmModal(); });
 
     // Forgot password
     $('#form-forgot').addEventListener('submit', async (e)=>{

@@ -220,7 +220,7 @@ function getBurnEmojis(usdValue) {
   else if (usdValue >= 150) icon = '☄️ APOCALYPSE BURN!';
   else if (usdValue >= 50) icon = '💀 MEGA BURN!';
   else if (usdValue >= 15) icon = '🌋 BIG BURN!';
-  else if (usdValue >= 5) icon = '🔥 NICE BURN!';
+  else if (usdValue >= 5) icon = '🕯️ NICE BURN!';
   else icon = '♻️ BURN';
   return { bar, icon };
 }
@@ -695,7 +695,7 @@ async function handleCommand(msg) {
 
 🔥 <b>Burn Alert Tiers</b>
 ♻️ &lt; $5 → BURN
-🔥 $5+ → NICE BURN!
+🕯️ $5+ → NICE BURN!
 🌋 $15+ → BIG BURN!
 💀 $50+ → MEGA BURN!
 ☄️ $150+ → APOCALYPSE BURN!

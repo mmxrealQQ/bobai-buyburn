@@ -45,6 +45,17 @@
 
     .cd-block{margin-bottom:32px}
     .cd-title{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+
+    /* Live Prize Pool — dezent über Countdown */
+    .pool-block{margin:0 auto 28px;max-width:520px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 22px;background:var(--gold-glow);border:1px solid rgba(240,185,11,.22);border-radius:var(--radius);text-decoration:none;color:inherit;transition:border-color .15s,transform .15s}
+    .pool-block:hover{border-color:rgba(240,185,11,.45);transform:translateY(-1px)}
+    .pool-title{font-family:'Space Grotesk';font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px}
+    .pool-title .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.8s infinite}
+    .pool-values{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;justify-content:center}
+    .pool-bobai{font-family:'Space Grotesk';font-weight:700;font-size:20px;color:var(--text);letter-spacing:-.01em}
+    .pool-bobai .unit{color:var(--gold);font-weight:600;font-size:14px;margin-left:4px}
+    .pool-usd{color:var(--muted);font-size:14px;font-weight:500}
+    .pool-block.loading .pool-bobai,.pool-block.loading .pool-usd{opacity:.35}
     .countdown{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
     .cd-cell{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;min-width:88px}
     .cd-num{font-family:'Space Grotesk';font-weight:700;font-size:32px;color:var(--gold);line-height:1}
@@ -115,6 +126,14 @@
           <span class="pill"><span class="dot"></span>Registration Open · Kickoff 11 June 2026</span>
           <h1 class="hero-h1"><span class="accent">BOBAI</span><br><span class="accent">Worldcup '26</span></h1>
           <p class="hero-sub">The on-chain tipping game for World Cup 2026. Predict every match, climb the leaderboard and win from a transparent BOBAI prize pool. No middleman. No paperwork. Just call your shots.</p>
+
+          <a class="pool-block loading" id="pool-block" href="./app/prize-pool.html" title="See full prize-pool breakdown">
+            <div class="pool-title"><span class="dot"></span><span>🏆 Live Prize Pool</span></div>
+            <div class="pool-values">
+              <div class="pool-bobai"><span id="pool-bobai">—</span><span class="unit">BOBAI</span></div>
+              <div class="pool-usd">·  ≈ <span id="pool-usd">$—</span></div>
+            </div>
+          </a>
 
           <div class="cd-block">
             <div class="cd-title">⚽ Official Kickoff in</div>
@@ -289,6 +308,36 @@
     }
     renderCountdown();
     setInterval(renderCountdown, 1000);
+
+    /* Live prize-pool ticker — public anon read on wc_pool */
+    function fmtBobai(n){
+      if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
+      if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+      if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+      return Math.round(n).toLocaleString('en-US');
+    }
+    function fmtUsd(n){
+      if (n >= 1000) return '$'+Math.round(n).toLocaleString('en-US');
+      return '$'+n.toFixed(2);
+    }
+    async function loadPool(){
+      try {
+        const cfg = window.WC_CONFIG;
+        const url = `${cfg.SUPABASE_URL}/rest/v1/wc_pool?id=eq.1&select=total_bobai,bobai_price_usd`;
+        const res = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Accept: 'application/json' } });
+        if (!res.ok) return;
+        const rows = await res.json();
+        const p = Array.isArray(rows) ? rows[0] : null;
+        if (!p) return;
+        const total = parseFloat(p.total_bobai) || 0;
+        const price = parseFloat(p.bobai_price_usd) || 0;
+        $('pool-bobai').textContent = fmtBobai(total);
+        $('pool-usd').textContent = fmtUsd(total * price);
+        document.getElementById('pool-block').classList.remove('loading');
+      } catch (_) {/* silent — block stays hidden in loading state */}
+    }
+    loadPool();
+    setInterval(loadPool, 30000);
 
     /* Auth form (mirrors /worldcup/app/index.html) */
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];

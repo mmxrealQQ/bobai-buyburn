@@ -235,7 +235,8 @@ function getDonationEmojis(usdValue, token) {
   else if (usdValue >= 50)  icon = '🎯 HAT-TRICK!';
   else if (usdValue >= 25)  icon = '🥅 GOAL!';
   else if (usdValue >= 10)  icon = '🎽 SUPPORTER!';
-  else                      icon = '🏟️ KICKOFF!';
+  else if (usdValue >= 5)   icon = '🏟️ KICKOFF!';
+  else                      icon = '🍺 WARMUP!';
   return { bar, icon };
 }
 
@@ -701,6 +702,7 @@ async function handleCommand(msg) {
 💥 $250+ → SUPERNOVA BURN!
 
 ⚽ <b>Worldcup Donation Tiers</b>
+🍺 &lt;$5 → WARMUP!
 🏟️ $5+ → KICKOFF!
 🎽 $10+ → SUPPORTER!
 🥅 $25+ → GOAL!

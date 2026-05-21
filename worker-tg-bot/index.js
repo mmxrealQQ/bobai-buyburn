@@ -32,7 +32,7 @@ const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AAPfadI1EORIV-4JDTPKnQmo3il3NPsAAkYNa
 const PHOTO_BIGBUY = 'AgACAgQAAyEGAATh_8g_AAPgadI1EEm5Qa4VhE6mqWf0m6PuFMYAAkcNaxtDCplSLzBgWf5z1mMBAAMCAAN4AAM7BA';
 const PHOTO_BURN = 'AgACAgQAAyEGAATh_8g_AAIB0mnWDmHKwNjMTlDUC3WLJRO30ii_AAKBDGsbUeywUgNqPnsGFkssAQADAgADeAADOwQ';
 // Donation illus served by URL (TG caches them server-side after first fetch)
-const PHOTO_DONATION_BNB  = 'https://brainonbnb.com/worldcup/app/illus/donation-bnb.webp';
+const PHOTO_DONATION_BNB  = 'https://brainonbnb.com/worldcup/app/illus/donation-bnb.webp?v=2';
 const PHOTO_DONATION_USDT = 'https://brainonbnb.com/worldcup/app/illus/donation-usdt.webp';
 
 // Known bot/system wallets to ignore in buy alerts

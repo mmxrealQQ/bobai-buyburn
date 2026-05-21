@@ -262,22 +262,6 @@
     </div>
   </div>
 
-  <!-- Post-signup "check your email" modal -->
-  <div id="confirm-modal" class="modal-back" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
-    <div class="modal">
-      <div class="modal-body" style="text-align:center">
-        <div style="font-size:48px;line-height:1;margin-bottom:10px">📧</div>
-        <h4 id="confirm-modal-title">Check your email</h4>
-        <p class="lead">We just sent a confirmation link to <b id="confirm-modal-email" style="color:var(--gold);word-break:break-all"></b>.</p>
-        <p>Click the link in the email to activate your account, then come back and sign in.</p>
-        <p class="hint" style="margin-top:16px">Don't see it? Check your spam folder.</p>
-      </div>
-      <div class="modal-actions" style="justify-content:center">
-        <button type="button" class="btn" id="confirm-ok">Got it</button>
-      </div>
-    </div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="/worldcup/app/assets/config.js?v=11"></script>
   <script src="/worldcup/app/assets/countries.js?v=11"></script>
@@ -399,16 +383,6 @@
       openRegModal();
     });
 
-    /* Post-signup confirm-email modal */
-    const confirmModal = qs('#confirm-modal');
-    function openConfirmModal(email){
-      qs('#confirm-modal-email').textContent = email || '';
-      confirmModal.classList.add('open');
-    }
-    function closeConfirmModal(){ confirmModal.classList.remove('open'); }
-    qs('#confirm-ok').addEventListener('click', closeConfirmModal);
-    confirmModal.addEventListener('click', (e)=>{ if (e.target === confirmModal) closeConfirmModal(); });
-
     regGo.addEventListener('click', async ()=>{
       if (!regAck.checked || !pendingRegister) return;
       regGo.disabled = true; regGo.textContent = 'Creating…';
@@ -423,7 +397,8 @@
       pendingRegister = null;
       closeRegModal();
       if (r.needsConfirmation) {
-        openConfirmModal(email);
+        const safeEmail = email.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        showAlert('ok', `📧 <b>Check your email</b> — we sent a confirmation link to <b style="word-break:break-all">${safeEmail}</b>. Click the link to activate your account, then sign in below.`);
         return;
       }
       showAlert('ok', 'Account created — redirecting…');

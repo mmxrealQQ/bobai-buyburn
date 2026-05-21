@@ -329,7 +329,7 @@
         const total = parseFloat(p.total_bobai) || 0;
         const price = parseFloat(p.bobai_price_usd) || 0;
         $('pool-bobai').textContent = fmtBobai(total);
-        $('pool-usd').textContent = fmtUsd(total * price);
+        $('pool-usd').textContent = price > 0 ? fmtUsd(total * price) : 'n/a';
         document.getElementById('pool-block').classList.remove('loading');
       } catch (_) {/* silent — block stays hidden in loading state */}
     }

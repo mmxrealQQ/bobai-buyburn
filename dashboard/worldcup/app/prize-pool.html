@@ -320,6 +320,11 @@
       if (v >= 1_000)     return (v/1_000).toFixed(1) + 'K';
       return v.toFixed(0);
     }
+    // Returns formatted USD or 'n/a' if price feed unavailable. Use this anywhere
+    // a USD value is derived from `bobai_price_usd` so an outage doesn't show $0.00.
+    function fmtUsdOrNa(bobaiAmount, price){
+      return price > 0 ? fmtUsd(bobaiAmount * price) : 'n/a';
+    }
     function fmtUsd(n){
       if (n == null || !isFinite(n)) return '$0.00';
       if (n >= 1_000_000) return '$' + (n/1_000_000).toFixed(2) + 'M';
@@ -362,13 +367,13 @@
       liveTotalBobai = total;
 
       $('#pool-bobai').textContent  = fmtBobai(total) + ' BOBAI';
-      $('#pool-usd').textContent    = '≈ ' + fmtUsd(total * px);
+      $('#pool-usd').textContent    = '≈ ' + fmtUsdOrNa(total, px);
       $('#pool-group').textContent  = fmtBobai(group) + ' BOBAI';
       $('#pool-end').textContent    = fmtBobai(end) + ' BOBAI';
       $('#pool-crypto').textContent = fmtBobai(crypto) + ' BOBAI';
-      $('#pool-group-usd').textContent  = '≈ ' + fmtUsd(group  * px);
-      $('#pool-end-usd').textContent    = '≈ ' + fmtUsd(end    * px);
-      $('#pool-crypto-usd').textContent = '≈ ' + fmtUsd(crypto * px);
+      $('#pool-group-usd').textContent  = '≈ ' + fmtUsdOrNa(group,  px);
+      $('#pool-end-usd').textContent    = '≈ ' + fmtUsdOrNa(end,    px);
+      $('#pool-crypto-usd').textContent = '≈ ' + fmtUsdOrNa(crypto, px);
       if (p.updated_at) {
         $('#pool-updated').textContent = 'updated ' + new Date(p.updated_at).toLocaleTimeString();
       }
@@ -403,7 +408,6 @@
         if (r.section) {
           return `<tr class="pot-h"><td colspan="6">${r.section}</td></tr>`;
         }
-        const usd = r.bobai * px;
         const slotsLabel = r.slots > 1 ? `× ${r.slots}` : '× 1';
         const pctLabel = (r.share * 100).toFixed(r.share < 0.1 ? 2 : (r.share < 1 ? 1 : 0)) + ' %';
         return `<tr>
@@ -412,7 +416,7 @@
           <td class="pct-cell">${slotsLabel}</td>
           <td class="pct-cell" style="text-align:right">${pctLabel}</td>
           <td class="tnum">${fmtBobai(r.bobai)}</td>
-          <td class="tusd">${fmtUsd(usd)}</td>
+          <td class="tusd">${fmtUsdOrNa(r.bobai, px)}</td>
         </tr>`;
       }).join('');
     }
@@ -451,13 +455,12 @@
         const chipClass = r.token === 'TAX' ? 'tax' : (r.token === 'BNB' ? 'bnb' : 'usdt');
         const chipLabel = r.token === 'TAX' ? '⚙️ Tax' : (r.token === 'BNB' ? '🟡 BNB' : '💵 USDT');
         const bobai = parseFloat(r.amount_bobai) || 0;
-        const usdValue = bobai * livePrice;
         return `<tr>
           <td class="ttime">${fmtTime(r.created_at)}</td>
           <td><span class="tchip ${chipClass}">${chipLabel}</span></td>
           <td class="tnum">${fmtAmountIn(r.token === 'TAX' ? 'BNB' : r.token, r.amount_in)}</td>
           <td class="tnum">${fmtBobai(bobai)}</td>
-          <td class="tusd">${fmtUsd(usdValue)}</td>
+          <td class="tusd">${fmtUsdOrNa(bobai, livePrice)}</td>
           <td>${txLink(r.swap_tx_hash || r.tx_hash)}</td>
         </tr>`;
       }).join('');

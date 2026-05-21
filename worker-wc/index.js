@@ -383,6 +383,41 @@ async function readBobaiBalance(address){
 // BOBAI/WBNB pool — used for the price feed (same endpoint the TG bot polls)
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 
+// On-chain price fallback constants. BOBAI < WBNB hex → BOBAI is token0 in this pair
+// (verified via token0() on-chain 2026-05-21). Reserves come back as (r0, r1, ts).
+const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE'; // BSC mainnet feed, 8 decimals
+
+// Sanity bounds for BOBAI/USD — protects against bad on-chain math or pair manipulation
+// posting a wildly wrong price during the rare event both APIs are down.
+const PRICE_MIN_USD = 1e-7;
+const PRICE_MAX_USD = 1e-2;
+
+function isSanePrice(p){ return isFinite(p) && p >= PRICE_MIN_USD && p <= PRICE_MAX_USD; }
+
+async function fetchBobaiPriceOnchain(){
+  try {
+    // getReserves() — returns (uint112 r0, uint112 r1, uint32 ts) packed into 96 bytes
+    const rHex = await rpcCall('eth_call', [{ to: BOBAI_PAIR, data: '0x0902f1ac' }, 'latest']);
+    const rBOBAI = BigInt('0x' + rHex.slice(2,   66)); // token0
+    const rWBNB  = BigInt('0x' + rHex.slice(66, 130)); // token1
+    if (rBOBAI === 0n || rWBNB === 0n) { console.log('[price] onchain: zero reserves'); return null; }
+
+    // Chainlink latestAnswer() — int256, 8 decimals
+    const aHex = await rpcCall('eth_call', [{ to: CHAINLINK_BNB_USD, data: '0x50d25bcd' }, 'latest']);
+    const bnbUsd = Number(BigInt(aHex)) / 1e8;
+    if (!(bnbUsd > 0)) { console.log('[price] onchain: bad BNB/USD'); return null; }
+
+    // Both BOBAI and WBNB are 18 decimals → ratio cancels out cleanly
+    const bobaiPerBnb = Number(rBOBAI) / Number(rWBNB);
+    const price = bnbUsd / bobaiPerBnb;
+    if (!isSanePrice(price)) { console.log('[price] onchain: sanity check failed:', price); return null; }
+    return price;
+  } catch (e) {
+    console.log('[price] onchain error:', e.message);
+    return null;
+  }
+}
+
 async function fetchBobaiPriceUsd(){
   // 1) GeckoTerminal pool (primary — same as TG bot)
   try {
@@ -393,7 +428,7 @@ async function fetchBobaiPriceUsd(){
     if (r.ok) {
       const d = await r.json();
       const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
-      if (isFinite(p) && p > 0) return p;
+      if (isSanePrice(p)) return p;
       console.log('[price] geckoterminal returned invalid price');
     } else {
       console.log('[price] geckoterminal HTTP', r.status);
@@ -410,7 +445,7 @@ async function fetchBobaiPriceUsd(){
       const pair = (d?.pairs || []).find(p => p.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase())
                 || (d?.pairs || [])[0];
       const p = parseFloat(pair?.priceUsd);
-      if (isFinite(p) && p > 0) return p;
+      if (isSanePrice(p)) return p;
       console.log('[price] dexscreener returned no usable price');
     } else {
       console.log('[price] dexscreener HTTP', r.status);
@@ -418,6 +453,10 @@ async function fetchBobaiPriceUsd(){
   } catch (e) {
     console.log('[price] dexscreener error:', e.message);
   }
+
+  // 3) On-chain (pair reserves × Chainlink BNB/USD) — never down unless RPC dies
+  const onchain = await fetchBobaiPriceOnchain();
+  if (onchain) { console.log('[price] using on-chain fallback'); return onchain; }
 
   return null;
 }

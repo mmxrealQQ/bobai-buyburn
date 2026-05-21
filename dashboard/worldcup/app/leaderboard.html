@@ -348,12 +348,13 @@
     function prizeCellHtml(bobai, contextPot){
       const pot = contextPot || 0;
       const pct = pot > 0 ? (bobai / pot * 100) : 0;
-      const usd = bobai * (pool.price || 0);
+      const hasPrice = (pool.price || 0) > 0;
+      const usdStr = !(bobai > 0) ? '$0' : (hasPrice ? fmtUsd(bobai * pool.price) : 'n/a');
       const isZero = !(bobai > 0);
       return `<div class="prize-cell ${isZero ? 'zero' : ''}">
         <div class="pz-pct">${isZero ? '—' : fmtPct(pct)}</div>
         <div class="pz-bobai">${isZero ? '0 BOBAI' : fmtBobai(bobai) + ' BOBAI'}</div>
-        <div class="pz-usd">${isZero ? '$0' : fmtUsd(usd)}</div>
+        <div class="pz-usd">${usdStr}</div>
       </div>`;
     }
 

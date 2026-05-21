@@ -96,19 +96,96 @@ function priceChangeArrow(pct) {
   return `⚪ 0%`;
 }
 
-// ==================== GECKO TERMINAL API ====================
+// ==================== PRICE DATA (Gecko → DexScreener → On-Chain) ====================
+// Chainlink BNB/USD feed on BSC (8 decimals)
+const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE';
+// BOBAI realistic USD range — protects against absurd values if any source goes haywire
+const PRICE_MIN_USD = 1e-7;
+const PRICE_MAX_USD = 1e-2;
+function isSanePrice(p) { return Number.isFinite(p) && p >= PRICE_MIN_USD && p <= PRICE_MAX_USD; }
 
-async function fetchPoolData() {
+// On-chain BOBAI/USD: pair reserves × Chainlink BNB/USD. Last-resort fallback when
+// both Gecko and DexScreener are down. BOBAI is token0 in this pair (verified on-chain).
+async function fetchBobaiPriceOnchain() {
   try {
-    const res = await fetch(GECKO_POOL_URL, {
-      headers: { 'Accept': 'application/json' },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.data?.attributes || null;
-  } catch {
+    // getReserves() selector = 0x0902f1ac → packed (uint112 r0, uint112 r1, uint32 ts)
+    const rHex = await rpcCall('eth_call', [{ to: BOBAI_PAIR, data: '0x0902f1ac' }, 'latest']);
+    if (!rHex) return null;
+    const rBOBAI = BigInt('0x' + rHex.slice(2, 66));
+    const rWBNB  = BigInt('0x' + rHex.slice(66, 130));
+    if (rBOBAI === 0n || rWBNB === 0n) return null;
+
+    // Chainlink latestAnswer() selector = 0x50d25bcd → int256 (8 decimals)
+    const aHex = await rpcCall('eth_call', [{ to: CHAINLINK_BNB_USD, data: '0x50d25bcd' }, 'latest']);
+    if (!aHex) return null;
+    const bnbUsd = Number(BigInt(aHex)) / 1e8;
+    if (!(bnbUsd > 0)) return null;
+
+    const bobaiPerBnb = Number(rBOBAI) / Number(rWBNB);
+    const price = bnbUsd / bobaiPerBnb;
+    return isSanePrice(price) ? price : null;
+  } catch (e) {
+    console.log('[price] onchain error:', e.message || e);
     return null;
   }
+}
+
+// Resilient price-only fetch (used by burn/donation alerts that only need a number).
+async function fetchBobaiPriceUsd() {
+  try {
+    const res = await fetch(`${GECKO_POOL_URL}?_=${Date.now()}`, { headers: { 'Accept': 'application/json' } });
+    if (res.ok) {
+      const d = await res.json();
+      const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
+      if (isSanePrice(p)) return p;
+    }
+  } catch {}
+  try {
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI_TOKEN}`);
+    if (res.ok) {
+      const d = await res.json();
+      const pair = (d?.pairs || []).find(p => p.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase()) || (d?.pairs || [])[0];
+      const p = parseFloat(pair?.priceUsd);
+      if (isSanePrice(p)) return p;
+    }
+  } catch {}
+  const p = await fetchBobaiPriceOnchain();
+  if (p) { console.log('[price] using on-chain fallback'); return p; }
+  return null;
+}
+
+// Full pool stats (used by /price command). Gecko primary; DexScreener fallback
+// is mapped into Gecko's attribute shape so the rest of the command code is unchanged.
+async function fetchPoolData() {
+  // 1) GeckoTerminal — richest data
+  try {
+    const res = await fetch(`${GECKO_POOL_URL}?_=${Date.now()}`, { headers: { 'Accept': 'application/json' } });
+    if (res.ok) {
+      const data = await res.json();
+      const attrs = data?.data?.attributes;
+      if (attrs && isSanePrice(parseFloat(attrs.base_token_price_usd))) return attrs;
+    }
+  } catch {}
+  // 2) DexScreener — same fields, different shape
+  try {
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI_TOKEN}`);
+    if (res.ok) {
+      const data = await res.json();
+      const p = (data?.pairs || []).find(x => x.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase()) || (data?.pairs || [])[0];
+      if (p && isSanePrice(parseFloat(p.priceUsd))) {
+        return {
+          base_token_price_usd: p.priceUsd,
+          base_token_price_native_currency: p.priceNative,
+          fdv_usd: p.fdv,
+          reserve_in_usd: p.liquidity?.usd,
+          volume_usd: { h24: p.volume?.h24 },
+          price_change_percentage: p.priceChange || {},
+          transactions: { h24: p.txns?.h24 || {} },
+        };
+      }
+    }
+  } catch {}
+  return null;
 }
 
 async function fetchRecentTrades() {
@@ -276,14 +353,17 @@ async function postBuyAlert(trade, burnedPct) {
 async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice) {
   try {
     const burnedDelta = newBurned - prevBurned;
-    const burnedUsd = burnedDelta * tokenPrice;
+    const hasPrice = tokenPrice && tokenPrice > 0;
+    const burnedUsd = hasPrice ? burnedDelta * tokenPrice : 0;
+    const burnedUsdStr = hasPrice ? formatUsd(burnedUsd) : 'n/a';
     const percent = totalSupply > 0 ? (newBurned / totalSupply * 100).toFixed(1) : '?';
+    // When price unavailable, fall back to the smallest burn emoji bucket
     const { bar, icon } = getBurnEmojis(burnedUsd);
 
     const message = `${bar}
 <b>${icon}</b>
 
-🪙 <b>+${formatNumber(burnedDelta)} BOBAI</b> burned <b>(${formatUsd(burnedUsd)})</b>
+🪙 <b>+${formatNumber(burnedDelta)} BOBAI</b> burned <b>(${burnedUsdStr})</b>
 📊 Total burned: <b>${formatNumber(newBurned)} BOBAI</b>
 🔥 That's <b>${percent}%</b> of total supply!
 
@@ -311,20 +391,22 @@ async function postDonationAlert(donation, pool, bobaiPriceUsd) {
     const token     = donation.token; // 'BNB' or 'USDT'
     const amountIn  = parseFloat(donation.amount_in)    || 0;
     const bobaiAdd  = parseFloat(donation.amount_bobai) || 0;
-    const usdValue  = bobaiAdd * bobaiPriceUsd;
+    const hasPrice  = bobaiPriceUsd && bobaiPriceUsd > 0;
+    const usdValue  = hasPrice ? bobaiAdd * bobaiPriceUsd : 0;
+    const usdStr    = hasPrice ? formatUsd(usdValue) : 'n/a';
     const { bar, icon } = getDonationEmojis(usdValue, token);
 
     const totalPool    = pool ? parseFloat(pool.total_bobai) || 0 : 0;
-    const totalPoolUsd = totalPool * bobaiPriceUsd;
+    const totalPoolUsdStr = hasPrice ? formatUsd(totalPool * bobaiPriceUsd) : 'n/a';
     const symbol       = token === 'BNB' ? '🟡' : '💵';
     const amountStr    = token === 'BNB' ? amountIn.toFixed(6) : amountIn.toFixed(2);
 
     const message = `${bar}
 <b>${icon}</b>
 
-🪙 <b>+${formatNumber(bobaiAdd)} BOBAI</b> donated <b>(${formatUsd(usdValue)})</b>
+🪙 <b>+${formatNumber(bobaiAdd)} BOBAI</b> donated <b>(${usdStr})</b>
 ${symbol} Donation: <b>${amountStr} ${token}</b>
-🏆 Prize Pool: <b>${formatNumber(totalPool)} BOBAI</b> (${formatUsd(totalPoolUsd)})
+🏆 Prize Pool: <b>${formatNumber(totalPool)} BOBAI</b> (${totalPoolUsdStr})
 
 💡 <i>Every donation fuels the World Cup prize pool!</i>
 
@@ -750,7 +832,8 @@ Here's what I can do:
 
       const total = pool ? parseFloat(pool.total_bobai) || 0 : 0;
       const price = pool ? parseFloat(pool.bobai_price_usd) || 0 : 0;
-      const totalUsd = total * price;
+      const hasPrice = price > 0;
+      const usd = (amount) => hasPrice ? formatUsd(amount * price) : 'n/a';
       const groupPot  = pool ? parseFloat(pool.group_pot)  || 0 : 0;
       const endPool   = pool ? parseFloat(pool.endpool)    || 0 : 0;
       const cryptoPot = pool ? parseFloat(pool.crypto_pot) || 0 : 0;
@@ -789,12 +872,12 @@ Here's what I can do:
 
       reply = `🏆 <b>BOBAI Worldcup '26 — Prize Pool</b>
 
-💰 <b>${formatNumber(total)} BOBAI</b> ≈ ${formatUsd(totalUsd)}
+💰 <b>${formatNumber(total)} BOBAI</b> ≈ ${usd(total)}
 
 📊 <b>Pots</b>
-🅰️ Group · 60 %: ${formatNumber(groupPot)} BOBAI (${formatUsd(groupPot*price)})
-🏁 End pool · 30/90 %: ${formatNumber(endPool)} BOBAI (${formatUsd(endPool*price)})
-📈 Crypto · 10 %: ${formatNumber(cryptoPot)} BOBAI (${formatUsd(cryptoPot*price)})
+🅰️ Group · 60 %: ${formatNumber(groupPot)} BOBAI (${usd(groupPot)})
+🏁 End pool · 30/90 %: ${formatNumber(endPool)} BOBAI (${usd(endPool)})
+📈 Crypto · 10 %: ${formatNumber(cryptoPot)} BOBAI (${usd(cryptoPot)})
 
 🏅 <b>Top 10 Overall</b>
 ${leaderboardLines}
@@ -920,15 +1003,14 @@ export default {
     // === BURN ALERTS ===
     // Check if burned amount increased since last check (1 KV read + RPC calls)
     try {
-      const [currentBurned, totalSupply, lastBurnedRaw, poolData] = await Promise.all([
+      const [currentBurned, totalSupply, lastBurnedRaw, tokenPrice] = await Promise.all([
         getBurnedTokens(),
         getTotalSupply(),
         env.KV.get('last_burned'),
-        fetchPoolData(),
+        fetchBobaiPriceUsd(),
       ]);
 
       const lastBurned = lastBurnedRaw ? parseFloat(lastBurnedRaw) : 0;
-      const tokenPrice = poolData ? parseFloat(poolData.base_token_price_usd) : 0;
 
       // Only alert if burn increased by at least 1000 BOBAI (avoid spam from rounding)
       if (currentBurned > lastBurned + 1000) {

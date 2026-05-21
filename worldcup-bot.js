@@ -40,6 +40,20 @@ const ERC20_ABI = parseAbi([
   'function approve(address spender, uint amount) returns (bool)',
   'function allowance(address owner, address spender) view returns (uint)',
 ]);
+const PAIR_ABI = parseAbi([
+  'function getReserves() view returns (uint112 r0, uint112 r1, uint32 ts)',
+]);
+const CHAINLINK_ABI = parseAbi([
+  'function latestAnswer() view returns (int256)',
+]);
+
+// Chainlink BNB/USD feed on BSC (8 decimals). Used as last-resort price fallback.
+const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE';
+
+// Sanity bounds for BOBAI/USD (refuse to write absurd values during edge cases)
+const PRICE_MIN_USD = 1e-7;
+const PRICE_MAX_USD = 1e-2;
+function isSanePrice(p){ return Number.isFinite(p) && p >= PRICE_MIN_USD && p <= PRICE_MAX_USD; }
 
 // ─── Supabase REST helpers ──────────────────────────────────────────────────
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -95,14 +109,29 @@ function computePots(total, now){
   return { group: 0, end: 0, crypto: 0 };
 }
 
-async function fetchBobaiPriceUsd(){
+async function fetchBobaiPriceOnchain(publicClient){
+  try {
+    const [r0, r1] = await publicClient.readContract({ address: BOBAI_PAIR, abi: PAIR_ABI, functionName: 'getReserves' });
+    // BOBAI is token0 in this pair (BOBAI hex < WBNB hex, verified on-chain 2026-05-21)
+    if (r0 === 0n || r1 === 0n) { console.log('[price] onchain: zero reserves'); return null; }
+    const bnbUsdRaw = await publicClient.readContract({ address: CHAINLINK_BNB_USD, abi: CHAINLINK_ABI, functionName: 'latestAnswer' });
+    const bnbUsd = Number(bnbUsdRaw) / 1e8;
+    if (!(bnbUsd > 0)) { console.log('[price] onchain: bad BNB/USD'); return null; }
+    const bobaiPerBnb = Number(r0) / Number(r1);
+    const price = bnbUsd / bobaiPerBnb;
+    if (!isSanePrice(price)) { console.log(`[price] onchain: sanity check failed (${price})`); return null; }
+    return price;
+  } catch (e) { console.log(`[price] onchain: ${e.message}`); return null; }
+}
+
+async function fetchBobaiPriceUsd(publicClient){
   try {
     const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}?_=${Date.now()}`,
       { headers: { Accept: 'application/json' } });
     if (r.ok) {
       const d = await r.json();
       const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
-      if (isFinite(p) && p > 0) return p;
+      if (isSanePrice(p)) return p;
     }
   } catch (e) { console.log(`[price] gecko: ${e.message}`); }
   try {
@@ -111,9 +140,14 @@ async function fetchBobaiPriceUsd(){
       const d = await r.json();
       const pair = (d?.pairs || []).find(p => p.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase()) || (d?.pairs || [])[0];
       const p = parseFloat(pair?.priceUsd);
-      if (isFinite(p) && p > 0) return p;
+      if (isSanePrice(p)) return p;
     }
   } catch (e) { console.log(`[price] dexscreener: ${e.message}`); }
+  // On-chain last-resort fallback (pair reserves × Chainlink BNB/USD)
+  if (publicClient) {
+    const onchain = await fetchBobaiPriceOnchain(publicClient);
+    if (onchain) { console.log('[price] using on-chain fallback'); return onchain; }
+  }
   return null;
 }
 
@@ -121,7 +155,7 @@ async function syncPool(publicClient){
   try {
     const balWei = await publicClient.readContract({ address: BOBAI, abi: ERC20_ABI, functionName: 'balanceOf', args: [PRIZE_WALLET] });
     const total  = Number(balWei) / 1e18;
-    const price  = await fetchBobaiPriceUsd();
+    const price  = await fetchBobaiPriceUsd(publicClient);
     const pots   = computePots(total, Date.now());
     await sbPatch('wc_pool', 'id=eq.1', {
       total_bobai:     total,

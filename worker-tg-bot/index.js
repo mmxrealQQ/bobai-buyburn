@@ -14,7 +14,7 @@ const GECKO_TRADES_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pool
 const GECKO_POOL_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}`;
 
 // Worldcup tipgame (Supabase — public anon key, RLS-protected)
-const WORLDCUP_URL = 'https://brainonbnb.ai/worldcup';
+const WORLDCUP_URL = 'https://brainonbnb.com/worldcup';
 const SUPABASE_URL = 'https://aerffjhdsbxpvuulkryr.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ne0MFzyCQb6MvFWur2X-Vw_vG9JH76_';
 
@@ -32,8 +32,8 @@ const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AAPfadI1EORIV-4JDTPKnQmo3il3NPsAAkYNa
 const PHOTO_BIGBUY = 'AgACAgQAAyEGAATh_8g_AAPgadI1EEm5Qa4VhE6mqWf0m6PuFMYAAkcNaxtDCplSLzBgWf5z1mMBAAMCAAN4AAM7BA';
 const PHOTO_BURN = 'AgACAgQAAyEGAATh_8g_AAIB0mnWDmHKwNjMTlDUC3WLJRO30ii_AAKBDGsbUeywUgNqPnsGFkssAQADAgADeAADOwQ';
 // Donation illus served by URL (TG caches them server-side after first fetch)
-const PHOTO_DONATION_BNB  = 'https://brainonbnb.ai/worldcup/app/illus/donation-bnb.webp';
-const PHOTO_DONATION_USDT = 'https://brainonbnb.ai/worldcup/app/illus/donation-usdt.webp';
+const PHOTO_DONATION_BNB  = 'https://brainonbnb.com/worldcup/app/illus/donation-bnb.webp';
+const PHOTO_DONATION_USDT = 'https://brainonbnb.com/worldcup/app/illus/donation-usdt.webp';
 
 // Known bot/system wallets to ignore in buy alerts
 const IGNORED_WALLETS = new Set([
@@ -621,7 +621,7 @@ async function handleCommand(msg) {
     case 'links': {
       reply = `🧠 <b>BOBAI — All Links</b>
 
-🌍 <a href="https://brainonbnb.ai">Website & Dashboard</a>
+🌍 <a href="https://brainonbnb.com">Website & Dashboard</a>
 
 🔷 <a href="https://blockspot.io/coin/brain-on-bnb-ai/">Blockspot.io</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
@@ -636,8 +636,8 @@ async function handleCommand(msg) {
 
 🐦 <a href="https://x.com/BrainOnBNB">X Official</a>
 🗣 <a href="https://x.com/BrainOnBNBAI">X Community</a>
-🎮 <a href="https://brainonbnb.ai/game">Game</a>
-⚽ <a href="https://brainonbnb.ai/worldcup">Worldcup '26</a>
+🎮 <a href="https://brainonbnb.com/game">Game</a>
+⚽ <a href="https://brainonbnb.com/worldcup">Worldcup '26</a>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;
@@ -669,7 +669,7 @@ async function handleCommand(msg) {
 🚫 No giveaways, no presales, no airdrops via DM
 
 ✅ <b>Official Links Only</b>
-🌍 brainonbnb.ai
+🌍 brainonbnb.com
 💬 t.me/bobai_official
 🐦 x.com/BrainOnBNB
 
@@ -731,7 +731,7 @@ Here's what I can do:
 
 💡 <i>I also post alerts for buys & burns!</i>
 
-🌍 <a href="https://brainonbnb.ai">Website</a> · 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
+🌍 <a href="https://brainonbnb.com">Website</a> · 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
       break;
     }
 
@@ -803,7 +803,7 @@ ${donLines}
 ⚙️ <b>Latest tax adds</b>
 ${taxLines}
 
-🎮 <a href="${WORLDCUP_URL}">Play at brainonbnb.ai/worldcup</a>
+🎮 <a href="${WORLDCUP_URL}">Play at brainonbnb.com/worldcup</a>
 
 <i>⚽ = wallet linked (payout-eligible)</i>`;
       break;

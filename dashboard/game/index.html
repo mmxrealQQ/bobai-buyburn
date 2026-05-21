@@ -6,13 +6,13 @@
 <title>Brain On BNB AI Game ($BOBAI) — Burn & Add Liq</title>
 <meta name="description" content="Play the Brain On BNB AI ($BOBAI) browser game — jump through BNB Chain, burn tokens, add liquidity, dodge the dumps. Free with on-chain highscores.">
 <meta name="keywords" content="Brain On BNB AI game, BOBAI game, BNB Chain game, BNB game, crypto game, BSC game, Brain On BNB game, BOBAI play, Burn & Add Liq">
-<link rel="canonical" href="https://brainonbnb.ai/game/">
+<link rel="canonical" href="https://brainonbnb.com/game/">
 <link rel="icon" type="image/png" href="logo-256x256.png">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://brainonbnb.ai/game/">
+<meta property="og:url" content="https://brainonbnb.com/game/">
 <meta property="og:title" content="Brain On BNB AI Game ($BOBAI) — Burn & Add Liq">
 <meta property="og:description" content="Play the Brain On BNB AI ($BOBAI) browser game — jump through the BNB Chain, burn tokens, add liquidity, dodge the dumps.">
-<meta property="og:image" content="https://brainonbnb.ai/game/logo-256x256.png">
+<meta property="og:image" content="https://brainonbnb.com/game/logo-256x256.png">
 <meta property="og:site_name" content="Brain On BNB AI">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Brain On BNB AI Game ($BOBAI) — Burn & Add Liq">
@@ -24,8 +24,8 @@
   "@type": "VideoGame",
   "name": "Brain On BNB AI — Burn & Add Liq",
   "alternateName": ["BOBAI Game", "Brain On BNB Game"],
-  "url": "https://brainonbnb.ai/game/",
-  "image": "https://brainonbnb.ai/game/logo-256x256.png",
+  "url": "https://brainonbnb.com/game/",
+  "image": "https://brainonbnb.com/game/logo-256x256.png",
   "description": "Doodle-Jump style browser game for the Brain On BNB AI ($BOBAI) community — jump through the BNB Chain, burn tokens, add liquidity, dodge the dumps. Free to play with on-chain highscores.",
   "genre": ["Arcade", "Casual", "Endless Runner"],
   "playMode": "SinglePlayer",
@@ -34,7 +34,7 @@
   "author": {
     "@type": "Organization",
     "name": "Brain On BNB AI",
-    "url": "https://brainonbnb.ai/"
+    "url": "https://brainonbnb.com/"
   },
   "offers": {
     "@type": "Offer",
@@ -602,7 +602,7 @@ async function shareScore() {
     el.appendChild(stickerRow);
   }
 
-  const u = document.createElement('p'); u.style.cssText = 'font-size:10px;margin:0;padding-top:10px;color:rgba(243,186,47,0.5);font-weight:600;letter-spacing:1px;'; u.textContent = 'brainonbnb.ai/game'; el.appendChild(u);
+  const u = document.createElement('p'); u.style.cssText = 'font-size:10px;margin:0;padding-top:10px;color:rgba(243,186,47,0.5);font-weight:600;letter-spacing:1px;'; u.textContent = 'brainonbnb.com/game'; el.appendChild(u);
 
   document.body.appendChild(el);
   await new Promise(r => setTimeout(r, 200));
@@ -615,7 +615,7 @@ async function shareScore() {
     if (navigator.share) {
       const file = new File([blob], 'bobai-score-' + Date.now() + '.png', { type: 'image/png' });
       const topM = MILESTONES.slice().reverse().find(m => cs >= m.score);
-    const shareMsg = topM ? "I'm " + topM.label + "! " + cs + "pts in Brain On BNB AI! 🧠🔥\nbrainonbnb.ai/game" : "I scored " + cs + " in Brain On BNB AI! 🧠🔥\nbrainonbnb.ai/game";
+    const shareMsg = topM ? "I'm " + topM.label + "! " + cs + "pts in Brain On BNB AI! 🧠🔥\nbrainonbnb.com/game" : "I scored " + cs + " in Brain On BNB AI! 🧠🔥\nbrainonbnb.com/game";
     try { await navigator.share({ title: 'Brain On BNB AI', text: shareMsg, files: [file] }); } catch (e) { if (e.name !== 'AbortError') showToast('Share failed'); }
     } else { showToast('Share not available on this device'); }
   } catch (e) { el.remove(); showToast('Screenshot error'); console.error(e); }

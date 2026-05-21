@@ -46,7 +46,7 @@ COLOR PALETTE: Black/dark-navy base, BOBAI signature gold (#F0B90B) accents, dee
 TEXT (must be rendered clearly and correctly):
 - TOP CENTER: "BOBAI WORLDCUP '26" in bold modern sans-serif, metallic gold gradient, large dramatic display size, with a subtle outer glow.
 - DIRECTLY BELOW the title, smaller: "TIP · PREDICT · WIN $BOBAI" in clean white sans-serif, well-spaced caps.
-- BOTTOM CENTER, prominent and easy to read: "brainonbnb.ai/worldcup" in a clean modern white sans-serif. Make this URL visually stand out — large enough to read on a mobile screen, with a slight gold underline accent.
+- BOTTOM CENTER, prominent and easy to read: "brainonbnb.com/worldcup" in a clean modern white sans-serif. Make this URL visually stand out — large enough to read on a mobile screen, with a slight gold underline accent.
 
 COMPOSITION: Landscape 3:2 aspect. Cinematic group shot. Eight mascots clearly visible and distinguishable. Strong central focal point on the lead mascot. Symmetrical group composition. Highly detailed faces. Vibrant, eye-catching, premium feel. Leave breathing room around the title at the top and the URL at the bottom so the text reads instantly.
 

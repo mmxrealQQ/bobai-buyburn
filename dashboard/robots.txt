@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://brainonbnb.ai/sitemap.xml
+Sitemap: https://brainonbnb.com/sitemap.xml

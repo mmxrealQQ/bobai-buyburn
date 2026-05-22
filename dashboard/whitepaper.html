@@ -136,13 +136,28 @@
   </div>
 
   <h3>On-Chain Tax: 3%</h3>
-  <p>Every buy and sell transaction incurs a <span class="highlight">3% tax</span>, split three ways:</p>
+  <p>Every buy and sell transaction incurs a <span class="highlight">3% tax</span>. The <strong>standard split</strong> is:</p>
   <ul>
     <li><span class="highlight">1% Creator</span> &mdash; sent to the creator wallet, used to fund the autonomous buyback bot operations</li>
     <li><span class="highlight">1% Burn (BOB)</span> &mdash; used to buy and burn <a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">BOB (Build on BNB)</a>, sent to the dead address</li>
     <li><span class="highlight">1% Burn (BOBAI)</span> &mdash; used to buy and burn BOBAI, sent to the dead address</li>
   </ul>
-  <p>The result: <span class="highlight">2% of every trade is permanently burned</span>, continuously reducing the circulating supply. The tax is hardcoded in the smart contract and cannot be changed after deployment.</p>
+  <p>The result: <span class="highlight">2% of every trade is permanently burned</span> under standard split, continuously reducing the circulating supply. The <strong>3% tax rate is hardcoded</strong> in the smart contract and cannot be changed after deployment.</p>
+
+  <h3>Dynamic Tax Allocation</h3>
+  <p>While the <span class="highlight">3% rate is immutable on-chain</span>, the <em>distribution</em> of those 3% across buckets (BOBAI burn / BOB burn / Creator / programs) is executed <strong>off-chain by the autonomous buyback bot</strong>. This allows the project to run time-boxed transparency programs that temporarily redirect a portion of the tax flow &mdash; without ever touching the contract.</p>
+  <p>Examples of active and scheduled programs:</p>
+  <ul>
+    <li><span class="highlight">$BOB Permalocked Liquidity Boost</span> &mdash; Apr 21 to Jun 4, 2026. 0.5% of the Creator slice is diverted to permanent BOB/BNB liquidity adds, with LP tokens burned to the dead address.</li>
+    <li><span class="highlight">WC26 Prize Pool Auto-Flow</span> &mdash; Jun 11, 00:01 UTC to Jul 19, 23:59 UTC, 2026. 0.52% of every trade tax flows to the WC26 prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank">0x5E41…D105</a> &mdash; 0.26% redirected from the BOB burn slice + 0.26% from the Creator slice. After the Final, distribution returns to the standard 1/1/1 split.</li>
+  </ul>
+  <p><strong>Transparency guarantees:</strong></p>
+  <ul>
+    <li>Every program is announced before it starts and published on the <a href="https://brainonbnb.ai/#about" target="_blank">live tax-allocation schedule</a> on the dashboard.</li>
+    <li>All bot logic that handles tax distribution is <a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">open source</a> and committed to a public GitHub repo &mdash; every change is in the commit history.</li>
+    <li>Every burn, every liquidity add, every prize-pool credit is an on-chain transaction verifiable on BscScan.</li>
+    <li>Programs can only <em>redirect</em> slices within the existing 3% &mdash; they can never increase the tax rate, mint tokens, or change the contract.</li>
+  </ul>
 
   <!-- 3. BUYBACK & BURN -->
   <h2>3. Buyback &amp; Burn Mechanism</h2>

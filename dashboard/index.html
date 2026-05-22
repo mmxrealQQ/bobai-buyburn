@@ -142,6 +142,29 @@
     .tf .p{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700}
     .tf .d{font-size:.68rem;color:var(--muted);margin-top:2px}
     .ta{color:rgba(240,185,11,.18);font-size:1.1rem}
+    .ts-inline{font-size:.9em;color:var(--muted);opacity:.7;font-style:italic}
+    .ts-inline.active{color:var(--gold);opacity:1;font-style:normal}
+    .tax-schedule{margin-top:28px;border-top:1px solid var(--border);padding-top:20px}
+    .ts-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-size:.72rem;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;flex-wrap:wrap}
+    .ts-head .ts-right{color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:none;font-size:.7rem;opacity:.75}
+    .ts-rows{display:flex;flex-direction:column;gap:8px}
+    .ts-row{display:grid;grid-template-columns:200px 150px 1fr;gap:14px;align-items:center;padding:11px 14px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;transition:all .25s}
+    .ts-row.active{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.35);box-shadow:0 0 0 1px rgba(240,185,11,.15)}
+    .ts-row.past{opacity:.45}
+    .ts-when{font-family:'Space Grotesk',sans-serif;font-size:.72rem;color:var(--muted);letter-spacing:.5px}
+    .ts-row.active .ts-when{color:var(--gold)}
+    .ts-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.85rem;color:var(--text)}
+    .ts-row.active .ts-name::before{content:'\25CF';color:var(--gold);font-size:.6rem;margin-right:6px;vertical-align:middle;animation:tspulse 1.6s ease-in-out infinite}
+    @keyframes tspulse{0%,100%{opacity:.4}50%{opacity:1}}
+    .ts-split{font-size:.72rem;color:var(--muted);line-height:1.5}
+    .ts-split b{color:var(--text);font-weight:600}
+    .ts-row.active .ts-split b{color:var(--gold)}
+    .ts-split a{color:inherit;text-decoration:underline;text-decoration-color:rgba(240,185,11,.3)}
+    .ts-split a:hover{text-decoration-color:var(--gold)}
+    @media(max-width:760px){
+      .ts-row{grid-template-columns:1fr;gap:4px;padding:12px}
+      .ts-when{font-size:.68rem}
+    }
 
     /* FLOW STEPS */
     .fl{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -396,11 +419,39 @@
     <div class="tax fi">
       <h3>3% Tax Split</h3>
       <div class="tax-flow">
-        <div class="tf"><div class="p" style="color:var(--blue)">~1%</div><div class="d">Creator</div></div>
+        <div class="tf"><div class="p" style="color:var(--blue)">~1%</div><div class="d">Creator<br><span class="ts-inline" id="ts-inline-creator"></span></div></div>
         <div class="ta">&#x2192;</div>
-        <div class="tf"><div class="p" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span></div></div>
+        <div class="tf"><div class="p" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span><br><span class="ts-inline" id="ts-inline-bob"></span></div></div>
         <div class="ta">&#x2192;</div>
         <div class="tf"><div class="p" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI</div></div>
+      </div>
+      <div class="tax-schedule">
+        <div class="ts-head">
+          <span>&#x1F4C5; Tax Allocation Schedule</span>
+          <span class="ts-right">3% rate hardcoded &middot; distribution transparent &amp; published</span>
+        </div>
+        <div class="ts-rows">
+          <div class="ts-row" data-phase="liq-boost">
+            <div class="ts-when">until Jun 4, 2026</div>
+            <div class="ts-name">$BOB Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 0.5% Creator &middot; <b>0.5% &rarr; BOB liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-pre">
+            <div class="ts-when">Jun 5 &ndash; Jun 10, 2026</div>
+            <div class="ts-name">Standard</div>
+            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
+          </div>
+          <div class="ts-row" data-phase="wc26">
+            <div class="ts-when">Jun 11, 00:01 UTC &rarr; Jul 19, 23:59 UTC, 2026</div>
+            <div class="ts-name">WC26 Prize Pool</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.74% BOB burn &middot; 0.74% Creator &middot; <b>0.52% &rarr; <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">WC26 Prize Pool</a></b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-post">
+            <div class="ts-when">from Jul 20, 2026</div>
+            <div class="ts-name">Standard</div>
+            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -540,6 +591,33 @@ async function lbdata(){try{const r=await fetch(BURNS.replace('burns.json','liq-
     document.getElementById('lb-mins').textContent=m;
   }
   tick();setInterval(tick,60000);
+}();
+
+// === TAX ALLOCATION SCHEDULE — phase-aware highlight + inline notes ===
+!function(){
+  const phases=[
+    {id:'liq-boost',     start:0,                                           end:new Date('2026-06-04T23:59:00Z').getTime(), creatorNote:'(0.5% → $BOB liq add)', bobNote:''},
+    {id:'standard-pre',  start:new Date('2026-06-04T23:59:00Z').getTime(), end:new Date('2026-06-11T00:01:00Z').getTime(), creatorNote:'', bobNote:''},
+    {id:'wc26',          start:new Date('2026-06-11T00:01:00Z').getTime(), end:new Date('2026-07-19T23:59:00Z').getTime(), creatorNote:'(−0.26% → Prize Pool)', bobNote:'(−0.26% → Prize Pool)'},
+    {id:'standard-post', start:new Date('2026-07-19T23:59:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:''}
+  ];
+  function apply(){
+    const now=Date.now();
+    let active=null;
+    phases.forEach(p=>{if(now>=p.start&&now<p.end)active=p});
+    document.querySelectorAll('.ts-row').forEach(r=>{
+      const id=r.getAttribute('data-phase');
+      const ph=phases.find(p=>p.id===id);
+      r.classList.remove('active','past');
+      if(active&&id===active.id)r.classList.add('active');
+      else if(ph&&now>=ph.end)r.classList.add('past');
+    });
+    const cN=document.getElementById('ts-inline-creator');
+    const bN=document.getElementById('ts-inline-bob');
+    if(cN){cN.textContent=active?active.creatorNote:'';cN.classList.toggle('active',!!(active&&active.creatorNote))}
+    if(bN){bN.textContent=active?active.bobNote:'';bN.classList.toggle('active',!!(active&&active.bobNote))}
+  }
+  apply();setInterval(apply,60000);
 }();
 </script>
 </body>

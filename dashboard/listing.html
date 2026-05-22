@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brain On BNB AI ($BOBAI) Listing Program — DEX & CEX Partner Rewards</title>
-  <meta name="description" content="Brain On BNB AI ($BOBAI) exchange listing program — 80% of the BOB burn share redirected to listing partners across three boost windows.">
-  <meta name="keywords" content="Brain On BNB AI listing, BOBAI listing, list BOBAI, BOBAI exchange listing, Brain On BNB exchange, BOBAI DEX listing, BOBAI CEX listing">
+  <meta name="description" content="Brain On BNB AI ($BOBAI) exchange listing program — tiered BOB-burn redirect to listing partners (Spot 0.8% / Alpha 0.6% / Web3 Wallet 0.4%) across three boost windows.">
+  <meta name="keywords" content="Brain On BNB AI listing, BOBAI listing, list BOBAI, BOBAI exchange listing, Brain On BNB exchange, BOBAI DEX listing, BOBAI CEX listing, BOBAI Web3 wallet listing, BOBAI alpha listing">
   <link rel="canonical" href="https://brainonbnb.com/listing">
   <meta property="og:title" content="Brain On BNB AI ($BOBAI) Listing Program">
   <meta property="og:description" content="Exchange listing partner program for Brain On BNB AI ($BOBAI) — 80% of the BOB burn share to listing partners.">
@@ -70,6 +70,14 @@
     .split .v.red{color:var(--red)}
     .split .v.green{color:var(--green)}
     .split .v.blue{color:var(--blue)}
+    .tier{padding:11px 0;border-bottom:1px dashed rgba(240,185,11,.08)}
+    .tier:last-child{border-bottom:none;padding-bottom:0}
+    .tier:first-child{padding-top:0}
+    .tier-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+    .tier-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.84rem;color:var(--text)}
+    .tier-pct{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05rem}
+    .tier-pct.gold{color:var(--gold)}
+    .tier-sub{font-size:.74rem;color:var(--muted);line-height:1.5;margin-top:4px}
 
     /* STEPS */
     .steps{counter-reset:s;list-style:none;margin-left:0}
@@ -141,7 +149,7 @@
   <!-- 1. INTRO -->
   <h2>1. Open Listing Invitation</h2>
   <p><span class="highlight">Any DEX or CEX</span> is welcome to list $BOBAI. The contract is a standard, immutable BEP-20 — no integration friction, no permission required. Liquidity is live on PancakeSwap V2, ownership is renounced, the LP is locked.</p>
-  <p>To make listing more attractive for partners, BOBAI offers a structured <span class="highlight">Listing Boost Program</span>: 80% of the on-chain BOB burn share is redirected to the listing partner across three boost windows in the first 70 days after going live. Multiple partners can run programs in parallel &mdash; the only rule is that no two boost windows may overlap. The live calendar with all scheduled windows is published on this page.</p>
+  <p>To make listing more attractive for partners, BOBAI offers a structured <span class="highlight">Listing Boost Program</span> with three tiers, scaled by listing impact: up to 80% of the on-chain BOB burn share is redirected to the listing partner across three boost windows in the first 70 days after going live. The exact share depends on the listing type &mdash; <strong>Spot 0.8%</strong>, <strong>Alpha / Innovation 0.6%</strong>, or <strong>Web3 Wallet / Aggregator 0.4%</strong>. Multiple partners can run programs in parallel &mdash; the only rule is that no two boost windows may overlap. The live calendar with all scheduled windows is published on this page.</p>
 
   <!-- 2. WHY -->
   <h2>2. Why List BOBAI</h2>
@@ -170,41 +178,47 @@
   <p style="font-size:.82rem;color:var(--muted);text-align:center;margin-top:0">Total program duration: 69 days &bull; 9 boost days in total</p>
 
   <h3>Tax allocation</h3>
+  <p style="font-size:.9rem;color:var(--muted);margin-top:0">The BOBAI burn (1%) and Creator share (1%) <strong>never change</strong>. Only the BOB-burn slice (1%) is partially redirected to the listing partner during boost windows. How much depends on the listing tier:</p>
   <div class="split">
     <div class="card">
-      <h4>Normal (default)</h4>
+      <h4>Normal (default &middot; outside boost)</h4>
       <div class="row"><span>BOB burn</span><span class="v red">1.0%</span></div>
       <div class="row"><span>BOBAI burn</span><span class="v green">1.0%</span></div>
       <div class="row"><span>Creator</span><span class="v blue">1.0%</span></div>
       <div class="row"><span>Listing partner</span><span class="v" style="color:var(--muted)">&mdash;</span></div>
     </div>
     <div class="card">
-      <h4>During Boost Windows</h4>
-      <div class="row"><span>BOB burn (20% of 1%)</span><span class="v red">0.2%</span></div>
-      <div class="row"><span>BOBAI burn</span><span class="v green">1.0%</span></div>
-      <div class="row"><span>Creator</span><span class="v blue">1.0%</span></div>
-      <div class="row"><span>Listing partner (80% of BOB burn)</span><span class="v gold">0.8%</span></div>
+      <h4>During Boost Windows &mdash; by Tier</h4>
+      <div class="tier">
+        <div class="tier-head"><span class="tier-name">Tier 1 &middot; Spot Listing</span><span class="tier-pct gold">0.8%</span></div>
+        <div class="tier-sub">Full BOBAI/&hellip; trading pair on a DEX or CEX (e.g. PancakeSwap, MEXC, Gate.io spot, LBank). BOB burn 0.2% &middot; rest unchanged.</div>
+      </div>
+      <div class="tier">
+        <div class="tier-head"><span class="tier-name">Tier 2 &middot; Alpha / Innovation Zone</span><span class="tier-pct gold">0.6%</span></div>
+        <div class="tier-sub">Innovation Zone, Alpha section, Launchpool or any similar restricted-trading tier (e.g. Binance Alpha, MEXC Innovation). BOB burn 0.4% &middot; rest unchanged.</div>
+      </div>
+      <div class="tier">
+        <div class="tier-head"><span class="tier-name">Tier 3 &middot; Web3 Wallet / Aggregator</span><span class="tier-pct gold">0.4%</span></div>
+        <div class="tier-sub">Made tradable inside a wallet, aggregator, or DEX-frontend without dedicated CEX orderbook (e.g. Binance Web3, Trust Wallet swap, OKX Wallet). BOB burn 0.6% &middot; rest unchanged.</div>
+      </div>
     </div>
   </div>
-  <p>The BOBAI burn and the creator share <strong>never change</strong>. During boost windows only the BOB burn share is partially redirected to the listing partner &mdash; BOBAI supply reduction continues at full rate, and the creator keeps the full 1%.</p>
+  <p>Tier is assigned at onboarding based on the actual listing type. If a partner <strong>upgrades the listing tier later</strong> within the 70-day program (e.g. from Alpha to Spot, or Web3 to Alpha), <strong>only the delta is added</strong> to any remaining boost windows &mdash; e.g. Alpha&rarr;Spot adds +0.2%, Web3&rarr;Spot adds +0.4%. The upgrade applies from the next boost day onward; already-paid windows are not re-credited.</p>
 
-  <div class="note"><strong>Bot-automated payouts:</strong> The boost split is executed automatically by the existing 24/7 buyback bot &mdash; the same bot that handles the standard burn cycle every 10 minutes. During a boost window, the bot routes the 0.8% partner share to the listing partner&rsquo;s wallet in <strong>BNB</strong>. The BOBAI burn stream and the 1% creator share remain untouched; only the BOB burn is reduced to 0.2% during boost days. No manual transfer is required &mdash; every payout is an on-chain transaction visible in the dashboard&rsquo;s transaction log and on BscScan.</div>
+  <div class="note"><strong>Bot-automated payouts:</strong> The boost split is executed automatically by the existing 24/7 buyback bot &mdash; the same bot that handles the standard burn cycle every 10 minutes. During a boost window, the bot routes the partner share (0.4% / 0.6% / 0.8% depending on tier) to the listing partner&rsquo;s wallet in <strong>BNB</strong>. The BOBAI burn stream and the 1% creator share remain untouched; only the BOB burn is reduced accordingly during boost days. No manual transfer is required &mdash; every payout is an on-chain transaction visible in the dashboard&rsquo;s transaction log and on BscScan.</div>
 
   <!-- 4. EXAMPLE -->
   <h2>4. Example Calculation</h2>
-  <p>Suppose a listing partner brings <span class="highlight">100 BNB of trading volume per day</span> across all three boost windows (9 boost days total).</p>
+  <p>Suppose a listing partner brings <span class="highlight">100 BNB of trading volume per day</span> across all three boost windows (9 boost days total). Partner payout by tier:</p>
   <div class="card">
     <table>
-      <tr><th>Item</th><th>Per Day</th><th>Per 3-day Window</th><th>Across all 3 Windows (9 days)</th></tr>
-      <tr><td>Trading volume</td><td>100 BNB</td><td>300 BNB</td><td>900 BNB</td></tr>
-      <tr><td>Total tax (3%)</td><td>3.0 BNB</td><td>9.0 BNB</td><td>27.0 BNB</td></tr>
-      <tr><td>BOB burn (0.2%)</td><td>0.2 BNB</td><td>0.6 BNB</td><td>1.8 BNB</td></tr>
-      <tr><td>BOBAI burn (1%)</td><td>1.0 BNB</td><td>3.0 BNB</td><td>9.0 BNB</td></tr>
-      <tr><td>Creator (1%)</td><td>1.0 BNB</td><td>3.0 BNB</td><td>9.0 BNB</td></tr>
-      <tr><td><span class="highlight">Listing partner (0.8%)</span></td><td><span class="highlight">0.8 BNB</span></td><td><span class="highlight">2.4 BNB</span></td><td><span class="highlight">7.2 BNB</span></td></tr>
+      <tr><th>Tier</th><th>Partner %</th><th>Per Day</th><th>Per 3-day Window</th><th>Across all 3 Windows (9 days)</th></tr>
+      <tr><td><strong>Spot</strong></td><td class="addr">0.8%</td><td>0.8 BNB</td><td>2.4 BNB</td><td><span class="highlight">7.2 BNB</span></td></tr>
+      <tr><td><strong>Alpha / Innovation</strong></td><td class="addr">0.6%</td><td>0.6 BNB</td><td>1.8 BNB</td><td><span class="highlight">5.4 BNB</span></td></tr>
+      <tr><td><strong>Web3 Wallet</strong></td><td class="addr">0.4%</td><td>0.4 BNB</td><td>1.2 BNB</td><td><span class="highlight">3.6 BNB</span></td></tr>
     </table>
   </div>
-  <p style="font-size:.85rem;color:var(--muted)">Numbers scale linearly with volume. The example uses 100 BNB/day for simplicity — the actual volume your listing brings will determine the actual payout.</p>
+  <p style="font-size:.85rem;color:var(--muted)">Numbers scale linearly with volume. Example assumes 100 BNB/day &mdash; the actual volume your listing brings determines the actual payout. The remainder of the 1% BOB-burn slice (0.2% / 0.4% / 0.6% respectively) continues to be burned during boost days. BOBAI burn (1%) and Creator (1%) are unaffected.</p>
 
   <!-- 5. HOW TO APPLY -->
   <h2>5. How to Apply</h2>
@@ -223,8 +237,9 @@
     <li>Listing partner name &amp; URL</li>
     <li>Listing date and the three boost-window date ranges</li>
     <li>Tax inflow during each boost window (in BNB)</li>
-    <li>Payout TX hash for each boost window (0.8% partner share)</li>
-    <li>Reduced BOB burn TX hash (0.2% during boost days)</li>
+    <li>Assigned tier (Spot / Alpha / Web3) and partner share (0.4% / 0.6% / 0.8%)</li>
+    <li>Payout TX hash for each boost window</li>
+    <li>Reduced BOB burn TX hash (remainder of the 1% during boost days)</li>
   </ul>
   <p>This way <span class="highlight">every BNB is verifiable on-chain</span> — by the listing partner, by the community, and by any third-party observer.</p>
 
@@ -247,8 +262,12 @@
   <p>The structure rewards a partner across the typical post-listing volume curve: launch spike (Day 1&ndash;3), one-month re-engagement (Day 34&ndash;36), and a final retention pulse (Day 67&ndash;69). After Day 70 the token returns permanently to its standard 1/1/1 tax split.</p>
   <h3>Can multiple exchanges run boost programs in parallel?</h3>
   <p>Yes &mdash; partners can be onboarded during another partner&rsquo;s 70-day program. The only constraint is that <strong>no two boost windows may overlap</strong>. When a new application comes in, we look at the public calendar and confirm a start date whose three windows (Day&nbsp;1&ndash;3, 34&ndash;36, 67&ndash;69 from start) don&rsquo;t collide with any already-scheduled partner. Within a 70-day cycle there are 9 boost days and 61 non-boost days, so plenty of room for several partners to run side-by-side.</p>
+  <h3>How is my tier assigned?</h3>
+  <p>The tier is determined by the actual listing type: <strong>Spot (0.8%)</strong> for a full BOBAI trading pair on a DEX or CEX, <strong>Alpha / Innovation (0.6%)</strong> for innovation-zone or restricted-access trading, <strong>Web3 Wallet (0.4%)</strong> for in-wallet swap or aggregator access without a dedicated orderbook. We confirm the tier with you during onboarding before the first boost window starts.</p>
+  <h3>What if my listing upgrades from Alpha to Spot mid-program?</h3>
+  <p>The upgrade is honored automatically: <strong>only the delta is added</strong> to the remaining boost windows. Alpha&rarr;Spot adds +0.2%, Web3&rarr;Alpha adds +0.2%, Web3&rarr;Spot adds +0.4%. Already-paid windows are not re-credited, but every remaining boost day pays out at the higher rate. Send the upgrade confirmation (announcement URL) in Telegram and we update the bot configuration before the next boost day.</p>
   <h3>Can the tax mechanic itself be modified?</h3>
-  <p>No. The 3% on-chain tax is hardcoded in the contract and ownership is renounced. The Boost Program does not change the tax rate &mdash; it only changes how the 1% BOB burn share is routed during the 9 boost days (0.2% still burned, 0.8% to the listing partner), executed automatically by the open-source buyback bot. The BOBAI burn and creator share stay at 1% throughout.</p>
+  <p>No. The 3% on-chain tax is hardcoded in the contract and ownership is renounced. The Boost Program does not change the tax rate &mdash; it only changes how the 1% BOB burn share is routed during the 9 boost days (the remainder is still burned, 0.4&ndash;0.8% goes to the listing partner depending on tier), executed automatically by the open-source buyback bot. The BOBAI burn and creator share stay at 1% throughout.</p>
 
   <!-- 9. DISCLAIMER -->
   <h2>9. Disclaimer</h2>

@@ -46,14 +46,23 @@
   // Populate #me-name with the current username (and redirect to landing if not signed in).
   // Pages that have their own auth-gate (e.g. dashboard.html) can ignore the redirect —
   // we only redirect when the page actually carries a #me-name placeholder, i.e. it
-  // expects an authenticated user.
+  // expects an authenticated user. Pages marked <body data-public="true"> (rules,
+  // prize-pool) stay viewable for anonymous visitors — the .user widget swaps to
+  // "Sign in · Register" links instead of bouncing.
   const me = document.getElementById('me-name');
+  const isPublic = document.body && document.body.dataset.public === 'true';
   if (me && window.WC_AUTH) {
     (async () => {
       try {
         const p = await window.WC_AUTH.currentProfile();
         if (!p) {
-          // Authenticated-only page → bounce to landing for sign-in
+          if (isPublic) {
+            const userEl = me.closest('.user');
+            if (userEl) {
+              userEl.innerHTML = '<a href="/worldcup/">Sign in</a> · <a href="/worldcup/">Register</a>';
+            }
+            return;
+          }
           window.location.href = '/worldcup/';
           return;
         }

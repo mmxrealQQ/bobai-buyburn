@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Auth gate — hide page + redirect anonymous visitors before first paint -->
+  <style>html.wc-gate{visibility:hidden!important}</style>
+  <script>
+    (function(){
+      document.documentElement.classList.add('wc-gate');
+      function hasSession(){
+        try {
+          return Object.keys(localStorage).some(function(k){
+            return k.indexOf('sb-')===0 && k.lastIndexOf('-auth-token')===k.length-11 && !!localStorage.getItem(k);
+          });
+        } catch(e){ return true; }
+      }
+      if (!hasSession()){ window.location.replace('/worldcup/'); return; }
+      document.documentElement.classList.remove('wc-gate');
+      window.addEventListener('pageshow', function(e){
+        if (e.persisted && !hasSession()) window.location.replace('/worldcup/');
+      });
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Tips</title>
@@ -404,7 +423,7 @@
       buildGroupSubBar();
       updateGroupSubBarVisibility();
       const me = await window.WC_AUTH.currentProfile();
-      if (!me) { window.location.href = './index.html'; return; }
+      if (!me) { window.location.href = '/worldcup/'; return; }
       const [mr, tr] = await Promise.all([
         window.WC_PROFILE.loadMatches(),
         window.WC_PROFILE.loadMyTips(),

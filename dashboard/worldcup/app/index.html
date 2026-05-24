@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>BOBAI Worldcup '26</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=18">
   <style>
     .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:240px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
     .country-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer;transition:all .15s;color:var(--text)}
@@ -195,7 +198,19 @@
       if (r.needsConfirmation) {
         const email = fd.get('email') || '';
         const safeEmail = email.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-        showAlert('ok', `📧 <b>Check your email</b> — we sent a confirmation link to <b style="word-break:break-all">${safeEmail}</b>. Click the link to activate your account, then sign in below.`);
+        showAlert('ok', `📧 <b>Check your email</b> — we sent a confirmation link to <b style="word-break:break-all">${safeEmail}</b>. Click the link to activate your account, then sign in below.<br><br>⚠ <b>Don't see it?</b> Check your <b>spam / junk</b> folder — confirmation mails sometimes land there.`);
+        // Scroll alert just under the top nav with minimal gap.
+        // requestAnimationFrame waits for the alert HTML to render so we
+        // compute its real position, not the empty-div position.
+        requestAnimationFrame(() => {
+          const alertEl = document.getElementById('alert');
+          if (!alertEl) return;
+          // Measure entire <nav> in case it has additional rows (.tabbar etc.)
+          const navEl = document.querySelector('nav');
+          const navH = navEl ? navEl.offsetHeight : 58;
+          const top = alertEl.getBoundingClientRect().top + window.pageYOffset - navH - 16;
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        });
         return;
       }
       showAlert('ok', 'Account created — redirecting…');

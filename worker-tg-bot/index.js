@@ -410,7 +410,7 @@ ${symbol} Donation: <b>${amountStr} ${token}</b>
 
 💡 <i>Every donation fuels the World Cup prize pool!</i>
 
-🔗 <a href="https://bscscan.com/tx/${donation.swap_tx_hash}">TX</a> · <a href="${WORLDCUP_URL}#prize-pool">Donate</a> · <a href="${WORLDCUP_URL}">Worldcup</a>`;
+🔗 <a href="https://bscscan.com/tx/${donation.swap_tx_hash}">TX</a> · <a href="${WORLDCUP_URL}/app/prize-pool.html">Prize Pool</a> · <a href="${WORLDCUP_URL}">Worldcup</a>`;
 
     const result = await tg('sendPhoto', {
       chat_id: TG_CHAT_ID,

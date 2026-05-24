@@ -20,7 +20,7 @@
   <meta name="twitter:description" content="Free FIFA World Cup 2026 prediction game on BNB Chain. Transparent on-chain BOBAI prize pool, no signup fee.">
   <meta name="twitter:image" content="https://brainonbnb.com/worldcup/illus/og-banner.jpg">
   <meta name="robots" content="index, follow">
-  <link rel="stylesheet" href="/worldcup/app/assets/style.css?v=12">
+  <link rel="stylesheet" href="/worldcup/app/assets/style.css?v=17">
   <style>
     /* Landing-specific overrides on top of shared style.css */
     main{flex:1;padding:48px 24px}
@@ -105,14 +105,23 @@
     .modal-actions .btn{flex:1;min-width:140px}
   </style>
 </head>
-<body>
+<body data-public="true">
   <div class="bg-grad"></div>
   <div class="page">
     <nav>
       <div class="nav">
         <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
-        <span class="brand">BOBAI Worldcup '26</span>
-        <span style="width:80px"></span>
+        <a class="brand-link" href="/worldcup/">BOBAI Worldcup '26</a>
+        <div class="user">Hi <b id="me-name">…</b> · <a href="#" id="logout">logout</a></div>
+      </div>
+      <div class="tabbar">
+        <a href="./app/dashboard.html" data-tab="dashboard"><span class="ic">🏠</span> Dashboard</a>
+        <a href="./app/tips.html" data-tab="tips"><span class="ic">⚽</span> Tips</a>
+        <a href="./app/bonus.html" data-tab="bonus"><span class="ic">🏆</span> Bonus</a>
+        <a href="./app/crypto.html" data-tab="crypto"><span class="ic">📈</span> Crypto</a>
+        <a href="./app/leaderboard.html" data-tab="leaderboard"><span class="ic">📊</span> Leaderboard</a>
+        <a href="./app/prize-pool.html" data-tab="prize-pool"><span class="ic">💰</span> Prize Pool</a>
+        <a href="./app/rules.html" data-tab="rules"><span class="ic">📖</span> Rules</a>
       </div>
     </nav>
 
@@ -145,7 +154,7 @@
             </div>
           </div>
 
-          <div class="card auth-card">
+          <div class="card auth-card" id="auth">
             <h2>Sign in or create your account</h2>
             <p class="sub">Pick a username, lock in your tips, climb the leaderboard.</p>
 
@@ -285,8 +294,30 @@
   <script src="/worldcup/app/assets/config.js?v=11"></script>
   <script src="/worldcup/app/assets/countries.js?v=11"></script>
   <script src="/worldcup/app/assets/auth.js?v=13"></script>
+  <script src="/worldcup/app/assets/nav.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="/worldcup/app/assets/twemojify.js?v=1"></script>
+  <script>
+    /* On the landing page itself, "Sign in · Register" should scroll to the auth
+       form below instead of reloading. nav.js writes those links after fetching
+       auth state, so we re-target them once they exist. */
+    (function retargetAuthLinks(){
+      const tryFix = () => {
+        const userEl = document.querySelector('.user');
+        if (!userEl) return false;
+        const links = userEl.querySelectorAll('a[href="/worldcup/"]');
+        if (!links.length) return false;
+        links.forEach(a => { a.setAttribute('href', '#auth'); });
+        return true;
+      };
+      if (tryFix()) return;
+      // nav.js runs an async profile-fetch; poll briefly until it has rewritten the slot.
+      let tries = 0;
+      const t = setInterval(() => {
+        if (tryFix() || ++tries > 40) clearInterval(t);
+      }, 100);
+    })();
+  </script>
   <script>
     /* Countdown */
     const KICKOFF = new Date('2026-06-11T19:00:00Z').getTime();
@@ -447,7 +478,16 @@
       closeRegModal();
       if (r.needsConfirmation) {
         const safeEmail = email.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-        showAlert('ok', `📧 <b>Check your email</b> — we sent a confirmation link to <b style="word-break:break-all">${safeEmail}</b>. Click the link to activate your account, then sign in below.`);
+        showAlert('ok', `📧 <b>Check your email</b> — we sent a confirmation link to <b style="word-break:break-all">${safeEmail}</b>. Click the link to activate your account, then sign in below.<br><br>⚠ <b>Don't see it?</b> Check your <b>spam / junk</b> folder — confirmation mails sometimes land there.`);
+        requestAnimationFrame(() => {
+          const alertEl = document.getElementById('alert');
+          if (!alertEl) return;
+          // Measure entire <nav> (includes .nav 58px + .tabbar 37px on landing page)
+          const navEl = document.querySelector('nav');
+          const navH = navEl ? navEl.offsetHeight : 58;
+          const top = alertEl.getBoundingClientRect().top + window.pageYOffset - navH - 16;
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        });
         return;
       }
       showAlert('ok', 'Account created — redirecting…');

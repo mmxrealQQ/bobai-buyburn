@@ -26,7 +26,7 @@ const PANCAKE_ROUTER  = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
 const GAS_RESERVE      = parseEther('0.003');       // keep 0.003 BNB after a BNB swap
 const MIN_SWAP_GAS     = parseEther('0.0015');      // approve+swap can hit ~0.0009 BNB on busy blocks — 0.0015 gives buffer
 const MIN_SWAP_BNB     = parseEther('0.002');       // swap if balance > GAS_RESERVE + this (i.e. > 0.005 BNB)
-const MIN_SWAP_USDT    = parseUnits('5', 18);       // swap only if ≥5 USDT (BSC USDT = 18 dec)
+const MIN_SWAP_USDT    = parseUnits('2', 18);       // swap only if ≥2 USDT (BSC USDT = 18 dec)
 const SLIPPAGE_BPS     = 1000n;                     // 10 % (covers BOBAI 3 % tax + market slip)
 const TX_DEADLINE_SEC  = 600;                       // 10 min
 

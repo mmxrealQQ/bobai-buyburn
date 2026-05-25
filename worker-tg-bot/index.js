@@ -942,10 +942,18 @@ export default {
     await ensureCommandsRegistered(env);
 
     // === BUY ALERTS ===
-    // Read posted txs for deduplication (1 KV read per cron)
+    // Read posted txs for deduplication (1 KV read per cron).
+    // Bootstrap: if KV was never written (cold/reset), mark current in-window
+    // trades as seen WITHOUT alerting, so we don't flood the chat.
     const postedRaw = await env.KV.get('posted_txs');
+    const isBootstrap = postedRaw === null;
     const postedSet = new Set(postedRaw ? JSON.parse(postedRaw) : []);
     const prevSize = postedSet.size;
+
+    // GeckoTerminal can lag several minutes behind chain on low-volume pools,
+    // so we look back 30 min (not 5) to catch late-indexed trades. Dedup via
+    // posted_txs guarantees no double-posting regardless of window width.
+    const BUY_WINDOW_MS = 30 * 60 * 1000;
 
     // Fetch recent trades from GeckoTerminal API
     try {
@@ -958,12 +966,15 @@ export default {
         const attr = trade.attributes;
         if (attr.kind !== 'buy') continue;
 
-        // Only process trades from the last 5 minutes
+        // Skip trades older than the look-back window
         const tradeTime = new Date(attr.block_timestamp).getTime();
-        if (now - tradeTime > 5 * 60 * 1000) continue;
+        if (now - tradeTime > BUY_WINDOW_MS) continue;
 
         const txHash = attr.tx_hash;
         if (postedSet.has(txHash)) continue;
+
+        // On bootstrap: record every in-window buy as seen, but don't alert.
+        if (isBootstrap) { postedSet.add(txHash); continue; }
 
         const usdValue = parseFloat(attr.volume_in_usd);
         if (usdValue < 100) continue;
@@ -994,9 +1005,9 @@ export default {
       console.error('[BUY BOT ERROR]', err.message || err);
     }
 
-    // Only write KV if we actually posted new buys
-    if (postedSet.size > prevSize) {
-      const postedArr = [...postedSet].slice(-50);
+    // Write KV if we posted new buys OR on bootstrap (to seed the seen-set)
+    if (postedSet.size > prevSize || isBootstrap) {
+      const postedArr = [...postedSet].slice(-100);
       await env.KV.put('posted_txs', JSON.stringify(postedArr));
     }
 

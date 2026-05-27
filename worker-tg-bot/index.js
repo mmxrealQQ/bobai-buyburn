@@ -9,6 +9,10 @@ const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
 const CAPTCHA_TIMEOUT = 60;
 
+// PancakeSwap V2 Swap event topic. In this pair BOBAI is token0, WBNB is token1,
+// so a BUY = WBNB in (amount1In > 0) & BOBAI out (amount0Out > 0).
+const SWAP_TOPIC = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
+
 // GeckoTerminal API
 const GECKO_TRADES_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}/trades`;
 const GECKO_POOL_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}`;
@@ -26,6 +30,16 @@ const RPC_ENDPOINTS = [
   'https://bsc-dataseed4.binance.org',
   'https://bsc-dataseed1.bnbchain.org',
 ];
+
+// getLogs-capable endpoints. The Binance dataseed nodes above reject eth_getLogs
+// ("limit exceeded"), so on-chain buy detection uses these instead. A browser-like
+// User-Agent is required (publicnode blocks default/bot user-agents).
+const LOGS_RPC_ENDPOINTS = [
+  'https://bsc-rpc.publicnode.com',
+  'https://bsc-pokt.nodies.app',
+  'https://bsc.publicnode.com',
+];
+const LOGS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 // Photo file_ids (uploaded once via bot, reusable)
 const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AAPfadI1EORIV-4JDTPKnQmo3il3NPsAAkYNaxtDCplSMrzv51Lm4QEBAAMCAAN4AAM7BA';
@@ -66,6 +80,31 @@ async function rpcCall(method, params) {
       if (data.result !== undefined && data.result !== null) return data.result;
     } catch {}
   }
+  return null;
+}
+
+// eth_getLogs against getLogs-capable endpoints (the dataseed nodes can't do it).
+// Returns an array of logs, or null if every endpoint failed.
+async function getSwapLogs(fromBlock) {
+  const params = [{ address: BOBAI_PAIR, topics: [SWAP_TOPIC], fromBlock, toBlock: 'latest' }];
+  for (const rpc of LOGS_RPC_ENDPOINTS) {
+    try {
+      const res = await fetch(rpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'User-Agent': LOGS_UA },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (Array.isArray(data.result)) {
+        console.log('[BUY] getLogs ok via', rpc, '-', data.result.length, 'logs');
+        return data.result;
+      }
+    } catch (e) {
+      console.error('[BUY] getLogs error via', rpc, '-', e.message || e);
+    }
+  }
+  console.error('[BUY] getLogs failed on ALL endpoints');
   return null;
 }
 
@@ -126,6 +165,18 @@ async function fetchBobaiPriceOnchain() {
     return isSanePrice(price) ? price : null;
   } catch (e) {
     console.log('[price] onchain error:', e.message || e);
+    return null;
+  }
+}
+
+// BNB/USD from the Chainlink feed (8 decimals). Used to value on-chain buys.
+async function getBnbUsd() {
+  try {
+    const aHex = await rpcCall('eth_call', [{ to: CHAINLINK_BNB_USD, data: '0x50d25bcd' }, 'latest']);
+    if (!aHex) return null;
+    const v = Number(BigInt(aHex)) / 1e8;
+    return v > 0 ? v : null;
+  } catch {
     return null;
   }
 }
@@ -240,6 +291,29 @@ async function fetchWorldcupLeaderboard(n = 10) {
   return sbSelect('wc_leaderboard', `select=username,avatar_country,total_points,has_wallet&order=total_points.desc&limit=${n}`);
 }
 
+// Total registered players = row count of the wc_leaderboard view (1 row per wc_users row).
+// Uses PostgREST exact-count via the Content-Range header (no full table fetch).
+async function fetchWorldcupPlayerCount() {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/wc_leaderboard?select=user_id&limit=1`;
+    const res = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Prefer: 'count=exact',
+        Range: '0-0',
+      },
+    });
+    if (!res.ok) return null;
+    const cr = res.headers.get('content-range'); // e.g. "0-0/142"
+    const total = cr ? parseInt(cr.split('/')[1], 10) : NaN;
+    return Number.isFinite(total) ? total : null;
+  } catch (e) {
+    console.error('[SB count]', e.message || e);
+    return null;
+  }
+}
+
 // Returns last N rows; `taxOnly` true → TAX only, false → BNB+USDT (donations), null → both.
 async function fetchWorldcupDonations(n = 3, taxOnly = null) {
   let tokenFilter = '';
@@ -318,12 +392,11 @@ function getDonationEmojis(usdValue, token) {
 }
 
 async function postBuyAlert(trade, burnedPct) {
-  try {
-    const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
-    const { bar, icon } = getBuyEmojis(usdValue);
-    const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
+  const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
+  const { bar, icon } = getBuyEmojis(usdValue);
+  const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
 
-    const message = `${bar}
+  const message = `${bar}
 <b>${icon}</b>
 
 🪙 <b>${formatNumber(bobaiAmount)} BOBAI</b>
@@ -335,17 +408,42 @@ async function postBuyAlert(trade, burnedPct) {
 
 🔥 Burned: ${burnedPct}% of supply`;
 
-    const result = await tg('sendPhoto', {
+  // 1) Try the rich photo alert
+  try {
+    const photoRes = await tg('sendPhoto', {
       chat_id: TG_CHAT_ID,
       photo: PHOTO_BIGBUY,
       caption: message,
       parse_mode: 'HTML',
     });
-    return result?.ok === true;
+    if (photoRes?.ok === true) {
+      console.log('[BUY] photo alert sent', txHash);
+      return true;
+    }
+    console.error('[BUY] sendPhoto failed, falling back to text:', JSON.stringify(photoRes));
   } catch (err) {
-    console.error('[POST BUY ERROR]', err.message || err);
-    return false;
+    console.error('[BUY] sendPhoto threw, falling back to text:', err.message || err);
   }
+
+  // 2) Fallback: text-only alert so a buy alert ALWAYS goes out, even if the
+  // photo file_id is ever rejected by Telegram. Same content, no image.
+  try {
+    const textRes = await tg('sendMessage', {
+      chat_id: TG_CHAT_ID,
+      text: message,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
+    if (textRes?.ok === true) {
+      console.log('[BUY] text fallback sent', txHash);
+      return true;
+    }
+    console.error('[BUY] text fallback failed:', JSON.stringify(textRes));
+  } catch (err) {
+    console.error('[BUY] text fallback threw:', err.message || err);
+  }
+
+  return false;
 }
 
 // ==================== BURN BOT ====================
@@ -823,12 +921,14 @@ Here's what I can do:
     case 'worldcup':
     case '/wc':
     case 'wc': {
-      const [pool, top10, donations, taxAdds] = await Promise.all([
+      const [pool, top10, playerCount, donations, taxAdds] = await Promise.all([
         fetchWorldcupPool(),
         fetchWorldcupLeaderboard(10),
+        fetchWorldcupPlayerCount(),
         fetchWorldcupDonations(3, false),
         fetchWorldcupDonations(3, true),
       ]);
+      const regLine = playerCount != null ? ` <i>(of ${playerCount})</i>` : '';
 
       const total = pool ? parseFloat(pool.total_bobai) || 0 : 0;
       const price = pool ? parseFloat(pool.bobai_price_usd) || 0 : 0;
@@ -879,7 +979,7 @@ Here's what I can do:
 🏁 End pool · 30/90 %: ${formatNumber(endPool)} BOBAI (${usd(endPool)})
 📈 Crypto · 10 %: ${formatNumber(cryptoPot)} BOBAI (${usd(cryptoPot)})
 
-🏅 <b>Top 10 Overall</b>
+🏅 <b>Top 10 Overall</b>${regLine}
 ${leaderboardLines}
 
 💚 <b>Latest donations</b>
@@ -941,72 +1041,80 @@ export default {
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===
     await ensureCommandsRegistered(env);
 
-    // === BUY ALERTS ===
-    // Read posted txs for deduplication (1 KV read per cron).
-    // Bootstrap: if KV was never written (cold/reset), mark current in-window
-    // trades as seen WITHOUT alerting, so we don't flood the chat.
+    // === BUY ALERTS (on-chain Swap logs — near-instant, like burns/donations) ===
+    // We read the pair's Swap events straight from chain via RPC instead of the
+    // GeckoTerminal trades feed, which lagged 20-30+ min on this low-volume pool
+    // and made whale alerts arrive far too late (or miss the look-back window).
+    // The cron runs every minute, so on-chain buys now alert within ~1 minute.
     const postedRaw = await env.KV.get('posted_txs');
-    const isBootstrap = postedRaw === null;
     const postedSet = new Set(postedRaw ? JSON.parse(postedRaw) : []);
     const prevSize = postedSet.size;
 
-    // GeckoTerminal can lag several minutes behind chain on low-volume pools,
-    // so we look back 30 min (not 5) to catch late-indexed trades. Dedup via
-    // posted_txs guarantees no double-posting regardless of window width.
-    const BUY_WINDOW_MS = 30 * 60 * 1000;
-
-    // Fetch recent trades from GeckoTerminal API
     try {
-      const trades = await fetchRecentTrades();
-      let burnedPct = null; // lazy-load only when needed
+      const latestHex = await rpcCall('eth_blockNumber', []);
+      if (latestHex) {
+        const latest = parseInt(latestHex, 16);
+        // ~300 blocks ≈ 4-7 min (BSC ~0.75-1.5s/block) — comfortably covers the
+        // 1-min cron with margin; dedup via posted_txs prevents repeats.
+        const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
+        const logs = await getSwapLogs(fromBlock);
 
-      const now = Date.now();
+        if (Array.isArray(logs) && logs.length) {
+          let burnedPct = null;            // lazy-load once
+          let bnbUsd = null;               // lazy-load once
+          let alertsThisRun = 0;
+          const MAX_ALERTS_PER_RUN = 5;    // flood guard; normal traffic is ~0-1/min
 
-      for (const trade of trades) {
-        const attr = trade.attributes;
-        if (attr.kind !== 'buy') continue;
+          // Logs are returned oldest-first → chat order stays chronological.
+          for (const log of logs) {
+            const txHash = log.transactionHash;
+            if (postedSet.has(txHash)) continue;
 
-        // Skip trades older than the look-back window
-        const tradeTime = new Date(attr.block_timestamp).getTime();
-        if (now - tradeTime > BUY_WINDOW_MS) continue;
+            // data = 4 packed uint256: amount0In, amount1In, amount0Out, amount1Out
+            const d = log.data.slice(2);
+            if (d.length < 256) continue;
+            const amount1In  = BigInt('0x' + d.slice(64, 128));   // WBNB in
+            const amount0Out = BigInt('0x' + d.slice(128, 192));  // BOBAI out
 
-        const txHash = attr.tx_hash;
-        if (postedSet.has(txHash)) continue;
+            // BUY = WBNB in AND BOBAI out (sells are the opposite direction).
+            if (!(amount1In > 0n && amount0Out > 0n)) continue;
 
-        // On bootstrap: record every in-window buy as seen, but don't alert.
-        if (isBootstrap) { postedSet.add(txHash); continue; }
+            const bnbAmount   = Number(amount1In)  / 1e18;
+            const bobaiAmount = Number(amount0Out) / 1e18;
 
-        const usdValue = parseFloat(attr.volume_in_usd);
-        if (usdValue < 100) continue;
+            if (bnbUsd === null) bnbUsd = await getBnbUsd();
+            const usdValue = bnbUsd ? bnbAmount * bnbUsd : 0;
+            if (usdValue < 100) continue;  // below threshold — don't even dedup-store
 
-        const buyer = attr.tx_from_address.toLowerCase();
-        if (IGNORED_WALLETS.has(buyer)) continue;
+            // Real buyer = tx sender (the `to` topic is often the router contract).
+            const tx = await rpcCall('eth_getTransactionByHash', [txHash]);
+            const buyer = (tx?.from || '').toLowerCase();
+            if (buyer && IGNORED_WALLETS.has(buyer)) { postedSet.add(txHash); continue; }
 
-        // Lazy-load burn percentage on first qualifying buy
-        if (burnedPct === null) {
-          const burn = await getBurnStats();
-          burnedPct = burn.percent;
+            if (alertsThisRun >= MAX_ALERTS_PER_RUN) { postedSet.add(txHash); continue; }
+
+            if (burnedPct === null) burnedPct = (await getBurnStats()).percent;
+
+            console.log('[BUY] on-chain buy', txHash, '$' + usdValue.toFixed(2));
+            const sent = await postBuyAlert({
+              bnbAmount,
+              bobaiAmount,
+              usdValue,
+              buyer: tx?.from || DEAD,
+              txHash,
+            }, burnedPct);
+
+            if (sent) { postedSet.add(txHash); alertsThisRun++; }
+            else console.error('[BUY] alert NOT sent, will retry next cron', txHash);
+          }
         }
-
-        const bnbAmount = parseFloat(attr.from_token_amount);
-        const bobaiAmount = parseFloat(attr.to_token_amount);
-
-        const sent = await postBuyAlert({
-          bnbAmount,
-          bobaiAmount,
-          usdValue,
-          buyer: attr.tx_from_address,
-          txHash,
-        }, burnedPct);
-
-        if (sent) postedSet.add(txHash);
       }
     } catch (err) {
       console.error('[BUY BOT ERROR]', err.message || err);
     }
 
-    // Write KV if we posted new buys OR on bootstrap (to seed the seen-set)
-    if (postedSet.size > prevSize || isBootstrap) {
+    // Write KV only if the seen-set grew (new buys posted)
+    if (postedSet.size > prevSize) {
       const postedArr = [...postedSet].slice(-100);
       await env.KV.put('posted_txs', JSON.stringify(postedArr));
     }

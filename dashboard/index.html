@@ -211,6 +211,33 @@
     .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
 
     /* LIQ BOOST */
+    /* WORLDCUP TIPGAME card — sits between top stats and BOB Liq Boost.
+       Gold accent + blue undertone to differentiate from the green-gold liq-boost card. */
+    .tipgame{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
+    .tg-card{display:block;text-decoration:none;color:inherit;background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(64,64,255,.18);border-radius:var(--radius);padding:0;position:relative;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
+    .tg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),rgba(64,64,255,.5),var(--gold),transparent);z-index:2}
+    .tg-card:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.4);box-shadow:0 10px 40px -10px rgba(240,185,11,.25)}
+    .tg-banner{position:relative;width:100%;aspect-ratio:766/1149;overflow:hidden;background:rgba(0,0,0,.5)}
+    .tg-banner img{width:100%;height:100%;object-fit:contain;display:block;transition:transform .35s ease;image-rendering:-webkit-optimize-contrast}
+    @media (min-width:720px){.tg-banner{max-width:560px;margin:0 auto}}
+    .tg-card:hover .tg-banner img{transform:scale(1.02)}
+    .tg-body{padding:22px 28px 24px;text-align:center;position:relative}
+    .tg-eyebrow{font-family:'Space Grotesk',sans-serif;font-size:.62rem;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);font-weight:600;margin-bottom:6px}
+    .tg-eyebrow .live{color:var(--green);font-weight:700}
+    .tg-eyebrow .live::before{content:'\25CF';margin-right:5px;animation:tgpulse 1.6s ease-in-out infinite}
+    @keyframes tgpulse{0%,100%{opacity:.5}50%{opacity:1}}
+    .tg-pool{display:flex;justify-content:center;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+    .tg-pool .pv{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1}
+    .tg-pool .pu{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:600;color:var(--text);line-height:1}
+    .tg-cta{display:inline-flex;align-items:center;gap:7px;font-family:'Space Grotesk',sans-serif;font-size:.75rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase}
+    .tg-cta .arr{transition:transform .25s}
+    .tg-card:hover .tg-cta .arr{transform:translateX(3px)}
+    @media (max-width:560px){
+      .tg-body{padding:18px 20px 20px}
+      .tg-pool .pv{font-size:1.5rem}
+      .tg-pool .pu{font-size:.95rem}
+    }
+
     .liq-boost{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
     .lb-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(0,230,118,.12);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
     .lb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.4),var(--gold),rgba(0,230,118,.4),transparent)}
@@ -379,6 +406,23 @@
     <div class="sc fi"><div class="l">Burns</div><div class="v" id="burn-count">--</div></div>
   </div></section>
 
+  <!-- BOBAI Worldcup '26 Tipgame teaser — live prize pool + clickable banner -->
+  <section class="tipgame fi">
+    <a class="tg-card" href="worldcup/" aria-label="Open BOBAI Worldcup '26 Tipgame">
+      <div class="tg-banner">
+        <img src="worldcup-tipgame-banner.jpg?v=5" alt="BOBAI Worldcup '26 — Tip, Predict, Win $BOBAI">
+      </div>
+      <div class="tg-body">
+        <div class="tg-eyebrow"><span class="live">Live</span> Prize Pool &middot; BOBAI Worldcup '26</div>
+        <div class="tg-pool">
+          <div class="pv" id="tg-pool-bobai">--</div>
+          <div class="pu" id="tg-pool-usd">--</div>
+        </div>
+        <div class="tg-cta">Enter the Tipgame <span class="arr">&rarr;</span></div>
+      </div>
+    </a>
+  </section>
+
   <section class="liq-boost fi">
     <div class="lb-card">
       <div class="lb-title"><em>$BOB</em> <span class="bob-sub">(Build On BNB)</span> <em>Permalocked Liquidity Boost</em></div>
@@ -458,7 +502,17 @@
             <div class="ts-split">1% BOBAI burn &middot; 0.74% BOB burn &middot; 0.74% Creator &middot; <b>0.52% &rarr; <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">WC26 Prize Pool</a></b></div>
           </div>
           <div class="ts-row" data-phase="standard-post">
-            <div class="ts-when">from Jul 20, 2026</div>
+            <div class="ts-when">Jul 20 &ndash; Sep 16, 2026</div>
+            <div class="ts-name">Standard</div>
+            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
+          </div>
+          <div class="ts-row" data-phase="sunshine">
+            <div class="ts-when">Sep 17 &ndash; Nov 20, 2026</div>
+            <div class="ts-name">Something good ahead</div>
+            <div class="ts-split">stay tuned</div>
+          </div>
+          <div class="ts-row" data-phase="standard-final">
+            <div class="ts-when">from Nov 20, 2026</div>
             <div class="ts-name">Standard</div>
             <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
           </div>
@@ -559,7 +613,7 @@
   <div class="fb"><img src="logo-sm.png?v=2" alt="BOBAI"><span>BOBAI</span></div>
   <p class="ll">Listed on</p>
   <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-binance.ico" alt="Binance Web3 logo">Binance Web3</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank"><img src="ico-blockspot.webp" alt="Blockspot.io logo">Blockspot.io</a><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.png" alt="CoinGecko logo">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.ico" alt="DEXTools.io logo">DEXTools.io</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-fourmeme.ico" alt="Four.Meme logo">Four.Meme</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo">GeckoTerminal</a><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo">PancakeSwap</a></div>
-  <div class="fm" style="margin-top:18px"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a> &middot; <a href="whitepaper">Lite Paper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb.ai | <a href="/">brainonbnb.com</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
+  <div class="fm" style="margin-top:18px"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a> &middot; <a href="whitepaper">Lite Paper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer>
 
 <script>
@@ -591,6 +645,39 @@ go();setInterval(go,30000);
 // === LIQ BOOST DATA ===
 async function lbdata(){try{const r=await fetch(BURNS.replace('burns.json','liq-boost-log.json')+'?t='+Date.now());if(!r.ok)return;const entries=await r.json();if(!entries||entries.length===0)return;document.getElementById('lb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=totalLp.toFixed(2);document.getElementById('lb-tx-body').innerHTML=rows.join('')}catch(e){console.error('lbdata error:',e)}}
 
+// === WORLDCUP TIPGAME — live prize pool ticker (Supabase wc_pool, anon read) ===
+!function(){
+  // Same Supabase project + public anon key used by /worldcup/index.html — safe to inline.
+  const URL='https://aerffjhdsbxpvuulkryr.supabase.co/rest/v1/wc_pool?id=eq.1&select=total_bobai,bobai_price_usd';
+  const KEY='sb_publishable_ne0MFzyCQb6MvFWur2X-Vw_vG9JH76_';
+  function fmtBobai(n){
+    if(n>=1e9)return(n/1e9).toFixed(2)+'B';
+    if(n>=1e6)return(n/1e6).toFixed(2)+'M';
+    if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+    return Math.round(n).toLocaleString('en-US');
+  }
+  function fmtUsd(n){
+    if(n>=1000)return'$'+Math.round(n).toLocaleString('en-US');
+    return'$'+n.toFixed(2);
+  }
+  async function load(){
+    try{
+      const r=await fetch(URL,{headers:{apikey:KEY,Accept:'application/json'}});
+      if(!r.ok)return;
+      const rows=await r.json();
+      const p=Array.isArray(rows)?rows[0]:null;
+      if(!p)return;
+      const total=parseFloat(p.total_bobai)||0;
+      const price=parseFloat(p.bobai_price_usd)||0;
+      const tb=document.getElementById('tg-pool-bobai');
+      const tu=document.getElementById('tg-pool-usd');
+      if(tb)tb.textContent=fmtBobai(total)+' BOBAI';
+      if(tu)tu.textContent=price>0?fmtUsd(total*price):'';
+    }catch(_){}
+  }
+  load();setInterval(load,30000);
+}();
+
 // === LIQ BOOST COUNTDOWN ===
 !function(){
   const START=new Date('2026-04-21T00:01:00Z').getTime();
@@ -617,7 +704,9 @@ async function lbdata(){try{const r=await fetch(BURNS.replace('burns.json','liq-
     {id:'liq-boost',     start:0,                                           end:new Date('2026-06-04T23:59:00Z').getTime(), creatorNote:'(0.5% → $BOB liq add)', bobNote:''},
     {id:'standard-pre',  start:new Date('2026-06-04T23:59:00Z').getTime(), end:new Date('2026-06-11T00:01:00Z').getTime(), creatorNote:'', bobNote:''},
     {id:'wc26',          start:new Date('2026-06-11T00:01:00Z').getTime(), end:new Date('2026-07-19T23:59:00Z').getTime(), creatorNote:'(−0.26% → Prize Pool)', bobNote:'(−0.26% → Prize Pool)'},
-    {id:'standard-post', start:new Date('2026-07-19T23:59:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:''}
+    {id:'standard-post', start:new Date('2026-07-19T23:59:00Z').getTime(), end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'', bobNote:''},
+    {id:'sunshine',      start:new Date('2026-09-17T00:01:00Z').getTime(), end:new Date('2026-11-20T00:01:00Z').getTime(), creatorNote:'', bobNote:''},
+    {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:''}
   ];
   function apply(){
     const now=Date.now();

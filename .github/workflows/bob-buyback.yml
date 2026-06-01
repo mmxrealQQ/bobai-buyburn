@@ -43,7 +43,10 @@ jobs:
             cp /tmp/burns.json burns.json
             [ -f /tmp/liq-boost-log.json ] && cp /tmp/liq-boost-log.json liq-boost-log.json
             [ -f /tmp/bobai-liq-log.json ] && cp /tmp/bobai-liq-log.json bobai-liq-log.json
-            git add burns.json liq-boost-log.json bobai-liq-log.json
+            git add burns.json
+            [ -f liq-boost-log.json ] && git add liq-boost-log.json
+            [ -f bobai-liq-log.json ] && git add bobai-liq-log.json
+            true
             git diff --cached --quiet && break
             git commit -m "Burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             git push origin main && break || sleep 5

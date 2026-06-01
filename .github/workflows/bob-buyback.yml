@@ -25,6 +25,8 @@ jobs:
         env:
           PRIVATE_KEY: ${{ secrets.BUYBACK_PRIVATE_KEY }}
           BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
+          SUPABASE_URL: ${{ secrets.WC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.WC_SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           node buyback-bot.js
 
@@ -34,12 +36,14 @@ jobs:
           git config user.email "bot@bobai.buildonbnbgame.xyz"
           cp burns.json /tmp/burns.json
           [ -f liq-boost-log.json ] && cp liq-boost-log.json /tmp/liq-boost-log.json
+          [ -f bobai-liq-log.json ] && cp bobai-liq-log.json /tmp/bobai-liq-log.json
           for i in 1 2 3; do
             git fetch origin main
             git reset --hard origin/main
             cp /tmp/burns.json burns.json
             [ -f /tmp/liq-boost-log.json ] && cp /tmp/liq-boost-log.json liq-boost-log.json
-            git add burns.json liq-boost-log.json
+            [ -f /tmp/bobai-liq-log.json ] && cp /tmp/bobai-liq-log.json bobai-liq-log.json
+            git add burns.json liq-boost-log.json bobai-liq-log.json
             git diff --cached --quiet && break
             git commit -m "Burn log update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             git push origin main && break || sleep 5

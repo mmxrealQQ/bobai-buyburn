@@ -56,7 +56,7 @@ CREATE INDEX wc_tips_user ON wc_tips (user_id);
 CREATE INDEX wc_tips_match ON wc_tips (match_id);
 
 -- ============================================================
--- 4) BONUS ANSWERS (pre-WC, 10pts each)
+-- 4) BONUS ANSWERS (pre-WC, 20pts each)
 -- ============================================================
 CREATE TABLE wc_bonus (
   user_id BIGINT PRIMARY KEY REFERENCES wc_users(id) ON DELETE CASCADE,

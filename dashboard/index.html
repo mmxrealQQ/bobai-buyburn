@@ -425,6 +425,29 @@
 
   <section class="liq-boost fi">
     <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost</em></div>
+      <div class="lb-sub">0.5% of every trade permanently added to BOBAI/BNB liquidity pool</div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb-count">0</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb-bnb">0.0000</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb-lp">0</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+        <div class="txw">
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <tbody id="bb-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Starts June 1, 2026, 00:00 UTC</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="liq-boost fi">
+    <div class="lb-card">
       <div class="lb-title"><em>$BOB</em> <span class="bob-sub">(Build On BNB)</span> <em>Permalocked Liquidity Boost</em></div>
       <div class="lb-sub">0.5% of every trade permanently added to BOB/BNB liquidity pool</div>
       <div class="lb-countdown">
@@ -488,21 +511,26 @@
         <div class="ts-rows">
           <div class="ts-row" data-phase="liq-boost">
             <div class="ts-when">until Jun 4, 2026</div>
-            <div class="ts-name">$BOB Liq Boost</div>
-            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 0.5% Creator &middot; <b>0.5% &rarr; BOB liq add + LP burn</b></div>
+            <div class="ts-name">$BOB Liq Boost + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 0.5% Creator &middot; <b>0.5% &rarr; BOB liq add + LP burn</b> &middot; <b>0.5% &rarr; BOBAI liq add + LP burn</b></div>
           </div>
           <div class="ts-row" data-phase="standard-pre">
             <div class="ts-when">Jun 5 &ndash; Jun 10, 2026</div>
-            <div class="ts-name">Standard</div>
-            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
+            <div class="ts-name">Standard + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 1% Creator &middot; <b>0.5% &rarr; BOBAI liq add + LP burn</b></div>
           </div>
           <div class="ts-row" data-phase="wc26">
             <div class="ts-when">Jun 11, 00:01 UTC &rarr; Jul 19, 23:59 UTC, 2026</div>
-            <div class="ts-name">WC26 Prize Pool</div>
-            <div class="ts-split">1% BOBAI burn &middot; 0.74% BOB burn &middot; 0.74% Creator &middot; <b>0.52% &rarr; <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">WC26 Prize Pool</a></b></div>
+            <div class="ts-name">WC26 Prize Pool + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.24% BOB burn &middot; 0.74% Creator &middot; <b>0.5% &rarr; BOBAI liq add + LP burn</b> &middot; <b>0.52% &rarr; <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">WC26 Prize Pool</a></b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-bb">
+            <div class="ts-when">Jul 20 &ndash; Aug 1, 2026</div>
+            <div class="ts-name">Standard + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 1% Creator &middot; <b>0.5% &rarr; BOBAI liq add + LP burn</b></div>
           </div>
           <div class="ts-row" data-phase="standard-post">
-            <div class="ts-when">Jul 20 &ndash; Sep 16, 2026</div>
+            <div class="ts-when">Aug 2 &ndash; Sep 16, 2026</div>
             <div class="ts-name">Standard</div>
             <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
           </div>
@@ -612,7 +640,7 @@
 <footer><div class="fi2">
   <div class="fb"><img src="logo-sm.png?v=2" alt="BOBAI"><span>BOBAI</span></div>
   <p class="ll">Listed on</p>
-  <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-binance.ico" alt="Binance Web3 logo">Binance Web3</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank"><img src="ico-blockspot.webp" alt="Blockspot.io logo">Blockspot.io</a><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.png" alt="CoinGecko logo">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.ico" alt="DEXTools.io logo">DEXTools.io</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-fourmeme.ico" alt="Four.Meme logo">Four.Meme</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo">GeckoTerminal</a><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo">PancakeSwap</a></div>
+  <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-binance.ico" alt="Binance Web3 Wallet logo">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank"><img src="ico-bitget.png" alt="Bitget Wallet logo">Bitget Wallet</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank"><img src="ico-blockspot.webp" alt="Blockspot.io logo">Blockspot.io</a><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.png" alt="CoinGecko logo">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.ico" alt="DEXTools.io logo">DEXTools.io</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-fourmeme.ico" alt="Four.Meme logo">Four.Meme</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo">GeckoTerminal</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-okx.png" alt="OKX Wallet logo">OKX Wallet</a><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo">PancakeSwap</a></div>
   <div class="fm" style="margin-top:18px"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a> &middot; <a href="whitepaper">Lite Paper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer>
 
@@ -639,11 +667,14 @@ async function bal(){try{const h=await rpc('eth_getBalance',[BW,'latest']);const
 async function burned(){try{const d='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';const b=await rpc('eth_call',[{to:BOB,data:d},'latest']);if(b&&b!=='0x'){const v=Number(BigInt(b))/1e18;if(v>0)document.getElementById('total-burned').textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' BOB'}const a=await rpc('eth_call',[{to:BOBAI,data:d},'latest']);if(a&&a!=='0x'){const v=Number(BigInt(a))/1e18;if(v>0){document.getElementById('total-bobai-burned').textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' BOBAI';const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}}catch(e){}}
 async function token(){try{const P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',rH=await rpc('eth_call',[{to:P,data:'0x0902f1ac'},'latest']),r0=BigInt('0x'+rH.slice(2,66)),r1=BigInt('0x'+rH.slice(66,130)),t0=await rpc('eth_call',[{to:P,data:'0x0dfe1681'},'latest']),is0=('0x'+t0.slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',bH=await rpc('eth_call',[{to:BP,data:'0x0902f1ac'},'latest']),b0=BigInt('0x'+bH.slice(2,66)),b1=BigInt('0x'+bH.slice(66,130)),bt=await rpc('eth_call',[{to:BP,data:'0x0dfe1681'},'latest']),w0=('0x'+bt.slice(26).toLowerCase())==='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),pU=(Number(wR)/Number(bR))*bnbP,dD='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD',dB=await rpc('eth_call',[{to:BOBAI,data:dD},'latest']),bAmt=(dB&&dB!=='0x')?Number(BigInt(dB))/1e18:0,circ=1e9-bAmt;document.getElementById('mcap').textContent='$'+(pU*circ).toLocaleString(undefined,{maximumFractionDigits:0});document.getElementById('volume').textContent='$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0})}catch(e){}}
 async function bdata(){try{const r=await fetch(BURNS+'?t='+Date.now());if(!r.ok)return;const b=await r.json();if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}document.getElementById('burn-count').textContent=b.length.toString();document.getElementById('tx-body').innerHTML=rows.join('')}}catch(e){}}
-let cnt=0;async function go(){const t=[bal(),token(),burned()];if(cnt++%10===0){t.push(bdata().then(()=>lbdata()))}await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
+let cnt=0;async function go(){const t=[bal(),token(),burned()];if(cnt++%10===0){t.push(bdata().then(()=>lbdata()).then(()=>bbdata()))}await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
 go();setInterval(go,30000);
 
 // === LIQ BOOST DATA ===
 async function lbdata(){try{const r=await fetch(BURNS.replace('burns.json','liq-boost-log.json')+'?t='+Date.now());if(!r.ok)return;const entries=await r.json();if(!entries||entries.length===0)return;document.getElementById('lb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=totalLp.toFixed(2);document.getElementById('lb-tx-body').innerHTML=rows.join('')}catch(e){console.error('lbdata error:',e)}}
+
+// === BOBAI LIQ BOOST DATA ===
+async function bbdata(){try{const r=await fetch(BURNS.replace('burns.json','bobai-liq-log.json')+'?t='+Date.now());if(!r.ok)return;const entries=await r.json();if(!entries||entries.length===0)return;document.getElementById('bb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=totalLp.toFixed(2);document.getElementById('bb-tx-body').innerHTML=rows.join('')}catch(e){console.error('bbdata error:',e)}}
 
 // === WORLDCUP TIPGAME — live prize pool ticker (Supabase wc_pool, anon read) ===
 !function(){
@@ -698,13 +729,37 @@ async function lbdata(){try{const r=await fetch(BURNS.replace('burns.json','liq-
   tick();setInterval(tick,60000);
 }();
 
+// === BOBAI LIQ BOOST COUNTDOWN ===
+!function(){
+  const START=new Date('2026-06-01T00:00:00Z').getTime();
+  const END=new Date('2026-08-01T23:59:59Z').getTime();
+  function tick(){
+    const now=Date.now();
+    let diff;
+    if(now<START){diff=END-START}
+    else if(now>=END){diff=0}
+    else{diff=END-now}
+    const d=Math.floor(diff/86400000);
+    const h=Math.floor((diff%86400000)/3600000);
+    const m=Math.floor((diff%3600000)/60000);
+    const dEl=document.getElementById('bb-days');
+    const hEl=document.getElementById('bb-hours');
+    const mEl=document.getElementById('bb-mins');
+    if(dEl)dEl.textContent=d;
+    if(hEl)hEl.textContent=h;
+    if(mEl)mEl.textContent=m;
+  }
+  tick();setInterval(tick,60000);
+}();
+
 // === TAX ALLOCATION SCHEDULE — phase-aware highlight + inline notes ===
 !function(){
   const phases=[
-    {id:'liq-boost',     start:0,                                           end:new Date('2026-06-04T23:59:00Z').getTime(), creatorNote:'(0.5% → $BOB liq add)', bobNote:''},
-    {id:'standard-pre',  start:new Date('2026-06-04T23:59:00Z').getTime(), end:new Date('2026-06-11T00:01:00Z').getTime(), creatorNote:'', bobNote:''},
-    {id:'wc26',          start:new Date('2026-06-11T00:01:00Z').getTime(), end:new Date('2026-07-19T23:59:00Z').getTime(), creatorNote:'(−0.26% → Prize Pool)', bobNote:'(−0.26% → Prize Pool)'},
-    {id:'standard-post', start:new Date('2026-07-19T23:59:00Z').getTime(), end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'', bobNote:''},
+    {id:'liq-boost',     start:0,                                           end:new Date('2026-06-04T23:59:00Z').getTime(), creatorNote:'(−0.5% → $BOB liq add)', bobNote:'(−0.5% → $BOBAI liq add)'},
+    {id:'standard-pre',  start:new Date('2026-06-04T23:59:00Z').getTime(), end:new Date('2026-06-11T00:01:00Z').getTime(), creatorNote:'', bobNote:'(−0.5% → $BOBAI liq add)'},
+    {id:'wc26',          start:new Date('2026-06-11T00:01:00Z').getTime(), end:new Date('2026-07-19T23:59:00Z').getTime(), creatorNote:'(−0.26% → Prize Pool)', bobNote:'(−0.26% → Prize Pool, −0.5% → $BOBAI liq)'},
+    {id:'standard-bb',   start:new Date('2026-07-19T23:59:00Z').getTime(), end:new Date('2026-08-01T23:59:59Z').getTime(), creatorNote:'', bobNote:'(−0.5% → $BOBAI liq add)'},
+    {id:'standard-post', start:new Date('2026-08-01T23:59:59Z').getTime(), end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'', bobNote:''},
     {id:'sunshine',      start:new Date('2026-09-17T00:01:00Z').getTime(), end:new Date('2026-11-20T00:01:00Z').getTime(), creatorNote:'', bobNote:''},
     {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:''}
   ];

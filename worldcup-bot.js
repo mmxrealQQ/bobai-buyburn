@@ -93,6 +93,17 @@ async function sbPatch(table, query, row){
   } catch (e) { console.log(`[sb] patch error: ${e.message}`); }
 }
 
+async function sbSelect(table, query){
+  if (!SUPABASE_URL || !SB_KEY) return [];
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    });
+    if (!res.ok) { console.log(`[sb] select ${table} failed: ${res.status}`); return []; }
+    return await res.json();
+  } catch (e) { console.log(`[sb] select error: ${e.message}`); return []; }
+}
+
 // ─── Prize-pool sync (mirrors worker-wc syncPool — keep in lockstep!) ───────
 // Why inline: worker-wc cron runs */10 independently of this script. Without
 // this, dashboards & TG alerts would show stale total_bobai for up to 10 min
@@ -215,6 +226,13 @@ async function main(){
   if (bnbBalance > GAS_RESERVE + MIN_SWAP_BNB) {
     const amountIn = bnbBalance - GAS_RESERVE;
     console.log(`\n--- Swapping ${formatEther(amountIn)} BNB → BOBAI ---`);
+
+    // Snapshot pending TAX rows BEFORE the swap. Buyback bot inserts these whenever
+    // it sends WC26 tax BNB to the prize wallet (amount_bobai stays null until we
+    // attribute the swap result back to them).
+    const pendingTax  = await sbSelect('wc_donations', 'token=eq.TAX&amount_bobai=is.null&select=id,amount_in&order=created_at.asc');
+    const totalTaxIn  = pendingTax.reduce((s, r) => s + parseFloat(r.amount_in || 0), 0);
+
     const path = [WBNB, BOBAI];
     try {
       const amounts = await publicClient.readContract({
@@ -237,18 +255,48 @@ async function main(){
       const got = parseBobaiReceived(receipt, account.address);
       console.log(`Received: ${formatEther(got)} BOBAI`);
 
+      // Attribute swap result: TAX rows get their proportional BOBAI; remainder
+      // becomes the donation BNB row. If pending TAX exceeds the swap (race with
+      // a TAX row created mid-swap), we leave the whole batch for the next cycle.
+      const totalIn  = parseFloat(formatEther(amountIn));
+      const totalOut = parseFloat(formatEther(got));
+      const ratio    = totalIn > 0 ? totalOut / totalIn : 0;
+
+      let taxIn = 0, taxOut = 0;
+      if (pendingTax.length && totalTaxIn <= totalIn) {
+        for (const row of pendingTax) {
+          const a = parseFloat(row.amount_in || 0);
+          if (a <= 0) continue;
+          await sbPatch('wc_donations', `id=eq.${row.id}`, {
+            amount_bobai: (a * ratio).toString(),
+            swap_tx_hash: hash,
+          });
+        }
+        taxIn  = totalTaxIn;
+        taxOut = totalTaxIn * ratio;
+        console.log(`Attributed ${pendingTax.length} pending TAX row(s): ${taxIn.toFixed(6)} BNB → ${taxOut.toFixed(2)} BOBAI`);
+      } else if (pendingTax.length) {
+        console.log(`[WARN] Pending TAX (${totalTaxIn.toFixed(6)}) > swap (${totalIn.toFixed(6)}). Leaving for next cycle.`);
+      }
+
       // Sync wc_pool BEFORE inserting the donation row so any reader who sees
       // the new wc_donations entry also sees the matching total_bobai.
       await syncPool(publicClient);
 
-      await sbInsert('wc_donations', {
-        from_address: account.address,
-        token: 'BNB',
-        amount_in: formatEther(amountIn),
-        amount_bobai: formatEther(got),
-        tx_hash: hash,
-        swap_tx_hash: hash,
-      });
+      const donationIn  = Math.max(0, totalIn  - taxIn);
+      const donationOut = Math.max(0, totalOut - taxOut);
+      if (donationIn > 0.000001) {
+        await sbInsert('wc_donations', {
+          from_address: account.address,
+          token: 'BNB',
+          amount_in: donationIn.toString(),
+          amount_bobai: donationOut.toString(),
+          tx_hash: hash,
+          swap_tx_hash: hash,
+        });
+      } else {
+        console.log('No donation residual to log (full swap was tax-attributed).');
+      }
       didAnything = true;
     } catch (e) {
       console.log(`BNB swap failed: ${e.message}`);

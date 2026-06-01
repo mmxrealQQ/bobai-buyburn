@@ -80,7 +80,7 @@ FOR EACH ROW EXECUTE FUNCTION wc_resolve_tips();
 -- ============================================================
 -- Helper: resolve bonus questions in one call (run after tournament ends)
 -- Takes the actual answers and writes points to wc_bonus rows.
--- Each correct answer = 10 pts.
+-- Each correct answer = 10 pts.  (Superseded by migration_phase_k_bonus_20 → 20 pts.)
 -- ============================================================
 CREATE OR REPLACE FUNCTION wc_resolve_bonus(
   p_champion           TEXT,

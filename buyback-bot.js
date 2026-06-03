@@ -186,7 +186,7 @@ async function sleep(ms) {
 }
 
 async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, pairAddress, tokenName) {
-  const SLIPPAGE_PERCENT = 2;
+  const SLIPPAGE_PERCENT = 5;
   const SWAP_CHUNKS = 3;
   const halfBnb = bnbAmount / 2n;
   const liqBnb = bnbAmount - halfBnb;

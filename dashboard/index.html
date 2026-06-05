@@ -254,6 +254,22 @@
     .lb-stat .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
     .lb-stat .v{font-family:'Space Grotesk',sans-serif;font-size:1.05rem;font-weight:700;color:var(--green)}
 
+    /* LIQ BOOST ARCHIVE — collapsible card, sits under Live Burns */
+    .lb-archive summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px;user-select:none}
+    .lb-archive summary::-webkit-details-marker{display:none}
+    .lb-arch-head{flex:1;min-width:0}
+    .lb-arch-title{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:700;letter-spacing:-.3px}
+    .lb-arch-title em{font-style:normal;background:linear-gradient(135deg,var(--green),var(--gold));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lb-arch-meta{font-size:.7rem;color:var(--muted);margin-top:4px}
+    .lb-arch-arr{font-size:1.1rem;color:var(--gold);transition:transform .25s;flex-shrink:0}
+    .lb-archive[open] .lb-arch-arr{transform:rotate(180deg)}
+    .lb-arch-body{padding:0 28px 28px}
+    @media (max-width:560px){
+      .lb-archive summary{padding:20px 22px}
+      .lb-arch-body{padding:0 22px 24px}
+      .lb-arch-title{font-size:.9rem}
+    }
+
     /* BURNS WRAPPER — mirrors .lb-card structure, neutral gold accent (no green).
        Lives inside .sec which already provides max-width + side padding, so the
        wrapper itself only spaces vertically. */
@@ -446,29 +462,6 @@
     </div>
   </section>
 
-  <section class="liq-boost fi">
-    <div class="lb-card">
-      <div class="lb-title"><em>$BOB</em> <span class="bob-sub">(Build On BNB)</span> <em>Permalocked Liquidity Boost</em></div>
-      <div class="lb-sub">0.5% of every trade permanently added to BOB/BNB liquidity pool</div>
-      <div class="lb-countdown">
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="lb-days">--</div><div class="lb-cd-lbl">Days</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="lb-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="lb-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
-      </div>
-      <div class="lb-stats">
-        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="lb-count">0</div></div>
-        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="lb-bnb">0.0000</div></div>
-        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="lb-lp">0</div></div>
-      </div>
-      <div class="lb-table" style="margin-top:20px">
-        <div class="txw">
-          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
-          <tbody id="lb-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Starts April 21, 00:01 UTC</td></tr></tbody></table>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
 
   <section class="sec" id="about">
@@ -589,6 +582,33 @@
         </div>
       </div>
     </div>
+
+    <div class="burns-wrap fi" style="margin-top:24px">
+      <div class="bw-card" style="padding:0">
+        <details class="lb-archive">
+          <summary>
+            <div class="lb-arch-head">
+              <div class="lb-arch-title"><em>$BOB</em> <span class="bob-sub">(Build On BNB)</span> <em>Permalocked Liquidity Boost</em></div>
+              <div class="lb-arch-meta">Apr 21 &ndash; Jun 4, 2026 &middot; <span style="color:var(--green)">&#x2713; Campaign Complete</span></div>
+            </div>
+            <div class="lb-arch-arr">&#x25BE;</div>
+          </summary>
+          <div class="lb-arch-body">
+            <div class="lb-stats">
+              <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="lb-count">0</div></div>
+              <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="lb-bnb">0.0000</div></div>
+              <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="lb-lp">0</div></div>
+            </div>
+            <div class="lb-table" style="margin-top:20px">
+              <div class="txw">
+                <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+                <tbody id="lb-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
   </section>
 
   <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
@@ -707,26 +727,6 @@ async function bbdata(){try{const r=await fetch(BURNS.replace('burns.json','boba
     }catch(_){}
   }
   load();setInterval(load,30000);
-}();
-
-// === LIQ BOOST COUNTDOWN ===
-!function(){
-  const START=new Date('2026-04-21T00:01:00Z').getTime();
-  const END=new Date('2026-06-04T23:59:00Z').getTime();
-  function tick(){
-    const now=Date.now();
-    let diff;
-    if(now<START){diff=END-START}
-    else if(now>=END){diff=0}
-    else{diff=END-now}
-    const d=Math.floor(diff/86400000);
-    const h=Math.floor((diff%86400000)/3600000);
-    const m=Math.floor((diff%3600000)/60000);
-    document.getElementById('lb-days').textContent=d;
-    document.getElementById('lb-hours').textContent=h;
-    document.getElementById('lb-mins').textContent=m;
-  }
-  tick();setInterval(tick,60000);
 }();
 
 // === BOBAI LIQ BOOST COUNTDOWN ===

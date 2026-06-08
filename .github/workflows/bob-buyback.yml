@@ -19,7 +19,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install viem @four-meme/four-meme-ai@latest
+        run: npm install viem @four-meme/four-meme-ai@latest --ignore-scripts
 
       - name: Run Buy & Burn
         env:

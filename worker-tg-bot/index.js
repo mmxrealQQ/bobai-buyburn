@@ -724,10 +724,12 @@ async function handleCommand(msg) {
       reply = `🛒 <b>How to Buy BOBAI</b>
 
 <b>Step 1:</b> Get BNB in your wallet
-<i>MetaMask, Trust Wallet, or Binance Web3</i>
+<i>MetaMask, Trust Wallet, or any Web3 Wallet (Binance / Bitget / OKX)</i>
 
 <b>Step 2:</b> Swap BNB → BOBAI
-🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Wallet</a>
+🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Web3 Wallet</a>
+🟦 <a href="https://web3.bitget.com/en/swap/bnb/${BOBAI_TOKEN}">Bitget Wallet</a>
+🟩 <a href="https://web3.okx.com/token/bsc/${BOBAI_TOKEN}">OKX Wallet</a>
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
 
@@ -804,14 +806,19 @@ async function handleCommand(msg) {
 
 🌍 <a href="https://brainonbnb.com">Website & Dashboard</a>
 
+🐦 <a href="https://birdeye.so/token/${BOBAI_TOKEN}?chain=bsc">Birdeye</a>
 🔷 <a href="https://blockspot.io/coin/brain-on-bnb-ai/">Blockspot.io</a>
+🫧 <a href="https://v2.bubblemaps.io/map?address=${BOBAI_TOKEN}&amp;chain=bsc">Bubblemaps</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
 🦎 <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai">CoinGecko</a>
 🦅 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DEX Screener</a>
 🌐 <a href="https://www.dextools.io/token/bobai">DEXTools.io</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
+🐊 <a href="https://gmgn.ai/bsc/token/${BOBAI_TOKEN}">GMGN.AI</a>
 
-🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Wallet</a>
+🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Web3 Wallet</a>
+🟦 <a href="https://web3.bitget.com/en/swap/bnb/${BOBAI_TOKEN}">Bitget Wallet</a>
+🟩 <a href="https://web3.okx.com/token/bsc/${BOBAI_TOKEN}">OKX Wallet</a>
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
 

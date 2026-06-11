@@ -486,9 +486,19 @@ async function main() {
     }
   }
 
-  // Step 3d: Send WC26 Prize Pool share (only during WC26 window).
-  // Last in the funding chain so any Liq-Add above has already deepened the
-  // pool before worldcup-bot picks up the BNB and swaps it → BOBAI.
+  // Step 4: Buy & burn $BOB
+  console.log(`\n--- Buying & Burning $BOB (${formatEther(bobBurnAmount)} BNB) ---`);
+  const bobResult = await swapAndBurn(walletClient, publicClient, account, bobBurnAmount, BOB_TOKEN, 'BOB');
+
+  // Step 5: Buy & burn $BOBAI
+  console.log(`\n--- Buying & Burning $BOBAI (${formatEther(bobaiBurnAmount)} BNB) ---`);
+  const bobaiResult = await swapAndBurn(walletClient, publicClient, account, bobaiBurnAmount, BOBAI_TOKEN, 'BOBAI');
+
+  // Step 5b: Send WC26 Prize Pool share LAST (only during WC26 window).
+  // Runs after all burns/liq-adds so worldcup-bot picks up the BNB into a pool
+  // that's already been deepened (Liq-Add) and bought into (burn swaps) — and
+  // so this send is the final on-chain action of the cycle, cleanly separating
+  // protocol burns from the WC26 routing.
   let wc26TxHash = null;
   if (wc26PoolAmount > 0n) {
     console.log(`\n--- Sending ${formatEther(wc26PoolAmount)} BNB to WC26 Prize Pool ---`);
@@ -515,14 +525,6 @@ async function main() {
       wc26TxHash = null;
     }
   }
-
-  // Step 4: Buy & burn $BOB
-  console.log(`\n--- Buying & Burning $BOB (${formatEther(bobBurnAmount)} BNB) ---`);
-  const bobResult = await swapAndBurn(walletClient, publicClient, account, bobBurnAmount, BOB_TOKEN, 'BOB');
-
-  // Step 5: Buy & burn $BOBAI
-  console.log(`\n--- Buying & Burning $BOBAI (${formatEther(bobaiBurnAmount)} BNB) ---`);
-  const bobaiResult = await swapAndBurn(walletClient, publicClient, account, bobaiBurnAmount, BOBAI_TOKEN, 'BOBAI');
 
   // Step 6: Log to burns.json
   try {

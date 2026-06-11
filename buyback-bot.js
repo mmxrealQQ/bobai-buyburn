@@ -459,8 +459,36 @@ async function main() {
     return;
   }
 
-  // Step 3b: Send WC26 Prize Pool share (only during WC26 window).
-  // Donation-worker on-chain detects the incoming BNB and auto-swaps to BOBAI for the pool.
+  // Step 3b: BOB Liq Add (only during BOB Liq Boost window)
+  // Run BEFORE WC26 send so the pool is deeper when worldcup-bot swaps the
+  // prize-pool BNB → BOBAI in the same minute (less slippage on that swap).
+  let bobLiqResult = null;
+  const MIN_LIQ = parseEther('0.0003');
+  if (bobLiqAddAmount > MIN_LIQ) {
+    console.log(`\n--- Adding BOB/BNB Liquidity (${formatEther(bobLiqAddAmount)} BNB) → LP to Dead ---`);
+    bobLiqResult = await addLiquidityAndBurn(walletClient, publicClient, account, bobLiqAddAmount, BOB_TOKEN, BOB_WBNB_PAIR, 'BOB');
+    if (bobLiqResult) {
+      console.log('  BOB Liq Add SUCCESS!');
+    } else {
+      console.log('  BOB Liq Add FAILED — BNB stays on wallet for next run.');
+    }
+  }
+
+  // Step 3c: BOBAI Liq Add (only during BOBAI Liq Boost window)
+  let bobaiLiqResult = null;
+  if (bobaiLiqAddAmount > MIN_LIQ) {
+    console.log(`\n--- Adding BOBAI/BNB Liquidity (${formatEther(bobaiLiqAddAmount)} BNB) → LP to Dead ---`);
+    bobaiLiqResult = await addLiquidityAndBurn(walletClient, publicClient, account, bobaiLiqAddAmount, BOBAI_TOKEN, BOBAI_WBNB_PAIR, 'BOBAI');
+    if (bobaiLiqResult) {
+      console.log('  BOBAI Liq Add SUCCESS!');
+    } else {
+      console.log('  BOBAI Liq Add FAILED — BNB stays on wallet for next run.');
+    }
+  }
+
+  // Step 3d: Send WC26 Prize Pool share (only during WC26 window).
+  // Last in the funding chain so any Liq-Add above has already deepened the
+  // pool before worldcup-bot picks up the BNB and swaps it → BOBAI.
   let wc26TxHash = null;
   if (wc26PoolAmount > 0n) {
     console.log(`\n--- Sending ${formatEther(wc26PoolAmount)} BNB to WC26 Prize Pool ---`);
@@ -485,31 +513,6 @@ async function main() {
     } catch (e) {
       console.log(`  WC26 pool send failed: ${e.message}`);
       wc26TxHash = null;
-    }
-  }
-
-  // Step 3c: BOB Liq Add (only during BOB Liq Boost window)
-  let bobLiqResult = null;
-  const MIN_LIQ = parseEther('0.0003');
-  if (bobLiqAddAmount > MIN_LIQ) {
-    console.log(`\n--- Adding BOB/BNB Liquidity (${formatEther(bobLiqAddAmount)} BNB) → LP to Dead ---`);
-    bobLiqResult = await addLiquidityAndBurn(walletClient, publicClient, account, bobLiqAddAmount, BOB_TOKEN, BOB_WBNB_PAIR, 'BOB');
-    if (bobLiqResult) {
-      console.log('  BOB Liq Add SUCCESS!');
-    } else {
-      console.log('  BOB Liq Add FAILED — BNB stays on wallet for next run.');
-    }
-  }
-
-  // Step 3d: BOBAI Liq Add (only during BOBAI Liq Boost window)
-  let bobaiLiqResult = null;
-  if (bobaiLiqAddAmount > MIN_LIQ) {
-    console.log(`\n--- Adding BOBAI/BNB Liquidity (${formatEther(bobaiLiqAddAmount)} BNB) → LP to Dead ---`);
-    bobaiLiqResult = await addLiquidityAndBurn(walletClient, publicClient, account, bobaiLiqAddAmount, BOBAI_TOKEN, BOBAI_WBNB_PAIR, 'BOBAI');
-    if (bobaiLiqResult) {
-      console.log('  BOBAI Liq Add SUCCESS!');
-    } else {
-      console.log('  BOBAI Liq Add FAILED — BNB stays on wallet for next run.');
     }
   }
 

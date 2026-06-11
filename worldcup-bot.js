@@ -255,28 +255,31 @@ async function main(){
       const got = parseBobaiReceived(receipt, account.address);
       console.log(`Received: ${formatEther(got)} BOBAI`);
 
-      // Attribute swap result: TAX rows get their proportional BOBAI; remainder
-      // becomes the donation BNB row. If pending TAX exceeds the swap (race with
-      // a TAX row created mid-swap), we leave the whole batch for the next cycle.
+      // Attribute swap result: TAX rows get their proportional BOBAI; any
+      // remainder becomes the donation BNB row. When pending TAX nominally
+      // exceeds the swap (gas-reserve dust shaves a few wei off amountIn), we
+      // still attribute everything to TAX proportionally — the wallet just
+      // swapped slightly less than the sum of TAX rows, no donation residual.
       const totalIn  = parseFloat(formatEther(amountIn));
       const totalOut = parseFloat(formatEther(got));
       const ratio    = totalIn > 0 ? totalOut / totalIn : 0;
 
       let taxIn = 0, taxOut = 0;
-      if (pendingTax.length && totalTaxIn <= totalIn) {
+      if (pendingTax.length) {
+        const scale = totalTaxIn > totalIn && totalTaxIn > 0 ? totalIn / totalTaxIn : 1;
         for (const row of pendingTax) {
           const a = parseFloat(row.amount_in || 0);
           if (a <= 0) continue;
+          const attributed = a * scale;
           await sbPatch('wc_donations', `id=eq.${row.id}`, {
-            amount_bobai: (a * ratio).toString(),
+            amount_bobai: (attributed * ratio).toString(),
             swap_tx_hash: hash,
           });
         }
-        taxIn  = totalTaxIn;
-        taxOut = totalTaxIn * ratio;
-        console.log(`Attributed ${pendingTax.length} pending TAX row(s): ${taxIn.toFixed(6)} BNB → ${taxOut.toFixed(2)} BOBAI`);
-      } else if (pendingTax.length) {
-        console.log(`[WARN] Pending TAX (${totalTaxIn.toFixed(6)}) > swap (${totalIn.toFixed(6)}). Leaving for next cycle.`);
+        taxIn  = Math.min(totalTaxIn, totalIn);
+        taxOut = taxIn * ratio;
+        const note = scale < 1 ? ` (scaled ${(scale*100).toFixed(3)}% — gas-reserve dust)` : '';
+        console.log(`Attributed ${pendingTax.length} pending TAX row(s): ${taxIn.toFixed(6)} BNB → ${taxOut.toFixed(2)} BOBAI${note}`);
       }
 
       // Sync wc_pool BEFORE inserting the donation row so any reader who sees

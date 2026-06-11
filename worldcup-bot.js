@@ -264,6 +264,10 @@ async function main(){
       const totalOut = parseFloat(formatEther(got));
       const ratio    = totalIn > 0 ? totalOut / totalIn : 0;
 
+      // Bump created_at to the swap time so the TAX row's timestamp matches
+      // its swap_tx_hash (otherwise the dashboard shows the send time but the
+      // TX link goes to a swap a few minutes later — confusing).
+      const swapTime = new Date().toISOString();
       let taxIn = 0, taxOut = 0;
       if (pendingTax.length) {
         const scale = totalTaxIn > totalIn && totalTaxIn > 0 ? totalIn / totalTaxIn : 1;
@@ -274,6 +278,7 @@ async function main(){
           await sbPatch('wc_donations', `id=eq.${row.id}`, {
             amount_bobai: (attributed * ratio).toString(),
             swap_tx_hash: hash,
+            created_at: swapTime,
           });
         }
         taxIn  = Math.min(totalTaxIn, totalIn);

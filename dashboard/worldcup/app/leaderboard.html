@@ -235,7 +235,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/config.js?v=12"></script>
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=13"></script>
@@ -724,10 +724,9 @@
       const livePx = livePrices[coin];
       const display = coinDisplay(coin);
 
-      // Reveal crypto tips publicly at first-match kickoff (match id=1), same gate as profile page.
-      const firstMatch = (matches || []).find(m => m.id === 1);
-      const firstKickoffMs = firstMatch ? new Date(firstMatch.kickoff_utc).getTime() : null;
-      const cryptoRevealed = firstKickoffMs != null && Date.now() >= firstKickoffMs;
+      // Reveal crypto tips publicly at the final edit lock (BONUS_CRYPTO_LOCK_UTC), same gate as profile page.
+      const cryptoLockMs = new Date(window.WC_CONFIG.BONUS_CRYPTO_LOCK_UTC).getTime();
+      const cryptoRevealed = Date.now() >= cryptoLockMs;
 
       // Sort all by tip price ASC (apply wallet-only filter first if toggle is on — ranks
       // and the "closest" highlight then re-number against the linked-only set).

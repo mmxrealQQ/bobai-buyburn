@@ -139,7 +139,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/config.js?v=12"></script>
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=13"></script>
@@ -181,12 +181,13 @@
     /* Match-tip + bonus + crypto reveal rules:
        - Own picks: always visible
        - Others' match tips: only after each match kickoff (= 15min-locked)
-       - Others' bonus picks: only after first match (id=1) kickoff
-       - Others' crypto picks: only after first match (id=1) kickoff
+       - Others' bonus picks: only after BONUS_CRYPTO_LOCK_UTC (final edit lock)
+       - Others' crypto picks: only after BONUS_CRYPTO_LOCK_UTC (final edit lock)
        Even though the DB currently exposes them publicly, we honour these
        rules in the UI so visitors can't copy-tip before lock. */
     let firstMatchKickoff = null;
     let finalKickoff = null;
+    const BONUS_CRYPTO_LOCK_MS = new Date(window.WC_CONFIG.BONUS_CRYPTO_LOCK_UTC).getTime();
 
     function canSeeTipFor(match){
       if (isSelf) return true;
@@ -194,13 +195,13 @@
     }
     function canSeeBonus(){
       if (isSelf) return true;
-      return firstMatchKickoff && Date.now() >= firstMatchKickoff;
+      return Date.now() >= BONUS_CRYPTO_LOCK_MS;
     }
     function canSeeCrypto(){
       if (isSelf) return true;
-      // Crypto predictions lock at first-match kickoff (same as bonus),
+      // Crypto predictions lock at BONUS_CRYPTO_LOCK_UTC (final edit deadline),
       // so reveal them publicly at that moment.
-      return firstMatchKickoff && Date.now() >= firstMatchKickoff;
+      return Date.now() >= BONUS_CRYPTO_LOCK_MS;
     }
 
     async function loadTarget(){

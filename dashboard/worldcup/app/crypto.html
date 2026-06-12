@@ -96,11 +96,11 @@
           <p class="sub">BTC · BNB · BOBAI · prices at final kickoff</p>
 
           <div id="locked" class="locked-banner hidden">
-            🔒 Locked — tournament has started.
+            🔒 Locked — final lock has passed.
           </div>
 
           <div class="info-banner">
-            <b>How it works:</b> Predict the USD price of BTC, BNB and BOBAI <b>at the exact moment of the World Cup Final kickoff</b> (estimated 19 July 2026, 19:00 UTC). <b>Submit by the opening-match kickoff</b> (11 June 2026, 19:00 UTC) — after that, predictions lock. The closest guess on each coin wins <b>3.3% of the total prize pool</b> (10% total — split BTC/BNB/BOBAI evenly).
+            <b>How it works:</b> Predict the USD price of BTC, BNB and BOBAI <b>at the exact moment of the World Cup Final kickoff</b> (estimated 19 July 2026, 19:00 UTC). <b>One-time extension:</b> submit or edit any time until <b>18 June 2026, 15:45 UTC</b> (17:45 Zurich) — 15 min before the first matchday-2 match. After that, predictions lock. The closest guess on each coin wins <b>3.3% of the total prize pool</b> (10% total — split BTC/BNB/BOBAI evenly).
           </div>
 
           <div id="alert"></div>
@@ -181,7 +181,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/config.js?v=12"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=13"></script>
   <script src="./assets/avatar.js?v=7"></script>
@@ -210,10 +210,11 @@
     let locked = false;
 
     function isLocked(){
-      // Crypto predictions lock at the opening-match kickoff (same as bonus,
-      // DB-enforced via wc_matches id=1). After lock, picks become public.
-      const kickoff = new Date(window.WC_CONFIG.KICKOFF_UTC).getTime();
-      return Date.now() >= kickoff;
+      // One-time MD2 extension — picks editable until 15 min before the first
+      // matchday-2 match (CZ–ZA, 2026-06-18 16:00 UTC). DB-enforced via the
+      // hardcoded timestamp in wc_crypto policies. Picks reveal at that moment.
+      const lockMs = new Date(window.WC_CONFIG.BONUS_CRYPTO_LOCK_UTC).getTime();
+      return Date.now() >= lockMs;
     }
 
     function updateSaveBar(){
@@ -222,7 +223,7 @@
       const dirty = ['btc','bnb','bobai'].some(k => (pending[k] || null) !== (saved[k] || null));
       $('#btn-save').disabled = !dirty || locked;
       $('#save-status').textContent =
-        locked ? '🔒 Locked — tournament has started.'
+        locked ? '🔒 Locked — final lock has passed.'
         : dirty ? 'Unsaved changes.'
         : filled === 0 ? 'Pick at least one.'
         : '✅ Up to date.';

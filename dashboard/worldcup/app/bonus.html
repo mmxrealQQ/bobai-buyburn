@@ -94,15 +94,15 @@
         <div data-hero="bonus-hero"></div>
         <div class="card">
           <h1><span class="accent">Bonus Questions</span></h1>
-          <p class="sub">5 predictions · 20 points each · locked at kickoff (11 June 2026, 21:00 Zurich)</p>
+          <p class="sub">5 predictions · 20 points each · final lock 18 June 2026, 17:45 Zurich</p>
 
           <div id="locked" class="locked-banner hidden">
-            🔒 Bonus questions are locked — tournament has started.
+            🔒 Bonus questions are locked — final lock has passed.
           </div>
 
           <div class="summary">
             Each correct prediction is worth <b>20 points</b> and counts toward your overall leaderboard score.
-            You can edit your answers any time before the first match kicks off.
+            <b>One-time extension:</b> you can still edit your answers until <b>18 June 2026, 15:45 UTC</b> (17:45 Zurich) — 15 min before the first matchday-2 match.
           </div>
 
           <div id="alert"></div>
@@ -167,7 +167,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./assets/config.js?v=11"></script>
+  <script src="./assets/config.js?v=12"></script>
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=13"></script>
@@ -200,7 +200,7 @@
     }
 
     function isLocked(){
-      const cfgK = new Date(window.WC_CONFIG.KICKOFF_UTC).getTime();
+      const cfgK = new Date(window.WC_CONFIG.BONUS_CRYPTO_LOCK_UTC).getTime();
       return Date.now() >= cfgK;
     }
 
@@ -254,7 +254,7 @@
       const dirty = FIELDS.some(f => (pending[f] || null) !== (saved[f] || null));
       $('#btn-save').disabled = !dirty || locked;
       $('#save-status').textContent =
-        locked ? '🔒 Locked — tournament started.'
+        locked ? '🔒 Locked — final lock has passed.'
         : dirty ? 'Unsaved changes.'
         : answered === 0 ? 'Pick at least one option.'
         : answered < 5  ? 'Pick the remaining answers.'

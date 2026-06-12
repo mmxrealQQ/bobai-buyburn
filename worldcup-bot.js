@@ -27,7 +27,7 @@ const GAS_RESERVE      = parseEther('0.003');       // keep 0.003 BNB after a BN
 const MIN_SWAP_GAS     = parseEther('0.0015');      // approve+swap can hit ~0.0009 BNB on busy blocks — 0.0015 gives buffer
 const MIN_SWAP_BNB     = parseEther('0.002');       // swap if balance > GAS_RESERVE + this (i.e. > 0.005 BNB)
 const MIN_SWAP_USDT    = parseUnits('2', 18);       // swap only if ≥2 USDT (BSC USDT = 18 dec)
-const SLIPPAGE_BPS     = 1000n;                     // 10 % (covers BOBAI 3 % tax + market slip)
+const SLIPPAGE_BPS     = 1500n;                     // 15 % (BOBAI 3 % tax leaves ~12 % market buffer — 10 % was too tight, first-run reverts seen)
 const TX_DEADLINE_SEC  = 600;                       // 10 min
 
 const ROUTER_ABI = parseAbi([

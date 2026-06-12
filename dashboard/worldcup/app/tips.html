@@ -67,7 +67,10 @@
     .team{display:flex;align-items:center;gap:8px;min-width:0}
     .team.away{justify-content:flex-end}
     .team .fl{font-size:22px;line-height:1;flex-shrink:0}
+    .team .nm-block{display:flex;flex-direction:column;min-width:0;overflow:hidden;line-height:1.1}
+    .team.away .nm-block{text-align:right}
     .team .nm{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .team .gscore{font-size:11px;color:var(--gold);font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:.3px;margin-top:1px}
 
     .score-cell{display:flex;align-items:center;gap:6px;flex-shrink:0}
     .score-input{width:42px;padding:7px 6px;background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;text-align:center;font-family:'Space Grotesk'}
@@ -167,19 +170,20 @@
       return window.WC_COUNTRIES.find(c => c.code === code);
     }
 
-    function teamCell(code, alignRight){
+    function teamCell(code, alignRight, goals){
       if (!code || code === 'TBD') {
         return `<div class="team ${alignRight?'away':''}">
-          <span class="fl">⚪</span><span class="nm" style="color:var(--muted)">TBD</span>
+          <span class="fl">⚪</span><div class="nm-block"><span class="nm" style="color:var(--muted)">TBD</span></div>
         </div>`;
       }
       const c = countryLookup(code);
       const flag = c ? c.flag : '🏳';
       const name = c ? c.name : code;
+      const scoreLine = (goals !== null && goals !== undefined) ? `<span class="gscore">${goals}</span>` : '';
       if (alignRight) {
-        return `<div class="team away"><span class="nm">${name}</span><span class="fl">${flag}</span></div>`;
+        return `<div class="team away"><div class="nm-block"><span class="nm">${name}</span>${scoreLine}</div><span class="fl">${flag}</span></div>`;
       }
-      return `<div class="team"><span class="fl">${flag}</span><span class="nm">${name}</span></div>`;
+      return `<div class="team"><span class="fl">${flag}</span><div class="nm-block"><span class="nm">${name}</span>${scoreLine}</div></div>`;
     }
 
     function fmtKickoff(iso){
@@ -316,6 +320,7 @@
       const tip = myTips[m.id];
       const locked = isLocked(m.kickoff_utc);
       const resolved = !!(tip && tip.resolved);
+      const played = m.played && m.goals_home != null && m.goals_away != null;
 
       const status = resolved
         ? `<span class="resolved">✓ resolved <span class="points-pill">+${tip.points_final||0}</span></span>`
@@ -329,7 +334,7 @@
           ${multiplierLabel(m.multiplier)}
           ${status}
         </div>
-        ${teamCell(m.team_home, false)}
+        ${teamCell(m.team_home, false, played ? m.goals_home : null)}
         <div class="score-cell">
           <input class="score-input s-home" type="number" min="0" max="30" inputmode="numeric"
                  value="${tip ? tip.tip_home : ''}" ${locked ? 'disabled' : ''} placeholder="–">
@@ -337,7 +342,7 @@
           <input class="score-input s-away" type="number" min="0" max="30" inputmode="numeric"
                  value="${tip ? tip.tip_away : ''}" ${locked ? 'disabled' : ''} placeholder="–">
         </div>
-        ${teamCell(m.team_away, true)}
+        ${teamCell(m.team_away, true, played ? m.goals_away : null)}
         <div class="match-meta" style="padding-top:2px"><span class="save-tag ${locked?'locked':''}" data-mid="${m.id}">${locked?'locked':''}</span></div>
       `;
 

@@ -34,6 +34,12 @@
     .lbar button{flex:1;min-width:80px;padding:9px 8px;font-size:12px;font-weight:600;border:none;background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit}
     .lbar button.active{background:var(--gold-glow);color:var(--gold)}
 
+    /* WALLET FILTER (skip+promote payout view toggle) */
+    .wallet-filter{display:flex;gap:5px;flex-wrap:wrap;margin:-4px 0 14px}
+    .wallet-filter button{padding:6px 11px;font-size:11px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.3px}
+    .wallet-filter button:hover{border-color:rgba(240,185,11,.3)}
+    .wallet-filter button.active{background:var(--gold-glow);color:var(--gold);border-color:var(--gold)}
+
     /* GROUP/COIN SELECTOR */
     .sub-selector{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
     .sub-selector button{padding:7px 12px;font-size:11px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.5px;display:inline-flex;align-items:center;gap:6px}
@@ -200,7 +206,13 @@
         <div class="card">
           <div data-card-accent="pool-trophy"></div>
           <h1><span class="accent">Leaderboard</span></h1>
-          <p class="sub">Live shares update with the <a href="./prize-pool.html" style="color:var(--gold)">prize pool</a> · ⚽ = wallet linked</p>
+          <p class="sub">Live shares update with the <a href="./prize-pool.html" style="color:var(--gold)">prize pool</a> · ⚽ = wallet linked · only wallet-linked players are eligible for payouts (next eligible player takes the slot)</p>
+
+          <!-- WALLET FILTER (toggles between full leaderboard and the exact payout ranking) -->
+          <div class="wallet-filter" id="wallet-filter">
+            <button data-filter="all" class="active">All players</button>
+            <button data-filter="wallet">💰 Wallet-linked only</button>
+          </div>
 
           <!-- TABS -->
           <div class="lbar" id="lbar">
@@ -274,6 +286,14 @@
     let pool = { total:0, group:0, end:0, crypto:0, price:0 };
     let allGroupData = null;
     let livePrices = { btc:null, bnb:null, bobai:null };
+    // walletOnly: when true, non-linked players are hidden across every view (Overall, Groups,
+    // Bracket projection, Crypto) and ranks re-number against the linked-only set — this is
+    // the literal payout ranking the admin uses at settlement. Default OFF so the leaderboard
+    // still shows bragging-rights positions for non-linked players. Persisted in localStorage.
+    let walletOnly = false;
+    try { walletOnly = localStorage.getItem('wc_wallet_filter') === '1'; } catch(e){}
+    function isEligible(r){ return !!(r && r.has_wallet); }
+    function applyWalletFilter(rows){ return walletOnly ? rows.filter(isEligible) : rows; }
 
     // ============== FORMATTERS ==============
     function countryFlag(code){ const c = window.WC_COUNTRIES.find(x => x.code === code); return c ? c.flag : '⚪'; }
@@ -317,9 +337,12 @@
 
     // ============== PRIZE MATH ==============
     // End-pool: fixed tiered weights (50 / 25 / 15 / 10 %) for top 4 by total_points.
+    // Skip+promote: non-linked players are skipped — the next wallet-linked player takes the
+    // slot (e.g. if leaderboard #1 has no wallet, the wallet-linked #2 becomes payout #1).
     function computeEndPoolShares(rows){
       const shares = new Map();
-      const top = rows.slice(0, END_TOP_N);
+      const eligible = rows.filter(isEligible);
+      const top = eligible.slice(0, END_TOP_N);
       top.forEach((r, i) => {
         const tier = POOL_SPLIT.endTiers[i] || 0;
         shares.set(r.user_id, tier * pool.end);
@@ -338,7 +361,8 @@
       if (pool.group <= 0) return shares;
       const top1s = [], top2s = [], best3candidates = [];
       allGroups.forEach(g => {
-        const r = g.rows;
+        // Skip+promote within each group: drop non-linked players first, then pick top1/top2/best3.
+        const r = g.rows.filter(isEligible);
         if (r[0]) top1s.push({ ...r[0], _letter: g.letter });
         if (r[1]) top2s.push({ ...r[1], _letter: g.letter });
         if (r[2]) best3candidates.push({ ...r[2], _letter: g.letter });
@@ -508,8 +532,12 @@
       const r = await window.WC_PROFILE.loadOverallLeaderboard();
       if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
       if (!r.rows.length) { $('#list').innerHTML = '<div class="empty">No players yet.</div>'; return; }
-      const rows = r.rows;
-      const shares = computeEndPoolShares(rows);
+      // Shares are computed from the unfiltered set (skip+promote handled inside computeEndPoolShares),
+      // so a non-linked leader still doesn't get a share even with the toggle off. The toggle only
+      // affects which rows are *shown* — and when shown, ranks re-number to match payout positions.
+      const shares = computeEndPoolShares(r.rows);
+      const rows = applyWalletFilter(r.rows);
+      if (!rows.length) { $('#list').innerHTML = '<div class="empty">No wallet-linked players yet — toggle "All players" to see the full leaderboard.</div>'; return; }
       const html = rows.map((row, i) => userRow(row, i+1, {
         ptsLabel: 'pts',
         ptsValue: row.total_points || 0,
@@ -551,7 +579,7 @@
         renderStandingsTable(standings, letter);
 
       const myGroup = allG.find(g => g.letter === letter);
-      const rows = myGroup ? myGroup.rows : [];
+      const rows = applyWalletFilter(myGroup ? myGroup.rows : []);
       const shares = computeGroupShares(allG);
       const best3InThisGroup = rows[2];
       const best3HasShare = best3InThisGroup
@@ -645,10 +673,12 @@
         ? `<div class="br-list">${phaseMatches.map(renderBracketMatchRow).join('')}</div>`
         : `<div class="empty">No ${phase.label} matches scheduled yet.</div>`;
 
-      // Overall standings below — from KO onwards only End Pool matters
+      // Overall standings below — from KO onwards only End Pool matters.
+      // Same skip+promote logic + toggle filter as the Overall view.
       const r = await window.WC_PROFILE.loadOverallLeaderboard();
-      const overallRows = r.rows || [];
-      const shares = computeEndPoolShares(overallRows);
+      const allRows = r.rows || [];
+      const shares = computeEndPoolShares(allRows);
+      const overallRows = applyWalletFilter(allRows);
       const overallHtml = overallRows.length
         ? overallRows.map((row, i) => userRow(row, i+1, {
             ptsLabel: 'pts',
@@ -699,16 +729,21 @@
       const firstKickoffMs = firstMatch ? new Date(firstMatch.kickoff_utc).getTime() : null;
       const cryptoRevealed = firstKickoffMs != null && Date.now() >= firstKickoffMs;
 
-      // Sort all by tip price ASC
-      const all = r.rows
+      // Sort all by tip price ASC (apply wallet-only filter first if toggle is on — ranks
+      // and the "closest" highlight then re-number against the linked-only set).
+      const all = applyWalletFilter(r.rows
         .filter(row => row[priceKey] != null)
         .map(row => ({ ...row, _tip: parseFloat(row[priceKey]) }))
-        .filter(row => isFinite(row._tip))
+        .filter(row => isFinite(row._tip)))
         .sort((a,b) => a._tip - b._tip);
 
-      if (!all.length) { $('#list').innerHTML = `<div class="empty">No valid ${display} predictions yet.</div>`; return; }
+      if (!all.length) { $('#list').innerHTML = `<div class="empty">${walletOnly ? 'No wallet-linked ' + display + ' predictions yet — toggle "All players" to see all.' : 'No valid ' + display + ' predictions yet.'}</div>`; return; }
 
-      // Closest to live (by absolute diff)
+      // Skip+promote: the actual payout winner is the closest player WITH A LINKED WALLET.
+      // When the toggle is off we still highlight the absolute closest visually (because the
+      // leaderboard rank reflects the real game state), but the prize cell is attributed to
+      // the eligible winner. When the toggle is on, `all` is already wallet-only so both
+      // collapse to the same row.
       let closestIdx = 0;
       if (livePx != null && isFinite(livePx)) {
         let bestDiff = Infinity;
@@ -716,6 +751,20 @@
           const d = Math.abs(row._tip - livePx);
           if (d < bestDiff) { bestDiff = d; closestIdx = i; }
         });
+      }
+      // Payout winner = closest eligible (skip+promote)
+      let payoutWinnerId = null;
+      const eligibleAll = all.filter(isEligible);
+      if (eligibleAll.length) {
+        if (livePx != null && isFinite(livePx)) {
+          let bestDiff = Infinity;
+          eligibleAll.forEach(row => {
+            const d = Math.abs(row._tip - livePx);
+            if (d < bestDiff) { bestDiff = d; payoutWinnerId = row.user_id; }
+          });
+        } else {
+          payoutWinnerId = eligibleAll[0].user_id;
+        }
       }
       // Rank by absolute distance to live (closest = #1)
       const rankByUserId = new Map();
@@ -755,7 +804,7 @@
           ptsLabel: '',
           ptsValue,
           ptsClass: 'diff',
-          prizeBobai: isClosest ? winnerPrize : 0,
+          prizeBobai: (row.user_id === payoutWinnerId) ? winnerPrize : 0,
           contextPot: pool.crypto,
           extraClass: isClosest ? 'closest' : '',
         });
@@ -864,6 +913,22 @@
     }
 
     $$('#lbar button').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+
+    // Wallet-only toggle — sync initial UI, then re-render current view on each click.
+    function syncWalletFilterButtons(){
+      $$('#wallet-filter button').forEach(b =>
+        b.classList.toggle('active', b.dataset.filter === (walletOnly ? 'wallet' : 'all'))
+      );
+    }
+    syncWalletFilterButtons();
+    $$('#wallet-filter button').forEach(b => b.addEventListener('click', () => {
+      const next = b.dataset.filter === 'wallet';
+      if (next === walletOnly) return;
+      walletOnly = next;
+      try { localStorage.setItem('wc_wallet_filter', walletOnly ? '1' : '0'); } catch(e){}
+      syncWalletFilterButtons();
+      switchView(view); // preserves subView for groups/bracket/crypto
+    }));
 
     (async ()=>{
       me = await window.WC_AUTH.currentProfile();

@@ -3,15 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brain On BNB AI ($BOBAI) Listing Program — DEX & CEX Partner Rewards</title>
+  <title>$BOBAI Listing Program — DEX & CEX Partner Rewards | Brain On BNB AI</title>
   <meta name="description" content="Brain On BNB AI ($BOBAI) exchange listing program — up to 1.2% of every trade routed to listing partners during boost windows (Spot 1.2% / Alpha 0.8% / Web3 Wallet 0.4%).">
   <meta name="keywords" content="Brain On BNB AI listing, BOBAI listing, list BOBAI, BOBAI exchange listing, Brain On BNB exchange, BOBAI DEX listing, BOBAI CEX listing, BOBAI Web3 wallet listing, BOBAI alpha listing">
   <link rel="canonical" href="https://brainonbnb.com/listing">
-  <meta property="og:title" content="Brain On BNB AI ($BOBAI) Listing Program">
+  <meta property="og:title" content="$BOBAI Listing Program — DEX & CEX Partner Rewards">
   <meta property="og:description" content="Exchange listing partner program for Brain On BNB AI ($BOBAI) — up to 1.2% of every trade routed to listing partners during boost windows.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
   <meta property="og:url" content="https://brainonbnb.com/listing">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Brain On BNB AI">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="$BOBAI Listing Program — DEX & CEX Partner Rewards">
+  <meta name="twitter:description" content="Exchange listing partner program for Brain On BNB AI ($BOBAI) — up to 1.2% of every trade routed to listing partners during boost windows.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
   <link rel="icon" type="image/png" href="favicon.png?v=4">
   <link rel="shortcut icon" type="image/png" href="favicon.png?v=4">
   <link rel="apple-touch-icon" href="logo.png?v=4">
@@ -89,9 +94,17 @@
     .note{background:rgba(91,140,255,.04);border:1px solid rgba(91,140,255,.12);border-radius:10px;padding:14px 18px;font-size:.85rem;color:var(--muted);margin:18px 0}
     .note strong{color:var(--blue)}
 
+    /* FREE-TO-LIST CALLOUT */
+    .freebox{display:flex;gap:18px;align-items:center;background:linear-gradient(135deg,rgba(0,230,118,.09),rgba(240,185,11,.05));border:1px solid rgba(0,230,118,.32);border-radius:14px;padding:20px 22px;margin:0 0 44px}
+    .freebox-badge{flex:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.5px;color:#041006;background:linear-gradient(135deg,var(--green),#00c853);padding:14px 16px;border-radius:11px;text-align:center;line-height:1.15;white-space:nowrap}
+    .freebox-badge small{display:block;font-size:.62rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;opacity:.8;margin-top:2px}
+    .freebox p{margin:0;font-size:.92rem}
+    .freebox .fz{color:var(--green);font-weight:700}
+
     @media (max-width:640px){
       .tl{grid-template-columns:1fr;gap:6px}
       .split{grid-template-columns:1fr}
+      .freebox{flex-direction:column;text-align:center;gap:14px}
     }
 
     /* === POLISH LAYER === */
@@ -99,6 +112,8 @@
     @keyframes lsHalo{0%,100%{opacity:.55;transform:translate(0,0)}50%{opacity:.9;transform:translate(10px,-8px)}}
     @keyframes lsBoostPulse{0%,100%{border-color:rgba(240,185,11,.25);box-shadow:0 0 0 0 rgba(240,185,11,.15)}50%{border-color:rgba(240,185,11,.45);box-shadow:0 0 0 4px rgba(240,185,11,.04)}}
     @keyframes lsShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+    @keyframes freeGlow{0%,100%{box-shadow:0 0 16px rgba(0,230,118,.22)}50%{box-shadow:0 0 30px rgba(0,230,118,.45),0 0 58px rgba(0,230,118,.1)}}
+    .freebox-badge{animation:freeGlow 3.5s ease-in-out infinite}
 
     body::before{content:'';position:fixed;top:-220px;right:-220px;width:620px;height:620px;background:radial-gradient(circle,rgba(240,185,11,.045) 0%,transparent 60%);pointer-events:none;z-index:0;animation:lsHalo 16s ease-in-out infinite}
     body::after{content:'';position:fixed;bottom:-220px;left:-220px;width:520px;height:520px;background:radial-gradient(circle,rgba(240,185,11,.03) 0%,transparent 60%);pointer-events:none;z-index:0;animation:lsHalo 22s ease-in-out infinite reverse}
@@ -136,7 +151,7 @@
 <body>
 <div class="page">
 
-  <a href="index.html" class="back">&larr; Back to Dashboard</a>
+  <a href="/" class="back">&larr; Brain On BNB AI ($BOBAI) homepage &middot; brainonbnb.com</a>
 
   <div class="logo-row">
     <img src="logo-sm.png?v=2" alt="BOBAI Logo">
@@ -146,9 +161,15 @@
   </div>
   <p class="subtitle">Exchange Listing Program for DEXs &amp; CEXs &bull; April 2026</p>
 
+  <!-- FREE-TO-LIST CALLOUT -->
+  <div class="freebox">
+    <div class="freebox-badge">$0<small>no fees</small></div>
+    <p><strong>Listing $BOBAI is free — in both directions.</strong> <span class="fz">No listing fee, no upfront payment, no token deposit — neither from us nor from you.</span> $BOBAI is a permissionless, immutable BEP-20 already trading live on PancakeSwap V2, so any DEX or CEX can list it <strong>on its own initiative</strong> — no request, no application, no approval needed, exactly like any other on-chain token. We don&rsquo;t pay to get listed — instead, the optional <a href="#program">Listing Boost Program</a> routes a share of <em>real trading volume</em> back to you. Value flows through volume, never an upfront fee.</p>
+  </div>
+
   <!-- 1. INTRO -->
-  <h2>1. Open Listing Invitation</h2>
-  <p><span class="highlight">Any DEX or CEX</span> is welcome to list $BOBAI. The contract is a standard, immutable BEP-20 — no integration friction, no permission required. Liquidity is live on PancakeSwap V2, ownership is renounced, the LP is locked.</p>
+  <h2 id="program">1. Open Listing Invitation</h2>
+  <p><span class="highlight">Any DEX or CEX</span> is welcome to list $BOBAI <span class="highlight">free of charge</span>. The contract is a standard, immutable BEP-20 — no integration friction, no permission required, and no money changing hands in either direction: <strong>we pay no listing fee and deposit no tokens</strong>, and there is no cost to you for listing. Liquidity is live on PancakeSwap V2, ownership is renounced, the LP is locked.</p>
   <p>To make listing more attractive for partners, BOBAI offers a structured <span class="highlight">Listing Boost Program</span> with three tiers, scaled by listing impact. During the boost windows, a share of <span class="highlight">every trade &mdash; up to 1.2%</span> &mdash; is routed directly to the listing partner in BNB, across three boost windows in the first 70 days after going live. The exact share depends on the listing type &mdash; <strong>Spot 1.2%</strong>, <strong>Alpha / Innovation 0.8%</strong>, or <strong>Web3 Wallet / Aggregator 0.4%</strong>. Multiple partners can run programs in parallel &mdash; the only rule is that no two boost windows may overlap. The live calendar with all scheduled windows is published on this page.</p>
 
   <!-- 2. WHY -->
@@ -280,7 +301,7 @@
   <p style="color:var(--muted);font-size:.85rem">BOBAI is a meme token and an experimental community project. The Listing Boost Program is implemented in the project&rsquo;s open-source buyback bot, which runs autonomously on Cloudflare Workers every 10 minutes. Because it is bot logic and not on-chain contract logic, execution depends on the bot continuing to operate as published &mdash; every payout transaction is publicly visible on this dashboard and verifiable on BscScan. Listing partners should perform their own due diligence before integrating any token. Nothing on this page constitutes financial advice.</p>
 
   <div class="footer">
-    <p>Brain On BNB AI &bull; brainonbnb.ai | <a href="/">brainonbnb.com</a> &bull; 2026</p>
+    <p>Brain On BNB AI &bull; brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> &bull; 2026</p>
   </div>
 
 </div>

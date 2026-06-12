@@ -44,8 +44,8 @@
 
     /* TX TABLE */
     .txwrap{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px}
-    .txscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
-    .txscroll::-webkit-scrollbar{height:6px}
+    .txscroll{max-height:400px;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
+    .txscroll::-webkit-scrollbar{width:6px;height:6px}
     .txscroll::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
     .txfilter{display:flex;gap:4px;padding:8px;background:rgba(0,0,0,.4);border-bottom:1px solid var(--border)}
     .txfilter button{padding:6px 11px;font-size:11px;font-weight:600;border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--muted);border-radius:6px;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:.3px}
@@ -57,7 +57,7 @@
 
     .txtable{width:100%;border-collapse:collapse;font-size:12.5px}
     .txtable th,.txtable td{padding:9px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.04)}
-    .txtable th{font-family:'Space Grotesk';font-weight:600;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;background:rgba(0,0,0,.4);white-space:nowrap}
+    .txtable th{position:sticky;top:0;z-index:2;font-family:'Space Grotesk';font-weight:600;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;background:#0c0c1c;white-space:nowrap}
     .txtable td{color:var(--text);vertical-align:middle}
     .txtable tbody tr:last-child td{border-bottom:none}
     .txtable tbody tr:hover{background:rgba(240,185,11,.03)}

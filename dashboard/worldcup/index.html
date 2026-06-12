@@ -145,7 +145,7 @@
           <p class="hero-sub">The on-chain tipping game for World Cup 2026. Predict every match, climb the leaderboard and win from a transparent BOBAI prize pool. No middleman. No paperwork. Just call your shots.</p>
 
           <div class="cd-block">
-            <div class="cd-title">⚽ Official Kickoff in</div>
+            <div class="cd-title">🏆 Final Kickoff in</div>
             <div class="countdown" id="cd-kickoff" aria-live="polite">
               <div class="cd-cell"><div class="cd-num" id="k-d">--</div><div class="cd-lbl">Days</div></div>
               <div class="cd-cell"><div class="cd-num" id="k-h">--</div><div class="cd-lbl">Hours</div></div>
@@ -252,7 +252,7 @@
     </main>
 
     <footer>
-      A <a href="/">Brain On BNB AI</a> (BOBAI) feature · brainonbnb.ai | <a href="/">brainonbnb.com</a> · Kickoff 11 June 2026
+      A <a href="/">Brain On BNB AI</a> (BOBAI) feature · brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> · Kickoff 11 June 2026
     </footer>
   </div>
 
@@ -320,7 +320,7 @@
   </script>
   <script>
     /* Countdown */
-    const KICKOFF = new Date('2026-06-11T19:00:00Z').getTime();
+    const KICKOFF = new Date('2026-07-19T19:00:00Z').getTime();
     function $(id){ return document.getElementById(id); }
     function renderCountdown(){
       const diff = KICKOFF - Date.now();
@@ -453,6 +453,11 @@
       e.preventDefault();
       showAlert();
       const fd = new FormData(e.target);
+      if (!fd.get('country')) {
+        showAlert('error', 'Please pick your country flag below.');
+        document.getElementById('country-grid').scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
       pendingRegister = {
         username: fd.get('username'),
         email: fd.get('email'),

@@ -16,7 +16,7 @@ const PANCAKE_ROUTER_V2 = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
 const PANCAKE_PAIR = '0x6eaDD4CB786898B34929444988380ed0CC6fD9A6'; // BOBAI/WBNB V2
 
 // --- CONFIG ---
-const KEEP_BOBAI = parseEther('1'); // Keep exactly 1 BOBAI on wallet
+const KEEP_BOBAI = parseEther('808.41'); // Keep exactly 808.41 BOBAI on wallet
 const SLIPPAGE_PERCENT = 2; // 2% max slippage (MEV protection)
 const SWAP_CHUNKS = 3; // Split swap into 3 chunks for MEV protection
 const GAS_LIMIT = 500000n;

@@ -1018,6 +1018,60 @@ export default {
   // Webhook handler (Telegram sends updates here)
   async fetch(request, env) {
     TG_BOT_TOKEN = env.BOT_TOKEN;
+
+    // === /broadcast — authenticated "brain update" announcement endpoint ===
+    // POST /broadcast with header `X-Broadcast-Secret: <env.BROADCAST_SECRET>`
+    // and JSON body `{ text: "<HTML>" , prefixBrain?: true, disablePreview?: true }`.
+    // Sends a lone 🧠 first (Telegram renders 1-3 emoji-only messages as JUMBO size,
+    // which acts as the visual "this is an update" header) followed by the announcement.
+    // Used by tg-update.js to broadcast workshop updates without exposing BOT_TOKEN locally.
+    const url = new URL(request.url);
+    if (url.pathname === '/broadcast' && request.method === 'POST') {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      const want = env.BROADCAST_SECRET || '';
+      if (!want || got !== want) {
+        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), {
+          status: 401, headers: { 'content-type': 'application/json' },
+        });
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const text = (body.text || '').toString().trim();
+      if (!text) {
+        return new Response(JSON.stringify({ ok: false, error: 'missing text' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      try {
+        if (body.prefixBrain !== false) {
+          await tg('sendMessage', {
+            chat_id: TG_CHAT_ID,
+            text: '🧠',
+            disable_notification: true,
+          });
+        }
+        const r = await tg('sendMessage', {
+          chat_id: TG_CHAT_ID,
+          text,
+          parse_mode: 'HTML',
+          disable_web_page_preview: body.disablePreview !== false,
+        });
+        return new Response(JSON.stringify({ ok: true, message_id: r?.result?.message_id || null }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      } catch (err) {
+        console.error('[BROADCAST ERROR]', err.message || err);
+        return new Response(JSON.stringify({ ok: false, error: 'send failed' }), {
+          status: 500, headers: { 'content-type': 'application/json' },
+        });
+      }
+    }
+
+    // === Telegram webhook (default POST route — unchanged behaviour) ===
     if (request.method === 'POST') {
       try {
         const update = await request.json();

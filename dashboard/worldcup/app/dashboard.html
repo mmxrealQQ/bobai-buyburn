@@ -144,7 +144,16 @@
           </div>
         </div>
 
-        <!-- 3. WALLET -->
+        <!-- 3. PROJECTED PAYOUT -->
+        <div class="card">
+          <div class="card-h"><h3>Projected payout</h3><span class="right">live · if standings hold</span></div>
+          <p class="sub" style="text-align:left;margin:0 0 12px">
+            What you'd win <b>right now</b> across all 3 pots — End-Pool (top 4 overall), Group brackets (top 3 in each of 12 groups), Crypto (closest to live BTC / BNB / BOBAI price). Updates after every match.
+          </p>
+          <div id="proj-content"><div class="proj-empty">Loading projection…</div></div>
+        </div>
+
+        <!-- 4. WALLET -->
         <div class="card">
           <div class="card-h"><h3>Wallet (for payouts)</h3><span class="right" id="p-wallet-badge"><span class="badge muted">no wallet</span></span></div>
           <p class="sub" style="text-align:left;margin-bottom:10px">
@@ -200,6 +209,7 @@
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/projection.js?v=1"></script>
   <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
@@ -312,6 +322,18 @@
       }
     }
 
+    async function loadMyProjection(){
+      if (!me || !window.WC_PROJECTION) return;
+      window.WC_PROJECTION.injectStyles();
+      const box = $('#proj-content');
+      try {
+        const proj = await window.WC_PROJECTION.loadAndCompute(me.id, me.wallet);
+        box.innerHTML = window.WC_PROJECTION.renderHtml(proj);
+      } catch (e) {
+        box.innerHTML = '<div class="proj-empty">Projection unavailable.</div>';
+      }
+    }
+
     function renderGrid(){
       const grid = $('#country-grid');
       grid.innerHTML = '';
@@ -418,6 +440,7 @@
       closeConfirm();
       me = await window.WC_AUTH.currentProfile();
       renderProfile();
+      loadMyProjection();  // refresh projection so wallet-warning disappears
       showAlert('ok', 'Wallet linked. This wallet is now permanently tied to your account.');
       clearAlertSoon();
     });
@@ -428,7 +451,8 @@
       me = await window.WC_AUTH.currentProfile();
       if (!me) { window.location.href = '/worldcup/'; return; }
       renderProfile();
-      loadMyStats();   // async, populates the stats card
+      loadMyStats();         // async, populates the stats card
+      loadMyProjection();    // async, populates the projected-payout card
     })();
   </script>
 </body>

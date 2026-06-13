@@ -220,6 +220,7 @@
             <button data-view="groups">Groups</button>
             <button data-view="bracket">Bracket</button>
             <button data-view="crypto">Crypto</button>
+            <button data-view="payouts">💰 Payouts</button>
           </div>
 
           <!-- SUB-SELECTOR (for Groups + Crypto) -->
@@ -239,6 +240,7 @@
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/projection.js?v=1"></script>
   <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
@@ -862,6 +864,60 @@
       $('#list').innerHTML = liveBadge + aboveSection + closestHtml + belowSection + meExtraHtml + footer;
     }
 
+    // ============== PAYOUTS (total prize money per wallet-linked user) ==============
+    // Global ranking by projected total payout across all 3 pots — only shows wallet-linked
+    // users (skip+promote is already applied: non-eligible players don't get a slot, so they
+    // simply don't appear here). Live, recomputes from the same data the rest of the
+    // leaderboard uses.
+    async function renderPayouts(){
+      $('#sub-selector').classList.add('hidden');
+      $('#list').innerHTML = '<div class="empty">Loading projections…</div>';
+      if (!window.WC_PROJECTION) {
+        $('#list').innerHTML = '<div class="empty">Projection helper not loaded.</div>';
+        return;
+      }
+      window.WC_PROJECTION.injectStyles();
+      const data = await window.WC_PROJECTION.loadAll();
+      if (!data || data.error) {
+        $('#list').innerHTML = `<div class="empty">${(data && data.error) || 'Could not load projections.'}</div>`;
+        return;
+      }
+      const entries = window.WC_PROJECTION.computeAll(data);
+      if (!entries.length) {
+        $('#list').innerHTML = '<div class="empty">No wallet-linked players yet — once players link a wallet they show up here with their projected payout.</div>';
+        return;
+      }
+      const meId = me ? me.id : null;
+      const intro = `<div class="section-h" style="margin-top:0"><span>Projected payouts — wallet-linked players only</span><span class="right">summed across End-Pool + Groups + Crypto</span></div>
+        <div class="empty" style="text-align:left;font-size:12px;padding:10px 12px;background:rgba(240,185,11,.04);border:1px solid rgba(240,185,11,.18);border-radius:8px;margin-bottom:10px;color:var(--text)">Each row sums what that wallet would receive across all 3 pots if the current standings held to settlement. Chips show which pots contribute. Click a name to open their profile.</div>`;
+      const rowsHtml = entries.map((e, i) =>
+        window.WC_PROJECTION.renderPayoutListRowHtml(e, i + 1, data.pool, { meId })
+      ).join('');
+      const scrollCls = entries.length > 10 ? 'list scroll-cap' : 'list';
+      const myIdx = meId ? entries.findIndex(e => e.user_id === meId) : -1;
+      let footer = '';
+      if (me) {
+        if (myIdx >= 0) {
+          const myEntry = entries[myIdx];
+          const myPct = data.pool.total > 0 ? (myEntry.totalBobai / data.pool.total * 100) : 0;
+          footer = `<div class="me-footer">
+            <div class="mf-left"><span class="mf-rank">#${myIdx + 1}</span><span class="mf-status">of ${entries.length} wallet-linked player${entries.length===1?'':'s'}</span></div>
+            <div><span class="mf-status qualified">You'd receive ${myPct.toFixed(myPct < 0.1 ? 2 : 1)}% of the full pool right now</span></div>
+          </div>`;
+        } else if (!me.wallet) {
+          footer = `<div class="me-footer">
+            <div class="mf-left"><span class="mf-status">You're not in this list — <a href="./dashboard.html" style="color:var(--gold);font-weight:700">link a wallet</a> to be eligible for payouts.</span></div>
+          </div>`;
+        } else {
+          footer = `<div class="me-footer">
+            <div class="mf-left"><span class="mf-status">Wallet linked, but at current standings you wouldn't receive a payout — keep tipping.</span></div>
+          </div>`;
+        }
+      }
+      $('#list').innerHTML = intro + `<div class="${scrollCls}">${rowsHtml}</div>` + footer;
+      if (window.twemoji) try { window.twemoji.parse($('#list'), { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
+    }
+
     // ============== SUB-SELECTORS ==============
     function showGroupSelector(){
       const sel = $('#sub-selector');
@@ -897,6 +953,10 @@
     function switchView(v){
       view = v;
       $$('#lbar button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+      // The wallet filter is meaningless in the payouts view (list is always wallet-linked
+      // only by definition), so hide the toggle there.
+      const wf = $('#wallet-filter');
+      if (wf) wf.classList.toggle('hidden', v === 'payouts');
       if (v === 'overall') {
         subView = null; $('#sub-selector').classList.add('hidden'); renderOverall();
       } else if (v === 'groups') {
@@ -905,6 +965,8 @@
       } else if (v === 'bracket') {
         if (!subView || !KO_PHASES.find(p => p.key === subView)) subView = 'r32';
         showPhaseSelector(); renderBracket();
+      } else if (v === 'payouts') {
+        subView = null; $('#sub-selector').classList.add('hidden'); renderPayouts();
       } else {
         if (!subView || !['btc','bnb','bobai'].includes(subView)) subView = 'btc';
         showCoinSelector(); renderCrypto(subView);

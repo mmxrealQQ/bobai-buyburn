@@ -121,6 +121,15 @@
           </div>
         </div>
 
+        <!-- PROJECTED PAYOUT -->
+        <div class="card">
+          <div class="card-h"><h3>Projected payout</h3><span class="right">live · if standings hold</span></div>
+          <p class="sub" style="text-align:left;margin:0 0 12px">
+            What this player would win <b>right now</b> across all 3 pots — End-Pool, Group brackets, Crypto. Updates after every match.
+          </p>
+          <div id="proj-content"><div class="proj-empty">Loading projection…</div></div>
+        </div>
+
         <!-- PICKS -->
         <div class="card">
           <div class="card-h"><h3>Picks</h3></div>
@@ -143,6 +152,7 @@
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/projection.js?v=1"></script>
   <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
@@ -254,6 +264,18 @@
       $('#s-bonus').textContent = bonusFilled;
     }
 
+    async function loadProjection(){
+      if (!target || !window.WC_PROJECTION) return;
+      window.WC_PROJECTION.injectStyles();
+      const box = $('#proj-content');
+      try {
+        const proj = await window.WC_PROJECTION.loadAndCompute(target.id, target.wallet);
+        box.innerHTML = window.WC_PROJECTION.renderHtml(proj);
+      } catch (e) {
+        box.innerHTML = '<div class="proj-empty">Projection unavailable.</div>';
+      }
+    }
+
     /* ============== TIPS ============== */
     async function renderTipsPane(){
       const sb = window.WC_SB;
@@ -320,7 +342,7 @@
     async function renderBonusPane(){
       const pane = $('#pane-bonus');
       if (!canSeeBonus()) {
-        pane.innerHTML = '<div class="locked-cell">🔒 Bonus picks reveal at tournament kickoff (11 June 2026, 19:00 UTC).</div>';
+        pane.innerHTML = '<div class="locked-cell">🔒 Bonus picks reveal after the final lock (18 June 2026, 15:45 UTC).</div>';
         return;
       }
       const sb = window.WC_SB;
@@ -346,7 +368,7 @@
     async function renderCryptoPane(){
       const pane = $('#pane-crypto');
       if (!canSeeCrypto()) {
-        pane.innerHTML = '<div class="locked-cell">🔒 Crypto predictions reveal at tournament kickoff (11 June 2026, 19:00 UTC).</div>';
+        pane.innerHTML = '<div class="locked-cell">🔒 Crypto predictions reveal after the final lock (18 June 2026, 15:45 UTC).</div>';
         return;
       }
       const sb = window.WC_SB;
@@ -393,6 +415,7 @@
       isSelf = myProfile.id === target.id;
       renderHeader();
       await loadStats();
+      loadProjection();  // async, populates the projected-payout card
       // load default (tips) pane
       loadedPanes.tips = true;
       await renderTipsPane();

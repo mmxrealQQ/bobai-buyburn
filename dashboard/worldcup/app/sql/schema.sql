@@ -31,7 +31,7 @@ CREATE TABLE wc_matches (
   goals_home INT,                     -- NULL until played
   goals_away INT,
   played BOOLEAN DEFAULT FALSE,
-  multiplier INT DEFAULT 1            -- group=1, r32=2, r16=3, qf=4, sf=5, 3rd=6, final=7 (rebalanced 17 May 2026, see migration_phase_j)
+  multiplier NUMERIC DEFAULT 1        -- group MD1=1, MD2=1.25, MD3=1.5; r32=2, r16=3, qf=4, sf=5, 3rd=6, final=7 (rebalanced phase_j, MD staircase phase_m)
 );
 CREATE INDEX wc_matches_kickoff ON wc_matches (kickoff_utc);
 CREATE INDEX wc_matches_phase ON wc_matches (phase);
@@ -45,8 +45,8 @@ CREATE TABLE wc_tips (
   match_id INT REFERENCES wc_matches(id),
   tip_home INT NOT NULL CHECK (tip_home >= 0 AND tip_home <= 30),
   tip_away INT NOT NULL CHECK (tip_away >= 0 AND tip_away <= 30),
-  points INT DEFAULT 0,               -- computed after match (raw, pre-multiplier)
-  points_final INT DEFAULT 0,         -- post-multiplier
+  points INT DEFAULT 0,               -- computed after match (raw, pre-multiplier; 0/2/3/5)
+  points_final NUMERIC DEFAULT 0,     -- post-multiplier (can be fractional, e.g. 5 × 1.5 = 7.5)
   resolved BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

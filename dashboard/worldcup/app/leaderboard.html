@@ -300,6 +300,12 @@
     // ============== FORMATTERS ==============
     function countryFlag(code){ const c = window.WC_COUNTRIES.find(x => x.code === code); return c ? c.flag : '⚪'; }
     function countryName(code){ const c = window.WC_COUNTRIES.find(x => x.code === code); return c ? c.name : '—'; }
+    function fmtPts(p){
+      if (p == null) return '0';
+      const n = Number(p);
+      if (!Number.isFinite(n)) return '0';
+      return Number.isInteger(n) ? String(n) : (+n.toFixed(2)).toString();
+    }
     function fmtBobai(n){
       if (n == null) return '0';
       const v = Number(n);
@@ -452,7 +458,7 @@
         return `<div class="me-footer"><div class="mf-left"><span class="mf-status">You don't have entries in this view yet.</span></div></div>`;
       }
       const qualified = rank <= qualifierRank;
-      const need = Math.max(1, (qualifierPts || 0) - (myPts || 0) + 1);
+      const need = Math.max(1, Math.ceil((qualifierPts || 0) - (myPts || 0) + 0.01));
       const statusHtml = qualified
         ? `<span class="mf-status qualified">${qualifiedCopy}</span>`
         : `<span class="mf-status need">${needCopy.replace('{n}', need)}</span>`;
@@ -542,7 +548,7 @@
       if (!rows.length) { $('#list').innerHTML = '<div class="empty">No wallet-linked players yet — toggle "All players" to see the full leaderboard.</div>'; return; }
       const html = rows.map((row, i) => userRow(row, i+1, {
         ptsLabel: 'pts',
-        ptsValue: row.total_points || 0,
+        ptsValue: fmtPts(row.total_points || 0),
         prizeBobai: shares.get(row.user_id) || 0,
         contextPot: pool.end,
       })).join('');
@@ -599,14 +605,14 @@
         const meRowData = (meIdx >= 5) ? rows[meIdx] : null;
         const listHtml = top5.map((r0, i) => userRow(r0, i+1, {
           ptsLabel: 'pts',
-          ptsValue: r0.group_points || 0,
+          ptsValue: fmtPts(r0.group_points || 0),
           prizeBobai: shares.get(`${r0.user_id}|${letter}`) || 0,
           contextPot: pool.group,
         })).join('');
         const meHtml = meRowData
           ? `<div class="rank-gap">···</div>` + userRow(meRowData, meIdx + 1, {
               ptsLabel: 'pts',
-              ptsValue: meRowData.group_points || 0,
+              ptsValue: fmtPts(meRowData.group_points || 0),
               prizeBobai: shares.get(`${meRowData.user_id}|${letter}`) || 0,
               contextPot: pool.group,
             })
@@ -684,7 +690,7 @@
       const overallHtml = overallRows.length
         ? overallRows.map((row, i) => userRow(row, i+1, {
             ptsLabel: 'pts',
-            ptsValue: row.total_points || 0,
+            ptsValue: fmtPts(row.total_points || 0),
             prizeBobai: shares.get(row.user_id) || 0,
             contextPot: pool.end,
           })).join('')

@@ -218,6 +218,13 @@
     const $ = (s,r=document)=>r.querySelector(s);
     const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 
+    function fmtPts(p){
+      if (p == null) return '0';
+      const n = Number(p);
+      if (!Number.isFinite(n)) return '0';
+      return Number.isInteger(n) ? String(n) : (+n.toFixed(2)).toString();
+    }
+
     function showAlert(type, msg){
       const el = $('#alert');
       el.innerHTML = msg ? `<div class="alert ${type}">${msg}</div>` : '';
@@ -288,7 +295,7 @@
             myRank = idx + 1;
           }
         }
-        $('#s-total').textContent = myPoints;
+        $('#s-total').textContent = fmtPts(myPoints);
         $('#s-rank').textContent = myRank;
         $('#s-rank-sub').textContent = 'of ' + (totalUsers || 1) + ' player' + ((totalUsers || 1) === 1 ? '' : 's');
 

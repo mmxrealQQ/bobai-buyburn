@@ -50,6 +50,8 @@
     .match-meta{grid-column:1/-1;font-size:10.5px;color:var(--muted);text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;padding-bottom:4px}
     .match-meta .multi{padding:1px 6px;border-radius:4px;font-weight:700;font-size:9px;letter-spacing:.5px}
     .match-meta .multi.x1{background:rgba(123,125,158,.2);color:var(--muted)}
+    .match-meta .multi.x125{background:rgba(140,160,200,.22);color:#b8c8e8}
+    .match-meta .multi.x15{background:rgba(120,180,220,.22);color:#a8d0e8}
     .match-meta .multi.x2{background:rgba(64,64,255,.15);color:#9090ff}
     .match-meta .multi.x3{background:rgba(160,64,255,.15);color:#c590ff}
     .match-meta .multi.x4{background:rgba(240,185,11,.18);color:var(--gold)}
@@ -118,7 +120,7 @@
         <div class="card">
           <div data-card-accent="tips-ball"></div>
           <h1><span class="accent">Match Tips</span></h1>
-          <p class="sub">2 pts winner · +1 goal diff · +2 exact (5 max) · ×1…×7 by phase · locks 15 min before kickoff</p>
+          <p class="sub">2 pts winner · +1 goal diff · +2 exact (5 max) · ×1 → ×7 by matchday &amp; phase · locks 15 min before kickoff</p>
 
           <div id="alert"></div>
 
@@ -198,8 +200,21 @@
       return Date.now() >= kickoff - LOCK_MIN * 60 * 1000;
     }
 
+    function fmtPts(p){
+      if (p == null) return '0';
+      const n = Number(p);
+      if (!Number.isFinite(n)) return '0';
+      return Number.isInteger(n) ? String(n) : (+n.toFixed(2)).toString();
+    }
+    function multiplierCls(m){
+      // Class-safe token: '1.25' → 'x125', '1.5' → 'x15', integer → 'x<n>'
+      const n = Number(m);
+      if (n === 1.25) return 'x125';
+      if (n === 1.5)  return 'x15';
+      return 'x' + n;
+    }
     function multiplierLabel(m){
-      return `<span class="multi x${m}">×${m}</span>`;
+      return `<span class="multi ${multiplierCls(m)}">×${fmtPts(m)}</span>`;
     }
 
     let allMatches = [];
@@ -323,7 +338,7 @@
       const played = m.played && m.goals_home != null && m.goals_away != null;
 
       const status = resolved
-        ? `<span class="resolved">✓ resolved <span class="points-pill">+${tip.points_final||0}</span></span>`
+        ? `<span class="resolved">✓ resolved <span class="points-pill">+${fmtPts(tip.points_final)}</span></span>`
         : locked
           ? `<span class="lockicon">🔒 locked</span>`
           : `<span class="open">⏱ open</span>`;

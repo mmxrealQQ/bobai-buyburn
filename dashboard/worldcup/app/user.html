@@ -169,6 +169,12 @@
     function fmtKickoff(iso){
       return new Date(iso).toLocaleString(undefined, { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
     }
+    function fmtPts(p){
+      if (p == null) return '0';
+      const n = Number(p);
+      if (!Number.isFinite(n)) return '0';
+      return Number.isInteger(n) ? String(n) : (+n.toFixed(2)).toString();
+    }
     function teamCell(code, alignRight){
       if (!code || code === 'TBD') {
         return `<div class="team ${alignRight?'away':''}"><span class="fl">⚪</span><span class="nm" style="color:var(--muted)">TBD</span></div>`;
@@ -251,7 +257,7 @@
         const idx = lb.findIndex(r => r.user_id === target.id);
         if (idx >= 0) { pts = lb[idx].total_points || 0; rank = idx + 1; }
       }
-      $('#s-total').textContent = pts;
+      $('#s-total').textContent = fmtPts(pts);
       $('#s-rank').textContent = rank;
       $('#s-rank-sub').textContent = 'of ' + (totalUsers || 1) + ' player' + ((totalUsers || 1) === 1 ? '' : 's');
       $('#s-tips').textContent = tipCount || 0;
@@ -313,7 +319,7 @@
         if (!visible) {
           scoreCell = `<span class="score-pill locked">🔒 reveals at kickoff</span>`;
         } else {
-          const points = m.played && t.points_final != null ? `<span style="font-size:10px;color:var(--gold);margin-left:6px">+${t.points_final}p</span>` : '';
+          const points = m.played && t.points_final != null ? `<span style="font-size:10px;color:var(--gold);margin-left:6px">+${fmtPts(t.points_final)}p</span>` : '';
           scoreCell = `<span class="score-pill">${t.tip_home} – ${t.tip_away}${points}</span>`;
         }
         html += `<div class="tip-row">

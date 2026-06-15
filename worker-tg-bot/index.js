@@ -1071,6 +1071,79 @@ export default {
       }
     }
 
+    // === /sendsticker — authenticated one-off sticker upload (preview tool) ===
+    // POST multipart/form-data with header `X-Broadcast-Secret: <env.BROADCAST_SECRET>`
+    // and fields: `chat_id` (string) + `sticker` (the .webm file). The worker forwards
+    // it to Telegram sendSticker so the BOT_TOKEN never leaves Cloudflare. Used by
+    // tg-send-sticker.js to preview animated stickers without exposing the token.
+    if (url.pathname === '/sendsticker' && request.method === 'POST') {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), {
+          status: 401, headers: { 'content-type': 'application/json' },
+        });
+      }
+      let inForm;
+      try { inForm = await request.formData(); } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: 'expected multipart form' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const chatId = (inForm.get('chat_id') || '').toString().trim();
+      const file = inForm.get('sticker');
+      if (!chatId || !file || typeof file === 'string') {
+        return new Response(JSON.stringify({ ok: false, error: 'missing chat_id or sticker file' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      try {
+        const tgForm = new FormData();
+        tgForm.append('chat_id', chatId);
+        tgForm.append('sticker', file, 'sticker.webm');
+        const r = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendSticker`, {
+          method: 'POST', body: tgForm,
+        });
+        const j = await r.json();
+        return new Response(JSON.stringify(j), {
+          status: j.ok ? 200 : 502, headers: { 'content-type': 'application/json' },
+        });
+      } catch (err) {
+        console.error('[SENDSTICKER ERROR]', err.message || err);
+        return new Response(JSON.stringify({ ok: false, error: 'send failed' }), {
+          status: 500, headers: { 'content-type': 'application/json' },
+        });
+      }
+    }
+
+    // === /deletemessage — authenticated message delete (cleanup for previews) ===
+    // POST JSON `{ chat_id, message_id }` with header `X-Broadcast-Secret`.
+    // Forwards to Telegram deleteMessage. Used to remove preview stickers on request.
+    if (url.pathname === '/deletemessage' && request.method === 'POST') {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), {
+          status: 401, headers: { 'content-type': 'application/json' },
+        });
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const chatId = (body.chat_id || '').toString().trim();
+      const messageId = body.message_id;
+      if (!chatId || !messageId) {
+        return new Response(JSON.stringify({ ok: false, error: 'missing chat_id or message_id' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const j = await tg('deleteMessage', { chat_id: chatId, message_id: messageId });
+      return new Response(JSON.stringify(j), {
+        status: j.ok ? 200 : 502, headers: { 'content-type': 'application/json' },
+      });
+    }
+
     // === Telegram webhook (default POST route — unchanged behaviour) ===
     if (request.method === 'POST') {
       try {

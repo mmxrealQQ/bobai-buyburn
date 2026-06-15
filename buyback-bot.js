@@ -38,6 +38,10 @@ const LIQ_BOOST_END   = new Date('2026-06-04T23:59:00Z').getTime();
 const BOBAI_LIQ_BOOST_START = new Date('2026-06-01T00:00:00Z').getTime();
 const BOBAI_LIQ_BOOST_END   = new Date('2026-08-01T23:59:59Z').getTime();
 
+// BOBAI Liq Boost EXTRA: +0.25% of trade -> BOBAI/BNB perma liq (from creator share)
+const BOBAI_LIQ_EXTRA_START = new Date('2026-06-15T00:00:00Z').getTime();
+const BOBAI_LIQ_EXTRA_END   = new Date('2026-08-01T23:59:59Z').getTime();
+
 // WC26 Prize Pool: 0.52% of trade -> direct BNB to prize pool wallet (0.26% from creator + 0.26% from BOB burn)
 const WC26_START = new Date('2026-06-11T00:01:00Z').getTime();
 const WC26_END   = new Date('2026-07-19T23:59:00Z').getTime();
@@ -50,6 +54,10 @@ function isBobaiLiqBoostActive() {
   const now = Date.now();
   return now >= BOBAI_LIQ_BOOST_START && now <= BOBAI_LIQ_BOOST_END;
 }
+function isBobaiLiqExtraActive() {
+  const now = Date.now();
+  return now >= BOBAI_LIQ_EXTRA_START && now <= BOBAI_LIQ_EXTRA_END;
+}
 function isWc26Active() {
   const now = Date.now();
   return now >= WC26_START && now <= WC26_END;
@@ -61,6 +69,7 @@ function isWc26Active() {
 //   Baseline (Standard): BOBAI burn 100 | BOB burn 100 | Creator 100
 //   + BOB Liq Boost:     Creator -50, BOB liq +50
 //   + BOBAI Liq Boost:   BOB burn -50, BOBAI liq +50
+//   + BOBAI Liq Extra:   Creator -25, BOBAI liq +25
 //   + WC26 Prize Pool:   Creator -26, BOB burn -26, WC26 pool +52
 // Sum is verified before any on-chain action — bot aborts on mismatch.
 // ============================================
@@ -341,6 +350,7 @@ async function main() {
   // Detect active phases (date-based, UTC, auto-switching)
   const bobLiqBoost   = isLiqBoostActive();
   const bobaiLiqBoost = isBobaiLiqBoostActive();
+  const bobaiLiqExtra = isBobaiLiqExtraActive();
   const wc26Active    = isWc26Active();
 
   // Build per-phase BPS allocation from baseline (1/1/1)
@@ -353,6 +363,7 @@ async function main() {
 
   if (bobLiqBoost)   { creatorBps -= 50; bobLiqBps   += 50; }
   if (bobaiLiqBoost) { bobBurnBps -= 50; bobaiLiqBps += 50; }
+  if (bobaiLiqExtra) { creatorBps -= 25; bobaiLiqBps += 25; }
   if (wc26Active)    { creatorBps -= 26; bobBurnBps  -= 26; wc26PoolBps += 52; }
 
   const bpsSum = bobaiBurnBps + bobBurnBps + creatorBps + bobLiqBps + bobaiLiqBps + wc26PoolBps;
@@ -363,6 +374,7 @@ async function main() {
   const phases = [];
   if (bobLiqBoost)   phases.push('BOB Liq Boost');
   if (bobaiLiqBoost) phases.push('BOBAI Liq Boost');
+  if (bobaiLiqExtra) phases.push('BOBAI Liq Extra (+0.25%)');
   if (wc26Active)    phases.push('WC26 Prize Pool');
   console.log(`Active phases: ${phases.length ? phases.join(' + ') : 'Standard 1/1/1'}`);
   console.log(`Split (bps of trade, total=${bpsSum}):`);

@@ -3,15 +3,18 @@
 // Runs 24/7 via cron (every minute) + Telegram Webhook
 
 let TG_BOT_TOKEN = '';
+let TG_INTERNAL_CHAT_ID = '';
 const TG_CHAT_ID = '-1003791636543';
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
-const DEAD = '0x000000000000000000000000000000000000dEaD';
+const DEAD = '0x000000000000000000000000000000000000dead';
 const CAPTCHA_TIMEOUT = 60;
 
 // PancakeSwap V2 Swap event topic. In this pair BOBAI is token0, WBNB is token1,
 // so a BUY = WBNB in (amount1In > 0) & BOBAI out (amount0Out > 0).
 const SWAP_TOPIC = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
+// ERC20 Transfer(address indexed from, address indexed to, uint256 value)
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
 // GeckoTerminal API
 const GECKO_TRADES_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}/trades`;
@@ -110,6 +113,68 @@ async function getSwapLogs(fromBlock) {
 
 function hexToBigInt(hex) {
   return BigInt(hex || '0x0');
+}
+
+// ==================== WHALE WATCHER HELPERS ====================
+
+function addrToTopic(addr) {
+  return '0x' + '0'.repeat(24) + addr.slice(2).toLowerCase();
+}
+
+function topicToAddr(topic) {
+  return '0x' + topic.slice(-40).toLowerCase();
+}
+
+// Addresses we never want to alert ON (alert wenn Wallet→Pair = Sell, das ist ok;
+// aber wir wollen die Pair/DEAD-Wallet selbst NICHT als getrackten Holder).
+const WHALE_NEVER_TRACK = new Set([
+  BOBAI_PAIR.toLowerCase(),
+  DEAD.toLowerCase(),
+  BOBAI_TOKEN.toLowerCase(),                    // BOBAI contract (collects 3% tax on every trade)
+  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
+  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot
+  '0x0000000000000000000000000000000000000000', // null
+]);
+
+// Initial Seed: Whale Main + 5 recipients geseedet 2026-06-17.
+const DEFAULT_TRACKED = [
+  '0x1afa5725f77b64f7a75882ffe94b1bdf1a5174f4', // Whale Main (36% Cluster)
+  '0x71e5de5a4720fa438c50261c6023a89f766b382b', // Recipient 1 (57M @ 2026-06-17)
+  '0x7fbb2e47ce5b3f653e4d079b5380897b1f81c792', // Recipient 2 (41M @ 2026-06-17)
+  '0xdfd2d0eacf78706f5f004d8b715cd510a8a6c719', // Recipient 3 (64M @ 2026-06-17)
+  '0xfc3ee9b7928e0ecc6d9c446c343766d5c299594e', // Recipient 4 (44M @ 2026-06-17)
+  '0x7f473820b854ed3959e59934af617929ebf06331', // Recipient 5 (42M @ 2026-06-17)
+];
+
+// Whale-Threshold in raw wei (10M BOBAI). Adresses that cross this via any
+// incoming transfer are auto-added to the watch-set.
+const WHALE_THRESHOLD_WEI = 10_000_000n * 10n ** 18n;
+
+// eth_getLogs für ALLE BOBAI Transfer im fromBlock-Fenster (kein Adress-Filter).
+// Single call, ~5-30 results per minute given BOBAI's volume — cheap.
+async function getAllRecentTransfers(fromBlock) {
+  const params = [{ address: BOBAI_TOKEN, topics: [TRANSFER_TOPIC], fromBlock, toBlock: 'latest' }];
+  for (const rpc of LOGS_RPC_ENDPOINTS) {
+    try {
+      const res = await fetch(rpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'User-Agent': LOGS_UA },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (Array.isArray(data.result)) return data.result;
+    } catch (e) { /* try next rpc */ }
+  }
+  return [];
+}
+
+// balanceOf(addr) → raw wei BigInt
+async function getBobaiBalance(addr) {
+  const data = '0x70a08231' + '0'.repeat(24) + addr.slice(2).toLowerCase();
+  const r = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data }, 'latest']);
+  if (!r) return 0n;
+  try { return BigInt(r); } catch { return 0n; }
 }
 
 function formatNumber(n) {
@@ -523,6 +588,620 @@ ${symbol} Donation: <b>${amountStr} ${token}</b>
   }
 }
 
+// ==================== WHALE ADMIN COMMANDS ====================
+
+const ADDR_RE  = /0x[a-fA-F0-9]{40}/;
+const ADDR_REG = /0x[a-fA-F0-9]{40}/g;
+
+async function loadTrackedWallets(env) {
+  try {
+    const raw = await env.KV.get('tracked_wallets');
+    if (raw) {
+      // Self-heal: filter never-track on read so addresses added to the never-track
+      // set in later deploys (e.g. the BOBAI contract) drop out automatically.
+      return JSON.parse(raw).filter(a => !WHALE_NEVER_TRACK.has(a));
+    }
+  } catch {}
+  return [...DEFAULT_TRACKED];
+}
+
+async function saveTrackedWallets(env, list) {
+  // Dedup + lowercase, exclude never-track
+  const cleaned = [...new Set(list.map(a => a.toLowerCase()))]
+    .filter(a => /^0x[a-f0-9]{40}$/.test(a) && !WHALE_NEVER_TRACK.has(a));
+  await env.KV.put('tracked_wallets', JSON.stringify(cleaned));
+  return cleaned;
+}
+
+async function loadWalletEdges(env) {
+  try {
+    const raw = await env.KV.get('wallet_edges');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
+async function saveWalletEdges(env, edges) {
+  await env.KV.put('wallet_edges', JSON.stringify(edges));
+}
+
+// ---- Whale event log (for 24h summaries) ----
+// Keeps the last 500 alert-worthy events (raw, with timestamp) so we can render
+// rolling 24h breakdowns without re-scanning the chain.
+
+const WHALE_EVENTS_MAX = 500;
+
+async function loadWhaleEvents(env) {
+  try {
+    const raw = await env.KV.get('whale_events');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+async function saveWhaleEvents(env, events) {
+  await env.KV.put('whale_events', JSON.stringify(events.slice(-WHALE_EVENTS_MAX)));
+}
+
+function recentEvents(events, hours = 24) {
+  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  return events.filter(e => (e.ts || 0) >= cutoff);
+}
+
+// addrs of wallets that moved (sent OR received) in the last `hours`
+function activeAddrSet(events, hours = 24) {
+  const r = recentEvents(events, hours);
+  const s = new Set();
+  for (const e of r) { if (e.from) s.add(e.from); if (e.to) s.add(e.to); }
+  return s;
+}
+
+function summarize24h(events) {
+  const r = recentEvents(events, 24);
+  const counts = {
+    BUY: 0, SELL: 0, BURN: 0, INTERNAL_T: 0,
+    TRANSFER_OUT: 0, TRANSFER_IN: 0,
+    NEW_WHALE: 0, EX_WHALE: 0,
+  };
+  let usdIn = 0, usdOut = 0;
+  let amtIn = 0, amtOut = 0;
+  for (const e of r) {
+    counts[e.kind] = (counts[e.kind] || 0) + 1;
+    const u = e.usdValue || 0;
+    const a = e.amount   || 0;
+    if (e.kind === 'BUY' || e.kind === 'TRANSFER_IN') { usdIn += u; amtIn += a; }
+    if (e.kind === 'SELL' || e.kind === 'BURN' || e.kind === 'TRANSFER_OUT') { usdOut += u; amtOut += a; }
+  }
+  // Top 3 movers ranked by USD impact (any kind with amount, ignore NEW/EX which are balance snapshots)
+  const movers = r.filter(e => ['BUY','SELL','BURN','TRANSFER_OUT','TRANSFER_IN','INTERNAL_T'].includes(e.kind))
+    .slice()
+    .sort((a, b) => (b.usdValue || 0) - (a.usdValue || 0))
+    .slice(0, 3);
+  return {
+    total: r.length, counts,
+    usdIn, usdOut, netUsd: usdIn - usdOut,
+    amtIn, amtOut, netAmt: amtIn - amtOut,
+    movers,
+  };
+}
+
+function netEmoji(net) {
+  if (net > 0) return '🟢';
+  if (net < 0) return '🔴';
+  return '⚪';
+}
+
+function netStr(net) {
+  const sign = net > 0 ? '+' : (net < 0 ? '-' : '');
+  return `${sign}${formatUsd(Math.abs(net))}`;
+}
+
+const KIND_LABEL = {
+  BUY:          { icon: '🟢', label: 'Buy' },
+  SELL:         { icon: '🔴', label: 'Sell' },
+  BURN:         { icon: '🔥', label: 'Burn' },
+  TRANSFER_OUT: { icon: '🟠', label: 'Out' },
+  TRANSFER_IN:  { icon: '⚪', label: 'In' },
+  INTERNAL_T:   { icon: '🟣', label: 'Internal' },
+  NEW_WHALE:    { icon: '💡', label: 'New whale' },
+  EX_WHALE:     { icon: '💀', label: 'Ex-whale' },
+};
+
+// Compact "who is this wallet" descriptor for alert FROM/TO lines.
+// Special wallets get a human label; tracked wallets get cluster tag + balance + USD.
+function describeAddr(addr, clusterTag, balTokens, priceUsd) {
+  const a = addr.toLowerCase();
+  if (a === BOBAI_PAIR.toLowerCase()) return 'PancakeSwap LP';
+  if (a === DEAD.toLowerCase())      return '💀 DEAD';
+  if (a === BOBAI_TOKEN.toLowerCase()) return 'BOBAI contract';
+  if (a === '0xdefc0e900dfc83e207902cf22265ae63f94c01ce') return 'Buyback bot';
+  if (a === '0x15ba17075ef5e0736292b030e3715d9100fe3d38') return 'Dev-buyback bot';
+  const tag = clusterTag ? `🔗${clusterTag}` : 'Solo';
+  if (balTokens == null) return tag;
+  const usdPart = priceUsd ? ` · ${formatUsd(balTokens * priceUsd)}` : '';
+  return `${tag} · ${formatNumber(balTokens)} BOBAI${usdPart}`;
+}
+
+function describeMover(e) {
+  const k = KIND_LABEL[e.kind] || { icon: '·', label: e.kind };
+  const amt = formatNumber(e.amount || 0);
+  const usd = e.usdValue ? formatUsd(e.usdValue) : 'n/a';
+  const who = shortenAddress(e.kind === 'SELL' || e.kind === 'BURN' || e.kind === 'TRANSFER_OUT' ? e.from : e.to);
+  const link = `<a href="https://bscscan.com/tx/${e.txHash}">${who}</a>`;
+  return `${k.icon} ${link} · ${amt} BOBAI (${usd})`;
+}
+
+// Full daily recap — used by /whales24h AND by the auto-posted daily summary.
+// `withDateStamp` true → header reads "Daily Recap · YYYY-MM-DD" (auto-post).
+function renderDailyRecap(events, tracked, price, withDateStamp) {
+  const sum = summarize24h(events);
+  const c = sum.counts;
+  const head = withDateStamp
+    ? `📅 <b>Daily Whale Recap</b> · ${new Date().toISOString().slice(0, 10)}`
+    : `📅 <b>Whale Watcher · Last 24h</b>`;
+
+  if (sum.total === 0) {
+    return `${head}
+
+<i>No whale activity in the last 24 hours.</i>
+
+🐋 ${tracked.length} wallets tracked`;
+  }
+
+  const usdBy = {
+    BUY:          sumKindUsd(events, 'BUY'),
+    SELL:         sumKindUsd(events, 'SELL'),
+    BURN:         sumKindUsd(events, 'BURN'),
+    TRANSFER_OUT: sumKindUsd(events, 'TRANSFER_OUT'),
+    TRANSFER_IN:  sumKindUsd(events, 'TRANSFER_IN'),
+    INTERNAL_T:   sumKindUsd(events, 'INTERNAL_T'),
+  };
+  const amtBy = {
+    BUY:          sumKindAmt(events, 'BUY'),
+    SELL:         sumKindAmt(events, 'SELL'),
+    BURN:         sumKindAmt(events, 'BURN'),
+    TRANSFER_OUT: sumKindAmt(events, 'TRANSFER_OUT'),
+    TRANSFER_IN:  sumKindAmt(events, 'TRANSFER_IN'),
+    INTERNAL_T:   sumKindAmt(events, 'INTERNAL_T'),
+  };
+
+  const sections = [];
+
+  // 📥 INFLOWS — whales receiving (Buys from LP + Transfers in from unknown wallets)
+  const inflowItems = [];
+  if (c.BUY)         inflowItems.push(`🟢 Buys from LP: <b>${c.BUY}</b> · ${formatUsd(usdBy.BUY)} (${formatNumber(amtBy.BUY)} BOBAI)`);
+  if (c.TRANSFER_IN) inflowItems.push(`⚪ Transfers in: <b>${c.TRANSFER_IN}</b> · ${formatUsd(usdBy.TRANSFER_IN)} (${formatNumber(amtBy.TRANSFER_IN)} BOBAI)`);
+  if (inflowItems.length) {
+    sections.push(`📥 <b>INFLOWS</b> <i>(whales receiving)</i>
+${inflowItems.join('\n')}
+Total: <b>+${formatUsd(sum.usdIn)}</b> (+${formatNumber(sum.amtIn)} BOBAI)`);
+  }
+
+  // 📤 OUTFLOWS — whales sending (Sells, Burns, Cascade-Out to fresh wallets)
+  const outflowItems = [];
+  if (c.SELL)         outflowItems.push(`🔴 Sells to LP: <b>${c.SELL}</b> · ${formatUsd(usdBy.SELL)} (${formatNumber(amtBy.SELL)} BOBAI)`);
+  if (c.BURN)         outflowItems.push(`🔥 Burns: <b>${c.BURN}</b> · ${formatUsd(usdBy.BURN)} (${formatNumber(amtBy.BURN)} BOBAI)`);
+  if (c.TRANSFER_OUT) outflowItems.push(`🟠 Cascade out: <b>${c.TRANSFER_OUT}</b> · ${formatUsd(usdBy.TRANSFER_OUT)} (${formatNumber(amtBy.TRANSFER_OUT)} BOBAI)`);
+  if (outflowItems.length) {
+    sections.push(`📤 <b>OUTFLOWS</b> <i>(whales sending)</i>
+${outflowItems.join('\n')}
+Total: <b>-${formatUsd(sum.usdOut)}</b> (-${formatNumber(sum.amtOut)} BOBAI)`);
+  }
+
+  // ⚖️ NET FLOW — on-chain inflows minus outflows. Vorzeichen spricht für sich.
+  let netCaption;
+  if      (sum.netUsd > 0) netCaption = 'Whales net accumulating.';
+  else if (sum.netUsd < 0) netCaption = 'Whales net offloading.';
+  else                     netCaption = 'Perfectly balanced.';
+  sections.push(`⚖️ <b>NET FLOW</b>: ${netEmoji(sum.netUsd)} <b>${netStr(sum.netUsd)}</b> (${formatNumber(Math.abs(sum.netAmt))} BOBAI ${sum.netAmt >= 0 ? 'in' : 'out'})
+<i>${netCaption}</i>`);
+
+  // 🔄 INTERNAL — cluster moves (don't affect net, but signal coordination)
+  if (c.INTERNAL_T) {
+    sections.push(`🔄 <b>INTERNAL</b> <i>(tracked → tracked, neutral)</i>
+🟣 Cluster moves: <b>${c.INTERNAL_T}</b> · ${formatNumber(amtBy.INTERNAL_T)} BOBAI`);
+  }
+
+  // ⚠️ STATUS CHANGES — new/ex whales
+  if (c.NEW_WHALE || c.EX_WHALE) {
+    const lines = [];
+    if (c.NEW_WHALE) lines.push(`💡 <b>${c.NEW_WHALE}</b> new whale${c.NEW_WHALE === 1 ? '' : 's'} crossed 10M`);
+    if (c.EX_WHALE)  lines.push(`💀 <b>${c.EX_WHALE}</b> ex-whale${c.EX_WHALE === 1 ? '' : 's'} dropped below 10M`);
+    sections.push(`⚠️ <b>STATUS CHANGES</b>\n${lines.join('\n')}`);
+  }
+
+  // 🏆 TOP MOVES — biggest USD movers
+  if (sum.movers.length) {
+    sections.push(`🏆 <b>TOP MOVES</b>\n${sum.movers.map((e, i) => `<code>${i + 1}.</code> ${describeMover(e)}`).join('\n')}`);
+  }
+
+  const footer = `🐋 ${tracked.length} wallets tracked${price ? ` · BOBAI $${price.toFixed(8)}` : ''}`;
+  return `${head}
+
+${sections.join('\n\n')}
+
+${footer}`;
+}
+
+function sumKindUsd(events, kind) {
+  return recentEvents(events, 24)
+    .filter(e => e.kind === kind)
+    .reduce((s, e) => s + (e.usdValue || 0), 0);
+}
+
+function sumKindAmt(events, kind) {
+  return recentEvents(events, 24)
+    .filter(e => e.kind === kind)
+    .reduce((s, e) => s + (e.amount || 0), 0);
+}
+
+// Add bi-directional edge a↔b to the edges map.
+function addEdgeInMemory(edges, a, b) {
+  if (a === b) return false;
+  edges[a] = edges[a] || [];
+  edges[b] = edges[b] || [];
+  let changed = false;
+  if (!edges[a].includes(b)) { edges[a].push(b); changed = true; }
+  if (!edges[b].includes(a)) { edges[b].push(a); changed = true; }
+  return changed;
+}
+
+// Connected components over the tracked subset. Returns array of Set<addr>.
+function computeClusters(addrs, edges) {
+  const inSet = new Set(addrs);
+  const visited = new Set();
+  const clusters = [];
+  for (const start of addrs) {
+    if (visited.has(start)) continue;
+    const cluster = new Set();
+    const queue = [start];
+    while (queue.length) {
+      const cur = queue.shift();
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      cluster.add(cur);
+      for (const n of (edges[cur] || [])) {
+        if (inSet.has(n) && !visited.has(n)) queue.push(n);
+      }
+    }
+    clusters.push(cluster);
+  }
+  return clusters;
+}
+
+// Map address → cluster label ('A','B',...) for clusters of size >= 2.
+function labelClusters(clusters) {
+  const labels = new Map();
+  let letter = 0;
+  // Sort biggest first so the "main" whale cluster is A
+  const sorted = clusters.slice().sort((a, b) => b.size - a.size);
+  for (const c of sorted) {
+    if (c.size < 2) continue;
+    const tag = String.fromCharCode(65 + (letter % 26));
+    for (const addr of c) labels.set(addr, tag);
+    letter++;
+  }
+  return labels;
+}
+
+async function handleWhaleAdmin(rawText, cmd, chatId) {
+  const env = WHALE_ENV; // captured at scheduled/fetch entry
+  if (!env) return;
+
+  let reply;
+
+  if (cmd === '/whalehelp') {
+    reply = `🐋 <b>Whale Watcher — Admin Commands</b>
+
+<code>/whales</code> — tracked wallets (grouped by cluster, with 24h activity dots)
+<code>/whales24h</code> — full breakdown of the last 24 hours
+<code>/whaleadd 0x...</code> — add a wallet to the watch-set
+<code>/whalerm 0x...</code> — remove a wallet
+<code>/whalehelp</code> — this help
+
+<b>How it works:</b>
+• Scans every minute for any BOBAI Transfer touching a tracked wallet.
+• Classifies into 🟢 Buy · 🔴 Sell · 🔥 Burn · 🟠 Transfer-Out · ⚪ Transfer-In · 🟣 Internal-Cluster · 🟡 Dust (&lt; $50).
+• Posts a <b>Daily Recap</b> to this chat every morning at 06:00 UTC (08:00 CEST).
+
+<b>Auto-tracking:</b>
+• 💡 <b>NEW WHALE</b> — any wallet that crosses <b>10M BOBAI</b> is automatically added.
+• 💀 <b>EX-WHALE</b> — tracked wallet drops below 10M (stays in set, manual /whalerm to drop).
+• 🟠 <b>Cascade (Hop 1)</b> — wallets a tracked address sends to are auto-added.
+
+<b>Never tracked</b> (always excluded):
+• PancakeSwap LP pair · DEAD burn address · BOBAI contract (tax collector)
+• BOBAI Buyback bot &amp; Dev-Buyback bot
+
+<i>Internal-only feature. Alerts post to this chat, never public.</i>`;
+  }
+
+  else if (cmd === '/whales') {
+    const list = await loadTrackedWallets(env);
+    if (!list.length) {
+      reply = '🐋 No wallets currently tracked.\nUse <code>/whaleadd 0x...</code> to start.';
+    } else {
+      const [balances, price, edges, events, totalSupply] = await Promise.all([
+        Promise.all(list.map(a => getBobaiBalance(a).catch(() => 0n))),
+        fetchBobaiPriceUsd().catch(() => null),
+        loadWalletEdges(env),
+        loadWhaleEvents(env),
+        getTotalSupply().catch(() => 0),
+      ]);
+      const tokens = balances.map(b => Number(b / 10n ** 18n));
+      const balByAddr = new Map(list.map((a, i) => [a, tokens[i]]));
+      const totalTokens = tokens.reduce((s, t) => s + t, 0);
+      const totalUsd = price ? totalTokens * price : null;
+      // %-share is computed against TOTAL SUPPLY (more meaningful than vs. tracked).
+      const supplyBase = totalSupply > 0 ? totalSupply : totalTokens || 1;
+
+      const clusters = computeClusters(list, edges);
+      const clusterTag = labelClusters(clusters);
+      const active = activeAddrSet(events, 24);
+      const sum = summarize24h(events);
+
+      // Sort clusters: size desc (biggest first), but solo wallets aggregated separately
+      const labeled = clusters.filter(c => c.size >= 2).sort((a, b) => b.size - a.size);
+      const solo = clusters.filter(c => c.size === 1).flatMap(c => [...c]);
+
+      // --- Header ---
+      const totalUsdStr = totalUsd != null ? formatUsd(totalUsd) : 'n/a';
+      const totalPctOfSupply = ((totalTokens / supplyBase) * 100).toFixed(1);
+      const header = `🐋 <b>Whale Watcher</b>
+<b>${list.length}</b> wallets · <b>${formatNumber(totalTokens)}</b> BOBAI · <b>${totalUsdStr}</b>
+<b>${totalPctOfSupply}%</b> of total supply`;
+
+      // --- 24h inline summary ---
+      const c = sum.counts;
+      const has24h = sum.total > 0;
+      const flagLine = (c.NEW_WHALE || c.EX_WHALE) ? `
+💡 ${c.NEW_WHALE} new whale${c.NEW_WHALE === 1 ? '' : 's'} · 💀 ${c.EX_WHALE} ex-whale${c.EX_WHALE === 1 ? '' : 's'}` : '';
+      const summary24h = has24h ? `
+📅 <b>Last 24h</b> · ${sum.total} events
+📥 <b>+${formatUsd(sum.usdIn)}</b> in · 📤 <b>-${formatUsd(sum.usdOut)}</b> out
+⚖️ Net: ${netEmoji(sum.netUsd)} <b>${netStr(sum.netUsd)}</b>${flagLine}` : `
+📅 <i>No whale activity in the last 24h.</i>`;
+
+      // --- Cluster + Solo sections ---
+      const WHALE_THRESHOLD_TOKENS = 10_000_000;
+      const renderWallet = (addr, rankInGroup) => {
+        const bal = balByAddr.get(addr) || 0;
+        const usd = price ? bal * price : null;
+        const usdStr = usd != null ? formatUsd(usd) : 'n/a';
+        const pct = ((bal / supplyBase) * 100).toFixed(2);
+        // 💀 below 10M (ex-whale) takes priority, then 🟢 active, else 💤 dormant.
+        const dot = bal < WHALE_THRESHOLD_TOKENS ? '💀' : (active.has(addr) ? '🟢' : '💤');
+        const rank = String(rankInGroup).padStart(2, ' ');
+        return `<code>${rank}.</code> <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${addr}">${shortenAddress(addr)}</a> · ${formatNumber(bal)} (${usdStr}) · ${pct}% ${dot}`;
+      };
+
+      const sections = [];
+      for (const cluster of labeled) {
+        const tag = clusterTag.get([...cluster][0]) || '?';
+        const addrs = [...cluster].sort((a, b) => (balByAddr.get(b) || 0) - (balByAddr.get(a) || 0));
+        const sumTokens = addrs.reduce((s, a) => s + (balByAddr.get(a) || 0), 0);
+        const sharePct = ((sumTokens / supplyBase) * 100).toFixed(2);
+        const head = `🔗 <b>Cluster ${tag}</b> · ${addrs.length} wallets · ${sharePct}% of supply`;
+        const lines = addrs.map((a, i) => renderWallet(a, i + 1)).join('\n');
+        sections.push(head + '\n' + lines);
+      }
+      if (solo.length) {
+        const sorted = solo.slice().sort((a, b) => (balByAddr.get(b) || 0) - (balByAddr.get(a) || 0));
+        const sumTokens = sorted.reduce((s, a) => s + (balByAddr.get(a) || 0), 0);
+        const sharePct = ((sumTokens / supplyBase) * 100).toFixed(2);
+        const head = `🔘 <b>Solo</b> · ${sorted.length} wallets · ${sharePct}% of supply`;
+        const lines = sorted.map((a, i) => renderWallet(a, i + 1)).join('\n');
+        sections.push(head + '\n' + lines);
+      }
+
+      reply = `${header}
+${summary24h}
+
+${sections.join('\n\n')}
+
+<i>% = share of total supply · 🟢 active (24h) · 💤 dormant · 💀 below 10M · 🔗 linked cluster
+ℹ️ <code>/whales24h</code> for full daily breakdown · <code>/whalehelp</code></i>`;
+    }
+  }
+
+  else if (cmd === '/whales24h') {
+    const events = await loadWhaleEvents(env);
+    const tracked = await loadTrackedWallets(env);
+    const price   = await fetchBobaiPriceUsd().catch(() => null);
+    reply = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ false);
+  }
+
+  else if (cmd === '/whaleadd') {
+    const matches = rawText.match(ADDR_REG);
+    if (!matches || !matches.length) {
+      reply = '❌ Need at least one valid address.\nUsage: <code>/whaleadd 0x...</code>\nBatch: paste multiple 0x... in one message.';
+    } else {
+      const list = await loadTrackedWallets(env);
+      const before = new Set(list);
+      const added = [], dup = [], skipped = [];
+      for (const raw of matches) {
+        const addr = raw.toLowerCase();
+        if (WHALE_NEVER_TRACK.has(addr))      skipped.push(addr);
+        else if (before.has(addr))             dup.push(addr);
+        else if (!added.includes(addr)) {      added.push(addr); list.push(addr); }
+      }
+      const cleaned = await saveTrackedWallets(env, list);
+      const blocks = [];
+      if (added.length) {
+        blocks.push(`✅ <b>Added ${added.length}</b>:\n` + added.map(a =>
+          `• <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${a}">${shortenAddress(a)}</a>`).join('\n'));
+      }
+      if (dup.length) {
+        blocks.push(`ℹ️ <b>Already tracked (${dup.length})</b>:\n` + dup.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
+      }
+      if (skipped.length) {
+        blocks.push(`🚫 <b>Skipped (never-track: LP/DEAD/Bot) — ${skipped.length}</b>:\n` + skipped.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
+      }
+      blocks.push(`\n📊 Now tracking <b>${cleaned.length}</b> wallets total.`);
+      reply = blocks.join('\n\n');
+    }
+  }
+
+  else if (cmd === '/whalerm') {
+    const matches = rawText.match(ADDR_REG);
+    if (!matches || !matches.length) {
+      reply = '❌ Need at least one valid address.\nUsage: <code>/whalerm 0x...</code>';
+    } else {
+      const list = await loadTrackedWallets(env);
+      const before = new Set(list);
+      const rmSet = new Set(matches.map(a => a.toLowerCase()));
+      const removed = [], notFound = [];
+      for (const addr of rmSet) {
+        if (before.has(addr)) removed.push(addr);
+        else notFound.push(addr);
+      }
+      const cleaned = await saveTrackedWallets(env, list.filter(a => !rmSet.has(a)));
+      const blocks = [];
+      if (removed.length) {
+        blocks.push(`🗑️ <b>Removed ${removed.length}</b>:\n` + removed.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
+      }
+      if (notFound.length) {
+        blocks.push(`ℹ️ <b>Not in set (${notFound.length})</b>:\n` + notFound.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
+      }
+      blocks.push(`\n📊 Now tracking <b>${cleaned.length}</b> wallets total.`);
+      reply = blocks.join('\n\n');
+    }
+  }
+
+  if (reply) {
+    await tg('sendMessage', {
+      chat_id: chatId,
+      text: reply,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
+  }
+}
+
+// Captured at top of fetch() / scheduled() so handleWhaleAdmin has KV access.
+let WHALE_ENV = null;
+
+// ==================== WHALE WATCHER POSTER ====================
+
+// Auto-posted to BOBAI Intern once per day at 06:00 UTC (08:00 CEST).
+async function postDailyWhaleRecap(env) {
+  if (!TG_INTERNAL_CHAT_ID) return false;
+  try {
+    const [events, tracked, price] = await Promise.all([
+      loadWhaleEvents(env),
+      loadTrackedWallets(env),
+      fetchBobaiPriceUsd().catch(() => null),
+    ]);
+    const text = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ true);
+    const r = await tg('sendMessage', {
+      chat_id: TG_INTERNAL_CHAT_ID,
+      text, parse_mode: 'HTML', disable_web_page_preview: true,
+    });
+    return r?.ok === true;
+  } catch (e) {
+    console.error('[WHALE DAILY ERROR]', e.message || e);
+    return false;
+  }
+}
+
+async function postWhaleAlert(data) {
+  if (!TG_INTERNAL_CHAT_ID) return false;
+  const { kind, from, to, amount, usdValue, txHash } = data;
+  const DUST_USD = 50;
+  const isDust = usdValue > 0 && usdValue < DUST_USD;
+  const usdStr = usdValue ? formatUsd(usdValue) : 'n/a';
+
+  let icon, title, note;
+  switch (kind) {
+    case 'TRANSFER_OUT':
+      if (isDust) {
+        icon = '🟡'; title = 'WHALE PRE-FUNDING (dust)';
+        note = 'Test-send — bigger TX likely incoming';
+      } else {
+        icon = '🟠'; title = 'WHALE TRANSFER OUT';
+        note = 'New address added to watch-set (Hop 1)';
+      }
+      break;
+    case 'SELL':       icon = '🔴'; title = 'TRACKED WALLET SELLING'; note = 'Sent BOBAI into the LP'; break;
+    case 'BUY':        icon = '🟢'; title = 'TRACKED WALLET BUYING';  note = 'Received BOBAI from the LP'; break;
+    case 'BURN':       icon = '🔥'; title = 'TRACKED WALLET BURN';    note = 'Sent to DEAD'; break;
+    case 'INTERNAL_T': icon = '🟣'; title = 'INTERNAL CLUSTER MOVE';  note = 'Both wallets already tracked'; break;
+    case 'TRANSFER_IN':icon = '⚪'; title = 'TRACKED WALLET RECEIVED'; note = 'Incoming from non-tracked'; break;
+    case 'NEW_WHALE': {
+      icon = '💡'; title = 'NEW WHALE DETECTED';
+      const msg = `${icon} <b>${title}</b>
+
+🐋 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${to}">${shortenAddress(to)}</a> just crossed the 10M BOBAI threshold.
+
+🪙 Balance: <b>${formatNumber(amount)} BOBAI</b> (${usdStr})
+📥 Triggered by TX from <a href="https://bscscan.com/address/${from}">${shortenAddress(from)}</a>
+<i>Automatically added to watch-set — all future activity will be alerted.</i>
+
+🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a>`;
+      try {
+        const r = await tg('sendMessage', {
+          chat_id: TG_INTERNAL_CHAT_ID,
+          text: msg,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        });
+        return r?.ok === true;
+      } catch (e) {
+        console.error('[WHALE ALERT ERROR]', e.message || e);
+        return false;
+      }
+    }
+    case 'EX_WHALE': {
+      icon = '💀'; title = 'EX-WHALE';
+      const msg = `${icon} <b>${title}</b>
+
+📉 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${from}">${shortenAddress(from)}</a> dropped below the 10M BOBAI threshold.
+
+🪙 Balance now: <b>${formatNumber(amount)} BOBAI</b> (${usdStr})
+<i>Still in watch-set — use /whalerm to drop entirely.</i>
+
+🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a>`;
+      try {
+        const r = await tg('sendMessage', {
+          chat_id: TG_INTERNAL_CHAT_ID,
+          text: msg,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        });
+        return r?.ok === true;
+      } catch (e) {
+        console.error('[WHALE ALERT ERROR]', e.message || e);
+        return false;
+      }
+    }
+    default: return false;
+  }
+
+  const fromDesc = describeAddr(from, data.fromTag, data.fromBal, data.priceUsd);
+  const toDesc   = describeAddr(to,   data.toTag,   data.toBal,   data.priceUsd);
+  const message = `${icon} <b>${title}</b>
+
+🪙 <b>${formatNumber(amount)} BOBAI</b> (${usdStr})
+📤 FROM <a href="https://bscscan.com/address/${from}">${shortenAddress(from)}</a> · <i>${fromDesc}</i>
+📥 TO   <a href="https://bscscan.com/address/${to}">${shortenAddress(to)}</a> · <i>${toDesc}</i>
+<i>${note}</i>
+
+🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a>`;
+
+  try {
+    const r = await tg('sendMessage', {
+      chat_id: TG_INTERNAL_CHAT_ID,
+      text: message,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
+    return r?.ok === true;
+  } catch (e) {
+    console.error('[WHALE ALERT ERROR]', e.message || e);
+    return false;
+  }
+}
+
 // ==================== GUARD BOT ====================
 
 function generateCaptcha() {
@@ -697,26 +1376,67 @@ const BOT_COMMANDS = [
   { command: 'worldcup', description: 'Tipgame pool, top 10 & latest credits' },
 ];
 
-const COMMANDS_VERSION = 'v4-worldcup';
+// Whale watcher menu — only registered for the BOBAI Intern chat (scope=chat).
+// Overrides the public BOT_COMMANDS list inside that chat, so the "/" menu shows
+// only these four entries.
+const WHALE_COMMANDS = [
+  { command: 'help',      description: 'Whale watcher help' },
+  { command: 'whales',    description: 'Tracked wallets (clustered, with 24h dots)' },
+  { command: 'whales24h', description: 'Detailed last-24h breakdown' },
+  { command: 'whaleadd',  description: 'Add wallet(s) to watch-set' },
+  { command: 'whalerm',   description: 'Remove wallet(s) from watch-set' },
+];
+
+const COMMANDS_VERSION = 'v6-whales24h';
 
 async function ensureCommandsRegistered(env) {
   const current = await env.KV.get('commands_version');
   if (current === COMMANDS_VERSION) return;
-  const res = await tg('setMyCommands', { commands: BOT_COMMANDS });
-  if (res?.ok) {
+  const res1 = await tg('setMyCommands', { commands: BOT_COMMANDS });
+  let res2 = { ok: true };
+  if (TG_INTERNAL_CHAT_ID) {
+    res2 = await tg('setMyCommands', {
+      commands: WHALE_COMMANDS,
+      scope: { type: 'chat', chat_id: TG_INTERNAL_CHAT_ID },
+    });
+  }
+  if (res1?.ok && res2?.ok) {
     await env.KV.put('commands_version', COMMANDS_VERSION);
     console.log('[COMMANDS] Registered', COMMANDS_VERSION);
   } else {
-    console.error('[COMMANDS] Failed:', JSON.stringify(res));
+    console.error('[COMMANDS] Failed:', JSON.stringify({ res1, res2 }));
   }
 }
 
 // ==================== CHAT COMMANDS ====================
 
 async function handleCommand(msg) {
-  const text = (msg.text || '').toLowerCase().trim().split('@')[0];
+  const rawText = (msg.text || '').trim();
+  const text = rawText.toLowerCase().split('@')[0].split(' ')[0];
   const chatId = msg.chat.id;
   let reply = null;
+
+  // ===== Admin-only whale commands (only inside TG_INTERNAL_CHAT_ID) =====
+  const isInternal = TG_INTERNAL_CHAT_ID && String(chatId) === String(TG_INTERNAL_CHAT_ID);
+
+  // Slash-prefixed (work everywhere, but silent-ignore outside internal chat)
+  const WHALE_SLASH = ['/whales', '/whales24h', '/whaleadd', '/whalerm', '/whalehelp'];
+  if (WHALE_SLASH.includes(text)) {
+    if (!isInternal) return;
+    return handleWhaleAdmin(rawText, text, chatId);
+  }
+
+  // Bare-word triggers inside the internal chat only — typing `whales`, `whales24h`,
+  // `whaleadd 0x...`, `whalerm 0x...`, `whalehelp` works without the leading slash.
+  const WHALE_BARE = ['whales', 'whales24h', 'whaleadd', 'whalerm', 'whalehelp'];
+  if (isInternal && WHALE_BARE.includes(text)) {
+    return handleWhaleAdmin(rawText, '/' + text, chatId);
+  }
+
+  // Inside the internal chat: route /help and /start to whale help instead of public help.
+  if (isInternal && (text === '/help' || text === '/start' || text === 'help')) {
+    return handleWhaleAdmin(rawText, '/whalehelp', chatId);
+  }
 
   switch (text) {
     case '/buy':
@@ -924,6 +1644,22 @@ Here's what I can do:
       break;
     }
 
+    case '/chatid':
+    case 'chatid': {
+      const info = {
+        chat_id: msg.chat.id,
+        chat_type: msg.chat.type,
+        chat_title: msg.chat.title || null,
+        from_user: msg.from?.username || msg.from?.id || null,
+      };
+      console.log('[CHATID]', JSON.stringify(info));
+      reply = `🆔 <b>Chat Info</b>
+<code>chat_id: ${msg.chat.id}</code>
+type: ${msg.chat.type}
+title: ${msg.chat.title || '(private)'}`;
+      break;
+    }
+
     case '/worldcup':
     case 'worldcup':
     case '/wc':
@@ -955,7 +1691,7 @@ Here's what I can do:
           const flag = isoToFlag(r.avatar_country);
           const wallet = r.has_wallet ? ' ⚽' : '';
           const pts = (r.total_points || 0);
-          return `${rank} ${flag} <b>${r.username}</b>${wallet} — ${pts} pts`;
+          return `${rank} ${flag} <b>${r.username}</b>${wallet} ${pts} pts`;
         }).join('\n');
       }
 
@@ -1018,6 +1754,8 @@ export default {
   // Webhook handler (Telegram sends updates here)
   async fetch(request, env) {
     TG_BOT_TOKEN = env.BOT_TOKEN;
+    TG_INTERNAL_CHAT_ID = env.TG_INTERNAL_CHAT_ID || '';
+    WHALE_ENV = env;
 
     // === /broadcast — authenticated "brain update" announcement endpoint ===
     // POST /broadcast with header `X-Broadcast-Secret: <env.BROADCAST_SECRET>`
@@ -1144,6 +1882,109 @@ export default {
       });
     }
 
+    // === /stickerset/* — authenticated sticker set creation endpoints ===
+    // POST with header `X-Broadcast-Secret`. Used by tg-create-stickerset.js to
+    // build an installable Telegram sticker pack from local .webm files without
+    // leaking the BOT_TOKEN. Endpoints:
+    //   GET  /stickerset/getbot         → { ok, username }
+    //   POST /stickerset/upload         → uploadStickerFile (multipart: user_id, sticker)
+    //   POST /stickerset/create  (JSON) → createNewStickerSet
+    //   POST /stickerset/add     (JSON) → addStickerToSet
+    if (url.pathname.startsWith('/stickerset/')) {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), {
+          status: 401, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const jres = (j) => new Response(JSON.stringify(j), {
+        status: j.ok ? 200 : 502, headers: { 'content-type': 'application/json' },
+      });
+
+      if (url.pathname === '/stickerset/getbot') {
+        const me = await tg('getMe', {});
+        return new Response(JSON.stringify({
+          ok: !!me.ok, username: me.result?.username || null,
+        }), { status: me.ok ? 200 : 502, headers: { 'content-type': 'application/json' } });
+      }
+
+      if (url.pathname === '/stickerset/upload' && request.method === 'POST') {
+        let inForm;
+        try { inForm = await request.formData(); } catch (e) {
+          return new Response(JSON.stringify({ ok: false, error: 'expected multipart form' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        const userId = (inForm.get('user_id') || '').toString().trim();
+        const file = inForm.get('sticker');
+        if (!userId || !file || typeof file === 'string') {
+          return new Response(JSON.stringify({ ok: false, error: 'missing user_id or sticker file' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        const tgForm = new FormData();
+        tgForm.append('user_id', userId);
+        tgForm.append('sticker', file, 'sticker.webm');
+        tgForm.append('sticker_format', 'video');
+        const r = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/uploadStickerFile`, {
+          method: 'POST', body: tgForm,
+        });
+        return jres(await r.json());
+      }
+
+      if (url.pathname === '/stickerset/create' && request.method === 'POST') {
+        let body = {};
+        try { body = await request.json(); } catch (e) {
+          return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        const { user_id, name, title, file_id, emoji } = body;
+        if (!user_id || !name || !title || !file_id || !emoji) {
+          return new Response(JSON.stringify({ ok: false, error: 'missing user_id/name/title/file_id/emoji' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        return jres(await tg('createNewStickerSet', {
+          user_id, name, title,
+          stickers: [{ sticker: file_id, format: 'video', emoji_list: [emoji] }],
+        }));
+      }
+
+      if (url.pathname === '/stickerset/get' && request.method === 'GET') {
+        const name = url.searchParams.get('name');
+        if (!name) {
+          return new Response(JSON.stringify({ ok: false, error: 'missing name' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        return jres(await tg('getStickerSet', { name }));
+      }
+
+      if (url.pathname === '/stickerset/add' && request.method === 'POST') {
+        let body = {};
+        try { body = await request.json(); } catch (e) {
+          return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        const { user_id, name, file_id, emoji } = body;
+        if (!user_id || !name || !file_id || !emoji) {
+          return new Response(JSON.stringify({ ok: false, error: 'missing user_id/name/file_id/emoji' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        return jres(await tg('addStickerToSet', {
+          user_id, name,
+          sticker: { sticker: file_id, format: 'video', emoji_list: [emoji] },
+        }));
+      }
+
+      return new Response(JSON.stringify({ ok: false, error: 'unknown stickerset endpoint' }), {
+        status: 404, headers: { 'content-type': 'application/json' },
+      });
+    }
+
     // === Telegram webhook (default POST route — unchanged behaviour) ===
     if (request.method === 'POST') {
       try {
@@ -1171,9 +2012,209 @@ export default {
   // Cron handler (every 1 min)
   async scheduled(event, env) {
     TG_BOT_TOKEN = env.BOT_TOKEN;
+    TG_INTERNAL_CHAT_ID = env.TG_INTERNAL_CHAT_ID || '';
+    WHALE_ENV = env;
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===
     await ensureCommandsRegistered(env);
+
+    // === DAILY WHALE RECAP (06:00 UTC = 08:00 CEST, idempotent via KV flag) ===
+    if (TG_INTERNAL_CHAT_ID) {
+      try {
+        const now = new Date();
+        if (now.getUTCHours() === 6) {
+          const today = now.toISOString().slice(0, 10);
+          const last  = await env.KV.get('last_daily_summary');
+          if (last !== today) {
+            const sent = await postDailyWhaleRecap(env);
+            if (sent) await env.KV.put('last_daily_summary', today);
+          }
+        }
+      } catch (e) {
+        console.error('[WHALE DAILY GATE ERROR]', e.message || e);
+      }
+    }
+
+    // === WHALE WATCHER (internal-only alerts + auto-detect new whales) ===
+    if (TG_INTERNAL_CHAT_ID) {
+      try {
+        const tracked = await loadTrackedWallets(env);
+        const trackedSet = new Set(tracked);
+        const postedWhaleRaw = await env.KV.get('posted_whale_txs');
+        const postedWhaleSet = new Set(postedWhaleRaw ? JSON.parse(postedWhaleRaw) : []);
+        const prevWhaleSize = postedWhaleSet.size;
+
+        const edges = await loadWalletEdges(env);
+        let edgesChanged = false;
+
+        const whaleEvents = await loadWhaleEvents(env);
+        const prevEventCount = whaleEvents.length;
+
+        // Initial cluster labels — re-computed on the fly whenever the tracked set
+        // or edge set changes during the loop (cascade-add, INTERNAL_T new edge).
+        let clusterLabels = labelClusters(computeClusters([...trackedSet], edges));
+
+        const latestHex = await rpcCall('eth_blockNumber', []);
+        if (latestHex) {
+          const latest = parseInt(latestHex, 16);
+          const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
+          const logs = await getAllRecentTransfers(fromBlock);
+
+          // Sort oldest-first so chat order matches chain order.
+          const sorted = logs.slice().sort((a, b) => {
+            const blkA = parseInt(a.blockNumber, 16);
+            const blkB = parseInt(b.blockNumber, 16);
+            if (blkA !== blkB) return blkA - blkB;
+            return parseInt(a.logIndex, 16) - parseInt(b.logIndex, 16);
+          });
+
+          let bobaiPriceUsd = null;
+          let alerts = 0;
+          const MAX_WHALE_ALERTS = 10;
+          let setChanged = false;
+          const checkedThisRun = new Set(); // avoid double balanceOf within same cron
+
+          for (const log of sorted) {
+            const key = log.transactionHash + ':' + log.logIndex;
+            if (postedWhaleSet.has(key)) continue;
+
+            const from = topicToAddr(log.topics[1]);
+            const to   = topicToAddr(log.topics[2]);
+            const amtWei = BigInt(log.data || '0x0');
+            const amt = Number(amtWei) / 1e18;
+            if (!(amt > 0)) { postedWhaleSet.add(key); continue; }
+
+            const fromTracked = trackedSet.has(from);
+            const toTracked   = trackedSet.has(to);
+            const pair = BOBAI_PAIR.toLowerCase();
+            const dead = DEAD.toLowerCase();
+
+            // === A) Tracked-related alerts ===
+            let kind = null;
+            if (fromTracked && to === pair) kind = 'SELL';
+            else if (toTracked && from === pair) kind = 'BUY';
+            else if (fromTracked && to === dead) kind = 'BURN';
+            else if (fromTracked && toTracked) kind = 'INTERNAL_T';
+            else if (fromTracked && !WHALE_NEVER_TRACK.has(to)) kind = 'TRANSFER_OUT';
+            else if (toTracked && !WHALE_NEVER_TRACK.has(from)) kind = 'TRANSFER_IN';
+
+            // === B) Auto-detect new whales (receiver not tracked, not excluded) ===
+            // We check balanceOf only if the receiver isn't tracked yet AND isn't the
+            // LP/DEAD/Bot. If their balance crosses 10M BOBAI → add + alert.
+            if (!kind && !toTracked && !WHALE_NEVER_TRACK.has(to) && !checkedThisRun.has(to)) {
+              checkedThisRun.add(to);
+              try {
+                const bal = await getBobaiBalance(to);
+                if (bal >= WHALE_THRESHOLD_WEI) {
+                  trackedSet.add(to);
+                  setChanged = true;
+                  kind = 'NEW_WHALE';
+                  if (bobaiPriceUsd === null) bobaiPriceUsd = await fetchBobaiPriceUsd();
+                  const balTokens = Number(bal / 10n ** 18n);
+                  console.log('[WHALE] NEW_WHALE detected', to.slice(0, 10), formatNumber(balTokens));
+                  if (alerts < MAX_WHALE_ALERTS) {
+                    const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
+                    const sent = await postWhaleAlert({
+                      kind: 'NEW_WHALE', from, to,
+                      amount: balTokens,        // show balance, not transfer
+                      usdValue: usd,
+                      txHash: log.transactionHash,
+                    });
+                    if (sent) {
+                      alerts++;
+                      whaleEvents.push({ kind: 'NEW_WHALE', from, to, amount: balTokens, usdValue: usd, txHash: log.transactionHash, ts: Date.now() });
+                    }
+                  }
+                }
+              } catch (e) { /* balance lookup failed — skip silently */ }
+            }
+
+            if (!kind) { postedWhaleSet.add(key); continue; }
+            if (kind === 'NEW_WHALE') { postedWhaleSet.add(key); continue; }
+            if (alerts >= MAX_WHALE_ALERTS) { postedWhaleSet.add(key); continue; }
+
+            if (bobaiPriceUsd === null) bobaiPriceUsd = await fetchBobaiPriceUsd();
+            const usdValue = bobaiPriceUsd ? amt * bobaiPriceUsd : 0;
+
+            // Cascade: tracked → new address → auto-add (Hop 1) + record edge
+            let labelsDirty = false;
+            if (kind === 'TRANSFER_OUT' && !trackedSet.has(to) && !WHALE_NEVER_TRACK.has(to)) {
+              trackedSet.add(to);
+              setChanged = true;
+              if (addEdgeInMemory(edges, from, to)) { edgesChanged = true; labelsDirty = true; }
+            }
+            // INTERNAL_T = direct edge between two tracked wallets
+            if (kind === 'INTERNAL_T') {
+              if (addEdgeInMemory(edges, from, to)) { edgesChanged = true; labelsDirty = true; }
+            }
+            if (labelsDirty) {
+              clusterLabels = labelClusters(computeClusters([...trackedSet], edges));
+            }
+
+            // Per-alert enrichment: cluster tags + current balances for from/to so
+            // the alert message shows "🔗A · 60M BOBAI ($5.7K)" next to each side.
+            // Skip balance lookup for known LP/DEAD/contract/bot addresses (the
+            // result would be misleading — LP reserves, total burned, etc.).
+            const isSpecial = (a) => WHALE_NEVER_TRACK.has(a.toLowerCase());
+            const [fromBalWei, toBalWei] = await Promise.all([
+              isSpecial(from) ? Promise.resolve(null) : getBobaiBalance(from).catch(() => null),
+              isSpecial(to)   ? Promise.resolve(null) : getBobaiBalance(to).catch(() => null),
+            ]);
+            const fromBal = fromBalWei != null ? Number(fromBalWei / 10n ** 18n) : null;
+            const toBal   = toBalWei   != null ? Number(toBalWei   / 10n ** 18n) : null;
+            const fromTag = clusterLabels.get(from) || null;
+            const toTag   = clusterLabels.get(to)   || null;
+
+            console.log('[WHALE]', kind, from.slice(0, 8), '→', to.slice(0, 8), formatNumber(amt), 'BOBAI');
+            const sent = await postWhaleAlert({
+              kind, from, to, amount: amt, usdValue, txHash: log.transactionHash,
+              fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd,
+            });
+            if (sent) {
+              postedWhaleSet.add(key); alerts++;
+              whaleEvents.push({ kind, from, to, amount: amt, usdValue, txHash: log.transactionHash, ts: Date.now() });
+            }
+            else console.error('[WHALE] alert NOT sent, retry next cron', log.transactionHash);
+
+            // EX_WHALE detection: after a tracked wallet's outflow, did its balance
+            // cross from above 10M to below? Only check on SELL/BURN/TRANSFER_OUT.
+            if (fromTracked && (kind === 'SELL' || kind === 'BURN' || kind === 'TRANSFER_OUT')) {
+              try {
+                const balAfter = await getBobaiBalance(from);
+                if (balAfter < WHALE_THRESHOLD_WEI && (balAfter + amtWei) >= WHALE_THRESHOLD_WEI) {
+                  const balTokens = Number(balAfter / 10n ** 18n);
+                  console.log('[WHALE] EX_WHALE crossed', from.slice(0, 10), formatNumber(balTokens));
+                  if (alerts < MAX_WHALE_ALERTS) {
+                    const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
+                    const exSent = await postWhaleAlert({
+                      kind: 'EX_WHALE', from, to,
+                      amount: balTokens,
+                      usdValue: usd,
+                      txHash: log.transactionHash,
+                    });
+                    if (exSent) {
+                      alerts++;
+                      whaleEvents.push({ kind: 'EX_WHALE', from, to, amount: balTokens, usdValue: usd, txHash: log.transactionHash, ts: Date.now() });
+                    }
+                  }
+                }
+              } catch (e) { /* balance lookup failed — skip */ }
+            }
+          }
+
+          if (setChanged) await saveTrackedWallets(env, [...trackedSet]);
+          if (edgesChanged) await saveWalletEdges(env, edges);
+          if (postedWhaleSet.size > prevWhaleSize) {
+            await env.KV.put('posted_whale_txs', JSON.stringify([...postedWhaleSet].slice(-300)));
+          }
+          if (whaleEvents.length > prevEventCount) {
+            await saveWhaleEvents(env, whaleEvents);
+          }
+        }
+      } catch (err) {
+        console.error('[WHALE WATCHER ERROR]', err.message || err);
+      }
+    }
 
     // === BUY ALERTS (on-chain Swap logs — near-instant, like burns/donations) ===
     // We read the pair's Swap events straight from chain via RPC instead of the

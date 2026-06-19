@@ -47,9 +47,16 @@ const LOGS_RPC_ENDPOINTS = [
 ];
 const LOGS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-function logsEndpoints(env) {
-  const primary = env && env.BSC_RPC_KEYED_URL;
-  return primary ? [primary, ...LOGS_RPC_ENDPOINTS] : LOGS_RPC_ENDPOINTS;
+function keyedEndpoints(env) {
+  return env ? [env.BSC_RPC_KEYED_URL, env.BSC_RPC_KEYED_URL_2].filter(Boolean) : [];
+}
+
+// Free endpoints cap getLogs at ~50 blocks since 2026-06-19. If both keyed
+// providers fail, narrow the requested range so the free fallback can still
+// serve at least the most recent ~50 blocks. Strictly better than silence.
+function narrowToRecent(fromBlock, maxBlocks = 50) {
+  const from = parseInt(fromBlock, 16);
+  return '0x' + Math.max(0, from + 300 - maxBlocks).toString(16); // = latest - maxBlocks
 }
 
 // Photo file_ids (uploaded once via bot, reusable)
@@ -94,26 +101,37 @@ async function rpcCall(method, params) {
   return null;
 }
 
-// eth_getLogs against getLogs-capable endpoints (the dataseed nodes can't do it).
-// Returns an array of logs, or null if every endpoint failed.
+async function tryGetLogs(rpc, fromBlock, address, topic, tag) {
+  const params = [{ address, topics: [topic], fromBlock, toBlock: 'latest' }];
+  try {
+    const res = await fetch(rpc, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': LOGS_UA },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data.result)) return null;
+    console.log(`[${tag}] getLogs ok via`, rpc, '-', data.result.length, 'logs');
+    return data.result;
+  } catch (e) {
+    console.error(`[${tag}] getLogs error via`, rpc, '-', e.message || e);
+    return null;
+  }
+}
+
+// eth_getLogs with keyed-first / free-fallback. Keyed endpoints get the full
+// requested fromBlock; if all keyed fail, freebies get retried with the most
+// recent 50 blocks only (their current archive cap).
 async function getSwapLogs(fromBlock, env) {
-  const params = [{ address: BOBAI_PAIR, topics: [SWAP_TOPIC], fromBlock, toBlock: 'latest' }];
-  for (const rpc of logsEndpoints(env)) {
-    try {
-      const res = await fetch(rpc, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'User-Agent': LOGS_UA },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params }),
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (Array.isArray(data.result)) {
-        console.log('[BUY] getLogs ok via', rpc, '-', data.result.length, 'logs');
-        return data.result;
-      }
-    } catch (e) {
-      console.error('[BUY] getLogs error via', rpc, '-', e.message || e);
-    }
+  for (const rpc of keyedEndpoints(env)) {
+    const r = await tryGetLogs(rpc, fromBlock, BOBAI_PAIR, SWAP_TOPIC, 'BUY');
+    if (r !== null) return r;
+  }
+  const narrow = narrowToRecent(fromBlock);
+  for (const rpc of LOGS_RPC_ENDPOINTS) {
+    const r = await tryGetLogs(rpc, narrow, BOBAI_PAIR, SWAP_TOPIC, 'BUY-fb');
+    if (r !== null) return r;
   }
   console.error('[BUY] getLogs failed on ALL endpoints');
   return null;
@@ -159,20 +177,16 @@ const DEFAULT_TRACKED = [
 const WHALE_THRESHOLD_WEI = 10_000_000n * 10n ** 18n;
 
 // eth_getLogs für ALLE BOBAI Transfer im fromBlock-Fenster (kein Adress-Filter).
-// Single call, ~5-30 results per minute given BOBAI's volume — cheap.
+// Keyed-first / free-fallback wie bei getSwapLogs — siehe dort.
 async function getAllRecentTransfers(fromBlock, env) {
-  const params = [{ address: BOBAI_TOKEN, topics: [TRANSFER_TOPIC], fromBlock, toBlock: 'latest' }];
-  for (const rpc of logsEndpoints(env)) {
-    try {
-      const res = await fetch(rpc, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'User-Agent': LOGS_UA },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params }),
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (Array.isArray(data.result)) return data.result;
-    } catch (e) { /* try next rpc */ }
+  for (const rpc of keyedEndpoints(env)) {
+    const r = await tryGetLogs(rpc, fromBlock, BOBAI_TOKEN, TRANSFER_TOPIC, 'WHALE');
+    if (r !== null) return r;
+  }
+  const narrow = narrowToRecent(fromBlock);
+  for (const rpc of LOGS_RPC_ENDPOINTS) {
+    const r = await tryGetLogs(rpc, narrow, BOBAI_TOKEN, TRANSFER_TOPIC, 'WHALE-fb');
+    if (r !== null) return r;
   }
   return [];
 }

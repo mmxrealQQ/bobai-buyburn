@@ -969,8 +969,13 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
         const usd = price ? bal * price : null;
         const usdStr = usd != null ? formatUsd(usd) : 'n/a';
         const pct = ((bal / supplyBase) * 100).toFixed(2);
-        // 💀 below 10M (ex-whale) takes priority, then 🟢 active, else 💤 dormant.
-        const dot = bal < WHALE_THRESHOLD_TOKENS ? '💀' : (active.has(addr) ? '🟢' : '💤');
+        // Size marker (💀 below 10M) and activity marker (🟢 active 24h / 💤 dormant) are independent.
+        // Small + active → 💀🟢 so cascade-hop traffic on sub-10M wallets stays visible.
+        const small = bal < WHALE_THRESHOLD_TOKENS;
+        const isActive = active.has(addr);
+        const dot = small
+          ? (isActive ? '💀🟢' : '💀')
+          : (isActive ? '🟢' : '💤');
         const rank = String(rankInGroup).padStart(2, ' ');
         return `<code>${rank}.</code> <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${addr}">${shortenAddress(addr)}</a> · ${formatNumber(bal)} (${usdStr}) · ${pct}% ${dot}`;
       };
@@ -999,7 +1004,7 @@ ${summary24h}
 
 ${sections.join('\n\n')}
 
-<i>% = share of total supply · 🟢 active (24h) · 💤 dormant · 💀 below 10M · 🔗 linked cluster
+<i>% = share of total supply · 🟢 active (24h) · 💤 dormant · 💀 below 10M (combine: 💀🟢 = small + active) · 🔗 linked cluster
 ℹ️ <code>/whales24h</code> for full daily breakdown · <code>/whalehelp</code></i>`;
     }
   }
@@ -1531,6 +1536,7 @@ async function handleCommand(msg) {
 🫧 <a href="https://v2.bubblemaps.io/map?address=${BOBAI_TOKEN}&amp;chain=bsc">Bubblemaps</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
 🦎 <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai">CoinGecko</a>
+⚫ <a href="https://coinmun.com/coins/bob-6">CoinMun</a>
 🦅 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DEX Screener</a>
 🌐 <a href="https://www.dextools.io/token/bobai">DEXTools.io</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>

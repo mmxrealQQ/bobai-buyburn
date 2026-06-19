@@ -37,12 +37,20 @@ const RPC_ENDPOINTS = [
 // getLogs-capable endpoints. The Binance dataseed nodes above reject eth_getLogs
 // ("limit exceeded"), so on-chain buy detection uses these instead. A browser-like
 // User-Agent is required (publicnode blocks default/bot user-agents).
+// 2026-06-19: free publicnode/pokt endpoints tightened getLogs to <100 blocks
+// ("Archive requests require a personal token"). Keyed primary via NodeReal
+// (env.BSC_RPC_KEYED_URL) prepended at call time; freebies kept as fallback.
 const LOGS_RPC_ENDPOINTS = [
   'https://bsc-rpc.publicnode.com',
   'https://bsc-pokt.nodies.app',
   'https://bsc.publicnode.com',
 ];
 const LOGS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+function logsEndpoints(env) {
+  const primary = env && env.BSC_RPC_KEYED_URL;
+  return primary ? [primary, ...LOGS_RPC_ENDPOINTS] : LOGS_RPC_ENDPOINTS;
+}
 
 // Photo file_ids (uploaded once via bot, reusable)
 const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AAPfadI1EORIV-4JDTPKnQmo3il3NPsAAkYNaxtDCplSMrzv51Lm4QEBAAMCAAN4AAM7BA';
@@ -88,9 +96,9 @@ async function rpcCall(method, params) {
 
 // eth_getLogs against getLogs-capable endpoints (the dataseed nodes can't do it).
 // Returns an array of logs, or null if every endpoint failed.
-async function getSwapLogs(fromBlock) {
+async function getSwapLogs(fromBlock, env) {
   const params = [{ address: BOBAI_PAIR, topics: [SWAP_TOPIC], fromBlock, toBlock: 'latest' }];
-  for (const rpc of LOGS_RPC_ENDPOINTS) {
+  for (const rpc of logsEndpoints(env)) {
     try {
       const res = await fetch(rpc, {
         method: 'POST',
@@ -152,9 +160,9 @@ const WHALE_THRESHOLD_WEI = 10_000_000n * 10n ** 18n;
 
 // eth_getLogs für ALLE BOBAI Transfer im fromBlock-Fenster (kein Adress-Filter).
 // Single call, ~5-30 results per minute given BOBAI's volume — cheap.
-async function getAllRecentTransfers(fromBlock) {
+async function getAllRecentTransfers(fromBlock, env) {
   const params = [{ address: BOBAI_TOKEN, topics: [TRANSFER_TOPIC], fromBlock, toBlock: 'latest' }];
-  for (const rpc of LOGS_RPC_ENDPOINTS) {
+  for (const rpc of logsEndpoints(env)) {
     try {
       const res = await fetch(rpc, {
         method: 'POST',
@@ -1536,7 +1544,7 @@ async function handleCommand(msg) {
 🫧 <a href="https://v2.bubblemaps.io/map?address=${BOBAI_TOKEN}&amp;chain=bsc">Bubblemaps</a>
 🔍 <a href="https://bscscan.com/token/${BOBAI_TOKEN}">BscScan</a>
 🦎 <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai">CoinGecko</a>
-⚫ <a href="https://coinmun.com/coins/bob-6">CoinMun</a>
+🌙 <a href="https://coinmun.com/coins/bob-6">CoinMun</a>
 🦅 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DEX Screener</a>
 🌐 <a href="https://www.dextools.io/token/bobai">DEXTools.io</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
@@ -2064,7 +2072,7 @@ export default {
         if (latestHex) {
           const latest = parseInt(latestHex, 16);
           const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
-          const logs = await getAllRecentTransfers(fromBlock);
+          const logs = await getAllRecentTransfers(fromBlock, env);
 
           // Sort oldest-first so chat order matches chain order.
           const sorted = logs.slice().sort((a, b) => {
@@ -2238,7 +2246,7 @@ export default {
         // ~300 blocks ≈ 4-7 min (BSC ~0.75-1.5s/block) — comfortably covers the
         // 1-min cron with margin; dedup via posted_txs prevents repeats.
         const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
-        const logs = await getSwapLogs(fromBlock);
+        const logs = await getSwapLogs(fromBlock, env);
 
         if (Array.isArray(logs) && logs.length) {
           let burnedPct = null;            // lazy-load once

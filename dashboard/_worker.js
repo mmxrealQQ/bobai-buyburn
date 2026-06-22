@@ -59,7 +59,8 @@ async function getNftState() {
 
   const latest = parseInt(blockResp?.result || '0x0', 16);
   const rawDrops = Array.isArray(dropsResp?.drops) ? dropsResp.drops : [];
-  // Normalize for the dashboard UI (which expects tokenId + tx fields)
+  // Normalize for the dashboard UI (which expects tokenId + tx fields).
+  // usd + mintTx kept verbatim so the TG bot can render dollar amounts.
   const drops = rawDrops.map((d, i) => ({
     to: d.to,
     // tokenId is sequential: newest = highest id (= total minted - i)
@@ -69,6 +70,9 @@ async function getNftState() {
     block: d.block,
     ts: d.ts || 0, // unix seconds at mint time
     tx: d.mintTx || d.buyTx,
+    mintTx: d.mintTx,
+    buyTx: d.buyTx,
+    usd: d.usd,
   }));
 
   const buyers = new Set(drops.map(d => d.to));

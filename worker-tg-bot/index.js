@@ -10,7 +10,6 @@ const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dead';
 // NFT Buy Drops — auto-minted to buyer wallets on every BOBAI buy ≥ $100
 const NFT_CONTRACT = '0xd56226b3b8297a57f4361fca28aa43babdc9789d';
-const NFT_GET_TIERS_SELECTOR = '0xde170570'; // keccak256("getTiers()")[:4]
 // idx → [emoji, label, threshold USD]
 const NFT_TIERS = [
   ['💰', 'NICE',    100],
@@ -30,7 +29,9 @@ const NFT_RARITIES = [
   ['❤️', 'Ancient'],
   ['🧡', 'Immortal'],
 ];
-const NFT_DROPS_URL = 'https://bobai-nft-mint.bobbuildonbnb.workers.dev/drops';
+// Fetch via Pages route (brainonbnb.com), NOT bobai-nft-mint.workers.dev —
+// worker-to-worker on the same *.workers.dev subdomain 404s (CF loopback).
+const NFT_STATE_URL = 'https://brainonbnb.com/api/nft/state';
 const NFT_DASHBOARD_URL = 'https://brainonbnb.com/nft';
 const CAPTCHA_TIMEOUT = 60;
 
@@ -518,65 +519,27 @@ function getDonationEmojis(usdValue, token) {
   return { bar, icon };
 }
 
-// NFT Buy Drop alert line — adds "🎁 +1 NFT · 🐋 WHALE motif (47/100)" to buy alerts.
-// Reads getTiers() from chain. Returns '' on any failure (silent — never blocks alerts).
-async function buildBuyDropLine(usdValue) {
+// One-shot fetch of the full NFT state (tiers + drops) from the dashboard API.
+// Returns { minted, cap, drops } or null on failure.
+async function fetchNftState() {
   try {
-    if (!usdValue || usdValue < 100) return '';
-    // Determine tier from USD (highest matching threshold)
-    let tierIdx = -1;
-    for (let i = NFT_TIERS.length - 1; i >= 0; i--) {
-      if (usdValue >= NFT_TIERS[i][2]) { tierIdx = i; break; }
+    const res = await fetch(NFT_STATE_URL, { cf: { cacheTtl: 0, cacheEverything: false } });
+    if (!res.ok) {
+      console.error('[NFT state] non-ok', res.status);
+      return null;
     }
-    if (tierIdx < 0) return '';
-    const [emoji, label] = NFT_TIERS[tierIdx];
-
-    const res = await rpcCall('eth_call', [{ to: NFT_CONTRACT, data: NFT_GET_TIERS_SELECTOR }, 'latest']);
-    if (!res || !res.startsWith('0x') || res.length < 2 + 12 * 64) return `\n🎁 NFT incoming: ${emoji} ${label} motif`;
-    const hex = res.slice(2);
-    const u256 = i => parseInt(hex.slice(i*64, (i+1)*64), 16);
-    const minted = u256(tierIdx);
-    const cap    = u256(6 + tierIdx);
-    const soldOut = minted >= cap;
-    // Show the current minted count, NOT minted+1 — otherwise the alert
-    // is +1 off when the mint-worker race-wins and bumps the count first.
-    return soldOut
-      ? `\n🎁 ${emoji} ${label} NFTs <b>sold out</b> (${cap}/${cap})`
-      : `\n🎁 +1 NFT · ${emoji} <b>${label}</b> · ${minted}/${cap}`;
+    const body = await res.json();
+    return {
+      minted: Array.isArray(body.minted) ? body.minted : null,
+      cap:    Array.isArray(body.cap)    ? body.cap    : null,
+      drops:  Array.isArray(body.drops)  ? body.drops  : [],
+    };
   } catch (e) {
-    console.error('[NFT line] error', e.message || e);
-    return '';
-  }
-}
-
-// Reads all 6 tier minted/cap from chain in one call. Returns null on failure.
-async function fetchNftTiers() {
-  try {
-    const res = await rpcCall('eth_call', [{ to: NFT_CONTRACT, data: NFT_GET_TIERS_SELECTOR }, 'latest']);
-    if (!res || !res.startsWith('0x') || res.length < 2 + 12 * 64) return null;
-    const hex = res.slice(2);
-    const u256 = i => parseInt(hex.slice(i * 64, (i + 1) * 64), 16);
-    const minted = [], cap = [];
-    for (let t = 0; t < 6; t++) { minted.push(u256(t)); cap.push(u256(6 + t)); }
-    return { minted, cap };
-  } catch (e) {
-    console.error('[NFT tiers]', e.message || e);
+    console.error('[NFT state] err', e.message || e);
     return null;
   }
 }
 
-// Pulls the last N drops from the mint-worker (KV-backed, capped at 100).
-async function fetchNftDrops(n = 3) {
-  try {
-    const res = await fetch(NFT_DROPS_URL, { cf: { cacheTtl: 30 } });
-    if (!res.ok) return [];
-    const body = await res.json();
-    return (body.drops || []).slice(0, n);
-  } catch (e) {
-    console.error('[NFT drops]', e.message || e);
-    return [];
-  }
-}
 
 // 10-char ▰░ progress bar
 function nftProgressBar(minted, cap) {
@@ -585,13 +548,10 @@ function nftProgressBar(minted, cap) {
   return '▰'.repeat(filled) + '░'.repeat(10 - filled);
 }
 
-async function postBuyAlert(trade, burnedPct) {
+async function postBuyAlert(trade, burnedPct, nftLine = '') {
   const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
   const { bar, icon } = getBuyEmojis(usdValue);
   const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
-
-  // NFT Buy Drop info — every buy ≥ $100 auto-mints a collectible NFT
-  const nftLine = await buildBuyDropLine(usdValue);
 
   const message = `${bar}
 <b>${icon}</b>
@@ -1998,7 +1958,9 @@ ${taxLines}
 
     case '/nft':
     case 'nft': {
-      const [tiers, drops] = await Promise.all([fetchNftTiers(), fetchNftDrops(3)]);
+      const state = await fetchNftState();
+      const tiers = state && state.minted && state.cap ? { minted: state.minted, cap: state.cap } : null;
+      const drops = (state?.drops || []).slice(0, 3);
 
       let progressLines, totalMinted = 0, totalCap = 0;
       if (!tiers) {
@@ -2635,14 +2597,85 @@ export default {
     }
 
     // === BUY ALERTS (on-chain Swap logs — near-instant, like burns/donations) ===
-    // We read the pair's Swap events straight from chain via RPC instead of the
-    // GeckoTerminal trades feed, which lagged 20-30+ min on this low-volume pool
-    // and made whale alerts arrive far too late (or miss the look-back window).
-    // The cron runs every minute, so on-chain buys now alert within ~1 minute.
+    // Two-phase pipeline for buys ≥ $100 (NFT mint threshold):
+    //   1) Detect buy on chain → push into `pending_nft_buys` queue (no alert yet)
+    //   2) Each cron, pull /api/nft/state and match queued buys by `buyTx` →
+    //      fire alert once the mint-worker has minted the NFT. The alert then
+    //      carries the real #tokenId, so /nft, dashboard and TG stay consistent.
+    // Sold-out tiers and stuck mints (>5 min) get fired immediately with a
+    // graceful fallback line so no alert is ever lost.
     const postedRaw = await env.KV.get('posted_txs');
     const postedSet = new Set(postedRaw ? JSON.parse(postedRaw) : []);
     const prevSize = postedSet.size;
 
+    const pendingRaw = await env.KV.get('pending_nft_buys');
+    let pending = pendingRaw ? JSON.parse(pendingRaw) : [];
+    let pendingDirty = false;
+    const NFT_PENDING_TIMEOUT_MS = 5 * 60 * 1000;
+
+    // Fetch state once — used for both queue draining and sold-out checks
+    const nftState = await fetchNftState();
+    const dropByBuyTx = new Map(
+      (nftState?.drops || []).map(d => [String(d.buyTx || '').toLowerCase(), d])
+    );
+
+    // Tier index from USD (highest matching threshold)
+    const tierFromUsd = (usd) => {
+      for (let i = NFT_TIERS.length - 1; i >= 0; i--) {
+        if (usd >= NFT_TIERS[i][2]) return i;
+      }
+      return -1;
+    };
+
+    // Build the NFT line for the buy alert, given a matched drop OR a fallback
+    const nftLineFromDrop = (drop) => {
+      const tier = drop.tier;
+      const [emoji, label] = NFT_TIERS[tier] || ['?', '?'];
+      const [rEmoji, rLabel] = NFT_RARITIES[drop.rarity] || ['?', '?'];
+      const minted = nftState?.minted?.[tier] ?? '?';
+      const cap    = nftState?.cap?.[tier]    ?? '?';
+      return `\n🎁 +1 NFT <b>#${drop.tokenId}</b> · ${emoji} <b>${label}</b> × ${rEmoji} ${rLabel} · ${minted}/${cap}`;
+    };
+    const nftLineSoldOut = (tier) => {
+      const [emoji, label] = NFT_TIERS[tier] || ['?', '?'];
+      const cap = nftState?.cap?.[tier] ?? '?';
+      return `\n🎁 ${emoji} ${label} NFTs <b>sold out</b> (${cap}/${cap})`;
+    };
+    const nftLineTimeout = () => `\n🎁 NFT mint pending — check the dashboard`;
+
+    let burnedPctCached = null;
+    const burnedPct = async () => {
+      if (burnedPctCached === null) burnedPctCached = (await getBurnStats()).percent;
+      return burnedPctCached;
+    };
+
+    let alertsThisRun = 0;
+    const MAX_ALERTS_PER_RUN = 5;
+
+    // --- Phase 1: drain pending queue ----------------------------------------
+    const nowMs = Date.now();
+    const stillPending = [];
+    for (const p of pending) {
+      if (alertsThisRun >= MAX_ALERTS_PER_RUN) { stillPending.push(p); continue; }
+      const drop = dropByBuyTx.get(String(p.txHash || '').toLowerCase());
+      if (drop) {
+        const sent = await postBuyAlert(p, await burnedPct(), nftLineFromDrop(drop));
+        if (sent) { alertsThisRun++; console.log('[BUY] minted-alert', p.txHash, '→ #' + drop.tokenId); }
+        else { stillPending.push(p); console.error('[BUY] minted-alert send failed, will retry', p.txHash); }
+        continue;
+      }
+      if (nowMs - p.queuedAt > NFT_PENDING_TIMEOUT_MS) {
+        const sent = await postBuyAlert(p, await burnedPct(), nftLineTimeout());
+        if (sent) { alertsThisRun++; console.log('[BUY] timeout-alert', p.txHash); }
+        else { stillPending.push(p); console.error('[BUY] timeout-alert send failed, will retry', p.txHash); }
+        continue;
+      }
+      stillPending.push(p);
+    }
+    if (stillPending.length !== pending.length) pendingDirty = true;
+    pending = stillPending;
+
+    // --- Phase 2: scan new swap logs -----------------------------------------
     try {
       const latestHex = await rpcCall('eth_blockNumber', []);
       if (latestHex) {
@@ -2653,10 +2686,7 @@ export default {
         const logs = await getSwapLogs(fromBlock, env);
 
         if (Array.isArray(logs) && logs.length) {
-          let burnedPct = null;            // lazy-load once
           let bnbUsd = null;               // lazy-load once
-          let alertsThisRun = 0;
-          const MAX_ALERTS_PER_RUN = 5;    // flood guard; normal traffic is ~0-1/min
 
           // Logs are returned oldest-first → chat order stays chronological.
           for (const log of logs) {
@@ -2686,19 +2716,32 @@ export default {
 
             if (alertsThisRun >= MAX_ALERTS_PER_RUN) { postedSet.add(txHash); continue; }
 
-            if (burnedPct === null) burnedPct = (await getBurnStats()).percent;
-
-            console.log('[BUY] on-chain buy', txHash, '$' + usdValue.toFixed(2));
-            const sent = await postBuyAlert({
+            const tradeBase = {
               bnbAmount,
               bobaiAmount,
               usdValue,
               buyer: tx?.from || DEAD,
               txHash,
-            }, burnedPct);
+            };
 
-            if (sent) { postedSet.add(txHash); alertsThisRun++; }
-            else console.error('[BUY] alert NOT sent, will retry next cron', txHash);
+            const tierIdx = tierFromUsd(usdValue);
+            const tierMinted = nftState?.minted?.[tierIdx];
+            const tierCap    = nftState?.cap?.[tierIdx];
+            const soldOut    = tierIdx >= 0 && Number.isFinite(tierMinted) && Number.isFinite(tierCap) && tierMinted >= tierCap;
+
+            console.log('[BUY] on-chain buy', txHash, '$' + usdValue.toFixed(2), 'tier=' + tierIdx, soldOut ? 'SOLD-OUT' : 'queue');
+
+            if (soldOut) {
+              // No mint will happen — fire immediately with sold-out line
+              const sent = await postBuyAlert(tradeBase, await burnedPct(), nftLineSoldOut(tierIdx));
+              if (sent) { postedSet.add(txHash); alertsThisRun++; }
+              else console.error('[BUY] sold-out alert NOT sent, will retry next cron', txHash);
+            } else {
+              // Queue for matching with mint-worker drop — alert fires once #tokenId known
+              postedSet.add(txHash);   // dedup so the next cron's log scan skips this tx
+              pending.push({ ...tradeBase, queuedAt: Date.now() });
+              pendingDirty = true;
+            }
           }
         }
       }
@@ -2706,7 +2749,10 @@ export default {
       console.error('[BUY BOT ERROR]', err.message || err);
     }
 
-    // Write KV only if the seen-set grew (new buys posted)
+    // Persist queue (keep small) and seen-set
+    if (pendingDirty) {
+      await env.KV.put('pending_nft_buys', JSON.stringify(pending.slice(-50)));
+    }
     if (postedSet.size > prevSize) {
       const postedArr = [...postedSet].slice(-100);
       await env.KV.put('posted_txs', JSON.stringify(postedArr));

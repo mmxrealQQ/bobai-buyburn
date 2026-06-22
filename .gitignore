@@ -6,3 +6,12 @@ rebranding/
 assets/
 !dashboard/worldcup/app/assets/
 .wrangler/
+
+# Local output dumps & ephemeral logs (no production value)
+worldcup/
+wrangler-tail.log
+*.log
+
+# Internal-only — never push (whale tracker scratchpads & private refs)
+scan-whales.mjs
+ref1.jpg

@@ -38,6 +38,7 @@ PROPS = {
     'confetti':   "a small burst of colorful glossy confetti and golden sparkles",
     'candle':     "a single tall glossy green bullish trading candlestick (up candle) with a rounded body and thin wick, energetic and clean",
     'moon':       "a cute glossy crescent moon with a soft friendly smiling face, pale gold",
+    'lightning':  "a single thick stylized cartoon lightning bolt in vivid BNB gold (#F3BA2F) with a soft white-hot inner core, sharp zig-zag silhouette, glossy 3D volume, slight blue-white outer glow, vertical orientation, dynamic energetic shape",
 }
 
 def gen(name, force=False, quality='medium'):

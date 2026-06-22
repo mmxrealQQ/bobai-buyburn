@@ -24,9 +24,13 @@ if not os.path.exists(FFMPEG): FFMPEG = 'ffmpeg'
 
 def load(p): return Image.open(p).convert('RGBA')
 BRAIN = load(STK + '/assets/brain.png')
+CHAR3 = load(STK + '/assets/character-3.png')   # full-body BOBAI figure (314x512)
+CHAR4 = load(STK + '/assets/character-4.png')   # full-body BOBAI figure (185x512)
 COIN  = load(ROOT + '/dashboard/worldcup/app/illus/coin-bnb.webp')
 PROPS = {os.path.splitext(os.path.basename(p))[0]: load(p)
          for p in glob.glob(STK + '/assets/props/*.png')}
+SCENES = {os.path.splitext(os.path.basename(p))[0]: load(p)
+          for p in glob.glob(STK + '/assets/scenes/*.png')}
 
 # ---------- math ----------
 def clamp01(x): return max(0.0, min(1.0, x))
@@ -85,6 +89,24 @@ def streak(canvas, cx, cy, w, h, alpha, color=(220,235,255)):
     ImageDraw.Draw(lay).rounded_rectangle([cx-w/2, cy-h/2, cx+w/2, cy+h/2], radius=w/2,
                                           fill=color+(int(max(0,alpha)),))
     canvas.alpha_composite(lay)
+
+def droplet(canvas, cx, cy, s, alpha, color=(120,200,255)):
+    """Cyan water droplet (teardrop)."""
+    lay = Image.new('RGBA', (R, R), (0,0,0,0)); d = ImageDraw.Draw(lay)
+    a = int(max(0, min(255, alpha)))
+    d.ellipse([cx-s, cy-s*0.4, cx+s, cy+s*1.6], fill=color+(a,))
+    d.polygon([(cx-s*0.55, cy-s*0.1), (cx, cy-s*1.5), (cx+s*0.55, cy-s*0.1)],
+              fill=color+(a,))
+    canvas.alpha_composite(lay)
+
+def beam(canvas, x1, y1, x2, y2, w, alpha, color=(255,60,60), core=(255,200,200)):
+    """Glowing laser beam line with bright core."""
+    lay = Image.new('RGBA', (R, R), (0,0,0,0))
+    a = int(max(0, min(255, alpha))); ac = int(max(0, min(255, alpha*0.85)))
+    d = ImageDraw.Draw(lay)
+    d.line([(x1,y1),(x2,y2)], fill=color+(a,), width=max(1,int(w)))
+    d.line([(x1,y1),(x2,y2)], fill=core+(ac,), width=max(1,int(w*0.40)))
+    canvas.alpha_composite(lay.filter(ImageFilter.GaussianBlur(R*0.004)))
 
 # ================= MOTIFS =================
 def m_moon(f):
@@ -156,7 +178,342 @@ def m_sunshine(f):
         heart(c, x, y, R*0.05*(0.7+0.5*tp), 230*(1-abs(tp-0.5)*1.6))
     return c
 
-MOTIFS = {'moon': m_moon, 'cool': m_cool, 'sunshine': m_sunshine}
+# ---- per-motif FX overlays (fill empty canvas space with thematic accents) ----
+def fx_thunder(c, t):
+    """Corner mini-bolts + stylish energy crackles around the held bolt."""
+    bolt = PROPS['lightning']
+    for px, py, bw, rt, ph in [
+        (0.12, 0.18, 0.12, -28, 0.00),
+        (0.87, 0.16, 0.14,  22, 0.25),
+        (0.09, 0.62, 0.11, -18, 0.50),
+        (0.90, 0.66, 0.13,  24, 0.75),
+    ]:
+        lt = ((t + ph) * 2) % 1.0
+        if lt < 0.5:
+            a = math.sin(math.pi * (lt / 0.5))
+            place(c, bolt, px*R, py*R,
+                  w=R*bw*(0.85 + 0.30*a), rot=rt, opacity=a*0.9)
+    # stylish gold crackles dancing around the held bolt (upper-center)
+    for i in range(4):
+        ph = (t*3 + i/4) % 1.0
+        if ph < 0.4:
+            a = math.sin(math.pi * (ph / 0.4))
+            ang = i*1.6 + t*0.8
+            bx = R*0.50 + R*0.13*math.cos(ang)
+            by = R*0.30 + R*0.13*math.sin(ang)
+            sparkle(c, bx, by, R*0.014 + R*0.020*a, 230*a, color=(255,230,100))
+
+def fx_kraken(c, t):
+    """Cyan water droplets pop around the corners — splashy aquatic vibe."""
+    for px, py, bw, ph in [
+        (0.10, 0.20, 0.025, 0.00),
+        (0.88, 0.18, 0.028, 0.25),
+        (0.08, 0.62, 0.022, 0.50),
+        (0.90, 0.65, 0.026, 0.75),
+        (0.20, 0.88, 0.020, 0.12),
+        (0.80, 0.88, 0.022, 0.62),
+    ]:
+        lt = ((t + ph) * 2) % 1.0
+        if lt < 0.5:
+            a = math.sin(math.pi * (lt / 0.5))
+            droplet(c, px*R, py*R + R*0.05*(1-a),
+                    R*bw*(0.8 + 0.4*a), 220*a)
+
+def fx_laser(c, t):
+    """Animated red laser beams from approximate eye position + impact sparks."""
+    pv = 0.5 + 0.5 * math.sin(2*math.pi*t*2)
+    beam_a = 255 * (0.50 + 0.45*pv)
+    beam_len = R*0.42 * (0.80 + 0.25*pv)
+    for ex, ang_deg in [(0.42, 115), (0.58, 65)]:
+        x1, y1 = ex*R, R*0.28
+        rad = math.radians(ang_deg)
+        x2 = x1 + beam_len * math.cos(rad)
+        y2 = y1 + beam_len * math.sin(rad)
+        beam(c, x1, y1, x2, y2, R*0.020, beam_a, (255,50,50), (255,200,200))
+        sparkle(c, x2, y2, R*(0.018 + 0.025*pv), 230*pv, color=(255,100,100))
+
+def fx_supernova(c, t):
+    """Orange/red embers pop in corners — fiery burn energy."""
+    for i,(px, py, bw, ph) in enumerate([
+        (0.12, 0.22, 0.025, 0.00), (0.87, 0.20, 0.028, 0.20),
+        (0.10, 0.65, 0.022, 0.40), (0.88, 0.62, 0.026, 0.60),
+        (0.50, 0.08, 0.020, 0.80),
+    ]):
+        lt = ((t + ph) * 2) % 1.0
+        if lt < 0.5:
+            a = math.sin(math.pi * (lt / 0.5))
+            col = (255,150,40) if i % 2 == 0 else (255,210,80)
+            sparkle(c, px*R, py*R - R*0.06*a, R*bw*(0.85+0.40*a), 235*a, color=col)
+            glow(c, px*R, py*R - R*0.06*a, R*bw*1.8, (255,80,20), 90*a, blur=0.030)
+
+def fx_rocket(c, t):
+    """Rising white-gold star streaks + tiny twinkling stars."""
+    for i in range(5):
+        tp = (t*1.5 + i/5) % 1.0
+        x = (0.10 + 0.80*((i*0.41) % 1.0)) * R
+        y = R*1.10 - tp*R*1.30
+        a = 200 * (1 - abs(tp-0.5)*1.6)
+        streak(c, x, y, R*0.010, R*0.10, max(0,a), color=(255,245,200))
+    for i,(px, py) in enumerate([(0.13,0.30),(0.86,0.32),(0.18,0.70),(0.82,0.68),(0.50,0.12)]):
+        tw = pulse(t + i*0.13, 2)
+        sparkle(c, px*R, py*R, R*0.012 + R*0.018*tw, 220*tw, color=(255,255,210))
+
+def fx_diamond(c, t):
+    """Blue-white sparkle bursts dance around the gem."""
+    for i,(px, py) in enumerate([(0.15,0.25),(0.84,0.22),(0.10,0.65),(0.88,0.60),
+                                  (0.30,0.85),(0.70,0.88)]):
+        ph = (t + i*0.16) % 1.0
+        if ph < 0.5:
+            a = math.sin(math.pi * (ph / 0.5))
+            sparkle(c, px*R, py*R, R*0.018 + R*0.025*a, 240*a, color=(220,240,255))
+            glow(c, px*R, py*R, R*0.06*a, (180,220,255), 110*a, blur=0.030)
+
+def fx_bull(c, t):
+    """Dust puffs at the bottom + horizontal motion streaks — charging vibes."""
+    for px, py, bw, ph in [
+        (0.15, 0.86, 0.040, 0.00), (0.85, 0.86, 0.045, 0.30),
+        (0.30, 0.91, 0.035, 0.50), (0.70, 0.91, 0.038, 0.75),
+    ]:
+        lt = ((t + ph) * 2) % 1.0
+        if lt < 0.6:
+            a = math.sin(math.pi * (lt / 0.6))
+            glow(c, px*R, py*R - R*0.04*a, R*bw*(1.1 + 0.7*a),
+                 (210,190,160), 130*a, blur=0.04)
+    for i in range(4):
+        tp = (t*1.8 + i/4) % 1.0
+        y = R*0.42 + (i-1.5)*R*0.09
+        x = R*0.08 + tp*R*0.20
+        a = 170 * (1 - abs(tp-0.5)*1.6)
+        streak(c, x, y, R*0.06, R*0.009, max(0,a), color=(230,210,180))
+
+def fx_hodl(c, t):
+    """BNB coins pop in corners — gripping the bag."""
+    for px, py, bw, ph in [
+        (0.13, 0.25, 0.05, 0.00), (0.87, 0.22, 0.055, 0.25),
+        (0.10, 0.68, 0.045, 0.50), (0.90, 0.65, 0.050, 0.75),
+    ]:
+        lt = ((t + ph) * 2) % 1.0
+        if lt < 0.5:
+            a = math.sin(math.pi * (lt / 0.5))
+            place(c, COIN, px*R, py*R, w=R*bw*(0.70 + 0.45*a),
+                  rot=360*lt*2, opacity=a*0.9)
+
+def fx_gigabrain(c, t):
+    """Blue-purple electric sparkles around the figure — pure intellect."""
+    for i,(px, py) in enumerate([(0.13,0.30),(0.86,0.28),(0.10,0.65),(0.88,0.60),
+                                  (0.50,0.08),(0.50,0.92)]):
+        ph = (t*2 + i*0.18) % 1.0
+        if ph < 0.5:
+            a = math.sin(math.pi * (ph / 0.5))
+            sparkle(c, px*R, py*R, R*0.014 + R*0.022*a, 220*a, color=(190,205,255))
+            glow(c, px*R, py*R, R*0.07*a, (140,120,255), 110*a, blur=0.035)
+
+def fx_wagmi(c, t):
+    """Pink hearts float up + warm sparkles in corners."""
+    for i in range(4):
+        tp = (t + i/4) % 1.0
+        x = (0.20 + 0.60*((i*0.41) % 1.0))*R
+        y = R*0.95 - tp*R*0.90
+        a = 220 * (1 - abs(tp-0.5)*1.6)
+        heart(c, x, y, R*0.040*(0.70+0.50*tp), max(0,a), color=(255,120,170))
+    for i,(px, py) in enumerate([(0.13,0.20),(0.86,0.22),(0.12,0.78),(0.88,0.78)]):
+        tw = pulse(t + i*0.17, 2)
+        sparkle(c, px*R, py*R, R*0.015 + R*0.020*tw, 220*tw, color=(255,220,200))
+
+def fx_gm(c, t):
+    """Rotating golden sunray-burst — 8 rays pulse outward and rotate around center."""
+    cx, cy = R/2, R*0.50
+    base_rot = t * 30  # slow rotation
+    for i in range(8):
+        ang = math.radians(base_rot + i*45)
+        ph = ((t*1.2 + i/8) % 1.0)
+        a = math.sin(math.pi * ph)
+        r0 = R*0.18
+        r1 = R*(0.28 + 0.10*a)
+        x1 = cx + r0*math.cos(ang); y1 = cy + r0*math.sin(ang)
+        x2 = cx + r1*math.cos(ang); y2 = cy + r1*math.sin(ang)
+        # ray (rounded line) + tip sparkle
+        lay = Image.new('RGBA', (R, R), (0,0,0,0))
+        ImageDraw.Draw(lay).line([(x1,y1),(x2,y2)],
+            fill=(255,210,80,int(200*a)), width=max(1,int(R*0.018)))
+        c.alpha_composite(lay.filter(ImageFilter.GaussianBlur(R*0.004)))
+        sparkle(c, x2, y2, R*0.014 + R*0.020*a, 220*a, color=(255,235,150))
+    # corner twinkles
+    for i,(px, py) in enumerate([(0.13,0.20),(0.86,0.22),(0.12,0.80),(0.88,0.78)]):
+        tw = pulse(t + i*0.17, 2)
+        sparkle(c, px*R, py*R, R*0.012 + R*0.018*tw, 210*tw, color=(255,240,180))
+
+def fx_pump(c, t):
+    """Green mini-candles rise from bottom + '+%' green sparks at top."""
+    for i in range(5):
+        tp = (t*1.4 + i/5) % 1.0
+        x = (0.12 + 0.76*((i*0.41) % 1.0)) * R
+        y = R*1.05 - tp*R*1.20
+        a = 220 * (1 - abs(tp-0.5)*1.6)
+        # green candle body (rounded)
+        w = R*0.030; h = R*0.075
+        lay = Image.new('RGBA', (R, R), (0,0,0,0))
+        ImageDraw.Draw(lay).rounded_rectangle(
+            [x-w/2, y-h/2, x+w/2, y+h/2], radius=w*0.35,
+            fill=(60,220,120, int(max(0,a))))
+        ImageDraw.Draw(lay).line([(x, y-h/2-R*0.020),(x, y-h/2)],
+            fill=(60,220,120, int(max(0,a*0.8))), width=max(1,int(R*0.006)))
+        c.alpha_composite(lay)
+    # green +% sparks top
+    for i,(px, py) in enumerate([(0.18,0.18),(0.50,0.10),(0.82,0.16),(0.30,0.28),(0.72,0.30)]):
+        tw = pulse(t + i*0.19, 2)
+        sparkle(c, px*R, py*R, R*0.015 + R*0.025*tw, 230*tw, color=(140,255,170))
+        glow(c, px*R, py*R, R*0.05*tw, (60,220,120), 100*tw, blur=0.030)
+
+def fx_dip(c, t):
+    """Red candles rain from top + cyan splash droplets at bottom on impact."""
+    for i in range(5):
+        tp = (t*1.5 + i/5) % 1.0
+        x = (0.12 + 0.76*((i*0.41) % 1.0)) * R
+        y = -R*0.10 + tp*R*1.15
+        a = 230 * (1 - abs(tp-0.5)*1.6)
+        w = R*0.030; h = R*0.075
+        lay = Image.new('RGBA', (R, R), (0,0,0,0))
+        ImageDraw.Draw(lay).rounded_rectangle(
+            [x-w/2, y-h/2, x+w/2, y+h/2], radius=w*0.35,
+            fill=(230,70,80, int(max(0,a))))
+        ImageDraw.Draw(lay).line([(x, y+h/2),(x, y+h/2+R*0.020)],
+            fill=(230,70,80, int(max(0,a*0.8))), width=max(1,int(R*0.006)))
+        c.alpha_composite(lay)
+        # splash droplets when candle nears bottom (tp > 0.75)
+        if tp > 0.75:
+            sp = (tp - 0.75) / 0.25  # 0..1
+            sa = 220 * (1 - sp)
+            for k in (-1, 0, 1):
+                droplet(c, x + k*R*0.04, R*0.93 + R*0.04*sp,
+                        R*0.018 + R*0.012*sp, sa, color=(120,220,255))
+    # corner cyan twinkles
+    for i,(px, py) in enumerate([(0.13,0.78),(0.86,0.80),(0.20,0.90),(0.80,0.90)]):
+        tw = pulse(t + i*0.21, 2)
+        sparkle(c, px*R, py*R, R*0.012 + R*0.018*tw, 210*tw, color=(180,235,255))
+
+def fx_builder(c, t):
+    """Orange/white welding sparks shoot in arcs outward from hammer + glow pulse."""
+    # hammer impact point (upper-center-right where character would swing)
+    hx, hy = R*0.58, R*0.42
+    # pulse glow at impact (rhythmic hammer hit)
+    hit = pulse(t, 2)
+    glow(c, hx, hy, R*0.08*(1+0.6*hit), (255,170,40), 160*hit, blur=0.035)
+    glow(c, hx, hy, R*0.04*(1+0.4*hit), (255,240,150), 220*hit, blur=0.020)
+    # spark arcs spraying outward (parabolic trajectories)
+    for i in range(8):
+        ph = ((t*2 + i/8) % 1.0)
+        if ph < 0.7:
+            a = math.sin(math.pi * (ph / 0.7))
+            # initial direction (mostly right and up-right)
+            ang = math.radians(-30 - i*15 + 10*math.sin(i))
+            speed = R*0.28 + R*0.04*((i*7) % 5)
+            # parabolic: x linear, y = sin upward then gravity down
+            dx = speed * math.cos(ang) * ph
+            dy = speed * math.sin(ang) * ph + R*0.45 * ph * ph
+            x = hx + dx; y = hy + dy
+            col = (255,180,50) if i % 2 == 0 else (255,235,170)
+            sparkle(c, x, y, R*0.012 + R*0.018*a, 230*a, color=col)
+    # corner warm twinkles
+    for i,(px, py) in enumerate([(0.13,0.20),(0.86,0.22),(0.12,0.78),(0.88,0.76)]):
+        tw = pulse(t + i*0.18, 2)
+        sparkle(c, px*R, py*R, R*0.012 + R*0.017*tw, 200*tw, color=(255,220,160))
+
+def fx_shield(c, t):
+    """Concentric pulsing energy rings expand outward from shield + red rug-arrows
+    fly in and spark on impact at the shield rim."""
+    cx, cy = R/2, R*0.50
+    # 3 expanding rings, phase-staggered
+    for i in range(3):
+        ph = ((t + i/3) % 1.0)
+        rad = R*(0.20 + 0.20*ph)
+        a = 180 * (1 - ph)
+        ring = Image.new('RGBA', (R, R), (0,0,0,0))
+        ImageDraw.Draw(ring).ellipse(
+            [cx-rad, cy-rad, cx+rad, cy+rad],
+            outline=(140,200,255,int(max(0,a))), width=max(1,int(R*0.008)))
+        c.alpha_composite(ring.filter(ImageFilter.GaussianBlur(R*0.004)))
+    # 4 red rug-arrows flying in from corners, spark on impact at rim
+    SHIELD_R = R*0.20
+    for i,(sx, sy, hit_ang_deg, ph_off) in enumerate([
+        (0.05, 0.10, 225, 0.00),
+        (0.95, 0.10, 315, 0.25),
+        (0.05, 0.85, 135, 0.50),
+        (0.95, 0.85,  45, 0.75),
+    ]):
+        ph = ((t*1.3 + ph_off) % 1.0)
+        # impact point on shield rim
+        rad = math.radians(hit_ang_deg)
+        ix = cx + SHIELD_R*math.cos(rad)
+        iy = cy + SHIELD_R*math.sin(rad)
+        # arrow start = corner, end = impact (animate fly-in 0..0.6, then spark 0.6..1.0)
+        if ph < 0.6:
+            p = ph / 0.6  # 0..1 fly-in
+            a = 220
+            x1 = sx*R + (ix - sx*R) * (p*0.6)
+            y1 = sy*R + (iy - sy*R) * (p*0.6)
+            x2 = sx*R + (ix - sx*R) * (p*1.0)
+            y2 = sy*R + (iy - sy*R) * (p*1.0)
+            # arrow shaft
+            lay = Image.new('RGBA', (R, R), (0,0,0,0))
+            ImageDraw.Draw(lay).line([(x1,y1),(x2,y2)],
+                fill=(230,60,70,a), width=max(1,int(R*0.010)))
+            # arrow head (small triangle at tip)
+            dxh = x2 - x1; dyh = y2 - y1
+            mag = max(1e-6, math.sqrt(dxh*dxh + dyh*dyh))
+            ux, uy = dxh/mag, dyh/mag
+            px_, py_ = -uy, ux
+            hs = R*0.022
+            ImageDraw.Draw(lay).polygon([
+                (x2, y2),
+                (x2 - ux*hs + px_*hs*0.6, y2 - uy*hs + py_*hs*0.6),
+                (x2 - ux*hs - px_*hs*0.6, y2 - uy*hs - py_*hs*0.6),
+            ], fill=(230,60,70,a))
+            c.alpha_composite(lay)
+        else:
+            # impact spark
+            sp = (ph - 0.6) / 0.4  # 0..1
+            sa = 240 * (1 - sp)
+            sparkle(c, ix, iy, R*0.018 + R*0.030*(1-sp), sa, color=(255,180,180))
+            glow(c, ix, iy, R*0.06*(1-sp), (255,80,80), 120*(1-sp), blur=0.030)
+
+def m_scene(slug, fx=None):
+    """Comic-scene motif: pre-rendered illustration breathes calmly + grounded
+    (no vertical bob — doesn't float). Optional per-motif fx overlay."""
+    def fn(f):
+        t = f / N
+        c = Image.new('RGBA', (R, R), (0,0,0,0))
+        cx = R/2; cy = R/2
+        scl = 1 + 0.030 * pulse(t, 1)
+        rot = 0.6 * math.sin(2*math.pi*t + math.pi/3)
+        place(c, SCENES[slug], cx, cy, w=R*0.96*scl, rot=rot)
+        if fx: fx(c, t)
+        return c
+    return fn
+
+m_thunder_buy    = m_scene('thunder-buy',    fx=fx_thunder)
+m_kraken_buy     = m_scene('kraken-buy',     fx=fx_kraken)
+m_laser          = m_scene('laser',          fx=fx_laser)
+m_supernova_burn = m_scene('supernova-burn', fx=fx_supernova)
+m_rocket         = m_scene('rocket',         fx=fx_rocket)
+m_diamond        = m_scene('diamond',        fx=fx_diamond)
+m_bull           = m_scene('bull',           fx=fx_bull)
+m_hodl           = m_scene('hodl',           fx=fx_hodl)
+m_gigabrain      = m_scene('gigabrain',      fx=fx_gigabrain)
+m_wagmi          = m_scene('wagmi',          fx=fx_wagmi)
+m_gm             = m_scene('gm',             fx=fx_gm)
+m_pump           = m_scene('pump',           fx=fx_pump)
+m_dip            = m_scene('dip',            fx=fx_dip)
+m_builder        = m_scene('builder',        fx=fx_builder)
+m_shield         = m_scene('shield',         fx=fx_shield)
+
+MOTIFS = {'moon': m_moon, 'cool': m_cool, 'sunshine': m_sunshine,
+          'thunder-buy': m_thunder_buy, 'kraken-buy': m_kraken_buy, 'laser': m_laser,
+          'supernova-burn': m_supernova_burn, 'rocket': m_rocket,
+          'diamond': m_diamond, 'bull': m_bull, 'hodl': m_hodl,
+          'gigabrain': m_gigabrain, 'wagmi': m_wagmi,
+          'gm': m_gm, 'pump': m_pump, 'dip': m_dip,
+          'builder': m_builder, 'shield': m_shield}
 
 # ---------- render + encode ----------
 def encode(motif):
@@ -166,7 +523,7 @@ def encode(motif):
     fn = MOTIFS[motif]
     for f in range(N):
         fn(f).resize((SIZE, SIZE), Image.LANCZOS).save(f'{fdir}/f{f:03d}.png')
-    for crf in (32, 36, 40, 44, 48, 52):
+    for crf in (32, 36, 40, 44, 48, 52, 56, 60, 63):
         subprocess.run([FFMPEG, '-y', '-hide_banner', '-loglevel', 'error',
             '-framerate', str(FPS), '-i', f'{fdir}/f%03d.png',
             '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0',

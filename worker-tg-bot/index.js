@@ -8,6 +8,18 @@ const TG_CHAT_ID = '-1003791636543';
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dead';
+// NFT Buy Drops — auto-minted to buyer wallets on every BOBAI buy ≥ $100
+const NFT_CONTRACT = '0xd56226b3b8297a57f4361fca28aa43babdc9789d';
+const NFT_GET_TIERS_SELECTOR = '0xde170570'; // keccak256("getTiers()")[:4]
+// idx → [emoji, label, threshold USD]
+const NFT_TIERS = [
+  ['💰', 'NICE',    100],
+  ['💎', 'BIG',     150],
+  ['🚀', 'HUGE',    250],
+  ['🐋', 'WHALE',   500],
+  ['⚡', 'THUNDER', 1000],
+  ['🦑', 'KRAKEN',  2500],
+];
 const CAPTCHA_TIMEOUT = 60;
 
 // PancakeSwap V2 Swap event topic. In this pair BOBAI is token0, WBNB is token1,
@@ -156,9 +168,11 @@ function topicToAddr(topic) {
 const WHALE_NEVER_TRACK = new Set([
   BOBAI_PAIR.toLowerCase(),
   DEAD.toLowerCase(),
-  BOBAI_TOKEN.toLowerCase(),                    // BOBAI contract (collects 3% tax on every trade)
-  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
-  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot
+  BOBAI_TOKEN.toLowerCase(),                    // BOBAI contract
+  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot (3% tax recipient — 100% of tax routes here)
+  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot (= creator wallet)
+  '0x5e4102520a71b2aa18a1208330d4848dea4bd105', // WC26 prize pool wallet
+  '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', // dev personal wallet (dev-buyback share)
   '0x0000000000000000000000000000000000000000', // null
 ]);
 
@@ -197,6 +211,20 @@ async function getBobaiBalance(addr) {
   const r = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data }, 'latest']);
   if (!r) return 0n;
   try { return BigInt(r); } catch { return 0n; }
+}
+
+// True if addr is a contract (eth_getCode returns non-empty bytecode). On RPC
+// failure we conservatively return `true` so cascade-adds skip rather than risk
+// adding an aggregator router (1inch / OKX DEX / 0x). EOAs always return `false`.
+async function isContract(addr) {
+  if (!/^0x[a-f0-9]{40}$/i.test(addr)) return true;
+  try {
+    const code = await rpcCall('eth_getCode', [addr, 'latest']);
+    if (code === null || code === undefined) return true;
+    return code !== '0x' && code !== '0x0' && code !== '0x00';
+  } catch {
+    return true;
+  }
 }
 
 function formatNumber(n) {
@@ -478,10 +506,44 @@ function getDonationEmojis(usdValue, token) {
   return { bar, icon };
 }
 
+// NFT Buy Drop alert line — adds "🎁 +1 NFT · 🐋 WHALE motif (47/100)" to buy alerts.
+// Reads getTiers() from chain. Returns '' on any failure (silent — never blocks alerts).
+async function buildBuyDropLine(usdValue) {
+  try {
+    if (!usdValue || usdValue < 100) return '';
+    // Determine tier from USD (highest matching threshold)
+    let tierIdx = -1;
+    for (let i = NFT_TIERS.length - 1; i >= 0; i--) {
+      if (usdValue >= NFT_TIERS[i][2]) { tierIdx = i; break; }
+    }
+    if (tierIdx < 0) return '';
+    const [emoji, label] = NFT_TIERS[tierIdx];
+
+    const res = await rpcCall('eth_call', [{ to: NFT_CONTRACT, data: NFT_GET_TIERS_SELECTOR }, 'latest']);
+    if (!res || !res.startsWith('0x') || res.length < 2 + 12 * 64) return `\n🎁 NFT incoming: ${emoji} ${label} motif`;
+    const hex = res.slice(2);
+    const u256 = i => parseInt(hex.slice(i*64, (i+1)*64), 16);
+    const minted = u256(tierIdx);
+    const cap    = u256(6 + tierIdx);
+    const soldOut = minted >= cap;
+    // Show the current minted count, NOT minted+1 — otherwise the alert
+    // is +1 off when the mint-worker race-wins and bumps the count first.
+    return soldOut
+      ? `\n🎁 ${emoji} ${label} NFTs <b>sold out</b> (${cap}/${cap})`
+      : `\n🎁 +1 NFT · ${emoji} <b>${label}</b> · ${minted}/${cap}`;
+  } catch (e) {
+    console.error('[NFT line] error', e.message || e);
+    return '';
+  }
+}
+
 async function postBuyAlert(trade, burnedPct) {
   const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
   const { bar, icon } = getBuyEmojis(usdValue);
   const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
+
+  // NFT Buy Drop info — every buy ≥ $100 auto-mints a collectible NFT
+  const nftLine = await buildBuyDropLine(usdValue);
 
   const message = `${bar}
 <b>${icon}</b>
@@ -489,7 +551,7 @@ async function postBuyAlert(trade, burnedPct) {
 🪙 <b>${formatNumber(bobaiAmount)} BOBAI</b>
 💎 ${bnbAmount.toFixed(4)} BNB <b>(${formatUsd(usdValue)})</b>
 💵 Price: $${pricePerToken.toFixed(8)}
-👤 <a href="https://bscscan.com/address/${buyer}">${shortenAddress(buyer)}</a>
+👤 <a href="https://bscscan.com/address/${buyer}">${shortenAddress(buyer)}</a>${nftLine}
 
 🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 
@@ -678,6 +740,33 @@ function activeAddrSet(events, hours = 24) {
   return s;
 }
 
+// 24h activity summary for a single cluster (set of addresses). Returns net
+// USD flow + event count, considering only events where at least one side is
+// in the cluster. Internal moves count as 1 event, no net change.
+function summarizeClusterActivity(events, clusterSet, hours = 24) {
+  const r = recentEvents(events, hours);
+  let count = 0, usdIn = 0, usdOut = 0, internal = 0;
+  for (const e of r) {
+    const fromIn = e.from && clusterSet.has(e.from);
+    const toIn   = e.to   && clusterSet.has(e.to);
+    if (!fromIn && !toIn) continue;
+    count++;
+    const u = e.usdValue || 0;
+    if (e.kind === 'INTERNAL_T') {
+      if (fromIn && toIn) internal++;        // intra-cluster, neutral
+      else if (fromIn)    usdOut += u;       // crossed to another cluster
+      else                usdIn  += u;       // crossed from another cluster
+      continue;
+    }
+    if (e.kind === 'BUY' || e.kind === 'TRANSFER_IN') {
+      if (toIn) usdIn += u;
+    } else if (e.kind === 'SELL' || e.kind === 'BURN' || e.kind === 'TRANSFER_OUT') {
+      if (fromIn) usdOut += u;
+    }
+  }
+  return { count, usdIn, usdOut, netUsd: usdIn - usdOut, internal };
+}
+
 function summarize24h(events) {
   const r = recentEvents(events, 24);
   const counts = {
@@ -736,8 +825,10 @@ function describeAddr(addr, clusterTag, balTokens, priceUsd) {
   if (a === BOBAI_PAIR.toLowerCase()) return 'PancakeSwap LP';
   if (a === DEAD.toLowerCase())      return '💀 DEAD';
   if (a === BOBAI_TOKEN.toLowerCase()) return 'BOBAI contract';
-  if (a === '0xdefc0e900dfc83e207902cf22265ae63f94c01ce') return 'Buyback bot';
+  if (a === '0xdefc0e900dfc83e207902cf22265ae63f94c01ce') return 'Buyback bot (tax collector)';
   if (a === '0x15ba17075ef5e0736292b030e3715d9100fe3d38') return 'Dev-buyback bot';
+  if (a === '0x5e4102520a71b2aa18a1208330d4848dea4bd105') return 'WC26 prize pool';
+  if (a === '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c') return 'Dev personal';
   const tag = clusterTag ? `🔗${clusterTag}` : 'Solo';
   if (balTokens == null) return tag;
   const usdPart = priceUsd ? ` · ${formatUsd(balTokens * priceUsd)}` : '';
@@ -915,27 +1006,29 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
   if (cmd === '/whalehelp') {
     reply = `🐋 <b>Whale Watcher — Admin Commands</b>
 
-<code>/whales</code> — tracked wallets (grouped by cluster, with 24h activity dots)
+<code>/whales</code> — tracked wallets (grouped by cluster, with 24h dots)
 <code>/whales24h</code> — full breakdown of the last 24 hours
-<code>/whaleadd 0x...</code> — add a wallet to the watch-set
-<code>/whalerm 0x...</code> — remove a wallet
+<code>/whaleadd 0x...</code> — add wallet(s) to the watch-set
+<code>/whalerm 0x...</code> — remove wallet(s)
+<code>/whalecleanup</code> — drop any contract addresses that slipped in
 <code>/whalehelp</code> — this help
 
 <b>How it works:</b>
-• Scans every minute for any BOBAI Transfer touching a tracked wallet.
-• Classifies into 🟢 Buy · 🔴 Sell · 🔥 Burn · 🟠 Transfer-Out · ⚪ Transfer-In · 🟣 Internal-Cluster · 🟡 Dust (&lt; $50).
-• Posts a <b>Daily Recap</b> to this chat every morning at 06:00 UTC (08:00 CEST).
+• Scans every minute. Groups all BOBAI transfers <b>per tx</b> so aggregator hops (1inch / OKX DEX / 0x) collapse into ONE clean alert against the LP, DEAD, or the real end-EOA.
+• Classifies: 🟢 Buy · 🔴 Sell · 🔥 Burn · 🟠 Transfer-Out · ⚪ Transfer-In · 🟣 Internal · 🟡 Dust (&lt; $50).
+• <b>Daily Recap</b> posted here every morning at 06:00 UTC (08:00 CEST).
 
 <b>Auto-tracking:</b>
-• 💡 <b>NEW WHALE</b> — any wallet that crosses <b>10M BOBAI</b> is automatically added.
-• 💀 <b>EX-WHALE</b> — tracked wallet drops below 10M (stays in set, manual /whalerm to drop).
-• 🟠 <b>Cascade (Hop 1)</b> — wallets a tracked address sends to are auto-added.
+• 💡 <b>NEW WHALE</b> — EOA crosses <b>10M BOBAI</b>, auto-added.
+• 💀 <b>EX-WHALE</b> — tracked wallet drops below 10M (stays in set; /whalerm to drop).
+• 🟠 <b>Cascade (Hop 1)</b> — fresh EOAs a tracked wallet sends to are auto-added.
+• 🤖 <b>Contracts blocked</b> — router/aggregator contracts (eth_getCode) are never tracked.
 
 <b>Never tracked</b> (always excluded):
-• PancakeSwap LP pair · DEAD burn address · BOBAI contract (tax collector)
-• BOBAI Buyback bot &amp; Dev-Buyback bot
+• PancakeSwap LP · DEAD burn · BOBAI contract (tax collector)
+• Buyback bot &amp; Dev-Buyback bot · Any contract address
 
-<i>Internal-only feature. Alerts post to this chat, never public.</i>`;
+<i>Internal-only. Alerts post to this chat, never public.</i>`;
   }
 
   else if (cmd === '/whales') {
@@ -1002,13 +1095,29 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
         return `<code>${rank}.</code> <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${addr}">${shortenAddress(addr)}</a> · ${formatNumber(bal)} (${usdStr}) · ${pct}% ${dot}`;
       };
 
+      const renderActivity = (act) => {
+        if (act.count === 0) return '<i>💤 quiet (24h)</i>';
+        const parts = [];
+        if (act.netUsd !== 0) parts.push(`${netEmoji(act.netUsd)} net <b>${netStr(act.netUsd)}</b>`);
+        else if (act.usdIn || act.usdOut) parts.push(`⚪ flat`);
+        if (act.usdIn)  parts.push(`+${formatUsd(act.usdIn)} in`);
+        if (act.usdOut) parts.push(`-${formatUsd(act.usdOut)} out`);
+        if (act.internal) parts.push(`🟣 ${act.internal} internal`);
+        // Fallback: events touched the cluster but contributed no USD flow
+        // (typically historical status events or zero-value transfers).
+        if (!parts.length) parts.push(`${act.count} event${act.count === 1 ? '' : 's'}`);
+        return `<i>24h: ${parts.join(' · ')}</i>`;
+      };
+
       const sections = [];
       for (const cluster of labeled) {
         const tag = clusterTag.get([...cluster][0]) || '?';
         const addrs = [...cluster].sort((a, b) => (balByAddr.get(b) || 0) - (balByAddr.get(a) || 0));
         const sumTokens = addrs.reduce((s, a) => s + (balByAddr.get(a) || 0), 0);
         const sharePct = ((sumTokens / supplyBase) * 100).toFixed(2);
-        const head = `🔗 <b>Cluster ${tag}</b> · ${addrs.length} wallets · ${sharePct}% of supply`;
+        const act = summarizeClusterActivity(events, cluster, 24);
+        const head = `🔗 <b>Cluster ${tag}</b> · ${addrs.length} wallets · ${sharePct}% of supply
+${renderActivity(act)}`;
         const lines = addrs.map((a, i) => renderWallet(a, i + 1)).join('\n');
         sections.push(head + '\n' + lines);
       }
@@ -1016,7 +1125,10 @@ async function handleWhaleAdmin(rawText, cmd, chatId) {
         const sorted = solo.slice().sort((a, b) => (balByAddr.get(b) || 0) - (balByAddr.get(a) || 0));
         const sumTokens = sorted.reduce((s, a) => s + (balByAddr.get(a) || 0), 0);
         const sharePct = ((sumTokens / supplyBase) * 100).toFixed(2);
-        const head = `🔘 <b>Solo</b> · ${sorted.length} wallets · ${sharePct}% of supply`;
+        const soloSet = new Set(sorted);
+        const act = summarizeClusterActivity(events, soloSet, 24);
+        const head = `🔘 <b>Solo</b> · ${sorted.length} wallets · ${sharePct}% of supply
+${renderActivity(act)}`;
         const lines = sorted.map((a, i) => renderWallet(a, i + 1)).join('\n');
         sections.push(head + '\n' + lines);
       }
@@ -1045,12 +1157,18 @@ ${sections.join('\n\n')}
     } else {
       const list = await loadTrackedWallets(env);
       const before = new Set(list);
-      const added = [], dup = [], skipped = [];
-      for (const raw of matches) {
-        const addr = raw.toLowerCase();
-        if (WHALE_NEVER_TRACK.has(addr))      skipped.push(addr);
-        else if (before.has(addr))             dup.push(addr);
-        else if (!added.includes(addr)) {      added.push(addr); list.push(addr); }
+      const candidates = [...new Set(matches.map(a => a.toLowerCase()))];
+      // Block aggregator routers / contracts upfront — they're never wallets.
+      const contractFlags = await Promise.all(candidates.map(a =>
+        WHALE_NEVER_TRACK.has(a) ? Promise.resolve(false) : isContract(a)
+      ));
+      const isContractMap = new Map(candidates.map((a, i) => [a, contractFlags[i]]));
+      const added = [], dup = [], skipped = [], contracts = [];
+      for (const addr of candidates) {
+        if (WHALE_NEVER_TRACK.has(addr))   skipped.push(addr);
+        else if (isContractMap.get(addr))  contracts.push(addr);
+        else if (before.has(addr))         dup.push(addr);
+        else                               { added.push(addr); list.push(addr); }
       }
       const cleaned = await saveTrackedWallets(env, list);
       const blocks = [];
@@ -1061,11 +1179,47 @@ ${sections.join('\n\n')}
       if (dup.length) {
         blocks.push(`ℹ️ <b>Already tracked (${dup.length})</b>:\n` + dup.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
       }
+      if (contracts.length) {
+        blocks.push(`🤖 <b>Skipped (contract — router/aggregator) — ${contracts.length}</b>:\n` + contracts.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
+      }
       if (skipped.length) {
         blocks.push(`🚫 <b>Skipped (never-track: LP/DEAD/Bot) — ${skipped.length}</b>:\n` + skipped.map(a => `• <code>${shortenAddress(a)}</code>`).join('\n'));
       }
       blocks.push(`\n📊 Now tracking <b>${cleaned.length}</b> wallets total.`);
       reply = blocks.join('\n\n');
+    }
+  }
+
+  else if (cmd === '/whalecleanup') {
+    const list = await loadTrackedWallets(env);
+    if (!list.length) {
+      reply = '🐋 No wallets to clean up.';
+    } else {
+      const flags = await Promise.all(list.map(isContract));
+      const contracts = list.filter((_, i) => flags[i]);
+      const eoas      = list.filter((_, i) => !flags[i]);
+      if (!contracts.length) {
+        reply = `✅ All <b>${list.length}</b> tracked addresses are EOAs. Nothing to clean.`;
+      } else {
+        const cleaned = await saveTrackedWallets(env, eoas);
+        // Prune edges referencing the removed contracts.
+        const edges = await loadWalletEdges(env);
+        let edgesPruned = false;
+        const rmSet = new Set(contracts);
+        for (const a of contracts) {
+          if (edges[a]) { delete edges[a]; edgesPruned = true; }
+        }
+        for (const k of Object.keys(edges)) {
+          const before = edges[k].length;
+          edges[k] = edges[k].filter(x => !rmSet.has(x));
+          if (edges[k].length !== before) edgesPruned = true;
+          if (edges[k].length === 0) delete edges[k];
+        }
+        if (edgesPruned) await saveWalletEdges(env, edges);
+        reply = `🧹 <b>Cleanup done</b>\n\nRemoved <b>${contracts.length}</b> contract address${contracts.length === 1 ? '' : 'es'} (routers/aggregators):\n` +
+          contracts.map(a => `• <a href="https://bscscan.com/address/${a}">${shortenAddress(a)}</a>`).join('\n') +
+          `\n\n📊 Now tracking <b>${cleaned.length}</b> EOA wallet${cleaned.length === 1 ? '' : 's'}.`;
+      }
     }
   }
 
@@ -1131,94 +1285,120 @@ async function postDailyWhaleRecap(env) {
   }
 }
 
+// Mover-first alert layout: who moved, in which cluster, how much, what's their
+// position now. Each alert focuses on the tracked wallet — the LP/DEAD or fresh
+// counterparty is shown as a one-line context, not as a co-equal "FROM/TO" row.
 async function postWhaleAlert(data) {
   if (!TG_INTERNAL_CHAT_ID) return false;
   const { kind, from, to, amount, usdValue, txHash } = data;
   const DUST_USD = 50;
   const isDust = usdValue > 0 && usdValue < DUST_USD;
   const usdStr = usdValue ? formatUsd(usdValue) : 'n/a';
+  const txLink = `<a href="https://bscscan.com/tx/${txHash}">View TX</a>`;
 
-  let icon, title, note;
-  switch (kind) {
-    case 'TRANSFER_OUT':
-      if (isDust) {
-        icon = '🟡'; title = 'WHALE PRE-FUNDING (dust)';
-        note = 'Test-send — bigger TX likely incoming';
-      } else {
-        icon = '🟠'; title = 'WHALE TRANSFER OUT';
-        note = 'New address added to watch-set (Hop 1)';
-      }
-      break;
-    case 'SELL':       icon = '🔴'; title = 'TRACKED WALLET SELLING'; note = 'Sent BOBAI into the LP'; break;
-    case 'BUY':        icon = '🟢'; title = 'TRACKED WALLET BUYING';  note = 'Received BOBAI from the LP'; break;
-    case 'BURN':       icon = '🔥'; title = 'TRACKED WALLET BURN';    note = 'Sent to DEAD'; break;
-    case 'INTERNAL_T': icon = '🟣'; title = 'INTERNAL CLUSTER MOVE';  note = 'Both wallets already tracked'; break;
-    case 'TRANSFER_IN':icon = '⚪'; title = 'TRACKED WALLET RECEIVED'; note = 'Incoming from non-tracked'; break;
-    case 'NEW_WHALE': {
-      icon = '💡'; title = 'NEW WHALE DETECTED';
-      const msg = `${icon} <b>${title}</b>
+  // moverAddr = the tracked wallet at the center of this alert.
+  // Inflows (BUY / TRANSFER_IN): mover = `to`, counterparty = `from`.
+  // Outflows (SELL / BURN / TRANSFER_OUT): mover = `from`, counterparty = `to`.
+  // INTERNAL_T: mover = sender (from), counterparty = recipient (to).
+  const isInflowKind = (kind === 'BUY' || kind === 'TRANSFER_IN');
+  const moverAddr = isInflowKind ? to : from;
+  const otherAddr = isInflowKind ? from : to;
+  const moverTag  = isInflowKind ? data.toTag : data.fromTag;
+  const moverBal  = isInflowKind ? data.toBal : data.fromBal;
+  const otherTag  = isInflowKind ? data.fromTag : data.toTag;
+  const otherBal  = isInflowKind ? data.fromBal : data.toBal;
+  const priceUsd  = data.priceUsd;
 
-🐋 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${to}">${shortenAddress(to)}</a> just crossed the 10M BOBAI threshold.
+  const moverLink = `<a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${moverAddr}">${shortenAddress(moverAddr)}</a>`;
+  const otherLink = `<a href="https://bscscan.com/address/${otherAddr}">${shortenAddress(otherAddr)}</a>`;
+  const moverCluster = moverTag ? `🔗 Cluster ${moverTag}` : '🔸 Solo';
+  const moverHolds = moverBal != null
+    ? `<b>${formatNumber(moverBal)} BOBAI</b>${priceUsd ? ` · ${formatUsd(moverBal * priceUsd)}` : ''}`
+    : null;
+  const otherDesc = describeAddr(otherAddr, otherTag, otherBal, priceUsd);
 
-🪙 Balance: <b>${formatNumber(amount)} BOBAI</b> (${usdStr})
-📥 Triggered by TX from <a href="https://bscscan.com/address/${from}">${shortenAddress(from)}</a>
-<i>Automatically added to watch-set — all future activity will be alerted.</i>
+  // NEW_WHALE & EX_WHALE keep their own focused layouts.
+  if (kind === 'NEW_WHALE') {
+    const msg = `💡 <b>NEW WHALE · auto-tracked</b>
 
-🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a>`;
-      try {
-        const r = await tg('sendMessage', {
-          chat_id: TG_INTERNAL_CHAT_ID,
-          text: msg,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        });
-        return r?.ok === true;
-      } catch (e) {
-        console.error('[WHALE ALERT ERROR]', e.message || e);
-        return false;
-      }
-    }
-    case 'EX_WHALE': {
-      icon = '💀'; title = 'EX-WHALE';
-      const msg = `${icon} <b>${title}</b>
+🐋 ${moverLink} just crossed <b>10M BOBAI</b>.
+📊 Holds: <b>${formatNumber(amount)} BOBAI</b> · ${usdStr}
 
-📉 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${from}">${shortenAddress(from)}</a> dropped below the 10M BOBAI threshold.
+<i>Added to watch-set. All future activity will alert.</i>
 
-🪙 Balance now: <b>${formatNumber(amount)} BOBAI</b> (${usdStr})
-<i>Still in watch-set — use /whalerm to drop entirely.</i>
+🔗 ${txLink}`;
+    return await tgSend(msg);
+  }
+  if (kind === 'EX_WHALE') {
+    const moverDownLink = `<a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${from}">${shortenAddress(from)}</a>`;
+    const msg = `💀 <b>EX-WHALE · dropped below 10M</b>
 
-🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a>`;
-      try {
-        const r = await tg('sendMessage', {
-          chat_id: TG_INTERNAL_CHAT_ID,
-          text: msg,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        });
-        return r?.ok === true;
-      } catch (e) {
-        console.error('[WHALE ALERT ERROR]', e.message || e);
-        return false;
-      }
-    }
-    default: return false;
+📉 ${moverDownLink}
+📊 Balance now: <b>${formatNumber(amount)} BOBAI</b> · ${usdStr}
+
+<i>Still in watch-set — use /whalerm to drop.</i>
+
+🔗 ${txLink}`;
+    return await tgSend(msg);
   }
 
-  const fromDesc = describeAddr(from, data.fromTag, data.fromBal, data.priceUsd);
-  const toDesc   = describeAddr(to,   data.toTag,   data.toBal,   data.priceUsd);
-  const message = `${icon} <b>${title}</b>
+  // Action verb + headline icon, by kind.
+  let headline, contextLine;
+  switch (kind) {
+    case 'BUY':
+      headline = `🟢 <b>BUY</b> · ${usdStr}`;
+      contextLine = `↩ from PancakeSwap LP`;
+      break;
+    case 'SELL':
+      headline = `🔴 <b>SELL</b> · ${usdStr}`;
+      contextLine = `↪ into PancakeSwap LP`;
+      break;
+    case 'BURN':
+      headline = `🔥 <b>BURN</b> · ${usdStr}`;
+      contextLine = `↪ to 💀 DEAD address`;
+      break;
+    case 'INTERNAL_T':
+      headline = `🟣 <b>INTERNAL MOVE</b> · ${usdStr}`;
+      contextLine = `→ ${otherLink} · <i>${otherDesc}</i>`;
+      break;
+    case 'TRANSFER_OUT':
+      if (isDust) {
+        headline = `🟡 <b>PRE-FUNDING</b> · ${usdStr} <i>(dust)</i>`;
+        contextLine = `→ ${otherLink} · <i>fresh wallet — bigger TX likely incoming</i>`;
+      } else {
+        headline = `🟠 <b>TRANSFER OUT</b> · ${usdStr}`;
+        contextLine = `→ ${otherLink} · <i>new wallet, auto-added to watch-set</i>`;
+      }
+      break;
+    case 'TRANSFER_IN':
+      headline = `⚪ <b>RECEIVED</b> · ${usdStr}`;
+      contextLine = `← ${otherLink} · <i>${otherDesc}</i>`;
+      break;
+    default:
+      return false;
+  }
 
-🪙 <b>${formatNumber(amount)} BOBAI</b> (${usdStr})
-📤 FROM <a href="https://bscscan.com/address/${from}">${shortenAddress(from)}</a> · <i>${fromDesc}</i>
-📥 TO   <a href="https://bscscan.com/address/${to}">${shortenAddress(to)}</a> · <i>${toDesc}</i>
-<i>${note}</i>
+  const lines = [
+    headline,
+    `${moverCluster} · ${moverLink}`,
+  ];
+  if (moverHolds) lines.push(`📊 Now holds: ${moverHolds}`);
+  const sign =
+    (kind === 'SELL' || kind === 'BURN' || kind === 'TRANSFER_OUT') ? '−' :
+    (kind === 'BUY'  || kind === 'TRANSFER_IN')                      ? '+' :
+    '';  // INTERNAL_T → neutral (intra-cluster redistribution)
+  lines.push('', `🪙 ${sign}${formatNumber(amount)} BOBAI · ${usdStr}`);
+  lines.push(contextLine);
+  lines.push('', `🔗 ${txLink}`);
 
-🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a>`;
+  return await tgSend(lines.join('\n'));
+}
 
+async function tgSend(text) {
   try {
     const r = await tg('sendMessage', {
       chat_id: TG_INTERNAL_CHAT_ID,
-      text: message,
+      text,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
     });
@@ -1407,14 +1587,15 @@ const BOT_COMMANDS = [
 // Overrides the public BOT_COMMANDS list inside that chat, so the "/" menu shows
 // only these four entries.
 const WHALE_COMMANDS = [
-  { command: 'help',      description: 'Whale watcher help' },
-  { command: 'whales',    description: 'Tracked wallets (clustered, with 24h dots)' },
-  { command: 'whales24h', description: 'Detailed last-24h breakdown' },
-  { command: 'whaleadd',  description: 'Add wallet(s) to watch-set' },
-  { command: 'whalerm',   description: 'Remove wallet(s) from watch-set' },
+  { command: 'help',         description: 'Whale watcher help' },
+  { command: 'whales',       description: 'Tracked wallets (clustered, with 24h dots)' },
+  { command: 'whales24h',    description: 'Detailed last-24h breakdown' },
+  { command: 'whaleadd',     description: 'Add wallet(s) to watch-set' },
+  { command: 'whalerm',      description: 'Remove wallet(s) from watch-set' },
+  { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v6-whales24h';
+const COMMANDS_VERSION = 'v7-whalecleanup';
 
 async function ensureCommandsRegistered(env) {
   const current = await env.KV.get('commands_version');
@@ -1447,7 +1628,7 @@ async function handleCommand(msg) {
   const isInternal = TG_INTERNAL_CHAT_ID && String(chatId) === String(TG_INTERNAL_CHAT_ID);
 
   // Slash-prefixed (work everywhere, but silent-ignore outside internal chat)
-  const WHALE_SLASH = ['/whales', '/whales24h', '/whaleadd', '/whalerm', '/whalehelp'];
+  const WHALE_SLASH = ['/whales', '/whales24h', '/whaleadd', '/whalerm', '/whalecleanup', '/whalehelp'];
   if (WHALE_SLASH.includes(text)) {
     if (!isInternal) return;
     return handleWhaleAdmin(rawText, text, chatId);
@@ -1455,7 +1636,7 @@ async function handleCommand(msg) {
 
   // Bare-word triggers inside the internal chat only — typing `whales`, `whales24h`,
   // `whaleadd 0x...`, `whalerm 0x...`, `whalehelp` works without the leading slash.
-  const WHALE_BARE = ['whales', 'whales24h', 'whaleadd', 'whalerm', 'whalehelp'];
+  const WHALE_BARE = ['whales', 'whales24h', 'whaleadd', 'whalerm', 'whalecleanup', 'whalehelp'];
   if (isInternal && WHALE_BARE.includes(text)) {
     return handleWhaleAdmin(rawText, '/' + text, chatId);
   }
@@ -1812,16 +1993,25 @@ export default {
           status: 400, headers: { 'content-type': 'application/json' },
         });
       }
+      // target: 'internal' routes to TG_INTERNAL_CHAT_ID (BOBAI Intern).
+      // Default = public group (TG_CHAT_ID). Brain prefix defaults off for internal.
+      const targetChat = body.target === 'internal' ? TG_INTERNAL_CHAT_ID : TG_CHAT_ID;
+      if (!targetChat) {
+        return new Response(JSON.stringify({ ok: false, error: `target chat not configured` }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const wantBrain = body.target === 'internal' ? body.prefixBrain === true : body.prefixBrain !== false;
       try {
-        if (body.prefixBrain !== false) {
+        if (wantBrain) {
           await tg('sendMessage', {
-            chat_id: TG_CHAT_ID,
+            chat_id: targetChat,
             text: '🧠',
             disable_notification: true,
           });
         }
         const r = await tg('sendMessage', {
-          chat_id: TG_CHAT_ID,
+          chat_id: targetChat,
           text,
           parse_mode: 'HTML',
           disable_web_page_preview: body.disablePreview !== false,
@@ -2064,6 +2254,11 @@ export default {
     }
 
     // === WHALE WATCHER (internal-only alerts + auto-detect new whales) ===
+    // Per-TX coalescing: aggregator swaps (1inch / OKX DEX / 0x) emit several
+    // Transfer events in a single tx (LP → Router → Router → final EOA). We
+    // group by tx, compute net flow per address, and emit ONE alert per moving
+    // wallet against its LOGICAL counterparty (LP, DEAD, or another EOA) —
+    // router hops are filtered via eth_getCode and never appear in the chat.
     if (TG_INTERNAL_CHAT_ID) {
       try {
         const tracked = await loadTrackedWallets(env);
@@ -2078,8 +2273,6 @@ export default {
         const whaleEvents = await loadWhaleEvents(env);
         const prevEventCount = whaleEvents.length;
 
-        // Initial cluster labels — re-computed on the fly whenever the tracked set
-        // or edge set changes during the loop (cascade-add, INTERNAL_T new edge).
         let clusterLabels = labelClusters(computeClusters([...trackedSet], edges));
 
         const latestHex = await rpcCall('eth_blockNumber', []);
@@ -2088,146 +2281,240 @@ export default {
           const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
           const logs = await getAllRecentTransfers(fromBlock, env);
 
-          // Sort oldest-first so chat order matches chain order.
-          const sorted = logs.slice().sort((a, b) => {
+          // Group transfers by tx, preserve chronological order across txs.
+          const txOrder = [];
+          const byTx = new Map();
+          const sortedLogs = logs.slice().sort((a, b) => {
             const blkA = parseInt(a.blockNumber, 16);
             const blkB = parseInt(b.blockNumber, 16);
             if (blkA !== blkB) return blkA - blkB;
             return parseInt(a.logIndex, 16) - parseInt(b.logIndex, 16);
           });
+          for (const log of sortedLogs) {
+            const txHash = log.transactionHash;
+            if (!byTx.has(txHash)) { byTx.set(txHash, []); txOrder.push(txHash); }
+            byTx.get(txHash).push(log);
+          }
+
+          // Migrate the prior per-log dedup format ("txHash:logIndex") so we
+          // don't re-fire alerts for txs already processed by the old code.
+          const postedTxPrefixSet = new Set();
+          for (const k of postedWhaleSet) {
+            const colon = k.indexOf(':');
+            postedTxPrefixSet.add(colon === -1 ? k : k.slice(0, colon));
+          }
 
           let bobaiPriceUsd = null;
           let alerts = 0;
           const MAX_WHALE_ALERTS = 10;
           let setChanged = false;
-          const checkedThisRun = new Set(); // avoid double balanceOf within same cron
 
-          for (const log of sorted) {
-            const key = log.transactionHash + ':' + log.logIndex;
-            if (postedWhaleSet.has(key)) continue;
+          // Per-cron caches — eth_getCode and balanceOf are pure for the run.
+          const contractCache = new Map();
+          const balanceCache = new Map();
+          const isContractCached = async (addr) => {
+            if (contractCache.has(addr)) return contractCache.get(addr);
+            const r = await isContract(addr);
+            contractCache.set(addr, r);
+            return r;
+          };
+          const getBalCached = async (addr) => {
+            if (balanceCache.has(addr)) return balanceCache.get(addr);
+            try {
+              const b = await getBobaiBalance(addr);
+              balanceCache.set(addr, b);
+              return b;
+            } catch { return null; }
+          };
+          const isSpecial = (a) => WHALE_NEVER_TRACK.has(a.toLowerCase());
 
-            const from = topicToAddr(log.topics[1]);
-            const to   = topicToAddr(log.topics[2]);
-            const amtWei = BigInt(log.data || '0x0');
-            const amt = Number(amtWei) / 1e18;
-            if (!(amt > 0)) { postedWhaleSet.add(key); continue; }
+          const pair = BOBAI_PAIR.toLowerCase();
+          const dead = DEAD.toLowerCase();
 
-            const fromTracked = trackedSet.has(from);
-            const toTracked   = trackedSet.has(to);
-            const pair = BOBAI_PAIR.toLowerCase();
-            const dead = DEAD.toLowerCase();
+          for (const txHash of txOrder) {
+            if (postedTxPrefixSet.has(txHash)) continue;
+            if (alerts >= MAX_WHALE_ALERTS) break;
 
-            // === A) Tracked-related alerts ===
-            let kind = null;
-            if (fromTracked && to === pair) kind = 'SELL';
-            else if (toTracked && from === pair) kind = 'BUY';
-            else if (fromTracked && to === dead) kind = 'BURN';
-            else if (fromTracked && toTracked) kind = 'INTERNAL_T';
-            else if (fromTracked && !WHALE_NEVER_TRACK.has(to)) kind = 'TRANSFER_OUT';
-            else if (toTracked && !WHALE_NEVER_TRACK.has(from)) kind = 'TRANSFER_IN';
+            const txLogs = byTx.get(txHash);
 
-            // === B) Auto-detect new whales (receiver not tracked, not excluded) ===
-            // We check balanceOf only if the receiver isn't tracked yet AND isn't the
-            // LP/DEAD/Bot. If their balance crosses 10M BOBAI → add + alert.
-            if (!kind && !toTracked && !WHALE_NEVER_TRACK.has(to) && !checkedThisRun.has(to)) {
-              checkedThisRun.add(to);
-              try {
-                const bal = await getBobaiBalance(to);
-                if (bal >= WHALE_THRESHOLD_WEI) {
-                  trackedSet.add(to);
-                  setChanged = true;
-                  kind = 'NEW_WHALE';
-                  if (bobaiPriceUsd === null) bobaiPriceUsd = await fetchBobaiPriceUsd();
-                  const balTokens = Number(bal / 10n ** 18n);
-                  console.log('[WHALE] NEW_WHALE detected', to.slice(0, 10), formatNumber(balTokens));
-                  if (alerts < MAX_WHALE_ALERTS) {
-                    const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
-                    const sent = await postWhaleAlert({
-                      kind: 'NEW_WHALE', from, to,
-                      amount: balTokens,        // show balance, not transfer
-                      usdValue: usd,
-                      txHash: log.transactionHash,
-                    });
-                    if (sent) {
-                      alerts++;
-                      whaleEvents.push({ kind: 'NEW_WHALE', from, to, amount: balTokens, usdValue: usd, txHash: log.transactionHash, ts: Date.now() });
+            // Compute net flow per address within this tx.
+            const netFlow = new Map();
+            let pairOut = 0n, pairIn = 0n, deadIn = 0n;
+            for (const log of txLogs) {
+              const from = topicToAddr(log.topics[1]);
+              const to   = topicToAddr(log.topics[2]);
+              const amtWei = BigInt(log.data || '0x0');
+              if (!(amtWei > 0n)) continue;
+              netFlow.set(from, (netFlow.get(from) || 0n) - amtWei);
+              netFlow.set(to,   (netFlow.get(to)   || 0n) + amtWei);
+              if (from === pair) pairOut += amtWei;
+              if (to   === pair) pairIn  += amtWei;
+              if (to   === dead) deadIn  += amtWei;
+            }
+
+            // Movers = addresses with non-zero net flow, excluding hard-skip
+            // set (LP, DEAD, BOBAI contract, bots). Sort by |net| desc so the
+            // biggest mover is alerted first when MAX is hit.
+            const movers = [...netFlow.entries()]
+              .filter(([addr, n]) => n !== 0n && !isSpecial(addr))
+              .sort((a, b) => {
+                const aa = a[1] < 0n ? -a[1] : a[1];
+                const bb = b[1] < 0n ? -b[1] : b[1];
+                return bb > aa ? 1 : bb < aa ? -1 : 0;
+              });
+
+            // Guard against double-emitting an INTERNAL_T (once per side).
+            const alertedThisTx = new Set();
+
+            for (const [addr, netWei] of movers) {
+              if (alerts >= MAX_WHALE_ALERTS) break;
+              if (alertedThisTx.has(addr)) continue;
+
+              const isTracked = trackedSet.has(addr);
+              const isInflow  = netWei > 0n;
+              const absWei = isInflow ? netWei : -netWei;
+              const absAmt = Number(absWei) / 1e18;
+
+              let kind = null;
+              let counterparty = null;
+
+              // Ratio gate: ≥50% of the mover's net flow must hit pair/dead for
+              // the alert to classify as a real swap/burn. BOBAI's tax routes
+              // 100% to the buyback bot (NEVER_TRACK) and never directly to
+              // LP/DEAD, so this gate is rarely hit in practice — kept as
+              // defense-in-depth against future config changes or edge txs.
+              const TAX_RATIO = 2n;
+              const isRealSell = pairIn  * TAX_RATIO >= absWei;
+              const isRealBuy  = pairOut * TAX_RATIO >= absWei;
+              const isRealBurn = deadIn  * TAX_RATIO >= absWei;
+
+              if (isTracked && isInflow && isRealBuy) {
+                kind = 'BUY'; counterparty = pair;
+              } else if (isTracked && !isInflow && isRealSell) {
+                kind = 'SELL'; counterparty = pair;
+              } else if (isTracked && !isInflow && isRealBurn) {
+                kind = 'BURN'; counterparty = dead;
+              } else if (isTracked && !isInflow) {
+                // Tracked outflow not into LP/DEAD — internal move or cascade.
+                const inflows = movers.filter(([a, n]) => a !== addr && n > 0n);
+                const trackedSink = inflows.find(([a]) => trackedSet.has(a));
+                if (trackedSink) {
+                  kind = 'INTERNAL_T'; counterparty = trackedSink[0];
+                } else {
+                  // Pick the largest non-contract inflow EOA as the recipient.
+                  let pickedRecipient = null;
+                  for (const [a] of inflows) {
+                    if (!(await isContractCached(a))) { pickedRecipient = a; break; }
+                  }
+                  if (!pickedRecipient) continue; // outflow only to contracts
+                  kind = 'TRANSFER_OUT'; counterparty = pickedRecipient;
+                }
+              } else if (isTracked && isInflow) {
+                // Tracked inflow not from LP — find the source EOA.
+                const outflows = movers.filter(([a, n]) => a !== addr && n < 0n);
+                const trackedSource = outflows.find(([a]) => trackedSet.has(a));
+                if (trackedSource) continue; // INTERNAL_T fires from the sender side
+                let pickedSource = null;
+                for (const [a] of outflows) {
+                  if (!(await isContractCached(a))) { pickedSource = a; break; }
+                }
+                if (!pickedSource) continue;
+                kind = 'TRANSFER_IN'; counterparty = pickedSource;
+              } else if (!isTracked && isInflow) {
+                // NEW_WHALE detection: non-tracked EOA receiving — crossed 10M?
+                if (await isContractCached(addr)) continue;
+                const bal = await getBalCached(addr);
+                if (bal === null || bal < WHALE_THRESHOLD_WEI) continue;
+
+                trackedSet.add(addr);
+                setChanged = true;
+                if (bobaiPriceUsd === null) bobaiPriceUsd = await fetchBobaiPriceUsd();
+                const balTokens = Number(bal / 10n ** 18n);
+                const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
+                console.log('[WHALE] NEW_WHALE detected', addr.slice(0, 10), formatNumber(balTokens));
+                const sent = await postWhaleAlert({
+                  kind: 'NEW_WHALE', from: pair, to: addr,
+                  amount: balTokens, usdValue: usd, txHash,
+                });
+                if (sent) {
+                  alerts++;
+                  whaleEvents.push({ kind: 'NEW_WHALE', from: pair, to: addr, amount: balTokens, usdValue: usd, txHash, ts: Date.now() });
+                  alertedThisTx.add(addr);
+                }
+                continue;
+              } else {
+                continue;
+              }
+
+              if (!kind) continue;
+
+              // Cascade-add (TRANSFER_OUT counterparty already EOA-verified).
+              let labelsDirty = false;
+              if (kind === 'TRANSFER_OUT' && !trackedSet.has(counterparty)) {
+                trackedSet.add(counterparty);
+                setChanged = true;
+                if (addEdgeInMemory(edges, addr, counterparty)) { edgesChanged = true; labelsDirty = true; }
+              }
+              if (kind === 'INTERNAL_T') {
+                if (addEdgeInMemory(edges, addr, counterparty)) { edgesChanged = true; labelsDirty = true; }
+              }
+              if (labelsDirty) {
+                clusterLabels = labelClusters(computeClusters([...trackedSet], edges));
+              }
+
+              if (bobaiPriceUsd === null) bobaiPriceUsd = await fetchBobaiPriceUsd();
+              const usdValue = bobaiPriceUsd ? absAmt * bobaiPriceUsd : 0;
+
+              // Display orientation: sender on left, receiver on right.
+              const senderAddr   = isInflow ? counterparty : addr;
+              const receiverAddr = isInflow ? addr : counterparty;
+              const fromBalWei = isSpecial(senderAddr)   ? null : await getBalCached(senderAddr);
+              const toBalWei   = isSpecial(receiverAddr) ? null : await getBalCached(receiverAddr);
+              const fromBal = fromBalWei != null ? Number(fromBalWei / 10n ** 18n) : null;
+              const toBal   = toBalWei   != null ? Number(toBalWei   / 10n ** 18n) : null;
+              const fromTag = clusterLabels.get(senderAddr)   || null;
+              const toTag   = clusterLabels.get(receiverAddr) || null;
+
+              console.log('[WHALE]', kind, senderAddr.slice(0,8), '→', receiverAddr.slice(0,8), formatNumber(absAmt), 'BOBAI');
+              const sent = await postWhaleAlert({
+                kind, from: senderAddr, to: receiverAddr,
+                amount: absAmt, usdValue, txHash,
+                fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd,
+              });
+              if (sent) {
+                alerts++;
+                whaleEvents.push({ kind, from: senderAddr, to: receiverAddr, amount: absAmt, usdValue, txHash, ts: Date.now() });
+                alertedThisTx.add(addr);
+                if (kind === 'INTERNAL_T') alertedThisTx.add(counterparty);
+              } else {
+                console.error('[WHALE] alert NOT sent, retry next cron', txHash);
+              }
+
+              // EX_WHALE: tracked wallet crossed from ≥10M to <10M this tx.
+              if (isTracked && (kind === 'SELL' || kind === 'BURN' || kind === 'TRANSFER_OUT')) {
+                try {
+                  const balAfter = await getBobaiBalance(addr); // fresh, post-tx
+                  if (balAfter < WHALE_THRESHOLD_WEI && (balAfter + absWei) >= WHALE_THRESHOLD_WEI) {
+                    const balTokens = Number(balAfter / 10n ** 18n);
+                    console.log('[WHALE] EX_WHALE crossed', addr.slice(0, 10), formatNumber(balTokens));
+                    if (alerts < MAX_WHALE_ALERTS) {
+                      const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
+                      const exSent = await postWhaleAlert({
+                        kind: 'EX_WHALE', from: addr, to: counterparty,
+                        amount: balTokens, usdValue: usd, txHash,
+                      });
+                      if (exSent) {
+                        alerts++;
+                        whaleEvents.push({ kind: 'EX_WHALE', from: addr, to: counterparty, amount: balTokens, usdValue: usd, txHash, ts: Date.now() });
+                      }
                     }
                   }
-                }
-              } catch (e) { /* balance lookup failed — skip silently */ }
+                } catch { /* skip */ }
+              }
             }
 
-            if (!kind) { postedWhaleSet.add(key); continue; }
-            if (kind === 'NEW_WHALE') { postedWhaleSet.add(key); continue; }
-            if (alerts >= MAX_WHALE_ALERTS) { postedWhaleSet.add(key); continue; }
-
-            if (bobaiPriceUsd === null) bobaiPriceUsd = await fetchBobaiPriceUsd();
-            const usdValue = bobaiPriceUsd ? amt * bobaiPriceUsd : 0;
-
-            // Cascade: tracked → new address → auto-add (Hop 1) + record edge
-            let labelsDirty = false;
-            if (kind === 'TRANSFER_OUT' && !trackedSet.has(to) && !WHALE_NEVER_TRACK.has(to)) {
-              trackedSet.add(to);
-              setChanged = true;
-              if (addEdgeInMemory(edges, from, to)) { edgesChanged = true; labelsDirty = true; }
-            }
-            // INTERNAL_T = direct edge between two tracked wallets
-            if (kind === 'INTERNAL_T') {
-              if (addEdgeInMemory(edges, from, to)) { edgesChanged = true; labelsDirty = true; }
-            }
-            if (labelsDirty) {
-              clusterLabels = labelClusters(computeClusters([...trackedSet], edges));
-            }
-
-            // Per-alert enrichment: cluster tags + current balances for from/to so
-            // the alert message shows "🔗A · 60M BOBAI ($5.7K)" next to each side.
-            // Skip balance lookup for known LP/DEAD/contract/bot addresses (the
-            // result would be misleading — LP reserves, total burned, etc.).
-            const isSpecial = (a) => WHALE_NEVER_TRACK.has(a.toLowerCase());
-            const [fromBalWei, toBalWei] = await Promise.all([
-              isSpecial(from) ? Promise.resolve(null) : getBobaiBalance(from).catch(() => null),
-              isSpecial(to)   ? Promise.resolve(null) : getBobaiBalance(to).catch(() => null),
-            ]);
-            const fromBal = fromBalWei != null ? Number(fromBalWei / 10n ** 18n) : null;
-            const toBal   = toBalWei   != null ? Number(toBalWei   / 10n ** 18n) : null;
-            const fromTag = clusterLabels.get(from) || null;
-            const toTag   = clusterLabels.get(to)   || null;
-
-            console.log('[WHALE]', kind, from.slice(0, 8), '→', to.slice(0, 8), formatNumber(amt), 'BOBAI');
-            const sent = await postWhaleAlert({
-              kind, from, to, amount: amt, usdValue, txHash: log.transactionHash,
-              fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd,
-            });
-            if (sent) {
-              postedWhaleSet.add(key); alerts++;
-              whaleEvents.push({ kind, from, to, amount: amt, usdValue, txHash: log.transactionHash, ts: Date.now() });
-            }
-            else console.error('[WHALE] alert NOT sent, retry next cron', log.transactionHash);
-
-            // EX_WHALE detection: after a tracked wallet's outflow, did its balance
-            // cross from above 10M to below? Only check on SELL/BURN/TRANSFER_OUT.
-            if (fromTracked && (kind === 'SELL' || kind === 'BURN' || kind === 'TRANSFER_OUT')) {
-              try {
-                const balAfter = await getBobaiBalance(from);
-                if (balAfter < WHALE_THRESHOLD_WEI && (balAfter + amtWei) >= WHALE_THRESHOLD_WEI) {
-                  const balTokens = Number(balAfter / 10n ** 18n);
-                  console.log('[WHALE] EX_WHALE crossed', from.slice(0, 10), formatNumber(balTokens));
-                  if (alerts < MAX_WHALE_ALERTS) {
-                    const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
-                    const exSent = await postWhaleAlert({
-                      kind: 'EX_WHALE', from, to,
-                      amount: balTokens,
-                      usdValue: usd,
-                      txHash: log.transactionHash,
-                    });
-                    if (exSent) {
-                      alerts++;
-                      whaleEvents.push({ kind: 'EX_WHALE', from, to, amount: balTokens, usdValue: usd, txHash: log.transactionHash, ts: Date.now() });
-                    }
-                  }
-                }
-              } catch (e) { /* balance lookup failed — skip */ }
-            }
+            // Mark tx processed even if no alert was emitted (avoid re-scan).
+            postedWhaleSet.add(txHash);
           }
 
           if (setChanged) await saveTrackedWallets(env, [...trackedSet]);

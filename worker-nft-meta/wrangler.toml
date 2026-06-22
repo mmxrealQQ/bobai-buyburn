@@ -1,0 +1,8 @@
+name = "bobai-nft-meta"
+main = "index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NFT_CONTRACT_ADDRESS = "0xd56226b3b8297a57f4361fca28aa43babdc9789d"
+CARDS_BASE_URL = "https://brainonbnb.com/nft/cards"

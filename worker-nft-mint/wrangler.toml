@@ -1,0 +1,16 @@
+name = "bobai-nft-mint"
+main = "index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "KV"
+id = "9e9ca186585b4b8c9e938905a2c544a7"
+
+[vars]
+NFT_CONTRACT_ADDRESS = "0xd56226b3b8297a57f4361fca28aa43babdc9789d"
+# Activation block (first block to watch from). Set via `wrangler deploy` or fix in code.
+# If unset, worker uses "current block" on first run and persists in KV.

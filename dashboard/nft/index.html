@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BOBAI Buy Drops · NFT Collection · brainonbnb</title>
+<meta name="description" content="Auto-minted NFTs awarded for every $BOBAI buy of $100 or more on BNB Chain. 1,925 collectibles · 6 buy tiers · 7 rarities.">
+<link rel="icon" href="/favicon.png">
+
+<!-- Open Graph / Twitter card -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="BOBAI Buy Drops — auto-minted NFTs for every $BOBAI buy ≥ $100">
+<meta property="og:description" content="6 buy-tier motifs · 7 rarities · 1,925 total, on BNB Chain. NFTs land in the buyer's wallet automatically.">
+<meta property="og:image" content="https://brainonbnb.com/nft/og-banner.jpg">
+<meta property="og:url" content="https://brainonbnb.com/nft/">
+<meta property="og:site_name" content="brainonbnb">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="BOBAI Buy Drops — auto-minted NFTs for every $BOBAI buy ≥ $100">
+<meta name="twitter:description" content="6 buy-tier motifs · 7 rarities · 1,925 total, on BNB Chain.">
+<meta name="twitter:image" content="https://brainonbnb.com/nft/og-banner.jpg">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root{
+  --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
+  --red:#ff3028;--green:#00e676;--blue:#4040ff;--purple:#a040ff;
+  --bg:#050510;--card:rgba(12,12,28,.85);--border:rgba(240,185,11,.06);
+  --text:#e4e5f1;--muted:#7b7d9e;
+  --radius:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{overflow-x:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.5}
+
+/* NAV — minimal: just back to dashboard */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);backdrop-filter:blur(24px) saturate(1.2);border-bottom:1px solid var(--border)}
+.nav{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px}
+.nl{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.84rem;color:var(--muted);transition:color .2s}
+.nl:hover{color:var(--gold)}
+.nl::before{content:'←';color:var(--gold);font-size:1rem}
+.nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:8px 22px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
+.nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
+
+/* HERO */
+.hero{padding:96px 24px 48px;text-align:center;position:relative}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top,rgba(240,185,11,.12),transparent 70%);pointer-events:none;z-index:0}
+.hero-inner{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+.hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;margin-bottom:14px;letter-spacing:-.5px;background:linear-gradient(135deg,var(--text),#fff);background-clip:text;-webkit-background-clip:text;color:transparent}
+.hero p{color:var(--muted);font-size:1.02rem;max-width:680px;margin:0 auto;line-height:1.65}
+.hero p strong{color:var(--gold);font-weight:600}
+.hero-meta{margin-top:26px;display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:center;font-size:.78rem;color:var(--muted)}
+.hero-meta code{font-family:'Space Grotesk',monospace;background:var(--card);border:1px solid var(--border);padding:5px 10px;border-radius:8px;color:var(--gold);font-size:.72rem;letter-spacing:.2px}
+.hero-meta a{color:var(--gold);text-decoration:none}
+.hero-meta a:hover{text-decoration:underline}
+.live-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.18);padding:5px 14px;border-radius:20px;font-size:.7rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase;margin-top:18px}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{opacity:.6;box-shadow:0 0 0 6px rgba(0,230,118,0)}}
+
+/* HERO MOTIFS — the 6 tier motifs as the hero visual */
+.hero-motifs{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:36px;text-align:left}
+.motif-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all .3s;position:relative}
+.motif-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.18),transparent)}
+.motif-card:hover{transform:translateY(-3px);border-color:rgba(240,185,11,.18);box-shadow:0 8px 32px rgba(240,185,11,.05)}
+.motif-card img{width:100%;height:auto;display:block;aspect-ratio:1}
+.motif-meta{padding:10px 8px;text-align:center}
+.motif-meta .e{font-size:1.1rem;line-height:1}
+.motif-meta .l{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.72rem;margin-top:4px}
+.motif-meta .t{font-size:.62rem;color:var(--muted);margin-top:2px;letter-spacing:.4px}
+
+@media(max-width:760px){
+  .hero-motifs{grid-template-columns:repeat(3,1fr)}
+  .motif-meta .l{font-size:.66rem}
+}
+
+/* SECTION */
+.sec{max-width:1100px;margin:0 auto;padding:36px 24px}
+.sh{margin-bottom:22px}
+.sh h2{font-family:'Space Grotesk',sans-serif;font-size:1.4rem;font-weight:700;margin-bottom:4px;letter-spacing:-.3px}
+.sh h2 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+.sh p{color:var(--muted);font-size:.82rem}
+
+/* STATS BAR */
+.sbar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:36px}
+.sc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:20px 16px;text-align:center;position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
+.sc .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:8px}
+.sc .v{font-family:'Space Grotesk',sans-serif;font-size:1.45rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+.sc .v.plain{background:none;-webkit-text-fill-color:initial;color:var(--text)}
+.sc .v.green{background:none;-webkit-text-fill-color:initial;color:var(--green);font-size:1.05rem;margin-top:4px}
+@media(max-width:760px){.sbar{grid-template-columns:repeat(2,1fr)}}
+
+/* TIER AVAILABILITY */
+.tier-grid{display:grid;gap:10px}
+.tier-row{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:grid;grid-template-columns:240px 1fr 130px;gap:18px;align-items:center;position:relative;overflow:hidden;transition:all .25s}
+.tier-row::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.12),transparent)}
+.tier-row:hover{border-color:rgba(240,185,11,.12)}
+.tier-name{display:flex;align-items:center;gap:12px}
+.tier-emoji{font-size:24px}
+.tier-name .l{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.92rem}
+.tier-name .t{font-size:.7rem;color:var(--muted);margin-top:2px}
+.tier-bar{background:rgba(0,0,0,.4);height:11px;border-radius:6px;overflow:hidden;position:relative;border:1px solid rgba(255,255,255,.04)}
+.tier-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));border-radius:6px;transition:width .8s cubic-bezier(.4,0,.2,1);min-width:2px}
+.tier-bar-fill.sold-out{background:linear-gradient(90deg,#4b5563,#6b7280)}
+.tier-stats{text-align:right;font-variant-numeric:tabular-nums}
+.tier-stats .n{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.05rem}
+.tier-stats .p{font-size:.7rem;color:var(--muted);margin-top:2px}
+.sold-out-tag{display:inline-block;background:rgba(75,85,99,.5);color:#cbd5e1;padding:2px 8px;border-radius:4px;font-size:.6rem;margin-left:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+@media(max-width:760px){
+  .tier-row{grid-template-columns:1fr;gap:12px}
+  .tier-stats{text-align:left}
+}
+
+/* RARITY DISTRIBUTION */
+.rarity-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.rc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-top:3px solid;border-radius:var(--radius);padding:16px 10px;text-align:center;transition:all .25s}
+.rc:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.08)}
+.rc .dot{width:14px;height:14px;border-radius:7px;display:inline-block;margin-bottom:6px}
+.rc .name{font-family:'Space Grotesk',sans-serif;font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.rc .count{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin-top:6px}
+.rc .of{font-size:.62rem;color:var(--muted);margin-top:2px}
+@media(max-width:760px){.rarity-grid{grid-template-columns:repeat(4,1fr)}}
+
+/* LEDGER */
+.ledger-wrap{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative}
+.ledger-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
+.ledger-table{width:100%;border-collapse:collapse}
+.ledger-table thead th{background:rgba(240,185,11,.03);color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:14px 16px;text-align:left;font-weight:600;border-bottom:1px solid var(--border)}
+.ledger-table td{padding:12px 16px;border-top:1px solid rgba(240,185,11,.03);font-size:.82rem;vertical-align:middle}
+.ledger-table tr:hover{background:rgba(240,185,11,.015)}
+.ledger-table .serial{font-family:'Space Grotesk',monospace;color:var(--gold);font-weight:600}
+.ledger-table .tier-cell{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--text)}
+.ledger-table .tier-cell .e{font-size:1.05rem}
+.rarity-tag{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:6px;font-size:.72rem;font-weight:600;letter-spacing:.2px;border:1px solid}
+.rarity-dot{width:8px;height:8px;border-radius:4px;display:inline-block}
+.ledger-table .wallet a{color:var(--muted);text-decoration:none;font-family:'Space Grotesk',monospace;font-size:.78rem}
+.ledger-table .wallet a:hover{color:var(--gold)}
+.ledger-table .age{color:var(--muted);font-size:.76rem}
+.ledger-table .tx a{color:var(--muted);text-decoration:none;font-size:.74rem}
+.ledger-table .tx a:hover{color:var(--gold)}
+.empty{padding:36px;text-align:center;color:var(--muted);font-size:.86rem}
+@media(max-width:760px){
+  .ledger-table thead{display:none}
+  .ledger-table tr{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;padding:14px 16px;border-top:1px solid rgba(240,185,11,.03)}
+  .ledger-table td{padding:0;border:none;font-size:.78rem}
+  .ledger-table td:nth-child(1){grid-row:1;grid-column:1}
+  .ledger-table td:nth-child(2){grid-row:1;grid-column:2}
+  .ledger-table td:nth-child(3){grid-row:2;grid-column:1/3}
+  .ledger-table td:nth-child(4){grid-row:3;grid-column:1/3}
+  .ledger-table td:nth-child(5){grid-row:4;grid-column:1}
+  .ledger-table td:nth-child(6){grid-row:4;grid-column:2;text-align:right}
+}
+
+/* COLLECTION SHOWCASE */
+.collection-tier{margin-bottom:32px}
+.collection-tier h3{font-family:'Space Grotesk',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:10px;color:var(--text)}
+.collection-tier h3 .e{font-size:1.3rem}
+.collection-tier h3 .t{color:var(--gold);font-weight:500;font-size:.72rem;letter-spacing:.5px}
+.collection-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.coll-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;transition:all .25s}
+.coll-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.coll-card:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.08)}
+.coll-card img{width:100%;height:auto;display:block;aspect-ratio:1024/1280;object-fit:cover}
+.coll-card .label{padding:6px 8px;font-size:.6rem;text-align:center;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;font-weight:600;font-family:'Space Grotesk',sans-serif}
+@media(max-width:760px){.collection-grid{grid-template-columns:repeat(4,1fr)}}
+
+footer{text-align:center;color:var(--muted);font-size:.74rem;padding:48px 24px 36px;border-top:1px solid var(--border);margin-top:48px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--gold)}
+
+/* LIGHTBOX */
+.lbx{position:fixed;inset:0;background:rgba(2,3,8,.92);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:200;padding:24px;cursor:zoom-out}
+.lbx.open{display:flex;animation:fadeIn .2s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.lbx-inner{max-width:560px;width:100%;max-height:calc(100vh - 48px);display:flex;flex-direction:column;gap:14px;align-items:center;cursor:default}
+.lbx-img{max-width:100%;max-height:80vh;border-radius:18px;border:2px solid var(--border);box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);background:var(--card)}
+.lbx-meta{font-family:'Space Grotesk',sans-serif;text-align:center;color:var(--muted);font-size:.82rem;letter-spacing:.3px}
+.lbx-meta .title{color:var(--text);font-size:1.05rem;font-weight:600;margin-bottom:2px}
+.lbx-close{position:absolute;top:18px;right:18px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);border:1px solid var(--border);border-radius:50%;color:var(--text);cursor:pointer;font-size:18px;transition:all .2s}
+.lbx-close:hover{background:var(--gold);color:#000;border-color:var(--gold)}
+.motif-card img,.coll-card img{cursor:zoom-in}
+</style>
+</head>
+<body>
+<nav><div class="nav">
+  <a class="nl" href="/">brainonbnb</a>
+  <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+</div></nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <!-- 6 motifs as the hero visual -->
+    <div class="hero-motifs">
+      <div class="motif-card"><img src="motifs/nice-buy.jpg" alt="NICE BUY motif"><div class="motif-meta"><div class="e">💰</div><div class="l">NICE BUY</div><div class="t">$100+ · 1000 max</div></div></div>
+      <div class="motif-card"><img src="motifs/big-buy.jpg" alt="BIG BUY motif"><div class="motif-meta"><div class="e">💎</div><div class="l">BIG BUY</div><div class="t">$150+ · 500 max</div></div></div>
+      <div class="motif-card"><img src="motifs/huge-buy.jpg" alt="HUGE BUY motif"><div class="motif-meta"><div class="e">🚀</div><div class="l">HUGE BUY</div><div class="t">$250+ · 250 max</div></div></div>
+      <div class="motif-card"><img src="motifs/whale-buy.jpg" alt="WHALE BUY motif"><div class="motif-meta"><div class="e">🐋</div><div class="l">WHALE BUY</div><div class="t">$500+ · 100 max</div></div></div>
+      <div class="motif-card"><img src="motifs/thunder-buy.jpg" alt="THUNDER BUY motif"><div class="motif-meta"><div class="e">⚡</div><div class="l">THUNDER BUY</div><div class="t">$1000+ · 50 max</div></div></div>
+      <div class="motif-card"><img src="motifs/kraken-buy.jpg" alt="KRAKEN BUY motif"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2500+ · 25 max</div></div></div>
+    </div>
+    <h1>BOBAI Buy Drops</h1>
+    <p>Every $BOBAI buy of <strong>$100 or more</strong> auto-mints a collectible NFT to the buyer's wallet — no claim, no extra cost. Each NFT carries a <strong>buy-tier motif</strong> fixed by purchase size and a <strong>rarity</strong> drawn from a weighted matrix. 1,925 total · 6 tiers · 7 rarities.</p>
+    <div class="hero-meta">
+      <code id="contract-addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</code>
+      ·
+      <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener">BscScan ↗</a>
+    </div>
+    <div class="live-pill"><span class="live-dot"></span> Auto-mint live</div>
+  </div>
+</header>
+
+<section class="sec">
+  <div class="sbar">
+    <div class="sc"><div class="l">Total Minted</div><div class="v" id="stat-minted">–</div></div>
+    <div class="sc"><div class="l">Supply Cap</div><div class="v">1,925</div></div>
+    <div class="sc"><div class="l">Unique Holders</div><div class="v plain" id="stat-buyers">–</div></div>
+    <div class="sc"><div class="l">Status</div><div class="v green">● Live</div></div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sh">
+    <h2>Tier <em>availability</em></h2>
+    <p>How many NFTs of each buy-tier are still mintable. Once a tier hits its cap, no more NFTs are minted for buys of that size.</p>
+  </div>
+  <div class="tier-grid" id="tier-grid">
+    <div class="empty">Loading on-chain data…</div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sh">
+    <h2>Rarity <em>distribution</em></h2>
+    <p>Live count of each rarity across all 6 tiers. Rarity is rolled at mint per the weighted drop matrix.</p>
+  </div>
+  <div class="rarity-grid" id="rarity-grid">
+    <div class="empty" style="grid-column:1/-1">Loading…</div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sh">
+    <h2>Live <em>drops</em></h2>
+    <p>Most recent mints from the on-chain BuyDrop event log. Newest first.</p>
+  </div>
+  <div class="ledger-wrap">
+    <table class="ledger-table">
+      <thead>
+        <tr><th>#</th><th>Tier</th><th>Rarity</th><th>Recipient</th><th>Time</th><th>Tx</th></tr>
+      </thead>
+      <tbody id="ledger-body">
+        <tr><td colspan="6" class="empty">Loading recent mints…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sh">
+    <h2>The <em>collection</em></h2>
+    <p>All 42 possible card variants (6 motifs × 7 rarities). Each NFT minted matches one of these combinations.</p>
+  </div>
+  <div id="collection-showcase"></div>
+</section>
+
+<footer>
+  <p>BOBAI Buy Drops · auto-minted on every $BOBAI buy ≥ $100 · contract + drop data read directly from BNB Chain</p>
+  <p style="margin-top:8px"><a href="/">← back to brainonbnb</a></p>
+</footer>
+
+<!-- Lightbox for motif + card click-to-zoom -->
+<div id="lbx" class="lbx" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="lbx-close" id="lbx-close" aria-label="Close">✕</div>
+  <div class="lbx-inner">
+    <img id="lbx-img" class="lbx-img" src="" alt="">
+    <div class="lbx-meta" id="lbx-meta"></div>
+  </div>
+</div>
+
+<script>
+const BSCSCAN = 'https://bscscan.com';
+const TIERS = [
+  { slug:'nice-buy',    label:'NICE BUY',    threshold:'$100+',  emoji:'💰' },
+  { slug:'big-buy',     label:'BIG BUY',     threshold:'$150+',  emoji:'💎' },
+  { slug:'huge-buy',    label:'HUGE BUY',    threshold:'$250+',  emoji:'🚀' },
+  { slug:'whale-buy',   label:'WHALE BUY',   threshold:'$500+',  emoji:'🐋' },
+  { slug:'thunder-buy', label:'THUNDER BUY', threshold:'$1000+', emoji:'⚡' },
+  { slug:'kraken-buy',  label:'KRAKEN BUY',  threshold:'$2500+', emoji:'🦑' },
+];
+const RARITIES = [
+  { slug:'common',    name:'Common',    hex:'#b0c3d9' },
+  { slug:'uncommon',  name:'Uncommon',  hex:'#5e98d9' },
+  { slug:'rare',      name:'Rare',      hex:'#4b69ff' },
+  { slug:'mythical',  name:'Mythical',  hex:'#8847ff' },
+  { slug:'legendary', name:'Legendary', hex:'#d32ce6' },
+  { slug:'ancient',   name:'Ancient',   hex:'#eb4b4b' },
+  { slug:'immortal',  name:'Immortal',  hex:'#b28a33' },
+];
+// Caps per rarity from the drop matrix — used for "X / Y" display
+const RARITY_CAPS = [799, 496, 297, 162, 90, 56, 25];
+
+function fmtAddr(a){ return a.slice(0,6) + '…' + a.slice(-4); }
+function fmtUtc(unixSec){
+  if (!unixSec) return '—';
+  const d = new Date(unixSec * 1000);
+  return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+}
+
+function renderTiers(minted, cap) {
+  const grid = document.getElementById('tier-grid');
+  grid.innerHTML = '';
+  let total = 0;
+  TIERS.forEach((t, i) => {
+    const m = minted[i] || 0, c = cap[i] || 0;
+    total += m;
+    const pct = c > 0 ? (m / c) * 100 : 0;
+    const soldOut = m >= c && c > 0;
+    const row = document.createElement('div');
+    row.className = 'tier-row';
+    row.innerHTML = `
+      <div class="tier-name">
+        <span class="tier-emoji">${t.emoji}</span>
+        <div>
+          <div class="l">${t.label}${soldOut ? '<span class="sold-out-tag">sold out</span>' : ''}</div>
+          <div class="t">${t.threshold} · ${c.toLocaleString()} max</div>
+        </div>
+      </div>
+      <div class="tier-bar"><div class="tier-bar-fill ${soldOut?'sold-out':''}" style="width:${pct}%"></div></div>
+      <div class="tier-stats"><div class="n">${m.toLocaleString()} / ${c.toLocaleString()}</div><div class="p">${pct.toFixed(1)}%</div></div>
+    `;
+    grid.appendChild(row);
+  });
+  document.getElementById('stat-minted').textContent = total.toLocaleString();
+}
+
+function renderRarities(drops) {
+  const counts = [0,0,0,0,0,0,0];
+  drops.forEach(d => { if (d.rarity >= 0 && d.rarity < 7) counts[d.rarity]++; });
+  const grid = document.getElementById('rarity-grid');
+  grid.innerHTML = '';
+  RARITIES.forEach((r, i) => {
+    const el = document.createElement('div');
+    el.className = 'rc';
+    el.style.borderTopColor = r.hex;
+    el.innerHTML = `
+      <span class="dot" style="background:${r.hex}"></span>
+      <div class="name" style="color:${r.hex}">${r.name}</div>
+      <div class="count">${counts[i]}</div>
+      <div class="of">of ${RARITY_CAPS[i]}</div>
+    `;
+    grid.appendChild(el);
+  });
+}
+
+function renderLedger(drops, latestBlock) {
+  const body = document.getElementById('ledger-body');
+  body.innerHTML = '';
+  if (!drops || drops.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" class="empty">No drops yet — the first $BOBAI buy ≥ $100 will mint NFT #1 here.</td></tr>`;
+    document.getElementById('stat-buyers').textContent = '0';
+    return;
+  }
+  const unique = new Set();
+  drops.slice(0, 30).forEach(d => {
+    unique.add(d.to);
+    const t = TIERS[d.tier] || { label:'?', emoji:'?' };
+    const r = RARITIES[d.rarity] || { name:'?', hex:'#888' };
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="serial">#${d.tokenId}</td>
+      <td><div class="tier-cell"><span class="e">${t.emoji}</span> ${t.label.replace(' BUY','')}</div></td>
+      <td><span class="rarity-tag" style="color:${r.hex};border-color:${r.hex}55;background:${r.hex}10"><span class="rarity-dot" style="background:${r.hex}"></span>${r.name}</span></td>
+      <td class="wallet"><a href="${BSCSCAN}/address/${d.to}" target="_blank" rel="noopener">${fmtAddr(d.to)}</a></td>
+      <td class="age">${fmtUtc(d.ts)}</td>
+      <td class="tx"><a href="${BSCSCAN}/tx/${d.tx}" target="_blank" rel="noopener">view ↗</a></td>
+    `;
+    body.appendChild(row);
+  });
+  document.getElementById('stat-buyers').textContent = unique.size.toLocaleString();
+}
+
+function renderCollection() {
+  const wrap = document.getElementById('collection-showcase');
+  wrap.innerHTML = '';
+  TIERS.forEach(t => {
+    const tier = document.createElement('div');
+    tier.className = 'collection-tier';
+    let cards = '';
+    RARITIES.forEach(r => {
+      cards += `<div class="coll-card" style="border-top-color:${r.hex}"><img src="cards/${t.slug}-${r.slug}.jpg" loading="lazy" alt="${t.label} ${r.name}"><div class="label" style="color:${r.hex}">${r.name}</div></div>`;
+    });
+    tier.innerHTML = `
+      <h3><span class="e">${t.emoji}</span> ${t.label}<span class="t">· ${t.threshold}</span></h3>
+      <div class="collection-grid">${cards}</div>
+    `;
+    wrap.appendChild(tier);
+  });
+}
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/nft/state');
+    if (!r.ok) throw new Error('api ' + r.status);
+    const s = await r.json();
+    renderTiers(s.minted, s.cap);
+    renderRarities(s.drops || []);
+    renderLedger(s.drops || [], s.latestBlock);
+  } catch (e) {
+    console.error('state fail', e);
+    document.getElementById('tier-grid').innerHTML = `<div class="empty">Couldn't load tier data — retrying in a moment.</div>`;
+    document.getElementById('ledger-body').innerHTML = `<tr><td colspan="6" class="empty">Couldn't load drops — retrying.</td></tr>`;
+  }
+}
+
+renderCollection();
+refresh();
+setInterval(refresh, 45000);
+
+// ---- Lightbox: click any motif or card to zoom ----
+const lbx = document.getElementById('lbx');
+const lbxImg = document.getElementById('lbx-img');
+const lbxMeta = document.getElementById('lbx-meta');
+function openLbx(src, title, subtitle) {
+  lbxImg.src = src; lbxImg.alt = title || '';
+  lbxMeta.innerHTML = title ? `<div class="title">${title}</div>${subtitle || ''}` : '';
+  lbx.classList.add('open');
+  lbx.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+function closeLbx() {
+  lbx.classList.remove('open');
+  lbx.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  setTimeout(() => { lbxImg.src = ''; }, 200);
+}
+lbx.addEventListener('click', e => { if (e.target === lbx) closeLbx(); });
+document.getElementById('lbx-close').addEventListener('click', closeLbx);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && lbx.classList.contains('open')) closeLbx(); });
+
+// Wire up hero motif cards
+document.querySelectorAll('.hero-motifs .motif-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const img = card.querySelector('img');
+    const label = card.querySelector('.motif-meta .l')?.textContent || '';
+    const thr   = card.querySelector('.motif-meta .t')?.textContent || '';
+    openLbx(img.src, label, thr);
+  });
+});
+
+// Wire up collection cards (delegated since they're rendered after load)
+document.getElementById('collection-showcase').addEventListener('click', e => {
+  const card = e.target.closest('.coll-card');
+  if (!card) return;
+  const img = card.querySelector('img');
+  const lbl = card.querySelector('.label')?.textContent || '';
+  const tier = card.closest('.collection-tier')?.querySelector('h3')?.textContent || '';
+  openLbx(img.src, tier.trim(), lbl);
+});
+</script>
+</body>
+</html>

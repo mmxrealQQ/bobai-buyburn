@@ -1,0 +1,16 @@
+{
+  "name": "bobai-nft-contract",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "node scripts/compile.js",
+    "deploy": "node -r dotenv/config scripts/deploy.js dotenv_config_path=../../.env",
+    "setup": "node -r dotenv/config scripts/setup.js dotenv_config_path=../../.env",
+    "set-base-uri": "node -r dotenv/config scripts/set-base-uri.js dotenv_config_path=../../.env"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
+    "dotenv": "^17.4.2",
+    "solc": "^0.8.35"
+  }
+}

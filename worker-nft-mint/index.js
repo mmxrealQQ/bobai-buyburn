@@ -1,0 +1,315 @@
+// BOBAI NFT Mint Worker — Cloudflare Worker
+// Cron every minute: detects BOBAI buys ≥ $100 on PancakeSwap, rolls a rarity
+// per the drop matrix, and mints a BobaiBuyDrops NFT to the buyer wallet.
+
+import { createPublicClient, createWalletClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { bsc } from 'viem/chains';
+
+// ===== Constants =====
+const BOBAI_PAIR  = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+const SWAP_TOPIC  = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
+const DEAD        = '0x000000000000000000000000000000000000dead';
+
+const RPC_DATASEED = [
+  'https://bsc-dataseed1.binance.org',
+  'https://bsc-dataseed2.binance.org',
+  'https://bsc-dataseed3.binance.org',
+];
+
+const LOGS_RPC = [
+  'https://bsc-rpc.publicnode.com',
+  'https://bsc-pokt.nodies.app',
+  'https://bsc.publicnode.com',
+];
+const LOGS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+// USD threshold per tier — descending so first match wins
+const TIER_THRESHOLDS = [
+  [2500, 5, 'KRAKEN'],
+  [1000, 4, 'THUNDER'],
+  [ 500, 3, 'WHALE'],
+  [ 250, 2, 'HUGE'],
+  [ 150, 1, 'BIG'],
+  [ 100, 0, 'NICE'],
+];
+
+// Drop matrix (drop chance per rarity, per tier). Each row sums to 100.
+//                        C    U    R    M    L    A   I
+const DROP_MATRIX = [
+  /* 0 NICE    */ [50, 25, 13,  6,  3,  2,  1],
+  /* 1 BIG     */ [40, 28, 16,  8,  4,  3,  1],
+  /* 2 HUGE    */ [30, 28, 20, 12,  6,  3,  1],
+  /* 3 WHALE   */ [18, 25, 22, 16, 11,  5,  3],
+  /* 4 THUNDER */ [10, 18, 22, 20, 16,  9,  5],
+  /* 5 KRAKEN  */ [ 5, 10, 18, 22, 22, 13, 10],
+];
+const RARITY_NAME = ['Common','Uncommon','Rare','Mythical','Legendary','Ancient','Immortal'];
+
+// Bot wallets that buy on behalf of the project — they should never receive NFTs
+const IGNORED_WALLETS = new Set([
+  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
+  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot
+]);
+
+const NFT_ABI = parseAbi([
+  'function mintTo(address to, uint8 tier, uint8 rarity) external returns (uint256)',
+  'function getTiers() external view returns (uint256[6] mintedArr, uint256[6] capArr)',
+]);
+
+// ===== RPC helpers =====
+
+async function rpcCall(method, params) {
+  for (const rpc of RPC_DATASEED) {
+    try {
+      const r = await fetch(rpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      });
+      const d = await r.json();
+      if (d.result !== undefined && d.result !== null) return d.result;
+    } catch {}
+  }
+  return null;
+}
+
+async function tryGetLogs(rpc, fromBlock, toBlock) {
+  try {
+    const r = await fetch(rpc, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': LOGS_UA },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'eth_getLogs',
+        params: [{ address: BOBAI_PAIR, topics: [SWAP_TOPIC], fromBlock, toBlock }],
+      }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return Array.isArray(d.result) ? d.result : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getSwapLogs(fromBlock, toBlock, env) {
+  const keyed = [env.BSC_RPC_KEYED_URL, env.BSC_RPC_KEYED_URL_2].filter(Boolean);
+  for (const rpc of [...keyed, ...LOGS_RPC]) {
+    const r = await tryGetLogs(rpc, fromBlock, toBlock);
+    if (r !== null) return r;
+  }
+  // Last-resort narrow window for free RPCs
+  const from = parseInt(fromBlock, 16);
+  const narrow = '0x' + Math.max(from, parseInt(toBlock, 16) - 50).toString(16);
+  for (const rpc of LOGS_RPC) {
+    const r = await tryGetLogs(rpc, narrow, toBlock);
+    if (r !== null) return r;
+  }
+  return null;
+}
+
+// BNB/USD price — on-chain Chainlink oracle on BSC. No external API dependency.
+// Chainlink BNB/USD: 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE (8 decimals).
+const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE';
+async function getBnbUsd() {
+  try {
+    // latestAnswer() function selector = 0x50d25bcd
+    const data = await rpcCall('eth_call', [{ to: CHAINLINK_BNB_USD, data: '0x50d25bcd' }, 'latest']);
+    if (!data || data === '0x') return null;
+    const raw = BigInt(data);
+    const price = Number(raw) / 1e8;
+    return price > 1 ? price : null;
+  } catch { return null; }
+}
+
+// ===== Roll + tier =====
+
+function tierFromUsd(usd) {
+  for (const [min, t] of TIER_THRESHOLDS) if (usd >= min) return t;
+  return -1;
+}
+
+function rollRarity(tier) {
+  const w = DROP_MATRIX[tier];
+  const tot = w.reduce((a, b) => a + b, 0);
+  let r = Math.random() * tot;
+  for (let i = 0; i < w.length; i++) {
+    r -= w[i];
+    if (r < 0) return i;
+  }
+  return 0;
+}
+
+// ===== Main scheduled handler =====
+
+export default {
+  // Public read-only endpoint so dashboards can fetch the drop ledger
+  // without depending on RPC archive providers (publicnode now needs a token
+  // for wide block ranges). Worker writes drops to KV on each mint;
+  // dashboard fetches from here.
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname === '/drops' || url.pathname === '/api/drops') {
+      const raw = await env.KV.get('recent_drops');
+      const drops = raw ? JSON.parse(raw) : [];
+      return new Response(JSON.stringify({ drops }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=10',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+    return new Response('bobai-nft-mint', { status: 200 });
+  },
+
+  async scheduled(event, env, ctx) {
+    if (!env.NFT_RELAYER_PRIVATE_KEY) { console.error('FATAL: NFT_RELAYER_PRIVATE_KEY missing'); return; }
+    if (!env.NFT_CONTRACT_ADDRESS)    { console.error('FATAL: NFT_CONTRACT_ADDRESS missing'); return; }
+
+    const account = privateKeyToAccount(env.NFT_RELAYER_PRIVATE_KEY);
+    const publicClient = createPublicClient({ chain: bsc, transport: http(RPC_DATASEED[0]) });
+    const wallet = createWalletClient({ account, chain: bsc, transport: http(RPC_DATASEED[0]) });
+    const contract = env.NFT_CONTRACT_ADDRESS;
+
+    // ---- block range
+    const latestHex = await rpcCall('eth_blockNumber', []);
+    if (!latestHex) { console.error('Could not fetch latest block'); return; }
+    const latest = parseInt(latestHex, 16);
+
+    // Confirmation safety — only process blocks at least 3 behind the head.
+    const safeHead = Math.max(0, latest - 3);
+
+    // First-run: snap to current safe head, no backfill.
+    let lastBlockStr = await env.KV.get('last_block');
+    if (!lastBlockStr) {
+      await env.KV.put('last_block', String(safeHead));
+      console.log(`First run — snapped last_block to ${safeHead}`);
+      return;
+    }
+    const lastBlock = parseInt(lastBlockStr, 10);
+    if (safeHead <= lastBlock) {
+      console.log(`No new safe blocks (last=${lastBlock}, safe=${safeHead})`);
+      return;
+    }
+
+    // Cap scan window to 500 blocks per run to keep RPC cost bounded.
+    const fromBlock = lastBlock + 1;
+    const toBlock = Math.min(safeHead, fromBlock + 500);
+    const fromHex = '0x' + fromBlock.toString(16);
+    const toHex = '0x' + toBlock.toString(16);
+
+    const logs = await getSwapLogs(fromHex, toHex, env);
+    if (!logs) { console.error('getSwapLogs failed'); return; }
+    console.log(`[scan] blocks ${fromBlock}-${toBlock}, ${logs.length} swap logs`);
+
+    // Idempotency: processed tx hashes (last 200 to bound KV size)
+    const processedRaw = await env.KV.get('processed_txs');
+    const processed = new Set(processedRaw ? JSON.parse(processedRaw) : []);
+    const prevSize = processed.size;
+
+    // Read tier mint state once per run
+    let mintedArr, capArr;
+    try {
+      const m = await publicClient.readContract({
+        address: contract, abi: NFT_ABI, functionName: 'getTiers',
+      });
+      mintedArr = m[0].map(Number);
+      capArr    = m[1].map(Number);
+    } catch (e) {
+      console.error('getTiers read failed:', e.message || e);
+      return;
+    }
+
+    let bnbUsd = null;
+    let mintedThisRun = 0;
+    let bailedNoPrice = false;
+    const MAX_MINTS_PER_RUN = 10;
+
+    for (const log of logs) {
+      if (mintedThisRun >= MAX_MINTS_PER_RUN) break;
+      const txHash = log.transactionHash;
+      if (processed.has(txHash)) continue;
+
+      // Parse Swap event data: amount0In, amount1In, amount0Out, amount1Out (each uint256)
+      const data = log.data.slice(2);
+      if (data.length < 256) continue;
+      const amount1In  = BigInt('0x' + data.slice(64, 128));   // WBNB in
+      const amount0Out = BigInt('0x' + data.slice(128, 192));  // BOBAI out
+
+      // BUY = WBNB in AND BOBAI out
+      if (!(amount1In > 0n && amount0Out > 0n)) continue;
+
+      const bnbAmt = Number(amount1In) / 1e18;
+      if (bnbUsd === null) bnbUsd = await getBnbUsd();
+      if (!bnbUsd) {
+        console.error('no bnbUsd, will retry next run (last_block NOT advanced)');
+        bailedNoPrice = true;
+        break;
+      }
+      const usd = bnbAmt * bnbUsd;
+      if (usd < 100) continue;
+
+      const tier = tierFromUsd(usd);
+      if (tier < 0) continue;
+
+      // Tier exhausted? — refuse mint, mark processed (we won't retry)
+      if (mintedArr[tier] >= capArr[tier]) {
+        console.log(`[skip] tier ${tier} sold out (${mintedArr[tier]}/${capArr[tier]}), tx=${txHash}`);
+        processed.add(txHash);
+        continue;
+      }
+
+      // Resolve real buyer = tx sender (handles aggregators where `to` is the router)
+      const tx = await rpcCall('eth_getTransactionByHash', [txHash]);
+      const buyer = (tx?.from || '').toLowerCase();
+      if (!buyer || IGNORED_WALLETS.has(buyer)) { processed.add(txHash); continue; }
+
+      const rarity = rollRarity(tier);
+
+      // Mint
+      try {
+        const mintTxHash = await wallet.writeContract({
+          address: contract,
+          abi: NFT_ABI,
+          functionName: 'mintTo',
+          args: [buyer, tier, rarity],
+        });
+        const blockNum = parseInt(log.blockNumber, 16);
+        console.log(`[MINT] $${usd.toFixed(0)} → tier=${tier} rarity=${RARITY_NAME[rarity]} to=${buyer} mintTx=${mintTxHash} buyTx=${txHash}`);
+        processed.add(txHash);
+        mintedArr[tier]++;
+        mintedThisRun++;
+        // Persist drop for dashboard (KV-backed, avoids RPC archive limits)
+        try {
+          const dropsRaw = await env.KV.get('recent_drops');
+          const drops = dropsRaw ? JSON.parse(dropsRaw) : [];
+          drops.unshift({
+            to: buyer, tier, rarity,
+            usd: Math.round(usd),
+            mintTx: mintTxHash,
+            buyTx: txHash,
+            block: blockNum,
+            ts: Math.floor(Date.now() / 1000), // unix seconds — accurate, BSC block-time independent
+          });
+          await env.KV.put('recent_drops', JSON.stringify(drops.slice(0, 100)));
+        } catch (e) { console.error('drops KV write failed:', e.message || e); }
+      } catch (e) {
+        console.error(`[MINT FAIL] buyTx=${txHash} err=${e.shortMessage || e.message || e}`);
+        // Do NOT mark processed — retry next run.
+      }
+    }
+
+    // Persist state
+    if (processed.size > prevSize) {
+      const arr = [...processed].slice(-200);
+      await env.KV.put('processed_txs', JSON.stringify(arr));
+    }
+    // Critical: do NOT advance last_block if we bailed without resolving prices.
+    // Otherwise the unprocessed buy in this block-range would be lost forever.
+    if (!bailedNoPrice) {
+      await env.KV.put('last_block', String(toBlock));
+    }
+    console.log(`[done] scanned to ${toBlock}, mints this run: ${mintedThisRun}${bailedNoPrice ? ' (BAILED — last_block NOT advanced, will retry)' : ''}`);
+  },
+};

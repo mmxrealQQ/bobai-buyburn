@@ -216,6 +216,72 @@
     return { ok: true, pool: data || null };
   }
 
+  // ============== BONUS LEADERBOARD INPUTS ==============
+  // Three small reads, used together by the leaderboard "Bonus" tab.
+
+  async function loadAllBonusAnswers(){
+    // Two separate reads + a client-side join: PostgREST relationship
+    // embedding via !inner has been flaky across env upgrades, and we only
+    // need username/avatar/wallet per user — small enough to merge in JS.
+    const [bonusRes, usersRes] = await Promise.all([
+      sb.from('wc_bonus')
+        .select('user_id, champion, most_goals_team, fewest_goals_team, topscorer_country, red_cards_bracket, points, resolved')
+        .limit(2000),
+      sb.from('wc_users')
+        .select('id, username, avatar_country, wallet')
+        .limit(2000),
+    ]);
+    if (bonusRes.error) {
+      console.error('[bonus] wc_bonus read failed:', bonusRes.error);
+      return { error: bonusRes.error.message };
+    }
+    if (usersRes.error) {
+      console.error('[bonus] wc_users read failed:', usersRes.error);
+      // Keep going — we can still render bonus cards with user-N fallback.
+    }
+    const byId = new Map();
+    (usersRes.data || []).forEach(u => byId.set(u.id, u));
+    const rows = (bonusRes.data || []).map(b => {
+      const u = byId.get(b.user_id) || {};
+      return {
+        user_id:           b.user_id,
+        username:          u.username || ('user-' + b.user_id),
+        avatar_country:    u.avatar_country || null,
+        has_wallet:        !!u.wallet,
+        champion:          b.champion,
+        most_goals_team:   b.most_goals_team,
+        fewest_goals_team: b.fewest_goals_team,
+        topscorer_country: b.topscorer_country,
+        red_cards_bracket: b.red_cards_bracket,
+        points:            b.points,
+        resolved:          b.resolved,
+      };
+    });
+    console.log('[bonus] loaded', rows.length, 'answers,', byId.size, 'users');
+    if (typeof window !== 'undefined') window.__bonusDebug = { rows, byId: Array.from(byId.entries()), bonusRes, usersRes };
+    return { ok: true, rows };
+  }
+
+  async function loadScorers(){
+    const { data, error } = await sb
+      .from('wc_scorers')
+      .select('rank, player_name, country_code, goals, assists, updated_at')
+      .order('rank', { ascending: true })
+      .limit(20);
+    if (error) return { error: error.message };
+    return { ok: true, scorers: data || [] };
+  }
+
+  async function loadTournamentStats(){
+    const { data, error } = await sb
+      .from('wc_tournament_stats')
+      .select('red_cards_total, updated_at')
+      .eq('id', 1)
+      .maybeSingle();
+    if (error) return { error: error.message };
+    return { ok: true, stats: data || { red_cards_total: 0 } };
+  }
+
   window.WC_PROFILE = {
     updateAvatar,
     saveWallet,
@@ -223,5 +289,6 @@
     loadMatches, loadMyTips, saveTip,
     getCrypto, saveCrypto, fetchLivePrices,
     loadOverallLeaderboard, loadGroupLeaderboard, loadCryptoLeaderboard, loadPool,
+    loadAllBonusAnswers, loadScorers, loadTournamentStats,
   };
 })();

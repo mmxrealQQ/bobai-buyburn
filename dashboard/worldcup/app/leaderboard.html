@@ -142,6 +142,40 @@
     .standings tr.q3{background:rgba(123,125,158,.04)}
     .standings .q-note{font-size:10px;color:var(--muted);padding:8px 12px;background:rgba(0,0,0,.4);text-align:left;border-top:1px solid rgba(255,255,255,.04)}
 
+    /* BONUS VIEW */
+    .bonus-intro{padding:11px 14px;background:rgba(240,185,11,.04);border:1px solid rgba(240,185,11,.18);border-radius:10px;color:var(--text);font-size:12px;line-height:1.55;margin-bottom:14px}
+    .bonus-intro b{color:var(--gold)}
+    .bonus-status{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 4px 8px}
+    .bonus-status .left{font-family:'Space Grotesk';font-size:11.5px;color:var(--gold);font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+    .bonus-status .right{font-size:11px;color:var(--muted);font-weight:500}
+    .bonus-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-family:'Space Grotesk';font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+    .bonus-pill.pending{background:rgba(123,125,158,.12);color:var(--muted)}
+    .bonus-pill.live{background:rgba(64,160,255,.12);color:#80b8ff}
+    .bonus-pill.locked{background:rgba(240,185,11,.16);color:var(--gold)}
+
+    .bonus-card{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+    .bonus-card.eliminated{opacity:.45}
+    .bonus-card.winner{border-color:var(--gold);background:linear-gradient(135deg,rgba(240,185,11,.06),rgba(0,0,0,.3))}
+    .bonus-card .bc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .bonus-card .bc-ava{font-size:30px;line-height:1;flex-shrink:0}
+    .bonus-card .bc-info{flex:1;min-width:0}
+    .bonus-card .bc-name{font-weight:600;color:var(--text);font-size:14px;line-height:1.2}
+    .bonus-card .bc-name .country{color:var(--muted);font-weight:500;font-size:12px;margin-left:5px}
+    .bonus-card .bc-meta{font-size:11px;color:var(--muted);margin-top:2px}
+    .bonus-card .bc-meta b{color:var(--gold);font-family:'Space Grotesk';font-weight:700}
+    .bonus-card .bc-meta .elim{color:#ff9080}
+    .bonus-card .bc-tippers{display:flex;flex-wrap:wrap;gap:5px}
+    .bonus-card .bc-tippers .empty{padding:6px 10px;font-size:11.5px;color:var(--muted);font-style:italic;background:transparent;border:1px dashed var(--border);border-radius:6px}
+    .bonus-card .tip-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:99px;font-size:11.5px;color:var(--text);text-decoration:none;transition:all .12s}
+    .bonus-card .tip-chip:hover{border-color:var(--gold);color:var(--gold)}
+    .bonus-card .tip-chip.me{border-color:var(--gold);background:rgba(240,185,11,.1);color:var(--gold);font-weight:700}
+    .bonus-card .tip-chip .pts-tag{font-family:'Space Grotesk';font-weight:700;font-size:10px;padding:1px 5px;border-radius:99px;letter-spacing:.5px}
+    .bonus-card .tip-chip .pts-tag.pending{background:rgba(123,125,158,.18);color:var(--muted)}
+    .bonus-card .tip-chip .pts-tag.awarded{background:rgba(95,255,160,.18);color:#5fffa0}
+    .bonus-card .ball{font-size:11px}
+
+    .bonus-empty{padding:18px;text-align:center;color:var(--muted);font-size:12.5px;background:rgba(0,0,0,.18);border:1px dashed var(--border);border-radius:10px}
+
     /* KO BRACKET */
     .bracket-wrap{overflow-x:auto;padding:6px 2px 12px;-webkit-overflow-scrolling:touch}
     .bracket{display:flex;gap:14px;min-width:max-content}
@@ -219,6 +253,7 @@
             <button data-view="overall" class="active">Overall</button>
             <button data-view="groups">Groups</button>
             <button data-view="bracket">Bracket</button>
+            <button data-view="bonus">Bonus</button>
             <button data-view="crypto">Crypto</button>
             <button data-view="payouts">💰 Payouts</button>
           </div>
@@ -239,7 +274,7 @@
   <script src="./assets/config.js?v=12"></script>
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
-  <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/profile.js?v=16"></script>
   <script src="./assets/projection.js?v=1"></script>
   <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=3"></script>
@@ -278,6 +313,31 @@
       { key:'sf',    label:'Semi-finals' },
       { key:'3rd',   label:'Third place' },
       { key:'final', label:'Final' },
+    ];
+    // Bonus sub-tabs. Champion is first — it's the headline pick.
+    const BONUS_TABS = [
+      { key:'champion',     label:'🏆 Champion',     field:'champion',
+        title:'World Cup winner',
+        intro:'Every tipped country stays on the board <b>until that team exits the tournament</b>. Eliminated teams are greyed out. The 20 points lock in <b>green</b> when the lifting-the-trophy team is decided at the end of the final.' },
+      { key:'most_goals',   label:'⚽ Most goals',   field:'most_goals_team',
+        title:'Team with the most goals scored',
+        intro:'Whoever is leading the goals-scored table right now. The 20-point award goes <b>green</b> once the team is mathematically uncatchable; ties share the points.' },
+      { key:'fewest_goals', label:'🥅 Fewest goals', field:'fewest_goals_team',
+        title:'Team with the fewest goals scored',
+        intro:'Live during the group phase. Locks in when the qualifying team is final — usually the lowest-scoring team that exits the tournament. Ties share the 20 points.' },
+      { key:'golden_boot',  label:'👑 Golden Boot',  field:'topscorer_country',
+        title:'Country of the top scorer',
+        intro:'Live top-scorer feed (football-data.org). Resolves at the final once the Golden Boot is mathematically locked. Ties share the points.' },
+      { key:'red_cards',    label:'🟥 Red cards',    field:'red_cards_bracket',
+        title:'Total red cards in the tournament',
+        intro:'Live counter — only resolves at the <b>end of the final</b>. The bracket the running total currently sits in is highlighted; tippers of that bracket are the candidates to win the 20 points.' },
+    ];
+    const RED_CARD_BRACKETS = [
+      { key:'<5',    label:'< 5',    min: 0,  max: 4  },
+      { key:'5-9',   label:'5 – 9',  min: 5,  max: 9  },
+      { key:'10-14', label:'10 – 14',min:10,  max:14  },
+      { key:'15-19', label:'15 – 19',min:15,  max:19  },
+      { key:'>19',   label:'> 19',   min:20,  max: Infinity },
     ];
 
     // ============== STATE ==============
@@ -717,6 +777,336 @@
       if (window.twemoji) try { window.twemoji.parse($('#list'), { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
     }
 
+    // ============== BONUS ==============
+    // State cache so switching between bonus sub-tabs doesn't re-fetch every time.
+    let bonusData = null;
+
+    async function loadBonusData(){
+      if (bonusData) return bonusData;
+      const [ba, sc, st, mt] = await Promise.all([
+        window.WC_PROFILE.loadAllBonusAnswers(),
+        window.WC_PROFILE.loadScorers(),
+        window.WC_PROFILE.loadTournamentStats(),
+        loadAllMatches(),
+      ]);
+      bonusData = {
+        answers: ba.rows || [],
+        scorers: sc.scorers || [],
+        stats:   st.stats || { red_cards_total: 0 },
+        matches: mt || [],
+      };
+      return bonusData;
+    }
+
+    // Compute goals-scored-per-team from played group matches AND played KO matches.
+    // Returns { code: { gf, played, gamesLeft, eliminated } }. `gamesLeft` is
+    // unplayed matches the team is still scheduled to play, which we need to
+    // know whether a "currently leading" team is mathematically uncatchable.
+    function computeTeamGoalStats(matches){
+      const byTeam = {};
+      const ensure = code => {
+        if (!code || code === 'TBD') return null;
+        if (!byTeam[code]) byTeam[code] = { code, gf: 0, played: 0, gamesLeft: 0, eliminated: false };
+        return byTeam[code];
+      };
+      matches.forEach(m => {
+        const H = ensure(m.team_home), A = ensure(m.team_away);
+        if (m.played && m.goals_home != null && m.goals_away != null) {
+          if (H) { H.gf += m.goals_home; H.played++; }
+          if (A) { A.gf += m.goals_away; A.played++; }
+        } else {
+          if (H) H.gamesLeft++;
+          if (A) A.gamesLeft++;
+        }
+      });
+      // Eliminated detection: any team with played > 0 AND gamesLeft = 0 is done.
+      // (Tournament-wide — covers group exit + KO knockout.) We additionally treat
+      // teams that already lost a KO match as eliminated even if a "TBD" KO slot
+      // technically counts — but the played-vs-gamesLeft heuristic is conservative
+      // and good enough for the leaderboard view.
+      Object.values(byTeam).forEach(t => {
+        if (t.played > 0 && t.gamesLeft === 0) t.eliminated = true;
+      });
+      return byTeam;
+    }
+
+    // Render one card per "winning entry" (a team / player / bracket) followed
+    // by the chips of the users who tipped it. The award badge on each chip is
+    // GREY when the question is open and GREEN once the answer is locked in.
+    function bonusCardHtml({ avaHtml, primary, secondaryHtml, eliminated, tipperRows, locked, isWinner }){
+      const chips = tipperRows.length
+        ? tipperRows.map(r => {
+            const href = './user.html?u=' + encodeURIComponent(r.username);
+            const isMe = !!(me && r.user_id === me.id);
+            const award = locked
+              ? `<span class="pts-tag awarded">+20</span>`
+              : `<span class="pts-tag pending">20</span>`;
+            const ball = r.has_wallet ? '<span class="ball">⚽</span>' : '';
+            return `<a class="tip-chip${isMe?' me':''}" href="${href}">${escapeHtml(r.username)}${ball}${award}</a>`;
+          }).join('')
+        : `<div class="empty">No one tipped this one.</div>`;
+      const cls = ['bonus-card'];
+      if (eliminated) cls.push('eliminated');
+      if (isWinner)   cls.push('winner');
+      return `<div class="${cls.join(' ')}">
+        <div class="bc-head">
+          <div class="bc-ava">${avaHtml}</div>
+          <div class="bc-info">
+            <div class="bc-name">${primary}</div>
+            ${secondaryHtml ? `<div class="bc-meta">${secondaryHtml}</div>` : ''}
+          </div>
+        </div>
+        <div class="bc-tippers">${chips}</div>
+      </div>`;
+    }
+
+    function bonusStatusBar(intro, statusLabel, statusClass, rightLabel){
+      return `<div class="bonus-intro">${intro}</div>
+        <div class="bonus-status">
+          <span class="left">Current status</span>
+          <span class="right">${rightLabel || ''}</span>
+        </div>
+        <div style="margin:-4px 4px 14px"><span class="bonus-pill ${statusClass}">${statusLabel}</span></div>`;
+    }
+
+    function tippersForField(data, field, value){
+      return data.answers.filter(a => a[field] === value);
+    }
+
+    // ----- Most / Fewest goals: tipped-only, only leader(s) (or 0-goal teams) -----
+    function renderGoalsBonus(data, mode){
+      const tab    = BONUS_TABS.find(t => t.key === mode);
+      const field  = tab.field;
+      const teams  = computeTeamGoalStats(data.matches);
+      const tippedCodes = Array.from(new Set(data.answers.map(a => a[field]).filter(Boolean)));
+      if (!tippedCodes.length) return `<div class="bonus-empty">No one has answered "${tab.title}" yet.</div>`;
+
+      // Restrict to tipped teams only (user requested this). Teams that aren't
+      // in our wc_matches sample (eg the football-data.org TEAM_MAP doesn't
+      // cover them) fall through with played=0.
+      const tipped = tippedCodes.map(code => teams[code] || { code, gf: 0, played: 0, gamesLeft: 0, eliminated: false });
+
+      let leaders = [];
+      let lockedRule = false;
+      let statusLabel, statusClass, rightLabel;
+      if (mode === 'most_goals') {
+        const top = Math.max(...tipped.map(t => t.gf), -Infinity);
+        if (top === -Infinity) {
+          leaders = [];
+        } else {
+          leaders = tipped.filter(t => t.gf === top);
+        }
+        // Locked when every still-tied leader is eliminated AND no other tipped
+        // team has enough remaining games to catch them up.
+        if (leaders.length) {
+          const maxPossibleByOthers = Math.max(
+            ...tipped
+              .filter(t => !leaders.includes(t))
+              .map(t => t.gf + t.gamesLeft * 30),
+            -Infinity
+          );
+          lockedRule = leaders.every(t => t.eliminated) && (maxPossibleByOthers === -Infinity || maxPossibleByOthers <= top);
+        }
+        statusLabel = lockedRule ? `Resolved · ${leaders.map(t=>countryFlag(t.code)).join(' ')} ${leaders[0]?.gf||0} goals`
+                                 : `Live · ${leaders[0]?.gf||0} goals lead`;
+        statusClass = lockedRule ? 'locked' : 'live';
+        rightLabel  = `${leaders.length} team${leaders.length===1?'':'s'} tied for top`;
+      } else {
+        // fewest_goals — only teams currently on 0 goals; once group phase is
+        // over, those with played>0 + eliminated lock in as winners. Pre-group:
+        // every tipped team is technically at 0 so we still display them all.
+        leaders = tipped.filter(t => t.gf === 0);
+        if (!leaders.length) leaders = tipped.slice().sort((a,b) => a.gf - b.gf).slice(0, 1);
+        // Locked once tournament-wide group stage is done (all group matches played).
+        const groupTotal = data.matches.filter(m => m.phase === 'group').length;
+        const groupPlayed = data.matches.filter(m => m.phase === 'group' && m.played).length;
+        const groupDone = groupTotal > 0 && groupPlayed === groupTotal;
+        lockedRule = groupDone && leaders.length > 0 && leaders.every(t => t.gf === 0);
+        statusLabel = lockedRule ? `Resolved · ${leaders.length} team${leaders.length===1?'':'s'} on 0 goals`
+                                 : `Live · ${groupPlayed}/${groupTotal} group matches played`;
+        statusClass = lockedRule ? 'locked' : (groupDone ? 'pending' : 'live');
+        rightLabel  = lockedRule ? 'group phase complete' : 'updates after each match';
+      }
+
+      // Order: leaders first, then by gf asc/desc; eliminated last among non-leaders.
+      const ordered = leaders.slice().sort((a, b) => a.code.localeCompare(b.code));
+      const head = bonusStatusBar(tab.intro, statusLabel, statusClass, rightLabel);
+      const cards = ordered.map(t => {
+        const tippers = tippersForField(data, field, t.code);
+        const ava = window.WC_AVATAR
+          ? window.WC_AVATAR.avatarHtml(t.code, 'sm')
+          : `<span style="font-size:30px">${countryFlag(t.code)}</span>`;
+        const elim = t.eliminated ? `<span class="elim">eliminated</span>` : '';
+        const meta = `<b>${t.gf}</b> goal${t.gf===1?'':'s'} · ${t.played} played${t.gamesLeft?` · ${t.gamesLeft} left`:''}${elim?` · ${elim}`:''}`;
+        return bonusCardHtml({
+          avaHtml: ava,
+          primary: `${countryName(t.code)}`,
+          secondaryHtml: meta,
+          eliminated: t.eliminated && !lockedRule,
+          tipperRows: tippers,
+          locked: lockedRule,
+          isWinner: true,
+        });
+      }).join('');
+      return head + (cards || `<div class="bonus-empty">No tipped team currently qualifies.</div>`);
+    }
+
+    // ----- Champion: tipped teams that are still in the tournament. Eliminated
+    // teams disappear from the board. Once final is played, only the actual
+    // winner stays. -----
+    function renderChampion(data){
+      const tab = BONUS_TABS.find(t => t.key === 'champion');
+      const teams = computeTeamGoalStats(data.matches);
+      const tippedCodes = Array.from(new Set(data.answers.map(a => a.champion).filter(Boolean)));
+      if (!tippedCodes.length) {
+        return bonusStatusBar(tab.intro, 'No picks yet', 'pending', '') +
+          `<div class="bonus-empty">No one has tipped a champion yet.</div>`;
+      }
+      // Resolve only when the final is played.
+      const finalMatch = data.matches.find(m => m.phase === 'final');
+      const finalPlayed = !!(finalMatch && finalMatch.played && finalMatch.goals_home != null);
+      let winnerCode = null;
+      if (finalPlayed) {
+        if (finalMatch.goals_home > finalMatch.goals_away) winnerCode = finalMatch.team_home;
+        else if (finalMatch.goals_home < finalMatch.goals_away) winnerCode = finalMatch.team_away;
+      }
+      // Only show tipped teams still in the tournament (or the winner if final
+      // is played). User: "muss die mannschaft solange drin sein bis sie im
+      // turnier ist".
+      const candidates = tippedCodes
+        .map(code => {
+          const t = teams[code] || { code, gf: 0, played: 0, gamesLeft: 0, eliminated: false };
+          return { code, ...t };
+        })
+        .filter(t => winnerCode ? t.code === winnerCode : !t.eliminated)
+        .sort((a, b) => countryName(a.code).localeCompare(countryName(b.code)));
+      const head = bonusStatusBar(
+        tab.intro,
+        winnerCode ? `Resolved · 🏆 ${countryName(winnerCode)} won the final`
+                   : `Live · ${candidates.length} tipped team${candidates.length===1?'':'s'} still in`,
+        winnerCode ? 'locked' : 'live',
+        finalPlayed ? 'final played' : 'updates after each elimination'
+      );
+      if (!candidates.length) return head + `<div class="bonus-empty">All tipped champions are eliminated.</div>`;
+      const cards = candidates.map(t => {
+        const tippers = tippersForField(data, 'champion', t.code);
+        const ava = window.WC_AVATAR
+          ? window.WC_AVATAR.avatarHtml(t.code, 'sm')
+          : `<span style="font-size:30px">${countryFlag(t.code)}</span>`;
+        const isWinner = (t.code === winnerCode);
+        const trophy = isWinner ? ' · <b>🏆 Champion</b>' : '';
+        const meta = `${t.played} played${t.gamesLeft ? ` · ${t.gamesLeft} left` : ''}${trophy}`;
+        return bonusCardHtml({
+          avaHtml: ava,
+          primary: countryName(t.code),
+          secondaryHtml: meta,
+          eliminated: false,
+          tipperRows: tippers,
+          locked: isWinner,
+          isWinner: true,
+        });
+      }).join('');
+      return head + cards;
+    }
+
+    // ----- Golden Boot: top scorers from football-data.org, restricted to
+    // countries that someone tipped. Per user spec: only show "teams that
+    // currently hold the 20 pts AND were tipped". -----
+    function renderGoldenBoot(data){
+      const tab = BONUS_TABS.find(t => t.key === 'golden_boot');
+      const scorers = data.scorers || [];
+      const tippedCountries = new Set(data.answers.map(a => a.topscorer_country).filter(Boolean));
+      if (!tippedCountries.size) {
+        return bonusStatusBar(tab.intro, 'No picks yet', 'pending', '') +
+          `<div class="bonus-empty">No one has answered "${tab.title}" yet.</div>`;
+      }
+      if (!scorers.length) {
+        return bonusStatusBar(tab.intro, 'Awaiting first goals', 'pending', 'no scorers yet') +
+          `<div class="bonus-empty">Top-scorers feed will populate after the first goal of the tournament.</div>`;
+      }
+      const topGoals = scorers[0].goals;
+      const leaders = scorers.filter(s => s.goals === topGoals && s.country_code);
+      // Filter to leaders from TIPPED countries only. If no tipped country
+      // currently leads, fall back to showing the leaders so users can see
+      // who's ahead even though no tipper would win.
+      const tippedLeaders = leaders.filter(s => tippedCountries.has(s.country_code));
+      const useLeaders = tippedLeaders.length ? tippedLeaders : leaders;
+      const teamsByCountry = {};
+      useLeaders.forEach(s => {
+        if (!teamsByCountry[s.country_code]) teamsByCountry[s.country_code] = [];
+        teamsByCountry[s.country_code].push(s);
+      });
+      const cardCountries = Object.keys(teamsByCountry);
+      const noTippedAtTop = !tippedLeaders.length;
+      const head = bonusStatusBar(
+        tab.intro,
+        `Live · ${topGoals} goal${topGoals===1?'':'s'} lead${useLeaders.length>1?` (${useLeaders.length} tied)`:''}${noTippedAtTop?' · no tipped country at the top yet':''}`,
+        'live',
+        `updated ${scorers[0].updated_at ? new Date(scorers[0].updated_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'recently'}`
+      );
+      const teams = computeTeamGoalStats(data.matches);
+      const cards = cardCountries.map(code => {
+        const players = teamsByCountry[code];
+        const elimTeam = (teams[code] && teams[code].eliminated);
+        const playerLines = players.map(p => `<b>${escapeHtml(p.player_name)}</b> · ${p.goals}g`).join(' · ');
+        const ava = window.WC_AVATAR
+          ? window.WC_AVATAR.avatarHtml(code, 'sm')
+          : `<span style="font-size:30px">${countryFlag(code)}</span>`;
+        return bonusCardHtml({
+          avaHtml: ava,
+          primary: countryName(code),
+          secondaryHtml: playerLines + (elimTeam ? ` · <span class="elim">team eliminated</span>` : ''),
+          eliminated: elimTeam,
+          tipperRows: tippersForField(data, 'topscorer_country', code),
+          locked: false,
+          isWinner: true,
+        });
+      }).join('');
+      return head + cards;
+    }
+
+    // ----- Red cards: show ONLY the bracket the live count falls in, plus
+    // the tippers of that bracket. Per user spec: only the team/bucket
+    // currently holding the 20 pts. -----
+    function renderRedCards(data){
+      const tab   = BONUS_TABS.find(t => t.key === 'red_cards');
+      const total = Number(data.stats?.red_cards_total || 0);
+      const current = RED_CARD_BRACKETS.find(b => total >= b.min && total <= b.max);
+      const head = bonusStatusBar(
+        tab.intro,
+        `Live · ${total} red card${total===1?'':'s'} so far`,
+        'live',
+        'final resolution at end of Final'
+      );
+      if (!current) return head + `<div class="bonus-empty">No bracket matches the current red-card total.</div>`;
+      const tippers = tippersForField(data, 'red_cards_bracket', current.key);
+      return head + bonusCardHtml({
+        avaHtml: `<span style="font-size:30px">🟥</span>`,
+        primary: current.label,
+        secondaryHtml: `<b>Current bucket</b> · ${total} red card${total===1?'':'s'} so far`,
+        eliminated: false,
+        tipperRows: tippers,
+        locked: false,
+        isWinner: true,
+      });
+    }
+
+    async function renderBonus(){
+      showBonusSelector();
+      $('#list').innerHTML = '<div class="empty">Loading bonus standings…</div>';
+      const data = await loadBonusData();
+      const mode = subView || 'champion';
+      let html;
+      if      (mode === 'champion')     html = renderChampion(data);
+      else if (mode === 'most_goals')   html = renderGoalsBonus(data, 'most_goals');
+      else if (mode === 'fewest_goals') html = renderGoalsBonus(data, 'fewest_goals');
+      else if (mode === 'golden_boot')  html = renderGoldenBoot(data);
+      else if (mode === 'red_cards')    html = renderRedCards(data);
+      else html = '<div class="bonus-empty">Pick a bonus question above.</div>';
+      $('#list').innerHTML = html;
+      if (window.twemoji) try { window.twemoji.parse($('#list'), { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
+    }
+
     // ============== CRYPTO ==============
     async function refreshLivePrices(){
       try { const r = await window.WC_PROFILE.fetchLivePrices(); if (r) livePrices = r; } catch (e) {}
@@ -945,6 +1335,16 @@
         subView = b.dataset.phase; showPhaseSelector(); renderBracket();
       }));
     }
+    function showBonusSelector(){
+      const sel = $('#sub-selector');
+      sel.classList.remove('hidden');
+      sel.innerHTML = BONUS_TABS.map(t =>
+        `<button data-bonus="${t.key}" class="${subView===t.key?'active':''}">${t.label}</button>`
+      ).join('');
+      $$('#sub-selector button').forEach(b => b.addEventListener('click', () => {
+        subView = b.dataset.bonus; showBonusSelector(); renderBonus();
+      }));
+    }
     function showCoinSelector(){
       const sel = $('#sub-selector');
       sel.classList.remove('hidden');
@@ -971,6 +1371,9 @@
       } else if (v === 'bracket') {
         if (!subView || !KO_PHASES.find(p => p.key === subView)) subView = 'r32';
         showPhaseSelector(); renderBracket();
+      } else if (v === 'bonus') {
+        if (!subView || !BONUS_TABS.find(t => t.key === subView)) subView = 'champion';
+        showBonusSelector(); renderBonus();
       } else if (v === 'payouts') {
         subView = null; $('#sub-selector').classList.add('hidden'); renderPayouts();
       } else {

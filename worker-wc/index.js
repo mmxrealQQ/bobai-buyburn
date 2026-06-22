@@ -16,6 +16,8 @@ const TEAM_MAP = {
   'Brazil': 'BR',
   'Canada': 'CA',
   'Cape Verde': 'CV',
+  'Cabo Verde': 'CV',
+  'Cape Verde Islands': 'CV',
   'Colombia': 'CO',
   'Croatia': 'HR',
   'Curaçao': 'CW',
@@ -105,6 +107,153 @@ async function listOurMatches(env){
 
 async function updateMatch(env, id, fields){
   return sbReq(env, 'PATCH', 'wc_matches?id=eq.' + id, fields);
+}
+
+// ============================================================
+// Top-scorers sync — feeds the "Golden Boot" bonus question
+// ============================================================
+async function syncScorers(env){
+  if (!env.FOOTBALL_DATA_API_KEY) return { ok: false, skipped: 'no api key' };
+  const url = `https://api.football-data.org/v4/competitions/${env.FOOTBALL_DATA_COMPETITION || 'WC'}/scorers?limit=20`;
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: { 'X-Auth-Token': env.FOOTBALL_DATA_API_KEY, 'Accept': 'application/json' },
+    });
+  } catch (e) {
+    return { ok: false, error: 'fetch failed: ' + e.message };
+  }
+  if (!res.ok) return { ok: false, error: `football-data.org returned ${res.status}` };
+  const json = await res.json();
+  const scorers = json.scorers || [];
+
+  // Rank by (goals desc, then player_id asc to keep ties stable across syncs).
+  // football-data returns them already sorted but we re-rank defensively.
+  const ranked = scorers
+    .map(s => ({
+      player_name: s.player?.name || 'Unknown',
+      country_code: teamToCode(s.team?.name) || null,
+      goals: Number(s.numberOfGoals || s.goals || 0),
+      assists: s.assists != null ? Number(s.assists) : null,
+    }))
+    .sort((a, b) => b.goals - a.goals || a.player_name.localeCompare(b.player_name))
+    .slice(0, 20);
+
+  // Wipe + re-insert (table is tiny, this is the simplest "current top N" semantics).
+  await sbReq(env, 'DELETE', 'wc_scorers?rank=gte.0');
+  if (ranked.length) {
+    const payload = ranked.map((s, i) => ({ ...s, rank: i + 1, updated_at: new Date().toISOString() }));
+    await sbReq(env, 'POST', 'wc_scorers', payload);
+  }
+  return { ok: true, count: ranked.length };
+}
+
+// ============================================================
+// Red-cards sync — feeds the "Total red cards" bonus question.
+// football-data.org's per-match `bookings[]` only exists on the TIER_ONE
+// plan. On the free tier it's omitted entirely → we fall back to whatever
+// was last set via /admin/set-red-cards (manual override). Either way the
+// public read goes through wc_tournament_stats.
+// ============================================================
+// Per-match cached red-cards aggregation. Strategy:
+//   1. Match the remote /matches list against our wc_matches and find the
+//      FINISHED matches that still have red_cards=NULL in our DB.
+//   2. Fetch up to RC_BATCH of them via /matches/{id} and write the count.
+//      The free tier's per-match endpoint returns bookings — the LIST
+//      endpoint strips them. Rate-limit ≈ 10/min, 100/day; 8/cron is safe.
+//   3. Recompute red_cards_total = SUM(wc_matches.red_cards).
+// This converges to the true total within a few cron cycles even on free
+// tier; once a match has a cached count, it never gets fetched again.
+const RC_BATCH = 8;
+async function syncRedCards(env){
+  if (!env.FOOTBALL_DATA_API_KEY) return { ok: false, skipped: 'no api key' };
+  const auth = { 'X-Auth-Token': env.FOOTBALL_DATA_API_KEY, 'Accept': 'application/json' };
+  const comp = env.FOOTBALL_DATA_COMPETITION || 'WC';
+
+  // Pull the list (matches, kickoffs) — we already do this elsewhere but
+  // syncRedCards may run standalone too.
+  let res;
+  try {
+    res = await fetch(`https://api.football-data.org/v4/competitions/${comp}/matches`, { headers: auth });
+  } catch (e) {
+    return { ok: false, error: 'fetch failed: ' + e.message };
+  }
+  if (!res.ok) return { ok: false, error: `football-data.org returned ${res.status}` };
+  const list = await res.json();
+  const remoteMatches = list.matches || [];
+
+  // Our local matches with their cached red_cards (NULL = needs fetching).
+  const ourRows = await sbReq(env, 'GET', 'wc_matches?select=id,phase,group_letter,team_home,team_away,kickoff_utc,red_cards');
+  const ours = Array.isArray(ourRows.body) ? ourRows.body : [];
+
+  // Build a small lookup: only FINISHED remote matches that we haven't
+  // counted yet. We need the remote ID for the per-match call AND our
+  // local row's ID to write back.
+  const todo = [];
+  for (const r of remoteMatches) {
+    if (r.status !== 'FINISHED') continue;
+    const localMatch = findOurMatch(r, ours);
+    if (!localMatch) continue;
+    if (localMatch.red_cards != null) continue;   // already counted
+    todo.push({ remoteId: r.id, localId: localMatch.id });
+  }
+
+  // 1st pass: see if list-payload already had bookings (paid tiers); if so,
+  // we'd never get into the per-match path. Run both — cheap.
+  let sweptInline = 0;
+  for (const r of remoteMatches) {
+    if (r.status !== 'FINISHED' || !Array.isArray(r.bookings)) continue;
+    const localMatch = findOurMatch(r, ours);
+    if (!localMatch || localMatch.red_cards != null) continue;
+    await updateMatch(env, localMatch.id, { red_cards: countReds(r.bookings) });
+    sweptInline++;
+  }
+
+  // 2nd pass: per-match fetch (batched).
+  let sweptPerMatch = 0, lastErr = null;
+  for (const job of todo.slice(0, RC_BATCH)) {
+    try {
+      const d = await fetch(`https://api.football-data.org/v4/matches/${job.remoteId}`, { headers: auth });
+      if (!d.ok) { lastErr = `match ${job.remoteId} HTTP ${d.status}`; continue; }
+      const dj = await d.json();
+      const m = dj.match || dj;
+      const bookings = Array.isArray(m.bookings) ? m.bookings : null;
+      if (bookings == null) { lastErr = `match ${job.remoteId} no bookings field`; continue; }
+      await updateMatch(env, job.localId, { red_cards: countReds(bookings) });
+      sweptPerMatch++;
+    } catch (e) {
+      lastErr = `match ${job.remoteId}: ${e.message}`;
+    }
+  }
+
+  // Aggregate from cached per-match counts (NULL = 0). CRITICAL: only
+  // overwrite the public total if we actually have something to write —
+  // otherwise the free-tier "no bookings field" case would silently clobber
+  // any manual /admin/set-red-cards override back to 0 on every cron tick.
+  const sumRows = await sbReq(env, 'GET', 'wc_matches?select=red_cards');
+  let cachedCount = 0, total = 0;
+  for (const row of (Array.isArray(sumRows.body) ? sumRows.body : [])) {
+    if (row.red_cards != null) { total += Number(row.red_cards) || 0; cachedCount++; }
+  }
+  if (cachedCount > 0) {
+    await sbReq(env, 'PATCH', 'wc_tournament_stats?id=eq.1', {
+      red_cards_total: total,
+      updated_at: new Date().toISOString(),
+    });
+    return { ok: true, total, sweptInline, sweptPerMatch, cachedCount, todoRemaining: Math.max(0, todo.length - sweptPerMatch), lastErr, source: 'auto' };
+  }
+  // No per-match data at all → keep whatever was last written (typically a
+  // manual override). Don't PATCH.
+  return { ok: true, total: null, sweptInline, sweptPerMatch, cachedCount: 0, todoRemaining: Math.max(0, todo.length - sweptPerMatch), lastErr, source: 'kept manual (no cached match data yet)' };
+}
+
+function countReds(bookings){
+  let n = 0;
+  for (const b of bookings) {
+    const card = (b.card || '').toUpperCase();
+    if (card === 'RED' || card === 'RED_CARD' || card === 'SECOND_YELLOW' || card === 'SECOND_YELLOW_CARD') n++;
+  }
+  return n;
 }
 
 // ============================================================
@@ -289,6 +438,33 @@ export default {
       return json(r, r.ok ? 200 : 500);
     }
 
+    // Admin: manual top-scorers sync trigger
+    if (url.pathname === '/admin/sync-scorers') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      const r = await syncScorers(env);
+      return json(r, r.ok ? 200 : 500);
+    }
+
+    // Admin: manual red-cards sync trigger (also see /admin/set-red-cards for override)
+    if (url.pathname === '/admin/sync-red-cards') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      const r = await syncRedCards(env);
+      return json(r, r.ok ? 200 : 500);
+    }
+
+    // Admin: manually set the tournament red-card counter (free-tier fallback).
+    // POST /admin/set-red-cards?token=...  Body: { total }
+    if (url.pathname === '/admin/set-red-cards' && request.method === 'POST') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      const b = await request.json().catch(() => ({}));
+      if (!Number.isInteger(b.total) || b.total < 0) return json({ error: 'expected { total: int >= 0 }' }, 400);
+      const r = await sbReq(env, 'PATCH', 'wc_tournament_stats?id=eq.1', {
+        red_cards_total: b.total,
+        updated_at: new Date().toISOString(),
+      });
+      return json(r, r.ok ? 200 : 500);
+    }
+
     // Admin: resolve bonus questions (call after tournament)
     if (url.pathname === '/admin/resolve-bonus' && request.method === 'POST') {
       if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
@@ -311,6 +487,18 @@ export default {
     if (env.FOOTBALL_DATA_API_KEY) {
       const r = await syncMatches(env);
       console.log('[CRON] match sync:', JSON.stringify(r));
+      try {
+        const s = await syncScorers(env);
+        console.log('[CRON] scorers sync:', JSON.stringify(s));
+      } catch (e) {
+        console.log('[CRON] scorers sync error:', e.message);
+      }
+      try {
+        const rc = await syncRedCards(env);
+        console.log('[CRON] red cards sync:', JSON.stringify(rc));
+      } catch (e) {
+        console.log('[CRON] red cards sync error:', e.message);
+      }
     } else {
       console.log('[CRON] FOOTBALL_DATA_API_KEY not set — skipping match sync.');
     }

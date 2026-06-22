@@ -20,6 +20,18 @@ const NFT_TIERS = [
   ['⚡', 'THUNDER', 1000],
   ['🦑', 'KRAKEN',  2500],
 ];
+// idx → [emoji, label] — matches drop matrix in worker-nft-mint
+const NFT_RARITIES = [
+  ['🤍', 'Common'],
+  ['💙', 'Uncommon'],
+  ['💙', 'Rare'],
+  ['💜', 'Mythical'],
+  ['💖', 'Legendary'],
+  ['❤️', 'Ancient'],
+  ['🧡', 'Immortal'],
+];
+const NFT_DROPS_URL = 'https://bobai-nft-mint.bobbuildonbnb.workers.dev/drops';
+const NFT_DASHBOARD_URL = 'https://brainonbnb.com/nft';
 const CAPTCHA_TIMEOUT = 60;
 
 // PancakeSwap V2 Swap event topic. In this pair BOBAI is token0, WBNB is token1,
@@ -535,6 +547,42 @@ async function buildBuyDropLine(usdValue) {
     console.error('[NFT line] error', e.message || e);
     return '';
   }
+}
+
+// Reads all 6 tier minted/cap from chain in one call. Returns null on failure.
+async function fetchNftTiers() {
+  try {
+    const res = await rpcCall('eth_call', [{ to: NFT_CONTRACT, data: NFT_GET_TIERS_SELECTOR }, 'latest']);
+    if (!res || !res.startsWith('0x') || res.length < 2 + 12 * 64) return null;
+    const hex = res.slice(2);
+    const u256 = i => parseInt(hex.slice(i * 64, (i + 1) * 64), 16);
+    const minted = [], cap = [];
+    for (let t = 0; t < 6; t++) { minted.push(u256(t)); cap.push(u256(6 + t)); }
+    return { minted, cap };
+  } catch (e) {
+    console.error('[NFT tiers]', e.message || e);
+    return null;
+  }
+}
+
+// Pulls the last N drops from the mint-worker (KV-backed, capped at 100).
+async function fetchNftDrops(n = 3) {
+  try {
+    const res = await fetch(NFT_DROPS_URL, { cf: { cacheTtl: 30 } });
+    if (!res.ok) return [];
+    const body = await res.json();
+    return (body.drops || []).slice(0, n);
+  } catch (e) {
+    console.error('[NFT drops]', e.message || e);
+    return [];
+  }
+}
+
+// 10-char ▰░ progress bar
+function nftProgressBar(minted, cap) {
+  if (cap <= 0) return '░░░░░░░░░░';
+  const filled = Math.min(10, Math.round((minted / cap) * 10));
+  return '▰'.repeat(filled) + '░'.repeat(10 - filled);
 }
 
 async function postBuyAlert(trade, burnedPct) {
@@ -1577,6 +1625,7 @@ const BOT_COMMANDS = [
   { command: 'buy',      description: 'How to buy BOBAI' },
   { command: 'ca',       description: 'Contract address' },
   { command: 'help',     description: 'Show all commands' },
+  { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
   { command: 'price',    description: 'Live price, volume & market stats' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
@@ -1595,7 +1644,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v7-whalecleanup';
+const COMMANDS_VERSION = 'v8-nft';
 
 async function ensureCommandsRegistered(env) {
   const current = await env.KV.get('commands_version');
@@ -1842,6 +1891,7 @@ Here's what I can do:
 🔥 /burn — Burn stats & progress
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address
+🎁 /nft — Buy Drops NFT — tier progress & latest mints
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
@@ -1943,6 +1993,59 @@ ${taxLines}
 🎮 <a href="${WORLDCUP_URL}">Play at brainonbnb.com/worldcup</a>
 
 <i>⚽ = wallet linked (payout-eligible)</i>`;
+      break;
+    }
+
+    case '/nft':
+    case 'nft': {
+      const [tiers, drops] = await Promise.all([fetchNftTiers(), fetchNftDrops(3)]);
+
+      let progressLines, totalMinted = 0, totalCap = 0;
+      if (!tiers) {
+        progressLines = '<i>Tier data unavailable — try again in a moment.</i>';
+      } else {
+        progressLines = NFT_TIERS.map(([emoji, label, thr], i) => {
+          const m = tiers.minted[i], c = tiers.cap[i];
+          totalMinted += m; totalCap += c;
+          const labelPad = `${emoji} ${label}`.padEnd(12, ' ');
+          const thrPad   = `$${thr}+`.padEnd(7, ' ');
+          return `<code>${labelPad} ${thrPad} ${nftProgressBar(m, c)}  ${m} / ${c}</code>`;
+        }).join('\n');
+      }
+      if (totalCap === 0) totalCap = 1925; // fallback so header still reads sensibly on fetch fail
+
+      const uniqueHolders = new Set(drops.map(d => d.to)).size; // upper-bound on visible 100
+      const dropLines = drops.length
+        ? drops.map(d => {
+            const when = new Date(d.ts * 1000).toISOString().slice(5, 16).replace('T', ' ');
+            const [tEmoji, tLabel] = NFT_TIERS[d.tier] || ['?', '?'];
+            const [rEmoji, rLabel] = NFT_RARITIES[d.rarity] || ['?', '?'];
+            const short = `${d.to.slice(0, 6)}…${d.to.slice(-4)}`;
+            const link  = d.mintTx ? `<a href="https://bscscan.com/tx/${d.mintTx}">↗</a>` : '';
+            return `<code>${when}</code> · ${tEmoji} <b>${tLabel}</b> × ${rEmoji} ${rLabel} · $${d.usd} · <a href="https://bscscan.com/address/${d.to}">${short}</a> ${link}`;
+          }).join('\n')
+        : '<i>No drops yet — be the first!</i>';
+
+      const holdersLine = uniqueHolders > 0
+        ? ` · ${uniqueHolders} unique holder${uniqueHolders === 1 ? '' : 's'}`
+        : '';
+
+      reply = `🎁 <b>BOBAI Buy Drops — NFT Collection</b>
+
+🟢 <b>${totalMinted} / ${totalCap}</b> minted${holdersLine}
+
+📊 <b>Tier Progress</b>
+${progressLines}
+
+🎰 <b>Latest Drops</b>
+${dropLines}
+
+🎯 <b>How it works</b>
+Buy ≥$100 of $BOBAI → auto-mint NFT to your wallet.
+Tier = buy size · Rarity = rolled probabilistically.
+Sold out tiers stop minting (no refund, no promote).
+
+🖼 <a href="${NFT_DASHBOARD_URL}">brainonbnb.com/nft</a> · 📜 <a href="https://bscscan.com/token/${NFT_CONTRACT}">BscScan</a>`;
       break;
     }
   }

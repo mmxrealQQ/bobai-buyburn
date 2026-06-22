@@ -1982,9 +1982,10 @@ ${taxLines}
             const when = new Date(d.ts * 1000).toISOString().slice(5, 16).replace('T', ' ');
             const [tEmoji, tLabel] = NFT_TIERS[d.tier] || ['?', '?'];
             const [rEmoji, rLabel] = NFT_RARITIES[d.rarity] || ['?', '?'];
-            const short = `${d.to.slice(0, 6)}…${d.to.slice(-4)}`;
-            const link  = d.mintTx ? `<a href="https://bscscan.com/tx/${d.mintTx}">↗</a>` : '';
-            return `<code>${when}</code> · ${tEmoji} <b>${tLabel}</b> × ${rEmoji} ${rLabel} · $${d.usd} · <a href="https://bscscan.com/address/${d.to}">${short}</a> ${link}`;
+            const txHash = d.mintTx || d.tx;
+            const idLabel = d.tokenId != null ? `#${d.tokenId}` : '↗';
+            const idLink  = txHash ? `<a href="https://bscscan.com/tx/${txHash}">${idLabel}</a>` : idLabel;
+            return `<code>${when}</code> · ${tEmoji} <b>${tLabel}</b> × ${rEmoji} ${rLabel} · $${d.usd} · ${idLink}`;
           }).join('\n')
         : '<i>No drops yet — be the first!</i>';
 

@@ -48,8 +48,10 @@ function json(body, opts = {}) {
     status: opts.status || 200,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      // Long cache — token metadata is effectively immutable once minted.
-      'Cache-Control': opts.cache || 'public, max-age=600, s-maxage=3600',
+      // Short cache so wallet/marketplace indexers (Element, Trust, MM) refresh
+      // quickly after a contract metadata change. Image URL itself is long-cached
+      // by the dashboard origin, so the marginal cost of a 30s JSON fetch is tiny.
+      'Cache-Control': opts.cache || 'public, max-age=30, s-maxage=30',
       'Access-Control-Allow-Origin': '*',
     },
   });
@@ -101,6 +103,10 @@ export default {
 
     const tInfo = TIER_INFO[tierIdx];
     const rInfo = RARITY_INFO[rarIdx];
+    // Primary image source: Cloudflare Pages — proven to render in BNB-Chain wallets
+    // (Binance/Trust/MM/Element) since launch. Pinata pin of the same 42 files is the
+    // documented backup; if brainonbnb.com is ever lost, switch CARDS_BASE_URL to
+    // `https://<CID>.ipfs.dweb.link` (no path suffix) for permanent fallback.
     const cardsBase = (env.CARDS_BASE_URL || 'https://brainonbnb.com/nft/cards').replace(/\/$/, '');
 
     const meta = {

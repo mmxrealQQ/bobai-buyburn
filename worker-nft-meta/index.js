@@ -57,10 +57,64 @@ function json(body, opts = {}) {
   });
 }
 
+// 42 card filenames live both at brainonbnb.com (primary) and in the Pinata pin
+// (IPFS fallback). The /img route below proxies primary→IPFS so the public
+// image URL on each NFT is independent of brainonbnb.com being reachable.
+const ALLOWED_TIERS = new Set(['nice-buy','big-buy','huge-buy','whale-buy','thunder-buy','kraken-buy']);
+const ALLOWED_RARS  = new Set(['common','uncommon','rare','mythical','legendary','ancient','immortal']);
+const PINATA_CID = 'bafybeibc7nydc4tgk5lrccmvneyfdllnlt5hveaml6lfocj5u4ivw4xiae';
+
+async function fetchImageWithFallback(file) {
+  const primary  = `https://brainonbnb.com/nft/cards/${file}`;
+  const fallback = `https://${PINATA_CID}.ipfs.dweb.link/${file}`;
+
+  try {
+    const r = await fetch(primary, {
+      cf: { cacheTtl: 86400, cacheEverything: true },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (r.ok) {
+      return new Response(r.body, {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Cache-Control': 'public, max-age=14400, s-maxage=86400',
+          'Access-Control-Allow-Origin': '*',
+          'X-Image-Source': 'origin',
+        },
+      });
+    }
+  } catch (_e) { /* fall through to IPFS */ }
+
+  const r = await fetch(fallback, { cf: { cacheTtl: 86400, cacheEverything: true } });
+  return new Response(r.body, {
+    status: r.status,
+    headers: {
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': r.ok ? 'public, max-age=14400, s-maxage=86400' : 'public, max-age=30',
+      'Access-Control-Allow-Origin': '*',
+      'X-Image-Source': 'ipfs',
+    },
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // GET /img/<tier>-<rarity>.jpg — origin→IPFS failover proxy.
+    // Wallets call this URL; if brainonbnb.com is down/lapsed/blocked, the
+    // worker silently serves the same bytes from the Pinata IPFS pin.
+    const mImg = path.match(/^\/img\/([a-z]+-buy)-([a-z]+)\.jpg$/i);
+    if (mImg) {
+      const tier = mImg[1].toLowerCase();
+      const rar  = mImg[2].toLowerCase();
+      if (!ALLOWED_TIERS.has(tier) || !ALLOWED_RARS.has(rar)) {
+        return new Response('Not found', { status: 404 });
+      }
+      return fetchImageWithFallback(`${tier}-${rar}.jpg`);
+    }
 
     // GET /meta/<id> or /meta/<id>.json
     const m = path.match(/^\/meta\/(\d+)(?:\.json)?$/);
@@ -103,11 +157,11 @@ export default {
 
     const tInfo = TIER_INFO[tierIdx];
     const rInfo = RARITY_INFO[rarIdx];
-    // Primary image source: Cloudflare Pages — proven to render in BNB-Chain wallets
-    // (Binance/Trust/MM/Element) since launch. Pinata pin of the same 42 files is the
-    // documented backup; if brainonbnb.com is ever lost, switch CARDS_BASE_URL to
-    // `https://<CID>.ipfs.dweb.link` (no path suffix) for permanent fallback.
-    const cardsBase = (env.CARDS_BASE_URL || 'https://brainonbnb.com/nft/cards').replace(/\/$/, '');
+    // image: points at this worker's own /img route, which transparently proxies
+    // brainonbnb.com first and falls back to the Pinata IPFS pin on origin failure.
+    // Keeps wallet-facing URL stable forever as long as this CF account lives —
+    // domain renewal, origin outage, even a full brainonbnb.com loss are absorbed.
+    const cardsBase = (env.CARDS_BASE_URL || `${url.origin}/img`).replace(/\/$/, '');
 
     const meta = {
       name: `${COLLECTION_NAME} #${tokenId}`,

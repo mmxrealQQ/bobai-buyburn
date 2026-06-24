@@ -5,4 +5,6 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 NFT_CONTRACT_ADDRESS = "0xd56226b3b8297a57f4361fca28aa43babdc9789d"
-CARDS_BASE_URL = "https://brainonbnb.com/nft/cards"
+# CARDS_BASE_URL intentionally unset: defaults to this worker's own /img route,
+# which proxies brainonbnb.com → Pinata IPFS with automatic failover.
+# Override only if you ever want to bypass the failover and serve a fixed origin.

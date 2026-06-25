@@ -20,14 +20,15 @@ const NFT_TIERS = [
   ['🦑', 'KRAKEN',  2500],
 ];
 // idx → [emoji, label] — matches drop matrix in worker-nft-mint
+// 7-step rarity gradient (cool → warm): 🤍 🩵 💙 💜 🩷 ❤️ 💛
 const NFT_RARITIES = [
   ['🤍', 'Common'],
-  ['💙', 'Uncommon'],
+  ['🩵', 'Uncommon'],
   ['💙', 'Rare'],
   ['💜', 'Mythical'],
-  ['💖', 'Legendary'],
+  ['🩷', 'Legendary'],
   ['❤️', 'Ancient'],
-  ['🧡', 'Immortal'],
+  ['💛', 'Immortal'],
 ];
 // Fetch via Pages route (brainonbnb.com), NOT bobai-nft-mint.workers.dev —
 // worker-to-worker on the same *.workers.dev subdomain 404s (CF loopback).

@@ -2,13 +2,19 @@ name = "bobai-worldcup-sync"
 main = "index.js"
 compatibility_date = "2026-05-16"
 
-# Cron every 10 minutes, offset by 1 min after the buyback cron (which runs at
-# *:00, *:10, ...). The buyback bot sends the WC26 prize-pool BNB as its LAST
-# on-chain step — typically lands ~60–90 sec after dispatch. Firing this cron
-# at *:01, *:11, … guarantees the worldcup-bot dispatch sees the just-arrived
-# BNB and swaps it in the same cycle (instead of finding 0 and noop-ing).
+# Cron triggers:
+#   "1-59/10 * * * *" — every 10 min, offset by 1 min after the buyback cron
+#       (which runs at *:00, *:10, ...). The buyback bot sends the WC26 prize-pool
+#       BNB as its LAST on-chain step — typically lands ~60–90 sec after dispatch.
+#       Firing this cron at *:01, *:11, … guarantees the worldcup-bot dispatch
+#       sees the just-arrived BNB and swaps it in the same cycle.
+#
+#   "15 6 * * *" — daily 06:15 UTC, BOBAI balance snapshot for the leaderboard
+#       tie-breaker. Sits in the WC26 quiet window (matches ~16:00–03:00 UTC) so
+#       balances are never read mid-match. Stops auto-magically after FINAL_END_UTC
+#       inside snapshotBobaiBalances().
 [triggers]
-crons = ["1-59/10 * * * *"]
+crons = ["1-59/10 * * * *", "15 6 * * *"]
 
 # Secrets (set via `wrangler secret put <NAME>`):
 #   SUPABASE_SERVICE_ROLE_KEY  — Supabase service-role JWT (Project Settings → API → service_role)

@@ -465,6 +465,17 @@ export default {
       return json(r, r.ok ? 200 : 500);
     }
 
+    // Admin: manual BOBAI balance snapshot trigger (drives tie-breaker on leaderboard)
+    if (url.pathname === '/admin/snapshot-bobai') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      try {
+        const r = await snapshotBobaiBalances(env);
+        return json(r, r.ok ? 200 : 500);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     // Admin: resolve bonus questions (call after tournament)
     if (url.pathname === '/admin/resolve-bonus' && request.method === 'POST') {
       if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
@@ -483,6 +494,21 @@ export default {
   },
 
   async scheduled(event, env){
+    // Daily BOBAI snapshot rides its own cron schedule ("15 6 * * *" UTC) so it
+    // doesn't burn subrequest budget on every 10-min match-sync tick. 06:15 UTC
+    // sits in the WC26 quiet window (matches run ~16:00–03:00 UTC, NA stadiums),
+    // so we always snapshot well clear of any in-progress action. Dispatch by
+    // event.cron and return early — the 10-min cron path stays untouched.
+    if (event.cron === '15 6 * * *') {
+      try {
+        const r = await snapshotBobaiBalances(env);
+        console.log('[CRON] bobai snapshot:', JSON.stringify(r));
+      } catch (e) {
+        console.log('[CRON] bobai snapshot error:', e.message);
+      }
+      return;
+    }
+
     // 1. Match sync (skip if no API key)
     if (env.FOOTBALL_DATA_API_KEY) {
       const r = await syncMatches(env);
@@ -702,4 +728,112 @@ async function dispatchWorldcupBot(env){
     body: JSON.stringify({ ref: 'main' }),
   });
   return `HTTP ${res.status}`;
+}
+
+// ============================================================
+// BOBAI BALANCE SNAPSHOT — hourly cron, drives the leaderboard tie-breaker
+// ============================================================
+// Reads on-chain BOBAI balance for every linked wc_users.wallet and stores
+// it in wc_users.bobai_balance + wc_users.bobai_snapshot_at. Consumed by the
+// SECURITY DEFINER RPCs `wc_group_leaderboard_ranked` / `wc_overall_leaderboard_ranked`
+// to break point-ties (rules.html §7). The column is REVOKEd from anon/authenticated
+// so the actual amount is never exposed — only the resulting `rank` + `tied_above`/
+// `tied_below` flags reach the UI.
+//
+// Auto-stop: after FINAL_END_UTC the snapshot becomes a no-op (the final payout
+// calculator does its own fresh on-chain read at lock time anyway).
+
+const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
+
+// Batched JSON-RPC call (some public BSC RPCs accept arrays; we fall back to
+// per-call rpcCall() if a backend returns a non-array response, so this stays
+// robust against quirky providers).
+async function rpcBatchCall(calls){
+  const body = calls.map((c, i) => ({ jsonrpc: '2.0', id: i, method: c.method, params: c.params }));
+  for (const rpc of BSC_RPCS) {
+    try {
+      const res = await fetch(rpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) continue;
+      const arr = await res.json();
+      if (!Array.isArray(arr) || arr.length !== calls.length) continue;
+      const out = new Array(calls.length);
+      for (const r of arr) if (r && typeof r.id === 'number' && r.result !== undefined) out[r.id] = r.result;
+      // If every slot filled, batch succeeded
+      if (out.every(x => x !== undefined)) return out;
+    } catch (_) { /* try next rpc */ }
+  }
+  return null;  // signal "batch unsupported / failed — caller falls back"
+}
+
+// Resolve N BOBAI balances. Tries one big batched JSON-RPC; on failure falls
+// back to sequential rpcCall (still cheap — only used when batch is unavailable).
+async function readBobaiBalancesBatch(addresses){
+  if (!addresses.length) return [];
+  const calls = addresses.map(a => ({
+    method: 'eth_call',
+    params: [{
+      to:   BOBAI_TOKEN,
+      data: '0x70a08231' + a.toLowerCase().replace('0x','').padStart(64, '0'),
+    }, 'latest'],
+  }));
+
+  const batched = await rpcBatchCall(calls);
+  if (batched) {
+    return batched.map(hex => {
+      const wei = BigInt(hex);
+      const whole = wei / (10n ** 18n);
+      const frac  = wei % (10n ** 18n);
+      return Number(whole) + Number(frac) / 1e18;
+    });
+  }
+
+  // Sequential fallback — capped because CF Free workers allow ≤50 subrequests
+  // per invocation. With ~5 subrequests already burned by the rest of the cron,
+  // 40 sequential reads is the safe headroom. Anything beyond that gets picked
+  // up on the next hourly tick (snapshot is best-effort, not strict).
+  const FALLBACK_MAX = 40;
+  const out = [];
+  for (let i = 0; i < Math.min(addresses.length, FALLBACK_MAX); i++) {
+    try { out.push(await readBobaiBalance(addresses[i])); }
+    catch (_) { out.push(null); }
+  }
+  while (out.length < addresses.length) out.push(null);
+  return out;
+}
+
+async function snapshotBobaiBalances(env){
+  if (Date.now() > FINAL_END_UTC) {
+    return { ok: true, skipped: 'post-final' };
+  }
+
+  // 1) Fetch all linked wallets
+  const r = await sbReq(env, 'GET', 'wc_users?select=id,wallet&wallet=not.is.null&limit=2000');
+  if (!Array.isArray(r.body)) return { ok: false, error: 'failed to list wallets', status: r.status };
+  const users = r.body.filter(u => u.wallet && WALLET_RE.test(u.wallet));
+  if (!users.length) return { ok: true, total: 0, updated: 0 };
+
+  // 2) Batch reads in chunks of 100 (keeps per-batch JSON-RPC payload ~30KB)
+  const CHUNK = 100;
+  const payload = [];
+  for (let i = 0; i < users.length; i += CHUNK) {
+    const slice = users.slice(i, i + CHUNK);
+    const balances = await readBobaiBalancesBatch(slice.map(u => u.wallet));
+    for (let j = 0; j < slice.length; j++) {
+      const b = balances[j];
+      if (b == null || !isFinite(b)) continue;  // skip failures — next cron retries
+      payload.push({ id: slice[j].id, balance: b });
+    }
+  }
+
+  if (!payload.length) return { ok: false, error: 'no balances read', total: users.length };
+
+  // 3) Bulk update via the SECURITY DEFINER RPC (one Supabase round-trip)
+  const upd = await sbReq(env, 'POST', 'rpc/wc_update_bobai_snapshots', { payload });
+  if (!upd.ok) return { ok: false, error: 'rpc update failed', status: upd.status, body: upd.body };
+
+  return { ok: true, total: users.length, batched: payload.length, updated: upd.body };
 }

@@ -173,23 +173,18 @@
 
   // ============== LEADERBOARDS + POOL ==============
 
+  // Overall + group leaderboards go through SECURITY DEFINER RPCs so the
+  // BOBAI-balance tie-breaker (rules.html §7) can be applied server-side WITHOUT
+  // exposing actual balances. Returned rows include `rank` + `tied_above`/
+  // `tied_below` flags the UI uses for the "holds more $BOBAI" badge.
   async function loadOverallLeaderboard(){
-    const { data, error } = await sb
-      .from('wc_leaderboard')
-      .select('*')
-      .order('total_points', { ascending: false })
-      .limit(500);
+    const { data, error } = await sb.rpc('wc_overall_leaderboard_ranked');
     if (error) return { error: error.message };
     return { ok: true, rows: data || [] };
   }
 
   async function loadGroupLeaderboard(letter){
-    const { data, error } = await sb
-      .from('wc_leaderboard_group')
-      .select('*')
-      .eq('group_letter', letter)
-      .order('group_points', { ascending: false })
-      .limit(500);
+    const { data, error } = await sb.rpc('wc_group_leaderboard_ranked', { p_letter: letter });
     if (error) return { error: error.message };
     return { ok: true, rows: data || [] };
   }

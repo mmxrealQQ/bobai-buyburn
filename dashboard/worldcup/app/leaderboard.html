@@ -72,6 +72,9 @@
     .uname .uname-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .uname .ball{font-size:13px;flex-shrink:0}
     .umeta{font-size:11px;color:var(--muted)}
+    /* Tie-breaker pill — shown when this row beat its tied-on-points neighbor on BOBAI balance.
+       Actual amounts are NEVER exposed; the server returns just a `bobai_beats_below` flag. */
+    .tie-pill{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 7px;background:rgba(240,185,11,.12);border:1px solid rgba(240,185,11,.32);color:var(--gold);font-family:'Space Grotesk';font-weight:600;font-size:9.5px;letter-spacing:.4px;border-radius:99px;text-transform:none;white-space:nowrap;vertical-align:1px}
     .pts{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--gold);white-space:nowrap;text-align:right}
     .pts .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-left:4px;font-weight:500}
     .pts.diff{font-size:14px;color:var(--text)}
@@ -498,12 +501,18 @@
         : `<div class="prize-cell zero"><div class="pz-pct">—</div><div class="pz-bobai">0 BOBAI</div><div class="pz-usd">$0</div></div>`;
       const ptsLabel = opts.ptsLabel ? `<span class="lbl">${opts.ptsLabel}</span>` : '';
       const pts = `<div class="pts ${opts.ptsClass || ''}">${opts.ptsValue}${ptsLabel}</div>`;
+      // Tie-breaker badge — only when this row genuinely beat a tied-on-points
+      // neighbor on BOBAI balance (server-side flag, no amounts exposed). Limited
+      // to the paid medal positions (🥇🥈🥉) so non-payout ties stay quiet.
+      const tiePill = (r.bobai_beats_below && rank <= 3)
+        ? ` · <span class="tie-pill" title="Tied on points; ranks higher because this wallet holds more $BOBAI (rules §7).">holds more $BOBAI</span>`
+        : '';
       return `<a href="${href}" class="${rowClass(rank, r.user_id, opts.extraClass)}" style="text-decoration:none;color:inherit">
         <div class="rank">${rankLabel(rank)}</div>
         <div class="ava-sm">${ava}</div>
         <div class="uinfo">
           <div class="uname"><span class="uname-text">${escapeHtml(r.username)}</span>${ball}</div>
-          <div class="umeta">${country}</div>
+          <div class="umeta">${country}${tiePill}</div>
         </div>
         ${prize}
         ${pts}

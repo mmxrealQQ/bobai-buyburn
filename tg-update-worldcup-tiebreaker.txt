@@ -1,0 +1,13 @@
+<b>Worldcup leaderboard — tie-breaker live</b>
+
+When two players land on the same point total in a paid medal slot, the leaderboard now resolves it the way <a href="https://brainonbnb.com/worldcup/app/rules.html">rules §7</a> always promised: the one with more <b>$BOBAI</b> in their linked wallet ranks higher.
+
+Tied 🥇 🥈 🥉 rows get a small <b>holds more $BOBAI</b> pill on the side that won the tiebreak — non-medal ties stay quiet.
+
+🔒 actual balances stay private · only the relative ranking effect is shown
+🕕 on-chain snapshot once a day at 06:15 UTC · matches off, no in-play noise
+⚙️ same chain feeds the 26× holder cap + audit trail at payout time
+
+Open <a href="https://brainonbnb.com/worldcup/app/leaderboard.html">brainonbnb.com/worldcup → Leaderboard</a> — Group A, B, C and the 6-way 7-pt tie in Group F all resolve cleanly.
+
+🧠 keeps building

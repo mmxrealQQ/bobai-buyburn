@@ -16,7 +16,7 @@ const NFT_TIERS = [
   ['💎', 'BIG',     150],
   ['🚀', 'HUGE',    250],
   ['🐋', 'WHALE',   500],
-  ['⚡', 'THUNDER', 1000],
+  ['⚡️', 'THUNDER', 1000],
   ['🦑', 'KRAKEN',  2500],
 ];
 // idx → [emoji, label] — matches drop matrix in worker-nft-mint
@@ -1753,6 +1753,7 @@ async function handleCommand(msg) {
 🌐 <a href="https://www.dextools.io/token/bobai">DEXTools.io</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
 🐊 <a href="https://gmgn.ai/bsc/token/${BOBAI_TOKEN}">GMGN.AI</a>
+🫆 <a href="https://app.insightx.network/atlas/bsc/${BOBAI_TOKEN}">InsightX</a>
 
 🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Web3 Wallet</a>
 🟦 <a href="https://web3.bitget.com/en/swap/bnb/${BOBAI_TOKEN}">Bitget Wallet</a>
@@ -1764,6 +1765,8 @@ async function handleCommand(msg) {
 🗣 <a href="https://x.com/BrainOnBNBAI">X Community</a>
 🎮 <a href="https://brainonbnb.com/game">Game</a>
 ⚽ <a href="https://brainonbnb.com/worldcup">Worldcup '26</a>
+🎁 <a href="${NFT_DASHBOARD_URL}">Buy Drops NFT</a>
+🛒 <a href="https://element.market/collections/bobai-buy-drops-1">Element · NFT Marketplace</a>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;
@@ -1960,7 +1963,8 @@ ${taxLines}
     case 'nft': {
       const state = await fetchNftState();
       const tiers = state && state.minted && state.cap ? { minted: state.minted, cap: state.cap } : null;
-      const drops = (state?.drops || []).slice(0, 3);
+      const allDrops = state?.drops || [];
+      const drops = allDrops.slice(0, 3);
 
       let progressLines, totalMinted = 0, totalCap = 0;
       if (!tiers) {
@@ -1976,7 +1980,7 @@ ${taxLines}
       }
       if (totalCap === 0) totalCap = 1925; // fallback so header still reads sensibly on fetch fail
 
-      const uniqueHolders = new Set(drops.map(d => d.to)).size; // upper-bound on visible 100
+      const uniqueHolders = new Set(allDrops.map(d => d.to).filter(Boolean)).size;
       const dropLines = drops.length
         ? drops.map(d => {
             const when = new Date(d.ts * 1000).toISOString().slice(5, 16).replace('T', ' ');

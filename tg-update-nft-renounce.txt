@@ -1,0 +1,16 @@
+<b>NFT contract renounced + images on IPFS</b>
+
+The <a href="https://brainonbnb.com/nft">Buy Drops</a> contract just went fully autonomous — owner is now <code>0x0</code>. Cap (1925), minter, and metadata host are permanently locked.
+
+Renounce-Tx: <a href="https://bscscan.com/tx/0x589a2badaaa3004fd74a84cfbd2ce47b53550b5c48b2a2d9a48da51d2742643b">on BscScan</a>
+
+Before locking, the 42 card images moved to <b>IPFS</b> (pinned via Pinata) so the artwork lives independently of any single host. <code>image:</code> URLs now resolve as <code>ipfs://...</code> — wallets fetch via their own gateway.
+
+What this means:
+🔒 no admin powers · no cap changes · no minter swap · no metadata rewrite
+🖼️ images on IPFS · permanent · content-addressed
+⚙️ minting unchanged · every $BOBAI buy ≥ $100 still auto-mints to the buyer
+
+Existing holders: nothing changes. Browse the collection on <a href="https://element.market/collections/bobai-buy-drops-1">Element Market</a>.
+
+🧠 keeps building

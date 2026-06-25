@@ -1,0 +1,16 @@
+hey brainers
+
+new bot command — <b>/nft</b>
+
+one tap shows live tier progress for the <a href="https://brainonbnb.com/nft">Buy Drops</a> collection plus the latest mints:
+
+📊 minted/cap bars for all 6 tiers (NICE → KRAKEN)
+🎰 last 3 drops with tier × rarity × $-amount × buyer
+🎯 short refresher on how it works
+
+reminder: every $BOBAI buy of $100 or more auto-mints an NFT to the buyer's wallet. tier = buy size, rarity = rolled probabilistically, sold-out tiers stop minting.
+
+try it: <code>/nft</code> in the chat
+or browse: <a href="https://brainonbnb.com/nft">brainonbnb.com/nft</a>
+
+🧠 keeps building

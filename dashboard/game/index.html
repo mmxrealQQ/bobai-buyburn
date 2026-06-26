@@ -256,9 +256,9 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
   </div>
 
   <div id="mobileControls">
-    <div class="ctrl-btn" id="btnLeft">&#9664;</div>
+    <div class="ctrl-btn" id="btnLeft" hidden>&#9664;</div>
     <div class="ctrl-btn" id="btnFud">ANTI<br>FUD</div>
-    <div class="ctrl-btn" id="btnRight">&#9654;</div>
+    <div class="ctrl-btn" id="btnRight" hidden>&#9654;</div>
   </div>
 </div>
 
@@ -801,8 +801,35 @@ btnRight.addEventListener('touchcancel', () => { keys['ArrowRight'] = false; btn
 btnFud.addEventListener('touchstart', e => { e.preventDefault(); btnFud.classList.add('pressed'); activateAntiFud(); });
 btnFud.addEventListener('touchend', e => { e.preventDefault(); btnFud.classList.remove('pressed'); });
 btnFud.addEventListener('touchcancel', () => { btnFud.classList.remove('pressed'); });
-canvas.addEventListener('touchstart', e => { e.preventDefault(); });
-canvas.addEventListener('touchmove', e => { e.preventDefault(); });
+// Canvas swipe-drag controls — mobile primary input. Touch & hold left/right
+// of your starting point; release to stop. Replaces the on-screen L/R buttons
+// (they remain in the DOM as fallback but are hidden via CSS).
+let swipeStartX = null;
+const SWIPE_DEAD_ZONE = 10;  // px before we register a direction
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0]; if (!t) return;
+  swipeStartX = t.clientX;
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.touches[0]; if (!t || swipeStartX === null) return;
+  const dx = t.clientX - swipeStartX;
+  if (dx < -SWIPE_DEAD_ZONE) { keys['ArrowLeft'] = true;  keys['ArrowRight'] = false; }
+  else if (dx > SWIPE_DEAD_ZONE) { keys['ArrowLeft'] = false; keys['ArrowRight'] = true; }
+  else { keys['ArrowLeft'] = false; keys['ArrowRight'] = false; }
+}, { passive: false });
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  swipeStartX = null;
+  keys['ArrowLeft'] = false;
+  keys['ArrowRight'] = false;
+}, { passive: false });
+canvas.addEventListener('touchcancel', () => {
+  swipeStartX = null;
+  keys['ArrowLeft'] = false;
+  keys['ArrowRight'] = false;
+});
 
 document.getElementById('startOverlay').addEventListener('click', () => {
   if (state === 'start') { state = 'playing'; init(); document.getElementById('startOverlay').style.display = 'none'; }

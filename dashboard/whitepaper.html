@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brain On BNB AI ($BOBAI) Lite Paper — Tokenomics & Architecture</title>
-  <meta name="description" content="Brain On BNB AI ($BOBAI) Lite Paper — full tokenomics, 3% tax mechanics, and autonomous buyback & burn architecture for the BNB Chain meme token.">
-  <meta name="keywords" content="Brain On BNB AI whitepaper, BOBAI lite paper, BOBAI tokenomics, Brain On BNB tokenomics, BOBAI burn mechanism, BOBAI architecture">
+  <title>Brain On BNB AI ($BOBAI) Whitepaper — Tokenomics & Architecture</title>
+  <meta name="description" content="Brain On BNB AI ($BOBAI) Whitepaper — full tokenomics, 3% tax mechanics, and autonomous buyback & burn architecture for the BNB Chain meme token.">
+  <meta name="keywords" content="Brain On BNB AI whitepaper, BOBAI whitepaper, BOBAI tokenomics, Brain On BNB tokenomics, BOBAI burn mechanism, BOBAI architecture">
   <link rel="canonical" href="https://brainonbnb.com/whitepaper">
-  <meta property="og:title" content="Brain On BNB AI ($BOBAI) Lite Paper">
+  <meta property="og:title" content="Brain On BNB AI ($BOBAI) Whitepaper">
   <meta property="og:description" content="Full tokenomics and autonomous buyback & burn architecture for Brain On BNB AI ($BOBAI).">
   <meta property="og:url" content="https://brainonbnb.com/whitepaper">
   <meta property="og:type" content="article">
@@ -25,9 +25,31 @@
     }
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;line-height:1.7}
-    .page{max-width:760px;margin:0 auto;padding:40px 24px 80px}
-    .back{display:inline-block;color:var(--muted);text-decoration:none;font-size:.85rem;margin-bottom:32px;transition:color .2s}
-    .back:hover{color:var(--gold)}
+    /* Worldcup-style frame */
+    .bg-grad{position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:
+        radial-gradient(ellipse at 20% 10%, rgba(240,185,11,.10), transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(64,64,255,.10), transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(255,48,40,.05), transparent 60%)}
+    .page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;padding-top:58px}
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);backdrop-filter:blur(24px) saturate(1.2);border-bottom:1px solid var(--border)}
+    .nav{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px;gap:12px}
+    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
+    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+    .back-btn span{font-size:14px;line-height:1}
+    .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;color:var(--gold);white-space:nowrap;text-decoration:none}
+    .brand-link:hover{opacity:.85}
+    @media(max-width:560px){
+      .page{padding-top:50px}
+      .nav{padding:0 14px;height:50px}
+      .brand-link{font-size:12px}
+    }
+    main{flex:1}
+    .content{max-width:760px;margin:0 auto;padding:40px 24px 80px;position:relative}
+    /* Subtle BOBAI hero illustration — floats top-right of content. Generated
+       via gpt-image-2, weekend-vibes character lock. Hidden on small screens. */
+    .hero-illu{float:right;width:200px;height:auto;margin:8px 0 24px 28px;border-radius:14px;box-shadow:0 12px 40px rgba(240,185,11,.18);display:block}
+    @media(max-width:640px){.hero-illu{float:none;width:140px;margin:0 auto 24px}}
     .logo-row{display:flex;align-items:center;gap:16px;margin-bottom:8px}
     .logo-row img{width:48px;height:48px;border-radius:12px;box-shadow:0 0 16px rgba(240,185,11,.2)}
     h1{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
@@ -51,8 +73,8 @@
     a{color:var(--gold)}
     @media print{
       body{background:#fff;color:#111}
-      .page{max-width:100%;padding:0}
-      .back{display:none}
+      .content{max-width:100%;padding:0}
+      nav,.bg-grad,body::before,body::after{display:none}
       h1{background:none;-webkit-background-clip:unset;color:#111}
       h2{color:#333;border-bottom:1px solid #ccc}
       h3{color:#111}
@@ -75,7 +97,7 @@
 
     body::before{content:'';position:fixed;top:-220px;right:-220px;width:620px;height:620px;background:radial-gradient(circle,rgba(240,185,11,.045) 0%,transparent 60%);pointer-events:none;z-index:0;animation:wpHalo 16s ease-in-out infinite}
     body::after{content:'';position:fixed;bottom:-220px;left:-220px;width:520px;height:520px;background:radial-gradient(circle,rgba(240,185,11,.03) 0%,transparent 60%);pointer-events:none;z-index:0;animation:wpHalo 22s ease-in-out infinite reverse}
-    .page{position:relative;z-index:1}
+    .content{position:relative;z-index:1}
 
     .logo-row img{animation:wpBreathe 4.5s ease-in-out infinite}
 
@@ -99,17 +121,24 @@
   </style>
 </head>
 <body>
+<div class="bg-grad"></div>
 <div class="page">
+<nav><div class="nav">
+  <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+  <a class="brand-link" href="/whitepaper">BOBAI Whitepaper</a>
+  <span></span>
+</div></nav>
+<main>
+<div class="content">
 
-  <a href="https://brainonbnb.com" class="back">&larr; Back to Dashboard</a>
-
+  <img src="/illus/whitepaper-hero.png" alt="" class="hero-illu" loading="lazy">
   <div class="logo-row">
     <img src="logo-sm.png?v=2" alt="BOBAI Logo">
     <div>
-      <h1>BOBAI Lite Paper</h1>
+      <h1>BOBAI Whitepaper</h1>
     </div>
   </div>
-  <p class="subtitle">Brain On BNB AI &mdash; Where Memes Meet Intelligence &bull; Version 1.0 &bull; April 2026</p>
+  <p class="subtitle">Brain On BNB AI &mdash; Where Memes Meet Intelligence &bull; Version 2.0 &bull; June 2026</p>
 
   <!-- 1. INTRODUCTION -->
   <h2>1. Introduction</h2>
@@ -146,10 +175,11 @@
 
   <h3>Dynamic Tax Allocation</h3>
   <p>While the <span class="highlight">3% rate is immutable on-chain</span>, the <em>distribution</em> of those 3% across buckets (BOBAI burn / BOB burn / Creator / programs) is executed <strong>off-chain by the autonomous buyback bot</strong>. This allows the project to run time-boxed transparency programs that temporarily redirect a portion of the tax flow &mdash; without ever touching the contract.</p>
-  <p>Examples of active and scheduled programs:</p>
+  <p>Programs run during defined windows and revert to the standard 1/1/1 split when they expire. Current and recent:</p>
   <ul>
-    <li><span class="highlight">$BOB Permalocked Liquidity Boost</span> &mdash; Apr 21 to Jun 4, 2026. 0.5% of the Creator slice is diverted to permanent BOB/BNB liquidity adds, with LP tokens burned to the dead address.</li>
-    <li><span class="highlight">WC26 Prize Pool Auto-Flow</span> &mdash; Jun 11, 00:01 UTC to Jul 19, 23:59 UTC, 2026. 0.52% of every trade tax flows to the WC26 prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank">0x5E41…D105</a> &mdash; 0.26% redirected from the BOB burn slice + 0.26% from the Creator slice. After the Final, distribution returns to the standard 1/1/1 split.</li>
+    <li><span class="highlight">$BOB Permalocked Liquidity Boost</span> &mdash; <em>completed</em> Apr 21 to Jun 4, 2026. 107 adds, ~1.07 BNB deployed, ~23.1B BOB locked, 19,173 LP tokens burned. 0.5% of the Creator slice was diverted to permanent BOB/BNB liquidity adds.</li>
+    <li><span class="highlight">$BOBAI Permalocked Liquidity Boost</span> &mdash; <em>active</em> Jun 1 to Aug 1, 2026. 0.5% of the BOB-burn slice (plus an additional 0.25% from the Creator slice during the Jun 15 to Aug 1 overlap window) is diverted to permanent BOBAI/BNB liquidity adds, with LP tokens burned. Up to 0.75% of every trade locked as liquidity during the overlap.</li>
+    <li><span class="highlight">WC26 Prize Pool Auto-Flow</span> &mdash; <em>active</em> Jun 11, 00:01 UTC to Jul 19, 23:59 UTC, 2026. 0.52% of every trade tax flows to the WC26 prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank">0x5E41…D105</a> &mdash; 0.26% redirected from the BOB burn slice + 0.26% from the Creator slice. After the Final, distribution returns to the standard 1/1/1 split.</li>
   </ul>
   <p><strong>Transparency guarantees:</strong></p>
   <ul>
@@ -179,8 +209,35 @@
     <p><span class="tag">Serverless</span> <span class="tag">24/7</span> <span class="tag">Open Source</span> <span class="tag">Autonomous</span></p>
   </div>
 
-  <!-- 4. SECURITY -->
-  <h2>4. Security</h2>
+  <!-- 4. ECOSYSTEM PROGRAMS -->
+  <h2>4. Ecosystem Programs</h2>
+  <p>Beyond the core tax mechanic, BOBAI runs two on-chain programs that route value back to holders and the wider BNB Chain community.</p>
+
+  <h3>4.1 WC26 Tipgame &mdash; FIFA World Cup 2026 Prediction Pool</h3>
+  <p>The WC26 Tipgame is a free-to-enter prediction game running for the duration of the 2026 FIFA World Cup (Jun 11 to Jul 19, 2026). Players tip every match score, answer five bonus questions, and predict end-of-tournament BTC/BNB/BOBAI prices. All payouts are denominated in BOBAI and settled from a transparent on-chain prize pool.</p>
+  <ul>
+    <li><strong>No entry fee, no token deposit required.</strong> A connected BNB Smart Chain wallet is needed to receive payouts; players without a wallet can still play and their picks are tracked, but their share is skip-promoted to the next wallet-linked player.</li>
+    <li><strong>Prize pool sources.</strong> 0.52% of every BOBAI trade tax (the WC26 auto-flow program, &sect; 2) plus direct BNB/USDT community donations. All inflows are auto-swapped to BOBAI on a 10-minute cycle and credited to the prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank">0x5E41&hellip;D105</a>.</li>
+    <li><strong>Three pots split 60 / 30 / 10 (group phase) &rarr; 0 / 90 / 10 (KO phase):</strong> 12 Group Brackets (one winner per group of 4 teams), the End Pool (overall top 4 across the whole tournament), and a Crypto Pot (winner-take-all per coin, settled by absolute USD price diff at final kickoff).</li>
+    <li><strong>BOBAI holder cap:</strong> a player's payout across all pots is capped at 26&times; their on-chain BOBAI balance at settlement, to keep skin-in-the-game aligned. Excess is redistributed back into liquidity adds and burns.</li>
+    <li><strong>Tie-breaker (rules &sect; 7):</strong> equal-score players are ranked by on-chain BOBAI balance. Balances are snapshotted daily at 06:15 UTC during the quiet window between matches; the leaderboard exposes only a <em>"holds more $BOBAI"</em> badge, never actual amounts.</li>
+    <li><strong>Verifiability:</strong> every prize-pool credit, donation swap, and final payout is an on-chain transaction. The bot logic is open source in the same GitHub repo as the buyback bot.</li>
+  </ul>
+  <p>Full rules, live prize pool, and projected payouts: <a href="https://brainonbnb.com/worldcup/" target="_blank">brainonbnb.com/worldcup</a>.</p>
+
+  <h3>4.2 BOBAI Buy Drops &mdash; NFT Collection</h3>
+  <p>Every BOBAI buy of <span class="highlight">$100 or more</span> auto-mints a collectible NFT directly into the buyer's wallet. There is no claim step, no extra cost, and the NFT lands within minutes of the trade. The collection is a fixed-supply ERC-721 on BNB Smart Chain.</p>
+  <ul>
+    <li><strong>Total supply:</strong> 1,925 NFTs, fixed and capped on-chain.</li>
+    <li><strong>Six buy-tier motifs</strong> determined by USD-value of the buy: NICE BUY ($100+, 1,000 max), BIG BUY ($150+, 500), HUGE BUY ($250+, 250), WHALE BUY ($500+, 100), THUNDER BUY ($1,000+, 50), KRAKEN BUY ($2,500+, 25).</li>
+    <li><strong>Seven rarities</strong> drawn from a weighted matrix per tier, generating the per-NFT visual identity.</li>
+    <li><strong>Ownership renounced.</strong> The mint contract was deployed by the BOBAI team and ownership has been renounced &mdash; no further admin actions are possible, no minting beyond the cap, no metadata changes.</li>
+    <li><strong>Marketplace discoverable:</strong> auto-indexed by NFTScan, OKX, and Element. Royalty 8% (40% creator / 40% BOB burn / 20% BOBAI burn) where the marketplace honors ERC-2981.</li>
+  </ul>
+  <p>Contract: <span class="addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</span> &bull; Live drops feed and rarity browser: <a href="https://brainonbnb.com/nft/" target="_blank">brainonbnb.com/nft</a>.</p>
+
+  <!-- 5. SECURITY -->
+  <h2>5. Security</h2>
   <ul>
     <li><strong>Contract Verified</strong> &mdash; source code verified on BscScan</li>
     <li><strong>Owner Renounced</strong> &mdash; no admin functions, no minting, no pausing</li>
@@ -190,8 +247,8 @@
     <li><strong>Tax Immutable</strong> &mdash; 3% rate is hardcoded, cannot be modified</li>
   </ul>
 
-  <!-- 5. BUILT BY AI -->
-  <h2>5. Built by AI</h2>
+  <!-- 6. BUILT BY AI -->
+  <h2>6. Built by AI</h2>
   <p>Every component of BOBAI was created with the assistance of AI:</p>
   <ul>
     <li>Token deployment and configuration</li>
@@ -202,21 +259,26 @@
   </ul>
   <p>BOBAI is an experiment in AI-driven token creation and management &mdash; exploring how far autonomous systems can go in the crypto space.</p>
 
-  <!-- 6. CONTRACT -->
-  <h2>6. Contract Details</h2>
+  <!-- 7. CONTRACT -->
+  <h2>7. Contract Details</h2>
   <div class="card">
     <table>
-      <tr><td>Contract</td><td class="addr">0x245c386dcfed896f5c346107596141e5edcbffff</td></tr>
+      <tr><td>BOBAI Token</td><td class="addr">0x245c386dcfed896f5c346107596141e5edcbffff</td></tr>
       <tr><td>Pair (BOBAI/WBNB)</td><td class="addr">0x6eadd4cb786898b34929444988380ed0cc6fd9a6</td></tr>
+      <tr><td>NFT Buy Drops</td><td class="addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</td></tr>
+      <tr><td>WC26 Prize Pool</td><td class="addr">0x5E4102520A71B2AA18a1208330d4848dea4BD105</td></tr>
       <tr><td>DEX</td><td>PancakeSwap V2</td></tr>
       <tr><td>Compiler</td><td>Solidity 0.8.20</td></tr>
     </table>
   </div>
 
-  <!-- 7. LINKS -->
-  <h2>7. Links</h2>
+  <!-- 8. LINKS -->
+  <h2>8. Links</h2>
   <ul>
     <li><a href="https://brainonbnb.com" target="_blank">Website / Dashboard</a></li>
+    <li><a href="https://brainonbnb.com/worldcup/" target="_blank">WC26 Tipgame</a></li>
+    <li><a href="https://brainonbnb.com/nft/" target="_blank">NFT Buy Drops</a></li>
+    <li><a href="https://brainonbnb.com/listing" target="_blank">Exchange Listing Program</a></li>
     <li><a href="https://t.me/bobai_official" target="_blank">Telegram</a></li>
     <li><a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">GitHub (Open Source)</a></li>
     <li><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">BscScan</a></li>
@@ -224,14 +286,16 @@
     <li><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Trade on PancakeSwap</a></li>
   </ul>
 
-  <!-- 8. DISCLAIMER -->
-  <h2>8. Disclaimer</h2>
+  <!-- 9. DISCLAIMER -->
+  <h2>9. Disclaimer</h2>
   <p style="color:var(--muted);font-size:.85rem">BOBAI is a meme token and an experimental project. It is not financial advice and should not be treated as an investment. Cryptocurrency is volatile and you may lose your entire investment. Do your own research before interacting with any token or smart contract. There is no team, no roadmap promises, and no guaranteed returns.</p>
 
   <div class="footer">
     <p>Brain On BNB AI &bull; brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> &bull; 2026</p>
   </div>
 
+</div>
+</main>
 </div>
 </body>
 </html>

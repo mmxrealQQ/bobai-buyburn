@@ -324,13 +324,13 @@
         intro:'Every tipped country stays on the board <b>until that team exits the tournament</b>. Eliminated teams are greyed out. The 20 points lock in <b>green</b> when the lifting-the-trophy team is decided at the end of the final.' },
       { key:'most_goals',   label:'⚽ Most goals',   field:'most_goals_team',
         title:'Team with the most goals scored',
-        intro:'Whoever is leading the goals-scored table right now. The 20-point award goes <b>green</b> once the team is mathematically uncatchable; ties share the points.' },
+        intro:'Whoever is leading the goals-scored table right now. The 20-point award goes <b>green</b> once the team is mathematically uncatchable.' },
       { key:'fewest_goals', label:'🥅 Fewest goals', field:'fewest_goals_team',
         title:'Team with the fewest goals scored',
-        intro:'Live during the group phase. Locks in when the qualifying team is final — usually the lowest-scoring team that exits the tournament. Ties share the 20 points.' },
+        intro:'Live during the group phase. Locks in when the qualifying team is final — usually the lowest-scoring team that exits the tournament.' },
       { key:'golden_boot',  label:'👑 Golden Boot',  field:'topscorer_country',
         title:'Country of the top scorer',
-        intro:'Live top-scorer feed (football-data.org). Resolves at the final once the Golden Boot is mathematically locked. Ties share the points.' },
+        intro:'Live top-scorer feed (football-data.org). Resolves at the final once the Golden Boot is mathematically locked.' },
       { key:'red_cards',    label:'🟥 Red cards',    field:'red_cards_bracket',
         title:'Total red cards in the tournament',
         intro:'Live counter — only resolves at the <b>end of the final</b>. The bracket the running total currently sits in is highlighted; tippers of that bracket are the candidates to win the 20 points.' },
@@ -503,8 +503,10 @@
       const pts = `<div class="pts ${opts.ptsClass || ''}">${opts.ptsValue}${ptsLabel}</div>`;
       // Tie-breaker badge — only when this row genuinely beat a tied-on-points
       // neighbor on BOBAI balance (server-side flag, no amounts exposed). Limited
-      // to the paid medal positions (🥇🥈🥉) so non-payout ties stay quiet.
-      const tiePill = (r.bobai_beats_below && rank <= 3)
+      // to paid positions in this view: Groups top 3 (55/30/15), Overall/Bracket
+      // top 4 (50/25/15/10). Non-payout ties stay quiet.
+      const medalRank = opts.medalRank || 3;
+      const tiePill = (r.bobai_beats_below && rank <= medalRank)
         ? ` · <span class="tie-pill" title="Tied on points; ranks higher because this wallet holds more $BOBAI (rules §7).">holds more $BOBAI</span>`
         : '';
       return `<a href="${href}" class="${rowClass(rank, r.user_id, opts.extraClass)}" style="text-decoration:none;color:inherit">
@@ -620,6 +622,7 @@
         ptsValue: fmtPts(row.total_points || 0),
         prizeBobai: shares.get(row.user_id) || 0,
         contextPot: pool.end,
+        medalRank: END_TOP_N,
       })).join('');
       const scrollCls = rows.length > 10 ? 'list scroll-cap' : 'list';
       const myIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;
@@ -762,6 +765,7 @@
             ptsValue: fmtPts(row.total_points || 0),
             prizeBobai: shares.get(row.user_id) || 0,
             contextPot: pool.end,
+            medalRank: END_TOP_N,
           })).join('')
         : '<div class="empty">No players yet.</div>';
       const scrollCls = overallRows.length > 10 ? 'list scroll-cap' : 'list';
@@ -828,14 +832,32 @@
           if (A) A.gamesLeft++;
         }
       });
-      // Eliminated detection: any team with played > 0 AND gamesLeft = 0 is done.
-      // (Tournament-wide — covers group exit + KO knockout.) We additionally treat
-      // teams that already lost a KO match as eliminated even if a "TBD" KO slot
-      // technically counts — but the played-vs-gamesLeft heuristic is conservative
-      // and good enough for the leaderboard view.
-      Object.values(byTeam).forEach(t => {
-        if (t.played > 0 && t.gamesLeft === 0) t.eliminated = true;
+      // Eliminated detection — two paths, neither speculative:
+      //   1) Team lost a KO match (definitive exit).
+      //   2) Group stage fully complete AND team has no future scheduled match.
+      //      During the group phase we can't tell yet — the team's R32 slot may
+      //      still be TBD pending the cross-group 3rd-place comparison, and the
+      //      football-data.org sync only fills KO assignments after group-end.
+      //      Without this guard, advancing teams like Netherlands (10 group goals)
+      //      get flagged eliminated just because their TBD home slot hasn't
+      //      received a team code yet.
+      const groupTotal = matches.filter(m => m.phase === 'group').length;
+      const groupPlayed = matches.filter(m => m.phase === 'group' && m.played).length;
+      const groupDone = groupTotal > 0 && groupPlayed === groupTotal;
+      // KO losers
+      matches.forEach(m => {
+        if (m.phase === 'group') return;
+        if (!m.played || m.goals_home == null || m.goals_away == null) return;
+        if (m.goals_home === m.goals_away) return;  // draw — winner only known via penalties (not in DB)
+        const loserCode = m.goals_home < m.goals_away ? m.team_home : m.team_away;
+        if (loserCode && byTeam[loserCode]) byTeam[loserCode].eliminated = true;
       });
+      // Group-phase exits — only safe to call after all 72 group matches played.
+      if (groupDone) {
+        Object.values(byTeam).forEach(t => {
+          if (t.played > 0 && t.gamesLeft === 0) t.eliminated = true;
+        });
+      }
       return byTeam;
     }
 
@@ -882,62 +904,48 @@
       return data.answers.filter(a => a[field] === value);
     }
 
-    // ----- Most / Fewest goals: tipped-only, only leader(s) (or 0-goal teams) -----
+    // ----- Most / Fewest goals: show actual leader(s) across ALL teams.
+    // Tippers shown below each card — "No one tipped this one." if empty. -----
     function renderGoalsBonus(data, mode){
       const tab    = BONUS_TABS.find(t => t.key === mode);
       const field  = tab.field;
       const teams  = computeTeamGoalStats(data.matches);
-      const tippedCodes = Array.from(new Set(data.answers.map(a => a[field]).filter(Boolean)));
-      if (!tippedCodes.length) return `<div class="bonus-empty">No one has answered "${tab.title}" yet.</div>`;
-
-      // Restrict to tipped teams only (user requested this). Teams that aren't
-      // in our wc_matches sample (eg the football-data.org TEAM_MAP doesn't
-      // cover them) fall through with played=0.
-      const tipped = tippedCodes.map(code => teams[code] || { code, gf: 0, played: 0, gamesLeft: 0, eliminated: false });
+      // ALL teams that appear in fixtures (skip TBD KO placeholders that haven't
+      // had a real opponent assigned yet).
+      const allTeams = Object.values(teams).filter(t => t.code !== 'TBD' && (t.played > 0 || t.gamesLeft > 0));
+      if (!allTeams.length) return `<div class="bonus-empty">No team data yet.</div>`;
 
       let leaders = [];
       let lockedRule = false;
       let statusLabel, statusClass, rightLabel;
       if (mode === 'most_goals') {
-        const top = Math.max(...tipped.map(t => t.gf), -Infinity);
-        if (top === -Infinity) {
-          leaders = [];
-        } else {
-          leaders = tipped.filter(t => t.gf === top);
-        }
-        // Locked when every still-tied leader is eliminated AND no other tipped
-        // team has enough remaining games to catch them up.
-        if (leaders.length) {
-          const maxPossibleByOthers = Math.max(
-            ...tipped
-              .filter(t => !leaders.includes(t))
-              .map(t => t.gf + t.gamesLeft * 30),
-            -Infinity
-          );
-          lockedRule = leaders.every(t => t.eliminated) && (maxPossibleByOthers === -Infinity || maxPossibleByOthers <= top);
-        }
-        statusLabel = lockedRule ? `Resolved · ${leaders.map(t=>countryFlag(t.code)).join(' ')} ${leaders[0]?.gf||0} goals`
-                                 : `Live · ${leaders[0]?.gf||0} goals lead`;
+        const top = Math.max(...allTeams.map(t => t.gf));
+        leaders = allTeams.filter(t => t.gf === top);
+        // Most goals locks only when the Final is finished — any team still
+        // playing could put up a blowout score (e.g. 12:0) and overtake.
+        const finalMatch = data.matches.find(m => m.phase === 'final');
+        lockedRule = !!(finalMatch && finalMatch.played && finalMatch.goals_home != null);
+        statusLabel = lockedRule ? `Resolved · ${leaders.map(t=>countryFlag(t.code)).join(' ')} ${top} goals`
+                                 : `Live · ${top} goals lead`;
         statusClass = lockedRule ? 'locked' : 'live';
-        rightLabel  = `${leaders.length} team${leaders.length===1?'':'s'} tied for top`;
+        rightLabel  = lockedRule ? 'final whistle blown' : `${leaders.length} team${leaders.length===1?'':'s'} tied for top`;
       } else {
-        // fewest_goals — only teams currently on 0 goals; once group phase is
-        // over, those with played>0 + eliminated lock in as winners. Pre-group:
-        // every tipped team is technically at 0 so we still display them all.
-        leaders = tipped.filter(t => t.gf === 0);
-        if (!leaders.length) leaders = tipped.slice().sort((a,b) => a.gf - b.gf).slice(0, 1);
-        // Locked once tournament-wide group stage is done (all group matches played).
+        // fewest_goals — actual lowest scorer(s) tournament-wide.
+        const low = Math.min(...allTeams.map(t => t.gf));
+        leaders = allTeams.filter(t => t.gf === low);
+        // Locked when every leader is eliminated AND no remaining team can
+        // possibly drop to or below `low`. Since teams can only score MORE,
+        // a still-active team with current gf <= low could stay ≤ low ⇒ unlocked.
+        const anyContenderCanReach = allTeams.some(t => !leaders.includes(t) && t.gf <= low);
+        lockedRule = leaders.length > 0 && leaders.every(t => t.eliminated) && !anyContenderCanReach;
         const groupTotal = data.matches.filter(m => m.phase === 'group').length;
         const groupPlayed = data.matches.filter(m => m.phase === 'group' && m.played).length;
-        const groupDone = groupTotal > 0 && groupPlayed === groupTotal;
-        lockedRule = groupDone && leaders.length > 0 && leaders.every(t => t.gf === 0);
-        statusLabel = lockedRule ? `Resolved · ${leaders.length} team${leaders.length===1?'':'s'} on 0 goals`
+        statusLabel = lockedRule ? `Resolved · ${leaders.map(t=>countryFlag(t.code)).join(' ')} ${low} goal${low===1?'':'s'}`
                                  : `Live · ${groupPlayed}/${groupTotal} group matches played`;
-        statusClass = lockedRule ? 'locked' : (groupDone ? 'pending' : 'live');
-        rightLabel  = lockedRule ? 'group phase complete' : 'updates after each match';
+        statusClass = lockedRule ? 'locked' : 'live';
+        rightLabel  = lockedRule ? 'mathematically locked' : 'updates after each match';
       }
 
-      // Order: leaders first, then by gf asc/desc; eliminated last among non-leaders.
       const ordered = leaders.slice().sort((a, b) => a.code.localeCompare(b.code));
       const head = bonusStatusBar(tab.intro, statusLabel, statusClass, rightLabel);
       const cards = ordered.map(t => {
@@ -957,7 +965,7 @@
           isWinner: true,
         });
       }).join('');
-      return head + (cards || `<div class="bonus-empty">No tipped team currently qualifies.</div>`);
+      return head + (cards || `<div class="bonus-empty">No leader determined yet.</div>`);
     }
 
     // ----- Champion: tipped teams that are still in the tournament. Eliminated
@@ -1018,38 +1026,27 @@
       return head + cards;
     }
 
-    // ----- Golden Boot: top scorers from football-data.org, restricted to
-    // countries that someone tipped. Per user spec: only show "teams that
-    // currently hold the 20 pts AND were tipped". -----
+    // ----- Golden Boot: show actual top scorers from football-data.org,
+    // regardless of who was tipped. Tippers shown below each country card. -----
     function renderGoldenBoot(data){
       const tab = BONUS_TABS.find(t => t.key === 'golden_boot');
       const scorers = data.scorers || [];
-      const tippedCountries = new Set(data.answers.map(a => a.topscorer_country).filter(Boolean));
-      if (!tippedCountries.size) {
-        return bonusStatusBar(tab.intro, 'No picks yet', 'pending', '') +
-          `<div class="bonus-empty">No one has answered "${tab.title}" yet.</div>`;
-      }
       if (!scorers.length) {
         return bonusStatusBar(tab.intro, 'Awaiting first goals', 'pending', 'no scorers yet') +
           `<div class="bonus-empty">Top-scorers feed will populate after the first goal of the tournament.</div>`;
       }
       const topGoals = scorers[0].goals;
       const leaders = scorers.filter(s => s.goals === topGoals && s.country_code);
-      // Filter to leaders from TIPPED countries only. If no tipped country
-      // currently leads, fall back to showing the leaders so users can see
-      // who's ahead even though no tipper would win.
-      const tippedLeaders = leaders.filter(s => tippedCountries.has(s.country_code));
-      const useLeaders = tippedLeaders.length ? tippedLeaders : leaders;
+      const useLeaders = leaders;
       const teamsByCountry = {};
       useLeaders.forEach(s => {
         if (!teamsByCountry[s.country_code]) teamsByCountry[s.country_code] = [];
         teamsByCountry[s.country_code].push(s);
       });
       const cardCountries = Object.keys(teamsByCountry);
-      const noTippedAtTop = !tippedLeaders.length;
       const head = bonusStatusBar(
         tab.intro,
-        `Live · ${topGoals} goal${topGoals===1?'':'s'} lead${useLeaders.length>1?` (${useLeaders.length} tied)`:''}${noTippedAtTop?' · no tipped country at the top yet':''}`,
+        `Live · ${topGoals} goal${topGoals===1?'':'s'} lead${useLeaders.length>1?` (${useLeaders.length} tied)`:''}`,
         'live',
         `updated ${scorers[0].updated_at ? new Date(scorers[0].updated_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'recently'}`
       );

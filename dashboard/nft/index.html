@@ -32,17 +32,31 @@
 html{overflow-x:hidden}
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.5}
 
-/* NAV — minimal: just back to dashboard */
+/* NAV — Worldcup-style frame: bg-grad backdrop + sticky header with back-btn + brand-link + CTA */
+.bg-grad{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(240,185,11,.10), transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(64,64,255,.10), transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255,48,40,.05), transparent 60%)}
+.page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;padding-top:58px}
 nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);backdrop-filter:blur(24px) saturate(1.2);border-bottom:1px solid var(--border)}
-.nav{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px}
-.nl{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.84rem;color:var(--muted);transition:color .2s}
-.nl:hover{color:var(--gold)}
-.nl::before{content:'←';color:var(--gold);font-size:1rem}
-.nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:8px 22px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
+.nav{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px;gap:12px}
+.back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
+.back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+.back-btn span{font-size:14px;line-height:1}
+.brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;color:var(--gold);white-space:nowrap;text-decoration:none}
+.brand-link:hover{opacity:.85}
+.nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:8px 22px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px;white-space:nowrap}
 .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
+@media(max-width:560px){
+  .page{padding-top:50px}
+  .nav{padding:0 14px;height:50px}
+  .brand-link{font-size:12px}
+  .nb{padding:7px 14px;font-size:.72rem}
+}
 
 /* HERO */
-.hero{padding:96px 24px 48px;text-align:center;position:relative}
+.hero{padding:48px 24px;text-align:center;position:relative}
 .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top,rgba(240,185,11,.12),transparent 70%);pointer-events:none;z-index:0}
 .hero-inner{max-width:1100px;margin:0 auto;position:relative;z-index:1}
 .hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;margin-bottom:14px;letter-spacing:-.5px;background:linear-gradient(135deg,var(--text),#fff);background-clip:text;-webkit-background-clip:text;color:transparent}
@@ -52,6 +66,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);
 .hero-meta code{font-family:'Space Grotesk',monospace;background:var(--card);border:1px solid var(--border);padding:5px 10px;border-radius:8px;color:var(--gold);font-size:.72rem;letter-spacing:.2px}
 .hero-meta a{color:var(--gold);text-decoration:none}
 .hero-meta a:hover{text-decoration:underline}
+.mkt{display:flex;justify-content:center;gap:10px;margin-top:18px;flex-wrap:wrap}
+.mkt a{display:flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:.74rem;padding:6px 15px;border-radius:8px;border:1px solid var(--border);background:var(--card);transition:transform .25s cubic-bezier(.2,.7,.2,1),border-color .25s,color .25s,box-shadow .25s}
+.mkt a:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 22px rgba(240,185,11,.1)}
+.mkt img{width:18px;height:18px;border-radius:3px;object-fit:contain}
 .live-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.18);padding:5px 14px;border-radius:20px;font-size:.7rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase;margin-top:18px}
 .live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{opacity:.6;box-shadow:0 0 0 6px rgba(0,230,118,0)}}
@@ -181,8 +199,11 @@ footer a:hover{color:var(--gold)}
 </style>
 </head>
 <body>
+<div class="bg-grad"></div>
+<div class="page">
 <nav><div class="nav">
-  <a class="nl" href="/">brainonbnb</a>
+  <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+  <a class="brand-link" href="/nft/">BOBAI Buy Drops</a>
   <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
 </div></nav>
 
@@ -202,11 +223,13 @@ footer a:hover{color:var(--gold)}
     <div class="hero-meta">
       <code id="contract-addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</code>
       ·
-      <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener">BscScan ↗</a>
+      <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);padding:5px 12px;border-radius:8px"><img src="/ico-bscscan.ico" alt="" style="width:20px;height:20px;border-radius:4px;object-fit:contain">BscScan</a>
     </div>
     <div class="live-pill"><span class="live-dot"></span> Auto-mint live</div>
-    <div class="hero-meta" style="margin-top:14px">
-      <a href="https://element.market/collections/bobai-buy-drops-1" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;font-size:.85rem"><img src="/ico-element.png?v=3" alt="Element Market" style="width:18px;height:18px;border-radius:4px">Trade on Element ↗</a>
+    <div class="mkt">
+      <a href="https://element.market/collections/bobai-buy-drops-1" target="_blank" rel="noopener"><img src="/ico-element.png?v=3" alt="">Element</a>
+      <a href="https://bnb.nftscan.com/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><img src="/ico-nftscan.png" alt="">NFTScan</a>
+      <a href="https://web3.okx.com/nft/collection/bsc/bobai-buy-drops" target="_blank" rel="noopener"><img src="/ico-okx.png" alt="">OKX</a>
     </div>
   </div>
 </header>
@@ -354,17 +377,17 @@ function renderRarities(drops) {
   });
 }
 
-function renderLedger(drops, latestBlock) {
+function renderLedger(drops, latestBlock, holders) {
   const body = document.getElementById('ledger-body');
   body.innerHTML = '';
   if (!drops || drops.length === 0) {
     body.innerHTML = `<tr><td colspan="6" class="empty">No drops yet — the first $BOBAI buy ≥ $100 will mint NFT #1 here.</td></tr>`;
-    document.getElementById('stat-buyers').textContent = '0';
+    document.getElementById('stat-buyers').textContent = (typeof holders === 'number' ? holders : 0).toLocaleString();
     return;
   }
-  const unique = new Set();
+  const uniqueRecipients = new Set();
   drops.slice(0, 30).forEach(d => {
-    unique.add(d.to);
+    uniqueRecipients.add(d.to);
     const t = TIERS[d.tier] || { label:'?', emoji:'?' };
     const r = RARITIES[d.rarity] || { name:'?', hex:'#888' };
     const row = document.createElement('tr');
@@ -378,7 +401,8 @@ function renderLedger(drops, latestBlock) {
     `;
     body.appendChild(row);
   });
-  document.getElementById('stat-buyers').textContent = unique.size.toLocaleString();
+  const liveHolders = (typeof holders === 'number') ? holders : uniqueRecipients.size;
+  document.getElementById('stat-buyers').textContent = liveHolders.toLocaleString();
 }
 
 function renderCollection() {
@@ -406,7 +430,7 @@ async function refresh() {
     const s = await r.json();
     renderTiers(s.minted, s.cap);
     renderRarities(s.drops || []);
-    renderLedger(s.drops || [], s.latestBlock);
+    renderLedger(s.drops || [], s.latestBlock, s.holders);
   } catch (e) {
     console.error('state fail', e);
     document.getElementById('tier-grid').innerHTML = `<div class="empty">Couldn't load tier data — retrying in a moment.</div>`;
@@ -459,5 +483,6 @@ document.getElementById('collection-showcase').addEventListener('click', e => {
   openLbx(img.src, tier.trim(), lbl);
 });
 </script>
+</div>
 </body>
 </html>

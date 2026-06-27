@@ -422,6 +422,63 @@ export default {
       }
     }
 
+    // Admin: debug — dump what football-data returns for KO stages + how our
+    // matcher maps each remote KO match onto a local row. Temporary diagnostic.
+    if (url.pathname === '/admin/debug-ko') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      const remote = await fetchFromFootballData(env);
+      if (remote.error) return json(remote, 500);
+      const ours = await listOurMatches(env);
+      const ko = remote.matches
+        .filter(r => ourPhaseFromRemote(r.stage) && ourPhaseFromRemote(r.stage) !== 'group')
+        .map(r => {
+          const m = findOurMatch(r, ours);
+          return {
+            stage: r.stage,
+            phase: ourPhaseFromRemote(r.stage),
+            status: r.status,
+            remoteHome: r.homeTeam?.name || null,
+            remoteAway: r.awayTeam?.name || null,
+            remoteHomeCode: teamToCode(r.homeTeam?.name),
+            remoteAwayCode: teamToCode(r.awayTeam?.name),
+            utcDate: r.utcDate,
+            mappedLocalId: m?.id ?? null,
+            mappedLocalKickoff: m?.kickoff_utc ?? null,
+            mappedLocalTeams: m ? `${m.team_home}|${m.team_away}` : null,
+          };
+        })
+        .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+      // Detect collisions: two remote KO matches mapped onto the same local row.
+      const counts = {};
+      ko.forEach(x => { if (x.mappedLocalId != null) counts[x.mappedLocalId] = (counts[x.mappedLocalId] || 0) + 1; });
+      const collisions = Object.entries(counts).filter(([, n]) => n > 1).map(([id]) => Number(id));
+      const unmapped = ko.filter(x => x.mappedLocalId == null).length;
+      return json({ ok: true, koCount: ko.length, unmapped, collisions, ko });
+    }
+
+    // Admin: manually set KO teams that FIFA has officially announced but the
+    // football-data.org free tier hasn't populated yet (it returns null). Only the
+    // provided side(s) are written; the regular sync still fills any remaining TBD.
+    // POST /admin/set-teams?token=...  Body: { updates: [{ id, team_home?, team_away? }] }
+    if (url.pathname === '/admin/set-teams' && request.method === 'POST') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const updates = Array.isArray(body?.updates) ? body.updates : [];
+      if (!updates.length) return json({ error: 'no updates' }, 400);
+      const applied = [];
+      for (const u of updates) {
+        if (u.id == null) continue;
+        const patch = {};
+        if (typeof u.team_home === 'string' && u.team_home) patch.team_home = u.team_home;
+        if (typeof u.team_away === 'string' && u.team_away) patch.team_away = u.team_away;
+        if (!Object.keys(patch).length) continue;
+        await updateMatch(env, u.id, patch);
+        applied.push({ id: u.id, ...patch });
+      }
+      return json({ ok: true, applied });
+    }
+
     // Admin: manually set a match result (for beta testing / FIFA-result corrections)
     // POST /admin/set-result?token=...  Body: { id, goals_home, goals_away }
     if (url.pathname === '/admin/set-result' && request.method === 'POST') {

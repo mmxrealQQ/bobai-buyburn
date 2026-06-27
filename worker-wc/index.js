@@ -564,6 +564,11 @@ const BSC_RPCS = [
 const KICKOFF_UTC   = new Date('2026-06-11T19:00:00Z').getTime();
 const GROUP_END_UTC = new Date('2026-06-27T00:00:00Z').getTime();   // ~1d after last group match
 const FINAL_END_UTC = new Date('2026-07-20T00:00:00Z').getTime();
+// Group pot freezes the moment the group stage ends and is shown PERMANENTLY
+// (the amount that was in the group pot stays visible, even after payout).
+// Value = 0.60 × prize-wallet balance at GROUP_END (2026-06-27). Keep this in
+// lockstep with worldcup-bot.js.
+const GROUP_POT_FROZEN = 3472587.05;
 
 async function rpcCall(method, params){
   for (const rpc of BSC_RPCS) {
@@ -683,15 +688,19 @@ function computePots(total, now){
     crypto: total * 0.10,
     phase:  now < KICKOFF_UTC ? 'pre-kickoff' : 'group',
   };
-  // Post-group: group_pot frozen-then-paid; remaining inflow allocates 0/90/10.
-  if (now < FINAL_END_UTC) return {
-    group:  0,
-    end:    total * 0.90,
+  // Group phase over. The split must NOT change on a date — only once the group
+  // winners are actually paid out. We detect that from the wallet: until payout
+  // the group BOBAI still sits in the prize wallet (balance > frozen group amount),
+  // so we keep showing the frozen group pot + the live 30/10 of the rest.
+  if (total >= GROUP_POT_FROZEN) return {
+    group:  GROUP_POT_FROZEN,   // frozen snapshot — stays visible until payout
+    end:    total * 0.30,
     crypto: total * 0.10,
-    phase:  'ko',
+    phase:  'group-frozen',
   };
-  // Post-final: freeze whatever's there (payouts handled by payout engine)
-  return { group: 0, end: 0, crypto: 0, phase: 'post-final' };
+  // Group winners paid → group BOBAI has left the wallet (balance dropped below the
+  // frozen amount). Group pot goes to 0; the remaining wallet allocates 90/10.
+  return { group: 0, end: total * 0.90, crypto: total * 0.10, phase: 'ko-paid' };
 }
 
 async function syncPool(env){

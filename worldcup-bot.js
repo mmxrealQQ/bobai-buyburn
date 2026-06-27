@@ -113,11 +113,17 @@ const BOBAI_PAIR  = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 const KICKOFF_UTC   = new Date('2026-06-11T19:00:00Z').getTime();
 const GROUP_END_UTC = new Date('2026-06-27T00:00:00Z').getTime();
 const FINAL_END_UTC = new Date('2026-07-20T00:00:00Z').getTime();
+// Group pot freezes at group-end and stays visible until the group winners are
+// actually paid out. Value = 0.60 × prize-wallet balance at GROUP_END. Keep in
+// lockstep with worker-wc/index.js computePots().
+const GROUP_POT_FROZEN = 3472587.05;
 
 function computePots(total, now){
   if (now < GROUP_END_UTC) return { group: total*0.60, end: total*0.30, crypto: total*0.10 };
-  if (now < FINAL_END_UTC) return { group: 0,           end: total*0.90, crypto: total*0.10 };
-  return { group: 0, end: 0, crypto: 0 };
+  // Group phase over: keep the frozen group pot + live 30/10 of the rest until the
+  // group BOBAI actually leaves the wallet (balance < frozen). After payout → 90/10.
+  if (total >= GROUP_POT_FROZEN) return { group: GROUP_POT_FROZEN, end: total*0.30, crypto: total*0.10 };
+  return { group: 0, end: total*0.90, crypto: total*0.10 };
 }
 
 async function fetchBobaiPriceOnchain(publicClient){

@@ -171,18 +171,39 @@ async function fetchBobaiPriceUsd(publicClient){
 async function syncPool(publicClient){
   try {
     const balWei = await publicClient.readContract({ address: BOBAI, abi: ERC20_ABI, functionName: 'balanceOf', args: [PRIZE_WALLET] });
-    const total  = Number(balWei) / 1e18;
+    const wallet = Number(balWei) / 1e18;
     const price  = await fetchBobaiPriceUsd(publicClient);
-    const pots   = computePots(total, Date.now());
+
+    // Once admin marks the group pot paid (wc_pool.group_paid_at), override the
+    // date/balance logic so a tax/donation swap never zeroes the frozen group pot:
+    // group stays at the snapshot for display, the live wallet balance splits 90/10
+    // between end + crypto, and total_bobai = paid group + remaining. Keep this in
+    // LOCKSTEP with worker-wc/index.js syncPool().
+    const poolRows  = await sbSelect('wc_pool', 'id=eq.1&select=group_paid_at');
+    const groupPaid = Array.isArray(poolRows) && poolRows[0]?.group_paid_at != null;
+
+    let pots, displayTotal;
+    if (groupPaid) {
+      // Pre-payout (toggle on, BOBAI still in wallet): subtract the frozen group
+      // amount so end/crypto don't double-count it. Post-payout (wallet < frozen):
+      // the wallet already represents only the remaining donations → use directly.
+      const remaining = wallet >= GROUP_POT_FROZEN ? wallet - GROUP_POT_FROZEN : wallet;
+      pots = { group: GROUP_POT_FROZEN, end: remaining * 0.90, crypto: remaining * 0.10 };
+      displayTotal = GROUP_POT_FROZEN + remaining;
+    } else {
+      pots = computePots(wallet, Date.now());
+      displayTotal = wallet;
+    }
+
     await sbPatch('wc_pool', 'id=eq.1', {
-      total_bobai:     total,
+      total_bobai:     displayTotal,
       group_pot:       pots.group,
       endpool:         pots.end,
       crypto_pot:      pots.crypto,
       bobai_price_usd: price,
       updated_at:      new Date().toISOString(),
     });
-    console.log(`[pool] synced: ${total.toFixed(0)} BOBAI @ $${price ?? '?'}`);
+    console.log(`[pool] synced: wallet ${wallet.toFixed(0)} → total ${displayTotal.toFixed(0)} BOBAI @ $${price ?? '?'}${groupPaid ? ' (group-paid)' : ''}`);
   } catch (e) { console.log(`[pool] sync failed: ${e.message}`); }
 }
 

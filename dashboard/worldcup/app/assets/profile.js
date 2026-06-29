@@ -204,11 +204,25 @@
   async function loadPool(){
     const { data, error } = await sb
       .from('wc_pool')
-      .select('total_bobai, group_pot, endpool, crypto_pot, bobai_price_usd, updated_at')
+      .select('total_bobai, group_pot, endpool, crypto_pot, bobai_price_usd, updated_at, group_paid_at')
       .eq('id', 1)
       .maybeSingle();
     if (error) return { error: error.message };
     return { ok: true, pool: data || null };
+  }
+
+  // Payout receipt rows — used by the "Group Pot Receipt" modal + paid-state
+  // styling. Optional pot filter (e.g. 'group' for group-stage receipt).
+  async function loadPayouts(pot){
+    let q = sb
+      .from('wc_payouts')
+      .select('id, pot, group_letter, position, user_id, username, country_code, wallet, bobai_amount, usd_at_payout, tx_hash, paid_at')
+      .order('group_letter', { ascending: true })
+      .order('position', { ascending: true });
+    if (pot) q = q.eq('pot', pot);
+    const { data, error } = await q;
+    if (error) return { error: error.message };
+    return { ok: true, rows: data || [] };
   }
 
   // ============== BONUS LEADERBOARD INPUTS ==============
@@ -283,7 +297,7 @@
     getBonus, saveBonus,
     loadMatches, loadMyTips, saveTip,
     getCrypto, saveCrypto, fetchLivePrices,
-    loadOverallLeaderboard, loadGroupLeaderboard, loadCryptoLeaderboard, loadPool,
+    loadOverallLeaderboard, loadGroupLeaderboard, loadCryptoLeaderboard, loadPool, loadPayouts,
     loadAllBonusAnswers, loadScorers, loadTournamentStats,
   };
 })();

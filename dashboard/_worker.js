@@ -38,7 +38,7 @@ async function rpcJson(url, body, headers = {}) {
 
 async function getNftState() {
   // 1) Tier counts/caps via on-chain eth_call (cheap, no archive issue)
-  const [tiersResp, blockResp, dropsResp] = await Promise.all([
+  const [tiersResp, blockResp, dropsResp, holdersResp] = await Promise.all([
     rpcJson(RPC, {
       jsonrpc: '2.0', id: 1, method: 'eth_call',
       params: [{ to: NFT_CONTRACT, data: NFT_GET_TIERS }, 'latest'],
@@ -46,6 +46,8 @@ async function getNftState() {
     rpcJson(RPC, { jsonrpc: '2.0', id: 2, method: 'eth_blockNumber', params: [] }),
     // 2) Drop ledger from mint-worker's KV (avoids publicnode archive limits + saves keyed-RPC quota)
     fetch('https://bobai-nft-mint.bobbuildonbnb.workers.dev/drops').then(r => r.ok ? r.json() : { drops: [] }).catch(() => ({ drops: [] })),
+    // 3) Live holder count from mint-worker (scans Transfer events, picks up secondary transfers like donations)
+    fetch('https://bobai-nft-mint.bobbuildonbnb.workers.dev/holders').then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
 
   const minted = [0, 0, 0, 0, 0, 0];
@@ -76,7 +78,10 @@ async function getNftState() {
   }));
 
   const buyers = new Set(drops.map(d => d.to));
-  return { minted, cap, drops, buyers: buyers.size, latestBlock: latest };
+  // `holders` = live on-chain owner count (reflects transfers like the BscScan donation).
+  // `buyers` kept for backwards-compat = unique original mint recipients.
+  const holders = (holdersResp && typeof holdersResp.holders === 'number') ? holdersResp.holders : buyers.size;
+  return { minted, cap, drops, holders, buyers: buyers.size, latestBlock: latest };
 }
 
 export default {

@@ -534,6 +534,7 @@ async function fetchNftState() {
       minted: Array.isArray(body.minted) ? body.minted : null,
       cap:    Array.isArray(body.cap)    ? body.cap    : null,
       drops:  Array.isArray(body.drops)  ? body.drops  : [],
+      holders: typeof body.holders === 'number' ? body.holders : null,
     };
   } catch (e) {
     console.error('[NFT state] err', e.message || e);
@@ -1767,7 +1768,6 @@ async function handleCommand(msg) {
 🎮 <a href="https://brainonbnb.com/game">Game</a>
 ⚽ <a href="https://brainonbnb.com/worldcup">Worldcup '26</a>
 🎁 <a href="${NFT_DASHBOARD_URL}">Buy Drops NFT</a>
-🛒 <a href="https://element.market/collections/bobai-buy-drops-1">Element · NFT Marketplace</a>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;
@@ -1981,7 +1981,11 @@ ${taxLines}
       }
       if (totalCap === 0) totalCap = 1925; // fallback so header still reads sensibly on fetch fail
 
-      const uniqueHolders = new Set(allDrops.map(d => d.to).filter(Boolean)).size;
+      // Prefer live on-chain holder count (picks up secondary transfers like donations).
+      // Fall back to unique mint recipients if the API didn't return it.
+      const uniqueHolders = (typeof state?.holders === 'number')
+        ? state.holders
+        : new Set(allDrops.map(d => d.to).filter(Boolean)).size;
       const dropLines = drops.length
         ? drops.map(d => {
             const when = new Date(d.ts * 1000).toISOString().slice(5, 16).replace('T', ' ');

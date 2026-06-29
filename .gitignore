@@ -15,3 +15,6 @@ wrangler-tail.log
 # Internal-only — never push (whale tracker scratchpads & private refs)
 scan-whales.mjs
 ref1.jpg
+
+# WC payout snapshot — contains username→wallet→balance→rank (privacy)
+wc-payout-snapshot.json

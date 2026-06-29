@@ -84,6 +84,74 @@
     .flow-step .body .muted{color:var(--muted);font-size:11.5px;display:block;margin-top:2px}
     .flow-note{padding:11px 14px;background:rgba(64,64,255,.05);border:1px solid rgba(64,64,255,.2);border-radius:8px;font-size:11.5px;color:#9090ff;line-height:1.55}
 
+    /* ===== PAID-OUT STATES (group pot) ===== */
+    .pool-cell.paid{border-color:rgba(0,230,118,.32);background:rgba(0,230,118,.04);position:relative}
+    .pool-cell.paid::before{content:'';position:absolute;inset:-1px;border-radius:10px;background:linear-gradient(135deg,rgba(0,230,118,.10),transparent 60%);pointer-events:none}
+    .pool-cell.paid .lbl{color:#5fffa0}
+    .pool-cell.paid .pct{color:#5fffa0;font-weight:600;text-transform:uppercase;letter-spacing:.8px}
+    .paid-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;background:rgba(0,230,118,.12);border:1px solid rgba(0,230,118,.32);color:#5fffa0;font-family:'Space Grotesk';font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+    .receipt-btn{margin-top:12px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,rgba(0,230,118,.22),rgba(0,230,118,.08));border:1px solid rgba(0,230,118,.45);color:#7fffb0;font-family:'Space Grotesk';font-weight:700;font-size:11.5px;letter-spacing:.7px;text-transform:uppercase;padding:11px 14px;border-radius:10px;cursor:pointer;transition:all .18s;box-shadow:0 2px 12px rgba(0,230,118,.08);position:relative;overflow:hidden}
+    .receipt-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);transition:transform .6s}
+    .receipt-btn:hover::before{transform:translateX(100%)}
+    .receipt-btn:hover{background:linear-gradient(135deg,rgba(0,230,118,.34),rgba(0,230,118,.14));border-color:rgba(0,230,118,.7);color:#a5ffce;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,230,118,.18)}
+    .receipt-btn:active{transform:translateY(0);box-shadow:0 1px 6px rgba(0,230,118,.1)}
+    .receipt-btn .ic{font-size:14px;line-height:1}
+    .ptable tr.pot-h.paid td{background:rgba(0,230,118,.08);color:#7fffb0}
+    .ptable tr.row.paid td{background:rgba(0,230,118,.04);border-color:rgba(0,230,118,.12)}
+    .ptable tr.row.paid td.rank-icon{position:relative}
+    .ptable tr.row.paid .tusd{color:#5fffa0}
+
+    /* ===== RECEIPT MODAL ===== */
+    .rc-modal{position:fixed;inset:0;z-index:300;display:none;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto}
+    .rc-modal[aria-hidden="false"]{display:flex;animation:rcFade .2s ease-out}
+    @keyframes rcFade{from{opacity:0}to{opacity:1}}
+    .rc-backdrop{position:fixed;inset:0;background:rgba(2,2,8,.85);backdrop-filter:blur(8px) saturate(1.3);z-index:-1}
+    .rc-box{position:relative;width:100%;max-width:680px;background:linear-gradient(160deg,#0d1015 0%,#0a0d12 50%,#080b10 100%);border:1px solid rgba(0,230,118,.28);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.02);overflow:hidden;animation:rcSlide .25s ease-out}
+    @keyframes rcSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .rc-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.4);color:#cbd0e0;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:3;backdrop-filter:blur(6px)}
+    .rc-close:hover{background:rgba(255,48,40,.18);border-color:rgba(255,48,40,.45);color:#ff8580;transform:rotate(90deg)}
+    .rc-header{padding:24px 28px 18px;border-bottom:1px solid rgba(0,230,118,.15);background:linear-gradient(135deg,rgba(0,230,118,.05),transparent 70%);display:grid;grid-template-columns:96px 1fr;gap:18px;align-items:center}
+    .rc-header .illus{width:96px;height:96px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4))}
+    .rc-header .illus img{max-width:100%;max-height:100%;object-fit:contain}
+    .rc-header .head-text{min-width:0}
+    .rc-header h2{font-family:'Space Grotesk';font-weight:700;font-size:21px;color:var(--text);margin:0 0 4px;letter-spacing:-.3px}
+    .rc-header .sub{font-size:12.5px;color:var(--muted);line-height:1.5}
+    .rc-header .sub b{color:#7fffb0}
+    .rc-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 0}
+    .rc-tot{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:9px 8px;text-align:center}
+    .rc-tot .l{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+    .rc-tot .v{font-family:'Space Grotesk';font-weight:700;font-size:13.5px;color:var(--text)}
+    .rc-body{padding:18px 22px 22px;max-height:60vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,230,118,.3) transparent}
+    .rc-body::-webkit-scrollbar{width:6px}
+    .rc-body::-webkit-scrollbar-thumb{background:rgba(0,230,118,.25);border-radius:3px}
+    .rc-group{margin-bottom:14px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .rc-group:last-child{margin-bottom:0}
+    .rc-group-h{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(0,230,118,.04);border-bottom:1px solid rgba(0,230,118,.1);font-family:'Space Grotesk';font-size:11.5px;letter-spacing:1px;text-transform:uppercase;color:#7fffb0;font-weight:700}
+    .rc-group-h .right{color:var(--muted);font-size:10px;font-weight:500;letter-spacing:.5px;text-transform:none}
+    .rc-rows{display:flex;flex-direction:column}
+    .rc-row{display:grid;grid-template-columns:30px 1fr auto auto;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12.5px}
+    .rc-row:last-child{border-bottom:none}
+    .rc-row .ic{font-size:16px;text-align:center}
+    .rc-row .who{display:flex;flex-direction:column;gap:1px;min-width:0}
+    .rc-row .who .name{color:var(--text);font-weight:600;font-family:'Space Grotesk';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rc-row .who .country{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:4px}
+    .rc-row .who .country .twe-flag{width:14px;height:14px}
+    .rc-row .amt{font-family:'Space Grotesk';font-weight:700;font-size:12px;text-align:right;white-space:nowrap}
+    .rc-row .amt .b{color:var(--text)}
+    .rc-row .amt .u{color:#5fffa0;font-size:10.5px;margin-top:1px;display:block}
+    .rc-row .tx{font-family:'Space Grotesk';font-size:10.5px;color:#7fffb0;text-decoration:none;white-space:nowrap;padding:4px 8px;border:1px solid rgba(0,230,118,.25);border-radius:5px;background:rgba(0,230,118,.06);transition:all .15s}
+    .rc-row .tx:hover{background:rgba(0,230,118,.14);border-color:rgba(0,230,118,.5)}
+    .rc-row .tx-pending{font-family:'Space Grotesk';font-size:10px;color:var(--muted);padding:4px 8px;border:1px dashed rgba(255,255,255,.1);border-radius:5px;letter-spacing:.4px}
+    .rc-row .tx.tx-paid{background:rgba(0,230,118,.10);border-color:rgba(0,230,118,.32);color:#7fffb0;cursor:default}
+    .rc-footer{padding:16px 22px 20px;border-top:1px solid rgba(0,230,118,.15);background:rgba(0,230,118,.025);display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .rc-footer .verify{font-size:12px;color:var(--muted);line-height:1.45;flex:1;min-width:0}
+    .rc-footer .verify a{color:#7fffb0;text-decoration:none;font-weight:600}
+    .rc-footer .verify a:hover{text-decoration:underline;color:#a5ffce}
+    .rc-footer .share{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,rgba(0,230,118,.22),rgba(0,230,118,.08));border:1px solid rgba(0,230,118,.45);color:#7fffb0;font-family:'Space Grotesk';font-weight:700;font-size:11.5px;letter-spacing:.7px;text-transform:uppercase;padding:10px 18px;border-radius:10px;cursor:pointer;transition:all .18s;flex-shrink:0;box-shadow:0 2px 12px rgba(0,230,118,.08)}
+    .rc-footer .share:hover{background:linear-gradient(135deg,rgba(0,230,118,.34),rgba(0,230,118,.14));border-color:rgba(0,230,118,.7);color:#a5ffce;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,230,118,.18)}
+    .rc-footer .share:active{transform:translateY(0)}
+    .rc-empty{padding:30px 14px;text-align:center;color:var(--muted);font-size:13px}
+
     @media (max-width: 560px){
       .pool-total{font-size:26px}
       .pool-breakdown{grid-template-columns:1fr;gap:6px}
@@ -93,6 +161,21 @@
       .txtable .tnum{font-size:11px}
       .flow-step{padding:9px 10px}
       .flow-step .body{font-size:12px}
+      .rc-box{border-radius:14px}
+      .rc-close{top:10px;right:10px;width:34px;height:34px;font-size:16px}
+      .rc-header{padding:20px 54px 14px 14px;grid-template-columns:64px 1fr;gap:12px}
+      .rc-header .illus{width:64px;height:64px}
+      .rc-header h2{font-size:17px}
+      .rc-header .sub{font-size:11.5px}
+      .rc-totals{grid-template-columns:1fr 1fr;gap:6px}
+      .rc-tot .v{font-size:12.5px}
+      .rc-body{padding:14px}
+      .rc-row{grid-template-columns:24px 1fr auto;gap:8px;padding:10px 10px;font-size:12px}
+      .rc-row .tx{grid-column:1/-1;text-align:center;margin-top:6px}
+      .rc-row .tx-pending{grid-column:1/-1;text-align:center;margin-top:6px}
+      .rc-footer{padding:14px;flex-direction:column;align-items:stretch;text-align:center;gap:12px}
+      .rc-footer .verify{text-align:center;font-size:11.5px}
+      .rc-footer .share{justify-content:center;padding:12px 18px;font-size:12px}
     }
   </style>
 </head>
@@ -132,14 +215,17 @@
             <div class="pool-total" id="pool-bobai">0 BOBAI</div>
             <div class="pool-usd" id="pool-usd">≈ $0.00</div>
             <div class="pool-breakdown">
-              <div class="pool-cell">
-                <div class="lbl">Group pot · 60 %</div>
+              <div class="pool-cell" id="pool-group-cell">
+                <div class="lbl" id="pool-group-lbl">Group pot · 60 %</div>
                 <div class="val" id="pool-group">0</div>
                 <div class="val-usd" id="pool-group-usd">≈ $0</div>
-                <div class="pct">paid 1 day after group stage</div>
+                <div class="pct" id="pool-group-pct">paid 1 day after group stage</div>
+                <button id="receipt-btn" class="receipt-btn" style="display:none" type="button" onclick="openReceipt()">
+                  <span class="ic">🧾</span> View Payout Receipt
+                </button>
               </div>
               <div class="pool-cell">
-                <div class="lbl">End pool · 30/90 %</div>
+                <div class="lbl" id="pool-end-lbl">End pool · 30 %</div>
                 <div class="val" id="pool-end">0</div>
                 <div class="val-usd" id="pool-end-usd">≈ $0</div>
                 <div class="pct">paid 1 day after Final</div>
@@ -333,13 +419,45 @@
         </div>
       </div>
     </main>
+
+    <!-- ===== GROUP POT RECEIPT MODAL ===== -->
+    <div class="rc-modal" id="receipt-modal" aria-hidden="true" role="dialog" aria-labelledby="rc-title" onclick="if(event.target===this)closeReceipt()">
+      <div class="rc-backdrop" onclick="closeReceipt()"></div>
+      <div class="rc-box" role="document">
+        <button class="rc-close" type="button" onclick="closeReceipt()" aria-label="Close">×</button>
+        <div class="rc-header">
+          <div class="illus">
+            <img src="./illus/receipt-payout.webp" alt="" onerror="this.onerror=null;this.src='./illus/receipt-payout.png'">
+          </div>
+          <div class="head-text">
+            <h2 id="rc-title">Group Pot · Payout Receipt</h2>
+            <div class="sub" id="rc-sub">12 groups · 32 winners · paid <b id="rc-date">—</b></div>
+            <div class="rc-totals">
+              <div class="rc-tot"><div class="l">Total Paid</div><div class="v" id="rc-total-bobai">—</div></div>
+              <div class="rc-tot"><div class="l">USD Value</div><div class="v" id="rc-total-usd">—</div></div>
+              <div class="rc-tot"><div class="l">Wallets</div><div class="v" id="rc-total-wallets">—</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="rc-body" id="rc-body">
+          <div class="rc-empty">Loading payout receipt…</div>
+        </div>
+        <div class="rc-footer">
+          <div class="verify">
+            Every transfer is verifiable on-chain ·
+            <a id="rc-wallet-link" href="#" target="_blank" rel="noopener">View prize wallet on BscScan ↗</a>
+          </div>
+          <button class="share" type="button" onclick="shareReceipt()">🔗 Copy link</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./assets/config.js?v=12"></script>
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
-  <script src="./assets/profile.js?v=13"></script>
+  <script src="./assets/profile.js?v=17"></script>
   <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
@@ -387,6 +505,8 @@
     let livePrice = 0;
     let liveTotalBobai = 0;
 
+    let groupPaidAt = null;
+
     async function loadPool(){
       const r = await window.WC_PROFILE.loadPool();
       if (r.error) return;
@@ -396,6 +516,7 @@
       const group  = parseFloat(p.group_pot)  || 0;
       const end    = parseFloat(p.endpool)    || 0;
       const crypto = parseFloat(p.crypto_pot) || 0;
+      groupPaidAt = p.group_paid_at || null;
 
       livePrice = px;
       liveTotalBobai = total;
@@ -412,39 +533,66 @@
         $('#pool-updated').textContent = 'updated ' + new Date(p.updated_at).toLocaleTimeString();
       }
 
-      renderPayouts(group, end, crypto, px);
+      // Toggle paid-out visual state once the admin marks the group pot paid.
+      const cell = $('#pool-group-cell');
+      const pct  = $('#pool-group-pct');
+      const lbl  = $('#pool-group-lbl');
+      const lblEnd = $('#pool-end-lbl');
+      const btn  = $('#receipt-btn');
+      if (groupPaidAt) {
+        cell.classList.add('paid');
+        const d = new Date(groupPaidAt);
+        const datePill = d.toISOString().slice(0, 10);
+        pct.innerHTML = `<span class="paid-pill">✅ Paid · ${datePill}</span>`;
+        lbl.textContent = 'Group pot · 60 % (final snapshot)';
+        lblEnd.textContent = 'End pool · 90 %';
+        btn.style.display = '';
+      } else {
+        cell.classList.remove('paid');
+        pct.textContent = 'paid 1 day after group stage';
+        lbl.textContent = 'Group pot · 60 %';
+        lblEnd.textContent = 'End pool · 30 %';
+        btn.style.display = 'none';
+      }
+
+      renderPayouts(group, end, crypto, px, !!groupPaidAt);
     }
 
     // Per-position expected payouts (kept in sync with the leaderboard's POOL_SPLIT)
-    function renderPayouts(group, end, crypto, px){
+    function renderPayouts(group, end, crypto, px, groupPaid){
       const tbody = $('#payout-body');
       const rows = [];
 
       // Pool share = % of the pot named in the section header (group/end/crypto).
       // Group brackets are FLAT within: 12 winners share the bracket pot equally.
-      rows.push({ section: 'Group pot · paid 1 day after group stage' });
-      rows.push({ icon:'🥇', label:'Group 1st',   slots:12, share:0.55, bobai: (group*0.55)/12 });
-      rows.push({ icon:'🥈', label:'Group 2nd',   slots:12, share:0.30, bobai: (group*0.30)/12 });
-      rows.push({ icon:'🥉', label:'Best 3rd',    slots:8,  share:0.15, bobai: (group*0.15)/8  });
+      const groupSection = groupPaid
+        ? 'Group pot · ✅ paid out'
+        : 'Group pot · paid 1 day after group stage';
+      rows.push({ section: groupSection, sectionPot: 'group' });
+      rows.push({ pot:'group', icon:'🥇', label:'Group 1st', slots:12, share:0.55, bobai: (group*0.55)/12 });
+      rows.push({ pot:'group', icon:'🥈', label:'Group 2nd', slots:12, share:0.30, bobai: (group*0.30)/12 });
+      rows.push({ pot:'group', icon:'🥉', label:'Best 3rd',  slots:8,  share:0.15, bobai: (group*0.15)/8  });
 
-      rows.push({ section: 'End pool · paid 1 day after Final' });
+      rows.push({ section: 'End pool · paid 1 day after Final', sectionPot: 'end' });
       rows.push({ icon:'🥇', label:'Overall 1st', slots:1, share:0.50, bobai: end*0.50 });
       rows.push({ icon:'🥈', label:'Overall 2nd', slots:1, share:0.25, bobai: end*0.25 });
       rows.push({ icon:'🥉', label:'Overall 3rd', slots:1, share:0.15, bobai: end*0.15 });
       rows.push({ icon:'4️⃣', label:'Overall 4th', slots:1, share:0.10, bobai: end*0.10 });
 
-      rows.push({ section: 'Crypto pot · paid 1 day after Final' });
+      rows.push({ section: 'Crypto pot · paid 1 day after Final', sectionPot: 'crypto' });
       rows.push({ icon:'₿',  label:'Closest BTC guess',   slots:1, share:1/3, bobai: crypto/3 });
       rows.push({ icon:'🟡', label:'Closest BNB guess',   slots:1, share:1/3, bobai: crypto/3 });
       rows.push({ icon:'🧠', label:'Closest BOBAI guess', slots:1, share:1/3, bobai: crypto/3 });
 
       tbody.innerHTML = rows.map(r => {
         if (r.section) {
-          return `<tr class="pot-h"><td colspan="6">${r.section}</td></tr>`;
+          const cls = (groupPaid && r.sectionPot === 'group') ? 'pot-h paid' : 'pot-h';
+          return `<tr class="${cls}"><td colspan="6">${r.section}</td></tr>`;
         }
         const slotsLabel = r.slots > 1 ? `× ${r.slots}` : '× 1';
         const pctLabel = (r.share * 100).toFixed(r.share < 0.1 ? 2 : (r.share < 1 ? 1 : 0)) + ' %';
-        return `<tr>
+        const rowCls = (groupPaid && r.pot === 'group') ? 'row paid' : 'row';
+        return `<tr class="${rowCls}">
           <td class="rank-icon">${r.icon}</td>
           <td>${r.label}</td>
           <td class="pct-cell">${slotsLabel}</td>
@@ -454,6 +602,149 @@
         </tr>`;
       }).join('');
     }
+
+    // ─── Receipt Modal ────────────────────────────────────────────
+    let receiptLoaded = false;
+
+    async function loadReceipt(){
+      const body = $('#rc-body');
+      try {
+        const r = await window.WC_PROFILE.loadPayouts('group');
+        if (r.error) {
+          body.innerHTML = `<div class="rc-empty">Could not load receipt: ${r.error}</div>`;
+          return;
+        }
+        renderReceipt(r.rows || []);
+        receiptLoaded = true;
+      } catch (e) {
+        body.innerHTML = `<div class="rc-empty">Could not load receipt: ${e.message}</div>`;
+      }
+    }
+
+    function positionOrder(pos){
+      const order = { '1st': 1, '2nd': 2, 'best_3rd': 3 };
+      return order[pos] ?? 99;
+    }
+    function positionLabel(pos){
+      if (pos === '1st') return '🥇 1st';
+      if (pos === '2nd') return '🥈 2nd';
+      if (pos === 'best_3rd') return '🥉 Best 3rd';
+      return pos;
+    }
+    function countryFlag(code){
+      if (!code || code.length !== 2) return '';
+      const A = 0x1F1E6, base = 'A'.charCodeAt(0);
+      return String.fromCodePoint(A + (code.toUpperCase().charCodeAt(0) - base))
+           + String.fromCodePoint(A + (code.toUpperCase().charCodeAt(1) - base));
+    }
+    function countryName(code){
+      // Optional: window.WC_COUNTRIES is the same object the rest of the app uses
+      if (window.WC_COUNTRIES && code) {
+        const c = window.WC_COUNTRIES.find?.(x => x.code === code);
+        if (c?.name) return c.name;
+      }
+      return code || '';
+    }
+
+    function renderReceipt(rows){
+      const body = $('#rc-body');
+      if (!rows.length) {
+        body.innerHTML = `<div class="rc-empty">
+          <div style="font-size:32px;margin-bottom:8px">⏳</div>
+          <div style="font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--text);margin-bottom:6px">Payout in progress</div>
+          <div>Transactions will appear here as they confirm on-chain.<br>Refresh to update.</div>
+        </div>`;
+        $('#rc-total-bobai').textContent = '—';
+        $('#rc-total-usd').textContent = '—';
+        $('#rc-total-wallets').textContent = '—';
+        return;
+      }
+
+      // Group by group_letter (A..L)
+      const groups = {};
+      let totalBobai = 0;
+      const wallets = new Set();
+      for (const r of rows) {
+        const key = r.group_letter || '?';
+        (groups[key] ||= []).push(r);
+        totalBobai += Number(r.bobai_amount) || 0;
+        if (r.wallet) wallets.add(r.wallet.toLowerCase());
+      }
+      const letters = Object.keys(groups).sort();
+
+      // Header totals
+      $('#rc-total-bobai').textContent = fmtBobai(totalBobai) + ' BOBAI';
+      $('#rc-total-usd').textContent   = fmtUsdOrNa(totalBobai, livePrice);
+      $('#rc-total-wallets').textContent = wallets.size;
+      const earliest = rows.reduce((a, r) => {
+        const t = new Date(r.paid_at).getTime();
+        return (!a || t < a) ? t : a;
+      }, null);
+      if (earliest) $('#rc-date').textContent = new Date(earliest).toISOString().slice(0, 10);
+
+      body.innerHTML = letters.map(letter => {
+        const list = groups[letter].slice().sort((a, b) => positionOrder(a.position) - positionOrder(b.position));
+        const sum = list.reduce((s, r) => s + (Number(r.bobai_amount) || 0), 0);
+        return `<div class="rc-group">
+          <div class="rc-group-h">
+            <span>Group ${letter}</span>
+            <span class="right">${fmtBobai(sum)} BOBAI · ${list.length} winner${list.length > 1 ? 's' : ''}</span>
+          </div>
+          <div class="rc-rows">
+            ${list.map(r => `
+              <div class="rc-row">
+                <div class="ic">${positionLabel(r.position).split(' ')[0]}</div>
+                <div class="who">
+                  <div class="name">${escapeHtml(r.username || '—')}</div>
+                  <div class="country">${countryFlag(r.country_code)} ${escapeHtml(countryName(r.country_code))}</div>
+                </div>
+                <div class="amt">
+                  <div class="b">${fmtBobai(Number(r.bobai_amount))} BOBAI</div>
+                  <span class="u">${r.usd_at_payout != null ? fmtUsd(Number(r.usd_at_payout)) : fmtUsdOrNa(Number(r.bobai_amount), livePrice)}</span>
+                </div>
+                ${r.tx_hash
+                  ? `<span class="tx tx-paid" title="On-chain confirmed. Verify aggregate outflows on the prize wallet (linked in footer).">✓ paid</span>`
+                  : (Number(r.bobai_amount) === 0
+                      ? `<span class="tx-pending" style="color:#ffc066;border-color:rgba(255,180,0,.32)">26× cap not reached</span>`
+                      : `<span class="tx-pending">pending</span>`)}
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function openReceipt(){
+      $('#receipt-modal').setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      if (!receiptLoaded) await loadReceipt();
+      if (window.twemoji) window.twemoji.parse($('#receipt-modal'));
+    }
+    function closeReceipt(){
+      $('#receipt-modal').setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('#receipt-modal').getAttribute('aria-hidden') === 'false') closeReceipt();
+    });
+    async function shareReceipt(){
+      const url = location.origin + location.pathname + '?receipt=group';
+      try {
+        await navigator.clipboard.writeText(url);
+        const b = document.querySelector('.rc-footer .share');
+        const orig = b.textContent;
+        b.textContent = '✓ Copied';
+        setTimeout(() => { b.textContent = orig; }, 1500);
+      } catch { /* ignore */ }
+    }
+    // Make the modal-control functions reachable from inline onclick attributes
+    window.openReceipt = openReceipt;
+    window.closeReceipt = closeReceipt;
+    window.shareReceipt = shareReceipt;
 
     // ─── Tx History ───────────────────────────────────────────────
     let currentFilter = 'all';
@@ -518,6 +809,7 @@
       linkEl.textContent = addr;
       linkEl.href = `https://bscscan.com/address/${addr}`;
       $('#addr-link').href = `https://bscscan.com/address/${addr}`;
+      $('#rc-wallet-link').href = `https://bscscan.com/address/${addr}`;
       $('#copy-addr').addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(addr);
@@ -536,6 +828,11 @@
       await loadTxs();
       setInterval(loadPool, 30000);
       setInterval(loadTxs, 30000);
+
+      // Auto-open the receipt modal if the link was shared with ?receipt=group
+      if (new URLSearchParams(location.search).get('receipt') === 'group' && groupPaidAt) {
+        openReceipt();
+      }
     })();
   </script>
 </body>

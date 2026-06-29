@@ -10,6 +10,7 @@ import { bsc } from 'viem/chains';
 const BOBAI_PAIR  = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 const SWAP_TOPIC  = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
 const DEAD        = '0x000000000000000000000000000000000000dead';
+const ZERO_ADDR   = '0x0000000000000000000000000000000000000000';
 
 const RPC_DATASEED = [
   'https://bsc-dataseed1.binance.org',
@@ -55,6 +56,8 @@ const IGNORED_WALLETS = new Set([
 const NFT_ABI = parseAbi([
   'function mintTo(address to, uint8 tier, uint8 rarity) external returns (uint256)',
   'function getTiers() external view returns (uint256[6] mintedArr, uint256[6] capArr)',
+  'function nextId() view returns (uint256)',
+  'function ownerOf(uint256) view returns (address)',
 ]);
 
 // ===== RPC helpers =====
@@ -90,6 +93,75 @@ async function tryGetLogs(rpc, fromBlock, toBlock) {
   } catch {
     return null;
   }
+}
+
+// Compute the live on-chain holder count by reading ownerOf(tokenId) for every
+// minted token. Cached 60s in KV to bound RPC load. The collection caps at 1925
+// tokens — at full cap this is ~1925 eth_calls per cache miss (~12/h). Works
+// against any plain BSC dataseed (no keyed RPC required, unlike eth_getLogs).
+async function getHolderState(env, contractAddr) {
+  const cacheRaw = await env.KV.get('holders_cache_v1');
+  if (cacheRaw) {
+    try {
+      const c = JSON.parse(cacheRaw);
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (c && c.ts && c.data && (nowSec - c.ts) < 60) return c.data;
+    } catch {}
+  }
+
+  const client = createPublicClient({ chain: bsc, transport: http(RPC_DATASEED[0]) });
+  let nextId;
+  try {
+    nextId = await client.readContract({
+      address: contractAddr, abi: NFT_ABI, functionName: 'nextId',
+    });
+  } catch (e) {
+    return null;
+  }
+  const tokenCount = Number(nextId) - 1;
+  if (tokenCount <= 0) {
+    const data = { holders: 0, tokens: 0 };
+    try {
+      await env.KV.put('holders_cache_v1', JSON.stringify({
+        ts: Math.floor(Date.now() / 1000), data,
+      }), { expirationTtl: 300 });
+    } catch {}
+    return data;
+  }
+
+  // Bound parallelism so we don't hammer a single dataseed.
+  const CONCURRENCY = 8;
+  const owners = new Array(tokenCount);
+  let idx = 0;
+  async function worker() {
+    while (true) {
+      const my = idx++;
+      if (my >= tokenCount) return;
+      const tokenId = BigInt(my + 1);
+      try {
+        const o = await client.readContract({
+          address: contractAddr, abi: NFT_ABI, functionName: 'ownerOf', args: [tokenId],
+        });
+        owners[my] = (o || '').toLowerCase();
+      } catch {
+        owners[my] = null;
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
+  const ownerList = owners.filter(a => a && a !== ZERO_ADDR);
+  if (ownerList.length === 0) return null;
+  const data = {
+    holders: new Set(ownerList).size,
+    tokens: ownerList.length,
+  };
+  try {
+    await env.KV.put('holders_cache_v1', JSON.stringify({
+      ts: Math.floor(Date.now() / 1000), data,
+    }), { expirationTtl: 300 });
+  } catch {}
+  return data;
 }
 
 async function getSwapLogs(fromBlock, toBlock, env) {
@@ -156,6 +228,29 @@ export default {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'public, max-age=10',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+    if (url.pathname === '/holders' || url.pathname === '/api/holders') {
+      const contract = env.NFT_CONTRACT_ADDRESS;
+      if (!contract) {
+        return new Response(JSON.stringify({ error: 'no contract configured' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      const data = await getHolderState(env, contract);
+      if (data === null) {
+        return new Response(JSON.stringify({ error: 'all rpc failed' }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      return new Response(JSON.stringify(data), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=30',
           'Access-Control-Allow-Origin': '*',
         },
       });

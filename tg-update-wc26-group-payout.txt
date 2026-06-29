@@ -1,0 +1,19 @@
+<b>WC26 · Group Stage payout — done 🏆</b>
+
+3.47M $BOBAI just went out on-chain to 25 winning wallets across all 12 groups. Big 🙌 to everyone who locked in their group-stage tips.
+
+<b>How the cascade played out</b>
+· 12 × Group 1st  (55% bracket) → 196.9K BOBAI each
+· 12 × Group 2nd  (30% bracket) → 107.4K BOBAI each
+·  8 × Best 3rd   (15% bracket) → 80.5K BOBAI each
+· 7 slots forfeited because the wallet held 0 $BOBAI on payout day (26× holder cap) — their share cascaded to the other winners per rules §5
+
+Every transfer randomized in TX order so on-chain analysis can't match wallet → group rank (only the End-Pool top 4 + 3 crypto winners stay matchable).
+
+<b>Verify the receipt</b>
+Each row + TX hash open here:
+<a href="https://brainonbnb.com/worldcup/app/prize-pool.html?receipt=group">brainonbnb.com/worldcup → Prize Pool → Receipt</a>
+
+KO stage starts now — good luck out there 🍀
+
+🧠 keeps building

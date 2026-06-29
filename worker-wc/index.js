@@ -97,7 +97,7 @@ async function sbReq(env, method, path, body){
 
 async function listOurMatches(env){
   const r = await sbReq(env, 'GET',
-    'wc_matches?select=id,phase,group_letter,team_home,team_away,kickoff_utc,goals_home,goals_away,played&order=kickoff_utc.asc');
+    'wc_matches?select=id,phase,group_letter,team_home,team_away,kickoff_utc,goals_home,goals_away,played,match_number&order=kickoff_utc.asc');
   if (!Array.isArray(r.body)) {
     console.log('[SB] listOurMatches non-array:', r.status, JSON.stringify(r.body));
     return [];
@@ -328,6 +328,158 @@ function findOurMatch(remote, ourMatches){
 }
 
 // ============================================================
+// FIFA bracket: stable match number → expected kickoff (UTC) per phase.
+// Source: official FIFA 2026 schedule (CEST = UTC+2). The backfill endpoint
+// uses (phase, kickoff_utc ±2h) to assign these numbers to our rows.
+// ============================================================
+const KO_FIFA_KICKOFFS = {
+  // R32 — Sechzehntelfinale
+  73: { phase: 'r32', kickoff: '2026-06-28T19:00:00.000Z' },
+  74: { phase: 'r32', kickoff: '2026-06-29T20:30:00.000Z' },
+  75: { phase: 'r32', kickoff: '2026-06-30T00:00:00.000Z' },
+  76: { phase: 'r32', kickoff: '2026-06-29T17:00:00.000Z' },
+  77: { phase: 'r32', kickoff: '2026-06-30T21:00:00.000Z' },
+  78: { phase: 'r32', kickoff: '2026-06-30T17:00:00.000Z' },
+  79: { phase: 'r32', kickoff: '2026-07-01T00:00:00.000Z' },
+  80: { phase: 'r32', kickoff: '2026-07-01T16:00:00.000Z' },
+  81: { phase: 'r32', kickoff: '2026-07-02T00:00:00.000Z' },
+  82: { phase: 'r32', kickoff: '2026-07-01T20:00:00.000Z' },
+  83: { phase: 'r32', kickoff: '2026-07-02T23:00:00.000Z' },
+  84: { phase: 'r32', kickoff: '2026-07-02T19:00:00.000Z' },
+  85: { phase: 'r32', kickoff: '2026-07-03T03:00:00.000Z' },
+  86: { phase: 'r32', kickoff: '2026-07-03T22:00:00.000Z' },
+  87: { phase: 'r32', kickoff: '2026-07-04T01:30:00.000Z' },
+  88: { phase: 'r32', kickoff: '2026-07-03T18:00:00.000Z' },
+  // R16 — Achtelfinale
+  89: { phase: 'r16', kickoff: '2026-07-04T21:00:00.000Z' },
+  90: { phase: 'r16', kickoff: '2026-07-04T17:00:00.000Z' },
+  91: { phase: 'r16', kickoff: '2026-07-05T20:00:00.000Z' },
+  92: { phase: 'r16', kickoff: '2026-07-06T00:00:00.000Z' },
+  93: { phase: 'r16', kickoff: '2026-07-06T19:00:00.000Z' },
+  94: { phase: 'r16', kickoff: '2026-07-07T00:00:00.000Z' },
+  95: { phase: 'r16', kickoff: '2026-07-07T16:00:00.000Z' },
+  96: { phase: 'r16', kickoff: '2026-07-07T20:00:00.000Z' },
+  // QF — Viertelfinale
+  97:  { phase: 'qf', kickoff: '2026-07-09T20:00:00.000Z' },
+  98:  { phase: 'qf', kickoff: '2026-07-10T19:00:00.000Z' },
+  99:  { phase: 'qf', kickoff: '2026-07-11T21:00:00.000Z' },
+  100: { phase: 'qf', kickoff: '2026-07-12T00:00:00.000Z' },
+  // SF — Halbfinale
+  101: { phase: 'sf', kickoff: '2026-07-14T19:00:00.000Z' },
+  102: { phase: 'sf', kickoff: '2026-07-15T19:00:00.000Z' },
+  // 3rd place
+  103: { phase: '3rd', kickoff: '2026-07-18T19:00:00.000Z' },
+  // Final
+  104: { phase: 'final', kickoff: '2026-07-19T19:00:00.000Z' },
+};
+
+// Bracket sources: next match → { home: {num, side}, away: {num, side} }
+//   side: 'W' = winner of source match, 'L' = loser
+// Once a source match flips to FINISHED with score.winner from the API, the
+// W/L team code propagates into the next-match TBD slot.
+const KO_BRACKET = {
+  89:  { home: { num: 74, side: 'W' }, away: { num: 77, side: 'W' } },
+  90:  { home: { num: 73, side: 'W' }, away: { num: 75, side: 'W' } },
+  91:  { home: { num: 76, side: 'W' }, away: { num: 78, side: 'W' } },
+  92:  { home: { num: 79, side: 'W' }, away: { num: 80, side: 'W' } },
+  93:  { home: { num: 83, side: 'W' }, away: { num: 84, side: 'W' } },
+  94:  { home: { num: 81, side: 'W' }, away: { num: 82, side: 'W' } },
+  95:  { home: { num: 86, side: 'W' }, away: { num: 88, side: 'W' } },
+  96:  { home: { num: 85, side: 'W' }, away: { num: 87, side: 'W' } },
+  97:  { home: { num: 89, side: 'W' }, away: { num: 90, side: 'W' } },
+  98:  { home: { num: 93, side: 'W' }, away: { num: 94, side: 'W' } },
+  99:  { home: { num: 91, side: 'W' }, away: { num: 92, side: 'W' } },
+  100: { home: { num: 95, side: 'W' }, away: { num: 96, side: 'W' } },
+  101: { home: { num: 97, side: 'W' }, away: { num: 98, side: 'W' } },
+  102: { home: { num: 99, side: 'W' }, away: { num: 100, side: 'W' } },
+  103: { home: { num: 101, side: 'L' }, away: { num: 102, side: 'L' } },
+  104: { home: { num: 101, side: 'W' }, away: { num: 102, side: 'W' } },
+};
+
+function getWinnerCode(remoteScore, ourMatch){
+  const w = remoteScore?.winner;
+  if (w === 'HOME_TEAM') return ourMatch.team_home;
+  if (w === 'AWAY_TEAM') return ourMatch.team_away;
+  return null;
+}
+function getLoserCode(remoteScore, ourMatch){
+  const w = remoteScore?.winner;
+  if (w === 'HOME_TEAM') return ourMatch.team_away;
+  if (w === 'AWAY_TEAM') return ourMatch.team_home;
+  return null;
+}
+
+// Backfill: assign FIFA match numbers to our KO rows by (phase, closest
+// kickoff_utc ±2h). Idempotent. Returns counts + any unmatched FIFA slots
+// + any rows already carrying a conflicting number.
+async function backfillMatchNumbers(env){
+  const res = await sbReq(env, 'GET',
+    'wc_matches?select=id,phase,kickoff_utc,match_number,team_home,team_away'
+    + '&phase=in.(r32,r16,qf,sf,3rd,final)&order=kickoff_utc.asc');
+  if (!Array.isArray(res.body)) return { ok: false, error: 'fetch failed', body: res.body };
+  const rows = res.body;
+  const TOL_MS = 2 * 60 * 60 * 1000;
+  const used = new Set();
+  const applied = [], unmatched = [], conflicts = [], alreadySet = [];
+
+  for (const [numStr, expect] of Object.entries(KO_FIFA_KICKOFFS)) {
+    const fifaNum = Number(numStr);
+    const expectedTs = new Date(expect.kickoff).getTime();
+    let best = null, bestDiff = Infinity;
+    for (const r of rows) {
+      if (r.phase !== expect.phase) continue;
+      if (used.has(r.id)) continue;
+      const diff = Math.abs(new Date(r.kickoff_utc).getTime() - expectedTs);
+      if (diff < bestDiff) { best = r; bestDiff = diff; }
+    }
+    if (!best || bestDiff > TOL_MS) {
+      unmatched.push({ fifaNum, phase: expect.phase, expectedKickoff: expect.kickoff });
+      continue;
+    }
+    used.add(best.id);
+    if (best.match_number != null && best.match_number !== fifaNum) {
+      conflicts.push({ rowId: best.id, currentNumber: best.match_number, wantedNumber: fifaNum });
+      continue;
+    }
+    if (best.match_number === fifaNum) {
+      alreadySet.push({ rowId: best.id, fifaNum });
+      continue;
+    }
+    await updateMatch(env, best.id, { match_number: fifaNum });
+    applied.push({ rowId: best.id, fifaNum, phase: best.phase, kickoff: best.kickoff_utc });
+  }
+  return { ok: true, applied: applied.length, alreadySet: alreadySet.length, unmatched, conflicts, details: { applied, alreadySet } };
+}
+
+// Propagate winner/loser of a finished KO match into the next-round TBD slot.
+// Mutates `ours` in memory so chained finishes within the same cron tick cascade.
+async function propagateBracket(env, ours, finishedMatchNumber, winnerCode, loserCode){
+  if (!Number.isInteger(finishedMatchNumber)) return 0;
+  let propagated = 0;
+  for (const [nextNumStr, slots] of Object.entries(KO_BRACKET)) {
+    const nextNum = Number(nextNumStr);
+    const nextRow = ours.find(m => m.match_number === nextNum);
+    if (!nextRow) continue;
+    const patch = {};
+    for (const side of ['home', 'away']) {
+      const src = slots[side];
+      if (src.num !== finishedMatchNumber) continue;
+      const code = src.side === 'W' ? winnerCode : loserCode;
+      if (!code) continue;
+      const col = side === 'home' ? 'team_home' : 'team_away';
+      if (nextRow[col] === 'TBD' || nextRow[col] == null) patch[col] = code;
+    }
+    if (Object.keys(patch).length) {
+      await updateMatch(env, nextRow.id, patch);
+      Object.assign(nextRow, patch);
+      propagated++;
+      console.log('[BRACKET] propagated:', { from: finishedMatchNumber, to: nextNum, ...patch });
+    }
+  }
+  return propagated;
+}
+
+// ============================================================
 // Sync logic
 // ============================================================
 async function syncMatches(env){
@@ -375,6 +527,21 @@ async function syncMatches(env){
 
     if (Object.keys(updates).length > 0) {
       await updateMatch(env, m.id, updates);
+      // Mirror writes into the in-memory row so subsequent propagation reads see them
+      Object.assign(m, updates);
+    }
+
+    // KO bracket propagation: as soon as we mark a KO match FINISHED, push
+    // its winner (and loser, for the 3rd-place) into the next-round TBD slot.
+    // This is independent of football-data.org's own next-round population —
+    // if their Free Tier is slow, we still advance instantly.
+    if (r.status === 'FINISHED' && m.match_number != null && m.phase !== 'group') {
+      const winner = getWinnerCode(r.score, m);
+      const loser  = getLoserCode(r.score, m);
+      if (winner) {
+        const n = await propagateBracket(env, ours, m.match_number, winner, loser);
+        if (n) console.log('[CRON] bracket advance from', m.match_number, '→', n, 'slot(s)');
+      }
     }
   }
 
@@ -456,6 +623,43 @@ export default {
       return json({ ok: true, koCount: ko.length, unmapped, collisions, ko });
     }
 
+    // Admin: backfill match_number on KO rows by (phase, kickoff_utc ±2h).
+    // Idempotent; run once after the SQL migration.
+    if (url.pathname === '/admin/backfill-match-numbers') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      const r = await backfillMatchNumbers(env);
+      return json(r, r.ok ? 200 : 500);
+    }
+
+    // Admin: dump bracket state. Each KO_BRACKET entry resolved against the
+    // current row by match_number, showing where the next-round team will
+    // come from (W/L of which source match) and whether it's already filled.
+    if (url.pathname === '/admin/debug-bracket') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      const res = await sbReq(env, 'GET',
+        'wc_matches?select=id,match_number,phase,team_home,team_away,kickoff_utc,goals_home,goals_away,played'
+        + '&match_number=not.is.null&order=match_number.asc');
+      const rows = Array.isArray(res.body) ? res.body : [];
+      const byNum = Object.fromEntries(rows.map(x => [x.match_number, x]));
+      const bracket = Object.entries(KO_BRACKET).map(([nextNumStr, slots]) => {
+        const nextNum = Number(nextNumStr);
+        const row = byNum[nextNum];
+        return {
+          match: nextNum,
+          phase: row?.phase ?? null,
+          team_home: row?.team_home ?? null,
+          team_away: row?.team_away ?? null,
+          played: !!row?.played,
+          result: row?.played ? `${row.goals_home}-${row.goals_away}` : null,
+          from_home: `${slots.home.side}(${slots.home.num})`,
+          from_away: `${slots.away.side}(${slots.away.num})`,
+        };
+      });
+      const numbered = rows.length;
+      const expected = Object.keys(KO_FIFA_KICKOFFS).length;
+      return json({ ok: true, numbered, expected, rows, bracket });
+    }
+
     // Admin: manually set KO teams that FIFA has officially announced but the
     // football-data.org free tier hasn't populated yet (it returns null). Only the
     // provided side(s) are written; the regular sync still fills any remaining TBD.
@@ -531,6 +735,47 @@ export default {
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
+    }
+
+    // Admin: mark the group pot paid. Sets wc_pool.group_paid_at which gates
+    // every "paid out" UI state in the worldcup app. Pass paid_at = null to
+    // clear (for testing / revert). Defaults to current UTC.
+    if (url.pathname === '/admin/mark-group-paid' && request.method === 'POST') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      const b = await request.json().catch(() => ({}));
+      const paidAt = b.paid_at === null ? null : (b.paid_at || new Date().toISOString());
+      const r = await sbReq(env, 'PATCH', 'wc_pool?id=eq.1', { group_paid_at: paidAt });
+      // Re-sync the pool so the new gate flips group_pot/end/crypto right away
+      try { await syncPool(env); } catch (e) { console.log('[mark-group-paid] resync failed:', e.message); }
+      return json({ ok: r.ok, group_paid_at: paidAt }, r.ok ? 200 : 500);
+    }
+
+    // Admin: insert a payout receipt row. Called by the payout CLI script
+    // after each successful on-chain transfer. Idempotent on (pot, group_letter,
+    // position, user_id) via a clean DELETE/INSERT pattern is NOT used here —
+    // the script must dedup before calling. Returns the inserted row.
+    if (url.pathname === '/admin/log-payout' && request.method === 'POST') {
+      if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
+      const b = await request.json().catch(() => ({}));
+      const required = ['pot', 'position', 'username', 'wallet', 'bobai_amount'];
+      for (const k of required) {
+        if (b[k] == null || b[k] === '') return json({ error: `missing field: ${k}` }, 400);
+      }
+      const row = {
+        pot:           b.pot,
+        group_letter:  b.group_letter || null,
+        position:      b.position,
+        user_id:       b.user_id || null,
+        username:      b.username,
+        country_code:  b.country_code || null,
+        wallet:        String(b.wallet).toLowerCase(),
+        bobai_amount:  Number(b.bobai_amount),
+        usd_at_payout: b.usd_at_payout != null ? Number(b.usd_at_payout) : null,
+        tx_hash:       b.tx_hash || null,
+        notes:         b.notes || null,
+      };
+      const r = await sbReq(env, 'POST', 'wc_payouts', row);
+      return json({ ok: r.ok, status: r.status, row: r.body }, r.ok ? 200 : 500);
     }
 
     // Admin: resolve bonus questions (call after tournament)
@@ -761,11 +1006,40 @@ function computePots(total, now){
 }
 
 async function syncPool(env){
-  const total = await readBobaiBalance(PRIZE_WALLET);
-  const price = await fetchBobaiPriceUsd();
-  const pots  = computePots(total, Date.now());
+  const wallet = await readBobaiBalance(PRIZE_WALLET);
+  const price  = await fetchBobaiPriceUsd();
+
+  // Once admin marks the group pot paid, override the date/balance-based
+  // logic: group stays at the frozen snapshot for display, new wallet
+  // balance splits 90/10 between end + crypto. Total_bobai then includes
+  // the historical group amount so the "Prize Pool" headline stays stable
+  // across the payout (donors see the total they helped grow).
+  const current = await sbReq(env, 'GET', 'wc_pool?id=eq.1&select=group_paid_at');
+  const groupPaid = Array.isArray(current.body) && current.body[0]?.group_paid_at != null;
+
+  let pots, displayTotal;
+  if (groupPaid) {
+    // Pre-payout (toggle on but BOBAI hasn't left the wallet yet): subtract
+    // the frozen group amount from the wallet so end/crypto don't double-count it.
+    // Post-payout (wallet < frozen): wallet already represents only the
+    // remaining donations, so use it directly.
+    const remaining = wallet >= GROUP_POT_FROZEN ? wallet - GROUP_POT_FROZEN : wallet;
+    pots = {
+      group:  GROUP_POT_FROZEN,
+      end:    remaining * 0.90,
+      crypto: remaining * 0.10,
+      phase:  'ko-paid',
+    };
+    // Total stays at "paid + still in pool" — invariant before AND after the
+    // actual on-chain transfer, so the headline doesn't jump on payout day.
+    displayTotal = GROUP_POT_FROZEN + remaining;
+  } else {
+    pots = computePots(wallet, Date.now());
+    displayTotal = wallet;
+  }
+
   const update = {
-    total_bobai:     total,
+    total_bobai:     displayTotal,
     group_pot:       pots.group,
     endpool:         pots.end,
     crypto_pot:      pots.crypto,
@@ -773,7 +1047,7 @@ async function syncPool(env){
     updated_at:      new Date().toISOString(),
   };
   await sbReq(env, 'PATCH', 'wc_pool?id=eq.1', update);
-  return { total, price, phase: pots.phase, pots };
+  return { wallet, displayTotal, price, phase: pots.phase, pots, groupPaid };
 }
 
 // ============================================================

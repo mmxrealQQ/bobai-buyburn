@@ -60,6 +60,16 @@
     .row.top2{background:linear-gradient(90deg,rgba(192,192,192,.08),rgba(0,0,0,.25));border-color:rgba(192,192,192,.25)}
     .row.top3{background:linear-gradient(90deg,rgba(205,127,50,.08),rgba(0,0,0,.25));border-color:rgba(205,127,50,.25)}
     .row.closest{background:linear-gradient(90deg,rgba(240,185,11,.18),rgba(240,185,11,.06));border-color:var(--gold);box-shadow:0 0 24px rgba(240,185,11,.12)}
+    /* Paid-out group winner — green tint overrides medal styling so the row
+       reads as "money already left the pool" rather than "currently leading". */
+    .row.paid{background:linear-gradient(90deg,rgba(0,230,118,.10),rgba(0,230,118,.03));border-color:rgba(0,230,118,.42);position:relative}
+    .row.paid::after{content:'✓ paid';position:absolute;top:6px;right:8px;font-family:'Space Grotesk';font-size:9px;letter-spacing:.8px;color:#7fffb0;background:rgba(0,230,118,.14);border:1px solid rgba(0,230,118,.3);padding:1px 6px;border-radius:4px;font-weight:700;text-transform:uppercase;pointer-events:none}
+    .row.paid.me{border-color:rgba(0,230,118,.55);background:linear-gradient(90deg,rgba(0,230,118,.16),rgba(240,185,11,.04))}
+    /* Forfeit (cap-hit at 0 BOBAI balance): share cascaded to others */
+    .row.forfeit{background:linear-gradient(90deg,rgba(255,180,0,.07),rgba(0,0,0,.25));border-color:rgba(255,180,0,.32);opacity:.85}
+    .row.forfeit::after{content:'26× cap';position:absolute;top:6px;right:8px;font-family:'Space Grotesk';font-size:9px;letter-spacing:.8px;color:#ffc066;background:rgba(255,180,0,.14);border:1px solid rgba(255,180,0,.32);padding:1px 6px;border-radius:4px;font-weight:700;text-transform:uppercase;pointer-events:none}
+    .row.forfeit .prize-cell .pz-pct,.row.forfeit .prize-cell .pz-bobai,.row.forfeit .prize-cell .pz-usd{color:rgba(255,192,102,.7)}
+    .forfeit-pill{display:inline-block;margin-left:5px;padding:1px 7px;border-radius:5px;background:rgba(255,180,0,.12);border:1px solid rgba(255,180,0,.32);color:#ffc066;font-family:'Space Grotesk';font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;cursor:help}
 
     .rank{font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--muted);text-align:center}
     .row.top1 .rank{color:var(--gold);font-size:18px}
@@ -128,6 +138,11 @@
     /* FIFA STANDINGS TABLE */
     .section-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 4px 8px;font-family:'Space Grotesk';font-weight:600;font-size:11.5px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase}
     .section-h .right{color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:none;font-size:11px}
+    /* Settled (group pot paid & frozen) explainer + receipt-order divider */
+    .settled-pill{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:5px;background:rgba(0,230,118,.14);border:1px solid rgba(0,230,118,.32);color:#7fffb0;font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;vertical-align:1px}
+    .settled-note{margin:0 4px 12px;padding:10px 13px;background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.18);border-radius:9px;color:var(--muted);font-size:11.5px;line-height:1.55}
+    .settled-note b{color:#7fffb0;font-weight:700}
+    .settled-divider{text-align:center;font-size:9.5px;letter-spacing:.6px;color:var(--muted);opacity:.65;margin:8px 0 4px;text-transform:uppercase;font-family:'Space Grotesk';font-weight:600}
     .standings{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:6px}
     .standings table{width:100%;border-collapse:collapse;font-size:13px}
     .standings th,.standings td{padding:9px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)}
@@ -277,8 +292,8 @@
   <script src="./assets/config.js?v=12"></script>
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
-  <script src="./assets/profile.js?v=16"></script>
-  <script src="./assets/projection.js?v=1"></script>
+  <script src="./assets/profile.js?v=17"></script>
+  <script src="./assets/projection.js?v=4"></script>
   <script src="./assets/avatar.js?v=7"></script>
   <script src="./assets/nav.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
@@ -506,15 +521,23 @@
       // to paid positions in this view: Groups top 3 (55/30/15), Overall/Bracket
       // top 4 (50/25/15/10). Non-payout ties stay quiet.
       const medalRank = opts.medalRank || 3;
+      // Past tense ("held") for settled/frozen views, present ("holds") for live ones.
+      const tieVerb = opts.tiePast ? 'held' : 'holds';
       const tiePill = (r.bobai_beats_below && rank <= medalRank)
-        ? ` · <span class="tie-pill" title="Tied on points; ranks higher because this wallet holds more $BOBAI (rules §7).">holds more $BOBAI</span>`
+        ? ` · <span class="tie-pill" title="Tied on points; ranks higher because this wallet ${tieVerb} more $BOBAI (rules §7).">${tieVerb} more $BOBAI</span>`
+        : '';
+      // Cap-not-reached badge — wallet linked but 26× holder cap = 0 (i.e. holds
+      // too little $BOBAI), so the row's share cascades to the other group winners.
+      // Shown only after the group pot is paid (opts.forfeit = wc_payouts amount === 0).
+      const forfeitPill = opts.forfeit
+        ? ` · <span class="forfeit-pill" title="Wallet didn't meet the 26× holder cap — share cascaded to remaining group winners (rules §5).">didn't reach 26× cap</span>`
         : '';
       return `<a href="${href}" class="${rowClass(rank, r.user_id, opts.extraClass)}" style="text-decoration:none;color:inherit">
         <div class="rank">${rankLabel(rank)}</div>
         <div class="ava-sm">${ava}</div>
         <div class="uinfo">
           <div class="uname"><span class="uname-text">${escapeHtml(r.username)}</span>${ball}</div>
-          <div class="umeta">${country}${tiePill}</div>
+          <div class="umeta">${country}${tiePill}${forfeitPill}</div>
         </div>
         ${prize}
         ${pts}
@@ -548,11 +571,12 @@
       if (r.error) return;
       const p = r.pool || {};
       pool = {
-        total:  parseFloat(p.total_bobai)     || 0,
-        group:  parseFloat(p.group_pot)       || 0,
-        end:    parseFloat(p.endpool)         || 0,
-        crypto: parseFloat(p.crypto_pot)      || 0,
-        price:  parseFloat(p.bobai_price_usd) || 0,
+        total:        parseFloat(p.total_bobai)     || 0,
+        group:        parseFloat(p.group_pot)       || 0,
+        end:          parseFloat(p.endpool)         || 0,
+        crypto:       parseFloat(p.crypto_pot)      || 0,
+        price:        parseFloat(p.bobai_price_usd) || 0,
+        groupPaidAt:  p.group_paid_at || null,
       };
     }
 
@@ -660,17 +684,129 @@
 
       const myGroup = allG.find(g => g.letter === letter);
       const rows = applyWalletFilter(myGroup ? myGroup.rows : []);
+
+      // Build shares Map. Default = raw cascade-naive shares from leaderboard math.
+      // Once the group pot is paid, overlay actual post-cascade amounts from
+      // wc_payouts (which include 0-balance forfeits and redistributed bonuses).
       const shares = computeGroupShares(allG);
+      const forfeits = new Set();
+      let payoutRows = [];
+      if (pool.groupPaidAt) {
+        const r = await window.WC_PROFILE.loadPayouts('group');
+        if (!r.error) {
+          payoutRows = r.rows || [];
+          for (const row of payoutRows) {
+            shares.set(`${row.user_id}|${row.group_letter}`, Number(row.bobai_amount) || 0);
+            if (Number(row.bobai_amount) === 0) forfeits.add(`${row.user_id}|${row.group_letter}`);
+          }
+        }
+      }
       const best3InThisGroup = rows[2];
       const best3HasShare = best3InThisGroup
         && shares.has(`${best3InThisGroup.user_id}|${letter}`)
         && (shares.get(`${best3InThisGroup.user_id}|${letter}`) > 0);
 
-      const playerSection = `<div class="section-h"><span>Group ${letter} — players (top 5)</span><span class="right">55 / 30 / 15 % split of group pot</span></div>`;
+      const paidDateStr = pool.groupPaidAt
+        ? new Date(pool.groupPaidAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+        : '';
+      const playerSection = pool.groupPaidAt
+        ? `<div class="section-h"><span>Group ${letter} — payout <span class="settled-pill">✓ settled</span></span><span class="right">frozen ${paidDateStr}</span></div>`
+          + `<div class="settled-note">Paid out <b>${paidDateStr}</b> and <b>frozen</b>. The three winners below received the amounts shown on-chain.</div>`
+        : `<div class="section-h"><span>Group ${letter} — players (top 5)</span><span class="right">55 / 30 / 15 % split of group pot</span></div>`;
       let playerListHtml;
       let footer = '';
       if (!rows.length) {
         playerListHtml = `<div class="empty">No tips in Group ${letter} yet.</div>`;
+      } else if (pool.groupPaidAt) {
+        // ===== SETTLED VIEW =====
+        // The group pot is paid out and frozen. The ONLY source of truth is
+        // wc_payouts — never the live re-projection. We render the actual
+        // winners first (in their paid 1st/2nd/best-3rd order, with their
+        // real on-chain amounts), then the remaining players by live points
+        // at 0. This stops a wallet that drifted into a top-3 live slot after
+        // the freeze (daily $BOBAI tie-breaker shuffle) from showing a phantom
+        // share it never received.
+        // The group stage is over → group_points are final. The only thing that
+        // still moves is the live $BOBAI tie-breaker, which must NOT re-order a
+        // settled group. So: (a) pin the actual winners in their paid order,
+        // (b) order everyone else by frozen group_points. The "holds more $BOBAI"
+        // pill stays on genuine point-ties (userRow only shows it when
+        // bobai_beats_below && a tie exists) — it explains which wallet won the
+        // tiebreak that set the frozen payout order.
+        const frozen = r => r;
+        const POS_RANK = { '1st': 1, '2nd': 2, 'best_3rd': 3 };
+        const winRows = payoutRows
+          .filter(p => p.group_letter === letter)
+          .slice()
+          .sort((a, b) => (POS_RANK[a.position] || 9) - (POS_RANK[b.position] || 9));
+        const winnerIds = new Set(winRows.map(w => w.user_id));
+        const byId = new Map(rows.map(r => [r.user_id, r]));
+        const meIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;
+
+        const winnerHtml = winRows.map((w, i) => {
+          const base = byId.get(w.user_id) || {
+            user_id: w.user_id, username: w.username,
+            avatar_country: w.country_code, has_wallet: true, group_points: w.group_points,
+          };
+          const live = frozen(base);
+          const amt = Number(w.bobai_amount) || 0;
+          const isForfeit = amt === 0;
+          return userRow(live, i + 1, {
+            ptsLabel: 'pts',
+            ptsValue: fmtPts(live.group_points || 0),
+            prizeBobai: amt,
+            contextPot: pool.group,
+            extraClass: isForfeit ? 'forfeit' : (amt > 0 ? 'paid' : ''),
+            forfeit: isForfeit,
+            tiePast: true,
+          });
+        }).join('');
+
+        const others = rows
+          .filter(r => !winnerIds.has(r.user_id))
+          .sort((a, b) => (b.group_points || 0) - (a.group_points || 0));
+        const othersShown = others.slice(0, Math.max(0, 5 - winRows.length));
+        const othersHtml = othersShown.map((r0, j) => userRow(frozen(r0), winRows.length + j + 1, {
+          ptsLabel: 'pts',
+          ptsValue: fmtPts(r0.group_points || 0),
+          prizeBobai: 0,
+          contextPot: pool.group,
+          tiePast: true,
+        })).join('');
+
+        const shownIds = new Set([...winnerIds, ...othersShown.map(r => r.user_id)]);
+        let meHtml = '';
+        if (me && meIdx >= 0 && !shownIds.has(me.id)) {
+          const meRow = rows[meIdx];
+          const meFrozenRank = others.findIndex(r => r.user_id === me.id);
+          meHtml = `<div class="rank-gap">···</div>` + userRow(frozen(meRow), winRows.length + (meFrozenRank >= 0 ? meFrozenRank + 1 : meIdx + 1), {
+            ptsLabel: 'pts',
+            ptsValue: fmtPts(meRow.group_points || 0),
+            prizeBobai: 0,
+            contextPot: pool.group,
+            tiePast: true,
+          });
+        }
+        const divider = othersHtml
+          ? `<div class="settled-divider">— paid winners above · live standings below (no further payout) —</div>`
+          : '';
+        playerListHtml = `<div class="list">${winnerHtml}${divider}${othersHtml}${meHtml}</div>`;
+
+        // Settled footer: tell me exactly what I won here (if anything).
+        if (me) {
+          const myWin = winRows.find(w => w.user_id === me.id);
+          let statusHtml;
+          if (myWin && Number(myWin.bobai_amount) > 0) {
+            const pos = myWin.position === '1st' ? '1st' : myWin.position === '2nd' ? '2nd' : 'best 3rd';
+            statusHtml = `<span class="mf-status qualified">✓ You won Group ${letter} ${pos} — ${fmtBobai(Number(myWin.bobai_amount))} BOBAI paid on-chain</span>`;
+          } else if (myWin) {
+            statusHtml = `<span class="mf-status need">Group ${letter} ${myWin.position === 'best_3rd' ? 'best 3rd' : myWin.position} — share cascaded (26× cap not reached)</span>`;
+          } else {
+            const myRank = meIdx >= 0 ? meIdx + 1 : null;
+            statusHtml = `<span class="mf-status">Group ${letter} settled — you finished ${myRank ? '#' + myRank : 'unranked'}, outside the paid positions</span>`;
+          }
+          footer = `<div class="me-footer"><div class="mf-left"><span class="mf-status">Group ${letter} payout ✓ frozen</span></div><div>${statusHtml}</div></div>`;
+        }
       } else {
         const top5 = rows.slice(0, 5);
         const meIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;

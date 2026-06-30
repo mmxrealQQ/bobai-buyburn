@@ -770,17 +770,31 @@
         const byId = new Map(rows.map(r => [r.user_id, r]));
         const meIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;
 
+        // Everyone outside the paid top-3, ordered by frozen group_points.
+        const others = rows
+          .filter(r => !winnerIds.has(r.user_id))
+          .sort((a, b) => (b.group_points || 0) - (a.group_points || 0));
+
+        // "held more $BOBAI" pill for a SETTLED group must come from the FROZEN
+        // payout order, NOT the live RPC flag (r.bobai_beats_below): the daily
+        // $BOBAI snapshot drifts after the freeze (and wallet swaps), which would
+        // otherwise move the badge onto the lower-paid tied player. A paid winner
+        // held more iff it's tied on points with the row directly below it in the
+        // frozen order (next paid winner, else the top non-winner) and that row
+        // has a linked wallet. Forfeits (0 paid) never claim "held more".
         const winnerHtml = winRows.map((w, i) => {
           const base = byId.get(w.user_id) || {
             user_id: w.user_id, username: w.username,
             avatar_country: w.country_code, has_wallet: true, group_points: w.group_points,
           };
-          const live = frozen(base);
           const amt = Number(w.bobai_amount) || 0;
           const isForfeit = amt === 0;
-          return userRow(live, i + 1, {
+          const below = (i + 1 < winRows.length) ? byId.get(winRows[i + 1].user_id) : others[0];
+          const heldMore = !isForfeit && !!below && below.has_wallet !== false
+            && (below.group_points || 0) === (base.group_points || 0);
+          return userRow({ ...base, bobai_beats_below: heldMore }, i + 1, {
             ptsLabel: 'pts',
-            ptsValue: fmtPts(live.group_points || 0),
+            ptsValue: fmtPts(base.group_points || 0),
             prizeBobai: amt,
             contextPot: pool.group,
             extraClass: isForfeit ? 'forfeit' : (amt > 0 ? 'paid' : ''),
@@ -789,11 +803,9 @@
           });
         }).join('');
 
-        const others = rows
-          .filter(r => !winnerIds.has(r.user_id))
-          .sort((a, b) => (b.group_points || 0) - (a.group_points || 0));
         const othersShown = others.slice(0, Math.max(0, 5 - winRows.length));
-        const othersHtml = othersShown.map((r0, j) => userRow(frozen(r0), winRows.length + j + 1, {
+        // Unpaid "live standings" rows never claim the frozen held-more pill.
+        const othersHtml = othersShown.map((r0, j) => userRow({ ...frozen(r0), bobai_beats_below: false }, winRows.length + j + 1, {
           ptsLabel: 'pts',
           ptsValue: fmtPts(r0.group_points || 0),
           prizeBobai: 0,
@@ -806,7 +818,7 @@
         if (me && meIdx >= 0 && !shownIds.has(me.id)) {
           const meRow = rows[meIdx];
           const meFrozenRank = others.findIndex(r => r.user_id === me.id);
-          meHtml = `<div class="rank-gap">···</div>` + userRow(frozen(meRow), winRows.length + (meFrozenRank >= 0 ? meFrozenRank + 1 : meIdx + 1), {
+          meHtml = `<div class="rank-gap">···</div>` + userRow({ ...frozen(meRow), bobai_beats_below: false }, winRows.length + (meFrozenRank >= 0 ? meFrozenRank + 1 : meIdx + 1), {
             ptsLabel: 'pts',
             ptsValue: fmtPts(meRow.group_points || 0),
             prizeBobai: 0,

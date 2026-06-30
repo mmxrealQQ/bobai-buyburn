@@ -170,6 +170,9 @@ export default {
         `This piece: ${tInfo.emoji} ${tInfo.label} motif (${tInfo.threshold}) ` +
         `in ${rInfo.label} rarity (${rInfo.hex}).`,
       image: `${cardsBase}/${tInfo.slug}-${rInfo.slug}.jpg`,
+      // `image_url` is an older alias some indexers (Bitget/DeBank-Rabby etc.)
+      // read instead of `image`. Same URL — kept in sync — for max wallet reach.
+      image_url: `${cardsBase}/${tInfo.slug}-${rInfo.slug}.jpg`,
       external_url: EXTERNAL_URL,
       background_color: rInfo.hex.replace('#', ''),
       attributes: [

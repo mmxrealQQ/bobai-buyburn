@@ -23,3 +23,12 @@
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
   Pragma: no-cache
   Expires: 0
+
+# Clean page URLs (CF strips .html → e.g. /worldcup/app/leaderboard). The
+# :page placeholder matches a SINGLE segment, so it covers every app page but
+# NOT the deeper /worldcup/app/assets/* files (those stay cacheable via ?v=).
+# Without this, clean URLs fell through to default caching → stale on mobile.
+/worldcup/app/:page
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Expires: 0

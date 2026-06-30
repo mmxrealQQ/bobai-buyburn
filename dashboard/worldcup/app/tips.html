@@ -65,6 +65,7 @@
     .match-meta .lockicon{color:#ff8580}
     .match-meta .open{color:#5fffa0}
     .match-meta .resolved{color:var(--gold)}
+    .match-meta .decider{color:var(--text);background:rgba(255,255,255,.06);padding:2px 7px;border-radius:99px;font-weight:600;white-space:nowrap}
 
     .team{display:flex;align-items:center;gap:8px;min-width:0}
     .team.away{justify-content:flex-end}
@@ -329,6 +330,15 @@
       }
     }
 
+    // KO matches decided after 90 min: tips score on the 90-min goals, this chip
+    // just surfaces the decider (penalties / extra time) next to the result.
+    function deciderChip(m){
+      if (m.final_home == null || m.final_away == null) return '';
+      if (m.decided_by === 'pens') return `<span class="decider">🥅 ${m.final_home - m.goals_home}:${m.final_away - m.goals_away} pen</span>`;
+      if (m.decided_by === 'aet')  return `<span class="decider">⏱ ${m.final_home}:${m.final_away} a.e.t.</span>`;
+      return '';
+    }
+
     function buildMatchRow(m, isFirst){
       const wrap = document.createElement('div');
       wrap.className = 'match-row' + (isFirst ? ' first' : '');
@@ -348,6 +358,7 @@
           <span>${fmtKickoff(m.kickoff_utc)}</span>
           ${multiplierLabel(m.multiplier)}
           ${status}
+          ${played ? deciderChip(m) : ''}
         </div>
         ${teamCell(m.team_home, false, played ? m.goals_home : null)}
         <div class="score-cell">

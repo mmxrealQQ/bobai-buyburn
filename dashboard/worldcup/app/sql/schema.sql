@@ -28,8 +28,11 @@ CREATE TABLE wc_matches (
   team_home TEXT,                     -- ISO or 'TBD'
   team_away TEXT,
   kickoff_utc TIMESTAMPTZ NOT NULL,
-  goals_home INT,                     -- NULL until played
+  goals_home INT,                     -- NULL until played; 90-min (regular) result -> tip scoring
   goals_away INT,
+  final_home INT,                     -- KO full result incl ET+pens; NULL if decided in 90 (phase_q)
+  final_away INT,
+  decided_by TEXT,                    -- 'aet' | 'pens' | NULL — how a KO match was decided (phase_q)
   played BOOLEAN DEFAULT FALSE,
   multiplier NUMERIC DEFAULT 1        -- group MD1=1, MD2=1.25, MD3=1.5; r32=2, r16=3, qf=4, sf=5, 3rd=6, final=7 (rebalanced phase_j, MD staircase phase_m)
 );

@@ -83,7 +83,7 @@
   async function loadMatches(){
     const { data, error } = await sb
       .from('wc_matches')
-      .select('id, phase, group_letter, team_home, team_away, kickoff_utc, goals_home, goals_away, played, multiplier')
+      .select('id, phase, group_letter, team_home, team_away, kickoff_utc, goals_home, goals_away, final_home, final_away, decided_by, played, multiplier')
       .order('kickoff_utc', { ascending: true });
     if (error) return { error: error.message };
     return { ok: true, matches: data || [] };

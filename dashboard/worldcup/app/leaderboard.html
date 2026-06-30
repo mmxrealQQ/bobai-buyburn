@@ -122,6 +122,7 @@
     .br-list .br-center{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px}
     .br-list .br-score{font-family:'Space Grotesk';font-weight:700;font-size:18px;color:var(--text)}
     .br-list .br-score.played{color:var(--gold)}
+    .br-list .br-pens{font-family:'Space Grotesk';font-weight:600;font-size:11px;color:var(--muted);white-space:nowrap}
     .br-list .br-vs{font-size:11px;color:var(--muted);letter-spacing:1px}
     .br-list .br-time{font-size:10px;color:var(--muted);margin-top:2px}
 
@@ -588,6 +589,32 @@
       return allMatches;
     }
 
+    // --- Knockout result helpers (extra time / penalties) ---
+    // goals_home/away = 90-min result (what tips are scored on).
+    // final_home/away (+ decided_by 'aet'|'pens') = full result that decides who
+    // advances. Winner = direction of final when present, else of goals.
+    function matchWinnerSide(m){
+      const hasFinal = m.final_home != null && m.final_away != null;
+      const h = hasFinal ? m.final_home : m.goals_home;
+      const a = hasFinal ? m.final_away : m.goals_away;
+      if (h == null || a == null || h === a) return null;
+      return h > a ? 'home' : 'away';
+    }
+    // Goals counted toward scorer tallies: extra-time goals count, penalties never.
+    function statGoals(m){
+      if (m.decided_by === 'aet' && m.final_home != null)
+        return { h: m.final_home, a: m.final_away };
+      return { h: m.goals_home, a: m.goals_away };
+    }
+    // Scoreline suffix: "(3:4 pen)" or "(2:1 a.e.t.)". Empty for regular results.
+    function resultSuffix(m){
+      if (m.decided_by === 'pens' && m.final_home != null)
+        return ` <span class="br-pens">(${m.final_home - m.goals_home}:${m.final_away - m.goals_away} pen)</span>`;
+      if (m.decided_by === 'aet' && m.final_home != null)
+        return ` <span class="br-pens">(${m.final_home}:${m.final_away} a.e.t.)</span>`;
+      return '';
+    }
+
     function computeStandings(matches, groupLetter){
       const teams = {};
       const gm = matches.filter(m => m.phase === 'group' && m.group_letter === groupLetter);
@@ -865,11 +892,11 @@
     function renderBracketMatchRow(m){
       const played = m.played && m.goals_home != null && m.goals_away != null;
       let hWin = false, aWin = false;
-      if (played) { hWin = m.goals_home > m.goals_away; aWin = m.goals_home < m.goals_away; }
+      if (played) { const s = matchWinnerSide(m); hWin = s === 'home'; aWin = s === 'away'; }
       const isFinal = m.phase === 'final';
       const time = m.kickoff_utc ? fmtKickoffShort(m.kickoff_utc) : '';
       const center = played
-        ? `<div class="br-score played">${m.goals_home} : ${m.goals_away}</div><div class="br-time">${time}</div>`
+        ? `<div class="br-score played">${m.goals_home} : ${m.goals_away}${resultSuffix(m)}</div><div class="br-time">${time}</div>`
         : `<div class="br-vs">VS</div><div class="br-time">${time}</div>`;
       return `<div class="br-match ${played?'played':''} ${isFinal?'final':''}">
         ${brTeamWithWin(m.team_home, 'left',  hWin)}
@@ -961,8 +988,9 @@
       matches.forEach(m => {
         const H = ensure(m.team_home), A = ensure(m.team_away);
         if (m.played && m.goals_home != null && m.goals_away != null) {
-          if (H) { H.gf += m.goals_home; H.played++; }
-          if (A) { A.gf += m.goals_away; A.played++; }
+          const sg = statGoals(m);  // ET goals count, penalties don't
+          if (H) { H.gf += sg.h; H.played++; }
+          if (A) { A.gf += sg.a; A.played++; }
         } else {
           if (H) H.gamesLeft++;
           if (A) A.gamesLeft++;
@@ -984,8 +1012,9 @@
       matches.forEach(m => {
         if (m.phase === 'group') return;
         if (!m.played || m.goals_home == null || m.goals_away == null) return;
-        if (m.goals_home === m.goals_away) return;  // draw — winner only known via penalties (not in DB)
-        const loserCode = m.goals_home < m.goals_away ? m.team_home : m.team_away;
+        const side = matchWinnerSide(m);  // resolves ET/penalty winner too
+        if (!side) return;
+        const loserCode = side === 'home' ? m.team_away : m.team_home;
         if (loserCode && byTeam[loserCode]) byTeam[loserCode].eliminated = true;
       });
       // Group-phase exits — only safe to call after all 72 group matches played.
@@ -1120,8 +1149,9 @@
       const finalPlayed = !!(finalMatch && finalMatch.played && finalMatch.goals_home != null);
       let winnerCode = null;
       if (finalPlayed) {
-        if (finalMatch.goals_home > finalMatch.goals_away) winnerCode = finalMatch.team_home;
-        else if (finalMatch.goals_home < finalMatch.goals_away) winnerCode = finalMatch.team_away;
+        const s = matchWinnerSide(finalMatch);  // ET/penalty winner too
+        if (s === 'home') winnerCode = finalMatch.team_home;
+        else if (s === 'away') winnerCode = finalMatch.team_away;
       }
       // Only show tipped teams still in the tournament (or the winner if final
       // is played). User: "muss die mannschaft solange drin sein bis sie im

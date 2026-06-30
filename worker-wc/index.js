@@ -97,7 +97,7 @@ async function sbReq(env, method, path, body){
 
 async function listOurMatches(env){
   const r = await sbReq(env, 'GET',
-    'wc_matches?select=id,phase,group_letter,team_home,team_away,kickoff_utc,goals_home,goals_away,played,match_number&order=kickoff_utc.asc');
+    'wc_matches?select=id,phase,group_letter,team_home,team_away,kickoff_utc,goals_home,goals_away,final_home,final_away,decided_by,played,match_number&order=kickoff_utc.asc');
   if (!Array.isArray(r.body)) {
     console.log('[SB] listOurMatches non-array:', r.status, JSON.stringify(r.body));
     return [];
@@ -396,17 +396,27 @@ const KO_BRACKET = {
   104: { home: { num: 101, side: 'W' }, away: { num: 102, side: 'W' } },
 };
 
-function getWinnerCode(remoteScore, ourMatch){
+// Resolve the qualifier. football-data leaves score.winner = null for penalty
+// shootouts (it only fills it for matches decided in regular/extra time), so we
+// fall back to the direction of fullTime — which DOES encode the shootout winner
+// (the side that won the pens carries the higher fullTime number).
+function getWinnerSide(remoteScore){
   const w = remoteScore?.winner;
-  if (w === 'HOME_TEAM') return ourMatch.team_home;
-  if (w === 'AWAY_TEAM') return ourMatch.team_away;
-  return null;
+  if (w === 'HOME_TEAM') return 'home';
+  if (w === 'AWAY_TEAM') return 'away';
+  const ft = remoteScore?.fullTime;
+  if (ft && ft.home != null && ft.away != null && ft.home !== ft.away) {
+    return ft.home > ft.away ? 'home' : 'away';
+  }
+  return null; // genuinely undecided (e.g. still level — should not happen for FINISHED KO)
+}
+function getWinnerCode(remoteScore, ourMatch){
+  const s = getWinnerSide(remoteScore);
+  return s === 'home' ? ourMatch.team_home : s === 'away' ? ourMatch.team_away : null;
 }
 function getLoserCode(remoteScore, ourMatch){
-  const w = remoteScore?.winner;
-  if (w === 'HOME_TEAM') return ourMatch.team_away;
-  if (w === 'AWAY_TEAM') return ourMatch.team_home;
-  return null;
+  const s = getWinnerSide(remoteScore);
+  return s === 'home' ? ourMatch.team_away : s === 'away' ? ourMatch.team_home : null;
 }
 
 // Backfill: assign FIFA match numbers to our KO rows by (phase, closest
@@ -508,12 +518,30 @@ async function syncMatches(env){
 
     // Finished match: write goals + played=true → DB trigger auto-scores tips
     if (r.status === 'FINISHED') {
-      const ft = r.score?.fullTime || {};
-      if (ft.home != null && ft.away != null) {
-        // Only update if changed
-        if (!m.played || m.goals_home !== ft.home || m.goals_away !== ft.away) {
-          updates.goals_home = ft.home;
-          updates.goals_away = ft.away;
+      // Tip scoring uses the 90-minute (regular) result. football-data only
+      // sends `score.regularTime` when a KO match went past 90 min; ordinary
+      // matches just carry `score.fullTime`. So: goals = regularTime ?? fullTime.
+      // Extra time / penalties are kept separately (final_* + decided_by) and
+      // only drive advancement, bonus questions and the displayed scoreline —
+      // never the match-tip points.
+      const ft  = r.score?.fullTime || {};
+      const reg = r.score?.regularTime || {};
+      const dur = r.score?.duration; // REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT
+      const gh = reg.home != null ? reg.home : ft.home;
+      const ga = reg.away != null ? reg.away : ft.away;
+      // final_* = full result incl. ET + pens; NULL when decided inside 90 min.
+      let fh = null, fa = null, decidedBy = null;
+      if (dur === 'EXTRA_TIME')           { fh = ft.home; fa = ft.away; decidedBy = 'aet'; }
+      else if (dur === 'PENALTY_SHOOTOUT'){ fh = ft.home; fa = ft.away; decidedBy = 'pens'; }
+      if (gh != null && ga != null) {
+        // Only update if something changed (goals or the ET/pen decider)
+        if (!m.played || m.goals_home !== gh || m.goals_away !== ga ||
+            m.final_home !== fh || m.final_away !== fa || m.decided_by !== decidedBy) {
+          updates.goals_home = gh;
+          updates.goals_away = ga;
+          updates.final_home = fh;
+          updates.final_away = fa;
+          updates.decided_by = decidedBy;
           updates.played = true;
           finished++;
         }
@@ -684,18 +712,27 @@ export default {
     }
 
     // Admin: manually set a match result (for beta testing / FIFA-result corrections)
-    // POST /admin/set-result?token=...  Body: { id, goals_home, goals_away }
+    // POST /admin/set-result?token=...
+    // Body: { id, goals_home, goals_away, final_home?, final_away?, decided_by? }
+    // goals_* = 90-min result (scored). For a KO match decided after 90 min,
+    // also pass final_home/final_away (full result incl ET+pens) and
+    // decided_by ('aet'|'pens'). Pass final_* = null to clear back to a
+    // regular result.
     if (url.pathname === '/admin/set-result' && request.method === 'POST') {
       if (!checkAdmin(request, env)) return json({ error: 'unauthorized' }, 401);
       const b = await request.json().catch(() => ({}));
       if (!Number.isInteger(b.id) || !Number.isInteger(b.goals_home) || !Number.isInteger(b.goals_away)) {
-        return json({ error: 'expected { id, goals_home, goals_away }' }, 400);
+        return json({ error: 'expected { id, goals_home, goals_away, final_home?, final_away?, decided_by? }' }, 400);
       }
-      const r = await updateMatch(env, b.id, {
+      const fields = {
         goals_home: b.goals_home,
         goals_away: b.goals_away,
         played: true,
-      });
+      };
+      if ('final_home' in b) fields.final_home = b.final_home;
+      if ('final_away' in b) fields.final_away = b.final_away;
+      if ('decided_by' in b) fields.decided_by = b.decided_by;
+      const r = await updateMatch(env, b.id, fields);
       return json(r, r.ok ? 200 : 500);
     }
 

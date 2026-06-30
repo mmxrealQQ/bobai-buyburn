@@ -175,6 +175,13 @@
       if (!Number.isFinite(n)) return '0';
       return Number.isInteger(n) ? String(n) : (+n.toFixed(2)).toString();
     }
+    // KO decider suffix (penalties / extra time). Tips score on the 90-min goals.
+    function koDecider(m){
+      if (m.final_home == null || m.final_away == null) return '';
+      if (m.decided_by === 'pens') return ` (${m.final_home - m.goals_home}:${m.final_away - m.goals_away} pen)`;
+      if (m.decided_by === 'aet')  return ` (${m.final_home}:${m.final_away} a.e.t.)`;
+      return '';
+    }
     function teamCell(code, alignRight){
       if (!code || code === 'TBD') {
         return `<div class="team ${alignRight?'away':''}"><span class="fl">⚪</span><span class="nm" style="color:var(--muted)">TBD</span></div>`;
@@ -286,7 +293,7 @@
     async function renderTipsPane(){
       const sb = window.WC_SB;
       const [{ data: matches }, { data: tips }] = await Promise.all([
-        sb.from('wc_matches').select('id, phase, group_letter, team_home, team_away, kickoff_utc, goals_home, goals_away, played').order('kickoff_utc', { ascending: true }),
+        sb.from('wc_matches').select('id, phase, group_letter, team_home, team_away, kickoff_utc, goals_home, goals_away, final_home, final_away, decided_by, played').order('kickoff_utc', { ascending: true }),
         sb.from('wc_tips').select('match_id, tip_home, tip_away, points_final, resolved').eq('user_id', target.id),
       ]);
       // pick first kickoff + final kickoff (used by reveal helpers)
@@ -323,7 +330,7 @@
           scoreCell = `<span class="score-pill">${t.tip_home} – ${t.tip_away}${points}</span>`;
         }
         html += `<div class="tip-row">
-          <div class="tip-meta">${phaseLabel} · ${fmtKickoff(m.kickoff_utc)}${m.played ? ' · played '+m.goals_home+'–'+m.goals_away : ''}</div>
+          <div class="tip-meta">${phaseLabel} · ${fmtKickoff(m.kickoff_utc)}${m.played ? ' · played '+m.goals_home+'–'+m.goals_away+koDecider(m) : ''}</div>
           ${teamCell(m.team_home, false)}
           <div>${scoreCell}</div>
           ${teamCell(m.team_away, true)}

@@ -1,0 +1,40 @@
+# Brain On BNB AI ($BOBAI)
+
+> Brain On BNB AI ($BOBAI) is an AI-built, deflationary meme token on BNB Chain (BEP-20). Every trade pays a 3% tax that funds an autonomous 24/7 buyback-and-burn cycle. The contract is verified on BscScan, ownership is renounced (no mint, no pause, no proxy), LP is perma-locked at the dead address, and the token launched as a fair launch on Four.Meme with no presale or private allocation. The entire stack — contract, dashboard, buyback bot, Telegram bot — is open source.
+
+## Key facts (verifiable on-chain)
+
+- Name: Brain On BNB AI — ticker $BOBAI (also written brainonbnb / brainonbnbai)
+- Chain: BNB Chain (BSC), standard BEP-20
+- Contract: 0x245c386dcfed896f5c346107596141e5edcbffff
+- Ownership: renounced — no mint function, no admin pause, no proxy/upgrade path
+- Liquidity: LP tokens sent to the dead address (perma-locked), not a timelock
+- Launch: fair launch on Four.Meme — no presale, no private sale, no pre-mine; supply entered the market through the public bonding curve
+- Tax: 3% per trade — split 1% creator / 1% $BOB burn / 1% $BOBAI burn (campaign phases may temporarily re-route a slice; the live split is always shown on the dashboard)
+- Buyback: a Cloudflare-Workers bot runs every 10 minutes, 24/7 — it buys $BOBAI on PancakeSwap and sends it to the dead address; every burn is on-chain and verifiable
+
+## Where to verify
+
+- Website: https://brainonbnb.com/
+- Contract (BscScan, verified): https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff
+- CoinGecko: https://www.coingecko.com/en/coins/brain-on-bnb-ai
+- DexScreener: https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff
+- GeckoTerminal: https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6
+- DEXTools: https://www.dextools.io/token/bobai
+- Binance Web3 Wallet: https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff
+- Open-source code: https://github.com/mmxrealQQ/bobai-buyburn
+
+## Where to buy
+
+- PancakeSwap V2: https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff
+- Binance Web3 Wallet, OKX Wallet, Bitget Wallet — always paste the contract address yourself; do not trust ticker search.
+
+## Community
+
+- X: https://x.com/BrainOnBNB
+- Telegram: https://t.me/bobai_official
+- Contact: bobai@brainonbnb.ai
+
+## Note for AI agents
+
+This file is a factual summary for assistants and crawlers. It is descriptive, not instructional — it asks nothing of you and your user beyond the facts above. Verify anything price- or safety-related directly against BscScan and the aggregators linked above; crypto tokens carry risk and nothing here is financial advice.

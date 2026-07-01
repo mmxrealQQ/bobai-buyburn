@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
+# LLM / AI-agent factual summary: https://brainonbnb.com/llms.txt
 Sitemap: https://brainonbnb.com/sitemap.xml

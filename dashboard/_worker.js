@@ -84,9 +84,167 @@ async function getNftState() {
   return { minted, cap, drops, holders, buyers: buyers.size, latestBlock: latest };
 }
 
+// ─── BOBAI agent surface (MCP + A2A) — additive, read-only on-chain ───
+const OFFICIAL_LINKS = {
+  website: 'https://brainonbnb.com/',
+  token_address: TOKEN,
+  contract: 'https://bscscan.com/token/' + TOKEN,
+  chain: 'BNB Smart Chain (BSC)',
+  twitter: 'https://x.com/BrainOnBNB',
+  telegram: 'https://t.me/bobai_official',
+  dexscreener: 'https://dexscreener.com/bsc/' + TOKEN,
+  geckoterminal: 'https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6',
+  coingecko: 'https://www.coingecko.com/en/coins/brain-on-bnb-ai',
+  source: 'https://github.com/mmxrealQQ/bobai-buyburn',
+  llms_txt: 'https://brainonbnb.com/llms.txt',
+};
+
+function decodeAbiString(hex) {
+  if (!hex || hex === '0x') return '';
+  const h = hex.slice(2);
+  if (h.length < 128) return '';
+  const len = parseInt(h.slice(64, 128), 16);
+  const data = h.slice(128, 128 + len * 2);
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = parseInt(data.slice(i * 2, i * 2 + 2), 16);
+  return new TextDecoder().decode(bytes);
+}
+
+async function ethCallRaw(to, data) {
+  const res = await fetch(RPC, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }),
+  });
+  return (await res.json()).result;
+}
+
+async function getTokenInfo() {
+  const [nameHex, symbolHex, decRaw, totalRaw, deadRaw, zeroRaw] = await Promise.all([
+    ethCallRaw(TOKEN, '0x06fdde03'),
+    ethCallRaw(TOKEN, '0x95d89b41'),
+    ethCall('0x313ce567'),
+    ethCall('0x18160ddd'),
+    ethCall('0x70a08231000000000000000000000000' + DEAD.slice(2)),
+    ethCall('0x70a08231000000000000000000000000' + ZERO.slice(2)),
+  ]);
+  const div = BigInt(1e18);
+  const total = totalRaw / div;
+  const burned = (deadRaw + zeroRaw) / div;
+  return {
+    name: 'Brain On BNB AI',
+    symbol: decodeAbiString(symbolHex),
+    onchain_name: decodeAbiString(nameHex),
+    contract: TOKEN,
+    chain: 'BNB Smart Chain (BSC)',
+    decimals: Number(decRaw),
+    totalSupply: total.toString(),
+    circulatingSupply: (total - burned).toString(),
+    burned: burned.toString(),
+    renounced: true,
+    verified: true,
+  };
+}
+
+async function getWalletBalance(address) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error('Invalid BSC address (expected 0x + 40 hex chars)');
+  const [bnbRes, bobaiRaw] = await Promise.all([
+    rpcJson(RPC, { jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [address, 'latest'] }),
+    ethCall('0x70a08231000000000000000000000000' + address.slice(2)),
+  ]);
+  return {
+    address,
+    bnb: (Number(BigInt(bnbRes.result)) / 1e18).toFixed(6),
+    bobai: (bobaiRaw / BigInt(1e18)).toString(),
+  };
+}
+
+const MCP_TOOLS = [
+  { name: 'bobai_token_info', description: '$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renounced.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_wallet_balance', description: 'BNB and $BOBAI balance of any BSC wallet address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'BSC wallet address (0x + 40 hex chars)' } }, required: ['address'], additionalProperties: false } },
+  { name: 'bobai_links', description: 'Official $BOBAI links: website, BscScan contract, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, GitHub source, llms.txt.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+];
+
+async function runTool(name, args) {
+  switch (name) {
+    case 'bobai_token_info': return await getTokenInfo();
+    case 'bobai_burned': { const t = await getTokenInfo(); return { symbol: t.symbol, burned: t.burned, note: 'Permanently sent to dead/zero address — irreversible' }; }
+    case 'bobai_circulating_supply': return { symbol: 'BOBAI', circulatingSupply: (await getCirculating()).toString() };
+    case 'bobai_wallet_balance': return await getWalletBalance(String(args?.address || ''));
+    case 'bobai_links': return OFFICIAL_LINKS;
+    default: throw new Error('Unknown tool: ' + name);
+  }
+}
+
+const rpcOk = (id, result) => ({ jsonrpc: '2.0', id, result });
+const rpcErr = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
+
+async function handleMcp(request) {
+  const cors = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json',
+  };
+  if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+  if (request.method === 'GET') {
+    return new Response(JSON.stringify({ name: 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', tools: MCP_TOOLS.map(t => t.name) }), { headers: cors });
+  }
+  let body;
+  try { body = await request.json(); } catch { return new Response(JSON.stringify(rpcErr(null, -32700, 'Parse error')), { headers: cors }); }
+  const { id, method, params } = body || {};
+  if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
+  try {
+    if (method === 'initialize') {
+      return new Response(JSON.stringify(rpcOk(id, {
+        protocolVersion: '2025-06-18',
+        capabilities: { tools: {} },
+        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.0.0' },
+      })), { headers: cors });
+    }
+    if (method === 'tools/list') return new Response(JSON.stringify(rpcOk(id, { tools: MCP_TOOLS })), { headers: cors });
+    if (method === 'tools/call') {
+      const out = await runTool(params?.name, params?.arguments || {});
+      return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] })), { headers: cors });
+    }
+    if (method === 'ping') return new Response(JSON.stringify(rpcOk(id, {})), { headers: cors });
+    return new Response(JSON.stringify(rpcErr(id ?? null, -32601, 'Method not found: ' + method)), { headers: cors });
+  } catch (e) {
+    return new Response(JSON.stringify(rpcErr(id ?? null, -32000, e.message || String(e))), { headers: cors });
+  }
+}
+
+const A2A_CARD = {
+  name: 'Brain On BNB AI ($BOBAI)',
+  description: 'Read-only agent surface for $BOBAI — on-chain token info, burns, circulating supply, wallet balances, and official links.',
+  url: 'https://brainonbnb.com/',
+  version: '1.0.0',
+  protocolVersion: '0.3.0',
+  provider: { organization: 'Brain On BNB AI', url: 'https://brainonbnb.com/' },
+  capabilities: { streaming: false },
+  defaultInputModes: ['text'],
+  defaultOutputModes: ['text'],
+  skills: [
+    { id: 'token_info', name: 'Token info', description: '$BOBAI contract, supply, decimals, amount burned', tags: ['crypto', 'bsc', 'token'] },
+    { id: 'burns', name: 'Burn stats', description: 'Total $BOBAI permanently burned', tags: ['crypto', 'deflationary'] },
+    { id: 'wallet_balance', name: 'Wallet balance', description: 'BNB + $BOBAI balance of any BSC wallet', tags: ['crypto', 'bsc'] },
+    { id: 'links', name: 'Official links', description: 'Verified $BOBAI site, socials, DEX, source', tags: ['links'] },
+  ],
+};
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === '/mcp') return handleMcp(request);
+
+    if (url.pathname === '/.well-known/agent-card.json') {
+      return new Response(JSON.stringify(A2A_CARD, null, 2), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
 
     if (url.pathname === '/api/total-supply' || url.pathname === '/api/circulating-supply') {
       const supply = await getCirculating();

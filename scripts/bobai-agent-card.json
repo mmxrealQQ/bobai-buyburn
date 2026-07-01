@@ -7,7 +7,26 @@
   "services": [
     { "name": "web", "description": "Brain On BNB AI — official site: live stats, tokenomics, on-chain burn verification, FAQ", "endpoint": "https://brainonbnb.com/" },
     { "name": "web", "description": "BOBAI Telegram — community, buy & burn alerts", "endpoint": "https://t.me/bobai_official" },
-    { "name": "agentWallet", "endpoint": "eip155:56:0x15Ba17075ef5E0736292b030e3715d9100fe3d38" }
+    { "name": "agentWallet", "endpoint": "eip155:56:0x15Ba17075ef5E0736292b030e3715d9100fe3d38" },
+    {
+      "name": "A2A",
+      "version": "0.3.0",
+      "endpoint": "https://brainonbnb.com/.well-known/agent-card.json"
+    },
+    {
+      "name": "MCP",
+      "version": "2025-06-18",
+      "endpoint": "https://brainonbnb.com/mcp",
+      "capabilities": {
+        "tools": [
+          { "name": "bobai_token_info", "description": "$BOBAI on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned" },
+          { "name": "bobai_burned", "description": "Total $BOBAI permanently burned via the autonomous 24/7 buyback-and-burn bot" },
+          { "name": "bobai_circulating_supply", "description": "Current circulating $BOBAI supply (total minus burned)" },
+          { "name": "bobai_wallet_balance", "description": "BNB and $BOBAI balance of any BSC wallet address" },
+          { "name": "bobai_links", "description": "Official $BOBAI links: site, contract, socials, DEX, source, llms.txt" }
+        ]
+      }
+    }
   ],
   "supportedTrust": ["reputation"],
   "attributes": [

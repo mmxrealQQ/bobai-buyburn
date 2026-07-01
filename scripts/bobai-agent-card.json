@@ -6,7 +6,7 @@
   "active": true,
   "services": [
     { "name": "web", "description": "Brain On BNB AI — official site: live stats, tokenomics, on-chain burn verification, FAQ", "endpoint": "https://brainonbnb.com/" },
-    { "name": "web", "description": "BOBAI Telegram — community, buy & burn alerts", "endpoint": "https://t.me/bobai_official" },
+    { "name": "telegram", "description": "BOBAI Telegram — community, buy & burn alerts", "endpoint": "https://t.me/bobai_official" },
     { "name": "agentWallet", "endpoint": "eip155:56:0x15Ba17075ef5E0736292b030e3715d9100fe3d38" },
     {
       "name": "A2A",

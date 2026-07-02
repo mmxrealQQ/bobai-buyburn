@@ -53,7 +53,10 @@
     .logo-row{display:flex;align-items:center;gap:16px;margin-bottom:8px}
     .logo-row img{width:48px;height:48px;border-radius:12px;box-shadow:0 0 16px rgba(240,185,11,.2)}
     h1{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
-    .subtitle{color:var(--muted);font-size:.9rem;margin-bottom:48px}
+    .subtitle{color:var(--muted);font-size:.9rem;margin-bottom:16px}
+    .dl-row{margin-bottom:40px}
+    .dl-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.25);color:var(--gold);font-size:.82rem;font-weight:600;letter-spacing:.3px;text-decoration:none;transition:background .2s,border-color .2s,transform .2s}
+    .dl-btn:hover{background:rgba(240,185,11,.16);border-color:rgba(240,185,11,.45);transform:translateY(-1px)}
     h2{font-family:'Space Grotesk',sans-serif;font-size:1.25rem;font-weight:600;color:var(--gold);margin:40px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
     h3{font-size:1rem;font-weight:600;margin:24px 0 8px;color:var(--text)}
     p{margin-bottom:16px;color:var(--text);font-size:.95rem}
@@ -74,7 +77,7 @@
     @media print{
       body{background:#fff;color:#111}
       .content{max-width:100%;padding:0}
-      nav,.bg-grad,body::before,body::after{display:none}
+      nav,.bg-grad,body::before,body::after,.hero-illu,.no-print{display:none}
       h1{background:none;-webkit-background-clip:unset;color:#111}
       h2{color:#333;border-bottom:1px solid #ccc}
       h3{color:#111}
@@ -138,7 +141,8 @@
       <h1>BOBAI Whitepaper</h1>
     </div>
   </div>
-  <p class="subtitle">Brain On BNB AI &mdash; Where Memes Meet Intelligence &bull; Version 2.0 &bull; June 2026</p>
+  <p class="subtitle">Brain On BNB AI &mdash; Where Memes Meet Intelligence &bull; Version 2.1 &bull; July 2026</p>
+  <p class="dl-row no-print"><a class="dl-btn" href="/whitepaper.pdf" download>&darr; Download PDF</a></p>
 
   <!-- 1. INTRODUCTION -->
   <h2>1. Introduction</h2>
@@ -259,35 +263,70 @@
   </ul>
   <p>BOBAI is an experiment in AI-driven token creation and management &mdash; exploring how far autonomous systems can go in the crypto space.</p>
 
-  <!-- 7. CONTRACT -->
-  <h2>7. Contract Details</h2>
+  <!-- 7. AI AGENT INTERFACE -->
+  <h2>7. Machine-Readable AI Agent Interface</h2>
+  <p>BOBAI is not just built by AI &mdash; it is built to be <span class="highlight">read by AI</span>. The token exposes a verifiable, on-chain agent identity and a live query interface so that other AI agents can pull BOBAI's real on-chain data <em>straight from the source</em> before they act, rather than relying on second-hand or cached third-party data.</p>
+  <p>The stance is deliberately <strong>neutral</strong>: these surfaces are a source of truth, not a pitch. Every tool is <strong>read-only</strong> &mdash; nothing here can move funds or change state &mdash; and every value returned is independently verifiable on-chain.</p>
+
+  <h3>On-Chain Agent Identity (ERC-8004)</h3>
+  <p>BOBAI holds a registered <a href="https://8004scan.io/agents/bsc/49467" target="_blank">ERC-8004 agent identity</a>, <span class="highlight">Agent #49467</span>, on the BNB Chain Identity Registry <span class="addr">0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</span> (<span class="addr">eip155:56:0x8004A169&hellip;a432#49467</span>). The registration metadata &mdash; name, token, official services, and agent wallet &mdash; lives on-chain and is the only editable copy, so what an agent reads is what the project actually signed.</p>
+
+  <div class="card">
+    <h3>Query Interface</h3>
+    <ul style="margin-bottom:0">
+      <li><span class="highlight">MCP</span> (Model Context Protocol, JSON-RPC 2.0, spec 2025-06-18) &mdash; <span class="addr">POST https://brainonbnb.com/mcp</span></li>
+      <li><span class="highlight">A2A agent card</span> &mdash; <a href="https://brainonbnb.com/.well-known/agent-card.json" target="_blank">brainonbnb.com/.well-known/agent-card.json</a></li>
+      <li><span class="highlight">Skill guide</span> (Markdown, for URL-reading agents) &mdash; <a href="https://brainonbnb.com/skill.md" target="_blank">brainonbnb.com/skill.md</a></li>
+      <li><span class="highlight">llms.txt</span> (plain-text machine summary) &mdash; <a href="https://brainonbnb.com/llms.txt" target="_blank">brainonbnb.com/llms.txt</a></li>
+    </ul>
+  </div>
+
+  <p>The MCP endpoint exposes <span class="highlight">nine read-only tools</span>, all served from Cloudflare's edge (always-on, no server):</p>
+  <ul>
+    <li><strong>bobai_guide</strong> &mdash; interactive "start here" entry point: what you can ask, what you can do, and which tool answers each.</li>
+    <li><strong>bobai_token_info</strong> &mdash; contract, name, symbol, decimals, total &amp; circulating supply, amount burned.</li>
+    <li><strong>bobai_burned</strong> &mdash; total BOBAI permanently burned by the autonomous bot.</li>
+    <li><strong>bobai_circulating_supply</strong> &mdash; total supply minus burned.</li>
+    <li><strong>bobai_wallet_balance</strong> &mdash; BNB and BOBAI balance of any BSC wallet.</li>
+    <li><strong>bobai_trade_info</strong> &mdash; PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer params (3% tax, min 15% slippage, SupportingFeeOnTransfer methods) &mdash; a naive swap reverts without them.</li>
+    <li><strong>bobai_how_to_buy</strong> &mdash; ready-to-run viem code with a live on-chain quote, so an agent can execute a swap zero-shot.</li>
+    <li><strong>bobai_tokenomics</strong> &mdash; neutral, verifiable value-accrual mechanics and trust properties (renounced, LP burned, fair launch). Describes the design; not a buy recommendation.</li>
+    <li><strong>bobai_links</strong> &mdash; the canonical set of official links.</li>
+  </ul>
+  <p>All agent-interface logic is <a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">open source</a> and every tool returns data that can be re-verified independently on BscScan.</p>
+
+  <!-- 8. CONTRACT -->
+  <h2>8. Contract Details</h2>
   <div class="card">
     <table>
       <tr><td>BOBAI Token</td><td class="addr">0x245c386dcfed896f5c346107596141e5edcbffff</td></tr>
       <tr><td>Pair (BOBAI/WBNB)</td><td class="addr">0x6eadd4cb786898b34929444988380ed0cc6fd9a6</td></tr>
       <tr><td>NFT Buy Drops</td><td class="addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</td></tr>
       <tr><td>WC26 Prize Pool</td><td class="addr">0x5E4102520A71B2AA18a1208330d4848dea4BD105</td></tr>
+      <tr><td>ERC-8004 Agent Registry</td><td class="addr">0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 (#49467)</td></tr>
       <tr><td>DEX</td><td>PancakeSwap V2</td></tr>
       <tr><td>Compiler</td><td>Solidity 0.8.20</td></tr>
     </table>
   </div>
 
-  <!-- 8. LINKS -->
-  <h2>8. Links</h2>
+  <!-- 9. LINKS -->
+  <h2>9. Links</h2>
   <ul>
     <li><a href="https://brainonbnb.com" target="_blank">Website / Dashboard</a></li>
     <li><a href="https://brainonbnb.com/worldcup/" target="_blank">WC26 Tipgame</a></li>
     <li><a href="https://brainonbnb.com/nft/" target="_blank">NFT Buy Drops</a></li>
     <li><a href="https://brainonbnb.com/listing" target="_blank">Exchange Listing Program</a></li>
+    <li><a href="https://brainonbnb.com/skill.md" target="_blank">AI Agent Skill Guide</a> &bull; <a href="https://8004scan.io/agents/bsc/49467" target="_blank">ERC-8004 Agent #49467</a></li>
     <li><a href="https://t.me/bobai_official" target="_blank">Telegram</a></li>
     <li><a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">GitHub (Open Source)</a></li>
     <li><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">BscScan</a></li>
     <li><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">GeckoTerminal</a></li>
     <li><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Trade on PancakeSwap</a></li>
+    <li class="no-print"><a href="/whitepaper.pdf" download>Download this Whitepaper (PDF)</a></li>
   </ul>
 
-  <!-- 9. DISCLAIMER -->
-  <h2>9. Disclaimer</h2>
+  <!-- 10. DISCLAIMER -->
+  <h2>10. Disclaimer</h2>
   <p style="color:var(--muted);font-size:.85rem">BOBAI is a meme token and an experimental project. It is not financial advice and should not be treated as an investment. Cryptocurrency is volatile and you may lose your entire investment. Do your own research before interacting with any token or smart contract. There is no team, no roadmap promises, and no guaranteed returns.</p>
 
   <div class="footer">

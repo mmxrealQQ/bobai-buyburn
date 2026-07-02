@@ -125,6 +125,77 @@ const TRADE_INFO = {
   note: '$BOBAI charges a 3% transfer tax. You MUST use the *SupportingFeeOnTransferTokens router methods and set slippage tolerance >= 15% (1500 bps), otherwise the swap reverts. Live reserves: call getReserves() on the pair. Not financial advice.',
 };
 
+// Interactive entry point for any agent that discovers $BOBAI.
+// Answers "what can I ask? / what can I do?" and routes to the exact tool.
+const AGENT_GUIDE = {
+  agent: 'Brain On BNB AI ($BOBAI)',
+  what_this_is: 'A read-only, verifiable on-chain data surface for the $BOBAI token on BNB Chain (BSC). Not a trading bot — a source of truth other agents can call before they act.',
+  what_you_can_know: [
+    { ask: 'Token basics: contract, name, symbol, decimals, supply, amount burned', call: 'bobai_token_info' },
+    { ask: 'How much $BOBAI has been permanently burned', call: 'bobai_burned' },
+    { ask: 'Current circulating supply (total minus burned)', call: 'bobai_circulating_supply' },
+    { ask: "Any BSC wallet's BNB and $BOBAI balance", call: 'bobai_wallet_balance', args: { address: '0x…' } },
+    { ask: 'Official verified links: site, contract, socials, DEX, source', call: 'bobai_links' },
+  ],
+  what_you_can_do: [
+    { action: 'Get the raw DEX execution parameters (router, pair, paths, slippage, methods)', call: 'bobai_trade_info' },
+    { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_how_to_buy' },
+  ],
+  must_know: '$BOBAI is a fee-on-transfer token (3% tax). Any swap MUST use the *SupportingFeeOnTransferTokens router methods with slippage >= 15% (1500 bps) or it reverts. Everything here is verifiable on-chain. Not financial advice.',
+};
+
+function howToBuy() {
+  const code = [
+    "// Buy $BOBAI with BNB on PancakeSwap V2 (BNB Chain).",
+    "// $BOBAI is fee-on-transfer (3% tax): use the *SupportingFeeOnTransferTokens",
+    "// method and >=15% slippage, or the swap reverts.",
+    "import { createWalletClient, createPublicClient, http, parseEther } from 'viem';",
+    "import { privateKeyToAccount } from 'viem/accounts';",
+    "import { bsc } from 'viem/chains';",
+    "",
+    "const ROUTER = '" + ROUTER_V2 + "';",
+    "const WBNB   = '" + WBNB + "';",
+    "const BOBAI  = '" + TOKEN + "';",
+    "const RPC    = 'https://bsc-dataseed.binance.org'; // pass an explicit URL",
+    "",
+    "const routerAbi = [",
+    "  { name: 'getAmountsOut', type: 'function', stateMutability: 'view',",
+    "    inputs: [{ name: 'amountIn', type: 'uint256' }, { name: 'path', type: 'address[]' }],",
+    "    outputs: [{ name: 'amounts', type: 'uint256[]' }] },",
+    "  { name: 'swapExactETHForTokensSupportingFeeOnTransferTokens', type: 'function', stateMutability: 'payable',",
+    "    inputs: [{ name: 'amountOutMin', type: 'uint256' }, { name: 'path', type: 'address[]' },",
+    "             { name: 'to', type: 'address' }, { name: 'deadline', type: 'uint256' }], outputs: [] },",
+    "];",
+    "",
+    "const account = privateKeyToAccount(process.env.PRIVATE_KEY);",
+    "const pub    = createPublicClient({ chain: bsc, transport: http(RPC) });",
+    "const wallet = createWalletClient({ account, chain: bsc, transport: http(RPC) });",
+    "",
+    "const path = [WBNB, BOBAI];",
+    "const amountIn = parseEther('0.05'); // spend 0.05 BNB",
+    "",
+    "// Quote on-chain, then subtract 15% slippage (FoT-safe).",
+    "const amounts = await pub.readContract({ address: ROUTER, abi: routerAbi, functionName: 'getAmountsOut', args: [amountIn, path] });",
+    "const amountOutMin = (amounts[1] * 8500n) / 10000n; // -15%",
+    "const deadline = BigInt(Math.floor(Date.now() / 1000) + 600); // 10 min",
+    "",
+    "const hash = await wallet.writeContract({",
+    "  address: ROUTER, abi: routerAbi,",
+    "  functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens',",
+    "  args: [amountOutMin, path, account.address, deadline], value: amountIn,",
+    "});",
+    "console.log('swap tx:', hash);",
+  ].join('\n');
+  return {
+    summary: 'Buy $BOBAI with BNB on PancakeSwap V2. Fee-on-transfer (3% tax) → use swapExactETHForTokensSupportingFeeOnTransferTokens with >=15% slippage.',
+    language: 'javascript (viem)',
+    code,
+    to_sell: "Reverse the path to [BOBAI, WBNB], approve the router for $BOBAI first, then call swapExactTokensForETHSupportingFeeOnTransferTokens.",
+    params: TRADE_INFO,
+    warning: 'Not financial advice. Test with a small amount first. Verify token/router/pair on BscScan. Never expose a private key holding significant funds.',
+  };
+}
+
 function decodeAbiString(hex) {
   if (!hex || hex === '0x') return '';
   const h = hex.slice(2);
@@ -192,6 +263,8 @@ const MCP_TOOLS = [
   { name: 'bobai_wallet_balance', description: 'BNB and $BOBAI balance of any BSC wallet address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'BSC wallet address (0x + 40 hex chars)' } }, required: ['address'], additionalProperties: false } },
   { name: 'bobai_links', description: 'Official $BOBAI links: website, BscScan contract, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, GitHub source, llms.txt.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_trade_info', description: 'How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTransferTokens methods). $BOBAI reverts on a naive swap — use these.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_guide', description: 'START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know fee-on-transfer rule.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_how_to_buy', description: 'Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
 
 async function runTool(name, args) {
@@ -202,6 +275,8 @@ async function runTool(name, args) {
     case 'bobai_wallet_balance': return await getWalletBalance(String(args?.address || ''));
     case 'bobai_links': return OFFICIAL_LINKS;
     case 'bobai_trade_info': return TRADE_INFO;
+    case 'bobai_guide': return AGENT_GUIDE;
+    case 'bobai_how_to_buy': return howToBuy();
     default: throw new Error('Unknown tool: ' + name);
   }
 }
@@ -260,6 +335,8 @@ const A2A_CARD = {
     { id: 'wallet_balance', name: 'Wallet balance', description: 'BNB + $BOBAI balance of any BSC wallet', tags: ['crypto', 'bsc'] },
     { id: 'links', name: 'Official links', description: 'Verified $BOBAI site, socials, DEX, source', tags: ['links'] },
     { id: 'trade_info', name: 'Trade info', description: 'PancakeSwap V2 router, pair & fee-on-transfer params (3% tax, min 15% slippage) to swap $BOBAI without reverting', tags: ['crypto', 'bsc', 'dex', 'trade'] },
+    { id: 'guide', name: 'Agent guide', description: 'Start here — interactive map of what you can ask/do about $BOBAI and which tool to call', tags: ['guide', 'onboarding'] },
+    { id: 'how_to_buy', name: 'How to buy', description: 'Ready-to-run viem code to buy $BOBAI with BNB (fee-on-transfer safe)', tags: ['crypto', 'bsc', 'dex', 'trade', 'code'] },
   ],
 };
 

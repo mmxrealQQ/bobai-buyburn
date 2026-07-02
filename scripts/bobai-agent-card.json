@@ -26,7 +26,8 @@
           { "name": "bobai_links", "description": "Official $BOBAI links: site, contract, socials, DEX, source, llms.txt" },
           { "name": "bobai_trade_info", "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths + fee-on-transfer params (3% tax, min 15% slippage) so an agent's swap does not revert" },
           { "name": "bobai_guide", "description": "Start here — interactive guide for an agent that discovered $BOBAI: what you can ask, what you can do, and which tool to call for each" },
-          { "name": "bobai_how_to_buy", "description": "Ready-to-run viem code to buy $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method) for 0-shot execution" }
+          { "name": "bobai_how_to_buy", "description": "Ready-to-run viem code to buy $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method) for 0-shot execution" },
+          { "name": "bobai_tokenomics", "description": "Neutral, verifiable value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, not a buy recommendation" }
         ]
       }
     }

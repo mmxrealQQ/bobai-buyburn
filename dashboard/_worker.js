@@ -137,12 +137,38 @@ const AGENT_GUIDE = {
     { ask: 'Current circulating supply (total minus burned)', call: 'bobai_circulating_supply' },
     { ask: "Any BSC wallet's BNB and $BOBAI balance", call: 'bobai_wallet_balance', args: { address: '0x…' } },
     { ask: 'Official verified links: site, contract, socials, DEX, source', call: 'bobai_links' },
+    { ask: 'How the token accrues value: deflationary tax->buyback->burn design + trust properties', call: 'bobai_tokenomics' },
   ],
   what_you_can_do: [
     { action: 'Get the raw DEX execution parameters (router, pair, paths, slippage, methods)', call: 'bobai_trade_info' },
     { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_how_to_buy' },
   ],
   must_know: '$BOBAI is a fee-on-transfer token (3% tax). Any swap MUST use the *SupportingFeeOnTransferTokens router methods with slippage >= 15% (1500 bps) or it reverts. Everything here is verifiable on-chain. Not financial advice.',
+};
+
+// Neutral, verifiable value-accrual mechanics — the "how it works" thesis
+// an agent needs to evaluate the token. NOT a buy recommendation.
+const TOKENOMICS = {
+  model: 'deflationary — circulating supply shrinks as trading volume grows',
+  mechanism: [
+    '3% tax on every $BOBAI trade',
+    'the tax funds an autonomous 24/7 buyback-and-burn cycle',
+    'bought-back $BOBAI is sent to the dead address = permanent, irreversible burn',
+    'more volume -> more buybacks -> more burned -> lower circulating supply',
+  ],
+  trust_properties: [
+    'ownership renounced — no mint, no pause, no proxy/upgrade path',
+    'LP tokens burned (perma-locked at the dead address), not a timelock',
+    'fair launch on Four.Meme — no presale, no private sale, no team allocation',
+    'contract verified on BscScan, entire stack open source',
+  ],
+  verify_yourself: {
+    burned: 'call bobai_burned',
+    circulating_supply: 'call bobai_circulating_supply',
+    contract: 'https://bscscan.com/token/' + TOKEN,
+    source: 'https://github.com/mmxrealQQ/bobai-buyburn',
+  },
+  disclaimer: "Describes the token's design, not a recommendation to buy. Meme tokens are high-risk. Not financial advice — verify everything on-chain.",
 };
 
 function howToBuy() {
@@ -231,6 +257,7 @@ curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
 - \`bobai_circulating_supply\` — total minus burned
 - \`bobai_wallet_balance\` — BNB and $BOBAI balance of any BSC wallet (arg: \`address\`)
 - \`bobai_links\` — official verified links (site, contract, socials, DEX, source)
+- \`bobai_tokenomics\` — how the token accrues value (deflationary mechanics + trust properties), verifiable, not a recommendation
 
 ## What you can DO
 - \`bobai_trade_info\` — raw DEX execution params (below)
@@ -254,6 +281,12 @@ $BOBAI is a **fee-on-transfer** token (3% tax). A naive swap **reverts**. You MU
 ${buy.code}
 \`\`\`
 To sell: reverse the path, approve the router for $BOBAI first, then call \`swapExactTokensForETHSupportingFeeOnTransferTokens\`.
+
+## Tokenomics (how it works — verify, don't trust)
+- **Model:** deflationary — circulating supply shrinks as trading volume grows.
+- **Mechanism:** 3% trade tax → autonomous 24/7 buyback → bought $BOBAI sent to the dead address (permanent burn). More volume → more burned → lower supply.
+- **Trust:** ownership renounced (no mint/pause/proxy) · LP burned (perma-locked) · fair launch on Four.Meme (no presale, no team allocation) · verified on BscScan · open source.
+- Verify: \`bobai_burned\`, \`bobai_circulating_supply\`, and BscScan. Describes the design, not a recommendation — meme tokens are high-risk, not financial advice.
 
 ## Verify everything yourself
 - Contract: https://bscscan.com/token/${TOKEN}
@@ -333,6 +366,7 @@ const MCP_TOOLS = [
   { name: 'bobai_trade_info', description: 'How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTransferTokens methods). $BOBAI reverts on a naive swap — use these.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_guide', description: 'START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know fee-on-transfer rule.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_how_to_buy', description: 'Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_tokenomics', description: 'Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, NOT a buy recommendation.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
 
 async function runTool(name, args) {
@@ -345,6 +379,7 @@ async function runTool(name, args) {
     case 'bobai_trade_info': return TRADE_INFO;
     case 'bobai_guide': return AGENT_GUIDE;
     case 'bobai_how_to_buy': return howToBuy();
+    case 'bobai_tokenomics': return TOKENOMICS;
     default: throw new Error('Unknown tool: ' + name);
   }
 }
@@ -406,6 +441,7 @@ const A2A_CARD = {
     { id: 'trade_info', name: 'Trade info', description: 'PancakeSwap V2 router, pair & fee-on-transfer params (3% tax, min 15% slippage) to swap $BOBAI without reverting', tags: ['crypto', 'bsc', 'dex', 'trade'] },
     { id: 'guide', name: 'Agent guide', description: 'Start here — interactive map of what you can ask/do about $BOBAI and which tool to call', tags: ['guide', 'onboarding'] },
     { id: 'how_to_buy', name: 'How to buy', description: 'Ready-to-run viem code to buy $BOBAI with BNB (fee-on-transfer safe)', tags: ['crypto', 'bsc', 'dex', 'trade', 'code'] },
+    { id: 'tokenomics', name: 'Tokenomics', description: 'Neutral value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch)', tags: ['crypto', 'tokenomics', 'deflationary'] },
   ],
 };
 

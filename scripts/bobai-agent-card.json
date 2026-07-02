@@ -23,7 +23,8 @@
           { "name": "bobai_burned", "description": "Total $BOBAI permanently burned via the autonomous 24/7 buyback-and-burn bot" },
           { "name": "bobai_circulating_supply", "description": "Current circulating $BOBAI supply (total minus burned)" },
           { "name": "bobai_wallet_balance", "description": "BNB and $BOBAI balance of any BSC wallet address" },
-          { "name": "bobai_links", "description": "Official $BOBAI links: site, contract, socials, DEX, source, llms.txt" }
+          { "name": "bobai_links", "description": "Official $BOBAI links: site, contract, socials, DEX, source, llms.txt" },
+          { "name": "bobai_trade_info", "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths + fee-on-transfer params (3% tax, min 15% slippage) so an agent's swap does not revert" }
         ]
       }
     }

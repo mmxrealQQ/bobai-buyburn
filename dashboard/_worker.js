@@ -99,6 +99,32 @@ const OFFICIAL_LINKS = {
   llms_txt: 'https://brainonbnb.com/llms.txt',
 };
 
+// DEX execution facts for agents that want to actually swap $BOBAI.
+// $BOBAI is a fee-on-transfer token (3% tax) — a naive swap with default
+// slippage/router method WILL revert. These fields spell out what's needed.
+const PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6'; // PancakeSwap V2 BOBAI/WBNB
+const ROUTER_V2 = '0x10ED43C718714eb63d5aA57B78B54704E256024E'; // PancakeSwap V2 router
+const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+
+const TRADE_INFO = {
+  token_address: TOKEN,
+  chain: 'BNB Smart Chain (BSC)',
+  chain_id: 56,
+  dex: 'PancakeSwap V2',
+  router: ROUTER_V2,
+  pair: PAIR,
+  quote_token: 'WBNB',
+  quote_token_address: WBNB,
+  swap_path_buy: [WBNB, TOKEN],
+  swap_path_sell: [TOKEN, WBNB],
+  fee_on_transfer: true,
+  tax_percent: 3,
+  min_slippage_bps: 1500,
+  buy_method: 'swapExactETHForTokensSupportingFeeOnTransferTokens',
+  sell_method: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
+  note: '$BOBAI charges a 3% transfer tax. You MUST use the *SupportingFeeOnTransferTokens router methods and set slippage tolerance >= 15% (1500 bps), otherwise the swap reverts. Live reserves: call getReserves() on the pair. Not financial advice.',
+};
+
 function decodeAbiString(hex) {
   if (!hex || hex === '0x') return '';
   const h = hex.slice(2);
@@ -165,6 +191,7 @@ const MCP_TOOLS = [
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_wallet_balance', description: 'BNB and $BOBAI balance of any BSC wallet address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'BSC wallet address (0x + 40 hex chars)' } }, required: ['address'], additionalProperties: false } },
   { name: 'bobai_links', description: 'Official $BOBAI links: website, BscScan contract, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, GitHub source, llms.txt.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_trade_info', description: 'How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTransferTokens methods). $BOBAI reverts on a naive swap — use these.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
 
 async function runTool(name, args) {
@@ -174,6 +201,7 @@ async function runTool(name, args) {
     case 'bobai_circulating_supply': return { symbol: 'BOBAI', circulatingSupply: (await getCirculating()).toString() };
     case 'bobai_wallet_balance': return await getWalletBalance(String(args?.address || ''));
     case 'bobai_links': return OFFICIAL_LINKS;
+    case 'bobai_trade_info': return TRADE_INFO;
     default: throw new Error('Unknown tool: ' + name);
   }
 }
@@ -231,6 +259,7 @@ const A2A_CARD = {
     { id: 'burns', name: 'Burn stats', description: 'Total $BOBAI permanently burned', tags: ['crypto', 'deflationary'] },
     { id: 'wallet_balance', name: 'Wallet balance', description: 'BNB + $BOBAI balance of any BSC wallet', tags: ['crypto', 'bsc'] },
     { id: 'links', name: 'Official links', description: 'Verified $BOBAI site, socials, DEX, source', tags: ['links'] },
+    { id: 'trade_info', name: 'Trade info', description: 'PancakeSwap V2 router, pair & fee-on-transfer params (3% tax, min 15% slippage) to swap $BOBAI without reverting', tags: ['crypto', 'bsc', 'dex', 'trade'] },
   ],
 };
 

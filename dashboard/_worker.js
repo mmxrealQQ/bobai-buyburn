@@ -97,6 +97,7 @@ const OFFICIAL_LINKS = {
   coingecko: 'https://www.coingecko.com/en/coins/brain-on-bnb-ai',
   source: 'https://github.com/mmxrealQQ/bobai-buyburn',
   llms_txt: 'https://brainonbnb.com/llms.txt',
+  skill_md: 'https://brainonbnb.com/skill.md',
 };
 
 // DEX execution facts for agents that want to actually swap $BOBAI.
@@ -194,6 +195,73 @@ function howToBuy() {
     params: TRADE_INFO,
     warning: 'Not financial advice. Test with a small amount first. Verify token/router/pair on BscScan. Never expose a private key holding significant funds.',
   };
+}
+
+// Machine-readable skill doc for agents that read URLs/text instead of
+// calling MCP. Mirrors the MCP tools in plain Markdown.
+function skillMd() {
+  const buy = howToBuy();
+  return `# $BOBAI Agent Skill — Brain On BNB AI
+
+> A read-only, verifiable on-chain data surface for the **$BOBAI** token on BNB Chain (BSC).
+> **Not a trading bot** — the source of truth other agents call *before* they act.
+
+## Identity
+- ERC-8004 Agent: **#49467** on BNB Chain Identity Registry (\`eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432#49467\`)
+- Token contract: \`${TOKEN}\` (BEP-20, BNB Smart Chain, verified & renounced, fair launch on Four.Meme)
+- Explorer: https://8004scan.io/agents/bsc/49467
+
+## How to query me
+- **MCP** (JSON-RPC 2.0, protocol 2025-06-18): \`POST https://brainonbnb.com/mcp\`
+- **A2A agent card**: https://brainonbnb.com/.well-known/agent-card.json
+- Example — list tools:
+\`\`\`bash
+curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+\`\`\`
+- Example — call a tool:
+\`\`\`bash
+curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"bobai_token_info"}}'
+\`\`\`
+
+## What you can ASK (read-only, all on-chain)
+- \`bobai_token_info\` — contract, name, symbol, decimals, total & circulating supply, amount burned
+- \`bobai_burned\` — total $BOBAI permanently burned by the autonomous 24/7 buyback bot
+- \`bobai_circulating_supply\` — total minus burned
+- \`bobai_wallet_balance\` — BNB and $BOBAI balance of any BSC wallet (arg: \`address\`)
+- \`bobai_links\` — official verified links (site, contract, socials, DEX, source)
+
+## What you can DO
+- \`bobai_trade_info\` — raw DEX execution params (below)
+- \`bobai_how_to_buy\` — ready-to-run buy code (below)
+- \`bobai_guide\` — interactive menu that routes each intent to a tool
+
+## ⚠️ Must know before swapping
+$BOBAI is a **fee-on-transfer** token (3% tax). A naive swap **reverts**. You MUST:
+- use \`swapExactETHForTokensSupportingFeeOnTransferTokens\` (buy) / \`swapExactTokensForETHSupportingFeeOnTransferTokens\` (sell)
+- set slippage tolerance **>= 15% (1500 bps)**
+
+## Trade parameters
+- DEX: **PancakeSwap V2**
+- Router: \`${TRADE_INFO.router}\`
+- Pair: \`${TRADE_INFO.pair}\` (token0 = $BOBAI, token1 = WBNB)
+- Buy path: \`[${TRADE_INFO.quote_token_address}, ${TOKEN}]\`
+- Sell path: \`[${TOKEN}, ${TRADE_INFO.quote_token_address}]\`
+
+## How to buy (viem)
+\`\`\`javascript
+${buy.code}
+\`\`\`
+To sell: reverse the path, approve the router for $BOBAI first, then call \`swapExactTokensForETHSupportingFeeOnTransferTokens\`.
+
+## Verify everything yourself
+- Contract: https://bscscan.com/token/${TOKEN}
+- DexScreener: https://dexscreener.com/bsc/${TOKEN}
+- Source (open): https://github.com/mmxrealQQ/bobai-buyburn
+
+_Not financial advice. Everything here is verifiable on-chain — don't trust, verify._
+`;
 }
 
 function decodeAbiString(hex) {
@@ -325,6 +393,7 @@ const A2A_CARD = {
   url: 'https://brainonbnb.com/',
   version: '1.0.0',
   protocolVersion: '0.3.0',
+  documentationUrl: 'https://brainonbnb.com/skill.md',
   provider: { organization: 'Brain On BNB AI', url: 'https://brainonbnb.com/' },
   capabilities: { streaming: false },
   defaultInputModes: ['text'],
@@ -345,6 +414,12 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/mcp') return handleMcp(request);
+
+    if (url.pathname === '/skill.md') {
+      return new Response(skillMd(), {
+        headers: { 'Content-Type': 'text/markdown; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
 
     if (url.pathname === '/.well-known/agent-card.json') {
       return new Response(JSON.stringify(A2A_CARD, null, 2), {

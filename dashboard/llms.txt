@@ -29,6 +29,15 @@
 - PancakeSwap V2: https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff
 - Binance Web3 Wallet, OKX Wallet, Bitget Wallet — always paste the contract address yourself; do not trust ticker search.
 
+## Agent interface (ERC-8004)
+
+$BOBAI is a registered ERC-8004 agent (#49467 on BNB Chain) with a live, callable interface — other agents can query verifiable on-chain data and get ready-to-run swap code before acting. It is a data source, not a trading agent.
+
+- Skill doc (start here): https://brainonbnb.com/skill.md
+- MCP endpoint (JSON-RPC 2.0): https://brainonbnb.com/mcp
+- A2A agent card: https://brainonbnb.com/.well-known/agent-card.json
+- Registry entry: https://8004scan.io/agents/bsc/49467
+
 ## Community
 
 - X: https://x.com/BrainOnBNB

@@ -156,7 +156,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);
 .tr-name{display:block;font-size:.56rem;text-transform:uppercase;letter-spacing:.2px;color:var(--rc);font-weight:700}
 .tr-val{display:block;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.9rem;margin-top:3px;font-variant-numeric:tabular-nums}
 .tr-val .sl{color:var(--muted);font-weight:400;font-size:.7rem}
-.tr-ch{display:block;font-size:.54rem;color:var(--muted);margin-top:2px;letter-spacing:.2px}
+.tr-ch{display:block;font-size:.54rem;color:#fff;margin-top:2px;letter-spacing:.2px}
 @media(max-width:760px){.tb-rars{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:420px){.tb-rars{grid-template-columns:repeat(3,1fr)}}
 
@@ -382,13 +382,20 @@ function renderTiers(minted, cap, cells) {
     RARITIES.forEach((r, ri) => {
       const cc = CELL_CAP[ti][ri];
       const mm = cm[ri] || 0;
-      const chance = c > 0 ? (cc / c) * 100 : 0;
-      const chLabel = chance < 1 ? chance.toFixed(1) : (chance < 10 ? chance.toFixed(1) : Math.round(chance));
+      const cellRemaining = Math.max(0, cc - mm);
+      const tierRemaining = Math.max(0, c - m);
+      // Live odds for the NEXT buy of this tier = this cell's remaining slots
+      // over the tier's total remaining slots (rolls are remaining-weighted, so
+      // the chance drops as the cell fills and hits 0 when the cell is full).
+      const chance = tierRemaining > 0 ? (cellRemaining / tierRemaining) * 100 : 0;
+      const chLabel = cellRemaining === 0
+        ? 'full'
+        : (chance < 10 ? chance.toFixed(1) : Math.round(chance)) + '% chance';
       rarCells += `
-        <div class="tr-cell${mm >= cc ? ' full' : ''}" style="--rc:${r.hex}">
+        <div class="tr-cell${cellRemaining === 0 ? ' full' : ''}" style="--rc:${r.hex}">
           <span class="tr-name">${r.name}</span>
           <span class="tr-val">${mm}<span class="sl">/${cc}</span></span>
-          <span class="tr-ch">${chLabel}% chance</span>
+          <span class="tr-ch">${chLabel}</span>
         </div>`;
     });
     const block = document.createElement('div');

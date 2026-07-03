@@ -38,7 +38,7 @@ async function rpcJson(url, body, headers = {}) {
 
 async function getNftState() {
   // 1) Tier counts/caps via on-chain eth_call (cheap, no archive issue)
-  const [tiersResp, blockResp, dropsResp, holdersResp] = await Promise.all([
+  const [tiersResp, blockResp, dropsResp, holdersResp, cellsResp] = await Promise.all([
     rpcJson(RPC, {
       jsonrpc: '2.0', id: 1, method: 'eth_call',
       params: [{ to: NFT_CONTRACT, data: NFT_GET_TIERS }, 'latest'],
@@ -48,6 +48,8 @@ async function getNftState() {
     fetch('https://bobai-nft-mint.bobbuildonbnb.workers.dev/drops').then(r => r.ok ? r.json() : { drops: [] }).catch(() => ({ drops: [] })),
     // 3) Live holder count from mint-worker (scans Transfer events, picks up secondary transfers like donations)
     fetch('https://bobai-nft-mint.bobbuildonbnb.workers.dev/holders').then(r => r.ok ? r.json() : null).catch(() => null),
+    // 4) Per-cell (tier × rarity) minted counts — chain-truth, for the drop matrix
+    fetch('https://bobai-nft-mint.bobbuildonbnb.workers.dev/cells').then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
 
   const minted = [0, 0, 0, 0, 0, 0];
@@ -78,13 +80,15 @@ async function getNftState() {
     mintTx: d.mintTx,
     buyTx: d.buyTx,
     usd: d.usd,
+    note: d.note, // optional provenance badge (e.g. gift/re-roll), rendered in the ledger
   }));
 
   const buyers = new Set(drops.map(d => d.to));
   // `holders` = live on-chain owner count (reflects transfers like the BscScan donation).
   // `buyers` kept for backwards-compat = unique original mint recipients.
   const holders = (holdersResp && typeof holdersResp.holders === 'number') ? holdersResp.holders : buyers.size;
-  return { minted, cap, drops, holders, buyers: buyers.size, latestBlock: latest };
+  const cells = (cellsResp && Array.isArray(cellsResp.cells)) ? cellsResp.cells : null;
+  return { minted, cap, drops, holders, buyers: buyers.size, latestBlock: latest, cells };
 }
 
 // ─── BOBAI agent surface (MCP + A2A) — additive, read-only on-chain ───

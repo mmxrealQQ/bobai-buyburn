@@ -37,15 +37,26 @@ const TIER_THRESHOLDS = [
   [ 100, 0, 'NICE'],
 ];
 
-// Drop matrix (drop chance per rarity, per tier). Each row sums to 100.
-//                        C    U    R    M    L    A   I
-const DROP_MATRIX = [
-  /* 0 NICE    */ [50, 25, 13,  6,  3,  2,  1],
-  /* 1 BIG     */ [40, 28, 16,  8,  4,  3,  1],
-  /* 2 HUGE    */ [30, 28, 20, 12,  6,  3,  1],
-  /* 3 WHALE   */ [18, 25, 22, 16, 11,  5,  3],
-  /* 4 THUNDER */ [10, 18, 22, 20, 16,  9,  5],
-  /* 5 KRAKEN  */ [ 5, 10, 18, 22, 22, 13, 10],
+// Per-cell caps (tier × rarity) — HARD limits. For a buy's tier, rarity is
+// rolled weighted by that tier's REMAINING cell slots (cap − already minted), so:
+//  · existing mints count against their cell (no overshoot — "nicht zusätzlich"),
+//  · every cell stops dead at its cap,
+//  · each tier row is strictly Common-most → Immortal-rarest (no value inversions,
+//    no duplicate counts in a row — the one exception is KRAKEN M=L=3, which is
+//    mathematically forced: 7 distinct positive descending values need ≥28 but
+//    KRAKEN has only 25 slots),
+//  · rare rarities are guaranteed a slot in the top tiers (KRAKEN keeps 1 Immortal
+//    instead of statistically getting none).
+// Row sums = tier caps [1000,500,250,100,50,25]; column sums = rarity targets
+// [799,496,297,162,90,56,25]; grand total = 1925.
+//                    C     U    R    M   L   A   I
+const CELL_CAP = [
+  /* 0 NICE    */ [425, 264, 154, 80, 41, 27,  9],
+  /* 1 BIG     */ [212, 126,  76, 42, 23, 14,  7],
+  /* 2 HUGE    */ [104,  64,  38, 21, 12,  7,  4],
+  /* 3 WHALE   */ [ 34,  26,  16, 10,  7,  4,  3],
+  /* 4 THUNDER */ [ 17,  11,   9,  6,  4,  2,  1],
+  /* 5 KRAKEN  */ [  7,   5,   4,  3,  3,  2,  1],
 ];
 const RARITY_NAME = ['Common','Uncommon','Rare','Mythical','Legendary','Ancient','Immortal'];
 
@@ -60,6 +71,8 @@ const NFT_ABI = parseAbi([
   'function getTiers() external view returns (uint256[6] mintedArr, uint256[6] capArr)',
   'function nextId() view returns (uint256)',
   'function ownerOf(uint256) view returns (address)',
+  'function rarityOf(uint256) view returns (uint8)',
+  'function tierOf(uint256) view returns (uint8)',
 ]);
 
 // ===== RPC helpers =====
@@ -235,15 +248,57 @@ function tierFromUsd(usd) {
   return -1;
 }
 
-function rollRarity(tier) {
-  const w = DROP_MATRIX[tier];
-  const tot = w.reduce((a, b) => a + b, 0);
+// Roll a rarity weighted by REMAINING slots. `remaining[i]` = RARITY_CAP[i] minus
+// how many of that rarity are already minted. Rarities at 0 can't be drawn, so
+// each caps hard at its target and the collection converges exactly to
+// 799/496/297/162/90/56/25. Returns -1 if every rarity is full (full supply).
+function rollRarity(remaining) {
+  const tot = remaining.reduce((a, b) => a + (b > 0 ? b : 0), 0);
+  if (tot <= 0) return -1;
   let r = Math.random() * tot;
-  for (let i = 0; i < w.length; i++) {
-    r -= w[i];
+  for (let i = 0; i < remaining.length; i++) {
+    const w = remaining[i] > 0 ? remaining[i] : 0;
+    r -= w;
     if (r < 0) return i;
   }
-  return 0;
+  return remaining.findIndex(x => x > 0);
+}
+
+// Current minted-count per cell (tier × rarity), read from chain. Cached in KV
+// as {counts:6×7, upTo}; each run only enumerates tierOf()/rarityOf() for tokens
+// newer than the cached high-water mark, so cost stays tiny. Chain is the source
+// of truth — the manual gift mint (#17) and any future out-of-band mint are
+// picked up here. Throws on a partial RPC failure so the caller bails without
+// minting on a wrong count (rather than under-counting and overshooting a cap).
+async function getCellMinted(env, contract, publicClient) {
+  let counts = Array.from({ length: 6 }, () => [0, 0, 0, 0, 0, 0, 0]);
+  let upTo = 0;
+  const raw = await env.KV.get('cell_minted');
+  if (raw) {
+    try {
+      const c = JSON.parse(raw);
+      if (Array.isArray(c.counts) && c.counts.length === 6
+          && c.counts.every(row => Array.isArray(row) && row.length === 7)
+          && Number.isInteger(c.upTo)) {
+        counts = c.counts.map(row => row.slice());
+        upTo = c.upTo;
+      }
+    } catch {}
+  }
+  const nextId = Number(await publicClient.readContract({
+    address: contract, abi: NFT_ABI, functionName: 'nextId',
+  }));
+  const total = nextId - 1;
+  for (let id = upTo + 1; id <= total; id++) {
+    const [tt, rr] = await Promise.all([
+      publicClient.readContract({ address: contract, abi: NFT_ABI, functionName: 'tierOf', args: [BigInt(id)] }),
+      publicClient.readContract({ address: contract, abi: NFT_ABI, functionName: 'rarityOf', args: [BigInt(id)] }),
+    ]);
+    const t = Number(tt), r = Number(rr);
+    if (t >= 0 && t < 6 && r >= 0 && r < 7) counts[t][r]++;
+  }
+  await env.KV.put('cell_minted', JSON.stringify({ counts, upTo: total }));
+  return counts;
 }
 
 // ===== Main scheduled handler =====
@@ -285,6 +340,26 @@ export default {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'public, max-age=30',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+    if (url.pathname === '/cells' || url.pathname === '/api/cells') {
+      const contract = env.NFT_CONTRACT_ADDRESS;
+      let counts = null;
+      const raw = await env.KV.get('cell_minted');
+      if (raw) { try { const c = JSON.parse(raw); if (Array.isArray(c.counts)) counts = c.counts; } catch {} }
+      if (!counts && contract) {
+        try {
+          const publicClient = createPublicClient({ chain: bsc, transport: http(RPC_DATASEED[0]) });
+          counts = await getCellMinted(env, contract, publicClient);
+        } catch {}
+      }
+      if (!counts) counts = Array.from({ length: 6 }, () => [0, 0, 0, 0, 0, 0, 0]);
+      return new Response(JSON.stringify({ cells: counts }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=15',
           'Access-Control-Allow-Origin': '*',
         },
       });
@@ -350,6 +425,15 @@ export default {
       return;
     }
 
+    // Per-cell minted counts (chain-truth) so per-cell caps are respected.
+    let cellMinted;
+    try {
+      cellMinted = await getCellMinted(env, contract, publicClient);
+    } catch (e) {
+      console.error('getCellMinted failed, bailing (no mint on unknown counts):', e.message || e);
+      return;
+    }
+
     let bnbUsd = null;
     let mintedThisRun = 0;
     let bailedNoPrice = false;
@@ -398,7 +482,16 @@ export default {
       }
       if (!buyer || IGNORED_WALLETS.has(buyer)) { processed.add(txHash); continue; }
 
-      const rarity = rollRarity(tier);
+      // Roll rarity within THIS tier, weighted by remaining cell slots.
+      const remaining = CELL_CAP[tier].map((cap, i) => cap - cellMinted[tier][i]);
+      const rarity = rollRarity(remaining);
+      if (rarity < 0) {
+        // Tier's rarity cells are all full (tier effectively at cap) — shouldn't
+        // happen before the on-chain tier cap trips, but guard anyway.
+        console.log(`[skip] tier ${tier} rarity cells all capped, tx=${txHash}`);
+        processed.add(txHash);
+        continue;
+      }
 
       // Mint
       try {
@@ -412,6 +505,7 @@ export default {
         console.log(`[MINT] $${usd.toFixed(0)} → tier=${tier} rarity=${RARITY_NAME[rarity]} to=${buyer} mintTx=${mintTxHash} buyTx=${txHash}`);
         processed.add(txHash);
         mintedArr[tier]++;
+        cellMinted[tier][rarity]++; // local: keep later mints this run within caps
         mintedThisRun++;
         // Persist drop for dashboard (KV-backed, avoids RPC archive limits)
         try {

@@ -138,6 +138,28 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);
 .rc .of{font-size:.62rem;color:var(--muted);margin-top:2px}
 @media(max-width:760px){.rarity-grid{grid-template-columns:repeat(4,1fr)}}
 
+/* TIER BLOCKS — availability + per-rarity breakdown + progress bar */
+.tier-block{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;transition:border-color .25s}
+.tier-block::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.12),transparent)}
+.tier-block:hover{border-color:rgba(240,185,11,.12)}
+.tb-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.tb-emoji{font-size:24px;line-height:1}
+.tb-name{flex:1;min-width:0}
+.tb-name .l{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.92rem}
+.tb-name .t{font-size:.7rem;color:var(--muted);margin-top:2px}
+.tb-stats{text-align:right;font-variant-numeric:tabular-nums}
+.tb-stats .n{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.02rem}
+.tb-stats .p{font-size:.68rem;color:var(--muted);margin-top:1px}
+.tb-rars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:12px}
+.tr-cell{border:1px solid var(--border);border-top:2px solid var(--rc);border-radius:8px;padding:8px 3px;text-align:center;background:rgba(0,0,0,.18)}
+.tr-cell.full{opacity:.5}
+.tr-name{display:block;font-size:.56rem;text-transform:uppercase;letter-spacing:.2px;color:var(--rc);font-weight:700}
+.tr-val{display:block;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.9rem;margin-top:3px;font-variant-numeric:tabular-nums}
+.tr-val .sl{color:var(--muted);font-weight:400;font-size:.7rem}
+.tr-ch{display:block;font-size:.54rem;color:var(--muted);margin-top:2px;letter-spacing:.2px}
+@media(max-width:760px){.tb-rars{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:420px){.tb-rars{grid-template-columns:repeat(3,1fr)}}
+
 /* LEDGER */
 .ledger-wrap{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow-y:auto;overflow-x:hidden;position:relative;max-height:500px;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
 .ledger-wrap::-webkit-scrollbar{width:6px}
@@ -154,6 +176,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);
 .ledger-table .tier-cell .e{font-size:1.05rem}
 .rarity-tag{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:6px;font-size:.72rem;font-weight:600;letter-spacing:.2px;border:1px solid}
 .rarity-dot{width:8px;height:8px;border-radius:4px;display:inline-block}
+.ledger-table .drop-note{display:inline-flex;align-items:center;gap:4px;margin-left:7px;padding:2px 8px;border-radius:6px;font-size:.66rem;font-weight:600;letter-spacing:.2px;color:var(--gold);background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.28);vertical-align:middle}
 .ledger-table .wallet a{color:var(--muted);text-decoration:none;font-family:'Space Grotesk',monospace;font-size:.78rem}
 .ledger-table .wallet a:hover{color:var(--gold)}
 .ledger-table .age{color:var(--muted);font-size:.76rem}
@@ -249,7 +272,7 @@ footer a:hover{color:var(--gold)}
 <section class="sec">
   <div class="sh">
     <h2>Tier <em>availability</em></h2>
-    <p>How many NFTs of each buy-tier are still mintable. Once a tier hits its cap, no more NFTs are minted for buys of that size.</p>
+    <p>Each buy-tier and its per-rarity breakdown — minted / cap and your chance per buy. Every cell has a fixed cap; once it's full, that rarity stops for that tier. The bar shows how full the whole tier is.</p>
   </div>
   <div class="tier-grid" id="tier-grid">
     <div class="empty">Loading on-chain data…</div>
@@ -259,7 +282,7 @@ footer a:hover{color:var(--gold)}
 <section class="sec">
   <div class="sh">
     <h2>Rarity <em>distribution</em></h2>
-    <p>Live count of each rarity across all 6 tiers. Rarity is rolled at mint per the weighted drop matrix.</p>
+    <p>Live count of each rarity across all 6 tiers, against its fixed collection-wide cap. Every rarity fills toward its target as the collection mints out.</p>
   </div>
   <div class="rarity-grid" id="rarity-grid">
     <div class="empty" style="grid-column:1/-1">Loading…</div>
@@ -326,6 +349,16 @@ const RARITIES = [
 ];
 // Caps per rarity from the drop matrix — used for "X / Y" display
 const RARITY_CAPS = [799, 496, 297, 162, 90, 56, 25];
+// Per-cell caps (tier × rarity) — mirrors the mint worker's CELL_CAP.
+const CELL_CAP = [
+  [425, 264, 154, 80, 41, 27, 9],
+  [212, 126,  76, 42, 23, 14, 7],
+  [104,  64,  38, 21, 12,  7, 4],
+  [ 34,  26,  16, 10,  7,  4, 3],
+  [ 17,  11,   9,  6,  4,  2, 1],
+  [  7,   5,   4,  3,  3,  2, 1],
+];
+const TIER_CAP = [1000, 500, 250, 100, 50, 25];
 
 function fmtAddr(a){ return a.slice(0,6) + '…' + a.slice(-4); }
 function fmtUtc(unixSec){
@@ -334,36 +367,53 @@ function fmtUtc(unixSec){
   return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 }
 
-function renderTiers(minted, cap) {
+function renderTiers(minted, cap, cells) {
   const grid = document.getElementById('tier-grid');
   grid.innerHTML = '';
   let total = 0;
-  TIERS.forEach((t, i) => {
-    const m = minted[i] || 0, c = cap[i] || 0;
+  TIERS.forEach((t, ti) => {
+    const c = (cap && cap[ti]) || TIER_CAP[ti] || 0;
+    const m = (minted && minted[ti]) || 0;
     total += m;
     const pct = c > 0 ? (m / c) * 100 : 0;
     const soldOut = m >= c && c > 0;
-    const row = document.createElement('div');
-    row.className = 'tier-row';
-    row.innerHTML = `
-      <div class="tier-name">
-        <span class="tier-emoji">${t.emoji}</span>
-        <div>
-          <div class="l">${t.label}${soldOut ? '<span class="sold-out-tag">sold out</span>' : ''}</div>
-          <div class="t">${t.threshold} · ${c.toLocaleString()} max</div>
-        </div>
+    const cm = (cells && cells[ti]) ? cells[ti] : [0, 0, 0, 0, 0, 0, 0];
+    let rarCells = '';
+    RARITIES.forEach((r, ri) => {
+      const cc = CELL_CAP[ti][ri];
+      const mm = cm[ri] || 0;
+      const chance = c > 0 ? (cc / c) * 100 : 0;
+      const chLabel = chance < 1 ? chance.toFixed(1) : (chance < 10 ? chance.toFixed(1) : Math.round(chance));
+      rarCells += `
+        <div class="tr-cell${mm >= cc ? ' full' : ''}" style="--rc:${r.hex}">
+          <span class="tr-name">${r.name}</span>
+          <span class="tr-val">${mm}<span class="sl">/${cc}</span></span>
+          <span class="tr-ch">${chLabel}% chance</span>
+        </div>`;
+    });
+    const block = document.createElement('div');
+    block.className = 'tier-block';
+    block.innerHTML = `
+      <div class="tb-head">
+        <span class="tb-emoji">${t.emoji}</span>
+        <div class="tb-name"><div class="l">${t.label}${soldOut ? '<span class="sold-out-tag">sold out</span>' : ''}</div><div class="t">${t.threshold} · ${c.toLocaleString()} max</div></div>
+        <div class="tb-stats"><div class="n">${m.toLocaleString()} / ${c.toLocaleString()}</div><div class="p">${pct.toFixed(1)}%</div></div>
       </div>
-      <div class="tier-bar"><div class="tier-bar-fill ${soldOut?'sold-out':''}" style="width:${pct}%"></div></div>
-      <div class="tier-stats"><div class="n">${m.toLocaleString()} / ${c.toLocaleString()}</div><div class="p">${pct.toFixed(1)}%</div></div>
+      <div class="tb-rars">${rarCells}</div>
+      <div class="tier-bar"><div class="tier-bar-fill ${soldOut ? 'sold-out' : ''}" style="width:${pct}%"></div></div>
     `;
-    grid.appendChild(row);
+    grid.appendChild(block);
   });
   document.getElementById('stat-minted').textContent = total.toLocaleString();
 }
 
-function renderRarities(drops) {
+function renderRarities(cells, drops) {
   const counts = [0,0,0,0,0,0,0];
-  drops.forEach(d => { if (d.rarity >= 0 && d.rarity < 7) counts[d.rarity]++; });
+  if (cells) {
+    for (let ti = 0; ti < 6; ti++) for (let ri = 0; ri < 7; ri++) counts[ri] += (cells[ti]?.[ri] || 0);
+  } else {
+    (drops || []).forEach(d => { if (d.rarity >= 0 && d.rarity < 7) counts[d.rarity]++; });
+  }
   const grid = document.getElementById('rarity-grid');
   grid.innerHTML = '';
   RARITIES.forEach((r, i) => {
@@ -397,7 +447,7 @@ function renderLedger(drops, latestBlock, holders) {
     row.innerHTML = `
       <td class="serial">#${d.tokenId}</td>
       <td><div class="tier-cell"><span class="e">${t.emoji}</span> ${t.label.replace(' BUY','')}</div></td>
-      <td><span class="rarity-tag" style="color:${r.hex};border-color:${r.hex}55;background:${r.hex}10"><span class="rarity-dot" style="background:${r.hex}"></span>${r.name}</span></td>
+      <td><span class="rarity-tag" style="color:${r.hex};border-color:${r.hex}55;background:${r.hex}10"><span class="rarity-dot" style="background:${r.hex}"></span>${r.name}</span>${d.note ? `<span class="drop-note">🎁 ${d.note}</span>` : ''}</td>
       <td class="wallet"><a href="${BSCSCAN}/address/${d.to}" target="_blank" rel="noopener">${fmtAddr(d.to)}</a></td>
       <td class="age">${fmtUtc(d.ts)}</td>
       <td class="tx"><a href="${BSCSCAN}/tx/${d.tx}" target="_blank" rel="noopener">view ↗</a></td>
@@ -431,8 +481,8 @@ async function refresh() {
     const r = await fetch('/api/nft/state');
     if (!r.ok) throw new Error('api ' + r.status);
     const s = await r.json();
-    renderTiers(s.minted, s.cap);
-    renderRarities(s.drops || []);
+    renderTiers(s.minted, s.cap, s.cells);
+    renderRarities(s.cells, s.drops || []);
     renderLedger(s.drops || [], s.latestBlock, s.holders);
   } catch (e) {
     console.error('state fail', e);

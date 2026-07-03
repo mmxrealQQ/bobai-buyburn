@@ -8,7 +8,9 @@ import { bsc } from 'viem/chains';
 
 // ===== Constants =====
 const BOBAI_PAIR  = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const SWAP_TOPIC  = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 const DEAD        = '0x000000000000000000000000000000000000dead';
 const ZERO_ADDR   = '0x0000000000000000000000000000000000000000';
 
@@ -196,6 +198,38 @@ async function getBnbUsd() {
 
 // ===== Roll + tier =====
 
+// Resolve the real end-holder of a buy by following BOBAI Transfer events in the
+// tx and picking the address with the largest net positive BOBAI inflow.
+// tx.from is unreliable: BNB buys route straight through PancakeSwap (from = user,
+// fine), but USDT/aggregator buys (Binance DEX Router → 1inch settlement → user)
+// submit the tx from a relayer/settlement contract, so the NFT would wrongly land
+// there. The token itself always ends up at the buyer, so we trace it instead.
+async function resolveBuyer(txHash) {
+  const receipt = await rpcCall('eth_getTransactionReceipt', [txHash]);
+  if (!receipt || !Array.isArray(receipt.logs)) return null;
+  const net = new Map();
+  for (const l of receipt.logs) {
+    if ((l.address || '').toLowerCase() !== BOBAI_TOKEN) continue;
+    if ((l.topics?.[0] || '').toLowerCase() !== TRANSFER_TOPIC) continue;
+    if (l.topics.length !== 3) continue;
+    const from = ('0x' + l.topics[1].slice(-40)).toLowerCase();
+    const to   = ('0x' + l.topics[2].slice(-40)).toLowerCase();
+    let amt;
+    try { amt = BigInt(l.data); } catch { continue; }
+    net.set(from, (net.get(from) || 0n) - amt);
+    net.set(to,   (net.get(to)   || 0n) + amt);
+  }
+  // Plumbing addresses that are never the buyer (token contract = tax sink, the
+  // LP pair, dead/zero). Routers net ~0 and lose to the buyer's positive delta.
+  const EXCLUDE = new Set([BOBAI_TOKEN, BOBAI_PAIR, DEAD, ZERO_ADDR]);
+  let best = null, bestDelta = 0n;
+  for (const [addr, delta] of net) {
+    if (EXCLUDE.has(addr) || IGNORED_WALLETS.has(addr)) continue;
+    if (delta > bestDelta) { bestDelta = delta; best = addr; }
+  }
+  return best;
+}
+
 function tierFromUsd(usd) {
   for (const [min, t] of TIER_THRESHOLDS) if (usd >= min) return t;
   return -1;
@@ -355,9 +389,13 @@ export default {
         continue;
       }
 
-      // Resolve real buyer = tx sender (handles aggregators where `to` is the router)
-      const tx = await rpcCall('eth_getTransactionByHash', [txHash]);
-      const buyer = (tx?.from || '').toLowerCase();
+      // Resolve real buyer by tracing the BOBAI token to its end-holder. Falls
+      // back to tx sender only if the trace fails (RPC hiccup / no receipt).
+      let buyer = await resolveBuyer(txHash);
+      if (!buyer) {
+        const tx = await rpcCall('eth_getTransactionByHash', [txHash]);
+        buyer = (tx?.from || '').toLowerCase();
+      }
       if (!buyer || IGNORED_WALLETS.has(buyer)) { processed.add(txHash); continue; }
 
       const rarity = rollRarity(tier);

@@ -65,8 +65,11 @@ async function getNftState() {
   // usd + mintTx kept verbatim so the TG bot can render dollar amounts.
   const drops = rawDrops.map((d, i) => ({
     to: d.to,
-    // tokenId is sequential: newest = highest id (= total minted - i)
-    tokenId: minted.reduce((a, b) => a + b, 0) - i,
+    // Prefer an explicit tokenId stored on the drop; fall back to positional
+    // (newest = highest id = total minted - i) for legacy entries without one.
+    // The explicit id makes the ledger robust to out-of-band mints (e.g. a
+    // manual gift mint) that would otherwise shift every positional number.
+    tokenId: Number.isInteger(d.tokenId) ? d.tokenId : (minted.reduce((a, b) => a + b, 0) - i),
     tier: d.tier,
     rarity: d.rarity,
     block: d.block,

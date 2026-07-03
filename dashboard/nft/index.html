@@ -139,10 +139,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);
 @media(max-width:760px){.rarity-grid{grid-template-columns:repeat(4,1fr)}}
 
 /* LEDGER */
-.ledger-wrap{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative}
+.ledger-wrap{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow-y:auto;overflow-x:hidden;position:relative;max-height:500px;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
+.ledger-wrap::-webkit-scrollbar{width:6px}
+.ledger-wrap::-webkit-scrollbar-track{background:transparent}
+.ledger-wrap::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
+.ledger-wrap::-webkit-scrollbar-thumb:hover{background:rgba(240,185,11,.5)}
 .ledger-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
 .ledger-table{width:100%;border-collapse:collapse}
-.ledger-table thead th{background:rgba(240,185,11,.03);color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:14px 16px;text-align:left;font-weight:600;border-bottom:1px solid var(--border)}
+.ledger-table thead th{background:#0c0c1c;color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:14px 16px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
 .ledger-table td{padding:12px 16px;border-top:1px solid rgba(240,185,11,.03);font-size:.82rem;vertical-align:middle}
 .ledger-table tr:hover{background:rgba(240,185,11,.015)}
 .ledger-table .serial{font-family:'Space Grotesk',monospace;color:var(--gold);font-weight:600}
@@ -385,7 +389,7 @@ function renderLedger(drops, latestBlock, holders) {
     return;
   }
   const uniqueRecipients = new Set();
-  drops.slice(0, 30).forEach(d => {
+  drops.slice(0, 100).forEach(d => {
     uniqueRecipients.add(d.to);
     const t = TIERS[d.tier] || { label:'?', emoji:'?' };
     const r = RARITIES[d.rarity] || { name:'?', hex:'#888' };

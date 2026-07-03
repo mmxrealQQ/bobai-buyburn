@@ -1,0 +1,11 @@
+hey brainers
+
+someone on binance square asked: "no more burns coming?" — fair question, here's the honest answer:
+
+burns follow volume. every trade pays the 3% tax, the tax queues up on the contract, and once it reaches the threshold the cycle runs — swap, distribute, burn. low volume just means the queue fills slower. nothing is broken, the bot checks every 10 minutes, 24/7.
+
+new on the dashboard: the <b>Buyback</b> card now shows that queue live — how much $BOBAI tax is collected and waiting for the next cycle, with the USD value. right now: ~407k $BOBAI (≈$31) queued. reserve on top, queue below, updates every 30 seconds.
+
+so instead of guessing, you can literally watch the next burn charging up: <a href="https://brainonbnb.com">brainonbnb.com</a>
+
+🧠 keeps building

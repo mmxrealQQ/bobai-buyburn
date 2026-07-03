@@ -350,6 +350,7 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 - https://brainonbnb.com/api/token — contract, supply, burned, renounced/verified flags
 - https://brainonbnb.com/api/trade — DEX execution params (router, pair, paths, slippage, FoT methods)
 - https://brainonbnb.com/api/tokenomics — value-accrual mechanics + trust properties
+- https://brainonbnb.com/api/wallet?address=0x… — BNB + $BOBAI balance of any BSC wallet
 - https://brainonbnb.com/api/links · /api/guide · /api/how-to-buy
 - https://brainonbnb.com/api/circulating-supply · /api/total-supply — bare numbers as text/plain (aggregator-style supply endpoints)
 
@@ -579,13 +580,16 @@ export default {
 
     if (url.pathname === '/mcp') return handleMcp(request);
 
-    if (REST_TOOLS[url.pathname]) {
+    if (REST_TOOLS[url.pathname] || url.pathname === '/api/wallet') {
       const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'Access-Control-Allow-Origin': '*' };
       try {
-        const out = await runTool(REST_TOOLS[url.pathname], {});
+        const out = url.pathname === '/api/wallet'
+          ? await runTool('bobai_wallet_balance', { address: url.searchParams.get('address') || '' })
+          : await runTool(REST_TOOLS[url.pathname], {});
         return new Response(JSON.stringify(out, null, 2), { headers });
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message || String(e) }), { status: 502, headers });
+        const status = url.pathname === '/api/wallet' && /Invalid BSC address/.test(e.message || '') ? 400 : 502;
+        return new Response(JSON.stringify({ error: e.message || String(e) }), { status, headers });
       }
     }
 

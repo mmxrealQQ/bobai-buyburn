@@ -2,7 +2,7 @@
 // Serves OpenSea-spec JSON metadata per token: GET /meta/<id>(.json)
 // Looks up tier/rarity on-chain and returns image URL + traits.
 
-import { createPublicClient, http, parseAbi } from 'viem';
+import { createPublicClient, http, fallback, parseAbi } from 'viem';
 import { bsc } from 'viem/chains';
 
 const NFT_ABI = parseAbi([
@@ -39,7 +39,7 @@ const RARITY_INFO = [
 const COLLECTION_NAME = 'BOBAI Buy Drops';
 const COLLECTION_DESC =
   'Auto-minted NFTs awarded for qualifying $BOBAI buys on BNB Chain. ' +
-  'Every buy of $100 or more earns a NFT with a fixed buy-tier motif and ' +
+  'Every buy of $100 or more earns an NFT with a fixed buy-tier motif and ' +
   'a rarity drawn from the drop matrix. Collection capped at 1,925 NFTs.';
 const EXTERNAL_URL = 'https://brainonbnb.com';
 
@@ -130,7 +130,12 @@ export default {
       return json({ error: 'token id must be >= 1' }, { status: 400 });
     }
 
-    const client = createPublicClient({ chain: bsc, transport: http(RPC_DATASEED[0]) });
+    // Fallback across all dataseeds — a single-RPC hiccup must not surface as a
+    // 502 to wallet/marketplace indexers (they cache failures aggressively).
+    const client = createPublicClient({
+      chain: bsc,
+      transport: fallback(RPC_DATASEED.map((u) => http(u, { timeout: 5000 }))),
+    });
     const contract = env.NFT_CONTRACT_ADDRESS;
 
     // Resolve tier/rarity from chain. Fail soft if token not yet minted.

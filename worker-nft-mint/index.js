@@ -248,10 +248,10 @@ function tierFromUsd(usd) {
   return -1;
 }
 
-// Roll a rarity weighted by REMAINING slots. `remaining[i]` = RARITY_CAP[i] minus
-// how many of that rarity are already minted. Rarities at 0 can't be drawn, so
-// each caps hard at its target and the collection converges exactly to
-// 799/496/297/162/90/56/25. Returns -1 if every rarity is full (full supply).
+// Roll a rarity weighted by REMAINING slots. `remaining[i]` = CELL_CAP[tier][i]
+// minus how many of that rarity are already minted in this tier. Rarities at 0
+// can't be drawn, so each cell caps hard at its target and the collection
+// converges exactly to the matrix. Returns -1 if the row is full.
 function rollRarity(remaining) {
   const tot = remaining.reduce((a, b) => a + (b > 0 ? b : 0), 0);
   if (tot <= 0) return -1;

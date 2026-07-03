@@ -29,7 +29,8 @@
           { "name": "bobai_how_to_buy", "description": "Ready-to-run viem code to buy $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method) for 0-shot execution" },
           { "name": "bobai_tokenomics", "description": "Neutral, verifiable value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, not a buy recommendation" },
           { "name": "bobai_price", "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves x Chainlink BNB/USD feed)" },
-          { "name": "bobai_liquidity", "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), price-impact estimates per buy size" }
+          { "name": "bobai_liquidity", "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), price-impact estimates per buy size" },
+          { "name": "bobai_activity", "description": "Proof the buyback-and-burn flywheel is running: last burn (BscScan tx), burns over the last 7/30 days, total bot runs - every entry verifiable on-chain" }
         ]
       }
     }

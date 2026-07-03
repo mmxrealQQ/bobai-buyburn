@@ -189,6 +189,30 @@ async function getLiquidity() {
   };
 }
 
+// Live proof the buyback-and-burn flywheel runs — from the bot's public audit
+// log (burns.json in the open-source repo). Every burn tx is on-chain.
+async function getActivity() {
+  const r = await fetch('https://raw.githubusercontent.com/mmxrealQQ/bobai-buyburn/main/burns.json', { cf: { cacheTtl: 300, cacheEverything: true } });
+  if (!r.ok) throw new Error('burn log unavailable (HTTP ' + r.status + ')');
+  const runs = await r.json();
+  const now = Date.now();
+  const within = (days) => runs.filter(e => now - Date.parse(e.time) < days * 86400e3);
+  const sum = (arr, f) => arr.reduce((a, e) => a + (parseFloat(e[f]) || 0), 0);
+  const period = (arr) => ({ burn_runs: arr.length, bobai_burned: Math.round(sum(arr, 'bobaiBurned')), bob_burned: Math.round(sum(arr, 'bobBurned')) });
+  const last = runs[runs.length - 1];
+  return {
+    buyback_bot: 'autonomous, checks every 10 minutes 24/7 — executes a buyback+burn whenever the collected 3% tax reaches the swap threshold',
+    buyback_wallet: '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
+    buyback_wallet_note: 'The 3% trade tax accumulates in this public wallet between burn runs — check its live balance (bobai_wallet_balance / BscScan) to watch the next buyback charging up.',
+    last_burn: last ? { time: last.time, bobai_burned: Math.round(parseFloat(last.bobaiBurned) || 0), burn_tx: 'https://bscscan.com/tx/' + last.bobaiBurnTx, bnb_spent: last.totalBnb } : null,
+    last_7_days: period(within(7)),
+    last_30_days: period(within(30)),
+    bot_burn_runs_total: runs.length,
+    audit_log: 'https://github.com/mmxrealQQ/bobai-buyburn/blob/main/burns.json',
+    note: 'Burn cadence follows trading volume — the 3% tax funds the buybacks, so more volume means more frequent burns. $BOB is the sister token (1% of the tax burns $BOB). Every burn_tx is verifiable on BscScan. Not financial advice.',
+  };
+}
+
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
 const AGENT_GUIDE = {
@@ -197,6 +221,7 @@ const AGENT_GUIDE = {
   what_you_can_know: [
     { ask: 'Live price in USD/BNB + market cap, computed fully on-chain', call: 'bobai_price' },
     { ask: 'Liquidity depth: reserves, USD liquidity, LP-burned %, price impact per buy size', call: 'bobai_liquidity' },
+    { ask: 'Is the buyback-and-burn flywheel actually running? Last burn (tx), burns last 7/30 days', call: 'bobai_activity' },
     { ask: 'Token basics: contract, name, symbol, decimals, supply, amount burned', call: 'bobai_token_info' },
     { ask: 'How much $BOBAI has been permanently burned', call: 'bobai_burned' },
     { ask: 'Current circulating supply (total minus burned)', call: 'bobai_circulating_supply' },
@@ -216,8 +241,9 @@ const AGENT_GUIDE = {
 const TOKENOMICS = {
   model: 'deflationary — circulating supply shrinks as trading volume grows',
   mechanism: [
-    '3% tax on every $BOBAI trade',
-    'the tax funds an autonomous 24/7 buyback-and-burn cycle',
+    '3% tax on every $BOBAI trade (rate hardcoded, distribution transparent & published)',
+    'the tax accumulates in the public buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
+    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases may re-route slices (e.g. liquidity adds + LP burn, WC26 prize pool) — live schedule on the dashboard',
     'bought-back $BOBAI is sent to the dead address = permanent, irreversible burn',
     'more volume -> more buybacks -> more burned -> lower circulating supply',
   ],
@@ -320,14 +346,17 @@ curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
 Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no auth, CORS open:
 - https://brainonbnb.com/api/price — live price (USD/BNB) + market cap, computed fully on-chain
 - https://brainonbnb.com/api/liquidity — reserves, USD liquidity, LP-burned %, price impact per buy size
+- https://brainonbnb.com/api/activity — proof the buyback-and-burn flywheel runs: last burn tx, burns last 7/30 days
 - https://brainonbnb.com/api/token — contract, supply, burned, renounced/verified flags
 - https://brainonbnb.com/api/trade — DEX execution params (router, pair, paths, slippage, FoT methods)
 - https://brainonbnb.com/api/tokenomics — value-accrual mechanics + trust properties
 - https://brainonbnb.com/api/links · /api/guide · /api/how-to-buy
+- https://brainonbnb.com/api/circulating-supply · /api/total-supply — bare numbers as text/plain (aggregator-style supply endpoints)
 
 ## What you can ASK (read-only, all on-chain)
 - \`bobai_price\` — live price in USD/BNB + market cap (pair reserves × Chainlink BNB/USD — no off-chain price API)
 - \`bobai_liquidity\` — pool reserves, liquidity in USD, LP-burned % (perma-locked), price impact per buy size
+- \`bobai_activity\` — is the flywheel running? Last burn (BscScan tx), burns last 7/30 days, full audit log
 - \`bobai_token_info\` — contract, name, symbol, decimals, total & circulating supply, amount burned
 - \`bobai_burned\` — total $BOBAI permanently burned by the autonomous 24/7 buyback bot
 - \`bobai_circulating_supply\` — total minus burned
@@ -445,6 +474,7 @@ const MCP_TOOLS = [
   { name: 'bobai_tokenomics', description: 'Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, NOT a buy recommendation.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_price', description: 'Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_activity', description: 'Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log, every entry verifiable on-chain.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
 
 async function runTool(name, args) {
@@ -460,6 +490,7 @@ async function runTool(name, args) {
     case 'bobai_tokenomics': return TOKENOMICS;
     case 'bobai_price': return await getPrice();
     case 'bobai_liquidity': return await getLiquidity();
+    case 'bobai_activity': return await getActivity();
     default: throw new Error('Unknown tool: ' + name);
   }
 }
@@ -524,6 +555,7 @@ const A2A_CARD = {
     { id: 'tokenomics', name: 'Tokenomics', description: 'Neutral value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch)', tags: ['crypto', 'tokenomics', 'deflationary'] },
     { id: 'price', name: 'Live price', description: 'Live $BOBAI price in USD/BNB + market cap, computed fully on-chain (pair reserves × Chainlink BNB/USD)', tags: ['crypto', 'bsc', 'price', 'market-data'] },
     { id: 'liquidity', name: 'Liquidity depth', description: 'Pool reserves, USD liquidity, LP-burned % (perma-locked) and price-impact estimates per buy size', tags: ['crypto', 'bsc', 'liquidity', 'market-data'] },
+    { id: 'activity', name: 'Burn activity', description: 'Proof the buyback-and-burn flywheel runs: last burn tx, burns last 7/30 days, public audit log', tags: ['crypto', 'bsc', 'burns', 'audit'] },
   ],
 };
 
@@ -532,6 +564,7 @@ const A2A_CARD = {
 const REST_TOOLS = {
   '/api/price': 'bobai_price',
   '/api/liquidity': 'bobai_liquidity',
+  '/api/activity': 'bobai_activity',
   '/api/token': 'bobai_token_info',
   '/api/trade': 'bobai_trade_info',
   '/api/tokenomics': 'bobai_tokenomics',

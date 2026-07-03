@@ -1,35 +1,32 @@
-Element Market Collection Setup — BOBAI Buy Drops
-===================================================
+Element Market Collection Setup — BOBAI Buy Drops — STATUS
+============================================================
 
-Collection page (auto-indexed, currently WITHOUT logo/banner/description):
-  https://element.market/collections/bobai-buy-drops-1
+Collection: https://element.market/collections/bobai-buy-drops-1
+(indexed & tradable, but no logo/banner/description yet)
 
-Why this file: ownership is renounced (owner = 0x0 since 2026-06-23), so the
-normal owner-signature collection claim does not work. Two paths, try in order:
+Status
+------
+- Self-serve edit: NOT possible — Element gates collection edits on the
+  contract owner() wallet (confirmed in Element docs 2026-07-03), owner is
+  0x0 since renounce 2026-06-23. Deployer-wallet fallback is not supported.
+- Google Form (rescue path) ALREADY SUBMITTED:
+  https://docs.google.com/forms/d/e/1FAIpQLScWNzmmZA3wN-cbBqPTbJpFk97LAawWYYJNjt_nWAB93mNmrQ/viewform
+  Manual whitelist by Element operating team, lag unknown (est. 1-2 weeks).
+- Paid "acceleration for verification & badging": 999 USDT (<10 ETH volume)
+  → SKIP, same call as NFTScan's 99 USDT verify.
+- Free verification badge requires ≥50 ETH volume → not eligible, irrelevant.
 
-Path 1 — Deployer wallet claim (try first)
--------------------------------------------
-Element (like OpenSea) often accepts the contract DEPLOYER, not just owner().
-  1. element.market → Connect Wallet with the NFT relayer/deployer wallet
-     0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2
-  2. Open the collection page → look for "Edit" / gear icon
-  3. If edit is available, fill the fields below.
+Follow-up (only if no reaction ~2 weeks after form submission)
+--------------------------------------------------------------
+Email elementofficial2021@gmail.com from bobai@brainonbnb.ai with a
+deployer-signature as proof (EIP-191 personal_sign, viem):
 
-Path 2 — Element support form (fallback)
------------------------------------------
-Element Help Center → "Update collection info" request (or their Discord
-#support). Framing for the reviewer (paste at top):
+  message: "I am the deployer of 0xd56226b3b8297a57f4361fca28aa43babdc9789d
+  on BNB Chain. Owner is 0x0 (renounced). Signing wallet:
+  0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2. Date: <YYYY-MM-DD>."
 
-  Same project as Brain On BNB AI / $BOBAI (BEP-20
-  0x245c386dCFeD896f5c346107596141e5EDcBFFfF). NFT contract
-  0xd56226b3b8297a57f4361fca28aa43babdc9789d is BscScan-verified
-  (2026-06-22); ownership renounced 2026-06-23 (tx
-  0x589a2badaaa3004fd74a84cfbd2ce47b53550b5c48b2a2d9a48da51d2742643b),
-  so the owner-signature claim flow is not possible. Request comes
-  from the contract deployer / project domain (bobai@brainonbnb.ai).
-
-Form fields
------------
+Copy-paste data (for form/email)
+--------------------------------
 | Field         | Value                                                      |
 |---------------|------------------------------------------------------------|
 | Name          | BOBAI Buy Drops                                            |
@@ -38,7 +35,6 @@ Form fields
 | Logo          | https://brainonbnb.com/nft/element-logo-128.png            |
 | Banner        | https://brainonbnb.com/nft/element-banner-1360x762.jpg     |
 | Website       | https://brainonbnb.com/nft                                 |
-| Category      | Collectibles / Art                                         |
 | Email         | bobai@brainonbnb.ai                                        |
 
 Description (paste verbatim)
@@ -58,6 +54,5 @@ Socials
 
 Notes
 -----
-- Don't mention volume/size; no superlatives (per BscScan-submission lessons).
-- Royalties: contract has no ERC-2981 and is renounced — leave royalty
-  fields at 0 / unset; do not promise creator fees.
+- Royalties: no ERC-2981, renounced — leave royalty at 0, promise nothing.
+- No volume talk, no superlatives (BscScan-submission lessons).

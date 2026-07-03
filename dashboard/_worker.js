@@ -126,12 +126,77 @@ const TRADE_INFO = {
   note: '$BOBAI charges a 3% transfer tax. You MUST use the *SupportingFeeOnTransferTokens router methods and set slippage tolerance >= 15% (1500 bps), otherwise the swap reverts. Live reserves: call getReserves() on the pair. Not financial advice.',
 };
 
+// Live price + liquidity — computed fully on-chain (pair reserves × Chainlink
+// BNB/USD), same math as the dashboard workers. No off-chain price API.
+const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE'; // BSC mainnet feed, 8 decimals
+
+async function getReservesAndBnbUsd() {
+  const [rHex, aHex] = await Promise.all([
+    ethCallRaw(PAIR, '0x0902f1ac'),          // getReserves() → (r0, r1, ts)
+    ethCallRaw(CHAINLINK_BNB_USD, '0x50d25bcd'), // latestAnswer() → int256, 8 decimals
+  ]);
+  const rBOBAI = BigInt('0x' + rHex.slice(2, 66));  // token0 = BOBAI (verified on-chain)
+  const rWBNB = BigInt('0x' + rHex.slice(66, 130)); // token1 = WBNB
+  const bnbUsd = Number(BigInt(aHex)) / 1e8;
+  if (rBOBAI === 0n || rWBNB === 0n) throw new Error('zero reserves');
+  if (!(bnbUsd > 0)) throw new Error('bad BNB/USD from Chainlink');
+  return { rBOBAI, rWBNB, bnbUsd };
+}
+
+async function getPrice() {
+  const { rBOBAI, rWBNB, bnbUsd } = await getReservesAndBnbUsd();
+  const priceBnb = Number(rWBNB) / Number(rBOBAI); // both 18 decimals → ratio cancels
+  const priceUsd = priceBnb * bnbUsd;
+  if (!isFinite(priceUsd) || priceUsd < 1e-7 || priceUsd > 1e-2) throw new Error('price failed sanity bounds');
+  const circulating = await getCirculating();
+  return {
+    symbol: 'BOBAI',
+    price_usd: Number(priceUsd.toPrecision(6)),
+    price_bnb: Number(priceBnb.toPrecision(6)),
+    bnb_usd: Number(bnbUsd.toFixed(2)),
+    market_cap_usd: Math.round(Number(circulating) * priceUsd),
+    circulating_supply: circulating.toString(),
+    source: 'on-chain: PancakeSwap V2 pair reserves × Chainlink BNB/USD feed — no off-chain price API',
+    pair: PAIR,
+    chainlink_feed: CHAINLINK_BNB_USD,
+    note: 'Spot price from live reserves. Your execution price differs: 3% transfer tax + price impact (see bobai_liquidity). Not financial advice.',
+  };
+}
+
+async function getLiquidity() {
+  const [{ rBOBAI, rWBNB, bnbUsd }, lpTotalHex, lpDeadHex, lpZeroHex] = await Promise.all([
+    getReservesAndBnbUsd(),
+    ethCallRaw(PAIR, '0x18160ddd'),
+    ethCallRaw(PAIR, '0x70a08231000000000000000000000000' + DEAD.slice(2)),
+    ethCallRaw(PAIR, '0x70a08231000000000000000000000000' + ZERO.slice(2)),
+  ]);
+  const lpTotal = BigInt(lpTotalHex);
+  const lpBurned = BigInt(lpDeadHex) + BigInt(lpZeroHex);
+  const lpBurnedPct = lpTotal > 0n ? Number(lpBurned * 10000n / lpTotal) / 100 : 0;
+  const wbnb = Number(rWBNB) / 1e18;
+  const liqUsd = 2 * wbnb * bnbUsd;
+  // constant-product impact of a BNB-side buy: in / (reserve + in)
+  const impact = (bnb) => (bnb / (wbnb + bnb) * 100).toFixed(2) + '%';
+  return {
+    pair: PAIR,
+    dex: 'PancakeSwap V2',
+    reserves: { bobai: (rBOBAI / BigInt(1e18)).toString(), wbnb: Number(wbnb.toFixed(4)) },
+    liquidity_usd: Math.round(liqUsd),
+    lp_burned_percent: Number(lpBurnedPct.toFixed(2)),
+    lp_note: 'LP tokens sit at the dead address — permanently locked, nobody can pull this liquidity. Verify: balanceOf(0x…dEaD) on the pair.',
+    price_impact_estimate: { '0.1 BNB buy': impact(0.1), '0.5 BNB buy': impact(0.5), '1 BNB buy': impact(1), '5 BNB buy': impact(5) },
+    impact_note: 'Constant-product estimate before the 3% transfer tax and LP fee. Verify live via getReserves() on the pair. Not financial advice.',
+  };
+}
+
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
 const AGENT_GUIDE = {
   agent: 'Brain On BNB AI ($BOBAI)',
   what_this_is: 'A read-only, verifiable on-chain data surface for the $BOBAI token on BNB Chain (BSC). Not a trading bot — a source of truth other agents can call before they act.',
   what_you_can_know: [
+    { ask: 'Live price in USD/BNB + market cap, computed fully on-chain', call: 'bobai_price' },
+    { ask: 'Liquidity depth: reserves, USD liquidity, LP-burned %, price impact per buy size', call: 'bobai_liquidity' },
     { ask: 'Token basics: contract, name, symbol, decimals, supply, amount burned', call: 'bobai_token_info' },
     { ask: 'How much $BOBAI has been permanently burned', call: 'bobai_burned' },
     { ask: 'Current circulating supply (total minus burned)', call: 'bobai_circulating_supply' },
@@ -251,7 +316,18 @@ curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"bobai_token_info"}}'
 \`\`\`
 
+## No MCP client? Plain REST (just GET these URLs)
+Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no auth, CORS open:
+- https://brainonbnb.com/api/price — live price (USD/BNB) + market cap, computed fully on-chain
+- https://brainonbnb.com/api/liquidity — reserves, USD liquidity, LP-burned %, price impact per buy size
+- https://brainonbnb.com/api/token — contract, supply, burned, renounced/verified flags
+- https://brainonbnb.com/api/trade — DEX execution params (router, pair, paths, slippage, FoT methods)
+- https://brainonbnb.com/api/tokenomics — value-accrual mechanics + trust properties
+- https://brainonbnb.com/api/links · /api/guide · /api/how-to-buy
+
 ## What you can ASK (read-only, all on-chain)
+- \`bobai_price\` — live price in USD/BNB + market cap (pair reserves × Chainlink BNB/USD — no off-chain price API)
+- \`bobai_liquidity\` — pool reserves, liquidity in USD, LP-burned % (perma-locked), price impact per buy size
 - \`bobai_token_info\` — contract, name, symbol, decimals, total & circulating supply, amount burned
 - \`bobai_burned\` — total $BOBAI permanently burned by the autonomous 24/7 buyback bot
 - \`bobai_circulating_supply\` — total minus burned
@@ -367,6 +443,8 @@ const MCP_TOOLS = [
   { name: 'bobai_guide', description: 'START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know fee-on-transfer rule.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_how_to_buy', description: 'Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_tokenomics', description: 'Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, NOT a buy recommendation.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_price', description: 'Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
 
 async function runTool(name, args) {
@@ -380,6 +458,8 @@ async function runTool(name, args) {
     case 'bobai_guide': return AGENT_GUIDE;
     case 'bobai_how_to_buy': return howToBuy();
     case 'bobai_tokenomics': return TOKENOMICS;
+    case 'bobai_price': return await getPrice();
+    case 'bobai_liquidity': return await getLiquidity();
     default: throw new Error('Unknown tool: ' + name);
   }
 }
@@ -442,7 +522,22 @@ const A2A_CARD = {
     { id: 'guide', name: 'Agent guide', description: 'Start here — interactive map of what you can ask/do about $BOBAI and which tool to call', tags: ['guide', 'onboarding'] },
     { id: 'how_to_buy', name: 'How to buy', description: 'Ready-to-run viem code to buy $BOBAI with BNB (fee-on-transfer safe)', tags: ['crypto', 'bsc', 'dex', 'trade', 'code'] },
     { id: 'tokenomics', name: 'Tokenomics', description: 'Neutral value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch)', tags: ['crypto', 'tokenomics', 'deflationary'] },
+    { id: 'price', name: 'Live price', description: 'Live $BOBAI price in USD/BNB + market cap, computed fully on-chain (pair reserves × Chainlink BNB/USD)', tags: ['crypto', 'bsc', 'price', 'market-data'] },
+    { id: 'liquidity', name: 'Liquidity depth', description: 'Pool reserves, USD liquidity, LP-burned % (perma-locked) and price-impact estimates per buy size', tags: ['crypto', 'bsc', 'liquidity', 'market-data'] },
   ],
+};
+
+// Plain REST mirror of the MCP tools — the lowest common denominator for
+// agents that can GET a URL but don't speak MCP yet (documented in skill.md).
+const REST_TOOLS = {
+  '/api/price': 'bobai_price',
+  '/api/liquidity': 'bobai_liquidity',
+  '/api/token': 'bobai_token_info',
+  '/api/trade': 'bobai_trade_info',
+  '/api/tokenomics': 'bobai_tokenomics',
+  '/api/links': 'bobai_links',
+  '/api/guide': 'bobai_guide',
+  '/api/how-to-buy': 'bobai_how_to_buy',
 };
 
 export default {
@@ -450,6 +545,16 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/mcp') return handleMcp(request);
+
+    if (REST_TOOLS[url.pathname]) {
+      const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'Access-Control-Allow-Origin': '*' };
+      try {
+        const out = await runTool(REST_TOOLS[url.pathname], {});
+        return new Response(JSON.stringify(out, null, 2), { headers });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message || String(e) }), { status: 502, headers });
+      }
+    }
 
     if (url.pathname === '/skill.md') {
       return new Response(skillMd(), {

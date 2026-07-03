@@ -233,6 +233,10 @@ const AGENT_GUIDE = {
     { action: 'Get the raw DEX execution parameters (router, pair, paths, slippage, methods)', call: 'bobai_trade_info' },
     { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_how_to_buy' },
   ],
+  guided_prompts: [
+    { prompt: 'evaluate_bobai', does: 'full neutral due-diligence walkthrough (prompts/get)' },
+    { prompt: 'prepare_bobai_swap', does: 'fee-on-transfer-safe swap preparation, optional wallet arg (prompts/get)' },
+  ],
   must_know: '$BOBAI is a fee-on-transfer token (3% tax). Any swap MUST use the *SupportingFeeOnTransferTokens router methods with slippage >= 15% (1500 bps) or it reverts. Everything here is verifiable on-chain. Not financial advice.',
 };
 
@@ -370,6 +374,11 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 - \`bobai_how_to_buy\` — ready-to-run buy code (below)
 - \`bobai_guide\` — interactive menu that routes each intent to a tool
 
+## Prompts & resources (MCP)
+- Prompt \`evaluate_bobai\` — guided neutral due-diligence walkthrough through all read tools
+- Prompt \`prepare_bobai_swap\` — fee-on-transfer-safe swap preparation (optional \`wallet\` argument)
+- Resources: this skill doc (\`text/markdown\`) and the A2A agent card (\`application/json\`) are readable via \`resources/read\`
+
 ## ⚠️ Must know before swapping
 $BOBAI is a **fee-on-transfer** token (3% tax). A naive swap **reverts**. You MUST:
 - use \`swapExactETHForTokensSupportingFeeOnTransferTokens\` (buy) / \`swapExactTokensForETHSupportingFeeOnTransferTokens\` (sell)
@@ -496,6 +505,58 @@ async function runTool(name, args) {
   }
 }
 
+// MCP resources — documents an MCP client can read/subscribe to directly.
+const MCP_RESOURCES = [
+  { uri: 'https://brainonbnb.com/skill.md', name: 'bobai_skill_doc', description: 'Machine-readable skill doc: identity, all tools, trade params, ready-to-run buy code, tokenomics', mimeType: 'text/markdown' },
+  { uri: 'https://brainonbnb.com/.well-known/agent-card.json', name: 'bobai_a2a_card', description: 'A2A agent card: skills and capabilities of the $BOBAI agent surface', mimeType: 'application/json' },
+];
+
+function readResource(uri) {
+  if (uri === 'https://brainonbnb.com/skill.md') return { uri, mimeType: 'text/markdown', text: skillMd() };
+  if (uri === 'https://brainonbnb.com/.well-known/agent-card.json') return { uri, mimeType: 'application/json', text: JSON.stringify(A2A_CARD, null, 2) };
+  throw new Error('Unknown resource: ' + uri);
+}
+
+// MCP prompts — guided walkthroughs that route an agent through the tools.
+const MCP_PROMPTS = [
+  { name: 'evaluate_bobai', description: 'Neutral due-diligence walkthrough of the $BOBAI token: routes through every read tool and ends with a balanced, on-chain-verified assessment (strengths AND risks).', arguments: [] },
+  { name: 'prepare_bobai_swap', description: 'Step-by-step preparation of a $BOBAI swap on PancakeSwap V2 (fee-on-transfer safe): trade params, price impact for your size, wallet check, executable code.', arguments: [{ name: 'wallet', description: 'BSC wallet address to check balances for (optional)', required: false }] },
+];
+
+function getPrompt(name, args) {
+  if (name === 'evaluate_bobai') {
+    return {
+      description: MCP_PROMPTS[0].description,
+      messages: [{ role: 'user', content: { type: 'text', text: [
+        'You are evaluating the $BOBAI token (Brain On BNB AI) on BNB Chain. Use this server\'s tools and stay neutral — verify, don\'t trust.',
+        '1. Call bobai_token_info — confirm contract, supply, amount burned, renounced/verified flags.',
+        '2. Call bobai_price and bobai_liquidity — note liquidity depth, LP-burned %, and the price impact for your intended size.',
+        '3. Call bobai_activity — open the last burn tx on BscScan to confirm the buyback flywheel actually runs.',
+        '4. Call bobai_tokenomics — understand the value-accrual design and its trust properties.',
+        '5. Cross-check at least one claim independently on-chain (e.g. balanceOf(0x…dEaD) on the token contract, or getReserves() on the pair).',
+        'Then give a balanced assessment: strengths, risks (meme token, small liquidity means high price impact, burn cadence depends on volume), and anything you could not verify. This is research, not financial advice.',
+      ].join('\n') } }],
+    };
+  }
+  if (name === 'prepare_bobai_swap') {
+    const wallet = args?.wallet && /^0x[0-9a-fA-F]{40}$/.test(args.wallet) ? args.wallet : null;
+    return {
+      description: MCP_PROMPTS[1].description,
+      messages: [{ role: 'user', content: { type: 'text', text: [
+        'You are preparing (not necessarily executing) a $BOBAI swap on PancakeSwap V2. $BOBAI is fee-on-transfer (3% tax) — a naive swap reverts.',
+        '1. Call bobai_trade_info — router, pair, swap paths, the *SupportingFeeOnTransferTokens methods and slippage >= 15% (1500 bps).',
+        '2. Call bobai_price and bobai_liquidity — check the price-impact estimate for your size; the 3% transfer tax comes on top.',
+        wallet
+          ? '3. Call bobai_wallet_balance with address ' + wallet + ' — confirm it holds the BNB for the swap plus gas.'
+          : '3. Optionally call bobai_wallet_balance — confirm the wallet holds the BNB for the swap plus gas.',
+        '4. Call bobai_how_to_buy — ready-to-run viem code (on-chain quote minus 15% slippage, explicit RPC).',
+        'Sanity rules: test with a small amount first, verify token/router/pair on BscScan yourself, never expose a private key holding significant funds. Not financial advice.',
+      ].join('\n') } }],
+    };
+  }
+  throw new Error('Unknown prompt: ' + name);
+}
+
 const rpcOk = (id, result) => ({ jsonrpc: '2.0', id, result });
 const rpcErr = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
@@ -508,7 +569,7 @@ async function handleMcp(request) {
   };
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (request.method === 'GET') {
-    return new Response(JSON.stringify({ name: 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', tools: MCP_TOOLS.map(t => t.name) }), { headers: cors });
+    return new Response(JSON.stringify({ name: 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', tools: MCP_TOOLS.map(t => t.name), prompts: MCP_PROMPTS.map(p => p.name), resources: MCP_RESOURCES.map(r => r.uri) }), { headers: cors });
   }
   let body;
   try { body = await request.json(); } catch { return new Response(JSON.stringify(rpcErr(null, -32700, 'Parse error')), { headers: cors }); }
@@ -516,16 +577,29 @@ async function handleMcp(request) {
   if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
   try {
     if (method === 'initialize') {
+      console.log('[mcp] initialize', body?.params?.clientInfo?.name || 'unknown-client');
       return new Response(JSON.stringify(rpcOk(id, {
         protocolVersion: '2025-06-18',
-        capabilities: { tools: {} },
-        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.0.0' },
+        capabilities: { tools: {}, resources: {}, prompts: {} },
+        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.1.0' },
       })), { headers: cors });
     }
     if (method === 'tools/list') return new Response(JSON.stringify(rpcOk(id, { tools: MCP_TOOLS })), { headers: cors });
     if (method === 'tools/call') {
+      console.log('[mcp] tools/call', params?.name);
       const out = await runTool(params?.name, params?.arguments || {});
       return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] })), { headers: cors });
+    }
+    if (method === 'resources/list') return new Response(JSON.stringify(rpcOk(id, { resources: MCP_RESOURCES })), { headers: cors });
+    if (method === 'resources/templates/list') return new Response(JSON.stringify(rpcOk(id, { resourceTemplates: [] })), { headers: cors });
+    if (method === 'resources/read') {
+      console.log('[mcp] resources/read', params?.uri);
+      return new Response(JSON.stringify(rpcOk(id, { contents: [readResource(params?.uri)] })), { headers: cors });
+    }
+    if (method === 'prompts/list') return new Response(JSON.stringify(rpcOk(id, { prompts: MCP_PROMPTS })), { headers: cors });
+    if (method === 'prompts/get') {
+      console.log('[mcp] prompts/get', params?.name);
+      return new Response(JSON.stringify(rpcOk(id, getPrompt(params?.name, params?.arguments || {}))), { headers: cors });
     }
     if (method === 'ping') return new Response(JSON.stringify(rpcOk(id, {})), { headers: cors });
     return new Response(JSON.stringify(rpcErr(id ?? null, -32601, 'Method not found: ' + method)), { headers: cors });

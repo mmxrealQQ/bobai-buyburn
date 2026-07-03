@@ -31,6 +31,14 @@
           { "name": "bobai_price", "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves x Chainlink BNB/USD feed)" },
           { "name": "bobai_liquidity", "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), price-impact estimates per buy size" },
           { "name": "bobai_activity", "description": "Proof the buyback-and-burn flywheel is running: last burn (BscScan tx), burns over the last 7/30 days, total bot runs - every entry verifiable on-chain" }
+        ],
+        "prompts": [
+          { "name": "evaluate_bobai", "description": "Neutral due-diligence walkthrough of $BOBAI: routes through every read tool, ends with a balanced on-chain-verified assessment" },
+          { "name": "prepare_bobai_swap", "description": "Step-by-step fee-on-transfer-safe swap preparation: trade params, price impact, wallet check, executable code" }
+        ],
+        "resources": [
+          { "uri": "https://brainonbnb.com/skill.md", "description": "Machine-readable skill doc (text/markdown)" },
+          { "uri": "https://brainonbnb.com/.well-known/agent-card.json", "description": "A2A agent card (application/json)" }
         ]
       }
     }

@@ -23,6 +23,16 @@ CAPTIONS = {
     'saga-nosell':   ("SELL", "YOU MUST NOT"),
     'saga-hodl':     ("STRONG", "THE HODL IS"),
     'saga-fear':     ("FEAR LEADS TO", "PAPER HANDS"),
+    'saga-snap':     ("THE PUMP IS", "INEVITABLE"),
+    'saga-smash':    ("HODL", "SMASH"),
+    'saga-thunder':  ("BRING ME", "THE GREEN CANDLES"),
+    'saga-captain':  ("I CAN HODL", "THIS ALL DAY"),
+    'saga-spidey':   ("PAPER HANDS", "SPOTTED"),
+    'saga-sayagain': ("SAY PAPER HANDS", "ONE MORE TIME"),
+    'saga-confused': ("WHERE IS", "THE DIP?"),
+    'saga-dance':    ("SIDEWAYS MARKET?", "JUST DANCE"),
+    'saga-wallet':   ("WHAT'S IN", "THE WALLET?"),
+    'saga-shake':    ("THAT'S A 5 BNB", "MILKSHAKE"),
 }
 
 # offset (s) into the sora clip — skip the still first moments if needed
@@ -52,8 +62,13 @@ def caption(im, t, lines, t0=0.06, dur=0.16):
     d = ImageDraw.Draw(lay)
     ys = SIZE * 0.985
     for ln in reversed(lines):
-        f = font(SIZE * 0.082 * sc)
+        px = SIZE * 0.082
+        f = font(px * sc)
         bb = d.textbbox((0, 0), ln, font=f, stroke_width=sw)
+        while bb[2] - bb[0] > SIZE * 0.94 and px > 20:   # auto-shrink long lines
+            px *= 0.93
+            f = font(px * sc)
+            bb = d.textbbox((0, 0), ln, font=f, stroke_width=sw)
         w, h = bb[2] - bb[0], bb[3] - bb[1]
         ys -= h * 1.16
         d.text((SIZE/2 - w/2 - bb[0], ys - bb[1]), ln, font=f,

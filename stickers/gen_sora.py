@@ -21,12 +21,12 @@ OUT = r'd:/ai/fourmeme/stickers/assets/video'
 os.makedirs(OUT, exist_ok=True)
 
 BASE = ("Static locked-off camera, no camera movement, no zoom. Cinematic "
-        "scene in a misty dark-green swamp forest at dusk. The small cute "
-        "brain-headed creature in a tattered sand-beige robe looks exactly "
-        "like in the reference image and keeps its exact face and proportions. ")
-TAIL = (" Gentle volumetric mist drifts slowly, tiny warm background lights "
-        "flicker softly, robe fabric sways very subtly. Subtle, natural, "
-        "slow movements — nothing exaggerated. No text anywhere.")
+        "scene exactly as shown in the reference image — same setting, same "
+        "lighting, same characters. The small cute brain-headed figure(s) "
+        "keep their exact face, outfit and proportions from the reference. ")
+TAIL = (" Background ambience moves gently (light, mist or bokeh flicker), "
+        "clothing sways very subtly. Subtle, natural, slow movements — "
+        "nothing exaggerated. No text anywhere.")
 
 MOTION = {
     'saga-pump':     "He points his index finger straight at the camera and "
@@ -39,9 +39,42 @@ MOTION = {
     'saga-nosell':   "He pushes his raised open palm firmly toward the "
                      "camera in a STOP gesture two times, stern expression, "
                      "slight head shake no.",
-    'saga-hodl':     "He clenches both raised fists tighter and shakes them "
-                     "slightly with determination, leaning a little toward "
-                     "the camera, intense determined stare.",
+    'saga-hodl':     "He pounds his two fists together in front of his chest "
+                     "with a visible impact, then raises both clenched fists "
+                     "and shakes them with determination while leaning toward "
+                     "the camera, intense determined stare, clearly visible "
+                     "energetic arm movement.",
+    'saga-snap':     "He raises the golden gauntlet and SNAPS his fingers once "
+                     "with a bright flash of light from the gems, then smirks "
+                     "confidently at the camera, embers drifting.",
+    'saga-smash':    "He flexes his huge green muscular arms, roars excitedly "
+                     "and smashes one fist down with visible impact, dust "
+                     "puffs rising, then grins at the camera.",
+    'saga-thunder':  "He raises the war hammer higher as bright lightning "
+                     "bolts strike it two times, electric arcs crackle across "
+                     "his armor, cape flowing in the storm wind, heroic stare.",
+    'saga-captain':  "He tightens the strap of his dented shield, straightens "
+                     "up from exhaustion into a determined stance and nods "
+                     "slowly at the camera, smoke drifting behind him.",
+    'saga-spidey':   "Both suited figures point at each other emphatically, "
+                     "jabbing their pointing fingers two times in disbelief, "
+                     "tilting their heads, city lights flickering behind.",
+    'saga-sayagain': "He leans even further toward the camera, jabbing his "
+                     "pointed finger emphatically two times while ranting, "
+                     "furious intense glare, shoulders tense.",
+    'saga-confused': "He turns his head left and right searching the room, "
+                     "spreads his open palms wider in confusion, shrugs, "
+                     "utterly baffled expression.",
+    'saga-dance':    "Both figures do the classic twist dance — swinging hips "
+                     "and knees, dragging two fingers in a V across their "
+                     "eyes in sync, playful serious faces, neon lights "
+                     "pulsing gently.",
+    'saga-wallet':   "He slowly opens the briefcase lid further — the golden "
+                     "glow intensifies and flickers on his awestruck face, "
+                     "his eyes widen, he leans in mesmerized.",
+    'saga-shake':    "The figure takes a sip from the big milkshake through "
+                     "the straw, then nods contentedly at the camera with a "
+                     "relaxed friendly smile, neon lights flickering softly.",
     'saga-fear':     "He meditates peacefully with closed eyes, breathing "
                      "slowly and deeply, hands folded on his cane rising and "
                      "falling gently with each breath, mist swirling around.",

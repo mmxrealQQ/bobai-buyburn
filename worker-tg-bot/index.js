@@ -2194,6 +2194,40 @@ export default {
         status: j.ok ? 200 : 502, headers: { 'content-type': 'application/json' },
       });
 
+      if (url.pathname === '/stickerset/title' && request.method === 'POST') {
+        let body = {};
+        try { body = await request.json(); } catch (e) {
+          return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        if (!body.name || !body.title) {
+          return new Response(JSON.stringify({ ok: false, error: 'missing name/title' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        return jres(await tg('setStickerSetTitle', { name: body.name, title: body.title }));
+      }
+
+      if (url.pathname === '/stickerset/replace' && request.method === 'POST') {
+        let body = {};
+        try { body = await request.json(); } catch (e) {
+          return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        const { user_id, name, old_sticker, file_id, emoji } = body;
+        if (!user_id || !name || !old_sticker || !file_id || !emoji) {
+          return new Response(JSON.stringify({ ok: false, error: 'missing user_id/name/old_sticker/file_id/emoji' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        return jres(await tg('replaceStickerInSet', {
+          user_id, name, old_sticker,
+          sticker: { sticker: file_id, format: 'video', emoji_list: [emoji] },
+        }));
+      }
+
       if (url.pathname === '/stickerset/delete' && request.method === 'POST') {
         let body = {};
         try { body = await request.json(); } catch (e) {

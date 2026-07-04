@@ -10,7 +10,13 @@ const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.w
 const SECRET = process.env.BROADCAST_SECRET || '';
 const OWNER_USER_ID = 7334850816;
 const NAME = 'bobai_saga_pack_by_bobai_official_bot';
-const STICKERS = [
+// slugs+emojis via CLI pairs (node tg-saga-add-rest.js <slug> <emoji> ...),
+// falls back to the original batch-2 list.
+const argPairs = [];
+for (let i = 2; i + 1 < process.argv.length; i += 2) {
+  argPairs.push([process.argv[i], process.argv[i + 1]]);
+}
+const STICKERS = argPairs.length ? argPairs : [
   ['saga-patience', '⏳'],
   ['saga-nosell',   '✋'],
   ['saga-hodl',     '✊'],

@@ -2194,6 +2194,21 @@ export default {
         status: j.ok ? 200 : 502, headers: { 'content-type': 'application/json' },
       });
 
+      if (url.pathname === '/stickerset/delete' && request.method === 'POST') {
+        let body = {};
+        try { body = await request.json(); } catch (e) {
+          return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        if (!body.name) {
+          return new Response(JSON.stringify({ ok: false, error: 'missing name' }), {
+            status: 400, headers: { 'content-type': 'application/json' },
+          });
+        }
+        return jres(await tg('deleteStickerSet', { name: body.name }));
+      }
+
       if (url.pathname === '/stickerset/getbot') {
         const me = await tg('getMe', {});
         return new Response(JSON.stringify({
@@ -2278,6 +2293,59 @@ export default {
       });
     }
 
+    // === /media/* — retrieve reference media the owner sent the bot in private chat ===
+    // The webhook stores the last owner-sent file (animation/video/document/photo/sticker)
+    // as KV `incoming_media`. Endpoints (header `X-Broadcast-Secret`):
+    //   GET /media/last     → { ok, type, file_id, name, ts }
+    //   GET /media/download → raw file bytes (proxied via getFile, token stays on CF)
+    if (url.pathname.startsWith('/media/')) {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), {
+          status: 401, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const raw = await env.KV.get('incoming_media');
+      if (!raw) {
+        return new Response(JSON.stringify({ ok: false, error: 'no media received yet' }), {
+          status: 404, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const meta = JSON.parse(raw);
+
+      if (url.pathname === '/media/last') {
+        return new Response(JSON.stringify({ ok: true, ...meta }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      if (url.pathname === '/media/download') {
+        const gf = await tg('getFile', { file_id: meta.file_id });
+        if (!gf.ok) {
+          return new Response(JSON.stringify({ ok: false, error: 'getFile failed', detail: gf }), {
+            status: 502, headers: { 'content-type': 'application/json' },
+          });
+        }
+        const fr = await fetch(`https://api.telegram.org/file/bot${TG_BOT_TOKEN}/${gf.result.file_path}`);
+        if (!fr.ok) {
+          return new Response(JSON.stringify({ ok: false, error: `file fetch ${fr.status}` }), {
+            status: 502, headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response(fr.body, {
+          headers: {
+            'content-type': 'application/octet-stream',
+            'x-media-name': encodeURIComponent(meta.name || 'ref.bin'),
+            'x-media-type': meta.type || 'document',
+          },
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: false, error: 'unknown media endpoint' }), {
+        status: 404, headers: { 'content-type': 'application/json' },
+      });
+    }
+
     // === Telegram webhook (default POST route — unchanged behaviour) ===
     if (request.method === 'POST') {
       try {
@@ -2285,6 +2353,26 @@ export default {
 
         if (update.message?.new_chat_members) {
           await handleNewMember(update.message, env);
+        }
+
+        // Capture reference media sent by the owner in private chat → KV incoming_media
+        // (picked up locally via GET /media/download; used as style refs for stickers/GIFs)
+        const OWNER_USER_ID = '7334850816';
+        const pm = update.message;
+        if (pm && pm.chat?.type === 'private' && String(pm.from?.id) === OWNER_USER_ID) {
+          const media =
+            pm.animation ? { type: 'animation', file_id: pm.animation.file_id, name: pm.animation.file_name || 'ref.mp4' } :
+            pm.video     ? { type: 'video',     file_id: pm.video.file_id,     name: pm.video.file_name || 'ref.mp4' } :
+            pm.document  ? { type: 'document',  file_id: pm.document.file_id,  name: pm.document.file_name || 'ref.bin' } :
+            pm.sticker   ? { type: 'sticker',   file_id: pm.sticker.file_id,   name: 'ref.webm' } :
+            pm.photo     ? { type: 'photo',     file_id: pm.photo[pm.photo.length - 1].file_id, name: 'ref.jpg' } : null;
+          if (media) {
+            await env.KV.put('incoming_media', JSON.stringify({ ...media, ts: Date.now() }));
+            await tg('sendMessage', {
+              chat_id: pm.chat.id,
+              text: `✅ Reference saved (${media.type}) — ready for pickup.`,
+            });
+          }
         }
 
         if (update.message?.text) {

@@ -477,6 +477,21 @@ def fx_shield(c, t):
             sparkle(c, ix, iy, R*0.018 + R*0.030*(1-sp), sa, color=(255,180,180))
             glow(c, ix, iy, R*0.06*(1-sp), (255,80,80), 120*(1-sp), blur=0.030)
 
+def fx_force(c, t):
+    """pump-force (Yoda-BOBAI): green-gold sage aura — rising energy orbs + sparkles."""
+    for i, xf in enumerate((0.10, 0.90, 0.16, 0.84, 0.06)):
+        ph = ((t*0.9 + i*0.21) % 1.0)
+        x = xf*R + R*0.02*wob(t*2 + i)
+        y = R*(1.0 - ph*1.05)
+        a = 150 * (1 - abs(ph-0.5)*2)
+        col = (120, 230, 140) if i % 2 == 0 else (243, 186, 47)
+        glow(c, x, y, R*(0.015 + 0.02*pulse(ph, 1)), col, a, blur=0.02)
+    for i, (xf, yf) in enumerate([(0.08, 0.14), (0.92, 0.10), (0.10, 0.78), (0.90, 0.82)]):
+        ph = ((t*1.4 + i*0.27) % 1.0)
+        a = 220 * (1 - abs(ph-0.5)*2)
+        col = (170, 255, 180) if i % 2 == 0 else (255, 220, 120)
+        sparkle(c, xf*R, yf*R, R*(0.012 + 0.022*pulse(ph, 1)), a, color=col)
+
 def m_scene(slug, fx=None):
     """Comic-scene motif: pre-rendered illustration breathes calmly + grounded
     (no vertical bob — doesn't float). Optional per-motif fx overlay."""
@@ -507,13 +522,247 @@ m_dip            = m_scene('dip',            fx=fx_dip)
 m_builder        = m_scene('builder',        fx=fx_builder)
 m_shield         = m_scene('shield',         fx=fx_shield)
 
+# ---------- Yoda-BOBAI collection (realistic style) ----------
+# Static body (no bob, no breathe) — ONLY the pointing arm animates (shoulder
+# pivot jab like the reference GIF), plus fingertip energy, aura fx and the
+# baked-in statement text. Ears are separate props tucked BEHIND the head
+# (the image generator refuses Yoda-like ears baked into the character).
+
+def _crop_alpha(im):
+    b = im.getbbox()
+    return im.crop(b) if b else im
+
+_FONT_CACHE = {}
+def _font(px):
+    from PIL import ImageFont
+    px = int(px)
+    if px not in _FONT_CACHE:
+        for p in (r'C:/Windows/Fonts/impact.ttf', r'C:/Windows/Fonts/arialbd.ttf'):
+            if os.path.exists(p):
+                _FONT_CACHE[px] = ImageFont.truetype(p, px); break
+        else:
+            _FONT_CACHE[px] = ImageFont.load_default()
+    return _FONT_CACHE[px]
+
+def _ease_back(p):
+    """Ease-out-back — overshoots slightly past 1 then settles."""
+    c3 = 1.70158
+    p = clamp01(p)
+    return 1 + (c3 + 1) * ((p - 1) ** 3) + c3 * ((p - 1) ** 2)
+
+def sage_statement(c, t, lines, t0s=(0.06, 0.34), dur=0.20):
+    """Animated gold meme caption: each line pops in (scale overshoot + fade),
+    line by line, then holds until the loop restarts."""
+    base_px = R * 0.078
+    sw = max(2, int(R * 0.007))
+    lay = Image.new('RGBA', (R, R), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    fb = _font(base_px)
+    y = R * 0.012
+    for ln, t0 in zip(lines, t0s):
+        bb = d.textbbox((0, 0), ln, font=fb, stroke_width=sw)
+        lh = bb[3] - bb[1]
+        p = clamp01((t - t0) / dur)
+        if p > 0:
+            sc = 0.5 + 0.5 * _ease_back(p)
+            f = _font(base_px * sc)
+            b2 = d.textbbox((0, 0), ln, font=f, stroke_width=sw)
+            w2, h2 = b2[2] - b2[0], b2[3] - b2[1]
+            a = int(255 * min(1.0, p * 1.8))
+            d.text((R/2 - w2/2 - b2[0], y + lh/2 - h2/2 - b2[1]), ln, font=f,
+                   fill=(243, 186, 47, a), stroke_width=sw, stroke_fill=(25, 18, 5, a))
+        y += lh * 1.22
+    c.alpha_composite(lay)
+
+def m_pump_force(f):
+    t = f / N
+    c = Image.new('RGBA', (R, R), (0,0,0,0))
+    SC = SCENES['pump-force']                    # 1024² scene, large centered sage
+    W = R*0.86; s = W/1024.0                     # scene→canvas scale
+    ox = (R - W)/2; oy = R*0.62 - W/2
+    def S(x, y): return (ox + x*s, oy + y*s)     # scene coords → canvas coords
+
+    # green pointed ears BEHIND the head (head band y≈235, edges x≈290/752)
+    ear = _crop_alpha(PROPS['sage-ears'])
+    place(c, ear, *S(240, 235), w=200*s)
+    place(c, ear.transpose(Image.FLIP_LEFT_RIGHT), *S(805, 235), w=200*s)
+
+    # static body — NO bob, NO breathe
+    place(c, SC, R/2, R*0.62, w=W)
+
+    # pointing arm IN FRONT — mirrored to his LEFT side (viewer-right shoulder),
+    # foreshortened, finger at the viewer. Jab = scale pulse toward the camera.
+    arm = _crop_alpha(PROPS['sage-arm']).transpose(Image.FLIP_LEFT_RIGHT)
+    jab = pulse(t, 2)                            # two jabs per loop
+    aw = 520*s * (1.0 + 0.10*jab)
+    armF = fit(arm, aw)
+    shx, shy = S(755, 350)                       # sleeve UR corner = shoulder
+    px0, py0 = int(shx - armF.width), int(shy)
+    c.alpha_composite(armF, (px0, py0))
+
+    # subtle energy at the pointing hand (hand center ≈ 53%/50% after mirror)
+    hx, hy = px0 + 0.53*armF.width, py0 + 0.50*armF.height
+    glow(c, hx, hy + armF.height*0.12, R*0.030 + R*0.014*jab, (140, 240, 150), 60 + 45*jab, blur=0.025)
+
+    sage_statement(c, t, ("MAY THE PUMP", "BE WITH YOU"))
+    return c
+
 MOTIFS = {'moon': m_moon, 'cool': m_cool, 'sunshine': m_sunshine,
           'thunder-buy': m_thunder_buy, 'kraken-buy': m_kraken_buy, 'laser': m_laser,
           'supernova-burn': m_supernova_burn, 'rocket': m_rocket,
           'diamond': m_diamond, 'bull': m_bull, 'hodl': m_hodl,
           'gigabrain': m_gigabrain, 'wagmi': m_wagmi,
           'gm': m_gm, 'pump': m_pump, 'dip': m_dip,
-          'builder': m_builder, 'shield': m_shield}
+          'builder': m_builder, 'shield': m_shield,
+          'pump-force': m_pump_force}
+
+# ---------- Sage BOBAI saga (meme-GIF film stills, opaque bg, caption bottom) ----------
+SAGA = {
+    'saga-patience': ("PATIENCE", "YOU MUST HAVE"),
+    'saga-pump':     ("MAY THE PUMP", "BE WITH YOU"),
+    'saga-nosell':   ("SELL", "YOU MUST NOT"),
+    'saga-hodl':     ("STRONG", "THE HODL IS"),
+    'saga-fear':     ("FEAR LEADS TO", "PAPER HANDS"),
+}
+
+def saga_caption(c, t, lines, t0=0.08, dur=0.18):
+    """Classic GIF meme caption: white impact, black stroke, bottom, pop-in."""
+    p = clamp01((t - t0) / dur)
+    if p <= 0: return
+    sc = 0.6 + 0.4 * _ease_back(p)
+    a = int(255 * min(1.0, p * 2.0))
+    sw = max(2, int(R * 0.008))
+    lay = Image.new('RGBA', (R, R), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    ys = R * 0.985
+    for ln in reversed(lines):
+        f = _font(R * 0.082 * sc)
+        bb = d.textbbox((0, 0), ln, font=f, stroke_width=sw)
+        w, h = bb[2] - bb[0], bb[3] - bb[1]
+        ys -= h * 1.16
+        d.text((R/2 - w/2 - bb[0], ys - bb[1]), ln, font=f,
+               fill=(255, 255, 255, a), stroke_width=sw, stroke_fill=(0, 0, 0, a))
+    c.alpha_composite(lay)
+
+# Moving-element config per saga motif: ONE part of BOBAI moves (feathered
+# polygon layer, scale-jab about a pivot at the limb base — scale >= 1 always
+# covers the baked-in copy underneath, so no clean plate is needed).
+# Coords in 1024 scene space.
+# Each motif animates one or more tightly-masked PARTS (polygon hugs the limb
+# silhouette — no background pixels move). phase shifts the pulse per part.
+SAGA_MOVE = {
+    'saga-pump': {       # pointing hand+cuff jabs at the viewer
+        'parts': [{
+            'poly': [(245, 398), (298, 418), (360, 486), (418, 548), (455, 590),
+                     (462, 650), (440, 710), (370, 738), (290, 730), (240, 690),
+                     (222, 640), (220, 560), (230, 480), (242, 432)],
+            'pivot': (400, 750), 'amp': 0.13, 'freq': 1,
+        }],
+    },
+    'saga-patience': {   # mouth "speaks" the line (small talk pulses, no plate)
+        'parts': [{
+            'poly': [(350, 380), (590, 380), (610, 440), (520, 490), (400, 490), (340, 440)],
+            'pivot': (470, 435), 'amp': 0.09, 'freq': 3,
+        }],
+        'noplate': True,
+    },
+    'saga-nosell': {     # stop palm pushes HARD at the viewer (snappy)
+        'parts': [{
+            'poly': [(230, 415), (300, 425), (330, 470), (395, 585), (390, 650),
+                     (350, 700), (340, 780), (210, 785), (175, 700), (158, 600),
+                     (160, 505), (185, 450)],
+            'pivot': (420, 790), 'amp': 0.15, 'freq': 1, 'snap': 1.3,
+        }],
+    },
+    'saga-hodl': {       # both fists clench slowly — big/small about their centers
+        'parts': [{
+            'poly': [(265, 640), (340, 622), (405, 650), (428, 705), (420, 775),
+                     (378, 825), (305, 842), (255, 810), (237, 745), (242, 680)],
+            'pivot': (333, 730), 'amp': 0.10, 'freq': 1, 'phase': 0.0,
+        }, {
+            'poly': [(600, 615), (680, 622), (735, 662), (752, 720), (730, 780),
+                     (668, 818), (600, 812), (565, 760), (558, 695), (575, 648)],
+            'pivot': (655, 715), 'amp': 0.10, 'freq': 1, 'phase': 0.1,
+        }],
+    },
+    'saga-fear': {       # folded hands breathe calmly (+ mist)
+        'parts': [{
+            'poly': [(440, 550), (600, 530), (720, 600), (730, 760), (650, 830),
+                     (480, 820), (420, 700)],
+            'pivot': (580, 840), 'amp': 0.05, 'freq': 1,
+        }],
+        'mist': True, 'noplate': True,
+    },
+}
+
+def _part_layer(src, part):
+    """Feathered layer for one moving part — polygon hugs the limb silhouette,
+    so NO background pixels travel with the motion."""
+    m = Image.new('L', (1024, 1024), 0)
+    ImageDraw.Draw(m).polygon(part['poly'], fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(3))
+    lay = src.copy(); lay.putalpha(m)
+    return lay
+
+def mist(c, t):
+    """Gentle drifting swamp mist near the bottom — subtle life for static scenes."""
+    for i, (yf, sp, ph0) in enumerate(((0.82, 0.05, 0.0), (0.90, -0.035, 0.4), (0.72, 0.025, 0.7))):
+        x = R * ((0.5 + sp * math.sin(2*math.pi*(t + ph0))) )
+        glow(c, x, R*yf, R*0.30, (210, 230, 215), 16 + 8*pulse(t + ph0, 1), blur=0.10)
+
+def _saga_base(slug, cfg):
+    """Static base frame. If a clean plate exists, patch ONLY the limb region
+    from the plate into the ORIGINAL scene (feathered) — face/background stay
+    the untouched original, and the resting limb is removed so the moving
+    layer never ghosts against a baked-in copy."""
+    src = SCENES[slug].resize((1024, 1024), Image.LANCZOS)
+    plate_key = f'{slug}-plate'
+    if not cfg or cfg.get('noplate') or plate_key not in SCENES:
+        return src
+    plate = SCENES[plate_key].resize((1024, 1024), Image.LANCZOS)
+    m = Image.new('L', (1024, 1024), 0)
+    for part in cfg['parts']:
+        ImageDraw.Draw(m).polygon(part['poly'], fill=255)
+    m = m.filter(ImageFilter.MaxFilter(15))      # dilate past the limb edge
+    m = m.filter(ImageFilter.GaussianBlur(6))    # feather the patch seam
+    return Image.composite(plate, src, m)
+
+def m_saga(slug):
+    """Film-still motif: static frame, tightly-masked moving part(s), caption
+    pop. No whole-image motion."""
+    lines = SAGA[slug]
+    cfg = SAGA_MOVE.get(slug)
+    base = _saga_base(slug, cfg)
+    src = SCENES[slug].resize((1024, 1024), Image.LANCZOS)
+    parts = [(p, _part_layer(src, p)) for p in cfg['parts']] if cfg else []
+    def fn(f):
+        t = f / N
+        c = Image.new('RGBA', (R, R), (0, 0, 0, 0))
+        place(c, base, R/2, R/2, w=R)
+        if not cfg or cfg.get('mist'): mist(c, t)
+        s0 = R / 1024.0
+        for part, layer in parts:
+            if part.get('mode') == 'shake':
+                ph = part.get('phase', 0.0) * 2 * math.pi
+                sf = part.get('sfreq', 4)
+                dx = part.get('ax', 6) * s0 * math.sin(2*math.pi*sf*t + ph)
+                dy = part.get('ay', 3) * s0 * math.sin(2*math.pi*sf*2*t + ph)
+                lay = layer.resize((R, R), Image.LANCZOS)
+                c.alpha_composite(lay, (int(dx), int(dy)))
+            else:
+                p = pulse(t + part.get('phase', 0.0), part.get('freq', 2)) ** part.get('snap', 1.0)
+                k = 1.0 + part['amp'] * p
+                lw = max(1, int(R * k))
+                lay = layer.resize((lw, lw), Image.LANCZOS)
+                px, py = part['pivot'][0] * s0, part['pivot'][1] * s0
+                c.alpha_composite(lay, (int(px * (1 - k)), int(py * (1 - k))))
+        saga_caption(c, t, lines)
+        return c
+    return fn
+
+for _slug in SAGA:
+    if _slug in SCENES:
+        MOTIFS[_slug] = m_saga(_slug)
 
 # ---------- render + encode ----------
 def encode(motif):

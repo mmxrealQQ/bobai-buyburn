@@ -527,12 +527,32 @@ async function syncMatches(env){
       const ft  = r.score?.fullTime || {};
       const reg = r.score?.regularTime || {};
       const dur = r.score?.duration; // REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT
-      const gh = reg.home != null ? reg.home : ft.home;
-      const ga = reg.away != null ? reg.away : ft.away;
+      let gh = reg.home != null ? reg.home : ft.home;
+      let ga = reg.away != null ? reg.away : ft.away;
       // final_* = full result incl. ET + pens; NULL when decided inside 90 min.
       let fh = null, fa = null, decidedBy = null;
       if (dur === 'EXTRA_TIME')           { fh = ft.home; fa = ft.away; decidedBy = 'aet'; }
       else if (dur === 'PENALTY_SHOOTOUT'){ fh = ft.home; fa = ft.away; decidedBy = 'pens'; }
+      // KO invariant: a match only goes past 90 min when it's a DRAW after 90.
+      // football-data occasionally sends regularTime as {null,null} (AR-CV
+      // 2026-07-04) → the fallback scored the 120-min 3:2 as the 90-min
+      // result. A non-draw here is always upstream garbage — never score it.
+      if (decidedBy && gh != null && ga != null && gh !== ga) {
+        const et = r.score?.extraTime || {};
+        if (dur === 'EXTRA_TIME' && et.home != null && et.away != null &&
+            ft.home - et.home === ft.away - et.away) {
+          // Derive 90-min score: fullTime minus ET goals (AET only — for
+          // pens, fullTime also folds in the shootout goals).
+          gh = ft.home - et.home; ga = ft.away - et.away;
+        } else if (m.played && m.goals_home != null && m.goals_home === m.goals_away) {
+          // Row already carries a valid draw (manual set-result fix): keep it.
+          gh = m.goals_home; ga = m.goals_away;
+        } else {
+          console.log('[CRON] non-draw 90-min score on', decidedBy, 'match',
+            m.id, `${gh}:${ga}`, '— blocked, fix via /admin/set-result');
+          gh = null; ga = null; // block auto-scoring until admin sets it
+        }
+      }
       if (gh != null && ga != null) {
         // Only update if something changed (goals or the ET/pen decider)
         if (!m.played || m.goals_home !== gh || m.goals_away !== ga ||
@@ -637,6 +657,7 @@ export default {
             remoteHomeCode: teamToCode(r.homeTeam?.name),
             remoteAwayCode: teamToCode(r.awayTeam?.name),
             utcDate: r.utcDate,
+            score: r.score || null,
             mappedLocalId: m?.id ?? null,
             mappedLocalKickoff: m?.kickoff_utc ?? null,
             mappedLocalTeams: m ? `${m.team_home}|${m.team_away}` : null,

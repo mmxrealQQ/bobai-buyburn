@@ -1,0 +1,9 @@
+name = "bobai-ai-to-com-redirect"
+main = "index.js"
+compatibility_date = "2026-01-01"
+workers_dev = false
+
+routes = [
+  { pattern = "brainonbnb.ai/*", zone_name = "brainonbnb.ai" },
+  { pattern = "www.brainonbnb.ai/*", zone_name = "brainonbnb.ai" },
+]

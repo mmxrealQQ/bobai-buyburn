@@ -24,6 +24,18 @@
   Pragma: no-cache
   Expires: 0
 
+# Top-level clean page URLs (CF strips .html). Explicit per page — a /:page
+# placeholder would also match top-level assets (logo.png etc.) and kill their caching.
+/whitepaper
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Expires: 0
+
+/listing
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Expires: 0
+
 # Clean page URLs (CF strips .html → e.g. /worldcup/app/leaderboard). The
 # :page placeholder matches a SINGLE segment, so it covers every app page but
 # NOT the deeper /worldcup/app/assets/* files (those stay cacheable via ?v=).

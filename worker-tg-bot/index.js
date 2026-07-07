@@ -1663,11 +1663,12 @@ async function handleCommand(msg) {
       reply = `🛒 <b>How to Buy BOBAI</b>
 
 <b>Step 1:</b> Get BNB in your wallet
-<i>MetaMask, Trust Wallet, or any Web3 Wallet (Binance / Bitget / OKX)</i>
+<i>MetaMask, Trust Wallet, or any Web3 Wallet (Binance / Bitget / Gate / OKX)</i>
 
 <b>Step 2:</b> Swap BNB → BOBAI
 🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Web3 Wallet</a>
 🟦 <a href="https://web3.bitget.com/en/swap/bnb/${BOBAI_TOKEN}">Bitget Wallet</a>
+🔵 <a href="https://web3.gate.com/trade/bsc/${BOBAI_TOKEN}">Gate DEX</a>
 🟩 <a href="https://web3.okx.com/token/bsc/${BOBAI_TOKEN}">OKX Wallet</a>
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
@@ -1759,6 +1760,7 @@ async function handleCommand(msg) {
 
 🔶 <a href="https://web3.binance.com/en/token/bsc/${BOBAI_TOKEN}">Binance Web3 Wallet</a>
 🟦 <a href="https://web3.bitget.com/en/swap/bnb/${BOBAI_TOKEN}">Bitget Wallet</a>
+🔵 <a href="https://web3.gate.com/trade/bsc/${BOBAI_TOKEN}">Gate DEX</a>
 🟩 <a href="https://web3.okx.com/token/bsc/${BOBAI_TOKEN}">OKX Wallet</a>
 🤚 <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>

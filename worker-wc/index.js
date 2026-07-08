@@ -1077,11 +1077,10 @@ async function syncPool(env){
 
   let pots, displayTotal;
   if (groupPaid) {
-    // Pre-payout (toggle on but BOBAI hasn't left the wallet yet): subtract
-    // the frozen group amount from the wallet so end/crypto don't double-count it.
-    // Post-payout (wallet < frozen): wallet already represents only the
-    // remaining donations, so use it directly.
-    const remaining = wallet >= GROUP_POT_FROZEN ? wallet - GROUP_POT_FROZEN : wallet;
+    // Group payout is on-chain COMPLETE (2026-06-28) — the frozen 3.47M has
+    // left the wallet, so the live balance is end/crypto money only. Do NOT
+    // subtract the frozen amount even if donations regrow the balance past it.
+    const remaining = wallet;
     pots = {
       group:  GROUP_POT_FROZEN,
       end:    remaining * 0.90,

@@ -37,7 +37,8 @@ $BOBAI is a registered ERC-8004 agent (#49467 on BNB Chain) with a live, callabl
 - MCP endpoint (JSON-RPC 2.0): https://brainonbnb.com/mcp
 - A2A agent card: https://brainonbnb.com/.well-known/agent-card.json
 - Registry entry: https://8004scan.io/agents/bsc/49467
-- Plain REST (no MCP needed, JSON via GET): https://brainonbnb.com/api/price · /api/liquidity · /api/activity · /api/token · /api/trade · /api/tokenomics · /api/links · /api/guide · /api/how-to-buy · /api/circulating-supply · /api/total-supply
+- Plain REST (no MCP needed, JSON via GET): https://brainonbnb.com/api/price · /api/liquidity · /api/activity · /api/nft-drop · /api/token · /api/trade · /api/tokenomics · /api/links · /api/guide · /api/how-to-buy · /api/circulating-supply · /api/total-supply
+- Earnable on-chain reward: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buying wallet — works for agent wallets too. Live supply + steps: https://brainonbnb.com/api/nft-drop
 
 ## Community
 

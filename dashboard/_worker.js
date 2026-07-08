@@ -666,7 +666,7 @@ async function handleMcp(request) {
       return new Response(JSON.stringify(rpcOk(id, {
         protocolVersion: '2025-06-18',
         capabilities: { tools: {}, resources: {}, prompts: {} },
-        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.1.0' },
+        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.2.0' },
       })), { headers: cors });
     }
     if (method === 'tools/list') return new Response(JSON.stringify(rpcOk(id, { tools: MCP_TOOLS })), { headers: cors });

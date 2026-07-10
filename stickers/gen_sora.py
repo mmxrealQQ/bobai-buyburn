@@ -78,6 +78,38 @@ MOTION = {
     'saga-fear':     "He meditates peacefully with closed eyes, breathing "
                      "slowly and deeply, hands folded on his cane rising and "
                      "falling gently with each breath, mist swirling around.",
+    'degen-3am':        "He holds the smartphone with both hands and scrolls "
+                        "with his thumb two times, the cool screen light "
+                        "flickers softly on his face, he blinks slowly with "
+                        "tired eyes.",
+    'degen-upsidedown': "Hanging upside down he sways very gently from the "
+                        "pipe, nods approvingly at the crashing chart, the "
+                        "red chart glow pulses softly on his face.",
+    'degen-ironing':    "He glides the steaming iron slowly across the giant "
+                        "crumpled paper hand two times, steam puffs rise, he "
+                        "nods contently at his work.",
+    'degen-snail':      "The giant snail slides forward slightly, its eye "
+                        "stalks wiggle, he leans even lower into his racing "
+                        "crouch urging it on, determined stare ahead.",
+    'degen-furnace':    "He tips the shovel and golden coins slide into the "
+                        "furnace mouth, the flames flare up brightly, sparks "
+                        "and embers fly, warm glow flickering on his face.",
+    'degen-wen':        "He raises his arm and looks at his wrist watch, then "
+                        "looks down the empty road and slumps back bored, "
+                        "moths fluttering around the street lamp.",
+    'degen-defib':      "He presses the defibrillator paddles down firmly — a "
+                        "bright spark flash, the paper chart jolts up once "
+                        "like a chest compression, then he looks at it "
+                        "desperately hopeful.",
+    'degen-fishing':    "He pulls the bent fishing rod harder, the glowing "
+                        "green candlestick swings on the line dripping "
+                        "sparkling water drops, the little boat rocks gently.",
+    'degen-trustmebro': "He taps the big rising chalk arrow with his wooden "
+                        "pointer two times, then turns to the camera nodding "
+                        "with absolute confidence.",
+    'degen-bouncer':    "He lifts the velvet rope open, the happy green "
+                        "candlestick figure struts inside wiggling with joy, "
+                        "the sad red candlestick slumps its head even deeper.",
 }
 
 def prep_input(slug):
@@ -138,7 +170,9 @@ def gen(slug, force=False):
         print(f"  [{slug}] {st} {s.get('progress', '')}")
         if st == 'completed': break
         if st in ('failed', 'cancelled'):
-            print(f"ERR {slug}: {s}"); sys.exit(1)
+            j = _jobs(); j.pop(slug, None)   # clear so next run starts fresh
+            open(JOBS, 'w').write(''.join(f'{k}={v}\n' for k, v in j.items()))
+            print(f"ERR {slug}: {s.get('error', s)}"); return False
 
     for attempt in range(5):
         try:

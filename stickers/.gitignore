@@ -5,3 +5,4 @@ out/_*.png
 out/*.mp4
 # raw drop folder (pristine source is kept as assets/brain-source.webp)
 incoming/
+__pycache__/

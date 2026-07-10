@@ -33,6 +33,16 @@ CAPTIONS = {
     'saga-dance':    ("SIDEWAYS MARKET?", "JUST DANCE"),
     'saga-wallet':   ("WHAT'S IN", "THE WALLET?"),
     'saga-shake':    ("THAT'S A 5 BNB", "MILKSHAKE"),
+    'degen-3am':        ("ONE LAST", "CHART CHECK"),
+    'degen-upsidedown': ("LOOKS BULLISH", "FROM HERE"),
+    'degen-ironing':    ("FIXING", "PAPER HANDS"),
+    'degen-snail':      ("STILL", "GOING UP"),
+    'degen-furnace':    ("THE BURNS", "CONTINUE"),
+    'degen-wen':        ("WEN",),
+    'degen-defib':      ("STAY", "WITH ME"),
+    'degen-fishing':    ("CAUGHT", "THE BOTTOM"),
+    'degen-trustmebro': ("TRUST ME", "BRO"),
+    'degen-bouncer':    ("HOLDERS", "ONLY"),
 }
 
 # offset (s) into the sora clip — skip the still first moments if needed

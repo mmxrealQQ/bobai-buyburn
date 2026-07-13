@@ -1,0 +1,14 @@
+<b>brainScreener — LIVE on brainonbnb.com</b>
+
+$BOBAI has always been a helper at heart — it burns, it builds, it gives. This time we built something for your mind.
+
+🧠 <a href="https://brainonbnb.com/brainscreener/">brainScreener</a> — 13 scientifically grounded self-tests: ADHD, IQ, depression, anxiety, personality (Big Five), and more.
+
+✅ Free, anonymous, no signup
+✅ Everything runs in your browser — nothing is transmitted, nothing is stored
+✅ Instant results, printable as a clean PDF
+✅ The same instruments clinicians actually use (PHQ-9, GAD-7, PCL-5, AQ-50, BFI-2, WHODAS 2.0)
+
+All of this is completely voluntary — it's simply there for those who are curious. If you have a look, please read everything carefully: what you learn can help you, and it can also weigh on you.
+
+<i>Adapted from the beautiful Swiss screening project adhsiq — thank you for letting us build on your work. Also in the bot: /social</i>

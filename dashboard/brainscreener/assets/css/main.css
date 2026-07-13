@@ -34,8 +34,9 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; overflow-x: hidden; }
-body { overflow-x: hidden; }
+/* overflow-x: clip statt hidden — clippt horizontal, ohne position:sticky zu brechen */
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; overflow-x: clip; }
+body { overflow-x: clip; }
 
 body {
   background: var(--bg);
@@ -686,7 +687,7 @@ img { max-width: 100%; height: auto; display: block; }
 
   /* ============= TEST PAGES ============= */
   .test-shell { padding: 24px 0 50px; }
-  .test-progress { padding: 12px 0 14px; margin-bottom: 24px; }
+  .test-progress { padding: 12px 0 14px; margin-bottom: 24px; top: 57px; } /* kompakter Mobile-Header */
   .test-intro { padding: 26px 20px; border-radius: 14px; }
   .test-intro h1 { font-size: 1.75rem; }
 

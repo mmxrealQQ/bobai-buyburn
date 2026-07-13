@@ -34,7 +34,8 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; overflow-x: hidden; }
+body { overflow-x: hidden; }
 
 body {
   background: var(--bg);
@@ -124,6 +125,7 @@ img { max-width: 100%; height: auto; display: block; }
   .nav-links { gap: 16px; }
   .nav-links > a { display: none; } /* Menüpunkte aus */
   .nav-links > a.back-btn { display: inline-flex; } /* Dashboard-Link bleibt */
+  .brand-text span { display: none; } /* "Screening"-Sublabel aus — Header bleibt ruhig */
 }
 
 /* ====================== HERO ==================================== */

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your results — IQ test · brainScreener</title>
+  <meta name="robots" content="noindex" />
+  <link rel="canonical" href="https://brainonbnb.com/brainscreener/iq-result.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="brainScreener" />
+  <meta property="og:title" content="Your results — IQ test · brainScreener" />
+  <meta property="og:description" content="Anonymous results of the IQ test (CHC model), generated client-side." />
+  <meta property="og:url" content="https://brainonbnb.com/brainscreener/iq-result.html" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_GB" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<header class="site-header no-print">
+  <div class="container nav">
+    <a href="/brainscreener/" class="brand"><span class="brand-mark"></span><span class="brand-text"><strong>brainScreener</strong><span>Screening</span></span></a>
+    <nav class="nav-links">
+      <a href="/brainscreener/adhd.html">ADHD test</a>
+      <a href="/brainscreener/iq.html">IQ test</a>
+      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    </nav>
+  </div>
+</header>
+
+<main class="result-shell">
+  <div class="container-narrow">
+
+    <section class="result-card" id="resultCard">
+      <div class="print-header">
+        <div class="print-brand">
+          <span class="brand-mark"></span>
+          <span class="brand-text"><strong>brainScreener</strong> — IQ test</span>
+        </div>
+        <div class="print-meta">Anonymous results · generated client-side</div>
+      </div>
+
+      <header class="result-head">
+        <div>
+          <span class="eyebrow">Results</span>
+          <h1>IQ test · Result</h1>
+        </div>
+        <div class="meta-info" id="metaInfo">
+          <div id="codeRow" hidden>Examination code: <strong id="codeStr">—</strong></div>
+          <div>Date: <strong id="dateStr">—</strong></div>
+          <div>Anonymous results · generated client-side</div>
+        </div>
+      </header>
+
+      <!-- IQ-Hauptwert -->
+      <div class="score-row" style="margin-bottom: 18px;">
+        <div>
+          <h3 style="margin-bottom: 4px;" id="bandLabel">—</h3>
+          <p id="bandHint" style="margin: 0;"></p>
+          <div class="score-big">
+            <span class="value" id="iqValue">—</span>
+            <span class="unit">Estimated IQ</span>
+          </div>
+          <p class="small muted" id="ciText"></p>
+        </div>
+        <div class="gauge" id="gaugeWrap" aria-hidden="true"></div>
+      </div>
+
+      <div class="interpretation" id="interpretation">
+        <h3>Interpretation</h3>
+        <p id="interpretationText">—</p>
+      </div>
+
+      <h3 style="margin-top: 36px;">Profile across the cognitive domains</h3>
+      <p class="muted small" style="margin-top:-4px;">Share of correct answers per CHC domain.</p>
+      <div class="subscale-list" id="subscaleList"></div>
+
+      <h3 style="margin-top: 32px;">Position in the distribution</h3>
+      <div id="distributionWrap"></div>
+
+      <h3 style="margin-top: 36px;">What does this mean?</h3>
+      <p class="muted" id="contextText"></p>
+
+      <div class="result-disclaimer">
+        <strong>Important note · no warranty.</strong> This result is an
+        <strong>estimate</strong> based on a short online test. A full
+        IQ test (e.g. WAIS-IV, IST-2000-R, RIAS) is administered in a controlled
+        setting by qualified psychologists and offers substantially
+        higher precision. For important questions (e.g. giftedness,
+        learning disorders, formal assessment), professional psychological testing is essential.
+        Discuss the result with the professional treating you.
+        <br><br>
+        <span class="small">
+          Structure based on <strong>CHC theory</strong> (Cattell-Horn-Carroll). Norming
+          on the standard score scale (M&nbsp;=&nbsp;100, SD&nbsp;=&nbsp;15) based on
+          internal calibration. The 95% confidence interval accounts for the
+          standard error of measurement.
+        </span>
+      </div>
+
+      <div class="print-footer">
+        brainScreener · Anonymous screening · No warranty · No substitute for medical diagnostics
+      </div>
+    </section>
+
+    <div class="print-bar no-print">
+      <button type="button" class="btn btn-primary btn-lg" id="btnPrint">
+        Print / save as PDF
+      </button>
+      <a href="/brainscreener/iq.html" class="btn btn-outline">Repeat test</a>
+      <a href="/brainscreener/" class="btn btn-ghost">Back</a>
+    </div>
+
+    <p class="small muted center no-print" style="margin-top:16px;">
+      View / print these results in another language: <a href="/iq-result.html" lang="de">Deutsch</a> · <a href="/fr/iq-result.html" lang="fr">Français</a> · <a href="/it/iq-result.html" lang="it">Italiano</a>
+    </p>
+
+  </div>
+</main>
+
+<footer class="site-footer no-print">
+  <div class="container">
+    <a href="/brainscreener/" class="brand"><span class="brand-mark"></span><span class="brand-text"><strong>brainScreener</strong><span>Screening</span></span></a>
+    <small>Anonymous · No warranty · No substitute for medical diagnostics<br>Part of <a href="/">brainonbnb.com</a> · Test library adapted with thanks from <a href="https://adhsiq.ch" target="_blank" rel="noopener">adhsiq.ch</a></small>
+  </div>
+</footer>
+
+<script src="/brainscreener/assets/js/i18n/en/iq-data.js"></script>
+<script src="/brainscreener/assets/js/i18n/en/iq-result.js"></script>
+</body>
+</html>

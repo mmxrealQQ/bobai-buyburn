@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your character profile — Dark Tetrad · brainScreener</title>
+  <meta name="robots" content="noindex" />
+  <link rel="canonical" href="https://brainonbnb.com/brainscreener/character-result.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="brainScreener" />
+  <meta property="og:title" content="Your character profile — Dark Tetrad · brainScreener" />
+  <meta property="og:description" content="Anonymous results of your character profile (Dark Tetrad) — generated locally in your browser, printable as PDF." />
+  <meta property="og:url" content="https://brainonbnb.com/brainscreener/character-result.html" />
+  <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_GB" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
+  <style>
+    /* ===== Charakterprofil — eigene, isolierte Styles ===== */
+    .char-hero { display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; align-items: center; margin: 6px 0 26px; }
+    @media (max-width: 720px) { .char-hero { grid-template-columns: 1fr; gap: 22px; } }
+    .char-hero .lead-type { font-family: var(--serif); font-size: 2.6rem; line-height: 1.05; margin: 4px 0 6px; font-weight: 500; }
+    @media (max-width: 520px) { .char-hero .lead-type { font-size: 2rem; } }
+    .char-hero .lead-trait { font-size: 0.86rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-mute); font-weight: 600; }
+    .char-hero p { margin: 12px 0 0; color: var(--ink-soft); }
+
+    .char-wheel { max-width: 260px; margin: 0 auto; }
+    .char-wheel svg { width: 100%; height: auto; }
+
+    /* Balken-Profil */
+    .char-bars { display: grid; gap: 16px; margin: 8px 0 6px; }
+    .char-bar-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px; flex-wrap: wrap; }
+    .char-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; align-self: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); }
+    .char-bar-head strong { font-family: var(--serif); font-size: 1.2rem; font-weight: 500; }
+    .char-bar-head .char-trait { color: var(--ink-mute); font-size: 0.85rem; }
+    .char-bar-head .char-pct { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+    .char-badge { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;
+      padding: 3px 9px; border-radius: 999px; background: var(--ink); color: var(--bg); }
+    .char-track { height: 12px; background: var(--bg-alt); border-radius: 999px; overflow: hidden; }
+    .char-fill { height: 100%; border-radius: 999px; transition: width .5s ease; min-width: 3px; }
+
+    /* Typ-Detailkarten */
+    .char-types { display: grid; gap: 18px; margin: 18px 0 6px; }
+    .char-type-card { border: 1px solid var(--line); border-left: 5px solid var(--line);
+      border-radius: var(--radius); padding: 22px 26px; background: var(--white); box-shadow: var(--shadow-sm); }
+    .char-type-card.is-dominant { background: var(--bg-alt); box-shadow: var(--shadow-md); }
+    .char-type-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .char-type-title h3 { margin: 0; font-size: 1.5rem; }
+    .char-type-title .char-trait { color: var(--ink-mute); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+    .char-type-title .char-badge { margin-left: auto; }
+    .char-tagline { font-family: var(--serif); font-size: 1.15rem; color: var(--ink); margin: 2px 0 10px; }
+    .char-type-card h4 { margin: 18px 0 8px; }
+    .char-type-card ul { margin: 0; padding-left: 1.1em; color: var(--ink-soft); }
+    .char-type-card ul li { margin-bottom: 5px; }
+    .char-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 30px; }
+    @media (max-width: 600px) { .char-cols { grid-template-columns: 1fr; } }
+
+    @media print {
+      .char-hero { grid-template-columns: 1.2fr 1fr; gap: 18px; }
+      .char-wheel { max-width: 190px; }
+      .char-type-card { page-break-inside: avoid; box-shadow: none; border: 1px solid #cdc6b8; background: #fff; }
+      .char-type-card.is-dominant { background: #FBFAF7; }
+      .char-track { background: #eee; }
+      .char-fill { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .char-dot, .char-badge, .char-wheel svg { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .char-badge { background: #1F3A3D !important; color: #fff !important; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header no-print">
+  <div class="container nav">
+    <a href="/brainscreener/" class="brand"><span class="brand-mark"></span><span class="brand-text"><strong>brainScreener</strong><span>Screening</span></span></a>
+    <nav class="nav-links">
+      <a href="/brainscreener/">Home</a>
+      <a href="/brainscreener/#tests">All tests</a>
+      <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    </nav>
+  </div>
+</header>
+
+<main class="result-shell">
+  <div class="container-narrow">
+
+    <section class="result-card" id="resultCard">
+      <div class="print-header">
+        <div class="print-brand">
+          <span class="brand-mark"></span>
+          <span class="brand-text"><strong>brainScreener</strong> — Character profile</span>
+        </div>
+        <div class="print-meta">Anonymous results · generated client-side</div>
+      </div>
+
+      <header class="result-head">
+        <div>
+          <span class="eyebrow">Results · Dark Tetrad</span>
+          <h1>Your character profile</h1>
+        </div>
+        <div class="meta-info">
+          <div id="codeRow" hidden>Examination code: <strong id="codeStr">—</strong></div>
+          <div>Date: <strong id="dateStr">—</strong></div>
+          <div>Anonymous results · generated client-side</div>
+        </div>
+      </header>
+
+      <div class="char-hero">
+        <div>
+          <span class="lead-trait" id="domTrait">—</span>
+          <div class="lead-type" id="domName">—</div>
+          <p id="domIntro">—</p>
+        </div>
+        <div class="char-wheel" id="charWheel" aria-hidden="true"></div>
+      </div>
+
+      <h3 style="margin-top: 28px;">Your personal mix</h3>
+      <p class="small muted" style="margin-top:-4px;">Everyone carries a bit of all four traits. This is how they are distributed in you:</p>
+      <div class="char-bars" id="charBars"></div>
+
+      <h3 style="margin-top: 36px;">What the individual traits mean</h3>
+      <p class="small muted" style="margin-top:-4px;">With strengths, typical behaviours and concrete tips — starting with your strongest trait.</p>
+      <div class="char-types" id="charTypes"></div>
+
+      <div class="result-disclaimer">
+        <strong>Plain talk instead of sugar-coating.</strong> We deliberately name the four
+        character traits directly — without euphemism. The labels are blunt and to the point,
+        but they are not a judgement of you as a person.
+        <br><br>
+        <strong>Important note · no warranty.</strong> This character profile is a
+        <strong>non-judgemental self-reflection tool</strong>. It describes normal,
+        everyday expressions of personality traits on a continuum — it is
+        <strong>not a clinical diagnosis</strong> and, in particular, not a determination of a
+        narcissistic, antisocial or any other personality disorder. Terms such as
+        "psychopath" or "sadism" refer here exclusively to subclinical character tendencies,
+        not to the clinical disorders. Results depend on your form on the day and on self-assessment.
+        <br><br>
+        <span class="small">Basis: <strong id="verfahrensRef">—</strong></span>
+      </div>
+
+      <div class="print-footer">
+        brainScreener · Character profile (Dark Tetrad) · Non-judgemental self-reflection tool · Not a diagnosis · No warranty
+      </div>
+    </section>
+
+    <div class="print-bar no-print">
+      <button type="button" class="btn btn-primary btn-lg" id="btnPrint">
+        Print / save as PDF
+      </button>
+      <a href="/brainscreener/character.html" class="btn btn-outline" id="btnRetry">Repeat test</a>
+      <a href="/brainscreener/" class="btn btn-ghost">Back</a>
+    </div>
+
+    <p class="small muted center no-print" style="margin-top:16px;">
+      View / print these results in another language: <a href="/character-result.html" lang="de">Deutsch</a> · <a href="/fr/character-result.html" lang="fr">Français</a> · <a href="/it/character-result.html" lang="it">Italiano</a>
+    </p>
+
+  </div>
+</main>
+
+<footer class="site-footer no-print">
+  <div class="container">
+    <a href="/brainscreener/" class="brand"><span class="brand-mark"></span><span class="brand-text"><strong>brainScreener</strong><span>Screening</span></span></a>
+    <small>Anonymous · No warranty · No substitute for medical diagnostics<br>Part of <a href="/">brainonbnb.com</a> · Test library adapted with thanks from <a href="https://adhsiq.ch" target="_blank" rel="noopener">adhsiq.ch</a></small>
+  </div>
+</footer>
+
+<script src="/brainscreener/assets/js/i18n/en/charakter-data.js"></script>
+<script src="/brainscreener/assets/js/charakter-result.js"></script>
+</body>
+</html>

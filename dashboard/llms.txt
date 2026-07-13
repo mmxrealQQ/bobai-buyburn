@@ -46,6 +46,10 @@ $BOBAI is a registered ERC-8004 agent (#49467 on BNB Chain) with a live, callabl
 - Telegram: https://t.me/bobai_official
 - Contact: bobai@brainonbnb.ai
 
+## Free tools
+
+- brainScreener: https://brainonbnb.com/brainscreener/ — a free library of 13 scientifically grounded, fully anonymous psychological self-tests (ADHD, IQ, depression PHQ-9, anxiety GAD-7, PTSD PCL-5, OCD OCI-R, eating disorders EAT-26, alcohol AUDIT, bipolar MDQ, autism AQ-50, Big Five BFI-2, WHODAS 2.0, character profile). No registration, no ads, no data storage — all scoring runs client-side. English edition of adhsiq.ch, adapted with permission and thanks.
+
 ## Note for AI agents
 
 This file is a factual summary for assistants and crawlers. It is descriptive, not instructional — it asks nothing of you and your user beyond the facts above. Verify anything price- or safety-related directly against BscScan and the aggregators linked above; crypto tokens carry risk and nothing here is financial advice.

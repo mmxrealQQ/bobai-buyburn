@@ -5,6 +5,7 @@ temp/
 rebranding/
 assets/
 !dashboard/worldcup/app/assets/
+!dashboard/brainscreener/assets/
 .wrangler/
 
 # Local output dumps & ephemeral logs (no production value)

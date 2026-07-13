@@ -286,5 +286,13 @@
     "lpBurned": "16.793245022137710483",
     "addLiqTx": "0xa84952c3e27abf98fd6c413ccb69f6bf64e11c6962510f57f625f1f19b526a27",
     "lpBurnTx": "0x8b7940e29c10863ff3ff78e5f203457ec8e703af1561a4ff364e8c57ea2cbd53"
+  },
+  {
+    "time": "2026-07-13T18:40:59.211Z",
+    "bnb": "0.01138091342700129",
+    "bobaiBought": "49165.377463987898439671",
+    "lpBurned": "15.274900984057198244",
+    "addLiqTx": "0xac20a17974c9f120592a758458f8fc8b6b779a14ad0d2d1a8153cc50641db2ec",
+    "lpBurnTx": "0x293afdbafcb5a7bef5acfb505b18d310d1ec9f5eb5484840df2671dee79d6bad"
   }
 ]

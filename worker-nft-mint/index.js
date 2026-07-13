@@ -179,17 +179,15 @@ async function getHolderState(env, contractAddr) {
   return data;
 }
 
+// No narrow-window fallback here: since 2026-06/07 the free endpoints reject
+// anything further back than ~150 blocks ("archive"), and a fallback that
+// returns only the tail of the requested range makes the caller silently skip
+// the untouched blocks — that's how the 13.7. $109 buy lost its mint. Callers
+// scan in ≤50-block chunks instead and simply retry a failed chunk next run.
 async function getSwapLogs(fromBlock, toBlock, env) {
   const keyed = [env.BSC_RPC_KEYED_URL, env.BSC_RPC_KEYED_URL_2].filter(Boolean);
   for (const rpc of [...keyed, ...LOGS_RPC]) {
     const r = await tryGetLogs(rpc, fromBlock, toBlock);
-    if (r !== null) return r;
-  }
-  // Last-resort narrow window for free RPCs
-  const from = parseInt(fromBlock, 16);
-  const narrow = '0x' + Math.max(from, parseInt(toBlock, 16) - 50).toString(16);
-  for (const rpc of LOGS_RPC) {
-    const r = await tryGetLogs(rpc, narrow, toBlock);
     if (r !== null) return r;
   }
   return null;
@@ -397,16 +395,6 @@ export default {
       return;
     }
 
-    // Cap scan window to 500 blocks per run to keep RPC cost bounded.
-    const fromBlock = lastBlock + 1;
-    const toBlock = Math.min(safeHead, fromBlock + 500);
-    const fromHex = '0x' + fromBlock.toString(16);
-    const toHex = '0x' + toBlock.toString(16);
-
-    const logs = await getSwapLogs(fromHex, toHex, env);
-    if (!logs) { console.error('getSwapLogs failed'); return; }
-    console.log(`[scan] blocks ${fromBlock}-${toBlock}, ${logs.length} swap logs`);
-
     // Idempotency: processed tx hashes (last 200 to bound KV size)
     const processedRaw = await env.KV.get('processed_txs');
     const processed = new Set(processedRaw ? JSON.parse(processedRaw) : []);
@@ -436,11 +424,33 @@ export default {
 
     let bnbUsd = null;
     let mintedThisRun = 0;
-    let bailedNoPrice = false;
     const MAX_MINTS_PER_RUN = 10;
 
-    for (const log of logs) {
+    // Chunked forward scan: free RPCs only serve ~150 blocks of lookback and
+    // reject wider ranges, so we walk forward in ≤50-block chunks and advance
+    // last_block ONLY past fully processed chunks. A failed chunk (RPC outage,
+    // archive limit, price feed down, mint budget spent) is retried next run —
+    // the worker may stall behind the head, but it can never skip a buy.
+    const CHUNK = 50;
+    const MAX_CHUNKS_PER_RUN = 8;
+    let scannedTo = lastBlock;
+    let bailed = false;
+
+    outer:
+    for (let c = 0; c < MAX_CHUNKS_PER_RUN; c++) {
+      const cFrom = scannedTo + 1;
+      if (cFrom > safeHead) break;
       if (mintedThisRun >= MAX_MINTS_PER_RUN) break;
+      const cTo = Math.min(safeHead, cFrom + CHUNK - 1);
+      const logs = await getSwapLogs('0x' + cFrom.toString(16), '0x' + cTo.toString(16), env);
+      if (logs === null) {
+        console.error(`[scan] getSwapLogs failed for ${cFrom}-${cTo}, retry next run`);
+        bailed = true;
+        break;
+      }
+      if (logs.length) console.log(`[scan] blocks ${cFrom}-${cTo}, ${logs.length} swap logs`);
+
+    for (const log of logs) {
       const txHash = log.transactionHash;
       if (processed.has(txHash)) continue;
 
@@ -456,9 +466,9 @@ export default {
       const bnbAmt = Number(amount1In) / 1e18;
       if (bnbUsd === null) bnbUsd = await getBnbUsd();
       if (!bnbUsd) {
-        console.error('no bnbUsd, will retry next run (last_block NOT advanced)');
-        bailedNoPrice = true;
-        break;
+        console.error('no bnbUsd, will retry next run (chunk NOT advanced)');
+        bailed = true;
+        break outer;
       }
       const usd = bnbAmt * bnbUsd;
       if (usd < 100) continue;
@@ -521,10 +531,20 @@ export default {
           });
           await env.KV.put('recent_drops', JSON.stringify(drops.slice(0, 100)));
         } catch (e) { console.error('drops KV write failed:', e.message || e); }
+        if (mintedThisRun >= MAX_MINTS_PER_RUN) {
+          // Budget spent mid-chunk: bail WITHOUT completing the chunk. Minted
+          // txs are in `processed`, so the rescan next run skips them and
+          // picks up the remaining logs of this chunk.
+          bailed = true;
+          break outer;
+        }
       } catch (e) {
         console.error(`[MINT FAIL] buyTx=${txHash} err=${e.shortMessage || e.message || e}`);
         // Do NOT mark processed — retry next run.
       }
+    }
+
+      scannedTo = cTo; // chunk fully processed — safe to advance past it
     }
 
     // Persist state
@@ -532,11 +552,10 @@ export default {
       const arr = [...processed].slice(-200);
       await env.KV.put('processed_txs', JSON.stringify(arr));
     }
-    // Critical: do NOT advance last_block if we bailed without resolving prices.
-    // Otherwise the unprocessed buy in this block-range would be lost forever.
-    if (!bailedNoPrice) {
-      await env.KV.put('last_block', String(toBlock));
+    // Advance only past fully processed chunks — a bailed chunk is retried.
+    if (scannedTo > lastBlock) {
+      await env.KV.put('last_block', String(scannedTo));
     }
-    console.log(`[done] scanned to ${toBlock}, mints this run: ${mintedThisRun}${bailedNoPrice ? ' (BAILED — last_block NOT advanced, will retry)' : ''}`);
+    console.log(`[done] scanned to ${scannedTo} (head ${safeHead}), mints this run: ${mintedThisRun}${bailed ? ' (BAILED — remaining range retried next run)' : ''}`);
   },
 };

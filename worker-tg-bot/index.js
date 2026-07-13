@@ -1770,7 +1770,7 @@ async function handleCommand(msg) {
 🎮 <a href="https://brainonbnb.com/game">Game</a>
 ⚽ <a href="https://brainonbnb.com/worldcup">Worldcup '26</a>
 🎁 <a href="${NFT_DASHBOARD_URL}">Buy Drops NFT</a>
-🧠 <a href="https://brainonbnb.com/brainscreener/">brainScreener — free self-tests</a>
+🧠 <a href="https://brainonbnb.com/brainscreener/">brainScreener</a>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;

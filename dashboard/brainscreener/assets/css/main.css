@@ -71,6 +71,9 @@ a:hover { color: var(--gold); }
 
 img { max-width: 100%; height: auto; display: block; }
 
+/* Anker-Sprünge landen unter dem sticky Header — Ziel um Headerhöhe versetzen */
+[id] { scroll-margin-top: 84px; }
+
 .container { max-width: var(--max); margin: 0 auto; padding: 0 28px; }
 .container-narrow { max-width: 760px; margin: 0 auto; padding: 0 28px; }
 

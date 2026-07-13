@@ -462,6 +462,9 @@ window.IQ_DATA = (function () {
     optionLabel: (letter) => `Option ${letter}`,
     finishConfirm: (a, n) => `You have answered ${a} of ${n} tasks. Score the test anyway?`,
     resetConfirm: "Do you really want to clear all previous answers and start over?",
+    confirmFinishOk: "Score anyway",
+    confirmResetOk: "Delete answers",
+    confirmCancel: "Cancel",
     domainLabel: { Gf: "Matrix reasoning · Fluid intelligence", Gq: "Number series · Quantitative reasoning", Gc: "Verbal analogy · Crystallized intelligence", Gv: "Visuospatial · Pattern recognition" },
   };
 

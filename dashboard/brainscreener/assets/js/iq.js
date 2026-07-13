@@ -11,6 +11,9 @@
     optionLabel: (letter) => `Option ${letter}`,
     finishConfirm: (a, n) => `Sie haben ${a} von ${n} Aufgaben beantwortet. Test trotzdem auswerten?`,
     resetConfirm: "Wirklich alle bisherigen Antworten löschen und neu starten?",
+    confirmFinishOk: "Trotzdem auswerten",
+    confirmResetOk: "Antworten löschen",
+    confirmCancel: "Abbrechen",
     domainLabel: {
       Gf: "Matrix Reasoning · Fluide Intelligenz",
       Gq: "Zahlenreihe · Quantitatives Denken",
@@ -141,6 +144,43 @@
     timeDisplay.textContent = `${m}:${String(s).padStart(2, "0")}  ·  ${UI.answeredOf(Object.keys(answers).length, D.TOTAL)}`;
   }
 
+  // ---------- In-Page-Bestätigungsdialog ----------
+  // Ersetzt window.confirm(): native Dialoge werden in manchen In-App-Browsern
+  // (Telegram/X) oder nach "Dialoge unterdrücken" stillschweigend geblockt.
+  function ensureModal() {
+    let m = document.getElementById("iqConfirmModal");
+    if (m) return m;
+    m = document.createElement("div");
+    m.id = "iqConfirmModal";
+    m.setAttribute("role", "dialog");
+    m.setAttribute("aria-modal", "true");
+    m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
+    m.innerHTML = `
+      <div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:440px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
+        <p id="iqConfirmMsg" style="margin:0 0 22px;line-height:1.55;"></p>
+        <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+          <button type="button" class="btn btn-ghost" id="iqConfirmCancel"></button>
+          <button type="button" class="btn btn-primary" id="iqConfirmOk"></button>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+    return m;
+  }
+  function showConfirm(message, okLabel, onOk) {
+    const m = ensureModal();
+    m.querySelector("#iqConfirmMsg").textContent = message;
+    const ok = m.querySelector("#iqConfirmOk");
+    const cancel = m.querySelector("#iqConfirmCancel");
+    ok.textContent = okLabel;
+    cancel.textContent = UI.confirmCancel;
+    m.style.display = "flex";
+    const close = () => { m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null; };
+    cancel.onclick = close;
+    m.onclick = (e) => { if (e.target === m) close(); };
+    ok.onclick = () => { close(); onOk(); };
+    ok.focus();
+  }
+
   // ---------- Navigation ----------
   btnNext.addEventListener("click", () => {
     if (idx < D.TOTAL - 1) { idx++; renderItem(idx); }
@@ -157,9 +197,12 @@
   btnFinish.addEventListener("click", () => {
     const answered = Object.keys(answers).length;
     if (answered < D.TOTAL) {
-      const ok = confirm(UI.finishConfirm(answered, D.TOTAL));
-      if (!ok) return;
+      showConfirm(UI.finishConfirm(answered, D.TOTAL), UI.confirmFinishOk, finishTest);
+      return;
     }
+    finishTest();
+  });
+  function finishTest() {
     const result = D.evaluate(answers);
     const probandCode = (sessionStorage.getItem(CODE_KEY) || "").trim();
     const payload = {
@@ -171,7 +214,7 @@
     testInProgress = false;
     // Sprachversion beibehalten: /brainscreener/iq -> /brainscreener/iq-result.html usw.
     location.href = location.pathname.replace(/[^/]*$/, "") + "iq-result.html";
-  });
+  }
 
   // ---------- beforeunload Warnung ----------
   let testInProgress = false;
@@ -189,14 +232,16 @@
   if (Object.keys(answers).length > 0) {
     btnResetEl.hidden = false;
     btnResetEl.addEventListener("click", () => {
-      if (!confirm(UI.resetConfirm)) return;
-      sessionStorage.removeItem(STORAGE_KEY);
-      sessionStorage.removeItem(TIME_KEY);
-      sessionStorage.removeItem(CODE_KEY);
-      sessionStorage.removeItem(RESULT_KEY);
-      answers = {};
-      startTs = 0;
-      location.reload();
+      showConfirm(UI.resetConfirm, UI.confirmResetOk, () => {
+        sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(TIME_KEY);
+        sessionStorage.removeItem(CODE_KEY);
+        sessionStorage.removeItem(RESULT_KEY);
+        answers = {};
+        startTs = 0;
+        testInProgress = false;
+        location.reload();
+      });
     });
   }
 

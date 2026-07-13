@@ -185,16 +185,50 @@
   });
 
   // ---------- Reset ----------
+  // In-Page-Dialog statt window.confirm(): native Dialoge werden in manchen
+  // In-App-Browsern (Telegram/X) stillschweigend geblockt.
+  function showConfirm(message, okLabel, onOk) {
+    let m = document.getElementById("bsConfirmModal");
+    if (!m) {
+      m = document.createElement("div");
+      m.id = "bsConfirmModal";
+      m.setAttribute("role", "dialog");
+      m.setAttribute("aria-modal", "true");
+      m.style.cssText = "position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.45);";
+      m.innerHTML = `
+        <div style="background:var(--bg,#fff);color:var(--ink,#1a1a1a);max-width:440px;width:100%;border-radius:12px;padding:26px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
+          <p id="bsConfirmMsg" style="margin:0 0 22px;line-height:1.55;"></p>
+          <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+            <button type="button" class="btn btn-ghost" id="bsConfirmCancel"></button>
+            <button type="button" class="btn btn-primary" id="bsConfirmOk"></button>
+          </div>
+        </div>`;
+      document.body.appendChild(m);
+    }
+    m.querySelector("#bsConfirmMsg").textContent = message;
+    const ok = m.querySelector("#bsConfirmOk");
+    const cancel = m.querySelector("#bsConfirmCancel");
+    ok.textContent = okLabel;
+    cancel.textContent = UI.confirmCancel || "Cancel";
+    m.style.display = "flex";
+    const close = () => { m.style.display = "none"; ok.onclick = cancel.onclick = m.onclick = null; };
+    cancel.onclick = close;
+    m.onclick = (e) => { if (e.target === m) close(); };
+    ok.onclick = () => { close(); onOk(); };
+    ok.focus();
+  }
+
   const btnReset = document.getElementById("btnReset");
   if (Object.keys(answers).length > 0) {
     btnReset.hidden = false;
     btnReset.addEventListener("click", () => {
-      if (!confirm(UI.resetConfirm)) return;
-      sessionStorage.removeItem(STORAGE_KEY);
-      sessionStorage.removeItem(CODE_KEY);
-      sessionStorage.removeItem(RESULT_KEY);
-      answers = {};
-      location.reload();
+      showConfirm(UI.resetConfirm, UI.confirmResetOk || "Delete answers", () => {
+        sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(CODE_KEY);
+        sessionStorage.removeItem(RESULT_KEY);
+        answers = {};
+        location.reload();
+      });
     });
   }
 

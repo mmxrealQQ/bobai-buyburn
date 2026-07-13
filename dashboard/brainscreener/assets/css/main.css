@@ -440,9 +440,13 @@ img { max-width: 100%; height: auto; display: block; }
 .matrix-stim svg { max-width: 100%; height: auto; }
 
 .iq-options-svg {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 8px;
 }
-@media (max-width: 520px) { .iq-options-svg { grid-template-columns: repeat(2, 1fr); } }
+/* Mobile: 3 Spalten behalten — kleinere Kacheln passend zur Stimulus-Grösse, kein Overflow */
+@media (max-width: 520px) {
+  .iq-options-svg { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .iq-options-svg label { padding: 8px; border-radius: 6px; }
+}
 .iq-options-svg label {
   cursor: pointer; background: var(--paper); border: 1.5px solid transparent;
   border-radius: var(--radius-sm); padding: 12px;
@@ -710,9 +714,11 @@ img { max-width: 100%; height: auto; display: block; }
   }
   .actions-row .right {
     width: 100%;
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: 10px;
   }
+  /* IQ-Test (3 Buttons sichtbar): Next zuoberst, dann Show results, Skip zuunterst */
+  .actions-row .right #btnSkip { order: 3; }
   .actions-row .btn { width: 100%; justify-content: center; }
 
   /* Code-Field */

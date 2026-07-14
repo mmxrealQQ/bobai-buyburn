@@ -5,8 +5,8 @@
   if (!D) { console.error("[charakter-result] TEST_DATA fehlt"); return; }
 
   const RESULT_KEY = "brainscreener.charakter.result.v1";
-  let payload = null;
-  try { payload = JSON.parse(sessionStorage.getItem(RESULT_KEY) || "null"); } catch { payload = null; }
+  let payload = window.BS_PRINT ? BS_PRINT.loadPayload(RESULT_KEY) : null;
+  if (!payload) { try { payload = JSON.parse(sessionStorage.getItem(RESULT_KEY) || "null"); } catch { payload = null; } }
 
   if (D.meta && D.meta.pageTitle) document.title = D.meta.pageTitle;
 
@@ -137,7 +137,10 @@
 
   // ---- Print ----
   const btnPrint = document.getElementById("btnPrint");
-  if (btnPrint) btnPrint.addEventListener("click", () => window.print());
+  if (btnPrint) {
+    if (window.BS_PRINT) BS_PRINT.attachPrint(btnPrint, RESULT_KEY);
+    else btnPrint.addEventListener("click", () => window.print());
+  }
 
   // ---------- helpers ----------
   function setText(id, v) { const el = document.getElementById(id); if (el && v != null) el.textContent = String(v); }

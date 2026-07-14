@@ -2,8 +2,8 @@
 (function () {
   const RESULT_KEY = "brainscreener.adhs.result.v1";
 
-  let payload = null;
-  try { payload = JSON.parse(sessionStorage.getItem(RESULT_KEY) || "null"); } catch { payload = null; }
+  let payload = window.BS_PRINT ? BS_PRINT.loadPayload(RESULT_KEY) : null;
+  if (!payload) { try { payload = JSON.parse(sessionStorage.getItem(RESULT_KEY) || "null"); } catch { payload = null; } }
 
   if (!payload) {
     document.querySelector(".result-shell .container-narrow").innerHTML = `
@@ -148,7 +148,8 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
   ns.innerHTML = nextSteps.map((s) => `<li style="margin-bottom:6px;">${s}</li>`).join("");
 
   // ---- Buttons ----
-  document.getElementById("btnPrint").addEventListener("click", () => window.print());
+  if (window.BS_PRINT) BS_PRINT.attachPrint(document.getElementById("btnPrint"), RESULT_KEY);
+  else document.getElementById("btnPrint").addEventListener("click", () => window.print());
 
   // ---- helpers ----
   function stripTags(s) { return s.replace(/<[^>]*>/g, ""); }

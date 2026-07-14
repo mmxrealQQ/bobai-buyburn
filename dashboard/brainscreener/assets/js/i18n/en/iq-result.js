@@ -2,8 +2,8 @@
 (function () {
   const RESULT_KEY = "brainscreener.iq.result.v1";
 
-  let payload = null;
-  try { payload = JSON.parse(sessionStorage.getItem(RESULT_KEY) || "null"); } catch { payload = null; }
+  let payload = window.BS_PRINT ? BS_PRINT.loadPayload(RESULT_KEY) : null;
+  if (!payload) { try { payload = JSON.parse(sessionStorage.getItem(RESULT_KEY) || "null"); } catch { payload = null; } }
 
   if (!payload) {
     document.querySelector(".result-shell .container-narrow").innerHTML = `
@@ -94,7 +94,8 @@
   `;
 
   // ---- Buttons ----
-  document.getElementById("btnPrint").addEventListener("click", () => window.print());
+  if (window.BS_PRINT) BS_PRINT.attachPrint(document.getElementById("btnPrint"), RESULT_KEY);
+  else document.getElementById("btnPrint").addEventListener("click", () => window.print());
 
   // ---- helpers ----
   function bandHint(band) {

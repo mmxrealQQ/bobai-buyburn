@@ -10,13 +10,75 @@
 // Aus dem Hash werden nur die rohen answers uebernommen (result wird verworfen und
 // von der Seite via evaluate() neu berechnet) — kein HTML aus der URL im DOM.
 (function () {
+  // Telegrams In-App-Browser tarnt sich als normales Chrome (kein "Telegram",
+  // kein "; wv)" im UA — via debug-ua.html verifiziert 15.7.). Er injiziert aber
+  // ein Proxy-Objekt — das ist der zuverlässige Marker.
+  function isTelegram() {
+    return typeof window.TelegramWebviewProxy !== "undefined" ||
+           typeof window.TelegramWebviewProxyProto !== "undefined" ||
+           typeof window.TelegramWebview !== "undefined" ||
+           /Telegram/i.test(navigator.userAgent || "");
+  }
+
   function isInApp() {
+    if (isTelegram()) return true;
     var ua = navigator.userAgent || "";
-    if (/Telegram|TwitterAndroid|Twitter for iPhone|FBAN|FBAV|Instagram|Line\//i.test(ua)) return true;
+    if (/TwitterAndroid|Twitter for iPhone|FBAN|FBAV|Instagram|Line\//i.test(ua)) return true;
     if (/Android/.test(ua) && /; wv\)/.test(ua)) return true;              // Android WebView
     if (/iPhone|iPad|iPod/.test(ua) && !/Safari\//i.test(ua)) return true; // iOS In-App-WebView
+    try { // Chromium UA-Client-Hints: WebView nennt sich in der Brands-Liste
+      var brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+      for (var i = 0; i < brands.length; i++) if (/WebView/i.test(brands[i].brand)) return true;
+    } catch {}
     return false;
   }
+
+  // position:sticky ist in Telegrams WebView kaputt, position:fixed funktioniert
+  // (debug-ua.html: 🟩 klebt nicht, 🟦 klebt). Emulation nur fuer Telegram —
+  // X/Safari/Chrome behalten ihr funktionierendes sticky.
+  function fixSticky() {
+    var header = document.querySelector(".site-header");
+    if (header) {
+      var padBody = function () { document.body.style.paddingTop = header.offsetHeight + "px"; };
+      header.style.position = "fixed";
+      header.style.top = "0"; header.style.left = "0"; header.style.right = "0";
+      padBody();
+      window.addEventListener("resize", padBody);
+    }
+    // .test-progress klebt normal via sticky unter dem Header — emulieren mit
+    // Scroll-Toggle + Spacer (verhindert Layout-Sprung beim Umschalten).
+    var prog = document.querySelector(".test-progress");
+    if (prog) {
+      var spacer = document.createElement("div");
+      spacer.style.display = "none";
+      prog.parentNode.insertBefore(spacer, prog);
+      var headerH = function () { return header ? header.offsetHeight : 0; };
+      var onScroll = function () {
+        var anchor = spacer.style.display === "none" ? prog : spacer;
+        var natTop = anchor.getBoundingClientRect().top + window.scrollY;
+        if (window.scrollY + headerH() >= natTop) {
+          if (prog.style.position !== "fixed") {
+            spacer.style.height = prog.offsetHeight + "px";
+            spacer.style.display = "block";
+            prog.style.position = "fixed";
+            prog.style.top = headerH() + "px";
+            prog.style.left = "0"; prog.style.right = "0";
+          }
+        } else if (prog.style.position === "fixed") {
+          prog.style.position = ""; prog.style.top = ""; prog.style.left = ""; prog.style.right = "";
+          spacer.style.display = "none";
+        }
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    }
+  }
+
+  function ready(fn) {
+    if (document.readyState !== "loading") fn();
+    else document.addEventListener("DOMContentLoaded", fn);
+  }
+  if (isTelegram()) ready(fixSticky);
 
   function encodePayload(payload) {
     try {

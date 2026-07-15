@@ -28,14 +28,14 @@ Remote (Claude Code, or any client that speaks streamable HTTP):
 claude mcp add --transport http bobai https://brainonbnb.com/mcp
 ```
 
-Local stdio (Claude Desktop and other stdio-only clients) via [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
+Local stdio (Claude Desktop and other stdio-only clients) — [`mcp/server.mjs`](mcp/server.mjs) is a zero-dependency stdio server (Node ≥ 18, no `npm install`):
 
 ```json
 {
   "mcpServers": {
     "bobai": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://brainonbnb.com/mcp"]
+      "command": "node",
+      "args": ["/path/to/bobai-buyburn/mcp/server.mjs"]
     }
   }
 }
@@ -46,6 +46,8 @@ Or with Docker (uses the [`Dockerfile`](Dockerfile) in this repo):
 ```bash
 docker build -t bobai-mcp . && docker run -i bobai-mcp
 ```
+
+No clone at hand? [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridges stdio clients to the hosted endpoint: `npx -y mcp-remote https://brainonbnb.com/mcp`
 
 ### Tools (13, all read-only)
 

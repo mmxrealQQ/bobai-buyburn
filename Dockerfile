@@ -1,11 +1,12 @@
-# MCP server entrypoint — stdio bridge to the live $BOBAI MCP endpoint.
+# $BOBAI MCP server — local stdio transport, zero dependencies.
 #
-# The actual server runs 24/7 as a Cloudflare Worker at https://brainonbnb.com/mcp
-# (streamable HTTP, JSON-RPC 2.0, no auth, read-only). This image exposes it as a
-# local stdio MCP server so any stdio-only client (or registry inspection) can use it:
+# Runs mcp/server.mjs: the MCP protocol is handled entirely in this container;
+# live on-chain data comes from the public keyless REST endpoints documented
+# at https://brainonbnb.com/skill.md. Introspection works fully offline.
 #
 #   docker build -t bobai-mcp . && docker run -i bobai-mcp
 #
 FROM node:22-alpine
-RUN npm install -g mcp-remote
-ENTRYPOINT ["mcp-remote", "https://brainonbnb.com/mcp"]
+WORKDIR /app
+COPY mcp/server.mjs mcp/server.mjs
+CMD ["node", "mcp/server.mjs"]

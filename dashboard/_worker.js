@@ -337,6 +337,7 @@ async function getSmartMoney() {
       methodology: 'A watcher scans every BOBAI Transfer log on-chain once per minute. Wallets holding >= 10,000,000 BOBAI (1% of supply) enter the watchlist automatically when they cross the threshold. Numbers below aggregate only those tracked wallets — every underlying event is a real on-chain tx.',
       as_of: whales.as_of,
       tracked_wallets: whales.tracked_wallets,
+      holdings: whales.holdings || null,
       last_24h: whales.last_24h,
       last_7d: whales.last_7d,
       top_movers_24h: whales.top_movers_24h,

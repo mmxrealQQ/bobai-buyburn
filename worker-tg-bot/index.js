@@ -719,6 +719,92 @@ async function saveWalletEdges(env, edges) {
   await env.KV.put('wallet_edges', JSON.stringify(edges));
 }
 
+// ---- Daily whale balance snapshots (holdings history + trend) ----
+// One snapshot per UTC day: live balanceOf() of every tracked wallet, stored in
+// KV so 1d/7d/30d holdings-trends can be computed without an archive node.
+// Correctness rules:
+//  - Deltas compare only wallets present in BOTH snapshots — the watchlist grows
+//    over time, comparing raw totals would fake an "inflow" whenever a new whale
+//    gets tracked.
+//  - A delta window is only reported when a snapshot of that actual age exists
+//    (±12h) — a 2-day-old history never masquerades as a "7d" trend.
+//  - If any balanceOf fails, the whole snapshot is aborted (retried next run) —
+//    a failed call must never be recorded as balance 0.
+const WHALE_SNAPSHOTS_MAX = 120;
+
+async function loadWhaleSnapshots(env) {
+  try {
+    const raw = await env.KV.get('whale_snapshots');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+async function getBobaiBalanceStrict(addr) {
+  const data = '0x70a08231' + '0'.repeat(24) + addr.slice(2).toLowerCase();
+  const r = await rpcCall('eth_call', [{ to: BOBAI_TOKEN, data }, 'latest']);
+  if (r === null) throw new Error('balanceOf failed for ' + addr);
+  return BigInt(r);
+}
+
+async function takeWhaleSnapshotIfDue(env, tracked) {
+  const snaps = await loadWhaleSnapshots(env);
+  const today = new Date().toISOString().slice(0, 10);
+  if (snaps.length && snaps[snaps.length - 1].date === today) return snaps;
+  const wallets = {};
+  let total = 0;
+  for (let i = 0; i < tracked.length; i += 8) {
+    const chunk = tracked.slice(i, i + 8);
+    const bals = await Promise.all(chunk.map(a => getBobaiBalanceStrict(a))); // throws on any failure → abort
+    chunk.forEach((a, j) => { const t = Number(bals[j] / 10n ** 18n); wallets[a] = t; total += t; });
+  }
+  snaps.push({ date: today, ts: Date.now(), total, wallets });
+  const trimmed = snaps.slice(-WHALE_SNAPSHOTS_MAX);
+  await env.KV.put('whale_snapshots', JSON.stringify(trimmed));
+  console.log('[WHALE-SNAP] snapshot', today, '-', tracked.length, 'wallets,', total, 'BOBAI');
+  return trimmed;
+}
+
+// Change vs. the snapshot closest to `days` ago (±12h), intersection basis.
+function snapshotDelta(snaps, days) {
+  if (snaps.length < 2) return null;
+  const last = snaps[snaps.length - 1];
+  const target = last.ts - days * 86400e3;
+  let ref = null;
+  for (const s of snaps.slice(0, -1)) {
+    if (Math.abs(s.ts - target) <= 12 * 3600e3 && (!ref || Math.abs(s.ts - target) < Math.abs(ref.ts - target))) ref = s;
+  }
+  if (!ref) return null;
+  let before = 0, after = 0, n = 0;
+  for (const a of Object.keys(last.wallets)) {
+    if (ref.wallets[a] === undefined) continue;
+    before += ref.wallets[a];
+    after += last.wallets[a];
+    n++;
+  }
+  if (!n) return null;
+  return {
+    window_days: days,
+    wallets_compared: n,
+    bobai_change: after - before,
+    percent_change: before > 0 ? Math.round((after - before) / before * 10000) / 100 : null,
+  };
+}
+
+function snapshotHoldings(snaps) {
+  if (!snaps.length) return null;
+  const last = snaps[snaps.length - 1];
+  return {
+    as_of_date: last.date,
+    tracked_total_bobai: last.total,
+    percent_of_total_supply: Math.round(last.total / 1e9 * 10000) / 100,
+    change_1d: snapshotDelta(snaps, 1),
+    change_7d: snapshotDelta(snaps, 7),
+    change_30d: snapshotDelta(snaps, 30),
+    method: 'Daily balanceOf() snapshot of every tracked wallet. Deltas compare only wallets present in both snapshots, so watchlist growth never fakes an inflow; a window is only reported once history of that actual age exists.',
+  };
+}
+
 // ---- Whale event log (for 24h summaries) ----
 // Keeps the last 500 alert-worthy events (raw, with timestamp) so we can render
 // rolling 24h breakdowns without re-scanning the chain.
@@ -1283,7 +1369,19 @@ async function postDailyWhaleRecap(env) {
       loadTrackedWallets(env),
       fetchBobaiPriceUsd().catch(() => null),
     ]);
-    const text = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ true);
+    let text = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ true);
+    // Holdings trend from the daily snapshots — silent until history exists.
+    try {
+      const snaps = await takeWhaleSnapshotIfDue(env, tracked);
+      const h = snapshotHoldings(snaps);
+      if (h) {
+        const d = h.change_7d || h.change_1d;
+        const trend = d ? ` · ${d.window_days}d: ${d.bobai_change >= 0 ? '+' : ''}${formatNumber(d.bobai_change)} BOBAI (${d.percent_change >= 0 ? '+' : ''}${d.percent_change}%)` : '';
+        text += `\n💼 <b>Holdings</b>: ${formatNumber(h.tracked_total_bobai)} BOBAI tracked (${h.percent_of_total_supply}% of supply)${trend}`;
+      }
+    } catch (e) {
+      console.error('[WHALE-SNAP RECAP ERROR]', e.message || e);
+    }
     const r = await tg('sendMessage', {
       chat_id: TG_INTERNAL_CHAT_ID,
       text, parse_mode: 'HTML', disable_web_page_preview: true,
@@ -2113,6 +2211,11 @@ export default {
     if (url.pathname === '/whale-summary' && request.method === 'GET') {
       try {
         const [events, tracked] = await Promise.all([loadWhaleEvents(env), loadTrackedWallets(env)]);
+        // Holdings snapshot: self-heals if today's cron snapshot is missing
+        // (first request of the day takes it — date-guarded, so at most once).
+        let snaps = [];
+        try { snaps = await takeWhaleSnapshotIfDue(env, tracked); }
+        catch (e) { console.error('[WHALE-SNAP LAZY ERROR]', e.message || e); snaps = await loadWhaleSnapshots(env); }
         const round2 = (x) => Math.round(x * 100) / 100;
         const win = (hours) => {
           const r = recentEvents(events, hours);
@@ -2146,6 +2249,7 @@ export default {
           as_of: new Date().toISOString(),
           tracked_wallets: tracked.length,
           tracking_threshold: '10,000,000 BOBAI (1% of supply) — wallets enter the watchlist automatically when they cross it',
+          holdings: snapshotHoldings(snaps),
           last_24h: win(24),
           last_7d: win(168),
           top_movers_24h: movers,
@@ -2506,6 +2610,16 @@ export default {
         }
       } catch (e) {
         console.error('[WHALE DAILY GATE ERROR]', e.message || e);
+      }
+
+      // Daily holdings snapshot — own date-guard inside takeWhaleSnapshotIfDue,
+      // independent of recap success. /whale-summary self-heals if this misses.
+      try {
+        if (new Date().getUTCHours() === 6) {
+          await takeWhaleSnapshotIfDue(env, await loadTrackedWallets(env));
+        }
+      } catch (e) {
+        console.error('[WHALE-SNAP GATE ERROR]', e.message || e);
       }
     }
 

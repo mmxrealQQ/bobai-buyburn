@@ -85,3 +85,7 @@ Plus 2 guided prompts and MCP resources (llms.txt, agent card). Every read tool 
 - Ownership renounced, LP tokens burned to `0x…dEaD`, fair launch on four.meme
 - Price and liquidity data computed **on-chain only** (no third-party price API in the money path)
 - All bot activity lands in public audit logs with BscScan tx links
+
+## License
+
+[MIT](LICENSE)

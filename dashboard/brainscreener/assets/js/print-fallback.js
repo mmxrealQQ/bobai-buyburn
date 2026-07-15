@@ -42,6 +42,13 @@
       var padBody = function () { document.body.style.paddingTop = header.offsetHeight + "px"; };
       header.style.position = "fixed";
       header.style.top = "0"; header.style.left = "0"; header.style.right = "0";
+      // TG-WebView kann kein backdrop-filter: der 88%-transparente Glas-Header
+      // laesst dort scharfen Text durchscheinen → opak machen (nur hier).
+      try {
+        if (!(window.CSS && CSS.supports && (CSS.supports("backdrop-filter", "blur(1px)") || CSS.supports("-webkit-backdrop-filter", "blur(1px)")))) {
+          header.style.background = "rgb(5, 5, 16)";
+        }
+      } catch { header.style.background = "rgb(5, 5, 16)"; }
       padBody();
       window.addEventListener("resize", padBody);
     }

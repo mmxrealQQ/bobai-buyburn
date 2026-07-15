@@ -2105,6 +2105,62 @@ export default {
       }
     }
 
+    // === /whale-summary — public read-only whale-flow aggregates ===
+    // Consumed by the dashboard worker's bobai_smart_money MCP tool. Exposes
+    // only aggregates + top movers from the same KV event log that powers
+    // /whales24h — no admin data, no secrets. Events are on-chain-derived
+    // (BOBAI Transfer logs, scanned every minute by the cron).
+    if (url.pathname === '/whale-summary' && request.method === 'GET') {
+      try {
+        const [events, tracked] = await Promise.all([loadWhaleEvents(env), loadTrackedWallets(env)]);
+        const round2 = (x) => Math.round(x * 100) / 100;
+        const win = (hours) => {
+          const r = recentEvents(events, hours);
+          let usdIn = 0, usdOut = 0, buys = 0, sells = 0, burns = 0, transfers = 0;
+          for (const e of r) {
+            const u = e.usdValue || 0;
+            if (e.kind === 'BUY') { buys++; usdIn += u; }
+            else if (e.kind === 'TRANSFER_IN') { transfers++; usdIn += u; }
+            else if (e.kind === 'SELL') { sells++; usdOut += u; }
+            else if (e.kind === 'BURN') { burns++; usdOut += u; }
+            else if (e.kind === 'TRANSFER_OUT') { transfers++; usdOut += u; }
+          }
+          return { events: r.length, buys, sells, burns, transfers, usd_in: round2(usdIn), usd_out: round2(usdOut), net_usd: round2(usdIn - usdOut) };
+        };
+        const moverWallet = (e) => (e.kind === 'SELL' || e.kind === 'BURN' || e.kind === 'TRANSFER_OUT') ? e.from : e.to;
+        const movers = recentEvents(events, 24)
+          .filter(e => ['BUY', 'SELL', 'BURN', 'TRANSFER_OUT', 'TRANSFER_IN', 'INTERNAL_T'].includes(e.kind))
+          .slice()
+          .sort((a, b) => (b.usdValue || 0) - (a.usdValue || 0))
+          .slice(0, 3)
+          .map(e => ({
+            kind: e.kind,
+            bobai: e.amount || 0,
+            usd: round2(e.usdValue || 0),
+            wallet: moverWallet(e),
+            tx: e.txHash ? 'https://bscscan.com/tx/' + e.txHash : null,
+            time_utc: e.ts ? new Date(e.ts).toISOString() : null,
+          }));
+        const last = events[events.length - 1];
+        return new Response(JSON.stringify({
+          as_of: new Date().toISOString(),
+          tracked_wallets: tracked.length,
+          tracking_threshold: '10,000,000 BOBAI (1% of supply) — wallets enter the watchlist automatically when they cross it',
+          last_24h: win(24),
+          last_7d: win(168),
+          top_movers_24h: movers,
+          last_event: last ? { kind: last.kind, usd: round2(last.usdValue || 0), time_utc: last.ts ? new Date(last.ts).toISOString() : null } : null,
+        }, null, 2), {
+          headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=60' },
+        });
+      } catch (e) {
+        console.error('[WHALE-SUMMARY ERROR]', e.message || e);
+        return new Response(JSON.stringify({ error: 'whale summary unavailable' }), {
+          status: 502, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' },
+        });
+      }
+    }
+
     // === /sendsticker — authenticated one-off sticker upload (preview tool) ===
     // POST multipart/form-data with header `X-Broadcast-Secret: <env.BROADCAST_SECRET>`
     // and fields: `chat_id` (string) + `sticker` (the .webm file). The worker forwards

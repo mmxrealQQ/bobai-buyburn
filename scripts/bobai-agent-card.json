@@ -31,7 +31,8 @@
           { "name": "bobai_price", "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves x Chainlink BNB/USD feed)" },
           { "name": "bobai_liquidity", "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), price-impact estimates per buy size" },
           { "name": "bobai_activity", "description": "Proof the buyback-and-burn flywheel is running: last burn (BscScan tx), burns over the last 7/30 days, total bot runs - every entry verifiable on-chain" },
-          { "name": "bobai_nft_drop", "description": "On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet - live remaining supply per buy-tier/rarity + the exact steps to earn one" }
+          { "name": "bobai_nft_drop", "description": "On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet - live remaining supply per buy-tier/rarity + the exact steps to earn one" },
+          { "name": "bobai_smart_money", "description": "Live smart-money signals: the tax reserve charging the next buyback (pending buy pressure), an immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum - all verifiable" }
         ],
         "prompts": [
           { "name": "evaluate_bobai", "description": "Neutral due-diligence walkthrough of $BOBAI: routes through every read tool, ends with a balanced on-chain-verified assessment" },

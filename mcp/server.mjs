@@ -16,7 +16,7 @@ import { createInterface } from 'node:readline';
 
 const BASE = 'https://brainonbnb.com';
 const PROTOCOL = '2025-06-18';
-const SERVER_INFO = { name: 'Brain On BNB AI ($BOBAI)', version: '1.2.0' };
+const SERVER_INFO = { name: 'Brain On BNB AI ($BOBAI)', version: '1.3.0' };
 
 const noArgs = { type: 'object', properties: {}, additionalProperties: false };
 const TOOLS = [
@@ -33,6 +33,7 @@ const TOOLS = [
   { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB).', inputSchema: noArgs, rest: '/api/liquidity' },
   { name: 'bobai_activity', description: 'Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log, every entry verifiable on-chain.', inputSchema: noArgs, rest: '/api/activity' },
   { name: 'bobai_nft_drop', description: 'On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. Live remaining supply per buy-tier and rarity, plus the exact steps to earn one.', inputSchema: noArgs, rest: '/api/nft-drop' },
+  { name: 'bobai_smart_money', description: 'Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (pending buy pressure), an immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx — follow them if you track smart money), and burn momentum. All verifiable, no API key.', inputSchema: noArgs, rest: '/api/smart-money' },
 ];
 
 const RESOURCES = [

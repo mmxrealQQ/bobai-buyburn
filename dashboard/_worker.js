@@ -277,6 +277,70 @@ async function getNftDrop() {
   };
 }
 
+// Machine-readable smart-money signals — the trader-agent view of $BOBAI.
+// Aggregates verifiable on-chain flows nobody has to trust: the tax reserve
+// charging the next buyback, the NFT-mint ledger (= immutable log of every
+// $100+ buy with wallet + tx), and burn momentum. Descriptive, not a rec.
+const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
+async function getSmartMoney() {
+  const [price, nft, activity, reserve] = await Promise.all([
+    getPrice().catch(() => null),
+    getNftState().catch(() => null),
+    getActivity().catch(() => null),
+    getWalletBalance(BUYBACK_WALLET).catch(() => null),
+  ]);
+  const now = Date.now() / 1000;
+  const drops = (nft?.drops || []).filter(d => d.ts && d.usd);
+  const inWindow = (days) => drops.filter(d => now - d.ts < days * 86400);
+  const agg = (arr) => ({ count: arr.length, usd_total: Math.round(arr.reduce((a, d) => a + (parseFloat(d.usd) || 0), 0)) });
+  const fmt = (d) => ({
+    time_utc: new Date(d.ts * 1000).toISOString(),
+    usd: Math.round(parseFloat(d.usd) || 0),
+    tier: NFT_TIERS[d.tier]?.label ?? d.tier,
+    buyer: d.to,
+    tx: d.tx ? 'https://bscscan.com/tx/' + d.tx : null,
+  });
+  const reserveBnb = reserve ? parseFloat(reserve.bnb) : null;
+  const reserveBobai = reserve ? parseInt(reserve.bobai, 10) : null;
+  const reserveUsd = (reserve && price)
+    ? Math.round((reserveBnb * price.bnb_usd + reserveBobai * price.price_usd) * 100) / 100
+    : null;
+  return {
+    what_this_is: 'Live smart-money signals for $BOBAI — every number below is on-chain-verifiable (contract, tx or public audit log). Descriptive market data for agents, not a recommendation.',
+    next_buyback_charging: reserve ? {
+      buyback_wallet: BUYBACK_WALLET,
+      bnb: reserveBnb,
+      bobai: reserveBobai,
+      reserve_usd_estimate: reserveUsd,
+      how_it_works: 'The 3% trade tax accumulates in this public wallet between runs; an autonomous bot checks every 10 minutes and converts it into buyback+burn once the swap threshold is met. Accumulated reserve = pending, predictable buy pressure.',
+      verify: 'https://bscscan.com/address/' + BUYBACK_WALLET,
+    } : null,
+    large_buys: {
+      source: 'Every $BOBAI buy >= $100 (single swap, USD at swap time) auto-mints an NFT — an immutable on-chain ledger of large buys. Tier = buy size (see bobai_nft_drop).',
+      last_24h: agg(inWindow(1)),
+      last_7d: agg(inWindow(7)),
+      latest: drops.slice(0, 5).map(fmt),
+      all_time_by_tier: nft ? NFT_TIERS.map((t, i) => ({ tier: t.label, min_buy_usd: t.min_buy_usd, count: nft.minted[i] })) : null,
+    },
+    burn_momentum: activity ? {
+      last_burn: activity.last_burn,
+      last_7_days: activity.last_7_days,
+      last_30_days: activity.last_30_days,
+      audit_log: activity.audit_log,
+    } : null,
+    structural: {
+      lp_permanently_locked: 'LP tokens are burned to the dead address — pool depth only grows, nobody can pull it. Live LP-burned % via bobai_liquidity.',
+      supply_only_shrinks: 'Renounced contract, no mint function; buybacks burn supply continuously. Live totals via bobai_burned.',
+    },
+    how_agents_use_this: [
+      'reserve rising + steady burn cadence = the flywheel is being fed by real volume, not claims.',
+      'large_buys.latest gives size, buyer wallet and tx of every recent $100+ buy — follow those wallets on-chain if you track smart money.',
+      'Cross-check any number: every field carries a contract address, tx link or audit-log source.',
+    ],
+    not_financial_advice: true,
+  };
+}
+
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
 const AGENT_GUIDE = {
@@ -286,6 +350,7 @@ const AGENT_GUIDE = {
     { ask: 'Live price in USD/BNB + market cap, computed fully on-chain', call: 'bobai_price' },
     { ask: 'Liquidity depth: reserves, USD liquidity, LP-burned %, price impact per buy size', call: 'bobai_liquidity' },
     { ask: 'Is the buyback-and-burn flywheel actually running? Last burn (tx), burns last 7/30 days', call: 'bobai_activity' },
+    { ask: 'Smart-money signals: pending buyback reserve (buy pressure), recent $100+ buys with wallet + tx, burn momentum', call: 'bobai_smart_money' },
     { ask: 'Token basics: contract, name, symbol, decimals, supply, amount burned', call: 'bobai_token_info' },
     { ask: 'How much $BOBAI has been permanently burned', call: 'bobai_burned' },
     { ask: 'Current circulating supply (total minus burned)', call: 'bobai_circulating_supply' },
@@ -417,6 +482,7 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 - https://brainonbnb.com/api/liquidity — reserves, USD liquidity, LP-burned %, price impact per buy size
 - https://brainonbnb.com/api/activity — proof the buyback-and-burn flywheel runs: last burn tx, burns last 7/30 days
 - https://brainonbnb.com/api/nft-drop — earnable NFT reward: live remaining supply per buy-tier/rarity + how to earn one
+- https://brainonbnb.com/api/smart-money — smart-money signals: pending buyback reserve, recent $100+ buys (wallet + tx), burn momentum
 - https://brainonbnb.com/api/token — contract, supply, burned, renounced/verified flags
 - https://brainonbnb.com/api/trade — DEX execution params (router, pair, paths, slippage, FoT methods)
 - https://brainonbnb.com/api/tokenomics — value-accrual mechanics + trust properties
@@ -428,6 +494,7 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 - \`bobai_price\` — live price in USD/BNB + market cap (pair reserves × Chainlink BNB/USD — no off-chain price API)
 - \`bobai_liquidity\` — pool reserves, liquidity in USD, LP-burned % (perma-locked), price impact per buy size
 - \`bobai_activity\` — is the flywheel running? Last burn (BscScan tx), burns last 7/30 days, full audit log
+- \`bobai_smart_money\` — smart-money signals: the tax reserve charging the next buyback (= pending buy pressure), an immutable ledger of recent $100+ buys with buyer wallet + tx (follow them on-chain), burn momentum
 - \`bobai_token_info\` — contract, name, symbol, decimals, total & circulating supply, amount burned
 - \`bobai_burned\` — total $BOBAI permanently burned by the autonomous 24/7 buyback bot
 - \`bobai_circulating_supply\` — total minus burned
@@ -569,6 +636,7 @@ const MCP_TOOLS = [
   { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_activity', description: 'Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log, every entry verifiable on-chain.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_nft_drop', description: 'On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. Live remaining supply per buy-tier and rarity, plus the exact steps to earn one.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_smart_money', description: 'Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (pending buy pressure), an immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx — follow them if you track smart money), and burn momentum. All verifiable, no API key.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
 
 async function runTool(name, args) {
@@ -586,6 +654,7 @@ async function runTool(name, args) {
     case 'bobai_liquidity': return await getLiquidity();
     case 'bobai_activity': return await getActivity();
     case 'bobai_nft_drop': return await getNftDrop();
+    case 'bobai_smart_money': return await getSmartMoney();
     default: throw new Error('Unknown tool: ' + name);
   }
 }
@@ -666,7 +735,7 @@ async function handleMcp(request) {
       return new Response(JSON.stringify(rpcOk(id, {
         protocolVersion: '2025-06-18',
         capabilities: { tools: {}, resources: {}, prompts: {} },
-        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.2.0' },
+        serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.3.0' },
       })), { headers: cors });
     }
     if (method === 'tools/list') return new Response(JSON.stringify(rpcOk(id, { tools: MCP_TOOLS })), { headers: cors });
@@ -717,6 +786,7 @@ const A2A_CARD = {
     { id: 'liquidity', name: 'Liquidity depth', description: 'Pool reserves, USD liquidity, LP-burned % (perma-locked) and price-impact estimates per buy size', tags: ['crypto', 'bsc', 'liquidity', 'market-data'] },
     { id: 'activity', name: 'Burn activity', description: 'Proof the buyback-and-burn flywheel runs: last burn tx, burns last 7/30 days, public audit log', tags: ['crypto', 'bsc', 'burns', 'audit'] },
     { id: 'nft_drop', name: 'NFT buy drop', description: 'Earnable on-chain reward: every $BOBAI buy >= $100 auto-mints a capped-supply collectible NFT to the buyer wallet — live remaining supply per tier/rarity + how to earn one', tags: ['crypto', 'bsc', 'nft', 'reward'] },
+    { id: 'smart_money', name: 'Smart-money signals', description: 'Pending buyback reserve (= predictable buy pressure), immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum — all verifiable', tags: ['crypto', 'bsc', 'smart-money', 'signals', 'market-data'] },
   ],
 };
 
@@ -727,6 +797,7 @@ const REST_TOOLS = {
   '/api/liquidity': 'bobai_liquidity',
   '/api/activity': 'bobai_activity',
   '/api/nft-drop': 'bobai_nft_drop',
+  '/api/smart-money': 'bobai_smart_money',
   '/api/token': 'bobai_token_info',
   '/api/trade': 'bobai_trade_info',
   '/api/tokenomics': 'bobai_tokenomics',

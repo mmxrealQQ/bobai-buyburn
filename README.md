@@ -49,7 +49,7 @@ docker build -t bobai-mcp . && docker run -i bobai-mcp
 
 No clone at hand? [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridges stdio clients to the hosted endpoint: `npx -y mcp-remote https://brainonbnb.com/mcp`
 
-### Tools (13, all read-only)
+### Tools (14, all read-only)
 
 | Tool | What it returns |
 |---|---|
@@ -60,6 +60,7 @@ No clone at hand? [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridg
 | `bobai_burned` | Total $BOBAI permanently burned by the 24/7 buyback bot |
 | `bobai_circulating_supply` | Total supply minus burned |
 | `bobai_activity` | Proof the flywheel runs: last burn tx, 7/30-day burns, total bot runs — every entry verifiable on BscScan |
+| `bobai_smart_money` | Smart-money signals: tax reserve charging the next buyback, whale flows & holdings trends (1d/7d/30d), immutable ledger of recent $100+ buys, burn momentum |
 | `bobai_trade_info` | PancakeSwap V2 router/pair/paths + the critical fee-on-transfer params (3% tax, ≥15% slippage, `SupportingFeeOnTransferTokens`) |
 | `bobai_how_to_buy` | Ready-to-run viem code to buy $BOBAI 0-shot |
 | `bobai_tokenomics` | Neutral, verifiable value-accrual mechanics (tax → buyback → burn) |

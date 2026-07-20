@@ -1,0 +1,30 @@
+[
+  {
+    "label": "final-kickoff-OFFICIAL",
+    "sampled_at": "2026-07-19T19:00:00.000Z",
+    "method": "Reconstructed from historical candles on 2026-07-20: both capture runs failed (GH Action cron fired 19:35 UTC — 35 min late, script aborted; local Task Scheduler never ran, PC off). BTC/BNB = Binance 1s-kline OPEN at exactly 2026-07-19T19:00:00.000Z (same primary source as the app live display). BOBAI = GeckoTerminal pool 0x6eadd4cb786898b34929444988380ed0cc6fd9a6 minute-OHLCV close of last trade candle 10:33 UTC — no trades between 10:33 UTC and kickoff, pool price unchanged through 19:00 UTC (verified: live display still showed the same value on 2026-07-20).",
+    "primary": {
+      "btc_usd": 64420.00,
+      "bnb_usd": 567.47,
+      "bobai_usd": 0.0000553231784899214,
+      "sources": "binance 1s klines (btc/bnb) + geckoterminal pool ohlcv (bobai)"
+    },
+    "verification": {
+      "btc_binance_1m_open": 64420.00,
+      "bnb_binance_1m_open": 567.47,
+      "bobai_last_trade_before_kickoff": "2026-07-19T10:33:00Z close 0.0000553231784899214",
+      "kickoff_epoch_ms": 1784487600000
+    },
+    "used_for": "wc_crypto resolution (btc_diff/bnb_diff/bobai_diff written 2026-07-20, resolved=true) + leaderboard.html FINAL_KICKOFF_PRICES"
+  },
+  {
+    "label": "test-now (pre-final dry-run, kept for audit)",
+    "sampled_at": "2026-07-19T04:36:34.165Z",
+    "primary": {
+      "btc_usd": 64738.43,
+      "bnb_usd": 568.9,
+      "bobai_usd": 0.0000553017257448635,
+      "sources": "binance (btc/bnb) + geckoterminal pool (bobai) — same as app live display"
+    }
+  }
+]

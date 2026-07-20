@@ -1,25 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Auth gate — hide page + redirect anonymous visitors before first paint -->
-  <style>html.wc-gate{visibility:hidden!important}</style>
-  <script>
-    (function(){
-      document.documentElement.classList.add('wc-gate');
-      function hasSession(){
-        try {
-          return Object.keys(localStorage).some(function(k){
-            return k.indexOf('sb-')===0 && k.lastIndexOf('-auth-token')===k.length-11 && !!localStorage.getItem(k);
-          });
-        } catch(e){ return true; }
-      }
-      if (!hasSession()){ window.location.replace('/worldcup/'); return; }
-      document.documentElement.classList.remove('wc-gate');
-      window.addEventListener('pageshow', function(e){
-        if (e.persisted && !hasSession()) window.location.replace('/worldcup/');
-      });
-    })();
-  </script>
+  <!-- Public archive page since 2026-07-20 (like prize-pool + rules) — auth gate removed -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Leaderboard</title>
@@ -233,7 +215,7 @@
     }
   </style>
 </head>
-<body>
+<body data-public="true">
   <div class="bg-grad"></div>
   <div class="page">
     <nav>
@@ -296,7 +278,7 @@
   <script src="./assets/profile.js?v=17"></script>
   <script src="./assets/projection.js?v=4"></script>
   <script src="./assets/avatar.js?v=7"></script>
-  <script src="./assets/nav.js?v=3"></script>
+  <script src="./assets/nav.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>
   <script>
@@ -366,7 +348,10 @@
     let allMatches = null;
     let pool = { total:0, group:0, end:0, crypto:0, price:0 };
     let allGroupData = null;
-    let livePrices = { btc:null, bnb:null, bobai:null };
+    // Crypto pot resolved: prices frozen at the exact Final kickoff (2026-07-19 19:00:00.000 UTC).
+    // BTC/BNB = Binance 1s-candle open @19:00:00.000Z, BOBAI = GeckoTerminal pool price
+    // (last trade 10:33 UTC, unchanged through kickoff) — same sources as the live display.
+    const FINAL_KICKOFF_PRICES = { btc: 64420.00, bnb: 567.47, bobai: 0.0000553231784899214 };
     // walletOnly: when true, non-linked players are hidden across every view (Overall, Groups,
     // Bracket projection, Crypto) and ranks re-number against the linked-only set — this is
     // the literal payout ranking the admin uses at settlement. Default OFF so the leaderboard
@@ -1222,11 +1207,18 @@
         teamsByCountry[s.country_code].push(s);
       });
       const cardCountries = Object.keys(teamsByCountry);
+      // Golden Boot locks when the Final is finished — no more goals can be scored.
+      const finalMatch = data.matches.find(m => m.phase === 'final');
+      const bootLocked = !!(finalMatch && finalMatch.played && finalMatch.goals_home != null);
       const head = bonusStatusBar(
         tab.intro,
-        `Live · ${topGoals} goal${topGoals===1?'':'s'} lead${useLeaders.length>1?` (${useLeaders.length} tied)`:''}`,
-        'live',
-        `updated ${scorers[0].updated_at ? new Date(scorers[0].updated_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'recently'}`
+        bootLocked
+          ? `Resolved · ${cardCountries.map(countryFlag).join(' ')} ${topGoals} goal${topGoals===1?'':'s'}`
+          : `Live · ${topGoals} goal${topGoals===1?'':'s'} lead${useLeaders.length>1?` (${useLeaders.length} tied)`:''}`,
+        bootLocked ? 'locked' : 'live',
+        bootLocked
+          ? 'final whistle blown'
+          : `updated ${scorers[0].updated_at ? new Date(scorers[0].updated_at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'recently'}`
       );
       const teams = computeTeamGoalStats(data.matches);
       const cards = cardCountries.map(code => {
@@ -1239,10 +1231,10 @@
         return bonusCardHtml({
           avaHtml: ava,
           primary: countryName(code),
-          secondaryHtml: playerLines + (elimTeam ? ` · <span class="elim">team eliminated</span>` : ''),
-          eliminated: elimTeam,
+          secondaryHtml: playerLines + (elimTeam && !bootLocked ? ` · <span class="elim">team eliminated</span>` : ''),
+          eliminated: elimTeam && !bootLocked,
           tipperRows: tippersForField(data, 'topscorer_country', code),
-          locked: false,
+          locked: bootLocked,
           isWinner: true,
         });
       }).join('');
@@ -1256,21 +1248,28 @@
       const tab   = BONUS_TABS.find(t => t.key === 'red_cards');
       const total = Number(data.stats?.red_cards_total || 0);
       const current = RED_CARD_BRACKETS.find(b => total >= b.min && total <= b.max);
+      // Locks when the Final is finished — the tournament total is final.
+      const finalMatch = data.matches.find(m => m.phase === 'final');
+      const rcLocked = !!(finalMatch && finalMatch.played && finalMatch.goals_home != null);
       const head = bonusStatusBar(
         tab.intro,
-        `Live · ${total} red card${total===1?'':'s'} so far`,
-        'live',
-        'final resolution at end of Final'
+        rcLocked
+          ? `Resolved · 🟥 ${total} red cards total`
+          : `Live · ${total} red card${total===1?'':'s'} so far`,
+        rcLocked ? 'locked' : 'live',
+        rcLocked ? 'final whistle blown' : 'final resolution at end of Final'
       );
       if (!current) return head + `<div class="bonus-empty">No bracket matches the current red-card total.</div>`;
       const tippers = tippersForField(data, 'red_cards_bracket', current.key);
       return head + bonusCardHtml({
         avaHtml: `<span style="font-size:30px">🟥</span>`,
         primary: current.label,
-        secondaryHtml: `<b>Current bucket</b> · ${total} red card${total===1?'':'s'} so far`,
+        secondaryHtml: rcLocked
+          ? `<b>Final bucket</b> · ${total} red cards in the tournament`
+          : `<b>Current bucket</b> · ${total} red card${total===1?'':'s'} so far`,
         eliminated: false,
         tipperRows: tippers,
-        locked: false,
+        locked: rcLocked,
         isWinner: true,
       });
     }
@@ -1292,18 +1291,14 @@
     }
 
     // ============== CRYPTO ==============
-    async function refreshLivePrices(){
-      try { const r = await window.WC_PROFILE.fetchLivePrices(); if (r) livePrices = r; } catch (e) {}
-    }
-
     async function renderCrypto(coin){
       $('#list').innerHTML = '<div class="empty">Loading…</div>';
-      const [r, matches] = await Promise.all([ window.WC_PROFILE.loadCryptoLeaderboard(coin), loadAllMatches(), refreshLivePrices() ]);
+      const [r, matches] = await Promise.all([ window.WC_PROFILE.loadCryptoLeaderboard(coin), loadAllMatches() ]);
       if (r.error) { $('#list').innerHTML = `<div class="empty">${r.error}</div>`; return; }
       if (!r.rows.length) { $('#list').innerHTML = '<div class="empty">No predictions yet.</div>'; return; }
 
       const priceKey = coin + '_price';
-      const livePx = livePrices[coin];
+      const livePx = FINAL_KICKOFF_PRICES[coin];
       const display = coinDisplay(coin);
 
       // Reveal crypto tips publicly at the final edit lock (BONUS_CRYPTO_LOCK_UTC), same gate as profile page.
@@ -1393,8 +1388,8 @@
 
       const coinImg = `<img class="coin-badge ${coin}" src="${coinIconPath(coin)}" alt="">`;
       const liveBadge = livePx != null
-        ? `<div style="text-align:center;padding:10px;background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#5fffa0">${coinImg}Live ${display}: <b>${fmtCryptoPrice(coin, livePx)}</b> · winner-take-all on the closest guess at Final kickoff</div>`
-        : `<div style="text-align:center;padding:10px;background:rgba(255,180,0,.04);border:1px solid rgba(255,180,0,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#ffc066">${coinImg}Live ${display} price unavailable — showing predictions only</div>`;
+        ? `<div style="text-align:center;padding:10px;background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#5fffa0">${coinImg}Final kickoff ${display}: <b>${fmtCryptoPrice(coin, livePx)}</b> · frozen 19 Jul 2026, 19:00 UTC · winner-take-all on the closest guess</div>`
+        : `<div style="text-align:center;padding:10px;background:rgba(255,180,0,.04);border:1px solid rgba(255,180,0,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:#ffc066">${coinImg}${display} price unavailable — showing predictions only</div>`;
 
       const aboveSection = aboveDisplay.length
         ? `<div class="crypto-divider up">▲ ${display} wins if price rises</div>` +
@@ -1418,21 +1413,10 @@
       if (me) {
         if (meRowData) {
           const meRank = rankByUserId.get(meRowData.user_id);
-          // To flip to #1, live price must cross the midpoint between my tip and the leader's tip
-          // (since leader is currently closer, midpoint lies on "my" side of live price).
-          let flipMoveAbs = null;
-          let flipDirVerb = null; // 'rise' | 'fall'
-          if (livePx != null && isFinite(livePx) && meRowData._tip !== closestRow._tip) {
-            const midpoint = (meRowData._tip + closestRow._tip) / 2;
-            const moveSigned = midpoint - livePx;
-            flipMoveAbs = Math.abs(moveSigned);
-            flipDirVerb = moveSigned >= 0 ? 'rise' : 'fall';
-          }
+          // Prices are frozen at the Final kickoff — the board is final, no flip math anymore.
           const status = meRank === 1
-            ? `<span class="mf-status qualified">✓ Currently closest — would win the ${display} pot</span>`
-            : (flipMoveAbs != null
-                ? `<span class="mf-status need">${display} needs to ${flipDirVerb} ${fmtCryptoPrice(coin, flipMoveAbs)} to flip #1</span>`
-                : `<span class="mf-status">live price unavailable</span>`);
+            ? `<span class="mf-status qualified">✓ Closest guess — wins the ${display} pot</span>`
+            : `<span class="mf-status need">Δ ${fmtCryptoPrice(coin, Math.abs(meRowData._tip - livePx))} off the kickoff price</span>`;
           footer = `<div class="me-footer">
             <div class="mf-left"><span class="mf-rank">#${meRank}</span><span class="mf-status">of ${all.length} prediction${all.length===1?'':'s'}</span></div>
             <div>${status}</div></div>`;
@@ -1586,7 +1570,7 @@
 
     (async ()=>{
       me = await window.WC_AUTH.currentProfile();
-      if (!me) { window.location.href = '/worldcup/'; return; }
+      // Public archive page — anonymous visitors see the full board, `me` stays null.
       await loadPool();
       switchView('overall');
       setInterval(loadPool, 30000);

@@ -1,25 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Auth gate — hide page + redirect anonymous visitors before first paint -->
-  <style>html.wc-gate{visibility:hidden!important}</style>
-  <script>
-    (function(){
-      document.documentElement.classList.add('wc-gate');
-      function hasSession(){
-        try {
-          return Object.keys(localStorage).some(function(k){
-            return k.indexOf('sb-')===0 && k.lastIndexOf('-auth-token')===k.length-11 && !!localStorage.getItem(k);
-          });
-        } catch(e){ return true; }
-      }
-      if (!hasSession()){ window.location.replace('/worldcup/'); return; }
-      document.documentElement.classList.remove('wc-gate');
-      window.addEventListener('pageshow', function(e){
-        if (e.persisted && !hasSession()) window.location.replace('/worldcup/');
-      });
-    })();
-  </script>
+  <!-- Public archive page since 2026-07-20 (like leaderboard/prize-pool/rules) — auth gate removed -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Player</title>
@@ -71,7 +53,7 @@
     .empty-state{padding:30px 14px;text-align:center;color:var(--muted);font-size:13px}
   </style>
 </head>
-<body>
+<body data-public="true">
   <div class="bg-grad"></div>
   <div class="page">
     <nav>
@@ -154,7 +136,7 @@
   <script src="./assets/profile.js?v=17"></script>
   <script src="./assets/projection.js?v=4"></script>
   <script src="./assets/avatar.js?v=7"></script>
-  <script src="./assets/nav.js?v=3"></script>
+  <script src="./assets/nav.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>
   <script>
@@ -365,13 +347,19 @@
       if (error) { pane.innerHTML = '<div class="empty-state">Could not load bonus picks.</div>'; return; }
       if (!data) { pane.innerHTML = '<div class="empty-state">No bonus picks yet.</div>'; return; }
       const cn = code => { const c = findCountry(code); return c ? `${c.flag} ${c.name}` : (code || '—'); };
+      // Final results (resolved 2026-07-20): Champion ES · Most goals FR+ENG (tie, 20 each) ·
+      // Fewest goals PA (0) · Red cards 15-19 · Top scorer FR (Mbappé). Correct picks render green +20.
+      const BONUS_CORRECT = { champion:['ES'], most_goals_team:['FR','ENG'], fewest_goals_team:['PA'], red_cards_bracket:['15-19'], topscorer_country:['FR'] };
+      const hit  = f => !!(data.resolved && BONUS_CORRECT[f].includes(data[f]));
+      const vst  = f => hit(f) ? ' style="color:#5fffa0;font-weight:700"' : '';
+      const chip = f => hit(f) ? ' <span style="color:#5fffa0;font-size:10px;font-weight:700">+20</span>' : '';
       pane.innerHTML = `
         <div class="pick-list">
-          <div class="pick-item"><span class="lbl">Champion</span><span class="val">${cn(data.champion)}</span></div>
-          <div class="pick-item"><span class="lbl">Most goals (team)</span><span class="val">${cn(data.most_goals_team)}</span></div>
-          <div class="pick-item"><span class="lbl">Fewest goals (team)</span><span class="val">${cn(data.fewest_goals_team)}</span></div>
-          <div class="pick-item"><span class="lbl">Red-cards bracket</span><span class="val">${(['<5','5-9','10-14','15-19','>19'].includes(data.red_cards_bracket)) ? data.red_cards_bracket : '—'}</span></div>
-          <div class="pick-item"><span class="lbl">Top scorer (country)</span><span class="val">${cn(data.topscorer_country)}</span></div>
+          <div class="pick-item"><span class="lbl">Champion</span><span class="val"${vst('champion')}>${cn(data.champion)}${chip('champion')}</span></div>
+          <div class="pick-item"><span class="lbl">Most goals (team)</span><span class="val"${vst('most_goals_team')}>${cn(data.most_goals_team)}${chip('most_goals_team')}</span></div>
+          <div class="pick-item"><span class="lbl">Fewest goals (team)</span><span class="val"${vst('fewest_goals_team')}>${cn(data.fewest_goals_team)}${chip('fewest_goals_team')}</span></div>
+          <div class="pick-item"><span class="lbl">Red-cards bracket</span><span class="val"${vst('red_cards_bracket')}>${(['<5','5-9','10-14','15-19','>19'].includes(data.red_cards_bracket)) ? data.red_cards_bracket : '—'}${chip('red_cards_bracket')}</span></div>
+          <div class="pick-item"><span class="lbl">Top scorer (country)</span><span class="val"${vst('topscorer_country')}>${cn(data.topscorer_country)}${chip('topscorer_country')}</span></div>
           ${data.resolved ? `<div class="pick-item"><span class="lbl">Bonus points</span><span class="val" style="color:var(--gold)">${data.points || 0}</span></div>` : ''}
         </div>`;
       if (window.twemoji) try { window.twemoji.parse(pane, { folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' }); } catch(e){}
@@ -420,12 +408,12 @@
 
     (async () => {
       myProfile = await window.WC_AUTH.currentProfile();
-      if (!myProfile) { window.location.href = '/worldcup/'; return; }
+      // Public archive page — anonymous visitors can view any profile, myProfile stays null.
 
       const ok = await loadTarget();
       if (!ok) return;
 
-      isSelf = myProfile.id === target.id;
+      isSelf = !!(myProfile && myProfile.id === target.id);
       renderHeader();
       await loadStats();
       loadProjection();  // async, populates the projected-payout card

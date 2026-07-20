@@ -832,12 +832,13 @@ async function bbdata(){try{const r=await fetch(BURNS.replace('burns.json','boba
     return'$'+n.toFixed(2);
   }
   // WC26 is settled — the BOBAI amount is a frozen archive snapshot (one read),
-  // but the USD equivalent keeps tracking the live on-chain price computed by
-  // token() every 30s (window.__bobaiPx). Stored snapshot price = fallback only.
-  let poolTotal=0,snapshotPrice=0;
+  // but the USD equivalent keeps tracking the live GeckoTerminal price (same
+  // source as the worldcup app, so both pages show the same USD figure).
+  // Fallbacks: on-chain price from token() (window.__bobaiPx) → stored snapshot.
+  let poolTotal=0,snapshotPrice=0,gtPrice=0;
   function render(){
     if(!poolTotal)return;
-    const px=(window.__bobaiPx>0?window.__bobaiPx:snapshotPrice);
+    const px=(gtPrice>0?gtPrice:(window.__bobaiPx>0?window.__bobaiPx:snapshotPrice));
     const tb=document.getElementById('tg-pool-bobai');
     const tu=document.getElementById('tg-pool-usd');
     if(tb)tb.textContent=fmtBobai(poolTotal)+' BOBAI';
@@ -856,7 +857,16 @@ async function bbdata(){try{const r=await fetch(BURNS.replace('burns.json','boba
       render();
     }catch(_){}
   }
-  load();
+  async function loadGt(){
+    try{
+      const r=await fetch('https://api.geckoterminal.com/api/v2/networks/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6');
+      if(!r.ok)return;
+      const j=await r.json();
+      const px=parseFloat(j?.data?.attributes?.base_token_price_usd)||0;
+      if(px>0){gtPrice=px;render()}
+    }catch(_){}
+  }
+  load();loadGt();setInterval(loadGt,60000);
 }();
 
 // === BOBAI LIQ BOOST COUNTDOWN ===

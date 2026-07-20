@@ -220,21 +220,27 @@
                 <div class="val" id="pool-group">0</div>
                 <div class="val-usd" id="pool-group-usd">≈ $0</div>
                 <div class="pct" id="pool-group-pct">paid 1 day after group stage</div>
-                <button id="receipt-btn" class="receipt-btn" style="display:none" type="button" onclick="openReceipt()">
+                <button id="receipt-btn" class="receipt-btn" style="display:none" type="button" onclick="openReceipt('group')">
                   <span class="ic">🧾</span> View Payout Receipt
                 </button>
               </div>
-              <div class="pool-cell">
+              <div class="pool-cell" id="pool-end-cell">
                 <div class="lbl" id="pool-end-lbl">End pool · 30 %</div>
                 <div class="val" id="pool-end">0</div>
                 <div class="val-usd" id="pool-end-usd">≈ $0</div>
-                <div class="pct">paid 1 day after Final</div>
+                <div class="pct" id="pool-end-pct">paid 1 day after Final</div>
+                <button id="receipt-btn-final" class="receipt-btn" style="display:none" type="button" onclick="openReceipt('final')">
+                  <span class="ic">🧾</span> View Payout Receipt
+                </button>
               </div>
-              <div class="pool-cell">
+              <div class="pool-cell" id="pool-crypto-cell">
                 <div class="lbl">Crypto pot · 10 %</div>
                 <div class="val" id="pool-crypto">0</div>
                 <div class="val-usd" id="pool-crypto-usd">≈ $0</div>
-                <div class="pct">paid 1 day after Final</div>
+                <div class="pct" id="pool-crypto-pct">paid 1 day after Final</div>
+                <button id="receipt-btn-final2" class="receipt-btn" style="display:none" type="button" onclick="openReceipt('final')">
+                  <span class="ic">🧾</span> View Payout Receipt
+                </button>
               </div>
             </div>
 
@@ -420,7 +426,7 @@
       </div>
     </main>
 
-    <!-- ===== GROUP POT RECEIPT MODAL ===== -->
+    <!-- ===== PAYOUT RECEIPT MODAL (group + final, content set per pot) ===== -->
     <div class="rc-modal" id="receipt-modal" aria-hidden="true" role="dialog" aria-labelledby="rc-title" onclick="if(event.target===this)closeReceipt()">
       <div class="rc-backdrop" onclick="closeReceipt()"></div>
       <div class="rc-box" role="document">
@@ -459,7 +465,7 @@
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=17"></script>
   <script src="./assets/avatar.js?v=7"></script>
-  <script src="./assets/nav.js?v=3"></script>
+  <script src="./assets/nav.js?v=6"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>
   <script>
@@ -506,6 +512,18 @@
     let liveTotalBobai = 0;
 
     let groupPaidAt = null;
+    let finalPaidAt = null;      // derived from wc_payouts pot=end/crypto rows
+    let payoutRowsCache = null;  // all wc_payouts rows, loaded once per refresh
+
+    async function loadAllPayoutRows(){
+      const r = await window.WC_PROFILE.loadPayouts();
+      if (r.error) return payoutRowsCache || [];
+      payoutRowsCache = r.rows || [];
+      const finalRows = payoutRowsCache.filter(x => x.pot === 'end' || x.pot === 'crypto');
+      const paidTs = finalRows.filter(x => x.tx_hash && x.paid_at).map(x => new Date(x.paid_at).getTime());
+      finalPaidAt = paidTs.length ? new Date(Math.min(...paidTs)).toISOString() : null;
+      return payoutRowsCache;
+    }
 
     async function loadPool(){
       const r = await window.WC_PROFILE.loadPool();
@@ -555,11 +573,33 @@
         btn.style.display = 'none';
       }
 
-      renderPayouts(group, end, crypto, px, !!groupPaidAt);
+      // End-pool + Crypto cells flip to paid once wc_payouts carries confirmed
+      // end/crypto rows (Final payout 2026-07-20).
+      await loadAllPayoutRows();
+      const finalPaid = !!finalPaidAt;
+      const datePillF = finalPaid ? finalPaidAt.slice(0, 10) : null;
+      for (const [cellId, pctId, btnId] of [
+        ['pool-end-cell',    'pool-end-pct',    'receipt-btn-final'],
+        ['pool-crypto-cell', 'pool-crypto-pct', 'receipt-btn-final2'],
+      ]) {
+        const c = $('#' + cellId), pc = $('#' + pctId), b = $('#' + btnId);
+        if (finalPaid) {
+          c.classList.add('paid');
+          pc.innerHTML = `<span class="paid-pill">✅ Paid · ${datePillF}</span>`;
+          b.style.display = '';
+          $('#pool-end-lbl').textContent = 'End pool · 90 % (final snapshot)';
+        } else {
+          c.classList.remove('paid');
+          pc.textContent = 'paid 1 day after Final';
+          b.style.display = 'none';
+        }
+      }
+
+      renderPayouts(group, end, crypto, px, !!groupPaidAt, finalPaid);
     }
 
     // Per-position expected payouts (kept in sync with the leaderboard's POOL_SPLIT)
-    function renderPayouts(group, end, crypto, px, groupPaid){
+    function renderPayouts(group, end, crypto, px, groupPaid, finalPaid){
       const tbody = $('#payout-body');
       const rows = [];
 
@@ -573,26 +613,26 @@
       rows.push({ pot:'group', icon:'🥈', label:'Group 2nd', slots:12, share:0.30, bobai: (group*0.30)/12 });
       rows.push({ pot:'group', icon:'🥉', label:'Best 3rd',  slots:8,  share:0.15, bobai: (group*0.15)/8  });
 
-      rows.push({ section: 'End pool · paid 1 day after Final', sectionPot: 'end' });
-      rows.push({ icon:'🥇', label:'Overall 1st', slots:1, share:0.50, bobai: end*0.50 });
-      rows.push({ icon:'🥈', label:'Overall 2nd', slots:1, share:0.25, bobai: end*0.25 });
-      rows.push({ icon:'🥉', label:'Overall 3rd', slots:1, share:0.15, bobai: end*0.15 });
-      rows.push({ icon:'4️⃣', label:'Overall 4th', slots:1, share:0.10, bobai: end*0.10 });
+      rows.push({ section: finalPaid ? 'End pool · ✅ paid out' : 'End pool · paid 1 day after Final', sectionPot: 'end' });
+      rows.push({ pot:'end', icon:'🥇', label:'Overall 1st', slots:1, share:0.50, bobai: end*0.50 });
+      rows.push({ pot:'end', icon:'🥈', label:'Overall 2nd', slots:1, share:0.25, bobai: end*0.25 });
+      rows.push({ pot:'end', icon:'🥉', label:'Overall 3rd', slots:1, share:0.15, bobai: end*0.15 });
+      rows.push({ pot:'end', icon:'4️⃣', label:'Overall 4th', slots:1, share:0.10, bobai: end*0.10 });
 
-      rows.push({ section: 'Crypto pot · paid 1 day after Final', sectionPot: 'crypto' });
-      rows.push({ icon:'₿',  label:'Closest BTC guess',   slots:1, share:1/3, bobai: crypto/3 });
-      rows.push({ icon:'🟡', label:'Closest BNB guess',   slots:1, share:1/3, bobai: crypto/3 });
-      rows.push({ icon:'🧠', label:'Closest BOBAI guess', slots:1, share:1/3, bobai: crypto/3 });
+      rows.push({ section: finalPaid ? 'Crypto pot · ✅ paid out' : 'Crypto pot · paid 1 day after Final', sectionPot: 'crypto' });
+      rows.push({ pot:'crypto', icon:'₿',  label:'Closest BTC guess',   slots:1, share:1/3, bobai: crypto/3 });
+      rows.push({ pot:'crypto', icon:'🟡', label:'Closest BNB guess',   slots:1, share:1/3, bobai: crypto/3 });
+      rows.push({ pot:'crypto', icon:'🧠', label:'Closest BOBAI guess', slots:1, share:1/3, bobai: crypto/3 });
 
       tbody.innerHTML = rows.map(r => {
         if (r.section) {
-          const cls = (groupPaid && r.sectionPot === 'group') ? 'pot-h paid' : 'pot-h';
-          return `<tr class="${cls}"><td colspan="6">${r.section}</td></tr>`;
+          const paidSection = (groupPaid && r.sectionPot === 'group') || (finalPaid && r.sectionPot !== 'group');
+          return `<tr class="${paidSection ? 'pot-h paid' : 'pot-h'}"><td colspan="6">${r.section}</td></tr>`;
         }
         const slotsLabel = r.slots > 1 ? `× ${r.slots}` : '× 1';
         const pctLabel = (r.share * 100).toFixed(r.share < 0.1 ? 2 : (r.share < 1 ? 1 : 0)) + ' %';
-        const rowCls = (groupPaid && r.pot === 'group') ? 'row paid' : 'row';
-        return `<tr class="${rowCls}">
+        const paidRow = (groupPaid && r.pot === 'group') || (finalPaid && (r.pot === 'end' || r.pot === 'crypto'));
+        return `<tr class="${paidRow ? 'row paid' : 'row'}">
           <td class="rank-icon">${r.icon}</td>
           <td>${r.label}</td>
           <td class="pct-cell">${slotsLabel}</td>
@@ -603,19 +643,20 @@
       }).join('');
     }
 
-    // ─── Receipt Modal ────────────────────────────────────────────
-    let receiptLoaded = false;
+    // ─── Receipt Modal (generic: 'group' = group pot · 'final' = end-pool + crypto) ───
+    let receiptLoadedKind = null;
+    let receiptKind = 'group';
 
-    async function loadReceipt(){
+    async function loadReceipt(kind){
       const body = $('#rc-body');
       try {
-        const r = await window.WC_PROFILE.loadPayouts('group');
-        if (r.error) {
-          body.innerHTML = `<div class="rc-empty">Could not load receipt: ${r.error}</div>`;
-          return;
+        const rows = await loadAllPayoutRows();
+        if (kind === 'final') {
+          renderFinalReceipt(rows.filter(r => r.pot === 'end' || r.pot === 'crypto'));
+        } else {
+          renderReceipt(rows.filter(r => r.pot === 'group'));
         }
-        renderReceipt(r.rows || []);
-        receiptLoaded = true;
+        receiptLoadedKind = kind;
       } catch (e) {
         body.innerHTML = `<div class="rc-empty">Could not load receipt: ${e.message}</div>`;
       }
@@ -714,14 +755,107 @@
       }).join('');
     }
 
+    // ─── Final receipt (End-Pool top-4 + 3 crypto pots, paid 2026-07-20) ──
+    function finalSlotMeta(pos){
+      const M = {
+        end_1:        { ic: '🥇', label: 'Overall 1st · 50 %' },
+        end_2:        { ic: '🥈', label: 'Overall 2nd · 25 %' },
+        end_3:        { ic: '🥉', label: 'Overall 3rd · 15 %' },
+        end_4:        { ic: '4️⃣', label: 'Overall 4th · 10 %' },
+        crypto_btc:   { ic: '₿',  label: 'Closest BTC guess' },
+        crypto_bnb:   { ic: '🟡', label: 'Closest BNB guess' },
+        crypto_bobai: { ic: '🧠', label: 'Closest BOBAI guess' },
+      };
+      return M[pos] || { ic: '·', label: pos };
+    }
+    function renderFinalReceipt(rows){
+      const body = $('#rc-body');
+      if (!rows.length) {
+        body.innerHTML = `<div class="rc-empty">
+          <div style="font-size:32px;margin-bottom:8px">⏳</div>
+          <div style="font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--text);margin-bottom:6px">Payout in progress</div>
+          <div>Transactions will appear here as they confirm on-chain.<br>Refresh to update.</div>
+        </div>`;
+        $('#rc-total-bobai').textContent = '—';
+        $('#rc-total-usd').textContent = '—';
+        $('#rc-total-wallets').textContent = '—';
+        return;
+      }
+      let totalBobai = 0;
+      const wallets = new Set();
+      rows.forEach(r => {
+        totalBobai += Number(r.bobai_amount) || 0;
+        if (r.wallet && Number(r.bobai_amount) > 0) wallets.add(r.wallet.toLowerCase());
+      });
+      $('#rc-total-bobai').textContent = fmtBobai(totalBobai) + ' BOBAI';
+      $('#rc-total-usd').textContent   = fmtUsdOrNa(totalBobai, livePrice);
+      $('#rc-total-wallets').textContent = wallets.size;
+      const earliest = rows.reduce((a, r) => {
+        if (!r.paid_at) return a;
+        const t = new Date(r.paid_at).getTime();
+        return (!a || t < a) ? t : a;
+      }, null);
+      if (earliest) $('#rc-date').textContent = new Date(earliest).toISOString().slice(0, 10);
+
+      const order = ['end_1','end_2','end_3','end_4','crypto_btc','crypto_bnb','crypto_bobai'];
+      const byPos = new Map(rows.map(r => [r.position, r]));
+      const sections = [
+        { title: 'End Pool — Overall Top 4 (50 / 25 / 15 / 10 %)', slots: order.slice(0, 4) },
+        { title: 'Crypto Pots — winner-take-all per coin (frozen at Final kickoff, 19 Jul 19:00 UTC)', slots: order.slice(4) },
+      ];
+      body.innerHTML = sections.map(sec => {
+        const list = sec.slots.map(p => byPos.get(p)).filter(Boolean);
+        const sum = list.reduce((s, r) => s + (Number(r.bobai_amount) || 0), 0);
+        return `<div class="rc-group">
+          <div class="rc-group-h">
+            <span>${sec.title}</span>
+            <span class="right">${fmtBobai(sum)} BOBAI</span>
+          </div>
+          <div class="rc-rows">
+            ${list.map(r => {
+              const meta = finalSlotMeta(r.position);
+              const zero = Number(r.bobai_amount) === 0;
+              const note = r.notes ? `<div class="country" style="color:#ffc066">${escapeHtml(r.notes)}</div>` : '';
+              return `<div class="rc-row">
+                <div class="ic">${meta.ic}</div>
+                <div class="who">
+                  <div class="name">${escapeHtml(r.username || '—')} <span style="color:var(--muted);font-weight:500;font-size:11px">· ${meta.label}</span></div>
+                  <div class="country">${countryFlag(r.country_code)} ${escapeHtml(countryName(r.country_code))}</div>
+                  ${note}
+                </div>
+                <div class="amt">
+                  <div class="b">${fmtBobai(Number(r.bobai_amount))} BOBAI</div>
+                  <span class="u">${r.usd_at_payout != null ? fmtUsd(Number(r.usd_at_payout)) : fmtUsdOrNa(Number(r.bobai_amount), livePrice)}</span>
+                </div>
+                ${r.tx_hash
+                  ? `<span class="tx tx-paid" title="On-chain confirmed. Verify aggregate outflows on the prize wallet (linked in footer).">✓ paid</span>`
+                  : (zero
+                      ? `<span class="tx-pending" style="color:#ffc066;border-color:rgba(255,180,0,.32)">26× cap not reached</span>`
+                      : `<span class="tx-pending">pending</span>`)}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
     function escapeHtml(s){
       return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    async function openReceipt(){
+    async function openReceipt(kind){
+      receiptKind = kind || 'group';
+      // Header copy per pot
+      if (receiptKind === 'final') {
+        $('#rc-title').textContent = 'Final · Payout Receipt';
+        $('#rc-sub').innerHTML = 'End-Pool top 4 + 3 crypto pots · paid <b id="rc-date">—</b>';
+      } else {
+        $('#rc-title').textContent = 'Group Pot · Payout Receipt';
+        $('#rc-sub').innerHTML = '12 groups · 32 winners · paid <b id="rc-date">—</b>';
+      }
       $('#receipt-modal').setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
-      if (!receiptLoaded) await loadReceipt();
+      await loadReceipt(receiptKind);  // always fresh — #rc-date lives inside the rebuilt sub-line
       if (window.twemoji) window.twemoji.parse($('#receipt-modal'));
     }
     function closeReceipt(){
@@ -732,7 +866,7 @@
       if (e.key === 'Escape' && $('#receipt-modal').getAttribute('aria-hidden') === 'false') closeReceipt();
     });
     async function shareReceipt(){
-      const url = location.origin + location.pathname + '?receipt=group';
+      const url = location.origin + location.pathname + '?receipt=' + receiptKind;
       try {
         await navigator.clipboard.writeText(url);
         const b = document.querySelector('.rc-footer .share');
@@ -829,10 +963,10 @@
       setInterval(loadPool, 30000);
       setInterval(loadTxs, 30000);
 
-      // Auto-open the receipt modal if the link was shared with ?receipt=group
-      if (new URLSearchParams(location.search).get('receipt') === 'group' && groupPaidAt) {
-        openReceipt();
-      }
+      // Auto-open the receipt modal if the link was shared with ?receipt=group|final
+      const rq = new URLSearchParams(location.search).get('receipt');
+      if (rq === 'group' && groupPaidAt) openReceipt('group');
+      if (rq === 'final' && finalPaidAt) openReceipt('final');
     })();
   </script>
 </body>

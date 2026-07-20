@@ -279,10 +279,6 @@
     .tg-card{display:block;text-decoration:none;color:inherit;background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(64,64,255,.18);border-radius:var(--radius);padding:0;position:relative;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
     .tg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),rgba(64,64,255,.5),var(--gold),transparent);z-index:2}
     .tg-card:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.4);box-shadow:0 10px 40px -10px rgba(240,185,11,.25)}
-    .tg-banner{position:relative;width:100%;aspect-ratio:766/1149;overflow:hidden;background:rgba(0,0,0,.5)}
-    .tg-banner img{width:100%;height:100%;object-fit:contain;display:block;transition:transform .35s ease;image-rendering:-webkit-optimize-contrast}
-    @media (min-width:720px){.tg-banner{max-width:560px;margin:0 auto}}
-    .tg-card:hover .tg-banner img{transform:scale(1.02)}
     .tg-body{padding:22px 28px 24px;text-align:center;position:relative}
     .tg-eyebrow{font-family:'Space Grotesk',sans-serif;font-size:.62rem;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);font-weight:600;margin-bottom:6px}
     .tg-eyebrow .live{color:var(--green);font-weight:700}
@@ -505,23 +501,6 @@
     <div class="sc fi"><div class="l">Burns</div><div class="v" id="burn-count">--</div></div>
   </div></section>
 
-  <!-- BOBAI Worldcup '26 Tipgame teaser — live prize pool + clickable banner -->
-  <section class="tipgame fi">
-    <a class="tg-card" href="worldcup/" aria-label="Open BOBAI Worldcup '26 Tipgame">
-      <div class="tg-banner">
-        <img src="worldcup-tipgame-banner.jpg?v=5" alt="BOBAI Worldcup '26 — Tip, Predict, Win $BOBAI">
-      </div>
-      <div class="tg-body">
-        <div class="tg-eyebrow"><span class="live">Live</span> Prize Pool &middot; BOBAI Worldcup '26</div>
-        <div class="tg-pool">
-          <div class="pv" id="tg-pool-bobai">--</div>
-          <div class="pu" id="tg-pool-usd">--</div>
-        </div>
-        <div class="tg-cta">Enter the Tipgame <span class="arr">&rarr;</span></div>
-      </div>
-    </a>
-  </section>
-
   <section class="liq-boost fi">
     <div class="lb-card">
       <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost</em></div>
@@ -664,6 +643,21 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- BOBAI Worldcup '26 Tipgame — ARCHIVED (tournament complete, all pots paid 2026-07-20).
+         Moved down from the teaser slot; the page stays live forever as the archive. -->
+    <div class="burns-wrap fi" style="margin-top:24px">
+      <a class="tg-card" href="worldcup/" aria-label="Open the BOBAI Worldcup '26 archive">
+        <div class="tg-body">
+          <div class="tg-eyebrow"><span style="color:var(--green);font-weight:700">&#x2713; Complete</span> &middot; BOBAI Worldcup '26 &middot; Jun 11 &ndash; Jul 19, 2026</div>
+          <div class="tg-pool">
+            <div class="pv" id="tg-pool-bobai">--</div>
+            <div class="pu" id="tg-pool-usd">--</div>
+          </div>
+          <div class="tg-cta">Final prize pool &middot; all pots paid out on-chain &middot; view archive &amp; payout receipts <span class="arr">&rarr;</span></div>
+        </div>
+      </a>
     </div>
 
     <div class="burns-wrap fi" style="margin-top:24px">
@@ -852,7 +846,8 @@ async function bbdata(){try{const r=await fetch(BURNS.replace('burns.json','boba
       if(tu)tu.textContent=price>0?fmtUsd(total*price):'';
     }catch(_){}
   }
-  load();setInterval(load,30000);
+  // WC26 is settled — wc_pool is a frozen archive snapshot, one read is enough.
+  load();
 }();
 
 // === BOBAI LIQ BOOST COUNTDOWN ===

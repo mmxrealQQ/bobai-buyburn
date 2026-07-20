@@ -30,11 +30,25 @@
   function isEligible(r){ return !!(r && r.has_wallet); }
 
   // ============== PRIZE MATH ==============
-  function projectEnd(overallRows, pool, userId, simulateEligible){
+  function projectEnd(overallRows, pool, userId, simulateEligible, finalPayouts){
+    const overallRank = (overallRows.findIndex(r => r.user_id === userId) + 1) || null;
+    // Once the Final payout ran (wc_payouts pot=end rows exist), those
+    // post-cascade amounts are the only truth — incl. 26x cap forfeits (0)
+    // and the proportional redistribution to the uncapped winners.
+    const endRows = (finalPayouts || []).filter(r => r.pot === 'end');
+    if (endRows.length) {
+      const mine = endRows.find(r => r.user_id === userId);
+      if (!mine) return { overallRank, tierRank: null, prize: 0, settled: true };
+      const prize = Number(mine.bobai_amount) || 0;
+      return {
+        overallRank,
+        tierRank: Number(String(mine.position).split('_')[1]) || null,
+        prize, settled: true, paid: !!mine.tx_hash, forfeit: prize === 0,
+      };
+    }
     const rows = simulateEligible ? withSelfAsEligible(overallRows, userId) : overallRows;
     const eligible = rows.filter(isEligible);
     const idx = eligible.findIndex(r => r.user_id === userId);
-    const overallRank = (rows.findIndex(r => r.user_id === userId) + 1) || null;
     if (idx < 0 || idx >= END_TOP_N) {
       return { overallRank, tierRank: null, prize: 0 };
     }
@@ -106,8 +120,25 @@
     });
   }
 
-  function projectCrypto(allCrypto, pool, livePrices, userId, simulateEligible){
+  function projectCrypto(allCrypto, pool, livePrices, userId, simulateEligible, finalPayouts){
     const winnerPrize = (pool.crypto || 0) / 3;
+    // Settled: wc_payouts pot=crypto rows carry the actual winner + amount per coin
+    // (closest wallet-linked guess WITH BOBAI holdings — cap 0 → next closest).
+    const cRows = (finalPayouts || []).filter(r => r.pot === 'crypto');
+    if (cRows.length) {
+      return COINS.map(coin => {
+        const row = cRows.find(r => r.position === 'crypto_' + coin);
+        const picked = (allCrypto[coin] || []).some(r => r.user_id === userId && r[coin + '_price'] != null);
+        const isWinner = !!(row && row.user_id === userId);
+        return {
+          coin, picked, rank: null,
+          totalPicks: (allCrypto[coin] || []).filter(r => r[coin + '_price'] != null).length,
+          livePxAvailable: true, isWinner,
+          prize: isWinner ? (Number(row.bobai_amount) || 0) : 0,
+          settled: true, paid: isWinner && !!row.tx_hash,
+        };
+      });
+    }
     return COINS.map(coin => {
       const priceKey = coin + '_price';
       const livePx = livePrices ? livePrices[coin] : null;
@@ -176,15 +207,21 @@
       price:        parseFloat(p.bobai_price_usd) || 0,
       groupPaidAt:  p.group_paid_at || null,
     };
-    // Once the group pot is paid (group_paid_at set), the actual per-row
-    // post-cascade amounts live in wc_payouts. We overlay those over the
-    // raw shares so the page reflects what each wallet really received
-    // (0 for 0-BOBAI forfeits, +redistributed bonus for everyone else).
+    // Once a pot is paid, the actual per-row post-cascade amounts live in
+    // wc_payouts. We overlay those over the raw shares so the page reflects
+    // what each wallet really received (0 for 0-BOBAI forfeits, +redistributed
+    // bonus for everyone else). One read covers group AND end/crypto (Final).
     let groupPayouts = [];
-    if (pool.groupPaidAt) {
-      const r = await P.loadPayouts('group');
-      if (!r.error) groupPayouts = r.rows || [];
+    let finalPayouts = [];
+    {
+      const r = await P.loadPayouts();
+      if (!r.error) {
+        const all = r.rows || [];
+        groupPayouts = all.filter(x => x.pot === 'group');
+        finalPayouts = all.filter(x => x.pot === 'end' || x.pot === 'crypto');
+      }
     }
+    pool.finalPaidAt = finalPayouts.some(x => x.tx_hash) ? (finalPayouts.find(x => x.paid_at)?.paid_at || null) : null;
     const allCrypto = {};
     allCryptoArr.forEach(c => { allCrypto[c.coin] = c.rows; });
     return {
@@ -195,16 +232,17 @@
       allCrypto,
       live,
       groupPayouts,
+      finalPayouts,
     };
   }
 
   function compute(data, userId, opts){
     opts = opts || {};
     const simulate = opts.simulateEligible !== false;  // default true
-    const { pool, overall, allGroups, allCrypto, live, groupPayouts } = data;
-    const end    = projectEnd(overall, pool, userId, simulate);
+    const { pool, overall, allGroups, allCrypto, live, groupPayouts, finalPayouts } = data;
+    const end    = projectEnd(overall, pool, userId, simulate, finalPayouts);
     const groups = projectGroups(allGroups, pool, userId, simulate, groupPayouts);
-    const crypto = projectCrypto(allCrypto, pool, live, userId, simulate);
+    const crypto = projectCrypto(allCrypto, pool, live, userId, simulate, finalPayouts);
     const totalBobai = end.prize
       + groups.reduce((a, g) => a + g.prize, 0)
       + crypto.reduce((a, c) => a + c.prize, 0);
@@ -295,8 +333,13 @@
     // Overall row
     const ord = n => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : (n + 'th');
     let overallHtml;
-    if (end.tierRank) {
-      overallHtml = line('', tierIcon(end.tierRank), `Overall · End-Pool ${ord(end.tierRank)} of 4`, end.prize);
+    if (end.settled && end.tierRank && end.forfeit) {
+      overallHtml = `<div class="proj-line forfeit">
+        <div class="pl-left"><span class="pl-icon">${tierIcon(end.tierRank)}</span><span class="pl-label">Overall · End-Pool ${ord(end.tierRank)} of 4 <span class="proj-forfeit-pill">holds 0 $BOBAI · forfeited</span></span></div>
+        <div class="pl-right"><div class="pl-prize">0 BOBAI</div><div class="pl-usd">$0</div></div>
+      </div>`;
+    } else if (end.tierRank) {
+      overallHtml = line('', tierIcon(end.tierRank), `Overall · End-Pool ${ord(end.tierRank)} of 4`, end.prize, !!end.paid);
     } else if (end.overallRank) {
       overallHtml = `<div class="proj-line muted"><div class="pl-left"><span class="pl-icon">#${end.overallRank}</span><span class="pl-label">Overall · outside top 4</span></div><div class="pl-right"><div class="pl-prize">—</div><div class="pl-usd">$0</div></div></div>`;
     } else {
@@ -332,10 +375,15 @@
       : `Groups · 12 brackets (55 / 30 / 15 % split)`;
 
     // Crypto: list all 3 coins
+    const cryptoSettled = crypto.some(c => c.settled);
     const cryptoHtml = crypto.map(c => {
       const name = coinName(c.coin);
       if (!c.picked) {
         return `<div class="proj-line muted"><div class="pl-left"><span class="pl-icon">—</span><span class="pl-label">${name} · no pick</span></div><div class="pl-right"><div class="pl-prize">—</div><div class="pl-usd">$0</div></div></div>`;
+      }
+      if (c.settled) {
+        if (c.isWinner) return line('', '🥇', `${name} · closest guess — pot won`, c.prize, !!c.paid);
+        return `<div class="proj-line muted"><div class="pl-left"><span class="pl-icon">—</span><span class="pl-label">${name} · pot settled — not the winner</span></div><div class="pl-right"><div class="pl-prize">—</div><div class="pl-usd">$0</div></div></div>`;
       }
       if (!c.livePxAvailable) {
         return `<div class="proj-line muted"><div class="pl-left"><span class="pl-icon">#${c.rank}</span><span class="pl-label">${name} · live price unavailable</span></div><div class="pl-right"><div class="pl-prize">—</div><div class="pl-usd">$0</div></div></div>`;
@@ -353,17 +401,29 @@
       </div>
     </div>`;
 
-    const walletWarn = !hasWallet
+    const walletWarn = (!hasWallet && !(end.settled && crypto.some(c => c.settled)))
       ? `<div class="proj-warn">⚠ No wallet linked — at current standings the actual payout is <b>$0</b>. <a href="./dashboard.html">Link a wallet</a> to qualify (skip+promote rule).</div>`
       : '';
 
+    const endSettled = !!end.settled;
+    const allSettled = endSettled && cryptoSettled && !!pool.groupPaidAt;
+    const endHeader = endSettled
+      ? `Overall · End-Pool (top 4 · 50 / 25 / 15 / 10 %) <span class="proj-paid-pill">✓ paid</span>`
+      : `Overall · End-Pool (top 4 · 50 / 25 / 15 / 10 %)`;
+    const cryptoHeader = cryptoSettled
+      ? `Crypto · 3 coins (winner-take-all) <span class="proj-paid-pill">✓ paid</span>`
+      : `Crypto · 3 coins (winner-take-all)`;
+    const foot = allSettled
+      ? `Final — all pots settled &amp; paid on-chain. Amounts are the actual on-chain transfers (26× cap cascade applied).`
+      : `Live · standings refresh after each match · this projection assumes current ranks hold to settlement.`;
+    const totalLabel = allSettled ? 'Total payout received' : 'Total projected payout';
     return `
-      <div class="proj-section"><div class="proj-sh">Overall · End-Pool (top 4 · 50 / 25 / 15 / 10 %)</div>${overallHtml}</div>
+      <div class="proj-section"><div class="proj-sh">${endHeader}</div>${overallHtml}</div>
       <div class="proj-section"><div class="proj-sh">${groupsSectionHeader}</div>${groupsHtml}</div>
-      <div class="proj-section"><div class="proj-sh">Crypto · 3 coins (winner-take-all)</div>${cryptoHtml}</div>
-      ${totalHtml}
+      <div class="proj-section"><div class="proj-sh">${cryptoHeader}</div>${cryptoHtml}</div>
+      ${totalHtml.replace('Total projected payout', totalLabel)}
       ${walletWarn}
-      <div class="proj-foot">Live · standings refresh after each match · this projection assumes current ranks hold to settlement.</div>
+      <div class="proj-foot">${foot}</div>
     `;
   }
 
@@ -389,14 +449,17 @@
     const groupPaid = !!pool.groupPaidAt;
     const contribs = [];
     const forfeitGroups = [];
-    if (entry.end && entry.end.prize > 0)        contribs.push({ text: `End ${tierIcon(entry.end.tierRank)}`, paid: false });
+    if (entry.end && entry.end.prize > 0)        contribs.push({ text: `End ${tierIcon(entry.end.tierRank)}`, paid: !!entry.end.paid });
     (entry.groups || []).forEach(g => {
       if (g.prize > 0)        contribs.push({ text: `G${g.letter}`, paid: groupPaid });
       else if (g.forfeit)     forfeitGroups.push(g.letter);
     });
-    (entry.crypto || []).forEach(c => { if (c.prize > 0) contribs.push({ text: coinName(c.coin), paid: false }); });
+    (entry.crypto || []).forEach(c => { if (c.prize > 0) contribs.push({ text: coinName(c.coin), paid: !!c.paid }); });
     // Append forfeit chips (amber) after winning chips so they read as exceptions
     forfeitGroups.forEach(letter => contribs.push({ text: `G${letter}`, forfeit: true }));
+    if (entry.end && entry.end.settled && entry.end.forfeit && entry.end.tierRank) {
+      contribs.push({ text: `End ${tierIcon(entry.end.tierRank)}`, forfeit: true });
+    }
     let chipLine;
     if (contribs.length) {
       chipLine = `<div class="payout-chips">${contribs.map(x => {

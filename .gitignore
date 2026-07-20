@@ -19,3 +19,4 @@ ref1.jpg
 
 # WC payout snapshot — contains username→wallet→balance→rank (privacy)
 wc-payout-snapshot.json
+wc-payout-final-snapshot.json

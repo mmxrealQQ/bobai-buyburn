@@ -134,9 +134,9 @@
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=17"></script>
-  <script src="./assets/projection.js?v=4"></script>
+  <script src="./assets/projection.js?v=5"></script>
   <script src="./assets/avatar.js?v=7"></script>
-  <script src="./assets/nav.js?v=5"></script>
+  <script src="./assets/nav.js?v=6"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>
   <script>
@@ -379,11 +379,19 @@
       if (error) { pane.innerHTML = '<div class="empty-state">Could not load crypto picks.</div>'; return; }
       if (!data) { pane.innerHTML = '<div class="empty-state">No crypto picks yet.</div>'; return; }
       const fmt = (v, dp) => v == null ? '—' : '$' + Number(v).toFixed(dp);
+      // Crypto pots resolved 2026-07-20 against the frozen Final-kickoff prices
+      // (BTC 64420.00 · BNB 567.47 · BOBAI 0.0000553232). Winner-take-all per coin,
+      // closest wallet-linked guess with BOBAI holdings wins (26x cap): BTC _PW (12) ·
+      // BNB prince27 (59) · BOBAI Beso2025 (40) — Havy was closer but holds 0 BOBAI → cap 0 → next closest.
+      const CRYPTO_WINNERS = { btc: 12, bnb: 59, bobai: 40 };
+      const cw   = coin => !!(data.resolved && CRYPTO_WINNERS[coin] === target.id);
+      const cst  = coin => cw(coin) ? ' style="color:#5fffa0;font-weight:700"' : '';
+      const ctag = coin => cw(coin) ? ' <span style="color:#5fffa0;font-size:10px;font-weight:700">🏆 closest — wins the pot</span>' : '';
       pane.innerHTML = `
         <div class="pick-list">
-          <div class="pick-item"><span class="lbl">Bitcoin (BTC)</span><span class="val">${fmt(data.btc_price, 2)}</span></div>
-          <div class="pick-item"><span class="lbl">BNB</span><span class="val">${fmt(data.bnb_price, 4)}</span></div>
-          <div class="pick-item"><span class="lbl">BOBAI</span><span class="val">${fmt(data.bobai_price, 10)}</span></div>
+          <div class="pick-item"><span class="lbl">Bitcoin (BTC)</span><span class="val"${cst('btc')}>${fmt(data.btc_price, 2)}${ctag('btc')}</span></div>
+          <div class="pick-item"><span class="lbl">BNB</span><span class="val"${cst('bnb')}>${fmt(data.bnb_price, 4)}${ctag('bnb')}</span></div>
+          <div class="pick-item"><span class="lbl">BOBAI</span><span class="val"${cst('bobai')}>${fmt(data.bobai_price, 10)}${ctag('bobai')}</span></div>
           ${data.resolved ? `<div class="pick-item"><span class="lbl">Absolute diffs</span><span class="val">${fmt(data.btc_diff,2)} · ${fmt(data.bnb_diff,4)} · ${fmt(data.bobai_diff,10)}</span></div>` : ''}
         </div>`;
     }

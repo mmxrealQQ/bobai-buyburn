@@ -276,9 +276,9 @@
   <script src="./assets/countries.js?v=11"></script>
   <script src="./assets/auth.js?v=13"></script>
   <script src="./assets/profile.js?v=17"></script>
-  <script src="./assets/projection.js?v=4"></script>
+  <script src="./assets/projection.js?v=5"></script>
   <script src="./assets/avatar.js?v=7"></script>
-  <script src="./assets/nav.js?v=5"></script>
+  <script src="./assets/nav.js?v=6"></script>
   <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
   <script src="./assets/twemojify.js?v=2"></script>
   <script>
@@ -516,7 +516,7 @@
       // too little $BOBAI), so the row's share cascades to the other group winners.
       // Shown only after the group pot is paid (opts.forfeit = wc_payouts amount === 0).
       const forfeitPill = opts.forfeit
-        ? ` · <span class="forfeit-pill" title="Wallet didn't meet the 26× holder cap — share cascaded to remaining group winners (rules §5).">didn't reach 26× cap</span>`
+        ? ` · <span class="forfeit-pill" title="Wallet didn't meet the 26× holder cap — share cascaded to the remaining winners / next eligible player (rules §5).">didn't reach 26× cap</span>`
         : '';
       return `<a href="${href}" class="${rowClass(rank, r.user_id, opts.extraClass)}" style="text-decoration:none;color:inherit">
         <div class="rank">${rankLabel(rank)}</div>
@@ -651,6 +651,22 @@
       // so a non-linked leader still doesn't get a share even with the toggle off. The toggle only
       // affects which rows are *shown* — and when shown, ranks re-number to match payout positions.
       const shares = computeEndPoolShares(r.rows);
+      // Settled overlay (Final paid 2026-07-20): wc_payouts pot=end amounts are the
+      // only truth — incl. Dgn's 26×-cap forfeit (0) and the proportional cascade
+      // bonus on the remaining three. Same pattern as the settled groups.
+      const endForfeits = new Set();
+      let endPaid = false;
+      {
+        const pr = await window.WC_PROFILE.loadPayouts('end');
+        if (!pr.error && (pr.rows || []).length) {
+          endPaid = true;
+          shares.clear();
+          for (const row of pr.rows) {
+            shares.set(row.user_id, Number(row.bobai_amount) || 0);
+            if (Number(row.bobai_amount) === 0) endForfeits.add(row.user_id);
+          }
+        }
+      }
       const rows = applyWalletFilter(r.rows);
       if (!rows.length) { $('#list').innerHTML = '<div class="empty">No wallet-linked players yet — toggle "All players" to see the full leaderboard.</div>'; return; }
       const html = rows.map((row, i) => userRow(row, i+1, {
@@ -659,6 +675,8 @@
         prizeBobai: shares.get(row.user_id) || 0,
         contextPot: pool.end,
         medalRank: END_TOP_N,
+        extraClass: endPaid ? (endForfeits.has(row.user_id) ? 'forfeit' : ((shares.get(row.user_id) || 0) > 0 ? 'paid' : '')) : '',
+        forfeit: endForfeits.has(row.user_id),
       })).join('');
       const scrollCls = rows.length > 10 ? 'list scroll-cap' : 'list';
       const myIdx = me ? rows.findIndex(r0 => r0.user_id === me.id) : -1;
@@ -1328,20 +1346,12 @@
           if (d < bestDiff) { bestDiff = d; closestIdx = i; }
         });
       }
-      // Payout winner = closest eligible (skip+promote)
-      let payoutWinnerId = null;
-      const eligibleAll = all.filter(isEligible);
-      if (eligibleAll.length) {
-        if (livePx != null && isFinite(livePx)) {
-          let bestDiff = Infinity;
-          eligibleAll.forEach(row => {
-            const d = Math.abs(row._tip - livePx);
-            if (d < bestDiff) { bestDiff = d; payoutWinnerId = row.user_id; }
-          });
-        } else {
-          payoutWinnerId = eligibleAll[0].user_id;
-        }
-      }
+      // Payout winner — FINAL (2026-07-20): closest wallet-linked guess WITH BOBAI
+      // holdings (26x cap: zero balance → cap 0 → next closest). BTC _PW · BNB prince27 ·
+      // BOBAI Beso2025 (Havy was closest but holds 0 BOBAI → forfeits per cap rule).
+      const PAYOUT_WINNERS = { btc: 12, bnb: 59, bobai: 40 };
+      const CRYPTO_FORFEITS = { bobai: 46 };  // Havy — closest guess, 0 BOBAI → cap 0 → forfeited
+      const payoutWinnerId = PAYOUT_WINNERS[coin] ?? null;
       // Rank by absolute distance to live (closest = #1)
       const rankByUserId = new Map();
       if (livePx != null && isFinite(livePx)) {
@@ -1376,13 +1386,19 @@
         }
         // Prize % (33% of crypto pot) is public — derives from rank, which is also public.
         // Only the actual tip price stays hidden until first-match kickoff.
+        // Settled state: pot winner renders green "✓ paid"; a closer guess that
+        // forfeited on the 26× cap (0 BOBAI holdings) renders the amber cap row —
+        // same visual language as the settled groups.
+        const isWinner = row.user_id === payoutWinnerId;
+        const isForfeit = CRYPTO_FORFEITS[coin] === row.user_id;
         return userRow(row, rank, {
           ptsLabel: '',
           ptsValue,
           ptsClass: 'diff',
-          prizeBobai: (row.user_id === payoutWinnerId) ? winnerPrize : 0,
+          prizeBobai: isWinner ? winnerPrize : 0,
           contextPot: pool.crypto,
-          extraClass: isClosest ? 'closest' : '',
+          extraClass: isForfeit ? 'forfeit' : (isWinner ? 'paid' : (isClosest ? 'closest' : '')),
+          forfeit: isForfeit,
         });
       }
 

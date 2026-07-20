@@ -61,12 +61,22 @@
             if (userEl) {
               userEl.innerHTML = '<a href="/worldcup/">Sign in</a> · <a href="/worldcup/">Register</a>';
             }
+            // Anonymous visitor: gold-frame the tabs that are actually open to the
+            // public (archive pages) so it's obvious they're clickable.
+            const st = document.createElement('style');
+            st.textContent = '.tabbar a.pub-open{border:1px solid rgba(240,185,11,.55);border-radius:8px;box-shadow:0 0 6px rgba(240,185,11,.15)}';
+            document.head.appendChild(st);
+            ['leaderboard','prize-pool','rules'].forEach(t => {
+              document.querySelectorAll('.tabbar a[data-tab="' + t + '"]').forEach(a => a.classList.add('pub-open'));
+            });
             return;
           }
           window.location.href = '/worldcup/';
           return;
         }
-        me.textContent = p.username;
+        // Username doubles as the "my profile" link → personal dashboard
+        // (usernames are validated [a-zA-Z0-9_], safe to inline).
+        me.innerHTML = '<a href="/worldcup/app/dashboard.html" title="Your dashboard" style="color:inherit;text-decoration:none">' + p.username + '</a>';
       } catch (e) { /* swallow — page-local auth code will handle errors */ }
     })();
   }

@@ -1064,6 +1064,15 @@ function computePots(total, now){
 }
 
 async function syncPool(env){
+  // FINAL FREEZE (2026-07-20): end-pool + crypto pots are paid out on-chain.
+  // wc_pool now holds the frozen final snapshot (total 8.94M / group 3.47M /
+  // end 4.92M / crypto 547K) as the permanent archive display. The prize wallet
+  // is empty, so the old 90/10 live-balance split would zero the pots — never
+  // write wc_pool again.
+  const paidCheck = await sbReq(env, 'GET', 'wc_payouts?pot=eq.end&tx_hash=not.is.null&select=id&limit=1');
+  if (Array.isArray(paidCheck.body) && paidCheck.body.length) {
+    return { frozen: true, reason: 'final payout complete — wc_pool is a frozen archive' };
+  }
   const wallet = await readBobaiBalance(PRIZE_WALLET);
   const price  = await fetchBobaiPriceUsd();
 

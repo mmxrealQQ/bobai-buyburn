@@ -52,6 +52,13 @@
     .row.forfeit::after{content:'26× cap';position:absolute;top:6px;right:8px;font-family:'Space Grotesk';font-size:9px;letter-spacing:.8px;color:#ffc066;background:rgba(255,180,0,.14);border:1px solid rgba(255,180,0,.32);padding:1px 6px;border-radius:4px;font-weight:700;text-transform:uppercase;pointer-events:none}
     .row.forfeit .prize-cell .pz-pct,.row.forfeit .prize-cell .pz-bobai,.row.forfeit .prize-cell .pz-usd{color:rgba(255,192,102,.7)}
     .forfeit-pill{display:inline-block;margin-left:5px;padding:1px 7px;border-radius:5px;background:rgba(255,180,0,.12);border:1px solid rgba(255,180,0,.32);color:#ffc066;font-family:'Space Grotesk';font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;cursor:help}
+    /* paid-inline: same green settled look as .row.paid but WITHOUT the absolute
+       top-right ::after badge — used on crypto rows where that badge would sit
+       behind the tip-price column. The ✓ paid pill renders inline next to the name. */
+    .row.paid-inline{background:linear-gradient(90deg,rgba(0,230,118,.10),rgba(0,230,118,.03));border-color:rgba(0,230,118,.42)}
+    .row.forfeit-inline{background:linear-gradient(90deg,rgba(255,180,0,.07),rgba(0,0,0,.25));border-color:rgba(255,180,0,.32);opacity:.85}
+    .row.paid-inline.me{border-color:rgba(0,230,118,.55);background:linear-gradient(90deg,rgba(0,230,118,.16),rgba(240,185,11,.04))}
+    .paid-pill-inline{display:inline-block;margin-left:5px;padding:1px 7px;border-radius:5px;background:rgba(0,230,118,.14);border:1px solid rgba(0,230,118,.3);color:#7fffb0;font-family:'Space Grotesk';font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
 
     .rank{font-family:'Space Grotesk';font-weight:700;font-size:14px;color:var(--muted);text-align:center}
     .row.top1 .rank{color:var(--gold);font-size:18px}
@@ -518,12 +525,13 @@
       const forfeitPill = opts.forfeit
         ? ` · <span class="forfeit-pill" title="Wallet didn't meet the 26× holder cap — share cascaded to the remaining winners / next eligible player (rules §5).">didn't reach 26× cap</span>`
         : '';
+      const paidPill = opts.paidPill ? ` · <span class="paid-pill-inline">✓ paid</span>` : '';
       return `<a href="${href}" class="${rowClass(rank, r.user_id, opts.extraClass)}" style="text-decoration:none;color:inherit">
         <div class="rank">${rankLabel(rank)}</div>
         <div class="ava-sm">${ava}</div>
         <div class="uinfo">
           <div class="uname"><span class="uname-text">${escapeHtml(r.username)}</span>${ball}</div>
-          <div class="umeta">${country}${tiePill}${forfeitPill}</div>
+          <div class="umeta">${country}${tiePill}${forfeitPill}${paidPill}</div>
         </div>
         ${prize}
         ${pts}
@@ -1397,8 +1405,9 @@
           ptsClass: 'diff',
           prizeBobai: isWinner ? winnerPrize : 0,
           contextPot: pool.crypto,
-          extraClass: isForfeit ? 'forfeit' : (isWinner ? 'paid' : (isClosest ? 'closest' : '')),
+          extraClass: isForfeit ? 'forfeit-inline' : (isWinner ? 'paid-inline' : (isClosest ? 'closest' : '')),
           forfeit: isForfeit,
+          paidPill: isWinner,
         });
       }
 

@@ -20,3 +20,13 @@ ref1.jpg
 # WC payout snapshot — contains username→wallet→balance→rank (privacy)
 wc-payout-snapshot.json
 wc-payout-final-snapshot.json
+
+# internal notes & drafts (local only)
+x-posts/
+.claude/
+databrain/
+tg-update-*.txt
+bscscan-nft-submission.txt
+element-collection-submission.txt
+bob-buyback.sh
+deploy-bobai.sh

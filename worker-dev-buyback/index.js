@@ -1,20 +1,166 @@
-// Cloudflare Worker — triggers Dev Buyback bot every 10 hours
-// Dispatches GitHub Actions workflow for BOB + BOBAI buying
+// Dev Buyback Bot — Cloudflare Worker
+// Runs natively on a Cloudflare Cron Trigger every hour (no GitHub dependency):
+// 1. Checks creator wallet BNB balance
+// 2. Reserves gas (0.003 BNB)
+// 3. Splits: 84% personal (Binance), 4% builder #1-#4
+// Log goes to Workers KV (dev-buyback-log.json), served via logs.brainonbnb.com
+
+import { createPublicClient, createWalletClient, http, formatEther, parseEther, parseAbi } from 'viem';
+import { bsc } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
+
+const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+const WBNB_ABI = parseAbi([
+  'function balanceOf(address) view returns (uint256)',
+  'function withdraw(uint256 wad)',
+]);
+
+const PERSONAL_WALLET = '0x5c82D2F12EE6AC09297784f94ebF9331277Bdc3C';
+const BUILDER_1 = '0xede0e2bf714b50f131869c6a39abc5bed1e6ce47';
+const BUILDER_2 = '0x7abada2b8430eee0acdce7ce9fc3f83bddb609b6';
+const BUILDER_3 = '0x4fa13c52724bcadffefef91676cc429fa6216a48';
+const BUILDER_4 = '0x257bA6d47Ae316526448b57d64e4fd18B3Fd4221';
+const GAS_RESERVE = parseEther('0.003');
+const MIN_BNB = parseEther('0.001');
+
+async function runBot(env) {
+  const privateKey = env.PRIVATE_KEY;
+  if (!privateKey) {
+    console.log('[ERROR] No PRIVATE_KEY set');
+    return;
+  }
+
+  const rpcUrl = env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/';
+  const account = privateKeyToAccount(privateKey);
+
+  console.log('============================================');
+  console.log(`[${new Date().toISOString()}] Dev Buyback Bot (CF Worker)`);
+  console.log(`Wallet: ${account.address}`);
+  console.log(`Gas Reserve: ${formatEther(GAS_RESERVE)} BNB`);
+  console.log(`Strategy: 84% -> personal (Binance), 4% -> builder #1-#4`);
+  console.log('============================================');
+
+  const publicClient = createPublicClient({
+    chain: bsc,
+    transport: http(rpcUrl),
+  });
+
+  const walletClient = createWalletClient({
+    account,
+    chain: bsc,
+    transport: http(rpcUrl),
+  });
+
+  // Step 0: Unwrap any WBNB to native BNB
+  const wbnbBalance = await publicClient.readContract({
+    address: WBNB,
+    abi: WBNB_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  });
+  if (wbnbBalance > 0n) {
+    console.log(`Found ${formatEther(wbnbBalance)} WBNB — unwrapping to native BNB...`);
+    try {
+      const unwrapHash = await walletClient.writeContract({
+        address: WBNB,
+        abi: WBNB_ABI,
+        functionName: 'withdraw',
+        args: [wbnbBalance],
+        gas: 50000n,
+      });
+      console.log(`  Unwrap TX: https://bscscan.com/tx/${unwrapHash}`);
+      await publicClient.waitForTransactionReceipt({ hash: unwrapHash });
+      console.log(`  Unwrapped ${formatEther(wbnbBalance)} WBNB → BNB`);
+    } catch (e) {
+      console.log(`  Unwrap failed: ${e.message}`);
+    }
+  }
+
+  // Step 1: Check BNB balance
+  const balance = await publicClient.getBalance({ address: account.address });
+  console.log(`BNB Balance: ${formatEther(balance)} BNB`);
+
+  if (balance <= GAS_RESERVE + MIN_BNB) {
+    console.log('Balance too low. Waiting for more BNB...');
+    return;
+  }
+
+  const available = balance - GAS_RESERVE;
+  console.log(`Available after gas reserve: ${formatEther(available)} BNB\n`);
+
+  // Split: 84% personal, 4% each builder #1-#4
+  const builder1Amount = (available * 4n) / 100n;
+  const builder2Amount = (available * 4n) / 100n;
+  const builder3Amount = (available * 4n) / 100n;
+  const builder4Amount = (available * 4n) / 100n;
+  const personalAmount = available - builder1Amount - builder2Amount - builder3Amount - builder4Amount;
+
+  const sends = [
+    { label: 'Binance Wallet (84%)', to: PERSONAL_WALLET, value: personalAmount },
+    { label: 'Builder #1 (4%)', to: BUILDER_1, value: builder1Amount },
+    { label: 'Builder #2 (4%)', to: BUILDER_2, value: builder2Amount },
+    { label: 'Builder #3 (4%)', to: BUILDER_3, value: builder3Amount },
+    { label: 'Builder #4 (4%)', to: BUILDER_4, value: builder4Amount },
+  ];
+
+  let personalTxHash;
+  for (const s of sends) {
+    console.log(`--- Sending ${formatEther(s.value)} BNB to ${s.label} ---`);
+    try {
+      const hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
+      console.log(`  TX: https://bscscan.com/tx/${hash}`);
+      await publicClient.waitForTransactionReceipt({ hash });
+      console.log('  Payment sent!');
+      if (s.to === PERSONAL_WALLET) personalTxHash = hash;
+    } catch (e) {
+      console.log(`  Payment failed: ${e.message}`);
+      return;
+    }
+  }
+
+  // Step 3: Log to KV
+  try {
+    const logKey = 'dev-buyback-log.json';
+    let logs = [];
+    const cur = await env.LOGS.get(logKey);
+    if (cur) logs = JSON.parse(cur);
+    logs.push({
+      time: new Date().toISOString(),
+      balanceBnb: formatEther(balance),
+      availableBnb: formatEther(available),
+      personalBnb: formatEther(personalAmount),
+      builder1Bnb: formatEther(builder1Amount),
+      builder2Bnb: formatEther(builder2Amount),
+      builder3Bnb: formatEther(builder3Amount),
+      builder4Bnb: formatEther(builder4Amount),
+      personalTx: personalTxHash,
+    });
+    await env.LOGS.put(logKey, JSON.stringify(logs, null, 2));
+    console.log(`\nLogged to KV: ${logKey}`);
+  } catch (e) {
+    console.log('Failed to log:', e.message);
+  }
+
+  console.log('\n============================================');
+  console.log(`[${new Date().toISOString()}] DEV BUYBACK COMPLETE`);
+  console.log(`Sent: ${formatEther(personalAmount)} BNB Binance / ${formatEther(builder1Amount)} #1 / ${formatEther(builder2Amount)} #2 / ${formatEther(builder3Amount)} #3 / ${formatEther(builder4Amount)} #4`);
+  console.log('============================================');
+}
 
 export default {
-  async scheduled(event, env) {
-    const res = await fetch(
-      'https://api.github.com/repos/mmxrealQQ/bobai-buyburn/actions/workflows/dev-buyback.yml/dispatches',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.GH_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Dev-Buyback-Cron-Worker',
-        },
-        body: JSON.stringify({ ref: 'main' }),
-      }
-    );
-    console.log(`Triggered dev-buyback workflow: HTTP ${res.status}`);
+  async scheduled(event, env, ctx) {
+    // Overlap guard (TTL auto-clears after 8 min; runs are hourly).
+    const lock = await env.LOGS.get('lock-dev');
+    if (lock) {
+      console.log(`Previous run still active (started ${lock}) — skipping this tick.`);
+      return;
+    }
+    await env.LOGS.put('lock-dev', new Date().toISOString(), { expirationTtl: 480 });
+    try {
+      await runBot(env);
+    } finally {
+      await env.LOGS.put('heartbeat-dev', new Date().toISOString());
+      await env.LOGS.delete('lock-dev');
+    }
   },
 };

@@ -113,11 +113,12 @@ Plus 2 guided prompts and MCP resources (llms.txt, agent card). Every read tool 
 | Path | What it is |
 |---|---|
 | `dashboard/` | brainonbnb.com (Cloudflare Pages) incl. the MCP server (`_worker.js`) |
-| `buyback-bot.js` | Autonomous BOB buyback-and-burn bot (runs 24/7 via GitHub Actions) |
-| `dev-buyback.js` | Creator-fee buyback bot |
+| `worker/` | Autonomous BOB buyback-and-burn bot — runs 24/7 as a Cloudflare Worker (cron every 10 min) |
+| `worker-dev-buyback/` | Creator-fee buyback bot (Cloudflare Worker, hourly cron) |
+| `buyback-bot.js`, `dev-buyback.js` | Same bots as local Node scripts (manual fallback) |
 | `add-liquidity-safe.js` | Manual liquidity add + LP burn to the dead address |
-| `worker-*/` | Cloudflare Workers (Telegram bot, NFT mint/metadata, World Cup game, …) |
-| `burns.json`, `*-log.json` | Public audit logs — every burn/buyback verifiable on-chain |
+| `worker-*/` | More Cloudflare Workers (Telegram bot, NFT mint/metadata, World Cup game, …) |
+| `burns.json`, `*-log.json` | Public audit logs — live at [logs.brainonbnb.com/logs/burns.json](https://logs.brainonbnb.com/logs/burns.json), every burn verifiable on-chain |
 
 ## Trust properties
 

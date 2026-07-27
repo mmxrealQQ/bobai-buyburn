@@ -197,10 +197,16 @@ async function getLiquidity() {
 }
 
 // Live proof the buyback-and-burn flywheel runs — from the bot's public audit
-// log (burns.json in the open-source repo). Every burn tx is on-chain.
+// log (burns.json, written to KV by the CF-Worker bot, open-source in the repo).
+let ACTIVITY_ENV = null; // set per-request in fetch(); needed for the ASSETS fallback below
 async function getActivity() {
-  const r = await fetch('https://raw.githubusercontent.com/mmxrealQQ/bobai-buyburn/main/burns.json', { cf: { cacheTtl: 300, cacheEverything: true } });
-  if (!r.ok) throw new Error('burn log unavailable (HTTP ' + r.status + ')');
+  // Primary: live log served by the bot worker (custom domain — worker-to-worker fetchable)
+  let r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 60 } }).catch(() => null);
+  // Fallback 1: GitHub copy (stale once the CF-Worker bots took over 2026-07-27, but better than nothing)
+  if (!r || !r.ok) r = await fetch('https://raw.githubusercontent.com/mmxrealQQ/bobai-buyburn/main/burns.json', { cf: { cacheTtl: 300, cacheEverything: true } }).catch(() => null);
+  // Fallback 2: same-origin static copy bundled with the deploy
+  if ((!r || !r.ok) && ACTIVITY_ENV) r = await ACTIVITY_ENV.ASSETS.fetch('https://brainonbnb.com/burns.json').catch(() => null);
+  if (!r || !r.ok) throw new Error('burn log unavailable (HTTP ' + (r ? r.status : 'fetch failed') + ')');
   const runs = await r.json();
   const now = Date.now();
   const within = (days) => runs.filter(e => now - Date.parse(e.time) < days * 86400e3);
@@ -835,6 +841,7 @@ const REST_TOOLS = {
 
 export default {
   async fetch(request, env) {
+    ACTIVITY_ENV = env;
     const url = new URL(request.url);
 
     if (url.pathname === '/mcp') return handleMcp(request);

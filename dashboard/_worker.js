@@ -846,6 +846,26 @@ export default {
 
     if (url.pathname === '/mcp') return handleMcp(request);
 
+    // Same-origin proxy for the bot-worker log store (KV via logs.brainonbnb.com).
+    // Keeps the page independent of the visitor's DNS/CORS for the logs subdomain.
+    const logMatch = url.pathname.match(/^\/logs\/([a-z0-9-]+\.json)$/);
+    if (logMatch) {
+      const upstream = await fetch('https://logs.brainonbnb.com/logs/' + logMatch[1]).catch(() => null);
+      if (upstream && upstream.ok) {
+        return new Response(upstream.body, {
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      // Fallback: static copy bundled with the deploy
+      const fallback = await env.ASSETS.fetch('https://brainonbnb.com/' + logMatch[1]).catch(() => null);
+      if (fallback && fallback.ok) {
+        return new Response(fallback.body, {
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      return new Response('[]', { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+
     if (REST_TOOLS[url.pathname] || url.pathname === '/api/wallet') {
       const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'Access-Control-Allow-Origin': '*' };
       try {

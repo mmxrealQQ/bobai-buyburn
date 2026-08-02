@@ -296,17 +296,6 @@
       .tg-pool .pu{font-size:.95rem}
     }
 
-    .liq-boost{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
-    .lb-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(0,230,118,.12);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
-    .lb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.4),var(--gold),rgba(0,230,118,.4),transparent)}
-    .lb-card::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,230,118,.03),transparent 70%);pointer-events:none}
-    .lb-title{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
-    .lb-title em{font-style:normal;background:linear-gradient(135deg,var(--green),var(--gold));background-clip:text;-webkit-background-clip:text;color:transparent}
-    .lb-sub{text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:20px}
-    .lb-countdown{display:flex;justify-content:center;gap:16px;margin-bottom:24px}
-    .lb-cd-unit{text-align:center}
-    .lb-cd-val{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--green),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1}
-    .lb-cd-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:4px}
     .lb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
     .lb-stat{background:rgba(0,230,118,.03);border:1px solid rgba(0,230,118,.08);border-radius:10px;padding:16px 12px;text-align:center}
     .lb-stat .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
@@ -432,13 +421,11 @@
     /* === POLISH LAYER === */
     @keyframes breathe{0%,100%{box-shadow:0 0 60px rgba(240,185,11,.18),0 0 120px rgba(240,185,11,.08)}50%{box-shadow:0 0 80px rgba(240,185,11,.32),0 0 160px rgba(240,185,11,.14)}}
     @keyframes sepPulse{0%,100%{transform:scale(1);box-shadow:0 0 4px rgba(240,185,11,.3)}50%{transform:scale(1.6);box-shadow:0 0 14px rgba(240,185,11,.6)}}
-    @keyframes lbBorder{0%,100%{border-color:rgba(0,230,118,.12)}50%{border-color:rgba(0,230,118,.3)}}
     @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
     @keyframes haloFloat{0%,100%{opacity:.5;transform:translate(0,0) scale(1)}50%{opacity:.85;transform:translate(8px,-6px) scale(1.05)}}
 
     .about-logo img{animation:breathe 4.8s ease-in-out infinite}
     .sep-d{animation:sepPulse 3.2s ease-in-out infinite;opacity:.55}
-    .lb-card{animation:lbBorder 4.5s ease-in-out infinite}
 
     .sc{transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .25s,box-shadow .35s}
     .sc:hover{transform:translateY(-3px) scale(1.015);border-color:rgba(240,185,11,.22);box-shadow:0 12px 40px rgba(240,185,11,.09)}
@@ -500,29 +487,6 @@
     <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v" id="total-bobai-burned">--</div></div>
     <div class="sc fi"><div class="l">Burns</div><div class="v" id="burn-count">--</div></div>
   </div></section>
-
-  <section class="liq-boost fi">
-    <div class="lb-card">
-      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost</em></div>
-      <div class="lb-sub">0.75% of every trade permanently added to BOBAI/BNB liquidity pool &middot; <span style="color:var(--gold)">boosted until Aug 1</span></div>
-      <div class="lb-countdown">
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb-days">--</div><div class="lb-cd-lbl">Days</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
-      </div>
-      <div class="lb-stats">
-        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb-count">0</div></div>
-        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb-bnb">0.0000</div></div>
-        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb-lp">0</div></div>
-      </div>
-      <div class="lb-table" style="margin-top:20px">
-        <div class="txw">
-          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
-          <tbody id="bb-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Starts June 1, 2026, 00:00 UTC</td></tr></tbody></table>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
 
@@ -642,6 +606,35 @@
             <tbody id="tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading burns...</td></tr></tbody></table>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- BOBAI Permalocked Liquidity Boost — ARCHIVED (campaign ended 2026-08-01 23:59 UTC,
+         tax back to standard 1/1/1). Same collapsible shape as the $BOB liq boost archive below. -->
+    <div class="burns-wrap fi" style="margin-top:24px">
+      <div class="bw-card" style="padding:0">
+        <details class="lb-archive">
+          <summary>
+            <div class="lb-arch-head">
+              <div class="lb-arch-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost</em></div>
+              <div class="lb-arch-meta">Jun 1 &ndash; Aug 1, 2026 &middot; <span style="color:var(--green)">&#x2713; Campaign Complete</span></div>
+            </div>
+            <div class="lb-arch-arr">&#x25BE;</div>
+          </summary>
+          <div class="lb-arch-body">
+            <div class="lb-stats">
+              <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb-count">0</div></div>
+              <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb-bnb">0.0000</div></div>
+              <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb-lp">0</div></div>
+            </div>
+            <div class="lb-table" style="margin-top:20px">
+              <div class="txw">
+                <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+                <tbody id="bb-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -871,29 +864,6 @@ async function bbdata(){try{const entries=await gj('bobai-liq-log.json');if(!ent
   load();loadGt();setInterval(loadGt,60000);
 }();
 
-// === BOBAI LIQ BOOST COUNTDOWN ===
-!function(){
-  const START=new Date('2026-06-01T00:00:00Z').getTime();
-  const END=new Date('2026-08-01T23:59:59Z').getTime();
-  function tick(){
-    const now=Date.now();
-    let diff;
-    if(now<START){diff=END-START}
-    else if(now>=END){diff=0}
-    else{diff=END-now}
-    const d=Math.floor(diff/86400000);
-    const h=Math.floor((diff%86400000)/3600000);
-    const m=Math.floor((diff%3600000)/60000);
-    const dEl=document.getElementById('bb-days');
-    const hEl=document.getElementById('bb-hours');
-    const mEl=document.getElementById('bb-mins');
-    if(dEl)dEl.textContent=d;
-    if(hEl)hEl.textContent=h;
-    if(mEl)mEl.textContent=m;
-  }
-  tick();setInterval(tick,60000);
-}();
-
 // === TAX ALLOCATION SCHEDULE — phase-aware highlight + inline notes ===
 !function(){
   const phases=[
@@ -905,7 +875,30 @@ async function bbdata(){try{const entries=await gj('bobai-liq-log.json');if(!ent
     {id:'sunshine',      start:new Date('2026-09-17T00:01:00Z').getTime(), end:new Date('2026-11-20T00:01:00Z').getTime(), creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'},
     {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'}
   ];
-  let didScroll=false;
+  // Size the scroll window to exactly: 1 past phase (context) + active + everything upcoming.
+  // Capped at MAX_VISIBLE so long schedules stay compact; older phases remain reachable by scrolling.
+  // Measured from live row heights so it also works on mobile, where rows wrap to multiple lines.
+  const MAX_VISIBLE=5, ROW_GAP=8;
+  let scrolledFor=null;
+  function fitSchedule(){
+    const cont=document.querySelector('.ts-rows');
+    if(!cont)return;
+    const rows=Array.from(cont.querySelectorAll('.ts-row'));
+    const idx=rows.findIndex(r=>r.classList.contains('active'));
+    if(idx<0)return;
+    const from=Math.max(0,idx-1);
+    const shown=rows.slice(from,from+MAX_VISIBLE);
+    if(!shown.length)return;
+    const h=shown.reduce((s,r)=>s+r.offsetHeight,0)+ROW_GAP*(shown.length-1);
+    cont.style.maxHeight=h+'px';
+    // Only jump on the first fit / when the phase actually rolls over — never yank a
+    // visitor who scrolled back to read earlier phases.
+    const id=rows[idx].getAttribute('data-phase');
+    if(scrolledFor!==id){cont.scrollTop=rows[from].offsetTop;scrolledFor=id}
+  }
+  let rzT;
+  addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(fitSchedule,150)});
+  addEventListener('load',fitSchedule);
   function apply(){
     const now=Date.now();
     let active=null;
@@ -917,12 +910,7 @@ async function bbdata(){try{const entries=await gj('bobai-liq-log.json');if(!ent
       if(active&&id===active.id)r.classList.add('active');
       else if(ph&&now>=ph.end)r.classList.add('past');
     });
-    if(!didScroll&&active){
-      const cont=document.querySelector('.ts-rows');
-      const rows=cont?cont.querySelectorAll('.ts-row'):[];
-      const idx=Array.from(rows).findIndex(r=>r.classList.contains('active'));
-      if(cont&&idx>0){cont.scrollTop=rows[idx-1].offsetTop;didScroll=true}
-    }
+    if(active)fitSchedule();
     const cN=document.getElementById('ts-inline-creator');
     const bN=document.getElementById('ts-inline-bob');
     if(cN){cN.textContent=active?active.creatorNote:'';cN.classList.toggle('active',!!(active&&active.creatorNote))}

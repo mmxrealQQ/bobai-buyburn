@@ -652,14 +652,12 @@
     .ck{color:var(--gold);font-weight:700}
     .rm li code{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--gold);background:rgba(240,185,11,.06);padding:1px 5px;border-radius:4px}
 
-    /* CTA BANNER */
-    .cta{text-align:center;padding:48px 24px}
-    .cta-inner{max-width:600px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:48px 36px;position:relative;overflow:hidden}
-    .cta-inner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.25),transparent)}
-    .cta-inner::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center top,rgba(240,185,11,.03),transparent 70%);pointer-events:none}
-    .cta h2{font-family:'Space Grotesk',sans-serif;font-size:1.4rem;font-weight:700;margin-bottom:8px}
-    .cta p{color:var(--muted);font-size:.84rem;margin-bottom:24px}
+    /* SOCIAL BUTTONS (Block 07) */
     .cta-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+    /* Im Block sitzt alles an der linken Kante wie in den anderen Blöcken —
+       zentrierte Reihen unter einer linksbündigen Überschrift lasen sich falsch. */
+    #socials .cta-links,#socials .lr{justify-content:flex-start}
+    #socials .cta-links{margin-bottom:6px}
     .cta-links a{padding:11px 26px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.3px}
     .cta-links a:hover{transform:translateY(-2px)}
     .cta-links .primary{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;box-shadow:0 2px 20px rgba(240,185,11,.2)}
@@ -708,7 +706,6 @@
       .tax-flow{flex-direction:column}
       .ta{transform:rotate(90deg)}
       .about-logo img{width:140px;height:140px}
-      .cta-inner{padding:32px 20px}
     }
     .fi{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}.fi.vi{opacity:1;transform:translateY(0)}
 
@@ -1170,29 +1167,33 @@
     </div>
   </section>
 
-  <div class="cta" id="socials">
-    <div class="cta-inner fi">
-      <h2>Join A Smart Drip</h2>
-      <p>Come for the burns, stay for the brain. The community lives on Telegram and X.</p>
-      <div class="cta-links">
-        <a class="secondary" href="https://t.me/bobai_official" target="_blank">Join Telegram</a>
-        <a class="secondary" href="https://x.com/BrainOnBNB" target="_blank">X Official</a>
-        <a class="secondary" href="https://x.com/BrainOnBNBAI" target="_blank">X Community</a>
-      </div>
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <!-- Letztes Kettenglied: Community und alle Fundstellen an einem Ort. Vorher
+       hing beides label- und verbindungslos unter der Kette bzw. im Footer. -->
+  <section class="sec b-green" id="socials">
+    <div class="blk-head fi"><span class="blk-tag">Block 07 &middot; Socials</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2>Join A <em>Smart Drip</em></h2><p>Come for the burns, stay for the brain. The community lives on Telegram and X — and $BOBAI is listed, tradable and tracked everywhere below.</p></div>
+    <div class="cta-links fi">
+      <a class="secondary" href="https://t.me/bobai_official" target="_blank">Join Telegram</a>
+      <a class="secondary" href="https://x.com/BrainOnBNB" target="_blank">X Official</a>
+      <a class="secondary" href="https://x.com/BrainOnBNBAI" target="_blank">X Community</a>
     </div>
-  </div>
+    <div class="fi">
+      <p class="ll">Listed on</p>
+      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.png" alt="CoinGecko logo">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.ico" alt="DEXTools.io logo">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo">GeckoTerminal</a></div>
+      <p class="ll">Markets</p>
+      <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo">PancakeSwap · BOBAI/WBNB</a></div>
+      <p class="ll">Available on</p>
+      <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-binance.ico" alt="Binance Web3 Wallet logo">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank"><img src="ico-bitget.png" alt="Bitget Wallet logo">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gatedex.webp" alt="Gate DEX logo">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-okx.png" alt="OKX Wallet logo">OKX Wallet</a></div>
+      <p class="ll">Tracked by</p>
+      <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank"><img src="ico-birdeye.png" alt="Birdeye logo">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank"><img src="ico-blockspot.webp" alt="Blockspot.io logo">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank"><img src="ico-bubblemaps.png" alt="Bubblemaps logo">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank"><img src="ico-coinmun.svg" alt="CoinMun logo">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-fourmeme.ico" alt="Four.Meme logo">Four.Meme</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gmgn.png" alt="GMGN.AI logo">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-insightx.ico" alt="InsightX logo">InsightX</a></div>
+    </div>
+  </section>
 
 <footer><div class="fi2">
   <div class="fb"><img src="logo-sm.png?v=2" alt="BOBAI"><span>BOBAI</span></div>
-  <p class="ll">Listed on</p>
-  <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.png" alt="CoinGecko logo">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.ico" alt="DEXTools.io logo">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo">GeckoTerminal</a></div>
-  <p class="ll">Markets</p>
-  <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo">PancakeSwap · BOBAI/WBNB</a></div>
-  <p class="ll">Available on</p>
-  <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-binance.ico" alt="Binance Web3 Wallet logo">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank"><img src="ico-bitget.png" alt="Bitget Wallet logo">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gatedex.webp" alt="Gate DEX logo">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-okx.png" alt="OKX Wallet logo">OKX Wallet</a></div>
-  <p class="ll">Tracked by</p>
-  <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank"><img src="ico-birdeye.png" alt="Birdeye logo">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank"><img src="ico-blockspot.webp" alt="Blockspot.io logo">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank"><img src="ico-bubblemaps.png" alt="Bubblemaps logo">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank"><img src="ico-coinmun.svg" alt="CoinMun logo">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-fourmeme.ico" alt="Four.Meme logo">Four.Meme</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gmgn.png" alt="GMGN.AI logo">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-insightx.ico" alt="InsightX logo">InsightX</a></div>
-  <div class="fm" style="margin-top:18px"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · <a href="https://brainonbnb.ai">brainonbnb.ai</a> | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
+  <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · <a href="https://brainonbnb.ai">brainonbnb.ai</a> | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer>
 </div>
 

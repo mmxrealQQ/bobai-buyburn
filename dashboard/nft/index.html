@@ -24,9 +24,10 @@
 :root{
   --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
   --red:#ff3028;--green:#00e676;--blue:#4040ff;--purple:#a040ff;
-  --bg:#050510;--card:rgba(12,12,28,.85);--border:rgba(240,185,11,.06);
-  --text:#e4e5f1;--muted:#7b7d9e;
-  --radius:14px;
+  /* Kept in step with the dashboard palette — warmer base, readable muted. */
+  --bg:#0a0814;--card:rgba(22,18,38,.82);--border:rgba(240,185,11,.11);
+  --text:#eceaf5;--muted:#a0a2c0;
+  --radius:18px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{overflow-x:hidden}
@@ -39,7 +40,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     radial-gradient(ellipse at 80% 80%, rgba(64,64,255,.10), transparent 50%),
     radial-gradient(ellipse at 50% 50%, rgba(255,48,40,.05), transparent 60%)}
 .page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;padding-top:58px}
-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);backdrop-filter:blur(24px) saturate(1.2);border-bottom:1px solid var(--border)}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88);backdrop-filter:blur(24px) saturate(1.2);border-bottom:1px solid var(--border)}
 .nav{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px;gap:12px}
 .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
 .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}

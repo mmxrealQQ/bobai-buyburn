@@ -122,19 +122,50 @@
     :root{
       --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
       --red:#ff3028;--green:#00e676;--blue:#4040ff;--purple:#a040ff;
-      --bg:#050510;--card:rgba(12,12,28,.85);--border:rgba(240,185,11,.06);
-      --text:#e4e5f1;--muted:#7b7d9e;
-      --radius:14px;
+      /* Warmer, softer base than the old ice-cold #050510/#7b7d9e pair — the
+         page should read welcoming, not like a terminal. --muted was lifted to
+         ~7.9:1 on the new background so the small print is comfortable. */
+      /* Sampled from logo.png: corners #0c0c0c, brain body #c68f76, cream
+         highlight #ead4bf. The page now sits on the logo's own ground. */
+      --brain:#c68f76;--brain-rgb:198,143,118;
+      --glitch-c:34,211,238;--glitch-m:232,121,249;
+      --bg:#0c0b0c;--card:rgba(30,25,24,.78);--border:rgba(198,143,118,.16);
+      --text:#eceaf5;--muted:#a0a2c0;
+      --radius:22px;
     }
     .bob-sub{font-size:.75em;color:#fff;font-weight:400;margin-left:2px;flex:none}
     *{margin:0;padding:0;box-sizing:border-box}
     html{overflow-x:hidden}
-    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased}
-    canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+    /* Warm glows lift the page out of flat black without giving up the dark
+       gold-on-near-black identity. */
+    body{font-family:'Inter',system-ui,sans-serif;color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased;
+      background:
+        radial-gradient(1200px 700px at 50% -6%,rgba(240,185,11,.13),transparent 66%),
+        radial-gradient(900px 620px at 50% 40%,rgba(198,143,118,.06),transparent 70%),
+        radial-gradient(700px 500px at 88% 78%,rgba(120,48,24,.07),transparent 72%),
+        var(--bg);
+      background-attachment:fixed}
+    /* Colour field — slow drifting aurora in the BOBAI accent palette. Replaces
+       the old particle canvas: cheaper, prettier, and it actually adds colour. */
+    /* Warm amber field like the logo's ground, with the two glitch hues kept
+       faint so they read as speckle, not as a purple wash. */
+    .aur{position:fixed;inset:-25%;z-index:0;pointer-events:none;filter:blur(110px);opacity:.5}
+    .aur i{position:absolute;display:block;border-radius:50%}
+    .aur .a1{width:48vw;height:48vw;left:-4%;top:-4%;background:rgba(240,185,11,.4);animation:drift1 34s ease-in-out infinite}
+    .aur .a2{width:40vw;height:40vw;right:-6%;top:20%;background:rgba(198,143,118,.3);animation:drift2 42s ease-in-out infinite}
+    .aur .a3{width:38vw;height:38vw;left:18%;bottom:-4%;background:rgba(120,48,24,.34);animation:drift3 38s ease-in-out infinite}
+    .aur .a4{width:26vw;height:26vw;right:22%;bottom:12%;background:rgba(34,211,238,.1);animation:drift2 48s ease-in-out infinite reverse}
+    @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,4vh) scale(1.12)}}
+    @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-5vw,6vh) scale(.94)}}
+    @keyframes drift3{0%,100%{transform:translate(0,0) scale(.96)}50%{transform:translate(4vw,-5vh) scale(1.1)}}
+    @media (prefers-reduced-motion:reduce){.aur i{animation:none}}
     .page{position:relative;z-index:1}
 
     /* NAV */
-    nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,5,16,.88);backdrop-filter:blur(24px) saturate(1.2);border-bottom:1px solid var(--border)}
+    /* Always fully opaque — nothing should ever show through the header. */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#0b0916;
+      border-bottom:1px solid var(--border)}
+    .nav{position:relative;z-index:1}
     .nav{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px}
     .nl{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.15rem}
     .nl img{width:30px;height:30px;border-radius:8px;box-shadow:0 0 12px rgba(240,185,11,.2)}
@@ -142,9 +173,13 @@
     .nm{display:flex;gap:24px}
     .nm a{color:var(--muted);text-decoration:none;font-size:.78rem;font-weight:500;transition:color .2s;letter-spacing:.2px}
     .nm a:hover{color:var(--gold)}
-    .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:8px 22px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
+    .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:9px 24px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
     .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
-    .nb-group{display:flex;gap:8px;align-items:center}
+    /* Hidden while the hero (which has its own big Buy CTA) is on screen, so the
+       two identical gold buttons are never visible at the same time. */
+    .nb-group{display:flex;gap:8px;align-items:center;opacity:0;visibility:hidden;
+      transform:translateY(-6px);transition:opacity .3s ease,transform .3s ease,visibility .3s}
+    .nb-group.on{opacity:1;visibility:visible;transform:none}
     .nb2{position:relative;background:transparent;color:var(--gold);padding:8px 18px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:1px solid rgba(240,185,11,.45);letter-spacing:.3px;overflow:hidden}
     .nb2::before{content:'';position:absolute;inset:0;border-radius:10px;box-shadow:0 0 0 0 rgba(240,185,11,.45);animation:nb2pulse 2.4s ease-out infinite;pointer-events:none}
     .nb2:hover{background:rgba(240,185,11,.08);border-color:var(--gold);transform:translateY(-1px)}
@@ -152,8 +187,73 @@
 
     /* HERO */
     .hero{position:relative;width:100%;margin-top:58px;overflow:hidden}
-    .hero img{width:100%;display:block;max-height:75vh;object-fit:cover}
-    .hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:180px;background:linear-gradient(to bottom,transparent,var(--bg));pointer-events:none}
+    /* No max-height: any cover-crop cuts the figure. The image keeps its native
+       3:2 so the whole character stays visible; max-width stops it exploding on
+       ultrawide screens. */
+    .hero picture{display:block;width:100%}
+    .hero img{width:100%;height:auto;display:block}
+    /* Headline sits in the right third — the art is composed with the figure
+       left and that side deliberately calm. The scrim guarantees contrast even
+       if a future hero image is brighter there. */
+    .hero-ov{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
+      background:linear-gradient(to right,transparent 38%,rgba(10,8,20,.72) 72%,rgba(10,8,20,.88) 100%);
+      pointer-events:none}
+    .hero-in{max-width:1100px;margin:0 auto;padding:0 24px;width:100%;display:flex;justify-content:flex-end}
+    .hero-tx{max-width:530px;pointer-events:auto;padding-bottom:36px}
+    .hero-eb{display:inline-flex;align-items:center;gap:7px;font-size:.62rem;text-transform:uppercase;
+      letter-spacing:1.5px;font-weight:600;color:var(--muted);margin-bottom:14px}
+    .hero-eb .dot{width:6px;height:6px;border-radius:50%;background:var(--green);
+      box-shadow:0 0 8px var(--green);animation:tgpulse 1.6s ease-in-out infinite;flex-shrink:0}
+    /* h2, not h1 — the keyword-carrying SEO h1 stays the page's only h1. */
+    .hero-h{font-family:'Space Grotesk',sans-serif;font-size:3.1rem;font-weight:700;
+      line-height:1.08;letter-spacing:-1.5px;margin-bottom:16px}
+    /* The tagline lived only in <title> and alt text until now. As a pill it
+       reads as a deliberate mark rather than a stray line of small caps. */
+    .hero-tag{display:inline-block;font-family:'Space Grotesk',sans-serif;font-size:.72rem;
+      font-weight:700;letter-spacing:2.6px;text-transform:uppercase;color:var(--gold);
+      border:1px solid rgba(240,185,11,.3);background:rgba(240,185,11,.07);
+      padding:8px 18px;border-radius:999px;margin:6px 0 26px;
+      box-shadow:0 0 30px rgba(240,185,11,.08)}
+    .hero-h em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .hero-tx p{color:var(--muted);font-size:.86rem;line-height:1.7;margin-bottom:24px}
+    .hero-cta{display:flex;gap:10px;flex-wrap:wrap}
+    /* Pill buttons throughout — the single cheapest move from "technical" to
+       "friendly", and it keeps the gold-on-dark identity untouched. */
+    .hero-cta a{padding:13px 30px;border-radius:999px;font-weight:700;font-size:.8rem;
+      text-decoration:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s,background .25s;letter-spacing:.3px}
+    .hero-cta a:active{transform:scale(.96)}
+    .hb1{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;
+      box-shadow:0 4px 24px rgba(240,185,11,.28)}
+    .hb1:hover{transform:translateY(-2px);box-shadow:0 8px 36px rgba(240,185,11,.45)}
+    .hb2{border:1px solid rgba(240,185,11,.35);color:var(--gold);background:rgba(240,185,11,.04)}
+    .hb2:hover{background:rgba(240,185,11,.1);transform:translateY(-2px)}
+    /* MOBILE HERO — copy sits BELOW the art instead of on top of it. The wide
+       2:1 crop is only ~195px tall on a phone, so overlaid text spilled out of
+       the image and collided with the stat bar. A portrait crop is served
+       instead and the overlay is taken out of absolute positioning. */
+    @media (max-width:900px){
+      .hero-ov{position:static;background:none;display:block}
+      .hero-in{justify-content:center;padding:0 20px}
+      .hero-tx{max-width:560px;text-align:center;padding:22px 0 4px;margin:0 auto}
+      .hero-h{font-size:1.9rem}
+      .hero-cta{justify-content:center}
+      .hero::after{display:none}
+      .hero::before{display:none}
+      .hero picture{position:relative}
+      .hero picture::after{content:'';position:absolute;inset:0;pointer-events:none;
+        background:linear-gradient(to bottom,rgba(12,11,12,0) 74%,var(--bg) 100%)}
+    }
+    @media (max-width:480px){
+      .hero-h{font-size:1.6rem}
+      .hero-tag{font-size:.62rem;letter-spacing:2px;padding:7px 14px;margin-bottom:18px}
+      .hero-cta a{padding:11px 20px;font-size:.75rem}
+    }
+    /* Fades all four edges into the page so the widened canvas has no seam. */
+    .hero::after{content:'';position:absolute;inset:0;pointer-events:none;background:
+      linear-gradient(to right,var(--bg) 0%,var(--bg) 9%,rgba(10,8,20,0) 27%),
+      linear-gradient(to left,var(--bg) 0%,rgba(10,8,20,0) 17%),
+      linear-gradient(to bottom,rgba(10,8,20,0) 72%,var(--bg) 100%)}
 
     /* LIVE BADGE */
     .live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.15);padding:4px 12px;border-radius:20px;font-size:.65rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase}
@@ -163,27 +263,88 @@
     /* STATS BAR */
     .sbar{max-width:1100px;margin:-48px auto 0;padding:0 24px;position:relative;z-index:3}
     .sg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-    .sc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:20px 12px;text-align:center;transition:all .3s;position:relative;overflow:hidden}
+    .sc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px 12px;text-align:center;transition:all .3s;position:relative;overflow:hidden;
+      box-shadow:0 16px 44px -26px rgba(0,0,0,.85)}
     .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
     .sc:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.12);box-shadow:0 8px 32px rgba(240,185,11,.04)}
-    .sc .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:6px}
-    .sc .v{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sc .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:8px}
+    /* Fluid size + wrap: the $BOB burned figure is 15 digits and overflowed a
+       fixed 1.28rem. */
+    /* Shrinks rather than wraps — `anywhere` split the 15-digit BOB figure
+       mid-number, which reads as two different numbers. */
+    /* Sized so the longest figure (781,262,432,552 = 15 digits) fits a sixth
+       of the bar on one line. keep-all stops a number splitting mid-digits. */
+    .sc .v{font-family:'Space Grotesk',sans-serif;font-size:clamp(.7rem,.8vw,.95rem);font-weight:700;line-height:1.3;
+      overflow-wrap:normal;word-break:keep-all;
+      background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
     .sc .vsub{font-size:.6rem;color:#fff;margin-top:4px;letter-spacing:.3px}
 
     /* SECTIONS */
-    .sec{max-width:1100px;margin:0 auto;padding:72px 24px;position:relative;overflow:hidden}
-    .sep{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px;max-width:200px;margin:0 auto}
-    .sep-l{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.08),transparent)}
-    .sep-d{width:3px;height:3px;background:var(--gold);border-radius:50%;opacity:.25}
+    /* Every section is a literal block: its own frame, its own accent, tinted
+       from the top edge. The chain between them does the connecting. */
+    .sec{width:min(1100px,calc(100% - 34px));margin:0 auto;padding:30px 26px 40px;position:relative;overflow:hidden;
+      border:1px solid rgba(var(--accs),.17);border-radius:28px;
+      background:linear-gradient(180deg,rgba(var(--accs),.05),rgba(var(--accs),0) 42%);
+      box-shadow:0 20px 60px -30px rgba(0,0,0,.7)}
+    .sec::before{content:'';position:absolute;top:0;left:12%;right:12%;height:2px;
+      background:linear-gradient(90deg,transparent,rgba(var(--accs),.55),transparent)}
+    /* The socket the synapse above plugs into. */
+    .sec::after{content:'';position:absolute;top:3px;left:50%;width:12px;height:12px;
+      transform:translateX(-50%) rotate(45deg);border-radius:3px;background:var(--bg);
+      border:1.5px solid rgba(var(--accs),.65);box-shadow:0 0 16px rgba(var(--accs),.4)}
+    .sec-after-band{padding-top:26px}
+    /* BLOCK CHAIN — the page reads top to bottom as a chain of blocks: each
+       section is one block with its own accent, joined by a connector node. */
+    /* SYNAPSE CONNECTOR — the strand between two blocks splits into dendrites
+       that wrap around the block and rejoin. Brain and chain in one mark. */
+    .sep{display:flex;justify-content:center;max-width:none;margin:0 auto;padding:0}
+    .syn{width:24px;height:56px;display:block}
+    .syn-t{stroke:rgba(240,185,11,.4);stroke-width:2;stroke-linecap:round}
+
+    /* WRAPNET — neural wiring running down both margins and reaching inward,
+       so the network embraces the whole page instead of sitting between the
+       sections. Absolutely positioned: it costs no layout space. Colours are
+       the character's holographic glitch speckles (cyan / magenta / gold). */
+    .wrapnet{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+    .wn-e{stroke-width:1;fill:none}
+    .wn-n{stroke:none}
+    .wn-b{stroke-width:1.2;fill:none}
+    @keyframes wnpulse{0%,100%{opacity:.35}50%{opacity:.9}}
+    @media (prefers-reduced-motion:reduce){.wrapnet *{animation:none!important}}
+
+    .sec{--acc:#F0B90B;--accs:240,185,11}
+    .b-blue{--acc:#7d92ff;--accs:125,146,255}
+    .b-violet{--acc:#b98cff;--accs:185,140,255}
+    .b-green{--acc:#3fe09a;--accs:63,224,154}
+    .blk-head{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+    .blk-tag{font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:1.7px;
+      text-transform:uppercase;color:var(--acc);border:1px solid rgba(var(--accs),.34);
+      background:rgba(var(--accs),.08);padding:5px 12px;border-radius:999px;flex-shrink:0;white-space:nowrap}
+    .blk-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(var(--accs),.4),rgba(var(--accs),0))}
+    /* Section heading and card top-edges pick up the block's colour. */
+    .sec .sh h2 em{background:linear-gradient(135deg,var(--acc),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sec .sc::before,.sec .tax::before{background:linear-gradient(90deg,transparent,rgba(var(--accs),.5),transparent)}
+    .sec .fs:hover,.sec .ec:hover,.sec .rm:hover{border-color:rgba(var(--accs),.34);
+      box-shadow:0 12px 34px rgba(var(--accs),.1)}
+    .sec .fn{color:var(--acc);border-color:rgba(var(--accs),.45)}
+    .sec .fa{color:var(--acc);border-color:rgba(var(--accs),.45);box-shadow:0 0 16px rgba(var(--accs),.25)}
+    .sec .ec::before{background:linear-gradient(90deg,var(--acc),transparent)}
+    .sec .ec-go{color:var(--acc)}
     .sh{margin-bottom:36px}
-    .sh h2{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
+    .sh h2{font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:700;margin-bottom:7px;letter-spacing:-.4px}
     .sh h2 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
     .sh p{color:var(--muted);font-size:.84rem}
 
     /* ABOUT — BRAIN LOGO + TEXT */
     .about-hero{display:flex;align-items:center;gap:48px;margin-bottom:48px}
     .about-logo{flex-shrink:0}
-    .about-logo img{width:180px;height:180px;border-radius:16px;box-shadow:0 0 60px rgba(240,185,11,.15),0 0 120px rgba(240,185,11,.06)}
+    /* Fully round with a thin gold ring — the square crop read like a leftover
+       asset rather than a deliberate portrait. */
+    .about-logo img{width:180px;height:180px;border-radius:50%;object-fit:cover;
+      border:2px solid rgba(240,185,11,.28);padding:0;
+      box-shadow:0 0 60px rgba(240,185,11,.18),0 0 130px rgba(240,185,11,.07),
+                 inset 0 0 40px rgba(0,0,0,.4)}
     .about-text h3{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:10px}
     .about-text h3 em{font-style:normal;color:var(--gold)}
     .about-text p{color:var(--muted);font-size:.88rem;line-height:1.7;max-width:540px}
@@ -230,23 +391,64 @@
 
     /* FLOW STEPS */
     .fl{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    .fs{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px 16px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
+    /* overflow stays visible so the chain link between cards isn't clipped —
+       the cover image gets its own clipping wrapper instead. */
+    .fs{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:0 0 22px;text-align:center;position:relative;transition:transform .35s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .35s}
+    .fs-wrap{overflow:hidden;border-radius:21px 21px 0 0;margin-bottom:14px}
+    /* Step art fills the card like a cover image; copy sits underneath. */
+    .fs-art{display:block;width:100%;height:180px;object-fit:cover;object-position:center 18%;
+      transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+    .fs:hover .fs-art{transform:scale(1.05)}
+    .fs h4,.fs p{padding:0 16px}
     .fs:hover{border-color:rgba(240,185,11,.1);transform:translateY(-2px)}
-    .fn{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.78rem;margin:0 auto 10px;background:rgba(240,185,11,.06);color:var(--gold);border:1px solid rgba(240,185,11,.1)}
+    .fn{position:absolute;top:14px;left:14px;z-index:2;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.72rem;margin:0;background:rgba(8,6,16,.72);backdrop-filter:blur(6px);color:var(--gold);border:1px solid rgba(240,185,11,.42)}
     .fs h4{font-size:.82rem;margin-bottom:4px;font-weight:600}
-    .fs p{font-size:.72rem;color:var(--muted);line-height:1.5}
-    .fa{position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:rgba(240,185,11,.12);font-size:.85rem;z-index:2}
+    .fs p{font-size:.78rem;color:var(--muted);line-height:1.6}
+    /* Chain links between the steps — the four cards read as one connected
+       run rather than four separate boxes. */
+    .fa{position:absolute;right:-16px;top:50%;transform:translateY(-50%);z-index:3;
+      width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      background:var(--bg);border:1px solid rgba(240,185,11,.35);color:var(--gold);
+      font-size:.68rem;box-shadow:0 0 16px rgba(240,185,11,.22)}
 
     /* TOKEN CARDS */
     .tg4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .tc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:26px 16px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
     .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
     .tc:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.1);box-shadow:0 8px 32px rgba(240,185,11,.03)}
-    .tc .b{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;font-weight:700;margin-bottom:3px;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
-    .tc h4{font-size:.82rem;margin-bottom:4px;font-weight:600}
-    .tc p{font-size:.72rem;color:var(--muted);line-height:1.4}
+    .tc .b{font-family:'Space Grotesk',sans-serif;font-size:2.1rem;font-weight:700;margin-bottom:5px;letter-spacing:-1px;background:linear-gradient(135deg,var(--acc),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .tc h4{font-size:.86rem;margin-bottom:5px;font-weight:600}
+    .tc p{font-size:.75rem;color:var(--muted);line-height:1.5}
+    .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--accs),.45),transparent)}
+    .tc:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.3);box-shadow:0 14px 36px rgba(var(--accs),.1)}
 
     /* VERIFY */
+    /* PROOF TILES — the old label/value list read like a config dump. Each fact
+       now gets a coloured tile, so the block scans instead of being read. */
+    .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+    .ptile{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;
+      background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);
+      border-radius:18px;padding:16px 18px;position:relative;
+      transition:transform .3s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .3s}
+    .ptile.pt-wide{grid-column:1/-1}
+    a.ptile:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.36);
+      box-shadow:0 12px 32px rgba(var(--accs),.12)}
+    .pt-ico{flex-shrink:0;width:40px;height:40px;border-radius:12px;display:flex;
+      align-items:center;justify-content:center;font-size:.9rem;line-height:1}
+    .t-gold{background:rgba(240,185,11,.14);color:#F0B90B;border:1px solid rgba(240,185,11,.3)}
+    .t-violet{background:rgba(185,140,255,.14);color:#b98cff;border:1px solid rgba(185,140,255,.3)}
+    .t-blue{background:rgba(125,146,255,.14);color:#7d92ff;border:1px solid rgba(125,146,255,.3)}
+    .t-red{background:rgba(255,90,80,.13);color:#ff6a60;border:1px solid rgba(255,90,80,.28)}
+    .t-green{background:rgba(63,224,154,.14);color:#3fe09a;border:1px solid rgba(63,224,154,.3)}
+    .pt-body{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+    .pt-l{font-size:.78rem;font-weight:600;color:var(--text)}
+    .pt-v{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pt-v.ok{color:#3fe09a;font-family:'Inter',system-ui,sans-serif;font-size:.72rem}
+    .pt-go{flex-shrink:0;color:var(--muted);font-size:.8rem;transition:transform .25s,color .25s}
+    a.ptile:hover .pt-go{transform:translate(2px,-2px);color:var(--acc)}
+    @media (max-width:560px){.pt-v{font-size:.62rem}}
+
     .vc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px;position:relative;overflow:hidden}
     .vc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.15),transparent)}
     .vr{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(240,185,11,.03);flex-wrap:wrap;gap:6px}
@@ -331,7 +533,8 @@
     /* FAQ */
     .faq-list{display:flex;flex-direction:column;gap:10px}
     .faq-item{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .25s}
-    .faq-item[open]{border-color:rgba(240,185,11,.18)}
+    .faq-item[open]{border-color:rgba(var(--accs),.3);box-shadow:0 10px 30px rgba(var(--accs),.08)}
+    .faq-item:hover{border-color:rgba(var(--accs),.22)}
     .faq-item summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;user-select:none;font-family:'Space Grotesk',sans-serif;font-size:.92rem;font-weight:600;color:var(--text)}
     .faq-item summary::-webkit-details-marker{display:none}
     .faq-item summary:hover{color:var(--gold)}
@@ -346,6 +549,67 @@
       .faq-body{padding:0 18px 18px;font-size:.8rem}
     }
 
+    /* Forge art behind the burns section — the furnace motif is literally what
+       this section reports. Cards sit above it on their own stacking level. */
+    /* FULL-BLEED BANDS — same treatment as the hero: art edge to edge, copy on
+       the calm right side, all four edges faded into the page. Static, no
+       hover movement. */
+    .band{position:relative;width:100%;overflow:hidden}
+    .band picture{display:block;width:100%}
+    .band img{width:100%;height:auto;display:block}
+    .band::after{content:'';position:absolute;inset:0;pointer-events:none;background:
+      linear-gradient(to right,var(--bg) 0%,var(--bg) 9%,rgba(10,8,20,0) 27%),
+      linear-gradient(to left,var(--bg) 0%,rgba(10,8,20,0) 17%),
+      linear-gradient(to bottom,var(--bg) 0%,rgba(10,8,20,0) 20%,rgba(10,8,20,0) 74%,var(--bg) 100%)}
+    .band-ov{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
+      background:linear-gradient(to right,transparent 36%,rgba(10,8,20,.7) 70%,rgba(10,8,20,.86) 100%)}
+    .band-in{max-width:1100px;margin:0 auto;padding:0 24px;width:100%;display:flex;justify-content:flex-end}
+    .band-tx{max-width:500px}
+    .band-tx h2{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:700;
+      margin-bottom:8px;letter-spacing:-.6px;line-height:1.12}
+    .band-tx h2 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .burn-sub{color:var(--muted);font-size:.84rem}
+    .burn-lead{color:var(--muted);font-size:.87rem;line-height:1.75;margin-top:14px}
+    /* Same reason as the hero: a 2:1 band is only ~195px tall on a phone, far
+       too short to hold the heading plus lead. Copy drops below the art. */
+    @media (max-width:900px){
+      .band-ov{position:static;background:none;display:block}
+      .band-in{justify-content:center;padding:0 20px}
+      .band-tx{max-width:560px;text-align:center;padding:20px 0 4px;margin:0 auto}
+      .band-tx h2{font-size:1.5rem}
+      /* The fade has to sit on the art, not on the whole band — with the copy
+         now in flow the band-level gradient washed the text out. */
+      .band::after{display:none}
+      .band picture{position:relative}
+      .band picture::after{content:'';position:absolute;inset:0;pointer-events:none;
+        background:linear-gradient(to bottom,rgba(12,11,12,0) 72%,var(--bg) 100%)}
+      .burn-lead{margin-left:auto;margin-right:auto}
+    }
+
+    /* ECOSYSTEM — the sub-apps, promoted out of the footer chip row */
+    .ecg{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+    .ec{display:flex;flex-direction:column;gap:10px;background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:24px;text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:transform .35s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .35s}
+    .ec::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+    /* A touch of tilt and a hop on the icon — playful without getting silly. */
+    .ec:hover{transform:translateY(-5px) rotate(-.5deg);border-color:rgba(240,185,11,.28);
+      box-shadow:0 14px 38px rgba(240,185,11,.12)}
+    .ec-top{display:flex;align-items:center;gap:10px}
+    .ec-top img{width:30px;height:30px;object-fit:contain;border-radius:8px;flex-shrink:0;
+      transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+    .ec:hover .ec-top img{transform:translateY(-3px) rotate(-7deg) scale(1.08)}
+    .ec-top h3{font-size:.88rem;margin:0}
+    /* Status sits in the footer row, not next to the title — "COMPLETE" beside
+       "NFT Buy Drops" forced the heading onto two lines either way. */
+    .ec-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .ec-st{font-size:.55rem;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;flex-shrink:0}
+    .ec-st.live{color:var(--green)}
+    .ec-st.done{color:var(--muted)}
+    .ec p{font-size:.78rem;color:var(--muted);line-height:1.65;flex:1}
+    .ec-go{font-family:'Space Grotesk',sans-serif;font-size:.66rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
+    .ec-go .arr{transition:transform .25s}
+    .ec:hover .ec-go .arr{transform:translateX(3px)}
+
     /* ROADMAP */
     .rmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
     .rm{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:all .3s}
@@ -358,7 +622,9 @@
     .rmd .rp{color:var(--gold)}.rma .rp{color:var(--blue)}.rmn .rp{color:var(--muted)}
     .rm h3{font-size:.88rem;margin-bottom:8px}
     .rm ul{list-style:none}
-    .rm li{font-size:.72rem;color:var(--muted);padding:3px 0;display:flex;align-items:flex-start;gap:6px;line-height:1.5;text-align:right}
+    /* Left-aligned: the old right-align read fine with 3-word items but tears
+       apart now that entries wrap to two lines. */
+    .rm li{font-size:.78rem;color:var(--muted);padding:4px 0;display:flex;align-items:flex-start;gap:7px;line-height:1.6;text-align:left}
     .rm li>span:first-child{flex-shrink:0;line-height:1.5}
     .rm li>span:last-child{flex:1}
     .ck{color:var(--gold);font-weight:700}
@@ -372,7 +638,8 @@
     .cta h2{font-family:'Space Grotesk',sans-serif;font-size:1.4rem;font-weight:700;margin-bottom:8px}
     .cta p{color:var(--muted);font-size:.84rem;margin-bottom:24px}
     .cta-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
-    .cta-links a{padding:10px 24px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;letter-spacing:.3px}
+    .cta-links a{padding:11px 26px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.3px}
+    .cta-links a:hover{transform:translateY(-2px)}
     .cta-links .primary{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;box-shadow:0 2px 20px rgba(240,185,11,.2)}
     .cta-links .primary:hover{box-shadow:0 4px 32px rgba(240,185,11,.35);transform:translateY(-1px)}
     .cta-links .secondary{border:1px solid rgba(240,185,11,.15);color:var(--gold);background:transparent}
@@ -405,11 +672,16 @@
       .about-hero{flex-direction:column;text-align:center;gap:24px}
       .about-text p{max-width:100%}
       .about-tags{justify-content:center}
+      /* The nav links ran into the logo from ~760px down. */
+      .nm{display:none}
+      /* No overlap onto the hero once the copy sits below the art. */
+      .sbar{margin-top:22px}
+      /* The margin wiring has nowhere to go on a phone. */
+      .wrapnet{display:none}
     }
     @media(max-width:600px){
       .sg{grid-template-columns:repeat(2,1fr)}
       .tg4,.fl{grid-template-columns:1fr}
-      .nm{display:none}
       .sec{padding:48px 16px}
       .tax-flow{flex-direction:column}
       .ta{transform:rotate(90deg)}
@@ -441,7 +713,7 @@
     .cta-links .primary:hover{transform:translateY(-2px);box-shadow:0 6px 36px rgba(240,185,11,.45)}
     .cta-links .secondary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(240,185,11,.07)}
 
-    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 65%,transparent 35%,rgba(5,5,16,.42) 88%);pointer-events:none;z-index:2}
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 65%,transparent 35%,rgba(10,8,20,.42) 88%);pointer-events:none;z-index:2}
 
     .vr a{transition:color .2s,text-shadow .2s}
     .vr a:hover{text-shadow:0 0 10px rgba(240,185,11,.5)}
@@ -455,7 +727,9 @@
     .sh h2 em{background-size:200% 100%;animation:shimmer 8s linear infinite}
     .tc .b{background-size:200% 100%;animation:shimmer 9s linear infinite}
 
-    .sec::after{content:'';position:absolute;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle,rgba(240,185,11,.035) 0%,transparent 65%);top:50%;right:-260px;transform:translateY(-50%);pointer-events:none;z-index:0;animation:haloFloat 14s ease-in-out infinite}
+    /* The old floating halo lived here. Removed: with the block frame clipping
+       it, its edge showed up as hard diagonal streaks inside the card, and the
+       block's own top tint already does this job. */
     .sec>*{position:relative;z-index:1}
 
     table tr{transition:background .2s}
@@ -464,19 +738,35 @@
 </head>
 <body>
 <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Brain On BNB AI ($BOBAI) — AI-Built Deflationary Meme Token on BNB Chain · brainonbnb · brainonbnbai · brainonbnb.com</h1>
-<canvas id="bg"></canvas>
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
 <div class="page">
+<svg class="wrapnet" aria-hidden="true" preserveAspectRatio="none"></svg>
+
 
   <nav><div class="nav">
     <a href="#" class="nl"><img src="logo-sm.png?v=2" alt="BOBAI"> <span>BOBAI</span></a>
-    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
+    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
     <div class="nb-group">
       <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
     </div>
   </div></nav>
 
   <section class="hero">
-    <img src="hero.png?v=2" alt="BOBAI — Where Memes Meet Intelligence">
+    <picture>
+      <source media="(max-width:640px)" srcset="hero-v3m.webp" type="image/webp">
+      <source media="(max-width:640px)" srcset="hero-v3m.jpg" type="image/jpeg">
+      <source srcset="hero-v3.webp?v=4" type="image/webp">
+      <img src="hero-v3.jpg?v=4" alt="BOBAI — Where Memes Meet Intelligence" fetchpriority="high">
+    </picture>
+    <div class="hero-ov"><div class="hero-in"><div class="hero-tx">
+      <div class="hero-eb"><span class="dot"></span>Bot live &middot; burns every 10 minutes</div>
+      <h2 class="hero-h">Every trade burns.<br><em>The bot never sleeps.</em></h2>
+      <div class="hero-tag">Where Memes Meet Intelligence</div>
+      <div class="hero-cta">
+        <a class="hb1" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+        <a class="hb2" href="#burns">See The Burns</a>
+      </div>
+    </div></div></div>
   </section>
 
   <section class="sbar" id="stats"><div class="sg">
@@ -488,14 +778,15 @@
     <div class="sc fi"><div class="l">Burns</div><div class="v" id="burn-count">--</div></div>
   </div></section>
 
-  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
 
   <section class="sec" id="about">
+    <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
     <div class="about-hero fi">
       <div class="about-logo"><img src="logo.png?v=2" alt="BOBAI"></div>
       <div class="about-text">
         <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
-        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous buyback bot running 24/7 on Cloudflare Workers. No human intervention. No dev tokens. Just relentless, transparent burns.</p>
+        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens, no human hand on the switch, nothing hidden.</p>
         <div class="about-tags">
           <span>AI-Built</span>
           <span>Deflationary</span>
@@ -508,10 +799,10 @@
 
     <div class="sh fi"><h2>How <em>It Works</em></h2><p>Every trade burns supply. Automatically.</p></div>
     <div class="fl">
-      <div class="fs fi"><div class="fn">1</div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
-      <div class="fs fi"><div class="fn">2</div><h4>Collect</h4><p>Tax accumulates in buyback wallet.</p><span class="fa">&#x2192;</span></div>
-      <div class="fs fi"><div class="fn">3</div><h4>Split</h4><p>Bot runs every 10 min. Splits ~1/1/1.</p><span class="fa">&#x2192;</span></div>
-      <div class="fs fi"><div class="fn">4</div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
+      <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax accumulates in buyback wallet.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits ~1/1/1.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
     </div>
     <div class="tax fi">
       <h3>3% Tax Split</h3>
@@ -568,9 +859,10 @@
     </div>
   </section>
 
-  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
 
-  <section class="sec" id="tokenomics">
+  <section class="sec b-blue" id="tokenomics">
+    <div class="blk-head fi"><span class="blk-tag">Block 02 &middot; Tokenomics</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2><em>Token</em>omics</h2></div>
     <div class="tg4">
       <div class="tc fi"><div class="b">1B</div><h4>Total Supply</h4><p>Fixed. No mint function.</p></div>
@@ -580,21 +872,58 @@
     </div>
   </section>
 
-  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
 
-  <section class="sec" id="burns">
-    <div class="sh fi">
+  <div class="band" id="burns">
+    <picture>
+      <source media="(max-width:640px)" srcset="band-forge-m.webp" type="image/webp">
+      <source media="(max-width:640px)" srcset="band-forge-m.jpg" type="image/jpeg">
+      <source srcset="band-forge.webp" type="image/webp">
+      <img src="band-forge.jpg" alt="BOBAI feeding glowing coins into a furnace" loading="lazy" decoding="async">
+    </picture>
+    <div class="band-ov"><div class="band-in"><div class="band-tx">
       <h2>On-Chain <em>Verification</em></h2>
-      <p>Don't trust, verify. <span class="live-badge"><span class="live-dot"></span>Live</span></p>
-    </div>
-    <div class="vc fi">
-      <div class="vr"><span class="l">$BOBAI</span><span class="vl"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c386dcfed896f5c346107596141e5edcbffff</a></span></div>
-      <div class="vr"><span class="l">$BOB <span class="bob-sub">(Build On BNB)</span></span><span class="vl"><a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">0x51363f073b1e4920fda7aa9e9d84ba97ede1560e</a></span></div>
-      <div class="vr"><span class="l">Buyback</span><span class="vl"><a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank">0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce</a></span></div>
-      <div class="vr"><span class="l">Burn</span><span class="vl"><a href="https://bscscan.com/address/0x000000000000000000000000000000000000dEaD" target="_blank">0x...dEaD</a></span></div>
-      <div class="vr"><span class="l">LP</span><span class="vl" style="color:var(--green)">Locked</span></div>
-      <div class="vr"><span class="l">Owner</span><span class="vl" style="color:var(--green)">Renounced</span></div>
-      <div class="vr"><span class="l">Code</span><span class="vl"><a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">github.com/mmxrealQQ/bobai-buyburn</a></span></div>
+      <p class="burn-sub">Don't trust, verify. <span class="live-badge"><span class="live-dot"></span>Live</span></p>
+      <p class="burn-lead">Every buyback and every burn lands on BNB Chain with its own transaction hash. Nothing here is summarised or rounded &mdash; the table below is the chain itself, refreshed every 30 seconds.</p>
+    </div></div></div>
+  </div>
+
+  <section class="sec sec-after-band b-violet">
+    <div class="blk-head fi"><span class="blk-tag">Block 03 &middot; Proof</span><span class="blk-line"></span></div>
+    <div class="pgrid fi">
+      <a class="ptile" href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">
+        <span class="pt-ico t-gold">&#x25C6;</span>
+        <span class="pt-body"><span class="pt-l">$BOBAI Contract</span><span class="pt-v">0x245c386d&hellip;5edcbffff</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <a class="ptile" href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank" rel="noopener">
+        <span class="pt-ico t-violet">&#x25C6;</span>
+        <span class="pt-body"><span class="pt-l">$BOB <span class="bob-sub">(Build On BNB)</span></span><span class="pt-v">0x51363f07&hellip;ede1560e</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <a class="ptile" href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">
+        <span class="pt-ico t-blue">&#x25CF;</span>
+        <span class="pt-body"><span class="pt-l">Buyback Wallet</span><span class="pt-v">0xdeFC0e90&hellip;f94c01ce</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <a class="ptile" href="https://bscscan.com/address/0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">
+        <span class="pt-ico t-red">&#x25CF;</span>
+        <span class="pt-body"><span class="pt-l">Burn Address</span><span class="pt-v">0x000000&hellip;0000dEaD</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <div class="ptile is-ok">
+        <span class="pt-ico t-green">&#x2713;</span>
+        <span class="pt-body"><span class="pt-l">Liquidity</span><span class="pt-v ok">Locked &mdash; LP sent to dead address</span></span>
+      </div>
+      <div class="ptile is-ok">
+        <span class="pt-ico t-green">&#x2713;</span>
+        <span class="pt-body"><span class="pt-l">Ownership</span><span class="pt-v ok">Renounced &mdash; no admin keys</span></span>
+      </div>
+      <a class="ptile pt-wide" href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank" rel="noopener">
+        <span class="pt-ico t-gold">&#x25C6;</span>
+        <span class="pt-body"><span class="pt-l">Source Code</span><span class="pt-v">github.com/mmxrealQQ/bobai-buyburn &mdash; the whole bot stack, open</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
     </div>
     <div class="burns-wrap fi" style="margin-top:40px">
       <div class="bw-card">
@@ -681,9 +1010,66 @@
     </div>
   </section>
 
-  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
 
-  <section class="sec" id="roadmap">
+  <div class="band" id="ecosystem">
+    <picture>
+      <source media="(max-width:640px)" srcset="band-command-m.webp" type="image/webp">
+      <source media="(max-width:640px)" srcset="band-command-m.jpg" type="image/jpeg">
+      <source srcset="band-command.webp" type="image/webp">
+      <img src="band-command.jpg" alt="BOBAI at the controls of the burn machine" loading="lazy" decoding="async">
+    </picture>
+    <div class="band-ov"><div class="band-in"><div class="band-tx">
+      <h2>Built <em>By AI</em></h2>
+      <p class="burn-sub">Four apps. One builder. Nobody at the wheel.</p>
+      <p class="burn-lead">The same AI that runs the buyback bot also designed and coded everything else Brain On BNB AI has shipped &mdash; a World Cup tipping game that paid out on-chain, an NFT drop that mints itself, a jump-and-run, and a set of free self-tests. None of this is a roadmap promise. Go click around.</p>
+    </div></div></div>
+  </div>
+
+  <section class="sec sec-after-band b-green">
+    <div class="blk-head fi"><span class="blk-tag">Block 04 &middot; Ecosystem</span><span class="blk-line"></span></div>
+    <div class="ecg">
+      <a class="ec fi" href="nft/">
+        <div class="ec-top"><img src="nft/logo.png" alt="BOBAI Buy Drops logo"><h3>NFT Buy Drops</h3></div>
+        <p>Every buy of $100 or more auto-mints an NFT straight to the buyer's wallet. 1,925 in the collection — no claim step, no gas for the holder.</p>
+        <div class="ec-foot"><span class="ec-go">Open Collection <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+      </a>
+      <a class="ec fi" href="brainscreener/">
+        <div class="ec-top"><img src="ico-brainscreener.png" alt="brainScreener logo"><h3>brainScreener</h3></div>
+        <p>13 scientifically grounded self-tests — ADHD, IQ, depression, anxiety, trauma, personality. Anonymous, free, no registration, instant results.</p>
+        <div class="ec-foot"><span class="ec-go">Take A Test <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+      </a>
+      <a class="ec fi" href="game/">
+        <div class="ec-top"><img src="game/score.jpg" alt="Brain On BNB AI game icon"><h3>Burn &amp; Add Liq</h3></div>
+        <p>A browser game — jump through BNB Chain, burn tokens, add liquidity, dodge the dumps. Free to play with a public highscore board.</p>
+        <div class="ec-foot"><span class="ec-go">Play Game <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+      </a>
+      <a class="ec fi" href="worldcup/">
+        <div class="ec-top"><img src="worldcup/wclogo.jpg" alt="BOBAI Worldcup '26 logo"><h3>Worldcup '26</h3></div>
+        <p>A full tipping game for the 2026 World Cup — live brackets, leaderboard, prize pool. Ran Jun 11 to Jul 19, paid out 5.47M $BOBAI, now a frozen archive.</p>
+        <div class="ec-foot"><span class="ec-go">View Archive <span class="arr">&#x2192;</span></span><span class="ec-st done">Complete</span></div>
+      </a>
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <div class="band">
+    <picture>
+      <source media="(max-width:640px)" srcset="band-brainchain-m.webp" type="image/webp">
+      <source media="(max-width:640px)" srcset="band-brainchain-m.jpg" type="image/jpeg">
+      <source srcset="band-brainchain.webp" type="image/webp">
+      <img src="band-brainchain.jpg" alt="BOBAI's brain wired into a chain of glowing blocks" loading="lazy" decoding="async">
+    </picture>
+    <div class="band-ov"><div class="band-in"><div class="band-tx">
+      <h2>A Brain On <em>The Chain</em></h2>
+      <p class="burn-sub">One idea, wired block by block.</p>
+      <p class="burn-lead">Everything below is what that wiring has produced so far &mdash; and the one thing it still needs.</p>
+    </div></div></div>
+  </div>
+
+  <section class="sec sec-after-band" id="roadmap">
+    <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Roadmap</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2><em>Road</em>map</h2></div>
     <div class="rmg">
       <div class="rm rmd fi"><div class="rp">Phase 1 — Done</div><h3>Genesis</h3><ul>
@@ -700,19 +1086,26 @@
         <li><span class="ck">&#x2713;</span><span>Open source everything</span></li>
         <li><span class="ck">&#x2713;</span><span>Telegram community</span></li>
       </ul></div>
-      <div class="rm rma fi"><div class="rp">Phase 3 — Ongoing</div><h3>Scale</h3><ul>
-        <li><span class="ck">&#x2713;</span><span>Accelerate $BOB <span class="bob-sub">(Build On BNB)</span> burns</span></li>
-        <li><span class="ck">&#x2713;</span><span>Grow deflationary pressure</span></li>
-        <li><span style="color:var(--muted)">&#x25cb;</span><span>100K daily volume target</span></li>
-        <li><span style="color:var(--muted)">&#x25cb;</span><span>Expand ecosystem visibility</span></li>
-        <li><span class="ck">&#x2713;</span><span>Community-driven growth</span></li>
+      <div class="rm rma fi"><div class="rp">Phase 3 — Shipped</div><h3>Ecosystem</h3><ul>
+        <li><span class="ck">&#x2713;</span><span>Worldcup '26 tip game — 5.47M $BOBAI paid out</span></li>
+        <li><span class="ck">&#x2713;</span><span>NFT auto-mint on every qualifying buy</span></li>
+        <li><span class="ck">&#x2713;</span><span>Liquidity Boost campaign — LP burned, not locked</span></li>
+        <li><span class="ck">&#x2713;</span><span>Bots migrated to native Cloudflare Workers</span></li>
+        <li><span class="ck">&#x2713;</span><span>Whale tracker watching 29 wallets</span></li>
+      </ul></div>
+      <div class="rm rmn fi"><div class="rp">Phase 4 — Next</div><h3>Depth</h3><ul>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Trading volume — the honest bottleneck</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Wider exchange visibility</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>More AI-built apps on Brain On BNB AI</span></li>
+        <li><span class="ck">&#x2713;</span><span>Keep burning. Every 10 minutes.</span></li>
       </ul></div>
     </div>
   </section>
 
-  <div class="sep"><div class="sep-l"></div><div class="sep-d"></div><div class="sep-l"></div></div>
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
 
-  <section class="sec" id="faq">
+  <section class="sec b-blue" id="faq">
+    <div class="blk-head fi"><span class="blk-tag">Block 06 &middot; Questions</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2>Frequently <em>Asked</em></h2><p>Quick answers about Brain On BNB AI ($BOBAI).</p></div>
     <div class="faq-list fi">
       <details class="faq-item"><summary>What is Brain On BNB AI ($BOBAI)?<span class="faq-arr">&#x25BE;</span></summary>
@@ -748,17 +1141,11 @@
   <div class="cta" id="socials">
     <div class="cta-inner fi">
       <h2>Join A Smart Drip</h2>
-      <p>Every trade burns. Every burn compounds. The bot never sleeps.</p>
+      <p>Come for the burns, stay for the brain. The community lives on Telegram and X.</p>
       <div class="cta-links">
         <a class="secondary" href="https://t.me/bobai_official" target="_blank">Join Telegram</a>
         <a class="secondary" href="https://x.com/BrainOnBNB" target="_blank">X Official</a>
         <a class="secondary" href="https://x.com/BrainOnBNBAI" target="_blank">X Community</a>
-      </div>
-      <div class="cta-links" style="margin-top:12px">
-        <a class="secondary" href="game/" style="display:inline-flex;align-items:center;gap:8px"><img src="game/score.jpg" alt="Brain On BNB AI game icon" style="width:18px;height:18px;border-radius:4px">Play Game</a>
-        <a class="secondary" href="worldcup/" style="display:inline-flex;align-items:center;gap:8px"><img src="worldcup/wclogo.jpg" alt="BOBAI Worldcup '26 logo" style="height:18px;width:auto;border-radius:4px">Worldcup '26</a>
-        <a class="secondary" href="nft/" style="display:inline-flex;align-items:center;gap:8px"><img src="nft/logo.png" alt="BOBAI Buy Drops logo" style="height:20px;width:auto">NFT Buy Drops</a>
-        <a class="secondary" href="brainscreener/" style="display:inline-flex;align-items:center;gap:8px"><img src="ico-brainscreener.png" alt="brainScreener logo" style="width:18px;height:18px;border-radius:50%">brainScreener</a>
       </div>
     </div>
   </div>
@@ -778,16 +1165,148 @@
 </div>
 
 <script>
-// === BACKGROUND: Neural network particles ===
-!function(){const c=document.getElementById('bg'),x=c.getContext('2d');let w,h,N=[];
-const cols=['rgba(240,185,11,','rgba(240,185,11,','rgba(64,64,255,','rgba(160,64,255,'];
-function R(){w=c.width=innerWidth;h=c.height=innerHeight;N=[];const n=Math.min(Math.floor(w*h/30000),45);
-for(let i=0;i<n;i++)N.push({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.1,vy:(Math.random()-.5)*.1,r:Math.random()+.3,c:cols[Math.floor(Math.random()*cols.length)]})}
-function D(){x.clearRect(0,0,w,h);for(let i=0;i<N.length;i++){const a=N[i];a.x+=a.vx;a.y+=a.vy;if(a.x<0||a.x>w)a.vx*=-1;if(a.y<0||a.y>h)a.vy*=-1;
-x.beginPath();x.arc(a.x,a.y,a.r,0,6.28);x.fillStyle=a.c+'0.25)';x.fill();
-for(let j=i+1;j<N.length;j++){const b=N[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
-if(d<130){x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.strokeStyle=a.c+(0.035*(1-d/130))+')';x.lineWidth=.3;x.stroke()}}}
-requestAnimationFrame(D)}addEventListener('resize',R);R();D()}();
+// === NAV BUY BUTTON: only once the hero's own Buy CTA has scrolled away ===
+!function(){const g=document.querySelector('.nb-group'),h=document.querySelector('.hero');
+if(!g||!h)return;
+if(!('IntersectionObserver'in window)){g.classList.add('on');return}
+new IntersectionObserver(([e])=>g.classList.toggle('on',!e.isIntersecting),
+  {rootMargin:'-120px 0px 0px 0px'}).observe(h)}();
+
+/* Background is now the CSS aurora (.aur) — no canvas work needed.
+// === BACKGROUND: the brain, wired into the chain ===
+// Nodes fill an actual brain silhouette (top view — two hemispheres split by
+// the longitudinal fissure), edges wire neighbouring nodes together, and gold
+// pulses travel along those edges like transactions moving across the chain.
+!function(){
+  const c=document.getElementById('bg');if(!c)return;
+  const x=c.getContext('2d'),GOLD='240,185,11';
+  let w,h,N=[],E=[],P=[],rx,ry,reduce=false;
+  try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
+
+  // Wobble on the radius gives the gyri; the excluded centre band is the fissure.
+  function inBrain(u,v){
+    const th=Math.atan2(v,u);
+    const wob=1+.06*Math.sin(7*th)+.035*Math.sin(13*th+.9)+.03*Math.sin(4*th+2.1);
+    if(Math.hypot(u,v/.84)>wob)return false;
+    if(Math.abs(u)<.05&&Math.abs(v)<.86*wob)return false;
+    return true;
+  }
+  function newPulse(){return{e:Math.floor(Math.random()*E.length),t:Math.random(),s:.005+Math.random()*.007}}
+
+  function build(){
+    w=c.width=innerWidth;h=c.height=innerHeight;
+    // Wider than the 1100px content column on purpose — otherwise the whole
+    // brain hides behind the cards and you only ever see stray dots.
+    rx=Math.max(Math.min(w*.5,860),w*.42);ry=rx*.72;
+    const cx=w/2,cy=h*.46,step=.105;
+    N=[];E=[];P=[];
+    for(let u=-1;u<=1;u+=step)for(let v=-1;v<=1;v+=step){
+      const ju=u+(Math.random()-.5)*step*.75,jv=v+(Math.random()-.5)*step*.75;
+      if(!inBrain(ju,jv))continue;
+      N.push({x:cx+ju*rx,y:cy+jv*ry,p:Math.random()*6.28});
+    }
+    const lim=rx*step*2.4;
+    for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
+      const d=Math.hypot(N[i].x-N[j].x,N[i].y-N[j].y);
+      if(d<lim)E.push({a:i,b:j,d});
+    }
+    if(E.length)for(let i=0;i<18;i++)P.push(newPulse());
+  }
+
+  function draw(){
+    x.clearRect(0,0,w,h);
+    const now=performance.now()/1000,lim=rx*.115*2.4;
+    for(const e of E){
+      const a=N[e.a],b=N[e.b];
+      x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);
+      x.strokeStyle='rgba('+GOLD+','+(.2*(1-e.d/lim))+')';x.lineWidth=.7;x.stroke();
+    }
+    for(const n of N){
+      const r=reduce?1:1+Math.sin(now*1.3+n.p)*.45;
+      x.beginPath();x.arc(n.x,n.y,Math.max(r,.5),0,6.28);
+      x.fillStyle='rgba('+GOLD+',.55)';x.fill();
+    }
+    for(const p of P){
+      const e=E[p.e];if(!e)continue;
+      const a=N[e.a],b=N[e.b],px=a.x+(b.x-a.x)*p.t,py=a.y+(b.y-a.y)*p.t;
+      const g=x.createRadialGradient(px,py,0,px,py,8);
+      g.addColorStop(0,'rgba(255,214,90,.9)');g.addColorStop(1,'rgba('+GOLD+',0)');
+      x.beginPath();x.arc(px,py,8,0,6.28);x.fillStyle=g;x.fill();
+      if(!reduce){p.t+=p.s;if(p.t>=1)Object.assign(p,newPulse(),{t:0})}
+    }
+    requestAnimationFrame(draw);
+  }
+  addEventListener('resize',build);build();draw();
+}();
+*/
+
+// === WRAPNET: neural wiring that runs down both margins and embraces the page ===
+// Built from the real document height so it always spans the whole thing, and
+// coloured with the character's glitch speckles (cyan / magenta / gold).
+!function(){
+  const svg = document.querySelector('.wrapnet'); if(!svg) return;
+  const GLITCH = ['34,211,238', '232,121,249', '240,185,11'];
+  const NS = 'http://www.w3.org/2000/svg';
+  let raf;
+
+  function build(){
+    const page = document.querySelector('.page');
+    const W = page.clientWidth, H = page.scrollHeight;
+    if(!W || !H) return;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.style.height = H + 'px';
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+    // Content column edges — the wiring hugs just outside them.
+    const col = Math.min(1100, W - 34);
+    const pad = Math.max(18, (W - col) / 2 - 34);
+    const rows = Math.max(6, Math.round(H / 420));
+    const el = (t, a) => { const n = document.createElementNS(NS, t);
+      for(const k in a) n.setAttribute(k, a[k]); return n; };
+
+    for(const side of [0, 1]){
+      const base = side ? W - pad : pad, dir = side ? -1 : 1;
+      const pts = [];
+      for(let i = 0; i <= rows; i++){
+        const y = (H / rows) * i;
+        // meander in and out so the strand feels organic, not ruled
+        pts.push([base + dir * Math.sin(i * 1.15 + side * 2) * 26, y]);
+      }
+      let d = `M${pts[0][0].toFixed(0)} 0`;
+      for(let i = 1; i < pts.length; i++){
+        const [x0, y0] = pts[i-1], [x1, y1] = pts[i], my = (y0 + y1) / 2;
+        d += ` C${x0.toFixed(0)} ${my.toFixed(0)} ${x1.toFixed(0)} ${my.toFixed(0)} ${x1.toFixed(0)} ${y1.toFixed(0)}`;
+      }
+      svg.appendChild(el('path', {class:'wn-e', d, stroke:`rgba(${GLITCH[2]},.22)`}));
+
+      pts.forEach(([x, y], i) => {
+        if(i === 0 || i === pts.length - 1) return;
+        const c = GLITCH[i % GLITCH.length];
+        // a short branch reaching in toward the content
+        const bx = x + dir * (34 + (i % 3) * 16);
+        svg.appendChild(el('path', {class:'wn-e',
+          d:`M${x.toFixed(0)} ${y.toFixed(0)} C${(x + dir*22).toFixed(0)} ${(y-14).toFixed(0)} ${(bx-dir*10).toFixed(0)} ${(y-22).toFixed(0)} ${bx.toFixed(0)} ${(y-26).toFixed(0)}`,
+          stroke:`rgba(${c},.2)`}));
+        svg.appendChild(el('circle', {class:'wn-n', cx:bx.toFixed(0), cy:(y-26).toFixed(0), r:2,
+          fill:`rgba(${c},.6)`, style:`animation:wnpulse ${(3.4 + i%4*.5).toFixed(1)}s ease-in-out ${(-i*.7).toFixed(1)}s infinite`}));
+        // every third junction is a chain link
+        if(i % 3 === 0){
+          svg.appendChild(el('rect', {class:'wn-b', x:(x-5).toFixed(0), y:(y-5).toFixed(0),
+            width:10, height:10, rx:2.5, transform:`rotate(45 ${x.toFixed(0)} ${y.toFixed(0)})`,
+            stroke:`rgba(${c},.55)`, fill:`rgba(${c},.12)`}));
+        } else {
+          svg.appendChild(el('circle', {class:'wn-n', cx:x.toFixed(0), cy:y.toFixed(0), r:2.4,
+            fill:`rgba(${c},.5)`}));
+        }
+      });
+    }
+  }
+  const sched = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(build); };
+  addEventListener('resize', sched);
+  addEventListener('load', sched);
+  new ResizeObserver(sched).observe(document.querySelector('.page'));
+  sched();
+}();
 
 // Fade-in observer
 const ob=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('vi')}),{threshold:.08});
@@ -799,7 +1318,11 @@ const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e20
 async function gj(n){let r=null;try{r=await fetch('/logs/'+n+'?t='+Date.now())}catch(e){}if(!r||!r.ok){try{r=await fetch('https://logs.brainonbnb.com/logs/'+n+'?t='+Date.now())}catch(e){}}if(!r||!r.ok){try{r=await fetch('/'+n+'?t='+Date.now())}catch(e){}}return(r&&r.ok)?r.json():null}
 async function rpc(m,p){const r=await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:m,params:p})});return(await r.json()).result}
 async function bal(){try{const h=await rpc('eth_getBalance',[BW,'latest']);const w=await rpc('eth_call',[{to:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',data:'0x70a08231000000000000000000000000'+BW.slice(2)},'latest']);const native=Number(BigInt(h))/1e18;const wbnb=(w&&w!=='0x')?Number(BigInt(w))/1e18:0;document.getElementById('wallet-bnb').textContent=(native+wbnb).toFixed(4)+' BNB'}catch(e){}}
-async function burned(){try{const d='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';const b=await rpc('eth_call',[{to:BOB,data:d},'latest']);if(b&&b!=='0x'){const v=Number(BigInt(b))/1e18;if(v>0)document.getElementById('total-burned').textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' BOB'}const a=await rpc('eth_call',[{to:BOBAI,data:d},'latest']);if(a&&a!=='0x'){const v=Number(BigInt(a))/1e18;if(v>0){document.getElementById('total-bobai-burned').textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' BOBAI';const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}}catch(e){}}
+// Burn figures are written out in full — the exact number is the point on a
+// transparency dashboard. The stat tile's font size shrinks to fit instead.
+function setBig(id,v,sym){const e=document.getElementById(id);if(!e)return;
+  e.textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' '+sym;}
+async function burned(){try{const d='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';const b=await rpc('eth_call',[{to:BOB,data:d},'latest']);if(b&&b!=='0x'){const v=Number(BigInt(b))/1e18;if(v>0)setBig('total-burned',v,'BOB')}const a=await rpc('eth_call',[{to:BOBAI,data:d},'latest']);if(a&&a!=='0x'){const v=Number(BigInt(a))/1e18;if(v>0){setBig('total-bobai-burned',v,'BOBAI');const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}}catch(e){}}
 async function token(){try{const P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',rH=await rpc('eth_call',[{to:P,data:'0x0902f1ac'},'latest']),r0=BigInt('0x'+rH.slice(2,66)),r1=BigInt('0x'+rH.slice(66,130)),t0=await rpc('eth_call',[{to:P,data:'0x0dfe1681'},'latest']),is0=('0x'+t0.slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',bH=await rpc('eth_call',[{to:BP,data:'0x0902f1ac'},'latest']),b0=BigInt('0x'+bH.slice(2,66)),b1=BigInt('0x'+bH.slice(66,130)),bt=await rpc('eth_call',[{to:BP,data:'0x0dfe1681'},'latest']),w0=('0x'+bt.slice(26).toLowerCase())==='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),pU=(Number(wR)/Number(bR))*bnbP,dD='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD',dB=await rpc('eth_call',[{to:BOBAI,data:dD},'latest']),bAmt=(dB&&dB!=='0x')?Number(BigInt(dB))/1e18:0,circ=1e9-bAmt;document.getElementById('mcap').textContent='$'+(pU*circ).toLocaleString(undefined,{maximumFractionDigits:0});document.getElementById('volume').textContent='$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0});const cB=await rpc('eth_call',[{to:BOBAI,data:'0x70a08231000000000000000000000000'+BOBAI.slice(2)},'latest']),pend=(cB&&cB!=='0x')?Number(BigInt(cB))/1e18:0,tp=document.getElementById('tax-pending');if(tp)tp.textContent=pend>=1?'+ '+Math.round(pend).toLocaleString()+' $BOBAI tax queued (≈$'+(pend*pU).toLocaleString(undefined,{maximumFractionDigits:0})+')':'';window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender()}catch(e){}}
 async function bdata(){try{const b=await gj('burns.json');if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}document.getElementById('burn-count').textContent=b.length.toString();document.getElementById('tx-body').innerHTML=rows.join('')}}catch(e){}}
 let cnt=0;async function go(){const t=[bal(),token(),burned()];if(cnt++%10===0){t.push(bdata().then(()=>lbdata()).then(()=>bbdata()))}await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}

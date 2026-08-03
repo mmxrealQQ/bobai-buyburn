@@ -192,6 +192,15 @@
        ultrawide screens. */
     .hero picture{display:block;width:100%}
     .hero img{width:100%;height:auto;display:block}
+    /* The wide keyart carries ~12% of flat, textureless wash on its left edge —
+       on screen that reads as a black border instead of a full-bleed image.
+       Zoom from the right edge so that strip is clipped away; the ~7% that goes
+       over top and bottom is empty sky and the rock base that the bottom fade
+       swallows anyway. Only for the wide art — the -m crop below 641px has no
+       wash and would lose the cape. */
+    @media (min-width:641px){
+      .hero img{transform:scale(1.136);transform-origin:100% 50%}
+    }
     /* Headline sits in the right third — the art is composed with the figure
        left and that side deliberately calm. The scrim guarantees contrast even
        if a future hero image is brighter there. */
@@ -232,7 +241,10 @@
        2:1 crop is only ~195px tall on a phone, so overlaid text spilled out of
        the image and collided with the stat bar. A portrait crop is served
        instead and the overlay is taken out of absolute positioning. */
-    @media (max-width:900px){
+    /* Phone in landscape: the viewport is wider than 900 but only ~430 tall,
+       so the desktop overlay layout kicked in and the hero/band edge fades read
+       as black bars. Short landscape viewports get the mobile treatment. */
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
       .hero-ov{position:static;background:none;display:block}
       .hero-in{justify-content:center;padding:0 20px}
       .hero-tx{max-width:560px;text-align:center;padding:22px 0 4px;margin:0 auto}
@@ -242,7 +254,7 @@
       .hero::before{display:none}
       .hero picture{position:relative}
       .hero picture::after{content:'';position:absolute;inset:0;pointer-events:none;
-        background:linear-gradient(to bottom,rgba(12,11,12,0) 74%,var(--bg) 100%)}
+        background:linear-gradient(to bottom,rgba(12,11,12,0) 66%,var(--bg) 97%)}
     }
     @media (max-width:480px){
       .hero-h{font-size:1.6rem}
@@ -251,7 +263,7 @@
     }
     /* Fades all four edges into the page so the widened canvas has no seam. */
     .hero::after{content:'';position:absolute;inset:0;pointer-events:none;background:
-      linear-gradient(to right,var(--bg) 0%,var(--bg) 9%,rgba(10,8,20,0) 27%),
+      linear-gradient(to right,var(--bg) 0%,rgba(10,8,20,0) 5%),
       linear-gradient(to left,var(--bg) 0%,rgba(10,8,20,0) 17%),
       linear-gradient(to bottom,rgba(10,8,20,0) 72%,var(--bg) 100%)}
 
@@ -557,8 +569,12 @@
     .band{position:relative;width:100%;overflow:hidden}
     .band picture{display:block;width:100%}
     .band img{width:100%;height:auto;display:block}
+    /* Same left-edge wash as the hero art — clipped the same way. */
+    @media (min-width:641px){
+      .band img{transform:scale(1.12);transform-origin:100% 50%}
+    }
     .band::after{content:'';position:absolute;inset:0;pointer-events:none;background:
-      linear-gradient(to right,var(--bg) 0%,var(--bg) 9%,rgba(10,8,20,0) 27%),
+      linear-gradient(to right,var(--bg) 0%,rgba(10,8,20,0) 5%),
       linear-gradient(to left,var(--bg) 0%,rgba(10,8,20,0) 17%),
       linear-gradient(to bottom,var(--bg) 0%,rgba(10,8,20,0) 20%,rgba(10,8,20,0) 74%,var(--bg) 100%)}
     .band-ov{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
@@ -573,7 +589,7 @@
     .burn-lead{color:var(--muted);font-size:.87rem;line-height:1.75;margin-top:14px}
     /* Same reason as the hero: a 2:1 band is only ~195px tall on a phone, far
        too short to hold the heading plus lead. Copy drops below the art. */
-    @media (max-width:900px){
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
       .band-ov{position:static;background:none;display:block}
       .band-in{justify-content:center;padding:0 20px}
       .band-tx{max-width:560px;text-align:center;padding:20px 0 4px;margin:0 auto}
@@ -583,8 +599,14 @@
       .band::after{display:none}
       .band picture{position:relative}
       .band picture::after{content:'';position:absolute;inset:0;pointer-events:none;
-        background:linear-gradient(to bottom,rgba(12,11,12,0) 72%,var(--bg) 100%)}
+        background:linear-gradient(to bottom,rgba(12,11,12,0) 66%,var(--bg) 97%)}
       .burn-lead{margin-left:auto;margin-right:auto}
+    }
+    /* Phone in landscape gets its own 2:1 crop cut straight from the source art
+       (…-l.webp). It has no widened canvas, so the zoom-crop that hides the wash
+       on the desktop files would only throw picture away here. */
+    @media (orientation:landscape) and (max-height:520px){
+      .hero img,.band img{transform:none}
     }
 
     /* ECOSYSTEM — the sub-apps, promoted out of the footer chip row */
@@ -664,7 +686,7 @@
     .lr-sm a{font-size:.68rem;padding:5px 12px;gap:5px;opacity:.85}
     .lr-sm img{width:15px;height:15px}
 
-    @media(max-width:900px){
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
       .sg{grid-template-columns:repeat(3,1fr)}
       .tg4,.fl{grid-template-columns:repeat(2,1fr)}
       .fa{display:none}
@@ -753,8 +775,12 @@
 
   <section class="hero">
     <picture>
-      <source media="(max-width:640px)" srcset="hero-v3m.webp" type="image/webp">
-      <source media="(max-width:640px)" srcset="hero-v3m.jpg" type="image/jpeg">
+      <!-- Handy quer: eigener 2:1-Zuschnitt aus dem Original, ohne die
+           kuenstlich verbreiterten Raender des Desktop-Bildes. -->
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="hero-v3l.webp" type="image/webp">
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="hero-v3l.jpg" type="image/jpeg">
+      <source media="(max-width:640px)" srcset="hero-v3m.webp?v=5" type="image/webp">
+      <source media="(max-width:640px)" srcset="hero-v3m.jpg?v=5" type="image/jpeg">
       <source srcset="hero-v3.webp?v=4" type="image/webp">
       <img src="hero-v3.jpg?v=4" alt="BOBAI — Where Memes Meet Intelligence" fetchpriority="high">
     </picture>
@@ -876,6 +902,8 @@
 
   <div class="band" id="burns">
     <picture>
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-forge-l.webp" type="image/webp">
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-forge-l.jpg" type="image/jpeg">
       <source media="(max-width:640px)" srcset="band-forge-m.webp" type="image/webp">
       <source media="(max-width:640px)" srcset="band-forge-m.jpg" type="image/jpeg">
       <source srcset="band-forge.webp" type="image/webp">
@@ -1014,6 +1042,8 @@
 
   <div class="band" id="ecosystem">
     <picture>
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-command-l.webp" type="image/webp">
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-command-l.jpg" type="image/jpeg">
       <source media="(max-width:640px)" srcset="band-command-m.webp" type="image/webp">
       <source media="(max-width:640px)" srcset="band-command-m.jpg" type="image/jpeg">
       <source srcset="band-command.webp" type="image/webp">
@@ -1056,6 +1086,8 @@
 
   <div class="band">
     <picture>
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-brainchain-l.webp" type="image/webp">
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-brainchain-l.jpg" type="image/jpeg">
       <source media="(max-width:640px)" srcset="band-brainchain-m.webp" type="image/webp">
       <source media="(max-width:640px)" srcset="band-brainchain-m.jpg" type="image/jpeg">
       <source srcset="band-brainchain.webp" type="image/webp">

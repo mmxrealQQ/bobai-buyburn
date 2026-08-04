@@ -102,7 +102,8 @@ const OFFICIAL_LINKS = {
   dexscreener: 'https://dexscreener.com/bsc/' + TOKEN,
   geckoterminal: 'https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6',
   coingecko: 'https://www.coingecko.com/en/coins/brain-on-bnb-ai',
-  source: 'https://github.com/mmxrealQQ/bobai-buyburn',
+  source: 'https://bscscan.com/address/' + TOKEN + '#code',
+  audit_log: 'https://logs.brainonbnb.com/logs/burns.json',
   llms_txt: 'https://brainonbnb.com/llms.txt',
   skill_md: 'https://brainonbnb.com/skill.md',
 };
@@ -197,14 +198,14 @@ async function getLiquidity() {
 }
 
 // Live proof the buyback-and-burn flywheel runs — from the bot's public audit
-// log (burns.json, written to KV by the CF-Worker bot, open-source in the repo).
+// log (burns.json, written to KV by the CF-Worker bot).
 let ACTIVITY_ENV = null; // set per-request in fetch(); needed for the ASSETS fallback below
 async function getActivity() {
   // Primary: live log served by the bot worker (custom domain — worker-to-worker fetchable)
   let r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 60 } }).catch(() => null);
-  // Fallback 1: GitHub copy (stale once the CF-Worker bots took over 2026-07-27, but better than nothing)
-  if (!r || !r.ok) r = await fetch('https://raw.githubusercontent.com/mmxrealQQ/bobai-buyburn/main/burns.json', { cf: { cacheTtl: 300, cacheEverything: true } }).catch(() => null);
-  // Fallback 2: same-origin static copy bundled with the deploy
+  // Fallback: same-origin static copy bundled with the deploy. (The old
+  // raw.githubusercontent copy was dropped — the repo has been unreachable
+  // since the account flag, so it only cost a round trip on every miss.)
   if ((!r || !r.ok) && ACTIVITY_ENV) r = await ACTIVITY_ENV.ASSETS.fetch('https://brainonbnb.com/burns.json').catch(() => null);
   if (!r || !r.ok) throw new Error('burn log unavailable (HTTP ' + (r ? r.status : 'fetch failed') + ')');
   const runs = await r.json();
@@ -221,7 +222,7 @@ async function getActivity() {
     last_7_days: period(within(7)),
     last_30_days: period(within(30)),
     bot_burn_runs_total: runs.length,
-    audit_log: 'https://github.com/mmxrealQQ/bobai-buyburn/blob/main/burns.json',
+    audit_log: 'https://logs.brainonbnb.com/logs/burns.json',
     note: 'Burn cadence follows trading volume — the 3% tax funds the buybacks, so more volume means more frequent burns. $BOB is the sister token (1% of the tax burns $BOB). Every burn_tx is verifiable on BscScan. Not financial advice.',
   };
 }
@@ -418,13 +419,14 @@ const TOKENOMICS = {
     'ownership renounced — no mint, no pause, no proxy/upgrade path',
     'LP tokens burned (perma-locked at the dead address), not a timelock',
     'fair launch on Four.Meme — no presale, no private sale, no team allocation',
-    'contract verified on BscScan, entire stack open source',
+    'contract source verified and published on BscScan — readable line by line',
   ],
   verify_yourself: {
     burned: 'call bobai_burned',
     circulating_supply: 'call bobai_circulating_supply',
     contract: 'https://bscscan.com/token/' + TOKEN,
-    source: 'https://github.com/mmxrealQQ/bobai-buyburn',
+    contract_source: 'https://bscscan.com/address/' + TOKEN + '#code',
+    burn_audit_log: 'https://logs.brainonbnb.com/logs/burns.json',
   },
   disclaimer: "Describes the token's design, not a recommendation to buy. Meme tokens are high-risk. Not financial advice — verify everything on-chain.",
 };
@@ -583,13 +585,14 @@ To sell: reverse the path, approve the router for $BOBAI first, then call \`swap
 ## Tokenomics (how it works — verify, don't trust)
 - **Model:** deflationary — circulating supply shrinks as trading volume grows.
 - **Mechanism:** 3% trade tax → autonomous 24/7 buyback → bought $BOBAI sent to the dead address (permanent burn). More volume → more burned → lower supply.
-- **Trust:** ownership renounced (no mint/pause/proxy) · LP burned (perma-locked) · fair launch on Four.Meme (no presale, no team allocation) · verified on BscScan · open source.
+- **Trust:** ownership renounced (no mint/pause/proxy) · LP burned (perma-locked) · fair launch on Four.Meme (no presale, no team allocation) · contract source verified and published on BscScan.
 - Verify: \`bobai_burned\`, \`bobai_circulating_supply\`, and BscScan. Describes the design, not a recommendation — meme tokens are high-risk, not financial advice.
 
 ## Verify everything yourself
 - Contract: https://bscscan.com/token/${TOKEN}
 - DexScreener: https://dexscreener.com/bsc/${TOKEN}
-- Source (open): https://github.com/mmxrealQQ/bobai-buyburn
+- Contract source (verified): https://bscscan.com/address/${TOKEN}#code
+- Burn audit log (live): https://logs.brainonbnb.com/logs/burns.json
 
 _Not financial advice. Everything here is verifiable on-chain — don't trust, verify._
 `;
@@ -660,7 +663,7 @@ const MCP_TOOLS = [
   { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_wallet_balance', description: 'BNB and $BOBAI balance of any BSC wallet address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'BSC wallet address (0x + 40 hex chars)' } }, required: ['address'], additionalProperties: false } },
-  { name: 'bobai_links', description: 'Official $BOBAI links: website, BscScan contract, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, GitHub source, llms.txt.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_links', description: 'Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_trade_info', description: 'How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTransferTokens methods). $BOBAI reverts on a naive swap — use these.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_guide', description: 'START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know fee-on-transfer rule.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_how_to_buy', description: 'Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -831,7 +834,7 @@ const A2A_CARD = {
 const AGENT_REGISTRATION = {
   type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
   name: 'Brain On BNB AI ($BOBAI)',
-  description: 'AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract verified on BscScan and renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation.',
+  description: 'AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract source verified on BscScan and ownership renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Every burn run is written to a public audit log.',
   image: 'https://brainonbnb.com/logo-200x200.png',
   active: true,
   registrations: [

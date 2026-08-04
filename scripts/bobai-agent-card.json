@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "Brain On BNB AI ($BOBAI)",
-  "description": "AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract verified on BscScan and renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Fully open source.",
+  "description": "AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract source verified on BscScan and ownership renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Every burn run is written to a public audit log.",
   "image": "https://brainonbnb.com/logo-200x200.png",
   "active": true,
   "services": [
@@ -55,7 +55,8 @@
     { "trait_type": "Launch", "value": "Fair launch on Four.Meme - no presale, no team allocation" },
     { "trait_type": "Twitter", "value": "@BrainOnBNB" },
     { "trait_type": "Telegram", "value": "@bobai_official" },
-    { "trait_type": "Source", "value": "https://github.com/mmxrealQQ/bobai-buyburn" }
+    { "trait_type": "Contract Source", "value": "https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" },
+    { "trait_type": "Burn Audit Log", "value": "https://logs.brainonbnb.com/logs/burns.json" }
   ],
   "registrations": [
     { "agentId": 49467, "agentRegistry": "eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" }

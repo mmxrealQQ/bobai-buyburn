@@ -188,7 +188,7 @@
   <p><strong>Transparency guarantees:</strong></p>
   <ul>
     <li>Every program is announced before it starts and published on the <a href="https://brainonbnb.ai/#about" target="_blank">live tax-allocation schedule</a> on the dashboard.</li>
-    <li>All bot logic that handles tax distribution is <a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">open source</a> and committed to a public GitHub repo &mdash; every change is in the commit history.</li>
+    <li>Every run of the bot that handles tax distribution is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank">public audit log</a> &mdash; amounts, timestamps and the transaction hash of each burn.</li>
     <li>Every burn, every liquidity add, every prize-pool credit is an on-chain transaction verifiable on BscScan.</li>
     <li>Programs can only <em>redirect</em> slices within the existing 3% &mdash; they can never increase the tax rate, mint tokens, or change the contract.</li>
   </ul>
@@ -209,8 +209,8 @@
 
   <div class="card">
     <h3>Bot Infrastructure</h3>
-    <p style="margin-bottom:8px">The buyback bot runs on Cloudflare Workers with a cron trigger &mdash; no server to maintain, no downtime. The bot's source code is fully open source.</p>
-    <p><span class="tag">Serverless</span> <span class="tag">24/7</span> <span class="tag">Open Source</span> <span class="tag">Autonomous</span></p>
+    <p style="margin-bottom:8px">The buyback bot runs on Cloudflare Workers with a cron trigger &mdash; no server to maintain, no downtime. Every run it makes is logged publicly.</p>
+    <p><span class="tag">Serverless</span> <span class="tag">24/7</span> <span class="tag">Public Log</span> <span class="tag">Autonomous</span></p>
   </div>
 
   <!-- 4. ECOSYSTEM PROGRAMS -->
@@ -225,7 +225,7 @@
     <li><strong>Three pots split 60 / 30 / 10 (group phase) &rarr; 0 / 90 / 10 (KO phase):</strong> 12 Group Brackets (one winner per group of 4 teams), the End Pool (overall top 4 across the whole tournament), and a Crypto Pot (winner-take-all per coin, settled by absolute USD price diff at final kickoff).</li>
     <li><strong>BOBAI holder cap:</strong> a player's payout across all pots is capped at 26&times; their on-chain BOBAI balance at settlement, to keep skin-in-the-game aligned. Excess is redistributed back into liquidity adds and burns.</li>
     <li><strong>Tie-breaker (rules &sect; 7):</strong> equal-score players are ranked by on-chain BOBAI balance. Balances are snapshotted daily at 06:15 UTC during the quiet window between matches; the leaderboard exposes only a <em>"holds more $BOBAI"</em> badge, never actual amounts.</li>
-    <li><strong>Verifiability:</strong> every prize-pool credit, donation swap, and final payout is an on-chain transaction. The bot logic is open source in the same GitHub repo as the buyback bot.</li>
+    <li><strong>Verifiability:</strong> every prize-pool credit, donation swap, and final payout is an on-chain transaction, checkable on BscScan.</li>
   </ul>
   <p>Full rules, live prize pool, and projected payouts: <a href="https://brainonbnb.com/worldcup/" target="_blank">brainonbnb.com/worldcup</a>.</p>
 
@@ -247,7 +247,7 @@
     <li><strong>Owner Renounced</strong> &mdash; no admin functions, no minting, no pausing</li>
     <li><strong>LP Locked</strong> &mdash; liquidity locked on PancakeSwap</li>
     <li><strong>No Proxy</strong> &mdash; contract is not upgradeable</li>
-    <li><strong>Open Source</strong> &mdash; all bot code is public on GitHub</li>
+    <li><strong>Verified Source</strong> &mdash; contract code published and readable on BscScan</li>
     <li><strong>Tax Immutable</strong> &mdash; 3% rate is hardcoded, cannot be modified</li>
   </ul>
 
@@ -293,7 +293,7 @@
     <li><strong>bobai_tokenomics</strong> &mdash; neutral, verifiable value-accrual mechanics and trust properties (renounced, LP burned, fair launch). Describes the design; not a buy recommendation.</li>
     <li><strong>bobai_links</strong> &mdash; the canonical set of official links.</li>
   </ul>
-  <p>All agent-interface logic is <a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">open source</a> and every tool returns data that can be re-verified independently on BscScan.</p>
+  <p>Every tool returns data that can be re-verified independently on BscScan &mdash; nothing the agent says has to be taken on trust.</p>
 
   <!-- 8. CONTRACT -->
   <h2>8. Contract Details</h2>
@@ -317,7 +317,7 @@
     <li><a href="https://brainonbnb.com/nft/" target="_blank">NFT Buy Drops</a></li>
     <li><a href="https://brainonbnb.com/skill.md" target="_blank">AI Agent Skill Guide</a> &bull; <a href="https://8004scan.io/agents/bsc/49467" target="_blank">ERC-8004 Agent #49467</a></li>
     <li><a href="https://t.me/bobai_official" target="_blank">Telegram</a></li>
-    <li><a href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank">GitHub (Open Source)</a></li>
+    <li><a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank">Burn Audit Log (live)</a></li>
     <li><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">BscScan</a></li>
     <li><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">GeckoTerminal</a></li>
     <li><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Trade on PancakeSwap</a></li>

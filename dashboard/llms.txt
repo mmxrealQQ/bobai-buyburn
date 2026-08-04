@@ -1,6 +1,6 @@
 # Brain On BNB AI ($BOBAI)
 
-> Brain On BNB AI ($BOBAI) is an AI-built, deflationary meme token on BNB Chain (BEP-20). Every trade pays a 3% tax that funds an autonomous 24/7 buyback-and-burn cycle. The contract is verified on BscScan, ownership is renounced (no mint, no pause, no proxy), LP is perma-locked at the dead address, and the token launched as a fair launch on Four.Meme with no presale or private allocation. The entire stack — contract, dashboard, buyback bot, Telegram bot — is open source.
+> Brain On BNB AI ($BOBAI) is an AI-built, deflationary meme token on BNB Chain (BEP-20). Every trade pays a 3% tax that funds an autonomous 24/7 buyback-and-burn cycle. The contract is verified on BscScan, ownership is renounced (no mint, no pause, no proxy), LP is perma-locked at the dead address, and the token launched as a fair launch on Four.Meme with no presale or private allocation. The contract source is published and readable on BscScan, and every buyback-and-burn run is written to a public audit log.
 
 ## Key facts (verifiable on-chain)
 
@@ -22,7 +22,8 @@
 - GeckoTerminal: https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6
 - DEXTools: https://www.dextools.io/token/bobai
 - Binance Web3 Wallet: https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff
-- Open-source code: https://github.com/mmxrealQQ/bobai-buyburn
+- Contract source (BscScan, verified): https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code
+- Burn audit log (live, every bot run): https://logs.brainonbnb.com/logs/burns.json
 
 ## Where to buy
 

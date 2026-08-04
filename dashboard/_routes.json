@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "include": ["/api/*", "/mcp", "/logs/*", "/.well-known/agent-card.json", "/skill.md"],
+  "include": ["/api/*", "/mcp", "/logs/*", "/.well-known/agent-card.json", "/.well-known/agent-registration.json", "/skill.md"],
   "exclude": []
 }

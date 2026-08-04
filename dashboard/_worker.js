@@ -823,6 +823,23 @@ const A2A_CARD = {
   ],
 };
 
+// ERC-8004 domain proof. The spec lets an agent prove control of an endpoint
+// domain by serving /.well-known/agent-registration.json with a registrations
+// list that points back at the on-chain agentId + registry. Without it every
+// brainonbnb.com service (MCP, A2A) stays domain_verified:false on indexers
+// like 8004scan, because the Pages SPA answers unknown paths with 200 + HTML.
+const AGENT_REGISTRATION = {
+  type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+  name: 'Brain On BNB AI ($BOBAI)',
+  description: 'AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract verified on BscScan and renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation.',
+  image: 'https://brainonbnb.com/logo-200x200.png',
+  active: true,
+  registrations: [
+    { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+  ],
+  supportedTrust: ['reputation'],
+};
+
 // Plain REST mirror of the MCP tools — the lowest common denominator for
 // agents that can GET a URL but don't speak MCP yet (documented in skill.md).
 const REST_TOOLS = {
@@ -887,6 +904,12 @@ export default {
 
     if (url.pathname === '/.well-known/agent-card.json') {
       return new Response(JSON.stringify(A2A_CARD, null, 2), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    if (url.pathname === '/.well-known/agent-registration.json') {
+      return new Response(JSON.stringify(AGENT_REGISTRATION, null, 2), {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
       });
     }

@@ -658,10 +658,21 @@
 
     /* SOCIAL BUTTONS (Block 07) */
     .cta-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
-    /* Im Block sitzt alles an der linken Kante wie in den anderen Blöcken —
-       zentrierte Reihen unter einer linksbündigen Überschrift lasen sich falsch. */
-    #socials .cta-links,#socials .lr{justify-content:flex-start}
-    #socials .cta-links{margin-bottom:6px}
+    /* Block 07 ist der Abschluss vor dem Footer und laeuft mittig aus, statt
+       linksbuendig weiterzulaufen — die Ueberschrift zentriert mit, sonst
+       kippt das Verhaeltnis wieder. Jede Gruppe bekommt eine zentrierte
+       Beschriftung zwischen zwei Haarlinien, damit die vier Bloecke als
+       Bloecke lesen und nicht als eine lange Reihe von links nach rechts. */
+    #socials .sh{text-align:center;margin-bottom:28px}
+    #socials .sh p{max-width:620px;margin:0 auto}
+    #socials .cta-links,#socials .lr{justify-content:center}
+    #socials .cta-links{margin-bottom:4px}
+    #socials .lr{max-width:860px;margin-left:auto;margin-right:auto}
+    #socials .lr-sm{max-width:760px}
+    #socials .ll{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:28px}
+    #socials .ll::before,#socials .ll::after{content:'';flex:1;height:1px;max-width:110px}
+    #socials .ll::before{background:linear-gradient(90deg,transparent,rgba(var(--accs),.4))}
+    #socials .ll::after{background:linear-gradient(90deg,rgba(var(--accs),.4),transparent)}
     .cta-links a{padding:11px 26px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.3px}
     .cta-links a:hover{transform:translateY(-2px)}
     .cta-links .primary{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;box-shadow:0 2px 20px rgba(240,185,11,.2)}

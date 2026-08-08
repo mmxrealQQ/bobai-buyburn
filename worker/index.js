@@ -38,6 +38,11 @@ const BOBAI_LIQ_EXTRA_END   = new Date('2026-08-01T23:59:59Z').getTime();
 const WC26_START = new Date('2026-06-11T00:01:00Z').getTime();
 const WC26_END   = new Date('2026-07-19T23:59:00Z').getTime();
 
+// BOBAI Liq Boost II: 0.8% of trade -> BOBAI/BNB perma liq + LP burn (all from the BOB burn
+// share, creator untouched). Own window so the 2026 phase-1 constants above stay untouched history.
+const BOBAI_LIQ_BOOST2_START = new Date('2026-08-08T00:00:00Z').getTime();
+const BOBAI_LIQ_BOOST2_END   = new Date('2026-09-16T23:59:59Z').getTime();
+
 function isLiqBoostActive() {
   const now = Date.now();
   return now >= LIQ_BOOST_START && now <= LIQ_BOOST_END;
@@ -53,6 +58,10 @@ function isBobaiLiqExtraActive() {
 function isWc26Active() {
   const now = Date.now();
   return now >= WC26_START && now <= WC26_END;
+}
+function isBobaiLiqBoost2Active() {
+  const now = Date.now();
+  return now >= BOBAI_LIQ_BOOST2_START && now <= BOBAI_LIQ_BOOST2_END;
 }
 
 // Tax allocation in basis points of trade (TAX_BPS = 300 means 3% total).
@@ -347,6 +356,7 @@ async function runBot(env) {
   const bobaiLiqBoost = isBobaiLiqBoostActive();
   const bobaiLiqExtra = isBobaiLiqExtraActive();
   const wc26Active    = isWc26Active();
+  const bobaiLiqBoost2 = isBobaiLiqBoost2Active();
 
   // Build per-phase BPS allocation from baseline (1/1/1)
   let bobaiBurnBps = 100;
@@ -360,6 +370,7 @@ async function runBot(env) {
   if (bobaiLiqBoost) { bobBurnBps -= 50; bobaiLiqBps += 50; }
   if (bobaiLiqExtra) { creatorBps -= 25; bobaiLiqBps += 25; }
   if (wc26Active)    { creatorBps -= 26; bobBurnBps  -= 26; wc26PoolBps += 52; }
+  if (bobaiLiqBoost2){ bobBurnBps -= 80; bobaiLiqBps += 80; }
 
   const bpsSum = bobaiBurnBps + bobBurnBps + creatorBps + bobLiqBps + bobaiLiqBps + wc26PoolBps;
 
@@ -371,6 +382,7 @@ async function runBot(env) {
   if (bobaiLiqBoost) phases.push('BOBAI Liq Boost');
   if (bobaiLiqExtra) phases.push('BOBAI Liq Extra (+0.25%)');
   if (wc26Active)    phases.push('WC26 Prize Pool');
+  if (bobaiLiqBoost2) phases.push('BOBAI Liq Boost II (0.8%)');
   console.log(`Active phases: ${phases.length ? phases.join(' + ') : 'Standard 1/1/1'}`);
   console.log(`Split (bps of trade, total=${bpsSum}):`);
   console.log(`  BOBAI burn ${bobaiBurnBps}  |  BOB burn ${bobBurnBps}  |  Creator ${creatorBps}`);

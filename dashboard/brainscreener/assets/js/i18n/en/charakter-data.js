@@ -233,10 +233,10 @@ window.TEST_DATA = (function () {
     },
     resultUi: {
       balancedTrait: "Balanced profile",
-      balancedName: "You are a bit of everything",
+      balancedName: "A balanced mix",
       balancedIntro: "Your profile is remarkably <strong>balanced</strong> — no single trait clearly stands out. Depending on the situation, you show different sides of yourself. You will probably recognise yourself in several of the types below.",
       domIntro: (dom, domPct, sec, secPct) =>
-        `You are a bit of everything — what shows most strongly in you is <strong>${dom.name}</strong> (${domPct}&nbsp;%). ${dom.tagline} ` +
+        `Everyone carries something of all four traits — what shows most strongly in you is <strong>${dom.name}</strong> (${domPct}&nbsp;%). ${dom.tagline} ` +
         `The runner-up is <strong>${sec.name}</strong> (${secPct}&nbsp;%). ` +
         `This does not mean that you "are like that" — it only shows which tendency shines through most in you.`,
       badgeTop: "stands out",

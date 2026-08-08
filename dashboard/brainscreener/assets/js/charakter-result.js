@@ -49,12 +49,12 @@
   // UI-Strings: deutsche Defaults; übersetzte charakter-data.js liefert D.resultUi mit.
   const RUI = Object.assign({
     balancedTrait: "Ausgewogenes Profil",
-    balancedName: "Sie sind von allem etwas",
+    balancedName: "Ein ausgeglichenes Mischverhältnis",
     balancedIntro: "Ihr Profil ist bemerkenswert <strong>ausgewogen</strong> — kein Zug ragt deutlich heraus. Je nach Situation zeigen Sie verschiedene Seiten. Vermutlich erkennen Sie sich unten in mehreren Typen wieder.",
     domIntro: (dom, domPct, sec, secPct) =>
-      `Sie sind von allem etwas — am stärksten zeigt sich bei Ihnen <strong>${dom.name}</strong> (${domPct}&nbsp;%). ${dom.tagline} ` +
+      `Jeder Mensch trägt von allen vier Zügen etwas in sich — am stärksten zeigt sich bei Ihnen <strong>${dom.name}</strong> (${domPct}&nbsp;%). ${dom.tagline} ` +
       `Danach folgt am ehesten <strong>${sec.name}</strong> (${secPct}&nbsp;%). ` +
-      `Das heisst nicht, dass Sie „so sind" — es zeigt nur, welche Tendenz bei Ihnen am ehesten durchscheint.`,
+      `Das heisst nicht, dass Sie „so sind“ — es zeigt nur, welche Tendenz bei Ihnen am ehesten durchscheint.`,
     badgeTop: "ragt heraus",
     badgeDominant: "Ihr stärkster Zug",
     colExamples: "So zeigt es sich im Alltag",

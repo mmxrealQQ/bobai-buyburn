@@ -57,6 +57,8 @@
   `;
 
   // ---- Subscales / Domain Profile ----
+  // Unter dieser Itemzahl ist ein Domaenenwert nicht interpretierbar
+  const MIN_DOMAIN_ITEMS = 5;
   const domainNames = {
     Gf: "Fluid intelligence (matrix reasoning, logical reasoning)",
     Gq: "Quantitative reasoning (number series)",
@@ -75,6 +77,7 @@
           <span class="val">${d.right} / ${d.total} · ${pct} %</span>
         </div>
         <div class="subscale-bar"><div style="width:${pct}%;"></div></div>
+        ${d.total < MIN_DOMAIN_ITEMS ? `<div class="note">Only ${d.total} items — not statistically meaningful on its own.</div>` : ""}
       </div>`;
   }).join("");
 
@@ -111,20 +114,23 @@
   }
 
   function iqGauge(iq) {
-    const w = 360, h = 200, cx = w / 2, cy = h - 12, r = 140;
+    // Hoehe aus dem Bogen ableiten: 10 px Luft oben fuer die runde Strichkappe,
+    // 36 px unten fuer die Skalenbeschriftung (sonst faellt sie aus der viewBox).
+    const w = 360, r = 140, cx = w / 2, cy = r + 10, h = cy + 36;
     // IQ scale 55..145 (90 IQ points) on a semicircle
     const min = 55, max = 145;
     const value = Math.max(0, Math.min(1, (iq - min) / (max - min)));
     const start = Math.PI, end = 0;
     function arc(p) {
       const a = start + (end - start) * p;
-      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+      // In SVG zeigt +y nach unten, der Bogen liegt oben — daher cy MINUS sin.
+      return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
     }
     const [px, py] = arc(value);
     const color = iq < 85 ? "var(--danger)" : iq < 115 ? "var(--sage)" : "var(--gold)";
     // background arc
     return `
-      <svg viewBox="0 0 ${w} ${h}" role="img" aria-hidden="true">
+      <svg viewBox="0 0 ${w} ${h}" aria-hidden="true">
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${px} ${py}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>
         <circle cx="${px}" cy="${py}" r="10" fill="var(--ink)" />

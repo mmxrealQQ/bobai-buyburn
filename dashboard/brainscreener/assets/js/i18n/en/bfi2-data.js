@@ -9,7 +9,7 @@
 //    cross-cultural evidence.
 //
 // 60 items, 5-point Likert. 5 domains of 12 items each, 15 facets of 4 items each.
-// Domain norms (Danner et al. 2019, German general population, N>4'600):
+// Domain norms (Danner et al. 2019, German general population, N>4,600):
 //   E: M=3.32 SD=0.69 | A: M=3.57 SD=0.55 | C: M=3.62 SD=0.65
 //   N: M=2.62 SD=0.79 | O: M=3.74 SD=0.62
 
@@ -195,7 +195,7 @@ window.TEST_DATA = (function () {
       Your <strong>BFI-2 profile</strong> shows your individual standing on the five domains
       and 15 facets of personality. The domain scores are expressed as <strong>T-scores</strong>
       (mean&nbsp;=&nbsp;50, standard&nbsp;deviation&nbsp;=&nbsp;10) relative to the German
-      norm sample (Danner et al. 2019, N&nbsp;&gt;&nbsp;4'600). T-scores between 40
+      norm sample (Danner et al. 2019, N&nbsp;&gt;&nbsp;4,600). T-scores between 40
       and 60 correspond to the range covering about 68&nbsp;% of people; scores below 35
       or above 65 are statistically unusual. Trait levels are <em>not an indicator of pathology</em>
       — they describe enduring personality characteristics.

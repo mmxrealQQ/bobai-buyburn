@@ -358,6 +358,9 @@ img { max-width: 100%; height: auto; display: block; }
   border-radius: var(--radius); padding: 28px 30px;
   margin-bottom: 14px; box-shadow: var(--shadow-sm);
   transition: border-color .2s ease;
+  /* Beim Springen zu einer offenen Frage (Engine ruft scrollIntoView) darf die
+     Frage nicht unter der klebenden Kopf-/Fortschrittsleiste landen. */
+  scroll-margin-top: 140px; scroll-margin-bottom: 24px;
 }
 .item.is-answered { border-color: rgba(240, 185, 11, 0.4); }
 .item-num {
@@ -492,14 +495,18 @@ img { max-width: 100%; height: auto; display: block; }
 .result-head .meta-info { font-size: 0.92rem; color: var(--ink-mute); text-align: right; }
 
 .score-big {
-  display: flex; align-items: baseline; gap: 14px; margin: 18px 0 8px;
+  display: flex; align-items: baseline; gap: 14px; margin: 18px 0 8px; min-width: 0;
 }
 .score-big .value {
   font-family: var(--serif); font-size: 4rem; line-height: 1; color: var(--ink); font-weight: 500;
 }
+/* mehrteilige Kennzahlen (BFI-2: fuenf T-Werte) kleiner, damit sie einzeilig bleiben */
+.score-big .value.is-long { font-size: 2.1rem; letter-spacing: -0.01em; }
 .score-big .unit { font-size: 1rem; color: var(--ink-mute); }
-.score-row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 50px; align-items: center; }
-@media (max-width: 720px) { .score-row { grid-template-columns: 1fr; gap: 22px; } }
+/* minmax(0, …): ohne das kann eine breite Kennzahl (z. B. BFI-2 "45/40/40/55/38")
+   die erste Spalte aufblaehen, bis fuer die Grafik 0 px uebrig bleiben. */
+.score-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 50px; align-items: center; }
+@media (max-width: 720px) { .score-row { grid-template-columns: minmax(0, 1fr); gap: 22px; } }
 
 .gauge {
   position: relative; aspect-ratio: 2 / 1; max-width: 360px;
@@ -635,6 +642,97 @@ img { max-width: 100%; height: auto; display: block; }
   font-size: 0.78rem; color: var(--ink-mute);
   text-align: center; padding-top: 16px;
   border-top: 1px solid var(--line); margin-top: 36px;
+}
+
+/* ====================== IQ-TESTMODUS ============================
+   Waehrend des IQ-Tests soll eine Aufgabe komplett auf den Schirm passen —
+   40 Aufgaben x scrollen waere sonst muehsam und fehleranfaellig.
+   Die Klasse setzt iq.js beim Start (und beim Fortsetzen). */
+.iq-testing .site-footer { display: none; }
+.iq-testing .test-shell { padding-top: 14px; padding-bottom: 14px; }
+.iq-testing #itemEl { margin-bottom: 12px; padding: 20px 26px; }
+.iq-testing #itemStimulus { margin: 8px 0 12px !important; }
+.iq-testing .matrix-stim { padding: 4px 0 6px; }
+.iq-testing #finishHint { margin: 6px 0 0; font-size: 0.78rem; line-height: 1.4; }
+.iq-testing #actionsRow { margin-top: 4px; }
+
+/* Ab 900px nebeneinander: Aufgabe links, Antworten rechts */
+@media (min-width: 900px) {
+  .iq-testing .container-narrow { max-width: 1060px; }
+  .iq-testing #itemEl {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "kopf kopf" "frage frage" "stim opts";
+    column-gap: 40px;
+    align-items: center;
+  }
+  .iq-testing #itemNum      { grid-area: kopf; }
+  .iq-testing #itemQuestion { grid-area: frage; }
+  .iq-testing #itemStimulus { grid-area: stim; margin: 0 !important; }
+  .iq-testing #itemOptions  { grid-area: opts; margin-top: 0; }
+  /* Aufgaben ohne Grafik (Zahlenreihen, verbale Analogien) haben nichts fuer die
+     linke Spalte — dort einspaltig, sonst klafft daneben eine leere Flaeche. */
+  .iq-testing #itemEl:has(#itemStimulus:empty) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "kopf" "frage" "opts";
+    max-width: 680px;
+  }
+  /* Kopf-, Fortschritts- und Buttonleiste sind hoehenkonstant (zusammen rund 495px).
+     Der Rest steht Stimulus UND Antworten zur Verfuegung — beide werden gedeckelt,
+     sonst treibt mal die Grafik, mal das Antwortraster die Seite ueber den Schirm. */
+  .iq-testing { --iq-frei: calc(100vh - 500px); }
+  .iq-testing #itemStimulus { max-height: var(--iq-frei); }
+  .iq-testing .matrix-stim svg { max-height: var(--iq-frei); width: auto; }
+  .iq-testing .iq-options-svg {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: calc((var(--iq-frei) - 10px) / 2);
+    max-width: 460px; margin-inline: auto;
+  }
+  .iq-testing .iq-options-svg label { aspect-ratio: auto; height: 100%; padding: 8px; }
+}
+
+/* Schmale Schirme: einspaltig. Hier ist die Hoehe knapp, also weg mit allem,
+   was nicht zur Aufgabe gehoert — der Fusshinweis und die Domaenenangabe stehen
+   ohnehin schon im Intro bzw. in der Auswertung. */
+@media (max-width: 899px) {
+  /* Einspaltig stehen Grafik und Antwortraster UNTEREINANDER, teilen sich also
+     die Restflaeche. Die Aufgabengrafik bekommt den groesseren Anteil — sie muss
+     im Detail erkennbar sein, die Antwortkacheln nur antippbar. */
+  .iq-testing { --iq-rest: calc(100vh - 480px); --iq-frei: calc(var(--iq-rest) * 0.58); }
+  .iq-testing #itemOptions { max-height: calc(var(--iq-rest) * 0.42); }
+  .iq-testing #finishHint { display: none; }
+  /* "Show results" kostet mobil eine ganze Button-Zeile. iq.js blendet
+     #btnNext auf der letzten Aufgabe aus — bis dahin genuegen Zurueck/Ueberspringen/Weiter. */
+  .iq-testing #actionsRow:has(#btnNext:not([hidden])) #btnFinish { display: none; }
+  .iq-testing #itemNum { font-size: 0.72rem; line-height: 1.3; }
+  .iq-testing #itemQuestion { font-size: 1rem; line-height: 1.35; margin-bottom: 6px; }
+  .iq-testing #itemEl { padding: 10px 14px; margin-bottom: 6px; }
+  .iq-testing #itemStimulus { margin: 4px 0 6px !important; max-height: var(--iq-frei); }
+  .iq-testing .matrix-stim { padding: 0; }
+  .iq-testing .matrix-stim svg { max-height: var(--iq-frei); width: auto; }
+  /* Antwortkacheln an die freie Hoehe koppeln statt an die Spaltenbreite,
+     sonst waechst das Raster mit der Bildschirmbreite aus dem Schirm heraus. */
+  .iq-testing .iq-options-svg {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: calc((var(--iq-rest) * 0.42 - 6px) / 2); gap: 6px;
+  }
+  .iq-testing .iq-options-svg label { aspect-ratio: auto; height: 100%; padding: 4px; }
+  .iq-testing #progressWrap { padding-top: 6px; padding-bottom: 6px; }
+  /* Buttonleiste kompakt, sonst frisst sie ein Drittel des Schirms */
+  .iq-testing #actionsRow { gap: 6px; margin-top: 0; }
+  .iq-testing #actionsRow .btn { padding: 9px 14px; font-size: 0.85rem; }
+  .iq-testing #actionsRow .right { gap: 6px; }
+}
+
+/* Flache Schirme (iPhone SE & Co. im Hochformat): Textantworten wieder
+   zweispaltig — die IQ-Antworten sind kurz (Zahlen, einzelne Woerter),
+   einspaltig verschenkt hier die Hoehe, die der Weiter-Button braucht. */
+@media (max-width: 899px) and (max-height: 760px) {
+  .iq-testing .mcq { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .iq-testing .mcq label { min-height: 42px; padding: 7px 10px; font-size: 0.88rem; gap: 8px; }
+  .iq-testing .mcq label .opt-letter { width: 22px; height: 22px; font-size: 0.8rem; }
+  .iq-testing #actionsRow .btn { padding: 7px 11px; font-size: 0.8rem; }
+  .iq-testing #itemNum { font-size: 0.68rem; }
 }
 
 /* ====================== ACCESSIBILITY / FOCUS =================== */

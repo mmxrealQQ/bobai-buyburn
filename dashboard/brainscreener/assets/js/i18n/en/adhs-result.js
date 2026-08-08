@@ -155,21 +155,23 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
   function stripTags(s) { return s.replace(/<[^>]*>/g, ""); }
 
   function gaugeSVG(value /* 0..1 */, flag) {
-    // Halbkreis-Gauge
-    const w = 360, h = 200, cx = w / 2, cy = h - 12, r = 140;
+    // Halbkreis-Gauge. Hoehe aus dem Bogen ableiten: 10 px Luft oben fuer die runde
+    // Strichkappe, 36 px unten fuer die Skalenbeschriftung (sonst faellt sie aus der viewBox).
+    const w = 360, r = 140, cx = w / 2, cy = r + 10, h = cy + 36;
     const start = Math.PI;
     const end = 0;
     const ang = start + (end - start) * value;
     const px = cx + r * Math.cos(ang);
-    const py = cy + r * Math.sin(ang);
+    // In SVG zeigt +y nach unten, der Bogen liegt oben — daher cy MINUS sin.
+    const py = cy - r * Math.sin(ang);
     const color = flag === "high" ? "var(--danger)" : flag === "moderate" ? "var(--gold)" : "var(--sage)";
     function arc(p) {
       const a = start + (end - start) * p;
-      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+      return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
     }
     const [ax, ay] = arc(value);
     return `
-      <svg viewBox="0 0 ${w} ${h}" role="img" aria-hidden="true">
+      <svg viewBox="0 0 ${w} ${h}" aria-hidden="true">
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${ax} ${ay}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>
         <circle cx="${px}" cy="${py}" r="10" fill="var(--ink)" />

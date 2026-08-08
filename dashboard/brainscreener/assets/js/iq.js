@@ -263,6 +263,8 @@
     testArea.hidden = false;
     progressWrap.hidden = false;
     testInProgress = true;
+    // Testmodus: kompaktes Layout, damit eine Aufgabe ohne Scrollen auf den Schirm passt
+    document.documentElement.classList.add("iq-testing");
     if (!startTs) { startTs = Date.now(); sessionStorage.setItem(TIME_KEY, String(startTs)); }
     idx = 0;
     renderItem(idx);
@@ -276,6 +278,8 @@
     testArea.hidden = false;
     progressWrap.hidden = false;
     testInProgress = true;
+    // Testmodus: kompaktes Layout, damit eine Aufgabe ohne Scrollen auf den Schirm passt
+    document.documentElement.classList.add("iq-testing");
     // find first unanswered, else last
     idx = 0;
     for (let i = 0; i < D.TOTAL; i++) {

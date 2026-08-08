@@ -71,6 +71,10 @@
   setText("overallTitle", r.title);
   setText("overallSubtitle", r.sub);
   setText("overallValue", r.value);
+  // mehrteilige Werte (z. B. fuenf T-Werte) brauchen eine kleinere Schrift,
+  // sonst verdraengen sie die Grafik daneben aus dem Grid
+  const elValue = document.getElementById("overallValue");
+  if (elValue) elValue.classList.toggle("is-long", String(r.value ?? "").trim().length > 6);
   setText("overallUnit", r.unit);
   setHTML("interpretationText", r.interpretationHTML);
 
@@ -141,17 +145,20 @@
 
   function gaugeSVG(value, flag) {
     const v = Math.max(0, Math.min(1, value));
-    const w = 360, h = 200, cx = w / 2, cy = h - 12, r = 140;
-    const start = Math.PI, end = 0;
-    const ang = start + (end - start) * v;
+    // Hoehe aus dem Bogen ableiten: 10 px Luft oben fuer die runde Strichkappe,
+    // 36 px unten fuer die Skalenbeschriftung (sonst faellt sie aus der viewBox).
+    const w = 360, r = 140, cx = w / 2, cy = r + 10, h = cy + 36;
+    // Winkel laeuft von 180° (links, v=0) auf 0° (rechts, v=1).
+    // In SVG zeigt +y nach unten, der Bogen liegt oben — daher cy MINUS sin.
+    const ang = Math.PI * (1 - v);
     const px = cx + r * Math.cos(ang);
-    const py = cy + r * Math.sin(ang);
+    const py = cy - r * Math.sin(ang);
     const color = flag === "high" ? "var(--danger)"
                 : flag === "moderate" ? "var(--gold)"
                 : flag === "low" ? "var(--sage)"
                 : "var(--sage)";
     return `
-      <svg viewBox="0 0 ${w} ${h}" role="img" aria-hidden="true">
+      <svg viewBox="0 0 ${w} ${h}" aria-hidden="true">
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${px} ${py}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>
         <circle cx="${px}" cy="${py}" r="10" fill="var(--ink)" />

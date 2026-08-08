@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#050510">
+<title>WebView Debug</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 0 0 40px; background: #fff; color: #111; }
+  .sticky-bar { position: sticky; top: 0; z-index: 50; background: #16a34a; color: #fff; padding: 12px 16px; font-weight: 700; }
+  .fixed-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: #2563eb; color: #fff; padding: 10px 16px; font-weight: 700; }
+  .box { margin: 14px 16px; padding: 12px 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; line-height: 1.5; }
+  .box b { display: block; margin-bottom: 4px; }
+  code { word-break: break-all; font-size: 12px; background: #f4f4f2; padding: 2px 4px; border-radius: 4px; display: block; }
+  .filler { height: 55vh; display: flex; align-items: center; justify-content: center; color: #999; border-top: 1px dashed #eee; }
+  button { padding: 10px 16px; border-radius: 8px; border: 1px solid #ccc; background: #f7f7f5; font-size: 15px; }
+  #printResult { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="sticky-bar">🟩 STICKY-Balken — klebt der beim Scrollen oben?</div>
+
+<div class="box"><b>User-Agent:</b><code id="ua"></code></div>
+<div class="box"><b>In-App-Erkennung (print-fallback-Logik):</b> <span id="inapp"></span></div>
+<div class="box"><b>Viewport / Fenster:</b> <span id="vp"></span></div>
+<div class="box">
+  <b>Print-Test:</b>
+  <button id="printBtn" type="button">window.print() aufrufen</button>
+  <div id="printResult"></div>
+</div>
+
+<div class="filler">scroll mich … (Füller 1)</div>
+<div class="filler">scroll mich … (Füller 2)</div>
+<div class="filler">Ende — 🟩 oben sichtbar? 🟦 unten sichtbar?</div>
+
+<div class="fixed-bar">🟦 FIXED-Balken — klebt der unten?</div>
+
+<script>
+  var ua = navigator.userAgent || "";
+  document.getElementById("ua").textContent = ua;
+  function isInApp() {
+    if (typeof window.TelegramWebviewProxy !== "undefined" || typeof window.TelegramWebviewProxyProto !== "undefined" || typeof window.TelegramWebview !== "undefined") return "JA (Telegram-Proxy-Objekt)";
+    if (/Telegram|TwitterAndroid|Twitter for iPhone|FBAN|FBAV|Instagram|Line\//i.test(ua)) return "JA (Marker im UA)";
+    if (/Android/.test(ua) && /; wv\)/.test(ua)) return "JA (Android WebView ; wv)";
+    if (/iPhone|iPad|iPod/.test(ua) && !/Safari\//i.test(ua)) return "JA (iOS ohne Safari-Token)";
+    try { var b=(navigator.userAgentData||{}).brands||[]; for (var i=0;i<b.length;i++) if (/WebView/i.test(b[i].brand)) return "JA (UA-CH WebView-Brand)"; } catch(e) {}
+    return "NEIN — als normaler Browser erkannt";
+  }
+  document.getElementById("inapp").textContent = isInApp();
+  document.getElementById("vp").textContent =
+    "innerWidth " + window.innerWidth + " · innerHeight " + window.innerHeight +
+    " · visualViewport " + (window.visualViewport ? Math.round(window.visualViewport.height) : "n/a") +
+    " · typeof print: " + (typeof window.print);
+  document.getElementById("printBtn").addEventListener("click", function () {
+    var out = document.getElementById("printResult");
+    try {
+      window.print();
+      out.textContent = "window.print() wurde ohne Fehler aufgerufen — falls kein Dialog erschien: stiller No-Op (WebView blockt).";
+    } catch (e) {
+      out.textContent = "window.print() warf einen Fehler: " + (e.message || e);
+    }
+  });
+</script>
+</body>
+</html>

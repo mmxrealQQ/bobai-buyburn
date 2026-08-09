@@ -746,18 +746,54 @@
     table tr{transition:background .2s}
     table tr:hover{background:rgba(240,185,11,.025)}
 
-    /* Hier stand kurzzeitig ein @media(max-width:900px)-Block, der die teuren
-       Dauer-Animationen auf dem Handy einfach abschaltete. Nicht mehr noetig:
-       sie sind jetzt alle auf transform/opacity umgebaut und laufen auf jedem
-       Viewport auf dem Compositor. Kein Mobile-Sonderfall mehr.
+    /* === MOBILE: DON'T ASK THE PHONE'S COMPOSITOR FOR THE IMPOSSIBLE ===
 
-       Zwei Verdaechtige wurden dabei per Gegenprobe freigesprochen, damit hier
-       nichts auf Verdacht geopfert wird:
-       - backdrop-filter auf ~68 Elementen: komplett abgeschaltet brachte 53.6%
-         statt 58.7% Dauerlast, also praktisch nichts. Die Glas-Optik bleibt.
-       - Die Aurora (.aur, fixed 150% Viewport mit filter:blur(110px)): ihre
-         Orbs animieren reines transform, laufen also ohnehin auf dem
-         Compositor. Bleibt ebenfalls. */
+       There used to be a @media(max-width:900px) block here that switched the
+       long-running animations off on phones. It was dropped on 2026-08-09 once
+       every animation had been rewritten to transform/opacity — cheap on the
+       CPU, and a CPU-idle measurement in Chrome duly cleared both suspects
+       below. That measurement asked the wrong question.
+
+       Reported the same day from an iPhone: refreshing gave seconds of white,
+       and sometimes it simply stayed white until a second reload. That is not a
+       CPU-load symptom. It is what iOS Safari does when compositing runs out of
+       room: every transform/opacity animation, every backdrop-filter and every
+       blurred layer needs its own GPU surface, and a phone with a 3x pixel
+       ratio has a hard ceiling on how much of that it can hold. Past the
+       ceiling, WebKit does not degrade — it hands back empty tiles. Making the
+       animations "compositor-friendly" pushed the layer count UP, which is
+       exactly how a change that reads as an optimisation makes a phone worse.
+
+       So the three heaviest surfaces are dropped below 900px. None of them is
+       doing visible work at that size, and desktop is untouched.
+
+       On the exoneration in the old comment: it stands for what it measured
+       (steady-state CPU in Chrome) and says nothing about GPU memory in
+       WebKit. Different failure mode, different verdict. */
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
+      /* A fixed background cannot be handed to the compositor — the renderer
+         has to repaint it against the viewport for every frame of every
+         scroll. It is the single most notorious scroll-killer on iOS. The
+         gradients stay, they just travel with the page now, which at phone
+         height is not a difference anyone can see. */
+      body{background-attachment:scroll}
+      /* The aurora is a POSITION:FIXED layer 150% of the viewport in both
+         directions, run through filter:blur(110px). A blur that wide forces an
+         intermediate buffer far bigger than the layer itself, it is pinned for
+         the entire life of the page, and on a 3x phone it is the largest single
+         surface on the site — for a soft colour wash that the body's own radial
+         gradients already provide underneath it. */
+      .aur{display:none}
+      /* backdrop-filter makes the renderer snapshot and blur everything behind
+         each element, per element, per frame. There are fourteen of them, they
+         stack, and on a phone a 16px blur behind a card is not perceptible
+         anyway. The cards get their translucency from --card, so they keep
+         looking like cards; it is raised a little to make up for the missing
+         blur. */
+      .sc,.tax,.fs,.fn,.tc,.ptile,.vc,table,.tg-card,.lb-card,.bw-card,
+      .faq-item,.ec,.rm{backdrop-filter:none;-webkit-backdrop-filter:none}
+      :root{--card:rgba(30,25,24,.93)}
+    }
 
     /* Wer Bewegung systemweit abbestellt, bekommt hier Ruhe. Die Effekte sind
        zwar billig geworden, aber das ist eine Praeferenz, keine Perf-Frage. */

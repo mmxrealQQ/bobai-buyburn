@@ -305,12 +305,42 @@ function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].rever
 // The three log files used to be fetched in a serial then-chain — and
 // bobai-liq-log.json twice over, once for each campaign card. One parallel
 // round of fetches, each file read exactly once.
+// The logs used to be fetched only on every tenth tick, i.e. every five
+// minutes. Combined with the server cache (two minutes fresh, then up to ten
+// more minutes of "serve the old copy and refetch in the background") a fresh
+// burn could stay off the page for a quarter of an hour — which is exactly what
+// "the page doesn't update itself any more" looked like.
+// Now on every tick. That costs nothing: the server attaches a fingerprint to
+// each file and, as long as nothing changed, answers with an empty "not
+// modified" instead of the full 88 KB.
+// liq-boost-log.json is the finished $BOB archive from June and never changes
+// again — it is fetched exactly once, at load.
 async function logs(){
-  const [burns,lb,bb]=await Promise.all([gj('burns.json'),gj('liq-boost-log.json'),gj('bobai-liq-log.json')]);
-  bdata(burns);lbdata(lb);bbdata(bb);bb2data(bb);
+  const [burns,bb]=await Promise.all([gj('burns.json'),gj('bobai-liq-log.json')]);
+  bdata(burns);bbdata(bb);bb2data(bb);
 }
-let cnt=0;async function go(){const t=[chain()];if(cnt++%10===0){t.push(logs())}await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
+gj('liq-boost-log.json').then(lbdata);
+let busy=false;
+async function go(){
+  if(busy)return;busy=true;
+  try{
+    await Promise.all([chain(),logs()]);
+    const el=document.getElementById('last-update');
+    if(el)el.textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
+  }finally{busy=false}
+}
 go();setInterval(go,30000);
+// On a phone the page spends most of its life in the background: screen off,
+// app switched, another tab. Browsers freeze timers then — and since the HTML
+// is allowed into the back/forward cache, returning to the page can even bring
+// it back wholesale from memory, frozen on the numbers from before. From the
+// outside both look identical: "it stopped updating, I have to reload". So the
+// moment it becomes visible again, refetch. The guard keeps the two events
+// from firing the same round twice.
+let lastWake=0;
+function wake(){const n=Date.now();if(n-lastWake<5000)return;lastWake=n;go()}
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wake()});
+addEventListener('pageshow',e=>{if(e.persisted)wake()});
 
 // === LIQ BOOST DATA ===
 function lbdata(entries){try{if(!entries||entries.length===0)return;document.getElementById('lb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=totalLp.toFixed(2);paintRows('lb-tx-body',rows)}catch(e){console.error('lbdata error:',e)}}

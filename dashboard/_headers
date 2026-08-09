@@ -70,3 +70,11 @@
 # Bei inhaltlichen Aenderungen die ?v= in index.html hochzaehlen.
 /app.js
   Cache-Control: public, max-age=604800, must-revalidate
+
+# Same for the stylesheet. It used to be an inline <style> block and made up
+# half the document — 57 KB that had to cross the wire on every refresh, because
+# Cloudflare Pages serves HTML without a fingerprint and can never answer "not
+# modified". As its own file with ?v= it lives in the device cache.
+# When editing the CSS, bump the ?v= in index.html.
+/styles.css
+  Cache-Control: public, max-age=604800, must-revalidate

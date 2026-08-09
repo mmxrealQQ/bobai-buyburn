@@ -859,6 +859,26 @@ const REST_TOOLS = {
   '/api/how-to-buy': 'bobai_how_to_buy',
 };
 
+// An ETag is a fingerprint of a response. The browser sends it back next time
+// ("If-None-Match"), and if nothing changed we answer 304 with no body — a few
+// hundred bytes instead of the whole file. The log proxy below rebuilds its
+// responses from scratch, so it has to supply its own; without one, every poll
+// pays for the full payload and the page can only stay fresh by not caching at
+// all. That is the difference between "refresh re-downloads everything" and
+// "refresh just asks and is done".
+async function etagOf(buf) {
+  const d = await crypto.subtle.digest('SHA-1', buf);
+  const hex = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return '"' + hex.slice(0, 20) + '"';
+}
+// If-None-Match may carry several values and a W/ prefix. Tolerate both, or the
+// revalidation never matches and we ship the full body every single time.
+function etagMatches(header, tag) {
+  if (!header) return false;
+  if (header.trim() === '*') return true;
+  return header.split(',').some((v) => v.trim().replace(/^W\//, '') === tag);
+}
+
 export default {
   async fetch(request, env) {
     ACTIVITY_ENV = env;
@@ -870,26 +890,32 @@ export default {
     // Keeps the page independent of the visitor's DNS/CORS for the logs subdomain.
     const logMatch = url.pathname.match(/^\/logs\/([a-z0-9-]+\.json)$/);
     if (logMatch) {
-      // Kurz cachen statt no-store. burns.json ist ~88 KB und war damit der
-      // groesste Einzelbrocken der Startseite — bei JEDEM Aufruf und jedem
-      // Aktualisieren komplett neu uebertragen. Der Bot schreibt die Logs alle
-      // 10 Minuten, 2 Minuten Cache sind also nie spuerbar veraltet, sparen
-      // beim Neuladen aber die vollen 88 KB. stale-while-revalidate liefert
-      // danach sofort die alte Fassung und holt die neue im Hintergrund.
-      const LOG_CACHE = 'public, max-age=120, stale-while-revalidate=600';
-      const upstream = await fetch('https://logs.brainonbnb.com/logs/' + logMatch[1]).catch(() => null);
-      if (upstream && upstream.ok) {
-        return new Response(upstream.body, {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': LOG_CACHE, 'Access-Control-Allow-Origin': '*' },
-        });
-      }
+      // These files ARE the page's live numbers: burns and liquidity adds.
+      // They used to be served as "fresh for two minutes", plus ten more via
+      // stale-while-revalidate — so after a burn the page could sit on the old
+      // figures for a quarter of an hour and only a manual reload helped.
+      // Now the browser revalidates every time: unchanged means an empty 304
+      // (as cheap as the old caching), changed means it shows up at once.
+      // cacheTtl keeps the log worker out of it no matter how many visitors
+      // are asking at the same moment.
+      const LOG_CACHE = 'public, max-age=0, must-revalidate';
+      const inm = request.headers.get('If-None-Match');
+      const deliver = async (buf) => {
+        const tag = await etagOf(buf);
+        const headers = {
+          'Content-Type': 'application/json',
+          'Cache-Control': LOG_CACHE,
+          'ETag': tag,
+          'Access-Control-Allow-Origin': '*',
+        };
+        if (etagMatches(inm, tag)) return new Response(null, { status: 304, headers });
+        return new Response(buf, { headers });
+      };
+      const upstream = await fetch('https://logs.brainonbnb.com/logs/' + logMatch[1], { cf: { cacheTtl: 20, cacheEverything: true } }).catch(() => null);
+      if (upstream && upstream.ok) return deliver(await upstream.arrayBuffer());
       // Fallback: static copy bundled with the deploy
       const fallback = await env.ASSETS.fetch('https://brainonbnb.com/' + logMatch[1]).catch(() => null);
-      if (fallback && fallback.ok) {
-        return new Response(fallback.body, {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': LOG_CACHE, 'Access-Control-Allow-Origin': '*' },
-        });
-      }
+      if (fallback && fallback.ok) return deliver(await fallback.arrayBuffer());
       return new Response('[]', { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
 
@@ -954,11 +980,23 @@ export default {
     }
 
     const response = await env.ASSETS.fetch(request);
+    const secure = (h) => {
+      h.set('X-Content-Type-Options', 'nosniff');
+      h.set('X-Frame-Options', 'SAMEORIGIN');
+      h.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+      h.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+      return h;
+    };
+
+    // DON'T TRY THIS AGAIN: attaching our own ETag to the HTML so a refresh can
+    // be answered with an empty 304 does not work here. Cloudflare runs HTML
+    // through its own post-processing and drops ETag and Content-Length on the
+    // way out — measured live twice on 2026-08-09, including with no-transform
+    // and on pages without a mailto link. That is why the fix went the other
+    // way, through file size: stylesheet (styles.css) and code (app.js) sit
+    // versioned in the device cache, and the HTML carries only content.
     const newResponse = new Response(response.body, response);
-    newResponse.headers.set('X-Content-Type-Options', 'nosniff');
-    newResponse.headers.set('X-Frame-Options', 'SAMEORIGIN');
-    newResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    newResponse.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    secure(newResponse.headers);
     return newResponse;
   },
 };

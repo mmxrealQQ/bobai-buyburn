@@ -1,0 +1,767 @@
+/* Split out of index.html. As an inline <style> this block was 57 KB — a good
+   half of the whole document — and it came down the wire in full on EVERY visit
+   and EVERY refresh, because Cloudflare Pages serves HTML without a fingerprint
+   and can therefore never answer "not modified". As its own file with ?v= it is
+   allowed to sit in the device cache for a week: on refresh it comes from
+   storage instead of the network, and the HTML next to it is half the size.
+   That wait was the white screen on mobile — the browser cannot paint anything
+   before the stylesheet is there.
+   When editing this file, bump the ?v= in index.html. */
+    :root{
+      --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
+      --red:#ff3028;--green:#00e676;--blue:#4040ff;--purple:#a040ff;
+      /* Warmer, softer base than the old ice-cold #050510/#7b7d9e pair — the
+         page should read welcoming, not like a terminal. --muted was lifted to
+         ~7.9:1 on the new background so the small print is comfortable. */
+      /* Sampled from logo.png: corners #0c0c0c, brain body #c68f76, cream
+         highlight #ead4bf. The page now sits on the logo's own ground. */
+      --brain:#c68f76;--brain-rgb:198,143,118;
+      --glitch-c:34,211,238;--glitch-m:232,121,249;
+      --bg:#0c0b0c;--card:rgba(30,25,24,.78);--border:rgba(198,143,118,.16);
+      --text:#eceaf5;--muted:#a0a2c0;
+      --radius:22px;
+    }
+    .bob-sub{font-size:.75em;color:#fff;font-weight:400;margin-left:2px;flex:none}
+    *{margin:0;padding:0;box-sizing:border-box}
+    /* Hier stand frueher overflow-x:hidden auf html UND body — daher die zwei
+       Scrollbalken (eine hidden-Achse setzt die andere auf auto, body wurde so
+       zum zweiten Scroll-Container). Der Zwischenschritt war overflow-x:clip
+       auf body.
+       Beides ist ersatzlos entfernt: nachgemessen bei 360/390/430/768/1440px
+       ragt NICHTS mehr horizontal heraus (die breiten Tabellen sitzen in ihrer
+       eigenen .txw-Scrollbox). Die Notbremsen deckten ein Problem zu, das es
+       nicht mehr gibt — und body ist ohne overflow-Angabe garantiert kein
+       Scroll-Container, der Doppelbalken kann also nicht zurueckkommen.
+       Falls hier je wieder ein Ueberhang auftaucht: das verursachende Element
+       suchen, nicht erneut global abklemmen. */
+    /* Warm glows lift the page out of flat black without giving up the dark
+       gold-on-near-black identity. */
+    body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
+      background:
+        radial-gradient(1200px 700px at 50% -6%,rgba(240,185,11,.13),transparent 66%),
+        radial-gradient(900px 620px at 50% 40%,rgba(198,143,118,.06),transparent 70%),
+        radial-gradient(700px 500px at 88% 78%,rgba(120,48,24,.07),transparent 72%),
+        var(--bg);
+      background-attachment:fixed}
+    /* Colour field — slow drifting aurora in the BOBAI accent palette. Replaces
+       the old particle canvas: cheaper, prettier, and it actually adds colour. */
+    /* Warm amber field like the logo's ground, with the two glitch hues kept
+       faint so they read as speckle, not as a purple wash. */
+    .aur{position:fixed;inset:-25%;z-index:0;pointer-events:none;filter:blur(110px);opacity:.5}
+    .aur i{position:absolute;display:block;border-radius:50%}
+    .aur .a1{width:48vw;height:48vw;left:-4%;top:-4%;background:rgba(240,185,11,.4);animation:drift1 34s ease-in-out infinite}
+    .aur .a2{width:40vw;height:40vw;right:-6%;top:20%;background:rgba(198,143,118,.3);animation:drift2 42s ease-in-out infinite}
+    .aur .a3{width:38vw;height:38vw;left:18%;bottom:-4%;background:rgba(120,48,24,.34);animation:drift3 38s ease-in-out infinite}
+    .aur .a4{width:26vw;height:26vw;right:22%;bottom:12%;background:rgba(34,211,238,.1);animation:drift2 48s ease-in-out infinite reverse}
+    @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,4vh) scale(1.12)}}
+    @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-5vw,6vh) scale(.94)}}
+    @keyframes drift3{0%,100%{transform:translate(0,0) scale(.96)}50%{transform:translate(4vw,-5vh) scale(1.1)}}
+    /* .aur i (0,1,1) verliert gegen .aur .a1 (0,2,0) — ein Media-Query erhoeht
+       die Spezifitaet nicht, diese Regel war deshalb wirkungslos. Die vier
+       Klassen einzeln nennen: gleiche Spezifitaet, aber spaeter im Dokument. */
+    @media (prefers-reduced-motion:reduce){.aur .a1,.aur .a2,.aur .a3,.aur .a4{animation:none}}
+    .page{position:relative;z-index:1}
+
+    /* NAV */
+    /* Always fully opaque — nothing should ever show through the header. */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#0b0916;
+      border-bottom:1px solid var(--border)}
+    .nav{position:relative;z-index:1}
+    .nav{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px}
+    .nl{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.15rem}
+    .nl img{width:30px;height:30px;border-radius:8px;box-shadow:0 0 12px rgba(240,185,11,.2)}
+    .nl span{background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .nm{display:flex;gap:24px}
+    .nm a{color:var(--muted);text-decoration:none;font-size:.78rem;font-weight:500;transition:color .2s;letter-spacing:.2px}
+    .nm a:hover{color:var(--gold)}
+    .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:9px 24px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
+    .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
+    /* Hidden while the hero (which has its own big Buy CTA) is on screen, so the
+       two identical gold buttons are never visible at the same time. */
+    .nb-group{display:flex;gap:8px;align-items:center;opacity:0;visibility:hidden;
+      transform:translateY(-6px);transition:opacity .3s ease,transform .3s ease,visibility .3s}
+    .nb-group.on{opacity:1;visibility:visible;transform:none}
+    .nb2{position:relative;background:transparent;color:var(--gold);padding:8px 18px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:1px solid rgba(240,185,11,.45);letter-spacing:.3px;overflow:hidden}
+    /* Statischer Ring + transform/opacity statt wachsender box-shadow — siehe
+       Grundregel im POLISH LAYER. .nb2 wird aktuell nirgends im HTML benutzt,
+       die Regel bleibt aber als Hook stehen; sie soll dann nicht die alte,
+       teure Variante wieder einschleppen. */
+    .nb2::before{content:'';position:absolute;inset:0;border-radius:10px;pointer-events:none;
+      box-shadow:0 0 0 6px rgba(240,185,11,.32);animation:nb2pulse 2.4s ease-out infinite}
+    .nb2:hover{background:rgba(240,185,11,.08);border-color:var(--gold);transform:translateY(-1px)}
+    @keyframes nb2pulse{0%{opacity:1;transform:scale(.94)}70%,100%{opacity:0;transform:scale(1)}}
+
+    /* HERO */
+    .hero{position:relative;width:100%;margin-top:58px;overflow:hidden}
+    /* No max-height: any cover-crop cuts the figure. The image keeps its native
+       3:2 so the whole character stays visible; max-width stops it exploding on
+       ultrawide screens. */
+    .hero picture{display:block;width:100%}
+    /* Feste Box pro Zuschnitt: ohne reservierten Platz war das Bild bis zum
+       Laden 0px hoch, alles darunter rutschte nach — beim Wiederoeffnen des
+       Browsers landete der Blick dadurch mitten im Gesicht statt am Bildrand. */
+    .hero img{width:100%;height:auto;display:block;aspect-ratio:2/1}
+    @media (max-width:640px){.hero img{aspect-ratio:720/900}}
+    @media (orientation:landscape) and (max-height:520px){.hero img{aspect-ratio:2/1}}
+    /* The wide keyart carries ~12% of flat, textureless wash on its left edge —
+       on screen that reads as a black border instead of a full-bleed image.
+       Zoom from the right edge so that strip is clipped away; the ~7% that goes
+       over top and bottom is empty sky and the rock base that the bottom fade
+       swallows anyway. Only for the wide art — the -m crop below 641px has no
+       wash and would lose the cape. */
+    @media (min-width:641px){
+      .hero img{transform:scale(1.136);transform-origin:100% 50%}
+    }
+    /* Headline sits in the right third — the art is composed with the figure
+       left and that side deliberately calm. The scrim guarantees contrast even
+       if a future hero image is brighter there. */
+    .hero-ov{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
+      background:linear-gradient(to right,transparent 38%,rgba(10,8,20,.72) 72%,rgba(10,8,20,.88) 100%);
+      pointer-events:none}
+    .hero-in{max-width:1100px;margin:0 auto;padding:0 24px;width:100%;display:flex;justify-content:flex-end}
+    .hero-tx{max-width:530px;pointer-events:auto;padding-bottom:36px}
+    .hero-eb{display:inline-flex;align-items:center;gap:7px;font-size:.62rem;text-transform:uppercase;
+      letter-spacing:1.5px;font-weight:600;color:var(--muted);margin-bottom:14px}
+    .hero-eb .dot{width:6px;height:6px;border-radius:50%;background:var(--green);
+      box-shadow:0 0 8px var(--green);animation:tgpulse 1.6s ease-in-out infinite;flex-shrink:0}
+    /* h2, not h1 — the keyword-carrying SEO h1 stays the page's only h1. */
+    .hero-h{font-family:'Space Grotesk',sans-serif;font-size:3.1rem;font-weight:700;
+      line-height:1.08;letter-spacing:-1.5px;margin-bottom:16px}
+    /* The tagline lived only in <title> and alt text until now. As a pill it
+       reads as a deliberate mark rather than a stray line of small caps. */
+    .hero-tag{display:inline-block;font-family:'Space Grotesk',sans-serif;font-size:.72rem;
+      font-weight:700;letter-spacing:2.6px;text-transform:uppercase;color:var(--gold);
+      border:1px solid rgba(240,185,11,.3);background:rgba(240,185,11,.07);
+      padding:8px 18px;border-radius:999px;margin:6px 0 26px;
+      box-shadow:0 0 30px rgba(240,185,11,.08)}
+    .hero-h em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .hero-tx p{color:var(--muted);font-size:.86rem;line-height:1.7;margin-bottom:24px}
+    .hero-cta{display:flex;gap:10px;flex-wrap:wrap}
+    /* Pill buttons throughout — the single cheapest move from "technical" to
+       "friendly", and it keeps the gold-on-dark identity untouched. */
+    .hero-cta a{padding:13px 30px;border-radius:999px;font-weight:700;font-size:.8rem;
+      text-decoration:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s,background .25s;letter-spacing:.3px}
+    .hero-cta a:active{transform:scale(.96)}
+    .hb1{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;
+      box-shadow:0 4px 24px rgba(240,185,11,.28)}
+    .hb1:hover{transform:translateY(-2px);box-shadow:0 8px 36px rgba(240,185,11,.45)}
+    .hb2{border:1px solid rgba(240,185,11,.35);color:var(--gold);background:rgba(240,185,11,.04)}
+    .hb2:hover{background:rgba(240,185,11,.1);transform:translateY(-2px)}
+    /* MOBILE HERO — copy sits BELOW the art instead of on top of it. The wide
+       2:1 crop is only ~195px tall on a phone, so overlaid text spilled out of
+       the image and collided with the stat bar. A portrait crop is served
+       instead and the overlay is taken out of absolute positioning. */
+    /* Phone in landscape: the viewport is wider than 900 but only ~430 tall,
+       so the desktop overlay layout kicked in and the hero/band edge fades read
+       as black bars. Short landscape viewports get the mobile treatment. */
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
+      .hero-ov{position:static;background:none;display:block}
+      .hero-in{justify-content:center;padding:0 20px}
+      .hero-tx{max-width:560px;text-align:center;padding:22px 0 4px;margin:0 auto}
+      .hero-h{font-size:1.9rem}
+      .hero-cta{justify-content:center}
+      .hero::after{display:none}
+      .hero::before{display:none}
+      .hero picture{position:relative}
+      .hero picture::after{content:'';position:absolute;inset:0;pointer-events:none;
+        background:linear-gradient(to bottom,rgba(12,11,12,0) 66%,var(--bg) 97%)}
+    }
+    @media (max-width:480px){
+      .hero-h{font-size:1.6rem}
+      .hero-tag{font-size:.62rem;letter-spacing:2px;padding:7px 14px;margin-bottom:18px}
+      .hero-cta a{padding:11px 20px;font-size:.75rem}
+    }
+    /* Fades all four edges into the page so the widened canvas has no seam. */
+    .hero::after{content:'';position:absolute;inset:0;pointer-events:none;background:
+      linear-gradient(to right,var(--bg) 0%,rgba(10,8,20,0) 5%),
+      linear-gradient(to left,var(--bg) 0%,rgba(10,8,20,0) 17%),
+      linear-gradient(to bottom,rgba(10,8,20,0) 72%,var(--bg) 100%)}
+
+    /* LIVE BADGE */
+    .live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.15);padding:4px 12px;border-radius:20px;font-size:.65rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase}
+    /* Der Punkt blinkt, ein Ring laeuft nach aussen — wie vorher, aber ohne
+       animierte box-shadow. Die alte Variante liess den Radius pro Frame
+       wachsen; das kann der Compositor nicht, also Repaint 60x/s, endlos.
+       Jetzt: statischer Ring auf einem ::after, animiert werden nur transform
+       und opacity. Gleiche Optik, Kosten praktisch null. */
+    .live-dot{position:relative;width:6px;height:6px;background:var(--green);border-radius:50%;
+      animation:ldFade 2s ease-in-out infinite}
+    .live-dot::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+      box-shadow:0 0 0 5px rgba(0,230,118,.4);animation:ldRing 2s ease-out infinite}
+    @keyframes ldFade{0%,100%{opacity:1}50%{opacity:.6}}
+    @keyframes ldRing{0%{opacity:.5;transform:scale(.2)}70%,100%{opacity:0;transform:scale(1)}}
+
+    /* STATS BAR */
+    .sbar{max-width:1100px;margin:-48px auto 0;padding:0 24px;position:relative;z-index:3}
+    .sg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+    .sc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px 12px;text-align:center;transition:all .3s;position:relative;overflow:hidden;
+      box-shadow:0 16px 44px -26px rgba(0,0,0,.85)}
+    .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
+    .sc:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.12);box-shadow:0 8px 32px rgba(240,185,11,.04)}
+    .sc .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:8px}
+    /* Fluid size + wrap: the $BOB burned figure is 15 digits and overflowed a
+       fixed 1.28rem. */
+    /* Shrinks rather than wraps — `anywhere` split the 15-digit BOB figure
+       mid-number, which reads as two different numbers. */
+    /* Sized so the longest figure (781,262,432,552 = 15 digits) fits a sixth
+       of the bar on one line. keep-all stops a number splitting mid-digits. */
+    .sc .v{font-family:'Space Grotesk',sans-serif;font-size:clamp(.7rem,.8vw,.95rem);font-weight:700;line-height:1.3;
+      overflow-wrap:normal;word-break:keep-all;
+      background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sc .vsub{font-size:.6rem;color:#fff;margin-top:4px;letter-spacing:.3px}
+
+    /* SECTIONS */
+    /* Every section is a literal block: its own frame, its own accent, tinted
+       from the top edge. The chain between them does the connecting. */
+    .sec{width:min(1100px,calc(100% - 34px));margin:0 auto;padding:30px 26px 40px;position:relative;overflow:hidden;
+      border:1px solid rgba(var(--accs),.17);border-radius:28px;
+      background:linear-gradient(180deg,rgba(var(--accs),.05),rgba(var(--accs),0) 42%);
+      box-shadow:0 20px 60px -30px rgba(0,0,0,.7)}
+    .sec::before{content:'';position:absolute;top:0;left:12%;right:12%;height:2px;
+      background:linear-gradient(90deg,transparent,rgba(var(--accs),.55),transparent)}
+    /* The socket the synapse above plugs into. */
+    .sec::after{content:'';position:absolute;top:3px;left:50%;width:12px;height:12px;
+      transform:translateX(-50%) rotate(45deg);border-radius:3px;background:var(--bg);
+      border:1.5px solid rgba(var(--accs),.65);box-shadow:0 0 16px rgba(var(--accs),.4)}
+    .sec-after-band{padding-top:26px}
+    /* BLOCK CHAIN — the page reads top to bottom as a chain of blocks: each
+       section is one block with its own accent, joined by a connector node. */
+    /* SYNAPSE CONNECTOR — the strand between two blocks splits into dendrites
+       that wrap around the block and rejoin. Brain and chain in one mark. */
+    .sep{display:flex;justify-content:center;max-width:none;margin:0 auto;padding:0}
+    .syn{width:24px;height:56px;display:block}
+    .syn-t{stroke:rgba(240,185,11,.4);stroke-width:2;stroke-linecap:round}
+
+    /* WRAPNET — neural wiring running down both margins and reaching inward,
+       so the network embraces the whole page instead of sitting between the
+       sections. Absolutely positioned: it costs no layout space. Colours are
+       the character's holographic glitch speckles (cyan / magenta / gold). */
+    .wrapnet{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+    .wn-e{stroke-width:1;fill:none}
+    .wn-n{stroke:none}
+    .wn-b{stroke-width:1.2;fill:none}
+    @keyframes wnpulse{0%,100%{opacity:.35}50%{opacity:.9}}
+    @media (prefers-reduced-motion:reduce){.wrapnet *{animation:none!important}}
+
+    .sec{--acc:#F0B90B;--accs:240,185,11}
+    .b-blue{--acc:#7d92ff;--accs:125,146,255}
+    .b-violet{--acc:#b98cff;--accs:185,140,255}
+    .b-green{--acc:#3fe09a;--accs:63,224,154}
+    .blk-head{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+    .blk-tag{font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:1.7px;
+      text-transform:uppercase;color:var(--acc);border:1px solid rgba(var(--accs),.34);
+      background:rgba(var(--accs),.08);padding:5px 12px;border-radius:999px;flex-shrink:0;white-space:nowrap}
+    .blk-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(var(--accs),.4),rgba(var(--accs),0))}
+    /* Section heading and card top-edges pick up the block's colour. */
+    .sec .sh h2 em{background:linear-gradient(135deg,var(--acc),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sec .sc::before,.sec .tax::before{background:linear-gradient(90deg,transparent,rgba(var(--accs),.5),transparent)}
+    .sec .fs:hover,.sec .ec:hover,.sec .rm:hover{border-color:rgba(var(--accs),.34);
+      box-shadow:0 12px 34px rgba(var(--accs),.1)}
+    .sec .fn{color:var(--acc);border-color:rgba(var(--accs),.45)}
+    .sec .fa{color:var(--acc);border-color:rgba(var(--accs),.45);box-shadow:0 0 16px rgba(var(--accs),.25)}
+    .sec .ec::before{background:linear-gradient(90deg,var(--acc),transparent)}
+    .sec .ec-go{color:var(--acc)}
+    .sh{margin-bottom:36px}
+    .sh h2{font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:700;margin-bottom:7px;letter-spacing:-.4px}
+    .sh h2 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sh p{color:var(--muted);font-size:.84rem}
+
+    /* ABOUT — BRAIN LOGO + TEXT */
+    .about-hero{display:flex;align-items:center;gap:48px;margin-bottom:48px}
+    /* line-height:0 nimmt der Zeilenbox den Unterlaengen-Spalt, sonst sitzt der
+       Halo unten ein paar Pixel daneben. position:relative traegt ihn. */
+    .about-logo{flex-shrink:0;position:relative;line-height:0}
+    /* Der Atem-Glow war eine animierte box-shadow mit 130px Blur — jedes Frame
+       neu gerastert. Jetzt ein eigener Halo-Layer hinter dem Bild, der nur
+       transform und opacity animiert: gleiche Optik, compositor-only.
+       inset:0 statt fester Pixel, damit er den 140px-Zuschnitt auf dem Handy
+       automatisch mitmacht. */
+    .about-logo::before{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+      box-shadow:0 0 70px rgba(240,185,11,.25),0 0 145px rgba(240,185,11,.10);
+      animation:breathe 4.8s ease-in-out infinite}
+    /* Fully round with a thin gold ring — the square crop read like a leftover
+       asset rather than a deliberate portrait. */
+    .about-logo img{position:relative;z-index:1;
+      width:180px;height:180px;border-radius:50%;object-fit:cover;
+      border:2px solid rgba(240,185,11,.28);padding:0;
+      box-shadow:inset 0 0 40px rgba(0,0,0,.4)}
+    .about-text h3{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:10px}
+    .about-text h3 em{font-style:normal;color:var(--gold)}
+    .about-text p{color:var(--muted);font-size:.88rem;line-height:1.7;max-width:540px}
+    .about-tags{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+    .about-tags span{font-size:.62rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+
+    /* TAX FLOW */
+    .tax{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:36px 28px;position:relative;overflow:hidden}
+    .tax::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.2),transparent)}
+    .tax h3{font-family:'Space Grotesk',sans-serif;font-size:.92rem;text-align:center;margin-bottom:20px;color:var(--gold)}
+    .tax-flow{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;position:relative;z-index:1}
+    .tf{background:rgba(240,185,11,.02);border:1px solid var(--border);border-radius:12px;padding:18px 22px;text-align:center;min-width:120px;transition:all .3s}
+    .tf:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.12)}
+    .tf .p{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700}
+    .tf .d{font-size:.68rem;color:var(--muted);margin-top:2px}
+    .ta{color:rgba(240,185,11,.18);font-size:1.1rem}
+    .ts-inline{font-size:.9em;color:var(--muted);opacity:.7;font-style:italic}
+    .ts-inline.active{color:var(--gold);opacity:1;font-style:normal}
+    .tax-schedule{margin-top:28px;border-top:1px solid var(--border);padding-top:20px}
+    .ts-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-size:.72rem;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;flex-wrap:wrap}
+    .ts-head .ts-right{color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:none;font-size:.7rem;opacity:.75}
+    .ts-rows{display:flex;flex-direction:column;gap:8px;max-height:362px;overflow-y:auto;position:relative;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent;padding-right:6px}
+    .ts-rows::-webkit-scrollbar{width:6px}
+    .ts-rows::-webkit-scrollbar-track{background:transparent}
+    .ts-rows::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
+    .ts-rows::-webkit-scrollbar-thumb:hover{background:rgba(240,185,11,.5)}
+    .ts-row{display:grid;grid-template-columns:200px 150px 1fr;gap:14px;align-items:center;padding:11px 14px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;transition:all .25s}
+    .ts-row.active{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.35);box-shadow:0 0 0 1px rgba(240,185,11,.15)}
+    .ts-row.past{opacity:.45}
+    .ts-when{font-family:'Space Grotesk',sans-serif;font-size:.72rem;color:var(--muted);letter-spacing:.5px}
+    .ts-row.active .ts-when{color:var(--gold)}
+    .ts-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.85rem;color:var(--text)}
+    .ts-row.active .ts-name::before{content:'\25CF';color:var(--gold);font-size:.6rem;margin-right:6px;vertical-align:middle;animation:tspulse 1.6s ease-in-out infinite}
+    @keyframes tspulse{0%,100%{opacity:.4}50%{opacity:1}}
+    .ts-split{font-size:.72rem;color:var(--muted);line-height:1.5}
+    .ts-split b{color:var(--text);font-weight:600}
+    .ts-row.active .ts-split b{color:var(--gold)}
+    .ts-split a{color:inherit;text-decoration:underline;text-decoration-color:rgba(240,185,11,.3)}
+    .ts-split a:hover{text-decoration-color:var(--gold)}
+    @media(max-width:760px){
+      .ts-row{grid-template-columns:1fr;gap:4px;padding:12px}
+      .ts-when{font-size:.68rem}
+    }
+
+    /* FLOW STEPS */
+    .fl{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    /* overflow stays visible so the chain link between cards isn't clipped —
+       the cover image gets its own clipping wrapper instead. */
+    .fs{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:0 0 22px;text-align:center;position:relative;transition:transform .35s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .35s}
+    .fs-wrap{overflow:hidden;border-radius:21px 21px 0 0;margin-bottom:14px}
+    /* Step art fills the card like a cover image; copy sits underneath. */
+    .fs-art{display:block;width:100%;height:180px;object-fit:cover;object-position:center 18%;
+      transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+    .fs:hover .fs-art{transform:scale(1.05)}
+    .fs h4,.fs p{padding:0 16px}
+    .fs:hover{border-color:rgba(240,185,11,.1);transform:translateY(-2px)}
+    .fn{position:absolute;top:14px;left:14px;z-index:2;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.72rem;margin:0;background:rgba(8,6,16,.72);backdrop-filter:blur(6px);color:var(--gold);border:1px solid rgba(240,185,11,.42)}
+    .fs h4{font-size:.82rem;margin-bottom:4px;font-weight:600}
+    .fs p{font-size:.78rem;color:var(--muted);line-height:1.6}
+    /* Chain links between the steps — the four cards read as one connected
+       run rather than four separate boxes. */
+    .fa{position:absolute;right:-16px;top:50%;transform:translateY(-50%);z-index:3;
+      width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      background:var(--bg);border:1px solid rgba(240,185,11,.35);color:var(--gold);
+      font-size:.68rem;box-shadow:0 0 16px rgba(240,185,11,.22)}
+
+    /* TOKEN CARDS */
+    .tg4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .tc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:26px 16px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
+    .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
+    .tc:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.1);box-shadow:0 8px 32px rgba(240,185,11,.03)}
+    .tc .b{font-family:'Space Grotesk',sans-serif;font-size:2.1rem;font-weight:700;margin-bottom:5px;letter-spacing:-1px;background:linear-gradient(135deg,var(--acc),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .tc h4{font-size:.86rem;margin-bottom:5px;font-weight:600}
+    .tc p{font-size:.75rem;color:var(--muted);line-height:1.5}
+    .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--accs),.45),transparent)}
+    .tc:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.3);box-shadow:0 14px 36px rgba(var(--accs),.1)}
+
+    /* VERIFY */
+    /* PROOF TILES — the old label/value list read like a config dump. Each fact
+       now gets a coloured tile, so the block scans instead of being read. */
+    .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+    .ptile{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;
+      background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);
+      border-radius:18px;padding:16px 18px;position:relative;
+      transition:transform .3s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .3s}
+    .ptile.pt-wide{grid-column:1/-1}
+    a.ptile:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.36);
+      box-shadow:0 12px 32px rgba(var(--accs),.12)}
+    .pt-ico{flex-shrink:0;width:40px;height:40px;border-radius:12px;display:flex;
+      align-items:center;justify-content:center;font-size:.9rem;line-height:1}
+    .t-gold{background:rgba(240,185,11,.14);color:#F0B90B;border:1px solid rgba(240,185,11,.3)}
+    .t-violet{background:rgba(185,140,255,.14);color:#b98cff;border:1px solid rgba(185,140,255,.3)}
+    .t-blue{background:rgba(125,146,255,.14);color:#7d92ff;border:1px solid rgba(125,146,255,.3)}
+    .t-red{background:rgba(255,90,80,.13);color:#ff6a60;border:1px solid rgba(255,90,80,.28)}
+    .t-green{background:rgba(63,224,154,.14);color:#3fe09a;border:1px solid rgba(63,224,154,.3)}
+    .pt-body{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+    .pt-l{font-size:.78rem;font-weight:600;color:var(--text)}
+    .pt-v{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pt-v.ok{color:#3fe09a;font-family:'Inter',system-ui,sans-serif;font-size:.72rem}
+    .pt-go{flex-shrink:0;color:var(--muted);font-size:.8rem;transition:transform .25s,color .25s}
+    a.ptile:hover .pt-go{transform:translate(2px,-2px);color:var(--acc)}
+    @media (max-width:560px){.pt-v{font-size:.62rem}}
+
+    .vc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px;position:relative;overflow:hidden}
+    .vc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.15),transparent)}
+    .vr{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(240,185,11,.03);flex-wrap:wrap;gap:6px}
+    .vr:last-child{border-bottom:none}
+    .vr .l{color:var(--muted);font-size:.78rem;font-weight:500}
+    .vr .vl{font-family:'Space Grotesk',monospace;font-size:.76rem;color:var(--gold);word-break:break-all}
+    .vr a{color:var(--gold);text-decoration:none;transition:opacity .2s}
+    .vr a:hover{opacity:.7}
+
+    /* TX TABLE */
+    .txw{max-height:400px;overflow-y:auto;border-radius:var(--radius);border:1px solid var(--border)}
+    .txw::-webkit-scrollbar{width:4px}
+    .txw::-webkit-scrollbar-track{background:rgba(10,10,22,.9)}
+    .txw::-webkit-scrollbar-thumb{background:rgba(240,185,11,.12);border-radius:2px}
+    table{width:100%;border-collapse:collapse;background:var(--card);backdrop-filter:blur(16px)}
+    table thead th{position:sticky;top:0;z-index:1}
+    table th{background:rgba(240,185,11,.03);color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:12px 14px;text-align:left;font-weight:600}
+    table td{padding:10px 14px;border-top:1px solid rgba(240,185,11,.03);font-size:.76rem}
+    table tr:hover{background:rgba(240,185,11,.015)}
+    .txl{color:var(--gold);text-decoration:none;font-family:'Space Grotesk',monospace;font-size:.72rem}
+    .txl:hover{text-decoration:underline}
+    .tb{background:rgba(255,48,40,.07);color:var(--red);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .tba{background:rgba(0,230,118,.07);color:var(--green);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+
+    /* LIQ BOOST */
+    /* WORLDCUP TIPGAME card — sits between top stats and BOB Liq Boost.
+       Gold accent + blue undertone to differentiate from the green-gold liq-boost card. */
+    .tipgame{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
+    .tg-card{display:block;text-decoration:none;color:inherit;background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(64,64,255,.18);border-radius:var(--radius);padding:0;position:relative;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
+    .tg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),rgba(64,64,255,.5),var(--gold),transparent);z-index:2}
+    .tg-card:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.4);box-shadow:0 10px 40px -10px rgba(240,185,11,.25)}
+    .tg-body{padding:22px 28px 24px;text-align:center;position:relative}
+    .tg-eyebrow{font-family:'Space Grotesk',sans-serif;font-size:.62rem;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);font-weight:600;margin-bottom:6px}
+    .tg-eyebrow .live{color:var(--green);font-weight:700}
+    .tg-eyebrow .live::before{content:'\25CF';margin-right:5px;animation:tgpulse 1.6s ease-in-out infinite}
+    @keyframes tgpulse{0%,100%{opacity:.5}50%{opacity:1}}
+    .tg-pool{display:flex;justify-content:center;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+    .tg-pool .pv{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1}
+    .tg-pool .pu{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:600;color:var(--text);line-height:1}
+    .tg-cta{display:inline-flex;align-items:center;gap:7px;font-family:'Space Grotesk',sans-serif;font-size:.75rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase}
+    .tg-cta .arr{transition:transform .25s}
+    .tg-card:hover .tg-cta .arr{transform:translateX(3px)}
+    @media (max-width:560px){
+      .tg-body{padding:18px 20px 20px}
+      .tg-pool .pv{font-size:1.5rem}
+      .tg-pool .pu{font-size:.95rem}
+    }
+
+    .liq-boost{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
+    .lb-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(0,230,118,.12);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
+    .lb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.4),var(--gold),rgba(0,230,118,.4),transparent)}
+    /* Traegt zusaetzlich den pulsierenden Rand: der lief vorher als
+       border-color-Animation auf .lb-card selbst — nicht komponierbar, also
+       Style-Recalc pro Frame. Ein 1px-Innenring auf diesem ohnehin
+       vorhandenen Layer, animiert per opacity, sieht gleich aus und ist
+       gratis. Der schwache Radial-Verlauf pulst mit, bei .03 Alpha
+       unsichtbar. */
+    .lb-card::after{content:'';position:absolute;inset:0;border-radius:var(--radius);pointer-events:none;
+      background:radial-gradient(ellipse at 50% 0%,rgba(0,230,118,.03),transparent 70%);
+      box-shadow:inset 0 0 0 1px rgba(0,230,118,.22);
+      animation:lbGlow 4.5s ease-in-out infinite}
+    .lb-title{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
+    .lb-title em{font-style:normal;background:linear-gradient(135deg,var(--green),var(--gold));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lb-sub{text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:20px}
+    .lb-countdown{display:flex;justify-content:center;gap:16px;margin-bottom:24px}
+    .lb-cd-unit{text-align:center}
+    .lb-cd-val{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--green),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1}
+    .lb-cd-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:4px}
+    .lb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .lb-stat{background:rgba(0,230,118,.03);border:1px solid rgba(0,230,118,.08);border-radius:10px;padding:16px 12px;text-align:center}
+    .lb-stat .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
+    .lb-stat .v{font-family:'Space Grotesk',sans-serif;font-size:1.05rem;font-weight:700;color:var(--green)}
+
+    /* LIQ BOOST ARCHIVE — collapsible card, sits under Live Burns */
+    .lb-archive summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px;user-select:none}
+    .lb-archive summary::-webkit-details-marker{display:none}
+    .lb-arch-head{flex:1;min-width:0}
+    .lb-arch-title{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:700;letter-spacing:-.3px}
+    .lb-arch-title em{font-style:normal;background:linear-gradient(135deg,var(--green),var(--gold));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lb-arch-meta{font-size:.7rem;color:var(--muted);margin-top:4px}
+    .lb-arch-arr{font-size:1.1rem;color:var(--gold);transition:transform .25s;flex-shrink:0}
+    .lb-archive[open] .lb-arch-arr{transform:rotate(180deg)}
+    .lb-arch-body{padding:0 28px 28px}
+    @media (max-width:560px){
+      .lb-archive summary{padding:20px 22px}
+      .lb-arch-body{padding:0 22px 24px}
+      .lb-arch-title{font-size:.9rem}
+    }
+
+    /* BURNS WRAPPER — mirrors .lb-card structure, neutral gold accent (no green).
+       Lives inside .sec which already provides max-width + side padding, so the
+       wrapper itself only spaces vertically. */
+    .burns-wrap{position:relative;z-index:3}
+    .bw-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
+    .bw-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.4),transparent)}
+    .bw-card::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(240,185,11,.03),transparent 70%);pointer-events:none}
+    .bw-title{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
+    .bw-title em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .bw-sub{text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:20px}
+
+    /* FAQ */
+    .faq-list{display:flex;flex-direction:column;gap:10px}
+    .faq-item{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .25s}
+    .faq-item[open]{border-color:rgba(var(--accs),.3);box-shadow:0 10px 30px rgba(var(--accs),.08)}
+    .faq-item:hover{border-color:rgba(var(--accs),.22)}
+    .faq-item summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;user-select:none;font-family:'Space Grotesk',sans-serif;font-size:.92rem;font-weight:600;color:var(--text)}
+    .faq-item summary::-webkit-details-marker{display:none}
+    .faq-item summary:hover{color:var(--gold)}
+    .faq-arr{font-size:1rem;color:var(--gold);transition:transform .25s;flex-shrink:0}
+    .faq-item[open] .faq-arr{transform:rotate(180deg)}
+    .faq-body{padding:0 22px 20px;font-size:.85rem;color:var(--muted);line-height:1.65}
+    .faq-body a{color:var(--gold);text-decoration:none}
+    .faq-body a:hover{text-decoration:underline}
+    .faq-body code{font-family:'Space Grotesk',monospace;background:rgba(240,185,11,.06);padding:2px 6px;border-radius:4px;font-size:.78rem;color:var(--text);word-break:break-all}
+    @media (max-width:560px){
+      .faq-item summary{padding:16px 18px;font-size:.85rem}
+      .faq-body{padding:0 18px 18px;font-size:.8rem}
+    }
+
+    /* Forge art behind the burns section — the furnace motif is literally what
+       this section reports. Cards sit above it on their own stacking level. */
+    /* FULL-BLEED BANDS — same treatment as the hero: art edge to edge, copy on
+       the calm right side, all four edges faded into the page. Static, no
+       hover movement. */
+    .band{position:relative;width:100%;overflow:hidden}
+    .band picture{display:block;width:100%}
+    .band img{width:100%;height:auto;display:block}
+    /* Same left-edge wash as the hero art — clipped the same way. */
+    @media (min-width:641px){
+      .band img{transform:scale(1.12);transform-origin:100% 50%}
+    }
+    .band::after{content:'';position:absolute;inset:0;pointer-events:none;background:
+      linear-gradient(to right,var(--bg) 0%,rgba(10,8,20,0) 5%),
+      linear-gradient(to left,var(--bg) 0%,rgba(10,8,20,0) 17%),
+      linear-gradient(to bottom,var(--bg) 0%,rgba(10,8,20,0) 20%,rgba(10,8,20,0) 74%,var(--bg) 100%)}
+    .band-ov{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
+      background:linear-gradient(to right,transparent 36%,rgba(10,8,20,.7) 70%,rgba(10,8,20,.86) 100%)}
+    .band-in{max-width:1100px;margin:0 auto;padding:0 24px;width:100%;display:flex;justify-content:flex-end}
+    .band-tx{max-width:500px}
+    .band-tx h2{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:700;
+      margin-bottom:8px;letter-spacing:-.6px;line-height:1.12}
+    .band-tx h2 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .burn-sub{color:var(--muted);font-size:.84rem}
+    .burn-lead{color:var(--muted);font-size:.87rem;line-height:1.75;margin-top:14px}
+    /* Same reason as the hero: a 2:1 band is only ~195px tall on a phone, far
+       too short to hold the heading plus lead. Copy drops below the art. */
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
+      .band-ov{position:static;background:none;display:block}
+      .band-in{justify-content:center;padding:0 20px}
+      .band-tx{max-width:560px;text-align:center;padding:20px 0 4px;margin:0 auto}
+      .band-tx h2{font-size:1.5rem}
+      /* The fade has to sit on the art, not on the whole band — with the copy
+         now in flow the band-level gradient washed the text out. */
+      .band::after{display:none}
+      .band picture{position:relative}
+      .band picture::after{content:'';position:absolute;inset:0;pointer-events:none;
+        background:linear-gradient(to bottom,rgba(12,11,12,0) 66%,var(--bg) 97%)}
+      .burn-lead{margin-left:auto;margin-right:auto}
+    }
+    /* Phone in landscape gets its own 2:1 crop cut straight from the source art
+       (…-l.webp). It has no widened canvas, so the zoom-crop that hides the wash
+       on the desktop files would only throw picture away here. */
+    @media (orientation:landscape) and (max-height:520px){
+      .hero img,.band img{transform:none}
+    }
+
+    /* ECOSYSTEM — the sub-apps, promoted out of the footer chip row */
+    .ecg{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+    .ec{display:flex;flex-direction:column;gap:10px;background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:24px;text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:transform .35s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .35s}
+    .ec::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+    /* A touch of tilt and a hop on the icon — playful without getting silly. */
+    .ec:hover{transform:translateY(-5px) rotate(-.5deg);border-color:rgba(240,185,11,.28);
+      box-shadow:0 14px 38px rgba(240,185,11,.12)}
+    .ec-top{display:flex;align-items:center;gap:10px}
+    .ec-top img{width:30px;height:30px;object-fit:contain;border-radius:8px;flex-shrink:0;
+      transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+    .ec:hover .ec-top img{transform:translateY(-3px) rotate(-7deg) scale(1.08)}
+    .ec-top h3{font-size:.88rem;margin:0}
+    /* Status sits in the footer row, not next to the title — "COMPLETE" beside
+       "NFT Buy Drops" forced the heading onto two lines either way. */
+    .ec-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .ec-st{font-size:.55rem;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;flex-shrink:0}
+    .ec-st.live{color:var(--green)}
+    .ec-st.done{color:var(--muted)}
+    .ec p{font-size:.78rem;color:var(--muted);line-height:1.65;flex:1}
+    .ec-go{font-family:'Space Grotesk',sans-serif;font-size:.66rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
+    .ec-go .arr{transition:transform .25s}
+    .ec:hover .ec-go .arr{transform:translateX(3px)}
+
+    /* ROADMAP */
+    .rmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+    .rm{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:all .3s}
+    .rm::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+    .rmd::before{background:linear-gradient(90deg,var(--gold),transparent)}
+    .rma::before{background:linear-gradient(90deg,var(--blue),transparent)}
+    .rmn::before{background:linear-gradient(90deg,rgba(240,185,11,.12),transparent)}
+    .rm:hover{border-color:rgba(240,185,11,.1);transform:translateY(-2px)}
+    .rp{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:6px}
+    .rmd .rp{color:var(--gold)}.rma .rp{color:var(--blue)}.rmn .rp{color:var(--muted)}
+    .rm h3{font-size:.88rem;margin-bottom:8px}
+    .rm ul{list-style:none}
+    /* Left-aligned: the old right-align read fine with 3-word items but tears
+       apart now that entries wrap to two lines. */
+    .rm li{font-size:.78rem;color:var(--muted);padding:4px 0;display:flex;align-items:flex-start;gap:7px;line-height:1.6;text-align:left}
+    .rm li>span:first-child{flex-shrink:0;line-height:1.5}
+    .rm li>span:last-child{flex:1}
+    .ck{color:var(--gold);font-weight:700}
+    .rm li code{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--gold);background:rgba(240,185,11,.06);padding:1px 5px;border-radius:4px}
+
+    /* SOCIAL BUTTONS (Block 07) */
+    .cta-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+    /* Block 07 ist der Abschluss vor dem Footer und laeuft mittig aus, statt
+       linksbuendig weiterzulaufen — die Ueberschrift zentriert mit, sonst
+       kippt das Verhaeltnis wieder. Jede Gruppe bekommt eine zentrierte
+       Beschriftung zwischen zwei Haarlinien, damit die vier Bloecke als
+       Bloecke lesen und nicht als eine lange Reihe von links nach rechts. */
+    #socials .sh{text-align:center;margin-bottom:28px}
+    #socials .sh p{max-width:620px;margin:0 auto}
+    #socials .cta-links,#socials .lr{justify-content:center}
+    #socials .cta-links{margin-bottom:4px}
+    #socials .lr{max-width:860px;margin-left:auto;margin-right:auto}
+    #socials .lr-sm{max-width:760px}
+    #socials .ll{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:28px}
+    #socials .ll::before,#socials .ll::after{content:'';flex:1;height:1px;max-width:110px}
+    #socials .ll::before{background:linear-gradient(90deg,transparent,rgba(var(--accs),.4))}
+    #socials .ll::after{background:linear-gradient(90deg,rgba(var(--accs),.4),transparent)}
+    .cta-links a{padding:11px 26px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.3px}
+    .cta-links a:hover{transform:translateY(-2px)}
+    .cta-links .primary{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;box-shadow:0 2px 20px rgba(240,185,11,.2)}
+    .cta-links .primary:hover{box-shadow:0 4px 32px rgba(240,185,11,.35);transform:translateY(-1px)}
+    .cta-links .secondary{border:1px solid rgba(240,185,11,.15);color:var(--gold);background:transparent}
+    .cta-links .secondary:hover{border-color:var(--gold);background:rgba(240,185,11,.04)}
+
+    /* FOOTER */
+    footer{border-top:1px solid var(--border);padding:36px 24px;text-align:center;position:relative;overflow:hidden}
+    footer::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.1),transparent)}
+    .fi2{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+    .fb{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px}
+    .fb img{width:22px;height:22px;border-radius:6px}
+    .fb span{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.92rem;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+.fm{color:var(--muted);font-size:.62rem;line-height:1.9}
+    .fm a{color:var(--gold);text-decoration:none}
+    .ll{margin-top:18px;color:var(--muted);font-size:.54rem;text-transform:uppercase;letter-spacing:2px;font-weight:600}
+    .lr{display:flex;justify-content:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+    .lr a{display:flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:.74rem;padding:6px 15px;border-radius:8px;border:1px solid var(--border);background:var(--card);transition:all .2s}
+    .lr a:hover{border-color:var(--gold);color:var(--gold)}
+    .lr img{width:18px;height:18px;border-radius:3px;object-fit:contain}
+    .lr-top a{font-size:.88rem;padding:9px 20px;gap:8px}
+    .lr-top img{width:22px;height:22px}
+    .lr-sm a{font-size:.68rem;padding:5px 12px;gap:5px;opacity:.85}
+    .lr-sm img{width:15px;height:15px}
+
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
+      .sg{grid-template-columns:repeat(3,1fr)}
+      .tg4,.fl{grid-template-columns:repeat(2,1fr)}
+      .fa{display:none}
+      .rmg{grid-template-columns:1fr}
+      .about-hero{flex-direction:column;text-align:center;gap:24px}
+      .about-text p{max-width:100%}
+      .about-tags{justify-content:center}
+      /* The nav links ran into the logo from ~760px down. */
+      .nm{display:none}
+      /* No overlap onto the hero once the copy sits below the art. */
+      .sbar{margin-top:22px}
+      /* The margin wiring has nowhere to go on a phone. */
+      .wrapnet{display:none}
+    }
+    @media(max-width:600px){
+      .sg{grid-template-columns:repeat(2,1fr)}
+      .tg4,.fl{grid-template-columns:1fr}
+      .sec{padding:48px 16px}
+      .tax-flow{flex-direction:column}
+      .ta{transform:rotate(90deg)}
+      .about-logo img{width:140px;height:140px}
+    }
+    /* Einblenden beim Scrollen — UMGEKEHRT gedacht als frueher.
+       Frueher war .fi von sich aus opacity:0 und wurde erst von JavaScript
+       sichtbar gemacht. Damit war die halbe Seite schwarz, bis das Skript am
+       Ende dieses 136-KB-Dokuments lief — und bei jedem JS-Problem dauerhaft.
+       Jetzt ist der Standard SICHTBAR. Verstecken darf nur das Skript, und
+       auch nur bei Elementen, die ohnehin unter dem Bildrand liegen. Geht mit
+       JavaScript irgendetwas schief, sieht man einfach alles ohne Effekt —
+       nie wieder Schwarz. */
+    .fi{transition:opacity .45s ease,transform .45s ease}
+    .fi.pre{opacity:0;transform:translateY(14px)}
+
+    /* === POLISH LAYER ===
+       Grundregel fuer alles Dauerhafte hier: es darf ausschliesslich transform
+       und opacity animieren. Nur die beiden kann der Compositor uebernehmen;
+       box-shadow, background-position und border-color kosten stattdessen
+       Style-Recalc + Repaint auf dem Main-Thread — 60x pro Sekunde, endlos,
+       auch wenn niemand hinschaut. Gemessen kostete genau das ~62% Dauerlast
+       auf dem Handy und liess die Seite wirken, als lade sie nie fertig. */
+    @keyframes breathe{0%,100%{opacity:.7;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
+    @keyframes lbGlow{0%,100%{opacity:.35}50%{opacity:1}}
+    /* Solange noch keine Zahl aus der Kette da ist, pulst der Platzhalter
+       sanft. Ein starres "--" liest sich wie eine kaputte Seite; so ist
+       sichtbar, dass gearbeitet wird. Reines opacity = compositor-only.
+       Die Klasse nimmt put() weg, sobald ein echter Wert drinsteht. */
+    .v.ld,.vsub.ld{animation:ldPulse 1.3s ease-in-out infinite}
+    @keyframes ldPulse{0%,100%{opacity:.32}50%{opacity:.75}}
+
+    /* Der Glow waechst hier per transform mit — eine box-shadow skaliert
+       mit, deshalb braucht es keine zweite animierte Eigenschaft. */
+    @keyframes sepPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
+    .sep-d{animation:sepPulse 3.2s ease-in-out infinite;opacity:.55;
+      box-shadow:0 0 8px rgba(240,185,11,.45)}
+
+    .sc{transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .25s,box-shadow .35s}
+    .sc:hover{transform:translateY(-3px) scale(1.015);border-color:rgba(240,185,11,.22);box-shadow:0 12px 40px rgba(240,185,11,.09)}
+    .tc:hover{transform:translateY(-3px);border-color:rgba(240,185,11,.2);box-shadow:0 12px 36px rgba(240,185,11,.07)}
+    .fs:hover{transform:translateY(-3px) scale(1.01);border-color:rgba(240,185,11,.2);box-shadow:0 10px 32px rgba(240,185,11,.07)}
+    .tf:hover{transform:translateY(-2px) scale(1.02);border-color:rgba(240,185,11,.22);box-shadow:0 6px 20px rgba(240,185,11,.07)}
+    .rm:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(240,185,11,.06)}
+
+    .lr a{transition:transform .25s cubic-bezier(.2,.7,.2,1),border-color .25s,color .25s,box-shadow .25s}
+    .lr a:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(240,185,11,.1)}
+
+    .nb:hover{transform:translateY(-2px);box-shadow:0 6px 36px rgba(240,185,11,.45)}
+    .cta-links .primary:hover{transform:translateY(-2px);box-shadow:0 6px 36px rgba(240,185,11,.45)}
+    .cta-links .secondary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(240,185,11,.07)}
+
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 65%,transparent 35%,rgba(10,8,20,.42) 88%);pointer-events:none;z-index:2}
+
+    .vr a{transition:color .2s,text-shadow .2s}
+    .vr a:hover{text-shadow:0 0 10px rgba(240,185,11,.5)}
+
+    .nl img{transition:transform .35s ease,box-shadow .35s ease}
+    .nl:hover img{transform:rotate(6deg) scale(1.06);box-shadow:0 0 18px rgba(240,185,11,.45)}
+
+    .about-tags span{transition:border-color .25s,color .25s,background .25s,transform .25s}
+    .about-tags span:hover{border-color:rgba(240,185,11,.32);color:var(--gold);background:rgba(240,185,11,.05);transform:translateY(-1px)}
+
+    /* Der Shimmer laeuft ueber background-position auf background-clip:text und
+       ist als einziger Effekt der Seite nicht komponierbar — der Verlauf
+       wandert im Textfuellmuster selbst. Statt ihn zu opfern, laeuft er nur
+       noch dort, wo jemand hinsieht: die Klasse .shim-on setzt der
+       IntersectionObserver weiter unten, sobald das Element im Viewport ist,
+       und nimmt sie danach wieder weg. Statt 21 gleichzeitig animierter
+       Elemente sind so nur die paar sichtbaren aktiv. */
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    .sh h2 em,.tc .b{background-size:200% 100%}
+    .sh h2 em.shim-on{animation:shimmer 8s linear infinite}
+    .tc .b.shim-on{animation:shimmer 9s linear infinite}
+
+    /* The old floating halo lived here. Removed: with the block frame clipping
+       it, its edge showed up as hard diagonal streaks inside the card, and the
+       block's own top tint already does this job. */
+    .sec>*{position:relative;z-index:1}
+
+    table tr{transition:background .2s}
+    table tr:hover{background:rgba(240,185,11,.025)}
+
+    /* Hier stand kurzzeitig ein @media(max-width:900px)-Block, der die teuren
+       Dauer-Animationen auf dem Handy einfach abschaltete. Nicht mehr noetig:
+       sie sind jetzt alle auf transform/opacity umgebaut und laufen auf jedem
+       Viewport auf dem Compositor. Kein Mobile-Sonderfall mehr.
+
+       Zwei Verdaechtige wurden dabei per Gegenprobe freigesprochen, damit hier
+       nichts auf Verdacht geopfert wird:
+       - backdrop-filter auf ~68 Elementen: komplett abgeschaltet brachte 53.6%
+         statt 58.7% Dauerlast, also praktisch nichts. Die Glas-Optik bleibt.
+       - Die Aurora (.aur, fixed 150% Viewport mit filter:blur(110px)): ihre
+         Orbs animieren reines transform, laufen also ohnehin auf dem
+         Compositor. Bleibt ebenfalls. */
+
+    /* Wer Bewegung systemweit abbestellt, bekommt hier Ruhe. Die Effekte sind
+       zwar billig geworden, aber das ist eine Praeferenz, keine Perf-Frage. */
+    @media (prefers-reduced-motion:reduce){
+      .about-logo::before,.lb-card::after,.live-dot,.live-dot::after,.sep-d,
+      .nb2::before,.ts-row.active .ts-name::before,.tg-eyebrow .live::before{animation:none}
+    }

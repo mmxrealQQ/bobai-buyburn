@@ -130,13 +130,10 @@
     table tr{transition:background .2s}
     table tr:hover td{background:rgba(240,185,11,.025)}
 
-    /* Hier lief ein Shimmer ueber background-position auf background-clip:text.
-       Als einziger Effekt laesst er sich nicht komponieren — der Verlauf
-       wandert im Textfuellmuster selbst, dafuer gibt es kein
-       transform/opacity-Aequivalent. Der Verlauf bleibt statisch stehen. */
-    h1{background-size:100% 100%}
+    h1{background-size:200% 100%;animation:wpShimmer 10s linear infinite}
+    @keyframes wpShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
     @media (prefers-reduced-motion:reduce){
-      body::before,body::after,.logo-glow::before{animation:none}
+      body::before,body::after,.logo-glow::before,h1{animation:none}
     }
   </style>
 </head>

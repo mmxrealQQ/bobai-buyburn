@@ -197,24 +197,19 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
   #fudTimer{font-size:7px;min-width:28px}
 }
 
-/* === POLISH LAYER (chrome only — gameplay untouched) ===
-   In einem Spiel ist Main-Thread-Zeit das knappste Gut. Dauerlaufende
-   Animationen duerfen deshalb nur transform/opacity anfassen — nur die kann
-   der Compositor uebernehmen. text-shadow, box-shadow und border-color
-   erzwingen stattdessen Style-Recalc + Repaint in JEDEM Frame, parallel zur
-   Spielschleife. Die Glows stehen darum jetzt still auf ihrem Mittelwert;
-   die Logo-Drehung laeuft weiter, die ist gratis. */
+/* === POLISH LAYER (chrome only — gameplay untouched) === */
+@keyframes gBrandShimmer{0%,100%{text-shadow:0 0 14px rgba(243,186,47,0.3)}50%{text-shadow:0 0 22px rgba(243,186,47,0.55),0 0 36px rgba(243,186,47,0.15)}}
 @keyframes gLogoSpin{0%,100%{transform:rotate(0deg)}50%{transform:rotate(6deg)}}
+@keyframes gBorderSweep{0%,100%{border-color:rgba(243,186,47,0.3)}50%{border-color:rgba(243,186,47,0.55)}}
+@keyframes gScorePulse{0%,100%{text-shadow:0 0 14px rgba(243,186,47,0.35)}50%{text-shadow:0 0 22px rgba(243,186,47,0.55)}}
 
-.brand-logo{animation:gLogoSpin 6s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.brand-logo{animation:none}}
+.brand-title{animation:gBrandShimmer 3.6s ease-in-out infinite}
+.brand-logo{animation:gLogoSpin 6s ease-in-out infinite,brandLogoGlow 4s ease-in-out infinite}
+@keyframes brandLogoGlow{0%,100%{box-shadow:0 0 10px rgba(243,186,47,0.15)}50%{box-shadow:0 0 18px rgba(243,186,47,0.35)}}
 
-/* Score-Glow und Popup-Rand pulsten ueber text-shadow bzw. border-color —
-   beides pro Frame neu gemalt, waehrend das Spiel laeuft. Statisch auf dem
-   Mittelwert der alten Kurve. popIn bleibt: einmalig, nicht endlos. */
-.score-value{text-shadow:0 0 18px rgba(243,186,47,0.45)}
+.score-value{animation:gScorePulse 2.4s ease-in-out infinite}
 
-.popup{animation:popIn 0.3s ease-out;border-color:rgba(243,186,47,0.42)}
+.popup{animation:popIn 0.3s ease-out, gBorderSweep 4.5s ease-in-out infinite 0.3s}
 
 .popup-btn{transition:transform .2s ease,box-shadow .2s ease,background .2s,border-color .2s}
 .popup-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(243,186,47,0.2)}
@@ -354,7 +349,10 @@ body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif
 <div id="gameOverOverlay" class="overlay" style="display:none">
   <div class="popup" style="position:relative">
     <button id="closeGoBtn" onclick="restartGame()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1;padding:4px" title="Close">&times;</button>
-    <img src="score.jpg" alt="Brain On BNB AI score badge" style="width:80px;height:80px;border-radius:14px;margin:0 auto 6px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.2)">
+    <!-- 240px-WebP statt des 505px-JPGs: angezeigt werden 80px. Die volle
+         score.jpg bleibt in Gebrauch, sie wird weiter unten in die
+         Share-Karte auf dem Canvas gezeichnet. -->
+    <img src="score-240.webp" alt="Brain On BNB AI score badge" width="206" height="240" loading="lazy" decoding="async" style="width:80px;height:80px;border-radius:14px;margin:0 auto 6px;display:block;box-shadow:0 0 15px rgba(243,186,47,0.2)">
     <h2 id="goTitle" style="color:var(--gold);text-shadow:0 0 20px rgba(243,186,47,0.3);font-size:18px;letter-spacing:1px">GOOD JOB!</h2>
     <p id="goSubtitle" style="color:var(--text-dim);font-size:11px;margin:4px 0 8px">You burned some tokens & added some liq. Try again!</p>
     <div class="go-score" id="finalScore">0</div>

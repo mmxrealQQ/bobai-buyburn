@@ -1,17 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- Hintergrund als Attribut direkt am <html>: das gilt, bevor irgendein
+     Stylesheet geparst ist. Ohne das malt der Browser in den ersten Momenten
+     seine Vorgabe — weiss — und genau das war auf dem Handy als heller Blitz
+     bzw. weisser Schirm zu sehen. Wert = --bg aus dem Stylesheet. -->
+<html lang="en" style="background:#0a0814">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Fonts as early <link>s, NOT as @import inside the inline <style>: an
-       @import is invisible to the preload scanner, so the browser had to parse
-       the whole 120 KB document before it even started the DNS+TLS handshake to
-       googleapis — and then a second cold handshake to gstatic. Two serial
-       round trips after CSS parse cost ~1s of first paint on mobile.
-       Weights trimmed to the four actually used in the stylesheet (400/500/600/700). -->
+  <!-- Fonts NICHT render-blockierend laden. Das ist der Grund fuer den weissen
+       Schirm auf dem Handy: ein normales <link rel=stylesheet> haelt den ERSTEN
+       PAINT an, bis die Datei da ist. Bei googleapis sind das auf Mobilfunk
+       DNS + TLS + Antwort zu einem fremden Host — und wenn die Verbindung
+       zickt, bleibt die Seite beliebig lange weiss, weil es dafuer keinen
+       Timeout gibt. Genau das Bild: erst weiss, dann neu laden muessen.
+       media="print" nimmt dem Link die Blockierwirkung (gilt nicht fuer den
+       Schirm), onload schaltet ihn auf "all". Saemtliches Layout und alle
+       Farben stehen ohnehin im inline <style> darunter — die Seite ist also
+       sofort vollstaendig sichtbar, die Schrift schaltet Sekundenbruchteile
+       spaeter um (die URL traegt display=swap, es gibt keinen Textblitz).
+       Auch als @import war es blockierend, nur eben spaeter im Ablauf.
+       preconnect bleibt: damit laeuft der Handshake trotzdem frueh an. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"></noscript>
   <title>Brain On BNB AI ($BOBAI) — Where Memes Meet Intelligence</title>
   <meta name="description" content="Brain On BNB AI ($BOBAI) — AI-built deflationary meme token on BNB Chain. 3% tax fuels autonomous 24/7 buyback & burn. LP locked, ownership renounced.">
   <meta name="keywords" content="brainonbnb, brainonbnbai, brainonbnb.com, brainonbnb.ai, Brain On BNB AI, BOBAI, BOBAI token, BOBAI coin, Brain On BNB, Brain On BNB token, Brain On BNB coin, BNB Chain meme token, AI meme token, deflationary token BNB, buyback burn token, BSC meme coin">
@@ -142,13 +155,20 @@
     }
     .bob-sub{font-size:.75em;color:#fff;font-weight:400;margin-left:2px;flex:none}
     *{margin:0;padding:0;box-sizing:border-box}
-    html{overflow-x:hidden}
-    /* clip, not hidden: overflow-x:hidden on body forces overflow-y to auto, which
-       makes body its own scroll box on top of html's — two scrollbars on the right.
-       clip suppresses the horizontal overflow without creating a scroll container. */
+    /* Hier stand frueher overflow-x:hidden auf html UND body — daher die zwei
+       Scrollbalken (eine hidden-Achse setzt die andere auf auto, body wurde so
+       zum zweiten Scroll-Container). Der Zwischenschritt war overflow-x:clip
+       auf body.
+       Beides ist ersatzlos entfernt: nachgemessen bei 360/390/430/768/1440px
+       ragt NICHTS mehr horizontal heraus (die breiten Tabellen sitzen in ihrer
+       eigenen .txw-Scrollbox). Die Notbremsen deckten ein Problem zu, das es
+       nicht mehr gibt — und body ist ohne overflow-Angabe garantiert kein
+       Scroll-Container, der Doppelbalken kann also nicht zurueckkommen.
+       Falls hier je wieder ein Ueberhang auftaucht: das verursachende Element
+       suchen, nicht erneut global abklemmen. */
     /* Warm glows lift the page out of flat black without giving up the dark
        gold-on-near-black identity. */
-    body{font-family:'Inter',system-ui,sans-serif;color:var(--text);overflow-x:clip;-webkit-font-smoothing:antialiased;
+    body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
       background:
         radial-gradient(1200px 700px at 50% -6%,rgba(240,185,11,.13),transparent 66%),
         radial-gradient(900px 620px at 50% 40%,rgba(198,143,118,.06),transparent 70%),
@@ -780,7 +800,14 @@
       .ta{transform:rotate(90deg)}
       .about-logo img{width:140px;height:140px}
     }
-    .fi{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}.fi.vi{opacity:1;transform:translateY(0)}
+    /* Einblenden beim Scrollen. Zwei Dinge sind hier wichtig:
+       1. Nur mit .js — laeuft kein JavaScript, gibt es keinen Observer, der
+          die Inhalte je wieder sichtbar macht. Vorher blieb in dem Fall alles
+          unterhalb des Heros dauerhaft unsichtbar (schwarze Seite).
+       2. Kuerzere Dauer: 0.7s Ueberblendung war beim Scrollen auf dem Handy
+          als "da ist noch nichts" zu sehen. */
+    .js .fi{opacity:0;transform:translateY(14px);transition:opacity .45s ease,transform .45s ease}
+    .js .fi.vi{opacity:1;transform:none}
 
     /* === POLISH LAYER ===
        Grundregel fuer alles Dauerhafte hier: es darf ausschliesslich transform
@@ -791,6 +818,13 @@
        auf dem Handy und liess die Seite wirken, als lade sie nie fertig. */
     @keyframes breathe{0%,100%{opacity:.7;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
     @keyframes lbGlow{0%,100%{opacity:.35}50%{opacity:1}}
+    /* Solange noch keine Zahl aus der Kette da ist, pulst der Platzhalter
+       sanft. Ein starres "--" liest sich wie eine kaputte Seite; so ist
+       sichtbar, dass gearbeitet wird. Reines opacity = compositor-only.
+       Die Klasse nimmt put() weg, sobald ein echter Wert drinsteht. */
+    .v.ld,.vsub.ld{animation:ldPulse 1.3s ease-in-out infinite}
+    @keyframes ldPulse{0%,100%{opacity:.32}50%{opacity:.75}}
+
     /* Der Glow waechst hier per transform mit — eine box-shadow skaliert
        mit, deshalb braucht es keine zweite animierte Eigenschaft. */
     @keyframes sepPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
@@ -822,15 +856,17 @@
     .about-tags span{transition:border-color .25s,color .25s,background .25s,transform .25s}
     .about-tags span:hover{border-color:rgba(240,185,11,.32);color:var(--gold);background:rgba(240,185,11,.05);transform:translateY(-1px)}
 
-    /* Hier lief ein Shimmer: background-position ueber background-clip:text,
-       auf 17 Headline-<em> und 4 Stat-Zahlen gleichzeitig — die groesste
-       Einzelgruppe der Dauer-Repaints. Als einziger Effekt der Seite laesst er
-       sich NICHT komponieren: der Verlauf wandert im Textfuellmuster selbst,
-       dafuer gibt es kein transform/opacity-Aequivalent. Ein Overlay mit
-       translateX scheidet aus, weil .tc .b live per JS beschriebene Zahlen
-       traegt, die ein Pseudo-Element nicht spiegeln kann.
-       Der Verlauf bleibt also statisch stehen — nur die Wanderung faellt weg. */
-    .sh h2 em,.tc .b{background-size:100% 100%}
+    /* Der Shimmer laeuft ueber background-position auf background-clip:text und
+       ist als einziger Effekt der Seite nicht komponierbar — der Verlauf
+       wandert im Textfuellmuster selbst. Statt ihn zu opfern, laeuft er nur
+       noch dort, wo jemand hinsieht: die Klasse .shim-on setzt der
+       IntersectionObserver weiter unten, sobald das Element im Viewport ist,
+       und nimmt sie danach wieder weg. Statt 21 gleichzeitig animierter
+       Elemente sind so nur die paar sichtbaren aktiv. */
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    .sh h2 em,.tc .b{background-size:200% 100%}
+    .sh h2 em.shim-on{animation:shimmer 8s linear infinite}
+    .tc .b.shim-on{animation:shimmer 9s linear infinite}
 
     /* The old floating halo lived here. Removed: with the block frame clipping
        it, its edge showed up as hard diagonal streaks inside the card, and the
@@ -862,9 +898,31 @@
   </style>
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
-       Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil. -->
-  <script>if('scrollRestoration' in history)history.scrollRestoration='manual';
-  addEventListener('load',function(){if(!location.hash)scrollTo(0,0)});</script>
+       Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
+
+       WICHTIG: das 'load'-Event feuert erst, wenn auch das letzte Bild da ist.
+       Ohne die Wache unten riss der Sprung nach oben einen Besucher zurueck,
+       der laengst angefangen hatte zu lesen — das sah aus, als lade die Seite
+       neu. Sobald jemand selbst scrollt oder tippt, lassen wir die Position
+       darum in Ruhe. -->
+  <script>
+  /* Markiert das Dokument als "JS laeuft". Der Einblend-Effekt (.fi) setzt
+     Inhalte auf opacity:0 und ist darauf angewiesen, dass ein Observer sie
+     wieder freigibt. Ohne diese Wache blieb bei abgeschaltetem oder
+     fehlgeschlagenem JS die halbe Seite dauerhaft unsichtbar — schwarz. */
+  document.documentElement.classList.add('js');
+  if('scrollRestoration' in history)history.scrollRestoration='manual';
+  (function(){var touched=false;
+    var mark=function(){touched=true};
+    addEventListener('wheel',mark,{passive:true,once:true});
+    addEventListener('touchstart',mark,{passive:true,once:true});
+    addEventListener('keydown',mark,{once:true});
+    addEventListener('scroll',function(){if(scrollY>0)touched=true},{passive:true});
+    var top=function(){if(!touched&&!location.hash)scrollTo(0,0)};
+    // Frueh (DOM steht) und noch einmal nach dem letzten Bild.
+    document.addEventListener('DOMContentLoaded',top);
+    addEventListener('load',top);
+  })();</script>
 </head>
 <body>
 <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Brain On BNB AI ($BOBAI) — AI-Built Deflationary Meme Token on BNB Chain · brainonbnb · brainonbnbai · brainonbnb.com</h1>
@@ -874,7 +932,7 @@
 
 
   <nav><div class="nav">
-    <a href="#" class="nl"><img src="logo-sm.png?v=2" alt="BOBAI"> <span>BOBAI</span></a>
+    <a href="#" class="nl"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"> <span>BOBAI</span></a>
     <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
     <div class="nb-group">
       <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
@@ -904,12 +962,12 @@
   </section>
 
   <section class="sbar" id="stats"><div class="sg">
-    <div class="sc fi"><div class="l">Market Cap</div><div class="v" id="mcap">--</div></div>
-    <div class="sc fi"><div class="l">Liquidity</div><div class="v" id="volume">--</div></div>
-    <div class="sc fi"><div class="l">Buyback</div><div class="v" id="wallet-bnb">--</div><div class="vsub" id="tax-pending"></div></div>
-    <div class="sc fi"><div class="l">$BOB <span class="bob-sub">(Build On BNB)</span> Burned</div><div class="v" id="total-burned">--</div></div>
-    <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v" id="total-bobai-burned">--</div></div>
-    <div class="sc fi"><div class="l">Burns</div><div class="v" id="burn-count">--</div></div>
+    <div class="sc fi"><div class="l">Market Cap</div><div class="v ld" id="mcap">--</div></div>
+    <div class="sc fi"><div class="l">Liquidity</div><div class="v ld" id="volume">--</div></div>
+    <div class="sc fi"><div class="l">Buyback</div><div class="v ld" id="wallet-bnb">--</div><div class="vsub" id="tax-pending"></div></div>
+    <div class="sc fi"><div class="l">$BOB <span class="bob-sub">(Build On BNB)</span> Burned</div><div class="v ld" id="total-burned">--</div></div>
+    <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v ld" id="total-bobai-burned">--</div></div>
+    <div class="sc fi"><div class="l">Burns</div><div class="v ld" id="burn-count">--</div></div>
   </div></section>
 
   <!-- BOBAI Permalocked Liquidity Boost II — LIVE Aug 8 to Sep 16, 2026.
@@ -943,7 +1001,7 @@
   <section class="sec" id="about">
     <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
     <div class="about-hero fi">
-      <div class="about-logo"><img src="logo.png?v=2" alt="BOBAI" loading="lazy" decoding="async"></div>
+      <div class="about-logo"><img src="logo.webp" width="256" height="256" alt="BOBAI" loading="lazy" decoding="async"></div>
       <div class="about-text">
         <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
         <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens, no human hand on the switch, nothing hidden.</p>
@@ -1199,7 +1257,7 @@
     <div class="blk-head fi"><span class="blk-tag">Block 04 &middot; Ecosystem</span><span class="blk-line"></span></div>
     <div class="ecg">
       <a class="ec fi" href="nft/">
-        <div class="ec-top"><img src="nft/logo.png" alt="BOBAI Buy Drops logo" loading="lazy" decoding="async"><h3>NFT Buy Drops</h3></div>
+        <div class="ec-top"><img src="nft/logo-96.webp" width="96" height="96" alt="BOBAI Buy Drops logo" loading="lazy" decoding="async"><h3>NFT Buy Drops</h3></div>
         <p>Every buy of $100 or more auto-mints an NFT straight to the buyer's wallet. 1,925 in the collection — no claim step, no gas for the holder.</p>
         <div class="ec-foot"><span class="ec-go">Open Collection <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
@@ -1209,12 +1267,12 @@
         <div class="ec-foot"><span class="ec-go">Take A Test <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="game/">
-        <div class="ec-top"><img src="game/score.jpg" alt="Brain On BNB AI game icon" loading="lazy" decoding="async"><h3>Burn &amp; Add Liq</h3></div>
+        <div class="ec-top"><img src="game/score-96.webp" width="82" height="96" alt="Brain On BNB AI game icon" loading="lazy" decoding="async"><h3>Burn &amp; Add Liq</h3></div>
         <p>A browser game — jump through BNB Chain, burn tokens, add liquidity, dodge the dumps. Free to play with a public highscore board.</p>
         <div class="ec-foot"><span class="ec-go">Play Game <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="worldcup/">
-        <div class="ec-top"><img src="worldcup/wclogo.jpg" alt="BOBAI Worldcup '26 logo" loading="lazy" decoding="async"><h3>Worldcup '26</h3></div>
+        <div class="ec-top"><img src="worldcup/wclogo-96.webp" width="57" height="96" alt="BOBAI Worldcup '26 logo" loading="lazy" decoding="async"><h3>Worldcup '26</h3></div>
         <p>A full tipping game for the 2026 World Cup — live brackets, leaderboard, prize pool. Ran Jun 11 to Jul 19, paid out 5.47M $BOBAI, now a frozen archive.</p>
         <div class="ec-foot"><span class="ec-go">View Archive <span class="arr">&#x2192;</span></span><span class="ec-st done">Complete</span></div>
       </a>
@@ -1323,7 +1381,7 @@
     </div>
     <div class="fi">
       <p class="ll">Listed on</p>
-      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.png" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.ico" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
+      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.webp" width="48" height="48" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.webp" width="66" height="66" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
       <p class="ll">Markets</p>
       <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo" loading="lazy" decoding="async">PancakeSwap · BOBAI/WBNB</a></div>
       <p class="ll">Available on</p>
@@ -1334,7 +1392,7 @@
   </section>
 
 <footer><div class="fi2">
-  <div class="fb"><img src="logo-sm.png?v=2" alt="BOBAI"><span>BOBAI</span></div>
+  <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · <a href="https://brainonbnb.ai">brainonbnb.ai</a> | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer>
 </div>
@@ -1497,9 +1555,40 @@ new IntersectionObserver(([e])=>g.classList.toggle('on',!e.isIntersecting),
   sched();
 }();
 
-// Fade-in observer
-const ob=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('vi')}),{threshold:.08});
-document.querySelectorAll('.fi').forEach(el=>ob.observe(el));
+// Fade-in observer.
+// Dieser Block hat die Seite auf dem Handy "kaputt" aussehen lassen: alle 45
+// .fi-Elemente stehen auf opacity:0, bis der Observer sie freigibt — und der
+// laeuft erst, wenn der Parser das Ende dieses 130-KB-Dokuments erreicht hat.
+// Bis dahin war unterhalb des Heros nur Schwarz. Drei Aenderungen:
+//   - rootMargin: freigeben, BEVOR das Element in den Blick kommt, statt erst
+//     bei 8% Sichtbarkeit. Man scrollt jetzt nie in leere Flaechen hinein.
+//   - unobserve nach dem Einblenden: jedes Element wird nur einmal gebraucht.
+//   - Sicherheitsnetz: fehlt der IntersectionObserver oder geht sonst etwas
+//     schief, ist nach spaetestens 5s garantiert alles sichtbar. Eine Seite
+//     darf nie dauerhaft unsichtbaren Inhalt haben.
+!function(){
+  const fis=document.querySelectorAll('.fi');
+  const showAll=()=>fis.forEach(el=>el.classList.add('vi'));
+  if(!('IntersectionObserver'in window)){showAll();return}
+  const ob=new IntersectionObserver(e=>e.forEach(x=>{
+    if(x.isIntersecting){x.target.classList.add('vi');ob.unobserve(x.target)}
+  }),{rootMargin:'400px 0px',threshold:0});
+  fis.forEach(el=>ob.observe(el));
+  setTimeout(showAll,5000);
+}();
+
+// Shimmer nur auf dem, was gerade sichtbar ist. Der Effekt animiert
+// background-position und laeuft damit zwingend auf dem Main-Thread — bei 21
+// Elementen gleichzeitig kostet das dauerhaft Rechenzeit, auch fuer die 19,
+// die gerade niemand sieht. Sichtbar bleibt der Effekt derselbe.
+// Ohne IntersectionObserver (sehr alte Browser) laeuft er ueberall, wie frueher.
+!function(){
+  const els=document.querySelectorAll('.sh h2 em,.tc .b');
+  if(!('IntersectionObserver'in window)){els.forEach(e=>e.classList.add('shim-on'));return}
+  const so=new IntersectionObserver(es=>es.forEach(x=>x.target.classList.toggle('shim-on',x.isIntersecting)),
+    {rootMargin:'80px'});
+  els.forEach(e=>so.observe(e));
+}();
 
 // === ON-CHAIN DATA ===
 const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',RPC='https://bsc-dataseed.binance.org/';
@@ -1526,8 +1615,10 @@ async function rpcBatch(calls){
 }
 // Burn figures are written out in full — the exact number is the point on a
 // transparency dashboard. The stat tile's font size shrinks to fit instead.
-function setBig(id,v,sym){const e=document.getElementById(id);if(!e)return;
-  e.textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' '+sym;}
+function setBig(id,v,sym){put(id,v.toLocaleString(undefined,{maximumFractionDigits:0})+' '+sym)}
+// Setzt einen Wert und nimmt dem Feld gleichzeitig den "laedt"-Zustand.
+function put(id,txt){const e=document.getElementById(id);if(!e)return;
+  e.textContent=txt;e.classList.remove('ld')}
 async function chain(){
   let q;
   try{
@@ -1545,7 +1636,7 @@ async function chain(){
   }catch(e){return}
   // Each tile decodes in its own try/catch so one bad word of calldata can't
   // blank the rest of the bar.
-  try{document.getElementById('wallet-bnb').textContent=(u18(q[0])+u18(q[1])).toFixed(4)+' BNB'}catch(e){}
+  try{put('wallet-bnb',(u18(q[0])+u18(q[1])).toFixed(4)+' BNB')}catch(e){}
   try{const v=u18(q[2]);if(v>0)setBig('total-burned',v,'BOB')}catch(e){}
   let bAmt=0;
   try{const v=u18(q[3]);if(v>0){bAmt=v;setBig('total-bobai-burned',v,'BOBAI');
@@ -1558,8 +1649,8 @@ async function chain(){
       bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),
       pU=(Number(wR)/Number(bR))*bnbP,
       circ=1e9-bAmt;
-    document.getElementById('mcap').textContent='$'+(pU*circ).toLocaleString(undefined,{maximumFractionDigits:0});
-    document.getElementById('volume').textContent='$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0});
+    put('mcap','$'+(pU*circ).toLocaleString(undefined,{maximumFractionDigits:0}));
+    put('volume','$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0}));
     const pend=u18(q[8]),tp=document.getElementById('tax-pending');
     if(tp)tp.textContent=pend>=1?'+ '+Math.round(pend).toLocaleString()+' $BOBAI tax queued (≈$'+(pend*pU).toLocaleString(undefined,{maximumFractionDigits:0})+')':'';
     window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender();
@@ -1588,7 +1679,7 @@ function paintRows(id,rows){
   body.__more=more;
   wrap.addEventListener('scroll',more,{passive:true});
 }
-function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}document.getElementById('burn-count').textContent=b.length.toString();paintRows('tx-body',rows)}}catch(e){}}
+function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}put('burn-count',b.length.toString());paintRows('tx-body',rows)}}catch(e){}}
 // The three log files used to be fetched in a serial then-chain — and
 // bobai-liq-log.json twice over, once for each campaign card. One parallel
 // round of fetches, each file read exactly once.

@@ -12,7 +12,12 @@
      Gewichte auf die tatsaechlich benutzten reduziert. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<!-- media="print" + onload: nimmt dem Link die Blockierwirkung, damit der
+     erste Paint nicht auf einen fremden Host wartet. Layout und Farben stehen
+     komplett im inline <style>. Siehe ausfuehrliche Begruendung in
+     dashboard/index.html. -->
+<link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"></noscript>
 
 <!-- Open Graph / Twitter card -->
 <meta property="og:type" content="website">
@@ -36,10 +41,12 @@
   --radius:18px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{overflow-x:hidden}
-/* clip, not hidden: overflow-x:hidden on body forces overflow-y to auto, which makes
-   body a second scroll box next to html's — two scrollbars on the right. */
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:clip;-webkit-font-smoothing:antialiased;line-height:1.5}
+/* Frueher stand overflow-x:hidden auf html UND body — daher die zwei
+   Scrollbalken (eine hidden-Achse setzt die andere auf auto, body wurde so zum
+   zweiten Scroll-Container); danach clip auf body. Beides ist ersatzlos
+   entfernt, nachgemessen ragt nichts mehr horizontal heraus. Ohne
+   overflow-Angabe kann body gar kein zweiter Scroll-Container werden. */
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;line-height:1.5}
 
 /* NAV — Worldcup-style frame: bg-grad backdrop + sticky header with back-btn + brand-link + CTA */
 .bg-grad{position:fixed;inset:0;z-index:0;pointer-events:none;

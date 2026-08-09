@@ -870,17 +870,24 @@ export default {
     // Keeps the page independent of the visitor's DNS/CORS for the logs subdomain.
     const logMatch = url.pathname.match(/^\/logs\/([a-z0-9-]+\.json)$/);
     if (logMatch) {
+      // Kurz cachen statt no-store. burns.json ist ~88 KB und war damit der
+      // groesste Einzelbrocken der Startseite — bei JEDEM Aufruf und jedem
+      // Aktualisieren komplett neu uebertragen. Der Bot schreibt die Logs alle
+      // 10 Minuten, 2 Minuten Cache sind also nie spuerbar veraltet, sparen
+      // beim Neuladen aber die vollen 88 KB. stale-while-revalidate liefert
+      // danach sofort die alte Fassung und holt die neue im Hintergrund.
+      const LOG_CACHE = 'public, max-age=120, stale-while-revalidate=600';
       const upstream = await fetch('https://logs.brainonbnb.com/logs/' + logMatch[1]).catch(() => null);
       if (upstream && upstream.ok) {
         return new Response(upstream.body, {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' },
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': LOG_CACHE, 'Access-Control-Allow-Origin': '*' },
         });
       }
       // Fallback: static copy bundled with the deploy
       const fallback = await env.ASSETS.fetch('https://brainonbnb.com/' + logMatch[1]).catch(() => null);
       if (fallback && fallback.ok) {
         return new Response(fallback.body, {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' },
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': LOG_CACHE, 'Access-Control-Allow-Origin': '*' },
         });
       }
       return new Response('[]', { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });

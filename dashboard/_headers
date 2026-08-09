@@ -7,17 +7,20 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-XSS-Protection: 1; mode=block
 
-# HTML pages: never cache — auth/login pages and dynamic content must always be fresh.
+# HTML pages: immer frisch, aber NICHT no-store.
+# max-age=0 + must-revalidate heisst: vor jeder Nutzung rueckfragen, also
+# genauso aktuell wie no-store. Der Unterschied ist, was der Browser darf:
+# no-store verbietet das Ablegen komplett und schaltet damit auch den
+# Back-/Forward-Cache ab. Auf dem Handy hiess das: zurueck, App-Wechsel oder
+# Bildschirm-aus = jedes Mal kompletter Neuaufbau mit weissem Schirm.
+# Die Live-Zahlen holt die Seite ohnehin per JS, das HTML-Geruest darf also
+# aus dem Speicher wiederverwendet werden.
 # Asset files (CSS/JS/images) are versioned via ?v= params and can be cached.
 /*.html
-  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
-  Pragma: no-cache
-  Expires: 0
+  Cache-Control: public, max-age=0, must-revalidate
 
 /
-  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
-  Pragma: no-cache
-  Expires: 0
+  Cache-Control: public, max-age=0, must-revalidate
 
 /worldcup/app/
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
@@ -27,14 +30,10 @@
 # Top-level clean page URLs (CF strips .html). Explicit per page — a /:page
 # placeholder would also match top-level assets (logo.png etc.) and kill their caching.
 /whitepaper
-  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
-  Pragma: no-cache
-  Expires: 0
+  Cache-Control: public, max-age=0, must-revalidate
 
 /listing
-  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
-  Pragma: no-cache
-  Expires: 0
+  Cache-Control: public, max-age=0, must-revalidate
 
 # Clean page URLs (CF strips .html → e.g. /worldcup/app/leaderboard). The
 # :page placeholder matches a SINGLE segment, so it covers every app page but
@@ -64,3 +63,10 @@
 
 /brainscreener/assets/js/*
   Cache-Control: public, max-age=3600, must-revalidate
+
+# app.js traegt den kompletten Seiten-Code und ist ueber ?v= versioniert —
+# darf also lange liegen bleiben. Genau das macht das Aktualisieren auf dem
+# Handy schnell: nur noch das HTML-Geruest kommt neu, die 27 KB Code nicht.
+# Bei inhaltlichen Aenderungen die ?v= in index.html hochzaehlen.
+/app.js
+  Cache-Control: public, max-age=604800, must-revalidate

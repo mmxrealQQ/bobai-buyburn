@@ -135,9 +135,12 @@
     .bob-sub{font-size:.75em;color:#fff;font-weight:400;margin-left:2px;flex:none}
     *{margin:0;padding:0;box-sizing:border-box}
     html{overflow-x:hidden}
+    /* clip, not hidden: overflow-x:hidden on body forces overflow-y to auto, which
+       makes body its own scroll box on top of html's — two scrollbars on the right.
+       clip suppresses the horizontal overflow without creating a scroll container. */
     /* Warm glows lift the page out of flat black without giving up the dark
        gold-on-near-black identity. */
-    body{font-family:'Inter',system-ui,sans-serif;color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased;
+    body{font-family:'Inter',system-ui,sans-serif;color:var(--text);overflow-x:clip;-webkit-font-smoothing:antialiased;
       background:
         radial-gradient(1200px 700px at 50% -6%,rgba(240,185,11,.13),transparent 66%),
         radial-gradient(900px 620px at 50% 40%,rgba(198,143,118,.06),transparent 70%),

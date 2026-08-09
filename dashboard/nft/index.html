@@ -31,7 +31,9 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{overflow-x:hidden}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.5}
+/* clip, not hidden: overflow-x:hidden on body forces overflow-y to auto, which makes
+   body a second scroll box next to html's — two scrollbars on the right. */
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:clip;-webkit-font-smoothing:antialiased;line-height:1.5}
 
 /* NAV — Worldcup-style frame: bg-grad backdrop + sticky header with back-btn + brand-link + CTA */
 .bg-grad{position:fixed;inset:0;z-index:0;pointer-events:none;

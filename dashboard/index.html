@@ -194,9 +194,14 @@
       transform:translateY(-6px);transition:opacity .3s ease,transform .3s ease,visibility .3s}
     .nb-group.on{opacity:1;visibility:visible;transform:none}
     .nb2{position:relative;background:transparent;color:var(--gold);padding:8px 18px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:1px solid rgba(240,185,11,.45);letter-spacing:.3px;overflow:hidden}
-    .nb2::before{content:'';position:absolute;inset:0;border-radius:10px;box-shadow:0 0 0 0 rgba(240,185,11,.45);animation:nb2pulse 2.4s ease-out infinite;pointer-events:none}
+    /* Statischer Ring + transform/opacity statt wachsender box-shadow — siehe
+       Grundregel im POLISH LAYER. .nb2 wird aktuell nirgends im HTML benutzt,
+       die Regel bleibt aber als Hook stehen; sie soll dann nicht die alte,
+       teure Variante wieder einschleppen. */
+    .nb2::before{content:'';position:absolute;inset:0;border-radius:10px;pointer-events:none;
+      box-shadow:0 0 0 6px rgba(240,185,11,.32);animation:nb2pulse 2.4s ease-out infinite}
     .nb2:hover{background:rgba(240,185,11,.08);border-color:var(--gold);transform:translateY(-1px)}
-    @keyframes nb2pulse{0%{box-shadow:0 0 0 0 rgba(240,185,11,.32)}70%{box-shadow:0 0 0 10px rgba(240,185,11,0)}100%{box-shadow:0 0 0 0 rgba(240,185,11,0)}}
+    @keyframes nb2pulse{0%{opacity:1;transform:scale(.94)}70%,100%{opacity:0;transform:scale(1)}}
 
     /* HERO */
     .hero{position:relative;width:100%;margin-top:58px;overflow:hidden}
@@ -287,8 +292,17 @@
 
     /* LIVE BADGE */
     .live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.15);padding:4px 12px;border-radius:20px;font-size:.65rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase}
-    .live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
-    @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{opacity:.6;box-shadow:0 0 0 6px rgba(0,230,118,0)}}
+    /* Der Punkt blinkt, ein Ring laeuft nach aussen — wie vorher, aber ohne
+       animierte box-shadow. Die alte Variante liess den Radius pro Frame
+       wachsen; das kann der Compositor nicht, also Repaint 60x/s, endlos.
+       Jetzt: statischer Ring auf einem ::after, animiert werden nur transform
+       und opacity. Gleiche Optik, Kosten praktisch null. */
+    .live-dot{position:relative;width:6px;height:6px;background:var(--green);border-radius:50%;
+      animation:ldFade 2s ease-in-out infinite}
+    .live-dot::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+      box-shadow:0 0 0 5px rgba(0,230,118,.4);animation:ldRing 2s ease-out infinite}
+    @keyframes ldFade{0%,100%{opacity:1}50%{opacity:.6}}
+    @keyframes ldRing{0%{opacity:.5;transform:scale(.2)}70%,100%{opacity:0;transform:scale(1)}}
 
     /* STATS BAR */
     .sbar{max-width:1100px;margin:-48px auto 0;padding:0 24px;position:relative;z-index:3}
@@ -368,13 +382,23 @@
 
     /* ABOUT — BRAIN LOGO + TEXT */
     .about-hero{display:flex;align-items:center;gap:48px;margin-bottom:48px}
-    .about-logo{flex-shrink:0}
+    /* line-height:0 nimmt der Zeilenbox den Unterlaengen-Spalt, sonst sitzt der
+       Halo unten ein paar Pixel daneben. position:relative traegt ihn. */
+    .about-logo{flex-shrink:0;position:relative;line-height:0}
+    /* Der Atem-Glow war eine animierte box-shadow mit 130px Blur — jedes Frame
+       neu gerastert. Jetzt ein eigener Halo-Layer hinter dem Bild, der nur
+       transform und opacity animiert: gleiche Optik, compositor-only.
+       inset:0 statt fester Pixel, damit er den 140px-Zuschnitt auf dem Handy
+       automatisch mitmacht. */
+    .about-logo::before{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+      box-shadow:0 0 70px rgba(240,185,11,.25),0 0 145px rgba(240,185,11,.10);
+      animation:breathe 4.8s ease-in-out infinite}
     /* Fully round with a thin gold ring — the square crop read like a leftover
        asset rather than a deliberate portrait. */
-    .about-logo img{width:180px;height:180px;border-radius:50%;object-fit:cover;
+    .about-logo img{position:relative;z-index:1;
+      width:180px;height:180px;border-radius:50%;object-fit:cover;
       border:2px solid rgba(240,185,11,.28);padding:0;
-      box-shadow:0 0 60px rgba(240,185,11,.18),0 0 130px rgba(240,185,11,.07),
-                 inset 0 0 40px rgba(0,0,0,.4)}
+      box-shadow:inset 0 0 40px rgba(0,0,0,.4)}
     .about-text h3{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:10px}
     .about-text h3 em{font-style:normal;color:var(--gold)}
     .about-text p{color:var(--muted);font-size:.88rem;line-height:1.7;max-width:540px}
@@ -531,7 +555,16 @@
     .liq-boost{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
     .lb-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(0,230,118,.12);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
     .lb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.4),var(--gold),rgba(0,230,118,.4),transparent)}
-    .lb-card::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,230,118,.03),transparent 70%);pointer-events:none}
+    /* Traegt zusaetzlich den pulsierenden Rand: der lief vorher als
+       border-color-Animation auf .lb-card selbst — nicht komponierbar, also
+       Style-Recalc pro Frame. Ein 1px-Innenring auf diesem ohnehin
+       vorhandenen Layer, animiert per opacity, sieht gleich aus und ist
+       gratis. Der schwache Radial-Verlauf pulst mit, bei .03 Alpha
+       unsichtbar. */
+    .lb-card::after{content:'';position:absolute;inset:0;border-radius:var(--radius);pointer-events:none;
+      background:radial-gradient(ellipse at 50% 0%,rgba(0,230,118,.03),transparent 70%);
+      box-shadow:inset 0 0 0 1px rgba(0,230,118,.22);
+      animation:lbGlow 4.5s ease-in-out infinite}
     .lb-title{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
     .lb-title em{font-style:normal;background:linear-gradient(135deg,var(--green),var(--gold));background-clip:text;-webkit-background-clip:text;color:transparent}
     .lb-sub{text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:20px}
@@ -749,16 +782,20 @@
     }
     .fi{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}.fi.vi{opacity:1;transform:translateY(0)}
 
-    /* === POLISH LAYER === */
-    @keyframes breathe{0%,100%{box-shadow:0 0 60px rgba(240,185,11,.18),0 0 120px rgba(240,185,11,.08)}50%{box-shadow:0 0 80px rgba(240,185,11,.32),0 0 160px rgba(240,185,11,.14)}}
-    @keyframes sepPulse{0%,100%{transform:scale(1);box-shadow:0 0 4px rgba(240,185,11,.3)}50%{transform:scale(1.6);box-shadow:0 0 14px rgba(240,185,11,.6)}}
-    @keyframes lbBorder{0%,100%{border-color:rgba(0,230,118,.12)}50%{border-color:rgba(0,230,118,.3)}}
-    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-    @keyframes haloFloat{0%,100%{opacity:.5;transform:translate(0,0) scale(1)}50%{opacity:.85;transform:translate(8px,-6px) scale(1.05)}}
-
-    .about-logo img{animation:breathe 4.8s ease-in-out infinite}
-    .sep-d{animation:sepPulse 3.2s ease-in-out infinite;opacity:.55}
-    .lb-card{animation:lbBorder 4.5s ease-in-out infinite}
+    /* === POLISH LAYER ===
+       Grundregel fuer alles Dauerhafte hier: es darf ausschliesslich transform
+       und opacity animieren. Nur die beiden kann der Compositor uebernehmen;
+       box-shadow, background-position und border-color kosten stattdessen
+       Style-Recalc + Repaint auf dem Main-Thread — 60x pro Sekunde, endlos,
+       auch wenn niemand hinschaut. Gemessen kostete genau das ~62% Dauerlast
+       auf dem Handy und liess die Seite wirken, als lade sie nie fertig. */
+    @keyframes breathe{0%,100%{opacity:.7;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
+    @keyframes lbGlow{0%,100%{opacity:.35}50%{opacity:1}}
+    /* Der Glow waechst hier per transform mit — eine box-shadow skaliert
+       mit, deshalb braucht es keine zweite animierte Eigenschaft. */
+    @keyframes sepPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
+    .sep-d{animation:sepPulse 3.2s ease-in-out infinite;opacity:.55;
+      box-shadow:0 0 8px rgba(240,185,11,.45)}
 
     .sc{transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .25s,box-shadow .35s}
     .sc:hover{transform:translateY(-3px) scale(1.015);border-color:rgba(240,185,11,.22);box-shadow:0 12px 40px rgba(240,185,11,.09)}
@@ -785,8 +822,15 @@
     .about-tags span{transition:border-color .25s,color .25s,background .25s,transform .25s}
     .about-tags span:hover{border-color:rgba(240,185,11,.32);color:var(--gold);background:rgba(240,185,11,.05);transform:translateY(-1px)}
 
-    .sh h2 em{background-size:200% 100%;animation:shimmer 8s linear infinite}
-    .tc .b{background-size:200% 100%;animation:shimmer 9s linear infinite}
+    /* Hier lief ein Shimmer: background-position ueber background-clip:text,
+       auf 17 Headline-<em> und 4 Stat-Zahlen gleichzeitig — die groesste
+       Einzelgruppe der Dauer-Repaints. Als einziger Effekt der Seite laesst er
+       sich NICHT komponieren: der Verlauf wandert im Textfuellmuster selbst,
+       dafuer gibt es kein transform/opacity-Aequivalent. Ein Overlay mit
+       translateX scheidet aus, weil .tc .b live per JS beschriebene Zahlen
+       traegt, die ein Pseudo-Element nicht spiegeln kann.
+       Der Verlauf bleibt also statisch stehen — nur die Wanderung faellt weg. */
+    .sh h2 em,.tc .b{background-size:100% 100%}
 
     /* The old floating halo lived here. Removed: with the block frame clipping
        it, its edge showed up as hard diagonal streaks inside the card, and the
@@ -796,31 +840,24 @@
     table tr{transition:background .2s}
     table tr:hover{background:rgba(240,185,11,.025)}
 
-    /* === MOBILE: DAUERLAUF-ANIMATIONEN STILLLEGEN ===
-       Gemessen auf einem 4x gedrosselten Handy-Profil: der Main-Thread war
-       nach dem fertigen Load DAUERHAFT zu ~59% belegt, ~1350 Style-Recalcs,
-       TaskDuration 17.9s. Die Seite kam nie zur Ruhe — genau das fuehlt sich
-       an, als wuerde sie ewig laden. Mit diesem Block: 0.3% Idle-Last,
-       36 Recalcs, TaskDuration 3.4s.
+    /* Hier stand kurzzeitig ein @media(max-width:900px)-Block, der die teuren
+       Dauer-Animationen auf dem Handy einfach abschaltete. Nicht mehr noetig:
+       sie sind jetzt alle auf transform/opacity umgebaut und laufen auf jedem
+       Viewport auf dem Compositor. Kein Mobile-Sonderfall mehr.
 
-       Der Grund ist nicht die Menge der Animationen, sondern ihre Art: alles
-       hier animiert box-shadow, background-position oder border-color. Diese
-       Eigenschaften kann der Compositor nicht uebernehmen, also kostet jede
-       einzelne Runde Style-Recalc + Repaint auf dem Main-Thread — 60x pro
-       Sekunde, endlos.
+       Zwei Verdaechtige wurden dabei per Gegenprobe freigesprochen, damit hier
+       nichts auf Verdacht geopfert wird:
+       - backdrop-filter auf ~68 Elementen: komplett abgeschaltet brachte 53.6%
+         statt 58.7% Dauerlast, also praktisch nichts. Die Glas-Optik bleibt.
+       - Die Aurora (.aur, fixed 150% Viewport mit filter:blur(110px)): ihre
+         Orbs animieren reines transform, laufen also ohnehin auf dem
+         Compositor. Bleibt ebenfalls. */
 
-       Zwei Gegenproben, damit hier nichts auf Verdacht geopfert wird:
-       backdrop-filter komplett abgeschaltet brachte 53.6% statt 58.7%, also
-       praktisch nichts — die Glas-Optik bleibt unangetastet. Und die Aurora
-       (.aur) lief bei der 0.3%-Messung weiter: ihre Orbs animieren reines
-       transform, das laeuft auf dem Compositor. Sie darf also ebenfalls
-       bleiben, trotz des filter:blur(110px) darueber. */
-    @media (max-width:900px){
-      .nb2::before,.about-logo img,.sep-d,.lb-card,.sh h2 em,.tc .b{animation:none}
-      /* Die Live-Punkte bleiben blinken — sie sagen aus, dass die Zahlen live
-         sind. Nur die box-shadow-Welle faellt weg; reines Opacity-Pulsen
-         laeuft auf dem Compositor und kostet den Main-Thread nichts. */
-      .live-dot{animation:tgpulse 2s ease-in-out infinite}
+    /* Wer Bewegung systemweit abbestellt, bekommt hier Ruhe. Die Effekte sind
+       zwar billig geworden, aber das ist eine Praeferenz, keine Perf-Frage. */
+    @media (prefers-reduced-motion:reduce){
+      .about-logo::before,.lb-card::after,.live-dot,.live-dot::after,.sep-d,
+      .nb2::before,.ts-row.active .ts-name::before,.tg-eyebrow .live::before{animation:none}
     }
   </style>
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen

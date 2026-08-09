@@ -6,6 +6,13 @@
 <title>BOBAI Buy Drops · NFT Collection · brainonbnb</title>
 <meta name="description" content="Auto-minted NFTs awarded for every $BOBAI buy of $100 or more on BNB Chain. 1,925 collectibles · 6 buy tiers · 7 rarities.">
 <link rel="icon" href="/favicon.png">
+<!-- Fonts als frueher <link>, NICHT als @import im inline <style>: ein @import
+     ist fuer den Preload-Scanner unsichtbar, der Browser muesste erst das ganze
+     Dokument parsen, bevor er den Handshake zu googleapis ueberhaupt startet.
+     Gewichte auf die tatsaechlich benutzten reduziert. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
 
 <!-- Open Graph / Twitter card -->
 <meta property="og:type" content="website">
@@ -19,7 +26,6 @@
 <meta name="twitter:description" content="6 buy-tier motifs · 7 rarities · 1,925 total, on BNB Chain.">
 <meta name="twitter:image" content="https://brainonbnb.com/nft/og-banner.jpg">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root{
   --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
@@ -74,8 +80,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .mkt a:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 22px rgba(240,185,11,.1)}
 .mkt img{width:18px;height:18px;border-radius:3px;object-fit:contain}
 .live-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.18);padding:5px 14px;border-radius:20px;font-size:.7rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase;margin-top:18px}
-.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{opacity:.6;box-shadow:0 0 0 6px rgba(0,230,118,0)}}
+/* Statischer Ring auf einem ::after, animiert werden nur transform und opacity.
+   Eine wachsende box-shadow kann der Compositor nicht uebernehmen und kostet
+   sonst Style-Recalc + Repaint pro Frame, endlos. Gleiche Regel wie im
+   Dashboard (dashboard/index.html, POLISH LAYER). */
+.live-dot{position:relative;width:6px;height:6px;background:var(--green);border-radius:50%;
+  animation:ldFade 2s ease-in-out infinite}
+.live-dot::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  box-shadow:0 0 0 5px rgba(0,230,118,.4);animation:ldRing 2s ease-out infinite}
+@keyframes ldFade{0%,100%{opacity:1}50%{opacity:.6}}
+@keyframes ldRing{0%{opacity:.5;transform:scale(.2)}70%,100%{opacity:0;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.live-dot,.live-dot::after{animation:none}}
 
 /* HERO MOTIFS — the 6 tier motifs as the hero visual */
 .hero-motifs{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:36px;text-align:left}
@@ -241,24 +256,24 @@ footer a:hover{color:var(--gold)}
   <div class="hero-inner">
     <!-- 6 motifs as the hero visual -->
     <div class="hero-motifs">
-      <div class="motif-card"><img src="motifs/nice-buy.jpg" alt="NICE BUY motif"><div class="motif-meta"><div class="e">💰</div><div class="l">NICE BUY</div><div class="t">$100+ · 1000 max</div></div></div>
-      <div class="motif-card"><img src="motifs/big-buy.jpg" alt="BIG BUY motif"><div class="motif-meta"><div class="e">💎</div><div class="l">BIG BUY</div><div class="t">$150+ · 500 max</div></div></div>
-      <div class="motif-card"><img src="motifs/huge-buy.jpg" alt="HUGE BUY motif"><div class="motif-meta"><div class="e">🚀</div><div class="l">HUGE BUY</div><div class="t">$250+ · 250 max</div></div></div>
-      <div class="motif-card"><img src="motifs/whale-buy.jpg" alt="WHALE BUY motif"><div class="motif-meta"><div class="e">🐋</div><div class="l">WHALE BUY</div><div class="t">$500+ · 100 max</div></div></div>
-      <div class="motif-card"><img src="motifs/thunder-buy.jpg" alt="THUNDER BUY motif"><div class="motif-meta"><div class="e">⚡</div><div class="l">THUNDER BUY</div><div class="t">$1000+ · 50 max</div></div></div>
-      <div class="motif-card"><img src="motifs/kraken-buy.jpg" alt="KRAKEN BUY motif"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2500+ · 25 max</div></div></div>
+      <div class="motif-card"><img src="motifs/nice-buy-sm.webp" data-full="motifs/nice-buy.webp" width="384" height="384" alt="NICE BUY motif" decoding="async"><div class="motif-meta"><div class="e">💰</div><div class="l">NICE BUY</div><div class="t">$100+ · 1000 max</div></div></div>
+      <div class="motif-card"><img src="motifs/big-buy-sm.webp" data-full="motifs/big-buy.webp" width="384" height="384" alt="BIG BUY motif" decoding="async"><div class="motif-meta"><div class="e">💎</div><div class="l">BIG BUY</div><div class="t">$150+ · 500 max</div></div></div>
+      <div class="motif-card"><img src="motifs/huge-buy-sm.webp" data-full="motifs/huge-buy.webp" width="384" height="384" alt="HUGE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🚀</div><div class="l">HUGE BUY</div><div class="t">$250+ · 250 max</div></div></div>
+      <div class="motif-card"><img src="motifs/whale-buy-sm.webp" data-full="motifs/whale-buy.webp" width="384" height="384" alt="WHALE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🐋</div><div class="l">WHALE BUY</div><div class="t">$500+ · 100 max</div></div></div>
+      <div class="motif-card"><img src="motifs/thunder-buy-sm.webp" data-full="motifs/thunder-buy.webp" width="384" height="384" alt="THUNDER BUY motif" decoding="async"><div class="motif-meta"><div class="e">⚡</div><div class="l">THUNDER BUY</div><div class="t">$1000+ · 50 max</div></div></div>
+      <div class="motif-card"><img src="motifs/kraken-buy-sm.webp" data-full="motifs/kraken-buy.webp" width="384" height="384" alt="KRAKEN BUY motif" decoding="async"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2500+ · 25 max</div></div></div>
     </div>
     <h1>BOBAI Buy Drops</h1>
     <p>Every $BOBAI buy of <strong>$100 or more</strong> auto-mints a collectible NFT to the buyer's wallet — no claim, no extra cost. Each NFT carries a <strong>buy-tier motif</strong> fixed by purchase size and a <strong>rarity</strong> drawn from a weighted matrix. 1,925 total · 6 tiers · 7 rarities.</p>
     <div class="hero-meta">
       <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><code id="contract-addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</code></a>
       ·
-      <a href="https://bscscan.com/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);padding:5px 12px;border-radius:8px"><img src="/ico-bscscan.ico" alt="" style="width:20px;height:20px;border-radius:4px;object-fit:contain">BscScan</a>
+      <a href="https://bscscan.com/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);padding:5px 12px;border-radius:8px"><img src="/ico-bscscan.ico" alt="" style="width:20px;height:20px;border-radius:4px;object-fit:contain" loading="lazy" decoding="async">BscScan</a>
     </div>
     <div class="live-pill"><span class="live-dot"></span> Auto-mint live</div>
     <div class="mkt">
-      <a href="https://element.market/collections/bobai-buy-drops-1" target="_blank" rel="noopener"><img src="/ico-element.png?v=3" alt="">Element</a>
-      <a href="https://bnb.nftscan.com/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><img src="/ico-nftscan.png" alt="">NFTScan</a>
+      <a href="https://element.market/collections/bobai-buy-drops-1" target="_blank" rel="noopener"><img src="/ico-element.png?v=3" alt="" loading="lazy" decoding="async">Element</a>
+      <a href="https://bnb.nftscan.com/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><img src="/ico-nftscan.png" alt="" loading="lazy" decoding="async">NFTScan</a>
     </div>
   </div>
 </header>
@@ -532,7 +547,9 @@ document.querySelectorAll('.hero-motifs .motif-card').forEach(card => {
     const img = card.querySelector('img');
     const label = card.querySelector('.motif-meta .l')?.textContent || '';
     const thr   = card.querySelector('.motif-meta .t')?.textContent || '';
-    openLbx(img.src, label, thr);
+    // Das Grid traegt nur ein 384px-Thumbnail; die Lightbox holt die volle
+    // Aufloesung ueber data-full nach.
+    openLbx(img.dataset.full || img.src, label, thr);
   });
 });
 

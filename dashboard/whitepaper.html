@@ -91,18 +91,29 @@
       .footer a{color:#333}
       a{color:#1a0dab}
       .logo-row img{box-shadow:none}
+      .logo-glow::before{display:none}
       body::before,body::after{display:none}
     }
 
     /* === POLISH LAYER === */
-    @keyframes wpBreathe{0%,100%{box-shadow:0 0 16px rgba(240,185,11,.22)}50%{box-shadow:0 0 28px rgba(240,185,11,.42),0 0 56px rgba(240,185,11,.1)}}
+    /* Nur transform/opacity — eine animierte box-shadow kann der Compositor
+       nicht uebernehmen und laesst den Main-Thread pro Frame neu rechnen,
+       endlos. Gleiche Grundregel wie im Dashboard. */
+    @keyframes wpBreathe{0%,100%{opacity:.45;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
     @keyframes wpHalo{0%,100%{opacity:.55;transform:translate(0,0)}50%{opacity:.9;transform:translate(10px,-8px)}}
 
     body::before{content:'';position:fixed;top:-220px;right:-220px;width:620px;height:620px;background:radial-gradient(circle,rgba(240,185,11,.045) 0%,transparent 60%);pointer-events:none;z-index:0;animation:wpHalo 16s ease-in-out infinite}
     body::after{content:'';position:fixed;bottom:-220px;left:-220px;width:520px;height:520px;background:radial-gradient(circle,rgba(240,185,11,.03) 0%,transparent 60%);pointer-events:none;z-index:0;animation:wpHalo 22s ease-in-out infinite reverse}
     .content{position:relative;z-index:1}
 
-    .logo-row img{animation:wpBreathe 4.5s ease-in-out infinite}
+    /* Der Glow sitzt auf einem eigenen Layer hinter dem Logo statt auf dem
+       Bild selbst — ein <img> kann keine Pseudo-Elemente tragen, daher der
+       Wrapper. Die statische box-shadow auf dem img bleibt die Grundhelligkeit,
+       dieser Layer pulst obendrauf. */
+    .logo-glow{position:relative;display:inline-block;line-height:0;flex-shrink:0}
+    .logo-glow::before{content:'';position:absolute;inset:0;border-radius:12px;pointer-events:none;
+      box-shadow:0 0 14px rgba(240,185,11,.26),0 0 42px rgba(240,185,11,.10);
+      animation:wpBreathe 4.5s ease-in-out infinite}
 
     .card{transition:border-color .3s ease,box-shadow .3s ease,transform .3s ease}
     .card:hover{border-color:rgba(240,185,11,.2);box-shadow:0 8px 32px rgba(240,185,11,.05);transform:translateY(-2px)}
@@ -119,8 +130,14 @@
     table tr{transition:background .2s}
     table tr:hover td{background:rgba(240,185,11,.025)}
 
-    h1{background-size:200% 100%;animation:wpShimmer 10s linear infinite}
-    @keyframes wpShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+    /* Hier lief ein Shimmer ueber background-position auf background-clip:text.
+       Als einziger Effekt laesst er sich nicht komponieren — der Verlauf
+       wandert im Textfuellmuster selbst, dafuer gibt es kein
+       transform/opacity-Aequivalent. Der Verlauf bleibt statisch stehen. */
+    h1{background-size:100% 100%}
+    @media (prefers-reduced-motion:reduce){
+      body::before,body::after,.logo-glow::before{animation:none}
+    }
   </style>
 </head>
 <body>
@@ -134,9 +151,14 @@
 <main>
 <div class="content">
 
-  <img src="/illus/whitepaper-hero.png" alt="" class="hero-illu" loading="lazy">
+  <!-- War ein 2.4-MB-PNG mit 1024px Breite fuer eine 200px-Anzeige — auf 4G
+       allein rund zehn Sekunden. Jetzt 640px WebP (83 KB), das deckt auch
+       DPR3 noch ab. width/height reservieren die Box, damit beim Nachladen
+       nichts springt. -->
+  <img src="/illus/whitepaper-hero.webp" alt="" class="hero-illu" width="640" height="960"
+       loading="lazy" decoding="async">
   <div class="logo-row">
-    <img src="logo-sm.png?v=2" alt="BOBAI Logo">
+    <span class="logo-glow"><img src="logo-sm.png?v=2" alt="BOBAI Logo"></span>
     <div>
       <h1>BOBAI Whitepaper</h1>
     </div>

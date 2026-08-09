@@ -3,6 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Fonts as early <link>s, NOT as @import inside the inline <style>: an
+       @import is invisible to the preload scanner, so the browser had to parse
+       the whole 120 KB document before it even started the DNS+TLS handshake to
+       googleapis — and then a second cold handshake to gstatic. Two serial
+       round trips after CSS parse cost ~1s of first paint on mobile.
+       Weights trimmed to the four actually used in the stylesheet (400/500/600/700). -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
   <title>Brain On BNB AI ($BOBAI) — Where Memes Meet Intelligence</title>
   <meta name="description" content="Brain On BNB AI ($BOBAI) — AI-built deflationary meme token on BNB Chain. 3% tax fuels autonomous 24/7 buyback & burn. LP locked, ownership renounced.">
   <meta name="keywords" content="brainonbnb, brainonbnbai, brainonbnb.com, brainonbnb.ai, Brain On BNB AI, BOBAI, BOBAI token, BOBAI coin, Brain On BNB, Brain On BNB token, Brain On BNB coin, BNB Chain meme token, AI meme token, deflationary token BNB, buyback burn token, BSC meme coin">
@@ -117,7 +126,6 @@
   }
   </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
     :root{
       --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
       --red:#ff3028;--green:#00e676;--blue:#4040ff;--purple:#a040ff;
@@ -160,7 +168,10 @@
     @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,4vh) scale(1.12)}}
     @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-5vw,6vh) scale(.94)}}
     @keyframes drift3{0%,100%{transform:translate(0,0) scale(.96)}50%{transform:translate(4vw,-5vh) scale(1.1)}}
-    @media (prefers-reduced-motion:reduce){.aur i{animation:none}}
+    /* .aur i (0,1,1) verliert gegen .aur .a1 (0,2,0) — ein Media-Query erhoeht
+       die Spezifitaet nicht, diese Regel war deshalb wirkungslos. Die vier
+       Klassen einzeln nennen: gleiche Spezifitaet, aber spaeter im Dokument. */
+    @media (prefers-reduced-motion:reduce){.aur .a1,.aur .a2,.aur .a3,.aur .a4{animation:none}}
     .page{position:relative;z-index:1}
 
     /* NAV */
@@ -784,6 +795,33 @@
 
     table tr{transition:background .2s}
     table tr:hover{background:rgba(240,185,11,.025)}
+
+    /* === MOBILE: DAUERLAUF-ANIMATIONEN STILLLEGEN ===
+       Gemessen auf einem 4x gedrosselten Handy-Profil: der Main-Thread war
+       nach dem fertigen Load DAUERHAFT zu ~59% belegt, ~1350 Style-Recalcs,
+       TaskDuration 17.9s. Die Seite kam nie zur Ruhe — genau das fuehlt sich
+       an, als wuerde sie ewig laden. Mit diesem Block: 0.3% Idle-Last,
+       36 Recalcs, TaskDuration 3.4s.
+
+       Der Grund ist nicht die Menge der Animationen, sondern ihre Art: alles
+       hier animiert box-shadow, background-position oder border-color. Diese
+       Eigenschaften kann der Compositor nicht uebernehmen, also kostet jede
+       einzelne Runde Style-Recalc + Repaint auf dem Main-Thread — 60x pro
+       Sekunde, endlos.
+
+       Zwei Gegenproben, damit hier nichts auf Verdacht geopfert wird:
+       backdrop-filter komplett abgeschaltet brachte 53.6% statt 58.7%, also
+       praktisch nichts — die Glas-Optik bleibt unangetastet. Und die Aurora
+       (.aur) lief bei der 0.3%-Messung weiter: ihre Orbs animieren reines
+       transform, das laeuft auf dem Compositor. Sie darf also ebenfalls
+       bleiben, trotz des filter:blur(110px) darueber. */
+    @media (max-width:900px){
+      .nb2::before,.about-logo img,.sep-d,.lb-card,.sh h2 em,.tc .b{animation:none}
+      /* Die Live-Punkte bleiben blinken — sie sagen aus, dass die Zahlen live
+         sind. Nur die box-shadow-Welle faellt weg; reines Opacity-Pulsen
+         laeuft auf dem Compositor und kostet den Main-Thread nichts. */
+      .live-dot{animation:tgpulse 2s ease-in-out infinite}
+    }
   </style>
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
@@ -868,7 +906,7 @@
   <section class="sec" id="about">
     <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
     <div class="about-hero fi">
-      <div class="about-logo"><img src="logo.png?v=2" alt="BOBAI"></div>
+      <div class="about-logo"><img src="logo.png?v=2" alt="BOBAI" loading="lazy" decoding="async"></div>
       <div class="about-text">
         <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
         <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens, no human hand on the switch, nothing hidden.</p>
@@ -1124,22 +1162,22 @@
     <div class="blk-head fi"><span class="blk-tag">Block 04 &middot; Ecosystem</span><span class="blk-line"></span></div>
     <div class="ecg">
       <a class="ec fi" href="nft/">
-        <div class="ec-top"><img src="nft/logo.png" alt="BOBAI Buy Drops logo"><h3>NFT Buy Drops</h3></div>
+        <div class="ec-top"><img src="nft/logo.png" alt="BOBAI Buy Drops logo" loading="lazy" decoding="async"><h3>NFT Buy Drops</h3></div>
         <p>Every buy of $100 or more auto-mints an NFT straight to the buyer's wallet. 1,925 in the collection — no claim step, no gas for the holder.</p>
         <div class="ec-foot"><span class="ec-go">Open Collection <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="brainscreener/">
-        <div class="ec-top"><img src="ico-brainscreener.png" alt="brainScreener logo"><h3>brainScreener</h3></div>
+        <div class="ec-top"><img src="ico-brainscreener.png" alt="brainScreener logo" loading="lazy" decoding="async"><h3>brainScreener</h3></div>
         <p>13 scientifically grounded self-tests — ADHD, IQ, depression, anxiety, trauma, personality. Anonymous, free, no registration, instant results.</p>
         <div class="ec-foot"><span class="ec-go">Take A Test <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="game/">
-        <div class="ec-top"><img src="game/score.jpg" alt="Brain On BNB AI game icon"><h3>Burn &amp; Add Liq</h3></div>
+        <div class="ec-top"><img src="game/score.jpg" alt="Brain On BNB AI game icon" loading="lazy" decoding="async"><h3>Burn &amp; Add Liq</h3></div>
         <p>A browser game — jump through BNB Chain, burn tokens, add liquidity, dodge the dumps. Free to play with a public highscore board.</p>
         <div class="ec-foot"><span class="ec-go">Play Game <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="worldcup/">
-        <div class="ec-top"><img src="worldcup/wclogo.jpg" alt="BOBAI Worldcup '26 logo"><h3>Worldcup '26</h3></div>
+        <div class="ec-top"><img src="worldcup/wclogo.jpg" alt="BOBAI Worldcup '26 logo" loading="lazy" decoding="async"><h3>Worldcup '26</h3></div>
         <p>A full tipping game for the 2026 World Cup — live brackets, leaderboard, prize pool. Ran Jun 11 to Jul 19, paid out 5.47M $BOBAI, now a frozen archive.</p>
         <div class="ec-foot"><span class="ec-go">View Archive <span class="arr">&#x2192;</span></span><span class="ec-st done">Complete</span></div>
       </a>
@@ -1248,13 +1286,13 @@
     </div>
     <div class="fi">
       <p class="ll">Listed on</p>
-      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.png" alt="CoinGecko logo">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.ico" alt="DEXTools.io logo">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo">GeckoTerminal</a></div>
+      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.png" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.ico" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
       <p class="ll">Markets</p>
-      <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo">PancakeSwap · BOBAI/WBNB</a></div>
+      <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo" loading="lazy" decoding="async">PancakeSwap · BOBAI/WBNB</a></div>
       <p class="ll">Available on</p>
-      <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-binance.ico" alt="Binance Web3 Wallet logo">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank"><img src="ico-bitget.png" alt="Bitget Wallet logo">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gatedex.webp" alt="Gate DEX logo">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-okx.png" alt="OKX Wallet logo">OKX Wallet</a></div>
+      <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-binance.ico" alt="Binance Web3 Wallet logo" loading="lazy" decoding="async">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank"><img src="ico-bitget.png" alt="Bitget Wallet logo" loading="lazy" decoding="async">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gatedex.webp" alt="Gate DEX logo" loading="lazy" decoding="async">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-okx.png" alt="OKX Wallet logo" loading="lazy" decoding="async">OKX Wallet</a></div>
       <p class="ll">Tracked by</p>
-      <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank"><img src="ico-birdeye.png" alt="Birdeye logo">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank"><img src="ico-blockspot.webp" alt="Blockspot.io logo">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank"><img src="ico-bubblemaps.png" alt="Bubblemaps logo">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank"><img src="ico-coinmun.svg" alt="CoinMun logo">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-fourmeme.ico" alt="Four.Meme logo">Four.Meme</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gmgn.png" alt="GMGN.AI logo">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-insightx.ico" alt="InsightX logo">InsightX</a></div>
+      <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank"><img src="ico-birdeye.png" alt="Birdeye logo" loading="lazy" decoding="async">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank"><img src="ico-blockspot.webp" alt="Blockspot.io logo" loading="lazy" decoding="async">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank"><img src="ico-bubblemaps.png" alt="Bubblemaps logo" loading="lazy" decoding="async">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank"><img src="ico-coinmun.svg" alt="CoinMun logo" loading="lazy" decoding="async">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-fourmeme.ico" alt="Four.Meme logo" loading="lazy" decoding="async">Four.Meme</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gmgn.png" alt="GMGN.AI logo" loading="lazy" decoding="async">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-insightx.ico" alt="InsightX logo" loading="lazy" decoding="async">InsightX</a></div>
     </div>
   </section>
 
@@ -1347,12 +1385,26 @@ new IntersectionObserver(([e])=>g.classList.toggle('on',!e.isIntersecting),
   const svg = document.querySelector('.wrapnet'); if(!svg) return;
   const GLITCH = ['34,211,238', '232,121,249', '240,185,11'];
   const NS = 'http://www.w3.org/2000/svg';
-  let raf;
+  let raf, lastW = 0, lastH = 0;
 
   function build(){
+    // Below 900px (and on short landscape phones) .wrapnet is display:none —
+    // building hundreds of SVG nodes for an invisible element is pure
+    // main-thread cost on exactly the devices that can least afford it.
+    // Read the computed value rather than repeating the breakpoint, so this
+    // can never drift out of sync with the media query.
+    if(getComputedStyle(svg).display === 'none'){
+      if(svg.firstChild){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+      lastW = lastH = 0;
+      return;
+    }
     const page = document.querySelector('.page');
     const W = page.clientWidth, H = page.scrollHeight;
     if(!W || !H) return;
+    // The ResizeObserver also fires on mobile address-bar show/hide, which
+    // changes nothing about the page box. Rebuilding then is wasted work.
+    if(W === lastW && H === lastH) return;
+    lastW = W; lastH = H;
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.style.height = H + 'px';
     while(svg.firstChild) svg.removeChild(svg.firstChild);
@@ -1416,30 +1468,112 @@ document.querySelectorAll('.fi').forEach(el=>ob.observe(el));
 const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',RPC='https://bsc-dataseed.binance.org/';
 // Log fetch: same-origin proxy first, then the bot's own log domain, then the bundled copy
 async function gj(n){let r=null;try{r=await fetch('/logs/'+n+'?t='+Date.now())}catch(e){}if(!r||!r.ok){try{r=await fetch('https://logs.brainonbnb.com/logs/'+n+'?t='+Date.now())}catch(e){}}if(!r||!r.ok){try{r=await fetch('/'+n+'?t='+Date.now())}catch(e){}}return(r&&r.ok)?r.json():null}
-async function rpc(m,p){const r=await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:m,params:p})});return(await r.json()).result}
-async function bal(){try{const h=await rpc('eth_getBalance',[BW,'latest']);const w=await rpc('eth_call',[{to:'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',data:'0x70a08231000000000000000000000000'+BW.slice(2)},'latest']);const native=Number(BigInt(h))/1e18;const wbnb=(w&&w!=='0x')?Number(BigInt(w))/1e18:0;document.getElementById('wallet-bnb').textContent=(native+wbnb).toFixed(4)+' BNB'}catch(e){}}
+// All nine reads below are independent — none ever needed a previous result —
+// so issuing them one await at a time only ever bought round trips: ten of them,
+// which on a phone at ~200ms RTT meant two seconds before the stat tiles filled.
+// JSON-RPC batching puts the whole lot in a single POST.
+const WBNB='0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+      P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',   // BOBAI/WBNB pair
+      BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',  // WBNB price pair
+      DEAD_BAL='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD',
+      balOf=a=>'0x70a08231000000000000000000000000'+a.slice(2),
+      call=(to,data)=>['eth_call',[{to,data},'latest']],
+      u18=h=>(h&&h!=='0x')?Number(BigInt(h))/1e18:0;
+async function rpcBatch(calls){
+  const r=await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(calls.map((c,i)=>({jsonrpc:'2.0',id:i,method:c[0],params:c[1]})))});
+  const j=await r.json(),out=[];
+  // Responses may come back in any order — index them by the id we sent.
+  if(Array.isArray(j))for(const x of j)out[x.id]=x.result;
+  return out;
+}
 // Burn figures are written out in full — the exact number is the point on a
 // transparency dashboard. The stat tile's font size shrinks to fit instead.
 function setBig(id,v,sym){const e=document.getElementById(id);if(!e)return;
   e.textContent=v.toLocaleString(undefined,{maximumFractionDigits:0})+' '+sym;}
-async function burned(){try{const d='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD';const b=await rpc('eth_call',[{to:BOB,data:d},'latest']);if(b&&b!=='0x'){const v=Number(BigInt(b))/1e18;if(v>0)setBig('total-burned',v,'BOB')}const a=await rpc('eth_call',[{to:BOBAI,data:d},'latest']);if(a&&a!=='0x'){const v=Number(BigInt(a))/1e18;if(v>0){setBig('total-bobai-burned',v,'BOBAI');const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}}catch(e){}}
-async function token(){try{const P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',rH=await rpc('eth_call',[{to:P,data:'0x0902f1ac'},'latest']),r0=BigInt('0x'+rH.slice(2,66)),r1=BigInt('0x'+rH.slice(66,130)),t0=await rpc('eth_call',[{to:P,data:'0x0dfe1681'},'latest']),is0=('0x'+t0.slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',bH=await rpc('eth_call',[{to:BP,data:'0x0902f1ac'},'latest']),b0=BigInt('0x'+bH.slice(2,66)),b1=BigInt('0x'+bH.slice(66,130)),bt=await rpc('eth_call',[{to:BP,data:'0x0dfe1681'},'latest']),w0=('0x'+bt.slice(26).toLowerCase())==='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),pU=(Number(wR)/Number(bR))*bnbP,dD='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD',dB=await rpc('eth_call',[{to:BOBAI,data:dD},'latest']),bAmt=(dB&&dB!=='0x')?Number(BigInt(dB))/1e18:0,circ=1e9-bAmt;document.getElementById('mcap').textContent='$'+(pU*circ).toLocaleString(undefined,{maximumFractionDigits:0});document.getElementById('volume').textContent='$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0});const cB=await rpc('eth_call',[{to:BOBAI,data:'0x70a08231000000000000000000000000'+BOBAI.slice(2)},'latest']),pend=(cB&&cB!=='0x')?Number(BigInt(cB))/1e18:0,tp=document.getElementById('tax-pending');if(tp)tp.textContent=pend>=1?'+ '+Math.round(pend).toLocaleString()+' $BOBAI tax queued (≈$'+(pend*pU).toLocaleString(undefined,{maximumFractionDigits:0})+')':'';window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender()}catch(e){}}
-async function bdata(){try{const b=await gj('burns.json');if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}document.getElementById('burn-count').textContent=b.length.toString();document.getElementById('tx-body').innerHTML=rows.join('')}}catch(e){}}
-let cnt=0;async function go(){const t=[bal(),token(),burned()];if(cnt++%10===0){t.push(bdata().then(()=>lbdata()).then(()=>bbdata()).then(()=>bb2data()))}await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
+async function chain(){
+  let q;
+  try{
+    q=await rpcBatch([
+      ['eth_getBalance',[BW,'latest']],   // 0 buyback wallet, native
+      call(WBNB,balOf(BW)),               // 1 buyback wallet, wrapped
+      call(BOB,DEAD_BAL),                 // 2 BOB burned
+      call(BOBAI,DEAD_BAL),               // 3 BOBAI burned
+      call(P,'0x0902f1ac'),               // 4 BOBAI/WBNB reserves
+      call(P,'0x0dfe1681'),               // 5 BOBAI/WBNB token0
+      call(BP,'0x0902f1ac'),              // 6 BNB price reserves
+      call(BP,'0x0dfe1681'),              // 7 BNB price token0
+      call(BOBAI,balOf(BOBAI)),           // 8 tax queued in the contract
+    ]);
+  }catch(e){return}
+  // Each tile decodes in its own try/catch so one bad word of calldata can't
+  // blank the rest of the bar.
+  try{document.getElementById('wallet-bnb').textContent=(u18(q[0])+u18(q[1])).toFixed(4)+' BNB'}catch(e){}
+  try{const v=u18(q[2]);if(v>0)setBig('total-burned',v,'BOB')}catch(e){}
+  let bAmt=0;
+  try{const v=u18(q[3]);if(v>0){bAmt=v;setBig('total-bobai-burned',v,'BOBAI');
+    const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}catch(e){}
+  try{
+    const rH=q[4],r0=BigInt('0x'+rH.slice(2,66)),r1=BigInt('0x'+rH.slice(66,130)),
+      is0=('0x'+q[5].slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,
+      bH=q[6],b0=BigInt('0x'+bH.slice(2,66)),b1=BigInt('0x'+bH.slice(66,130)),
+      w0=('0x'+q[7].slice(26).toLowerCase())===WBNB.toLowerCase(),
+      bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),
+      pU=(Number(wR)/Number(bR))*bnbP,
+      circ=1e9-bAmt;
+    document.getElementById('mcap').textContent='$'+(pU*circ).toLocaleString(undefined,{maximumFractionDigits:0});
+    document.getElementById('volume').textContent='$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0});
+    const pend=u18(q[8]),tp=document.getElementById('tax-pending');
+    if(tp)tp.textContent=pend>=1?'+ '+Math.round(pend).toLocaleString()+' $BOBAI tax queued (≈$'+(pend*pU).toLocaleString(undefined,{maximumFractionDigits:0})+')':'';
+    window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender();
+  }catch(e){}
+}
+// The burn log is 900+ rows, but .txw is a 400px scroll box — painting all of
+// them up front cost ~4600 DOM nodes nobody ever sees. Render a screenful and
+// append the next chunk as the reader scrolls toward the end. If the wrapper
+// isn't there for some reason we fall back to rendering everything, so this can
+// never silently swallow rows.
+const TX_CHUNK=60;
+function paintRows(id,rows){
+  const body=document.getElementById(id);if(!body)return;
+  const wrap=body.closest('.txw');
+  if(body.__more&&wrap)wrap.removeEventListener('scroll',body.__more);
+  body.__more=null;
+  if(!wrap||rows.length<=TX_CHUNK){body.innerHTML=rows.join('');return}
+  let n=TX_CHUNK;
+  body.innerHTML=rows.slice(0,n).join('');
+  const more=()=>{
+    if(wrap.scrollTop+wrap.clientHeight<wrap.scrollHeight-240)return;
+    body.insertAdjacentHTML('beforeend',rows.slice(n,n+TX_CHUNK).join(''));
+    n+=TX_CHUNK;
+    if(n>=rows.length){wrap.removeEventListener('scroll',more);body.__more=null}
+  };
+  body.__more=more;
+  wrap.addEventListener('scroll',more,{passive:true});
+}
+function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}document.getElementById('burn-count').textContent=b.length.toString();paintRows('tx-body',rows)}}catch(e){}}
+// The three log files used to be fetched in a serial then-chain — and
+// bobai-liq-log.json twice over, once for each campaign card. One parallel
+// round of fetches, each file read exactly once.
+async function logs(){
+  const [burns,lb,bb]=await Promise.all([gj('burns.json'),gj('liq-boost-log.json'),gj('bobai-liq-log.json')]);
+  bdata(burns);lbdata(lb);bbdata(bb);bb2data(bb);
+}
+let cnt=0;async function go(){const t=[chain()];if(cnt++%10===0){t.push(logs())}await Promise.all(t);document.getElementById('last-update').textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
 go();setInterval(go,30000);
 
 // === LIQ BOOST DATA ===
-async function lbdata(){try{const entries=await gj('liq-boost-log.json');if(!entries||entries.length===0)return;document.getElementById('lb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=totalLp.toFixed(2);document.getElementById('lb-tx-body').innerHTML=rows.join('')}catch(e){console.error('lbdata error:',e)}}
+function lbdata(entries){try{if(!entries||entries.length===0)return;document.getElementById('lb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=totalLp.toFixed(2);paintRows('lb-tx-body',rows)}catch(e){console.error('lbdata error:',e)}}
 
 // === BOBAI LIQ BOOST DATA ===
 // One log file, two campaigns: everything before BB2_START belongs to round one (the
 // archive card, frozen at its final numbers), everything after to the live boost II card.
 const BB2_START=new Date('2026-08-08T00:00:00Z').getTime();
 const BB2_END=new Date('2026-09-16T23:59:59Z').getTime();
-async function bbdata(){try{const all=await gj('bobai-liq-log.json');if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;document.getElementById('bb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=totalLp.toFixed(2);document.getElementById('bb-tx-body').innerHTML=rows.join('')}catch(e){console.error('bbdata error:',e)}}
+function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;document.getElementById('bb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=totalLp.toFixed(2);paintRows('bb-tx-body',rows)}catch(e){console.error('bbdata error:',e)}}
 
 // === BOBAI LIQ BOOST II DATA (live campaign) ===
-async function bb2data(){try{const all=await gj('bobai-liq-log.json');if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=totalLp.toFixed(2);if(rows.length)document.getElementById('bb2-tx-body').innerHTML=rows.join('')}catch(e){console.error('bb2data error:',e)}}
+function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=totalLp.toFixed(2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
 
 // === WORLDCUP TIPGAME — live prize pool ticker (Supabase wc_pool, anon read) ===
 !function(){
@@ -1459,7 +1593,7 @@ async function bb2data(){try{const all=await gj('bobai-liq-log.json');if(!all)re
   // WC26 is settled — the BOBAI amount is a frozen archive snapshot (one read),
   // but the USD equivalent keeps tracking the live GeckoTerminal price (same
   // source as the worldcup app, so both pages show the same USD figure).
-  // Fallbacks: on-chain price from token() (window.__bobaiPx) → stored snapshot.
+  // Fallbacks: on-chain price from chain() (window.__bobaiPx) → stored snapshot.
   let poolTotal=0,snapshotPrice=0,gtPrice=0;
   function render(){
     if(!poolTotal)return;

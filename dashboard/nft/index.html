@@ -428,15 +428,15 @@ function renderTiers(minted, cap, cells) {
     block.innerHTML = `
       <div class="tb-head">
         <span class="tb-emoji">${t.emoji}</span>
-        <div class="tb-name"><div class="l">${t.label}${soldOut ? '<span class="sold-out-tag">sold out</span>' : ''}</div><div class="t">${t.threshold} · ${c.toLocaleString()} max</div></div>
-        <div class="tb-stats"><div class="n">${m.toLocaleString()} / ${c.toLocaleString()}</div><div class="p">${pct.toFixed(1)}%</div></div>
+        <div class="tb-name"><div class="l">${t.label}${soldOut ? '<span class="sold-out-tag">sold out</span>' : ''}</div><div class="t">${t.threshold} · ${c.toLocaleString('en-US')} max</div></div>
+        <div class="tb-stats"><div class="n">${m.toLocaleString('en-US')} / ${c.toLocaleString('en-US')}</div><div class="p">${pct.toFixed(1)}%</div></div>
       </div>
       <div class="tb-rars">${rarCells}</div>
       <div class="tier-bar"><div class="tier-bar-fill ${soldOut ? 'sold-out' : ''}" style="width:${pct}%"></div></div>
     `;
     grid.appendChild(block);
   });
-  document.getElementById('stat-minted').textContent = total.toLocaleString();
+  document.getElementById('stat-minted').textContent = total.toLocaleString('en-US');
 }
 
 function renderRarities(cells, drops) {
@@ -467,7 +467,7 @@ function renderLedger(drops, latestBlock, holders) {
   body.innerHTML = '';
   if (!drops || drops.length === 0) {
     body.innerHTML = `<tr><td colspan="6" class="empty">No drops yet — the first $BOBAI buy ≥ $100 will mint NFT #1 here.</td></tr>`;
-    document.getElementById('stat-buyers').textContent = (typeof holders === 'number' ? holders : 0).toLocaleString();
+    document.getElementById('stat-buyers').textContent = (typeof holders === 'number' ? holders : 0).toLocaleString('en-US');
     return;
   }
   const uniqueRecipients = new Set();
@@ -487,7 +487,7 @@ function renderLedger(drops, latestBlock, holders) {
     body.appendChild(row);
   });
   const liveHolders = (typeof holders === 'number') ? holders : uniqueRecipients.size;
-  document.getElementById('stat-buyers').textContent = liveHolders.toLocaleString();
+  document.getElementById('stat-buyers').textContent = liveHolders.toLocaleString('en-US');
 }
 
 function renderCollection() {

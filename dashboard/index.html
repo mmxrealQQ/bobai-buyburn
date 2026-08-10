@@ -148,8 +148,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=3" as="style">
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="preload" href="styles.css?v=4" as="style">
+  <link rel="stylesheet" href="styles.css?v=4">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -377,18 +377,18 @@
           <div class="lqsr">
             <div class="lqsr-t"><span class="lqsr-k lqsr-auto">Automatic</span> Buyback bot
               <a class="lqsr-a" href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC…01ce</a></div>
-            <div class="lqsr-v ld" id="lq-bot">--</div>
+            <div class="lqsr-v"><span class="ld" id="lq-bot">--</span><span class="lqsr-p" id="lq-bot-pct"></span></div>
             <div class="lqsr-s ld" id="lq-bot-sub">--</div>
           </div>
           <div class="lqsr">
             <div class="lqsr-t"><span class="lqsr-k lqsr-man">Manual</span> Dev runs
               <a class="lqsr-a" href="https://bscscan.com/address/0x15Ba17075ef5E0736292b030e3715d9100fe3d38" target="_blank" rel="noopener">0x15Ba…3d38</a></div>
-            <div class="lqsr-v ld" id="lq-man">--</div>
+            <div class="lqsr-v"><span class="ld" id="lq-man">--</span><span class="lqsr-p" id="lq-man-pct"></span></div>
             <div class="lqsr-s ld" id="lq-man-sub">--</div>
           </div>
           <div class="lqsr">
             <div class="lqsr-t"><span class="lqsr-k lqsr-launch">Launch</span> Initial pool</div>
-            <div class="lqsr-v ld" id="lq-init">--</div>
+            <div class="lqsr-v"><span class="ld" id="lq-init">--</span><span class="lqsr-p" id="lq-init-pct"></span></div>
             <div class="lqsr-s">Burned when the pool was created. Never touched since.</div>
           </div>
         </div>
@@ -711,6 +711,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=4" defer></script>
+<script src="app.js?v=6" defer></script>
 </body>
 </html>

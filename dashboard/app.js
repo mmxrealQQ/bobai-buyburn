@@ -237,7 +237,12 @@ async function rpcBatch(calls){
 }
 // Burn figures are written out in full — the exact number is the point on a
 // transparency dashboard. The stat tile's font size shrinks to fit instead.
-function setBig(id,v,sym){put(id,v.toLocaleString(undefined,{maximumFractionDigits:0})+' '+sym)}
+// Every figure on the page is formatted en-US, the same way BscScan prints token
+// amounts (75,927.92 — comma for thousands, dot for decimals). Leaving the locale
+// to the browser meant a German visitor read "1.069 LP" where 1,069 was meant,
+// which on an English page is not a cosmetic difference but a different number.
+const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+function setBig(id,v,sym){put(id,nf(v)+' '+sym)}
 // Setzt einen Wert und nimmt dem Feld gleichzeitig den "laedt"-Zustand.
 function put(id,txt){const e=document.getElementById(id);if(!e)return;
   e.textContent=txt;e.classList.remove('ld')}
@@ -273,10 +278,10 @@ async function chain(){
       bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),
       pU=(Number(wR)/Number(bR))*bnbP,
       circ=1e9-bAmt;
-    put('mcap','$'+(pU*circ).toLocaleString(undefined,{maximumFractionDigits:0}));
-    put('volume','$'+((Number(wR)/1e18)*bnbP*2).toLocaleString(undefined,{maximumFractionDigits:0}));
+    put('mcap','$'+nf(pU*circ));
+    put('volume','$'+nf((Number(wR)/1e18)*bnbP*2));
     const pend=u18(q[8]),tp=document.getElementById('tax-pending');
-    if(tp)tp.textContent=pend>=1?'+ '+Math.round(pend).toLocaleString()+' $BOBAI tax queued (≈$'+(pend*pU).toLocaleString(undefined,{maximumFractionDigits:0})+')':'';
+    if(tp)tp.textContent=pend>=1?'+ '+nf(pend)+' $BOBAI tax queued (≈$'+nf(pend*pU)+')':'';
     window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender();
     depth(bR,wR,bnbP,pU*circ);
   }catch(e){}
@@ -299,18 +304,24 @@ let botLp=null,manLp=null;
 function sources(){
   const total=window.__lpDead;
   if(!(total>0))return;
-  const lp=n=>Math.round(n).toLocaleString()+' LP';
+  // Each source carries its share of all locked LP as well: the absolute figure
+  // alone means nothing until you know how big the locked pile is.
+  const card=(id,v)=>{
+    put(id,nf(v)+' LP');
+    const p=document.getElementById(id+'-pct');
+    if(p)p.textContent=(v/total*100).toFixed(1)+'%';
+  };
   if(botLp){
-    put('lq-bot',lp(botLp.lp));
+    card('lq-bot',botLp.lp);
     put('lq-bot-sub',botLp.n+' adds, most recent '+botLp.last+'. Runs on its own, every cycle.');
   }
   if(manLp){
-    put('lq-man',lp(manLp.lp));
+    card('lq-man',manLp.lp);
     put('lq-man-sub',manLp.n+' runs. Collected tax, swapped and added by hand.');
   }
   if(botLp&&manLp){
     const rest=total-botLp.lp-manLp.lp;
-    if(rest>0)put('lq-init',lp(rest));
+    if(rest>0)card('lq-init',rest);
   }
 }
 // The bot writes one entry per add — count them and sum the LP it burned.
@@ -375,7 +386,7 @@ function paintRows(id,rows){
   body.__more=more;
   wrap.addEventListener('scroll',more,{passive:true});
 }
-function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${Math.round(ba).toLocaleString()} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${Math.round(aa).toLocaleString()} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}put('burn-count',b.length.toString());paintRows('tx-body',rows)}}catch(e){}}
+function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${nf(ba)} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank">${bt2.slice(0,10)}...${bt2.slice(-6)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${nf(aa)} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank">${at.slice(0,10)}...${at.slice(-6)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank">${x.bobaiCreatorTx.slice(0,10)}...${x.bobaiCreatorTx.slice(-6)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank">${x.creatorTx.slice(0,10)}...${x.creatorTx.slice(-6)}</a></td></tr>`)}put('burn-count',b.length.toString());paintRows('tx-body',rows)}}catch(e){}}
 // The three log files used to be fetched in a serial then-chain — and
 // bobai-liq-log.json twice over, once for each campaign card. One parallel
 // round of fetches, each file read exactly once.

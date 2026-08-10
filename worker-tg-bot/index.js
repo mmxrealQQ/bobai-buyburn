@@ -2203,6 +2203,80 @@ export default {
       }
     }
 
+    // === /broadcastphoto — authenticated announcement with an image ===
+    // POST multipart/form-data with header `X-Broadcast-Secret: <env.BROADCAST_SECRET>`
+    // and fields: `photo` (image file), `caption` (HTML, optional, max 1024 chars —
+    // Telegram's caption limit), `target` ('internal' routes to TG_INTERNAL_CHAT_ID),
+    // `prefixBrain` ('0' disables the jumbo 🧠 header).
+    // Mirrors /broadcast but sends one sendPhoto message instead of text, so a report
+    // card and its numbers arrive together. BOT_TOKEN never leaves Cloudflare.
+    if (url.pathname === '/broadcastphoto' && request.method === 'POST') {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), {
+          status: 401, headers: { 'content-type': 'application/json' },
+        });
+      }
+      let inForm;
+      try { inForm = await request.formData(); } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: 'expected multipart form' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const file = inForm.get('photo');
+      if (!file || typeof file === 'string') {
+        return new Response(JSON.stringify({ ok: false, error: 'missing photo file' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const caption = (inForm.get('caption') || '').toString().trim();
+      if (caption.length > 1024) {
+        return new Response(JSON.stringify({ ok: false, error: `caption too long: ${caption.length}/1024` }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const target = (inForm.get('target') || '').toString();
+      const targetChat = target === 'internal' ? TG_INTERNAL_CHAT_ID : TG_CHAT_ID;
+      if (!targetChat) {
+        return new Response(JSON.stringify({ ok: false, error: 'target chat not configured' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const wantBrain = target === 'internal'
+        ? (inForm.get('prefixBrain') || '').toString() === '1'
+        : (inForm.get('prefixBrain') || '').toString() !== '0';
+      try {
+        if (wantBrain) {
+          await tg('sendMessage', { chat_id: targetChat, text: '🧠', disable_notification: true });
+        }
+        const tgForm = new FormData();
+        tgForm.append('chat_id', targetChat);
+        tgForm.append('photo', file, 'report.png');
+        if (caption) {
+          tgForm.append('caption', caption);
+          tgForm.append('parse_mode', 'HTML');
+        }
+        const r = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendPhoto`, {
+          method: 'POST', body: tgForm,
+        });
+        const j = await r.json();
+        if (!j.ok) {
+          console.error('[BROADCASTPHOTO] telegram rejected:', JSON.stringify(j));
+          return new Response(JSON.stringify({ ok: false, error: j.description || 'send failed' }), {
+            status: 502, headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ ok: true, message_id: j.result?.message_id || null }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      } catch (err) {
+        console.error('[BROADCASTPHOTO ERROR]', err.message || err);
+        return new Response(JSON.stringify({ ok: false, error: 'send failed' }), {
+          status: 500, headers: { 'content-type': 'application/json' },
+        });
+      }
+    }
+
     // === /whale-summary — public read-only whale-flow aggregates ===
     // Consumed by the dashboard worker's bobai_smart_money MCP tool. Exposes
     // only aggregates + top movers from the same KV event log that powers

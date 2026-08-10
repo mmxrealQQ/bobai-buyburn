@@ -234,8 +234,9 @@ async function main() {
     process.exit(1);
   }
 
+  let burnTx;
   try {
-    const burnTx = await walletClient.writeContract({
+    burnTx = await walletClient.writeContract({
       address: PANCAKE_PAIR,
       abi: PAIR_ABI,
       functionName: 'transfer',
@@ -248,6 +249,27 @@ async function main() {
   } catch (e) {
     console.log(`[ERROR] LP burn failed: ${e.message}`);
     process.exit(1);
+  }
+
+  // Record the run so the dashboard can show what the manual side has added.
+  // The bot's adds are logged by the bot itself; these were only ever written
+  // down by hand, which is why the dashboard had no figure for them.
+  try {
+    const fs = require('fs');
+    const logPath = require('path').join(__dirname, 'dashboard', 'liq-runs.json');
+    const log = JSON.parse(fs.readFileSync(logPath, 'utf8'));
+    log.runs.push({
+      time: new Date().toISOString(),
+      lp: formatEther(lpBalance),
+      bobai: formatEther(LIQUIDITY_BOBAI),
+      bnb: formatEther(bnbForLiquidity),
+      addLiqTx,
+      lpBurnTx: burnTx,
+    });
+    fs.writeFileSync(logPath, JSON.stringify(log, null, 2) + '\n');
+    console.log(`\nLogged to dashboard/liq-runs.json (run #${log.baseline.runs + log.runs.length}) — deploy the dashboard to publish it.`);
+  } catch (e) {
+    console.log(`\n[WARN] Could not write dashboard/liq-runs.json: ${e.message}`);
   }
 
   // Final summary

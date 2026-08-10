@@ -148,8 +148,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=2" as="style">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="preload" href="styles.css?v=3" as="style">
+  <link rel="stylesheet" href="styles.css?v=3">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -346,6 +346,62 @@
       <div class="tc fi"><div class="b">0%</div><h4>Dev Tokens</h4><p>All burned. Fully community.</p></div>
       <div class="tc fi"><div class="b">24/7</div><h4>Buyback Bot</h4><p>Cloudflare Workers. Autonomous.</p></div>
       <div class="tc fi"><div class="b" id="supply-burned-pct">--</div><h4>Supply Burned</h4><p>$BOBAI sent to dead address.</p></div>
+    </div>
+
+    <div class="lqd fi">
+      <div class="lqd-h">
+        <h3>How deep is the liquidity? <span class="live-badge"><span class="live-dot"></span>Live</span></h3>
+        <p>Read straight from the PancakeSwap V2 pool on every refresh &mdash; not a snapshot, not a claim.</p>
+      </div>
+      <div class="lqd-g">
+        <div class="lqm">
+          <div class="lqv ld" id="lq-lp">--</div>
+          <div class="lql">LP Burned</div>
+          <div class="lqs">Every add goes to the dead address. Nobody can pull it &mdash; not the team, not anyone.</div>
+        </div>
+        <div class="lqm">
+          <div class="lqv ld" id="lq-ratio">--</div>
+          <div class="lql">Liquidity vs Market Cap</div>
+          <div class="lqs">Half of that pool is $BOBAI valued at its own price, so read the next figure too.</div>
+        </div>
+        <div class="lqm">
+          <div class="lqv ld" id="lq-hard">--</div>
+          <div class="lql">Hard BNB Backing</div>
+          <div class="lqs">The BNB side alone <span class="lqn ld" id="lq-bnb">--</span> &mdash; this half keeps its value if the price falls.</div>
+        </div>
+      </div>
+      <div class="lqi">
+        <div class="lqi-h">Where the locked liquidity comes from
+          <span>Two sources, both ending at the same dead address. Everything before them is the launch pool, locked at day one.</span></div>
+        <div class="lqsrc">
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-auto">Automatic</span> Buyback bot
+              <a class="lqsr-a" href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC…01ce</a></div>
+            <div class="lqsr-v ld" id="lq-bot">--</div>
+            <div class="lqsr-s ld" id="lq-bot-sub">--</div>
+          </div>
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-man">Manual</span> Dev runs
+              <a class="lqsr-a" href="https://bscscan.com/address/0x15Ba17075ef5E0736292b030e3715d9100fe3d38" target="_blank" rel="noopener">0x15Ba…3d38</a></div>
+            <div class="lqsr-v ld" id="lq-man">--</div>
+            <div class="lqsr-s ld" id="lq-man-sub">--</div>
+          </div>
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-launch">Launch</span> Initial pool</div>
+            <div class="lqsr-v ld" id="lq-init">--</div>
+            <div class="lqsr-s">Burned when the pool was created. Never touched since.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lqi">
+        <div class="lqi-h">Price impact of a market buy
+          <span>Constant product, excluding the 3% tax and the 0.25% LP fee. Smaller is deeper.</span></div>
+        <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-w1"></i></span><span class="lqb-p ld" id="lq-p1">--</span></div>
+        <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-w2"></i></span><span class="lqb-p ld" id="lq-p2">--</span></div>
+        <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-w3"></i></span><span class="lqb-p ld" id="lq-p3">--</span></div>
+        <div class="lqb"><span class="lqb-l">$5,000</span><span class="lqb-t"><i id="lq-w4"></i></span><span class="lqb-p ld" id="lq-p4">--</span></div>
+      </div>
     </div>
   </section>
 
@@ -655,6 +711,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=3" defer></script>
+<script src="app.js?v=4" defer></script>
 </body>
 </html>

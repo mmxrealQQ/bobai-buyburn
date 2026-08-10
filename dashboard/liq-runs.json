@@ -1,0 +1,10 @@
+{
+  "_note": "Manual liquidity adds from the dev wallet. The baseline is the run log through run #110; every run after that is appended automatically by add-liquidity-safe.js, with its transaction hashes. Total = baseline.lp + sum(runs[].lp).",
+  "wallet": "0x15Ba17075ef5E0736292b030e3715d9100fe3d38",
+  "baseline": {
+    "runs": 110,
+    "lp": 15405.27,
+    "through": "2026-08-10"
+  },
+  "runs": []
+}

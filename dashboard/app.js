@@ -254,6 +254,8 @@ async function chain(){
       call(BP,'0x0902f1ac'),              // 6 BNB price reserves
       call(BP,'0x0dfe1681'),              // 7 BNB price token0
       call(BOBAI,balOf(BOBAI)),           // 8 tax queued in the contract
+      call(P,'0x18160ddd'),               // 9 LP total supply
+      call(P,DEAD_BAL),                   // 10 LP held at the dead address
     ]);
   }catch(e){return}
   // Each tile decodes in its own try/catch so one bad word of calldata can't
@@ -276,7 +278,79 @@ async function chain(){
     const pend=u18(q[8]),tp=document.getElementById('tax-pending');
     if(tp)tp.textContent=pend>=1?'+ '+Math.round(pend).toLocaleString()+' $BOBAI tax queued (≈$'+(pend*pU).toLocaleString(undefined,{maximumFractionDigits:0})+')':'';
     window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender();
+    depth(bR,wR,bnbP,pU*circ);
   }catch(e){}
+  // LP lock lives in its own try: it reads two extra words of the same batch, and
+  // a hiccup there must not blank the depth figures decoded above.
+  try{
+    const tot=Number(BigInt(q[9])),dead=Number(BigInt(q[10]));
+    if(tot>0)put('lq-lp',(dead/tot*100).toFixed(3)+'%');
+    window.__lpDead=dead/1e18;sources();
+  }catch(e){}
+}
+// WHERE THE LOCKED LIQUIDITY COMES FROM.
+// Two wallets top the pool up, and neither can take anything back out: the bot
+// adds after every buyback, the dev wallet adds by hand whenever tax has piled
+// up. Both figures are counted from their own logs; the launch pool is what is
+// left over once those two are subtracted from the LP actually sitting at the
+// dead address, so the three always add up to the on-chain total by construction
+// rather than by assertion.
+let botLp=null,manLp=null;
+function sources(){
+  const total=window.__lpDead;
+  if(!(total>0))return;
+  const lp=n=>Math.round(n).toLocaleString()+' LP';
+  if(botLp){
+    put('lq-bot',lp(botLp.lp));
+    put('lq-bot-sub',botLp.n+' adds, most recent '+botLp.last+'. Runs on its own, every cycle.');
+  }
+  if(manLp){
+    put('lq-man',lp(manLp.lp));
+    put('lq-man-sub',manLp.n+' runs. Collected tax, swapped and added by hand.');
+  }
+  if(botLp&&manLp){
+    const rest=total-botLp.lp-manLp.lp;
+    if(rest>0)put('lq-init',lp(rest));
+  }
+}
+// The bot writes one entry per add — count them and sum the LP it burned.
+function bbsrc(b){try{
+  if(!Array.isArray(b)||!b.length)return;
+  const lpSum=b.reduce((s,x)=>s+parseFloat(x.lpBurned||0),0);
+  botLp={n:b.length,lp:lpSum,last:new Date(b[b.length-1].time).toISOString().slice(0,10)};
+  sources();
+}catch(e){}}
+// The manual runs were only ever written down by hand, so the file carries a
+// baseline for everything up to run #110 and grows by one entry per run after.
+function mansrc(j){try{
+  if(!j||!j.baseline)return;
+  const extra=(j.runs||[]).reduce((s,x)=>s+parseFloat(x.lp||0),0);
+  manLp={n:j.baseline.runs+(j.runs||[]).length,lp:j.baseline.lp+extra};
+  sources();
+}catch(e){}}
+// LIQUIDITY DEPTH — the pool stated the way a buyer actually experiences it.
+// "Liquidity $28k" says little on its own: half of that figure is $BOBAI priced
+// at its own market price, so it shrinks exactly when it would be needed. The
+// BNB half is the part that holds, and it gets its own number rather than a
+// footnote. The impact rows answer the question the ratios don't: what does my
+// buy do to the price.
+//
+// Impact reduces to dIn/(wbnbReserve+dIn) — the token side cancels out of the
+// constant-product ratio, so no reserve maths is needed beyond the BNB leg.
+const DEPTH_BUYS=[100,500,1000,5000];
+function depth(bR,wR,bnbP,mcap){
+  const wbnb=Number(wR)/1e18,bnbSide=wbnb*bnbP,tvl=bnbSide*2;
+  if(!(mcap>0)||!(wbnb>0))return;
+  put('lq-ratio',(tvl/mcap*100).toFixed(1)+'%');
+  put('lq-hard',(bnbSide/mcap*100).toFixed(1)+'%');
+  put('lq-bnb',wbnb.toFixed(2)+' BNB');
+  const pct=DEPTH_BUYS.map(u=>{const d=u/bnbP;return d/(wbnb+d)*100}),
+        max=Math.max(...pct);
+  pct.forEach((p,i)=>{
+    put('lq-p'+(i+1),p.toFixed(2)+'%');
+    const bar=document.getElementById('lq-w'+(i+1));
+    if(bar)bar.style.transform='scaleX('+(max>0?p/max:0).toFixed(4)+')';
+  });
 }
 // The burn log is 900+ rows, but .txw is a 400px scroll box — painting all of
 // them up front cost ~4600 DOM nodes nobody ever sees. Render a screenful and
@@ -317,8 +391,12 @@ function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].rever
 // again — it is fetched exactly once, at load.
 async function logs(){
   const [burns,bb]=await Promise.all([gj('burns.json'),gj('bobai-liq-log.json')]);
-  bdata(burns);bbdata(bb);bb2data(bb);
+  bdata(burns);bbdata(bb);bb2data(bb);bbsrc(bb);
 }
+// Static file, appended once per manual run: read once at load, and fetched
+// directly rather than through gj() — that helper probes the log worker first,
+// which would cost two 404s per page load for a file the worker never serves.
+fetch('liq-runs.json').then(r=>r.ok?r.json():null).then(mansrc).catch(()=>{});
 gj('liq-boost-log.json').then(lbdata);
 let busy=false;
 async function go(){

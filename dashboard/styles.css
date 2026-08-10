@@ -364,6 +364,53 @@
     .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--accs),.45),transparent)}
     .tc:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.3);box-shadow:0 14px 36px rgba(var(--accs),.1)}
 
+    /* LIQUIDITY DEPTH — the pool read out in full, inside Block 02 rather than as
+       a block of its own: it is a tokenomics fact, and the chain of blocks is
+       already long. No backdrop-filter here on purpose; fourteen blurred layers
+       were what made the page hand back white tiles on iOS, and a fifteenth would
+       walk straight back into it. The bars are scaled with transform, never width,
+       so a refresh cannot trigger a layout pass. */
+    .lqd{margin-top:14px;border:1px solid rgba(var(--accs),.16);border-radius:var(--radius);
+      background:linear-gradient(180deg,rgba(var(--accs),.05),rgba(var(--accs),0) 60%),var(--card);
+      padding:24px 22px 20px}
+    .lqd-h h3{font-size:1.02rem;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .lqd-h p{font-size:.79rem;color:var(--muted);margin-top:6px;line-height:1.55;max-width:64ch}
+    .lqd-g{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+    .lqm{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
+    .lqv{font-family:'Space Grotesk',sans-serif;font-size:1.85rem;font-weight:700;letter-spacing:-1px;
+      color:var(--acc);line-height:1.1}
+    .lql{font-size:.79rem;font-weight:600;margin-top:4px}
+    .lqs{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:7px}
+    .lqn{color:var(--acc);font-weight:600;white-space:nowrap}
+    .lqi{margin-top:18px;border-top:1px solid rgba(var(--accs),.14);padding-top:16px}
+    .lqi-h{font-size:.79rem;font-weight:600}
+    .lqi-h span{display:block;font-weight:400;color:var(--muted);font-size:.72rem;margin-top:4px;line-height:1.5}
+    .lqsrc{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+    .lqsr{border:1px solid var(--border);border-radius:12px;padding:14px 14px 12px;background:rgba(255,255,255,.02)}
+    .lqsr-t{font-size:.76rem;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+    .lqsr-k{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:999px;
+      border:1px solid currentColor;font-weight:700}
+    .lqsr-auto{color:#3fe09a}.lqsr-man{color:#7d92ff}.lqsr-launch{color:var(--muted)}
+    .lqsr-a{font-family:'Space Grotesk',sans-serif;font-size:.68rem;color:var(--muted);
+      text-decoration:none;border-bottom:1px dotted rgba(255,255,255,.22)}
+    .lqsr-a:hover{color:var(--acc)}
+    .lqsr-v{font-family:'Space Grotesk',sans-serif;font-size:1.15rem;font-weight:700;margin-top:9px}
+    .lqsr-s{font-size:.71rem;color:var(--muted);line-height:1.5;margin-top:4px}
+    .lqb{display:flex;align-items:center;gap:12px;margin-top:11px}
+    .lqb-l{font-family:'Space Grotesk',sans-serif;font-size:.8rem;font-weight:600;
+      width:56px;flex-shrink:0;color:var(--text-dim)}
+    .lqb-t{flex:1;height:8px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
+    .lqb-t i{display:block;height:100%;border-radius:5px;transform:scaleX(0);transform-origin:0 50%;
+      background:linear-gradient(90deg,var(--acc),var(--gold2));transition:transform .5s ease}
+    .lqb-p{font-family:'Space Grotesk',sans-serif;font-size:.82rem;font-weight:700;
+      width:62px;flex-shrink:0;text-align:right}
+    @media (max-width:760px){
+      .lqd{padding:20px 16px 16px}
+      .lqd-g,.lqsrc{grid-template-columns:1fr;gap:10px}
+      .lqv{font-size:1.6rem}
+    }
+    @media (prefers-reduced-motion:reduce){.lqb-t i{transition:none}}
+
     /* VERIFY */
     /* PROOF TILES — the old label/value list read like a config dump. Each fact
        now gets a coloured tile, so the block scans instead of being read. */

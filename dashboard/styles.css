@@ -382,6 +382,10 @@
     .lql{font-size:.79rem;font-weight:600;margin-top:4px}
     .lqs{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:7px}
     .lqn{color:var(--acc);font-weight:600;white-space:nowrap}
+    .lqa{color:var(--acc);text-decoration:none;border-bottom:1px solid rgba(var(--accs),.35);
+      white-space:nowrap}
+    .lqa:hover{border-bottom-color:var(--acc)}
+    .lqa-ad{font-family:'Space Grotesk',sans-serif;font-size:.95em;opacity:.8}
     .lqi{margin-top:18px;border-top:1px solid rgba(var(--accs),.14);padding-top:16px}
     .lqi-h{font-size:.79rem;font-weight:600}
     .lqi-h span{display:block;font-weight:400;color:var(--muted);font-size:.72rem;margin-top:4px;line-height:1.5}

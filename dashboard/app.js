@@ -313,7 +313,7 @@ function sources(){
   };
   if(botLp){
     card('lq-bot',botLp.lp);
-    put('lq-bot-sub',botLp.n+' adds, most recent '+botLp.last+'. Runs on its own, every cycle.');
+    put('lq-bot-sub',botLp.n+' adds across Liquidity Boost I and II. Runs on its own, every cycle.');
   }
   if(manLp){
     card('lq-man',manLp.lp);
@@ -328,7 +328,7 @@ function sources(){
 function bbsrc(b){try{
   if(!Array.isArray(b)||!b.length)return;
   const lpSum=b.reduce((s,x)=>s+parseFloat(x.lpBurned||0),0);
-  botLp={n:b.length,lp:lpSum,last:new Date(b[b.length-1].time).toISOString().slice(0,10)};
+  botLp={n:b.length,lp:lpSum};
   sources();
 }catch(e){}}
 // The manual runs were only ever written down by hand, so the file carries a
@@ -432,17 +432,17 @@ addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'
 addEventListener('pageshow',e=>{if(e.persisted)wake()});
 
 // === LIQ BOOST DATA ===
-function lbdata(entries){try{if(!entries||entries.length===0)return;document.getElementById('lb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=totalLp.toFixed(2);paintRows('lb-tx-body',rows)}catch(e){console.error('lbdata error:',e)}}
+function lbdata(entries){try{if(!entries||entries.length===0)return;document.getElementById('lb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=nf(totalLp,2);paintRows('lb-tx-body',rows)}catch(e){console.error('lbdata error:',e)}}
 
 // === BOBAI LIQ BOOST DATA ===
 // One log file, two campaigns: everything before BB2_START belongs to round one (the
 // archive card, frozen at its final numbers), everything after to the live boost II card.
 const BB2_START=new Date('2026-08-08T00:00:00Z').getTime();
 const BB2_END=new Date('2026-09-16T23:59:59Z').getTime();
-function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;document.getElementById('bb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=totalLp.toFixed(2);paintRows('bb-tx-body',rows)}catch(e){console.error('bbdata error:',e)}}
+function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;document.getElementById('bb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=nf(totalLp,2);paintRows('bb-tx-body',rows)}catch(e){console.error('bbdata error:',e)}}
 
 // === BOBAI LIQ BOOST II DATA (live campaign) ===
-function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+lp+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=totalLp.toFixed(2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
+function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
 
 // === WORLDCUP TIPGAME — live prize pool ticker (Supabase wc_pool, anon read) ===
 !function(){

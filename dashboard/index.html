@@ -148,8 +148,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=4" as="style">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="preload" href="styles.css?v=5" as="style">
+  <link rel="stylesheet" href="styles.css?v=5">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -351,13 +351,14 @@
     <div class="lqd fi">
       <div class="lqd-h">
         <h3>How deep is the liquidity? <span class="live-badge"><span class="live-dot"></span>Live</span></h3>
-        <p>Read straight from the PancakeSwap V2 pool on every refresh &mdash; not a snapshot, not a claim.</p>
+        <p>Read straight from the <a class="lqa" href="https://bscscan.com/token/0x6eaDD4CB786898B34929444988380ed0CC6fD9A6" target="_blank" rel="noopener">BOBAI/BNB pool contract <span class="lqa-ad">0x6eaD&hellip;D9A6</span></a> on every refresh &mdash; not a snapshot, not a claim.</p>
       </div>
       <div class="lqd-g">
         <div class="lqm">
           <div class="lqv ld" id="lq-lp">--</div>
           <div class="lql">LP Burned</div>
-          <div class="lqs">Every add goes to the dead address. Nobody can pull it &mdash; not the team, not anyone.</div>
+          <div class="lqs">Every add goes to the dead address. Nobody can pull it &mdash; not the team, not anyone.
+            <a class="lqa" href="https://bscscan.com/token/0x6eaDD4CB786898B34929444988380ed0CC6fD9A6?a=0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">See the LP burns &#x2197;</a></div>
         </div>
         <div class="lqm">
           <div class="lqv ld" id="lq-ratio">--</div>
@@ -441,9 +442,11 @@
         <span class="pt-body"><span class="pt-l">Buyback Wallet</span><span class="pt-v">0xdeFC0e90&hellip;f94c01ce</span></span>
         <span class="pt-go">&#x2197;</span>
       </a>
-      <a class="ptile" href="https://bscscan.com/address/0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">
+      <!-- Filtered to $BOBAI with ?a= — the bare dead address lists the burns of
+           every token on the chain, which buries ours in noise. -->
+      <a class="ptile" href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">
         <span class="pt-ico t-red">&#x25CF;</span>
-        <span class="pt-body"><span class="pt-l">Burn Address</span><span class="pt-v">0x000000&hellip;0000dEaD</span></span>
+        <span class="pt-body"><span class="pt-l">Burn Address &mdash; $BOBAI only</span><span class="pt-v">0x000000&hellip;0000dEaD</span></span>
         <span class="pt-go">&#x2197;</span>
       </a>
       <div class="ptile is-ok">
@@ -711,6 +714,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=6" defer></script>
+<script src="app.js?v=8" defer></script>
 </body>
 </html>

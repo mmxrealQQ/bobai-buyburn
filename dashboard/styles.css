@@ -403,17 +403,21 @@
     .lqsr-p{font-size:.78rem;font-weight:600;color:var(--muted);
       padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.05)}
     .lqsr-s{font-size:.71rem;color:var(--muted);line-height:1.5;margin-top:4px}
+    .lqbs{display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;margin-top:6px}
+    .lqbc-h{font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-top:14px}
+    .lqbc-buy{color:#3fe09a}.lqbc-sell{color:#ff8f6b}
     .lqb{display:flex;align-items:center;gap:12px;margin-top:11px}
     .lqb-l{font-family:'Space Grotesk',sans-serif;font-size:.8rem;font-weight:600;
       width:56px;flex-shrink:0;color:var(--text-dim)}
     .lqb-t{flex:1;height:8px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
     .lqb-t i{display:block;height:100%;border-radius:5px;transform:scaleX(0);transform-origin:0 50%;
-      background:linear-gradient(90deg,var(--acc),var(--gold2));transition:transform .5s ease}
+      background:linear-gradient(90deg,#3fe09a,#8ff0c6);transition:transform .5s ease}
+    .lqb-t i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
     .lqb-p{font-family:'Space Grotesk',sans-serif;font-size:.82rem;font-weight:700;
       width:62px;flex-shrink:0;text-align:right}
     @media (max-width:760px){
       .lqd{padding:20px 16px 16px}
-      .lqd-g,.lqsrc{grid-template-columns:1fr;gap:10px}
+      .lqd-g,.lqsrc,.lqbs{grid-template-columns:1fr;gap:10px}
       .lqv{font-size:1.6rem}
     }
     @media (prefers-reduced-motion:reduce){.lqb-t i{transition:none}}

@@ -294,16 +294,21 @@ async function chain(){
   }catch(e){}
 }
 // WHERE THE LOCKED LIQUIDITY COMES FROM.
-// Two wallets top the pool up, and neither can take anything back out: the bot
-// adds after every buyback, the dev wallet adds by hand whenever tax has piled
-// up. Both figures are counted from their own logs; the launch pool is what is
-// left over once those two are subtracted from the LP actually sitting at the
-// dead address, so the three always add up to the on-chain total by construction
-// rather than by assertion.
-let botLp=null,manLp=null;
+// A full scan of every LP transfer into the dead address (blocks 88990359 to
+// 115088761) found exactly three origins, and they sum to the on-chain balance to
+// the decimal: the launch mint, the dev wallet, and the buyback bot. Nobody else
+// has ever locked LP here.
+//
+// The launch mint is one event in the past and can never change, so it is the
+// fixed number, and the dev total is derived as the remainder. That inverts the
+// old arrangement for a reason: the dev figure used to come from a hand-kept file
+// and went stale between runs, whereas a remainder against the live dead balance
+// is right the moment the next run lands, with nothing to redeploy. The bot keeps
+// its own log — cross-checked against the scan, it agreed exactly.
+let botLp=null,srcMeta=null;
 function sources(){
   const total=window.__lpDead;
-  if(!(total>0))return;
+  if(!(total>0)||!srcMeta)return;
   // Each source carries its share of all locked LP as well: the absolute figure
   // alone means nothing until you know how big the locked pile is.
   const card=(id,v)=>{
@@ -311,17 +316,17 @@ function sources(){
     const p=document.getElementById(id+'-pct');
     if(p)p.textContent=(v/total*100).toFixed(1)+'%';
   };
+  const launch=srcMeta.launch.lp;
+  card('lq-init',launch);
   if(botLp){
     card('lq-bot',botLp.lp);
     put('lq-bot-sub',botLp.n+' adds across Liquidity Boost I and II. Runs on its own, every cycle.');
-  }
-  if(manLp){
-    card('lq-man',manLp.lp);
-    put('lq-man-sub',manLp.n+' runs. Collected tax, swapped and added by hand.');
-  }
-  if(botLp&&manLp){
-    const rest=total-botLp.lp-manLp.lp;
-    if(rest>0)card('lq-init',rest);
+    const dev=total-launch-botLp.lp;
+    if(dev>0){
+      card('lq-man',dev);
+      put('lq-man-sub',(srcMeta.dev.burns+(srcMeta.runs||[]).length)+
+        ' adds. Collected tax, swapped and added by hand.');
+    }
   }
 }
 // The bot writes one entry per add — count them and sum the LP it burned.
@@ -331,13 +336,11 @@ function bbsrc(b){try{
   botLp={n:b.length,lp:lpSum};
   sources();
 }catch(e){}}
-// The manual runs were only ever written down by hand, so the file carries a
-// baseline for everything up to run #110 and grows by one entry per run after.
+// Carries the scan result: the fixed launch mint plus the burn counts, which are
+// the only part a live read cannot supply.
 function mansrc(j){try{
-  if(!j||!j.baseline)return;
-  const extra=(j.runs||[]).reduce((s,x)=>s+parseFloat(x.lp||0),0);
-  manLp={n:j.baseline.runs+(j.runs||[]).length,lp:j.baseline.lp+extra};
-  sources();
+  if(!j||!j.launch||!j.dev)return;
+  srcMeta=j;sources();
 }catch(e){}}
 // LIQUIDITY DEPTH — the pool stated the way a buyer actually experiences it.
 // "Liquidity $28k" says little on its own: half of that figure is $BOBAI priced
@@ -346,8 +349,21 @@ function mansrc(j){try{
 // footnote. The impact rows answer the question the ratios don't: what does my
 // buy do to the price.
 //
-// Impact reduces to dIn/(wbnbReserve+dIn) — the token side cancels out of the
-// constant-product ratio, so no reserve maths is needed beyond the BNB leg.
+// The figures are what a trade ACTUALLY costs against the spot price, not just the
+// curve: PancakeSwap keeps 0.25% of the input, and the 3% token tax is taken as
+// well. Leaving those out understated every row — the honest number is the one a
+// trader can check against their own wallet.
+//
+// The two sides are not symmetric, because the tax lands in different places.
+// Buying, it comes off the tokens leaving the pool; selling, it comes off the
+// tokens going in, so the pool sees a smaller trade than the seller sent:
+//
+//   buy   cost = 1 − TAX·FEE·rBnb/(rBnb + FEE·dBnb)
+//   sell  cost = 1 − TAX·FEE·rTok/(rTok + TAX·FEE·dTok)
+//
+// In both cases the opposite reserve cancels out. At vanishing size both tend to
+// 1 − TAX·FEE ≈ 3.24%, which is the fixed toll; everything above that is depth.
+const LP_FEE=0.9975,TAX=0.97;
 const DEPTH_BUYS=[100,500,1000,5000];
 function depth(bR,wR,bnbP,mcap){
   const wbnb=Number(wR)/1e18,bnbSide=wbnb*bnbP,tvl=bnbSide*2;
@@ -355,13 +371,19 @@ function depth(bR,wR,bnbP,mcap){
   put('lq-ratio',(tvl/mcap*100).toFixed(1)+'%');
   put('lq-hard',(bnbSide/mcap*100).toFixed(1)+'%');
   put('lq-bnb',wbnb.toFixed(2)+' BNB');
-  const pct=DEPTH_BUYS.map(u=>{const d=u/bnbP;return d/(wbnb+d)*100}),
-        max=Math.max(...pct);
-  pct.forEach((p,i)=>{
-    put('lq-p'+(i+1),p.toFixed(2)+'%');
-    const bar=document.getElementById('lq-w'+(i+1));
-    if(bar)bar.style.transform='scaleX('+(max>0?p/max:0).toFixed(4)+')';
-  });
+  const tok=Number(bR)/1e18,px=(wbnb/tok)*bnbP;
+  if(!(px>0))return;
+  const buys=DEPTH_BUYS.map(u=>(1-TAX*LP_FEE*wbnb/(wbnb+u/bnbP*LP_FEE))*100),
+        sells=DEPTH_BUYS.map(u=>(1-TAX*LP_FEE*tok/(tok+u/px*TAX*LP_FEE))*100),
+        // One scale for both columns, otherwise the two sides cannot be compared
+        // by eye — which is the entire point of showing them next to each other.
+        max=Math.max(...buys,...sells);
+  const bar=(id,p)=>{
+    const el=document.getElementById(id);
+    if(el)el.style.transform='scaleX('+(max>0?p/max:0).toFixed(4)+')';
+  };
+  buys.forEach((p,i)=>{put('lq-bp'+(i+1),p.toFixed(2)+'%');bar('lq-bw'+(i+1),p)});
+  sells.forEach((p,i)=>{put('lq-sp'+(i+1),p.toFixed(2)+'%');bar('lq-sw'+(i+1),p)});
 }
 // The burn log is 900+ rows, but .txw is a 400px scroll box — painting all of
 // them up front cost ~4600 DOM nodes nobody ever sees. Render a screenful and

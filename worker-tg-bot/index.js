@@ -2277,6 +2277,63 @@ export default {
       }
     }
 
+    // === /rpclogs — authenticated eth_getLogs proxy over the keyed endpoints ===
+    // POST JSON `{ address, topics, fromBlock, toBlock }` with header
+    // `X-Broadcast-Secret`. The free BSC endpoints cap getLogs at ~50 blocks and the
+    // Binance dataseeds refuse ranges outright, so historical scans are impossible
+    // from a laptop — the keyed NodeReal URLs only exist as Cloudflare secrets.
+    // This forwards a single getLogs call and nothing else: the caller does the
+    // paging, so no Worker request ever runs long. Read-only by construction —
+    // the method is hardcoded, only the range and filter come from the body.
+    if (url.pathname === '/rpclogs' && request.method === 'POST') {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) {
+        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), {
+          status: 401, headers: { 'content-type': 'application/json' },
+        });
+      }
+      let body = {};
+      try { body = await request.json(); } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const filter = {
+        address: body.address,
+        topics: Array.isArray(body.topics) ? body.topics : [],
+        fromBlock: body.fromBlock,
+        toBlock: body.toBlock,
+      };
+      if (!filter.address || !filter.fromBlock || !filter.toBlock) {
+        return new Response(JSON.stringify({ ok: false, error: 'need address, fromBlock, toBlock' }), {
+          status: 400, headers: { 'content-type': 'application/json' },
+        });
+      }
+      const endpoints = [...keyedEndpoints(env), ...LOGS_RPC_ENDPOINTS];
+      let lastErr = 'no endpoint answered';
+      for (const rpc of endpoints) {
+        try {
+          const r = await fetch(rpc, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'User-Agent': LOGS_UA },
+            body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [filter] }),
+          });
+          const j = await r.json();
+          if (Array.isArray(j.result)) {
+            return new Response(JSON.stringify({ ok: true, logs: j.result }), {
+              headers: { 'content-type': 'application/json' },
+            });
+          }
+          lastErr = j.error?.message || 'no result';
+        } catch (e) {
+          lastErr = e.message || String(e);
+        }
+      }
+      return new Response(JSON.stringify({ ok: false, error: lastErr }), {
+        status: 502, headers: { 'content-type': 'application/json' },
+      });
+    }
+
     // === /whale-summary — public read-only whale-flow aggregates ===
     // Consumed by the dashboard worker's bobai_smart_money MCP tool. Exposes
     // only aggregates + top movers from the same KV event log that powers

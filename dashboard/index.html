@@ -148,8 +148,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=5" as="style">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="preload" href="styles.css?v=6" as="style">
+  <link rel="stylesheet" href="styles.css?v=6">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -373,7 +373,7 @@
       </div>
       <div class="lqi">
         <div class="lqi-h">Where the locked liquidity comes from
-          <span>Two sources, both ending at the same dead address. Everything before them is the launch pool, locked at day one.</span></div>
+          <span>Every LP transfer into the dead address was read off the chain. There are exactly three origins and they add up to the locked total to the decimal &mdash; no fourth party has ever put liquidity in here.</span></div>
         <div class="lqsrc">
           <div class="lqsr">
             <div class="lqsr-t"><span class="lqsr-k lqsr-auto">Automatic</span> Buyback bot
@@ -390,18 +390,30 @@
           <div class="lqsr">
             <div class="lqsr-t"><span class="lqsr-k lqsr-launch">Launch</span> Initial pool</div>
             <div class="lqsr-v"><span class="ld" id="lq-init">--</span><span class="lqsr-p" id="lq-init-pct"></span></div>
-            <div class="lqsr-s">Burned when the pool was created. Never touched since.</div>
+            <div class="lqsr-s">Minted straight into the dead address at block 88,990,359, when the pool was created. One event, never repeated.</div>
           </div>
         </div>
       </div>
 
       <div class="lqi">
-        <div class="lqi-h">Price impact of a market buy
-          <span>Constant product, excluding the 3% tax and the 0.25% LP fee. Smaller is deeper.</span></div>
-        <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-w1"></i></span><span class="lqb-p ld" id="lq-p1">--</span></div>
-        <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-w2"></i></span><span class="lqb-p ld" id="lq-p2">--</span></div>
-        <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-w3"></i></span><span class="lqb-p ld" id="lq-p3">--</span></div>
-        <div class="lqb"><span class="lqb-l">$5,000</span><span class="lqb-t"><i id="lq-w4"></i></span><span class="lqb-p ld" id="lq-p4">--</span></div>
+        <div class="lqi-h">What a trade actually costs
+          <span>Measured against the spot price, with the 3% tax and the 0.25% LP fee included &mdash; the gap between what the ticker says and what you end up with. About 3.2% of it applies at any size; everything above that is the pool being moved, so smaller is deeper. Both sides are drawn to the same scale.</span></div>
+        <div class="lqbs">
+          <div class="lqbc">
+            <div class="lqbc-h lqbc-buy">Buying</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-bw1"></i></span><span class="lqb-p ld" id="lq-bp1">--</span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-bw2"></i></span><span class="lqb-p ld" id="lq-bp2">--</span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-bw3"></i></span><span class="lqb-p ld" id="lq-bp3">--</span></div>
+            <div class="lqb"><span class="lqb-l">$5,000</span><span class="lqb-t"><i id="lq-bw4"></i></span><span class="lqb-p ld" id="lq-bp4">--</span></div>
+          </div>
+          <div class="lqbc">
+            <div class="lqbc-h lqbc-sell">Selling</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-sw1" class="sell"></i></span><span class="lqb-p ld" id="lq-sp1">--</span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-sw2" class="sell"></i></span><span class="lqb-p ld" id="lq-sp2">--</span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-sw3" class="sell"></i></span><span class="lqb-p ld" id="lq-sp3">--</span></div>
+            <div class="lqb"><span class="lqb-l">$5,000</span><span class="lqb-t"><i id="lq-sw4" class="sell"></i></span><span class="lqb-p ld" id="lq-sp4">--</span></div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -714,6 +726,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=8" defer></script>
+<script src="app.js?v=9" defer></script>
 </body>
 </html>

@@ -267,7 +267,10 @@ async function main() {
       lpBurnTx: burnTx,
     });
     fs.writeFileSync(logPath, JSON.stringify(log, null, 2) + '\n');
-    console.log(`\nLogged to dashboard/liq-runs.json (run #${log.baseline.runs + log.runs.length}) — deploy the dashboard to publish it.`);
+    // The dashboard derives the dev LP total as a remainder against the live dead
+    // balance, so the figure is already right without this file. Only the burn
+    // count comes from here, which is why publishing it is useful but not urgent.
+    console.log(`\nLogged to dashboard/liq-runs.json (add #${log.dev.burns + log.runs.length}) — deploy the dashboard to update the count.`);
   } catch (e) {
     console.log(`\n[WARN] Could not write dashboard/liq-runs.json: ${e.message}`);
   }

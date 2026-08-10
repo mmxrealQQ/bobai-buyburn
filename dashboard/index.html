@@ -148,8 +148,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=6" as="style">
-  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="preload" href="styles.css?v=8" as="style">
+  <link rel="stylesheet" href="styles.css?v=8">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -396,22 +396,22 @@
       </div>
 
       <div class="lqi">
-        <div class="lqi-h">What a trade actually costs
-          <span>Measured against the spot price, with the 3% tax and the 0.25% LP fee included &mdash; the gap between what the ticker says and what you end up with. About 3.2% of it applies at any size; everything above that is the pool being moved, so smaller is deeper. Both sides are drawn to the same scale.</span></div>
+        <div class="lqi-h">What a trade does to the price &mdash; and what it costs
+          <span>Two different things, often confused. <b>Impact</b> is how far this trade alone moves the price. <b>Cost</b> is what the trader gives up against the spot price, including the 3% tax and the 0.25% LP fee &mdash; about 3.2% of that applies at any size. Bars show impact, drawn to one scale so both sides compare.</span></div>
         <div class="lqbs">
           <div class="lqbc">
-            <div class="lqbc-h lqbc-buy">Buying</div>
-            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-bw1"></i></span><span class="lqb-p ld" id="lq-bp1">--</span></div>
-            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-bw2"></i></span><span class="lqb-p ld" id="lq-bp2">--</span></div>
-            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-bw3"></i></span><span class="lqb-p ld" id="lq-bp3">--</span></div>
-            <div class="lqb"><span class="lqb-l">$5,000</span><span class="lqb-t"><i id="lq-bw4"></i></span><span class="lqb-p ld" id="lq-bp4">--</span></div>
+            <div class="lqbc-h lqbc-buy">Buying &mdash; price up</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-bw1"></i></span><span class="lqb-p ld" id="lq-bm1">--</span><span class="lqb-c" id="lq-bc1"></span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-bw2"></i></span><span class="lqb-p ld" id="lq-bm2">--</span><span class="lqb-c" id="lq-bc2"></span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-bw3"></i></span><span class="lqb-p ld" id="lq-bm3">--</span><span class="lqb-c" id="lq-bc3"></span></div>
+            <div class="lqb"><span class="lqb-l">$2,500</span><span class="lqb-t"><i id="lq-bw4"></i></span><span class="lqb-p ld" id="lq-bm4">--</span><span class="lqb-c" id="lq-bc4"></span></div>
           </div>
           <div class="lqbc">
-            <div class="lqbc-h lqbc-sell">Selling</div>
-            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-sw1" class="sell"></i></span><span class="lqb-p ld" id="lq-sp1">--</span></div>
-            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-sw2" class="sell"></i></span><span class="lqb-p ld" id="lq-sp2">--</span></div>
-            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-sw3" class="sell"></i></span><span class="lqb-p ld" id="lq-sp3">--</span></div>
-            <div class="lqb"><span class="lqb-l">$5,000</span><span class="lqb-t"><i id="lq-sw4" class="sell"></i></span><span class="lqb-p ld" id="lq-sp4">--</span></div>
+            <div class="lqbc-h lqbc-sell">Selling &mdash; price down</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-sw1" class="sell"></i></span><span class="lqb-p ld" id="lq-sm1">--</span><span class="lqb-c" id="lq-sc1"></span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-sw2" class="sell"></i></span><span class="lqb-p ld" id="lq-sm2">--</span><span class="lqb-c" id="lq-sc2"></span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-sw3" class="sell"></i></span><span class="lqb-p ld" id="lq-sm3">--</span><span class="lqb-c" id="lq-sc3"></span></div>
+            <div class="lqb"><span class="lqb-l">$2,500</span><span class="lqb-t"><i id="lq-sw4" class="sell"></i></span><span class="lqb-p ld" id="lq-sm4">--</span><span class="lqb-c" id="lq-sc4"></span></div>
           </div>
         </div>
       </div>
@@ -726,6 +726,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=9" defer></script>
+<script src="app.js?v=12" defer></script>
 </body>
 </html>

@@ -415,6 +415,8 @@
     .lqb-t i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
     .lqb-p{font-family:'Space Grotesk',sans-serif;font-size:.82rem;font-weight:700;
       width:62px;flex-shrink:0;text-align:right}
+    .lqb-c{font-size:.7rem;color:var(--muted);width:82px;flex-shrink:0;text-align:right;
+      white-space:nowrap}
     @media (max-width:760px){
       .lqd{padding:20px 16px 16px}
       .lqd-g,.lqsrc,.lqbs{grid-template-columns:1fr;gap:10px}

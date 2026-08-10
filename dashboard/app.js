@@ -349,22 +349,25 @@ function mansrc(j){try{
 // footnote. The impact rows answer the question the ratios don't: what does my
 // buy do to the price.
 //
-// The figures are what a trade ACTUALLY costs against the spot price, not just the
-// curve: PancakeSwap keeps 0.25% of the input, and the 3% token tax is taken as
-// well. Leaving those out understated every row — the honest number is the one a
-// trader can check against their own wallet.
+// Two questions that get confused with each other, so the panel answers both.
 //
-// The two sides are not symmetric, because the tax lands in different places.
-// Buying, it comes off the tokens leaving the pool; selling, it comes off the
-// tokens going in, so the pool sees a smaller trade than the seller sent:
+// IMPACT is how far the trade moves the price: the reserves after the swap
+// against the reserves before. The LP fee stays in the pool and counts; the token
+// tax never reaches the reserves, so it does not move the price at all.
 //
-//   buy   cost = 1 − TAX·FEE·rBnb/(rBnb + FEE·dBnb)
-//   sell  cost = 1 − TAX·FEE·rTok/(rTok + TAX·FEE·dTok)
+// COST is what the trader gives up against the spot price — the fill is worse
+// than spot because the pool moves under it, and on top of that the fee and the
+// 3% tax are taken. It is always the larger of the two at small sizes (the toll
+// dominates) and the smaller at large ones (a fill averages the path, while the
+// price ends up where the path ended).
 //
-// In both cases the opposite reserve cancels out. At vanishing size both tend to
-// 1 − TAX·FEE ≈ 3.24%, which is the fixed toll; everything above that is depth.
+//   buy  cost = 1 − TAX·FEE·rBnb/(rBnb + FEE·dBnb)
+//   sell cost = 1 − TAX·FEE·rTok/(rTok + TAX·FEE·dTok)
+//
+// The opposite reserve cancels out of both. At vanishing size they tend to
+// 1 − TAX·FEE ≈ 3.24%, the fixed toll; everything above that is depth.
 const LP_FEE=0.9975,TAX=0.97;
-const DEPTH_BUYS=[100,500,1000,5000];
+const DEPTH_BUYS=[100,500,1000,2500];
 function depth(bR,wR,bnbP,mcap){
   const wbnb=Number(wR)/1e18,bnbSide=wbnb*bnbP,tvl=bnbSide*2;
   if(!(mcap>0)||!(wbnb>0))return;
@@ -373,17 +376,31 @@ function depth(bR,wR,bnbP,mcap){
   put('lq-bnb',wbnb.toFixed(2)+' BNB');
   const tok=Number(bR)/1e18,px=(wbnb/tok)*bnbP;
   if(!(px>0))return;
-  const buys=DEPTH_BUYS.map(u=>(1-TAX*LP_FEE*wbnb/(wbnb+u/bnbP*LP_FEE))*100),
-        sells=DEPTH_BUYS.map(u=>(1-TAX*LP_FEE*tok/(tok+u/px*TAX*LP_FEE))*100),
-        // One scale for both columns, otherwise the two sides cannot be compared
-        // by eye — which is the entire point of showing them next to each other.
-        max=Math.max(...buys,...sells);
-  const bar=(id,p)=>{
-    const el=document.getElementById(id);
-    if(el)el.style.transform='scaleX('+(max>0?p/max:0).toFixed(4)+')';
-  };
-  buys.forEach((p,i)=>{put('lq-bp'+(i+1),p.toFixed(2)+'%');bar('lq-bw'+(i+1),p)});
-  sells.forEach((p,i)=>{put('lq-sp'+(i+1),p.toFixed(2)+'%');bar('lq-sw'+(i+1),p)});
+  const rows=DEPTH_BUYS.map(u=>{
+    // Buy: BNB in, tokens out. Only the fee-reduced input reaches the curve.
+    const dB=u/bnbP,effB=dB*LP_FEE,outB=(tok*effB)/(wbnb+effB);
+    // Sell: tokens in, already 3% lighter by the time the pair sees them.
+    const dT=u/px,effT=dT*TAX*LP_FEE,outS=(wbnb*effT)/(tok+effT);
+    return {
+      buyMove:(((wbnb+dB)/(tok-outB))/(wbnb/tok)-1)*100,
+      buyCost:(1-TAX*LP_FEE*wbnb/(wbnb+effB))*100,
+      sellMove:(((wbnb-outS)/(tok+dT*TAX))/(wbnb/tok)-1)*100,
+      sellCost:(1-TAX*LP_FEE*tok/(tok+effT))*100,
+    };
+  });
+  // One scale across both columns, otherwise the two sides cannot be compared by
+  // eye — which is the entire point of putting them next to each other.
+  const max=Math.max(...rows.map(r=>Math.max(r.buyMove,Math.abs(r.sellMove))));
+  rows.forEach((r,i)=>{
+    const n=i+1;
+    put('lq-bm'+n,'+'+r.buyMove.toFixed(2)+'%');
+    put('lq-sm'+n,r.sellMove.toFixed(2)+'%');
+    const bc=document.getElementById('lq-bc'+n);if(bc)bc.textContent='costs '+r.buyCost.toFixed(2)+'%';
+    const sc=document.getElementById('lq-sc'+n);if(sc)sc.textContent='costs '+r.sellCost.toFixed(2)+'%';
+    const set=(id,v)=>{const el=document.getElementById(id);
+      if(el)el.style.transform='scaleX('+(max>0?Math.abs(v)/max:0).toFixed(4)+')'};
+    set('lq-bw'+n,r.buyMove);set('lq-sw'+n,r.sellMove);
+  });
 }
 // The burn log is 900+ rows, but .txw is a 400px scroll box — painting all of
 // them up front cost ~4600 DOM nodes nobody ever sees. Render a screenful and

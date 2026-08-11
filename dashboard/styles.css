@@ -403,6 +403,8 @@
     .lqsr-p{font-size:.78rem;font-weight:600;color:var(--muted);
       padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.05)}
     .lqsr-s{font-size:.71rem;color:var(--muted);line-height:1.5;margin-top:4px}
+    .lqunb{font-size:.72rem;color:var(--muted);line-height:1.55;margin-top:12px;
+      padding-left:11px;border-left:2px solid rgba(var(--accs),.22)}
     .lqone{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
     .lqo{border:1px solid var(--border);border-radius:12px;padding:13px 14px 11px;
       background:rgba(255,255,255,.02)}

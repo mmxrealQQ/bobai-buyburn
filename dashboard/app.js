@@ -204,7 +204,8 @@ new IntersectionObserver(([e])=>g.classList.toggle('on',!e.isIntersecting),
 }();
 
 // === ON-CHAIN DATA ===
-const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',RPC='https://bsc-dataseed.binance.org/';
+const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',
+      DEVW='0x15Ba17075ef5E0736292b030e3715d9100fe3d38',RPC='https://bsc-dataseed.binance.org/';
 // Log fetch: same-origin proxy first, then the bot's own log domain, then the bundled copy
 // Kein '?t='+Date.now() mehr. Der Zusatz machte jede URL einmalig und damit
 // jedes Caching unmoeglich — burns.json (~88 KB) kam so bei jedem Aufruf und
@@ -261,6 +262,8 @@ async function chain(){
       call(BOBAI,balOf(BOBAI)),           // 8 tax queued in the contract
       call(P,'0x18160ddd'),               // 9 LP total supply
       call(P,DEAD_BAL),                   // 10 LP held at the dead address
+      call(P,balOf(BW)),                  // 11 LP still held by the buyback bot
+      call(P,balOf(DEVW)),                // 12 LP still held by the dev wallet
     ]);
   }catch(e){return}
   // Each tile decodes in its own try/catch so one bad word of calldata can't
@@ -291,6 +294,23 @@ async function chain(){
     const tot=Number(BigInt(q[9])),dead=Number(BigInt(q[10]));
     if(tot>0)put('lq-lp',(dead/tot*100).toFixed(3)+'%');
     window.__lpDead=dead/1e18;sources();
+    // THE OTHER SIDE OF THE BURN FIGURE.
+    // "99.998% burned" says what is locked; it says nothing about the rest, and
+    // the rest is the part worth checking — LP still held by a project wallet
+    // could be pulled. Both are read live, so this cannot go stale: if either
+    // wallet ever sits on LP, the line says so on the next refresh instead of
+    // staying silent.
+    const un=(tot-dead)/1e18,botLeft=u18(q[11]),devLeft=u18(q[12]),el=document.getElementById('lq-unb');
+    if(el&&tot>0){
+      const held=botLeft+devLeft;
+      el.textContent=held>0.000001
+        ? nf(un,2)+' LP ('+((tot-dead)/tot*100).toFixed(3)+'%) is not burned, and '+nf(held,4)+
+          ' LP of it sits in a project wallet right now.'
+        : 'The other '+nf(un,2)+' LP ('+((tot-dead)/tot*100).toFixed(3)+
+          '%) was never burned, and none of it is ours: the buyback bot and the dev wallet '+
+          'both hold exactly 0 LP. Checked on every refresh, not claimed once.';
+      el.classList.remove('ld');
+    }
   }catch(e){}
 }
 // WHERE THE LOCKED LIQUIDITY COMES FROM.

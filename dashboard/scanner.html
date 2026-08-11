@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<!-- Background straight on <html> so the first paint is dark before any
+     stylesheet is parsed — same reason, and same value, as index.html. -->
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- media=print strips the link of its render-blocking power; onload restores
+       it. A blocking stylesheet from a foreign host holds the first paint for
+       as long as that host takes to answer, with no timeout. -->
+  <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"></noscript>
+  <title>Pool Scanner — how deep is any BSC token's liquidity?</title>
+  <meta name="description" content="Paste any BNB Chain token or pool and read it the way a trader meets it: price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked, or withdrawable.">
+  <link rel="canonical" href="https://brainonbnb.com/scanner">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Pool Scanner — how deep is any BSC token's liquidity?">
+  <meta property="og:description" content="Price impact, real cost, measured transfer tax and LP ownership for any BNB Chain token. Read live from the chain.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/scanner">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pool Scanner — how deep is any BSC token's liquidity?">
+  <meta name="twitter:description" content="Price impact, real cost, measured transfer tax and LP ownership for any BNB Chain token.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <!-- The dashboard's own stylesheet, same ?v= as index.html so a visitor who
+       has been there already has it in cache. Nav, footer, section frame, the
+       colour tokens and the aurora all come from it — this page is part of the
+       site rather than a lookalike. Bump this ?v= together with index.html. -->
+  <link rel="preload" href="styles.css?v=13" as="style">
+  <link rel="stylesheet" href="styles.css?v=13">
+  <style>
+    /* Only what the dashboard has no equivalent for: the search field, the
+       result header, the ladder and the flag grid. Everything reuses the
+       dashboard's variables (--gold, --card, --border, --muted, --radius) so
+       the two pages cannot drift apart. */
+    /* Sub-page nav, taken verbatim from nft/index.html so the three pages are
+       visually identical. These classes are not in styles.css — each sub-page
+       carries its own copy. */
+    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
+      font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
+      transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
+    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+    .back-btn span{font-size:14px;line-height:1}
+    .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
+      color:var(--gold);white-space:nowrap;text-decoration:none}
+    .brand-link:hover{opacity:.85}
+    @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}}
+
+    .sc-hero{padding:8px 0 6px;text-align:center}
+    .sc-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
+      font-weight:700;letter-spacing:-1px;line-height:1.14}
+    .sc-hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sc-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
+    .sc-form{display:flex;gap:10px;margin:26px auto 0;max-width:640px}
+    .sc-form input{flex:1;min-width:0;background:rgba(255,255,255,.04);color:var(--text);
+      border:1px solid var(--border);border-radius:14px;padding:15px 17px;font-size:.87rem;
+      font-family:'Space Grotesk',sans-serif}
+    .sc-form input::placeholder{color:var(--muted);opacity:.7}
+    .sc-form input:focus{outline:none;border-color:var(--gold)}
+    .sc-form button{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;border:0;
+      border-radius:999px;padding:15px 34px;font-weight:700;font-size:.8rem;cursor:pointer;
+      font-family:inherit;white-space:nowrap;letter-spacing:.3px}
+    .sc-form button:disabled{opacity:.5;cursor:default}
+    .sc-hint{font-size:.69rem;color:var(--muted);opacity:.8;margin-top:11px}
+    .sc-status{font-size:.73rem;color:var(--gold);margin-top:10px;min-height:1.2em}
+    @media (max-width:560px){.sc-form{flex-direction:column}.sc-form button{width:100%}}
+
+    .hd{padding-bottom:18px;border-bottom:1px solid var(--border);margin-top:30px}
+    .hd-t{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+    .hd-t h2{font-family:'Space Grotesk',sans-serif;font-size:1.65rem;font-weight:700;letter-spacing:-.5px}
+    .hd-n{color:var(--muted);font-size:.88rem}
+    .hd-m{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+    .badge{font-size:.64rem;font-weight:700;letter-spacing:.06em;padding:5px 11px;border-radius:999px;
+      border:1px solid rgba(240,185,11,.4);color:var(--gold);background:rgba(240,185,11,.08)}
+    .badge-q,.badge-d{border-color:var(--border);color:var(--muted);background:rgba(255,255,255,.03)}
+    .hd-l{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.73rem}
+    .lk{color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(240,185,11,.3);
+      font-family:'Space Grotesk',sans-serif}
+    .lk:hover{border-bottom-color:var(--gold)}
+    .lk.dim{color:var(--muted);border-bottom-color:var(--border)}
+
+    .st-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(184px,1fr));gap:12px;margin-top:16px}
+    .st{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
+    .st-v{font-family:'Space Grotesk',sans-serif;font-size:1.45rem;font-weight:700;letter-spacing:-.8px;
+      color:var(--gold);line-height:1.15;word-break:break-word}
+    .st-v.dim{color:var(--muted)}
+    .st-l{font-size:.75rem;font-weight:600;margin-top:5px}
+    .st-s{font-size:.68rem;color:var(--muted);margin-top:5px;line-height:1.5}
+
+    .cd{margin-top:16px;border:1px solid rgba(240,185,11,.16);border-radius:var(--radius);
+      background:linear-gradient(180deg,rgba(240,185,11,.05),rgba(240,185,11,0) 60%),var(--card);
+      padding:22px 21px 19px}
+    .cd-h h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:600}
+    .cd-h p{font-size:.75rem;color:var(--muted);margin-top:7px;line-height:1.6;max-width:74ch}
+    .cd-foot{font-size:.69rem;color:var(--muted);line-height:1.6;margin-top:15px;
+      padding-top:13px;border-top:1px solid var(--border)}
+
+    .lad{display:grid;grid-template-columns:1fr 1fr;gap:14px 32px;margin-top:16px}
+    .lad-h{display:flex;align-items:baseline;gap:9px;padding-bottom:8px}
+    .lad-t{font-size:.77rem;font-weight:700}
+    .lad-d{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em}
+    .lad-buy .lad-t{color:#3fe09a} .lad-sell .lad-t{color:#ff8f6b}
+    .lad-r{display:flex;align-items:center;gap:11px;padding:6px 0}
+    .lad-hr{font-size:.61rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;
+      border-bottom:1px solid var(--border);padding-bottom:6px}
+    .lad-s{font-family:'Space Grotesk',sans-serif;font-size:.76rem;font-weight:600;
+      width:50px;flex-shrink:0;color:var(--muted)}
+    .lad-b{flex:1;min-width:20px;height:7px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+    .lad-hr .lad-b{background:none}
+    .lad-b i{display:block;height:100%;border-radius:4px;transform:scaleX(0);transform-origin:0 50%;
+      background:linear-gradient(90deg,#3fe09a,#8ff0c6);transition:transform .45s ease}
+    .lad-b i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
+    .lad-p{font-family:'Space Grotesk',sans-serif;font-size:.79rem;font-weight:700;
+      width:64px;flex-shrink:0;text-align:right}
+    .lad-x{font-family:'Space Grotesk',sans-serif;font-size:.74rem;color:var(--muted);
+      width:60px;flex-shrink:0;text-align:right}
+    @media (max-width:760px){.lad{grid-template-columns:1fr;gap:20px}}
+    @media (prefers-reduced-motion:reduce){.lad-b i{transition:none}}
+
+    .warn{border-radius:14px;padding:15px 17px;margin-top:16px;
+      border:1px solid rgba(255,48,40,.45);background:rgba(255,48,40,.07)}
+    .warn b{display:block;font-size:.81rem;color:#ff8f6b;margin-bottom:5px}
+    .warn span{display:block;font-size:.74rem;color:var(--muted);line-height:1.65}
+    .warn-soft{border-color:rgba(240,185,11,.4);background:rgba(240,185,11,.06)}
+    .warn-soft b{color:var(--gold)}
+
+    .fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:10px;margin-top:14px}
+    .f{border:1px solid var(--border);border-radius:12px;padding:12px 13px;background:rgba(255,255,255,.02)}
+    .f b{display:block;font-size:.74rem;font-weight:600}
+    .f span{display:block;font-size:.68rem;color:var(--muted);line-height:1.5;margin-top:4px}
+    .f-ok b{color:#3fe09a} .f-on b{color:var(--gold)} .f-bad b{color:#ff5a4a}
+    .f-unk b{color:var(--muted)}
+
+    .vn{margin-top:12px}
+    .vn-r{display:flex;align-items:baseline;gap:14px;padding:9px 0;
+      border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .vn-r:last-child{border-bottom:0}
+    .vn-n{font-size:.75rem;font-weight:600;min-width:160px;flex:1}
+    .vn-v{font-family:'Space Grotesk',sans-serif;font-size:.83rem;font-weight:700;
+      color:var(--gold);min-width:90px;text-align:right}
+
+    .sc-what{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));
+      gap:12px;margin-top:34px}
+    .sc-w{border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px;
+      background:rgba(255,255,255,.02)}
+    .sc-w b{display:block;font-size:.8rem;font-weight:600;color:var(--gold)}
+    .sc-w span{display:block;font-size:.73rem;color:var(--muted);line-height:1.6;margin-top:6px}
+
+    /* One palette for both places colour appears. Deliberately muted: these are
+       cost bands, not a verdict, and they must not shout louder than the number. */
+    .good{color:#3fe09a!important} .mid{color:#ffc46b!important} .bad{color:#ff8f6b!important}
+    .lad-x.good,.lad-x.mid,.lad-x.bad{font-weight:600}
+    .cd-legend{font-size:.68rem;color:var(--muted);opacity:.9;line-height:1.6;margin-top:10px}
+
+    .dis{font-size:.67rem;color:var(--muted);opacity:.85;line-height:1.65;margin-top:22px;max-width:80ch}
+  </style>
+</head>
+<body>
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+
+  <!-- Same shape as every other sub-page (nft/, worldcup/, brainscreener/):
+       back to the dashboard, the page's own name, buy. The main dashboard's nav
+       was copied here at first, which put anchor links like #tokenomics on a
+       page that has no such sections — they simply jumped nowhere. -->
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="brand-link" href="/scanner">BOBAI Pool Scanner</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+  </div></nav>
+
+  <section class="sec b-blue" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Tool &middot; Pool Scanner</span><span class="blk-line"></span></div>
+
+    <div class="sc-hero">
+      <h1>How deep is <em>any</em> BSC pool, really?</h1>
+      <p class="sc-lead">A liquidity headline is half fiction: half of it is the token itself, valued at its own price, so it shrinks exactly when it would be needed. This reads a pool the way a trader meets it &mdash; what a trade of a given size does to the price, what it actually costs once the transfer tax is measured from real trades, and whether the LP is burned, merely locked, or sitting in a wallet that can pull it tonight.</p>
+      <div class="sc-form">
+        <input id="sc-in" type="text" spellcheck="false" autocomplete="off"
+               placeholder="Token address, pool address, or a DexScreener link"
+               aria-label="BSC token or pool address">
+        <button id="sc-go" type="button">Scan</button>
+      </div>
+      <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
+    </div>
+
+    <!-- The empty state. Without it the page is a headline and a blank box, and
+         a first-time visitor has no idea what pressing Scan produces. These are
+         the four things it actually returns, named exactly as they appear in the
+         result — no promises the page does not keep. Hidden by JS the moment a
+         result exists, so it never competes with the real figures. -->
+    <div class="sc-what" id="sc-what">
+      <div class="sc-w">
+        <b>What a trade really costs</b>
+        <span>Price impact and true cost side by side at six sizes from $100 to $2,500 — two things routinely confused with each other.</span>
+      </div>
+      <div class="sc-w">
+        <b>The transfer tax, measured</b>
+        <span>Not read off a label. Taken from trades that actually executed, and flagged when it disagrees with what the security scanners report.</span>
+      </div>
+      <div class="sc-w">
+        <b>Who can pull the liquidity</b>
+        <span>LP burned, merely locked, or sitting in a wallet — with the largest holder named and linked.</span>
+      </div>
+      <div class="sc-w">
+        <b>What it will not claim</b>
+        <span>If the pool cannot be measured exactly, no depth figures are shown at all. A wrong number is worse than none.</span>
+      </div>
+    </div>
+
+    <div class="warn" id="sc-err" hidden></div>
+    <div id="sc-out" hidden></div>
+  </section>
+
+<footer><div class="fi2">
+  <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
+  <div class="fm">
+    <p>Read live from BNB Chain in your own browser &mdash; nothing stored, nothing logged &middot; contract properties by <a href="https://gopluslabs.io" target="_blank" rel="noopener">GoPlus</a> &middot; venue index by <a href="https://dexscreener.com" target="_blank" rel="noopener">DexScreener</a></p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; not financial advice</p>
+  </div>
+</div></footer>
+</div>
+<!-- Bump both ?v= when editing: the files are cached for a week. -->
+<script src="scanner.js?v=22" type="module"></script>
+</body>
+</html>

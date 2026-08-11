@@ -3,7 +3,7 @@
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://bsc-dataseed.binance.org https://api.binance.com https://api.geckoterminal.com https://logs.brainonbnb.com https://aerffjhdsbxpvuulkryr.supabase.co; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://bsc-dataseed.binance.org https://api.binance.com https://api.geckoterminal.com https://api.gopluslabs.io https://api.dexscreener.com https://bsc.publicnode.com https://bsc-rpc.publicnode.com https://bsc-dataseed1.defibit.io https://bsc-mainnet.public.blastapi.io https://1rpc.io https://logs.brainonbnb.com https://aerffjhdsbxpvuulkryr.supabase.co; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-XSS-Protection: 1; mode=block
 
@@ -33,6 +33,9 @@
   Cache-Control: public, max-age=0, must-revalidate
 
 /listing
+  Cache-Control: public, max-age=0, must-revalidate
+
+/scanner
   Cache-Control: public, max-age=0, must-revalidate
 
 # Clean page URLs (CF strips .html → e.g. /worldcup/app/leaderboard). The
@@ -77,4 +80,11 @@
 # modified". As its own file with ?v= it lives in the device cache.
 # When editing the CSS, bump the ?v= in index.html.
 /styles.css
+  Cache-Control: public, max-age=604800, must-revalidate
+
+# Scanner page code, versioned via ?v= in scanner.html like app.js.
+/scanner.js
+  Cache-Control: public, max-age=604800, must-revalidate
+
+/scanner-chain.js
   Cache-Control: public, max-age=604800, must-revalidate

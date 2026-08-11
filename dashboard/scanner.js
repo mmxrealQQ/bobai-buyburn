@@ -1,0 +1,688 @@
+// SCANNER — the page layer. Every number shown here is produced by
+// scanner-chain.js; this file decides only how it is presented and, just as
+// importantly, how uncertainty is presented. Two rules run through all of it:
+//
+//   1. Nothing is rendered as markup from a name a stranger chose. Token names
+//      are attacker-controlled strings and a contract can call itself
+//      "<img onerror=…>". Everything foreign goes in through a text node.
+//   2. Unknown is a state, not a blank. A property GoPlus did not check must
+//      read "not checked" — never as an absent warning, which is how a reader
+//      hears "fine". $Max returned undefined for is_honeypot and the old build
+//      showed nothing at all, which is the most dangerous thing this page
+//      could do.
+import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
+  balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
+  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=11';
+
+const $=id=>document.getElementById(id);
+const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const usd=n=>n==null?'—':n>=1000?'$'+nf(n):n>=1?'$'+nf(n,2):n>=0.01?'$'+nf(n,4):'$'+n.toPrecision(3);
+const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'—';
+// Two decimals lie at both ends: 99.998% burned rounds to a flat "100.00%",
+// claiming more than the chain says, and a real 0.002% rounds to "0.00%",
+// claiming it is not there. A sell tax of 4.45% must never print as "4.5%".
+const pc=(v,d=2)=>v==null?'—':v>0&&v<0.01?'<0.01%':(v>=99.995&&v<100)?v.toFixed(3)+'%':v.toFixed(d)+'%';
+const signed=v=>v==null?'—':(v<0?'':'+')+(Math.abs(v)<0.005?'0.00':v.toFixed(2))+'%';
+function el(tag,cls,text){const e=document.createElement(tag);
+  if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function frag(parent,...kids){kids.forEach(k=>parent.append(k));return parent}
+const link=(t,href,cls)=>{const a=el('a',cls||'lk',t);a.href=href;a.target='_blank';a.rel='noopener';return a};
+
+function fail(msg,sub){
+  const o=$('sc-out');o.hidden=true;o.textContent='';
+  const e=$('sc-err');e.hidden=false;e.textContent='';
+  e.appendChild(el('b',null,msg));if(sub)e.appendChild(el('span',null,sub));
+  $('sc-status').textContent='';
+}
+function busy(on,msg){
+  $('sc-go').disabled=on;$('sc-go').textContent=on?'Reading…':'Scan';
+  $('sc-status').textContent=on?(msg||''):'';
+}
+const step=m=>{if($('sc-go').disabled)$('sc-status').textContent=m};
+
+// GoPlus flags. The third column says what a MISSING value means: for most
+// properties silence is just silence, and claiming otherwise would invent an
+// all-clear the service never gave.
+const FLAGS=[
+  ['is_mintable','Mintable','More tokens can be created — the supply is not fixed.'],
+  ['is_proxy','Proxy contract','The logic sits behind an upgradeable pointer and can be replaced.'],
+  ['can_take_back_ownership','Ownership reclaimable','A renounce can be undone.'],
+  ['hidden_owner','Hidden owner','Ownership is held somewhere other than the usual slot.'],
+  ['selfdestruct','Self-destruct','The contract can delete itself.'],
+  ['transfer_pausable','Transfers pausable','Someone can freeze all transfers.'],
+  ['is_blacklisted','Blacklist','Individual wallets can be blocked from trading.'],
+  ['slippage_modifiable','Tax changeable','The tax rate is not fixed — it can be raised later.'],
+  ['personal_slippage_modifiable','Per-wallet tax','A different tax can be set for individual wallets.'],
+  ['trading_cooldown','Trading cooldown','A forced wait is enforced between trades.'],
+  ['is_anti_whale','Max transaction limit','A cap on trade size is enforced.'],
+  ['anti_whale_modifiable','Trade cap changeable','That cap can be changed later.'],
+  ['cannot_sell_all','Cannot sell all','Selling the full balance in one go is blocked.'],
+];
+
+// COLOUR — and what it is allowed to mean.
+//
+// Green/amber/red here say ONE thing: how much this costs you, measured against
+// a floor that is not a matter of opinion. Every pool has an unavoidable toll —
+// the swap fee plus the transfer tax — that you pay at any size. Everything on
+// top of that is depth. So the bands compare what you actually pay against that
+// floor, and the impact bands are read straight off the price you move.
+//
+// What the colour deliberately does NOT mean: that a token is good, safe, or
+// worth buying. A deep pool with a renounced owner can still go to zero, and a
+// thin one can be perfectly honest. Publishing a verdict about somebody else's
+// token would put our name on a judgement we cannot stand behind — and the one
+// time we got it wrong, that is the only thing anyone would remember.
+//
+// An earlier draft coloured these by percentile against a sample of 46 pools.
+// That was dropped: a keyword-scraped sample of 46 is not a distribution, and
+// dressing it up as one would be inventing authority.
+const band=(v,ok,mid)=>v==null?'':v<=ok?' good':v<=mid?' mid':' bad';
+const costBand=(pay,floor)=>{
+  if(pay==null||!(floor>0))return '';
+  return band(pay/floor,1.5,3);       // at most half again over the toll, or triple it
+};
+const impactBand=v=>v==null?'':band(Math.abs(v),1,5);   // 1% and 5% of the price you move
+
+// ---- building blocks -------------------------------------------------------
+function statRow(items){
+  const g=el('div','st-row');
+  items.forEach(it=>{
+    const c=el('div','st');
+    c.appendChild(el('div','st-v'+(it.dim?' dim':'')+(it.tone||''),it.v));
+    c.appendChild(el('div','st-l',it.l));
+    if(it.s){
+      const s=el('div','st-s',it.s);
+      // An address printed as plain text is a dead end — the reader wants to go
+      // look at the wallet, and making them copy it by hand is the difference
+      // between a claim and something they can check.
+      if(it.link)s.append(' ',link(it.link.t,it.link.href,'lk'));
+      c.appendChild(s);
+    }
+    g.appendChild(c);
+  });
+  return g;
+}
+function card(title,sub){
+  const c=el('section','cd');
+  const h=el('div','cd-h');
+  h.appendChild(el('h3',null,title));
+  if(sub)h.appendChild(el('p',null,sub));
+  c.appendChild(h);
+  return c;
+}
+
+function renderLadder(rows,taxNote,floors){
+  const wrap=el('div','lad');
+  [['buy','Buying','up'],['sell','Selling','down']].forEach(([side,label,dir])=>{
+    const floor=side==='buy'?floors.buy:floors.sell;
+    const col=el('div','lad-c');
+    const hd=el('div','lad-h lad-'+side);
+    hd.appendChild(el('span','lad-t',label));
+    hd.appendChild(el('span','lad-d','price '+dir));
+    col.appendChild(hd);
+    const head=el('div','lad-r lad-hr');
+    head.append(el('span','lad-s','size'),el('span','lad-b',''),
+      el('span','lad-p','impact'),el('span','lad-x','you pay'));
+    col.appendChild(head);
+    const vals=rows.map(r=>side==='buy'?r.buyMove:r.sellMove).filter(v=>v!=null).map(Math.abs);
+    const max=Math.max(...vals,0.0001);
+    rows.forEach(r=>{
+      const mv=side==='buy'?r.buyMove:r.sellMove,cs=side==='buy'?r.buyCost:r.sellCost;
+      const row=el('div','lad-r');
+      row.appendChild(el('span','lad-s','$'+nf(r.usd)));
+      const t=el('span','lad-b'),bar=el('i',side==='sell'?'sell':null);
+      bar.style.transform='scaleX('+(mv==null?0:Math.min(1,Math.abs(mv)/max)).toFixed(4)+')';
+      t.appendChild(bar);row.appendChild(t);
+      row.appendChild(el('span','lad-p'+impactBand(mv),signed(mv)));
+      row.appendChild(el('span','lad-x'+costBand(cs,floor),cs==null?'—':cs.toFixed(2)+'%'));
+      col.appendChild(row);
+    });
+    wrap.appendChild(col);
+  });
+  const box=el('div');box.appendChild(wrap);
+  if(taxNote)box.appendChild(el('p','cd-foot',taxNote));
+  box.appendChild(el('p','cd-legend',
+    'Colour is about cost, not quality. Green means you pay close to the unavoidable toll for this pool ('+
+    (floors.buy>0?floors.buy.toFixed(2)+'% on a buy, '+floors.sell.toFixed(2)+'% on a sell':'fee plus tax')+
+    ', payable at any size); amber is noticeably above it; red means the pool is moving under you. '+
+    'It says nothing about whether the token is any good — a deep pool can still go to zero.'));
+  return box;
+}
+
+// ---- tax card --------------------------------------------------------------
+// The centrepiece, because it is the figure most likely to be wrong elsewhere.
+// Measured values win; a label is shown as a label, with its disagreement
+// spelled out rather than quietly averaged away.
+function taxCard(tax,gp,gpOk){
+  const c=card('The transfer tax, measured',
+    'Not taken from a label — read off trades that actually executed. The pool reports how many tokens it moved, the token’s own transfer events report how many arrived, and the gap is what the wallet was charged.');
+  const gB=gp.buy_tax!=null&&isFinite(Number(gp.buy_tax))?Number(gp.buy_tax)*100:null,
+        gS=gp.sell_tax!=null&&isFinite(Number(gp.sell_tax))?Number(gp.sell_tax)*100:null;
+  if(tax.ok){
+    const mB=tax.buy!=null?tax.buy*100:null,mS=tax.sell!=null?tax.sell*100:null;
+    c.appendChild(statRow([
+      {v:mB!=null?pc(mB):(gB!=null?pc(gB):'—'),l:'Buy tax',dim:mB==null,
+        tone:mB!=null?band(mB,0.01,5):'',
+        s:tax.nBuy?'median of '+tax.nBuy+' executed buy'+(tax.nBuy===1?'':'s')
+          :(gB!=null?'no buy in the window — GoPlus’s figure, unverified':'no buy in the window')},
+      {v:mS!=null?pc(mS):(gS!=null?pc(gS):'—'),l:'Sell tax',dim:mS==null,
+        tone:mS!=null?band(mS,0.01,5):'',
+        s:tax.nSell?'median of '+tax.nSell+' executed sell'+(tax.nSell===1?'':'s')
+          :(gS!=null?'no sell in the window — GoPlus’s figure, unverified':'no sell in the window')},
+    ]));
+    const parts=[];
+    if(tax.spread.buy.length>1)parts.push('buys charged '+tax.spread.buy.map(x=>x+'%').join(', '));
+    if(tax.spread.sell.length>1)parts.push('sells charged '+tax.spread.sell.map(x=>x+'%').join(', '));
+    if(parts.length)c.appendChild(el('p','cd-foot','Every trade read: '+parts.join('; ')+
+      '. A 0% entry is normal — deployers, tax sinks and allow-listed routers are usually exempt, which is why the median is used and not the average.'));
+    const dis=[];
+    if(gB!=null&&mB!=null&&Math.abs(gB-mB)>0.15)dis.push('buy '+pc(gB)+' vs '+pc(mB)+' measured');
+    if(gS!=null&&mS!=null&&Math.abs(gS-mS)>0.15)dis.push('sell '+pc(gS)+' vs '+pc(mS)+' measured');
+    if(dis.length){
+      const w=el('div','warn warn-soft');
+      w.appendChild(el('b',null,'GoPlus reports a different tax than the chain charged.'));
+      w.appendChild(el('span',null,dis.join(' · ')+'. The figures on this page use the measured value. A label can be stale, can come from a partial simulation, or can include slippage from whatever size was simulated.'));
+      c.appendChild(w);
+    }
+  }else{
+    c.appendChild(statRow([
+      {v:gB!=null?pc(gB):'—',l:'Buy tax (reported)',dim:true,s:'GoPlus label, unverified'},
+      {v:gS!=null?pc(gS):'—',l:'Sell tax (reported)',dim:true,s:'GoPlus label, unverified'},
+    ]));
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'Could not be measured: '+tax.reason+'.'));
+    w.appendChild(el('span',null,(gB!=null||gS!=null)
+      ? 'The numbers above come from GoPlus and are used in the “you pay” column, but nothing on the chain has confirmed them. Treat that column as indicative until this token trades again.'
+      : 'No tax figure is available at all, so the “you pay” column below counts the pool fee only and is a floor, not the real cost.'));
+    c.appendChild(w);
+  }
+  return c;
+}
+
+// ---- flags -----------------------------------------------------------------
+function flagsCard(gp,gpOk){
+  const c=card('What the contract can do',
+    gpOk?'Contract properties as read from the verified source by GoPlus. These are properties, not a rating — a token can carry several of them and be perfectly ordinary, or carry none and still go to zero.'
+        :'GoPlus did not answer for this token, so none of these properties could be checked. Every figure above is unaffected: it comes off the chain directly.');
+  if(!gpOk)return c;
+  const g=el('div','fg');
+  const chip=(state,label,note)=>{const x=el('div','f f-'+state);
+    x.appendChild(el('b',null,label));x.appendChild(el('span',null,note));return x};
+  const owner=(gp.owner_address||'').toLowerCase();
+  if(gp.owner_address==null)g.appendChild(chip('unk','Ownership not checked','GoPlus returned no owner field for this contract.'));
+  else if(owner===NULLA||owner==='')g.appendChild(chip('ok','Ownership renounced','No owner address left on the contract.'));
+  else g.appendChild(chip('on','Owner active','Owner is '+short(owner)+'.'));
+  if(gp.is_open_source==null)g.appendChild(chip('unk','Verification not checked','GoPlus did not report whether the source is verified.'));
+  else if(gp.is_open_source==='1')g.appendChild(chip('ok','Source verified','The published code matches the deployed bytecode.'));
+  else g.appendChild(chip('on','Source not verified','Nothing here can be checked against source code — including every other line in this list.'));
+  if(gp.is_honeypot==='1')g.appendChild(chip('bad','Honeypot','GoPlus could not sell this token in a simulation.'));
+  else if(gp.is_honeypot==null)g.appendChild(chip('unk','Sellability not checked','GoPlus ran no sell simulation for this token.'));
+  // The missing ones are listed by name. Silence about a property is not the
+  // same as the property being absent, and only one of those two is safe to
+  // let a reader assume.
+  const unchecked=[];
+  FLAGS.forEach(([k,label,note])=>{
+    if(gp[k]==='1')g.appendChild(chip('on',label,note));
+    else if(gp[k]==null)unchecked.push(label.toLowerCase());
+  });
+  c.appendChild(g);
+  if(unchecked.length)c.appendChild(el('p','cd-foot',
+    'Not checked for this token ('+unchecked.length+'): '+unchecked.join(', ')+
+    '. GoPlus returned no value for these — that is not the same as “no”, and this page will not pretend it is. Proxy contracts in particular often come back only partly analysed.'));
+  return c;
+}
+
+// ---- main render -----------------------------------------------------------
+function render(d){
+  const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
+  const teaser=$('sc-what');if(teaser)teaser.hidden=true;
+  const {gp,gpOk,addr,pool,name,symb,px,quoteUsd,quoteSym,tax,supply,burned,hop,deeper,partial}=d;
+  // Both sides valued for real. On a V2 pair this is exactly twice the quote
+  // side by construction; on a V3 pool the two halves are not equal and
+  // doubling would invent liquidity that is not there.
+  const hard=d.q*quoteUsd,tvl=hard+d.tok*px;
+  const circ=supply!=null?supply-burned:null,mcap=circ!=null&&px?circ*px:null;
+
+  // header
+  const head=el('header','hd');
+  const ttl=el('div','hd-t');
+  ttl.appendChild(el('h2',null,symb));
+  ttl.appendChild(el('span','hd-n',name));
+  head.appendChild(ttl);
+  const meta=el('div','hd-m');
+  meta.appendChild(el('span','badge',pool.kind==='v3'
+    ? 'PancakeSwap V3 · '+(pool.fee*100).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+'% tier'
+    : (pool.venue||'PancakeSwap V2')+' · '+(pool.fee*100).toFixed(2)+'% fee'));
+  meta.appendChild(el('span','badge badge-q',symb+' / '+quoteSym));
+  if(gp.launchpad_token&&gp.launchpad_token.launchpad_name)
+    meta.appendChild(el('span','badge badge-d','via '+gp.launchpad_token.launchpad_name));
+  head.appendChild(meta);
+  const lnk=el('div','hd-l');
+  lnk.append(link(short(addr),'https://bscscan.com/token/'+addr),
+    link('Pool '+short(pool.pair),'https://bscscan.com/address/'+pool.pair),
+    link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair));
+  head.appendChild(lnk);
+  o.appendChild(head);
+
+  // headline stats
+  o.appendChild(statRow([
+    {v:usd(px),l:'Price'},
+    {v:mcap!=null?usd(mcap):'—',l:'Market Cap',s:circ!=null?nf(circ)+' circulating':'supply unreadable'},
+    {v:usd(tvl),l:'Liquidity',s:'both sides of the pool'},
+    {v:mcap?pc(tvl/mcap*100,1):'—',l:'Liquidity / Mcap',s:'how much of the valuation is actually in the pool'},
+  ]));
+
+  // depth
+  // The "half of it is the token itself" framing is a CONSTANT-PRODUCT fact: a
+  // V2 pair is 50/50 by construction, so the quote side really is a floor. A
+  // concentrated-liquidity pool is neither balanced nor a floor — $mubarak's V3
+  // pool holds 36% quote, and as the price falls its positions convert toward
+  // the token side, buying the quote out. Printing the V2 sentence over a V3
+  // pool is right about the number and wrong about what it means.
+  const v3=pool.kind==='v3';
+  const dep=card('How deep is it really?',
+    v3?'The two sides of a concentrated-liquidity pool are not balanced — what sits here is whatever the current price has left in range. The '+quoteSym+' side is still the half that does not depend on this token being worth anything.'
+      :'Half of any “liquidity” headline is the token itself, valued at its own price — it shrinks exactly when it would be needed. The '+quoteSym+' side is the half that holds.');
+  dep.appendChild(statRow([
+    {v:usd(hard),l:'Hard '+quoteSym+' backing',
+      s:nf(d.q,d.q<100?3:2)+' '+quoteSym+(v3
+        ?' in the pool right now — not a fixed floor: as the price falls, positions convert toward the token side'
+        :' — keeps its value if the price falls')},
+    {v:mcap?pc(hard/mcap*100,1):'—',l:'Hard backing / Mcap',
+      s:v3?'how much of the valuation is currently backed by '+quoteSym+' in range'
+          :'the floor under the market cap'},
+    // "More than X" is an answer; a dash is not. On a concentrated-liquidity
+    // pool the sweep can run out of range before the price gives way — USDC/USDT
+    // does not move one percent for any size the quoter will price — and
+    // printing "—" there reads as a failure to measure when the finding is that
+    // the pool is deeper than the largest size asked about.
+    {v:d.up!=null?usd(d.up):(d.upMin!=null?'> '+usd(d.upMin):'—'),l:'Moves the price +1%',
+      s:d.up!=null?'a buy this size, right now':(d.upMin!=null?'deeper than the largest size quoted':'a buy this size, right now')},
+    {v:d.down!=null?usd(d.down):(d.downMin!=null?'> '+usd(d.downMin):'—'),l:'Moves the price −1%',
+      s:d.down!=null?'a sell this size, right now':(d.downMin!=null?'deeper than the largest size quoted':'a sell this size, right now')},
+  ]));
+  o.appendChild(dep);
+
+  // Qualified by absolute depth rather than by share: say so before any figure
+  // is read, not in a footnote under it.
+  if(partial!=null){
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'This is one pool of several for this token.'));
+    w.appendChild(el('span',null,'It holds '+usd(d.mineUsd)+' — about '+pc(partial*100,1)+
+      ' of the '+usd(d.mineUsd+d.otherLiq)+' this token has across all venues. Every figure below describes '+
+      'this pool exactly and says nothing about the others. It is deep enough to be worth measuring on its own, '+
+      'which is why it is shown; a trade routed by an aggregator may well take a different path.'));
+    o.appendChild(w);
+  }
+  if(deeper){
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'A deeper pool exists for this token.'));
+    const s=el('span');
+    s.append('You asked about this pool, so this is the one measured. But the '+
+      (deeper.kind==='v3'?'PancakeSwap V3 '+(deeper.fee*100).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+'% tier':'PancakeSwap V2')+
+      ' pool against '+deeper.sym+' holds '+usd(deeper.hard)+' on its '+deeper.sym+
+      ' side against this one’s '+usd(d.q*quoteUsd)+'. ');
+    const a=el('a','lk','Scan that one instead →');
+    a.href='?token='+deeper.pair;a.target='_self';
+    s.appendChild(a);
+    w.appendChild(s);
+    o.appendChild(w);
+  }
+  if(hop&&!hop.direct){
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'Every dollar figure here is derived, not direct.'));
+    w.appendChild(el('span',null,'This pool is quoted in $'+hop.sym+', not in BNB or a stablecoin, so $'+hop.sym+
+      ' had to be priced through its own BNB pool first — which holds '+nf(hop.hopBnb||0,3)+
+      ' BNB. Everything above is only as trustworthy as that one pool: if it is thin or stale, so are these dollars. The percentages are unaffected.'));
+    o.appendChild(w);
+  }
+
+  o.appendChild(taxCard(tax,gp,gpOk));
+
+  // ladder
+  const lad=card('What a trade does to the price — and what it costs',
+    'Two different things, routinely confused. Impact is how far this trade alone moves the price. “You pay” is what you give up against the spot price: a worse fill because the pool moves underneath you, plus the pool fee, plus the transfer tax.');
+  // One direction can be measured while the other is not: a quiet pool may show
+  // three sells and no buys inside the window. Saying "measured" for both would
+  // then be false for half the column, so each side names its own source.
+  const src=m=>m?'measured':'reported by GoPlus, unverified';
+  const taxNote=(d.taxB||d.taxS)
+    ? 'Costs include a '+pc(d.taxB*100)+' buy tax ('+src(tax.ok&&tax.buy!=null)+
+      ') and a '+pc(d.taxS*100)+' sell tax ('+src(tax.ok&&tax.sell!=null)+
+      '), plus the '+(pool.fee*100).toFixed(2)+'% pool fee.'
+    : 'Costs include the '+(pool.fee*100).toFixed(2)+'% pool fee only — no transfer tax could be established for this token, measured or reported, so treat this column as a floor.';
+  // The toll: what a trade of ANY size costs before depth enters the picture.
+  const floors={buy:(1-(1-d.taxB)*(1-pool.fee))*100, sell:(1-(1-d.taxS)*(1-pool.fee))*100};
+  lad.appendChild(renderLadder(d.rows,taxNote,floors));
+  o.appendChild(lad);
+
+  // LP
+  if(pool.kind==='v2'){
+    const lp=card('Who holds the LP tokens',
+      'Burned LP can never be withdrawn by anyone. Locked LP sits in a timelock — a promise with an expiry date, not a burn. Everything else can be pulled at any moment.');
+    const burnedPct=d.lpTot>0?(d.lpDead+d.lpNull)/d.lpTot*100:0;
+    const holders=(gp.lp_holders||[]).filter(x=>{const a=(x.address||'').toLowerCase();
+      return a!==DEAD&&a!==NULLA});
+    const lockedPct=holders.filter(x=>x.is_locked===1).reduce((s,x)=>s+(parseFloat(x.percent)||0),0)*100;
+    const freePct=Math.max(0,100-burnedPct-lockedPct);
+    const big=holders.filter(x=>x.is_locked!==1).sort((a,b)=>(parseFloat(b.percent)||0)-(parseFloat(a.percent)||0))[0];
+    lp.appendChild(statRow([
+      {v:pc(burnedPct),l:'Burned',tone:burnedPct>=99?' good':burnedPct>=1?' mid':' bad',s:nf(d.lpDead+d.lpNull,2)+' of '+nf(d.lpTot,2)+' LP, at the dead address'},
+      {v:gpOk?pc(lockedPct):'—',l:'Locked',dim:!gpOk,
+        s:gpOk?(lockedPct>0?'in a locker GoPlus recognises':'none in a known locker'):'needs GoPlus, which did not answer'},
+      {v:gpOk?pc(freePct):'—',l:'Withdrawable',dim:!gpOk,
+        s:gpOk?(big?'largest single holder '+pc((parseFloat(big.percent)||0)*100)+' —':'held across wallets')
+              :'on-chain, '+pc(100-burnedPct)+' of the LP is simply not burned',
+        link:gpOk&&big?{t:short(big.address),href:'https://bscscan.com/address/'+big.address}:null},
+    ]));
+    o.appendChild(lp);
+  }else{
+    const lp=card('LP ownership does not apply here',
+      'This is a concentrated-liquidity pool. Liquidity is held as individual positions rather than as fungible LP tokens, so “LP burned” has no meaning at this venue — there is no LP token to burn. Depth can still leave at any time if position holders withdraw.');
+    o.appendChild(lp);
+  }
+
+  // other venues
+  // Dust is not a venue. A list of six pools holding fractions of a cent tells
+  // the reader nothing and buries the one line that might matter, so anything
+  // under $100 — or under a thousandth of the pool being measured — is dropped
+  // and counted instead.
+  const dustLine=Math.max(100,hard/1000),
+        shown=(d.others||[]).filter(x=>(x.liquidity||0)>=dustLine),
+        hidden=(d.others||[]).length-shown.length;
+  if(shown.length){
+    const ov=card('Where else it trades',
+      'Everything above measures the deepest pool this page can read exactly. These are the rest, as indexed by DexScreener.');
+    const l=el('div','vn');
+    shown.slice(0,6).forEach(x=>{
+      const r=el('div','vn-r');
+      r.appendChild(el('span','vn-n',x.name||'Unknown'));
+      r.appendChild(el('span','vn-v',usd(x.liquidity||0)));
+      r.appendChild(/^0x[a-fA-F0-9]{40}$/.test(x.pair)
+        ? link(short(x.pair),'https://bscscan.com/address/'+x.pair,'lk dim')
+        : el('span','lk dim','position-based'));
+      l.appendChild(r);
+    });
+    ov.appendChild(l);
+    // The cutoff scales with the pool being measured, so it has to be named
+    // rather than assumed: writing "$100" while actually hiding everything
+    // under $606 states a number that is not the one used.
+    if(hidden>0)ov.appendChild(el('p','cd-foot',hidden+' further pool'+(hidden===1?'':'s')+
+      ' hold'+(hidden===1?'s':'')+' less than '+usd(dustLine)+' and '+(hidden===1?'is':'are')+
+      ' not listed — under a thousandth of the pool above, which is not a place anyone trades.'));
+    o.appendChild(ov);
+  }else if((d.others||[]).length){
+    o.appendChild(card('No other venue worth naming',
+      'DexScreener indexes '+(d.others||[]).length+' further pool'+((d.others||[]).length===1?'':'s')+
+      ' for this token, each holding less than '+usd(dustLine)+'. Everything tradable sits in the pool measured above.'));
+  }
+
+  o.appendChild(flagsCard(gp,gpOk));
+  o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties come from GoPlus and are attributed as such. This page describes a pool — it does not check the deployer’s history, the holder distribution, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
+}
+
+// ---- the "not measurable here" path ---------------------------------------
+function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool){
+  const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
+  const teaser=$('sc-what');if(teaser)teaser.hidden=true;
+  const head=el('header','hd');
+  const ttl=el('div','hd-t');ttl.appendChild(el('h2',null,symb));ttl.appendChild(el('span','hd-n',name));
+  head.appendChild(ttl);
+  head.appendChild(frag(el('div','hd-l'),link(short(addr),'https://bscscan.com/token/'+addr),
+    link('DexScreener ↗','https://dexscreener.com/bsc/'+addr)));
+  o.appendChild(head);
+  const w=el('div','warn');
+  w.appendChild(el('b',null,'No pool here can be measured exactly.'));
+  w.appendChild(el('span',null,(hasPool
+    ? 'The readable pool holds '+usd(hard)+' — '+pc(share*100)+' of the '+usd(hard+otherLiq)+' GoPlus sees across all venues. The rest sits'
+    : 'It has no readable PancakeSwap pool. Its '+usd(otherLiq)+' of liquidity sits')+
+    ' in venues this page cannot quote exactly. Deriving depth from the sliver that is readable would produce a number that is not merely imprecise but wrong, so none is shown. The contract properties below are unaffected — they belong to the token, not to a venue.'));
+  o.appendChild(w);
+  if(others.length){
+    const ov=card('Where it actually trades','As reported by GoPlus.');
+    const l=el('div','vn');
+    others.slice(0,6).forEach(x=>{
+      const r=el('div','vn-r');
+      r.appendChild(el('span','vn-n',x.name||'Unknown'));
+      r.appendChild(el('span','vn-v',usd(x.liquidity||0)));
+      r.appendChild(/^0x[a-fA-F0-9]{40}$/.test(x.pair)
+        ? link(short(x.pair),'https://bscscan.com/address/'+x.pair,'lk dim')
+        : el('span','lk dim','position-based'));
+      l.appendChild(r);
+    });
+    ov.appendChild(l);o.appendChild(ov);
+  }
+  o.appendChild(flagsCard(gp,!!(gp.token_name||gp.dex||gp.is_open_source!=null)));
+  o.appendChild(el('p','dis','Contract properties come from GoPlus. Not advice.'));
+}
+
+// ---- orchestration ---------------------------------------------------------
+// Every stage sets this. It exists for one reason: a scan that ends with an
+// empty page and no message is the worst thing this tool can do — the reader
+// cannot tell whether the token is fine, broken, or whether we are. Measured at
+// 2 blanks in 16 runs before this net went in. Now an empty result is caught
+// here, named by the stage it died in, and shown as an error like any other.
+let stage='start';
+const at=s=>{stage=s;step(s)};
+
+async function scan(input){
+  stage='start';
+  busy(true,'identifying the address…');
+  try{
+    const askGoPlus=a=>fetch(GOPLUS+a).then(r=>r.ok?r.json():null)
+      .then(j=>j&&j.result&&(j.result[a]||j.result[a.toLowerCase()])).catch(()=>null);
+    // Fired against the input on the chance it IS the token, because it usually
+    // is and this is the slow leg. If the input turns out to be a pool, the
+    // answer describes the LP token instead — "Pancake LPs / Cake-LP", with the
+    // wrong name, the wrong supply and the wrong tax — so it is asked again
+    // against the real token once that is known, and this first answer dropped.
+    let gpP=askGoPlus(input);
+
+    let what;
+    try{what=await classify(input)}
+    catch(e){return fail('The chain did not answer.','The public BSC node refused or timed out. Nothing is cached here, so a retry in a few seconds usually works.')}
+
+    // A pasted pool tells us the venue directly. Which side is "the token" is
+    // then the only open question: it is the side that is not the quote, and
+    // the quote is whichever side can be priced.
+    let token,pool=null,tokDec,bnbUsd,hop,deeper=null;
+    const base=await rpcBatch([call(BNB_PAIR,S.reserves),call(BNB_PAIR,S.token0)]);
+    const br=res2(base[0]),bIs0=addrAt(base[1])===WBNB;
+    bnbUsd=br?(bIs0?br[1]/br[0]:br[0]/br[1]):0;
+    if(!(bnbUsd>0))return fail('Could not price BNB.','The reference pool read back empty, so nothing could be stated in dollars.');
+
+    if(what.kind==='v2pair'||what.kind==='v3pool'){
+      at('reading the pool…');
+      const [a,b]=[what.token0,what.token1];
+      const qa=QUOTES.find(([x])=>x===a),qb=QUOTES.find(([x])=>x===b);
+      if(qa&&!qb)token=b; else if(qb&&!qa)token=a;
+      else if(qa&&qb)token=a;
+      else{
+        // Neither side is a currency we know. The quote is the one that has its
+        // own BNB pool — $MatthewCoin/$SpaceX resolves this way.
+        const pa=await priceToken(a,bnbUsd),pb=await priceToken(b,bnbUsd);
+        token=(pb.usd!=null&&pa.usd==null)?a:(pa.usd!=null&&pb.usd==null)?b
+             :((pb.hopBnb||0)>=(pa.hopBnb||0)?a:b);
+      }
+      const quote=token===a?b:a;
+      const info=await rpcBatch([call(token,S.decimals),call(token,S.symbol),call(token,S.name)]);
+      tokDec=Number(hx(info[0]))||18;
+      hop=await priceToken(quote,bnbUsd);
+      if(hop.usd==null)return fail('That pool cannot be priced.',
+        'It trades '+(decStr(info[1])||'this token')+' against '+short(quote)+
+        ', which has no BNB pool of its own — so there is no way to express its depth in dollars without inventing one.');
+      if(what.kind==='v2pair'&&!what.venue)
+        return fail('That pool is on a venue this page does not price.',
+          'Its factory is '+short(what.factory||'')+', which is not one of the constant-product venues whose swap fee has been derived and verified here (PancakeSwap V2, Uniswap V2, Biswap). Applying somebody else’s fee would quietly understate what a trade costs, so no figures are shown.');
+      pool=what.kind==='v2pair'
+        ?{kind:'v2',pair:input,quote,sym:hop.sym,usd:hop.usd,
+          fee:what.venue.fee,venue:what.venue.name,
+          tok:(addrAt(what.token0)===token?what.reserves[0]:what.reserves[1])/Math.pow(10,tokDec),
+          q:(addrAt(what.token0)===token?what.reserves[1]:what.reserves[0])/1e18}
+        :{kind:'v3',pair:input,quote,sym:hop.sym,usd:hop.usd,fee:what.fee/1e6,feeRaw:what.fee,
+          sqrt:what.sqrt,tokenIs0:what.token0===token};
+      if(pool.kind==='v3'){
+        const bal=await rpcBatch([call(quote,balOf(input)),call(token,balOf(input))]);
+        pool.q=Number(hx(bal[0]))/1e18;pool.tok=Number(hx(bal[1]))/Math.pow(10,tokDec);
+      }
+      pool.usd=hop.usd;pool.sym=hop.sym;
+      if(token!==input)gpP=askGoPlus(token);
+      // A pasted pool is honoured — you asked about that one. But the factories
+      // are still asked what else exists, because a link often points at a side
+      // pool while the real depth sits one fee tier over, and staying silent
+      // about that would answer the question asked instead of the one meant.
+      try{
+        const alt=(await discover(token,tokDec,bnbUsd))
+          .find(c=>c.pair.toLowerCase()!==pool.pair.toLowerCase()&&c.hard>(pool.q||0)*pool.usd*1.15);
+        if(alt)deeper=alt;
+      }catch(e){}
+    }else{
+      token=input;
+      at('asking the factories which pools exist…');
+      const info=await rpcBatch([call(token,S.decimals),call(token,S.symbol),call(token,S.name)]);
+      tokDec=Number(hx(info[0]))||18;
+      const cands=await discover(token,tokDec,bnbUsd);
+      pool=cands[0]||null;
+      hop={direct:true,sym:pool?pool.sym:'BNB'};
+      if(pool&&pool.kind==='v3'){
+        const s=await rpcBatch([call(pool.pair,S.slot0),call(pool.pair,S.token0)]);
+        pool.sqrt=hx('0x'+s[0].slice(2,66));pool.tokenIs0=addrAt(s[1])===token;
+      }
+    }
+
+    const gp=(await gpP)||{},gpOk=!!(gp.token_name||gp.dex||gp.is_open_source!=null);
+    const nameInfo=await rpcBatch([call(token,S.symbol),call(token,S.name),
+      call(token,S.totalSupply),call(token,balOf(DEAD)),call(token,balOf(NULLA))]);
+    const symb=(gp.token_symbol||decStr(nameInfo[0])||'?').trim().slice(0,16),
+          name=(gp.token_name||decStr(nameInfo[1])||'Unknown token').trim().slice(0,60),
+          supply=nameInfo[2]?Number(hx(nameInfo[2]))/Math.pow(10,tokDec):null,
+          burned=(Number(hx(nameInfo[3]))+Number(hx(nameInfo[4])))/Math.pow(10,tokDec);
+
+    // Venues from DexScreener, which indexes the small DEXes; GoPlus's list is
+    // the fallback and only covers what it happens to know.
+    at('checking where else it trades…');
+    const dsAll=await venues(token);
+    const others=dsAll
+      ? dsAll.filter(x=>!pool||x.pair!==pool.pair.toLowerCase())
+        .map(x=>({pair:x.pair,name:x.name+(x.quote?' · '+x.quote:''),liquidity:x.liq}))
+      : (gp.dex||[]).filter(x=>x.pair&&(!pool||x.pair.toLowerCase()!==pool.pair.toLowerCase()))
+        .map(x=>({pair:x.pair,name:x.name||x.liquidity_type||'Unknown',liquidity:parseFloat(x.liquidity)||0}))
+        .sort((a,b)=>b.liquidity-a.liquidity);
+    const otherLiq=others.reduce((s,x)=>s+(x.liquidity||0),0);
+    const hard=pool?(pool.q||0)*pool.usd:0;
+    // "Is the pool I can measure representative?" — and the comparison must use
+    // ONE yardstick. It used to weigh our own one-sided figure (the quote tokens
+    // actually sitting in the pool) against GoPlus's two-sided one, which values
+    // both halves. On a V3 pool those differ by a factor of eight: $153k of real
+    // USDT against their $868k. Every V3 pool therefore looked like a rounding
+    // error next to the others and got refused — $MarsCoin's did, while trading
+    // perfectly well. So when GoPlus has a figure for OUR pool, both sides of
+    // the ratio come from GoPlus; only when it does not do we fall back to
+    // measuring ours against theirs, which is the imperfect case.
+    const mineFrom=list=>{if(!list||!pool)return null;
+      const e=list.find(x=>(x.pair||'').toLowerCase()===pool.pair.toLowerCase());
+      return e?(e.liq!=null?e.liq:parseFloat(e.liquidity)||0):null};
+    const mine=mineFrom(dsAll)!=null?mineFrom(dsAll):mineFrom(gp.dex);
+    const share=!pool?0
+      :(mine!=null&&mine+otherLiq>0)?mine/(mine+otherLiq)
+      :(otherLiq>0?hard/(hard+otherLiq):1);
+    // A readable pool that holds a sliver of the real liquidity describes a side
+    // pocket. $TUT keeps $2.0M in V3 and $338 in V2; a ladder off that pair says
+    // "+68% on a $100 buy" for a token with two million dollars of depth. A
+    // footnote does not survive a screenshot, so the ladder is not drawn at all.
+    // Two questions, and the old guard only asked one of them. "What share of
+    // the token's liquidity is this?" catches the side-pocket case — $v$ keeps
+    // $19k here against $1.5M elsewhere, and a ladder off that would describe a
+    // market nobody trades in. But share alone refused $BTCB, whose pool here
+    // holds THIRTEEN MILLION DOLLARS and is merely one of several: perfectly
+    // measurable, just not the whole story. So a pool also qualifies on its own
+    // absolute depth, and when it qualifies that way the reader is told plainly
+    // what share it is.
+    const mineUsd=mine!=null?mine:hard*2;
+    const deepEnough=mineUsd>=100000;
+    // An address that is not a token at all used to land in the "trades
+    // elsewhere" path and be told its "$0.00 of liquidity sits in venues this
+    // page cannot quote exactly" — a sentence about a market that does not
+    // exist. A wallet address pasted by mistake deserves to be told that.
+    if(!pool&&!others.length&&!gpOk&&!(supply>0)&&!decStr(nameInfo[0]))
+      return fail('That address is not a BSC token.',
+        'It answers nothing to symbol() or totalSupply(), has no pool at any venue this page can read, and GoPlus does not list it. A wallet address, or a contract that is not a token, looks exactly like this.');
+    if(!pool||(share<0.25&&!deepEnough))
+      return renderElsewhere(gp,token,name,symb,hard,others,otherLiq,share,!!pool);
+    const partial=share<0.25?share:null;
+
+    // PRICE. For a constant-product pair the ratio of the two reserves IS the
+    // price. For a concentrated-liquidity pool it is not, and using it anyway
+    // put $TUT at $0.081 when the pool was quoting $0.127 — a 36% error that
+    // then reappeared as a nonsensical "you pay 32.8%". V3 keeps its price in
+    // sqrtPriceX96, so that is where it is read from.
+    let px;
+    if(pool.kind==='v3'){
+      const d0=pool.tokenIs0?tokDec:18,d1=pool.tokenIs0?18:tokDec,
+            r=Math.pow(Number(pool.sqrt)/Math.pow(2,96),2)*Math.pow(10,d0-d1);
+      px=(pool.tokenIs0?r:1/r)*pool.usd;
+    }else px=(pool.q/pool.tok)*pool.usd;
+    if(!(px>0))return fail('That pool is empty.','Both sides read back as zero — there is nothing to measure.');
+
+    at('measuring the tax from real trades…');
+    const tokenIs0=pool.kind==='v2'
+      ? (await rpcBatch([call(pool.pair,S.token0)]).then(r=>addrAt(r[0])===token))
+      : pool.tokenIs0;
+    const tax=await measureTax(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
+    const gB=Number(gp.buy_tax),gS=Number(gp.sell_tax);
+    const taxB=tax.ok&&tax.buy!=null?tax.buy:(isFinite(gB)?gB:0),
+          taxS=tax.ok&&tax.sell!=null?tax.sell:(isFinite(gS)?gS:0),
+          usedTax=tax.ok||isFinite(gB)||isFinite(gS);
+
+    at('quoting trade sizes…');
+    let rows,up,down,upMin=null,downMin=null;
+    if(pool.kind==='v2'){
+      rows=ladderV2(pool.tok,pool.q,pool.fee,taxB,taxS,px,pool.usd);
+      up=onePctV2(pool.q,pool.fee,1.01)*pool.usd;
+      down=onePctV2(pool.tok,pool.fee,1/0.99)/(1-taxS)*px;
+    }else{
+      rows=await ladderV3(pool.pair,token,pool.quote,pool.feeRaw,tokDec,px,pool.usd,
+        taxB,taxS,pool.sqrt,pool.tokenIs0);
+      const oc=await onePctV3(pool.pair,token,pool.quote,pool.feeRaw,tokDec,px,pool.usd,
+        pool.sqrt,pool.tokenIs0,taxS);
+      up=oc.up;down=oc.down;upMin=oc.upMin;downMin=oc.downMin;
+    }
+
+    let lpTot=0,lpDead=0,lpNull=0;
+    if(pool.kind==='v2'){
+      const lp=await rpcBatch([call(pool.pair,S.totalSupply),call(pool.pair,balOf(DEAD)),
+        call(pool.pair,balOf(NULLA))]);
+      lpTot=Number(hx(lp[0]))/1e18;lpDead=Number(hx(lp[1]))/1e18;lpNull=Number(hx(lp[2]))/1e18;
+    }
+
+    render({gp,gpOk,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
+      quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
+      supply,burned,lpTot,lpDead,lpNull,others,hop,deeper,taxB,taxS,partial,mineUsd,otherLiq});
+    try{history.replaceState(null,'','?token='+token)}catch(e){}
+  }catch(e){
+    fail('Something went wrong reading this token.',
+      (e&&e.message?e.message+'. ':'')+'Nothing here is cached, so trying again often works. If it keeps failing, the address may not be a BSC token or pool.');
+  }finally{
+    busy(false);
+    // The net. If nothing was drawn and no error was shown, say so plainly
+    // rather than leaving a blank page that looks like the token's fault.
+    const out=$('sc-out');
+    if((out.hidden||!out.children.length)&&$('sc-err').hidden)
+      fail('The scan ended without a result.',
+        'It stopped at “'+stage+'” without producing figures and without an error — almost always a public BSC node dropping a request mid-scan. Press Scan again; it normally works on the second try.');
+  }
+}
+
+// Accept what people actually paste: a bare address, a BscScan link, a
+// DexScreener link (which carries the POOL, not the token), a PancakeSwap URL.
+const parseInput=s=>{const m=String(s||'').match(/0x[a-fA-F0-9]{40}/);return m?m[0].toLowerCase():null};
+function submit(){
+  const a=parseInput($('sc-in').value);
+  if(!a)return fail('That is not a contract address.',
+    'Paste a BSC token address, a pool address, or a BscScan / DexScreener link that contains one.');
+  scan(a);
+}
+$('sc-go').addEventListener('click',submit);
+$('sc-in').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
+(function(){const t=parseInput(new URLSearchParams(location.search).get('token'));
+  if(t){$('sc-in').value=t;scan(t)}})();

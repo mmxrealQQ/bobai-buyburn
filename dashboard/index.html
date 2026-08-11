@@ -152,8 +152,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=13" as="style">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="preload" href="styles.css?v=14" as="style">
+  <link rel="stylesheet" href="styles.css?v=14">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -607,6 +607,22 @@
         <div class="ec-top"><img src="nft/logo-96.webp" width="96" height="96" alt="BOBAI Buy Drops logo" loading="lazy" decoding="async"><h3>NFT Buy Drops</h3></div>
         <p>Every buy of $100 or more auto-mints an NFT straight to the buyer's wallet. 1,925 in the collection — no claim step, no gas for the holder.</p>
         <div class="ec-foot"><span class="ec-go">Open Collection <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+      </a>
+      <!-- Built like the rest of this block, and labelled Beta rather than Live:
+           the tool itself opens with a notice saying it is still being built, so
+           the card must not promise more than the page behind it does. -->
+      <a class="ec fi" href="scanner">
+        <div class="ec-top">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8"
+               stroke-linecap="round" aria-hidden="true">
+            <path d="M4 19V13M8.5 19V9M13 19v-3"/>
+            <circle cx="16" cy="8.5" r="4.5"/>
+            <path d="M19.4 11.9 22 14.5"/>
+          </svg>
+          <h3>Pool Scanner</h3>
+        </div>
+        <p>Paste any BNB Chain token or pool and read it the way a trader meets it — price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked or withdrawable.</p>
+        <div class="ec-foot"><span class="ec-go">Scan A Pool <span class="arr">&#x2192;</span></span><span class="ec-st beta">Beta</span></div>
       </a>
       <a class="ec fi" href="brainscreener/">
         <div class="ec-top"><img src="ico-brainscreener.png" alt="brainScreener logo" loading="lazy" decoding="async"><h3>brainScreener</h3></div>

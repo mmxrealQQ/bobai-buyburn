@@ -661,6 +661,12 @@
     .ec-top img{width:30px;height:30px;object-fit:contain;border-radius:8px;flex-shrink:0;
       transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
     .ec:hover .ec-top img{transform:translateY(-3px) rotate(-7deg) scale(1.08)}
+    /* One card carries a drawn mark rather than a logo file: the scanner is a
+       tool, not a product with an identity, and a glyph in the accent colour
+       stays sharp at any density without another asset to keep in sync. */
+    .ec-top svg{width:30px;height:30px;flex-shrink:0;
+      transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+    .ec:hover .ec-top svg{transform:translateY(-3px) rotate(-7deg) scale(1.08)}
     .ec-top h3{font-size:.88rem;margin:0}
     /* Status sits in the footer row, not next to the title — "COMPLETE" beside
        "NFT Buy Drops" forced the heading onto two lines either way. */
@@ -668,6 +674,9 @@
     .ec-st{font-size:.55rem;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;flex-shrink:0}
     .ec-st.live{color:var(--green)}
     .ec-st.done{color:var(--muted)}
+    /* Neither live nor finished. Gold rather than green, so a tool that is
+       still being built cannot be mistaken for one that is done. */
+    .ec-st.beta{color:var(--gold)}
     .ec p{font-size:.78rem;color:var(--muted);line-height:1.65;flex:1}
     .ec-go{font-family:'Space Grotesk',sans-serif;font-size:.66rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
     .ec-go .arr{transition:transform .25s}

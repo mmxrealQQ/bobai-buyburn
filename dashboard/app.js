@@ -224,6 +224,14 @@ async function gj(n){let r=null;
 const WBNB='0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
       P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',   // BOBAI/WBNB pair
       BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',  // WBNB price pair
+      // PancakeSwap's own protocol-fee address — the factory's feeTo(). The
+      // pair mints LP to it on every liquidity event, which is where the
+      // never-burned remainder comes from and why it grows as the pool trades.
+      // Hardcoded, but never trusted: the line below only names it when its
+      // balance actually accounts for the remainder, so if PancakeSwap ever
+      // moves the address the page falls back to saying less instead of
+      // saying something wrong.
+      FEETO='0x0ed943Ce24BaEBf257488771759F9BF482C39706',
       DEAD_BAL='0x70a08231000000000000000000000000000000000000000000000000000000000000dEaD',
       balOf=a=>'0x70a08231000000000000000000000000'+a.slice(2),
       call=(to,data)=>['eth_call',[{to,data},'latest']],
@@ -264,6 +272,7 @@ async function chain(){
       call(P,DEAD_BAL),                   // 10 LP held at the dead address
       call(P,balOf(BW)),                  // 11 LP still held by the buyback bot
       call(P,balOf(DEVW)),                // 12 LP still held by the dev wallet
+      call(P,balOf(FEETO)),               // 13 LP minted to PancakeSwap as protocol fee
     ]);
   }catch(e){return}
   // Each tile decodes in its own try/catch so one bad word of calldata can't
@@ -300,13 +309,26 @@ async function chain(){
     // could be pulled. Both are read live, so this cannot go stale: if either
     // wallet ever sits on LP, the line says so on the next refresh instead of
     // staying silent.
-    const un=(tot-dead)/1e18,botLeft=u18(q[11]),devLeft=u18(q[12]),el=document.getElementById('lq-unb');
+    const un=(tot-dead)/1e18,botLeft=u18(q[11]),devLeft=u18(q[12]),fee=u18(q[13]),
+      el=document.getElementById('lq-unb');
     if(el&&tot>0){
-      const held=botLeft+devLeft;
+      const held=botLeft+devLeft,pct=((tot-dead)/tot*100).toFixed(3);
+      // Naming where it sits beats saying only where it does not. The whole
+      // remainder is PancakeSwap's protocol fee: the pair mints it to the
+      // exchange whenever liquidity moves, so the figure creeps up as the pool
+      // trades and "LP burned" drifts a thousandth away from 100% by itself.
+      // Only said when the balance really accounts for it — within a hundredth
+      // of an LP, which is the rounding on the printed figure.
+      const isFee=fee>0&&Math.abs(fee-un)<0.01;
       el.textContent=held>0.000001
-        ? nf(un,2)+' LP ('+((tot-dead)/tot*100).toFixed(3)+'%) is not burned, and '+nf(held,4)+
+        ? nf(un,2)+' LP ('+pct+'%) is not burned, and '+nf(held,4)+
           ' LP of it sits in a project wallet right now.'
-        : 'The other '+nf(un,2)+' LP ('+((tot-dead)/tot*100).toFixed(3)+
+        : isFee
+        ? 'The other '+nf(un,2)+' LP ('+pct+'%) was never burned: it is PancakeSwap’s own '+
+          'protocol fee, minted to the exchange every time liquidity moves, which is why it '+
+          'creeps up as the pool trades. None of it is ours — the buyback bot and the dev '+
+          'wallet both hold exactly 0 LP. Checked on every refresh, not claimed once.'
+        : 'The other '+nf(un,2)+' LP ('+pct+
           '%) was never burned, and none of it is ours: the buyback bot and the dev wallet '+
           'both hold exactly 0 LP. Checked on every refresh, not claimed once.';
       el.classList.remove('ld');

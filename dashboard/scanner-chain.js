@@ -67,7 +67,7 @@ const MAX_BATCH=25;
 
 const S={reserves:'0x0902f1ac',token0:'0x0dfe1681',token1:'0xd21220a7',fee:'0xddca3f43',
   slot0:'0x3850c7bd',decimals:'0x313ce567',symbol:'0x95d89b41',name:'0x06fdde03',
-  totalSupply:'0x18160ddd',factory:'0xc45a0155'};
+  totalSupply:'0x18160ddd',factory:'0xc45a0155',feeTo:'0x017e7e58'};
 const pad=a=>'0'.repeat(24)+a.slice(2).toLowerCase();
 const num=v=>BigInt(v).toString(16).padStart(64,'0');
 export const balOf=a=>'0x70a08231'+pad(a);
@@ -217,7 +217,7 @@ export async function discover(token,tokDec,bnbUsd){
   facs.forEach((f,fi)=>QUOTES.forEach(([qa,sym,stable],i)=>{
     const p=addrAt(found[fi*QUOTES.length+i]);
     if(p&&p!==NULLA)cands.push({kind:'v2',pair:p,quote:qa,sym,usd:stable?1:bnbUsd,
-      fee:FACTORIES[f].fee,venue:FACTORIES[f].name});
+      fee:FACTORIES[f].fee,venue:FACTORIES[f].name,factory:f});
   }));
   QUOTES.forEach(([qa,sym,stable],i)=>V3_FEES.forEach((f,k)=>{
     const p=addrAt(found[facs.length*QUOTES.length+i*V3_FEES.length+k]);

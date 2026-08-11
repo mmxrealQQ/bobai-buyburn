@@ -12,7 +12,7 @@
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
-  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=11';
+  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=12';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -361,10 +361,13 @@ function render(d){
     const lp=card('Who holds the LP tokens',
       'Burned LP can never be withdrawn by anyone. Locked LP sits in a timelock — a promise with an expiry date, not a burn. Everything else can be pulled at any moment.');
     const burnedPct=d.lpTot>0?(d.lpDead+d.lpNull)/d.lpTot*100:0;
+    // The exchange's own share is neither burned nor anybody's to pull, so it is
+    // taken out of the free figure rather than counted as a risk.
+    const feePct=d.lpTot>0&&d.lpFee>0?d.lpFee/d.lpTot*100:0;
     const holders=(gp.lp_holders||[]).filter(x=>{const a=(x.address||'').toLowerCase();
-      return a!==DEAD&&a!==NULLA});
+      return a!==DEAD&&a!==NULLA&&a!==(d.feeTo||'')});
     const lockedPct=holders.filter(x=>x.is_locked===1).reduce((s,x)=>s+(parseFloat(x.percent)||0),0)*100;
-    const freePct=Math.max(0,100-burnedPct-lockedPct);
+    const freePct=Math.max(0,100-burnedPct-lockedPct-feePct);
     const big=holders.filter(x=>x.is_locked!==1).sort((a,b)=>(parseFloat(b.percent)||0)-(parseFloat(a.percent)||0))[0];
     lp.appendChild(statRow([
       {v:pc(burnedPct),l:'Burned',tone:burnedPct>=99?' good':burnedPct>=1?' mid':' bad',s:nf(d.lpDead+d.lpNull,2)+' of '+nf(d.lpTot,2)+' LP, at the dead address'},
@@ -372,9 +375,22 @@ function render(d){
         s:gpOk?(lockedPct>0?'in a locker GoPlus recognises':'none in a known locker'):'needs GoPlus, which did not answer'},
       {v:gpOk?pc(freePct):'—',l:'Withdrawable',dim:!gpOk,
         s:gpOk?(big?'largest single holder '+pc((parseFloat(big.percent)||0)*100)+' —':'held across wallets')
-              :'on-chain, '+pc(100-burnedPct)+' of the LP is simply not burned',
+              :'on-chain, '+pc(Math.max(0,100-burnedPct-feePct))+' of the LP is simply not burned',
         link:gpOk&&big?{t:short(big.address),href:'https://bscscan.com/address/'+big.address}:null},
     ]));
+    // Named rather than left in the withdrawable bucket. On a pool that has run
+    // for a while this is usually the entire unburned remainder, and reading it
+    // as "somebody can pull this" is the wrong conclusion about the one holder
+    // here who is not connected to the token at all.
+    if(feePct>0){
+      const f=el('p','cd-foot');
+      f.append(pc(feePct)+' of the LP sits at '+(pool.venue||'the exchange')+'’s own protocol-fee address (');
+      f.appendChild(link(short(d.feeTo),'https://bscscan.com/address/'+d.feeTo,'lk'));
+      f.append('), which the pair mints to the venue every time liquidity moves. It grows on its own as the pool '+
+        'trades and belongs to the exchange, not to the token — so it is counted separately from the figure above '+
+        'rather than as liquidity somebody could pull.');
+      lp.appendChild(f);
+    }
     o.appendChild(lp);
   }else{
     const lp=card('LP ownership does not apply here',
@@ -516,7 +532,7 @@ async function scan(input){
           'Its factory is '+short(what.factory||'')+', which is not one of the constant-product venues whose swap fee has been derived and verified here (PancakeSwap V2, Uniswap V2, Biswap). Applying somebody else’s fee would quietly understate what a trade costs, so no figures are shown.');
       pool=what.kind==='v2pair'
         ?{kind:'v2',pair:input,quote,sym:hop.sym,usd:hop.usd,
-          fee:what.venue.fee,venue:what.venue.name,
+          fee:what.venue.fee,venue:what.venue.name,factory:what.factory,
           tok:(addrAt(what.token0)===token?what.reserves[0]:what.reserves[1])/Math.pow(10,tokDec),
           q:(addrAt(what.token0)===token?what.reserves[1]:what.reserves[0])/1e18}
         :{kind:'v3',pair:input,quote,sym:hop.sym,usd:hop.usd,fee:what.fee/1e6,feeRaw:what.fee,
@@ -648,16 +664,29 @@ async function scan(input){
       up=oc.up;down=oc.down;upMin=oc.upMin;downMin=oc.downMin;
     }
 
-    let lpTot=0,lpDead=0,lpNull=0;
+    let lpTot=0,lpDead=0,lpNull=0,lpFee=0,feeTo=null;
     if(pool.kind==='v2'){
       const lp=await rpcBatch([call(pool.pair,S.totalSupply),call(pool.pair,balOf(DEAD)),
-        call(pool.pair,balOf(NULLA))]);
+        call(pool.pair,balOf(NULLA)),
+        // The venue's own cut. A constant-product pair mints LP to the factory's
+        // feeTo() on every liquidity event, so on any pool that has run for a
+        // while some unburned LP belongs to the exchange, not to anybody near
+        // the token. Listed as "withdrawable" without saying so, it reads as a
+        // rug waiting to happen.
+        pool.factory?call(pool.factory,S.feeTo):call(pool.pair,S.totalSupply)]);
       lpTot=Number(hx(lp[0]))/1e18;lpDead=Number(hx(lp[1]))/1e18;lpNull=Number(hx(lp[2]))/1e18;
+      if(pool.factory){
+        feeTo=addrAt(lp[3]);
+        if(feeTo&&feeTo!==NULLA){
+          const fb=await rpcBatch([call(pool.pair,balOf(feeTo))]);
+          lpFee=Number(hx(fb[0]))/1e18;
+        }else feeTo=null;
+      }
     }
 
     render({gp,gpOk,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
-      supply,burned,lpTot,lpDead,lpNull,others,hop,deeper,taxB,taxS,partial,mineUsd,otherLiq});
+      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,partial,mineUsd,otherLiq});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
   }catch(e){
     fail('Something went wrong reading this token.',

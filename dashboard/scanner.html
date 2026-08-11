@@ -161,9 +161,73 @@
     .cd-legend{font-size:.68rem;color:var(--muted);opacity:.9;line-height:1.6;margin-top:10px}
 
     .dis{font-size:.67rem;color:var(--muted);opacity:.85;line-height:1.65;margin-top:22px;max-width:80ch}
+
+    /* The "still being built" notice. Deliberately NOT a native dialog: those
+       block every subsequent browser event, and on a phone they look like a
+       browser warning rather than something this page is saying.
+       No backdrop-filter here — the page already carries fourteen blurred
+       layers, and a fifteenth is exactly what turned iOS Safari white in
+       round 5 of the performance work. A flat wash does the same job. */
+    .mw{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+      padding:20px;background:rgba(5,5,16,.82)}
+    .mw[hidden]{display:none}
+    .mb{max-width:460px;width:100%;border:1px solid rgba(240,185,11,.35);border-radius:18px;
+      background:linear-gradient(180deg,rgba(240,185,11,.07),rgba(240,185,11,0) 55%),#0d0c14;
+      padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+    .mb h2{font-family:'Space Grotesk',sans-serif;font-size:1.08rem;font-weight:700;color:var(--gold)}
+    .mb p{font-size:.79rem;color:var(--muted);line-height:1.68;margin-top:11px}
+    .mb button{margin-top:20px;width:100%;background:linear-gradient(135deg,var(--gold),#e0a800);
+      color:#000;border:0;border-radius:999px;padding:13px 28px;font-weight:700;font-size:.78rem;
+      cursor:pointer;font-family:inherit;letter-spacing:.3px}
+    .mb button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+    @media (prefers-reduced-motion:no-preference){
+      .mb{animation:mbin .22s ease-out}
+      @keyframes mbin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    }
   </style>
 </head>
 <body>
+
+<!-- Shown on every visit, before anything else is read. It is markup rather
+     than something the module draws, so it appears even if the script fails to
+     load — a page that cannot run its own code is exactly when this notice
+     matters most. -->
+<div class="mw" id="wip-modal" role="dialog" aria-modal="true" aria-labelledby="wip-t" aria-describedby="wip-d">
+  <div class="mb">
+    <h2 id="wip-t">This tool is still being built</h2>
+    <p id="wip-d">The Pool Scanner is a work in progress and is here for entertainment. Nothing it shows
+    is guaranteed &mdash; not the figures, not the labels, not the contract properties. Treat it as a
+    starting point for your own checks on BscScan and the pool contract, never as advice.</p>
+    <button type="button" id="wip-ok">Got it</button>
+  </div>
+</div>
+<script>
+  // Plain script, not the module: this has to work even where `type=module`
+  // does not. Esc and a click on the backdrop close it as well as the button,
+  // because a notice nobody can dismiss is worse than no notice.
+  (function(){
+    var m=document.getElementById('wip-modal'),b=document.getElementById('wip-ok');
+    if(!m||!b)return;
+    var prev=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    function close(){
+      m.hidden=true;
+      document.body.style.overflow=prev;
+      document.removeEventListener('keydown',key);
+      var i=document.getElementById('sc-in');if(i)try{i.focus()}catch(e){}
+    }
+    function key(e){
+      if(e.key==='Escape'){close();return}
+      // Nothing behind this may be reached with the keyboard while it is open.
+      if(e.key==='Tab'){e.preventDefault();b.focus()}
+    }
+    document.addEventListener('keydown',key);
+    b.addEventListener('click',close);
+    m.addEventListener('click',function(e){if(e.target===m)close()});
+    try{b.focus({preventScroll:true})}catch(e){b.focus()}
+  })();
+</script>
+
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
 <div class="page">
 

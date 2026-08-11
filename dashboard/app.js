@@ -367,15 +367,36 @@ function mansrc(j){try{
 // The opposite reserve cancels out of both. At vanishing size they tend to
 // 1 − TAX·FEE ≈ 3.24%, the fixed toll; everything above that is depth.
 const LP_FEE=0.9975,TAX=0.97;
-const DEPTH_BUYS=[100,500,1000,2500];
+const DEPTH_BUYS=[100,150,250,500,1000,2500];
 function depth(bR,wR,bnbP,mcap){
   const wbnb=Number(wR)/1e18,bnbSide=wbnb*bnbP,tvl=bnbSide*2;
   if(!(mcap>0)||!(wbnb>0))return;
   put('lq-ratio',(tvl/mcap*100).toFixed(1)+'%');
   put('lq-hard',(bnbSide/mcap*100).toFixed(1)+'%');
   put('lq-bnb',wbnb.toFixed(2)+' BNB');
+  // The percentage answers "how big is the floor against the market cap"; the
+  // dollar figure answers "how much is actually there". Both, or neither is worth
+  // much on its own.
+  put('lq-bnb-usd','$'+nf(bnbSide));
   const tok=Number(bR)/1e18,px=(wbnb/tok)*bnbP;
   if(!(px>0))return;
+  // The same depth read from the other end. The bars answer "what does $500 do";
+  // this answers "what does one percent cost", which is the number a trader sizing
+  // a position actually starts from.
+  //
+  // Constant product: (r + x)(r + FEE*x) = k*r², so FEE*x² + r(1+FEE)x + r²(1−k) = 0
+  // and x is the positive root. k = 1.01 for a buy that lifts the price 1%,
+  // k = 1/0.99 for a sell that drops it 1%.
+  //
+  // The buy needs no tax adjustment — BNB going in is never taxed. The sell does:
+  // only 97% of the tokens sent ever reach the reserves, so the trader has to send
+  // more than the pool math asks for. That, plus the slightly larger k, is the
+  // whole reason the sell figure sits above the buy figure.
+  const q=1+LP_FEE,
+        onePct=(r,k)=>r*((-q+Math.sqrt(q*q+4*LP_FEE*(k-1)))/(2*LP_FEE)),
+        money=v=>'$'+nf(v,v>=1000?0:2);
+  put('lq-up1',money(onePct(wbnb,1.01)*bnbP));
+  put('lq-dn1',money(onePct(tok,1/0.99)/TAX*px));
   const rows=DEPTH_BUYS.map(u=>{
     // Buy: BNB in, tokens out. Only the fee-reduced input reaches the curve.
     const dB=u/bnbP,effB=dB*LP_FEE,outB=(tok*effB)/(wbnb+effB);

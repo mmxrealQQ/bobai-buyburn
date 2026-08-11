@@ -1,0 +1,567 @@
+{
+ "name": "Brain On BNB AI — code library",
+ "site": "https://brainonbnb.com",
+ "license": "MIT",
+ "note": "No secrets are included in any bundle. They are supplied at runtime through the environment.",
+ "bundles": [
+  {
+   "slug": "buyback-bot",
+   "group": "bots",
+   "title": "Buyback & Burn Bot",
+   "tagline": "The bot that has run every ten minutes since launch.",
+   "files": 3,
+   "lines": 1311,
+   "zipBytes": 16054,
+   "txtBytes": 51159,
+   "sha256": "b894cb4caf5658f7",
+   "reqs": [
+    {
+     "what": "A wallet with a little gas in it",
+     "ours": "one BSC wallet, topped up from the tax itself",
+     "alt": "the token was launched on four.meme and trades on PancakeSwap V2; the swap calls are the only PancakeSwap-specific part"
+    },
+    {
+     "what": "Somewhere that runs code on a schedule",
+     "ours": "a Cloudflare Worker on a 10-minute cron",
+     "alt": "a VPS with crontab, GitHub Actions, Fly.io, Railway, a Raspberry Pi, or node on your own machine"
+    },
+    {
+     "what": "Somewhere to keep a small run log",
+     "ours": "one Cloudflare KV namespace",
+     "alt": "Redis, SQLite, Postgres, or a JSON file on disk — it writes one entry per cycle"
+    },
+    {
+     "what": "A BSC RPC endpoint",
+     "ours": "the public endpoints, with failover",
+     "alt": "NodeReal, Ankr, QuickNode or your own node if you want the headroom"
+    },
+    {
+     "what": "One secret at runtime: PRIVATE_KEY",
+     "ours": "wrangler secret put",
+     "alt": "a .env file, your host's secret store — anything but the source code"
+    }
+   ],
+   "paths": [
+    "buyback-bot.js",
+    "worker/index.js",
+    "worker/wrangler.toml"
+   ]
+  },
+  {
+   "slug": "dev-sweep-bot",
+   "group": "bots",
+   "title": "Dev Sweep Bot",
+   "tagline": "The hourly one that empties the tax wallet.",
+   "files": 3,
+   "lines": 329,
+   "zipBytes": 6738,
+   "txtBytes": 13138,
+   "sha256": "b794e1024d1ac37c",
+   "reqs": [
+    {
+     "what": "A wallet that receives the tax",
+     "ours": "the same wallet the buyback bot spends from",
+     "alt": "any wallet — it only needs to be the one your token routes its fee to"
+    },
+    {
+     "what": "Somewhere that runs code hourly",
+     "ours": "a Cloudflare Worker on a cron trigger",
+     "alt": "crontab, systemd timer, GitHub Actions, or any scheduler you already run"
+    },
+    {
+     "what": "Somewhere to keep a cursor",
+     "ours": "one KV namespace, shared with the buyback bot",
+     "alt": "a file, a Redis key, a single database row — it stores very little"
+    },
+    {
+     "what": "One secret at runtime: PRIVATE_KEY",
+     "ours": "wrangler secret put",
+     "alt": "a .env file or your host's secret store"
+    }
+   ],
+   "paths": [
+    "dev-buyback.js",
+    "worker-dev-buyback/index.js",
+    "worker-dev-buyback/wrangler.toml"
+   ]
+  },
+  {
+   "slug": "liquidity-bot",
+   "group": "bots",
+   "title": "Liquidity Add & LP Burn",
+   "tagline": "Adds liquidity, then burns the LP token it just received.",
+   "files": 2,
+   "lines": 388,
+   "zipBytes": 7179,
+   "txtBytes": 15394,
+   "sha256": "ef5c6bb3acdceb74",
+   "reqs": [
+    {
+     "what": "A wallet holding both sides of the pair",
+     "ours": "BNB and the token, in one wallet",
+     "alt": "any PancakeSwap V2 pair, and any BSC DEX sharing that router interface — the router is one constant"
+    },
+    {
+     "what": "A machine that can run Node 18+",
+     "ours": "run by hand, when we decide to add",
+     "alt": "put it on a cron if you want it automatic; nothing in it needs a human"
+    },
+    {
+     "what": "Slippage set for a fee-on-transfer token",
+     "ours": "≥1500 bps",
+     "alt": "none — a normal 1% simply reverts. This is the single thing that breaks naive add-liquidity scripts"
+    },
+    {
+     "what": "One secret at runtime: PRIVATE_KEY",
+     "ours": "a local .env file",
+     "alt": "your shell environment, a secret manager, a hardware signer"
+    }
+   ],
+   "paths": [
+    "add-liquidity-safe.js",
+    "burn-creator-bobai.js"
+   ]
+  },
+  {
+   "slug": "telegram-bot",
+   "group": "bots",
+   "title": "Telegram Bot",
+   "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
+   "files": 12,
+   "lines": 3897,
+   "zipBytes": 54070,
+   "txtBytes": 164740,
+   "sha256": "a602bbbe53e089db",
+   "reqs": [
+    {
+     "what": "A bot token",
+     "ours": "one from @BotFather, two minutes of work",
+     "alt": "none — this is Telegram's only door"
+    },
+    {
+     "what": "Somewhere to receive a webhook and run a cron",
+     "ours": "a single Cloudflare Worker doing both",
+     "alt": "any HTTPS endpoint: a small VPS, Deno Deploy, Vercel, Fly.io. Long-polling works too, at the cost of a process that never sleeps"
+    },
+    {
+     "what": "Somewhere to keep state",
+     "ours": "one Cloudflare KV namespace",
+     "alt": "Redis, SQLite, Postgres — it stores the block cursor, the watchlist and the captcha queue"
+    },
+    {
+     "what": "A BSC RPC endpoint that allows eth_getLogs",
+     "ours": "a keyed endpoint, with free ones as fallback",
+     "alt": "NodeReal, Ankr, QuickNode. Note that bsc-dataseed refuses log queries outright"
+    },
+    {
+     "what": "One secret at runtime: BOT_TOKEN",
+     "ours": "wrangler secret put",
+     "alt": "any secret store your host offers"
+    }
+   ],
+   "paths": [
+    "scripts/tg/tg-create-saga-pack.js",
+    "scripts/tg/tg-create-stickerset.js",
+    "scripts/tg/tg-delete-message.js",
+    "scripts/tg/tg-extend-stickerset.js",
+    "scripts/tg/tg-get-media.js",
+    "scripts/tg/tg-photo.js",
+    "scripts/tg/tg-saga-add-rest.js",
+    "scripts/tg/tg-saga-replace.js",
+    "scripts/tg/tg-send-sticker.js",
+    "scripts/tg/tg-update.js",
+    "worker-tg-bot/index.js",
+    "worker-tg-bot/wrangler.toml"
+   ]
+  },
+  {
+   "slug": "nft-mint-bot",
+   "group": "bots",
+   "title": "NFT Auto-Mint Bot",
+   "tagline": "Watches the pair and mints to the buyer, unasked.",
+   "files": 2,
+   "lines": 577,
+   "zipBytes": 10855,
+   "txtBytes": 23983,
+   "sha256": "2ae4329445b169cb",
+   "reqs": [
+    {
+     "what": "A deployed ERC-721 it is allowed to mint from",
+     "ours": "the contract in the NFT Buy Drops bundle",
+     "alt": "any ERC-721 with a mint function and a minter role"
+    },
+    {
+     "what": "A wallet with gas",
+     "ours": "the bot pays the mint, so the buyer pays nothing",
+     "alt": "you could make the buyer claim and pay — but then it is a claim page, not a drop"
+    },
+    {
+     "what": "Somewhere that runs code on a schedule",
+     "ours": "a Cloudflare Worker cron",
+     "alt": "crontab, GitHub Actions, any always-on process"
+    },
+    {
+     "what": "Somewhere to keep the block cursor",
+     "ours": "one KV namespace",
+     "alt": "a file or a database row. Whatever it is, it must be durable: this is what stops a restart double-minting"
+    },
+    {
+     "what": "One secret at runtime: PRIVATE_KEY",
+     "ours": "wrangler secret put",
+     "alt": "a .env file or your host's secret store"
+    }
+   ],
+   "paths": [
+    "worker-nft-mint/index.js",
+    "worker-nft-mint/wrangler.toml"
+   ]
+  },
+  {
+   "slug": "prize-pool-bot",
+   "group": "bots",
+   "title": "Prize Pool & Payout Bot",
+   "tagline": "Filled a prize pool from trading tax, then paid 39 wallets out.",
+   "files": 5,
+   "lines": 1399,
+   "zipBytes": 25671,
+   "txtBytes": 68977,
+   "sha256": "27e4e1c07788aaf8",
+   "reqs": [
+    {
+     "what": "A wallet holding the pool",
+     "ours": "a dedicated wallet, funded by a slice of the tax",
+     "alt": "a multisig if the pool is large enough to be worth arguing about"
+    },
+    {
+     "what": "Somewhere the entries and scores live",
+     "ours": "the Supabase project from the Worldcup bundle",
+     "alt": "any Postgres, or any store you can read a winners list out of"
+    },
+    {
+     "what": "A machine that can run Node 18+",
+     "ours": "run by hand, watched, one round at a time",
+     "alt": "none worth having. This one sends money to strangers — do not put it on a cron"
+    },
+    {
+     "what": "Secrets at runtime: PRIVATE_KEY, database URL and key",
+     "ours": "a local .env file",
+     "alt": "a secret manager. Never the source"
+    },
+    {
+     "what": "A dry run first",
+     "ours": "--dry-run, every single time",
+     "alt": "there is no alternative. Read the script before you copy it"
+    }
+   ],
+   "paths": [
+    "scripts/worldcup/wc-final-kickoff-prices.json",
+    "scripts/worldcup/wc-final-price-capture.js",
+    "scripts/worldcup/wc-payout-final.js",
+    "scripts/worldcup/wc-payout-group.js",
+    "worldcup-bot.js"
+   ]
+  },
+  {
+   "slug": "pool-scanner",
+   "group": "apps",
+   "title": "Pool Scanner",
+   "tagline": "Reads any BNB Chain pool. No backend at all.",
+   "files": 4,
+   "lines": 2659,
+   "zipBytes": 57705,
+   "txtBytes": 175016,
+   "sha256": "a1c62aad4d642ef2",
+   "reqs": [
+    {
+     "what": "A static host",
+     "ours": "Cloudflare Pages",
+     "alt": "GitHub Pages, Netlify, Vercel, S3, nginx, or python -m http.server on your laptop"
+    },
+    {
+     "what": "Public RPC endpoints",
+     "ours": "six, with failover, all free",
+     "alt": "your own node if you expect traffic. Note the requests leave from the visitor's browser, not your server — which is why this costs nothing to run"
+    },
+    {
+     "what": "Nothing else",
+     "ours": "no backend, no database, no API key, no build step",
+     "alt": "that is the whole point of it"
+    }
+   ],
+   "paths": [
+    "dashboard/scanner-chain.js",
+    "dashboard/scanner.html",
+    "dashboard/scanner.js",
+    "dashboard/styles.css"
+   ]
+  },
+  {
+   "slug": "nft-drop",
+   "group": "apps",
+   "title": "NFT Buy Drops",
+   "tagline": "The contract, the metadata server and the collection page.",
+   "files": 10,
+   "lines": 1246,
+   "zipBytes": 25213,
+   "txtBytes": 65986,
+   "sha256": "81e623cfc7acf854",
+   "reqs": [
+    {
+     "what": "A wallet with gas for the deployment",
+     "ours": "one transaction on BSC, a few cents",
+     "alt": "any EVM chain — the contract is plain Solidity with no chain-specific parts"
+    },
+    {
+     "what": "Somewhere to serve the metadata",
+     "ours": "a small Cloudflare Worker",
+     "alt": "static JSON files on any host. It is one file per token id and nothing else"
+    },
+    {
+     "what": "Somewhere to host the images",
+     "ours": "our own domain, over plain HTTPS",
+     "alt": "IPFS or Arweave — but link them by https gateway. Several marketplaces will not resolve an ipfs:// URL"
+    },
+    {
+     "what": "Your marketplace metadata set BEFORE you renounce",
+     "ours": "set, checked, then renounced",
+     "alt": "none. After renouncing it is permanent, and no marketplace can help you"
+    }
+   ],
+   "paths": [
+    "dashboard/nft/index.html",
+    "nft/contract/scripts/build-verify-input.js",
+    "nft/contract/scripts/compile.js",
+    "nft/contract/scripts/deploy.js",
+    "nft/contract/scripts/renounce.js",
+    "nft/contract/scripts/set-base-uri.js",
+    "nft/contract/scripts/setup.js",
+    "nft/contract/src/BobaiBuyDrops.sol",
+    "worker-nft-meta/index.js",
+    "worker-nft-meta/wrangler.toml"
+   ]
+  },
+  {
+   "slug": "worldcup-tipgame",
+   "group": "apps",
+   "title": "Worldcup Tipping Game",
+   "tagline": "A full tournament game that paid out on-chain.",
+   "files": 45,
+   "lines": 11095,
+   "zipBytes": 183111,
+   "txtBytes": 584791,
+   "sha256": "c9552a6152abc5cf",
+   "reqs": [
+    {
+     "what": "A Postgres with row-level security and auth",
+     "ours": "Supabase, free tier, all the way through",
+     "alt": "any Postgres plus an auth layer. The schema is plain SQL; the RLS policies are the part worth reading"
+    },
+    {
+     "what": "Somewhere that pulls fixtures on a schedule",
+     "ours": "a Cloudflare Worker cron",
+     "alt": "any scheduler. It fetches, compares and writes — nothing exotic"
+    },
+    {
+     "what": "A fixtures and results feed",
+     "ours": "football-data.org, free tier",
+     "alt": "any sports API, or type the results in by hand for a small tournament"
+    },
+    {
+     "what": "A wallet, only if you pay out on-chain",
+     "ours": "one wallet, one payout script, 39 transactions",
+     "alt": "skip it entirely and the game still works — the prize pool is optional scaffolding"
+    }
+   ],
+   "paths": [
+    "dashboard/worldcup/app/assets/auth.js",
+    "dashboard/worldcup/app/assets/avatar.js",
+    "dashboard/worldcup/app/assets/config.js",
+    "dashboard/worldcup/app/assets/countries.js",
+    "dashboard/worldcup/app/assets/nav.js",
+    "dashboard/worldcup/app/assets/profile.js",
+    "dashboard/worldcup/app/assets/projection.js",
+    "dashboard/worldcup/app/assets/style.css",
+    "dashboard/worldcup/app/assets/twemojify.js",
+    "dashboard/worldcup/app/bonus.html",
+    "dashboard/worldcup/app/crypto.html",
+    "dashboard/worldcup/app/dashboard.html",
+    "dashboard/worldcup/app/for-designer.html",
+    "dashboard/worldcup/app/index.html",
+    "dashboard/worldcup/app/leaderboard.html",
+    "dashboard/worldcup/app/prize-pool.html",
+    "dashboard/worldcup/app/reset.html",
+    "dashboard/worldcup/app/rules.html",
+    "dashboard/worldcup/app/sql/migration_phase_c.sql",
+    "dashboard/worldcup/app/sql/migration_phase_d.sql",
+    "dashboard/worldcup/app/sql/migration_phase_e.sql",
+    "dashboard/worldcup/app/sql/migration_phase_e_grants.sql",
+    "dashboard/worldcup/app/sql/migration_phase_g.sql",
+    "dashboard/worldcup/app/sql/migration_phase_h_auth.sql",
+    "dashboard/worldcup/app/sql/migration_phase_h_crypto_lock.sql",
+    "dashboard/worldcup/app/sql/migration_phase_h_grants.sql",
+    "dashboard/worldcup/app/sql/migration_phase_h_signup_trigger.sql",
+    "dashboard/worldcup/app/sql/migration_phase_h_wallet_signature.sql",
+    "dashboard/worldcup/app/sql/migration_phase_i_wallet_simple.sql",
+    "dashboard/worldcup/app/sql/migration_phase_j_scoring_rebalance.sql",
+    "dashboard/worldcup/app/sql/migration_phase_k_bonus_20.sql",
+    "dashboard/worldcup/app/sql/migration_phase_l_md2_reopen.sql",
+    "dashboard/worldcup/app/sql/migration_phase_m_md_staircase.sql",
+    "dashboard/worldcup/app/sql/migration_phase_n_bonus_live.sql",
+    "dashboard/worldcup/app/sql/migration_phase_o_bobai_snapshot.sql",
+    "dashboard/worldcup/app/sql/migration_phase_p_group_payouts.sql",
+    "dashboard/worldcup/app/sql/migration_phase_q_penalties.sql",
+    "dashboard/worldcup/app/sql/reset_test_data.sql",
+    "dashboard/worldcup/app/sql/schema.sql",
+    "dashboard/worldcup/app/tips.html",
+    "dashboard/worldcup/app/user.html",
+    "dashboard/worldcup/index.html",
+    "worker-wc/index.js",
+    "worker-wc/migrations/2026-06-28_match_number.sql",
+    "worker-wc/wrangler.toml"
+   ]
+  },
+  {
+   "slug": "browser-game",
+   "group": "apps",
+   "title": "Burn & Add Liq — Browser Game",
+   "tagline": "One HTML file. Jump, burn, dodge the dumps.",
+   "files": 2,
+   "lines": 1198,
+   "zipBytes": 20516,
+   "txtBytes": 70093,
+   "sha256": "8581aeb345c4f052",
+   "reqs": [
+    {
+     "what": "A static host",
+     "ours": "Cloudflare Pages",
+     "alt": "anything that can serve one HTML file. Open it from disk and it plays"
+    },
+    {
+     "what": "A score table, only if you want the board",
+     "ours": "one Supabase table; the SQL is in the bundle",
+     "alt": "any database with an HTTP API, or leave it out — the game runs fine and keeps scores locally"
+    },
+    {
+     "what": "To know what a public score table means",
+     "ours": "anyone holding the browser key can post a score",
+     "alt": "put the insert behind your own endpoint, or add an upper bound, if the board is meant to be competitive"
+    }
+   ],
+   "paths": [
+    "dashboard/game/index.html",
+    "game/bobai_scores_setup.sql"
+   ]
+  },
+  {
+   "slug": "brainscreener",
+   "group": "apps",
+   "title": "brainScreener",
+   "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
+   "files": 52,
+   "lines": 9551,
+   "zipBytes": 178529,
+   "txtBytes": 504187,
+   "sha256": "0ed180d98a2751e7",
+   "reqs": [
+    {
+     "what": "A static host",
+     "ours": "Cloudflare Pages",
+     "alt": "any of them. There is no build step and no framework"
+    },
+    {
+     "what": "Nothing else",
+     "ours": "no database, no accounts, no analytics, no cookies",
+     "alt": "the answers never leave the browser, which is a design decision rather than a shortcut"
+    }
+   ],
+   "paths": [
+    "dashboard/brainscreener/404.html",
+    "dashboard/brainscreener/adhd-result.html",
+    "dashboard/brainscreener/adhd.html",
+    "dashboard/brainscreener/aq50-result.html",
+    "dashboard/brainscreener/aq50.html",
+    "dashboard/brainscreener/assets/css/main.css",
+    "dashboard/brainscreener/assets/js/adhs.js",
+    "dashboard/brainscreener/assets/js/charakter-result.js",
+    "dashboard/brainscreener/assets/js/i18n/en/adhs-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/adhs-result.js",
+    "dashboard/brainscreener/assets/js/i18n/en/aq50-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/audit-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/bfi2-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/charakter-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/eat26-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/gad7-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/iq-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/iq-result.js",
+    "dashboard/brainscreener/assets/js/i18n/en/mdq-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/ocir-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/pcl5-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/phq9-data.js",
+    "dashboard/brainscreener/assets/js/i18n/en/whodas36-data.js",
+    "dashboard/brainscreener/assets/js/iq.js",
+    "dashboard/brainscreener/assets/js/print-fallback.js",
+    "dashboard/brainscreener/assets/js/result-engine.js",
+    "dashboard/brainscreener/assets/js/test-engine.js",
+    "dashboard/brainscreener/assets/js/year.js",
+    "dashboard/brainscreener/audit-result.html",
+    "dashboard/brainscreener/audit.html",
+    "dashboard/brainscreener/bfi2-result.html",
+    "dashboard/brainscreener/bfi2.html",
+    "dashboard/brainscreener/character-result.html",
+    "dashboard/brainscreener/character.html",
+    "dashboard/brainscreener/debug-ua.html",
+    "dashboard/brainscreener/eat26-result.html",
+    "dashboard/brainscreener/eat26.html",
+    "dashboard/brainscreener/gad7-result.html",
+    "dashboard/brainscreener/gad7.html",
+    "dashboard/brainscreener/index.html",
+    "dashboard/brainscreener/iq-result.html",
+    "dashboard/brainscreener/iq.html",
+    "dashboard/brainscreener/mdq-result.html",
+    "dashboard/brainscreener/mdq.html",
+    "dashboard/brainscreener/ocir-result.html",
+    "dashboard/brainscreener/ocir.html",
+    "dashboard/brainscreener/pcl5-result.html",
+    "dashboard/brainscreener/pcl5.html",
+    "dashboard/brainscreener/phq9-result.html",
+    "dashboard/brainscreener/phq9.html",
+    "dashboard/brainscreener/whodas36-result.html",
+    "dashboard/brainscreener/whodas36.html"
+   ]
+  },
+  {
+   "slug": "agent-tools",
+   "group": "apps",
+   "title": "Agent Tools — MCP & llms.txt",
+   "tagline": "What an AI agent sees when it asks this project a question.",
+   "files": 4,
+   "lines": 1269,
+   "zipBytes": 31037,
+   "txtBytes": 86321,
+   "sha256": "55bf69a0badbd842",
+   "reqs": [
+    {
+     "what": "A machine that can run Node 18+",
+     "ours": "the MCP server over stdio, locally",
+     "alt": "point any MCP client at it — Claude Desktop, Claude Code, Cursor, or your own"
+    },
+    {
+     "what": "Somewhere to serve the HTTP tools",
+     "ours": "the Pages worker already serving the site",
+     "alt": "any HTTPS endpoint, or skip it and run the MCP server only"
+    },
+    {
+     "what": "No keys at all",
+     "ours": "every tool reads public chain data",
+     "alt": "there is nothing to secure here, which is why it can be pointed at an agent without a second thought"
+    }
+   ],
+   "paths": [
+    "dashboard/_worker.js",
+    "dashboard/llms.txt",
+    "mcp/server.mjs",
+    "scripts/bobai-agent-card.json"
+   ]
+  }
+ ]
+}

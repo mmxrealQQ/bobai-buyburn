@@ -1,3 +1,689 @@
+# Telegram Bot — Brain On BNB AI
+# Buy alerts, burn alerts, price, whale tracking, captcha.
+#
+# This is the complete telegram-bot bundle as a single file, so it can be read in
+# one fetch. 12 files, 3897 lines.
+# Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
+# Everything else:   https://brainonbnb.com/code/index.txt
+#
+# No secrets are present: they are supplied at runtime through the environment.
+# MIT licensed.
+
+
+==============================================================================
+=== FILE: scripts/tg/tg-create-saga-pack.js
+==============================================================================
+
+#!/usr/bin/env node
+// Build the "BOBAI Saga" Telegram sticker SET (weekend-vibes look, wise-master
+// meme captions) via the bobai-tg-bot worker. Mirrors tg-create-stickerset.js.
+//
+// Usage: node tg-create-saga-pack.js
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const SECRET = process.env.BROADCAST_SECRET || '';
+if (!SECRET) { console.error('Missing BROADCAST_SECRET in .env'); process.exit(1); }
+
+const OWNER_USER_ID = 7334850816;
+const PREFIX = 'bobai_saga_pack';
+const TITLE = 'BOBAI Saga — May the Pump Be With You';
+const STICKERS = [
+  ['saga-pump',     '🧙'],
+  ['saga-patience', '⏳'],
+  ['saga-nosell',   '✋'],
+  ['saga-hodl',     '✊'],
+  ['saga-fear',     '🧘'],
+];
+
+const HDR = { 'x-broadcast-secret': SECRET };
+
+async function postJson(endpoint, body) {
+  const r = await fetch(`${BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { ...HDR, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json().catch(() => ({ ok: false, error: 'invalid json response' }));
+}
+
+async function uploadOne(filePath) {
+  const buf = fs.readFileSync(filePath);
+  const form = new FormData();
+  form.append('user_id', String(OWNER_USER_ID));
+  form.append('sticker', new Blob([buf], { type: 'video/webm' }), path.basename(filePath));
+  const r = await fetch(`${BASE}/stickerset/upload`, { method: 'POST', headers: HDR, body: form });
+  return r.json().catch(() => ({ ok: false, error: 'invalid json response' }));
+}
+
+(async () => {
+  const me = await fetch(`${BASE}/stickerset/getbot`, { headers: HDR }).then(r => r.json());
+  if (!me.ok || !me.username) {
+    console.error('[!] getbot failed:', JSON.stringify(me)); process.exit(1);
+  }
+  const setName = `${PREFIX}_by_${me.username}`;
+  console.log(`[*] set name: ${setName}`);
+
+  const items = STICKERS.map(([slug, emoji]) => {
+    const fp = path.join(__dirname, 'stickers', 'out', `bobai-${slug}.webm`);
+    if (!fs.existsSync(fp)) { console.error(`[!] missing: ${fp}`); process.exit(1); }
+    return { slug, emoji, fp };
+  });
+
+  for (const it of items) {
+    const j = await uploadOne(it.fp);
+    if (!j.ok) { console.error(`[!] upload ${it.slug} failed:`, JSON.stringify(j)); process.exit(1); }
+    it.file_id = j.result.file_id;
+    console.log(`[+] uploaded ${it.slug} ${it.emoji}  ${it.file_id.slice(0, 24)}…`);
+  }
+
+  const first = items[0];
+  const c = await postJson('/stickerset/create', {
+    user_id: OWNER_USER_ID, name: setName, title: TITLE,
+    file_id: first.file_id, emoji: first.emoji,
+  });
+  if (!c.ok) { console.error('[!] create failed:', JSON.stringify(c)); process.exit(1); }
+  console.log(`[+] set created (${first.slug} ${first.emoji})`);
+
+  for (let i = 1; i < items.length; i++) {
+    const it = items[i];
+    const a = await postJson('/stickerset/add', {
+      user_id: OWNER_USER_ID, name: setName, file_id: it.file_id, emoji: it.emoji,
+    });
+    if (!a.ok) { console.error(`[!] add ${it.slug} failed:`, JSON.stringify(a)); process.exit(1); }
+    console.log(`[+] added ${it.slug} ${it.emoji}`);
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  console.log(`\n✅ Done.\nInstall: https://t.me/addstickers/${setName}`);
+})();
+
+==============================================================================
+=== FILE: scripts/tg/tg-create-stickerset.js
+==============================================================================
+
+#!/usr/bin/env node
+// Build a Telegram sticker SET from local .webm files via the bobai-tg-bot worker.
+//
+// Usage:
+//   node tg-create-stickerset.js
+//
+// Reads the config block below — owner user_id, set prefix, title, and
+// (slug, emoji) pairs — uploads each webm via the worker, creates the set
+// with the first sticker, then adds the remaining nine. Prints the
+// t.me/addstickers/<name> install link on success.
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const SECRET = process.env.BROADCAST_SECRET || '';
+if (!SECRET) { console.error('Missing BROADCAST_SECRET in .env'); process.exit(1); }
+
+const OWNER_USER_ID = 7334850816;
+const PREFIX = 'bobai_meme_pack';
+const TITLE = 'BOBAI Meme Pack';
+const STICKERS = [
+  ['thunder-buy',     '⚡'],
+  ['kraken-buy',      '🐙'],
+  ['supernova-burn',  '🔥'],
+  ['rocket',          '🚀'],
+  ['diamond',         '💎'],
+  ['laser',           '👁️'],
+  ['bull',            '🐂'],
+  ['hodl',            '✊'],
+  ['gigabrain',       '🧠'],
+  ['wagmi',           '❤️'],
+];
+
+const HDR = { 'x-broadcast-secret': SECRET };
+
+async function postJson(endpoint, body) {
+  const r = await fetch(`${BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { ...HDR, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json().catch(() => ({ ok: false, error: 'invalid json response' }));
+}
+
+async function uploadOne(filePath) {
+  const buf = fs.readFileSync(filePath);
+  const form = new FormData();
+  form.append('user_id', String(OWNER_USER_ID));
+  form.append('sticker', new Blob([buf], { type: 'video/webm' }), path.basename(filePath));
+  const r = await fetch(`${BASE}/stickerset/upload`, { method: 'POST', headers: HDR, body: form });
+  return r.json().catch(() => ({ ok: false, error: 'invalid json response' }));
+}
+
+(async () => {
+  // 1. resolve bot username for set-name suffix
+  const me = await fetch(`${BASE}/stickerset/getbot`, { headers: HDR }).then(r => r.json());
+  if (!me.ok || !me.username) {
+    console.error('[!] getbot failed:', JSON.stringify(me)); process.exit(1);
+  }
+  const setName = `${PREFIX}_by_${me.username}`;
+  console.log(`[*] set name: ${setName}`);
+
+  // 2. verify all files exist before uploading anything
+  const items = STICKERS.map(([slug, emoji]) => {
+    const fp = path.join(__dirname, 'stickers', 'out', `bobai-${slug}.webm`);
+    if (!fs.existsSync(fp)) { console.error(`[!] missing: ${fp}`); process.exit(1); }
+    return { slug, emoji, fp };
+  });
+
+  // 3. upload all → collect file_ids
+  for (const it of items) {
+    const j = await uploadOne(it.fp);
+    if (!j.ok) { console.error(`[!] upload ${it.slug} failed:`, JSON.stringify(j)); process.exit(1); }
+    it.file_id = j.result.file_id;
+    console.log(`[+] uploaded ${it.slug} ${it.emoji}  ${it.file_id.slice(0, 24)}…`);
+  }
+
+  // 4. create set with first sticker
+  const first = items[0];
+  const c = await postJson('/stickerset/create', {
+    user_id: OWNER_USER_ID, name: setName, title: TITLE,
+    file_id: first.file_id, emoji: first.emoji,
+  });
+  if (!c.ok) { console.error('[!] create failed:', JSON.stringify(c)); process.exit(1); }
+  console.log(`[+] set created (${first.slug} ${first.emoji})`);
+
+  // 5. add the rest sequentially (small delay to stay friendly to TG rate limits)
+  for (let i = 1; i < items.length; i++) {
+    const it = items[i];
+    const a = await postJson('/stickerset/add', {
+      user_id: OWNER_USER_ID, name: setName, file_id: it.file_id, emoji: it.emoji,
+    });
+    if (!a.ok) { console.error(`[!] add ${it.slug} failed:`, JSON.stringify(a)); process.exit(1); }
+    console.log(`[+] added ${it.slug} ${it.emoji}`);
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  console.log(`\n✅ Done.\nInstall: https://t.me/addstickers/${setName}`);
+})();
+
+==============================================================================
+=== FILE: scripts/tg/tg-delete-message.js
+==============================================================================
+
+#!/usr/bin/env node
+// Delete a message (e.g. a preview sticker) via the bobai-tg-bot Worker.
+//
+// Usage:
+//   node tg-delete-message.js <chat_id> <message_id>
+//
+// POSTs to the worker's /deletemessage endpoint (auth: BROADCAST_SECRET); the
+// worker calls Telegram deleteMessage with its own BOT_TOKEN. Note: Telegram only
+// lets bots delete messages younger than 48h.
+require('dotenv').config();
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const SECRET = process.env.BROADCAST_SECRET || '';
+
+const [chatId, messageId] = process.argv.slice(2);
+if (!SECRET)    { console.error('Missing BROADCAST_SECRET in .env'); process.exit(1); }
+if (!chatId || !messageId) { console.error('Usage: node tg-delete-message.js <chat_id> <message_id>'); process.exit(1); }
+
+(async () => {
+  const res = await fetch(`${BASE}/deletemessage`, {
+    method: 'POST',
+    headers: { 'x-broadcast-secret': SECRET, 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id: String(chatId), message_id: Number(messageId) }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (res.ok && json.ok) {
+    console.log('🗑️  deleted message', messageId);
+  } else {
+    console.error('❌ failed:', res.status, JSON.stringify(json));
+    process.exit(1);
+  }
+})();
+
+==============================================================================
+=== FILE: scripts/tg/tg-extend-stickerset.js
+==============================================================================
+
+#!/usr/bin/env node
+// Append additional stickers to an EXISTING Telegram sticker set via the
+// bobai-tg-bot worker. Mirrors tg-create-stickerset.js but skips the
+// /stickerset/create step — uploads each webm, then /stickerset/add.
+//
+// Usage:
+//   node tg-extend-stickerset.js
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const SECRET = process.env.BROADCAST_SECRET || '';
+if (!SECRET) { console.error('Missing BROADCAST_SECRET in .env'); process.exit(1); }
+
+const OWNER_USER_ID = 7334850816;
+const SET_NAME = 'bobai_meme_pack_by_bobai_official_bot';
+const STICKERS = [
+  ['gm',       '☀️'],
+  ['pump',     '📈'],
+  ['dip',      '🩸'],
+  ['builder',  '🧱'],
+  ['shield',   '🛡️'],
+];
+
+const HDR = { 'x-broadcast-secret': SECRET };
+
+async function postJson(endpoint, body) {
+  const r = await fetch(`${BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { ...HDR, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json().catch(() => ({ ok: false, error: 'invalid json response' }));
+}
+
+async function uploadOne(filePath) {
+  const buf = fs.readFileSync(filePath);
+  const form = new FormData();
+  form.append('user_id', String(OWNER_USER_ID));
+  form.append('sticker', new Blob([buf], { type: 'video/webm' }), path.basename(filePath));
+  const r = await fetch(`${BASE}/stickerset/upload`, { method: 'POST', headers: HDR, body: form });
+  return r.json().catch(() => ({ ok: false, error: 'invalid json response' }));
+}
+
+(async () => {
+  const items = STICKERS.map(([slug, emoji]) => {
+    const fp = path.join(__dirname, 'stickers', 'out', `bobai-${slug}.webm`);
+    if (!fs.existsSync(fp)) { console.error(`[!] missing: ${fp}`); process.exit(1); }
+    return { slug, emoji, fp };
+  });
+
+  for (const it of items) {
+    const j = await uploadOne(it.fp);
+    if (!j.ok) { console.error(`[!] upload ${it.slug} failed:`, JSON.stringify(j)); process.exit(1); }
+    it.file_id = j.result.file_id;
+    console.log(`[+] uploaded ${it.slug} ${it.emoji}  ${it.file_id.slice(0, 24)}…`);
+  }
+
+  for (const it of items) {
+    const a = await postJson('/stickerset/add', {
+      user_id: OWNER_USER_ID, name: SET_NAME, file_id: it.file_id, emoji: it.emoji,
+    });
+    if (!a.ok) { console.error(`[!] add ${it.slug} failed:`, JSON.stringify(a)); process.exit(1); }
+    console.log(`[+] added ${it.slug} ${it.emoji}`);
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  console.log(`\n✅ Done.\nSet: https://t.me/addstickers/${SET_NAME}`);
+})();
+
+==============================================================================
+=== FILE: scripts/tg/tg-get-media.js
+==============================================================================
+
+#!/usr/bin/env node
+// Download the last reference media the owner sent the bot in private chat.
+//
+// Usage:
+//   node tg-get-media.js [output-path]
+//
+// Architecture (mirrors tg-send-sticker.js): the worker webhook stores the last
+// owner-sent file (animation/video/document/photo/sticker) in KV. This script
+// hits GET /media/download (auth'd with BROADCAST_SECRET) and saves the bytes.
+// BOT_TOKEN never leaves Cloudflare.
+//
+// .env requires:
+//   BROADCAST_SECRET  — shared secret between this script and the worker
+//   BROADCAST_URL     — optional; defaults to the production worker origin
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const SECRET = process.env.BROADCAST_SECRET || '';
+if (!SECRET) { console.error('Missing BROADCAST_SECRET in .env'); process.exit(1); }
+
+const outArg = process.argv[2];
+
+(async () => {
+  const metaRes = await fetch(`${BASE}/media/last`, { headers: { 'x-broadcast-secret': SECRET } });
+  const meta = await metaRes.json().catch(() => ({}));
+  if (!metaRes.ok || !meta.ok) {
+    console.error('❌ no media available:', metaRes.status, JSON.stringify(meta));
+    process.exit(1);
+  }
+  console.log(`📥 last media: type=${meta.type} name=${meta.name} ts=${new Date(meta.ts).toISOString()}`);
+
+  const res = await fetch(`${BASE}/media/download`, { headers: { 'x-broadcast-secret': SECRET } });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    console.error('❌ download failed:', res.status, err);
+    process.exit(1);
+  }
+  const name = decodeURIComponent(res.headers.get('x-media-name') || meta.name || 'ref.bin');
+  const out = outArg || path.join('stickers', 'incoming', name);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, Buffer.from(await res.arrayBuffer()));
+  console.log(`✅ saved → ${out} (${fs.statSync(out).size} bytes)`);
+})();
+
+==============================================================================
+=== FILE: scripts/tg/tg-photo.js
+==============================================================================
+
+#!/usr/bin/env node
+// Send an image announcement (report card + caption) to the BOBAI Telegram group.
+//
+// Usage:
+//   node tg-photo.js --photo <image> --caption-file <path> [--internal] [--no-brain]
+//   node tg-photo.js --photo <image> --caption "<HTML text>"
+//
+// Architecture: like tg-update.js, this never talks to Telegram directly. It POSTs a
+// multipart form to the bobai-tg-bot Worker's /broadcastphoto endpoint, authenticated
+// with BROADCAST_SECRET. The worker forwards it to sendPhoto with its own BOT_TOKEN,
+// which never leaves Cloudflare.
+//
+// --internal targets the private BOBAI Intern chat — use it to preview before the
+// public group sees anything.
+require('dotenv').config();
+
+const fs = require('fs');
+const path = require('path');
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const BROADCAST_SECRET = process.env.BROADCAST_SECRET || '';
+
+if (!BROADCAST_SECRET) {
+  console.error('Missing BROADCAST_SECRET in .env');
+  process.exit(1);
+}
+
+const args = process.argv.slice(2);
+const flag = (name) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : null;
+};
+
+const photoPath = flag('--photo');
+const captionFile = flag('--caption-file');
+const captionArg = flag('--caption');
+const internal = args.includes('--internal');
+const noBrain = args.includes('--no-brain');
+
+if (!photoPath) {
+  console.error('Usage: node tg-photo.js --photo <image> [--caption-file <path> | --caption "<html>"] [--internal] [--no-brain]');
+  process.exit(1);
+}
+if (!fs.existsSync(photoPath)) {
+  console.error('Photo not found: ' + photoPath);
+  process.exit(1);
+}
+
+const caption = captionFile ? fs.readFileSync(captionFile, 'utf8').trim() : (captionArg || '').trim();
+if (caption.length > 1024) {
+  console.error(`Caption too long: ${caption.length}/1024 characters (Telegram limit). Shorten it.`);
+  process.exit(1);
+}
+
+(async () => {
+  const bytes = fs.readFileSync(photoPath);
+  const form = new FormData();
+  form.append('photo', new Blob([bytes], { type: 'image/png' }), path.basename(photoPath));
+  if (caption) form.append('caption', caption);
+  if (internal) form.append('target', 'internal');
+  if (noBrain) form.append('prefixBrain', '0');
+
+  const r = await fetch(BASE + '/broadcastphoto', {
+    method: 'POST',
+    headers: { 'x-broadcast-secret': BROADCAST_SECRET },
+    body: form,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) {
+    console.error('Failed:', r.status, JSON.stringify(j));
+    process.exit(1);
+  }
+  console.log(`Sent to ${internal ? 'INTERNAL' : 'PUBLIC group'}: message_id = ${j.message_id}` +
+    `  (${(bytes.length / 1024).toFixed(0)} KB, caption ${caption.length}/1024)`);
+})().catch((err) => {
+  console.error('Failed:', err.message);
+  process.exit(1);
+});
+
+==============================================================================
+=== FILE: scripts/tg/tg-saga-add-rest.js
+==============================================================================
+
+#!/usr/bin/env node
+// One-off: add the remaining 4 saga stickers to the freshly created set
+// (createNewStickerSet → addStickerToSet race needs retries).
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const SECRET = process.env.BROADCAST_SECRET || '';
+const OWNER_USER_ID = 7334850816;
+const NAME = 'bobai_saga_pack_by_bobai_official_bot';
+// slugs+emojis via CLI pairs (node tg-saga-add-rest.js <slug> <emoji> ...),
+// falls back to the original batch-2 list.
+const argPairs = [];
+for (let i = 2; i + 1 < process.argv.length; i += 2) {
+  argPairs.push([process.argv[i], process.argv[i + 1]]);
+}
+const STICKERS = argPairs.length ? argPairs : [
+  ['saga-patience', '⏳'],
+  ['saga-nosell',   '✋'],
+  ['saga-hodl',     '✊'],
+  ['saga-fear',     '🧘'],
+];
+const HDR = { 'x-broadcast-secret': SECRET };
+
+async function uploadOne(filePath) {
+  const buf = fs.readFileSync(filePath);
+  const form = new FormData();
+  form.append('user_id', String(OWNER_USER_ID));
+  form.append('sticker', new Blob([buf], { type: 'video/webm' }), path.basename(filePath));
+  const r = await fetch(`${BASE}/stickerset/upload`, { method: 'POST', headers: HDR, body: form });
+  return r.json();
+}
+
+(async () => {
+  for (const [slug, emoji] of STICKERS) {
+    const fp = path.join(__dirname, 'stickers', 'out', `bobai-${slug}.webm`);
+    const up = await uploadOne(fp);
+    if (!up.ok) { console.error(`[!] upload ${slug}:`, JSON.stringify(up)); process.exit(1); }
+    let done = false;
+    for (let att = 1; att <= 6 && !done; att++) {
+      const r = await fetch(`${BASE}/stickerset/add`, {
+        method: 'POST', headers: { ...HDR, 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: OWNER_USER_ID, name: NAME, file_id: up.result.file_id, emoji }),
+      }).then(x => x.json());
+      if (r.ok) { console.log(`[+] added ${slug} ${emoji}`); done = true; break; }
+      console.log(`[~] ${slug} attempt ${att}: ${r.description || JSON.stringify(r)} — retrying`);
+      await new Promise(res => setTimeout(res, 4000));
+    }
+    if (!done) { console.error(`[!] gave up on ${slug}`); process.exit(1); }
+  }
+  const g = await fetch(`${BASE}/stickerset/get?name=${NAME}`, { headers: HDR }).then(x => x.json());
+  const count = g.result?.stickers?.length ?? '?';
+  console.log(`\n✅ set now has ${count} stickers\nInstall: https://t.me/addstickers/${NAME}`);
+})();
+
+==============================================================================
+=== FILE: scripts/tg/tg-saga-replace.js
+==============================================================================
+
+#!/usr/bin/env node
+// Replace one sticker in the live saga set (same position) with a fresh webm.
+// Usage: node tg-saga-replace.js <slug> <emoji>
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const SECRET = process.env.BROADCAST_SECRET || '';
+const OWNER_USER_ID = 7334850816;
+const NAME = 'bobai_saga_pack_by_bobai_official_bot';
+const HDR = { 'x-broadcast-secret': SECRET };
+
+const [slug, emoji] = process.argv.slice(2);
+if (!slug || !emoji) { console.error('Usage: node tg-saga-replace.js <slug> <emoji>'); process.exit(1); }
+
+(async () => {
+  const g = await fetch(`${BASE}/stickerset/get?name=${NAME}`, { headers: HDR }).then(x => x.json());
+  if (!g.ok) { console.error('[!] get set failed:', JSON.stringify(g).slice(0, 300)); process.exit(1); }
+  const old = g.result.stickers.find(s => (s.emoji || '') === emoji);
+  if (!old) { console.error(`[!] no sticker with emoji ${emoji} in set`); process.exit(1); }
+
+  const buf = fs.readFileSync(path.join(__dirname, 'stickers', 'out', `bobai-${slug}.webm`));
+  const form = new FormData();
+  form.append('user_id', String(OWNER_USER_ID));
+  form.append('sticker', new Blob([buf], { type: 'video/webm' }), `${slug}.webm`);
+  const up = await fetch(`${BASE}/stickerset/upload`, { method: 'POST', headers: HDR, body: form }).then(x => x.json());
+  if (!up.ok) { console.error('[!] upload failed:', JSON.stringify(up)); process.exit(1); }
+
+  const r = await fetch(`${BASE}/stickerset/replace`, {
+    method: 'POST', headers: { ...HDR, 'content-type': 'application/json' },
+    body: JSON.stringify({ user_id: OWNER_USER_ID, name: NAME, old_sticker: old.file_id,
+                           file_id: up.result.file_id, emoji }),
+  }).then(x => x.json());
+  if (!r.ok) { console.error('[!] replace failed:', JSON.stringify(r)); process.exit(1); }
+  console.log(`✅ replaced ${emoji} ${slug} in ${NAME}`);
+})();
+
+==============================================================================
+=== FILE: scripts/tg/tg-send-sticker.js
+==============================================================================
+
+#!/usr/bin/env node
+// Send an animated .webm sticker via the bobai-tg-bot Cloudflare Worker.
+//
+// Usage:
+//   node tg-send-sticker.js <chat_id> <path-to-webm>
+//
+// Architecture (mirrors tg-update.js): this script does NOT talk to Telegram
+// directly. It POSTs the file as multipart/form-data to the worker's /sendsticker
+// endpoint, authenticated with the shared BROADCAST_SECRET. The worker forwards it
+// to Telegram sendSticker using its own BOT_TOKEN (a CF secret that never leaves CF).
+//
+// .env requires:
+//   BROADCAST_SECRET  — shared secret between this script and the worker
+//   BROADCAST_URL     — optional; defaults to the production worker origin
+require('dotenv').config();
+const fs = require('fs');
+
+const BASE = (process.env.BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast')
+  .replace(/\/broadcast$/, '');
+const SECRET = process.env.BROADCAST_SECRET || '';
+
+const [chatId, filePath] = process.argv.slice(2);
+if (!SECRET)   { console.error('Missing BROADCAST_SECRET in .env'); process.exit(1); }
+if (!chatId)   { console.error('Usage: node tg-send-sticker.js <chat_id> <path-to-webm>'); process.exit(1); }
+if (!filePath || !fs.existsSync(filePath)) { console.error('webm file not found:', filePath); process.exit(1); }
+
+(async () => {
+  const buf = fs.readFileSync(filePath);
+  const form = new FormData();
+  form.append('chat_id', String(chatId));
+  form.append('sticker', new Blob([buf], { type: 'video/webm' }), 'sticker.webm');
+
+  const res = await fetch(`${BASE}/sendsticker`, {
+    method: 'POST',
+    headers: { 'x-broadcast-secret': SECRET },
+    body: form,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (res.ok && json.ok) {
+    console.log('✅ sent — message_id', json.result?.message_id);
+  } else {
+    console.error('❌ failed:', res.status, JSON.stringify(json));
+    process.exit(1);
+  }
+})();
+
+==============================================================================
+=== FILE: scripts/tg/tg-update.js
+==============================================================================
+
+#!/usr/bin/env node
+// Send a "brain update" announcement to the BOBAI Telegram group.
+//
+// Usage:
+//   node tg-update.js "<HTML-formatted text>"
+//   node tg-update.js --file <path-to-text-file>      (preferred for multi-line)
+//
+// Architecture:
+//   This script does NOT talk to Telegram directly. It POSTs the announcement to
+//   the bobai-tg-bot Cloudflare Worker's /broadcast endpoint, authenticated with a
+//   shared BROADCAST_SECRET. The worker then sends two messages via its own
+//   BOT_TOKEN (a CF secret that never leaves Cloudflare):
+//     1) A lone 🧠 — Telegram renders 1-3 emoji-only messages as JUMBO, which
+//        acts as the visual "this is an update" header for every announcement.
+//     2) The actual text with parse_mode=HTML.
+//
+// .env requires:
+//   BROADCAST_SECRET  — shared secret between this script and the worker
+//                        (set on CF with: npx wrangler secret put BROADCAST_SECRET
+//                        --config worker-tg-bot/wrangler.toml)
+//   BROADCAST_URL     — optional override; defaults to the production worker URL
+require('dotenv').config();
+
+const BROADCAST_URL    = process.env.BROADCAST_URL    || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast';
+const BROADCAST_SECRET = process.env.BROADCAST_SECRET || '';
+
+if (!BROADCAST_SECRET) {
+  console.error('Missing BROADCAST_SECRET in .env');
+  process.exit(1);
+}
+
+const args = process.argv.slice(2);
+let text;
+const fileIdx = args.indexOf('--file');
+if (fileIdx >= 0) {
+  const path = args[fileIdx + 1];
+  if (!path) { console.error('--file requires a path'); process.exit(1); }
+  text = require('fs').readFileSync(path, 'utf8').trim();
+} else {
+  text = args.join(' ').trim();
+}
+if (!text) {
+  console.error('Usage: node tg-update.js "<HTML text>"  |  node tg-update.js --file <path>');
+  process.exit(1);
+}
+
+(async () => {
+  const r = await fetch(BROADCAST_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-broadcast-secret': BROADCAST_SECRET,
+    },
+    body: JSON.stringify({ text, prefixBrain: true }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) {
+    console.error('Failed:', r.status, JSON.stringify(j));
+    process.exit(1);
+  }
+  console.log('Sent: message_id =', j.message_id);
+})().catch(err => {
+  console.error('Failed:', err.message);
+  process.exit(1);
+});
+
+==============================================================================
+=== FILE: worker-tg-bot/index.js
+==============================================================================
+
 // BOBAI Telegram Bot — Cloudflare Worker
 // Combined: Buy Alert Bot + Burn Alert Bot + Anti-Spam Guard Bot
 // Runs 24/7 via cron (every minute) + Telegram Webhook
@@ -3265,3 +3951,18 @@ export default {
     }
   },
 };
+
+==============================================================================
+=== FILE: worker-tg-bot/wrangler.toml
+==============================================================================
+
+name = "bobai-tg-bot"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "KV"
+id = "<your-kv-namespace-id>"

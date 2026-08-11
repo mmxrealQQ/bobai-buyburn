@@ -1176,9 +1176,9 @@
         if (s === 'home') winnerCode = finalMatch.team_home;
         else if (s === 'away') winnerCode = finalMatch.team_away;
       }
-      // Only show tipped teams still in the tournament (or the winner if final
-      // is played). User: "muss die mannschaft solange drin sein bis sie im
-      // turnier ist".
+      // Only show tipped teams still in the tournament (or the winner once the
+      // final has been played). The rule as stated: a team stays listed for as
+      // long as it is still in the tournament.
       const candidates = tippedCodes
         .map(code => {
           const t = teams[code] || { code, gf: 0, played: 0, gamesLeft: 0, eliminated: false };

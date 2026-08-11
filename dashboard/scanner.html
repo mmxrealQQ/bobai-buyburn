@@ -32,8 +32,8 @@
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=14" as="style">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="preload" href="styles.css?v=18" as="style">
+  <link rel="stylesheet" href="styles.css?v=18">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -154,6 +154,19 @@
     .sc-w b{display:block;font-size:.8rem;font-weight:600;color:var(--gold)}
     .sc-w span{display:block;font-size:.73rem;color:var(--muted);line-height:1.6;margin-top:6px}
 
+    /* The standing note. The opening dialog is dismissed in a second and then
+       forgotten, and it is gone by the time there are actual numbers on screen —
+       which is exactly when this needs to be readable. So it lives in the
+       document, below the result, and nothing ever hides it. */
+    .sc-note{margin-top:34px;padding:20px 22px;border:1px solid rgba(240,185,11,.22);
+      border-radius:16px;background:rgba(240,185,11,.035)}
+    .sc-note h2{font-family:'Space Grotesk',sans-serif;font-size:.86rem;font-weight:700;
+      color:var(--gold);letter-spacing:-.2px;margin-bottom:10px}
+    .sc-note p{font-size:.76rem;color:var(--muted);line-height:1.75;max-width:74ch}
+    .sc-note p+p{margin-top:10px}
+    .sc-note b{color:var(--text);font-weight:600}
+    @media (max-width:640px){.sc-note{padding:17px 16px}.sc-note p{font-size:.74rem}}
+
     /* One palette for both places colour appears. Deliberately muted: these are
        cost bands, not a verdict, and they must not shout louder than the number. */
     .good{color:#3fe09a!important} .mid{color:#ffc46b!important} .bad{color:#ff8f6b!important}
@@ -195,9 +208,10 @@
 <div class="mw" id="wip-modal" role="dialog" aria-modal="true" aria-labelledby="wip-t" aria-describedby="wip-d">
   <div class="mb">
     <h2 id="wip-t">This tool is still being built</h2>
-    <p id="wip-d">The Pool Scanner is a work in progress and is here for entertainment. Nothing it shows
-    is guaranteed &mdash; not the figures, not the labels, not the contract properties. Treat it as a
-    starting point for your own checks on BscScan and the pool contract, never as advice.</p>
+    <p id="wip-d">The Pool Scanner is a work in progress, built for the pleasure of building it. Nothing it
+    shows is guaranteed &mdash; not the figures, not the labels, not the contract properties &mdash; and none of
+    it is a judgement on any token. Treat it as a starting point for your own checks on BscScan and the pool
+    contract, never as advice. The longer version is at the bottom of the page, and it stays there.</p>
     <button type="button" id="wip-ok">Got it</button>
   </div>
 </div>
@@ -282,6 +296,24 @@
 
     <div class="warn" id="sc-err" hidden></div>
     <div id="sc-out" hidden></div>
+
+    <!-- Never hidden, by anything. The opening dialog says this once, before
+         anyone has seen a figure; this says it where the figures are. -->
+    <div class="sc-note">
+      <h2>Please read this next to any number above</h2>
+      <p>We built this because reading a pool properly is genuinely interesting, and we are
+         still building it. Every figure here is <b>our own reading</b> of public chain data.
+         A price can be a block out of date, a token can trade in pools this page cannot see,
+         and a tax can behave differently in your trade than in the ones we measured. Assume a
+         number can be wrong, because sometimes it will be.</p>
+      <p>And none of it is a judgement. <b>We make no claim about any token</b> — we do not know
+         who is behind them, and we are not in the business of telling you which ones deserve
+         your money. A red figure says one thing only: at that size, that is what the trade
+         would cost right now. It says nothing about the project, and nothing about the people.</p>
+      <p>Anything that matters to you, check yourself. <a href="https://bscscan.com" target="_blank" rel="noopener">BscScan</a>
+         and the pool contract are two clicks away, and everything above is derived from what
+         they already say out loud.</p>
+    </div>
   </section>
 
 <footer><div class="fi2">

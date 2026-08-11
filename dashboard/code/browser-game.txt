@@ -1,3 +1,19 @@
+# Burn & Add Liq — Browser Game — Brain On BNB AI
+# One HTML file. Jump, burn, dodge the dumps.
+#
+# This is the complete browser-game bundle as a single file, so it can be read in
+# one fetch. 2 files, 1198 lines.
+# Download as a zip: https://brainonbnb.com/code/browser-game.zip
+# Everything else:   https://brainonbnb.com/code/index.txt
+#
+# No secrets are present: they are supplied at runtime through the environment.
+# MIT licensed.
+
+
+==============================================================================
+=== FILE: dashboard/game/index.html
+==============================================================================
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1179,3 +1195,25 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
+==============================================================================
+=== FILE: game/bobai_scores_setup.sql
+==============================================================================
+
+-- Run this in your Supabase SQL Editor (same project as buildonbnbgame)
+-- Table for Brain On BNB AI game highscores
+
+CREATE TABLE bobai_scores (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL CHECK (char_length(name) >= 1 AND char_length(name) <= 42),
+  score INTEGER NOT NULL CHECK (score >= 0),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE bobai_scores ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_select" ON bobai_scores FOR SELECT USING (true);
+CREATE POLICY "anon_insert" ON bobai_scores FOR INSERT WITH CHECK (true);
+
+CREATE INDEX idx_bobai_score ON bobai_scores (score DESC);
+CREATE INDEX idx_bobai_created ON bobai_scores (created_at DESC);

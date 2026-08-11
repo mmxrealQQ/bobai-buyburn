@@ -1,0 +1,263 @@
+Brain On BNB AI — code library
+==============================================================================
+
+Everything this project has shipped, packaged to be read and run by someone
+who is not us. Built by AI, start to finish. MIT licensed.
+
+Each bundle exists twice:
+  https://brainonbnb.com/code/<name>.zip   the files, to download and run
+  https://brainonbnb.com/code/<name>.txt   the same files flattened into one, to hand to an AI
+
+Machine-readable index: https://brainonbnb.com/code/manifest.json
+
+No secrets are included anywhere. Every bundle takes its keys from the
+environment at runtime, and the config files name the variables only.
+
+
+##############################################################################
+## THE BOTS — Everything that runs on its own. Cron triggers, signed transactions, no human at the wheel.
+##############################################################################
+
+Buyback & Burn Bot
+------------------
+The bot that has run every ten minutes since launch.
+3 files, 1311 lines
+needs:
+  - A wallet with a little gas in it
+      ours: one BSC wallet, topped up from the tax itself
+      also: the token was launched on four.meme and trades on PancakeSwap V2; the swap calls are the only PancakeSwap-specific part
+  - Somewhere that runs code on a schedule
+      ours: a Cloudflare Worker on a 10-minute cron
+      also: a VPS with crontab, GitHub Actions, Fly.io, Railway, a Raspberry Pi, or node on your own machine
+  - Somewhere to keep a small run log
+      ours: one Cloudflare KV namespace
+      also: Redis, SQLite, Postgres, or a JSON file on disk — it writes one entry per cycle
+  - A BSC RPC endpoint
+      ours: the public endpoints, with failover
+      also: NodeReal, Ankr, QuickNode or your own node if you want the headroom
+  - One secret at runtime: PRIVATE_KEY
+      ours: wrangler secret put
+      also: a .env file, your host's secret store — anything but the source code
+zip: https://brainonbnb.com/code/buyback-bot.zip
+txt: https://brainonbnb.com/code/buyback-bot.txt
+
+Dev Sweep Bot
+-------------
+The hourly one that empties the tax wallet.
+3 files, 329 lines
+needs:
+  - A wallet that receives the tax
+      ours: the same wallet the buyback bot spends from
+      also: any wallet — it only needs to be the one your token routes its fee to
+  - Somewhere that runs code hourly
+      ours: a Cloudflare Worker on a cron trigger
+      also: crontab, systemd timer, GitHub Actions, or any scheduler you already run
+  - Somewhere to keep a cursor
+      ours: one KV namespace, shared with the buyback bot
+      also: a file, a Redis key, a single database row — it stores very little
+  - One secret at runtime: PRIVATE_KEY
+      ours: wrangler secret put
+      also: a .env file or your host's secret store
+zip: https://brainonbnb.com/code/dev-sweep-bot.zip
+txt: https://brainonbnb.com/code/dev-sweep-bot.txt
+
+Liquidity Add & LP Burn
+-----------------------
+Adds liquidity, then burns the LP token it just received.
+2 files, 388 lines
+needs:
+  - A wallet holding both sides of the pair
+      ours: BNB and the token, in one wallet
+      also: any PancakeSwap V2 pair, and any BSC DEX sharing that router interface — the router is one constant
+  - A machine that can run Node 18+
+      ours: run by hand, when we decide to add
+      also: put it on a cron if you want it automatic; nothing in it needs a human
+  - Slippage set for a fee-on-transfer token
+      ours: ≥1500 bps
+      also: none — a normal 1% simply reverts. This is the single thing that breaks naive add-liquidity scripts
+  - One secret at runtime: PRIVATE_KEY
+      ours: a local .env file
+      also: your shell environment, a secret manager, a hardware signer
+zip: https://brainonbnb.com/code/liquidity-bot.zip
+txt: https://brainonbnb.com/code/liquidity-bot.txt
+
+Telegram Bot
+------------
+Buy alerts, burn alerts, price, whale tracking, captcha.
+12 files, 3897 lines
+needs:
+  - A bot token
+      ours: one from @BotFather, two minutes of work
+      also: none — this is Telegram's only door
+  - Somewhere to receive a webhook and run a cron
+      ours: a single Cloudflare Worker doing both
+      also: any HTTPS endpoint: a small VPS, Deno Deploy, Vercel, Fly.io. Long-polling works too, at the cost of a process that never sleeps
+  - Somewhere to keep state
+      ours: one Cloudflare KV namespace
+      also: Redis, SQLite, Postgres — it stores the block cursor, the watchlist and the captcha queue
+  - A BSC RPC endpoint that allows eth_getLogs
+      ours: a keyed endpoint, with free ones as fallback
+      also: NodeReal, Ankr, QuickNode. Note that bsc-dataseed refuses log queries outright
+  - One secret at runtime: BOT_TOKEN
+      ours: wrangler secret put
+      also: any secret store your host offers
+zip: https://brainonbnb.com/code/telegram-bot.zip
+txt: https://brainonbnb.com/code/telegram-bot.txt
+
+NFT Auto-Mint Bot
+-----------------
+Watches the pair and mints to the buyer, unasked.
+2 files, 577 lines
+needs:
+  - A deployed ERC-721 it is allowed to mint from
+      ours: the contract in the NFT Buy Drops bundle
+      also: any ERC-721 with a mint function and a minter role
+  - A wallet with gas
+      ours: the bot pays the mint, so the buyer pays nothing
+      also: you could make the buyer claim and pay — but then it is a claim page, not a drop
+  - Somewhere that runs code on a schedule
+      ours: a Cloudflare Worker cron
+      also: crontab, GitHub Actions, any always-on process
+  - Somewhere to keep the block cursor
+      ours: one KV namespace
+      also: a file or a database row. Whatever it is, it must be durable: this is what stops a restart double-minting
+  - One secret at runtime: PRIVATE_KEY
+      ours: wrangler secret put
+      also: a .env file or your host's secret store
+zip: https://brainonbnb.com/code/nft-mint-bot.zip
+txt: https://brainonbnb.com/code/nft-mint-bot.txt
+
+Prize Pool & Payout Bot
+-----------------------
+Filled a prize pool from trading tax, then paid 39 wallets out.
+5 files, 1399 lines
+needs:
+  - A wallet holding the pool
+      ours: a dedicated wallet, funded by a slice of the tax
+      also: a multisig if the pool is large enough to be worth arguing about
+  - Somewhere the entries and scores live
+      ours: the Supabase project from the Worldcup bundle
+      also: any Postgres, or any store you can read a winners list out of
+  - A machine that can run Node 18+
+      ours: run by hand, watched, one round at a time
+      also: none worth having. This one sends money to strangers — do not put it on a cron
+  - Secrets at runtime: PRIVATE_KEY, database URL and key
+      ours: a local .env file
+      also: a secret manager. Never the source
+  - A dry run first
+      ours: --dry-run, every single time
+      also: there is no alternative. Read the script before you copy it
+zip: https://brainonbnb.com/code/prize-pool-bot.zip
+txt: https://brainonbnb.com/code/prize-pool-bot.txt
+
+##############################################################################
+## THE PROJECTS — The things people click. Each one shipped, each one still live or archived on this domain.
+##############################################################################
+
+Pool Scanner
+------------
+Reads any BNB Chain pool. No backend at all.
+4 files, 2659 lines
+needs:
+  - A static host
+      ours: Cloudflare Pages
+      also: GitHub Pages, Netlify, Vercel, S3, nginx, or python -m http.server on your laptop
+  - Public RPC endpoints
+      ours: six, with failover, all free
+      also: your own node if you expect traffic. Note the requests leave from the visitor's browser, not your server — which is why this costs nothing to run
+  - Nothing else
+      ours: no backend, no database, no API key, no build step
+      also: that is the whole point of it
+zip: https://brainonbnb.com/code/pool-scanner.zip
+txt: https://brainonbnb.com/code/pool-scanner.txt
+
+NFT Buy Drops
+-------------
+The contract, the metadata server and the collection page.
+10 files, 1246 lines
+needs:
+  - A wallet with gas for the deployment
+      ours: one transaction on BSC, a few cents
+      also: any EVM chain — the contract is plain Solidity with no chain-specific parts
+  - Somewhere to serve the metadata
+      ours: a small Cloudflare Worker
+      also: static JSON files on any host. It is one file per token id and nothing else
+  - Somewhere to host the images
+      ours: our own domain, over plain HTTPS
+      also: IPFS or Arweave — but link them by https gateway. Several marketplaces will not resolve an ipfs:// URL
+  - Your marketplace metadata set BEFORE you renounce
+      ours: set, checked, then renounced
+      also: none. After renouncing it is permanent, and no marketplace can help you
+zip: https://brainonbnb.com/code/nft-drop.zip
+txt: https://brainonbnb.com/code/nft-drop.txt
+
+Worldcup Tipping Game
+---------------------
+A full tournament game that paid out on-chain.
+45 files, 11095 lines
+needs:
+  - A Postgres with row-level security and auth
+      ours: Supabase, free tier, all the way through
+      also: any Postgres plus an auth layer. The schema is plain SQL; the RLS policies are the part worth reading
+  - Somewhere that pulls fixtures on a schedule
+      ours: a Cloudflare Worker cron
+      also: any scheduler. It fetches, compares and writes — nothing exotic
+  - A fixtures and results feed
+      ours: football-data.org, free tier
+      also: any sports API, or type the results in by hand for a small tournament
+  - A wallet, only if you pay out on-chain
+      ours: one wallet, one payout script, 39 transactions
+      also: skip it entirely and the game still works — the prize pool is optional scaffolding
+zip: https://brainonbnb.com/code/worldcup-tipgame.zip
+txt: https://brainonbnb.com/code/worldcup-tipgame.txt
+
+Burn & Add Liq — Browser Game
+-----------------------------
+One HTML file. Jump, burn, dodge the dumps.
+2 files, 1198 lines
+needs:
+  - A static host
+      ours: Cloudflare Pages
+      also: anything that can serve one HTML file. Open it from disk and it plays
+  - A score table, only if you want the board
+      ours: one Supabase table; the SQL is in the bundle
+      also: any database with an HTTP API, or leave it out — the game runs fine and keeps scores locally
+  - To know what a public score table means
+      ours: anyone holding the browser key can post a score
+      also: put the insert behind your own endpoint, or add an upper bound, if the board is meant to be competitive
+zip: https://brainonbnb.com/code/browser-game.zip
+txt: https://brainonbnb.com/code/browser-game.txt
+
+brainScreener
+-------------
+Thirteen self-tests. No accounts, no tracking, no backend.
+52 files, 9551 lines
+needs:
+  - A static host
+      ours: Cloudflare Pages
+      also: any of them. There is no build step and no framework
+  - Nothing else
+      ours: no database, no accounts, no analytics, no cookies
+      also: the answers never leave the browser, which is a design decision rather than a shortcut
+zip: https://brainonbnb.com/code/brainscreener.zip
+txt: https://brainonbnb.com/code/brainscreener.txt
+
+Agent Tools — MCP & llms.txt
+----------------------------
+What an AI agent sees when it asks this project a question.
+4 files, 1269 lines
+needs:
+  - A machine that can run Node 18+
+      ours: the MCP server over stdio, locally
+      also: point any MCP client at it — Claude Desktop, Claude Code, Cursor, or your own
+  - Somewhere to serve the HTTP tools
+      ours: the Pages worker already serving the site
+      also: any HTTPS endpoint, or skip it and run the MCP server only
+  - No keys at all
+      ours: every tool reads public chain data
+      also: there is nothing to secure here, which is why it can be pointed at an agent without a second thought
+zip: https://brainonbnb.com/code/agent-tools.zip
+txt: https://brainonbnb.com/code/agent-tools.txt
+
+==============================================================================
+https://brainonbnb.com

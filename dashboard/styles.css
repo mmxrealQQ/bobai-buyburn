@@ -23,17 +23,17 @@
     }
     .bob-sub{font-size:.75em;color:#fff;font-weight:400;margin-left:2px;flex:none}
     *{margin:0;padding:0;box-sizing:border-box}
-    /* Hier stand frueher overflow-x:hidden auf html UND body — daher die zwei
-       Scrollbalken (eine hidden-Achse setzt die andere auf auto, body wurde so
-       zum zweiten Scroll-Container). Der Zwischenschritt war overflow-x:clip
-       auf body.
-       Beides ist ersatzlos entfernt: nachgemessen bei 360/390/430/768/1440px
-       ragt NICHTS mehr horizontal heraus (die breiten Tabellen sitzen in ihrer
-       eigenen .txw-Scrollbox). Die Notbremsen deckten ein Problem zu, das es
-       nicht mehr gibt — und body ist ohne overflow-Angabe garantiert kein
-       Scroll-Container, der Doppelbalken kann also nicht zurueckkommen.
-       Falls hier je wieder ein Ueberhang auftaucht: das verursachende Element
-       suchen, nicht erneut global abklemmen. */
+    /* overflow-x:hidden used to sit on html AND body, which is where the two
+       scrollbars came from: hiding one axis silently switches the other from
+       visible to auto, so body became a second scroll container. The interim
+       fix was overflow-x:clip on body.
+       Both are gone with nothing in their place. Measured at 360/390/430/768/
+       1440px, NOTHING overflows horizontally any more — the wide tables sit in
+       their own .txw scroll box. The handbrakes were covering a problem that no
+       longer exists, and with no overflow declared at all, body cannot become a
+       scroll container, so the double bar cannot come back.
+       If an overhang ever shows up here again: find the element causing it.
+       Do not clamp the whole page down a second time. */
     /* Warm glows lift the page out of flat black without giving up the dark
        gold-on-near-black identity. */
     body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
@@ -56,9 +56,10 @@
     @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,4vh) scale(1.12)}}
     @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-5vw,6vh) scale(.94)}}
     @keyframes drift3{0%,100%{transform:translate(0,0) scale(.96)}50%{transform:translate(4vw,-5vh) scale(1.1)}}
-    /* .aur i (0,1,1) verliert gegen .aur .a1 (0,2,0) — ein Media-Query erhoeht
-       die Spezifitaet nicht, diese Regel war deshalb wirkungslos. Die vier
-       Klassen einzeln nennen: gleiche Spezifitaet, aber spaeter im Dokument. */
+    /* .aur i (0,1,1) loses to .aur .a1 (0,2,0), and a media query does not raise
+       specificity — so this rule did nothing at all for as long as it existed.
+       Naming the four classes gives it equal specificity and a later position in
+       the document, which is what actually wins. */
     @media (prefers-reduced-motion:reduce){.aur .a1,.aur .a2,.aur .a3,.aur .a4{animation:none}}
     .page{position:relative;z-index:1}
 
@@ -82,10 +83,10 @@
       transform:translateY(-6px);transition:opacity .3s ease,transform .3s ease,visibility .3s}
     .nb-group.on{opacity:1;visibility:visible;transform:none}
     .nb2{position:relative;background:transparent;color:var(--gold);padding:8px 18px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:1px solid rgba(240,185,11,.45);letter-spacing:.3px;overflow:hidden}
-    /* Statischer Ring + transform/opacity statt wachsender box-shadow — siehe
-       Grundregel im POLISH LAYER. .nb2 wird aktuell nirgends im HTML benutzt,
-       die Regel bleibt aber als Hook stehen; sie soll dann nicht die alte,
-       teure Variante wieder einschleppen. */
+    /* A static ring animated via transform/opacity instead of a growing
+       box-shadow — see the ground rule in the POLISH LAYER. .nb2 is not used
+       anywhere in the HTML at the moment, but the rule stays as a hook: if it
+       comes back, it must not drag the expensive old version back with it. */
     .nb2::before{content:'';position:absolute;inset:0;border-radius:10px;pointer-events:none;
       box-shadow:0 0 0 6px rgba(240,185,11,.32);animation:nb2pulse 2.4s ease-out infinite}
     .nb2:hover{background:rgba(240,185,11,.08);border-color:var(--gold);transform:translateY(-1px)}
@@ -97,9 +98,10 @@
        3:2 so the whole character stays visible; max-width stops it exploding on
        ultrawide screens. */
     .hero picture{display:block;width:100%}
-    /* Feste Box pro Zuschnitt: ohne reservierten Platz war das Bild bis zum
-       Laden 0px hoch, alles darunter rutschte nach — beim Wiederoeffnen des
-       Browsers landete der Blick dadurch mitten im Gesicht statt am Bildrand. */
+    /* A reserved box per crop. Without one the image was 0px tall until it
+       loaded and everything below shifted down afterwards — so reopening the
+       browser dropped the view into the middle of a face instead of at the top
+       of the picture. */
     .hero img{width:100%;height:auto;display:block;aspect-ratio:2/1}
     @media (max-width:640px){.hero img{aspect-ratio:720/900}}
     @media (orientation:landscape) and (max-height:520px){.hero img{aspect-ratio:2/1}}
@@ -180,11 +182,11 @@
 
     /* LIVE BADGE */
     .live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.15);padding:4px 12px;border-radius:20px;font-size:.65rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase}
-    /* Der Punkt blinkt, ein Ring laeuft nach aussen — wie vorher, aber ohne
-       animierte box-shadow. Die alte Variante liess den Radius pro Frame
-       wachsen; das kann der Compositor nicht, also Repaint 60x/s, endlos.
-       Jetzt: statischer Ring auf einem ::after, animiert werden nur transform
-       und opacity. Gleiche Optik, Kosten praktisch null. */
+    /* The dot pulses and a ring travels outwards — same look as before, without
+       an animated box-shadow. The old version grew the shadow radius per frame,
+       which the compositor cannot take over: repaint 60x a second, forever.
+       Now the ring is static on an ::after and only transform and opacity are
+       animated. Identical on screen, essentially free. */
     .live-dot{position:relative;width:6px;height:6px;background:var(--green);border-radius:50%;
       animation:ldFade 2s ease-in-out infinite}
     .live-dot::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
@@ -270,14 +272,14 @@
 
     /* ABOUT — BRAIN LOGO + TEXT */
     .about-hero{display:flex;align-items:center;gap:48px;margin-bottom:48px}
-    /* line-height:0 nimmt der Zeilenbox den Unterlaengen-Spalt, sonst sitzt der
-       Halo unten ein paar Pixel daneben. position:relative traegt ihn. */
+    /* line-height:0 takes the descender gap out of the line box, otherwise the
+       halo sits a few pixels low. position:relative is what carries it. */
     .about-logo{flex-shrink:0;position:relative;line-height:0}
-    /* Der Atem-Glow war eine animierte box-shadow mit 130px Blur — jedes Frame
-       neu gerastert. Jetzt ein eigener Halo-Layer hinter dem Bild, der nur
-       transform und opacity animiert: gleiche Optik, compositor-only.
-       inset:0 statt fester Pixel, damit er den 140px-Zuschnitt auf dem Handy
-       automatisch mitmacht. */
+    /* The breathing glow used to be an animated box-shadow with a 130px blur —
+       rasterised again every frame. It is now its own halo layer behind the
+       image, animating transform and opacity only: same look, compositor-only.
+       inset:0 rather than fixed pixels, so it follows the 140px phone crop by
+       itself. */
     .about-logo::before{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
       box-shadow:0 0 70px rgba(240,185,11,.25),0 0 145px rgba(240,185,11,.10);
       animation:breathe 4.8s ease-in-out infinite}
@@ -432,11 +434,11 @@
       .lqd{padding:20px 16px 16px}
       .lqd-g,.lqsrc,.lqbs,.lqone{grid-template-columns:1fr;gap:10px}
       .lqv{font-size:1.6rem}
-      /* Auf einer Handybreite fressen die drei festen Spalten (56+62+82px plus
-         Abstaende) die Zeile auf: von 258px blieben der Balkenspur 22px, und der
-         $100-Balken war 0.8px lang — also nicht vorhanden. Die Zahlen bleiben in
-         einer Zeile, der Balken rueckt darunter und bekommt die volle Breite.
-         Am Desktop-Layout aendert das nichts. */
+      /* At phone width the three fixed columns (56+62+82px plus the gaps) eat
+         the row: of 258px the bar track was left with 22px, which made the $100
+         bar 0.8px long — that is not a bar, that is nothing. The figures stay on
+         one line, the bar moves underneath and gets the full width. The desktop
+         layout is untouched. */
       .lqb{display:grid;grid-template-columns:auto 1fr auto;
         grid-template-areas:"l p c" "t t t";column-gap:10px;row-gap:7px;align-items:baseline}
       .lqb-l{grid-area:l;width:auto}
@@ -486,14 +488,14 @@
     .vr a:hover{opacity:.7}
 
     /* TX TABLE */
-    /* Die Seite selbst laesst sich nicht seitwaerts wischen (nachgemessen:
-       scrollWidth == Viewport bei 360/390/430/768). Wischbar sind nur diese vier
-       Tabellenboxen, und das muss so bleiben — die TX-Hashes brauchen die Breite.
-       Was sich falsch anfuehlt, ist die Weitergabe: wischt man in der Box bis an
-       den Rand, schiebt der Browser die restliche Bewegung an die Seite weiter,
-       und die ruckelt seitlich mit. `contain` haelt die Bewegung in der Box.
-       Das ist die punktgenaue Loesung — NICHT wieder overflow-x auf html/body,
-       das war der Doppelscrollbalken vom 9.8. */
+    /* The page itself cannot be swiped sideways — measured: scrollWidth equals
+       the viewport at 360/390/430/768. The only swipeable things are these four
+       table boxes, and that has to stay: the tx hashes need the width.
+       What feels wrong is the hand-off. Swipe inside the box until it hits its
+       end and the browser passes the remaining movement to the page, which then
+       judders sideways with it. `contain` keeps the movement in the box.
+       That is the precise fix — NOT overflow-x on html/body again, which is what
+       produced the double scrollbar on Aug 9. */
     .txw{max-height:400px;overflow-y:auto;overscroll-behavior:contain;
       border-radius:var(--radius);border:1px solid var(--border)}
     .txw::-webkit-scrollbar{width:4px}
@@ -537,12 +539,11 @@
     .liq-boost{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
     .lb-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(0,230,118,.12);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
     .lb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.4),var(--gold),rgba(0,230,118,.4),transparent)}
-    /* Traegt zusaetzlich den pulsierenden Rand: der lief vorher als
-       border-color-Animation auf .lb-card selbst — nicht komponierbar, also
-       Style-Recalc pro Frame. Ein 1px-Innenring auf diesem ohnehin
-       vorhandenen Layer, animiert per opacity, sieht gleich aus und ist
-       gratis. Der schwache Radial-Verlauf pulst mit, bei .03 Alpha
-       unsichtbar. */
+    /* This layer carries the pulsing border too. It used to be a border-color
+       animation on .lb-card itself — not compositable, so a style recalc every
+       frame. A 1px inner ring on a layer that exists anyway, animated by
+       opacity, looks the same and costs nothing. The faint radial gradient
+       pulses along with it; at .03 alpha nobody can tell. */
     .lb-card::after{content:'';position:absolute;inset:0;border-radius:var(--radius);pointer-events:none;
       background:radial-gradient(ellipse at 50% 0%,rgba(0,230,118,.03),transparent 70%);
       box-shadow:inset 0 0 0 1px rgba(0,230,118,.22);
@@ -685,6 +686,147 @@
     .ec-go .arr{transition:transform .25s}
     .ec:hover .ec-go .arr{transform:translateX(3px)}
 
+    /* THE LIBRARY — the code behind the four apps, on the site instead of on a
+       404. Deliberately plainer than the cards above it: this is a shelf, and a
+       shelf that shouts competes with the products standing on it.
+       No backdrop-filter anywhere in here — the mobile block below switches that
+       off on every other card for WebKit compositing reasons, and a component
+       that never asks for it cannot be forgotten when the list is next edited. */
+    .lib{margin-top:64px;padding-top:44px;border-top:1px solid var(--border)}
+    .lib-head{max-width:720px;margin-bottom:30px}
+    .lib-head h3{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:-.6px;margin-bottom:10px}
+    .lib-head h3 em{font-style:normal;color:var(--acc)}
+    .lib-head p{font-size:.82rem;color:var(--muted);line-height:1.7}
+    .lib-warn{margin-top:12px;font-size:.72rem !important;padding-left:12px;border-left:2px solid rgba(240,185,11,.4)}
+    .lib-grp{margin-bottom:26px}
+    .lib-gh{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding-left:2px}
+    .lib-gh h3{font-family:'Space Grotesk',sans-serif;font-size:.72rem;font-weight:700;
+      text-transform:uppercase;letter-spacing:1.6px;color:var(--acc);flex-shrink:0}
+    .lib-gh p{font-size:.72rem;color:var(--muted);line-height:1.5}
+    .lib-i{background:var(--card);border:1px solid var(--border);border-radius:16px;
+      margin-bottom:8px;overflow:hidden;transition:border-color .25s}
+    .lib-i:hover{border-color:rgba(var(--accs),.26)}
+    .lib-i[open]{border-color:rgba(var(--accs),.34)}
+    .lib-i summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:16px;
+      padding:15px 18px;user-select:none}
+    .lib-i summary::-webkit-details-marker{display:none}
+    .lib-h{flex:1;min-width:0}
+    .lib-t{display:block;font-family:'Space Grotesk',sans-serif;font-size:.9rem;font-weight:600;color:var(--text)}
+    .lib-s{display:block;font-size:.73rem;color:var(--muted);margin-top:3px;line-height:1.5}
+    .lib-m{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.63rem;color:var(--muted);
+      flex-shrink:0;white-space:nowrap}
+    .lib-a{color:var(--acc);font-size:.9rem;flex-shrink:0;transition:transform .25s}
+    .lib-i[open] .lib-a{transform:rotate(180deg)}
+    .lib-b{padding:0 18px 18px;display:flex;flex-direction:column;gap:14px}
+    .lib-n b{display:block;font-size:.63rem;text-transform:uppercase;letter-spacing:1.3px;
+      color:var(--muted);margin-bottom:7px}
+    /* Each requirement is stated first, then how we solved it, then what else
+       would do — so the list reads as "what this needs", not as "install
+       Cloudflare". Somebody on a VPS should be able to use this too. */
+    .lib-n ul{list-style:none;display:flex;flex-direction:column;gap:11px}
+    .lib-n li{padding-left:16px;position:relative}
+    .lib-n li::before{content:'';position:absolute;left:4px;top:.5em;width:4px;height:4px;
+      border-radius:50%;background:rgba(var(--accs),.6)}
+    .lib-q{display:block;font-size:.76rem;color:var(--text);line-height:1.5;font-weight:500}
+    .lib-o{display:block;font-size:.71rem;color:var(--muted);line-height:1.55;margin-top:2px}
+    .lib-o em{font-style:normal;display:inline-block;min-width:34px;font-size:.6rem;
+      text-transform:uppercase;letter-spacing:1px;color:rgba(var(--accs),.85);font-weight:700}
+    .lib-g{display:flex;flex-wrap:wrap;gap:8px}
+    .lib-btn{display:inline-flex;align-items:center;gap:7px;font-family:'Space Grotesk',sans-serif;
+      font-size:.71rem;font-weight:600;padding:9px 15px;border-radius:10px;cursor:pointer;
+      text-decoration:none;border:1px solid rgba(var(--accs),.3);background:rgba(var(--accs),.09);
+      color:var(--text);transition:background .2s,border-color .2s,transform .2s}
+    .lib-btn:hover{background:rgba(var(--accs),.17);border-color:rgba(var(--accs),.5);transform:translateY(-1px)}
+    .lib-btn.lib-alt{background:transparent;border-color:var(--border);color:var(--muted)}
+    .lib-btn.lib-alt:hover{color:var(--text);border-color:rgba(var(--accs),.3)}
+    .lib-c{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(0,0,0,.32);
+      border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+    .lib-cl{font-size:.63rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);flex-shrink:0}
+    .lib-c code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.68rem;color:var(--acc);
+      flex:1;min-width:0;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+    .lib-c code::-webkit-scrollbar{display:none}
+    .lib-cp{flex-shrink:0;font-size:.6rem;text-transform:uppercase;letter-spacing:1px;font-weight:600;
+      padding:4px 9px;border-radius:6px;cursor:pointer;border:1px solid var(--border);
+      background:transparent;color:var(--muted);transition:color .2s,border-color .2s}
+    .lib-cp:hover{color:var(--text);border-color:rgba(var(--accs),.4)}
+    .lib-cp.done{color:var(--acc);border-color:rgba(var(--accs),.5)}
+    .lib-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:.68rem;color:var(--muted);
+      margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+    .lib-foot a{color:var(--acc);text-decoration:none;font-family:'JetBrains Mono',ui-monospace,monospace}
+    .lib-foot a:hover{text-decoration:underline}
+    @media (max-width:640px){
+      .lib-i summary{flex-wrap:wrap;gap:8px 12px;padding:14px}
+      .lib-h{flex:1 1 100%;order:1}
+      .lib-m{order:2}
+      .lib-a{order:3;margin-left:auto}
+      .lib-b{padding:0 14px 14px}
+      .lib-btn{flex:1;justify-content:center}
+      .lib-cl{display:none}
+    }
+
+    /* CODE VIEWER — reading the code should not require downloading it. Built
+       by JS on demand, so the markup is not in the document until it is needed;
+       the download links above work with the script dead, which is the point. */
+    .cv{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+      padding:24px;background:rgba(4,3,4,.82)}
+    .cv-w{width:min(1180px,100%);height:min(84vh,860px);display:flex;flex-direction:column;
+      background:#100e0f;border:1px solid rgba(var(--accs),.28);border-radius:18px;overflow:hidden;
+      box-shadow:0 30px 90px rgba(0,0,0,.6)}
+    .cv-h{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+    .cv-ti{font-family:'Space Grotesk',sans-serif;font-size:.92rem;font-weight:700;color:var(--text)}
+    .cv-su{font-size:.66rem;color:var(--muted);margin-top:2px}
+    .cv-x{margin-left:auto;flex-shrink:0;width:32px;height:32px;border-radius:9px;cursor:pointer;
+      border:1px solid var(--border);background:transparent;color:var(--muted);font-size:1rem;line-height:1;
+      transition:color .2s,border-color .2s}
+    .cv-x:hover{color:var(--text);border-color:rgba(var(--accs),.4)}
+    .cv-dl{flex-shrink:0;font-family:'Space Grotesk',sans-serif;font-size:.68rem;font-weight:600;
+      padding:7px 13px;border-radius:9px;text-decoration:none;color:var(--text);
+      border:1px solid rgba(var(--accs),.3);background:rgba(var(--accs),.09)}
+    .cv-dl:hover{background:rgba(var(--accs),.17)}
+    /* min-height:0 on the grid items, not only on the grid. A grid item defaults
+       to min-height:auto and therefore cannot shrink below its own content — so
+       both columns grew to the full height of the longest file, the code pane had
+       nothing left to scroll (scrollHeight == clientHeight) and .cv-w simply
+       clipped the rest. Measured: the grid was 614px, its rows 1607px.
+       overscroll-behavior keeps a swipe that reaches the end of a pane from
+       being handed on to the page behind the dialog. */
+    .cv-m{flex:1;display:grid;grid-template-columns:250px 1fr;min-height:0}
+    .cv-l{border-right:1px solid var(--border);overflow-y:auto;overscroll-behavior:contain;
+      min-height:0;padding:8px;background:rgba(0,0,0,.22)}
+    .cv-f{display:block;width:100%;text-align:left;cursor:pointer;border:0;background:transparent;
+      color:var(--muted);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.66rem;
+      padding:6px 9px;border-radius:7px;word-break:break-all;line-height:1.45;transition:color .15s,background .15s}
+    .cv-f:hover{color:var(--text);background:rgba(255,255,255,.045)}
+    .cv-f.on{color:var(--acc);background:rgba(var(--accs),.12)}
+    .cv-f i{font-style:normal;opacity:.5;float:right;padding-left:8px}
+    .cv-r{display:flex;flex-direction:column;min-width:0;min-height:0}
+    .cv-b{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+    .cv-p{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.66rem;color:var(--muted);
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .cv-cp{margin-left:auto;flex-shrink:0;font-size:.6rem;text-transform:uppercase;letter-spacing:1px;
+      font-weight:600;padding:4px 9px;border-radius:6px;cursor:pointer;border:1px solid var(--border);
+      background:transparent;color:var(--muted)}
+    .cv-cp:hover{color:var(--text);border-color:rgba(var(--accs),.4)}
+    .cv-cp.done{color:var(--acc);border-color:rgba(var(--accs),.5)}
+    .cv-c{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;margin:0;
+      padding:14px 16px;background:#0b0a0b}
+    .cv-c code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.7rem;line-height:1.6;
+      color:#d5d2dd;white-space:pre;display:block;tab-size:2}
+    /* Four colours, no more: the point is legibility, not a paint box. */
+    .cv-c .c{color:#6f7a92;font-style:italic}
+    .cv-c .s{color:#8fd6a0}
+    .cv-c .k{color:#e0a0ff}
+    .cv-c .n{color:#f0b90b}
+    .cv-ld{padding:34px;text-align:center;color:var(--muted);font-size:.78rem}
+    @media (max-width:760px){
+      .cv{padding:0}
+      .cv-w{height:100%;width:100%;border-radius:0;border:0}
+      .cv-m{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+      .cv-l{border-right:0;border-bottom:1px solid var(--border);max-height:132px}
+      .cv-h{flex-wrap:wrap;gap:8px 12px}
+      .cv-dl{order:3;flex:1;text-align:center}
+    }
+
     /* ROADMAP */
     .rmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
     .rm{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:all .3s}
@@ -707,11 +849,11 @@
 
     /* SOCIAL BUTTONS (Block 07) */
     .cta-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
-    /* Block 07 ist der Abschluss vor dem Footer und laeuft mittig aus, statt
-       linksbuendig weiterzulaufen — die Ueberschrift zentriert mit, sonst
-       kippt das Verhaeltnis wieder. Jede Gruppe bekommt eine zentrierte
-       Beschriftung zwischen zwei Haarlinien, damit die vier Bloecke als
-       Bloecke lesen und nicht als eine lange Reihe von links nach rechts. */
+    /* Block 07 closes the page before the footer, so it runs out centred rather
+       than continuing left-aligned — and the heading centres with it, otherwise
+       the balance tips the other way. Each group gets a centred label between two
+       hairlines, so the four blocks read as blocks instead of as one long strand
+       running left to right. */
     #socials .sh{text-align:center;margin-bottom:28px}
     #socials .sh p{max-width:620px;margin:0 auto}
     #socials .cta-links,#socials .lr{justify-content:center}
@@ -771,35 +913,35 @@
       .ta{transform:rotate(90deg)}
       .about-logo img{width:140px;height:140px}
     }
-    /* Einblenden beim Scrollen — UMGEKEHRT gedacht als frueher.
-       Frueher war .fi von sich aus opacity:0 und wurde erst von JavaScript
-       sichtbar gemacht. Damit war die halbe Seite schwarz, bis das Skript am
-       Ende dieses 136-KB-Dokuments lief — und bei jedem JS-Problem dauerhaft.
-       Jetzt ist der Standard SICHTBAR. Verstecken darf nur das Skript, und
-       auch nur bei Elementen, die ohnehin unter dem Bildrand liegen. Geht mit
-       JavaScript irgendetwas schief, sieht man einfach alles ohne Effekt —
-       nie wieder Schwarz. */
+    /* Fade in on scroll — thought through the other way round than before.
+       .fi used to be opacity:0 by itself and was only made visible by JavaScript.
+       That left half the page black until the script at the end of this 136 KB
+       document ran, and permanently black whenever anything about the JS failed.
+       Visible is now the default. Only the script may hide anything, and only
+       elements already below the fold. If JavaScript goes wrong, you simply see
+       everything without the effect — never black again. */
     .fi{transition:opacity .45s ease,transform .45s ease}
     .fi.pre{opacity:0;transform:translateY(14px)}
 
     /* === POLISH LAYER ===
-       Grundregel fuer alles Dauerhafte hier: es darf ausschliesslich transform
-       und opacity animieren. Nur die beiden kann der Compositor uebernehmen;
-       box-shadow, background-position und border-color kosten stattdessen
-       Style-Recalc + Repaint auf dem Main-Thread — 60x pro Sekunde, endlos,
-       auch wenn niemand hinschaut. Gemessen kostete genau das ~62% Dauerlast
-       auf dem Handy und liess die Seite wirken, als lade sie nie fertig. */
+       The ground rule for anything that runs continuously in here: it may
+       animate transform and opacity, and nothing else. Those two are the only
+       ones the compositor can take over; box-shadow, background-position and
+       border-color cost a style recalc plus a repaint on the main thread —
+       60 times a second, forever, whether or not anyone is looking. Measured,
+       exactly that cost ~62% idle load on a phone and made the page feel as
+       though it never finished loading. */
     @keyframes breathe{0%,100%{opacity:.7;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
     @keyframes lbGlow{0%,100%{opacity:.35}50%{opacity:1}}
-    /* Solange noch keine Zahl aus der Kette da ist, pulst der Platzhalter
-       sanft. Ein starres "--" liest sich wie eine kaputte Seite; so ist
-       sichtbar, dass gearbeitet wird. Reines opacity = compositor-only.
-       Die Klasse nimmt put() weg, sobald ein echter Wert drinsteht. */
+    /* While no figure has arrived from the chain yet, the placeholder pulses
+       gently. A motionless "--" reads as a broken page; this reads as work in
+       progress. Pure opacity, so compositor-only. put() removes the class the
+       moment a real value is in there. */
     .v.ld,.vsub.ld{animation:ldPulse 1.3s ease-in-out infinite}
     @keyframes ldPulse{0%,100%{opacity:.32}50%{opacity:.75}}
 
-    /* Der Glow waechst hier per transform mit — eine box-shadow skaliert
-       mit, deshalb braucht es keine zweite animierte Eigenschaft. */
+    /* The glow grows via transform: a box-shadow scales along with it, so a
+       growing glow needs no second animated property. */
     @keyframes sepPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
     .sep-d{animation:sepPulse 3.2s ease-in-out infinite;opacity:.55;
       box-shadow:0 0 8px rgba(240,185,11,.45)}
@@ -829,13 +971,13 @@
     .about-tags span{transition:border-color .25s,color .25s,background .25s,transform .25s}
     .about-tags span:hover{border-color:rgba(240,185,11,.32);color:var(--gold);background:rgba(240,185,11,.05);transform:translateY(-1px)}
 
-    /* Der Shimmer laeuft ueber background-position auf background-clip:text und
-       ist als einziger Effekt der Seite nicht komponierbar — der Verlauf
-       wandert im Textfuellmuster selbst. Statt ihn zu opfern, laeuft er nur
-       noch dort, wo jemand hinsieht: die Klasse .shim-on setzt der
-       IntersectionObserver weiter unten, sobald das Element im Viewport ist,
-       und nimmt sie danach wieder weg. Statt 21 gleichzeitig animierter
-       Elemente sind so nur die paar sichtbaren aktiv. */
+    /* The shimmer runs on background-position over background-clip:text and is
+       the one effect on the page that cannot be composited — the gradient
+       travels inside the text fill itself. Rather than sacrifice it, it now runs
+       only where somebody is looking: the IntersectionObserver further down adds
+       .shim-on when an element enters the viewport and takes it away again
+       afterwards. Instead of 21 elements animating at once, only the few visible
+       ones are active. */
     @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
     .sh h2 em,.tc .b{background-size:200% 100%}
     .sh h2 em.shim-on{animation:shimmer 8s linear infinite}
@@ -898,8 +1040,9 @@
       :root{--card:rgba(30,25,24,.93)}
     }
 
-    /* Wer Bewegung systemweit abbestellt, bekommt hier Ruhe. Die Effekte sind
-       zwar billig geworden, aber das ist eine Praeferenz, keine Perf-Frage. */
+    /* Anyone who has turned motion off system-wide gets stillness here. The
+       effects have become cheap, but that is beside the point: this is a
+       preference, not a performance question. */
     @media (prefers-reduced-motion:reduce){
       .about-logo::before,.lb-card::after,.live-dot,.live-dot::after,.sep-d,
       .nb2::before,.ts-row.active .ts-name::before,.tg-eyebrow .live::before{animation:none}

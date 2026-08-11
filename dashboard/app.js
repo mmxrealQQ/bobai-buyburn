@@ -551,6 +551,158 @@ function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter
 // === BOBAI LIQ BOOST II DATA (live campaign) ===
 function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
 
+// === THE LIBRARY: copy buttons and the in-page code viewer ===
+// Reading the code should not cost a download. The viewer fetches the bundle's
+// flattened .txt — the same file the curl line hands to an AI, so there is one
+// artifact to keep correct instead of two — splits it back into files and shows
+// them. Everything here is an enhancement: with the script dead, the download
+// and plain-text links in the document still work.
+!function(){
+  const lib=document.getElementById('library');if(!lib)return;
+
+  function flash(btn,text){const old=btn.textContent;btn.textContent=text;btn.classList.add('done');
+    setTimeout(()=>{btn.textContent=old;btn.classList.remove('done')},1400)}
+  // navigator.clipboard is https-only and absent in a few in-app browsers; the
+  // textarea fallback is what makes the button work inside Telegram and X.
+  function copy(text,btn){
+    const done=()=>flash(btn,'copied');
+    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done,()=>fallback(text,done));return}
+    fallback(text,done);
+  }
+  function fallback(text,done){
+    const ta=document.createElement('textarea');ta.value=text;
+    ta.style.cssText='position:fixed;left:-9999px;top:0';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');done()}catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  // --- the .txt bundle, back into files -------------------------------------
+  function parse(txt){
+    const parts=txt.split(/\n={70,}\n=== FILE: /);
+    return parts.slice(1).map(p=>{
+      const nl=p.indexOf('\n');
+      return {path:p.slice(0,nl).trim(), body:p.slice(nl+1).replace(/^={70,}\n\n?/,'').replace(/\n+$/,'')};
+    });
+  }
+
+  // --- highlighting ---------------------------------------------------------
+  // Escaping only &, < and > leaves quotes intact, which is what lets the string
+  // rule below match at all. Comment syntax is picked per extension: a single
+  // shared rule painted every CSS hex colour as a comment.
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const KW='const|let|var|function|return|if|else|for|while|await|async|new|class|extends|import|export|from|try|catch|finally|throw|typeof|instanceof|delete|void|null|true|false|undefined|require|module|this|break|continue|switch|case|default|yield|static|get|set|pragma|contract|interface|library|mapping|address|bool|string|memory|storage|calldata|payable|public|private|external|internal|pure|view|returns|emit|event|modifier|constructor|require|revert|select|insert|update|delete|create|table|policy|grant|alter|drop|where|from|join|on|as|values|primary|key|references|begin|end|declare|def|elif|import|not|and|or';
+  const COMMENT={js:'\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*', css:'\\/\\*[\\s\\S]*?\\*\\/',
+    sql:'--[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/', hash:'#[^\\n]*', html:'&lt;!--[\\s\\S]*?--&gt;'};
+  function rules(path){
+    const e=(path.split('.').pop()||'').toLowerCase();
+    if(e==='html')return COMMENT.html+'|'+COMMENT.js;
+    if(e==='css')return COMMENT.css;
+    if(e==='sql')return COMMENT.sql;
+    if(e==='toml'||e==='py'||e==='yml'||e==='yaml')return COMMENT.hash;
+    if(e==='md')return COMMENT.html;
+    return COMMENT.js;
+  }
+  function paint(path,body){
+    const src=esc(body);
+    const re=new RegExp('('+rules(path)+')|("(?:[^"\\\\\\n]|\\\\.)*"|\'(?:[^\'\\\\\\n]|\\\\.)*\'|`(?:[^`\\\\]|\\\\.)*`)'+
+      '|\\b('+KW+')\\b|(\\b0x[0-9a-fA-F]+\\b|\\b\\d[\\d_]*(?:\\.\\d+)?\\b)','g');
+    return src.replace(re,(m,c,s,k,n)=>
+      c?'<span class="c">'+c+'</span>':s?'<span class="s">'+s+'</span>':
+      k?'<span class="k">'+k+'</span>':'<span class="n">'+n+'</span>');
+  }
+
+  // --- the overlay ----------------------------------------------------------
+  let open=null;
+  function close(){
+    if(!open)return;
+    document.removeEventListener('keydown',open.key,true);
+    open.el.remove();document.body.style.overflow='';
+    open.from&&open.from.focus();open=null;
+  }
+  async function view(slug,title){
+    const el=document.createElement('div');
+    el.className='cv';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');
+    el.setAttribute('aria-label',title+' — source code');
+    el.innerHTML='<div class="cv-w">'+
+      '<div class="cv-h"><div><div class="cv-ti"></div><div class="cv-su">loading…</div></div>'+
+      '<a class="cv-dl" href="/code/'+slug+'.zip" download>&#x2193; Download .zip</a>'+
+      '<button class="cv-x" type="button" aria-label="Close">&#x2715;</button></div>'+
+      '<div class="cv-ld">Fetching the bundle…</div></div>';
+    el.querySelector('.cv-ti').textContent=title;
+    document.body.appendChild(el);document.body.style.overflow='hidden';
+    const from=document.activeElement;
+    const key=e=>{
+      if(e.key==='Escape'){e.preventDefault();close();return}
+      if(e.key!=='Tab')return;
+      // Focus stays inside: tabbing out of a modal and clicking things behind it
+      // is how a dialog turns into a trap of a different kind.
+      const f=[...el.querySelectorAll('button,a[href],[tabindex]:not([tabindex="-1"])')]
+        .filter(x=>x.offsetParent!==null);
+      if(!f.length)return;
+      const first=f[0],last=f[f.length-1];
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+    };
+    open={el,key,from};
+    document.addEventListener('keydown',key,true);
+    el.addEventListener('click',e=>{if(e.target===el)close()});
+    el.querySelector('.cv-x').addEventListener('click',close);
+    el.querySelector('.cv-x').focus();
+
+    let files=[];
+    try{
+      const r=await fetch('/code/'+slug+'.txt');
+      if(!r.ok)throw new Error(r.status);
+      files=parse(await r.text());
+    }catch(e){
+      const ld=el.querySelector('.cv-ld');
+      if(ld)ld.innerHTML='Could not load the code here. '+
+        '<a class="cv-dl" href="/code/'+slug+'.zip" download>Download the zip instead</a>';
+      return;
+    }
+    if(!open||open.el!==el)return;              // closed again while fetching
+    const lines=files.reduce((s,f)=>s+f.body.split('\n').length,0);
+    el.querySelector('.cv-su').textContent=files.length+' files · '+
+      lines.toLocaleString('en-US')+' lines · MIT · no secrets included';
+    const w=el.querySelector('.cv-w');
+    el.querySelector('.cv-ld').remove();
+    const m=document.createElement('div');
+    m.className='cv-m';
+    m.innerHTML='<div class="cv-l"></div><div class="cv-r">'+
+      '<div class="cv-b"><span class="cv-p"></span><button class="cv-cp" type="button">copy file</button></div>'+
+      '<pre class="cv-c"><code></code></pre></div>';
+    w.appendChild(m);
+    const list=m.querySelector('.cv-l'),code=m.querySelector('.cv-c code'),
+          pathEl=m.querySelector('.cv-p'),pre=m.querySelector('.cv-c');
+    let cur=0;
+    function show(i){
+      cur=i;const f=files[i];
+      pathEl.textContent=f.path;
+      code.innerHTML=paint(f.path,f.body);
+      pre.scrollTop=0;pre.scrollLeft=0;
+      [...list.children].forEach((b,n)=>b.classList.toggle('on',n===i));
+    }
+    files.forEach((f,i)=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='cv-f';
+      b.innerHTML='<i>'+f.body.split('\n').length+'</i>';
+      b.insertBefore(document.createTextNode(f.path),b.firstChild);
+      b.addEventListener('click',()=>show(i));
+      list.appendChild(b);
+    });
+    m.querySelector('.cv-cp').addEventListener('click',e=>copy(files[cur].body,e.currentTarget));
+    show(0);
+  }
+
+  lib.addEventListener('click',e=>{
+    const cp=e.target.closest('.lib-cp');
+    if(cp){copy(cp.dataset.copy,cp);return}
+    const v=e.target.closest('.lib-view');
+    if(v)view(v.dataset.slug,v.dataset.title);
+  });
+}();
+
 // === WORLDCUP TIPGAME — live prize pool ticker (Supabase wc_pool, anon read) ===
 !function(){
   // Same Supabase project + public anon key used by /worldcup/index.html — safe to inline.

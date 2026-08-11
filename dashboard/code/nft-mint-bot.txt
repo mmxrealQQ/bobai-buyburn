@@ -1,3 +1,19 @@
+# NFT Auto-Mint Bot — Brain On BNB AI
+# Watches the pair and mints to the buyer, unasked.
+#
+# This is the complete nft-mint-bot bundle as a single file, so it can be read in
+# one fetch. 2 files, 577 lines.
+# Download as a zip: https://brainonbnb.com/code/nft-mint-bot.zip
+# Everything else:   https://brainonbnb.com/code/index.txt
+#
+# No secrets are present: they are supplied at runtime through the environment.
+# MIT licensed.
+
+
+==============================================================================
+=== FILE: worker-nft-mint/index.js
+==============================================================================
+
 // BOBAI NFT Mint Worker — Cloudflare Worker
 // Cron every minute: detects BOBAI buys ≥ $100 on PancakeSwap, rolls a rarity
 // per the drop matrix, and mints a BobaiBuyDrops NFT to the buyer wallet.
@@ -559,3 +575,24 @@ export default {
     console.log(`[done] scanned to ${scannedTo} (head ${safeHead}), mints this run: ${mintedThisRun}${bailed ? ' (BAILED — remaining range retried next run)' : ''}`);
   },
 };
+
+==============================================================================
+=== FILE: worker-nft-mint/wrangler.toml
+==============================================================================
+
+name = "bobai-nft-mint"
+main = "index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "KV"
+id = "<your-kv-namespace-id>"
+
+[vars]
+NFT_CONTRACT_ADDRESS = "0xd56226b3b8297a57f4361fca28aa43babdc9789d"
+# Activation block (first block to watch from). Set via `wrangler deploy` or fix in code.
+# If unset, worker uses "current block" on first run and persists in KV.

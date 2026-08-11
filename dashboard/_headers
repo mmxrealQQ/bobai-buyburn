@@ -93,6 +93,13 @@
 /fonts.css
   Cache-Control: public, max-age=604800, must-revalidate
 
+# The code library. Rebuilt only when the source changes, so an hour of cache
+# costs nothing and spares the origin a 500 KB text file per curious visitor.
+# must-revalidate keeps a rebuild from staying hidden behind a stale copy.
+/code/*
+  Cache-Control: public, max-age=3600, must-revalidate
+  X-Content-Type-Options: nosniff
+
 # Scanner page code, versioned via ?v= in scanner.html like app.js.
 /scanner.js
   Cache-Control: public, max-age=604800, must-revalidate

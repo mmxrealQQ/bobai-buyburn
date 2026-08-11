@@ -1,0 +1,2690 @@
+# Pool Scanner — Brain On BNB AI
+# Reads any BNB Chain pool. No backend at all.
+#
+# This is the complete pool-scanner bundle as a single file, so it can be read in
+# one fetch. 4 files, 2659 lines.
+# Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
+# Everything else:   https://brainonbnb.com/code/index.txt
+#
+# No secrets are present: they are supplied at runtime through the environment.
+# MIT licensed.
+
+
+==============================================================================
+=== FILE: dashboard/scanner-chain.js
+==============================================================================
+
+// SCANNER — the chain layer. Everything that produces a number lives here; the
+// page layer does nothing but display what this returns.
+//
+// The rule this file exists to enforce: a figure is either measured or it is
+// labelled. Nothing is inferred from a reputation service and then presented as
+// fact. That rule was not free — an earlier version took the transfer tax from
+// GoPlus, which reported 4.45% sell tax for $Max while four executed sells on
+// the chain charged exactly 3.000%. The label was wrong, our cost column was
+// wrong with it, and nothing on the page would have told you.
+//
+// Three endpoints, each chosen for one capability:
+//   RPC      eth_call. Binance's dataseed refuses eth_getLogs outright.
+//   LOGS_RPC eth_getLogs, ~5000 blocks near the head. That is enough to find
+//            real trades and measure what they were actually charged.
+//   GOPLUS   contract properties no call reveals (mintable, proxy, LP lockers).
+//            Optional, always attributed, never silently trusted.
+// A single public endpoint cannot carry this page. Measured across a dozen of
+// them: Binance's own dataseeds drop whole batches once an address has been
+// scanned a few times in a row, Ankr and ninicoin refused every batch outright,
+// and one endpoint dropping is indistinguishable — from inside the page — from
+// a token having no pools. So there is a pool of endpoints, ordered by measured
+// latency at 25 calls, and a failure moves to the next rather than becoming a
+// claim about somebody's token. All of them send CORS: * , which is what makes
+// running this from the visitor's own browser possible at all.
+export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com',
+  'https://bsc-dataseed1.defibit.io','https://bsc-mainnet.public.blastapi.io',
+  'https://bsc-dataseed.binance.org','https://1rpc.io/bnb'];
+export const RPC=RPCS[0],
+  LOGS_RPC='https://bsc-rpc.publicnode.com',
+  GOPLUS='https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=',
+  V2FACTORY='0xca143ce32fe78f1f7019d7d551a6402fc5350c73',
+  V3FACTORY='0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
+  QUOTER='0xb048bbc1ee6b733fffcfb9e9cef7375518e25997',
+  WBNB='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
+  BNB_PAIR='0x58f876857a02d6762e0101bb5c46a8c1ed44dc16',
+  DEAD='0x000000000000000000000000000000000000dead',
+  NULLA='0x0000000000000000000000000000000000000000';
+// All 18 decimals on BSC — checked, unlike on other chains where USDT/USDC are 6.
+export const QUOTES=[[WBNB,'BNB',0],
+  ['0x55d398326f99059ff775485246999027b3197955','USDT',1],
+  ['0xe9e7cea3dedca5984780bafc599bd69add087d56','BUSD',1],
+  ['0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d','USDC',1],
+  ['0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d','USD1',1]];
+export const V3_FEES=[100,500,2500,10000];
+// Constant-product venues, and the fee each one charges.
+//
+// Every fee here was DERIVED, not read off a docs page: for each router, its
+// factory() was confirmed on-chain, then getAmountsOut was solved against the
+// pool's live reserves — out*rIn / (in*(rOut-out)) — which returns the fee the
+// contract actually applies. PancakeSwap came back 0.2500% exactly, which is
+// what validates the method; Uniswap 0.3000%, Biswap 0.2000%.
+//
+// A factory that is not in this table is NOT scanned and NOT guessed at. That
+// matters more than it sounds: the previous build applied PancakeSwap's 0.25%
+// to any V2-shaped pair a visitor pasted, so a Uniswap pool's cost column came
+// out 0.05 points light with nothing on the page to say so.
+export const FACTORIES={
+  '0xca143ce32fe78f1f7019d7d551a6402fc5350c73':{name:'PancakeSwap V2',fee:0.0025},
+  '0x8909dc15e40173ff4699343b6eb8132c65e18ec6':{name:'Uniswap V2',fee:0.0030},
+  '0x858e3312ed3a876947ea49d572a7c42de08af7ee':{name:'Biswap',fee:0.0020},
+};
+export const V2_FEE=0.0025;
+export const STEPS=[100,150,250,500,1000,2500];
+// A batch of 40 eth_calls comes back "method eth_call in batch triggered rate
+// limit"; 26 goes through in 86ms. Everything below chunks to stay under it.
+const MAX_BATCH=25;
+
+const S={reserves:'0x0902f1ac',token0:'0x0dfe1681',token1:'0xd21220a7',fee:'0xddca3f43',
+  slot0:'0x3850c7bd',decimals:'0x313ce567',symbol:'0x95d89b41',name:'0x06fdde03',
+  totalSupply:'0x18160ddd',factory:'0xc45a0155',feeTo:'0x017e7e58'};
+const pad=a=>'0'.repeat(24)+a.slice(2).toLowerCase();
+const num=v=>BigInt(v).toString(16).padStart(64,'0');
+export const balOf=a=>'0x70a08231'+pad(a);
+export const getPair=(t,q)=>'0xe6a43905'+pad(t)+pad(q);
+export const getPool=(t,q,f)=>'0x1698ee82'+pad(t)+pad(q)+num(f);
+export const quoteCall=(tin,tout,amt,fee)=>'0xc6a5026a'+pad(tin)+pad(tout)+num(amt)+num(fee)+num(0);
+export const call=(to,data)=>({to,data});
+export const hx=h=>(h&&h!=='0x')?BigInt(h):0n;
+export const addrAt=h=>h&&h.length>=42?('0x'+h.slice(-40)).toLowerCase():null;
+export const res2=h=>h&&h.length>=130
+  ?[Number(BigInt('0x'+h.slice(2,66))),Number(BigInt('0x'+h.slice(66,130)))]:null;
+export const SEL=S;
+
+// A dynamic string arrives as offset/length/data, but a few older tokens answer
+// name()/symbol() with a raw bytes32. Both decode or the label is lost for
+// no good reason.
+export function decStr(h){
+  if(!h||h==='0x')return '';
+  const b=h.slice(2);
+  try{
+    if(b.length>=128){
+      const len=parseInt(b.slice(64,128),16);
+      if(len>0&&len<=128){
+        let s='';for(let i=0;i<len;i++)s+=String.fromCharCode(parseInt(b.substr(128+i*2,2),16));
+        if(/^[\x20-\x7e]+$/.test(s))return s;
+      }
+    }
+    let s='';for(let i=0;i<b.length;i+=2){const c=parseInt(b.substr(i,2),16);if(c>=32&&c<127)s+=String.fromCharCode(c)}
+    return s.trim();
+  }catch(e){return ''}
+}
+// Chunked, and loud when it fails.
+//
+// The node answers an over-long batch with one error object PER ENTRY rather
+// than one error for the request. Reading those as empty results is how a rate
+// limit turned into "this token has no liquidity" — a network condition
+// silently rendered as a statement about somebody's token. It cost a real
+// scan of $TUT, whose $2.2M pool simply vanished from the page.
+//
+// So: small chunks, one patient retry, and if the node still will not answer,
+// an exception that surfaces as an error message. Never a quiet empty.
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// Sticky index: once an endpoint answers it keeps being used, so a healthy scan
+// costs no extra round trips. It only moves on when one actually fails.
+let epi=0;
+// "method eth_call in batch triggered rate limit", "capacity exceeded", 429s.
+// Anything mentioning a revert is a real answer and must never match here.
+const throttled=e=>{
+  const m=String(e&&e.message||'').toLowerCase();
+  if(m.includes('revert')||m.includes('execution'))return false;
+  return e&&e.code===-32005||/rate|limit|capacity|too many|quota|busy|exceed/.test(m);
+};
+async function tryPost(url,body){
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+    if(!r.ok)return null;
+    return await r.json();
+  }catch(e){return null}
+}
+export async function rpcBatch(calls,url){
+  const out=[];
+  for(let i=0;i<calls.length;i+=MAX_BATCH){
+    const part=calls.slice(i,i+MAX_BATCH);
+    const body=part.map((c,k)=>({jsonrpc:'2.0',id:k,method:'eth_call',params:[c,'latest']}));
+    let slot=null;
+    const pool=url?[url]:RPCS;
+    for(let n=0;n<pool.length&&!slot;n++){
+      const j=await tryPost(pool[url?0:(epi+n)%pool.length],body);
+      if(!Array.isArray(j))continue;
+      // Two kinds of error arrive in the same shape and mean opposite things.
+      // An EXECUTION REVERT is an answer: asking a plain token for getReserves()
+      // is exactly how this page decides it is not a pool, and every call in
+      // that batch reverting is the correct result, not a failure. A RATE LIMIT
+      // is not an answer at all, and reading one as empty results is how a
+      // throttled node once turned into "this token has no liquidity". Only the
+      // second kind may move us to another endpoint.
+      if(j.some(x=>x.error&&throttled(x.error)))continue;
+      const s=[];for(const x of j)s[x.id]=x.result;
+      slot=s;if(!url)epi=(epi+n)%pool.length;
+    }
+    if(!slot)throw new Error('every BSC endpoint refused this request');
+    for(let k=0;k<part.length;k++)out.push(slot[k]);
+    if(calls.length>MAX_BATCH)await sleep(40);
+  }
+  return out;
+}
+export async function rpc(method,params,url){
+  const pool=url?[url]:RPCS;
+  for(let n=0;n<pool.length;n++){
+    const j=await tryPost(pool[url?0:(epi+n)%pool.length],{jsonrpc:'2.0',id:1,method,params});
+    if(j&&!j.error)return j.result;
+    if(j&&j.error&&url)throw new Error(j.error.message);
+  }
+  throw new Error('every BSC endpoint refused '+method);
+}
+
+// === WHAT IS THIS ADDRESS? ===
+// People paste what they have, and what they have is usually a DexScreener link
+// — which carries the POOL address, not the token. Guessing wrong here sends the
+// whole scan down the wrong path, so the address is asked directly what it is.
+export async function classify(addr){
+  const q=await rpcBatch([call(addr,S.reserves),call(addr,S.fee),call(addr,S.slot0),
+    call(addr,S.token0),call(addr,S.token1),call(addr,S.factory)]);
+  if(q[0]&&q[0].length>=194&&res2(q[0])){
+    // Which venue built this pair decides the fee. Asked, never assumed.
+    const fac=addrAt(q[5]);
+    return {kind:'v2pair',token0:addrAt(q[3]),token1:addrAt(q[4]),reserves:res2(q[0]),
+      factory:fac,venue:fac?FACTORIES[fac]:null};
+  }
+  if(q[1]&&q[1]!=='0x'&&q[2]&&q[2].length>64)
+    return {kind:'v3pool',fee:Number(hx(q[1])),token0:addrAt(q[3]),token1:addrAt(q[4]),
+      sqrt:hx('0x'+q[2].slice(2,66))};
+  return {kind:'token'};
+}
+
+// === PRICING THE QUOTE SIDE ===
+// A pool quoted in BNB or a stablecoin can be stated in dollars directly. A pool
+// quoted in another meme token cannot — $MatthewCoin trades against $SpaceX, and
+// no amount of reading that pair reveals what a dollar is. One hop to BNB fixes
+// it, but honestly: the derived figure inherits the thinness of the hop, so the
+// depth of that intermediate pool is carried out of here and shown.
+export async function priceToken(addr,bnbUsd){
+  const known=QUOTES.find(([a])=>a===addr);
+  if(known)return {usd:known[2]?1:bnbUsd,sym:known[1],direct:true};
+  const p=await rpcBatch([call(V2FACTORY,getPair(addr,WBNB)),call(addr,S.symbol),call(addr,S.decimals)]);
+  const pair=addrAt(p[0]),sym=decStr(p[1]).slice(0,12)||'?',dec=Number(hx(p[2]))||18;
+  if(!pair||pair===NULLA)return {usd:null,sym,direct:false};
+  const r=await rpcBatch([call(pair,S.reserves),call(pair,S.token0)]);
+  const rr=res2(r[0]);if(!rr)return {usd:null,sym,direct:false};
+  const is0=addrAt(r[1])===addr,
+        tok=(is0?rr[0]:rr[1])/Math.pow(10,dec),wb=(is0?rr[1]:rr[0])/1e18;
+  if(!(tok>0)||!(wb>0))return {usd:null,sym,direct:false};
+  return {usd:(wb/tok)*bnbUsd,sym,direct:false,hopBnb:wb,hopPair:pair};
+}
+
+// === POOL DISCOVERY ===
+// Asked of the factories, not of an index. An index that has not caught up makes
+// a live token look dead — GoPlus does not list $CAKE's V2 pair at all, and does
+// not know $MatthewCoin's. The factory always answers.
+export async function discover(token,tokDec,bnbUsd){
+  const facs=Object.keys(FACTORIES);
+  const v2=[];facs.forEach(f=>QUOTES.forEach(([q])=>v2.push(call(f,getPair(token,q)))));
+  const v3=[];QUOTES.forEach(([q])=>V3_FEES.forEach(f=>v3.push(call(V3FACTORY,getPool(token,q,f)))));
+  const found=await rpcBatch([...v2,...v3]);
+  const cands=[];
+  facs.forEach((f,fi)=>QUOTES.forEach(([qa,sym,stable],i)=>{
+    const p=addrAt(found[fi*QUOTES.length+i]);
+    if(p&&p!==NULLA)cands.push({kind:'v2',pair:p,quote:qa,sym,usd:stable?1:bnbUsd,
+      fee:FACTORIES[f].fee,venue:FACTORIES[f].name,factory:f});
+  }));
+  QUOTES.forEach(([qa,sym,stable],i)=>V3_FEES.forEach((f,k)=>{
+    const p=addrAt(found[facs.length*QUOTES.length+i*V3_FEES.length+k]);
+    if(p&&p!==NULLA)cands.push({kind:'v3',pair:p,quote:qa,sym,usd:stable?1:bnbUsd,
+      fee:f/1e6,feeRaw:f,venue:'PancakeSwap V3'});
+  }));
+  if(!cands.length)return [];
+  // Depth is measured, never assumed: V2 from reserves, V3 from what the pool
+  // contract actually holds. A pool that exists but is empty must sort last.
+  const calls=[];
+  cands.forEach(c=>{
+    if(c.kind==='v2')calls.push(call(c.pair,S.reserves),call(c.pair,S.token0));
+    else calls.push(call(c.quote,balOf(c.pair)),call(token,balOf(c.pair)));
+  });
+  const m=await rpcBatch(calls);
+  cands.forEach((c,i)=>{
+    if(c.kind==='v2'){
+      const rr=res2(m[i*2]);if(!rr)return;
+      const is0=addrAt(m[i*2+1])===token;
+      c.tok=(is0?rr[0]:rr[1])/Math.pow(10,tokDec);c.q=(is0?rr[1]:rr[0])/1e18;
+    }else{
+      c.q=Number(hx(m[i*2]))/1e18;c.tok=Number(hx(m[i*2+1]))/Math.pow(10,tokDec);
+    }
+    c.hard=(c.q||0)*c.usd;
+  });
+  return cands.filter(c=>c.hard>0&&c.tok>0).sort((a,b)=>b.hard-a.hard);
+}
+
+// === V2 MATH ===
+// IMPACT is where the price ends up: reserves after against reserves before. The
+// pool fee stays in the pool and counts; a transfer tax never reaches the
+// reserves on a buy, so it cannot move the price at all.
+// COST is what the trader gives up against spot — a worse fill because the pool
+// moved underneath, plus the fee and the tax on top.
+export function ladderV2(tok,q,fee,taxB,taxS,px,quoteUsd){
+  const FEE=1-fee,TB=1-taxB,TS=1-taxS;
+  return STEPS.map(u=>{
+    const dQ=u/quoteUsd,effB=dQ*FEE,outB=(tok*effB)/(q+effB),
+          dT=u/px,effT=dT*TS*FEE,outS=(q*effT)/(tok+effT);
+    return{usd:u,
+      buyMove:(((q+dQ)/(tok-outB))/(q/tok)-1)*100,
+      buyCost:(1-TB*FEE*q/(q+effB))*100,
+      sellMove:(((q-outS)/(tok+dT*TS))/(q/tok)-1)*100,
+      sellCost:(1-TS*FEE*tok/(tok+effT))*100};
+  });
+}
+// (r + x)(r + FEE*x) = k*r^2  ->  FEE*x^2 + r(1+FEE)x + r^2(1-k) = 0
+export function onePctV2(r,fee,k){const FEE=1-fee,b=1+FEE;
+  return r*((-b+Math.sqrt(b*b+4*FEE*(k-1)))/(2*FEE))}
+
+// === V3 MATH ===
+// Concentrated liquidity has no closed form: impact depends on where the
+// liquidity is parked around the current price, not on two reserves. Rather than
+// approximate it, the pool's own quoter is asked — one eth_call per size,
+// returning the exact fill and the exact price afterwards, ticks crossed and
+// all. That is not an estimate of the trade; it is the trade, simulated.
+const Q96=2n**96n;
+export function sqrtToPrice(sqrt,decIn,decOut){
+  const s=Number(sqrt)/Number(Q96);
+  return s*s*Math.pow(10,decIn-decOut);
+}
+// The baseline comes from a DUST QUOTE in the same batch, never from a separate
+// slot0 read. On a deep, busy pool the price moves more between two round trips
+// than a $2,500 trade moves it: $BTCB's buy impact came out NEGATIVE across
+// every rung, because what was being measured was one second of real trading,
+// not the trade. Quoting a near-zero amount alongside the real ones gives a
+// "before" from the same block state, so the difference is the trade and
+// nothing else.
+export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,taxS,sqrtBefore,tokenIs0){
+  // The sell side is quoted with the amount that SURVIVES the transfer tax,
+  // because that is all the pool ever sees. Quoting the gross amount and
+  // scaling the answer afterwards would be an approximation where an exact
+  // figure was available for the same single call.
+  const amtsBuy=STEPS.map(u=>BigInt(Math.floor(u/quoteUsd*1e18))),
+        amtsSell=STEPS.map(u=>BigInt(Math.floor(u/px*(1-taxS)*Math.pow(10,tokDec))));
+  const dust=BigInt(Math.max(1,Math.floor(1/quoteUsd*1e18)));   // ~$1 of the quote token
+  const calls=[call(QUOTER,quoteCall(quote,token,dust,feeRaw)),
+               ...amtsBuy.map(a=>call(QUOTER,quoteCall(quote,token,a,feeRaw))),
+               ...amtsSell.map(a=>call(QUOTER,quoteCall(token,quote,a,feeRaw)))];
+  const all=await rpcBatch(calls);
+  const baseHex=all[0],r=all.slice(1);
+  const before=(baseHex&&baseHex.length>=130)
+    ? Number(BigInt('0x'+baseHex.slice(66,130)))   // same block state as the rungs
+    : Number(sqrtBefore);
+  const move=h=>{
+    if(!h||h.length<130)return null;
+    const after=Number(BigInt('0x'+h.slice(66,130)));
+    if(!(after>0)||!(before>0))return null;
+    const ratio=Math.pow(after/before,2);      // price of token0 in token1
+    return ((tokenIs0?ratio:1/ratio)-1)*100;   // ...expressed for OUR token
+  };
+  const out=h=>h&&h.length>=66?Number(BigInt('0x'+h.slice(2,66))):null;
+  // SPOT, from the same block state as the rungs — for the same reason the
+  // impact baseline is taken from the dust quote and not from slot0. Cost is a
+  // comparison against spot, and slot0 was read one round trip earlier: on a
+  // busy pool the price drifts more in that second than a $100 trade moves it,
+  // which produced a NEGATIVE cost ("you pay −0.06%", i.e. the pool pays you)
+  // on $BLUAI and $DOS. The dust quote already has the pool fee taken out of
+  // its input, so the fee is added back to recover the mid price — otherwise
+  // the fee would quietly vanish from the cost it is part of.
+  const dustOut=out(baseHex),feeFrac=feeRaw/1e6;
+  const pxLive=(dustOut>0)
+    ? (Number(dust)/1e18)*(1-feeFrac)/(dustOut/Math.pow(10,tokDec))*quoteUsd
+    : px;
+  const spot=pxLive>0?pxLive:px;
+  return STEPS.map((u,i)=>{
+    const b=r[i],s=r[STEPS.length+i];
+    const outTok=out(b),outQ=out(s);
+    // Buy: quote in, tokens out, then the transfer tax is taken off the top.
+    const gotTok=outTok!=null?outTok/Math.pow(10,tokDec)*(1-taxB):null;
+    const paidQ=u/quoteUsd;
+    // Sell: the pair only ever sees the taxed amount, so the tax is applied to
+    // the input before the quote, exactly as the chain does it. What the trader
+    // gives up is the GROSS amount, valued at spot.
+    const gotQ=outQ!=null?outQ/1e18:null;
+    const survS=(1-taxS)>0?(1-taxS):1;
+    const sentTok=Number(amtsSell[i])/Math.pow(10,tokDec)/survS;
+    return {usd:u,
+      buyMove:move(b),
+      buyCost:gotTok!=null?(1-(gotTok*spot)/(paidQ*quoteUsd))*100:null,
+      sellMove:move(s)!=null?-Math.abs(move(s)):null,
+      sellCost:(gotQ!=null&&sentTok>0)?(1-(gotQ*quoteUsd)/(sentTok*spot))*100:null};
+  });
+}
+// The ladder's six fixed sizes cannot express depth for a pool that is far
+// deeper or far thinner than they assume, so the quoter is swept geometrically
+// and the crossing of 1% is read off the curve. Interpolated in log space
+// because impact against size is very close to a straight line there.
+export async function onePctV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,sqrtBefore,tokenIs0,taxS=0){
+  // $20 to $976M. The old sweep stopped at $1.3M and simply gave up on anything
+  // deeper: USDC/USDT at the 0.01% tier does not move one percent for any figure
+  // in that range, so both fields printed "—" for a pool holding $27M — read as
+  // "could not measure" when the truth was "more than we asked". Twelve probes
+  // is also exactly the batch ceiling once the dust quote and both directions
+  // are counted (1 + 12 + 12 = 25).
+  const probes=Array.from({length:12},(_,i)=>20*Math.pow(5,i));
+  const dust=BigInt(Math.max(1,Math.floor(1/quoteUsd*1e18)));
+  // The sell probes are quoted with what SURVIVES the transfer tax, because that
+  // is all the pool ever sees — the same correction the V2 path applies when it
+  // divides by (1-taxS). Without it a 5%-tax token's "moves the price −1%" was
+  // the size that reaches the pool, not the size the seller has to send.
+  const surv=1-(taxS||0);
+  const calls=[call(QUOTER,quoteCall(quote,token,dust,feeRaw)),
+               ...probes.map(u=>call(QUOTER,quoteCall(quote,token,BigInt(Math.floor(u/quoteUsd*1e18)),feeRaw))),
+               ...probes.map(u=>call(QUOTER,quoteCall(token,quote,BigInt(Math.floor(u/px*surv*Math.pow(10,tokDec))),feeRaw)))];
+  const all=await rpcBatch(calls);
+  const baseHex=all[0],r=all.slice(1);
+  const before=(baseHex&&baseHex.length>=130)?Number(BigInt('0x'+baseHex.slice(66,130))):Number(sqrtBefore);
+  const mv=h=>{if(!h||h.length<130)return null;
+    const after=Number(BigInt('0x'+h.slice(66,130)));
+    if(!(after>0)||!(before>0))return null;
+    const ratio=Math.pow(after/before,2);
+    return Math.abs((tokenIs0?ratio:1/ratio)-1)*100};
+  // Three outcomes, and they must not be flattened into one. A crossing found is
+  // a figure. No crossing because every probe that the pool could quote stayed
+  // under 1% is a LOWER BOUND, not an unknown — "more than $1.6M" is a real
+  // answer and printing "—" for it understates a deep pool. Nothing quotable at
+  // all is the only genuine unknown.
+  const cross=off=>{
+    const pts=probes.map((u,i)=>({u,m:mv(r[off+i])})).filter(p=>p.m!=null&&p.m>0);
+    if(!pts.length)return {v:null,min:null};
+    for(let i=1;i<pts.length;i++){
+      if(pts[i].m>=1&&pts[i-1].m<1){
+        const a=pts[i-1],b=pts[i],t=(Math.log(1)-Math.log(a.m))/(Math.log(b.m)-Math.log(a.m));
+        return {v:Math.exp(Math.log(a.u)+t*(Math.log(b.u)-Math.log(a.u))),min:null};
+      }
+    }
+    const last=pts[pts.length-1];
+    // Below 1% at the largest size the pool would quote: a floor. Above 1% at
+    // the smallest: too thin for this ladder to bracket, so no claim.
+    return {v:null,min:last.m<1?last.u:null};
+  };
+  // Both figures are already GROSS: the probe list is denominated in what the
+  // trader sends, and the tax was taken off inside the quoted amount, so there
+  // is nothing left to scale here.
+  const u=cross(0),d=cross(probes.length);
+  return {up:u.v,down:d.v,upMin:u.min,downMin:d.min};
+}
+
+// === WHERE ELSE DOES IT TRADE? ===
+// This decides whether the pool we can measure is worth measuring at all, so it
+// cannot depend on a source that only knows the venues it happens to index.
+// GoPlus used to fill this role and does not know fstswap: a token with $107k
+// there showed up here as a $15 PancakeSwap dust pool with "+20,456% impact"
+// and no warning, because from GoPlus's side there was nothing to compare
+// against. DexScreener indexes the small venues, returns one consistent USD
+// figure per pool, and sends CORS: * — so the comparison is like for like and
+// the guard no longer depends on somebody else's coverage.
+export async function venues(token){
+  try{
+    const r=await fetch('https://api.dexscreener.com/latest/dex/tokens/'+token,
+      {signal:AbortSignal.timeout(9000)});
+    if(!r.ok)return null;
+    const j=await r.json();
+    const list=(j.pairs||[]).filter(p=>p.chainId==='bsc'&&p.liquidity)
+      .map(p=>({pair:(p.pairAddress||'').toLowerCase(),
+        name:(p.dexId||'?')+' '+((p.labels||[]).join('')||'v2'),
+        quote:p.quoteToken&&p.quoteToken.symbol||'',
+        liq:Math.round(p.liquidity.usd||0)}))
+      .sort((a,b)=>b.liq-a.liq);
+    return list.length?list:null;
+  }catch(e){return null}
+}
+
+// === THE TAX, MEASURED ===
+// Not read off a label — read off trades that actually happened. The pair says
+// how many tokens it moved; the token's own Transfer events in the same
+// transaction say how many arrived. The gap is what was charged, to the wallet
+// that paid it. On a taxed buy the pool emits two transfers, one to the tax sink
+// and one to the buyer; the buyer's is the larger, and the difference is the tax.
+const SWAP_T='0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822',
+      // Concentrated liquidity emits a DIFFERENT Swap event, and asking for the
+      // V2 one over a V3 pool returns an empty list — which this page then
+      // printed as "this pool has not traded in the last two hours" for pools
+      // trading every block. Every V3 token silently fell back to the GoPlus
+      // label, which is the one thing the tax card exists not to do.
+      // And PancakeSwap's V3 Swap is NOT Uniswap's: it carries two extra
+      // protocol-fee words, so it hashes to a different topic. Taken off a live
+      // pool's own logs rather than from a docs page — asking for Uniswap's
+      // topic returned zero swaps on USDC/USDT, a pool that trades every block.
+      // Both are accepted; only the first is ever seen at this venue.
+      SWAP_V3_T='0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83',
+      SWAP_V3_UNI='0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67',
+      XFER_T='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+// V3 states the two amounts as SIGNED integers from the pool's point of view:
+// positive went in, negative came out. V2 states four unsigned ones instead.
+const TWO256=1n<<256n,TWO255=1n<<255n;
+const int256=h=>{const v=BigInt('0x'+h);return v>=TWO255?v-TWO256:v};
+// How long the readable window actually is, in the reader's units. BSC's block
+// time is not a constant — it was 3s, then 1.5s, then 0.75s — so "5,000 blocks
+// is about two hours" was true when it was written and is wrong now. Asked of
+// the chain instead of assumed.
+async function windowSpan(from,to){
+  try{
+    const [a,b]=await Promise.all([
+      rpc('eth_getBlockByNumber',['0x'+from.toString(16),false],LOGS_RPC),
+      rpc('eth_getBlockByNumber',['0x'+to.toString(16),false],LOGS_RPC)]);
+    const s=parseInt(b.timestamp,16)-parseInt(a.timestamp,16);
+    if(!(s>0))return null;
+    return s<5400?Math.round(s/60)+' minutes':(s/3600).toFixed(1).replace(/\.0$/,'')+' hours';
+  }catch(e){return null}
+}
+export async function measureTax(token,pair,tokenIs0,kind){
+  try{
+    const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16);
+    // One window, and only one: this endpoint serves ~5,000 blocks at the head
+    // and answers anything older with "archive requests require a personal
+    // token". The second window the earlier build asked for was refused every
+    // single time, which cost a round trip and bought nothing.
+    const from=head-4999;
+    let logs=null;
+    const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
+    try{logs=await rpc('eth_getLogs',[{address:pair,topics:topic,
+      fromBlock:'0x'+from.toString(16),toBlock:'0x'+head.toString(16)}],LOGS_RPC)}catch(e){logs=null}
+    // A refused range and a quiet pool arrive as the same emptiness and mean
+    // opposite things. Only one of them may be stated as a fact about somebody
+    // else's pool.
+    if(!logs)return {ok:false,reason:'the log endpoint refused the range'};
+    if(!logs.length){
+      const span=await windowSpan(from,head);
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~5,000 blocks')};
+    }
+    const U=h=>BigInt('0x'+h);
+    const buys=[],sells=[];const seen=new Set();
+    // Receipts are one round trip each, and a busy pool can offer thousands of
+    // swaps. Sixteen is enough to find three of each on any pool with two-sided
+    // flow, and bounds the wait when a pool is all arb and nothing qualifies.
+    let tried=0;
+    for(const L of logs.slice().reverse()){
+      if(buys.length>=3&&sells.length>=3)break;
+      if(tried>=16)break;
+      if(seen.has(L.transactionHash))continue;seen.add(L.transactionHash);
+      const d=L.data.slice(2);
+      let tokOut,tokIn;
+      if(kind==='v3'){
+        const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),mine=tokenIs0?a:b;
+        tokOut=mine<0n?-mine:0n;tokIn=mine>0n?mine:0n;
+      }else{
+        const a0i=U(d.slice(0,64)),a1i=U(d.slice(64,128)),a0o=U(d.slice(128,192)),a1o=U(d.slice(192,256));
+        tokOut=tokenIs0?a0o:a1o;tokIn=tokenIs0?a0i:a1i;
+      }
+      if(!(tokOut>0n)&&!(tokIn>0n))continue;
+      if(tokOut>0n&&buys.length>=3)continue;
+      if(tokIn>0n&&sells.length>=3)continue;
+      // Receipts come from the main node, not the log node: the log endpoint
+      // serves ranges but returns nothing useful for receipts, which cost an
+      // earlier build every single tax measurement while looking like success.
+      tried++;
+      let rec;try{rec=await rpc('eth_getTransactionReceipt',[L.transactionHash])}catch(e){continue}
+      if(!rec||!rec.logs)continue;
+      // Which contracts in this transaction are POOLS. It matters because the
+      // sell side works out the tax by comparing what the pair received against
+      // the other token transfers the seller made — exact for a plain sell, and
+      // nonsense for an arbitrage bot routing the same token through two pools,
+      // where the second leg gets counted as if it were a fee. That is where a
+      // 30.63% sell tax on $CAKE came from, a token with no tax at all. Anything
+      // sent to another pool is a leg, not a fee, and is excluded by name.
+      const isSwap=x=>x.topics[0]===SWAP_T||x.topics[0]===SWAP_V3_T||x.topics[0]===SWAP_V3_UNI;
+      const pools=new Set(rec.logs.filter(isSwap).map(x=>x.address.toLowerCase()));
+      // Our own pair swapped twice in one transaction cannot be matched to one
+      // Swap event, so that transaction is skipped rather than misread.
+      if(rec.logs.filter(x=>isSwap(x)&&x.address.toLowerCase()===pair).length!==1)continue;
+      const xf=rec.logs.filter(x=>x.address.toLowerCase()===token&&x.topics[0]===XFER_T&&x.topics.length>=3)
+        .map(x=>({from:'0x'+x.topics[1].slice(26),to:'0x'+x.topics[2].slice(26),v:U(x.data.slice(2)),
+          i:parseInt(x.logIndex,16)}));
+      if(!xf.length)continue;
+      // A ratio outside [0, 1) is not a tax reading, it is a transfer this code
+      // has mismatched — a rebasing token, a router that batches two swaps into
+      // one receipt, a fee taken in a different token. Dropping it is right;
+      // averaging it in would put a negative or a 300% tax on the page.
+      const keep=(a,v)=>{if(isFinite(v)&&v>=-0.0001&&v<0.99)a.push(Math.max(0,v))};
+      if(tokOut>0n){
+        const outs=xf.filter(x=>x.from===pair);
+        if(outs.length){const got=outs.reduce((m,x)=>x.v>m?x.v:m,0n);
+          keep(buys,1-Number(got)/Number(tokOut))}
+      }else{
+        const inn=xf.find(x=>x.to===pair);
+        // A taxed sell emits its fee leg RIGHT NEXT to the transfer that funds
+        // the swap — same call, adjacent log indices. Anything the same wallet
+        // sends elsewhere in a long routed transaction is a different trade, not
+        // a fee, and summing it in is what produced a 30% sell tax for $CAKE.
+        // Two filters, because either alone leaves a hole: not to another pool,
+        // and not four logs away from the transfer it is supposed to belong to.
+        if(inn){const total=xf.filter(x=>x.from===inn.from&&Math.abs(x.i-inn.i)<=3&&
+            (x.to===pair||!pools.has(x.to)))
+          .reduce((s,x)=>s+x.v,0n);
+          // Above 50% this is not a tax reading, it is a mismatch. Real taxes
+          // that high exist, but they cannot be told apart from a bad match, and
+          // guessing wrong here is worse than saying nothing.
+          if(total>0n){const t=1-Number(inn.v)/Number(total);if(t<0.5)keep(sells,t)}}
+      }
+    }
+    // Exempt wallets exist — the deployer, the tax sink, routers on an allow
+    // list — and they trade at 0%. Taking the median rather than the mean keeps
+    // one exempt trade from dragging the figure below what a normal wallet pays.
+    const med=a=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);
+      return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
+    const b=med(buys),s=med(sells);
+    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades'};
+    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,
+      spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
+  }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
+}
+
+==============================================================================
+=== FILE: dashboard/scanner.html
+==============================================================================
+
+<!DOCTYPE html>
+<!-- Background straight on <html> so the first paint is dark before any
+     stylesheet is parsed — same reason, and same value, as index.html. -->
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- The typefaces are served from this origin (see fonts.css for why, and for
+       the fact that both are variable fonts — one file each, every weight).
+       Preloaded because both are used above the fold: Inter for the body, Space
+       Grotesk for the headline and every figure. crossorigin is required on a
+       font preload even same-origin, or the browser fetches the file twice. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+
+  <title>Pool Scanner — how deep is any BSC token's liquidity?</title>
+  <meta name="description" content="Paste any BNB Chain token or pool and read it the way a trader meets it: price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked, or withdrawable.">
+  <link rel="canonical" href="https://brainonbnb.com/scanner">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Pool Scanner — how deep is any BSC token's liquidity?">
+  <meta property="og:description" content="Price impact, real cost, measured transfer tax and LP ownership for any BNB Chain token. Read live from the chain.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/scanner">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pool Scanner — how deep is any BSC token's liquidity?">
+  <meta name="twitter:description" content="Price impact, real cost, measured transfer tax and LP ownership for any BNB Chain token.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <!-- The dashboard's own stylesheet, same ?v= as index.html so a visitor who
+       has been there already has it in cache. Nav, footer, section frame, the
+       colour tokens and the aurora all come from it — this page is part of the
+       site rather than a lookalike. Bump this ?v= together with index.html. -->
+  <link rel="preload" href="styles.css?v=17" as="style">
+  <link rel="stylesheet" href="styles.css?v=17">
+  <style>
+    /* Only what the dashboard has no equivalent for: the search field, the
+       result header, the ladder and the flag grid. Everything reuses the
+       dashboard's variables (--gold, --card, --border, --muted, --radius) so
+       the two pages cannot drift apart. */
+    /* Sub-page nav, taken verbatim from nft/index.html so the three pages are
+       visually identical. These classes are not in styles.css — each sub-page
+       carries its own copy. */
+    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
+      font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
+      transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
+    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+    .back-btn span{font-size:14px;line-height:1}
+    .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
+      color:var(--gold);white-space:nowrap;text-decoration:none}
+    .brand-link:hover{opacity:.85}
+    @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}}
+
+    .sc-hero{padding:8px 0 6px;text-align:center}
+    .sc-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
+      font-weight:700;letter-spacing:-1px;line-height:1.14}
+    .sc-hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sc-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
+    .sc-form{display:flex;gap:10px;margin:26px auto 0;max-width:640px}
+    .sc-form input{flex:1;min-width:0;background:rgba(255,255,255,.04);color:var(--text);
+      border:1px solid var(--border);border-radius:14px;padding:15px 17px;font-size:.87rem;
+      font-family:'Space Grotesk',sans-serif}
+    .sc-form input::placeholder{color:var(--muted);opacity:.7}
+    .sc-form input:focus{outline:none;border-color:var(--gold)}
+    .sc-form button{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;border:0;
+      border-radius:999px;padding:15px 34px;font-weight:700;font-size:.8rem;cursor:pointer;
+      font-family:inherit;white-space:nowrap;letter-spacing:.3px}
+    .sc-form button:disabled{opacity:.5;cursor:default}
+    .sc-hint{font-size:.69rem;color:var(--muted);opacity:.8;margin-top:11px}
+    .sc-status{font-size:.73rem;color:var(--gold);margin-top:10px;min-height:1.2em}
+    @media (max-width:560px){.sc-form{flex-direction:column}.sc-form button{width:100%}}
+
+    .hd{padding-bottom:18px;border-bottom:1px solid var(--border);margin-top:30px}
+    .hd-t{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+    .hd-t h2{font-family:'Space Grotesk',sans-serif;font-size:1.65rem;font-weight:700;letter-spacing:-.5px}
+    .hd-n{color:var(--muted);font-size:.88rem}
+    .hd-m{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+    .badge{font-size:.64rem;font-weight:700;letter-spacing:.06em;padding:5px 11px;border-radius:999px;
+      border:1px solid rgba(240,185,11,.4);color:var(--gold);background:rgba(240,185,11,.08)}
+    .badge-q,.badge-d{border-color:var(--border);color:var(--muted);background:rgba(255,255,255,.03)}
+    .hd-l{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.73rem}
+    .lk{color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(240,185,11,.3);
+      font-family:'Space Grotesk',sans-serif}
+    .lk:hover{border-bottom-color:var(--gold)}
+    .lk.dim{color:var(--muted);border-bottom-color:var(--border)}
+
+    .st-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(184px,1fr));gap:12px;margin-top:16px}
+    .st{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
+    .st-v{font-family:'Space Grotesk',sans-serif;font-size:1.45rem;font-weight:700;letter-spacing:-.8px;
+      color:var(--gold);line-height:1.15;word-break:break-word}
+    .st-v.dim{color:var(--muted)}
+    .st-l{font-size:.75rem;font-weight:600;margin-top:5px}
+    .st-s{font-size:.68rem;color:var(--muted);margin-top:5px;line-height:1.5}
+
+    .cd{margin-top:16px;border:1px solid rgba(240,185,11,.16);border-radius:var(--radius);
+      background:linear-gradient(180deg,rgba(240,185,11,.05),rgba(240,185,11,0) 60%),var(--card);
+      padding:22px 21px 19px}
+    .cd-h h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:600}
+    .cd-h p{font-size:.75rem;color:var(--muted);margin-top:7px;line-height:1.6;max-width:74ch}
+    .cd-foot{font-size:.69rem;color:var(--muted);line-height:1.6;margin-top:15px;
+      padding-top:13px;border-top:1px solid var(--border)}
+
+    .lad{display:grid;grid-template-columns:1fr 1fr;gap:14px 32px;margin-top:16px}
+    .lad-h{display:flex;align-items:baseline;gap:9px;padding-bottom:8px}
+    .lad-t{font-size:.77rem;font-weight:700}
+    .lad-d{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em}
+    .lad-buy .lad-t{color:#3fe09a} .lad-sell .lad-t{color:#ff8f6b}
+    .lad-r{display:flex;align-items:center;gap:11px;padding:6px 0}
+    .lad-hr{font-size:.61rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;
+      border-bottom:1px solid var(--border);padding-bottom:6px}
+    .lad-s{font-family:'Space Grotesk',sans-serif;font-size:.76rem;font-weight:600;
+      width:50px;flex-shrink:0;color:var(--muted)}
+    .lad-b{flex:1;min-width:20px;height:7px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+    .lad-hr .lad-b{background:none}
+    .lad-b i{display:block;height:100%;border-radius:4px;transform:scaleX(0);transform-origin:0 50%;
+      background:linear-gradient(90deg,#3fe09a,#8ff0c6);transition:transform .45s ease}
+    .lad-b i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
+    .lad-p{font-family:'Space Grotesk',sans-serif;font-size:.79rem;font-weight:700;
+      width:64px;flex-shrink:0;text-align:right}
+    .lad-x{font-family:'Space Grotesk',sans-serif;font-size:.74rem;color:var(--muted);
+      width:60px;flex-shrink:0;text-align:right}
+    @media (max-width:760px){.lad{grid-template-columns:1fr;gap:20px}}
+    @media (prefers-reduced-motion:reduce){.lad-b i{transition:none}}
+
+    .warn{border-radius:14px;padding:15px 17px;margin-top:16px;
+      border:1px solid rgba(255,48,40,.45);background:rgba(255,48,40,.07)}
+    .warn b{display:block;font-size:.81rem;color:#ff8f6b;margin-bottom:5px}
+    .warn span{display:block;font-size:.74rem;color:var(--muted);line-height:1.65}
+    .warn-soft{border-color:rgba(240,185,11,.4);background:rgba(240,185,11,.06)}
+    .warn-soft b{color:var(--gold)}
+
+    .fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:10px;margin-top:14px}
+    .f{border:1px solid var(--border);border-radius:12px;padding:12px 13px;background:rgba(255,255,255,.02)}
+    .f b{display:block;font-size:.74rem;font-weight:600}
+    .f span{display:block;font-size:.68rem;color:var(--muted);line-height:1.5;margin-top:4px}
+    .f-ok b{color:#3fe09a} .f-on b{color:var(--gold)} .f-bad b{color:#ff5a4a}
+    .f-unk b{color:var(--muted)}
+
+    .vn{margin-top:12px}
+    .vn-r{display:flex;align-items:baseline;gap:14px;padding:9px 0;
+      border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .vn-r:last-child{border-bottom:0}
+    .vn-n{font-size:.75rem;font-weight:600;min-width:160px;flex:1}
+    .vn-v{font-family:'Space Grotesk',sans-serif;font-size:.83rem;font-weight:700;
+      color:var(--gold);min-width:90px;text-align:right}
+
+    .sc-what{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));
+      gap:12px;margin-top:34px}
+    .sc-w{border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px;
+      background:rgba(255,255,255,.02)}
+    .sc-w b{display:block;font-size:.8rem;font-weight:600;color:var(--gold)}
+    .sc-w span{display:block;font-size:.73rem;color:var(--muted);line-height:1.6;margin-top:6px}
+
+    /* The standing note. The opening dialog is dismissed in a second and then
+       forgotten, and it is gone by the time there are actual numbers on screen —
+       which is exactly when this needs to be readable. So it lives in the
+       document, below the result, and nothing ever hides it. */
+    .sc-note{margin-top:34px;padding:20px 22px;border:1px solid rgba(240,185,11,.22);
+      border-radius:16px;background:rgba(240,185,11,.035)}
+    .sc-note h2{font-family:'Space Grotesk',sans-serif;font-size:.86rem;font-weight:700;
+      color:var(--gold);letter-spacing:-.2px;margin-bottom:10px}
+    .sc-note p{font-size:.76rem;color:var(--muted);line-height:1.75;max-width:74ch}
+    .sc-note p+p{margin-top:10px}
+    .sc-note b{color:var(--text);font-weight:600}
+    @media (max-width:640px){.sc-note{padding:17px 16px}.sc-note p{font-size:.74rem}}
+
+    /* One palette for both places colour appears. Deliberately muted: these are
+       cost bands, not a verdict, and they must not shout louder than the number. */
+    .good{color:#3fe09a!important} .mid{color:#ffc46b!important} .bad{color:#ff8f6b!important}
+    .lad-x.good,.lad-x.mid,.lad-x.bad{font-weight:600}
+    .cd-legend{font-size:.68rem;color:var(--muted);opacity:.9;line-height:1.6;margin-top:10px}
+
+    .dis{font-size:.67rem;color:var(--muted);opacity:.85;line-height:1.65;margin-top:22px;max-width:80ch}
+
+    /* The "still being built" notice. Deliberately NOT a native dialog: those
+       block every subsequent browser event, and on a phone they look like a
+       browser warning rather than something this page is saying.
+       No backdrop-filter here — the page already carries fourteen blurred
+       layers, and a fifteenth is exactly what turned iOS Safari white in
+       round 5 of the performance work. A flat wash does the same job. */
+    .mw{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+      padding:20px;background:rgba(5,5,16,.82)}
+    .mw[hidden]{display:none}
+    .mb{max-width:460px;width:100%;border:1px solid rgba(240,185,11,.35);border-radius:18px;
+      background:linear-gradient(180deg,rgba(240,185,11,.07),rgba(240,185,11,0) 55%),#0d0c14;
+      padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+    .mb h2{font-family:'Space Grotesk',sans-serif;font-size:1.08rem;font-weight:700;color:var(--gold)}
+    .mb p{font-size:.79rem;color:var(--muted);line-height:1.68;margin-top:11px}
+    .mb button{margin-top:20px;width:100%;background:linear-gradient(135deg,var(--gold),#e0a800);
+      color:#000;border:0;border-radius:999px;padding:13px 28px;font-weight:700;font-size:.78rem;
+      cursor:pointer;font-family:inherit;letter-spacing:.3px}
+    .mb button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+    @media (prefers-reduced-motion:no-preference){
+      .mb{animation:mbin .22s ease-out}
+      @keyframes mbin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Shown on every visit, before anything else is read. It is markup rather
+     than something the module draws, so it appears even if the script fails to
+     load — a page that cannot run its own code is exactly when this notice
+     matters most. -->
+<div class="mw" id="wip-modal" role="dialog" aria-modal="true" aria-labelledby="wip-t" aria-describedby="wip-d">
+  <div class="mb">
+    <h2 id="wip-t">This tool is still being built</h2>
+    <p id="wip-d">The Pool Scanner is a work in progress, built for the pleasure of building it. Nothing it
+    shows is guaranteed &mdash; not the figures, not the labels, not the contract properties &mdash; and none of
+    it is a judgement on any token. Treat it as a starting point for your own checks on BscScan and the pool
+    contract, never as advice. The longer version is at the bottom of the page, and it stays there.</p>
+    <button type="button" id="wip-ok">Got it</button>
+  </div>
+</div>
+<script>
+  // Plain script, not the module: this has to work even where `type=module`
+  // does not. Esc and a click on the backdrop close it as well as the button,
+  // because a notice nobody can dismiss is worse than no notice.
+  (function(){
+    var m=document.getElementById('wip-modal'),b=document.getElementById('wip-ok');
+    if(!m||!b)return;
+    var prev=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    function close(){
+      m.hidden=true;
+      document.body.style.overflow=prev;
+      document.removeEventListener('keydown',key);
+      var i=document.getElementById('sc-in');if(i)try{i.focus()}catch(e){}
+    }
+    function key(e){
+      if(e.key==='Escape'){close();return}
+      // Nothing behind this may be reached with the keyboard while it is open.
+      if(e.key==='Tab'){e.preventDefault();b.focus()}
+    }
+    document.addEventListener('keydown',key);
+    b.addEventListener('click',close);
+    m.addEventListener('click',function(e){if(e.target===m)close()});
+    try{b.focus({preventScroll:true})}catch(e){b.focus()}
+  })();
+</script>
+
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+
+  <!-- Same shape as every other sub-page (nft/, worldcup/, brainscreener/):
+       back to the dashboard, the page's own name, buy. The main dashboard's nav
+       was copied here at first, which put anchor links like #tokenomics on a
+       page that has no such sections — they simply jumped nowhere. -->
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="brand-link" href="/scanner">BOBAI Pool Scanner</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+  </div></nav>
+
+  <section class="sec b-blue" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Tool &middot; Pool Scanner</span><span class="blk-line"></span></div>
+
+    <div class="sc-hero">
+      <h1>How deep is <em>any</em> BSC pool, really?</h1>
+      <p class="sc-lead">A liquidity headline is half fiction: half of it is the token itself, valued at its own price, so it shrinks exactly when it would be needed. This reads a pool the way a trader meets it &mdash; what a trade of a given size does to the price, what it actually costs once the transfer tax is measured from real trades, and whether the LP is burned, merely locked, or sitting in a wallet that can pull it tonight.</p>
+      <div class="sc-form">
+        <input id="sc-in" type="text" spellcheck="false" autocomplete="off"
+               placeholder="Token address, pool address, or a DexScreener link"
+               aria-label="BSC token or pool address">
+        <button id="sc-go" type="button">Scan</button>
+      </div>
+      <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
+    </div>
+
+    <!-- The empty state. Without it the page is a headline and a blank box, and
+         a first-time visitor has no idea what pressing Scan produces. These are
+         the four things it actually returns, named exactly as they appear in the
+         result — no promises the page does not keep. Hidden by JS the moment a
+         result exists, so it never competes with the real figures. -->
+    <div class="sc-what" id="sc-what">
+      <div class="sc-w">
+        <b>What a trade really costs</b>
+        <span>Price impact and true cost side by side at six sizes from $100 to $2,500 — two things routinely confused with each other.</span>
+      </div>
+      <div class="sc-w">
+        <b>The transfer tax, measured</b>
+        <span>Not read off a label. Taken from trades that actually executed, and flagged when it disagrees with what the security scanners report.</span>
+      </div>
+      <div class="sc-w">
+        <b>Who can pull the liquidity</b>
+        <span>LP burned, merely locked, or sitting in a wallet — with the largest holder named and linked.</span>
+      </div>
+      <div class="sc-w">
+        <b>What it will not claim</b>
+        <span>If the pool cannot be measured exactly, no depth figures are shown at all. A wrong number is worse than none.</span>
+      </div>
+    </div>
+
+    <div class="warn" id="sc-err" hidden></div>
+    <div id="sc-out" hidden></div>
+
+    <!-- Never hidden, by anything. The opening dialog says this once, before
+         anyone has seen a figure; this says it where the figures are. -->
+    <div class="sc-note">
+      <h2>Please read this next to any number above</h2>
+      <p>We built this because reading a pool properly is genuinely interesting, and we are
+         still building it. Every figure here is <b>our own reading</b> of public chain data.
+         A price can be a block out of date, a token can trade in pools this page cannot see,
+         and a tax can behave differently in your trade than in the ones we measured. Assume a
+         number can be wrong, because sometimes it will be.</p>
+      <p>And none of it is a judgement. <b>We make no claim about any token</b> — we do not know
+         who is behind them, and we are not in the business of telling you which ones deserve
+         your money. A red figure says one thing only: at that size, that is what the trade
+         would cost right now. It says nothing about the project, and nothing about the people.</p>
+      <p>Anything that matters to you, check yourself. <a href="https://bscscan.com" target="_blank" rel="noopener">BscScan</a>
+         and the pool contract are two clicks away, and everything above is derived from what
+         they already say out loud.</p>
+    </div>
+  </section>
+
+<footer><div class="fi2">
+  <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
+  <div class="fm">
+    <p>Read live from BNB Chain in your own browser &mdash; nothing stored, nothing logged &middot; contract properties by <a href="https://gopluslabs.io" target="_blank" rel="noopener">GoPlus</a> &middot; venue index by <a href="https://dexscreener.com" target="_blank" rel="noopener">DexScreener</a></p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; not financial advice</p>
+  </div>
+</div></footer>
+</div>
+<!-- Bump both ?v= when editing: the files are cached for a week. -->
+<script src="scanner.js?v=23" type="module"></script>
+</body>
+</html>
+
+==============================================================================
+=== FILE: dashboard/scanner.js
+==============================================================================
+
+// SCANNER — the page layer. Every number shown here is produced by
+// scanner-chain.js; this file decides only how it is presented and, just as
+// importantly, how uncertainty is presented. Two rules run through all of it:
+//
+//   1. Nothing is rendered as markup from a name a stranger chose. Token names
+//      are attacker-controlled strings and a contract can call itself
+//      "<img onerror=…>". Everything foreign goes in through a text node.
+//   2. Unknown is a state, not a blank. A property GoPlus did not check must
+//      read "not checked" — never as an absent warning, which is how a reader
+//      hears "fine". $Max returned undefined for is_honeypot and the old build
+//      showed nothing at all, which is the most dangerous thing this page
+//      could do.
+import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
+  balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
+  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=12';
+
+const $=id=>document.getElementById(id);
+const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const usd=n=>n==null?'—':n>=1000?'$'+nf(n):n>=1?'$'+nf(n,2):n>=0.01?'$'+nf(n,4):'$'+n.toPrecision(3);
+const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'—';
+// Two decimals lie at both ends: 99.998% burned rounds to a flat "100.00%",
+// claiming more than the chain says, and a real 0.002% rounds to "0.00%",
+// claiming it is not there. A sell tax of 4.45% must never print as "4.5%".
+const pc=(v,d=2)=>v==null?'—':v>0&&v<0.01?'<0.01%':(v>=99.995&&v<100)?v.toFixed(3)+'%':v.toFixed(d)+'%';
+const signed=v=>v==null?'—':(v<0?'':'+')+(Math.abs(v)<0.005?'0.00':v.toFixed(2))+'%';
+function el(tag,cls,text){const e=document.createElement(tag);
+  if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function frag(parent,...kids){kids.forEach(k=>parent.append(k));return parent}
+const link=(t,href,cls)=>{const a=el('a',cls||'lk',t);a.href=href;a.target='_blank';a.rel='noopener';return a};
+
+function fail(msg,sub){
+  const o=$('sc-out');o.hidden=true;o.textContent='';
+  const e=$('sc-err');e.hidden=false;e.textContent='';
+  e.appendChild(el('b',null,msg));if(sub)e.appendChild(el('span',null,sub));
+  $('sc-status').textContent='';
+}
+function busy(on,msg){
+  $('sc-go').disabled=on;$('sc-go').textContent=on?'Reading…':'Scan';
+  $('sc-status').textContent=on?(msg||''):'';
+}
+const step=m=>{if($('sc-go').disabled)$('sc-status').textContent=m};
+
+// GoPlus flags. The third column says what a MISSING value means: for most
+// properties silence is just silence, and claiming otherwise would invent an
+// all-clear the service never gave.
+const FLAGS=[
+  ['is_mintable','Mintable','More tokens can be created — the supply is not fixed.'],
+  ['is_proxy','Proxy contract','The logic sits behind an upgradeable pointer and can be replaced.'],
+  ['can_take_back_ownership','Ownership reclaimable','A renounce can be undone.'],
+  ['hidden_owner','Hidden owner','Ownership is held somewhere other than the usual slot.'],
+  ['selfdestruct','Self-destruct','The contract can delete itself.'],
+  ['transfer_pausable','Transfers pausable','Someone can freeze all transfers.'],
+  ['is_blacklisted','Blacklist','Individual wallets can be blocked from trading.'],
+  ['slippage_modifiable','Tax changeable','The tax rate is not fixed — it can be raised later.'],
+  ['personal_slippage_modifiable','Per-wallet tax','A different tax can be set for individual wallets.'],
+  ['trading_cooldown','Trading cooldown','A forced wait is enforced between trades.'],
+  ['is_anti_whale','Max transaction limit','A cap on trade size is enforced.'],
+  ['anti_whale_modifiable','Trade cap changeable','That cap can be changed later.'],
+  ['cannot_sell_all','Cannot sell all','Selling the full balance in one go is blocked.'],
+];
+
+// COLOUR — and what it is allowed to mean.
+//
+// Green/amber/red here say ONE thing: how much this costs you, measured against
+// a floor that is not a matter of opinion. Every pool has an unavoidable toll —
+// the swap fee plus the transfer tax — that you pay at any size. Everything on
+// top of that is depth. So the bands compare what you actually pay against that
+// floor, and the impact bands are read straight off the price you move.
+//
+// What the colour deliberately does NOT mean: that a token is good, safe, or
+// worth buying. A deep pool with a renounced owner can still go to zero, and a
+// thin one can be perfectly honest. Publishing a verdict about somebody else's
+// token would put our name on a judgement we cannot stand behind — and the one
+// time we got it wrong, that is the only thing anyone would remember.
+//
+// An earlier draft coloured these by percentile against a sample of 46 pools.
+// That was dropped: a keyword-scraped sample of 46 is not a distribution, and
+// dressing it up as one would be inventing authority.
+const band=(v,ok,mid)=>v==null?'':v<=ok?' good':v<=mid?' mid':' bad';
+const costBand=(pay,floor)=>{
+  if(pay==null||!(floor>0))return '';
+  return band(pay/floor,1.5,3);       // at most half again over the toll, or triple it
+};
+const impactBand=v=>v==null?'':band(Math.abs(v),1,5);   // 1% and 5% of the price you move
+
+// ---- building blocks -------------------------------------------------------
+function statRow(items){
+  const g=el('div','st-row');
+  items.forEach(it=>{
+    const c=el('div','st');
+    c.appendChild(el('div','st-v'+(it.dim?' dim':'')+(it.tone||''),it.v));
+    c.appendChild(el('div','st-l',it.l));
+    if(it.s){
+      const s=el('div','st-s',it.s);
+      // An address printed as plain text is a dead end — the reader wants to go
+      // look at the wallet, and making them copy it by hand is the difference
+      // between a claim and something they can check.
+      if(it.link)s.append(' ',link(it.link.t,it.link.href,'lk'));
+      c.appendChild(s);
+    }
+    g.appendChild(c);
+  });
+  return g;
+}
+function card(title,sub){
+  const c=el('section','cd');
+  const h=el('div','cd-h');
+  h.appendChild(el('h3',null,title));
+  if(sub)h.appendChild(el('p',null,sub));
+  c.appendChild(h);
+  return c;
+}
+
+function renderLadder(rows,taxNote,floors){
+  const wrap=el('div','lad');
+  [['buy','Buying','up'],['sell','Selling','down']].forEach(([side,label,dir])=>{
+    const floor=side==='buy'?floors.buy:floors.sell;
+    const col=el('div','lad-c');
+    const hd=el('div','lad-h lad-'+side);
+    hd.appendChild(el('span','lad-t',label));
+    hd.appendChild(el('span','lad-d','price '+dir));
+    col.appendChild(hd);
+    const head=el('div','lad-r lad-hr');
+    head.append(el('span','lad-s','size'),el('span','lad-b',''),
+      el('span','lad-p','impact'),el('span','lad-x','you pay'));
+    col.appendChild(head);
+    const vals=rows.map(r=>side==='buy'?r.buyMove:r.sellMove).filter(v=>v!=null).map(Math.abs);
+    const max=Math.max(...vals,0.0001);
+    rows.forEach(r=>{
+      const mv=side==='buy'?r.buyMove:r.sellMove,cs=side==='buy'?r.buyCost:r.sellCost;
+      const row=el('div','lad-r');
+      row.appendChild(el('span','lad-s','$'+nf(r.usd)));
+      const t=el('span','lad-b'),bar=el('i',side==='sell'?'sell':null);
+      bar.style.transform='scaleX('+(mv==null?0:Math.min(1,Math.abs(mv)/max)).toFixed(4)+')';
+      t.appendChild(bar);row.appendChild(t);
+      row.appendChild(el('span','lad-p'+impactBand(mv),signed(mv)));
+      row.appendChild(el('span','lad-x'+costBand(cs,floor),cs==null?'—':cs.toFixed(2)+'%'));
+      col.appendChild(row);
+    });
+    wrap.appendChild(col);
+  });
+  const box=el('div');box.appendChild(wrap);
+  if(taxNote)box.appendChild(el('p','cd-foot',taxNote));
+  box.appendChild(el('p','cd-legend',
+    'Colour is about cost, not quality. Green means you pay close to the unavoidable toll for this pool ('+
+    (floors.buy>0?floors.buy.toFixed(2)+'% on a buy, '+floors.sell.toFixed(2)+'% on a sell':'fee plus tax')+
+    ', payable at any size); amber is noticeably above it; red means the pool is moving under you. '+
+    'It says nothing about whether the token is any good — a deep pool can still go to zero.'));
+  return box;
+}
+
+// ---- tax card --------------------------------------------------------------
+// The centrepiece, because it is the figure most likely to be wrong elsewhere.
+// Measured values win; a label is shown as a label, with its disagreement
+// spelled out rather than quietly averaged away.
+function taxCard(tax,gp,gpOk){
+  const c=card('The transfer tax, measured',
+    'Not taken from a label — read off trades that actually executed. The pool reports how many tokens it moved, the token’s own transfer events report how many arrived, and the gap is what the wallet was charged.');
+  const gB=gp.buy_tax!=null&&isFinite(Number(gp.buy_tax))?Number(gp.buy_tax)*100:null,
+        gS=gp.sell_tax!=null&&isFinite(Number(gp.sell_tax))?Number(gp.sell_tax)*100:null;
+  if(tax.ok){
+    const mB=tax.buy!=null?tax.buy*100:null,mS=tax.sell!=null?tax.sell*100:null;
+    c.appendChild(statRow([
+      {v:mB!=null?pc(mB):(gB!=null?pc(gB):'—'),l:'Buy tax',dim:mB==null,
+        tone:mB!=null?band(mB,0.01,5):'',
+        s:tax.nBuy?'median of '+tax.nBuy+' executed buy'+(tax.nBuy===1?'':'s')
+          :(gB!=null?'no buy in the window — GoPlus’s figure, unverified':'no buy in the window')},
+      {v:mS!=null?pc(mS):(gS!=null?pc(gS):'—'),l:'Sell tax',dim:mS==null,
+        tone:mS!=null?band(mS,0.01,5):'',
+        s:tax.nSell?'median of '+tax.nSell+' executed sell'+(tax.nSell===1?'':'s')
+          :(gS!=null?'no sell in the window — GoPlus’s figure, unverified':'no sell in the window')},
+    ]));
+    const parts=[];
+    if(tax.spread.buy.length>1)parts.push('buys charged '+tax.spread.buy.map(x=>x+'%').join(', '));
+    if(tax.spread.sell.length>1)parts.push('sells charged '+tax.spread.sell.map(x=>x+'%').join(', '));
+    if(parts.length)c.appendChild(el('p','cd-foot','Every trade read: '+parts.join('; ')+
+      '. A 0% entry is normal — deployers, tax sinks and allow-listed routers are usually exempt, which is why the median is used and not the average.'));
+    const dis=[];
+    if(gB!=null&&mB!=null&&Math.abs(gB-mB)>0.15)dis.push('buy '+pc(gB)+' vs '+pc(mB)+' measured');
+    if(gS!=null&&mS!=null&&Math.abs(gS-mS)>0.15)dis.push('sell '+pc(gS)+' vs '+pc(mS)+' measured');
+    if(dis.length){
+      const w=el('div','warn warn-soft');
+      w.appendChild(el('b',null,'GoPlus reports a different tax than the chain charged.'));
+      w.appendChild(el('span',null,dis.join(' · ')+'. The figures on this page use the measured value. A label can be stale, can come from a partial simulation, or can include slippage from whatever size was simulated.'));
+      c.appendChild(w);
+    }
+  }else{
+    c.appendChild(statRow([
+      {v:gB!=null?pc(gB):'—',l:'Buy tax (reported)',dim:true,s:'GoPlus label, unverified'},
+      {v:gS!=null?pc(gS):'—',l:'Sell tax (reported)',dim:true,s:'GoPlus label, unverified'},
+    ]));
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'Could not be measured: '+tax.reason+'.'));
+    w.appendChild(el('span',null,(gB!=null||gS!=null)
+      ? 'The numbers above come from GoPlus and are used in the “you pay” column, but nothing on the chain has confirmed them. Treat that column as indicative until this token trades again.'
+      : 'No tax figure is available at all, so the “you pay” column below counts the pool fee only and is a floor, not the real cost.'));
+    c.appendChild(w);
+  }
+  return c;
+}
+
+// ---- flags -----------------------------------------------------------------
+function flagsCard(gp,gpOk){
+  const c=card('What the contract can do',
+    gpOk?'Contract properties as read from the verified source by GoPlus. These are properties, not a rating — a token can carry several of them and be perfectly ordinary, or carry none and still go to zero.'
+        :'GoPlus did not answer for this token, so none of these properties could be checked. Every figure above is unaffected: it comes off the chain directly.');
+  if(!gpOk)return c;
+  const g=el('div','fg');
+  const chip=(state,label,note)=>{const x=el('div','f f-'+state);
+    x.appendChild(el('b',null,label));x.appendChild(el('span',null,note));return x};
+  const owner=(gp.owner_address||'').toLowerCase();
+  if(gp.owner_address==null)g.appendChild(chip('unk','Ownership not checked','GoPlus returned no owner field for this contract.'));
+  else if(owner===NULLA||owner==='')g.appendChild(chip('ok','Ownership renounced','No owner address left on the contract.'));
+  else g.appendChild(chip('on','Owner active','Owner is '+short(owner)+'.'));
+  if(gp.is_open_source==null)g.appendChild(chip('unk','Verification not checked','GoPlus did not report whether the source is verified.'));
+  else if(gp.is_open_source==='1')g.appendChild(chip('ok','Source verified','The published code matches the deployed bytecode.'));
+  else g.appendChild(chip('on','Source not verified','Nothing here can be checked against source code — including every other line in this list.'));
+  if(gp.is_honeypot==='1')g.appendChild(chip('bad','Honeypot','GoPlus could not sell this token in a simulation.'));
+  else if(gp.is_honeypot==null)g.appendChild(chip('unk','Sellability not checked','GoPlus ran no sell simulation for this token.'));
+  // The missing ones are listed by name. Silence about a property is not the
+  // same as the property being absent, and only one of those two is safe to
+  // let a reader assume.
+  const unchecked=[];
+  FLAGS.forEach(([k,label,note])=>{
+    if(gp[k]==='1')g.appendChild(chip('on',label,note));
+    else if(gp[k]==null)unchecked.push(label.toLowerCase());
+  });
+  c.appendChild(g);
+  if(unchecked.length)c.appendChild(el('p','cd-foot',
+    'Not checked for this token ('+unchecked.length+'): '+unchecked.join(', ')+
+    '. GoPlus returned no value for these — that is not the same as “no”, and this page will not pretend it is. Proxy contracts in particular often come back only partly analysed.'));
+  return c;
+}
+
+// ---- main render -----------------------------------------------------------
+function render(d){
+  const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
+  const teaser=$('sc-what');if(teaser)teaser.hidden=true;
+  const {gp,gpOk,addr,pool,name,symb,px,quoteUsd,quoteSym,tax,supply,burned,hop,deeper,partial}=d;
+  // Both sides valued for real. On a V2 pair this is exactly twice the quote
+  // side by construction; on a V3 pool the two halves are not equal and
+  // doubling would invent liquidity that is not there.
+  const hard=d.q*quoteUsd,tvl=hard+d.tok*px;
+  const circ=supply!=null?supply-burned:null,mcap=circ!=null&&px?circ*px:null;
+
+  // header
+  const head=el('header','hd');
+  const ttl=el('div','hd-t');
+  ttl.appendChild(el('h2',null,symb));
+  ttl.appendChild(el('span','hd-n',name));
+  head.appendChild(ttl);
+  const meta=el('div','hd-m');
+  meta.appendChild(el('span','badge',pool.kind==='v3'
+    ? 'PancakeSwap V3 · '+(pool.fee*100).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+'% tier'
+    : (pool.venue||'PancakeSwap V2')+' · '+(pool.fee*100).toFixed(2)+'% fee'));
+  meta.appendChild(el('span','badge badge-q',symb+' / '+quoteSym));
+  if(gp.launchpad_token&&gp.launchpad_token.launchpad_name)
+    meta.appendChild(el('span','badge badge-d','via '+gp.launchpad_token.launchpad_name));
+  head.appendChild(meta);
+  const lnk=el('div','hd-l');
+  lnk.append(link(short(addr),'https://bscscan.com/token/'+addr),
+    link('Pool '+short(pool.pair),'https://bscscan.com/address/'+pool.pair),
+    link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair));
+  head.appendChild(lnk);
+  o.appendChild(head);
+
+  // headline stats
+  o.appendChild(statRow([
+    {v:usd(px),l:'Price'},
+    {v:mcap!=null?usd(mcap):'—',l:'Market Cap',s:circ!=null?nf(circ)+' circulating':'supply unreadable'},
+    {v:usd(tvl),l:'Liquidity',s:'both sides of the pool'},
+    {v:mcap?pc(tvl/mcap*100,1):'—',l:'Liquidity / Mcap',s:'how much of the valuation is actually in the pool'},
+  ]));
+
+  // depth
+  // The "half of it is the token itself" framing is a CONSTANT-PRODUCT fact: a
+  // V2 pair is 50/50 by construction, so the quote side really is a floor. A
+  // concentrated-liquidity pool is neither balanced nor a floor — $mubarak's V3
+  // pool holds 36% quote, and as the price falls its positions convert toward
+  // the token side, buying the quote out. Printing the V2 sentence over a V3
+  // pool is right about the number and wrong about what it means.
+  const v3=pool.kind==='v3';
+  const dep=card('How deep is it really?',
+    v3?'The two sides of a concentrated-liquidity pool are not balanced — what sits here is whatever the current price has left in range. The '+quoteSym+' side is still the half that does not depend on this token being worth anything.'
+      :'Half of any “liquidity” headline is the token itself, valued at its own price — it shrinks exactly when it would be needed. The '+quoteSym+' side is the half that holds.');
+  dep.appendChild(statRow([
+    {v:usd(hard),l:'Hard '+quoteSym+' backing',
+      s:nf(d.q,d.q<100?3:2)+' '+quoteSym+(v3
+        ?' in the pool right now — not a fixed floor: as the price falls, positions convert toward the token side'
+        :' — keeps its value if the price falls')},
+    {v:mcap?pc(hard/mcap*100,1):'—',l:'Hard backing / Mcap',
+      s:v3?'how much of the valuation is currently backed by '+quoteSym+' in range'
+          :'the floor under the market cap'},
+    // "More than X" is an answer; a dash is not. On a concentrated-liquidity
+    // pool the sweep can run out of range before the price gives way — USDC/USDT
+    // does not move one percent for any size the quoter will price — and
+    // printing "—" there reads as a failure to measure when the finding is that
+    // the pool is deeper than the largest size asked about.
+    {v:d.up!=null?usd(d.up):(d.upMin!=null?'> '+usd(d.upMin):'—'),l:'Moves the price +1%',
+      s:d.up!=null?'a buy this size, right now':(d.upMin!=null?'deeper than the largest size quoted':'a buy this size, right now')},
+    {v:d.down!=null?usd(d.down):(d.downMin!=null?'> '+usd(d.downMin):'—'),l:'Moves the price −1%',
+      s:d.down!=null?'a sell this size, right now':(d.downMin!=null?'deeper than the largest size quoted':'a sell this size, right now')},
+  ]));
+  o.appendChild(dep);
+
+  // Qualified by absolute depth rather than by share: say so before any figure
+  // is read, not in a footnote under it.
+  if(partial!=null){
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'This is one pool of several for this token.'));
+    w.appendChild(el('span',null,'It holds '+usd(d.mineUsd)+' — about '+pc(partial*100,1)+
+      ' of the '+usd(d.mineUsd+d.otherLiq)+' this token has across all venues. Every figure below describes '+
+      'this pool exactly and says nothing about the others. It is deep enough to be worth measuring on its own, '+
+      'which is why it is shown; a trade routed by an aggregator may well take a different path.'));
+    o.appendChild(w);
+  }
+  if(deeper){
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'A deeper pool exists for this token.'));
+    const s=el('span');
+    s.append('You asked about this pool, so this is the one measured. But the '+
+      (deeper.kind==='v3'?'PancakeSwap V3 '+(deeper.fee*100).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')+'% tier':'PancakeSwap V2')+
+      ' pool against '+deeper.sym+' holds '+usd(deeper.hard)+' on its '+deeper.sym+
+      ' side against this one’s '+usd(d.q*quoteUsd)+'. ');
+    const a=el('a','lk','Scan that one instead →');
+    a.href='?token='+deeper.pair;a.target='_self';
+    s.appendChild(a);
+    w.appendChild(s);
+    o.appendChild(w);
+  }
+  if(hop&&!hop.direct){
+    const w=el('div','warn warn-soft');
+    w.appendChild(el('b',null,'Every dollar figure here is derived, not direct.'));
+    w.appendChild(el('span',null,'This pool is quoted in $'+hop.sym+', not in BNB or a stablecoin, so $'+hop.sym+
+      ' had to be priced through its own BNB pool first — which holds '+nf(hop.hopBnb||0,3)+
+      ' BNB. Everything above is only as trustworthy as that one pool: if it is thin or stale, so are these dollars. The percentages are unaffected.'));
+    o.appendChild(w);
+  }
+
+  o.appendChild(taxCard(tax,gp,gpOk));
+
+  // ladder
+  const lad=card('What a trade does to the price — and what it costs',
+    'Two different things, routinely confused. Impact is how far this trade alone moves the price. “You pay” is what you give up against the spot price: a worse fill because the pool moves underneath you, plus the pool fee, plus the transfer tax.');
+  // One direction can be measured while the other is not: a quiet pool may show
+  // three sells and no buys inside the window. Saying "measured" for both would
+  // then be false for half the column, so each side names its own source.
+  const src=m=>m?'measured':'reported by GoPlus, unverified';
+  const taxNote=(d.taxB||d.taxS)
+    ? 'Costs include a '+pc(d.taxB*100)+' buy tax ('+src(tax.ok&&tax.buy!=null)+
+      ') and a '+pc(d.taxS*100)+' sell tax ('+src(tax.ok&&tax.sell!=null)+
+      '), plus the '+(pool.fee*100).toFixed(2)+'% pool fee.'
+    : 'Costs include the '+(pool.fee*100).toFixed(2)+'% pool fee only — no transfer tax could be established for this token, measured or reported, so treat this column as a floor.';
+  // The toll: what a trade of ANY size costs before depth enters the picture.
+  const floors={buy:(1-(1-d.taxB)*(1-pool.fee))*100, sell:(1-(1-d.taxS)*(1-pool.fee))*100};
+  lad.appendChild(renderLadder(d.rows,taxNote,floors));
+  o.appendChild(lad);
+
+  // LP
+  if(pool.kind==='v2'){
+    const lp=card('Who holds the LP tokens',
+      'Burned LP can never be withdrawn by anyone. Locked LP sits in a timelock — a promise with an expiry date, not a burn. Everything else can be pulled at any moment.');
+    const burnedPct=d.lpTot>0?(d.lpDead+d.lpNull)/d.lpTot*100:0;
+    // The exchange's own share is neither burned nor anybody's to pull, so it is
+    // taken out of the free figure rather than counted as a risk.
+    const feePct=d.lpTot>0&&d.lpFee>0?d.lpFee/d.lpTot*100:0;
+    const holders=(gp.lp_holders||[]).filter(x=>{const a=(x.address||'').toLowerCase();
+      return a!==DEAD&&a!==NULLA&&a!==(d.feeTo||'')});
+    const lockedPct=holders.filter(x=>x.is_locked===1).reduce((s,x)=>s+(parseFloat(x.percent)||0),0)*100;
+    const freePct=Math.max(0,100-burnedPct-lockedPct-feePct);
+    const big=holders.filter(x=>x.is_locked!==1).sort((a,b)=>(parseFloat(b.percent)||0)-(parseFloat(a.percent)||0))[0];
+    lp.appendChild(statRow([
+      {v:pc(burnedPct),l:'Burned',tone:burnedPct>=99?' good':burnedPct>=1?' mid':' bad',s:nf(d.lpDead+d.lpNull,2)+' of '+nf(d.lpTot,2)+' LP, at the dead address'},
+      {v:gpOk?pc(lockedPct):'—',l:'Locked',dim:!gpOk,
+        s:gpOk?(lockedPct>0?'in a locker GoPlus recognises':'none in a known locker'):'needs GoPlus, which did not answer'},
+      {v:gpOk?pc(freePct):'—',l:'Withdrawable',dim:!gpOk,
+        s:gpOk?(big?'largest single holder '+pc((parseFloat(big.percent)||0)*100)+' —':'held across wallets')
+              :'on-chain, '+pc(Math.max(0,100-burnedPct-feePct))+' of the LP is simply not burned',
+        link:gpOk&&big?{t:short(big.address),href:'https://bscscan.com/address/'+big.address}:null},
+    ]));
+    // Named rather than left in the withdrawable bucket. On a pool that has run
+    // for a while this is usually the entire unburned remainder, and reading it
+    // as "somebody can pull this" is the wrong conclusion about the one holder
+    // here who is not connected to the token at all.
+    if(feePct>0){
+      const f=el('p','cd-foot');
+      f.append(pc(feePct)+' of the LP sits at '+(pool.venue||'the exchange')+'’s own protocol-fee address (');
+      f.appendChild(link(short(d.feeTo),'https://bscscan.com/address/'+d.feeTo,'lk'));
+      f.append('), which the pair mints to the venue every time liquidity moves. It grows on its own as the pool '+
+        'trades and belongs to the exchange, not to the token — so it is counted separately from the figure above '+
+        'rather than as liquidity somebody could pull.');
+      lp.appendChild(f);
+    }
+    o.appendChild(lp);
+  }else{
+    const lp=card('LP ownership does not apply here',
+      'This is a concentrated-liquidity pool. Liquidity is held as individual positions rather than as fungible LP tokens, so “LP burned” has no meaning at this venue — there is no LP token to burn. Depth can still leave at any time if position holders withdraw.');
+    o.appendChild(lp);
+  }
+
+  // other venues
+  // Dust is not a venue. A list of six pools holding fractions of a cent tells
+  // the reader nothing and buries the one line that might matter, so anything
+  // under $100 — or under a thousandth of the pool being measured — is dropped
+  // and counted instead.
+  const dustLine=Math.max(100,hard/1000),
+        shown=(d.others||[]).filter(x=>(x.liquidity||0)>=dustLine),
+        hidden=(d.others||[]).length-shown.length;
+  if(shown.length){
+    const ov=card('Where else it trades',
+      'Everything above measures the deepest pool this page can read exactly. These are the rest, as indexed by DexScreener.');
+    const l=el('div','vn');
+    shown.slice(0,6).forEach(x=>{
+      const r=el('div','vn-r');
+      r.appendChild(el('span','vn-n',x.name||'Unknown'));
+      r.appendChild(el('span','vn-v',usd(x.liquidity||0)));
+      r.appendChild(/^0x[a-fA-F0-9]{40}$/.test(x.pair)
+        ? link(short(x.pair),'https://bscscan.com/address/'+x.pair,'lk dim')
+        : el('span','lk dim','position-based'));
+      l.appendChild(r);
+    });
+    ov.appendChild(l);
+    // The cutoff scales with the pool being measured, so it has to be named
+    // rather than assumed: writing "$100" while actually hiding everything
+    // under $606 states a number that is not the one used.
+    if(hidden>0)ov.appendChild(el('p','cd-foot',hidden+' further pool'+(hidden===1?'':'s')+
+      ' hold'+(hidden===1?'s':'')+' less than '+usd(dustLine)+' and '+(hidden===1?'is':'are')+
+      ' not listed — under a thousandth of the pool above, which is not a place anyone trades.'));
+    o.appendChild(ov);
+  }else if((d.others||[]).length){
+    o.appendChild(card('No other venue worth naming',
+      'DexScreener indexes '+(d.others||[]).length+' further pool'+((d.others||[]).length===1?'':'s')+
+      ' for this token, each holding less than '+usd(dustLine)+'. Everything tradable sits in the pool measured above.'));
+  }
+
+  o.appendChild(flagsCard(gp,gpOk));
+  o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties come from GoPlus and are attributed as such. This page describes a pool — it does not check the deployer’s history, the holder distribution, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
+}
+
+// ---- the "not measurable here" path ---------------------------------------
+function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool){
+  const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
+  const teaser=$('sc-what');if(teaser)teaser.hidden=true;
+  const head=el('header','hd');
+  const ttl=el('div','hd-t');ttl.appendChild(el('h2',null,symb));ttl.appendChild(el('span','hd-n',name));
+  head.appendChild(ttl);
+  head.appendChild(frag(el('div','hd-l'),link(short(addr),'https://bscscan.com/token/'+addr),
+    link('DexScreener ↗','https://dexscreener.com/bsc/'+addr)));
+  o.appendChild(head);
+  const w=el('div','warn');
+  w.appendChild(el('b',null,'No pool here can be measured exactly.'));
+  w.appendChild(el('span',null,(hasPool
+    ? 'The readable pool holds '+usd(hard)+' — '+pc(share*100)+' of the '+usd(hard+otherLiq)+' GoPlus sees across all venues. The rest sits'
+    : 'It has no readable PancakeSwap pool. Its '+usd(otherLiq)+' of liquidity sits')+
+    ' in venues this page cannot quote exactly. Deriving depth from the sliver that is readable would produce a number that is not merely imprecise but wrong, so none is shown. The contract properties below are unaffected — they belong to the token, not to a venue.'));
+  o.appendChild(w);
+  if(others.length){
+    const ov=card('Where it actually trades','As reported by GoPlus.');
+    const l=el('div','vn');
+    others.slice(0,6).forEach(x=>{
+      const r=el('div','vn-r');
+      r.appendChild(el('span','vn-n',x.name||'Unknown'));
+      r.appendChild(el('span','vn-v',usd(x.liquidity||0)));
+      r.appendChild(/^0x[a-fA-F0-9]{40}$/.test(x.pair)
+        ? link(short(x.pair),'https://bscscan.com/address/'+x.pair,'lk dim')
+        : el('span','lk dim','position-based'));
+      l.appendChild(r);
+    });
+    ov.appendChild(l);o.appendChild(ov);
+  }
+  o.appendChild(flagsCard(gp,!!(gp.token_name||gp.dex||gp.is_open_source!=null)));
+  o.appendChild(el('p','dis','Contract properties come from GoPlus. Not advice.'));
+}
+
+// ---- orchestration ---------------------------------------------------------
+// Every stage sets this. It exists for one reason: a scan that ends with an
+// empty page and no message is the worst thing this tool can do — the reader
+// cannot tell whether the token is fine, broken, or whether we are. Measured at
+// 2 blanks in 16 runs before this net went in. Now an empty result is caught
+// here, named by the stage it died in, and shown as an error like any other.
+let stage='start';
+const at=s=>{stage=s;step(s)};
+
+async function scan(input){
+  stage='start';
+  busy(true,'identifying the address…');
+  try{
+    const askGoPlus=a=>fetch(GOPLUS+a).then(r=>r.ok?r.json():null)
+      .then(j=>j&&j.result&&(j.result[a]||j.result[a.toLowerCase()])).catch(()=>null);
+    // Fired against the input on the chance it IS the token, because it usually
+    // is and this is the slow leg. If the input turns out to be a pool, the
+    // answer describes the LP token instead — "Pancake LPs / Cake-LP", with the
+    // wrong name, the wrong supply and the wrong tax — so it is asked again
+    // against the real token once that is known, and this first answer dropped.
+    let gpP=askGoPlus(input);
+
+    let what;
+    try{what=await classify(input)}
+    catch(e){return fail('The chain did not answer.','The public BSC node refused or timed out. Nothing is cached here, so a retry in a few seconds usually works.')}
+
+    // A pasted pool tells us the venue directly. Which side is "the token" is
+    // then the only open question: it is the side that is not the quote, and
+    // the quote is whichever side can be priced.
+    let token,pool=null,tokDec,bnbUsd,hop,deeper=null;
+    const base=await rpcBatch([call(BNB_PAIR,S.reserves),call(BNB_PAIR,S.token0)]);
+    const br=res2(base[0]),bIs0=addrAt(base[1])===WBNB;
+    bnbUsd=br?(bIs0?br[1]/br[0]:br[0]/br[1]):0;
+    if(!(bnbUsd>0))return fail('Could not price BNB.','The reference pool read back empty, so nothing could be stated in dollars.');
+
+    if(what.kind==='v2pair'||what.kind==='v3pool'){
+      at('reading the pool…');
+      const [a,b]=[what.token0,what.token1];
+      const qa=QUOTES.find(([x])=>x===a),qb=QUOTES.find(([x])=>x===b);
+      if(qa&&!qb)token=b; else if(qb&&!qa)token=a;
+      else if(qa&&qb)token=a;
+      else{
+        // Neither side is a currency we know. The quote is the one that has its
+        // own BNB pool — $MatthewCoin/$SpaceX resolves this way.
+        const pa=await priceToken(a,bnbUsd),pb=await priceToken(b,bnbUsd);
+        token=(pb.usd!=null&&pa.usd==null)?a:(pa.usd!=null&&pb.usd==null)?b
+             :((pb.hopBnb||0)>=(pa.hopBnb||0)?a:b);
+      }
+      const quote=token===a?b:a;
+      const info=await rpcBatch([call(token,S.decimals),call(token,S.symbol),call(token,S.name)]);
+      tokDec=Number(hx(info[0]))||18;
+      hop=await priceToken(quote,bnbUsd);
+      if(hop.usd==null)return fail('That pool cannot be priced.',
+        'It trades '+(decStr(info[1])||'this token')+' against '+short(quote)+
+        ', which has no BNB pool of its own — so there is no way to express its depth in dollars without inventing one.');
+      if(what.kind==='v2pair'&&!what.venue)
+        return fail('That pool is on a venue this page does not price.',
+          'Its factory is '+short(what.factory||'')+', which is not one of the constant-product venues whose swap fee has been derived and verified here (PancakeSwap V2, Uniswap V2, Biswap). Applying somebody else’s fee would quietly understate what a trade costs, so no figures are shown.');
+      pool=what.kind==='v2pair'
+        ?{kind:'v2',pair:input,quote,sym:hop.sym,usd:hop.usd,
+          fee:what.venue.fee,venue:what.venue.name,factory:what.factory,
+          tok:(addrAt(what.token0)===token?what.reserves[0]:what.reserves[1])/Math.pow(10,tokDec),
+          q:(addrAt(what.token0)===token?what.reserves[1]:what.reserves[0])/1e18}
+        :{kind:'v3',pair:input,quote,sym:hop.sym,usd:hop.usd,fee:what.fee/1e6,feeRaw:what.fee,
+          sqrt:what.sqrt,tokenIs0:what.token0===token};
+      if(pool.kind==='v3'){
+        const bal=await rpcBatch([call(quote,balOf(input)),call(token,balOf(input))]);
+        pool.q=Number(hx(bal[0]))/1e18;pool.tok=Number(hx(bal[1]))/Math.pow(10,tokDec);
+      }
+      pool.usd=hop.usd;pool.sym=hop.sym;
+      if(token!==input)gpP=askGoPlus(token);
+      // A pasted pool is honoured — you asked about that one. But the factories
+      // are still asked what else exists, because a link often points at a side
+      // pool while the real depth sits one fee tier over, and staying silent
+      // about that would answer the question asked instead of the one meant.
+      try{
+        const alt=(await discover(token,tokDec,bnbUsd))
+          .find(c=>c.pair.toLowerCase()!==pool.pair.toLowerCase()&&c.hard>(pool.q||0)*pool.usd*1.15);
+        if(alt)deeper=alt;
+      }catch(e){}
+    }else{
+      token=input;
+      at('asking the factories which pools exist…');
+      const info=await rpcBatch([call(token,S.decimals),call(token,S.symbol),call(token,S.name)]);
+      tokDec=Number(hx(info[0]))||18;
+      const cands=await discover(token,tokDec,bnbUsd);
+      pool=cands[0]||null;
+      hop={direct:true,sym:pool?pool.sym:'BNB'};
+      if(pool&&pool.kind==='v3'){
+        const s=await rpcBatch([call(pool.pair,S.slot0),call(pool.pair,S.token0)]);
+        pool.sqrt=hx('0x'+s[0].slice(2,66));pool.tokenIs0=addrAt(s[1])===token;
+      }
+    }
+
+    const gp=(await gpP)||{},gpOk=!!(gp.token_name||gp.dex||gp.is_open_source!=null);
+    const nameInfo=await rpcBatch([call(token,S.symbol),call(token,S.name),
+      call(token,S.totalSupply),call(token,balOf(DEAD)),call(token,balOf(NULLA))]);
+    const symb=(gp.token_symbol||decStr(nameInfo[0])||'?').trim().slice(0,16),
+          name=(gp.token_name||decStr(nameInfo[1])||'Unknown token').trim().slice(0,60),
+          supply=nameInfo[2]?Number(hx(nameInfo[2]))/Math.pow(10,tokDec):null,
+          burned=(Number(hx(nameInfo[3]))+Number(hx(nameInfo[4])))/Math.pow(10,tokDec);
+
+    // Venues from DexScreener, which indexes the small DEXes; GoPlus's list is
+    // the fallback and only covers what it happens to know.
+    at('checking where else it trades…');
+    const dsAll=await venues(token);
+    const others=dsAll
+      ? dsAll.filter(x=>!pool||x.pair!==pool.pair.toLowerCase())
+        .map(x=>({pair:x.pair,name:x.name+(x.quote?' · '+x.quote:''),liquidity:x.liq}))
+      : (gp.dex||[]).filter(x=>x.pair&&(!pool||x.pair.toLowerCase()!==pool.pair.toLowerCase()))
+        .map(x=>({pair:x.pair,name:x.name||x.liquidity_type||'Unknown',liquidity:parseFloat(x.liquidity)||0}))
+        .sort((a,b)=>b.liquidity-a.liquidity);
+    const otherLiq=others.reduce((s,x)=>s+(x.liquidity||0),0);
+    const hard=pool?(pool.q||0)*pool.usd:0;
+    // "Is the pool I can measure representative?" — and the comparison must use
+    // ONE yardstick. It used to weigh our own one-sided figure (the quote tokens
+    // actually sitting in the pool) against GoPlus's two-sided one, which values
+    // both halves. On a V3 pool those differ by a factor of eight: $153k of real
+    // USDT against their $868k. Every V3 pool therefore looked like a rounding
+    // error next to the others and got refused — $MarsCoin's did, while trading
+    // perfectly well. So when GoPlus has a figure for OUR pool, both sides of
+    // the ratio come from GoPlus; only when it does not do we fall back to
+    // measuring ours against theirs, which is the imperfect case.
+    const mineFrom=list=>{if(!list||!pool)return null;
+      const e=list.find(x=>(x.pair||'').toLowerCase()===pool.pair.toLowerCase());
+      return e?(e.liq!=null?e.liq:parseFloat(e.liquidity)||0):null};
+    const mine=mineFrom(dsAll)!=null?mineFrom(dsAll):mineFrom(gp.dex);
+    const share=!pool?0
+      :(mine!=null&&mine+otherLiq>0)?mine/(mine+otherLiq)
+      :(otherLiq>0?hard/(hard+otherLiq):1);
+    // A readable pool that holds a sliver of the real liquidity describes a side
+    // pocket. $TUT keeps $2.0M in V3 and $338 in V2; a ladder off that pair says
+    // "+68% on a $100 buy" for a token with two million dollars of depth. A
+    // footnote does not survive a screenshot, so the ladder is not drawn at all.
+    // Two questions, and the old guard only asked one of them. "What share of
+    // the token's liquidity is this?" catches the side-pocket case — $v$ keeps
+    // $19k here against $1.5M elsewhere, and a ladder off that would describe a
+    // market nobody trades in. But share alone refused $BTCB, whose pool here
+    // holds THIRTEEN MILLION DOLLARS and is merely one of several: perfectly
+    // measurable, just not the whole story. So a pool also qualifies on its own
+    // absolute depth, and when it qualifies that way the reader is told plainly
+    // what share it is.
+    const mineUsd=mine!=null?mine:hard*2;
+    const deepEnough=mineUsd>=100000;
+    // An address that is not a token at all used to land in the "trades
+    // elsewhere" path and be told its "$0.00 of liquidity sits in venues this
+    // page cannot quote exactly" — a sentence about a market that does not
+    // exist. A wallet address pasted by mistake deserves to be told that.
+    if(!pool&&!others.length&&!gpOk&&!(supply>0)&&!decStr(nameInfo[0]))
+      return fail('That address is not a BSC token.',
+        'It answers nothing to symbol() or totalSupply(), has no pool at any venue this page can read, and GoPlus does not list it. A wallet address, or a contract that is not a token, looks exactly like this.');
+    if(!pool||(share<0.25&&!deepEnough))
+      return renderElsewhere(gp,token,name,symb,hard,others,otherLiq,share,!!pool);
+    const partial=share<0.25?share:null;
+
+    // PRICE. For a constant-product pair the ratio of the two reserves IS the
+    // price. For a concentrated-liquidity pool it is not, and using it anyway
+    // put $TUT at $0.081 when the pool was quoting $0.127 — a 36% error that
+    // then reappeared as a nonsensical "you pay 32.8%". V3 keeps its price in
+    // sqrtPriceX96, so that is where it is read from.
+    let px;
+    if(pool.kind==='v3'){
+      const d0=pool.tokenIs0?tokDec:18,d1=pool.tokenIs0?18:tokDec,
+            r=Math.pow(Number(pool.sqrt)/Math.pow(2,96),2)*Math.pow(10,d0-d1);
+      px=(pool.tokenIs0?r:1/r)*pool.usd;
+    }else px=(pool.q/pool.tok)*pool.usd;
+    if(!(px>0))return fail('That pool is empty.','Both sides read back as zero — there is nothing to measure.');
+
+    at('measuring the tax from real trades…');
+    const tokenIs0=pool.kind==='v2'
+      ? (await rpcBatch([call(pool.pair,S.token0)]).then(r=>addrAt(r[0])===token))
+      : pool.tokenIs0;
+    const tax=await measureTax(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
+    const gB=Number(gp.buy_tax),gS=Number(gp.sell_tax);
+    const taxB=tax.ok&&tax.buy!=null?tax.buy:(isFinite(gB)?gB:0),
+          taxS=tax.ok&&tax.sell!=null?tax.sell:(isFinite(gS)?gS:0),
+          usedTax=tax.ok||isFinite(gB)||isFinite(gS);
+
+    at('quoting trade sizes…');
+    let rows,up,down,upMin=null,downMin=null;
+    if(pool.kind==='v2'){
+      rows=ladderV2(pool.tok,pool.q,pool.fee,taxB,taxS,px,pool.usd);
+      up=onePctV2(pool.q,pool.fee,1.01)*pool.usd;
+      down=onePctV2(pool.tok,pool.fee,1/0.99)/(1-taxS)*px;
+    }else{
+      rows=await ladderV3(pool.pair,token,pool.quote,pool.feeRaw,tokDec,px,pool.usd,
+        taxB,taxS,pool.sqrt,pool.tokenIs0);
+      const oc=await onePctV3(pool.pair,token,pool.quote,pool.feeRaw,tokDec,px,pool.usd,
+        pool.sqrt,pool.tokenIs0,taxS);
+      up=oc.up;down=oc.down;upMin=oc.upMin;downMin=oc.downMin;
+    }
+
+    let lpTot=0,lpDead=0,lpNull=0,lpFee=0,feeTo=null;
+    if(pool.kind==='v2'){
+      const lp=await rpcBatch([call(pool.pair,S.totalSupply),call(pool.pair,balOf(DEAD)),
+        call(pool.pair,balOf(NULLA)),
+        // The venue's own cut. A constant-product pair mints LP to the factory's
+        // feeTo() on every liquidity event, so on any pool that has run for a
+        // while some unburned LP belongs to the exchange, not to anybody near
+        // the token. Listed as "withdrawable" without saying so, it reads as a
+        // rug waiting to happen.
+        pool.factory?call(pool.factory,S.feeTo):call(pool.pair,S.totalSupply)]);
+      lpTot=Number(hx(lp[0]))/1e18;lpDead=Number(hx(lp[1]))/1e18;lpNull=Number(hx(lp[2]))/1e18;
+      if(pool.factory){
+        feeTo=addrAt(lp[3]);
+        if(feeTo&&feeTo!==NULLA){
+          const fb=await rpcBatch([call(pool.pair,balOf(feeTo))]);
+          lpFee=Number(hx(fb[0]))/1e18;
+        }else feeTo=null;
+      }
+    }
+
+    render({gp,gpOk,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
+      quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
+      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,partial,mineUsd,otherLiq});
+    try{history.replaceState(null,'','?token='+token)}catch(e){}
+  }catch(e){
+    fail('Something went wrong reading this token.',
+      (e&&e.message?e.message+'. ':'')+'Nothing here is cached, so trying again often works. If it keeps failing, the address may not be a BSC token or pool.');
+  }finally{
+    busy(false);
+    // The net. If nothing was drawn and no error was shown, say so plainly
+    // rather than leaving a blank page that looks like the token's fault.
+    const out=$('sc-out');
+    if((out.hidden||!out.children.length)&&$('sc-err').hidden)
+      fail('The scan ended without a result.',
+        'It stopped at “'+stage+'” without producing figures and without an error — almost always a public BSC node dropping a request mid-scan. Press Scan again; it normally works on the second try.');
+  }
+}
+
+// Accept what people actually paste: a bare address, a BscScan link, a
+// DexScreener link (which carries the POOL, not the token), a PancakeSwap URL.
+const parseInput=s=>{const m=String(s||'').match(/0x[a-fA-F0-9]{40}/);return m?m[0].toLowerCase():null};
+function submit(){
+  const a=parseInput($('sc-in').value);
+  if(!a)return fail('That is not a contract address.',
+    'Paste a BSC token address, a pool address, or a BscScan / DexScreener link that contains one.');
+  scan(a);
+}
+$('sc-go').addEventListener('click',submit);
+$('sc-in').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
+(function(){const t=parseInput(new URLSearchParams(location.search).get('token'));
+  if(t){$('sc-in').value=t;scan(t)}})();
+
+==============================================================================
+=== FILE: dashboard/styles.css
+==============================================================================
+
+/* Split out of index.html. As an inline <style> this block was 57 KB — a good
+   half of the whole document — and it came down the wire in full on EVERY visit
+   and EVERY refresh, because Cloudflare Pages serves HTML without a fingerprint
+   and can therefore never answer "not modified". As its own file with ?v= it is
+   allowed to sit in the device cache for a week: on refresh it comes from
+   storage instead of the network, and the HTML next to it is half the size.
+   That wait was the white screen on mobile — the browser cannot paint anything
+   before the stylesheet is there.
+   When editing this file, bump the ?v= in index.html. */
+    :root{
+      --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
+      --red:#ff3028;--green:#00e676;--blue:#4040ff;--purple:#a040ff;
+      /* Warmer, softer base than the old ice-cold #050510/#7b7d9e pair — the
+         page should read welcoming, not like a terminal. --muted was lifted to
+         ~7.9:1 on the new background so the small print is comfortable. */
+      /* Sampled from logo.png: corners #0c0c0c, brain body #c68f76, cream
+         highlight #ead4bf. The page now sits on the logo's own ground. */
+      --brain:#c68f76;--brain-rgb:198,143,118;
+      --glitch-c:34,211,238;--glitch-m:232,121,249;
+      --bg:#0c0b0c;--card:rgba(30,25,24,.78);--border:rgba(198,143,118,.16);
+      --text:#eceaf5;--muted:#a0a2c0;
+      --radius:22px;
+    }
+    .bob-sub{font-size:.75em;color:#fff;font-weight:400;margin-left:2px;flex:none}
+    *{margin:0;padding:0;box-sizing:border-box}
+    /* overflow-x:hidden used to sit on html AND body, which is where the two
+       scrollbars came from: hiding one axis silently switches the other from
+       visible to auto, so body became a second scroll container. The interim
+       fix was overflow-x:clip on body.
+       Both are gone with nothing in their place. Measured at 360/390/430/768/
+       1440px, NOTHING overflows horizontally any more — the wide tables sit in
+       their own .txw scroll box. The handbrakes were covering a problem that no
+       longer exists, and with no overflow declared at all, body cannot become a
+       scroll container, so the double bar cannot come back.
+       If an overhang ever shows up here again: find the element causing it.
+       Do not clamp the whole page down a second time. */
+    /* Warm glows lift the page out of flat black without giving up the dark
+       gold-on-near-black identity. */
+    body{font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
+      background:
+        radial-gradient(1200px 700px at 50% -6%,rgba(240,185,11,.13),transparent 66%),
+        radial-gradient(900px 620px at 50% 40%,rgba(198,143,118,.06),transparent 70%),
+        radial-gradient(700px 500px at 88% 78%,rgba(120,48,24,.07),transparent 72%),
+        var(--bg);
+      background-attachment:fixed}
+    /* Colour field — slow drifting aurora in the BOBAI accent palette. Replaces
+       the old particle canvas: cheaper, prettier, and it actually adds colour. */
+    /* Warm amber field like the logo's ground, with the two glitch hues kept
+       faint so they read as speckle, not as a purple wash. */
+    .aur{position:fixed;inset:-25%;z-index:0;pointer-events:none;filter:blur(110px);opacity:.5}
+    .aur i{position:absolute;display:block;border-radius:50%}
+    .aur .a1{width:48vw;height:48vw;left:-4%;top:-4%;background:rgba(240,185,11,.4);animation:drift1 34s ease-in-out infinite}
+    .aur .a2{width:40vw;height:40vw;right:-6%;top:20%;background:rgba(198,143,118,.3);animation:drift2 42s ease-in-out infinite}
+    .aur .a3{width:38vw;height:38vw;left:18%;bottom:-4%;background:rgba(120,48,24,.34);animation:drift3 38s ease-in-out infinite}
+    .aur .a4{width:26vw;height:26vw;right:22%;bottom:12%;background:rgba(34,211,238,.1);animation:drift2 48s ease-in-out infinite reverse}
+    @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,4vh) scale(1.12)}}
+    @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-5vw,6vh) scale(.94)}}
+    @keyframes drift3{0%,100%{transform:translate(0,0) scale(.96)}50%{transform:translate(4vw,-5vh) scale(1.1)}}
+    /* .aur i (0,1,1) loses to .aur .a1 (0,2,0), and a media query does not raise
+       specificity — so this rule did nothing at all for as long as it existed.
+       Naming the four classes gives it equal specificity and a later position in
+       the document, which is what actually wins. */
+    @media (prefers-reduced-motion:reduce){.aur .a1,.aur .a2,.aur .a3,.aur .a4{animation:none}}
+    .page{position:relative;z-index:1}
+
+    /* NAV */
+    /* Always fully opaque — nothing should ever show through the header. */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#0b0916;
+      border-bottom:1px solid var(--border)}
+    .nav{position:relative;z-index:1}
+    .nav{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:58px}
+    .nl{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.15rem}
+    .nl img{width:30px;height:30px;border-radius:8px;box-shadow:0 0 12px rgba(240,185,11,.2)}
+    .nl span{background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .nm{display:flex;gap:24px}
+    .nm a{color:var(--muted);text-decoration:none;font-size:.78rem;font-weight:500;transition:color .2s;letter-spacing:.2px}
+    .nm a:hover{color:var(--gold)}
+    .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:9px 24px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
+    .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
+    /* Hidden while the hero (which has its own big Buy CTA) is on screen, so the
+       two identical gold buttons are never visible at the same time. */
+    .nb-group{display:flex;gap:8px;align-items:center;opacity:0;visibility:hidden;
+      transform:translateY(-6px);transition:opacity .3s ease,transform .3s ease,visibility .3s}
+    .nb-group.on{opacity:1;visibility:visible;transform:none}
+    .nb2{position:relative;background:transparent;color:var(--gold);padding:8px 18px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:1px solid rgba(240,185,11,.45);letter-spacing:.3px;overflow:hidden}
+    /* A static ring animated via transform/opacity instead of a growing
+       box-shadow — see the ground rule in the POLISH LAYER. .nb2 is not used
+       anywhere in the HTML at the moment, but the rule stays as a hook: if it
+       comes back, it must not drag the expensive old version back with it. */
+    .nb2::before{content:'';position:absolute;inset:0;border-radius:10px;pointer-events:none;
+      box-shadow:0 0 0 6px rgba(240,185,11,.32);animation:nb2pulse 2.4s ease-out infinite}
+    .nb2:hover{background:rgba(240,185,11,.08);border-color:var(--gold);transform:translateY(-1px)}
+    @keyframes nb2pulse{0%{opacity:1;transform:scale(.94)}70%,100%{opacity:0;transform:scale(1)}}
+
+    /* HERO */
+    .hero{position:relative;width:100%;margin-top:58px;overflow:hidden}
+    /* No max-height: any cover-crop cuts the figure. The image keeps its native
+       3:2 so the whole character stays visible; max-width stops it exploding on
+       ultrawide screens. */
+    .hero picture{display:block;width:100%}
+    /* A reserved box per crop. Without one the image was 0px tall until it
+       loaded and everything below shifted down afterwards — so reopening the
+       browser dropped the view into the middle of a face instead of at the top
+       of the picture. */
+    .hero img{width:100%;height:auto;display:block;aspect-ratio:2/1}
+    @media (max-width:640px){.hero img{aspect-ratio:720/900}}
+    @media (orientation:landscape) and (max-height:520px){.hero img{aspect-ratio:2/1}}
+    /* The wide keyart carries ~12% of flat, textureless wash on its left edge —
+       on screen that reads as a black border instead of a full-bleed image.
+       Zoom from the right edge so that strip is clipped away; the ~7% that goes
+       over top and bottom is empty sky and the rock base that the bottom fade
+       swallows anyway. Only for the wide art — the -m crop below 641px has no
+       wash and would lose the cape. */
+    @media (min-width:641px){
+      .hero img{transform:scale(1.136);transform-origin:100% 50%}
+    }
+    /* Headline sits in the right third — the art is composed with the figure
+       left and that side deliberately calm. The scrim guarantees contrast even
+       if a future hero image is brighter there. */
+    .hero-ov{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
+      background:linear-gradient(to right,transparent 38%,rgba(10,8,20,.72) 72%,rgba(10,8,20,.88) 100%);
+      pointer-events:none}
+    .hero-in{max-width:1100px;margin:0 auto;padding:0 24px;width:100%;display:flex;justify-content:flex-end}
+    .hero-tx{max-width:530px;pointer-events:auto;padding-bottom:36px}
+    .hero-eb{display:inline-flex;align-items:center;gap:7px;font-size:.62rem;text-transform:uppercase;
+      letter-spacing:1.5px;font-weight:600;color:var(--muted);margin-bottom:14px}
+    .hero-eb .dot{width:6px;height:6px;border-radius:50%;background:var(--green);
+      box-shadow:0 0 8px var(--green);animation:tgpulse 1.6s ease-in-out infinite;flex-shrink:0}
+    /* h2, not h1 — the keyword-carrying SEO h1 stays the page's only h1. */
+    .hero-h{font-family:'Space Grotesk',sans-serif;font-size:3.1rem;font-weight:700;
+      line-height:1.08;letter-spacing:-1.5px;margin-bottom:16px}
+    /* The tagline lived only in <title> and alt text until now. As a pill it
+       reads as a deliberate mark rather than a stray line of small caps. */
+    .hero-tag{display:inline-block;font-family:'Space Grotesk',sans-serif;font-size:.72rem;
+      font-weight:700;letter-spacing:2.6px;text-transform:uppercase;color:var(--gold);
+      border:1px solid rgba(240,185,11,.3);background:rgba(240,185,11,.07);
+      padding:8px 18px;border-radius:999px;margin:6px 0 26px;
+      box-shadow:0 0 30px rgba(240,185,11,.08)}
+    .hero-h em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .hero-tx p{color:var(--muted);font-size:.86rem;line-height:1.7;margin-bottom:24px}
+    .hero-cta{display:flex;gap:10px;flex-wrap:wrap}
+    /* Pill buttons throughout — the single cheapest move from "technical" to
+       "friendly", and it keeps the gold-on-dark identity untouched. */
+    .hero-cta a{padding:13px 30px;border-radius:999px;font-weight:700;font-size:.8rem;
+      text-decoration:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s,background .25s;letter-spacing:.3px}
+    .hero-cta a:active{transform:scale(.96)}
+    .hb1{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;
+      box-shadow:0 4px 24px rgba(240,185,11,.28)}
+    .hb1:hover{transform:translateY(-2px);box-shadow:0 8px 36px rgba(240,185,11,.45)}
+    .hb2{border:1px solid rgba(240,185,11,.35);color:var(--gold);background:rgba(240,185,11,.04)}
+    .hb2:hover{background:rgba(240,185,11,.1);transform:translateY(-2px)}
+    /* MOBILE HERO — copy sits BELOW the art instead of on top of it. The wide
+       2:1 crop is only ~195px tall on a phone, so overlaid text spilled out of
+       the image and collided with the stat bar. A portrait crop is served
+       instead and the overlay is taken out of absolute positioning. */
+    /* Phone in landscape: the viewport is wider than 900 but only ~430 tall,
+       so the desktop overlay layout kicked in and the hero/band edge fades read
+       as black bars. Short landscape viewports get the mobile treatment. */
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
+      .hero-ov{position:static;background:none;display:block}
+      .hero-in{justify-content:center;padding:0 20px}
+      .hero-tx{max-width:560px;text-align:center;padding:22px 0 4px;margin:0 auto}
+      .hero-h{font-size:1.9rem}
+      .hero-cta{justify-content:center}
+      .hero::after{display:none}
+      .hero::before{display:none}
+      .hero picture{position:relative}
+      .hero picture::after{content:'';position:absolute;inset:0;pointer-events:none;
+        background:linear-gradient(to bottom,rgba(12,11,12,0) 66%,var(--bg) 97%)}
+    }
+    @media (max-width:480px){
+      .hero-h{font-size:1.6rem}
+      .hero-tag{font-size:.62rem;letter-spacing:2px;padding:7px 14px;margin-bottom:18px}
+      .hero-cta a{padding:11px 20px;font-size:.75rem}
+    }
+    /* Fades all four edges into the page so the widened canvas has no seam. */
+    .hero::after{content:'';position:absolute;inset:0;pointer-events:none;background:
+      linear-gradient(to right,var(--bg) 0%,rgba(10,8,20,0) 5%),
+      linear-gradient(to left,var(--bg) 0%,rgba(10,8,20,0) 17%),
+      linear-gradient(to bottom,rgba(10,8,20,0) 72%,var(--bg) 100%)}
+
+    /* LIVE BADGE */
+    .live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.15);padding:4px 12px;border-radius:20px;font-size:.65rem;font-weight:600;color:var(--green);letter-spacing:.5px;text-transform:uppercase}
+    /* The dot pulses and a ring travels outwards — same look as before, without
+       an animated box-shadow. The old version grew the shadow radius per frame,
+       which the compositor cannot take over: repaint 60x a second, forever.
+       Now the ring is static on an ::after and only transform and opacity are
+       animated. Identical on screen, essentially free. */
+    .live-dot{position:relative;width:6px;height:6px;background:var(--green);border-radius:50%;
+      animation:ldFade 2s ease-in-out infinite}
+    .live-dot::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+      box-shadow:0 0 0 5px rgba(0,230,118,.4);animation:ldRing 2s ease-out infinite}
+    @keyframes ldFade{0%,100%{opacity:1}50%{opacity:.6}}
+    @keyframes ldRing{0%{opacity:.5;transform:scale(.2)}70%,100%{opacity:0;transform:scale(1)}}
+
+    /* STATS BAR */
+    .sbar{max-width:1100px;margin:-48px auto 0;padding:0 24px;position:relative;z-index:3}
+    .sg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+    .sc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px 12px;text-align:center;transition:all .3s;position:relative;overflow:hidden;
+      box-shadow:0 16px 44px -26px rgba(0,0,0,.85)}
+    .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
+    .sc:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.12);box-shadow:0 8px 32px rgba(240,185,11,.04)}
+    .sc .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:8px}
+    /* Fluid size + wrap: the $BOB burned figure is 15 digits and overflowed a
+       fixed 1.28rem. */
+    /* Shrinks rather than wraps — `anywhere` split the 15-digit BOB figure
+       mid-number, which reads as two different numbers. */
+    /* Sized so the longest figure (781,262,432,552 = 15 digits) fits a sixth
+       of the bar on one line. keep-all stops a number splitting mid-digits. */
+    .sc .v{font-family:'Space Grotesk',sans-serif;font-size:clamp(.7rem,.8vw,.95rem);font-weight:700;line-height:1.3;
+      overflow-wrap:normal;word-break:keep-all;
+      background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sc .vsub{font-size:.6rem;color:#fff;margin-top:4px;letter-spacing:.3px}
+
+    /* SECTIONS */
+    /* Every section is a literal block: its own frame, its own accent, tinted
+       from the top edge. The chain between them does the connecting. */
+    .sec{width:min(1100px,calc(100% - 34px));margin:0 auto;padding:30px 26px 40px;position:relative;overflow:hidden;
+      border:1px solid rgba(var(--accs),.17);border-radius:28px;
+      background:linear-gradient(180deg,rgba(var(--accs),.05),rgba(var(--accs),0) 42%);
+      box-shadow:0 20px 60px -30px rgba(0,0,0,.7)}
+    .sec::before{content:'';position:absolute;top:0;left:12%;right:12%;height:2px;
+      background:linear-gradient(90deg,transparent,rgba(var(--accs),.55),transparent)}
+    /* The socket the synapse above plugs into. */
+    .sec::after{content:'';position:absolute;top:3px;left:50%;width:12px;height:12px;
+      transform:translateX(-50%) rotate(45deg);border-radius:3px;background:var(--bg);
+      border:1.5px solid rgba(var(--accs),.65);box-shadow:0 0 16px rgba(var(--accs),.4)}
+    .sec-after-band{padding-top:26px}
+    /* BLOCK CHAIN — the page reads top to bottom as a chain of blocks: each
+       section is one block with its own accent, joined by a connector node. */
+    /* SYNAPSE CONNECTOR — the strand between two blocks splits into dendrites
+       that wrap around the block and rejoin. Brain and chain in one mark. */
+    .sep{display:flex;justify-content:center;max-width:none;margin:0 auto;padding:0}
+    .syn{width:24px;height:56px;display:block}
+    .syn-t{stroke:rgba(240,185,11,.4);stroke-width:2;stroke-linecap:round}
+
+    /* WRAPNET — neural wiring running down both margins and reaching inward,
+       so the network embraces the whole page instead of sitting between the
+       sections. Absolutely positioned: it costs no layout space. Colours are
+       the character's holographic glitch speckles (cyan / magenta / gold). */
+    .wrapnet{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+    .wn-e{stroke-width:1;fill:none}
+    .wn-n{stroke:none}
+    .wn-b{stroke-width:1.2;fill:none}
+    @keyframes wnpulse{0%,100%{opacity:.35}50%{opacity:.9}}
+    @media (prefers-reduced-motion:reduce){.wrapnet *{animation:none!important}}
+
+    .sec{--acc:#F0B90B;--accs:240,185,11}
+    .b-blue{--acc:#7d92ff;--accs:125,146,255}
+    .b-violet{--acc:#b98cff;--accs:185,140,255}
+    .b-green{--acc:#3fe09a;--accs:63,224,154}
+    .blk-head{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+    .blk-tag{font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:1.7px;
+      text-transform:uppercase;color:var(--acc);border:1px solid rgba(var(--accs),.34);
+      background:rgba(var(--accs),.08);padding:5px 12px;border-radius:999px;flex-shrink:0;white-space:nowrap}
+    .blk-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(var(--accs),.4),rgba(var(--accs),0))}
+    /* Section heading and card top-edges pick up the block's colour. */
+    .sec .sh h2 em{background:linear-gradient(135deg,var(--acc),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sec .sc::before,.sec .tax::before{background:linear-gradient(90deg,transparent,rgba(var(--accs),.5),transparent)}
+    .sec .fs:hover,.sec .ec:hover,.sec .rm:hover{border-color:rgba(var(--accs),.34);
+      box-shadow:0 12px 34px rgba(var(--accs),.1)}
+    .sec .fn{color:var(--acc);border-color:rgba(var(--accs),.45)}
+    .sec .fa{color:var(--acc);border-color:rgba(var(--accs),.45);box-shadow:0 0 16px rgba(var(--accs),.25)}
+    .sec .ec::before{background:linear-gradient(90deg,var(--acc),transparent)}
+    .sec .ec-go{color:var(--acc)}
+    .sh{margin-bottom:36px}
+    .sh h2{font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:700;margin-bottom:7px;letter-spacing:-.4px}
+    .sh h2 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .sh p{color:var(--muted);font-size:.84rem}
+
+    /* ABOUT — BRAIN LOGO + TEXT */
+    .about-hero{display:flex;align-items:center;gap:48px;margin-bottom:48px}
+    /* line-height:0 takes the descender gap out of the line box, otherwise the
+       halo sits a few pixels low. position:relative is what carries it. */
+    .about-logo{flex-shrink:0;position:relative;line-height:0}
+    /* The breathing glow used to be an animated box-shadow with a 130px blur —
+       rasterised again every frame. It is now its own halo layer behind the
+       image, animating transform and opacity only: same look, compositor-only.
+       inset:0 rather than fixed pixels, so it follows the 140px phone crop by
+       itself. */
+    .about-logo::before{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+      box-shadow:0 0 70px rgba(240,185,11,.25),0 0 145px rgba(240,185,11,.10);
+      animation:breathe 4.8s ease-in-out infinite}
+    /* Fully round with a thin gold ring — the square crop read like a leftover
+       asset rather than a deliberate portrait. */
+    .about-logo img{position:relative;z-index:1;
+      width:180px;height:180px;border-radius:50%;object-fit:cover;
+      border:2px solid rgba(240,185,11,.28);padding:0;
+      box-shadow:inset 0 0 40px rgba(0,0,0,.4)}
+    .about-text h3{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:10px}
+    .about-text h3 em{font-style:normal;color:var(--gold)}
+    .about-text p{color:var(--muted);font-size:.88rem;line-height:1.7;max-width:540px}
+    .about-tags{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+    .about-tags span{font-size:.62rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+
+    /* TAX FLOW */
+    .tax{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:36px 28px;position:relative;overflow:hidden}
+    .tax::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.2),transparent)}
+    .tax h3{font-family:'Space Grotesk',sans-serif;font-size:.92rem;text-align:center;margin-bottom:20px;color:var(--gold)}
+    .tax-flow{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;position:relative;z-index:1}
+    .tf{background:rgba(240,185,11,.02);border:1px solid var(--border);border-radius:12px;padding:18px 22px;text-align:center;min-width:120px;transition:all .3s}
+    .tf:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.12)}
+    .tf .p{font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700}
+    .tf .d{font-size:.68rem;color:var(--muted);margin-top:2px}
+    .ta{color:rgba(240,185,11,.18);font-size:1.1rem}
+    .ts-inline{font-size:.9em;color:var(--muted);opacity:.7;font-style:italic}
+    .ts-inline.active{color:var(--gold);opacity:1;font-style:normal}
+    .tax-schedule{margin-top:28px;border-top:1px solid var(--border);padding-top:20px}
+    .ts-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-size:.72rem;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;flex-wrap:wrap}
+    .ts-head .ts-right{color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:none;font-size:.7rem;opacity:.75}
+    .ts-rows{display:flex;flex-direction:column;gap:8px;max-height:362px;overflow-y:auto;position:relative;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent;padding-right:6px}
+    .ts-rows::-webkit-scrollbar{width:6px}
+    .ts-rows::-webkit-scrollbar-track{background:transparent}
+    .ts-rows::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:3px}
+    .ts-rows::-webkit-scrollbar-thumb:hover{background:rgba(240,185,11,.5)}
+    .ts-row{display:grid;grid-template-columns:200px 150px 1fr;gap:14px;align-items:center;padding:11px 14px;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;transition:all .25s}
+    .ts-row.active{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.35);box-shadow:0 0 0 1px rgba(240,185,11,.15)}
+    .ts-row.past{opacity:.45}
+    .ts-when{font-family:'Space Grotesk',sans-serif;font-size:.72rem;color:var(--muted);letter-spacing:.5px}
+    .ts-row.active .ts-when{color:var(--gold)}
+    .ts-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.85rem;color:var(--text)}
+    .ts-row.active .ts-name::before{content:'\25CF';color:var(--gold);font-size:.6rem;margin-right:6px;vertical-align:middle;animation:tspulse 1.6s ease-in-out infinite}
+    @keyframes tspulse{0%,100%{opacity:.4}50%{opacity:1}}
+    .ts-split{font-size:.72rem;color:var(--muted);line-height:1.5}
+    .ts-split b{color:var(--text);font-weight:600}
+    .ts-row.active .ts-split b{color:var(--gold)}
+    .ts-split a{color:inherit;text-decoration:underline;text-decoration-color:rgba(240,185,11,.3)}
+    .ts-split a:hover{text-decoration-color:var(--gold)}
+    @media(max-width:760px){
+      .ts-row{grid-template-columns:1fr;gap:4px;padding:12px}
+      .ts-when{font-size:.68rem}
+    }
+
+    /* FLOW STEPS */
+    .fl{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    /* overflow stays visible so the chain link between cards isn't clipped —
+       the cover image gets its own clipping wrapper instead. */
+    .fs{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:0 0 22px;text-align:center;position:relative;transition:transform .35s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .35s}
+    .fs-wrap{overflow:hidden;border-radius:21px 21px 0 0;margin-bottom:14px}
+    /* Step art fills the card like a cover image; copy sits underneath. */
+    .fs-art{display:block;width:100%;height:180px;object-fit:cover;object-position:center 18%;
+      transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+    .fs:hover .fs-art{transform:scale(1.05)}
+    .fs h4,.fs p{padding:0 16px}
+    .fs:hover{border-color:rgba(240,185,11,.1);transform:translateY(-2px)}
+    .fn{position:absolute;top:14px;left:14px;z-index:2;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.72rem;margin:0;background:rgba(8,6,16,.72);backdrop-filter:blur(6px);color:var(--gold);border:1px solid rgba(240,185,11,.42)}
+    .fs h4{font-size:.82rem;margin-bottom:4px;font-weight:600}
+    .fs p{font-size:.78rem;color:var(--muted);line-height:1.6}
+    /* Chain links between the steps — the four cards read as one connected
+       run rather than four separate boxes. */
+    .fa{position:absolute;right:-16px;top:50%;transform:translateY(-50%);z-index:3;
+      width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      background:var(--bg);border:1px solid rgba(240,185,11,.35);color:var(--gold);
+      font-size:.68rem;box-shadow:0 0 16px rgba(240,185,11,.22)}
+
+    /* TOKEN CARDS */
+    .tg4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .tc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:26px 16px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
+    .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.15),transparent)}
+    .tc:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.1);box-shadow:0 8px 32px rgba(240,185,11,.03)}
+    .tc .b{font-family:'Space Grotesk',sans-serif;font-size:2.1rem;font-weight:700;margin-bottom:5px;letter-spacing:-1px;background:linear-gradient(135deg,var(--acc),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .tc h4{font-size:.86rem;margin-bottom:5px;font-weight:600}
+    .tc p{font-size:.75rem;color:var(--muted);line-height:1.5}
+    .tc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--accs),.45),transparent)}
+    .tc:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.3);box-shadow:0 14px 36px rgba(var(--accs),.1)}
+
+    /* LIQUIDITY DEPTH — the pool read out in full, inside Block 02 rather than as
+       a block of its own: it is a tokenomics fact, and the chain of blocks is
+       already long. No backdrop-filter here on purpose; fourteen blurred layers
+       were what made the page hand back white tiles on iOS, and a fifteenth would
+       walk straight back into it. The bars are scaled with transform, never width,
+       so a refresh cannot trigger a layout pass. */
+    .lqd{margin-top:14px;border:1px solid rgba(var(--accs),.16);border-radius:var(--radius);
+      background:linear-gradient(180deg,rgba(var(--accs),.05),rgba(var(--accs),0) 60%),var(--card);
+      padding:24px 22px 20px}
+    .lqd-h h3{font-size:1.02rem;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .lqd-h p{font-size:.79rem;color:var(--muted);margin-top:6px;line-height:1.55;max-width:64ch}
+    .lqd-g{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+    .lqm{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
+    .lqv{font-family:'Space Grotesk',sans-serif;font-size:1.85rem;font-weight:700;letter-spacing:-1px;
+      color:var(--acc);line-height:1.1}
+    .lql{font-size:.79rem;font-weight:600;margin-top:4px}
+    .lqs{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:7px}
+    .lqn{color:var(--acc);font-weight:600;white-space:nowrap}
+    .lqa{color:var(--acc);text-decoration:none;border-bottom:1px solid rgba(var(--accs),.35);
+      white-space:nowrap}
+    .lqa:hover{border-bottom-color:var(--acc)}
+    .lqa-ad{font-family:'Space Grotesk',sans-serif;font-size:.95em;opacity:.8}
+    .lqi{margin-top:18px;border-top:1px solid rgba(var(--accs),.14);padding-top:16px}
+    .lqi-h{font-size:.79rem;font-weight:600}
+    .lqi-h span{display:block;font-weight:400;color:var(--muted);font-size:.72rem;margin-top:4px;line-height:1.5}
+    .lqsrc{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+    .lqsr{border:1px solid var(--border);border-radius:12px;padding:14px 14px 12px;background:rgba(255,255,255,.02)}
+    .lqsr-t{font-size:.76rem;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+    .lqsr-k{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:999px;
+      border:1px solid currentColor;font-weight:700}
+    .lqsr-auto{color:#3fe09a}.lqsr-man{color:#7d92ff}.lqsr-launch{color:var(--muted)}
+    .lqsr-a{font-family:'Space Grotesk',sans-serif;font-size:.68rem;color:var(--muted);
+      text-decoration:none;border-bottom:1px dotted rgba(255,255,255,.22)}
+    .lqsr-a:hover{color:var(--acc)}
+    .lqsr-v{font-family:'Space Grotesk',sans-serif;font-size:1.15rem;font-weight:700;margin-top:9px;
+      display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+    .lqsr-p{font-size:.78rem;font-weight:600;color:var(--muted);
+      padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.05)}
+    .lqsr-s{font-size:.71rem;color:var(--muted);line-height:1.5;margin-top:4px}
+    .lqunb{font-size:.72rem;color:var(--muted);line-height:1.55;margin-top:12px;
+      padding-left:11px;border-left:2px solid rgba(var(--accs),.22)}
+    .lqone{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+    .lqo{border:1px solid var(--border);border-radius:12px;padding:13px 14px 11px;
+      background:rgba(255,255,255,.02)}
+    .lqo-v{font-family:'Space Grotesk',sans-serif;font-size:1.35rem;font-weight:700;
+      letter-spacing:-.5px;line-height:1.1}
+    .lqo-up{color:#3fe09a}.lqo-dn{color:#ff8f6b}
+    .lqo-l{font-size:.76rem;font-weight:600;margin-top:5px}
+    .lqo-s{font-size:.7rem;color:var(--muted);line-height:1.5;margin-top:3px}
+    .lqbl{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:16px}
+    .lqbs{display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;margin-top:6px}
+    .lqbc-h{font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-top:14px}
+    .lqbc-buy{color:#3fe09a}.lqbc-sell{color:#ff8f6b}
+    .lqb{display:flex;align-items:center;gap:12px;margin-top:11px}
+    .lqb-l{font-family:'Space Grotesk',sans-serif;font-size:.8rem;font-weight:600;
+      width:56px;flex-shrink:0;color:var(--text-dim)}
+    .lqb-t{flex:1;height:8px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
+    .lqb-t i{display:block;height:100%;border-radius:5px;transform:scaleX(0);transform-origin:0 50%;
+      background:linear-gradient(90deg,#3fe09a,#8ff0c6);transition:transform .5s ease}
+    .lqb-t i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
+    .lqb-p{font-family:'Space Grotesk',sans-serif;font-size:.82rem;font-weight:700;
+      width:62px;flex-shrink:0;text-align:right}
+    .lqb-c{font-size:.7rem;color:var(--muted);width:82px;flex-shrink:0;text-align:right;
+      white-space:nowrap}
+    @media (max-width:760px){
+      .lqd{padding:20px 16px 16px}
+      .lqd-g,.lqsrc,.lqbs,.lqone{grid-template-columns:1fr;gap:10px}
+      .lqv{font-size:1.6rem}
+      /* At phone width the three fixed columns (56+62+82px plus the gaps) eat
+         the row: of 258px the bar track was left with 22px, which made the $100
+         bar 0.8px long — that is not a bar, that is nothing. The figures stay on
+         one line, the bar moves underneath and gets the full width. The desktop
+         layout is untouched. */
+      .lqb{display:grid;grid-template-columns:auto 1fr auto;
+        grid-template-areas:"l p c" "t t t";column-gap:10px;row-gap:7px;align-items:baseline}
+      .lqb-l{grid-area:l;width:auto}
+      .lqb-p{grid-area:p;width:auto;text-align:left}
+      .lqb-c{grid-area:c;width:auto}
+      .lqb-t{grid-area:t;width:100%}
+    }
+    @media (prefers-reduced-motion:reduce){.lqb-t i{transition:none}}
+
+    /* VERIFY */
+    /* PROOF TILES — the old label/value list read like a config dump. Each fact
+       now gets a coloured tile, so the block scans instead of being read. */
+    .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+    .ptile{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;
+      background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);
+      border-radius:18px;padding:16px 18px;position:relative;
+      transition:transform .3s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .3s}
+    .ptile.pt-wide{grid-column:1/-1}
+    a.ptile:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.36);
+      box-shadow:0 12px 32px rgba(var(--accs),.12)}
+    .pt-ico{flex-shrink:0;width:40px;height:40px;border-radius:12px;display:flex;
+      align-items:center;justify-content:center;font-size:.9rem;line-height:1}
+    .t-gold{background:rgba(240,185,11,.14);color:#F0B90B;border:1px solid rgba(240,185,11,.3)}
+    .t-violet{background:rgba(185,140,255,.14);color:#b98cff;border:1px solid rgba(185,140,255,.3)}
+    .t-blue{background:rgba(125,146,255,.14);color:#7d92ff;border:1px solid rgba(125,146,255,.3)}
+    .t-red{background:rgba(255,90,80,.13);color:#ff6a60;border:1px solid rgba(255,90,80,.28)}
+    .t-green{background:rgba(63,224,154,.14);color:#3fe09a;border:1px solid rgba(63,224,154,.3)}
+    .pt-body{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+    .pt-l{font-size:.78rem;font-weight:600;color:var(--text)}
+    .pt-v{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pt-v.ok{color:#3fe09a;font-family:'Inter',system-ui,sans-serif;font-size:.72rem}
+    /* Wraps, unlike .pt-v — this one carries a sentence, not an address. */
+    .pt-note{font-size:.68rem;line-height:1.5;color:var(--muted);white-space:normal;margin-top:2px}
+    .pt-note b{color:#ff6a60;font-weight:600}
+    .pt-go{flex-shrink:0;color:var(--muted);font-size:.8rem;transition:transform .25s,color .25s}
+    a.ptile:hover .pt-go{transform:translate(2px,-2px);color:var(--acc)}
+    @media (max-width:560px){.pt-v{font-size:.62rem}}
+
+    .vc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:24px;position:relative;overflow:hidden}
+    .vc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.15),transparent)}
+    .vr{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(240,185,11,.03);flex-wrap:wrap;gap:6px}
+    .vr:last-child{border-bottom:none}
+    .vr .l{color:var(--muted);font-size:.78rem;font-weight:500}
+    .vr .vl{font-family:'Space Grotesk',monospace;font-size:.76rem;color:var(--gold);word-break:break-all}
+    .vr a{color:var(--gold);text-decoration:none;transition:opacity .2s}
+    .vr a:hover{opacity:.7}
+
+    /* TX TABLE */
+    /* The page itself cannot be swiped sideways — measured: scrollWidth equals
+       the viewport at 360/390/430/768. The only swipeable things are these four
+       table boxes, and that has to stay: the tx hashes need the width.
+       What feels wrong is the hand-off. Swipe inside the box until it hits its
+       end and the browser passes the remaining movement to the page, which then
+       judders sideways with it. `contain` keeps the movement in the box.
+       That is the precise fix — NOT overflow-x on html/body again, which is what
+       produced the double scrollbar on Aug 9. */
+    .txw{max-height:400px;overflow-y:auto;overscroll-behavior:contain;
+      border-radius:var(--radius);border:1px solid var(--border)}
+    .txw::-webkit-scrollbar{width:4px}
+    .txw::-webkit-scrollbar-track{background:rgba(10,10,22,.9)}
+    .txw::-webkit-scrollbar-thumb{background:rgba(240,185,11,.12);border-radius:2px}
+    table{width:100%;border-collapse:collapse;background:var(--card);backdrop-filter:blur(16px)}
+    table thead th{position:sticky;top:0;z-index:1}
+    table th{background:rgba(240,185,11,.03);color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:12px 14px;text-align:left;font-weight:600}
+    table td{padding:10px 14px;border-top:1px solid rgba(240,185,11,.03);font-size:.76rem}
+    table tr:hover{background:rgba(240,185,11,.015)}
+    .txl{color:var(--gold);text-decoration:none;font-family:'Space Grotesk',monospace;font-size:.72rem}
+    .txl:hover{text-decoration:underline}
+    .tb{background:rgba(255,48,40,.07);color:var(--red);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .tba{background:rgba(0,230,118,.07);color:var(--green);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+
+    /* LIQ BOOST */
+    /* WORLDCUP TIPGAME card — sits between top stats and BOB Liq Boost.
+       Gold accent + blue undertone to differentiate from the green-gold liq-boost card. */
+    .tipgame{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
+    .tg-card{display:block;text-decoration:none;color:inherit;background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(64,64,255,.18);border-radius:var(--radius);padding:0;position:relative;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
+    .tg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),rgba(64,64,255,.5),var(--gold),transparent);z-index:2}
+    .tg-card:hover{transform:translateY(-2px);border-color:rgba(240,185,11,.4);box-shadow:0 10px 40px -10px rgba(240,185,11,.25)}
+    .tg-body{padding:22px 28px 24px;text-align:center;position:relative}
+    .tg-eyebrow{font-family:'Space Grotesk',sans-serif;font-size:.62rem;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);font-weight:600;margin-bottom:6px}
+    .tg-eyebrow .live{color:var(--green);font-weight:700}
+    .tg-eyebrow .live::before{content:'\25CF';margin-right:5px;animation:tgpulse 1.6s ease-in-out infinite}
+    @keyframes tgpulse{0%,100%{opacity:.5}50%{opacity:1}}
+    .tg-pool{display:flex;justify-content:center;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+    .tg-pool .pv{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1}
+    .tg-pool .pu{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:600;color:var(--text);line-height:1}
+    .tg-cta{display:inline-flex;align-items:center;gap:7px;font-family:'Space Grotesk',sans-serif;font-size:.75rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase}
+    .tg-cta .arr{transition:transform .25s}
+    .tg-card:hover .tg-cta .arr{transform:translateX(3px)}
+    @media (max-width:560px){
+      .tg-body{padding:18px 20px 20px}
+      .tg-pool .pv{font-size:1.5rem}
+      .tg-pool .pu{font-size:.95rem}
+    }
+
+    .liq-boost{max-width:1100px;margin:32px auto 0;padding:0 24px;position:relative;z-index:3}
+    .lb-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(0,230,118,.12);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
+    .lb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.4),var(--gold),rgba(0,230,118,.4),transparent)}
+    /* This layer carries the pulsing border too. It used to be a border-color
+       animation on .lb-card itself — not compositable, so a style recalc every
+       frame. A 1px inner ring on a layer that exists anyway, animated by
+       opacity, looks the same and costs nothing. The faint radial gradient
+       pulses along with it; at .03 alpha nobody can tell. */
+    .lb-card::after{content:'';position:absolute;inset:0;border-radius:var(--radius);pointer-events:none;
+      background:radial-gradient(ellipse at 50% 0%,rgba(0,230,118,.03),transparent 70%);
+      box-shadow:inset 0 0 0 1px rgba(0,230,118,.22);
+      animation:lbGlow 4.5s ease-in-out infinite}
+    .lb-title{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
+    .lb-title em{font-style:normal;background:linear-gradient(135deg,var(--green),var(--gold));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lb-sub{text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:20px}
+    .lb-countdown{display:flex;justify-content:center;gap:16px;margin-bottom:24px}
+    .lb-cd-unit{text-align:center}
+    .lb-cd-val{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--green),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1}
+    .lb-cd-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:4px}
+    .lb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .lb-stat{background:rgba(0,230,118,.03);border:1px solid rgba(0,230,118,.08);border-radius:10px;padding:16px 12px;text-align:center}
+    .lb-stat .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
+    .lb-stat .v{font-family:'Space Grotesk',sans-serif;font-size:1.05rem;font-weight:700;color:var(--green)}
+
+    /* LIQ BOOST ARCHIVE — collapsible card, sits under Live Burns */
+    .lb-archive summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px;user-select:none}
+    .lb-archive summary::-webkit-details-marker{display:none}
+    .lb-arch-head{flex:1;min-width:0}
+    .lb-arch-title{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:700;letter-spacing:-.3px}
+    .lb-arch-title em{font-style:normal;background:linear-gradient(135deg,var(--green),var(--gold));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lb-arch-meta{font-size:.7rem;color:var(--muted);margin-top:4px}
+    .lb-arch-arr{font-size:1.1rem;color:var(--gold);transition:transform .25s;flex-shrink:0}
+    .lb-archive[open] .lb-arch-arr{transform:rotate(180deg)}
+    .lb-arch-body{padding:0 28px 28px}
+    @media (max-width:560px){
+      .lb-archive summary{padding:20px 22px}
+      .lb-arch-body{padding:0 22px 24px}
+      .lb-arch-title{font-size:.9rem}
+    }
+
+    /* BURNS WRAPPER — mirrors .lb-card structure, neutral gold accent (no green).
+       Lives inside .sec which already provides max-width + side padding, so the
+       wrapper itself only spaces vertically. */
+    .burns-wrap{position:relative;z-index:3}
+    .bw-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden}
+    .bw-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.4),transparent)}
+    .bw-card::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(240,185,11,.03),transparent 70%);pointer-events:none}
+    .bw-title{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
+    .bw-title em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+    .bw-sub{text-align:center;font-size:.72rem;color:var(--muted);margin-bottom:20px}
+
+    /* FAQ */
+    .faq-list{display:flex;flex-direction:column;gap:10px}
+    .faq-item{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .25s}
+    .faq-item[open]{border-color:rgba(var(--accs),.3);box-shadow:0 10px 30px rgba(var(--accs),.08)}
+    .faq-item:hover{border-color:rgba(var(--accs),.22)}
+    .faq-item summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;user-select:none;font-family:'Space Grotesk',sans-serif;font-size:.92rem;font-weight:600;color:var(--text)}
+    .faq-item summary::-webkit-details-marker{display:none}
+    .faq-item summary:hover{color:var(--gold)}
+    .faq-arr{font-size:1rem;color:var(--gold);transition:transform .25s;flex-shrink:0}
+    .faq-item[open] .faq-arr{transform:rotate(180deg)}
+    .faq-body{padding:0 22px 20px;font-size:.85rem;color:var(--muted);line-height:1.65}
+    .faq-body a{color:var(--gold);text-decoration:none}
+    .faq-body a:hover{text-decoration:underline}
+    .faq-body code{font-family:'Space Grotesk',monospace;background:rgba(240,185,11,.06);padding:2px 6px;border-radius:4px;font-size:.78rem;color:var(--text);word-break:break-all}
+    @media (max-width:560px){
+      .faq-item summary{padding:16px 18px;font-size:.85rem}
+      .faq-body{padding:0 18px 18px;font-size:.8rem}
+    }
+
+    /* Forge art behind the burns section — the furnace motif is literally what
+       this section reports. Cards sit above it on their own stacking level. */
+    /* FULL-BLEED BANDS — same treatment as the hero: art edge to edge, copy on
+       the calm right side, all four edges faded into the page. Static, no
+       hover movement. */
+    .band{position:relative;width:100%;overflow:hidden}
+    .band picture{display:block;width:100%}
+    .band img{width:100%;height:auto;display:block}
+    /* Same left-edge wash as the hero art — clipped the same way. */
+    @media (min-width:641px){
+      .band img{transform:scale(1.12);transform-origin:100% 50%}
+    }
+    .band::after{content:'';position:absolute;inset:0;pointer-events:none;background:
+      linear-gradient(to right,var(--bg) 0%,rgba(10,8,20,0) 5%),
+      linear-gradient(to left,var(--bg) 0%,rgba(10,8,20,0) 17%),
+      linear-gradient(to bottom,var(--bg) 0%,rgba(10,8,20,0) 20%,rgba(10,8,20,0) 74%,var(--bg) 100%)}
+    .band-ov{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
+      background:linear-gradient(to right,transparent 36%,rgba(10,8,20,.7) 70%,rgba(10,8,20,.86) 100%)}
+    .band-in{max-width:1100px;margin:0 auto;padding:0 24px;width:100%;display:flex;justify-content:flex-end}
+    .band-tx{max-width:500px}
+    .band-tx h2{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:700;
+      margin-bottom:8px;letter-spacing:-.6px;line-height:1.12}
+    .band-tx h2 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .burn-sub{color:var(--muted);font-size:.84rem}
+    .burn-lead{color:var(--muted);font-size:.87rem;line-height:1.75;margin-top:14px}
+    /* Same reason as the hero: a 2:1 band is only ~195px tall on a phone, far
+       too short to hold the heading plus lead. Copy drops below the art. */
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
+      .band-ov{position:static;background:none;display:block}
+      .band-in{justify-content:center;padding:0 20px}
+      .band-tx{max-width:560px;text-align:center;padding:20px 0 4px;margin:0 auto}
+      .band-tx h2{font-size:1.5rem}
+      /* The fade has to sit on the art, not on the whole band — with the copy
+         now in flow the band-level gradient washed the text out. */
+      .band::after{display:none}
+      .band picture{position:relative}
+      .band picture::after{content:'';position:absolute;inset:0;pointer-events:none;
+        background:linear-gradient(to bottom,rgba(12,11,12,0) 66%,var(--bg) 97%)}
+      .burn-lead{margin-left:auto;margin-right:auto}
+    }
+    /* Phone in landscape gets its own 2:1 crop cut straight from the source art
+       (…-l.webp). It has no widened canvas, so the zoom-crop that hides the wash
+       on the desktop files would only throw picture away here. */
+    @media (orientation:landscape) and (max-height:520px){
+      .hero img,.band img{transform:none}
+    }
+
+    /* ECOSYSTEM — the sub-apps, promoted out of the footer chip row */
+    .ecg{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+    .ec{display:flex;flex-direction:column;gap:10px;background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:24px;text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:transform .35s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .35s}
+    .ec::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+    /* A touch of tilt and a hop on the icon — playful without getting silly. */
+    .ec:hover{transform:translateY(-5px) rotate(-.5deg);border-color:rgba(240,185,11,.28);
+      box-shadow:0 14px 38px rgba(240,185,11,.12)}
+    .ec-top{display:flex;align-items:center;gap:10px}
+    .ec-top img{width:30px;height:30px;object-fit:contain;border-radius:8px;flex-shrink:0;
+      transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+    .ec:hover .ec-top img{transform:translateY(-3px) rotate(-7deg) scale(1.08)}
+    /* One card carries a drawn mark rather than a logo file: the scanner is a
+       tool, not a product with an identity, and a glyph in the accent colour
+       stays sharp at any density without another asset to keep in sync. */
+    .ec-top svg{width:30px;height:30px;flex-shrink:0;
+      transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+    .ec:hover .ec-top svg{transform:translateY(-3px) rotate(-7deg) scale(1.08)}
+    .ec-top h3{font-size:.88rem;margin:0}
+    /* Status sits in the footer row, not next to the title — "COMPLETE" beside
+       "NFT Buy Drops" forced the heading onto two lines either way. */
+    .ec-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .ec-st{font-size:.55rem;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;flex-shrink:0}
+    .ec-st.live{color:var(--green)}
+    .ec-st.done{color:var(--muted)}
+    /* Neither live nor finished. Gold rather than green, so a tool that is
+       still being built cannot be mistaken for one that is done. */
+    .ec-st.beta{color:var(--gold)}
+    .ec p{font-size:.78rem;color:var(--muted);line-height:1.65;flex:1}
+    .ec-go{font-family:'Space Grotesk',sans-serif;font-size:.66rem;font-weight:700;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
+    .ec-go .arr{transition:transform .25s}
+    .ec:hover .ec-go .arr{transform:translateX(3px)}
+
+    /* THE LIBRARY — the code behind the four apps, on the site instead of on a
+       404. Deliberately plainer than the cards above it: this is a shelf, and a
+       shelf that shouts competes with the products standing on it.
+       No backdrop-filter anywhere in here — the mobile block below switches that
+       off on every other card for WebKit compositing reasons, and a component
+       that never asks for it cannot be forgotten when the list is next edited. */
+    .lib{margin-top:64px;padding-top:44px;border-top:1px solid var(--border)}
+    .lib-head{max-width:720px;margin-bottom:30px}
+    .lib-head h3{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:-.6px;margin-bottom:10px}
+    .lib-head h3 em{font-style:normal;color:var(--acc)}
+    .lib-head p{font-size:.82rem;color:var(--muted);line-height:1.7}
+    .lib-warn{margin-top:12px;font-size:.72rem !important;padding-left:12px;border-left:2px solid rgba(240,185,11,.4)}
+    .lib-grp{margin-bottom:26px}
+    .lib-gh{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding-left:2px}
+    .lib-gh h3{font-family:'Space Grotesk',sans-serif;font-size:.72rem;font-weight:700;
+      text-transform:uppercase;letter-spacing:1.6px;color:var(--acc);flex-shrink:0}
+    .lib-gh p{font-size:.72rem;color:var(--muted);line-height:1.5}
+    .lib-i{background:var(--card);border:1px solid var(--border);border-radius:16px;
+      margin-bottom:8px;overflow:hidden;transition:border-color .25s}
+    .lib-i:hover{border-color:rgba(var(--accs),.26)}
+    .lib-i[open]{border-color:rgba(var(--accs),.34)}
+    .lib-i summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:16px;
+      padding:15px 18px;user-select:none}
+    .lib-i summary::-webkit-details-marker{display:none}
+    .lib-h{flex:1;min-width:0}
+    .lib-t{display:block;font-family:'Space Grotesk',sans-serif;font-size:.9rem;font-weight:600;color:var(--text)}
+    .lib-s{display:block;font-size:.73rem;color:var(--muted);margin-top:3px;line-height:1.5}
+    .lib-m{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.63rem;color:var(--muted);
+      flex-shrink:0;white-space:nowrap}
+    .lib-a{color:var(--acc);font-size:.9rem;flex-shrink:0;transition:transform .25s}
+    .lib-i[open] .lib-a{transform:rotate(180deg)}
+    .lib-b{padding:0 18px 18px;display:flex;flex-direction:column;gap:14px}
+    .lib-n b{display:block;font-size:.63rem;text-transform:uppercase;letter-spacing:1.3px;
+      color:var(--muted);margin-bottom:7px}
+    /* Each requirement is stated first, then how we solved it, then what else
+       would do — so the list reads as "what this needs", not as "install
+       Cloudflare". Somebody on a VPS should be able to use this too. */
+    .lib-n ul{list-style:none;display:flex;flex-direction:column;gap:11px}
+    .lib-n li{padding-left:16px;position:relative}
+    .lib-n li::before{content:'';position:absolute;left:4px;top:.5em;width:4px;height:4px;
+      border-radius:50%;background:rgba(var(--accs),.6)}
+    .lib-q{display:block;font-size:.76rem;color:var(--text);line-height:1.5;font-weight:500}
+    .lib-o{display:block;font-size:.71rem;color:var(--muted);line-height:1.55;margin-top:2px}
+    .lib-o em{font-style:normal;display:inline-block;min-width:34px;font-size:.6rem;
+      text-transform:uppercase;letter-spacing:1px;color:rgba(var(--accs),.85);font-weight:700}
+    .lib-g{display:flex;flex-wrap:wrap;gap:8px}
+    .lib-btn{display:inline-flex;align-items:center;gap:7px;font-family:'Space Grotesk',sans-serif;
+      font-size:.71rem;font-weight:600;padding:9px 15px;border-radius:10px;cursor:pointer;
+      text-decoration:none;border:1px solid rgba(var(--accs),.3);background:rgba(var(--accs),.09);
+      color:var(--text);transition:background .2s,border-color .2s,transform .2s}
+    .lib-btn:hover{background:rgba(var(--accs),.17);border-color:rgba(var(--accs),.5);transform:translateY(-1px)}
+    .lib-btn.lib-alt{background:transparent;border-color:var(--border);color:var(--muted)}
+    .lib-btn.lib-alt:hover{color:var(--text);border-color:rgba(var(--accs),.3)}
+    .lib-c{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(0,0,0,.32);
+      border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+    .lib-cl{font-size:.63rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);flex-shrink:0}
+    .lib-c code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.68rem;color:var(--acc);
+      flex:1;min-width:0;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+    .lib-c code::-webkit-scrollbar{display:none}
+    .lib-cp{flex-shrink:0;font-size:.6rem;text-transform:uppercase;letter-spacing:1px;font-weight:600;
+      padding:4px 9px;border-radius:6px;cursor:pointer;border:1px solid var(--border);
+      background:transparent;color:var(--muted);transition:color .2s,border-color .2s}
+    .lib-cp:hover{color:var(--text);border-color:rgba(var(--accs),.4)}
+    .lib-cp.done{color:var(--acc);border-color:rgba(var(--accs),.5)}
+    .lib-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:.68rem;color:var(--muted);
+      margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+    .lib-foot a{color:var(--acc);text-decoration:none;font-family:'JetBrains Mono',ui-monospace,monospace}
+    .lib-foot a:hover{text-decoration:underline}
+    @media (max-width:640px){
+      .lib-i summary{flex-wrap:wrap;gap:8px 12px;padding:14px}
+      .lib-h{flex:1 1 100%;order:1}
+      .lib-m{order:2}
+      .lib-a{order:3;margin-left:auto}
+      .lib-b{padding:0 14px 14px}
+      .lib-btn{flex:1;justify-content:center}
+      .lib-cl{display:none}
+    }
+
+    /* CODE VIEWER — reading the code should not require downloading it. Built
+       by JS on demand, so the markup is not in the document until it is needed;
+       the download links above work with the script dead, which is the point. */
+    .cv{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+      padding:24px;background:rgba(4,3,4,.82)}
+    .cv-w{width:min(1180px,100%);height:min(84vh,860px);display:flex;flex-direction:column;
+      background:#100e0f;border:1px solid rgba(var(--accs),.28);border-radius:18px;overflow:hidden;
+      box-shadow:0 30px 90px rgba(0,0,0,.6)}
+    .cv-h{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+    .cv-ti{font-family:'Space Grotesk',sans-serif;font-size:.92rem;font-weight:700;color:var(--text)}
+    .cv-su{font-size:.66rem;color:var(--muted);margin-top:2px}
+    .cv-x{margin-left:auto;flex-shrink:0;width:32px;height:32px;border-radius:9px;cursor:pointer;
+      border:1px solid var(--border);background:transparent;color:var(--muted);font-size:1rem;line-height:1;
+      transition:color .2s,border-color .2s}
+    .cv-x:hover{color:var(--text);border-color:rgba(var(--accs),.4)}
+    .cv-dl{flex-shrink:0;font-family:'Space Grotesk',sans-serif;font-size:.68rem;font-weight:600;
+      padding:7px 13px;border-radius:9px;text-decoration:none;color:var(--text);
+      border:1px solid rgba(var(--accs),.3);background:rgba(var(--accs),.09)}
+    .cv-dl:hover{background:rgba(var(--accs),.17)}
+    /* min-height:0 on the grid items, not only on the grid. A grid item defaults
+       to min-height:auto and therefore cannot shrink below its own content — so
+       both columns grew to the full height of the longest file, the code pane had
+       nothing left to scroll (scrollHeight == clientHeight) and .cv-w simply
+       clipped the rest. Measured: the grid was 614px, its rows 1607px.
+       overscroll-behavior keeps a swipe that reaches the end of a pane from
+       being handed on to the page behind the dialog. */
+    .cv-m{flex:1;display:grid;grid-template-columns:250px 1fr;min-height:0}
+    .cv-l{border-right:1px solid var(--border);overflow-y:auto;overscroll-behavior:contain;
+      min-height:0;padding:8px;background:rgba(0,0,0,.22)}
+    .cv-f{display:block;width:100%;text-align:left;cursor:pointer;border:0;background:transparent;
+      color:var(--muted);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.66rem;
+      padding:6px 9px;border-radius:7px;word-break:break-all;line-height:1.45;transition:color .15s,background .15s}
+    .cv-f:hover{color:var(--text);background:rgba(255,255,255,.045)}
+    .cv-f.on{color:var(--acc);background:rgba(var(--accs),.12)}
+    .cv-f i{font-style:normal;opacity:.5;float:right;padding-left:8px}
+    .cv-r{display:flex;flex-direction:column;min-width:0;min-height:0}
+    .cv-b{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+    .cv-p{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.66rem;color:var(--muted);
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .cv-cp{margin-left:auto;flex-shrink:0;font-size:.6rem;text-transform:uppercase;letter-spacing:1px;
+      font-weight:600;padding:4px 9px;border-radius:6px;cursor:pointer;border:1px solid var(--border);
+      background:transparent;color:var(--muted)}
+    .cv-cp:hover{color:var(--text);border-color:rgba(var(--accs),.4)}
+    .cv-cp.done{color:var(--acc);border-color:rgba(var(--accs),.5)}
+    .cv-c{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;margin:0;
+      padding:14px 16px;background:#0b0a0b}
+    .cv-c code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.7rem;line-height:1.6;
+      color:#d5d2dd;white-space:pre;display:block;tab-size:2}
+    /* Four colours, no more: the point is legibility, not a paint box. */
+    .cv-c .c{color:#6f7a92;font-style:italic}
+    .cv-c .s{color:#8fd6a0}
+    .cv-c .k{color:#e0a0ff}
+    .cv-c .n{color:#f0b90b}
+    .cv-ld{padding:34px;text-align:center;color:var(--muted);font-size:.78rem}
+    @media (max-width:760px){
+      .cv{padding:0}
+      .cv-w{height:100%;width:100%;border-radius:0;border:0}
+      .cv-m{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+      .cv-l{border-right:0;border-bottom:1px solid var(--border);max-height:132px}
+      .cv-h{flex-wrap:wrap;gap:8px 12px}
+      .cv-dl{order:3;flex:1;text-align:center}
+    }
+
+    /* ROADMAP */
+    .rmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+    .rm{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:all .3s}
+    .rm::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+    .rmd::before{background:linear-gradient(90deg,var(--gold),transparent)}
+    .rma::before{background:linear-gradient(90deg,var(--blue),transparent)}
+    .rmn::before{background:linear-gradient(90deg,rgba(240,185,11,.12),transparent)}
+    .rm:hover{border-color:rgba(240,185,11,.1);transform:translateY(-2px)}
+    .rp{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:6px}
+    .rmd .rp{color:var(--gold)}.rma .rp{color:var(--blue)}.rmn .rp{color:var(--muted)}
+    .rm h3{font-size:.88rem;margin-bottom:8px}
+    .rm ul{list-style:none}
+    /* Left-aligned: the old right-align read fine with 3-word items but tears
+       apart now that entries wrap to two lines. */
+    .rm li{font-size:.78rem;color:var(--muted);padding:4px 0;display:flex;align-items:flex-start;gap:7px;line-height:1.6;text-align:left}
+    .rm li>span:first-child{flex-shrink:0;line-height:1.5}
+    .rm li>span:last-child{flex:1}
+    .ck{color:var(--gold);font-weight:700}
+    .rm li code{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--gold);background:rgba(240,185,11,.06);padding:1px 5px;border-radius:4px}
+
+    /* SOCIAL BUTTONS (Block 07) */
+    .cta-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+    /* Block 07 closes the page before the footer, so it runs out centred rather
+       than continuing left-aligned — and the heading centres with it, otherwise
+       the balance tips the other way. Each group gets a centred label between two
+       hairlines, so the four blocks read as blocks instead of as one long strand
+       running left to right. */
+    #socials .sh{text-align:center;margin-bottom:28px}
+    #socials .sh p{max-width:620px;margin:0 auto}
+    #socials .cta-links,#socials .lr{justify-content:center}
+    #socials .cta-links{margin-bottom:4px}
+    #socials .lr{max-width:860px;margin-left:auto;margin-right:auto}
+    #socials .lr-sm{max-width:760px}
+    #socials .ll{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:28px}
+    #socials .ll::before,#socials .ll::after{content:'';flex:1;height:1px;max-width:110px}
+    #socials .ll::before{background:linear-gradient(90deg,transparent,rgba(var(--accs),.4))}
+    #socials .ll::after{background:linear-gradient(90deg,rgba(var(--accs),.4),transparent)}
+    .cta-links a{padding:11px 26px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.3px}
+    .cta-links a:hover{transform:translateY(-2px)}
+    .cta-links .primary{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;box-shadow:0 2px 20px rgba(240,185,11,.2)}
+    .cta-links .primary:hover{box-shadow:0 4px 32px rgba(240,185,11,.35);transform:translateY(-1px)}
+    .cta-links .secondary{border:1px solid rgba(240,185,11,.15);color:var(--gold);background:transparent}
+    .cta-links .secondary:hover{border-color:var(--gold);background:rgba(240,185,11,.04)}
+
+    /* FOOTER */
+    footer{border-top:1px solid var(--border);padding:36px 24px;text-align:center;position:relative;overflow:hidden}
+    footer::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,185,11,.1),transparent)}
+    .fi2{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+    .fb{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px}
+    .fb img{width:22px;height:22px;border-radius:6px}
+    .fb span{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.92rem;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+.fm{color:var(--muted);font-size:.62rem;line-height:1.9}
+    .fm a{color:var(--gold);text-decoration:none}
+    .ll{margin-top:18px;color:var(--muted);font-size:.54rem;text-transform:uppercase;letter-spacing:2px;font-weight:600}
+    .lr{display:flex;justify-content:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+    .lr a{display:flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:.74rem;padding:6px 15px;border-radius:8px;border:1px solid var(--border);background:var(--card);transition:all .2s}
+    .lr a:hover{border-color:var(--gold);color:var(--gold)}
+    .lr img{width:18px;height:18px;border-radius:3px;object-fit:contain}
+    .lr-top a{font-size:.88rem;padding:9px 20px;gap:8px}
+    .lr-top img{width:22px;height:22px}
+    .lr-sm a{font-size:.68rem;padding:5px 12px;gap:5px;opacity:.85}
+    .lr-sm img{width:15px;height:15px}
+
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
+      .sg{grid-template-columns:repeat(3,1fr)}
+      .tg4,.fl{grid-template-columns:repeat(2,1fr)}
+      .fa{display:none}
+      .rmg{grid-template-columns:1fr}
+      .about-hero{flex-direction:column;text-align:center;gap:24px}
+      .about-text p{max-width:100%}
+      .about-tags{justify-content:center}
+      /* The nav links ran into the logo from ~760px down. */
+      .nm{display:none}
+      /* No overlap onto the hero once the copy sits below the art. */
+      .sbar{margin-top:22px}
+      /* The margin wiring has nowhere to go on a phone. */
+      .wrapnet{display:none}
+    }
+    @media(max-width:600px){
+      .sg{grid-template-columns:repeat(2,1fr)}
+      .tg4,.fl{grid-template-columns:1fr}
+      .sec{padding:48px 16px}
+      .tax-flow{flex-direction:column}
+      .ta{transform:rotate(90deg)}
+      .about-logo img{width:140px;height:140px}
+    }
+    /* Fade in on scroll — thought through the other way round than before.
+       .fi used to be opacity:0 by itself and was only made visible by JavaScript.
+       That left half the page black until the script at the end of this 136 KB
+       document ran, and permanently black whenever anything about the JS failed.
+       Visible is now the default. Only the script may hide anything, and only
+       elements already below the fold. If JavaScript goes wrong, you simply see
+       everything without the effect — never black again. */
+    .fi{transition:opacity .45s ease,transform .45s ease}
+    .fi.pre{opacity:0;transform:translateY(14px)}
+
+    /* === POLISH LAYER ===
+       The ground rule for anything that runs continuously in here: it may
+       animate transform and opacity, and nothing else. Those two are the only
+       ones the compositor can take over; box-shadow, background-position and
+       border-color cost a style recalc plus a repaint on the main thread —
+       60 times a second, forever, whether or not anyone is looking. Measured,
+       exactly that cost ~62% idle load on a phone and made the page feel as
+       though it never finished loading. */
+    @keyframes breathe{0%,100%{opacity:.7;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
+    @keyframes lbGlow{0%,100%{opacity:.35}50%{opacity:1}}
+    /* While no figure has arrived from the chain yet, the placeholder pulses
+       gently. A motionless "--" reads as a broken page; this reads as work in
+       progress. Pure opacity, so compositor-only. put() removes the class the
+       moment a real value is in there. */
+    .v.ld,.vsub.ld{animation:ldPulse 1.3s ease-in-out infinite}
+    @keyframes ldPulse{0%,100%{opacity:.32}50%{opacity:.75}}
+
+    /* The glow grows via transform: a box-shadow scales along with it, so a
+       growing glow needs no second animated property. */
+    @keyframes sepPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
+    .sep-d{animation:sepPulse 3.2s ease-in-out infinite;opacity:.55;
+      box-shadow:0 0 8px rgba(240,185,11,.45)}
+
+    .sc{transition:transform .35s cubic-bezier(.2,.7,.2,1),border-color .25s,box-shadow .35s}
+    .sc:hover{transform:translateY(-3px) scale(1.015);border-color:rgba(240,185,11,.22);box-shadow:0 12px 40px rgba(240,185,11,.09)}
+    .tc:hover{transform:translateY(-3px);border-color:rgba(240,185,11,.2);box-shadow:0 12px 36px rgba(240,185,11,.07)}
+    .fs:hover{transform:translateY(-3px) scale(1.01);border-color:rgba(240,185,11,.2);box-shadow:0 10px 32px rgba(240,185,11,.07)}
+    .tf:hover{transform:translateY(-2px) scale(1.02);border-color:rgba(240,185,11,.22);box-shadow:0 6px 20px rgba(240,185,11,.07)}
+    .rm:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(240,185,11,.06)}
+
+    .lr a{transition:transform .25s cubic-bezier(.2,.7,.2,1),border-color .25s,color .25s,box-shadow .25s}
+    .lr a:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(240,185,11,.1)}
+
+    .nb:hover{transform:translateY(-2px);box-shadow:0 6px 36px rgba(240,185,11,.45)}
+    .cta-links .primary:hover{transform:translateY(-2px);box-shadow:0 6px 36px rgba(240,185,11,.45)}
+    .cta-links .secondary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(240,185,11,.07)}
+
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 65%,transparent 35%,rgba(10,8,20,.42) 88%);pointer-events:none;z-index:2}
+
+    .vr a{transition:color .2s,text-shadow .2s}
+    .vr a:hover{text-shadow:0 0 10px rgba(240,185,11,.5)}
+
+    .nl img{transition:transform .35s ease,box-shadow .35s ease}
+    .nl:hover img{transform:rotate(6deg) scale(1.06);box-shadow:0 0 18px rgba(240,185,11,.45)}
+
+    .about-tags span{transition:border-color .25s,color .25s,background .25s,transform .25s}
+    .about-tags span:hover{border-color:rgba(240,185,11,.32);color:var(--gold);background:rgba(240,185,11,.05);transform:translateY(-1px)}
+
+    /* The shimmer runs on background-position over background-clip:text and is
+       the one effect on the page that cannot be composited — the gradient
+       travels inside the text fill itself. Rather than sacrifice it, it now runs
+       only where somebody is looking: the IntersectionObserver further down adds
+       .shim-on when an element enters the viewport and takes it away again
+       afterwards. Instead of 21 elements animating at once, only the few visible
+       ones are active. */
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    .sh h2 em,.tc .b{background-size:200% 100%}
+    .sh h2 em.shim-on{animation:shimmer 8s linear infinite}
+    .tc .b.shim-on{animation:shimmer 9s linear infinite}
+
+    /* The old floating halo lived here. Removed: with the block frame clipping
+       it, its edge showed up as hard diagonal streaks inside the card, and the
+       block's own top tint already does this job. */
+    .sec>*{position:relative;z-index:1}
+
+    table tr{transition:background .2s}
+    table tr:hover{background:rgba(240,185,11,.025)}
+
+    /* === MOBILE: DON'T ASK THE PHONE'S COMPOSITOR FOR THE IMPOSSIBLE ===
+
+       There used to be a @media(max-width:900px) block here that switched the
+       long-running animations off on phones. It was dropped on 2026-08-09 once
+       every animation had been rewritten to transform/opacity — cheap on the
+       CPU, and a CPU-idle measurement in Chrome duly cleared both suspects
+       below. That measurement asked the wrong question.
+
+       Reported the same day from an iPhone: refreshing gave seconds of white,
+       and sometimes it simply stayed white until a second reload. That is not a
+       CPU-load symptom. It is what iOS Safari does when compositing runs out of
+       room: every transform/opacity animation, every backdrop-filter and every
+       blurred layer needs its own GPU surface, and a phone with a 3x pixel
+       ratio has a hard ceiling on how much of that it can hold. Past the
+       ceiling, WebKit does not degrade — it hands back empty tiles. Making the
+       animations "compositor-friendly" pushed the layer count UP, which is
+       exactly how a change that reads as an optimisation makes a phone worse.
+
+       So the three heaviest surfaces are dropped below 900px. None of them is
+       doing visible work at that size, and desktop is untouched.
+
+       On the exoneration in the old comment: it stands for what it measured
+       (steady-state CPU in Chrome) and says nothing about GPU memory in
+       WebKit. Different failure mode, different verdict. */
+    @media (max-width:900px), (orientation:landscape) and (max-height:520px){
+      /* A fixed background cannot be handed to the compositor — the renderer
+         has to repaint it against the viewport for every frame of every
+         scroll. It is the single most notorious scroll-killer on iOS. The
+         gradients stay, they just travel with the page now, which at phone
+         height is not a difference anyone can see. */
+      body{background-attachment:scroll}
+      /* The aurora is a POSITION:FIXED layer 150% of the viewport in both
+         directions, run through filter:blur(110px). A blur that wide forces an
+         intermediate buffer far bigger than the layer itself, it is pinned for
+         the entire life of the page, and on a 3x phone it is the largest single
+         surface on the site — for a soft colour wash that the body's own radial
+         gradients already provide underneath it. */
+      .aur{display:none}
+      /* backdrop-filter makes the renderer snapshot and blur everything behind
+         each element, per element, per frame. There are fourteen of them, they
+         stack, and on a phone a 16px blur behind a card is not perceptible
+         anyway. The cards get their translucency from --card, so they keep
+         looking like cards; it is raised a little to make up for the missing
+         blur. */
+      .sc,.tax,.fs,.fn,.tc,.ptile,.vc,table,.tg-card,.lb-card,.bw-card,
+      .faq-item,.ec,.rm{backdrop-filter:none;-webkit-backdrop-filter:none}
+      :root{--card:rgba(30,25,24,.93)}
+    }
+
+    /* Anyone who has turned motion off system-wide gets stillness here. The
+       effects have become cheap, but that is beside the point: this is a
+       preference, not a performance question. */
+    @media (prefers-reduced-motion:reduce){
+      .about-logo::before,.lb-card::after,.live-dot,.live-dot::after,.sep-d,
+      .nb2::before,.ts-row.active .ts-name::before,.tg-eyebrow .live::before{animation:none}
+    }

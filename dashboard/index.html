@@ -152,8 +152,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=14" as="style">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="preload" href="styles.css?v=15" as="style">
+  <link rel="stylesheet" href="styles.css?v=15">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -494,6 +494,15 @@
       <a class="ptile pt-wide" href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">
         <span class="pt-ico t-gold">&#x25C6;</span>
         <span class="pt-body"><span class="pt-l">Contract Source</span><span class="pt-v">Verified &amp; published on BscScan &mdash; read every line yourself</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <!-- The repo link is back, but it is dead: the GitHub account has been flagged
+           since 2026-07-24, which hides every repo under it. Saying so here beats
+           either hiding the link or letting it 404 without explanation. -->
+      <a class="ptile pt-wide" href="https://github.com/mmxrealQQ/bobai-buyburn" target="_blank" rel="noopener">
+        <span class="pt-ico t-red">&#x25C6;</span>
+        <span class="pt-body"><span class="pt-l">Bot Stack &mdash; open source</span><span class="pt-v">github.com/mmxrealQQ/bobai-buyburn</span>
+          <span class="pt-note">Returns <b>404</b> right now: the GitHub account was flagged on Jul 24, 2026 and every repo under it is hidden while the appeal is open. Nothing was deleted &mdash; until it is back, the verified contract on BscScan and the live burn log are the sources you can check.</span></span>
         <span class="pt-go">&#x2197;</span>
       </a>
     </div>

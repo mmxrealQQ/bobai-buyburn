@@ -469,6 +469,9 @@
     .pt-v{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .pt-v.ok{color:#3fe09a;font-family:'Inter',system-ui,sans-serif;font-size:.72rem}
+    /* Wraps, unlike .pt-v — this one carries a sentence, not an address. */
+    .pt-note{font-size:.68rem;line-height:1.5;color:var(--muted);white-space:normal;margin-top:2px}
+    .pt-note b{color:#ff6a60;font-weight:600}
     .pt-go{flex-shrink:0;color:var(--muted);font-size:.8rem;transition:transform .25s,color .25s}
     a.ptile:hover .pt-go{transform:translate(2px,-2px);color:var(--acc)}
     @media (max-width:560px){.pt-v{font-size:.62rem}}

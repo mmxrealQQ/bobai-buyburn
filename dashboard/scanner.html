@@ -32,8 +32,8 @@
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=18" as="style">
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="preload" href="styles.css?v=19" as="style">
+  <link rel="stylesheet" href="styles.css?v=19">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -42,6 +42,17 @@
     /* Sub-page nav, taken verbatim from nft/index.html so the three pages are
        visually identical. These classes are not in styles.css — each sub-page
        carries its own copy. */
+    /* No sideways swiping on a phone. Measured first: at 360/390/430px, with a
+       result on screen and across five different tokens, nothing on this page
+       overflows horizontally — so there is nothing to clip and no overflow-x
+       here (that trick once cost the dashboard a second scrollbar). What is
+       left is the overscroll itself: the horizontal rubber-band drag the
+       browser allows even when the content fits. This turns that off, and
+       stops any inner scroll box from handing its swipe on to the page.
+       Vertical scrolling is untouched. */
+    html{overscroll-behavior-x:none}
+    body{overscroll-behavior-x:none}
+
     .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
       background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
       font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
@@ -228,7 +239,15 @@
       m.hidden=true;
       document.body.style.overflow=prev;
       document.removeEventListener('keydown',key);
-      var i=document.getElementById('sc-in');if(i)try{i.focus()}catch(e){}
+      // Focus the field so you can type straight away — but never let that
+      // focus move the page. The field sits below the headline, so a plain
+      // focus() scrolled the visitor past the top of the page the instant they
+      // dismissed this notice, and they never saw what the page opens with.
+      // scrollTo afterwards regardless, so even a browser that ignores
+      // preventScroll still lands at the top.
+      var i=document.getElementById('sc-in');
+      if(i){try{i.focus({preventScroll:true})}catch(e){try{i.focus()}catch(e2){}}}
+      try{window.scrollTo(0,0)}catch(e){}
     }
     function key(e){
       if(e.key==='Escape'){close();return}

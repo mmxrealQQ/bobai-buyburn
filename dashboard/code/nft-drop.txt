@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1246 lines.
+# one fetch. 10 files, 1250 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -365,7 +365,11 @@ footer a:hover{color:var(--gold)}
 <div id="lbx" class="lbx" role="dialog" aria-modal="true" aria-hidden="true">
   <div class="lbx-close" id="lbx-close" aria-label="Close">✕</div>
   <div class="lbx-inner">
-    <img id="lbx-img" class="lbx-img" src="" alt="">
+    <!-- No src attribute on purpose. src="" is not "no image": the browser
+         resolves an empty value against the document URL and fetches the page
+         again, on every single visit, for an element nobody has opened yet.
+         openLbx() sets the source before it shows anything. -->
+    <img id="lbx-img" class="lbx-img" alt="">
     <div class="lbx-meta" id="lbx-meta"></div>
   </div>
 </div>

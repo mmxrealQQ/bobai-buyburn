@@ -451,7 +451,12 @@
     /* VERIFY */
     /* PROOF TILES — the old label/value list read like a config dump. Each fact
        now gets a coloured tile, so the block scans instead of being read. */
-    .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+    /* min(300px,100%) rather than a bare 300px: a grid column will not shrink
+       below its minimum, so on a 360px phone the tiles came out 300px wide in a
+       ~292px column and spilled 8px into the page's side padding. The min()
+       lets the column give way when the container is narrower than the ideal,
+       and changes nothing at any width where 300px actually fits. */
+    .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px}
     .ptile{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;
       background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);
       border-radius:18px;padding:16px 18px;position:relative;
@@ -555,7 +560,11 @@
     .lb-cd-unit{text-align:center}
     .lb-cd-val{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--green),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1}
     .lb-cd-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:4px}
-    .lb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    /* minmax(0,1fr), not a bare 1fr: a grid track's automatic minimum is its
+       content, so the widest figure ("19,173.70") pushed the three columns past
+       the card on a narrow phone. Zero as the minimum lets them share what is
+       there; the numbers stay on one line because the type is already small. */
+    .lb-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .lb-stat{background:rgba(0,230,118,.03);border:1px solid rgba(0,230,118,.08);border-radius:10px;padding:16px 12px;text-align:center}
     .lb-stat .l{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
     .lb-stat .v{font-family:'Space Grotesk',sans-serif;font-size:1.05rem;font-weight:700;color:var(--green)}

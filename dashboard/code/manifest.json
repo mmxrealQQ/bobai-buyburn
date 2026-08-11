@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 4,
-   "lines": 2659,
-   "zipBytes": 57705,
-   "txtBytes": 175016,
-   "sha256": "a1c62aad4d642ef2",
+   "lines": 2687,
+   "zipBytes": 58456,
+   "txtBytes": 176923,
+   "sha256": "1882d552f4612d16",
    "reqs": [
     {
      "what": "A static host",
@@ -301,10 +301,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1246,
-   "zipBytes": 25213,
-   "txtBytes": 65986,
-   "sha256": "81e623cfc7acf854",
+   "lines": 1250,
+   "zipBytes": 25341,
+   "txtBytes": 66276,
+   "sha256": "100b264677716ae3",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -346,10 +346,10 @@
    "title": "Worldcup Tipping Game",
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
-   "lines": 11095,
-   "zipBytes": 183111,
-   "txtBytes": 584791,
-   "sha256": "c9552a6152abc5cf",
+   "lines": 11114,
+   "zipBytes": 183355,
+   "txtBytes": 585397,
+   "sha256": "d9f6199f3453674d",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",
@@ -458,10 +458,10 @@
    "title": "brainScreener",
    "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
    "files": 52,
-   "lines": 9551,
-   "zipBytes": 178529,
-   "txtBytes": 504187,
-   "sha256": "0ed180d98a2751e7",
+   "lines": 9572,
+   "zipBytes": 178888,
+   "txtBytes": 504985,
+   "sha256": "a80d70f1e3e9d2f9",
    "reqs": [
     {
      "what": "A static host",

@@ -1,5 +1,24 @@
 /* BOBAI Worldcup '26 — Beta App shared styles */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* The typefaces, served from this origin. This used to be an @import from
+   Google, which the site's Content-Security-Policy (style-src 'self') blocked —
+   so the app loaded no webfont at all and rendered in the system font while the
+   rest of the site did not. Measured: document.fonts was empty here.
+   Both are variable fonts, one file per family, and both are already in cache
+   for anyone who came via the homepage. */
+@font-face{
+  font-family:'Inter';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url('/fonts/inter-var.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Space Grotesk';
+  font-style:normal;
+  font-weight:300 700;
+  font-display:swap;
+  src:url('/fonts/spacegrotesk-var.woff2') format('woff2');
+}
 
 :root{
   --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);

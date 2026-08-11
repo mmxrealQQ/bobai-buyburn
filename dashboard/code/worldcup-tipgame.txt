@@ -2,7 +2,7 @@
 # A full tournament game that paid out on-chain.
 #
 # This is the complete worldcup-tipgame bundle as a single file, so it can be read in
-# one fetch. 45 files, 11095 lines.
+# one fetch. 45 files, 11114 lines.
 # Download as a zip: https://brainonbnb.com/code/worldcup-tipgame.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1701,7 +1701,26 @@ window.WC_COUNTRIES.sort((a,b) => a.name.localeCompare(b.name));
 ==============================================================================
 
 /* BOBAI Worldcup '26 — Beta App shared styles */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* The typefaces, served from this origin. This used to be an @import from
+   Google, which the site's Content-Security-Policy (style-src 'self') blocked —
+   so the app loaded no webfont at all and rendered in the system font while the
+   rest of the site did not. Measured: document.fonts was empty here.
+   Both are variable fonts, one file per family, and both are already in cache
+   for anyone who came via the homepage. */
+@font-face{
+  font-family:'Inter';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url('/fonts/inter-var.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Space Grotesk';
+  font-style:normal;
+  font-weight:300 700;
+  font-display:swap;
+  src:url('/fonts/spacegrotesk-var.woff2') format('woff2');
+}
 
 :root{
   --gold:#F0B90B;--gold2:#ffd54f;--gold-glow:rgba(240,185,11,.12);
@@ -1947,7 +1966,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <title>BOBAI Worldcup '26 — Bonus Questions</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:780px}
     .q{margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--border)}
@@ -2254,7 +2273,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <title>BOBAI Worldcup '26 — Crypto Predictions</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:680px}
     .ck{margin-bottom:22px;padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px}
@@ -2572,7 +2591,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <title>BOBAI Worldcup '26 — Dashboard</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:780px}
     .card + .card{margin-top:14px}
@@ -3024,7 +3043,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <title>BOBAI Worldcup '26 — Illustrator Checklist</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:980px}
     h2{font-family:'Space Grotesk';font-weight:700;font-size:20px;color:var(--gold);margin:32px 0 12px;letter-spacing:-.01em}
@@ -3325,7 +3344,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <title>BOBAI Worldcup '26</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=18">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:240px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
     .country-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer;transition:all .15s;color:var(--text)}
@@ -3568,7 +3587,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <title>BOBAI Worldcup '26 — Leaderboard</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:920px}
 
@@ -5177,7 +5196,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <title>BOBAI Worldcup '26 — Prize Pool</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=18">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:920px}
 
@@ -6155,7 +6174,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <title>Reset Password — BOBAI Worldcup '26</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
 </head>
 <body>
   <div class="bg-grad"></div>
@@ -6273,7 +6292,7 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta property="og:type" content="article">
   <meta name="robots" content="index, follow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:760px}
     /* Sticky TOC — clings to the top of the viewport just below the global nav (.nav 58px + .tabbar ~37px ≈ 96px).
@@ -8609,7 +8628,7 @@ GRANT SELECT ON wc_leaderboard TO anon, authenticated;
   <title>BOBAI Worldcup '26 — Tips</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:920px}
     .tipbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;background:rgba(0,0,0,.3);padding:5px;border-radius:10px}
@@ -9066,7 +9085,7 @@ GRANT SELECT ON wc_leaderboard TO anon, authenticated;
   <title>BOBAI Worldcup '26 — Player</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
-  <link rel="stylesheet" href="./assets/style.css?v=17">
+  <link rel="stylesheet" href="./assets/style.css?v=19">
   <style>
     .container.wide{max-width:920px}
     .card + .card{margin-top:14px}
@@ -9518,7 +9537,7 @@ GRANT SELECT ON wc_leaderboard TO anon, authenticated;
   <meta name="twitter:description" content="Free FIFA World Cup 2026 prediction game on BNB Chain. Transparent on-chain BOBAI prize pool, no signup fee.">
   <meta name="twitter:image" content="https://brainonbnb.com/worldcup/illus/og-banner.jpg">
   <meta name="robots" content="index, follow">
-  <link rel="stylesheet" href="/worldcup/app/assets/style.css?v=17">
+  <link rel="stylesheet" href="/worldcup/app/assets/style.css?v=19">
   <style>
     /* Landing-specific overrides on top of shared style.css */
     main{flex:1;padding:48px 24px}

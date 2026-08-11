@@ -602,6 +602,39 @@ if (problems.length) {
 console.log(`redaction pass clean across ${built.reduce((s, x) => s + x.files.length, 0)} files`);
 if (CHECK_ONLY) process.exit(0);
 
+// --verify [origin] — is what is published still what the repo says?
+// Answers "are the bundles up to date" by comparing, not by trusting a build
+// that may have run before the last edit. Compares the freshly collected files
+// against the .txt actually being served.
+if (process.argv.includes('--verify')) {
+  const origin = process.argv[process.argv.indexOf('--verify') + 1] || 'https://brainonbnb.com';
+  let stale = 0, checked = 0;
+  for (const {b, files} of built) {
+    const res = await fetch(`${origin}/code/${b.slug}.txt`);
+    if (!res.ok) { console.log(`STALE ${b.slug}: not published (${res.status})`); stale++; continue; }
+    const live = await res.text();
+    const drift = [];
+    for (const f of files) {
+      checked++;
+      const marker = `=== FILE: ${f.path}\n`;
+      const i = live.indexOf(marker);
+      if (i < 0) { drift.push(`${f.path}: missing from the published bundle`); continue; }
+      const rest = live.slice(i + marker.length).replace(/^={70,}\n\n/, '');
+      const end = rest.indexOf('\n' + '='.repeat(78) + '\n=== FILE: ');
+      const body = (end < 0 ? rest : rest.slice(0, end)).replace(/\n+$/, '');
+      if (body !== f.body) drift.push(`${f.path}: differs from the repo`);
+    }
+    // A file deleted from a bundle would otherwise pass unnoticed.
+    const liveCount = (live.match(/\n=== FILE: /g) || []).length;
+    if (liveCount !== files.length) drift.push(`published bundle has ${liveCount} files, the repo has ${files.length}`);
+    if (drift.length) stale++;
+    console.log(`${drift.length ? 'STALE' : 'ok   '} ${b.slug.padEnd(18)} ${files.length} files`);
+    drift.slice(0, 5).forEach(d => console.log('    !! ' + d));
+  }
+  console.log(`\n${checked} files compared against ${origin} — ${stale} bundle(s) out of date`);
+  process.exit(stale ? 1 : 0);
+}
+
 rmSync(OUT, {recursive: true, force: true});
 mkdirSync(OUT, {recursive: true});
 

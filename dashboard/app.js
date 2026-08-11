@@ -372,6 +372,7 @@ function depth(bR,wR,bnbP,mcap){
   const wbnb=Number(wR)/1e18,bnbSide=wbnb*bnbP,tvl=bnbSide*2;
   if(!(mcap>0)||!(wbnb>0))return;
   put('lq-ratio',(tvl/mcap*100).toFixed(1)+'%');
+  put('lq-tvl','$'+nf(tvl));
   put('lq-hard',(bnbSide/mcap*100).toFixed(1)+'%');
   put('lq-bnb',wbnb.toFixed(2)+' BNB');
   // The percentage answers "how big is the floor against the market cap"; the

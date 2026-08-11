@@ -411,6 +411,7 @@
     .lqo-up{color:#3fe09a}.lqo-dn{color:#ff8f6b}
     .lqo-l{font-size:.76rem;font-weight:600;margin-top:5px}
     .lqo-s{font-size:.7rem;color:var(--muted);line-height:1.5;margin-top:3px}
+    .lqbl{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:16px}
     .lqbs{display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;margin-top:6px}
     .lqbc-h{font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-top:14px}
     .lqbc-buy{color:#3fe09a}.lqbc-sell{color:#ff8f6b}
@@ -429,6 +430,17 @@
       .lqd{padding:20px 16px 16px}
       .lqd-g,.lqsrc,.lqbs,.lqone{grid-template-columns:1fr;gap:10px}
       .lqv{font-size:1.6rem}
+      /* Auf einer Handybreite fressen die drei festen Spalten (56+62+82px plus
+         Abstaende) die Zeile auf: von 258px blieben der Balkenspur 22px, und der
+         $100-Balken war 0.8px lang — also nicht vorhanden. Die Zahlen bleiben in
+         einer Zeile, der Balken rueckt darunter und bekommt die volle Breite.
+         Am Desktop-Layout aendert das nichts. */
+      .lqb{display:grid;grid-template-columns:auto 1fr auto;
+        grid-template-areas:"l p c" "t t t";column-gap:10px;row-gap:7px;align-items:baseline}
+      .lqb-l{grid-area:l;width:auto}
+      .lqb-p{grid-area:p;width:auto;text-align:left}
+      .lqb-c{grid-area:c;width:auto}
+      .lqb-t{grid-area:t;width:100%}
     }
     @media (prefers-reduced-motion:reduce){.lqb-t i{transition:none}}
 
@@ -469,7 +481,16 @@
     .vr a:hover{opacity:.7}
 
     /* TX TABLE */
-    .txw{max-height:400px;overflow-y:auto;border-radius:var(--radius);border:1px solid var(--border)}
+    /* Die Seite selbst laesst sich nicht seitwaerts wischen (nachgemessen:
+       scrollWidth == Viewport bei 360/390/430/768). Wischbar sind nur diese vier
+       Tabellenboxen, und das muss so bleiben — die TX-Hashes brauchen die Breite.
+       Was sich falsch anfuehlt, ist die Weitergabe: wischt man in der Box bis an
+       den Rand, schiebt der Browser die restliche Bewegung an die Seite weiter,
+       und die ruckelt seitlich mit. `contain` haelt die Bewegung in der Box.
+       Das ist die punktgenaue Loesung — NICHT wieder overflow-x auf html/body,
+       das war der Doppelscrollbalken vom 9.8. */
+    .txw{max-height:400px;overflow-y:auto;overscroll-behavior:contain;
+      border-radius:var(--radius);border:1px solid var(--border)}
     .txw::-webkit-scrollbar{width:4px}
     .txw::-webkit-scrollbar-track{background:rgba(10,10,22,.9)}
     .txw::-webkit-scrollbar-thumb{background:rgba(240,185,11,.12);border-radius:2px}

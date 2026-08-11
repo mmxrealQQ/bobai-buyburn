@@ -148,8 +148,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=9" as="style">
-  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="preload" href="styles.css?v=12" as="style">
+  <link rel="stylesheet" href="styles.css?v=12">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -363,7 +363,7 @@
         <div class="lqm">
           <div class="lqv ld" id="lq-ratio">--</div>
           <div class="lql">Liquidity vs Market Cap</div>
-          <div class="lqs">Half of that pool is $BOBAI valued at its own price, so read the next figure too.</div>
+          <div class="lqs"><span class="lqn ld" id="lq-tvl">--</span> in the pool, both sides. Half of that is $BOBAI valued at its own price, so read the next figure too.</div>
         </div>
         <div class="lqm">
           <div class="lqv ld" id="lq-hard">--</div>
@@ -397,7 +397,7 @@
 
       <div class="lqi">
         <div class="lqi-h">What a trade does to the price &mdash; and what it costs
-          <span>Two different things, often confused. <b>Impact</b> is how far this trade alone moves the price. <b>Cost</b> is what the trader gives up against the spot price, including the 3% tax and the 0.25% LP fee &mdash; about 3.2% of that applies at any size. Bars show impact, drawn to one scale so both sides compare.</span></div>
+          <span>Two different things, often confused. <b>Impact</b> is how far this trade alone moves the price. <b>Cost</b> is what the trader gives up against the spot price, including the 3% tax and the 0.25% LP fee &mdash; about 3.2% of that applies at any size.</span></div>
         <div class="lqone">
           <div class="lqo">
             <div class="lqo-v lqo-up ld" id="lq-up1">--</div>
@@ -407,9 +407,10 @@
           <div class="lqo">
             <div class="lqo-v lqo-dn ld" id="lq-dn1">--</div>
             <div class="lqo-l">Moves the price &minus;1%</div>
-            <div class="lqo-s">a sell this size, right now &mdash; more than the buy, because 3% of the tokens never reach the pool</div>
+            <div class="lqo-s">a sell this size, right now &mdash; above the buy figure, mostly because 3% of the tokens never reach the pool</div>
           </div>
         </div>
+        <div class="lqbl">And what the sizes people actually trade do &mdash; bars show impact, drawn to one scale so both sides compare.</div>
         <div class="lqbs">
           <div class="lqbc">
             <div class="lqbc-h lqbc-buy">Buying &mdash; price up</div>
@@ -742,6 +743,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=14" defer></script>
+<script src="app.js?v=15" defer></script>
 </body>
 </html>

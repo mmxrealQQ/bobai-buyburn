@@ -21,11 +21,15 @@
        display=swap, so there is no flash of unstyled text).
        As an @import it blocked too, just later in the sequence.
        preconnect stays: that way the handshake still starts early. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"></noscript>
+  <!-- The typefaces are served from this origin (see fonts.css for why, and for
+       the fact that both are variable fonts — one file each, every weight).
+       Preloaded because both are used above the fold: Inter for the body, Space
+       Grotesk for the headline and every figure. crossorigin is required on a
+       font preload even same-origin, or the browser fetches the file twice. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+
   <title>Brain On BNB AI ($BOBAI) — Where Memes Meet Intelligence</title>
   <meta name="description" content="Brain On BNB AI ($BOBAI) — AI-built deflationary meme token on BNB Chain. 3% tax fuels autonomous 24/7 buyback & burn. LP locked, ownership renounced.">
   <meta name="keywords" content="brainonbnb, brainonbnbai, brainonbnb.com, brainonbnb.ai, Brain On BNB AI, BOBAI, BOBAI token, BOBAI coin, Brain On BNB, Brain On BNB token, Brain On BNB coin, BNB Chain meme token, AI meme token, deflationary token BNB, buyback burn token, BSC meme coin">
@@ -186,10 +190,10 @@
 
 
   <nav><div class="nav">
-    <a href="#" class="nl"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"> <span>BOBAI</span></a>
+    <a href="/" class="nl"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"> <span>BOBAI</span></a>
     <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
     <div class="nb-group">
-      <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Buy $BOBAI</a>
+      <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
     </div>
   </div></nav>
 
@@ -205,7 +209,7 @@
       <img src="hero-v3.jpg?v=4" alt="BOBAI — Where Memes Meet Intelligence" fetchpriority="high">
     </picture>
     <div class="hero-ov"><div class="hero-in"><div class="hero-tx">
-      <div class="hero-eb"><span class="dot"></span>Bot live &middot; burns every 10 minutes</div>
+      <div class="hero-eb"><span class="dot"></span>Bot live &middot; runs every 10 minutes</div>
       <h2 class="hero-h">Every trade burns.<br><em>The bot never sleeps.</em></h2>
       <div class="hero-tag">Where Memes Meet Intelligence</div>
       <div class="hero-cta">
@@ -273,7 +277,7 @@
     <div class="fl">
       <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax accumulates in buyback wallet.</p><span class="fa">&#x2192;</span></div>
-      <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits ~1/1/1.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits <span id="step-split">~1/1/1</span>.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
     </div>
     <div class="tax fi">
@@ -616,7 +620,7 @@
       </a>
       <a class="ec fi" href="worldcup/">
         <div class="ec-top"><img src="worldcup/wclogo-96.webp" width="57" height="96" alt="BOBAI Worldcup '26 logo" loading="lazy" decoding="async"><h3>Worldcup '26</h3></div>
-        <p>A full tipping game for the 2026 World Cup — live brackets, leaderboard, prize pool. Ran Jun 11 to Jul 19, paid out 5.47M $BOBAI, now a frozen archive.</p>
+        <p>A full tipping game for the 2026 World Cup — live brackets, leaderboard, prize pool. Ran Jun 11 to Jul 19, paid out 8.94M $BOBAI, now a frozen archive.</p>
         <div class="ec-foot"><span class="ec-go">View Archive <span class="arr">&#x2192;</span></span><span class="ec-st done">Complete</span></div>
       </a>
     </div>
@@ -653,13 +657,13 @@
       </ul></div>
       <div class="rm rma fi"><div class="rp">Phase 2 — Active</div><h3>Burn Machine</h3><ul>
         <li><span class="ck">&#x2713;</span><span>Buyback bot live 24/7</span></li>
-        <li><span class="ck">&#x2713;</span><span>1/1/1 tax split running</span></li>
+        <li><span class="ck">&#x2713;</span><span>3% tax split running &mdash; published per phase</span></li>
         <li><span class="ck">&#x2713;</span><span>On-chain transparency</span></li>
         <li><span class="ck">&#x2713;</span><span>Public burn audit log</span></li>
         <li><span class="ck">&#x2713;</span><span>Telegram community</span></li>
       </ul></div>
       <div class="rm rma fi"><div class="rp">Phase 3 — Shipped</div><h3>Ecosystem</h3><ul>
-        <li><span class="ck">&#x2713;</span><span>Worldcup '26 tip game — 5.47M $BOBAI paid out</span></li>
+        <li><span class="ck">&#x2713;</span><span>Worldcup '26 tip game — 8.94M $BOBAI paid out</span></li>
         <li><span class="ck">&#x2713;</span><span>NFT auto-mint on every qualifying buy</span></li>
         <li><span class="ck">&#x2713;</span><span>Liquidity Boost campaign — LP burned, not locked</span></li>
         <li><span class="ck">&#x2713;</span><span>Bots migrated to native Cloudflare Workers</span></li>
@@ -669,7 +673,7 @@
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Trading volume — the honest bottleneck</span></li>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Wider exchange visibility</span></li>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>More AI-built apps on Brain On BNB AI</span></li>
-        <li><span class="ck">&#x2713;</span><span>Keep burning. Every 10 minutes.</span></li>
+        <li><span class="ck">&#x2713;</span><span>Keep burning. Bot runs every 10 minutes.</span></li>
       </ul></div>
     </div>
   </section>
@@ -681,22 +685,22 @@
     <div class="sh fi"><h2>Frequently <em>Asked</em></h2><p>Quick answers about Brain On BNB AI ($BOBAI).</p></div>
     <div class="faq-list fi">
       <details class="faq-item"><summary>What is Brain On BNB AI ($BOBAI)?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">Brain On BNB AI ($BOBAI, also referenced as brainonbnb / brainonbnbai) is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous 24/7 buyback &amp; burn cycle. LP is locked, ownership is renounced, and the contract source is verified and published on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank">BscScan</a>.</div>
+        <div class="faq-body">Brain On BNB AI ($BOBAI, also referenced as brainonbnb / brainonbnbai) is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous 24/7 buyback &amp; burn cycle. LP is locked, ownership is renounced, and the contract source is verified and published on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a>.</div>
       </details>
       <details class="faq-item"><summary>Where can I buy $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">Directly on <a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">PancakeSwap V2</a>, or through <a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Binance Web3 Wallet</a>, <a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">OKX Wallet</a>, and <a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank">Bitget Wallet</a>. Always paste the contract address yourself — don't trust ticker search.</div>
+        <div class="faq-body">Directly on <a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">PancakeSwap V2</a>, or through <a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Binance Web3 Wallet</a>, <a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">OKX Wallet</a>, and <a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener">Bitget Wallet</a>. Always paste the contract address yourself — don't trust ticker search.</div>
       </details>
       <details class="faq-item"><summary>What is the official $BOBAI contract address?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">The official BEP-20 contract is <code>0x245c386dcfed896f5c346107596141e5edcbffff</code> on BNB Chain. It is <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">verified on BscScan</a>, ownership is renounced, and there is no mint function or admin pause.</div>
+        <div class="faq-body">The official BEP-20 contract is <code>0x245c386dcfed896f5c346107596141e5edcbffff</code> on BNB Chain. It is <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">verified on BscScan</a>, ownership is renounced, and there is no mint function or admin pause.</div>
       </details>
       <details class="faq-item"><summary>How does the buyback &amp; burn work?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">Every trade pays a 3% tax that accumulates in the buyback wallet on-chain. A Cloudflare-Workers bot triggers every 10 minutes 24/7: it unwraps WBNB, buys $BOBAI on PancakeSwap, and sends it to the dead address. Every burn is visible in the live table above and verifiable on BscScan — no human intervention, no off-chain logic.</div>
       </details>
       <details class="faq-item"><summary>Is $BOBAI safe? Is the contract verified?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">Yes — contract verified on BscScan, no proxy, no upgrade path, no admin keys, no mint, no pause function. LP tokens are sent to the dead address (perma-locked). $BOBAI is independently listed on <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank">CoinGecko</a>, <a href="https://www.dextools.io/token/bobai" target="_blank">DEXTools</a>, <a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">DexScreener</a>, <a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">GMGN.AI</a>, <a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank">Birdeye</a>, <a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank">Bubblemaps</a>, and Binance Web3 Wallet.</div>
+        <div class="faq-body">Yes — contract verified on BscScan, no proxy, no upgrade path, no admin keys, no mint, no pause function. LP tokens are sent to the dead address (perma-locked). $BOBAI is independently listed on <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener">CoinGecko</a>, <a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener">DEXTools</a>, <a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">DexScreener</a>, <a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">GMGN.AI</a>, <a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener">Birdeye</a>, <a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Bubblemaps</a>, and Binance Web3 Wallet.</div>
       </details>
       <details class="faq-item"><summary>Does $BOBAI have a team allocation? Is it a fair launch?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">It is a fair launch. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Four.Meme</a> with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes only from the transparent 1% creator slice of the trade tax, not from a reserved token bag.</div>
+        <div class="faq-body">It is a fair launch. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Four.Meme</a> with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes only from the transparent 1% creator slice of the trade tax, not from a reserved token bag.</div>
       </details>
       <details class="faq-item"><summary>What is the trading tax on $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard.</div>
@@ -705,7 +709,7 @@
         <div class="faq-body">Same official site, two domains. <a href="https://brainonbnb.com">brainonbnb.com</a> is the primary user-facing domain; <a href="https://brainonbnb.ai">brainonbnb.ai</a> is the original brand domain. Both serve identical content from the same Cloudflare Pages deployment.</div>
       </details>
       <details class="faq-item"><summary>Who built $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank">BscScan</a> and every buyback-and-burn run lands in a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank">public audit log</a>.</div>
+        <div class="faq-body">$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a> and every buyback-and-burn run lands in a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
       </details>
     </div>
   </section>
@@ -718,25 +722,25 @@
     <div class="blk-head fi"><span class="blk-tag">Block 07 &middot; Socials</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2>Join A <em>Smart Drip</em></h2><p>Come for the burns, stay for the brain. The community lives on Telegram and X — and $BOBAI is listed, tradable and tracked everywhere below.</p></div>
     <div class="cta-links fi">
-      <a class="secondary" href="https://t.me/bobai_official" target="_blank">Join Telegram</a>
-      <a class="secondary" href="https://x.com/BrainOnBNB" target="_blank">X Official</a>
-      <a class="secondary" href="https://x.com/BrainOnBNBAI" target="_blank">X Community</a>
+      <a class="secondary" href="https://t.me/bobai_official" target="_blank" rel="noopener">Join Telegram</a>
+      <a class="secondary" href="https://x.com/BrainOnBNB" target="_blank" rel="noopener">X Official</a>
+      <a class="secondary" href="https://x.com/BrainOnBNBAI" target="_blank" rel="noopener">X Community</a>
     </div>
     <div class="fi">
       <p class="ll">Listed on</p>
-      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-bscscan.ico" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank"><img src="ico-coingecko.webp" width="48" height="48" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-dexscreener.ico" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank"><img src="ico-dextools.webp" width="66" height="66" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank"><img src="ico-geckoterminal.png" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
+      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-bscscan.webp" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener"><img src="ico-coingecko.webp" width="48" height="48" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-dexscreener.webp" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener"><img src="ico-dextools.webp" width="66" height="66" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank" rel="noopener"><img src="ico-geckoterminal.webp" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
       <p class="ll">Markets</p>
-      <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo" loading="lazy" decoding="async">PancakeSwap · BOBAI/WBNB</a></div>
+      <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo" loading="lazy" decoding="async">PancakeSwap · BOBAI/WBNB</a></div>
       <p class="ll">Available on</p>
-      <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-binance.ico" alt="Binance Web3 Wallet logo" loading="lazy" decoding="async">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank"><img src="ico-bitget.png" alt="Bitget Wallet logo" loading="lazy" decoding="async">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gatedex.webp" alt="Gate DEX logo" loading="lazy" decoding="async">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-okx.png" alt="OKX Wallet logo" loading="lazy" decoding="async">OKX Wallet</a></div>
+      <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-binance.webp" alt="Binance Web3 Wallet logo" loading="lazy" decoding="async">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener"><img src="ico-bitget.webp" alt="Bitget Wallet logo" loading="lazy" decoding="async">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-gatedex.webp" alt="Gate DEX logo" loading="lazy" decoding="async">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-okx.png" alt="OKX Wallet logo" loading="lazy" decoding="async">OKX Wallet</a></div>
       <p class="ll">Tracked by</p>
-      <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank"><img src="ico-birdeye.png" alt="Birdeye logo" loading="lazy" decoding="async">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank"><img src="ico-blockspot.webp" alt="Blockspot.io logo" loading="lazy" decoding="async">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank"><img src="ico-bubblemaps.png" alt="Bubblemaps logo" loading="lazy" decoding="async">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank"><img src="ico-coinmun.svg" alt="CoinMun logo" loading="lazy" decoding="async">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-fourmeme.ico" alt="Four.Meme logo" loading="lazy" decoding="async">Four.Meme</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-gmgn.png" alt="GMGN.AI logo" loading="lazy" decoding="async">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank"><img src="ico-insightx.ico" alt="InsightX logo" loading="lazy" decoding="async">InsightX</a></div>
+      <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener"><img src="ico-birdeye.webp" alt="Birdeye logo" loading="lazy" decoding="async">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank" rel="noopener"><img src="ico-blockspot.webp" alt="Blockspot.io logo" loading="lazy" decoding="async">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener"><img src="ico-bubblemaps.webp" alt="Bubblemaps logo" loading="lazy" decoding="async">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank" rel="noopener"><img src="ico-coinmun.svg" alt="CoinMun logo" loading="lazy" decoding="async">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-fourmeme.webp" alt="Four.Meme logo" loading="lazy" decoding="async">Four.Meme</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-gmgn.png" alt="GMGN.AI logo" loading="lazy" decoding="async">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-insightx.webp" alt="InsightX logo" loading="lazy" decoding="async">InsightX</a></div>
     </div>
   </section>
 
 <footer><div class="fi2">
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
-  <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · <a href="https://brainonbnb.ai">brainonbnb.ai</a> | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
+  <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · <a href="https://brainonbnb.ai">brainonbnb.ai</a> | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer>
 </div>
 
@@ -744,6 +748,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=17" defer></script>
+<script src="app.js?v=18" defer></script>
 </body>
 </html>

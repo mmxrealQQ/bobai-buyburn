@@ -1,0 +1,42 @@
+/* TYPEFACES, SERVED FROM HERE.
+ *
+ * They used to come from Google. That cost two cold handshakes on a phone
+ * (googleapis for the CSS, then gstatic for the files) before a single letter
+ * could be drawn, so the stylesheet was made non-blocking — which fixed the
+ * white screen and bought a visible flicker instead: the page painted in the
+ * system font and swapped a moment later. Serving the files from this origin
+ * removes both problems at once. There is no third party in the path, the
+ * connection is already open, and from the second visit the files come out of
+ * cache, so there is nothing left to swap.
+ *
+ * Both faces are VARIABLE fonts: one file carries every weight. Google hands
+ * out the same file for wght@400 and wght@700 — verified by hash, all four
+ * "weights" it served were byte-identical — so declaring the range here is not
+ * a shortcut, it is what the file actually is. 69 KB for the site's whole
+ * typography instead of eight downloads.
+ *
+ * Latin only, which is the subset every other one on the page falls back to.
+ * It covers Latin-1, so German umlauts and the punctuation the copy uses are
+ * in here; the greek/cyrillic/vietnamese subsets Google also offers were never
+ * reachable from any string on this site.
+ *
+ * font-display:swap on purpose: text must be readable while the file arrives.
+ * The files are immutable in _headers, so a change means a new filename, not a
+ * new ?v= — bump the ?v= on this stylesheet only when these rules change.
+ */
+@font-face{
+  font-family:'Inter';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url('/fonts/inter-var.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'Space Grotesk';
+  font-style:normal;
+  font-weight:300 700;
+  font-display:swap;
+  src:url('/fonts/spacegrotesk-var.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}

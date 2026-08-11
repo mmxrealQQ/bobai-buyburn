@@ -5,14 +5,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- media=print strips the link of its render-blocking power; onload restores
-       it. A blocking stylesheet from a foreign host holds the first paint for
-       as long as that host takes to answer, with no timeout. -->
-  <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"></noscript>
+  <!-- The typefaces are served from this origin (see fonts.css for why, and for
+       the fact that both are variable fonts — one file each, every weight).
+       Preloaded because both are used above the fold: Inter for the body, Space
+       Grotesk for the headline and every figure. crossorigin is required on a
+       font preload even same-origin, or the browser fetches the file twice. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+
   <title>Pool Scanner — how deep is any BSC token's liquidity?</title>
   <meta name="description" content="Paste any BNB Chain token or pool and read it the way a trader meets it: price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked, or withdrawable.">
   <link rel="canonical" href="https://brainonbnb.com/scanner">

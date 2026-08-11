@@ -351,6 +351,19 @@
       if (n >= 1000) return '$'+Math.round(n).toLocaleString('en-US');
       return '$'+n.toFixed(2);
     }
+    // wc_pool is a frozen WC26 archive snapshot — the BOBAI amount never changes,
+    // but the USD equivalent keeps tracking the live GeckoTerminal price (the
+    // stored snapshot price is only the fallback when the feed is down).
+    let livePx = 0;
+    async function fetchLivePx(){
+      try {
+        const r = await fetch('https://api.geckoterminal.com/api/v2/networks/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6');
+        const j = await r.json();
+        const v = parseFloat(j?.data?.attributes?.base_token_price_usd) || 0;
+        if (v > 0) livePx = v;
+      } catch (_) {/* keep last good value */}
+      return livePx;
+    }
     async function loadPool(){
       try {
         const cfg = window.WC_CONFIG;
@@ -361,7 +374,8 @@
         const p = Array.isArray(rows) ? rows[0] : null;
         if (!p) return;
         const total = parseFloat(p.total_bobai) || 0;
-        const price = parseFloat(p.bobai_price_usd) || 0;
+        const live = await fetchLivePx();
+        const price = live > 0 ? live : (parseFloat(p.bobai_price_usd) || 0);
         $('pool-bobai').textContent = fmtBobai(total);
         $('pool-usd').textContent = price > 0 ? fmtUsd(total * price) : 'n/a';
         document.getElementById('pool-block').classList.remove('loading');

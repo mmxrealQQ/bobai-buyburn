@@ -201,6 +201,23 @@
     return { ok: true, rows: data || [] };
   }
 
+  // WC26 is settled — wc_pool is a frozen archive snapshot (BOBAI amounts fixed
+  // forever), but the USD display should keep tracking the market. Overlay the
+  // stored snapshot price with the live GeckoTerminal pool price; fall back to
+  // the snapshot if the feed is down. Cached 60s so the 30s page intervals and
+  // multiple callers per page don't hammer the API.
+  let livePxCache = { px: 0, ts: 0 };
+  async function liveBobaiPrice(){
+    if (Date.now() - livePxCache.ts < 60_000) return livePxCache.px;
+    try {
+      const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_POOL}`);
+      const j = await r.json();
+      const px = parseFloat(j?.data?.attributes?.base_token_price_usd) || 0;
+      if (px > 0) livePxCache = { px, ts: Date.now() };
+    } catch (e) { /* keep last good value */ }
+    return livePxCache.px;
+  }
+
   async function loadPool(){
     const { data, error } = await sb
       .from('wc_pool')
@@ -208,6 +225,10 @@
       .eq('id', 1)
       .maybeSingle();
     if (error) return { error: error.message };
+    if (data) {
+      const live = await liveBobaiPrice();
+      if (live > 0) data.bobai_price_usd = live;
+    }
     return { ok: true, pool: data || null };
   }
 

@@ -15,8 +15,15 @@
   <link rel="icon" type="image/png" href="favicon.png?v=4">
   <link rel="shortcut icon" type="image/png" href="favicon.png?v=4">
   <link rel="apple-touch-icon" href="logo.png?v=4">
+  <!-- The typefaces are served from this origin (see fonts.css for why, and for
+       the fact that both are variable fonts — one file each, every weight).
+       Preloaded because both are used above the fold: Inter for the body, Space
+       Grotesk for the headline and every figure. crossorigin is required on a
+       font preload even same-origin, or the browser fetches the file twice. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
     :root{
       --gold:#F0B90B;--gold2:#ffd54f;
       --bg:#050510;--card:rgba(12,12,28,.85);--border:rgba(240,185,11,.08);
@@ -166,7 +173,7 @@
   <!-- 1. INTRODUCTION -->
   <h2>1. Introduction</h2>
   <p>Brain On BNB AI (<span class="highlight">$BOBAI</span>) is a deflationary meme token on BNB Smart Chain, built entirely by AI. The project explores what happens when artificial intelligence handles every aspect of a token &mdash; from smart contract deployment to an autonomous buyback &amp; burn mechanism that runs 24/7 without human intervention.</p>
-  <p>BOBAI was fair-launched on <a href="https://four.meme" target="_blank">Four.Meme</a> on March 27, 2026 with no presale, no team allocation, and no vesting. 100% of the token supply went to the open market.</p>
+  <p>BOBAI was fair-launched on <a href="https://four.meme" target="_blank" rel="noopener">Four.Meme</a> on March 27, 2026 with no presale, no team allocation, and no vesting. 100% of the token supply went to the open market.</p>
 
   <!-- 2. TOKENOMICS -->
   <h2>2. Tokenomics</h2>
@@ -191,7 +198,7 @@
   <p>Every buy and sell transaction incurs a <span class="highlight">3% tax</span>. The <strong>standard split</strong> is:</p>
   <ul>
     <li><span class="highlight">1% Creator</span> &mdash; sent to the creator wallet, used to fund the autonomous buyback bot operations</li>
-    <li><span class="highlight">1% Burn (BOB)</span> &mdash; used to buy and burn <a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank">BOB (Build on BNB)</a>, sent to the dead address</li>
+    <li><span class="highlight">1% Burn (BOB)</span> &mdash; used to buy and burn <a href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank" rel="noopener">BOB (Build on BNB)</a>, sent to the dead address</li>
     <li><span class="highlight">1% Burn (BOBAI)</span> &mdash; used to buy and burn BOBAI, sent to the dead address</li>
   </ul>
   <p>The result: <span class="highlight">2% of every trade is permanently burned</span> under standard split, continuously reducing the circulating supply. The <strong>3% tax rate is hardcoded</strong> in the smart contract and cannot be changed after deployment.</p>
@@ -202,20 +209,20 @@
   <ul>
     <li><span class="highlight">$BOB Permalocked Liquidity Boost</span> &mdash; <em>completed</em> Apr 21 to Jun 4, 2026. 107 adds, ~1.07 BNB deployed, ~23.1B BOB locked, 19,173 LP tokens burned. 0.5% of the Creator slice was diverted to permanent BOB/BNB liquidity adds.</li>
     <li><span class="highlight">$BOBAI Permalocked Liquidity Boost I</span> &mdash; <em>completed</em> Jun 1 to Aug 1, 2026. 55 adds, 0.7994 BNB deployed, 1,016.08 LP tokens burned. 0.5% of the BOB-burn slice (plus an additional 0.25% from the Creator slice during the Jun 15 to Aug 1 overlap window) was diverted to permanent BOBAI/BNB liquidity adds, with LP tokens burned.</li>
-    <li><span class="highlight">WC26 Prize Pool Auto-Flow</span> &mdash; <em>completed</em> Jun 11, 00:01 UTC to Jul 19, 23:59 UTC, 2026. 0.52% of every trade tax flowed to the WC26 prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank">0x5E41…D105</a> &mdash; 0.26% redirected from the BOB burn slice + 0.26% from the Creator slice. All pots were paid out on-chain on Jul 20, 2026.</li>
+    <li><span class="highlight">WC26 Prize Pool Auto-Flow</span> &mdash; <em>completed</em> Jun 11, 00:01 UTC to Jul 19, 23:59 UTC, 2026. 0.52% of every trade tax flowed to the WC26 prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41…D105</a> &mdash; 0.26% redirected from the BOB burn slice + 0.26% from the Creator slice. All pots were paid out on-chain on Jul 20, 2026.</li>
     <li><span class="highlight">$BOBAI Permalocked Liquidity Boost II</span> &mdash; <em>active</em> Aug 8, 00:00 UTC to Sep 16, 23:59 UTC, 2026. 0.8% of every trade is diverted from the BOB-burn slice to permanent BOBAI/BNB liquidity adds, with LP tokens burned to the dead address. Split during the window: 1% BOBAI burn &middot; 0.2% BOB burn &middot; 1% Creator &middot; 0.8% BOBAI liquidity. The Creator slice is untouched; the BNB never becomes withdrawable.</li>
   </ul>
   <p><strong>Transparency guarantees:</strong></p>
   <ul>
-    <li>Every program is announced before it starts and published on the <a href="https://brainonbnb.ai/#about" target="_blank">live tax-allocation schedule</a> on the dashboard.</li>
-    <li>Every run of the bot that handles tax distribution is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank">public audit log</a> &mdash; amounts, timestamps and the transaction hash of each burn.</li>
+    <li>Every program is announced before it starts and published on the <a href="https://brainonbnb.ai/#about" target="_blank" rel="noopener">live tax-allocation schedule</a> on the dashboard.</li>
+    <li>Every run of the bot that handles tax distribution is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a> &mdash; amounts, timestamps and the transaction hash of each burn.</li>
     <li>Every burn, every liquidity add, every prize-pool credit is an on-chain transaction verifiable on BscScan.</li>
     <li>Programs can only <em>redirect</em> slices within the existing 3% &mdash; they can never increase the tax rate, mint tokens, or change the contract.</li>
   </ul>
 
   <!-- 3. BUYBACK & BURN -->
   <h2>3. Buyback &amp; Burn Mechanism</h2>
-  <p>The core of BOBAI is its autonomous buyback &amp; burn bot. This bot runs as a <a href="https://developers.cloudflare.com/workers/" target="_blank">Cloudflare Worker</a> on a cron schedule, executing every 10 minutes.</p>
+  <p>The core of BOBAI is its autonomous buyback &amp; burn bot. This bot runs as a <a href="https://developers.cloudflare.com/workers/" target="_blank" rel="noopener">Cloudflare Worker</a> on a cron schedule, executing every 10 minutes.</p>
 
   <h3>How It Works</h3>
   <ol style="margin:0 0 16px 20px;font-size:.95rem">
@@ -241,13 +248,13 @@
   <p>The WC26 Tipgame is a free-to-enter prediction game running for the duration of the 2026 FIFA World Cup (Jun 11 to Jul 19, 2026). Players tip every match score, answer five bonus questions, and predict end-of-tournament BTC/BNB/BOBAI prices. All payouts are denominated in BOBAI and settled from a transparent on-chain prize pool.</p>
   <ul>
     <li><strong>No entry fee, no token deposit required.</strong> A connected BNB Smart Chain wallet is needed to receive payouts; players without a wallet can still play and their picks are tracked, but their share is skip-promoted to the next wallet-linked player.</li>
-    <li><strong>Prize pool sources.</strong> 0.52% of every BOBAI trade tax (the WC26 auto-flow program, &sect; 2) plus direct BNB/USDT community donations. All inflows are auto-swapped to BOBAI on a 10-minute cycle and credited to the prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank">0x5E41&hellip;D105</a>.</li>
+    <li><strong>Prize pool sources.</strong> 0.52% of every BOBAI trade tax (the WC26 auto-flow program, &sect; 2) plus direct BNB/USDT community donations. All inflows are auto-swapped to BOBAI on a 10-minute cycle and credited to the prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>.</li>
     <li><strong>Three pots split 60 / 30 / 10 (group phase) &rarr; 0 / 90 / 10 (KO phase):</strong> 12 Group Brackets (one winner per group of 4 teams), the End Pool (overall top 4 across the whole tournament), and a Crypto Pot (winner-take-all per coin, settled by absolute USD price diff at final kickoff).</li>
     <li><strong>BOBAI holder cap:</strong> a player's payout across all pots is capped at 26&times; their on-chain BOBAI balance at settlement, to keep skin-in-the-game aligned. Excess is redistributed back into liquidity adds and burns.</li>
     <li><strong>Tie-breaker (rules &sect; 7):</strong> equal-score players are ranked by on-chain BOBAI balance. Balances are snapshotted daily at 06:15 UTC during the quiet window between matches; the leaderboard exposes only a <em>"holds more $BOBAI"</em> badge, never actual amounts.</li>
     <li><strong>Verifiability:</strong> every prize-pool credit, donation swap, and final payout is an on-chain transaction, checkable on BscScan.</li>
   </ul>
-  <p>Full rules, live prize pool, and projected payouts: <a href="https://brainonbnb.com/worldcup/" target="_blank">brainonbnb.com/worldcup</a>.</p>
+  <p>Full rules, live prize pool, and projected payouts: <a href="https://brainonbnb.com/worldcup/" target="_blank" rel="noopener">brainonbnb.com/worldcup</a>.</p>
 
   <h3>4.2 BOBAI Buy Drops &mdash; NFT Collection</h3>
   <p>Every BOBAI buy of <span class="highlight">$100 or more</span> auto-mints a collectible NFT directly into the buyer's wallet. There is no claim step, no extra cost, and the NFT lands within minutes of the trade. The collection is a fixed-supply ERC-721 on BNB Smart Chain.</p>
@@ -258,7 +265,7 @@
     <li><strong>Ownership renounced.</strong> The mint contract was deployed by the BOBAI team and ownership has been renounced &mdash; no further admin actions are possible, no minting beyond the cap, no metadata changes.</li>
     <li><strong>Marketplace discoverable:</strong> auto-indexed by NFTScan, OKX, and Element. Royalty 8% (40% creator / 40% BOB burn / 20% BOBAI burn) where the marketplace honors ERC-2981.</li>
   </ul>
-  <p>Contract: <span class="addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</span> &bull; Live drops feed and rarity browser: <a href="https://brainonbnb.com/nft/" target="_blank">brainonbnb.com/nft</a>.</p>
+  <p>Contract: <span class="addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</span> &bull; Live drops feed and rarity browser: <a href="https://brainonbnb.com/nft/" target="_blank" rel="noopener">brainonbnb.com/nft</a>.</p>
 
   <!-- 5. SECURITY -->
   <h2>5. Security</h2>
@@ -289,15 +296,15 @@
   <p>The stance is deliberately <strong>neutral</strong>: these surfaces are a source of truth, not a pitch. Every tool is <strong>read-only</strong> &mdash; nothing here can move funds or change state &mdash; and every value returned is independently verifiable on-chain.</p>
 
   <h3>On-Chain Agent Identity (ERC-8004)</h3>
-  <p>BOBAI holds a registered <a href="https://8004scan.io/agents/bsc/49467" target="_blank">ERC-8004 agent identity</a>, <span class="highlight">Agent #49467</span>, on the BNB Chain Identity Registry <span class="addr">0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</span> (<span class="addr">eip155:56:0x8004A169&hellip;a432#49467</span>). The registration metadata &mdash; name, token, official services, and agent wallet &mdash; lives on-chain and is the only editable copy, so what an agent reads is what the project actually signed.</p>
+  <p>BOBAI holds a registered <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">ERC-8004 agent identity</a>, <span class="highlight">Agent #49467</span>, on the BNB Chain Identity Registry <span class="addr">0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</span> (<span class="addr">eip155:56:0x8004A169&hellip;a432#49467</span>). The registration metadata &mdash; name, token, official services, and agent wallet &mdash; lives on-chain and is the only editable copy, so what an agent reads is what the project actually signed.</p>
 
   <div class="card">
     <h3>Query Interface</h3>
     <ul style="margin-bottom:0">
       <li><span class="highlight">MCP</span> (Model Context Protocol, JSON-RPC 2.0, spec 2025-06-18) &mdash; <span class="addr">POST https://brainonbnb.com/mcp</span></li>
-      <li><span class="highlight">A2A agent card</span> &mdash; <a href="https://brainonbnb.com/.well-known/agent-card.json" target="_blank">brainonbnb.com/.well-known/agent-card.json</a></li>
-      <li><span class="highlight">Skill guide</span> (Markdown, for URL-reading agents) &mdash; <a href="https://brainonbnb.com/skill.md" target="_blank">brainonbnb.com/skill.md</a></li>
-      <li><span class="highlight">llms.txt</span> (plain-text machine summary) &mdash; <a href="https://brainonbnb.com/llms.txt" target="_blank">brainonbnb.com/llms.txt</a></li>
+      <li><span class="highlight">A2A agent card</span> &mdash; <a href="https://brainonbnb.com/.well-known/agent-card.json" target="_blank" rel="noopener">brainonbnb.com/.well-known/agent-card.json</a></li>
+      <li><span class="highlight">Skill guide</span> (Markdown, for URL-reading agents) &mdash; <a href="https://brainonbnb.com/skill.md" target="_blank" rel="noopener">brainonbnb.com/skill.md</a></li>
+      <li><span class="highlight">llms.txt</span> (plain-text machine summary) &mdash; <a href="https://brainonbnb.com/llms.txt" target="_blank" rel="noopener">brainonbnb.com/llms.txt</a></li>
     </ul>
   </div>
 
@@ -332,15 +339,15 @@
   <!-- 9. LINKS -->
   <h2>9. Links</h2>
   <ul>
-    <li><a href="https://brainonbnb.com" target="_blank">Website / Dashboard</a></li>
-    <li><a href="https://brainonbnb.com/worldcup/" target="_blank">WC26 Tipgame</a></li>
-    <li><a href="https://brainonbnb.com/nft/" target="_blank">NFT Buy Drops</a></li>
-    <li><a href="https://brainonbnb.com/skill.md" target="_blank">AI Agent Skill Guide</a> &bull; <a href="https://8004scan.io/agents/bsc/49467" target="_blank">ERC-8004 Agent #49467</a></li>
-    <li><a href="https://t.me/bobai_official" target="_blank">Telegram</a></li>
-    <li><a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank">Burn Audit Log (live)</a></li>
-    <li><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">BscScan</a></li>
-    <li><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank">GeckoTerminal</a></li>
-    <li><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank">Trade on PancakeSwap</a></li>
+    <li><a href="https://brainonbnb.com" target="_blank" rel="noopener">Website / Dashboard</a></li>
+    <li><a href="https://brainonbnb.com/worldcup/" target="_blank" rel="noopener">WC26 Tipgame</a></li>
+    <li><a href="https://brainonbnb.com/nft/" target="_blank" rel="noopener">NFT Buy Drops</a></li>
+    <li><a href="https://brainonbnb.com/skill.md" target="_blank" rel="noopener">AI Agent Skill Guide</a> &bull; <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">ERC-8004 Agent #49467</a></li>
+    <li><a href="https://t.me/bobai_official" target="_blank" rel="noopener">Telegram</a></li>
+    <li><a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">Burn Audit Log (live)</a></li>
+    <li><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">BscScan</a></li>
+    <li><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank" rel="noopener">GeckoTerminal</a></li>
+    <li><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Trade on PancakeSwap</a></li>
     <li class="no-print"><a href="/whitepaper.pdf" download>Download this Whitepaper (PDF)</a></li>
   </ul>
 

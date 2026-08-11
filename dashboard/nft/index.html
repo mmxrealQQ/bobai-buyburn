@@ -10,14 +10,15 @@
      ist fuer den Preload-Scanner unsichtbar, der Browser muesste erst das ganze
      Dokument parsen, bevor er den Handshake zu googleapis ueberhaupt startet.
      Gewichte auf die tatsaechlich benutzten reduziert. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- media="print" + onload: nimmt dem Link die Blockierwirkung, damit der
-     erste Paint nicht auf einen fremden Host wartet. Layout und Farben stehen
-     komplett im inline <style>. Siehe ausfuehrliche Begruendung in
-     dashboard/index.html. -->
-<link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"></noscript>
+  <!-- The typefaces are served from this origin (see fonts.css for why, and for
+       the fact that both are variable fonts — one file each, every weight).
+       Preloaded because both are used above the fold: Inter for the body, Space
+       Grotesk for the headline and every figure. crossorigin is required on a
+       font preload even same-origin, or the browser fetches the file twice. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+
 
 <!-- Open Graph / Twitter card -->
 <meta property="og:type" content="website">
@@ -275,11 +276,11 @@ footer a:hover{color:var(--gold)}
     <div class="hero-meta">
       <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><code id="contract-addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</code></a>
       ·
-      <a href="https://bscscan.com/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);padding:5px 12px;border-radius:8px"><img src="/ico-bscscan.ico" alt="" style="width:20px;height:20px;border-radius:4px;object-fit:contain" loading="lazy" decoding="async">BscScan</a>
+      <a href="https://bscscan.com/token/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);padding:5px 12px;border-radius:8px"><img src="/ico-bscscan.webp" alt="" style="width:20px;height:20px;border-radius:4px;object-fit:contain" loading="lazy" decoding="async">BscScan</a>
     </div>
     <div class="live-pill"><span class="live-dot"></span> Auto-mint live</div>
     <div class="mkt">
-      <a href="https://element.market/collections/bobai-buy-drops-1" target="_blank" rel="noopener"><img src="/ico-element.png?v=3" alt="" loading="lazy" decoding="async">Element</a>
+      <a href="https://element.market/collections/bobai-buy-drops-1" target="_blank" rel="noopener"><img src="/ico-element.webp?v=3" alt="" loading="lazy" decoding="async">Element</a>
       <a href="https://bnb.nftscan.com/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><img src="/ico-nftscan.png" alt="" loading="lazy" decoding="async">NFTScan</a>
     </div>
   </div>

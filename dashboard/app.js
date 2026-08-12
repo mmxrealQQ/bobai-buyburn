@@ -442,9 +442,15 @@ function depth(bR,wR,bnbP,mcap){
   const q=1+LP_FEE,
         onePct=(r,k)=>r*((-q+Math.sqrt(q*q+4*LP_FEE*(k-1)))/(2*LP_FEE)),
         money=v=>'$'+nf(v,v>=1000?0:2);
-  put('lq-up1',money(onePct(wbnb,1.01)*bnbP));
-  put('lq-dn1',money(onePct(tok,1/0.99)/TAX*px));
-  const rows=DEPTH_BUYS.map(u=>{
+  // Hold the live reserves so the depth selector can re-run the same maths
+  // against a deeper pool without refetching anything.
+  LQ={wbnb,tok,bnbP,px,onePct,money,max:0};
+  LQ.max=Math.max(...tradeRows(wbnb,tok,bnbP,px).map(r=>Math.max(r.buyMove,Math.abs(r.sellMove))));
+  paintTrade();
+}
+
+function tradeRows(wbnb,tok,bnbP,px){
+  return DEPTH_BUYS.map(u=>{
     // Buy: BNB in, tokens out. Only the fee-reduced input reaches the curve.
     const dB=u/bnbP,effB=dB*LP_FEE,outB=(tok*effB)/(wbnb+effB);
     // Sell: tokens in, already 3% lighter by the time the pair sees them.
@@ -456,20 +462,60 @@ function depth(bR,wR,bnbP,mcap){
       sellCost:(1-TAX*LP_FEE*tok/(tok+effT))*100,
     };
   });
+}
+
+// "What if the pool were deeper" — the one question the panel could not answer.
+// A liquidity add grows BOTH sides in the same ratio, so the price is untouched
+// and the multiplier applies to each reserve. Only the trade figures move; the
+// tiles above (pool value, LP burned, ratios) describe the pool that actually
+// exists and must never follow the selector.
+let LQ=null,LQMUL=1;
+function paintTrade(){
+  if(!LQ)return;
+  const m=LQMUL,wbnb=LQ.wbnb*m,tok=LQ.tok*m,{bnbP,px,onePct,money}=LQ,sim=m>1;
+  put('lq-up1',money(onePct(wbnb,1.01)*bnbP));
+  put('lq-dn1',money(onePct(tok,1/0.99)/TAX*px));
+  // The sub-labels literally read "right now" — false the moment a multiplier is
+  // picked, so they get rewritten rather than left to contradict the figure.
+  put('lq-up1s',sim?'a buy this size, if the pool were '+m+'× deeper'
+                   :'a buy this size, right now');
+  put('lq-dn1s',sim?'a sell this size, if the pool were '+m+'× deeper — still above the buy figure, because 3% of the tokens never reach the pool'
+                   :'a sell this size, right now — above the buy figure, mostly because 3% of the tokens never reach the pool');
+  put('lq-simn',sim?'Hypothetical — the pool is not '+m+'× deeper. Only these trade figures are simulated; everything above stays the real pool. The bars keep the live scale, so deeper reads as shorter.':'');
+  const box=document.querySelector('.lqi');if(box)box.classList.toggle('sim',sim);
   // One scale across both columns, otherwise the two sides cannot be compared by
-  // eye — which is the entire point of putting them next to each other.
-  const max=Math.max(...rows.map(r=>Math.max(r.buyMove,Math.abs(r.sellMove))));
+  // eye — which is the entire point of putting them next to each other. The scale
+  // stays pinned to the live pool, so a deeper pool visibly shortens every bar
+  // instead of silently rescaling back to full length.
+  const rows=tradeRows(wbnb,tok,bnbP,px),max=LQ.max;
   rows.forEach((r,i)=>{
     const n=i+1;
     put('lq-bm'+n,'+'+r.buyMove.toFixed(2)+'%');
     put('lq-sm'+n,r.sellMove.toFixed(2)+'%');
     const bc=document.getElementById('lq-bc'+n);if(bc)bc.textContent='costs '+r.buyCost.toFixed(2)+'%';
     const sc=document.getElementById('lq-sc'+n);if(sc)sc.textContent='costs '+r.sellCost.toFixed(2)+'%';
-    const set=(id,v)=>{const el=document.getElementById(id);
-      if(el)el.style.transform='scaleX('+(max>0?Math.abs(v)/max:0).toFixed(4)+')'};
+    // A deep simulation squeezes the small rows toward zero — at 10x the $100 bar
+    // came out 1.07px on a phone, which reads as broken rather than as tiny. Floor
+    // it at 2px whenever the value isn't actually zero. The exact figure sits right
+    // next to the bar, so nothing is overstated by the floor; it only separates
+    // "almost nothing" from "nothing at all".
+    const set=(id,v)=>{const el=document.getElementById(id);if(!el)return;
+      let s=max>0?Math.abs(v)/max:0;
+      const track=el.parentElement?el.parentElement.clientWidth:0;
+      if(s>0&&track>0)s=Math.max(s,2/track);
+      el.style.transform='scaleX('+s.toFixed(4)+')'};
     set('lq-bw'+n,r.buyMove);set('lq-sw'+n,r.sellMove);
   });
 }
+// Delegated, so it cannot race the first paint or the fetch that feeds it.
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.lqsim-b');if(!b)return;
+  LQMUL=Number(b.dataset.mul)||1;
+  document.querySelectorAll('.lqsim-b').forEach(x=>{
+    x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',x===b);
+  });
+  paintTrade();
+});
 // The burn log is 900+ rows, but .txw is a 400px scroll box — painting all of
 // them up front cost ~4600 DOM nodes nobody ever sees. Render a screenful and
 // append the next chunk as the reader scrolls toward the end. If the wrapper

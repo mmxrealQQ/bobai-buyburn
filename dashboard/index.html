@@ -152,8 +152,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=19" as="style">
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="preload" href="styles.css?v=21" as="style">
+  <link rel="stylesheet" href="styles.css?v=21">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -403,16 +403,24 @@
       <div class="lqi">
         <div class="lqi-h">What a trade does to the price &mdash; and what it costs
           <span>Two different things, often confused. <b>Impact</b> is how far this trade alone moves the price. <b>Cost</b> is what the trader gives up against the spot price, including the 3% tax and the 0.25% LP fee &mdash; about 3.2% of that applies at any size.</span></div>
+        <div class="lqsim" role="group" aria-label="Simulated pool depth">
+          <span class="lqsim-l">If the pool were</span>
+          <button class="lqsim-b on" type="button" data-mul="1" aria-pressed="true">as it is</button>
+          <button class="lqsim-b" type="button" data-mul="2" aria-pressed="false">2&times; deeper</button>
+          <button class="lqsim-b" type="button" data-mul="5" aria-pressed="false">5&times; deeper</button>
+          <button class="lqsim-b" type="button" data-mul="10" aria-pressed="false">10&times; deeper</button>
+          <span class="lqsim-n" id="lq-simn"></span>
+        </div>
         <div class="lqone">
           <div class="lqo">
             <div class="lqo-v lqo-up ld" id="lq-up1">--</div>
             <div class="lqo-l">Moves the price +1%</div>
-            <div class="lqo-s">a buy this size, right now</div>
+            <div class="lqo-s" id="lq-up1s">a buy this size, right now</div>
           </div>
           <div class="lqo">
             <div class="lqo-v lqo-dn ld" id="lq-dn1">--</div>
             <div class="lqo-l">Moves the price &minus;1%</div>
-            <div class="lqo-s">a sell this size, right now &mdash; above the buy figure, mostly because 3% of the tokens never reach the pool</div>
+            <div class="lqo-s" id="lq-dn1s">a sell this size, right now &mdash; above the buy figure, mostly because 3% of the tokens never reach the pool</div>
           </div>
         </div>
         <div class="lqbl">And what the sizes people actually trade do &mdash; bars show impact, drawn to one scale so both sides compare.</div>
@@ -1080,6 +1088,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=19" defer></script>
+<script src="app.js?v=21" defer></script>
 </body>
 </html>

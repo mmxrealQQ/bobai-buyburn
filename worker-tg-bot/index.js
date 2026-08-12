@@ -478,6 +478,82 @@ async function getBurnStats() {
   }
 }
 
+// ==================== LIQUIDITY DEPTH ====================
+// Same maths as the dashboard's liquidity block: every number is derived from the live
+// pair reserves, nothing is hardcoded. PancakeSwap V2 (factory verified on-chain) keeps
+// 0.25% of the input inside the pool; the 3% BOBAI tax never touches the reserves.
+const LP_FEE = 0.9975;
+const TAX_KEEP = 0.97;
+// Deliberately the same steps as the buy-alert tiers and the dashboard bars.
+const DEPTH_SIZES = [100, 150, 250, 500, 1000, 2500];
+
+// Trade size that moves the price by (k - 1). Closed form of
+// (r + x)(r + FEE*x) = k*r^2  ->  FEE*x^2 + r*(1 + FEE)*x + r^2*(1 - k) = 0.
+// Mirrors onePctV2() in dashboard/scanner-chain.js — change both together.
+function onePctSize(r, k) {
+  const b = 1 + LP_FEE;
+  const disc = b * b - 4 * LP_FEE * (1 - k);
+  return r * (Math.sqrt(disc) - b) / (2 * LP_FEE);
+}
+
+async function fetchLiquidityStats() {
+  const balDead = '0x70a08231' + DEAD.slice(2).padStart(64, '0');
+  const [rHex, lpTotalHex, lpDeadHex, supplyHex, burnedHex, bnbUsd] = await Promise.all([
+    rpcCall('eth_call', [{ to: BOBAI_PAIR, data: '0x0902f1ac' }, 'latest']),
+    rpcCall('eth_call', [{ to: BOBAI_PAIR, data: '0x18160ddd' }, 'latest']),
+    rpcCall('eth_call', [{ to: BOBAI_PAIR, data: balDead }, 'latest']),
+    rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: '0x18160ddd' }, 'latest']),
+    rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: balDead }, 'latest']),
+    getBnbUsd(),
+  ]);
+  if (!rHex || !bnbUsd) return null;
+
+  // BOBAI is token0 in this pair (verified on-chain)
+  const rTok = Number(BigInt('0x' + rHex.slice(2, 66))) / 1e18;
+  const rBnb = Number(BigInt('0x' + rHex.slice(66, 130))) / 1e18;
+  if (!(rTok > 0) || !(rBnb > 0)) return null;
+
+  const price = (rBnb / rTok) * bnbUsd;
+  const bnbSide = rBnb * bnbUsd;   // hard BNB backing — the half that isn't our own token
+  const tvl = bnbSide * 2;
+
+  const supply = Number(hexToBigInt(supplyHex)) / 1e18;
+  const burned = Number(hexToBigInt(burnedHex)) / 1e18;
+  const mcap = supply > 0 ? (supply - burned) * price : null;
+
+  const lpTotal = Number(hexToBigInt(lpTotalHex)) / 1e18;
+  const lpDead = Number(hexToBigInt(lpDeadHex)) / 1e18;
+  const lpBurnedPct = lpTotal > 0 ? (lpDead / lpTotal) * 100 : null;
+
+  // "What does one percent cost" — the reverse of the impact bars. A buy needs no tax
+  // correction (incoming BNB is untaxed); a sell does, because only 97% of the tokens
+  // sent ever reach the reserves.
+  const up1 = onePctSize(rBnb, 1.01) * bnbUsd;
+  const dn1 = (onePctSize(rTok, 1 / 0.99) / TAX_KEEP) * price;
+
+  // Two different things per size, the way the dashboard splits them:
+  //   impact = how far this trade alone moves the price. The 3% tax is taken from the
+  //            tokens, never from the reserves, so it moves nothing; the 0.25% fee stays
+  //            in the pool and counts. A sell moves less — the pair only sees 97%.
+  //   cost   = what the trader gives up against spot (fill + fee + tax). Not symmetric:
+  //            on a buy the tax hits the tokens leaving, on a sell the ones going in.
+  //            Both tend to 1 - TAX*FEE = 3.24% as the size goes to zero.
+  const depth = DEPTH_SIZES.map(usd => {
+    const dBnb = usd / bnbUsd;
+    const dTok = usd / price;
+    const sTok = dTok * TAX_KEEP;
+    return {
+      usd,
+      impactBuy: ((rBnb + dBnb) * (rBnb + LP_FEE * dBnb) / (rBnb * rBnb) - 1) * 100,
+      impactSell: (rTok * rTok / ((rTok + sTok) * (rTok + LP_FEE * sTok)) - 1) * 100,
+      costBuy: (1 - TAX_KEEP * LP_FEE * rBnb / (rBnb + LP_FEE * dBnb)) * 100,
+      costSell: (1 - TAX_KEEP * LP_FEE * rTok / (rTok + TAX_KEEP * LP_FEE * dTok)) * 100,
+    };
+  });
+
+  return { price, rBnb, rTok, bnbSide, tvl, mcap, lpBurnedPct, up1, dn1, depth };
+}
+
 // ==================== BUY BOT ====================
 
 function getBuyEmojis(usdValue) {
@@ -1687,6 +1763,7 @@ const BOT_COMMANDS = [
   { command: 'buy',      description: 'How to buy BOBAI' },
   { command: 'ca',       description: 'Contract address' },
   { command: 'help',     description: 'Show all commands' },
+  { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
   { command: 'price',    description: 'Live price, volume & market stats' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
@@ -1706,7 +1783,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v8-nft';
+const COMMANDS_VERSION = 'v9-liq';
 
 async function ensureCommandsRegistered(env) {
   const current = await env.KV.get('commands_version');
@@ -1837,6 +1914,55 @@ async function handleCommand(msg) {
       break;
     }
 
+    case '/liq':
+    case 'liq':
+    case '/liquidity':
+    case 'liquidity':
+    case '/depth': {
+      const lq = await fetchLiquidityStats();
+      if (!lq) {
+        reply = '⚠️ Could not read the pool right now. Try again in a moment!';
+        break;
+      }
+
+      // Explicit 'en-US' everywhere — never let the runtime pick the separators.
+      const usd0 = n => '$' + Math.round(n).toLocaleString('en-US');
+      const usd2 = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const pc = n => n.toFixed(2) + '%';
+      const signed = n => (n > 0 ? '+' : '') + n.toFixed(2) + '%';
+      const row = (d, imp, cost) =>
+        `$${d.usd.toLocaleString('en-US')} · ${signed(imp)} · costs ${pc(cost)}`;
+
+      const ratios = [];
+      if (lq.mcap) ratios.push(`💧 Liq / Mcap: <b>${(lq.tvl / lq.mcap * 100).toFixed(1)}%</b>`);
+      if (lq.mcap) ratios.push(`🔒 Hard BNB backing: <b>${(lq.bnbSide / lq.mcap * 100).toFixed(1)}%</b> of mcap`);
+      if (lq.lpBurnedPct !== null) ratios.push(`🔥 LP burned: <b>${lq.lpBurnedPct.toFixed(3)}%</b>`);
+
+      reply = `💧 <b>BOBAI Liquidity Depth</b>
+<i>Read from the pool contract just now — not a snapshot.</i>
+
+💎 Pool: <b>${usd0(lq.tvl)}</b> (both sides)
+🟡 BNB side: <b>${usd0(lq.bnbSide)}</b> · ${lq.rBnb.toFixed(2)} BNB
+🧠 BOBAI side: ${formatNumber(lq.rTok)} BOBAI
+${ratios.join('\n')}
+
+<b>What moves the price 1%</b>
+🟢 A buy of <b>${usd2(lq.up1)}</b> → +1%
+🔴 A sell of <b>${usd2(lq.dn1)}</b> → −1%
+
+<b>Buying — price up</b>
+${lq.depth.map(d => row(d, d.impactBuy, d.costBuy)).join('\n')}
+
+<b>Selling — price down</b>
+${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
+
+💡 <i>Impact = how far the trade moves the price. Cost = what you give up vs spot (3% tax + 0.25% LP fee + fill) — 3.24% of it applies at any size.</i>
+💡 <i>Every LP add is burned to the dead address. Nobody can pull it.</i>
+
+📊 <a href="https://brainonbnb.com/#tokenomics">Full depth panel</a> · 🔍 <a href="https://bscscan.com/address/${BOBAI_PAIR}">Pool contract</a>`;
+      break;
+    }
+
     case '/social':
     case 'social':
     case 'socials':
@@ -1871,6 +1997,7 @@ async function handleCommand(msg) {
 ⚽ <a href="https://brainonbnb.com/worldcup">Worldcup '26</a>
 🎁 <a href="${NFT_DASHBOARD_URL}">Buy Drops NFT</a>
 🧠 <a href="https://brainonbnb.com/brainscreener/">brainScreener</a>
+📊 <a href="https://brainonbnb.com/scanner">Pool Scanner (Beta)</a>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;
@@ -1958,6 +2085,7 @@ Here's what I can do:
 🔥 /burn — Burn stats & progress
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address
+💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links

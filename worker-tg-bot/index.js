@@ -1980,6 +1980,7 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 🌙 <a href="https://coinmun.com/coins/bob-6">CoinMun</a>
 🦅 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">DEX Screener</a>
 🌐 <a href="https://www.dextools.io/token/bobai">DEXTools.io</a>
+🙂 <a href="https://funtok.io/coins/bob-6">FunTok</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
 🐊 <a href="https://gmgn.ai/bsc/token/${BOBAI_TOKEN}">GMGN.AI</a>
 🫆 <a href="https://app.insightx.network/atlas/bsc/${BOBAI_TOKEN}">InsightX</a>

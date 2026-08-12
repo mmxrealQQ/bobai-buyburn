@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 4 files, 2687 lines.
+# one fetch. 4 files, 2703 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2067,6 +2067,20 @@ $('sc-in').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
     .lqsr-s{font-size:.71rem;color:var(--muted);line-height:1.5;margin-top:4px}
     .lqunb{font-size:.72rem;color:var(--muted);line-height:1.55;margin-top:12px;
       padding-left:11px;border-left:2px solid rgba(var(--accs),.22)}
+    /* Depth selector. A pill row, not a control panel — it answers one question
+       and must not look like it drives the real figures above it. */
+    .lqsim{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:15px}
+    .lqsim-l{font-size:.72rem;color:var(--muted);margin-right:2px}
+    .lqsim-b{font-family:'Space Grotesk',sans-serif;font-size:.73rem;font-weight:600;
+      color:var(--text-dim);background:rgba(255,255,255,.04);border:1px solid var(--border);
+      border-radius:999px;padding:4px 11px;cursor:pointer;transition:opacity .2s ease}
+    .lqsim-b:hover{opacity:.72}
+    .lqsim-b.on{color:#08131c;background:#3fe09a;border-color:#3fe09a}
+    /* The warning owns its own line and the sell colour, so a simulated panel can
+       never be mistaken for the live one. */
+    .lqsim-n:not(:empty){flex-basis:100%;font-size:.71rem;line-height:1.5;color:#ff8f6b;
+      margin-top:3px;padding-left:10px;border-left:2px solid rgba(255,143,107,.4)}
+    .lqi.sim .lqone,.lqi.sim .lqbs{opacity:.93}
     .lqone{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
     .lqo{border:1px solid var(--border);border-radius:12px;padding:13px 14px 11px;
       background:rgba(255,255,255,.02)}
@@ -2092,6 +2106,8 @@ $('sc-in').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
       white-space:nowrap}
     @media (max-width:760px){
       .lqd{padding:20px 16px 16px}
+      /* 24px pills are tappable but mean; on a phone they get a real target. */
+      .lqsim-b{padding:7px 12px;font-size:.74rem}
       .lqd-g,.lqsrc,.lqbs,.lqone{grid-template-columns:1fr;gap:10px}
       .lqv{font-size:1.6rem}
       /* At phone width the three fixed columns (56+62+82px plus the gaps) eat

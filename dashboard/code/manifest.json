@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 3897,
-   "zipBytes": 54070,
-   "txtBytes": 164740,
-   "sha256": "a602bbbe53e089db",
+   "lines": 4033,
+   "zipBytes": 56395,
+   "txtBytes": 171406,
+   "sha256": "6b3329c46e929f0d",
    "reqs": [
     {
      "what": "A bot token",
@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 4,
-   "lines": 2687,
-   "zipBytes": 58456,
-   "txtBytes": 176923,
-   "sha256": "1882d552f4612d16",
+   "lines": 2703,
+   "zipBytes": 58787,
+   "txtBytes": 178075,
+   "sha256": "d944f0d98972dea0",
    "reqs": [
     {
      "what": "A static host",

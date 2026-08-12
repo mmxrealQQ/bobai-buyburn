@@ -223,7 +223,14 @@ async function gj(n){let r=null;
 // JSON-RPC batching puts the whole lot in a single POST.
 const WBNB='0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
       P='0x6eadd4cb786898b34929444988380ed0cc6fd9a6',   // BOBAI/WBNB pair
-      BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',  // WBNB price pair
+      BP='0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16',  // WBNB price pair — fallback only
+      // Chainlink BNB/USD (8 decimals). The single source of truth for the BNB
+      // price across the whole project: the buyback bot, the buy alerts and the
+      // bot's /liq command all read this feed. Deriving it from a DEX pool here
+      // instead put the page 0.055% away from the bot on the same block — two
+      // answers to one question, which is one answer too many. The pool stays as
+      // a fallback so a feed hiccup cannot blank the page.
+      BNBFEED='0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE',
       // PancakeSwap's own protocol-fee address — the factory's feeTo(). The
       // pair mints LP to it on every liquidity event, which is where the
       // never-burned remainder comes from and why it grows as the pool trades.
@@ -273,6 +280,7 @@ async function chain(){
       call(P,balOf(BW)),                  // 11 LP still held by the buyback bot
       call(P,balOf(DEVW)),                // 12 LP still held by the dev wallet
       call(P,balOf(FEETO)),               // 13 LP minted to PancakeSwap as protocol fee
+      call(BNBFEED,'0x50d25bcd'),         // 14 Chainlink BNB/USD, latestAnswer()
     ]);
   }catch(e){return}
   // Each tile decodes in its own try/catch so one bad word of calldata can't
@@ -287,7 +295,10 @@ async function chain(){
       is0=('0x'+q[5].slice(26).toLowerCase())===BOBAI,bR=is0?r0:r1,wR=is0?r1:r0,
       bH=q[6],b0=BigInt('0x'+bH.slice(2,66)),b1=BigInt('0x'+bH.slice(66,130)),
       w0=('0x'+q[7].slice(26).toLowerCase())===WBNB.toLowerCase(),
-      bnbP=Number(w0?b1:b0)/Number(w0?b0:b1),
+      bnbFeed=(()=>{try{const v=Number(BigInt(q[14]))/1e8;return v>0?v:0}catch(e){return 0}})(),
+      // Feed first, pool second. A sane band around it, because a wrong BNB price
+      // would quietly move every dollar figure on the page.
+      bnbP=(bnbFeed>50&&bnbFeed<5000)?bnbFeed:Number(w0?b1:b0)/Number(w0?b0:b1),
       pU=(Number(wR)/Number(bR))*bnbP,
       circ=1e9-bAmt;
     put('mcap','$'+nf(pU*circ));

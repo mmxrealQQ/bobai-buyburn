@@ -498,13 +498,14 @@ function onePctSize(r, k) {
 
 async function fetchLiquidityStats() {
   const balDead = '0x70a08231' + DEAD.slice(2).padStart(64, '0');
-  const [rHex, lpTotalHex, lpDeadHex, supplyHex, burnedHex, bnbUsd] = await Promise.all([
+  const [rHex, lpTotalHex, lpDeadHex, supplyHex, burnedHex, bnbUsd, blockHex] = await Promise.all([
     rpcCall('eth_call', [{ to: BOBAI_PAIR, data: '0x0902f1ac' }, 'latest']),
     rpcCall('eth_call', [{ to: BOBAI_PAIR, data: '0x18160ddd' }, 'latest']),
     rpcCall('eth_call', [{ to: BOBAI_PAIR, data: balDead }, 'latest']),
     rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: '0x18160ddd' }, 'latest']),
     rpcCall('eth_call', [{ to: BOBAI_TOKEN, data: balDead }, 'latest']),
     getBnbUsd(),
+    rpcCall('eth_blockNumber', []),
   ]);
   if (!rHex || !bnbUsd) return null;
 
@@ -551,7 +552,13 @@ async function fetchLiquidityStats() {
     };
   });
 
-  return { price, rBnb, rTok, bnbSide, tvl, mcap, lpBurnedPct, up1, dn1, depth };
+  // The block this was read at. A chat message stays in the group forever, so it
+  // has to say which state of the chain it describes — otherwise a reader three
+  // hours later compares it against a pool that has moved since.
+  let block = null;
+  try { block = parseInt(blockHex, 16) || null; } catch { }
+
+  return { price, rBnb, rTok, bnbSide, tvl, mcap, lpBurnedPct, up1, dn1, depth, block };
 }
 
 // ==================== BUY BOT ====================
@@ -1939,7 +1946,7 @@ async function handleCommand(msg) {
       if (lq.lpBurnedPct !== null) ratios.push(`🔥 LP burned: <b>${lq.lpBurnedPct.toFixed(3)}%</b>`);
 
       reply = `💧 <b>BOBAI Liquidity Depth</b>
-<i>Read from the pool contract just now — not a snapshot.</i>
+<i>Read from the pool contract${lq.block ? ' at block ' + lq.block.toLocaleString('en-US') : ' just now'} — the pool moves with every trade, so run /liq again rather than trusting an older message.</i>
 
 💎 Pool: <b>${usd0(lq.tvl)}</b> (both sides)
 🟡 BNB side: <b>${usd0(lq.bnbSide)}</b> · ${lq.rBnb.toFixed(2)} BNB

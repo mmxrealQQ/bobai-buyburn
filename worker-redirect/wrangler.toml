@@ -6,4 +6,8 @@ workers_dev = false
 routes = [
   { pattern = "brainonbnb.ai/*", zone_name = "brainonbnb.ai" },
   { pattern = "www.brainonbnb.ai/*", zone_name = "brainonbnb.ai" },
+  # Legacy pre-rebrand host. Still a custom domain on the Pages project, so it
+  # served a second full copy of the dashboard; the route wins over Pages.
+  # The apex buildonbnbgame.xyz is the old $BOB page and stays untouched.
+  { pattern = "bobai.buildonbnbgame.xyz/*", zone_name = "buildonbnbgame.xyz" },
 ]

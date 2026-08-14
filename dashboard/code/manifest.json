@@ -53,10 +53,10 @@
    "title": "Dev Sweep Bot",
    "tagline": "The hourly one that empties the tax wallet.",
    "files": 3,
-   "lines": 329,
-   "zipBytes": 6738,
-   "txtBytes": 13138,
-   "sha256": "b794e1024d1ac37c",
+   "lines": 337,
+   "zipBytes": 6899,
+   "txtBytes": 13808,
+   "sha256": "0ee5f2e63e8fd568",
    "reqs": [
     {
      "what": "A wallet that receives the tax",

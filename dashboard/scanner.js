@@ -16,7 +16,22 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-const usd=n=>n==null?'—':n>=1000?'$'+nf(n):n>=1?'$'+nf(n,2):n>=0.01?'$'+nf(n,4):'$'+n.toPrecision(3);
+// toPrecision() switches to exponential notation below 1e-7, which printed a real
+// price as "$1.79e-8". Nobody quotes a token price that way. Write it out with
+// every zero instead, at three significant digits. Longer, but unambiguous — and
+// unlike the subscript-zero style ($0.0₈179) it survives being copied off the page,
+// where the subscript silently degrades into an ordinary digit.
+// The exponent comes from toExponential() rather than log10(), which is off by one
+// for exact powers of ten (log10(0.001) = -3.0000000000000004).
+const tiny=n=>{
+  if(!(n>0))return Number(n||0).toFixed(2);
+  const e=parseInt(n.toExponential(2).split('e')[1],10);
+  // toFixed() caps at 100 decimals. Past that the expansion would be all zeros
+  // and no significant digit at all, so keep the exponent rather than print a
+  // number that reads as zero.
+  return e<-98?n.toExponential(2):n.toFixed(Math.max(2,2-e));
+};
+const usd=n=>n==null?'—':n>=1000?'$'+nf(n):n>=1?'$'+nf(n,2):n>=0.01?'$'+nf(n,4):'$'+tiny(n);
 const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'—';
 // Two decimals lie at both ends: 99.998% burned rounds to a flat "100.00%",
 // claiming more than the chain says, and a real 0.002% rounds to "0.00%",
@@ -88,7 +103,13 @@ function statRow(items){
   const g=el('div','st-row');
   items.forEach(it=>{
     const c=el('div','st');
-    c.appendChild(el('div','st-v'+(it.dim?' dim':'')+(it.tone||''),it.v));
+    // A sub-cent price written out with every zero is far longer than a market
+    // cap, and at the headline size it wrapped mid-number on a 390px phone — a
+    // price broken across two lines invites a misread. Step the size down by
+    // length instead of letting it break.
+    const vs=String(it.v==null?'':it.v),
+          fit=vs.length>=16?' st-xl':vs.length>=12?' st-lg':'';
+    c.appendChild(el('div','st-v'+fit+(it.dim?' dim':'')+(it.tone||''),it.v));
     c.appendChild(el('div','st-l',it.l));
     if(it.s){
       const s=el('div','st-s',it.s);

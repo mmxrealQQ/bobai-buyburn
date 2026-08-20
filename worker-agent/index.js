@@ -27,6 +27,7 @@
 
 import { runCensusTick } from './census.js';
 import { handleFind } from './find.js';
+import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -79,7 +80,17 @@ const json = (obj, status = 200, extra = {}) =>
     },
   });
 
-const b64 = (obj) => btoa(JSON.stringify(obj));
+// btoa() only handles Latin-1. The moment a description contained an em dash
+// the whole /watch endpoint returned 500 — the payload was fine, the encoder
+// was not. Encoding to UTF-8 bytes first makes any character safe, which
+// matters because these strings are human-readable copy that will keep
+// acquiring punctuation.
+const b64 = (obj) => {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+};
 
 const rpc = async (method, params, endpoints) => {
   const list = endpoints ? (Array.isArray(endpoints) ? endpoints : [endpoints]) : RPCS;
@@ -432,16 +443,31 @@ export default {
         // The 402 itself. accepts[] is an array because a second scheme
         // (eip3009, once a facilitator is in place) will sit beside this one
         // rather than replace it.
+        // Two ways to pay the same price into the same wallet. The first is
+        // standard x402 that any stock client can execute unattended; the
+        // second is our own direct transfer, which needs no facilitator and
+        // no signature support. A client takes whichever it can do.
+        const resource = 'https://agent.brainonbnb.com/watch';
         const requirements = {
           x402Version: 2,
-          accepts: [{
-            scheme: 'exact',
-            network: NETWORK,
-            asset: USD1,
-            maxAmountRequired: WATCH_PRICE_USD1.toString(),
-            payTo,
-            description: `Pool watch for ${WATCH_DAYS} days`,
-          }],
+          accepts: [
+            dexterAccepts({
+              payTo,
+              amountAtomic: WATCH_PRICE_USD1.toString(),
+              description: `Pool watch for ${WATCH_DAYS} days`,
+              resource,
+            }),
+            {
+              scheme: 'exact',
+              network: NETWORK,
+              asset: USD1,
+              maxAmountRequired: WATCH_PRICE_USD1.toString(),
+              payTo,
+              resource,
+              description: `Pool watch for ${WATCH_DAYS} days — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
+              extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+            },
+          ],
         };
         return json(
           {
@@ -454,10 +480,32 @@ export default {
         );
       }
 
-      const check = await verifyPayment(env, proof.trim(), payTo, WATCH_PRICE_USD1);
-      if (!check.ok) return json({ error: 'payment not accepted', reason: check.reason }, 402);
+      const parsed = parsePaymentHeader(proof);
+      let check;
+      let tx;
 
-      const tx = proof.trim().toLowerCase();
+      if (parsed.kind === 'x402') {
+        // Standard x402: the facilitator verifies the signature and moves the
+        // money. We never see a key and never submit a transaction.
+        const reqs = {
+          x402Version: 2,
+          accepts: [dexterAccepts({
+            payTo, amountAtomic: WATCH_PRICE_USD1.toString(),
+            description: `Pool watch for ${WATCH_DAYS} days`,
+            resource: 'https://agent.brainonbnb.com/watch',
+          })],
+        };
+        const r = await verifyAndSettle(parsed.value, reqs.accepts[0]);
+        if (!r.ok) return json({ error: 'payment not accepted', stage: r.stage, reason: r.reason }, 402);
+        tx = (r.tx || `x402:${Date.now()}`).toLowerCase();
+        const already = await env.AGENT.get(`paid:${tx}`);
+        if (already) return json({ error: 'payment not accepted', reason: 'this settlement has already been used' }, 402);
+        check = { ok: true, paid: WATCH_PRICE_USD1, from: r.payer };
+      } else {
+        check = await verifyPayment(env, proof.trim(), payTo, WATCH_PRICE_USD1);
+        if (!check.ok) return json({ error: 'payment not accepted', reason: check.reason }, 402);
+        tx = proof.trim().toLowerCase();
+      }
       // Marked spent BEFORE the watch is created: if creation fails the caller
       // has lost nothing they cannot retry with support, whereas the reverse
       // order lets a retry storm mint watches off one payment.

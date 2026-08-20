@@ -117,9 +117,20 @@ section('Paid surface');
   try { decoded = JSON.parse(Buffer.from(hdr, 'base64').toString('utf8')); } catch {}
   ok('unpaid request answers 402', r.status === 402, `got ${r.status}`);
   ok('PAYMENT-REQUIRED header decodes', !!decoded?.accepts?.length);
-  ok('accepts names USD1 on BSC', decoded?.accepts?.[0]?.network === 'eip155:56'
-    && (decoded?.accepts?.[0]?.asset || '').toLowerCase() === '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d');
-  ok('payTo is set', /^0x[a-fA-F0-9]{40}$/.test(decoded?.accepts?.[0]?.payTo || ''));
+  // Two schemes are offered now, and which comes first is a preference rather
+  // than a contract. The test checks that both are present, not that either
+  // holds a position — otherwise reordering them breaks the suite for no reason.
+  const accepts = decoded?.accepts || [];
+  const onBsc = accepts.filter((a) => a.network === 'eip155:56');
+  ok('every payment option is on BSC', accepts.length > 0 && onBsc.length === accepts.length);
+  ok('offers a standard x402 route', accepts.some((a) => a.extra?.assetTransferMethod === 'permit2'));
+  ok('offers the direct USD1 route', accepts.some((a) =>
+    (a.asset || '').toLowerCase() === '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d'));
+  ok('payTo is set on every option', accepts.length > 0
+    && accepts.every((a) => /^0x[a-fA-F0-9]{40}$/.test(a.payTo || '')));
+  // The header is base64 of JSON that contains human copy; an em dash in a
+  // description once broke this endpoint entirely, because btoa is Latin-1 only.
+  ok('PAYMENT-REQUIRED survives non-ASCII copy', JSON.stringify(decoded).length > 200);
 }
 // Payment verification must refuse everything that is not a real payment to us.
 for (const [label, sig, want] of [

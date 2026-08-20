@@ -58,17 +58,26 @@ SCENES = {
 
     'saga-thunder': "OUTFIT & SCENE: he wears a flowing red cape and silver "
                     "battle armor, raising a huge ancient stone-and-steel war "
-                    "hammer to the sky with one hand — massive blue-white "
-                    "lightning bolts strike the hammer, electric arcs crackle "
-                    "around him, heroic determined expression. SETTING: dark "
-                    "storm clouds, rain, epic god-of-thunder atmosphere.",
+                    "hammer to the sky with one hand — massive bright NEON "
+                    "GREEN lightning bolts strike the hammer, vivid green "
+                    "electric arcs crackle around him and across his armor, "
+                    "green storm glow in the clouds, heroic determined "
+                    "expression. SETTING: dark storm clouds, rain, epic "
+                    "god-of-thunder atmosphere with green lightning light.",
 
     'saga-captain': "OUTFIT & SCENE: he wears a torn dark-blue tactical suit "
-                    "with a rough BNB-gold emblem on the chest, holding a round "
-                    "dented metal shield with a plain gold hexagon emblem, "
-                    "battle-worn and bruised but standing tall, tightening the "
-                    "shield strap, exhausted but unbreakable determined look. "
-                    "SETTING: smoking battlefield rubble at golden dawn.",
+                    "with a rough BNB-gold emblem on the chest. He holds a "
+                    "round dented metal shield with a plain gold hexagon "
+                    "emblem on his LEFT FOREARM via straps — the shield is "
+                    "clearly IN FRONT of the forearm, both of his arms are "
+                    "fully visible and anatomically correct and clearly "
+                    "separate from the shield, no limbs merging into the "
+                    "shield. Battle-worn and bruised but standing tall, "
+                    "exhausted but unbreakable determined look. IMPORTANT: "
+                    "keep the head and brain proportionally SMALL, exactly "
+                    "the same modest head-to-body ratio as in the reference "
+                    "images — do NOT enlarge the head or the brain. SETTING: "
+                    "smoking battlefield rubble at golden dawn.",
 
     'saga-futures': "OUTFIT & SCENE: he levitates cross-legged wearing a red "
                     "high-collared cloak, hands weaving glowing golden circular "

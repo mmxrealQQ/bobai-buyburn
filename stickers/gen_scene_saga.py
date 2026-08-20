@@ -59,7 +59,9 @@ SCENES = {
     'saga-nosell':   "The sage holds up one open palm toward the viewer in a "
                      "firm STOP gesture, stern serious expression, eyebrows "
                      "furrowed, the other hand gripping a small gnarled wooden "
-                     "cane.",
+                     "cane. IMPORTANT: his entire head and the full brain on "
+                     "top must be COMPLETELY visible inside the frame with "
+                     "clear headroom above — never crop the head or brain.",
 
     'saga-hodl':     "The sage clenches both small fists in front of his chest, "
                      "determined intense expression, leaning slightly forward "

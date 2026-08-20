@@ -43,6 +43,17 @@ CAPTIONS = {
     'degen-fishing':    ("CAUGHT", "THE BOTTOM"),
     'degen-trustmebro': ("TRUST ME", "BRO"),
     'degen-bouncer':    ("HOLDERS", "ONLY"),
+    'saga-moonwalk':    ("MOONWALKING", "TO THE MOON"),
+    'degen-lean':       ("THE DIP", "CAN'T TILT ME"),
+    'saga-thriller':    ("DEAD MARKET?", "STILL DANCING"),
+    'degen-popcorn':    ("JUST HERE FOR", "THE DRAMA"),
+    'saga-toespin':     ("GREEN CANDLES?", "SHOWTIME"),
+    'saga-march':       ("THEY DON'T REALLY", "CARE ABOUT US"),
+    'saga-futures':     ("I'VE SEEN THE FUTURE", "IT'S GREEN"),
+    'saga-rocky':       ("STILL HOLDING", "STILL STANDING"),
+    'saga-matrix':      ("DODGING", "THE FUD"),
+    'saga-wolf':        ("PUMP CHANT", "ACTIVATED"),
+    'saga-delorean':    ("I'VE BEEN TO 2030", "WE MADE IT"),
 }
 
 # offset (s) into the sora clip — skip the still first moments if needed

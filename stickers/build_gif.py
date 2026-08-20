@@ -16,13 +16,15 @@ FFMPEG = (r'C:/Users/graff/AppData/Local/Microsoft/WinGet/Packages/'
           r'ffmpeg-8.1.1-full_build/bin/ffmpeg.exe')
 if not os.path.exists(FFMPEG): FFMPEG = 'ffmpeg'
 
+SIZE = 480  # override with --size N (e.g. 640 for GIPHY/Klipy quality builds)
+
 def build(slug):
     fdir = f'{STK}/frames/{slug}-sora'
     if not os.path.isdir(fdir):
         print(f"ERR {slug}: no frames dir {fdir} (run build_sora_sticker.py first)"); return
     pal = f'{fdir}/_palette.png'
     out = f'{OUT}/bobai-{slug}.gif'
-    vf = 'fps=20,scale=480:480:flags=lanczos'
+    vf = f'fps=20,scale={SIZE}:{SIZE}:flags=lanczos'
     subprocess.run([FFMPEG, '-y', '-hide_banner', '-loglevel', 'error',
         '-framerate', '24', '-i', f'{fdir}/f%03d.png',
         '-vf', f'{vf},palettegen=stats_mode=diff', pal], check=True)
@@ -34,5 +36,12 @@ def build(slug):
     print(f"{slug}: {os.path.getsize(out)//1024} KB -> {out}")
 
 if __name__ == '__main__':
-    for s in sys.argv[1:]:
+    args = []
+    it = iter(sys.argv[1:])
+    for a in it:
+        if a == '--size':
+            SIZE = int(next(it))
+        else:
+            args.append(a)
+    for s in args:
         build(s)

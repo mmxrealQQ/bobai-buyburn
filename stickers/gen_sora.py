@@ -50,9 +50,12 @@ MOTION = {
     'saga-smash':    "He flexes his huge green muscular arms, roars excitedly "
                      "and smashes one fist down with visible impact, dust "
                      "puffs rising, then grins at the camera.",
-    'saga-thunder':  "He raises the war hammer higher as bright lightning "
-                     "bolts strike it two times, electric arcs crackle across "
-                     "his armor, cape flowing in the storm wind, heroic stare.",
+    'saga-thunder':  "He raises the war hammer higher as bright GREEN "
+                     "lightning bolts strike it two times with vivid flashes, "
+                     "green electric arcs crackle visibly across his armor "
+                     "and the hammer, his red cape flows strongly in the "
+                     "storm wind, rain streaks past, heroic stare — clearly "
+                     "visible continuous movement.",
     'saga-captain':  "He tightens the strap of his dented shield, straightens "
                      "up from exhaustion into a determined stance and nods "
                      "slowly at the camera, smoke drifting behind him.",
@@ -91,9 +94,12 @@ MOTION = {
     'degen-snail':      "The giant snail slides forward slightly, its eye "
                         "stalks wiggle, he leans even lower into his racing "
                         "crouch urging it on, determined stare ahead.",
-    'degen-furnace':    "He tips the shovel and golden coins slide into the "
-                        "furnace mouth, the flames flare up brightly, sparks "
-                        "and embers fly, warm glow flickering on his face.",
+    'degen-furnace':    "He clearly lifts and tips the shovel so golden coins "
+                        "visibly slide and tumble into the furnace mouth, the "
+                        "flames FLARE UP brightly with dancing fire, sparks "
+                        "and embers fly upward, the warm glow flickers "
+                        "strongly on his face — clearly visible continuous "
+                        "movement through the whole clip.",
     'degen-wen':        "He raises his arm and looks at his wrist watch, then "
                         "looks down the empty road and slumps back bored, "
                         "moths fluttering around the street lamp.",
@@ -110,6 +116,78 @@ MOTION = {
     'degen-bouncer':    "He lifts the velvet rope open, the happy green "
                         "candlestick figure struts inside wiggling with joy, "
                         "the sad red candlestick slumps its head even deeper.",
+    'saga-moonwalk':  "He performs the moonwalk backslide: his legs make "
+                      "smooth walking-forward stepping motions, but his "
+                      "whole body continuously SLIDES BACKWARD across the "
+                      "glossy floor — one foot stays flat gliding backward "
+                      "while the other heel pops up, alternating rhythmically, "
+                      "moving clearly from screen center toward screen edge "
+                      "backwards, body tilted slightly forward, he pinches "
+                      "his fedora brim with the gloved hand.",
+    'degen-lean':     "He holds the impossible forward lean steadily, then "
+                      "leans a touch further and calmly adjusts his fedora "
+                      "with one hand, loose papers drifting through the air, "
+                      "red chart glow pulsing softly, totally unbothered "
+                      "cool expression.",
+    'saga-thriller':  "He does a playful goofy dance — hunched shoulders "
+                      "shrugging rhythmically up and down two times, stiff "
+                      "raised hands bobbing to the beat, head tilting side "
+                      "to side, cheerful mischievous grin, fog drifting "
+                      "slowly around his legs.",
+    'degen-popcorn':  "He grabs a handful of popcorn and stuffs it into his "
+                      "mouth, chewing with puffed cheeks, wide gleeful eyes "
+                      "fixed on the screen, flickering screen light dancing "
+                      "on his face, he leans forward slightly, totally "
+                      "entertained.",
+    'saga-toespin':   "Stage smoke machines SHOOT bursts of glowing GREEN "
+                      "fog from both sides of the stage floor, the green "
+                      "smoke billows and swirls around his legs "
+                      "continuously — while he bounces rhythmically on his "
+                      "toe tips to a beat, tipping his fedora with the hand "
+                      "at the brim, his sequin jacket sparkling glinting, "
+                      "the floor tiles pulsing green and cyan light. "
+                      "Clearly visible continuous movement through the "
+                      "whole clip. He does not spin, exactly two arms, "
+                      "correct anatomy.",
+    'saga-march':     "He marches forward ON THE SPOT to a strong beat, "
+                      "stomping rhythmically, pumping his raised fist two "
+                      "times with power — the crowd of green candlestick "
+                      "figures behind him bounces and marches in sync, "
+                      "their little fists pumping to the same beat, dust "
+                      "drifting in the warm light. Clearly visible rhythmic "
+                      "movement through the whole clip, exactly two arms, "
+                      "correct anatomy.",
+    'saga-futures':   "He clearly floats UP and DOWN in a visible levitation "
+                      "cycle while both hands actively weave circles in the "
+                      "air — the golden magic mandala rings VISIBLY ROTATE "
+                      "around his hands throwing glowing rune sparks, the "
+                      "green time-glow pulses brightly, his cloak sways, "
+                      "floating books and pages drift and flutter around "
+                      "him, clearly visible continuous movement.",
+    'saga-rocky':     "He bounces on the spot in triumph, pumping both "
+                      "boxing gloves up into the air two times, breath "
+                      "visible in the cold morning air, the sunrise glow "
+                      "flaring softly behind him.",
+    'saga-matrix':    "He leans even further back in slow-motion, the "
+                      "glowing red candlesticks streak past above him "
+                      "leaving motion trails, his long coat flutters, he "
+                      "keeps perfect balance, cool unbothered face.",
+    'saga-wolf':      "He pounds his fist on his chest rhythmically two "
+                      "times with visible impact, then raises the "
+                      "microphone with a wild confident grin, the blurred "
+                      "crowd behind him pumping fists in sync.",
+    'saga-delorean':  "The twin FIRE TRAILS on the asphalt BLAZE tall and "
+                      "lively: bright orange flames burn HIGH, dance and "
+                      "lick upward vigorously along both trails through the "
+                      "whole clip, many embers swirl up into the air, smoke "
+                      "billows, the strong fire glow pulses and flickers on "
+                      "the wet street and the car body — the fire is the "
+                      "star of the shot, big clearly visible flame movement "
+                      "at all times. He stays at the open gullwing door "
+                      "with a confident smirk and gives one small cool nod, "
+                      "his sunglasses stay perfectly in place, he never "
+                      "touches them. Framing stays exactly as the "
+                      "reference, no zoom.",
 }
 
 def prep_input(slug):

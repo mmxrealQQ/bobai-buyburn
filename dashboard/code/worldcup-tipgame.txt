@@ -2,7 +2,7 @@
 # A full tournament game that paid out on-chain.
 #
 # This is the complete worldcup-tipgame bundle as a single file, so it can be read in
-# one fetch. 45 files, 11114 lines.
+# one fetch. 45 files, 11213 lines.
 # Download as a zip: https://brainonbnb.com/code/worldcup-tipgame.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1964,6 +1964,16 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Bonus Questions</title>
+  <meta property="og:title" content="Worldcup '26 Bonus Questions">
+  <meta property="og:description" content="Tournament-long bonus predictions in the BOBAI World Cup 2026 tipping game — top scorer, winner, and more.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/bonus">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Worldcup '26 Bonus Questions">
+  <meta name="twitter:description" content="Tournament-long bonus predictions in the BOBAI World Cup 2026 tipping game — top scorer, winner, and more.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="Tournament-long bonus predictions in the BOBAI World Cup 2026 tipping game — top scorer, winner, and more.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -2271,6 +2281,16 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Crypto Predictions</title>
+  <meta property="og:title" content="Worldcup '26 — Getting Paid In $BOBAI">
+  <meta property="og:description" content="How prizes reach you in the BOBAI World Cup 2026 tipping game: wallet setup, the token, and the payout process.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/crypto">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Worldcup '26 — Getting Paid In $BOBAI">
+  <meta name="twitter:description" content="How prizes reach you in the BOBAI World Cup 2026 tipping game: wallet setup, the token, and the payout process.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="How prizes reach you in the BOBAI World Cup 2026 tipping game: wallet setup, the token, and the payout process.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -2589,6 +2609,16 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Dashboard</title>
+  <meta property="og:title" content="Your Worldcup '26 Dashboard">
+  <meta property="og:description" content="Your standing in the BOBAI World Cup 2026 tipping game — points, rank, and every prediction you made.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/dashboard">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Your Worldcup '26 Dashboard">
+  <meta name="twitter:description" content="Your standing in the BOBAI World Cup 2026 tipping game — points, rank, and every prediction you made.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="Your standing in the BOBAI World Cup 2026 tipping game — points, rank, and every prediction you made.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -3041,6 +3071,13 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Illustrator Checklist</title>
+  <meta property="og:title" content="BOBAI Worldcup '26 — Illustrator Checklist">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/for-designer">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BOBAI Worldcup '26 — Illustrator Checklist">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -3342,6 +3379,16 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>BOBAI Worldcup '26</title>
+  <meta property="og:title" content="BOBAI Worldcup '26 — Tipgame">
+  <meta property="og:description" content="The BOBAI World Cup 2026 tipping game: predict every match, climb the leaderboard, share the $BOBAI prize pool. Free to enter, settled on-chain.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BOBAI Worldcup '26 — Tipgame">
+  <meta name="twitter:description" content="The BOBAI World Cup 2026 tipping game: predict every match, climb the leaderboard, share the $BOBAI prize pool. Free to enter, settled on-chain.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="The BOBAI World Cup 2026 tipping game: predict every match, climb the leaderboard, share the $BOBAI prize pool. Free to enter, settled on-chain.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -3585,6 +3632,16 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Leaderboard</title>
+  <meta property="og:title" content="Worldcup '26 Leaderboard">
+  <meta property="og:description" content="Live standings for the BOBAI World Cup 2026 tipping game — every player, every point, updated as matches finish.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/leaderboard">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Worldcup '26 Leaderboard">
+  <meta name="twitter:description" content="Live standings for the BOBAI World Cup 2026 tipping game — every player, every point, updated as matches finish.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="Live standings for the BOBAI World Cup 2026 tipping game — every player, every point, updated as matches finish.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -5194,6 +5251,16 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Prize Pool</title>
+  <meta property="og:title" content="Worldcup '26 Prize Pool">
+  <meta property="og:description" content="The $BOBAI prize pool for the World Cup 2026 tipping game — how it was funded and how it is split.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/prize-pool">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Worldcup '26 Prize Pool">
+  <meta name="twitter:description" content="The $BOBAI prize pool for the World Cup 2026 tipping game — how it was funded and how it is split.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="The $BOBAI prize pool for the World Cup 2026 tipping game — how it was funded and how it is split.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -6172,6 +6239,16 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reset Password — BOBAI Worldcup '26</title>
+  <meta property="og:title" content="Reset Your Password">
+  <meta property="og:description" content="Set a new password for your BOBAI World Cup 2026 tipping game account.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/reset">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reset Your Password">
+  <meta name="twitter:description" content="Set a new password for your BOBAI World Cup 2026 tipping game account.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="Set a new password for your BOBAI World Cup 2026 tipping game account.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -6287,6 +6364,8 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-.125em;disp
   <meta name="keywords" content="BOBAI Worldcup rules, FIFA World Cup 2026 prediction game rules, crypto tipgame rules, BNB Chain prize pool rules, on-chain payouts, BOBAI scoring, Brain On BNB AI">
   <link rel="canonical" href="https://brainonbnb.com/worldcup/app/rules">
   <meta property="og:title" content="Rules &amp; FAQ — BOBAI Worldcup '26">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
   <meta property="og:description" content="Full rules of the BOBAI Worldcup '26 — free FIFA 2026 crypto prediction game on BNB Chain. Scoring, prize pool, payouts.">
   <meta property="og:url" content="https://brainonbnb.com/worldcup/app/rules">
   <meta property="og:type" content="article">
@@ -8626,6 +8705,16 @@ GRANT SELECT ON wc_leaderboard TO anon, authenticated;
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Tips</title>
+  <meta property="og:title" content="Your Worldcup '26 Predictions">
+  <meta property="og:description" content="Enter and review your predictions for the BOBAI World Cup 2026 tipping game. Locked at kick-off, scored automatically.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/tips">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Your Worldcup '26 Predictions">
+  <meta name="twitter:description" content="Enter and review your predictions for the BOBAI World Cup 2026 tipping game. Locked at kick-off, scored automatically.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="Enter and review your predictions for the BOBAI World Cup 2026 tipping game. Locked at kick-off, scored automatically.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">
@@ -9083,6 +9172,16 @@ GRANT SELECT ON wc_leaderboard TO anon, authenticated;
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOBAI Worldcup '26 — Player</title>
+  <meta property="og:title" content="Your Worldcup '26 Account">
+  <meta property="og:description" content="Your player profile for the BOBAI World Cup 2026 tipping game — name, wallet, and settings.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/worldcup/app/user">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Your Worldcup '26 Account">
+  <meta name="twitter:description" content="Your player profile for the BOBAI World Cup 2026 tipping game — name, wallet, and settings.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="Your player profile for the BOBAI World Cup 2026 tipping game — name, wallet, and settings.">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="stylesheet" href="./assets/style.css?v=19">

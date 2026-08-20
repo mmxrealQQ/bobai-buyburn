@@ -2,7 +2,7 @@
 # Thirteen self-tests. No accounts, no tracking, no backend.
 #
 # This is the complete brainscreener bundle as a single file, so it can be read in
-# one fetch. 52 files, 9572 lines.
+# one fetch. 52 files, 9595 lines.
 # Download as a zip: https://brainonbnb.com/code/brainscreener.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -21,6 +21,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#050510" />
   <title>Page not found — brainScreener</title>
+  <meta property="og:title" content="Page Not Found — brainScreener">
+  <meta property="og:description" content="That page does not exist. Browse the 13 free, anonymous self-tests on brainScreener instead.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/brainscreener/404">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Page Not Found — brainScreener">
+  <meta name="twitter:description" content="That page does not exist. Browse the 13 free, anonymous self-tests on brainScreener instead.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="That page does not exist. Browse the 13 free, anonymous self-tests on brainScreener instead.">
   <meta name="robots" content="noindex">
   <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=7">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
@@ -58,6 +68,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050510" />
   <title>Your results — ADHD screening · brainScreener</title>
+  <meta name="description" content="Your result from the ASRS-based ADHD self-screening on brainScreener. Anonymous, free, and not a diagnosis.">
   <meta name="robots" content="noindex" />
   <link rel="canonical" href="https://brainonbnb.com/brainscreener/adhd-result.html" />
   <meta property="og:type" content="website" />
@@ -7065,6 +7076,7 @@ window.TEST_DATA = (function () {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050510" />
   <title>Your character profile — Dark Tetrad · brainScreener</title>
+  <meta name="description" content="Your result from the brainScreener character questionnaire. Anonymous, free, and not a clinical assessment.">
   <meta name="robots" content="noindex" />
   <link rel="canonical" href="https://brainonbnb.com/brainscreener/character-result.html" />
   <meta property="og:type" content="website" />
@@ -7352,6 +7364,16 @@ window.TEST_DATA = (function () {
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#050510">
 <title>WebView Debug</title>
+  <meta property="og:title" content="Debug — brainScreener">
+  <meta property="og:description" content="Internal diagnostic page.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/brainscreener/debug-ua">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Debug — brainScreener">
+  <meta name="twitter:description" content="Internal diagnostic page.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="description" content="Internal diagnostic page.">
 <style>
   body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 0 0 40px; background: #fff; color: #111; }
   .sticky-bar { position: sticky; top: 0; z-index: 50; background: #16a34a; color: #fff; padding: 12px 16px; font-weight: 700; }
@@ -8353,6 +8375,7 @@ window.TEST_DATA = (function () {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050510" />
   <title>Your results — IQ test · brainScreener</title>
+  <meta name="description" content="Your result from the brainScreener IQ test. Anonymous, free, and for orientation only.">
   <meta name="robots" content="noindex" />
   <link rel="canonical" href="https://brainonbnb.com/brainscreener/iq-result.html" />
   <meta property="og:type" content="website" />

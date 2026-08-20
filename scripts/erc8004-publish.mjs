@@ -9,6 +9,7 @@
 // Usage: node scripts/erc8004-publish.mjs
 import fs from 'node:fs';
 import path from 'node:path';
+import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIR = path.join(ROOT, 'data', 'erc8004');
@@ -73,6 +74,7 @@ const api = {
     supports_x402: c.x402,
   },
   reachability: census?.endpoints || null,
+  independent_operators: null, // filled in below, once operators are grouped
   method: {
     registrations: 'Every id read via tokenURI() on the registry. Ids the nodes refused are retried until they answer; the count above reports what remained unreadable after that, so a percentage here is never a statement about node availability.',
     reachability: 'Every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401, 403 and 404 — only a failed connection counts as dead. MCP endpoints were sent a real tools/list; agent cards had to parse as JSON.',
@@ -111,12 +113,33 @@ const directory = reachable
   }))
   .sort((a, b) => b.speaks.length - a.speaks.length || a.id - b.id);
 
+// Grouped by who actually runs them. 784 reachable ids are 72 operators, and
+// 103 MCP agents are 7 — one provider accounts for 96 of them, all returning
+// the identical five tools. Counting ids describes the registry correctly and
+// describes the market wrongly.
+const operators = groupByOperator(directory);
+api.independent_operators = operators.length;
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
+
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-operators.json'), JSON.stringify({
+  what_this_is: 'The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.',
+  measured_at: api.measured_at,
+  registered_ids: total,
+  reachable_ids: directory.length,
+  independent_operators: operators.length,
+  operators_speaking_a_protocol: operators.filter((o) => o.speaks.length).length,
+  note: 'Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.',
+  operators,
+}, null, 2) + '\n');
+
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-agents.json'), JSON.stringify({
   what_this_is: 'Every ERC-8004 agent on BNB Smart Chain that answered when contacted, with whatever it exposes about itself. Generated from a full registry scan — not self-reported, not curated.',
   measured_at: api.measured_at,
   registered_ids: total,
   answered: directory.length,
   speaking_a_protocol: directory.filter((d) => d.speaks.length).length,
+  independent_operators: operators.length,
+  operator_view: 'https://brainonbnb.com/api-operators.json',
   note: 'Presence here means the address responded and, where stated, the protocol answered. It is not an endorsement, a rating, or a claim that the agent does anything useful.',
   agents: directory,
 }, null, 2) + '\n');
@@ -129,49 +152,47 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (ch) => ({ '&':
 // call. The point of the whole exercise is that none of this is self-reported
 // into a form we control — the description comes from the chain, the protocol
 // tags come from having spoken to it.
-const liveRows = reachable
+const liveRows = operators
   .slice()
-  .sort((a, b) => {
-    const rank = (x) => (x.live?.mcp ? 2 : 0) + (x.live?.a2a ? 1 : 0);
-    return rank(b) - rank(a) || a.id - b.id;
-  })
   .slice(0, 60)
-  .map((r) => {
-    const reg = registrations[r.id] || {};
+  .map((o) => {
     const tags = [
-      r.live?.mcp ? `<span class="rg-t rg-mcp">MCP &middot; ${r.live.mcpTools ?? '?'} tools</span>` : '',
-      r.live?.a2a ? '<span class="rg-t rg-a2a">agent card</span>' : '',
-      (r.x402 || reg.x402) ? '<span class="rg-t rg-x4">x402</span>' : '',
-      ...(reg.trust || []).slice(0, 2).map((t) => `<span class="rg-t rg-tr">${esc(t)}</span>`),
+      o.speaks.includes('mcp') ? `<span class="rg-t rg-mcp">MCP &middot; ${o.tools?.length ?? '?'} tools</span>` : '',
+      o.speaks.includes('a2a') ? '<span class="rg-t rg-a2a">agent card</span>' : '',
+      o.speaks.includes('x402') ? '<span class="rg-t rg-x4">x402</span>' : '',
+      ...(o.trust_models || []).slice(0, 2).map((t) => `<span class="rg-t rg-tr">${esc(t)}</span>`),
     ].filter(Boolean).join('');
 
-    const caps = r.live?.tools?.length
-      ? `<div class="rg-caps">${r.live.tools.slice(0, 8).map((t) => `<code title="${esc(t.description)}">${esc(t.name)}</code>`).join(' ')}${r.live.tools.length > 8 ? ` <span class="rg-more">+${r.live.tools.length - 8}</span>` : ''}</div>`
-      : r.live?.skills?.length
-        ? `<div class="rg-caps">${r.live.skills.slice(0, 8).map((x) => `<code>${esc(x)}</code>`).join(' ')}</div>`
+    const caps = o.tools?.length
+      ? `<div class="rg-caps">${o.tools.slice(0, 8).map((t) => `<code title="${esc(t.description)}">${esc(t.name)}</code>`).join(' ')}${o.tools.length > 8 ? ` <span class="rg-more">+${o.tools.length - 8}</span>` : ''}</div>`
+      : o.skills?.length
+        ? `<div class="rg-caps">${o.skills.slice(0, 8).map((x) => `<code>${esc(x)}</code>`).join(' ')}</div>`
         : '';
 
-    // Logos are third-party URLs on hosts we do not control, so they are lazy,
-    // sized, and disappear rather than leaving a broken-image box if the host
-    // is gone — which, on this list, is a realistic outcome.
-    const logo = reg.image
-      ? `<img class="rg-logo" src="${esc(reg.image)}" alt="" loading="lazy" decoding="async" width="34" height="34" onerror="this.remove()">`
+    // Logos are third-party URLs on hosts we do not control: lazy, sized, and
+    // they remove themselves rather than leaving a broken-image box.
+    const logo = o.image
+      ? `<img class="rg-logo" src="${esc(o.image)}" alt="" loading="lazy" decoding="async" width="34" height="34" onerror="this.remove()">`
       : '<span class="rg-logo rg-logo-none" aria-hidden="true"></span>';
 
-    const desc = reg.description
-      ? `<div class="rg-desc">${esc(reg.description.slice(0, 190))}${reg.description.length > 190 ? '&hellip;' : ''}</div>`
+    const desc = o.description
+      ? `<div class="rg-desc">${esc(o.description.slice(0, 190))}${o.description.length > 190 ? '&hellip;' : ''}</div>`
       : '';
 
-    const ep = (r.endpoints || [])[0] || '';
-    const epHost = ep.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    // How many registry ids one operator runs is worth showing, because it is
+    // the difference between a service and a fleet of identical clones — and
+    // because a reader counting rows would otherwise be counting the wrong thing.
+    const fleet = o.instances > 1
+      ? `<span class="rg-fleet">${fmt(o.instances)} ids${o.distinct_capabilities > 1 ? `, ${o.distinct_capabilities} variants` : ', identical'}</span>`
+      : '';
 
     return `<tr>
-      <td class="rg-id">#${r.id}</td>
+      <td class="rg-id">${esc(o.operator)}${fleet}</td>
       <td class="rg-agent">
-        <div class="rg-head">${logo}<div class="rg-nm"><b>${esc(r.name || reg.name) || '<i>unnamed</i>'}</b>${tags}</div></div>
+        <div class="rg-head">${logo}<div class="rg-nm"><b>${esc(o.name) || '<i>unnamed</i>'}</b>${tags}</div></div>
         ${desc}${caps}
       </td>
-      <td class="rg-ep"><a href="${esc(ep)}" target="_blank" rel="noopener nofollow">${esc(epHost.slice(0, 46))}</a></td>
+      <td class="rg-ep"><a href="${esc((o.endpoints || [])[0] || '')}" target="_blank" rel="noopener nofollow">${esc(((o.endpoints || [])[0] || '').replace(/^https?:\/\//i, '').replace(/\/$/, '').slice(0, 46))}</a></td>
     </tr>`;
   }).join('');
 
@@ -204,23 +225,40 @@ const page = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ERC-8004 Registry Census — how many BNB Chain agents actually answer?</title>
-<meta name="description" content="Every agent id in the ERC-8004 registry on BNB Chain, read one at a time, then every endpoint contacted. How many of ${fmt(total)} registered agents are actually reachable.">
-<meta property="og:title" content="${fmt(total)} agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) : 'How many'} answer.">
+<title>Brain Plaza — the AI agents on BNB Chain that actually answer</title>
+<meta name="description" content="Brain Plaza reads every ERC-8004 agent on BNB Chain and contacts every endpoint they name. Who is actually running, what they can do, and how to reach them.">
+<meta property="og:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) : 'few'} answer">
 <meta property="og:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named. Full method, full data, checkable.">
 <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
 <meta property="og:url" content="https://brainonbnb.com/registry">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brain On BNB AI">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${fmt(total)} agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) : 'How many'} answer.">
+<meta name="twitter:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) : 'few'} answer">
 <meta name="twitter:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named.">
 <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-<link rel="icon" href="/favicon.ico">
+<link rel="icon" type="image/png" href="/favicon.png?v=4">
+<link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
+<link rel="apple-touch-icon" href="/logo.png?v=4">
 <link rel="stylesheet" href="/fonts.css?v=1">
-<link rel="stylesheet" href="/styles.css?v=23">
+<link rel="stylesheet" href="/styles.css?v=27">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
+  /* nav/.nav/.nb live in styles.css, but .back-btn and .brand-link do not —
+     they are inline in scanner.html, so every sub-page carries its own copy.
+     Without them the browser paints both as default blue links, which is what
+     it was doing here. Same values, not similar ones. */
+  .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+    background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
+    font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
+    transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
+  .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+  .back-btn span{font-size:14px;line-height:1}
+  .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
+    color:var(--gold);white-space:nowrap;text-decoration:none}
+  .brand-link:hover{opacity:.85}
+  @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}}
+
   /* Hero copied from scanner.html's .sc-hero rather than approximated: centred,
      same clamp, same -1px tracking, and the gold gradient on <em> that every
      other headline on this site uses. */
@@ -229,6 +267,9 @@ const page = `<!doctype html>
     font-weight:700;letter-spacing:-1px;line-height:1.14;margin:0}
   .rg-h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
     background-clip:text;-webkit-background-clip:text;color:transparent}
+  .rg-sub2{display:block;margin-top:12px;font-size:.9rem;font-weight:400;letter-spacing:0;
+    color:var(--muted);line-height:1.5}
+  .rg-fleet{display:block;margin-top:3px;font-size:.66rem;opacity:.75;white-space:nowrap}
   .rg-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
   .rg-when{color:var(--muted);font-size:.72rem;margin:18px auto 0;text-align:center}
   /* Metric tiles use the dashboard's own numbers treatment (.lqm/.lqv/.lql/.lqs
@@ -299,8 +340,15 @@ const page = `<!doctype html>
   .rg-fix li{font-size:.88rem;line-height:1.65;color:var(--muted)}
   .rg-fix li b{color:var(--fg)}
   .rg-fix code{font-size:.78rem;color:var(--acc,var(--gold))}
+  /* Every link on the page, not just the ones in prose. Anything unstyled
+     falls back to the browser's default blue, which on this palette reads as
+     a mistake — and there were several, in the fix-it list and the footer. */
+  .rg-box a, .rg-hero a, .rg-note a, footer .fm a{
+    color:var(--acc,var(--gold));text-decoration:none;
+    border-bottom:1px solid rgba(var(--accs,240,185,11),.35);white-space:normal}
+  .rg-box a:hover, .rg-note a:hover, footer .fm a:hover{border-bottom-color:var(--acc,var(--gold))}
+  .rg-ep a{border-bottom:none}
   .rg-method p{font-size:.86rem;color:var(--muted);line-height:1.72;margin:0 0 12px}
-  .rg-method a{color:var(--acc,var(--gold))}
   .rg-filter{width:100%;max-width:340px;margin-bottom:14px;padding:9px 13px;border-radius:11px;
     border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--fg);font:inherit;font-size:.85rem}
   .rg-filter:focus{outline:none;border-color:rgba(var(--accs,240,185,11),.45)}
@@ -318,15 +366,15 @@ const page = `<!doctype html>
        site the next time either is touched. -->
   <nav><div class="nav">
     <a class="back-btn" href="/#agents" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
-    <a class="brand-link" href="/registry">BOBAI Registry Census</a>
+    <a class="brand-link" href="/registry">Brain Plaza</a>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
 
   <section class="sec b-violet" style="margin-top:86px">
-    <div class="blk-head"><span class="blk-tag">Census &middot; ERC-8004 on BNB Chain</span><span class="blk-line"></span></div>
+    <div class="blk-head"><span class="blk-tag">Brain Plaza &middot; ERC-8004 on BNB Chain</span><span class="blk-line"></span></div>
 
     <div class="rg-hero">
-      <h1 class="rg-h1">${fmt(total)} agents registered on BNB Chain.<br><em>${reach ? fmt(reach.reachable) + ' of them answer.' : 'We asked every one of them.'}</em></h1>
+      <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2">${fmt(total)} agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' run them.' : 'We asked every one.'}</span></h1>
       <p class="rg-lead">ERC-8004 gives an AI agent an identity on-chain, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
       <p class="rg-lead">So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. Here is the working core, and how to join it.</p>
       <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
@@ -359,10 +407,10 @@ const page = `<!doctype html>
     </div>
 
     ${liveRows ? `<div class="rg-box">
-      <h2>The ones that answered</h2>
+      <h2>Who is actually out there</h2>
       <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first 60 of ${fmt(reachable.length)}; the rest are in the data file.` : ''}</p>
       <input class="rg-filter" id="rg-q" type="search" placeholder="Filter by name, tool or endpoint…" aria-label="Filter agents">
-      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>ID</th><th>Agent</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
+      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Operator</th><th>What it is &amp; what it can do</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
 ${liveRows}
       </tbody></table></div></div>
       <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>

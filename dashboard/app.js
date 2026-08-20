@@ -912,8 +912,19 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
   if(!el('ag-asked')) return;
 
   const nf = n => Number(n).toLocaleString('en-US');
-  const li = (b, s, code) =>
-    `<li><b>${b}</b>${code?`<code>${code}</code>`:''}<span>${s}</span></li>`;
+
+  // The footer already had this right: a named link, not a printed URL. The
+  // name of the thing IS the link, so there is nothing to read twice and
+  // nothing to wrap badly. Only commands stay verbatim — a command you cannot
+  // copy character for character is useless.
+  const li = (name, desc, w) => {
+    const isCmd = w && !/^(https?:\/\/|POST |GET )/i.test(w);
+    const url = w && /^(POST|GET)\s+/i.test(w) ? w.replace(/^\w+\s+/, '') : w;
+    const head = (url && !isCmd)
+      ? `<b><a class="agt-where" href="${url}" rel="noopener">${name}</a></b>`
+      : `<b>${name}</b>`;
+    return `<li>${head}<span>${desc}</span>${isCmd ? `<code class="agt-cmd">${w}</code>` : ''}</li>`;
+  };
 
   fetch('https://agent.brainonbnb.com/stats', {cache:'no-store'})
     .then(r => r.ok ? r.json() : Promise.reject(r.status))
@@ -948,6 +959,19 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
 
       const note = d.money_flow && d.money_flow.note;
       if(note) el('ag-flow-note').textContent = note;
+    })
+    .then(() => fetch('/api-registry.json', {cache:'no-store'}))
+    .then(r => r && r.ok ? r.json() : null)
+    .then(reg => {
+      // The census is a separate file with its own cadence — a full registry
+      // scan, not a live counter — so it is fetched separately and simply
+      // stays a dash if it is not there.
+      if(!reg || !el('ag-census')) return;
+      const total = reg.registered_ids;
+      const live  = reg.reachability && reg.reachability.reachable;
+      if(total) el('ag-census').textContent = nf(total);
+      if(live != null) el('ag-census-sub').innerHTML = nf(live) + ' answer &middot; ' +
+        nf(reg.independent_operators || 0) + ' operators &rarr;';
     })
     .catch(() => {
       ['ag-asked','ag-earned','ag-watch'].forEach(i => { el(i).textContent = '–'; });

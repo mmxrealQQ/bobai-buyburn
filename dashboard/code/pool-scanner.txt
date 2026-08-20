@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 4 files, 2788 lines.
+# one fetch. 4 files, 2810 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2817,3 +2817,25 @@ $('sc-in').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
     .agt-live{margin-top:10px!important;font-size:.8rem!important;color:var(--muted)!important}
     .agt-live a{color:var(--acc,var(--gold))}
     @media(max-width:560px){.agt-n{font-size:1.6rem}}
+    /* The census tile is a link, unlike its four neighbours — same shape, but
+       it has somewhere to go. */
+    .agt-link{text-decoration:none;color:inherit;transition:transform .25s,border-color .25s}
+    .agt-link:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.35)}
+    /* Addresses in the agent list: a link you can read and click, not a wall of
+       protocol prefix. Commands stay verbatim and monospaced — they have to be
+       copyable character for character. */
+    .agt-where{color:var(--gold);text-decoration:none;
+      border-bottom:1px solid rgba(240,185,11,.32)}
+    .agt-where:hover{border-bottom-color:var(--gold)}
+    .agt-verb{display:inline-block;margin:4px 6px 0 0;padding:1px 6px;border-radius:5px;
+      font-size:.66rem;font-weight:700;letter-spacing:.4px;
+      background:rgba(240,185,11,.14);color:var(--gold);vertical-align:2px}
+    .agt-cmd{display:block;margin-top:5px;padding:7px 10px;border-radius:8px;
+      background:rgba(255,255,255,.04);border:1px solid var(--border);
+      font-size:.74rem;color:var(--gold);word-break:break-all;user-select:all}
+
+    /* Links in the agents block stay gold like the footer, not the block's
+       violet accent — the user's call, and it keeps every link on the site
+       reading the same colour regardless of which block it sits in. */
+    #agents a, #agents .agt-live a, #agents .agt-note a{color:var(--gold)}
+    #agents .agt-live a{border-bottom:1px solid rgba(240,185,11,.3);text-decoration:none}

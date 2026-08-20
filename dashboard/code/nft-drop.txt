@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1250 lines.
+# one fetch. 10 files, 1251 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -268,6 +268,7 @@ footer a:hover{color:var(--gold)}
 </style>
 </head>
 <body>
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
 <div class="bg-grad"></div>
 <div class="page">
 <nav><div class="nav">

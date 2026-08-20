@@ -152,8 +152,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=23" as="style">
-  <link rel="stylesheet" href="styles.css?v=23">
+  <link rel="preload" href="styles.css?v=27" as="style">
+  <link rel="stylesheet" href="styles.css?v=27">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -824,7 +824,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">4 files &middot; 2,788 lines &middot; 59 KB</span>
+          <span class="lib-m">4 files &middot; 2,810 lines &middot; 59 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -847,7 +847,7 @@
             <span class="lib-t">NFT Buy Drops</span>
             <span class="lib-s">The contract, the metadata server and the collection page.</span>
           </span>
-          <span class="lib-m">10 files &middot; 1,250 lines &middot; 25 KB</span>
+          <span class="lib-m">10 files &middot; 1,251 lines &middot; 25 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -870,7 +870,7 @@
             <span class="lib-t">Worldcup Tipping Game</span>
             <span class="lib-s">A full tournament game that paid out on-chain.</span>
           </span>
-          <span class="lib-m">45 files &middot; 11,114 lines &middot; 0.2 MB</span>
+          <span class="lib-m">45 files &middot; 11,213 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -916,7 +916,7 @@
             <span class="lib-t">brainScreener</span>
             <span class="lib-s">Thirteen self-tests. No accounts, no tracking, no backend.</span>
           </span>
-          <span class="lib-m">52 files &middot; 9,572 lines &middot; 0.2 MB</span>
+          <span class="lib-m">52 files &middot; 9,595 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -939,7 +939,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,317 lines &middot; 31 KB</span>
+          <span class="lib-m">4 files &middot; 1,361 lines &middot; 32 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -995,6 +995,7 @@
       <div class="agt-stat fi"><div class="agt-n" id="ag-earned">&ndash;</div><div class="agt-l">earned from agents</div><div class="agt-s" id="ag-earned-sub">paid in USD1, on-chain</div></div>
       <div class="agt-stat fi"><div class="agt-n" id="ag-watch">&ndash;</div><div class="agt-l">pools being watched</div><div class="agt-s">paid, running around the clock</div></div>
       <div class="agt-stat fi"><div class="agt-n" id="ag-surf">4</div><div class="agt-l">ways in</div><div class="agt-s">skill, MCP, REST, browser</div></div>
+      <a class="agt-stat fi agt-link" href="/registry"><div class="agt-n" id="ag-census">&ndash;</div><div class="agt-l">Brain Plaza</div><div class="agt-s" id="ag-census-sub">every agent on BNB Chain &rarr;</div></a>
     </div>
 
     <div class="agt-cols">
@@ -1024,7 +1025,7 @@
 
     <div class="agt-why fi">
       <p><b>Why this matters more than the amount.</b> Until now every cent this project earned came from its own trading tax &mdash; money moving in a circle. This is the first income that comes from outside it. The sums are small and will stay small for a while; that is not the point. The point is that the circle now has an opening.</p>
-      <p class="agt-live"><a href="/registry">We read the whole ERC-8004 registry on BNB Chain</a> &mdash; every agent id, and every endpoint it claims. Live figures from <a href="https://agent.brainonbnb.com/stats" rel="noopener">agent.brainonbnb.com/stats</a> &mdash; the same endpoint this page reads, so nothing shown here can be a number that endpoint would not give you.</p>
+      <p class="agt-live"><a href="/registry"><b>Brain Plaza</b></a> &mdash; we read every ERC-8004 agent on BNB Chain and contacted every endpoint they name, so you can see who is actually running. Live figures from <a href="https://agent.brainonbnb.com/stats" rel="noopener">agent.brainonbnb.com/stats</a> &mdash; the same endpoint this page reads, so nothing shown here can be a number that endpoint would not give you.</p>
     </div>
   </section>
 
@@ -1141,6 +1142,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=23" defer></script>
+<script src="app.js?v=27" defer></script>
 </body>
 </html>

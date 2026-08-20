@@ -1,0 +1,36 @@
+{
+  "what_this_is": "A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.",
+  "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  "chain": "eip155:56",
+  "measured_at": "2026-08-20T19:50:34.470Z",
+  "registered_ids": 280624,
+  "ids_scanned": 280624,
+  "registrations": {
+    "parses": 156114,
+    "unparsable": 114610,
+    "empty": 9900,
+    "unread_after_retries": 0,
+    "active_flag": 153686,
+    "names_a_service": 2350,
+    "has_http_endpoint": 1844,
+    "endpoint_on_a_real_tld": 1391,
+    "speaks_mcp": 281,
+    "speaks_a2a": 327,
+    "supports_x402": 13808
+  },
+  "reachability": {
+    "claim_an_endpoint": 1844,
+    "probed": 1844,
+    "reachable": 784,
+    "dead": 1060,
+    "answering_mcp": 88,
+    "serving_an_agent_card": 288
+  },
+  "independent_operators": 59,
+  "method": {
+    "registrations": "Every id read via tokenURI() on the registry. Ids the nodes refused are retried until they answer; the count above reports what remained unreadable after that, so a percentage here is never a statement about node availability.",
+    "reachability": "Every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401, 403 and 404 — only a failed connection counts as dead. MCP endpoints were sent a real tools/list; agent cards had to parse as JSON.",
+    "caveat": "Reachability is a snapshot. An endpoint down at that moment is counted as dead, and one that answers may still do nothing useful."
+  },
+  "source": "https://brainonbnb.com/registry"
+}

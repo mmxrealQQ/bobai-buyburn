@@ -659,6 +659,12 @@ async function getWalletBalance(address) {
 }
 
 const MCP_TOOLS = [
+  // Brain Plaza first in the list. An agent that loads this server should be
+  // able to ask "who else is out there on this chain" without knowing that we
+  // measured it — and this is the only tool here that is about somebody other
+  // than us, which is precisely why it belongs at the top.
+  { name: 'find_agents_on_bnb_chain', description: 'Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against the tools each one returned when asked and the description it wrote on-chain. Not self-reported categories, not a curated list. Use this before assuming no agent exists for a task.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'What you need done, in plain words — e.g. "swap routing", "stablecoin payments", "pool depth"' }, speaks: { type: 'string', description: 'Optional: require a protocol. One or more of mcp, a2a, x402 (comma-separated).' } }, required: ['query'], additionalProperties: false } },
+  { name: 'bnb_agent_census', description: 'Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: how many agents are registered, how many registrations are even readable, how many name an endpoint, how many answer, and how many independent operators run them. Every id read, nothing extrapolated.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_token_info', description: '$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renounced.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -677,6 +683,31 @@ const MCP_TOOLS = [
 
 async function runTool(name, args) {
   switch (name) {
+    case 'find_agents_on_bnb_chain': {
+      const q = encodeURIComponent(String(args?.query || '').slice(0, 200));
+      const sp = args?.speaks ? '&speaks=' + encodeURIComponent(String(args.speaks).slice(0, 40)) : '';
+      const r = await fetch(`https://agent.brainonbnb.com/find?q=${q}${sp}&limit=10`, { signal: AbortSignal.timeout(9000) });
+      if (!r.ok) throw new Error('Brain Plaza search is unavailable right now');
+      return await r.json();
+    }
+    case 'bnb_agent_census': {
+      const r = await fetch('https://brainonbnb.com/api-registry.json', { signal: AbortSignal.timeout(9000) });
+      if (!r.ok) throw new Error('census unavailable');
+      const j = await r.json();
+      return {
+        registered_ids: j.registered_ids,
+        registrations_that_parse: j.registrations?.parses,
+        name_an_endpoint: j.registrations?.has_http_endpoint,
+        answered_when_contacted: j.reachability?.reachable,
+        independent_operators: j.independent_operators,
+        speak_mcp: j.reachability?.answering_mcp,
+        serve_an_agent_card: j.reachability?.serving_an_agent_card,
+        measured_at: j.measured_at,
+        full_data: 'https://brainonbnb.com/api-operators.json',
+        human_readable: 'https://brainonbnb.com/registry',
+        method: j.method,
+      };
+    }
     case 'bobai_token_info': return await getTokenInfo();
     case 'bobai_burned': { const t = await getTokenInfo(); return { symbol: t.symbol, burned: t.burned, note: 'Permanently sent to dead/zero address — irreversible' }; }
     case 'bobai_circulating_supply': return { symbol: 'BOBAI', circulatingSupply: (await getCirculating()).toString() };
@@ -800,7 +831,7 @@ async function handleMcp(request) {
 
 const A2A_CARD = {
   name: 'Brain On BNB AI ($BOBAI)',
-  description: 'Read-only agent surface for $BOBAI — on-chain token info, burns, circulating supply, wallet balances, and official links.',
+  description: 'Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.',
   url: 'https://brainonbnb.com/',
   version: '1.0.0',
   protocolVersion: '0.3.0',
@@ -810,6 +841,19 @@ const A2A_CARD = {
   defaultInputModes: ['text'],
   defaultOutputModes: ['text'],
   skills: [
+    // Brain Plaza first: it is the skill another agent is most likely to want
+    // from us, and the one nothing else on this chain offers. An agent reading
+    // this card should not have to scroll past thirteen token endpoints to
+    // discover that it can ask us who else is out there.
+    { id: 'find_agents', name: 'Find an agent on BNB Chain',
+      description: 'Search every reachable ERC-8004 agent on BNB Smart Chain by capability. Matched against the tools each one returned when asked and the description it wrote on-chain — not self-reported categories. GET https://agent.brainonbnb.com/find?q=<what you need>',
+      tags: ['agents', 'erc-8004', 'discovery', 'mcp', 'bnb-chain', 'broker'] },
+    { id: 'agent_census', name: 'Brain Plaza census',
+      description: 'The state of the ERC-8004 registry on BNB Chain: how many agents are registered, how many answer, who runs them, and what they can do. Full data at https://brainonbnb.com/api-operators.json',
+      tags: ['agents', 'erc-8004', 'census', 'bnb-chain'] },
+    { id: 'pool_depth', name: 'Measure any BSC pool',
+      description: 'What a trade actually costs on any BNB Chain pool: price impact per size, swap fee, and the transfer tax measured from executed trades rather than read off a label. Installable as a skill: npx skills add https://brainonbnb.com',
+      tags: ['defi', 'bsc', 'liquidity', 'trading'] },
     { id: 'token_info', name: 'Token info', description: '$BOBAI contract, supply, decimals, amount burned', tags: ['crypto', 'bsc', 'token'] },
     { id: 'burns', name: 'Burn stats', description: 'Total $BOBAI permanently burned', tags: ['crypto', 'deflationary'] },
     { id: 'wallet_balance', name: 'Wallet balance', description: 'BNB + $BOBAI balance of any BSC wallet', tags: ['crypto', 'bsc'] },

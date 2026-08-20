@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 4,
-   "lines": 2788,
-   "zipBytes": 60423,
-   "txtBytes": 184034,
-   "sha256": "17f6b3aee4af92da",
+   "lines": 2810,
+   "zipBytes": 60823,
+   "txtBytes": 185539,
+   "sha256": "0a561ed3a6c0c3a4",
    "reqs": [
     {
      "what": "A static host",
@@ -301,10 +301,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1250,
-   "zipBytes": 25341,
-   "txtBytes": 66276,
-   "sha256": "100b264677716ae3",
+   "lines": 1251,
+   "zipBytes": 25368,
+   "txtBytes": 66391,
+   "sha256": "affefdbffb9c7e55",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -346,10 +346,10 @@
    "title": "Worldcup Tipping Game",
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
-   "lines": 11114,
-   "zipBytes": 183355,
-   "txtBytes": 585397,
-   "sha256": "d9f6199f3453674d",
+   "lines": 11213,
+   "zipBytes": 185099,
+   "txtBytes": 594375,
+   "sha256": "6d08ccff9ad85c6d",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",
@@ -458,10 +458,10 @@
    "title": "brainScreener",
    "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
    "files": 52,
-   "lines": 9572,
-   "zipBytes": 178888,
-   "txtBytes": 504985,
-   "sha256": "a80d70f1e3e9d2f9",
+   "lines": 9595,
+   "zipBytes": 179357,
+   "txtBytes": 506966,
+   "sha256": "735a27aee599faca",
    "reqs": [
     {
      "what": "A static host",
@@ -535,10 +535,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1317,
-   "zipBytes": 31924,
-   "txtBytes": 89121,
-   "sha256": "bb1a346aae83582c",
+   "lines": 1361,
+   "zipBytes": 33242,
+   "txtBytes": 93358,
+   "sha256": "1943a29242c8fe66",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

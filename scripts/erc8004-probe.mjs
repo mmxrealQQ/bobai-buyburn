@@ -35,14 +35,21 @@ const LIMIT = limitArg >= 0 ? Number(args[limitArg + 1]) : Infinity;
 const CONCURRENCY = 12;
 const TIMEOUT = 12000;
 
-if (!fs.existsSync(HITS)) {
+// A census that reports zero MCP agents is either a finding about the ecosystem
+// or a broken detector, and from the outside those look identical. --self-test
+// resolves that: it runs the same detection against our own registration, which
+// definitely exposes MCP and an agent card. If it comes back negative, no other
+// number in this file is worth reading.
+const SELF_TEST = args.includes('--self-test');
+
+if (!SELF_TEST && !fs.existsSync(HITS)) {
   console.error(`No scan output at ${path.relative(ROOT, HITS)} — run erc8004-scan.mjs first.`);
   process.exit(1);
 }
 
 const seen = new Set();
 const agents = [];
-for (const line of fs.readFileSync(HITS, 'utf8').split('\n')) {
+for (const line of (SELF_TEST ? '' : fs.readFileSync(HITS, 'utf8')).split('\n')) {
   if (!line.trim()) continue;
   try {
     const a = JSON.parse(line);
@@ -51,6 +58,14 @@ for (const line of fs.readFileSync(HITS, 'utf8').split('\n')) {
     agents.push(a);
   } catch { /* skip malformed line */ }
 }
+// Our own registration, used by --self-test. Known to expose MCP with a
+// double-digit tool count and an agent card, so it is the one case where the
+// expected answer is certain — and therefore the only honest way to tell a
+// finding of zero from a detector that cannot detect.
+if (SELF_TEST) agents.push({
+  id: 49467, name: 'Brain On BNB AI ($BOBAI)',
+  endpoints: ['https://brainonbnb.com/', 'https://brainonbnb.com/mcp'],
+});
 console.log(`${agents.length.toLocaleString('en-US')} agents claim an endpoint`);
 
 const probeOne = async (url, opts = {}) => {
@@ -77,17 +92,65 @@ async function probeAgent(a) {
     if (!res.ok) continue;
     result.reachable = true;
 
-    // An agent card that parses is proof of an agent, not just a server.
+    // An agent card that parses is proof of an agent, not just a server —
+    // and its skills are the only machine-readable statement of what the
+    // agent actually does. A directory that lists names is the thing this
+    // census exists to be better than, so the capabilities get recorded.
     if (/agent-card\.json$/i.test(url) || /\/\.well-known\//i.test(url)) {
       try {
         const j = await res.r.clone().json();
-        if (j && (j.name || j.protocolVersion || j.skills)) result.live.a2a = true;
+        if (j && (j.name || j.protocolVersion || j.skills)) {
+          result.live.a2a = true;
+          if (Array.isArray(j.skills)) {
+            result.live.skills = j.skills
+              .map((s) => (s && typeof s === 'object' ? s.name || s.id : s))
+              .filter((s) => typeof s === 'string')
+              .slice(0, 25);
+          }
+          if (typeof j.description === 'string') result.live.cardDescription = j.description.slice(0, 240);
+        }
       } catch { /* served something that was not a card */ }
     }
   }
 
-  // MCP is spoken to rather than assumed from the URL shape.
-  const mcpUrl = a.endpoints.find((e) => /\/mcp(\/|$)/i.test(e));
+  // Most registrations name a bare domain, not the path to the agent card —
+  // so looking only at what was written down finds almost nothing. The
+  // well-known locations are where an A2A card is supposed to live, so a
+  // reachable host gets asked directly. This is the difference between
+  // "nobody publishes a card" and "nobody writes the path in the registry",
+  // and those are very different findings.
+  if (result.reachable && !result.live.a2a) {
+    const hosts = [...new Set(a.endpoints.map((e) => { try { return new URL(e).origin; } catch { return null; } }).filter(Boolean))];
+    for (const origin of hosts.slice(0, 2)) {
+      for (const p of ['/.well-known/agent-card.json', '/.well-known/agent.json', '/.well-known/ai-agent.json']) {
+        const res = await probeOne(origin + p);
+        if (!res.ok || res.status >= 400) continue;
+        try {
+          const j = await res.r.json();
+          if (j && (j.name || j.protocolVersion || j.skills)) {
+            result.live.a2a = true;
+            result.live.cardUrl = origin + p;
+            if (Array.isArray(j.skills)) {
+              result.live.skills = j.skills
+                .map((s) => (s && typeof s === 'object' ? s.name || s.id : s))
+                .filter((s) => typeof s === 'string').slice(0, 25);
+            }
+            if (typeof j.description === 'string') result.live.cardDescription = j.description.slice(0, 240);
+          }
+        } catch { /* not a card */ }
+        if (result.live.a2a) break;
+      }
+      if (result.live.a2a) break;
+    }
+  }
+
+  // MCP is spoken to rather than assumed from the URL shape. Same reasoning as
+  // the card lookup: an agent that runs MCP at /mcp on its own domain will
+  // usually have registered only the domain.
+  const mcpUrl = a.endpoints.find((e) => /\/mcp(\/|$)/i.test(e))
+    || (result.reachable ? (() => {
+      try { return new URL(a.endpoints[0]).origin + '/mcp'; } catch { return null; }
+    })() : null);
   if (mcpUrl) {
     const res = await probeOne(mcpUrl, {
       method: 'POST',
@@ -101,6 +164,16 @@ async function probeAgent(a) {
         if (j && j.result && Array.isArray(j.result.tools)) {
           result.live.mcp = true;
           result.live.mcpTools = j.result.tools.length;
+          // The tool names are the whole point. "This agent exists" is a
+          // directory entry; "this agent exposes these fourteen callable
+          // tools, and here is what each is for" is something another agent
+          // can act on without a human in the loop.
+          result.live.tools = j.result.tools
+            .map((t) => t && typeof t.name === 'string'
+              ? { name: t.name.slice(0, 60), description: String(t.description || '').slice(0, 160) }
+              : null)
+            .filter(Boolean)
+            .slice(0, 40);
           result.reachable = true;
         }
       } catch { /* answered, but not with MCP */ }
@@ -130,6 +203,20 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
   }
 }));
 out.end();
+
+if (SELF_TEST) {
+  const r = JSON.parse(fs.readFileSync(OUT, 'utf8').trim().split('\n')[0]);
+  console.log('\n--- self-test against our own agent ---');
+  console.log('  reachable  :', r.reachable);
+  console.log('  MCP        :', !!r.live.mcp, r.live.mcpTools ? `(${r.live.mcpTools} tools)` : '');
+  console.log('  agent card :', !!r.live.a2a, r.live.cardUrl || '');
+  console.log('  tools      :', (r.live.tools || []).slice(0, 5).map((t) => t.name).join(', ') || '(none)');
+  const good = r.reachable && r.live.mcp && (r.live.tools || []).length >= 10;
+  console.log(good
+    ? '\n  DETECTOR WORKS — a zero elsewhere is a finding, not a bug\n'
+    : '\n  DETECTOR BROKEN — fix this before publishing any count\n');
+  process.exit(good ? 0 : 1);
+}
 
 // ---- census -----------------------------------------------------------
 let scan = {};

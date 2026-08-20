@@ -139,42 +139,56 @@ Refusing to publish: census says ${reach.reachable} reachable, the list holds ${
   process.exit(1);
 }
 
+// The page. Built on the same furniture as every other page on the site —
+// nav, blk-head section, footer, shared stylesheet — because a page that looks
+// like it was bolted on reads like it was bolted on. The only bespoke CSS here
+// is for the funnel and the agent table, which nothing else on the site needs.
 const page = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ERC-8004 Registry Census — BNB Smart Chain | Brain On BNB AI</title>
-<meta name="description" content="Every agent id in the ERC-8004 identity registry on BNB Chain, read and counted: how many registrations parse, how many name an endpoint, and how many of those endpoints actually answer.">
+<title>ERC-8004 Registry Census — how many BNB Chain agents actually answer?</title>
+<meta name="description" content="Every agent id in the ERC-8004 registry on BNB Chain, read one at a time, then every endpoint contacted. How many of ${fmt(total)} registered agents are actually reachable.">
+<meta property="og:title" content="${fmt(total)} agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) : 'How many'} answer.">
+<meta property="og:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named. Full method, full data, checkable.">
+<meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+<meta property="og:url" content="https://brainonbnb.com/registry">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brain On BNB AI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${fmt(total)} agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) : 'How many'} answer.">
+<meta name="twitter:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named.">
+<meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
 <link rel="icon" href="/favicon.ico">
 <link rel="stylesheet" href="/fonts.css?v=1">
 <link rel="stylesheet" href="/styles.css?v=23">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
-  .rg-wrap{max-width:1000px;margin:0 auto;padding:92px 20px 80px}
-  .rg-h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(1.7rem,4vw,2.6rem);line-height:1.15;margin:0 0 14px}
-  .rg-h1 em{color:var(--gold);font-style:normal}
-  .rg-lead{color:var(--muted);font-size:1rem;line-height:1.7;max-width:70ch;margin:0 0 8px}
-  .rg-when{color:var(--muted);font-size:.8rem;margin:18px 0 30px}
-  .rg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:0 0 16px}
-  .rg-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;position:relative;overflow:hidden}
-  .rg-card::before{content:'';position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
-  .rg-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.9rem;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums;line-height:1.1}
+  .rg-h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(1.6rem,3.6vw,2.4rem);line-height:1.18;margin:0 0 16px}
+  .rg-h1 em{color:var(--acc,var(--gold));font-style:normal}
+  .rg-lead{color:var(--muted);font-size:1rem;line-height:1.72;max-width:70ch;margin:0 0 10px}
+  .rg-when{color:var(--muted);font-size:.8rem;margin:20px 0 4px}
+  .rg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:26px 0 16px}
+  .rg-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:18px;padding:20px;position:relative;overflow:hidden}
+  .rg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--acc,var(--gold)),transparent)}
+  .rg-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.9rem;font-weight:700;color:var(--acc,var(--gold));line-height:1.1;font-variant-numeric:tabular-nums}
   .rg-l{margin-top:6px;font-size:.9rem}
   .rg-s{margin-top:3px;font-size:.78rem;color:var(--muted);line-height:1.5}
-  .rg-funnel{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;margin:16px 0}
-  .rg-funnel h2{font-size:1.05rem;margin:0 0 4px}
-  .rg-funnel > p{color:var(--muted);font-size:.85rem;margin:0 0 18px;line-height:1.6}
-  .rg-step{display:grid;grid-template-columns:1fr;gap:5px;margin-bottom:15px}
+  .rg-box{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:24px;margin:14px 0}
+  .rg-box h2{font-size:1.05rem;margin:0 0 4px}
+  .rg-box > p.rg-sub{color:var(--muted);font-size:.85rem;margin:0 0 18px;line-height:1.6}
+  .rg-step{display:grid;gap:5px;margin-bottom:15px}
   .rg-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .rg-top b{font-size:.92rem;font-weight:600}
   .rg-top span{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
   .rg-bar{height:9px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
-  .rg-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--gold),#ffd35c)}
+  .rg-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc,var(--gold)),#ffd35c)}
   .rg-note{font-size:.78rem;color:var(--muted);line-height:1.55}
+  .rg-note code{font-size:.74rem}
   table.rg{width:100%;border-collapse:collapse;font-size:.85rem}
   .rg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  table.rg th{text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 10px 10px;font-weight:600}
+  table.rg th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 10px 10px;font-weight:600}
   table.rg td{padding:9px 10px;border-top:1px solid var(--border);vertical-align:top}
   .rg-id{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
   .rg-ep{color:var(--muted);font-size:.78rem;word-break:break-all}
@@ -185,64 +199,102 @@ const page = `<!doctype html>
   .rg-caps{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
   .rg-caps code{font-size:.7rem;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.05);color:var(--muted)}
   .rg-more{font-size:.7rem;color:var(--muted);align-self:center}
-  .rg-method{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;margin-top:16px}
-  .rg-method h2{font-size:1.05rem;margin:0 0 12px}
-  .rg-method p{font-size:.86rem;color:var(--muted);line-height:1.7;margin:0 0 12px}
-  .rg-method a{color:var(--gold)}
-  .rg-back{display:inline-block;margin-bottom:26px;font-size:.85rem;color:var(--muted);text-decoration:none}
-  .rg-back:hover{color:var(--gold)}
+  .rg-method p{font-size:.86rem;color:var(--muted);line-height:1.72;margin:0 0 12px}
+  .rg-method a{color:var(--acc,var(--gold))}
+  .rg-filter{width:100%;max-width:340px;margin-bottom:14px;padding:9px 13px;border-radius:11px;
+    border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--fg);font:inherit;font-size:.85rem}
+  .rg-filter:focus{outline:none;border-color:rgba(var(--accs,240,185,11),.45)}
+  .rg-empty{font-size:.85rem;color:var(--muted);padding:14px 10px}
+  @media(max-width:560px){.rg-n{font-size:1.6rem}}
 </style>
 </head>
 <body>
-<div class="rg-wrap">
-  <a class="rg-back" href="/#agents">&larr; Brain On BNB AI</a>
-  <h1 class="rg-h1">${fmt(total)} agents are registered on BNB Chain.<br><em>${reach ? fmt(reach.reachable) : '—'} of them answer.</em></h1>
-  <p class="rg-lead">ERC-8004 gives every AI agent an on-chain identity, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
-  <p class="rg-lead">So we read the whole registry — every id, one at a time — and then contacted every endpoint it named.</p>
-  <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC · ${fmt(scanned)} of ${fmt(total)} ids read · ${c.unread} unreadable after retries</p>
 
-  <div class="rg-grid">
-    <div class="rg-card"><div class="rg-n">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s">what the headline number counts</div></div>
-    <div class="rg-card"><div class="rg-n">${fmt(c.valid)}</div><div class="rg-l">readable registrations</div><div class="rg-s">${p1(c.valid)} of them parse at all</div></div>
-    <div class="rg-card"><div class="rg-n">${fmt(c.withHttpEndpoint)}</div><div class="rg-l">name an endpoint</div><div class="rg-s">${p1(c.withHttpEndpoint)} — an address you could call</div></div>
-    <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '—'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of everything registered' : 'probe pending'}</div></div>
-  </div>
+  <nav><div class="nav">
+    <a class="back-btn" href="/#agents" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="brand-link" href="/registry">BOBAI Registry Census</a>
+    <a class="nb" href="/api-agents.json">Data &rarr;</a>
+  </div></nav>
 
-  <div class="rg-funnel">
-    <h2>From a number to a working agent</h2>
-    <p>Each bar is a share of all ${fmt(total)} registered ids. Nothing here is extrapolated — every id was read.</p>
-    ${[
-      ['Registered on-chain', total, 'An id exists. That is all this proves.'],
-      ['Registration parses', c.valid, `${fmt(c.unparsable)} contain something that is not a readable document, ${fmt(c.empty)} are empty.`],
-      ['Names any service', c.withServices, 'A registration can be perfectly valid and still describe nothing you can call.'],
-      ['Has an HTTP endpoint', c.withHttpEndpoint, 'An address, not yet a promise that it exists.'],
-      ['Endpoint on a real TLD', c.plausibleEndpoint, `${fmt(c.withHttpEndpoint - c.plausibleEndpoint)} point at domains that cannot resolve — things like <code>.agent</code>, which was never a TLD.`],
-      ...(reach ? [['Answers when contacted', reach.reachable, 'Any HTTP response counts, including 401 and 404 — something is listening.']] : []),
-      ...(reach ? [['Answers as an agent', (reach.answering_mcp || 0) + (reach.serving_an_agent_card || 0), 'Spoke MCP or served a parsable agent card. Not just a web server — an agent.']] : []),
-    ].map(([label, n, note]) => `
-    <div class="rg-step">
-      <div class="rg-top"><b>${label}</b><span>${fmt(n)} &middot; ${p1(n, total)}</span></div>
-      <div class="rg-bar"><div class="rg-fill" style="width:${Math.max(0.35, pct(n, total)).toFixed(3)}%"></div></div>
-      <div class="rg-note">${note}</div>
-    </div>`).join('')}
-  </div>
+  <section class="sec b-violet" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Census &middot; ERC-8004 on BNB Chain</span><span class="blk-line"></span></div>
 
-  ${liveRows ? `<div class="rg-funnel">
-    <h2>The ones that answered</h2>
-    <p>Every agent below responded when we contacted it. This is the list the headline number is supposed to describe.</p>
-    <div class="rg-scroll"><table class="rg"><thead><tr><th>ID</th><th>Agent</th><th>Endpoint</th></tr></thead><tbody>
+    <h1 class="rg-h1">${fmt(total)} agents are registered on BNB Chain.<br><em>${reach ? fmt(reach.reachable) + ' of them answer.' : 'Almost none of them answer.'}</em></h1>
+    <p class="rg-lead">ERC-8004 gives an AI agent an identity on-chain, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
+    <p class="rg-lead">So we read the whole registry &mdash; every id, one at a time &mdash; and then contacted every endpoint it named. This is what is actually there.</p>
+    <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
+
+    <div class="rg-grid">
+      <div class="rg-card"><div class="rg-n">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s">what the headline counts</div></div>
+      <div class="rg-card"><div class="rg-n">${fmt(c.valid)}</div><div class="rg-l">readable registrations</div><div class="rg-s">${p1(c.valid)} parse at all</div></div>
+      <div class="rg-card"><div class="rg-n">${fmt(c.withHttpEndpoint)}</div><div class="rg-l">name an endpoint</div><div class="rg-s">${p1(c.withHttpEndpoint)} &mdash; an address you could call</div></div>
+      <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of everything registered' : 'probe pending'}</div></div>
+    </div>
+
+    <div class="rg-box">
+      <h2>From a number to a working agent</h2>
+      <p class="rg-sub">Each bar is a share of all ${fmt(total)} registered ids. Nothing is extrapolated &mdash; every id was read.</p>
+      ${[
+        ['Registered on-chain', total, 'An id exists. That is all this proves.'],
+        ['Registration parses', c.valid, `${fmt(c.unparsable)} hold something that is not a readable document; ${fmt(c.empty)} are empty.`],
+        ['Names any service', c.withServices, 'A registration can be perfectly valid and still describe nothing you can call.'],
+        ['Has an HTTP endpoint', c.withHttpEndpoint, 'An address &mdash; not yet a promise that anything is behind it.'],
+        ['Endpoint on a real TLD', c.plausibleEndpoint, `${fmt(Math.max(0, c.withHttpEndpoint - c.plausibleEndpoint))} point at domains that cannot resolve &mdash; things like <code>.agent</code>, which was never a TLD.`],
+        ...(reach ? [['Answers when contacted', reach.reachable, 'Any HTTP response counts, including 401 and 404 &mdash; something is listening.']] : []),
+        ...(reach ? [['Answers as an agent', (reach.answering_mcp || 0) + (reach.serving_an_agent_card || 0), 'Spoke MCP, or served a parsable agent card. Not just a web server.']] : []),
+      ].map(([label, n, note]) => `
+      <div class="rg-step">
+        <div class="rg-top"><b>${label}</b><span>${fmt(n)} &middot; ${p1(n, total)}</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:${Math.max(0.35, pct(n, total)).toFixed(3)}%"></div></div>
+        <div class="rg-note">${note}</div>
+      </div>`).join('')}
+    </div>
+
+    ${liveRows ? `<div class="rg-box">
+      <h2>The ones that answered</h2>
+      <p class="rg-sub">Every agent below responded when contacted. Where one exposes tools or skills, they are listed as it reported them &mdash; not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first 60 of ${fmt(reachable.length)}; the rest are in the data file.` : ''}</p>
+      <input class="rg-filter" id="rg-q" type="search" placeholder="Filter by name, tool or endpoint…" aria-label="Filter agents">
+      <div class="rg-scroll"><table class="rg"><thead><tr><th>ID</th><th>Agent</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
 ${liveRows}
-    </tbody></table></div>
-  </div>` : ''}
+      </tbody></table></div>
+      <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
+    </div>` : ''}
 
-  <div class="rg-method">
-    <h2>How this was measured</h2>
-    <p><b>Registrations.</b> Every id from 1 to ${fmt(total)} read through <code>tokenURI()</code> on <code>0x8004…a432</code>, in batches of 25 across six public BSC nodes. Ids a node refused were retried until answered — <b>${c.unread}</b> remained unreadable at the end. That distinction matters: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
-    <p><b>Reachability.</b> Every claimed HTTP endpoint contacted once. We counted <i>any</i> HTTP response as reachable — including 401, 403 and 404 — because something is listening at that address, and an agent behind auth is still an agent. Only a failed connection counts as dead. Endpoints claiming MCP were sent a real <code>tools/list</code>; agent cards had to return parsable JSON.</p>
-    <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good.</p>
-    <p>The counts are at <a href="/api-registry.json">/api-registry.json</a>, and every agent that answered — with the tools and skills it exposes — is at <a href="/api-agents.json">/api-agents.json</a>. Both are plain JSON with CORS open, so another agent can read them directly. The scanner is in <a href="/#library">The Library</a> — run it yourself and check.</p>
+    <div class="rg-box rg-method">
+      <h2>How this was measured</h2>
+      <p><b>Registrations.</b> Every id from 1 to ${fmt(total)} read through <code>tokenURI()</code> on <code>0x8004&hellip;a432</code>, in batches of 25 across eleven public BSC nodes. Ids a node refused were retried until answered &mdash; <b>${c.unread}</b> stayed unreadable. That distinction is the whole reliability of this page: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
+      <p><b>Reachability.</b> Every claimed endpoint contacted once. <i>Any</i> HTTP response counts as reachable &mdash; including 401, 403 and 404 &mdash; because something is listening, and an agent behind auth is still an agent. Only a failed connection counts as dead. Being strict here would push the number in the direction that flatters us, which is exactly why we don't.</p>
+      <p><b>Capabilities.</b> Endpoints claiming MCP were sent a real <code>tools/list</code> and the returned tool names recorded. Agent cards had to parse as JSON. Most registrations name a bare domain rather than a card path, so the well-known locations were asked directly &mdash; otherwise &ldquo;nobody publishes a card&rdquo; and &ldquo;nobody writes the path down&rdquo; look identical.</p>
+      <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good. It is not a ranking and not an endorsement.</p>
+      <p>Counts: <a href="/api-registry.json">/api-registry.json</a> &middot; every agent that answered, with its tools: <a href="/api-agents.json">/api-agents.json</a>. Both plain JSON, CORS open, so another agent can read them directly. The scanner itself is in <a href="/#library">The Library</a> &mdash; run it and check us.</p>
+    </div>
+  </section>
+
+<footer><div class="fi2">
+  <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
+  <div class="fm">
+    <p>Read from BNB Chain directly &middot; registry <a href="https://bscscan.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" target="_blank" rel="noopener">0x8004&hellip;a432</a> &middot; method and raw data linked above</p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; not financial advice</p>
   </div>
-</div>
+</div></footer>
+
+<script>
+  // Filter only — no data fetching, nothing that can fail and leave the page
+  // half-built. If this script never runs, every row is still on the page.
+  (function(){
+    var q=document.getElementById('rg-q'),b=document.getElementById('rg-body'),n=document.getElementById('rg-none');
+    if(!q||!b)return;
+    var rows=[].slice.call(b.rows);
+    q.addEventListener('input',function(){
+      var t=q.value.trim().toLowerCase(),shown=0;
+      rows.forEach(function(r){
+        var hit=!t||r.innerText.toLowerCase().indexOf(t)>-1;
+        r.hidden=!hit; if(hit)shown++;
+      });
+      n.hidden=shown>0;
+    });
+  })();
+</script>
 </body>
 </html>
 `;

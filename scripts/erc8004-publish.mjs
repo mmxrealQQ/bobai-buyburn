@@ -37,6 +37,20 @@ const pct = (n, d = scanned) => (d ? (n / d) * 100 : 0);
 const fmt = (n) => Number(n).toLocaleString('en-US');
 const p1 = (n, d = scanned) => pct(n, d).toFixed(pct(n, d) < 1 ? 2 : 1) + '%';
 
+// An incomplete scan must not be published as if it were a census. This caught
+// a real failure: a stopped background scan kept running and overwrote the
+// finished state with its own older one, leaving the counts 60,000 ids short
+// while every file still parsed and every number still looked plausible. The
+// page would have quietly understated the ecosystem it claims to measure.
+// --partial publishes anyway, for when a snapshot is genuinely wanted.
+if (scanned < total * 0.995 && !process.argv.includes('--partial')) {
+  console.error(`
+Refusing to publish: only ${scanned.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} ids scanned (${((scanned / total) * 100).toFixed(1)}%).`);
+  console.error(`Finish the scan first, or pass --partial to publish a snapshot anyway.
+`);
+  process.exit(1);
+}
+
 // ---- the JSON surface ----------------------------------------------------
 const api = {
   what_this_is: 'A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.',
@@ -265,6 +279,10 @@ const page = `<!doctype html>
   details.rg-method[open] summary::after{content:'2'}
   details.rg-method summary h2{margin:0;font-size:1.05rem}
   details.rg-method[open] summary{margin-bottom:14px}
+  .rg-ask code{display:block;font-size:.84rem;padding:11px 14px;border-radius:11px;
+    background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--acc,var(--gold));
+    word-break:break-all;margin-bottom:12px}
+  .rg-ask code em{font-style:normal;color:var(--muted)}
   .rg-fix{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:12px}
   .rg-fix li{font-size:.88rem;line-height:1.65;color:var(--muted)}
   .rg-fix li b{color:var(--fg)}
@@ -328,13 +346,23 @@ const page = `<!doctype html>
 
     ${liveRows ? `<div class="rg-box">
       <h2>The ones that answered</h2>
-      <p class="rg-sub">Every agent below responded when contacted. Where one exposes tools or skills, they are listed as it reported them &mdash; not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first 60 of ${fmt(reachable.length)}; the rest are in the data file.` : ''}</p>
+      <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first 60 of ${fmt(reachable.length)}; the rest are in the data file.` : ''}</p>
       <input class="rg-filter" id="rg-q" type="search" placeholder="Filter by name, tool or endpoint…" aria-label="Filter agents">
       <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>ID</th><th>Agent</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
 ${liveRows}
       </tbody></table></div></div>
       <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
     </div>` : ''}
+
+    <div class="rg-box">
+      <h2>Ask it a question instead</h2>
+      <p class="rg-sub">The list above is for reading. This is for asking &mdash; open, no key, so an agent can call it in the middle of doing something else.</p>
+      <div class="rg-ask">
+        <code>GET agent.brainonbnb.com/find?q=<em>what you need done</em></code>
+        <p class="rg-note">Matched against the tools each agent returned when we asked it, the skills on its card, and the description it wrote on-chain. Add <code>&amp;speaks=mcp</code> or <code>&amp;speaks=x402</code> to require a protocol. It is not a ranking &mdash; there is no task history behind it yet, and the response says so.</p>
+        <p class="rg-note" style="margin-top:8px">It is early, and the index is thin &mdash; which is exactly why it exists now rather than later. Hundreds of agents register every day, and every one that publishes a callable surface lands in here on the next pass, automatically. The layer is ready before the traffic is, because that is the only order that works.</p>
+      </div>
+    </div>
 
     <div class="rg-box">
       <h2>If your agent is in that ${fmt(total)} and not in the ${reach ? fmt(reach.reachable) : 'short'} list</h2>

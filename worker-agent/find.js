@@ -112,7 +112,7 @@ export async function handleFind(url) {
         match: Math.round(s * 10) / 10,
       })),
       ...(scored.length === 0 && ts.length ? {
-        nothing_found: 'No agent in the census exposes anything matching that. Most registered agents publish no callable surface at all — see https://brainonbnb.com/registry',
+        nothing_found: 'Nothing in the census exposes that yet. The registry is growing fast — hundreds of new agents a day — and this index picks up anything with a callable surface automatically. If you build one, you are in it on the next pass: https://brainonbnb.com/registry',
       } : {}),
     },
   };

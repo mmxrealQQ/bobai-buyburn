@@ -127,7 +127,10 @@ for (const p of pages) {
   const seen = new Set();
   for (const m of s.matchAll(/href="([^"]+)"/g)) {
     const href = m[1];
-    if (href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto:')) continue;
+    // Case-insensitive: a third-party registration in the census carried
+    // "Https://google.com" with a capital H, which slipped past the lowercase
+    // check and was reported as a broken internal link.
+    if (/^https?:/i.test(href) || href.startsWith('#') || href.startsWith('mailto:')) continue;
     if (seen.has(href)) continue;
     seen.add(href);
     if (!exists(href, p)) add(p, 'high', 'dead internal link', href);

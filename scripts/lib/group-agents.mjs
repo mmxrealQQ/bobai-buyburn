@@ -16,6 +16,21 @@
 // agent, and letting them into the market list would be padding.
 const NOT_AN_AGENT_HOST = /^(www\.)?(github\.com|gitlab\.com|x\.com|twitter\.com|t\.me|medium\.com|linktr\.ee|notion\.so|docs\.google\.com)$/i;
 
+// Placeholders and things that were never an endpoint. Someone registered
+// "https://google.com"; another left api.example.com from a tutorial. Both
+// answer HTTP, so a reachability check passes them — and both would sit in a
+// list of "agents on BNB Chain" as if they were one.
+const PLACEHOLDER_HOST = /^(www\.)?(google\.[a-z.]+|example\.(com|org|net)|localhost|127\.0\.0\.1|test\.com|yourdomain\.[a-z]+|domain\.com|site\.com)$/i;
+
+// We publish this list, which makes us its publisher. A registration is
+// somebody else's text, but the page it appears on is ours — and one entry in
+// the registry carries a racial slur as its agent name. It is excluded from
+// what we present. The census still counts it as a reachable endpoint, because
+// that is a measurement and measurements do not get edited; what we decline to
+// do is put the word on our page. Matching is on word boundaries against the
+// name only, so ordinary names that happen to contain a substring are safe.
+const SLUR = /\b(nigg[ae]r?s?|f[a4]gg?ots?|k[i1]kes?|ch[i1]nks?|sp[i1]cs?|tr[a4]nn(y|ies)|ret[a4]rds?)\b/i;
+
 export function hostOf(url) {
   try {
     const h = new URL(url).hostname.toLowerCase();
@@ -45,8 +60,14 @@ export function groupByOperator(agents) {
 
   for (const a of agents) {
     const host = (a.endpoints || []).map(hostOf).find(Boolean);
-    if (!host || NOT_AN_AGENT_HOST.test(host)) continue;
-    const op = operatorOf(a);
+    const op0 = operatorOf(a);
+    // Checked against the registrable domain, not the full host: the first
+    // version tested "api.example.com" against /^example\.com$/ and let it
+    // through. Subdomains of a placeholder are still placeholders.
+    if (!host || NOT_AN_AGENT_HOST.test(host) || PLACEHOLDER_HOST.test(host)
+        || (op0 && PLACEHOLDER_HOST.test(op0))) continue;
+    if (SLUR.test(String(a.name || '')) || SLUR.test(String(a.description || ''))) continue;
+    const op = op0;
     if (!op) continue;
 
     if (!groups.has(op)) {

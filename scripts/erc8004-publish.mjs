@@ -17,6 +17,11 @@ const state = JSON.parse(fs.readFileSync(path.join(DIR, 'scan-state.json'), 'utf
 let census = null;
 try { census = JSON.parse(fs.readFileSync(path.join(DIR, 'census.json'), 'utf8')); } catch {}
 
+// What each agent says about itself, from erc8004-enrich.mjs. Optional: the
+// page works without it, it just has less to say about each agent.
+let registrations = {};
+try { registrations = JSON.parse(fs.readFileSync(path.join(DIR, 'registrations.json'), 'utf8')); } catch {}
+
 const reachable = [];
 try {
   for (const line of fs.readFileSync(path.join(DIR, 'reachable.jsonl'), 'utf8').split('\n')) {
@@ -75,9 +80,16 @@ fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringi
 const directory = reachable
   .map((r) => ({
     id: r.id,
-    name: r.name || null,
+    name: r.name || registrations[r.id]?.name || null,
+    // The operator's own description, straight from the on-chain registration.
+    // This is what turns a row into something a person can judge.
+    ...(registrations[r.id]?.description ? { description: registrations[r.id].description } : {}),
+    ...(registrations[r.id]?.image ? { image: registrations[r.id].image } : {}),
+    ...(registrations[r.id]?.trust?.length ? { trust_models: registrations[r.id].trust } : {}),
+    ...(registrations[r.id]?.services?.length ? { declared_services: registrations[r.id].services } : {}),
     endpoints: r.endpoints,
-    speaks: [r.live?.mcp ? 'mcp' : null, r.live?.a2a ? 'a2a' : null, r.x402 ? 'x402' : null].filter(Boolean),
+    speaks: [r.live?.mcp ? 'mcp' : null, r.live?.a2a ? 'a2a' : null,
+      (r.x402 || registrations[r.id]?.x402) ? 'x402' : null].filter(Boolean),
     ...(r.live?.tools?.length ? { tools: r.live.tools } : {}),
     ...(r.live?.skills?.length ? { skills: r.live.skills } : {}),
     ...(r.live?.cardUrl ? { agent_card: r.live.cardUrl } : {}),
@@ -98,26 +110,56 @@ fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-agents.json'), JSON.stringify
 // ---- the page ------------------------------------------------------------
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
+// Each row is a small profile rather than a table cell: logo, name, what the
+// operator says it does, what it demonstrably speaks, and the address you can
+// call. The point of the whole exercise is that none of this is self-reported
+// into a form we control — the description comes from the chain, the protocol
+// tags come from having spoken to it.
 const liveRows = reachable
   .slice()
-  .sort((a, b) => (b.live?.mcp ? 1 : 0) - (a.live?.mcp ? 1 : 0) || a.id - b.id)
+  .sort((a, b) => {
+    const rank = (x) => (x.live?.mcp ? 2 : 0) + (x.live?.a2a ? 1 : 0);
+    return rank(b) - rank(a) || a.id - b.id;
+  })
   .slice(0, 60)
   .map((r) => {
+    const reg = registrations[r.id] || {};
     const tags = [
-      r.live?.mcp ? `<span class="rg-t rg-mcp">MCP · ${r.live.mcpTools ?? '?'} tools</span>` : '',
+      r.live?.mcp ? `<span class="rg-t rg-mcp">MCP &middot; ${r.live.mcpTools ?? '?'} tools</span>` : '',
       r.live?.a2a ? '<span class="rg-t rg-a2a">agent card</span>' : '',
-      r.x402 ? '<span class="rg-t rg-x4">x402</span>' : '',
+      (r.x402 || reg.x402) ? '<span class="rg-t rg-x4">x402</span>' : '',
+      ...(reg.trust || []).slice(0, 2).map((t) => `<span class="rg-t rg-tr">${esc(t)}</span>`),
     ].filter(Boolean).join('');
-    const ep = (r.endpoints || [])[0] || '';
-    // What it can do, where it says so. This is the column a directory cannot
-    // have, because a directory only has what the operator typed into a form.
+
     const caps = r.live?.tools?.length
-      ? `<div class="rg-caps">${r.live.tools.slice(0, 8).map((t) => `<code>${esc(t.name)}</code>`).join(' ')}${r.live.tools.length > 8 ? ` <span class="rg-more">+${r.live.tools.length - 8} more</span>` : ''}</div>`
+      ? `<div class="rg-caps">${r.live.tools.slice(0, 8).map((t) => `<code title="${esc(t.description)}">${esc(t.name)}</code>`).join(' ')}${r.live.tools.length > 8 ? ` <span class="rg-more">+${r.live.tools.length - 8}</span>` : ''}</div>`
       : r.live?.skills?.length
-        ? `<div class="rg-caps">${r.live.skills.slice(0, 8).map((s) => `<code>${esc(s)}</code>`).join(' ')}</div>`
+        ? `<div class="rg-caps">${r.live.skills.slice(0, 8).map((x) => `<code>${esc(x)}</code>`).join(' ')}</div>`
         : '';
-    return `<tr><td class="rg-id">#${r.id}</td><td>${esc(r.name) || '<i>unnamed</i>'}${tags}${caps}</td><td class="rg-ep">${esc(ep.slice(0, 58))}</td></tr>`;
-  }).join('\n');
+
+    // Logos are third-party URLs on hosts we do not control, so they are lazy,
+    // sized, and disappear rather than leaving a broken-image box if the host
+    // is gone — which, on this list, is a realistic outcome.
+    const logo = reg.image
+      ? `<img class="rg-logo" src="${esc(reg.image)}" alt="" loading="lazy" decoding="async" width="34" height="34" onerror="this.remove()">`
+      : '<span class="rg-logo rg-logo-none" aria-hidden="true"></span>';
+
+    const desc = reg.description
+      ? `<div class="rg-desc">${esc(reg.description.slice(0, 190))}${reg.description.length > 190 ? '&hellip;' : ''}</div>`
+      : '';
+
+    const ep = (r.endpoints || [])[0] || '';
+    const epHost = ep.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+
+    return `<tr>
+      <td class="rg-id">#${r.id}</td>
+      <td class="rg-agent">
+        <div class="rg-head">${logo}<div class="rg-nm"><b>${esc(r.name || reg.name) || '<i>unnamed</i>'}</b>${tags}</div></div>
+        ${desc}${caps}
+      </td>
+      <td class="rg-ep"><a href="${esc(ep)}" target="_blank" rel="noopener nofollow">${esc(epHost.slice(0, 46))}</a></td>
+    </tr>`;
+  }).join('');
 
 const reach = census?.endpoints;
 
@@ -204,6 +246,16 @@ const page = `<!doctype html>
   .rg-mcp{background:rgba(63,224,154,.14);color:#3fe09a}
   .rg-a2a{background:rgba(125,146,255,.14);color:#7d92ff}
   .rg-x4{background:rgba(240,185,11,.14);color:var(--gold)}
+  .rg-agent{min-width:240px}
+  .rg-head{display:flex;align-items:center;gap:9px}
+  .rg-logo{width:34px;height:34px;border-radius:9px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.05)}
+  .rg-logo-none{display:inline-block}
+  .rg-nm{min-width:0}
+  .rg-nm b{font-size:.92rem}
+  .rg-desc{margin-top:6px;font-size:.79rem;color:var(--muted);line-height:1.55;max-width:62ch}
+  .rg-tr{background:rgba(255,255,255,.06);color:var(--muted)}
+  .rg-ep a{color:var(--muted);text-decoration:none}
+  .rg-ep a:hover{color:var(--acc,var(--gold))}
   .rg-caps{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
   .rg-caps code{font-size:.7rem;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.05);color:var(--muted)}
   .rg-more{font-size:.7rem;color:var(--muted);align-self:center}

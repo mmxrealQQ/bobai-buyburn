@@ -26,6 +26,7 @@
 // payment is a read; the worker never moves funds.
 
 import { runCensusTick } from './census.js';
+import { handleFind } from './find.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -308,6 +309,14 @@ const CAPABILITIES = {
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: '14 read-only tools for $BOBAI on-chain data' },
     { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
   ],
+  broker: [
+    {
+      name: 'agent search',
+      where: 'GET https://agent.brainonbnb.com/find?q=<what you need>',
+      what: 'Finds ERC-8004 agents on BNB Chain that expose something matching, using the tools they returned when asked and the descriptions they wrote on-chain. Optional &speaks=mcp,a2a,x402 to require a protocol.',
+      free: true,
+    },
+  ],
   paid: [
     {
       name: 'pool watch',
@@ -349,6 +358,13 @@ export default {
     // from here, so the page cannot present a number this endpoint would not.
     // What the self-updating half of the census knows. The headline figures
     // come from a full offline scan; this reports what has changed since.
+    // The broker. Ask what you need done, get agents that expose something
+    // matching — open, no key, so another agent can use it mid-task.
+    if (path === '/find') {
+      const r = await handleFind(url);
+      return json(r.body, r.status);
+    }
+
     if (path === '/census') {
       const latest = await env.AGENT.get('census:latest');
       if (!latest) return json({ error: 'no census tick has run yet' }, 503);

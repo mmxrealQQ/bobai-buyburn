@@ -182,7 +182,13 @@ async function probeAgent(a) {
   return result;
 }
 
-const out = fs.createWriteStream(OUT, { flags: 'w' });
+// The self-test writes somewhere else. Sharing the output file meant a single
+// self-test run replaced a full probe's results with one row, while census.json
+// still held the totals from the real run — a page showing "372 reachable"
+// above a table with one entry in it. Wrong in the most embarrassing possible
+// way: internally inconsistent, on the page whose entire point is that its
+// numbers can be checked.
+const out = fs.createWriteStream(SELF_TEST ? OUT.replace(/\.jsonl$/, '.selftest.jsonl') : OUT, { flags: 'w' });
 const todo = agents.slice(0, LIMIT === Infinity ? agents.length : LIMIT);
 let done = 0, reachable = 0, withMcp = 0, withA2a = 0;
 
@@ -205,7 +211,7 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
 out.end();
 
 if (SELF_TEST) {
-  const r = JSON.parse(fs.readFileSync(OUT, 'utf8').trim().split('\n')[0]);
+  const r = JSON.parse(fs.readFileSync(OUT.replace(/\.jsonl$/, '.selftest.jsonl'), 'utf8').trim().split('\n')[0]);
   console.log('\n--- self-test against our own agent ---');
   console.log('  reachable  :', r.reachable);
   console.log('  MCP        :', !!r.live.mcp, r.live.mcpTools ? `(${r.live.mcpTools} tools)` : '');

@@ -63,6 +63,38 @@ const api = {
 };
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
 
+// ---- the list itself, for machines ---------------------------------------
+// The census counts; this is what another agent can actually use. Only agents
+// that answered are in it, and where one exposes tools or skills they are
+// listed by name — because "an agent exists at this address" is a directory
+// entry, and a directory is the thing this set out to be better than.
+//
+// Sorted so that agents which speak a protocol come first: an agent looking for
+// a counterpart wants those, and burying them under a few hundred plain web
+// servers would make the useful part of the list the hardest to reach.
+const directory = reachable
+  .map((r) => ({
+    id: r.id,
+    name: r.name || null,
+    endpoints: r.endpoints,
+    speaks: [r.live?.mcp ? 'mcp' : null, r.live?.a2a ? 'a2a' : null, r.x402 ? 'x402' : null].filter(Boolean),
+    ...(r.live?.tools?.length ? { tools: r.live.tools } : {}),
+    ...(r.live?.skills?.length ? { skills: r.live.skills } : {}),
+    ...(r.live?.cardUrl ? { agent_card: r.live.cardUrl } : {}),
+    ...(r.live?.cardDescription ? { description: r.live.cardDescription } : {}),
+  }))
+  .sort((a, b) => b.speaks.length - a.speaks.length || a.id - b.id);
+
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-agents.json'), JSON.stringify({
+  what_this_is: 'Every ERC-8004 agent on BNB Smart Chain that answered when contacted, with whatever it exposes about itself. Generated from a full registry scan — not self-reported, not curated.',
+  measured_at: api.measured_at,
+  registered_ids: total,
+  answered: directory.length,
+  speaking_a_protocol: directory.filter((d) => d.speaks.length).length,
+  note: 'Presence here means the address responded and, where stated, the protocol answered. It is not an endorsement, a rating, or a claim that the agent does anything useful.',
+  agents: directory,
+}, null, 2) + '\n');
+
 // ---- the page ------------------------------------------------------------
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
@@ -77,10 +109,35 @@ const liveRows = reachable
       r.x402 ? '<span class="rg-t rg-x4">x402</span>' : '',
     ].filter(Boolean).join('');
     const ep = (r.endpoints || [])[0] || '';
-    return `<tr><td class="rg-id">#${r.id}</td><td>${esc(r.name) || '<i>unnamed</i>'}${tags}</td><td class="rg-ep">${esc(ep.slice(0, 58))}</td></tr>`;
+    // What it can do, where it says so. This is the column a directory cannot
+    // have, because a directory only has what the operator typed into a form.
+    const caps = r.live?.tools?.length
+      ? `<div class="rg-caps">${r.live.tools.slice(0, 8).map((t) => `<code>${esc(t.name)}</code>`).join(' ')}${r.live.tools.length > 8 ? ` <span class="rg-more">+${r.live.tools.length - 8} more</span>` : ''}</div>`
+      : r.live?.skills?.length
+        ? `<div class="rg-caps">${r.live.skills.slice(0, 8).map((s) => `<code>${esc(s)}</code>`).join(' ')}</div>`
+        : '';
+    return `<tr><td class="rg-id">#${r.id}</td><td>${esc(r.name) || '<i>unnamed</i>'}${tags}${caps}</td><td class="rg-ep">${esc(ep.slice(0, 58))}</td></tr>`;
   }).join('\n');
 
 const reach = census?.endpoints;
+
+// The page states a reachable count and then lists the agents behind it. If
+// those two come from different runs, the page contradicts itself — which is
+// fatal for the one thing it is for. Publishing stops rather than shipping it.
+if (reach && reach.reachable > 0 && reachable.length === 0) {
+  console.error(`
+Refusing to publish: census.json reports ${reach.reachable} reachable agents but reachable.jsonl is empty.`);
+  console.error(`Run: node scripts/erc8004-probe.mjs
+`);
+  process.exit(1);
+}
+if (reach && reachable.length && Math.abs(reach.reachable - reachable.length) > reach.reachable * 0.02) {
+  console.error(`
+Refusing to publish: census says ${reach.reachable} reachable, the list holds ${reachable.length}. These are from different runs.`);
+  console.error(`Run: node scripts/erc8004-probe.mjs
+`);
+  process.exit(1);
+}
 
 const page = `<!doctype html>
 <html lang="en">
@@ -125,6 +182,9 @@ const page = `<!doctype html>
   .rg-mcp{background:rgba(63,224,154,.14);color:#3fe09a}
   .rg-a2a{background:rgba(125,146,255,.14);color:#7d92ff}
   .rg-x4{background:rgba(240,185,11,.14);color:var(--gold)}
+  .rg-caps{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+  .rg-caps code{font-size:.7rem;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.05);color:var(--muted)}
+  .rg-more{font-size:.7rem;color:var(--muted);align-self:center}
   .rg-method{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;margin-top:16px}
   .rg-method h2{font-size:1.05rem;margin:0 0 12px}
   .rg-method p{font-size:.86rem;color:var(--muted);line-height:1.7;margin:0 0 12px}
@@ -180,7 +240,7 @@ ${liveRows}
     <p><b>Registrations.</b> Every id from 1 to ${fmt(total)} read through <code>tokenURI()</code> on <code>0x8004…a432</code>, in batches of 25 across six public BSC nodes. Ids a node refused were retried until answered — <b>${c.unread}</b> remained unreadable at the end. That distinction matters: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
     <p><b>Reachability.</b> Every claimed HTTP endpoint contacted once. We counted <i>any</i> HTTP response as reachable — including 401, 403 and 404 — because something is listening at that address, and an agent behind auth is still an agent. Only a failed connection counts as dead. Endpoints claiming MCP were sent a real <code>tools/list</code>; agent cards had to return parsable JSON.</p>
     <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good.</p>
-    <p>The full data is at <a href="/api-registry.json">/api-registry.json</a>. The scanner is in <a href="/#library">The Library</a> — run it yourself and check.</p>
+    <p>The counts are at <a href="/api-registry.json">/api-registry.json</a>, and every agent that answered — with the tools and skills it exposes — is at <a href="/api-agents.json">/api-agents.json</a>. Both are plain JSON with CORS open, so another agent can read them directly. The scanner is in <a href="/#library">The Library</a> — run it yourself and check.</p>
   </div>
 </div>
 </body>

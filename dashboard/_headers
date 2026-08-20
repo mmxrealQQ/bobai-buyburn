@@ -38,6 +38,9 @@
 /scanner
   Cache-Control: public, max-age=0, must-revalidate
 
+/registry
+  Cache-Control: public, max-age=0, must-revalidate
+
 # Clean page URLs (CF strips .html → e.g. /worldcup/app/leaderboard). The
 # :page placeholder matches a SINGLE segment, so it covers every app page but
 # NOT the deeper /worldcup/app/assets/* files (those stay cacheable via ?v=).

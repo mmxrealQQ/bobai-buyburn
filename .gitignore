@@ -34,3 +34,9 @@ bobai-fairytale*
 giphy-rating-mail.txt
 x-post-*.txt
 hello-bobai-meme.jpg
+
+# Census working files — the scan output is large and regenerable;
+# the published result lives in dashboard/api-registry.json instead.
+data/erc8004/agents-with-endpoints.jsonl
+data/erc8004/reachable.jsonl
+data-scan.log

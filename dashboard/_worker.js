@@ -938,6 +938,27 @@ export default {
       });
     }
 
+    // Agent-skill discovery. `npx skills add brainonbnb.com` looks for
+    // .well-known/agent-skills/index.json first and .well-known/skills/index.json
+    // second, so both are answered from the one manifest that
+    // scripts/build-skill.mjs writes — the digests in it have to match the
+    // tarballs byte for byte, and a second hand-maintained copy would not.
+    //
+    // Served here rather than as a static file because the catch-all below
+    // answers any unrouted path with the dashboard HTML at status 200. An
+    // installer receiving that reports "no skills found", which reads exactly
+    // like a missing manifest and is why this needs a real route.
+    if (url.pathname === '/.well-known/skills/index.json' ||
+        url.pathname === '/.well-known/agent-skills/index.json') {
+      const src = await env.ASSETS.fetch('https://brainonbnb.com/skills/index.json').catch(() => null);
+      if (!src || !src.ok) return new Response(JSON.stringify({ error: 'skill manifest unavailable' }), {
+        status: 503, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+      return new Response(await src.text(), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
     if (url.pathname === '/.well-known/agent-card.json') {
       return new Response(JSON.stringify(A2A_CARD, null, 2), {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },

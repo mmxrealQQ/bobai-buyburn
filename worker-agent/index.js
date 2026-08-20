@@ -25,6 +25,8 @@
 // The receiving wallet's private key is NOT here and must never be. Verifying a
 // payment is a read; the worker never moves funds.
 
+import { runCensusTick } from './census.js';
+
 const RPCS = [
   'https://bsc.publicnode.com',
   'https://bsc-rpc.publicnode.com',
@@ -345,6 +347,14 @@ export default {
 
     // Public transparency surface. Everything the dashboard block shows comes
     // from here, so the page cannot present a number this endpoint would not.
+    // What the self-updating half of the census knows. The headline figures
+    // come from a full offline scan; this reports what has changed since.
+    if (path === '/census') {
+      const latest = await env.AGENT.get('census:latest');
+      if (!latest) return json({ error: 'no census tick has run yet' }, 503);
+      return json(JSON.parse(latest));
+    }
+
     if (path === '/stats') {
       const [counters, earnings, watches] = await Promise.all([
         readCounters(env),
@@ -466,6 +476,45 @@ export default {
       return json({ ok: true, ...result });
     }
 
+    // Runs the census tick on demand. Same reason as /run-checks: a job that
+    // fires once a day cannot be verified after a deploy without waiting a
+    // day, and "it will presumably work tomorrow" is not a state to ship in.
+    if (path === '/run-census' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      const r = await runCensusTick(env);
+      return json({ ok: true, ...r });
+    }
+
+    // Accepts the endpoint list produced by the offline publish step. Written
+    // once per full scan, not per run — this is the input the rotating
+    // reachability check walks through.
+    if (path === '/census-endpoints' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      const body = await request.json().catch(() => null);
+      if (!Array.isArray(body)) return json({ error: 'expected an array of {id,url}' }, 400);
+      const clean = body
+        .filter((x) => x && Number.isInteger(x.id) && typeof x.url === 'string' && /^https?:\/\//i.test(x.url))
+        .slice(0, 20000)
+        .map((x) => ({ id: x.id, url: x.url.slice(0, 300) }));
+      await env.AGENT.put('census:endpoints', JSON.stringify(clean));
+
+      // The offline scan's high-water mark seeds the growth check. Without it
+      // the daily tick has no baseline to count new registrations from, and
+      // reports highest_id: null forever — which is what it did on the first
+      // run. Sent alongside the list because the two come from the same scan
+      // and would otherwise drift apart.
+      const seed = Number(new URL(request.url).searchParams.get('highestId'));
+      let seeded = null;
+      if (Number.isInteger(seed) && seed > 0) {
+        const st = JSON.parse((await env.AGENT.get('census:state')) || '{}');
+        st.highestId = seed;
+        st.newSinceBaseline = st.newSinceBaseline || 0;
+        await env.AGENT.put('census:state', JSON.stringify(st));
+        seeded = seed;
+      }
+      return json({ ok: true, stored: clean.length, ...(seeded ? { baseline_highest_id: seeded } : {}) });
+    }
+
     const one = path.match(/^\/watch\/([0-9a-f-]{36})$/i);
     if (one) {
       const raw = await env.AGENT.get(`watch:${one[1]}`);
@@ -479,5 +528,12 @@ export default {
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(checkWatches(env).catch(() => {}));
+    // Census upkeep runs once a day, not every fifteen minutes: the registry
+    // does not change fast enough to justify it, and this account is close
+    // enough to the free-plan KV limits that a needless write is a real cost.
+    // 03:xx UTC, whichever quarter-hour tick lands in that hour.
+    if (new Date(event.scheduledTime).getUTCHours() === 3) {
+      ctx.waitUntil(runCensusTick(env).catch(() => {}));
+    }
   },
 };

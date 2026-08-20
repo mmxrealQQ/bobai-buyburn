@@ -188,6 +188,14 @@ const page = `<!doctype html>
   .rg-note code{font-size:.74rem}
   table.rg{width:100%;border-collapse:collapse;font-size:.85rem}
   .rg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* The table is the longest thing on the page and grows with every agent
+     that comes online, so it gets its own window instead of pushing the
+     method section further out of reach each time. Sticky header so the
+     columns stay labelled while scrolling inside it. */
+  .rg-tablebox{max-height:min(52vh,460px);overflow-y:auto;overscroll-behavior:contain;
+    border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.02)}
+  .rg-tablebox table.rg th{position:sticky;top:0;background:#131215;padding:10px;z-index:1}
+  .rg-tablebox table.rg td:first-child{padding-left:12px}
   table.rg th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 10px 10px;font-weight:600}
   table.rg td{padding:9px 10px;border-top:1px solid var(--border);vertical-align:top}
   .rg-id{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -199,6 +207,16 @@ const page = `<!doctype html>
   .rg-caps{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
   .rg-caps code{font-size:.7rem;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.05);color:var(--muted)}
   .rg-more{font-size:.7rem;color:var(--muted);align-self:center}
+  details.rg-method summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+  details.rg-method summary::-webkit-details-marker{display:none}
+  details.rg-method summary::after{content:'+';color:var(--muted);font-size:1.1rem;margin-left:auto}
+  details.rg-method[open] summary::after{content:'2'}
+  details.rg-method summary h2{margin:0;font-size:1.05rem}
+  details.rg-method[open] summary{margin-bottom:14px}
+  .rg-fix{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:12px}
+  .rg-fix li{font-size:.88rem;line-height:1.65;color:var(--muted)}
+  .rg-fix li b{color:var(--fg)}
+  .rg-fix code{font-size:.78rem;color:var(--acc,var(--gold))}
   .rg-method p{font-size:.86rem;color:var(--muted);line-height:1.72;margin:0 0 12px}
   .rg-method a{color:var(--acc,var(--gold))}
   .rg-filter{width:100%;max-width:340px;margin-bottom:14px;padding:9px 13px;border-radius:11px;
@@ -209,11 +227,17 @@ const page = `<!doctype html>
 </style>
 </head>
 <body>
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
 
+  <!-- Same shape as every other sub-page (scanner, nft/, worldcup/): aurora
+       backdrop, .page wrapper, fixed nav with back / brand / buy. Copied
+       rather than reinvented so the page cannot drift from the rest of the
+       site the next time either is touched. -->
   <nav><div class="nav">
     <a class="back-btn" href="/#agents" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
     <a class="brand-link" href="/registry">BOBAI Registry Census</a>
-    <a class="nb" href="/api-agents.json">Data &rarr;</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
 
   <section class="sec b-violet" style="margin-top:86px">
@@ -254,21 +278,34 @@ const page = `<!doctype html>
       <h2>The ones that answered</h2>
       <p class="rg-sub">Every agent below responded when contacted. Where one exposes tools or skills, they are listed as it reported them &mdash; not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first 60 of ${fmt(reachable.length)}; the rest are in the data file.` : ''}</p>
       <input class="rg-filter" id="rg-q" type="search" placeholder="Filter by name, tool or endpoint…" aria-label="Filter agents">
-      <div class="rg-scroll"><table class="rg"><thead><tr><th>ID</th><th>Agent</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
+      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>ID</th><th>Agent</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
 ${liveRows}
-      </tbody></table></div>
+      </tbody></table></div></div>
       <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
     </div>` : ''}
 
-    <div class="rg-box rg-method">
-      <h2>How this was measured</h2>
+    <div class="rg-box">
+      <h2>If your agent is in that ${fmt(total)} and not in the ${reach ? fmt(reach.reachable) : 'short'} list</h2>
+      <p class="rg-sub">Most registrations fail for one of three boring reasons, and all three are fixable in minutes. Nothing below needs our permission &mdash; it is the ERC-8004 spec, plus the two well-known paths every agent runtime already looks for.</p>
+      <ol class="rg-fix">
+        <li><b>Your token URI has to parse.</b> ${p1(c.unparsable)} of registrations hold something that is not a readable document &mdash; truncated base64, HTML, a broken data URI. If <code>tokenURI(yourId)</code> does not decode to JSON, nothing downstream can read you, and no indexer will ever list you.</li>
+        <li><b>Name a service with a real endpoint.</b> A valid registration with no <code>services</code> array describes nothing callable. And the host has to exist: a meaningful share of the endpoints in this registry point at domains that cannot resolve, <code>.agent</code> among them.</li>
+        <li><b>Serve something at the well-known paths.</b> <code>/.well-known/agent-card.json</code> for A2A, an MCP endpoint that answers <code>tools/list</code>. This is the difference between a web server and an agent, and right now it is the rarest thing in the whole registry.</li>
+      </ol>
+      <p class="rg-note" style="margin-top:14px">Our own registration is <a href="https://bscscan.com/token/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432?a=49467" target="_blank" rel="noopener">#49467</a>; the card it serves is at <a href="/.well-known/agent-card.json">/.well-known/agent-card.json</a> and the MCP endpoint at <a href="/mcp">/mcp</a>. Copy the shape, point it at your own host. Re-run of this census picks you up automatically &mdash; there is no submission form, and we are not the gatekeeper.</p>
+    </div>
+
+    <details class="rg-box rg-method">
+      <summary><h2 style="display:inline">How this was measured</h2></summary>
       <p><b>Registrations.</b> Every id from 1 to ${fmt(total)} read through <code>tokenURI()</code> on <code>0x8004&hellip;a432</code>, in batches of 25 across eleven public BSC nodes. Ids a node refused were retried until answered &mdash; <b>${c.unread}</b> stayed unreadable. That distinction is the whole reliability of this page: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
       <p><b>Reachability.</b> Every claimed endpoint contacted once. <i>Any</i> HTTP response counts as reachable &mdash; including 401, 403 and 404 &mdash; because something is listening, and an agent behind auth is still an agent. Only a failed connection counts as dead. Being strict here would push the number in the direction that flatters us, which is exactly why we don't.</p>
       <p><b>Capabilities.</b> Endpoints claiming MCP were sent a real <code>tools/list</code> and the returned tool names recorded. Agent cards had to parse as JSON. Most registrations name a bare domain rather than a card path, so the well-known locations were asked directly &mdash; otherwise &ldquo;nobody publishes a card&rdquo; and &ldquo;nobody writes the path down&rdquo; look identical.</p>
       <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good. It is not a ranking and not an endorsement.</p>
       <p>Counts: <a href="/api-registry.json">/api-registry.json</a> &middot; every agent that answered, with its tools: <a href="/api-agents.json">/api-agents.json</a>. Both plain JSON, CORS open, so another agent can read them directly. The scanner itself is in <a href="/#library">The Library</a> &mdash; run it and check us.</p>
-    </div>
+    </details>
   </section>
+
+</div>
 
 <footer><div class="fi2">
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>

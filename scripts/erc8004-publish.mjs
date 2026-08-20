@@ -221,26 +221,38 @@ const page = `<!doctype html>
 <link rel="stylesheet" href="/styles.css?v=23">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
-  .rg-h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(1.6rem,3.6vw,2.4rem);line-height:1.18;margin:0 0 16px}
-  .rg-h1 em{color:var(--acc,var(--gold));font-style:normal}
-  .rg-lead{color:var(--muted);font-size:1rem;line-height:1.72;max-width:70ch;margin:0 0 10px}
-  .rg-when{color:var(--muted);font-size:.8rem;margin:20px 0 4px}
-  .rg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:26px 0 16px}
-  .rg-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:18px;padding:20px;position:relative;overflow:hidden}
-  .rg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--acc,var(--gold)),transparent)}
-  .rg-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.9rem;font-weight:700;color:var(--acc,var(--gold));line-height:1.1;font-variant-numeric:tabular-nums}
-  .rg-l{margin-top:6px;font-size:.9rem}
-  .rg-s{margin-top:3px;font-size:.78rem;color:var(--muted);line-height:1.5}
-  .rg-box{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:24px;margin:14px 0}
-  .rg-box h2{font-size:1.05rem;margin:0 0 4px}
-  .rg-box > p.rg-sub{color:var(--muted);font-size:.85rem;margin:0 0 18px;line-height:1.6}
+  /* Hero copied from scanner.html's .sc-hero rather than approximated: centred,
+     same clamp, same -1px tracking, and the gold gradient on <em> that every
+     other headline on this site uses. */
+  .rg-hero{padding:8px 0 6px;text-align:center}
+  .rg-h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
+    font-weight:700;letter-spacing:-1px;line-height:1.14;margin:0}
+  .rg-h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+    background-clip:text;-webkit-background-clip:text;color:transparent}
+  .rg-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
+  .rg-when{color:var(--muted);font-size:.72rem;margin:18px auto 0;text-align:center}
+  /* Metric tiles use the dashboard's own numbers treatment (.lqm/.lqv/.lql/.lqs
+     in styles.css) rather than an approximation of it: same radius, same
+     1.85rem Space Grotesk with -1px tracking, same label and caption sizes.
+     A page that is nearly the house style reads as a page from somewhere else. */
+  .rg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:26px 0 14px}
+  .rg-card{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
+  .rg-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.85rem;font-weight:700;
+    letter-spacing:-1px;color:var(--acc,var(--gold));line-height:1.1;font-variant-numeric:tabular-nums}
+  .rg-l{font-size:.79rem;font-weight:600;margin-top:4px}
+  .rg-s{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:7px}
+  .rg-box{border:1px solid rgba(var(--accs,240,185,11),.16);border-radius:var(--radius,18px);
+    padding:22px 20px;margin:14px 0;background:rgba(255,255,255,.02)}
+  .rg-box h2{font-size:.95rem;font-weight:600;margin:0 0 4px;letter-spacing:.2px}
+  .rg-box > p.rg-sub{color:var(--muted);font-size:.76rem;margin:0 0 18px;line-height:1.55}
   .rg-step{display:grid;gap:5px;margin-bottom:15px}
   .rg-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
-  .rg-top b{font-size:.92rem;font-weight:600}
-  .rg-top span{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-  .rg-bar{height:9px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
-  .rg-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc,var(--gold)),#ffd35c)}
-  .rg-note{font-size:.78rem;color:var(--muted);line-height:1.55}
+  .rg-top b{font-size:.79rem;font-weight:600}
+  .rg-top span{font-size:.76rem;color:var(--acc,var(--gold));font-weight:600;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rg-bar{height:8px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
+  .rg-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
+  .rg-note{font-size:.72rem;color:var(--muted);line-height:1.5}
   .rg-note code{font-size:.74rem}
   table.rg{width:100%;border-collapse:collapse;font-size:.85rem}
   .rg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -313,10 +325,12 @@ const page = `<!doctype html>
   <section class="sec b-violet" style="margin-top:86px">
     <div class="blk-head"><span class="blk-tag">Census &middot; ERC-8004 on BNB Chain</span><span class="blk-line"></span></div>
 
-    <h1 class="rg-h1">${fmt(total)} agents are registered on BNB Chain.<br><em>${reach ? fmt(reach.reachable) + ' of them answer.' : 'Almost none of them answer.'}</em></h1>
-    <p class="rg-lead">ERC-8004 gives an AI agent an identity on-chain, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
-    <p class="rg-lead">So we read the whole registry &mdash; every id, one at a time &mdash; and then contacted every endpoint it named. This is what is actually there.</p>
-    <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
+    <div class="rg-hero">
+      <h1 class="rg-h1">${fmt(total)} agents registered on BNB Chain.<br><em>${reach ? fmt(reach.reachable) + ' of them answer.' : 'We asked every one of them.'}</em></h1>
+      <p class="rg-lead">ERC-8004 gives an AI agent an identity on-chain, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
+      <p class="rg-lead">So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. Here is the working core, and how to join it.</p>
+      <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
+    </div>
 
     <div class="rg-grid">
       <div class="rg-card"><div class="rg-n">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s">what the headline counts</div></div>

@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4033,
-   "zipBytes": 56395,
-   "txtBytes": 171406,
-   "sha256": "6b3329c46e929f0d",
+   "lines": 4078,
+   "zipBytes": 57200,
+   "txtBytes": 173507,
+   "sha256": "3b2063e2a26435cb",
    "reqs": [
     {
      "what": "A bot token",
@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 4,
-   "lines": 2740,
-   "zipBytes": 59707,
-   "txtBytes": 180456,
-   "sha256": "e9f8312c86d4b828",
+   "lines": 2788,
+   "zipBytes": 60423,
+   "txtBytes": 184034,
+   "sha256": "17f6b3aee4af92da",
    "reqs": [
     {
      "what": "A static host",
@@ -535,10 +535,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1290,
-   "zipBytes": 31402,
-   "txtBytes": 87647,
-   "sha256": "51d85a2008c8f9e6",
+   "lines": 1317,
+   "zipBytes": 31924,
+   "txtBytes": 89121,
+   "sha256": "bb1a346aae83582c",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

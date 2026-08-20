@@ -1,0 +1,15 @@
+name = "bobai-agent"
+main = "index.js"
+compatibility_date = "2025-01-01"
+routes = [{ pattern = "agent.brainonbnb.com", custom_domain = true }]
+
+# Watch checks. Every 15 minutes is a deliberate floor, not a default: a paid
+# watcher that reports a depth collapse an hour late is worth nothing, and one
+# that re-reads every pool every minute burns the public RPC endpoints we depend
+# on for the free scanner too.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[kv_namespaces]]
+binding = "AGENT"
+id = "ebebebbecec1485aa74ef1f14417c120"

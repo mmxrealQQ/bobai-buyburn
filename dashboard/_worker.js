@@ -880,9 +880,36 @@ function etagMatches(header, tag) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     ACTIVITY_ENV = env;
     const url = new URL(request.url);
+
+    // Count what agents ask us for, so the public transparency block has real
+    // numbers instead of a claim. Fire-and-forget via waitUntil: a request must
+    // never be slower, or fail, because a counter was unreachable. Nothing
+    // identifying is sent — only which kind of surface was used.
+    // Our own smoke test identifies itself and is not counted. The public
+    // figure is meant to answer "how much did other people ask us for", and a
+    // run of the test suite would add forty requests of our own to it. The
+    // header can only ever cause UNDER-counting, never over-counting, which is
+    // the safe direction for a number we publish.
+    const isSelfTest = request.headers.get('user-agent') === 'bobai-smoke-test';
+    const count = (kind) => {
+      if (!env.HIT_SECRET || isSelfTest) return;
+      ctx.waitUntil(
+        fetch('https://agent.brainonbnb.com/hit', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-hit-secret': env.HIT_SECRET },
+          body: JSON.stringify({ kind }),
+          signal: AbortSignal.timeout(3000),
+        }).catch(() => {}),
+      );
+    };
+    if (url.pathname === '/mcp') count('mcp');
+    else if (url.pathname.startsWith('/api/')) count('rest');
+    else if (url.pathname === '/skill.md') count('skill_doc');
+    else if (url.pathname.startsWith('/skills/')) count('skill_download');
+    else if (url.pathname.startsWith('/.well-known/')) count('discovery');
 
     if (url.pathname === '/mcp') return handleMcp(request);
 

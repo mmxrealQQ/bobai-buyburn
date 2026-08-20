@@ -152,8 +152,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=22" as="style">
-  <link rel="stylesheet" href="styles.css?v=22">
+  <link rel="preload" href="styles.css?v=23" as="style">
+  <link rel="stylesheet" href="styles.css?v=23">
   <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
        wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
        Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
@@ -191,7 +191,7 @@
 
   <nav><div class="nav">
     <a href="/" class="nl"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"> <span>BOBAI</span></a>
-    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
+    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#agents">Agents</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
     <div class="nb-group">
       <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
     </div>
@@ -752,7 +752,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 4,033 lines &middot; 55 KB</span>
+          <span class="lib-m">12 files &middot; 4,078 lines &middot; 56 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -824,7 +824,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">4 files &middot; 2,740 lines &middot; 58 KB</span>
+          <span class="lib-m">4 files &middot; 2,788 lines &middot; 59 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -939,7 +939,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,290 lines &middot; 31 KB</span>
+          <span class="lib-m">4 files &middot; 1,317 lines &middot; 31 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -984,8 +984,52 @@
     </div></div></div>
   </div>
 
+  <section class="sec b-violet" id="agents">
+    <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Agents</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2>Built For <em>Machines</em></h2>
+      <p class="sh-sub">Most of this site is read by people. This part is read by other people's AI agents &mdash; and here is exactly how often, what it earned, and where that money went.</p>
+    </div>
+
+    <div class="agt-grid">
+      <div class="agt-stat fi"><div class="agt-n" id="ag-asked">&ndash;</div><div class="agt-l">requests answered</div><div class="agt-s" id="ag-asked-sub">since counting began</div></div>
+      <div class="agt-stat fi"><div class="agt-n" id="ag-earned">&ndash;</div><div class="agt-l">earned from agents</div><div class="agt-s" id="ag-earned-sub">paid in USD1, on-chain</div></div>
+      <div class="agt-stat fi"><div class="agt-n" id="ag-watch">&ndash;</div><div class="agt-l">pools being watched</div><div class="agt-s">paid, running around the clock</div></div>
+      <div class="agt-stat fi"><div class="agt-n" id="ag-surf">4</div><div class="agt-l">ways in</div><div class="agt-s">skill, MCP, REST, browser</div></div>
+    </div>
+
+    <div class="agt-cols">
+      <div class="agt-card fi">
+        <h3>What an agent can do here</h3>
+        <ul class="agt-list" id="ag-free"></ul>
+        <p class="agt-note">All of the above is free and needs no key, no account and no signup. It reads public chain data and costs us almost nothing, which is why it stays free.</p>
+      </div>
+
+      <div class="agt-card fi">
+        <h3>What it pays for</h3>
+        <ul class="agt-list" id="ag-paid"></ul>
+        <p class="agt-note">One thing is paid, and only because it genuinely costs us something: watching a pool means running every fifteen minutes for thirty days, whether anything happens or not. A scan you run once is free and will stay free.</p>
+      </div>
+    </div>
+
+    <div class="agt-flow fi">
+      <h3>Where the money goes</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>An agent pays</b><span>USD1 on BNB Chain, per watch. No invoice, no account &mdash; the protocol handles it.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>It lands in one wallet</b><span>Used for nothing else, so the amount earned from outside is always separable from tax income.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>It buys $BOBAI and burns it</b><span>The same buyback everything else runs through &mdash; visible in the same public log.</span></div></li>
+        <li><span class="agt-i">4</span><div><b>Every step is a transaction</b><span>Nothing here is a claim. Payment, buy and burn are all on-chain and checkable by anyone.</span></div></li>
+      </ol>
+      <p class="agt-note" id="ag-flow-note"></p>
+    </div>
+
+    <div class="agt-why fi">
+      <p><b>Why this matters more than the amount.</b> Until now every cent this project earned came from its own trading tax &mdash; money moving in a circle. This is the first income that comes from outside it. The sums are small and will stay small for a while; that is not the point. The point is that the circle now has an opening.</p>
+      <p class="agt-live">Live figures from <a href="https://agent.brainonbnb.com/stats" rel="noopener">agent.brainonbnb.com/stats</a> &mdash; the same endpoint this page reads, so nothing shown here can be a number that endpoint would not give you.</p>
+    </div>
+  </section>
+
   <section class="sec sec-after-band" id="roadmap">
-    <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Roadmap</span><span class="blk-line"></span></div>
+    <div class="blk-head fi"><span class="blk-tag">Block 06 &middot; Roadmap</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2><em>Road</em>map</h2></div>
     <div class="rmg">
       <div class="rm rmd fi"><div class="rp">Phase 1 — Done</div><h3>Genesis</h3><ul>
@@ -1021,7 +1065,7 @@
   <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
 
   <section class="sec b-blue" id="faq">
-    <div class="blk-head fi"><span class="blk-tag">Block 06 &middot; Questions</span><span class="blk-line"></span></div>
+    <div class="blk-head fi"><span class="blk-tag">Block 07 &middot; Questions</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2>Frequently <em>Asked</em></h2><p>Quick answers about Brain On BNB AI ($BOBAI).</p></div>
     <div class="faq-list fi">
       <details class="faq-item"><summary>What is Brain On BNB AI ($BOBAI)?<span class="faq-arr">&#x25BE;</span></summary>
@@ -1059,7 +1103,7 @@
   <!-- Letztes Kettenglied: Community und alle Fundstellen an einem Ort. Vorher
        hing beides label- und verbindungslos unter der Kette bzw. im Footer. -->
   <section class="sec b-green" id="socials">
-    <div class="blk-head fi"><span class="blk-tag">Block 07 &middot; Socials</span><span class="blk-line"></span></div>
+    <div class="blk-head fi"><span class="blk-tag">Block 08 &middot; Socials</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2>Join A <em>Smart Drip</em></h2><p>Come for the burns, stay for the brain. The community lives on Telegram and X — and $BOBAI is listed, tradable and tracked everywhere below.</p></div>
     <div class="cta-links fi">
       <a class="secondary soc soc-tg" href="https://t.me/bobai_official" target="_blank" rel="noopener" aria-label="Join the BOBAI group on Telegram, @bobai_official">
@@ -1097,6 +1141,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=22" defer></script>
+<script src="app.js?v=23" defer></script>
 </body>
 </html>

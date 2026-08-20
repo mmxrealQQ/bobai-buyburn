@@ -900,3 +900,57 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
   }
   apply();setInterval(apply,60000);
 }();
+
+// ---- Block 05 · Agents -------------------------------------------------
+// Fills the agent block from the same endpoint anyone else can call, so the
+// page cannot show a figure that endpoint would not confirm. Everything here
+// degrades to a plain dash rather than to a zero: "0 requests" is a claim,
+// "–" is an unanswered question, and only one of those is honest when the
+// service is unreachable.
+!function(){
+  const el = id => document.getElementById(id);
+  if(!el('ag-asked')) return;
+
+  const nf = n => Number(n).toLocaleString('en-US');
+  const li = (b, s, code) =>
+    `<li><b>${b}</b>${code?`<code>${code}</code>`:''}<span>${s}</span></li>`;
+
+  fetch('https://agent.brainonbnb.com/stats', {cache:'no-store'})
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(d => {
+      const asked = d.asked && d.asked.total || 0;
+      el('ag-asked').textContent = nf(asked);
+      // Counting started the day the block shipped; saying "since counting
+      // began" without saying when that was invites the reading that the
+      // project has only ever had this many requests.
+      const days = d.asked && d.asked.by_day ? Object.keys(d.asked.by_day).sort() : [];
+      if(days.length) el('ag-asked-sub').textContent = 'since ' + days[0];
+
+      const earned = d.earned && d.earned.totalUsd1 || '0.00';
+      el('ag-earned').textContent = earned === '0.00' ? 'none yet' : earned;
+      if(earned === '0.00'){
+        el('ag-earned').style.fontSize = '1.15rem';
+        el('ag-earned-sub').textContent = 'nobody has bought a watch yet';
+      } else {
+        el('ag-earned-sub').textContent = (d.earned.count||0) + ' payment' +
+          ((d.earned.count===1)?'':'s') + ', in USD1';
+      }
+
+      el('ag-watch').textContent = nf(d.active_watches || 0);
+
+      const cap = d.capabilities || {};
+      const free = (cap.free||[]).map(c => li(c.name, c.what, c.where)).join('');
+      const paid = (cap.paid||[]).map(c =>
+        li(c.name + ' — ' + (c.price||''), c.what + ' ' + (c.why_paid||''), c.where)).join('');
+      el('ag-surf').textContent = (cap.free||[]).length || 4;
+      if(free) el('ag-free').innerHTML = free;
+      if(paid) el('ag-paid').innerHTML = paid;
+
+      const note = d.money_flow && d.money_flow.note;
+      if(note) el('ag-flow-note').textContent = note;
+    })
+    .catch(() => {
+      ['ag-asked','ag-earned','ag-watch'].forEach(i => { el(i).textContent = '–'; });
+      el('ag-asked-sub').textContent = 'the counter did not answer just now';
+    });
+}();

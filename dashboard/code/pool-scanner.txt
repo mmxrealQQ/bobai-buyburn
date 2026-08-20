@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 4 files, 2740 lines.
+# one fetch. 4 files, 2788 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2769,3 +2769,51 @@ $('sc-in').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
       .about-logo::before,.lb-card::after,.live-dot,.live-dot::after,.sep-d,
       .nb2::before,.ts-row.active .ts-name::before,.tg-eyebrow .live::before{animation:none}
     }
+
+    /* ---- Block 05 · Agents ---------------------------------------------
+       The machine-facing surface and the money behind it. Follows the same
+       card grammar as .ec so the block reads as part of the chain rather than
+       something bolted on; only the numbers get their own treatment, because
+       four live figures side by side is the one thing this page did not have
+       a pattern for yet.
+       Animations stay on transform/opacity only — the perf rules from the
+       August series apply here like everywhere else. */
+    .sh-sub{max-width:66ch;margin:10px auto 0;color:var(--muted);font-size:.98rem;line-height:1.65;text-align:center}
+    .agt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:26px 0 20px}
+    .agt-stat{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);
+      border-radius:18px;padding:20px 18px;text-align:center;position:relative;overflow:hidden}
+    .agt-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,var(--acc,var(--gold)),transparent)}
+    .agt-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:2rem;font-weight:700;
+      color:var(--acc,var(--gold));line-height:1.1;font-variant-numeric:tabular-nums}
+    .agt-l{margin-top:6px;font-size:.9rem;color:var(--fg)}
+    .agt-s{margin-top:2px;font-size:.78rem;color:var(--muted)}
+    .agt-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+    .agt-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);
+      border-radius:22px;padding:24px}
+    .agt-card h3{font-size:1.05rem;margin:0 0 12px}
+    .agt-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px}
+    .agt-list li{display:flex;flex-direction:column;gap:3px;padding-left:14px;position:relative}
+    .agt-list li::before{content:'';position:absolute;left:0;top:8px;width:5px;height:5px;
+      border-radius:50%;background:var(--acc,var(--gold))}
+    .agt-list b{font-size:.94rem}
+    .agt-list span{font-size:.85rem;color:var(--muted);line-height:1.55}
+    .agt-list code{font-size:.8rem;color:var(--acc,var(--gold));word-break:break-all}
+    .agt-note{margin:14px 0 0;font-size:.82rem;color:var(--muted);line-height:1.6}
+    .agt-flow{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);
+      border-radius:22px;padding:24px;margin-top:14px}
+    .agt-flow h3{font-size:1.05rem;margin:0 0 16px}
+    .agt-steps{list-style:none;padding:0;margin:0;display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+    .agt-steps li{display:flex;gap:11px;align-items:flex-start}
+    .agt-steps b{display:block;font-size:.9rem;margin-bottom:3px}
+    .agt-steps span{font-size:.82rem;color:var(--muted);line-height:1.55}
+    .agt-i{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+      font-size:.8rem;font-weight:700;color:var(--acc,var(--gold));
+      border:1px solid rgba(var(--accs,240,185,11),.4);background:rgba(var(--accs,240,185,11),.08)}
+    .agt-why{margin-top:14px;padding:20px 22px;border-radius:18px;
+      border:1px solid rgba(var(--accs,240,185,11),.22);background:rgba(var(--accs,240,185,11),.05)}
+    .agt-why p{margin:0;font-size:.9rem;line-height:1.7;color:var(--fg)}
+    .agt-live{margin-top:10px!important;font-size:.8rem!important;color:var(--muted)!important}
+    .agt-live a{color:var(--acc,var(--gold))}
+    @media(max-width:560px){.agt-n{font-size:1.6rem}}

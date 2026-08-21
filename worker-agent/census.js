@@ -39,8 +39,57 @@ const MAX_CALLS = 40;
 
 const id32 = (n) => BigInt(n).toString(16).padStart(64, '0');
 
+const decodeString = (hex) => {
+  if (!hex || hex === '0x') return null;
+  const b = hex.slice(2);
+  try {
+    const len = parseInt(b.slice(64, 128), 16);
+    if (!(len > 0) || len > 400000) return null;
+    const bytes = [];
+    for (let i = 0; i < len; i++) bytes.push(parseInt(b.substr(128 + i * 2, 2), 16));
+    return new TextDecoder().decode(new Uint8Array(bytes));
+  } catch { return null; }
+};
+
+// Registrations are a data: URI holding base64 JSON. Same parsing as the
+// offline scanner, deliberately — two readers disagreeing about what counts as
+// a valid registration would make the daily numbers incomparable with the scan.
+const parseRegistration = (raw) => {
+  const s = decodeString(raw);
+  if (!s) return null;
+  const b64 = s.includes('base64,') ? s.split('base64,')[1] : null;
+  try {
+    const json = b64 ? atob(b64) : s;
+    return JSON.parse(json);
+  } catch { return null; }
+};
+
 export async function runCensusTick(env) {
   let calls = 0;
+
+  // Batched eth_call. The single-call helper below is for the id probe, which
+  // is inherently sequential; reading registrations is not, and doing it one
+  // at a time would burn the entire per-invocation budget on 40 agents.
+  const rpcBatch = async (datas) => {
+    const payload = datas.map((data, i) => ({
+      jsonrpc: '2.0', id: i, method: 'eth_call',
+      params: [{ to: REGISTRY, data }, 'latest'],
+    }));
+    for (const url of RPCS) {
+      try {
+        const r = await fetch(url, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload), signal: AbortSignal.timeout(12000),
+        });
+        const j = await r.json();
+        if (!Array.isArray(j)) continue;
+        const out = new Array(datas.length).fill(null);
+        for (const item of j) if (typeof item.id === 'number' && !item.error) out[item.id] = item.result;
+        return out;
+      } catch { /* next endpoint */ }
+    }
+    return null;
+  };
   const rpc = async (data, id = 1) => {
     if (calls >= MAX_CALLS) return null;
     calls++;
@@ -85,6 +134,52 @@ export async function runCensusTick(env) {
     if (lo > state.highestId) {
       state.newSinceBaseline += lo - state.highestId;
       state.highestId = lo;
+    }
+  }
+
+  // ---- 1b. read what is new ----------------------------------------------
+  // Knowing the registry grew is not the same as knowing what grew. Without
+  // this, an agent registered today waits for the next manual full scan before
+  // anything here can find it — and the gap widens by several thousand a day.
+  //
+  // Batched 25 ids per request, which is what makes it affordable: one call
+  // covers what would otherwise be twenty-five. Whatever cannot be read this
+  // run stays queued for the next, so the frontier advances every day rather
+  // than being redone from scratch.
+  const newFound = [];
+  if (state.highestId && state.lastScannedNew == null) state.lastScannedNew = state.baselineId || state.highestId;
+  if (state.highestId && state.lastScannedNew < state.highestId) {
+    const endpoints = JSON.parse((await env.AGENT.get('census:endpoints')) || '[]');
+    const known = new Set(endpoints.map((e) => e.id));
+    let cursor = state.lastScannedNew + 1;
+
+    while (calls < MAX_CALLS - 12 && cursor <= state.highestId) {
+      const ids = [];
+      for (let i = 0; i < 25 && cursor + i <= state.highestId; i++) ids.push(cursor + i);
+      calls++;
+      const batch = await rpcBatch(ids.map((id) => TOKEN_URI + id32(id)));
+      if (!batch) break;
+
+      for (let i = 0; i < ids.length; i++) {
+        const meta = parseRegistration(batch[i]);
+        if (!meta) continue;
+        const services = Array.isArray(meta.services) ? meta.services : [];
+        const url = services
+          .map((x) => (x && typeof x.endpoint === 'string' ? x.endpoint : null))
+          .find((u) => u && /^https?:\/\//i.test(u));
+        if (!url || known.has(ids[i])) continue;
+        newFound.push({ id: ids[i], url: url.slice(0, 300), name: (meta.name || '').slice(0, 60) });
+      }
+      cursor += ids.length;
+      state.lastScannedNew = cursor - 1;
+    }
+
+    // New endpoints join the rotation immediately, so tomorrow's reachability
+    // check covers them like any other.
+    if (newFound.length) {
+      const merged = endpoints.concat(newFound.map((n) => ({ id: n.id, url: n.url })));
+      while (merged.length > 20000) merged.shift();
+      await env.AGENT.put('census:endpoints', JSON.stringify(merged));
     }
   }
 
@@ -144,6 +239,10 @@ export async function runCensusTick(env) {
     // and a claim.
     sample_checked: checked,
     sample_answered: up,
+    // How far the frontier has advanced, and what it turned up. A day with
+    // thousands of new ids and no new endpoints is itself a finding.
+    new_ids_read: state.lastScannedNew || null,
+    new_endpoints_found: newFound.length,
   };
   // One point per day: a re-run replaces the day rather than appending, so a
   // manual trigger cannot bend the line.
@@ -160,6 +259,12 @@ export async function runCensusTick(env) {
     highest_id: state.highestId,
     registered_since_baseline: state.newSinceBaseline,
     last_checked_at: state.lastRun,
+    frontier: {
+      read_up_to: state.lastScannedNew || null,
+      behind_by: state.highestId && state.lastScannedNew ? state.highestId - state.lastScannedNew : null,
+      new_endpoints_this_run: newFound.length,
+      note: 'New registrations are read in batches each run and any with an endpoint join the reachability rotation immediately. What cannot be read in one run stays queued for the next.',
+    },
     rotating_check: {
       endpoints_known: list.length,
       checked_this_run: checked,

@@ -179,6 +179,12 @@
       <div class="rg-card"><div class="rg-n">784</div><div class="rg-l">actually answer</div><div class="rg-s">0.28% of everything registered</div></div>
     </div>
 
+    <div class="rg-box" id="rg-log" hidden>
+      <h2>What has actually been asked</h2>
+      <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered.</p>
+      <div id="rg-log-body"></div>
+    </div>
+
     <div class="rg-box" id="rg-move" hidden>
       <h2>How it is moving</h2>
       <p class="rg-sub">The registry grows every day. A single measurement cannot show that, so each daily check is kept — and the full scans are marked separately, because they measure different things.</p>
@@ -744,6 +750,35 @@ At its core, the game is built on a structured probability engine inspired b&hel
 </div></footer>
 
 <script>
+  // The session log. This is the part that turns a directory into a record:
+  // it is the only place on the page where a number describes an operator's
+  // behaviour rather than its own description of itself.
+  (function(){
+    var box=document.getElementById('rg-log'), body=document.getElementById('rg-log-body');
+    if(!box||!body)return;
+    function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]});}
+    fetch('https://agent.brainonbnb.com/sessions',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d||!d.track_record||!d.track_record.length)return;
+        var rows=d.track_record.slice(0,12).map(function(r){
+          var ms=r.median_ms!=null?r.median_ms+' ms':'&mdash;';
+          return '<div class="rg-step"><div class="rg-top"><b>'+esc(r.operator)+'</b>'+
+            '<span>'+esc(r.reliability)+' &middot; '+ms+'</span></div>'+
+            '<div class="rg-note">'+(r.tools_used||[]).slice(0,4).map(function(t){
+              return '<code>'+esc(t)+'</code>';}).join(' ')+
+            (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(r.recent_failures[0]):'')+
+            '</div></div>';
+        });
+        body.innerHTML=rows.join('')+
+          '<p class="rg-note" style="margin-top:4px">'+d.sessions_recorded+
+          ' tasks routed so far. Failures are kept and shown &mdash; a record that only listed successes would be marketing. '+
+          'Full log: <a href="https://agent.brainonbnb.com/sessions">/sessions</a></p>';
+        box.hidden=false;
+      })
+      .catch(function(){});
+  })();
+
   // The series. Hidden until it has something to say — a chart of one point is
   // worse than no chart, and this section only earns its place once the
   // registry has actually moved.

@@ -54,7 +54,16 @@ section('Free surface');
   let good = 0;
   const broken = [];
   for (const t of tools) {
-    const args = t.name === 'bobai_wallet_balance' ? { address: '0x0000000000000000000000000000000000000001' } : {};
+    // Tools that take a required argument get a real one. Calling them empty
+    // proves only that they reject an empty call, which is not what this check
+    // is asking. The scan gets $BOBAI's own pair rather than a dummy address —
+    // a token with no pool would come back "not quotable", which is a correct
+    // answer and an uninformative test.
+    const WITH_ARGS = {
+      bobai_wallet_balance: { address: '0x0000000000000000000000000000000000000001' },
+      bsc_pool_scan: { address: '0x245c386dcfed896f5c346107596141e5edcbffff' },
+    };
+    const args = WITH_ARGS[t.name] || {};
     const res = await fetch(`${SITE}/mcp`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },

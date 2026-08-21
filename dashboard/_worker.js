@@ -1,3 +1,9 @@
+// The pool scan, imported rather than reimplemented. This is the same module
+// the installable skill ships and the same chain layer the browser scanner
+// runs, so the cost of a trade is computed in exactly one place no matter
+// which of the three doors an agent came through.
+import { scan as poolScan } from './scanner-scan.js';
+
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
 const ZERO = '0x0000000000000000000000000000000000000000';
@@ -665,6 +671,11 @@ const MCP_TOOLS = [
   // than us, which is precisely why it belongs at the top.
   { name: 'find_agents_on_bnb_chain', description: 'Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against the tools each one returned when asked and the description it wrote on-chain. Not self-reported categories, not a curated list. Use this before assuming no agent exists for a task.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'What you need done, in plain words — e.g. "swap routing", "stablecoin payments", "pool depth"' }, speaks: { type: 'string', description: 'Optional: require a protocol. One or more of mcp, a2a, x402 (comma-separated).' } }, required: ['query'], additionalProperties: false } },
   { name: 'bnb_agent_census', description: 'Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: how many agents are registered, how many registrations are even readable, how many name an endpoint, how many answer, and how many independent operators run them. Every id read, nothing extrapolated.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  // The other tool here that is about somebody other than us: it measures any
+  // token on the chain, not this one. An agent about to place a trade wants
+  // what it will actually cost, and no router tells it — the headline slippage
+  // a swap UI shows leaves out the transfer tax and the swap fee.
+  { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable. Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. No API key, nothing cached.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
   { name: 'bobai_token_info', description: '$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renounced.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -689,6 +700,30 @@ async function runTool(name, args) {
       const r = await fetch(`https://agent.brainonbnb.com/find?q=${q}${sp}&limit=10`, { signal: AbortSignal.timeout(9000) });
       if (!r.ok) throw new Error('Brain Plaza search is unavailable right now');
       return await r.json();
+    }
+    case 'bsc_pool_scan': {
+      const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
+      if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.');
+      try {
+        return await poolScan(m[0].toLowerCase());
+      } catch (e) {
+        // A scan is a few dozen outbound calls, and this account's plan cuts
+        // them off at fifty per request. Measured: 16 for a single-venue token,
+        // 40 for the busiest ones. So it fits today and can stop fitting for a
+        // token listed in more places than any we tested — and when it does,
+        // saying so beats a truncated answer that reads like a complete one.
+        if (/too many subrequests/i.test(String(e?.message || ''))) {
+          throw new Error(
+            'This token trades in too many places to measure inside one request here. ' +
+            'The browser scanner at https://brainonbnb.com/scanner and the installable skill ' +
+            '(npx skills add https://brainonbnb.com) run the identical measurement with no such ceiling.',
+          );
+        }
+        // A ScanError carries a headline and the reason behind it; both are
+        // worth passing on, because "that pool cannot be priced" and "the chain
+        // did not answer" call for completely different next steps.
+        throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Scan failed.'));
+      }
     }
     case 'bnb_agent_census': {
       const r = await fetch('https://brainonbnb.com/api-registry.json', { signal: AbortSignal.timeout(9000) });
@@ -990,16 +1025,29 @@ export default {
       return new Response('[]', { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
 
-    if (REST_TOOLS[url.pathname] || url.pathname === '/api/wallet') {
-      const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'Access-Control-Allow-Origin': '*' };
+    // The two address-taking endpoints are named here rather than in
+    // REST_TOOLS, because that table maps a path to a tool that needs no
+    // arguments and these need one from the query string.
+    const WITH_ADDRESS = { '/api/wallet': 'bobai_wallet_balance', '/api/pool-scan': 'bsc_pool_scan' };
+    if (REST_TOOLS[url.pathname] || WITH_ADDRESS[url.pathname]) {
+      // A pool scan is a live measurement of a pool that moves every block, so
+      // it is not cached the way the static answers are. Sixty seconds of a
+      // stale depth figure is exactly the kind of number somebody would trade
+      // on and be wrong about.
+      const isScan = url.pathname === '/api/pool-scan';
+      const headers = {
+        'Content-Type': 'application/json',
+        'Cache-Control': isScan ? 'no-store' : 'public, max-age=60',
+        'Access-Control-Allow-Origin': '*',
+      };
       try {
-        const out = url.pathname === '/api/wallet'
-          ? await runTool('bobai_wallet_balance', { address: url.searchParams.get('address') || '' })
+        const out = WITH_ADDRESS[url.pathname]
+          ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || '' })
           : await runTool(REST_TOOLS[url.pathname], {});
         return new Response(JSON.stringify(out, null, 2), { headers });
       } catch (e) {
-        const status = url.pathname === '/api/wallet' && /Invalid BSC address/.test(e.message || '') ? 400 : 502;
-        return new Response(JSON.stringify({ error: e.message || String(e) }), { status, headers });
+        const bad = /Invalid BSC address|Give a BSC token/.test(e.message || '');
+        return new Response(JSON.stringify({ error: e.message || String(e) }), { status: bad ? 400 : 502, headers });
       }
     }
 

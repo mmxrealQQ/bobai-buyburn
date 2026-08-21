@@ -241,7 +241,7 @@ const page = `<!doctype html>
 <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
 <link rel="apple-touch-icon" href="/logo.png?v=4">
 <link rel="stylesheet" href="/fonts.css?v=1">
-<link rel="stylesheet" href="/styles.css?v=27">
+<link rel="stylesheet" href="/styles.css?v=28">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
   /* nav/.nav/.nb live in styles.css, but .back-btn and .brand-link do not —
@@ -257,7 +257,13 @@ const page = `<!doctype html>
   .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
     color:var(--gold);white-space:nowrap;text-decoration:none}
   .brand-link:hover{opacity:.85}
-  @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}}
+  @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}
+    /* The header is three items that all refuse to wrap, so on a narrow phone
+       their sum can exceed the screen and the page starts scrolling sideways —
+       which is exactly what /nft/ was doing at 413px in a 360px viewport. The
+       two outer items are the ones people press; the title in the middle is the
+       one that gives way. */
+    .nav{gap:8px}.brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 
   /* Hero copied from scanner.html's .sc-hero rather than approximated: centred,
      same clamp, same -1px tracking, and the gold gradient on <em> that every
@@ -292,7 +298,12 @@ const page = `<!doctype html>
   .rg-top span{font-size:.76rem;color:var(--acc,var(--gold));font-weight:600;
     font-variant-numeric:tabular-nums;white-space:nowrap}
   .rg-bar{height:8px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
-  .rg-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
+  /* The floor on the width below is a PERCENTAGE, and a percentage of a phone
+     is not much: 0.35% of a 312px column is 1.1 pixels, so the bars that matter
+     most here — 784 answering out of 285,447 is genuinely a sliver — rendered
+     as an invisible smear exactly where the point was that the number is tiny.
+     A pixel minimum keeps "almost nothing" visible as almost nothing. */
+  .rg-fill{height:100%;border-radius:4px;min-width:3px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
   .rg-note{font-size:.72rem;color:var(--muted);line-height:1.5}
   .rg-note code{font-size:.74rem}
   table.rg{width:100%;border-collapse:collapse;font-size:.85rem}
@@ -388,14 +399,14 @@ const page = `<!doctype html>
     <div class="blk-head"><span class="blk-tag">Brain Plaza &middot; ERC-8004 on BNB Chain</span><span class="blk-line"></span></div>
 
     <div class="rg-hero">
-      <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2">${fmt(total)} agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' run them.' : 'We asked every one.'}</span></h1>
+      <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' run them.' : 'We asked every one.'}</span></h1>
       <p class="rg-lead">ERC-8004 gives an AI agent an identity on-chain, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
       <p class="rg-lead">So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. Here is the working core, and how to join it.</p>
       <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
     </div>
 
     <div class="rg-grid">
-      <div class="rg-card"><div class="rg-n">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s">what the headline counts</div></div>
+      <div class="rg-card"><div class="rg-n" id="rg-tile-total">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s" id="rg-tile-total-sub">what the headline counts</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.valid)}</div><div class="rg-l">readable registrations</div><div class="rg-s">${p1(c.valid)} parse at all</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.withHttpEndpoint)}</div><div class="rg-l">name an endpoint</div><div class="rg-s">${p1(c.withHttpEndpoint)} &mdash; an address you could call</div></div>
       <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of everything registered' : 'probe pending'}</div></div>
@@ -403,7 +414,7 @@ const page = `<!doctype html>
 
     <div class="rg-box" id="rg-log" hidden>
       <h2>What has actually been asked</h2>
-      <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered.</p>
+      <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered. Once a day we also ask a few ordinary questions of our own so the record keeps building between real requests; those are counted separately and marked on the row, and our own agent is excluded from them.</p>
       <div id="rg-log-body"></div>
     </div>
 
@@ -495,6 +506,27 @@ ${liveRows}
 </div></footer>
 
 <script>
+  // The registry grows by thousands a day, so the headline figure is stale
+  // within hours of a full scan — it was 4,699 short the morning after. The
+  // daily tick knows the current high-water mark, so the page asks it and says
+  // plainly which number came from where. A page that quietly shows yesterday's
+  // total is wrong in the one way this project cannot afford.
+  (function(){
+    var h=document.getElementById('rg-live-total'), t=document.getElementById('rg-tile-total'),
+        sub=document.getElementById('rg-tile-total-sub');
+    if(!h&&!t)return;
+    fetch('https://agent.brainonbnb.com/census',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d||!d.highest_id)return;
+        var n=Number(d.highest_id).toLocaleString('en-US');
+        if(h)h.textContent=n;
+        if(t)t.textContent=n;
+        if(sub)sub.textContent='checked today · the counts below are from the last full scan';
+      })
+      .catch(function(){});
+  })();
+
   // The session log. This is the part that turns a directory into a record:
   // it is the only place on the page where a number describes an operator's
   // behaviour rather than its own description of itself.
@@ -508,10 +540,17 @@ ${liveRows}
         if(!d||!d.track_record||!d.track_record.length)return;
         var rows=d.track_record.slice(0,12).map(function(r){
           var ms=r.median_ms!=null?r.median_ms+' ms':'&mdash;';
+          // How many of an operator's answers came from our own daily check
+          // rather than from somebody with a real question. Shown per row,
+          // because "4 of 4" reads very differently once you know that three
+          // of the four were us — and the reader should not have to open the
+          // JSON to find that out.
+          var ours=r.of_which_our_scheduled_checks;
           return '<div class="rg-step"><div class="rg-top"><b>'+esc(r.operator)+'</b>'+
             '<span>'+esc(r.reliability)+' &middot; '+ms+'</span></div>'+
             '<div class="rg-note">'+(r.tools_used||[]).slice(0,4).map(function(t){
               return '<code>'+esc(t)+'</code>';}).join(' ')+
+            (ours?' &middot; '+ours+' of those our daily check':'')+
             (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(r.recent_failures[0]):'')+
             '</div></div>';
         });
@@ -636,7 +675,7 @@ ${liveRows}
   }
   // Also assert the page kept its interactive parts, so a template edit cannot
   // quietly drop one.
-  for (const id of ['rg-task', 'rg-go', 'rg-out', 'rg-q', 'rg-body', 'rg-move', 'rg-log']) {
+  for (const id of ['rg-task', 'rg-go', 'rg-out', 'rg-q', 'rg-body', 'rg-move', 'rg-log', 'rg-live-total', 'rg-tile-total']) {
     if (!page.includes(`id="${id}"`)) {
       console.error(`\nRefusing to write registry.html: #${id} is missing from the page.\n`);
       process.exit(1);

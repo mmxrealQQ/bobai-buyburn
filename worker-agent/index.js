@@ -30,6 +30,7 @@ import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
 import { handleDispatch } from './dispatch.js';
 import { readSessions, trackRecord } from './sessions.js';
+import { runCanary } from './canary.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -319,7 +320,7 @@ const CAPABILITIES = {
   free: [
     { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades' },
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
-    { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: '14 read-only tools for $BOBAI on-chain data' },
+    { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it, search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
     { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
   ],
   record: [
@@ -617,6 +618,16 @@ export default {
       const watch = await createWatch(env, spec, { tx, from: check.from });
       ctx.waitUntil(bump(env, 'watch_created'));
 
+      // Anything the caller sent that this endpoint does not read is named back
+      // to them. The first paid request in the service's life passed
+      // "threshold_pct", which is not a field here — it was swallowed in
+      // silence, and the watch was created with no threshold at all. It would
+      // have run for thirty days, never fired, and looked like it was working.
+      // A caller who mistypes a field has to be told, or they are paying for
+      // something they did not ask for.
+      const KNOWN = new Set(['token', 'pair', 'quote', 'depthBelowUsd', 'callback']);
+      const ignored = Object.keys(spec || {}).filter((k) => !KNOWN.has(k));
+
       return json({
         ok: true,
         watch: watch.id,
@@ -624,6 +635,16 @@ export default {
         watching: { token: watch.token, pair: watch.pair, depthBelowUsd: watch.depthBelowUsd },
         callback: watch.callback ? 'will POST on trigger' : 'none set — poll /watch/<id>',
         paid: `${fmtUsd1(check.paid)} USD1`,
+        // Stated rather than implied: a watch with no threshold records depth
+        // and never alerts, which is a legitimate thing to want and a terrible
+        // thing to receive by accident.
+        ...(watch.depthBelowUsd == null ? {
+          alerting: 'OFF — no depthBelowUsd was given, so this watch records depth but will never fire. Send depthBelowUsd (a number, in USD) to be alerted when the pool falls below it.',
+        } : {}),
+        ...(ignored.length ? {
+          ignored_fields: ignored,
+          ignored_note: 'These were not recognised and had no effect. The fields this endpoint reads are: token, pair, quote, depthBelowUsd, callback.',
+        } : {}),
       });
     }
 
@@ -644,6 +665,14 @@ export default {
     if (path === '/run-census' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       const r = await runCensusTick(env);
+      return json({ ok: true, ...r });
+    }
+
+    // Same reason as /run-census: a job that fires once a day is untestable
+    // after a deploy unless it can be triggered by hand.
+    if (path === '/run-canary' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      const r = await runCanary(env);
       return json({ ok: true, ...r });
     }
 
@@ -670,7 +699,15 @@ export default {
       if (Number.isInteger(seed) && seed > 0) {
         const st = JSON.parse((await env.AGENT.get('census:state')) || '{}');
         st.highestId = seed;
-        st.newSinceBaseline = st.newSinceBaseline || 0;
+        // A full scan IS a new baseline — it just read every id up to this one.
+        // Carrying the old "new since baseline" forward would count the four
+        // thousand agents the scan already includes as if they had arrived
+        // since, and the page would state a growth figure that double-counts.
+        // Zero here, and the frontier moved up to the same mark so tomorrow's
+        // tick starts reading where the scan stopped instead of redoing it.
+        st.baselineId = seed;
+        st.newSinceBaseline = 0;
+        st.lastScannedNew = seed;
         await env.AGENT.put('census:state', JSON.stringify(st));
         seeded = seed;
       }
@@ -690,12 +727,26 @@ export default {
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(checkWatches(env).catch(() => {}));
-    // Census upkeep runs once a day, not every fifteen minutes: the registry
-    // does not change fast enough to justify it, and this account is close
-    // enough to the free-plan KV limits that a needless write is a real cost.
-    // 03:xx UTC, whichever quarter-hour tick lands in that hour.
-    if (new Date(event.scheduledTime).getUTCHours() === 3) {
+
+    // The cron fires every fifteen minutes for the watch checks. The two daily
+    // jobs below hang off it, each pinned to ONE tick rather than to an hour:
+    // matching on the hour alone ran the census four times every morning, which
+    // is four times the KV writes on an account already close to the free-plan
+    // ceiling, for a registry that does not change that fast.
+    const t = new Date(event.scheduledTime);
+    const firstTickOfHour = t.getUTCMinutes() < 15;
+
+    // 03:0x UTC — read what is new in the registry, re-check a slice of the
+    // known endpoints.
+    if (t.getUTCHours() === 3 && firstTickOfHour) {
       ctx.waitUntil(runCensusTick(env).catch(() => {}));
+    }
+
+    // 15:0x UTC — ask a few real questions and write down how they went. Kept
+    // twelve hours away from the census so the two never share an invocation's
+    // outbound-call budget.
+    if (t.getUTCHours() === 15 && firstTickOfHour) {
+      ctx.waitUntil(runCanary(env).catch(() => {}));
     }
   },
 };

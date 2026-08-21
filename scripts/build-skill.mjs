@@ -22,7 +22,13 @@ const OUT_DIR = path.join(ROOT, 'dashboard', 'skills');
 const BASE = 'https://brainonbnb.com';
 
 // Files the skill folder does not own. Source path -> name inside the tarball.
-const PULLED = { 'dashboard/scanner-chain.js': 'scripts/scanner-chain.mjs' };
+// Both layers are pulled: scanner-scan.js decides what to measure, and
+// scanner-chain.js does the arithmetic. The skill folder holds neither — only
+// the thin CLI that calls them.
+const PULLED = {
+  'dashboard/scanner-chain.js': 'scripts/scanner-chain.mjs',
+  'dashboard/scanner-scan.js': 'scripts/scanner-scan.mjs',
+};
 
 const SKILLS = ['bsc-pool-depth'];
 
@@ -61,8 +67,19 @@ for (const name of SKILLS) {
         fs.copyFileSync(path.join(src, f.name, g), path.join(stage, f.name, g));
     } else fs.copyFileSync(path.join(src, f.name), path.join(stage, f.name));
   }
-  for (const [from, to] of Object.entries(PULLED))
-    fs.copyFileSync(path.join(ROOT, from), path.join(stage, to));
+  for (const [from, to] of Object.entries(PULLED)) {
+    // Renamed on the way in, and the imports renamed with them. The site serves
+    // these as .js; a bare .js inside a folder with no package.json is CommonJS
+    // to Node, so the skill needs .mjs or `import` throws on the installer's
+    // machine and not on ours. Rewriting the specifier is the other half of
+    // that rename — without it the file lands correctly and fails to resolve.
+    let src = fs.readFileSync(path.join(ROOT, from), 'utf8');
+    for (const other of Object.values(PULLED)) {
+      const base = path.basename(other, '.mjs');
+      src = src.split("'./" + base + ".js'").join("'./" + base + ".mjs'");
+    }
+    fs.writeFileSync(path.join(stage, to), src);
+  }
 
   // Three things the packing has to get right, all of which fail quietly:
   //

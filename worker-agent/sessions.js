@@ -43,6 +43,11 @@ export async function recordSession(env, entry) {
       // matched" and "did not answer" are different facts about an operator,
       // and collapsing them into "failed" throws away the useful half.
       outcome: String(entry.outcome || (entry.ok ? 'answered' : 'no result')).slice(0, 120),
+      // Set when the task came from our own daily check rather than from
+      // somebody with a real question. Kept because the alternative — letting
+      // scheduled probes pad the same counter as organic traffic — would make
+      // the record describe our cron instead of the operators.
+      ...(entry.probe ? { probe: true } : {}),
       excerpt: entry.excerpt ? String(entry.excerpt).replace(/\s+/g, ' ').slice(0, EXCERPT) : null,
     });
     while (log.length > MAX_SESSIONS) log.shift();
@@ -62,9 +67,10 @@ export function trackRecord(sessions) {
   for (const s of sessions) {
     const k = s.operator || s.agent;
     if (!k) continue;
-    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, totalMs: 0, timed: 0, tools: new Set(), last: null, failures: [] });
+    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, totalMs: 0, timed: 0, tools: new Set(), last: null, failures: [] });
     const r = by.get(k);
     r.asked++;
+    if (s.probe) r.probes++;
     if (s.ok) {
       r.answered++;
       if (s.tool) r.tools.add(s.tool);
@@ -84,6 +90,10 @@ export function trackRecord(sessions) {
       // "67%" off three attempts reads as a measurement; "2 of 3" reads as
       // what it is.
       reliability: `${r.answered} of ${r.asked}`,
+      // Said out loud rather than hidden, because a record built mostly from
+      // our own scheduled checks means something different from one built from
+      // strangers' questions, and the reader is entitled to tell them apart.
+      ...(r.probes ? { of_which_our_scheduled_checks: r.probes } : {}),
       median_ms: r.timed ? Math.round(r.totalMs / r.timed) : null,
       tools_used: [...r.tools].slice(0, 8),
       last_seen: r.last,

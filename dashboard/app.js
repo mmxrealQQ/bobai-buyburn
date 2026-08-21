@@ -960,17 +960,28 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
       const note = d.money_flow && d.money_flow.note;
       if(note) el('ag-flow-note').textContent = note;
     })
-    .then(() => fetch('/api-registry.json', {cache:'no-store'}))
-    .then(r => r && r.ok ? r.json() : null)
-    .then(reg => {
-      // The census is a separate file with its own cadence — a full registry
-      // scan, not a live counter — so it is fetched separately and simply
-      // stays a dash if it is not there.
-      if(!reg || !el('ag-census')) return;
-      const total = reg.registered_ids;
-      const live  = reg.reachability && reg.reachability.reachable;
+    .then(() => Promise.all([
+      // Two sources on purpose, and the same two the Plaza page itself uses.
+      // The full scan is the only thing that knows how many endpoints answer
+      // and how many operators there are — but it is a photograph, taken by
+      // hand every few weeks. The daily tick knows nothing about operators and
+      // everything about how far the registry has grown since.
+      //
+      // Showing the scan's total here while /registry showed the live one made
+      // the same figure differ by five thousand between two pages of the same
+      // site. One number, one source: the headline is the live high-water mark
+      // in both places, and the sub-line says which half came from where.
+      fetch('https://agent.brainonbnb.com/census', {cache:'no-store'})
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api-registry.json', {cache:'no-store'})
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]))
+    .then(([live, reg]) => {
+      if(!el('ag-census')) return;
+      const total = (live && live.highest_id) || (reg && reg.registered_ids);
       if(total) el('ag-census').textContent = nf(total);
-      if(live != null) el('ag-census-sub').innerHTML = nf(live) + ' answer &middot; ' +
+      const answering = reg && reg.reachability && reg.reachability.reachable;
+      if(answering != null) el('ag-census-sub').innerHTML = nf(answering) + ' answer &middot; ' +
         nf(reg.independent_operators || 0) + ' operators &rarr;';
     })
     .catch(() => {

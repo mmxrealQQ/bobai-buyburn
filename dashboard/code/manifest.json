@@ -266,11 +266,11 @@
    "group": "apps",
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
-   "files": 4,
-   "lines": 2810,
-   "zipBytes": 60823,
-   "txtBytes": 185539,
-   "sha256": "0a561ed3a6c0c3a4",
+   "files": 5,
+   "lines": 3232,
+   "zipBytes": 69020,
+   "txtBytes": 206888,
+   "sha256": "d5947bbbd5d6e7e9",
    "reqs": [
     {
      "what": "A static host",
@@ -290,6 +290,7 @@
    ],
    "paths": [
     "dashboard/scanner-chain.js",
+    "dashboard/scanner-scan.js",
     "dashboard/scanner.html",
     "dashboard/scanner.js",
     "dashboard/styles.css"
@@ -301,10 +302,10 @@
    "title": "NFT Buy Drops",
    "tagline": "The contract, the metadata server and the collection page.",
    "files": 10,
-   "lines": 1251,
-   "zipBytes": 25368,
-   "txtBytes": 66391,
-   "sha256": "affefdbffb9c7e55",
+   "lines": 1277,
+   "zipBytes": 26283,
+   "txtBytes": 68364,
+   "sha256": "738b211e9f6a2082",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -346,10 +347,10 @@
    "title": "Worldcup Tipping Game",
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
-   "lines": 11213,
-   "zipBytes": 185099,
-   "txtBytes": 594375,
-   "sha256": "6d08ccff9ad85c6d",
+   "lines": 11236,
+   "zipBytes": 185786,
+   "txtBytes": 596081,
+   "sha256": "2c517c50e5b54371",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",
@@ -535,10 +536,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1361,
-   "zipBytes": 33242,
-   "txtBytes": 93358,
-   "sha256": "1943a29242c8fe66",
+   "lines": 1535,
+   "zipBytes": 35179,
+   "txtBytes": 99443,
+   "sha256": "75c93ae754cc8ab5",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

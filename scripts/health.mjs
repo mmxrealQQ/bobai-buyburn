@@ -108,9 +108,26 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
   }).then((x) => x.json()).catch(() => null);
   const tools = r?.result?.tools || [];
-  ok('Agents', 'MCP server lists tools', tools.length >= 16, `${tools.length} tools`);
+  ok('Agents', 'MCP server lists tools', tools.length >= 17, `${tools.length} tools`);
   ok('Agents', 'Brain Plaza tools are exposed',
     tools.some((t) => t.name === 'find_agents_on_bnb_chain') && tools.some((t) => t.name === 'bnb_agent_census'));
+
+  // The pool scan is the one tool here that serves somebody else's token, so
+  // "it is listed" is not enough — it has to come back with a real measurement.
+  // Checked against a token with several venues rather than our own, because
+  // the failure this guards against is the outbound-call ceiling, and only a
+  // busy token gets near it.
+  const scanned = await fetch(`${SITE}/api/pool-scan?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`)
+    .then((r) => r.json()).catch(() => null);
+  ok('Agents', 'pool scan answers for any token',
+    scanned?.quotable === true && Array.isArray(scanned?.tradeCost) && scanned.tradeCost.length > 0,
+    scanned?.symbol ? `${scanned.symbol}: 1% depth $${scanned.onePercentDepth?.buyUsd?.toLocaleString('en-US')}` : (scanned?.error || 'no answer'));
+  // Zero would be a claim about the token; null is the honest answer when
+  // neither a measurement nor a label could be had. This asserts the field is
+  // never silently zero-filled.
+  ok('Agents', 'unknown tax reads as unknown, never as 0%',
+    scanned?.tax?.source === 'unknown' ? scanned.tax.buyPct === null : true,
+    scanned?.tax?.source || '');
 
   const sk = await getJson(`${SITE}/.well-known/skills/index.json`);
   const entry = sk.json?.skills?.[0];

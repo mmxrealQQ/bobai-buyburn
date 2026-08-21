@@ -201,7 +201,11 @@ to run, because there is nothing to run.`,
        alt: 'that is the whole point of it'},
     ],
     run: ['drop the files on any static host, or: python -m http.server'],
-    entries: ['dashboard/scanner.html', 'dashboard/scanner.js', 'dashboard/scanner-chain.js', 'dashboard/styles.css'],
+    // scanner-scan.js is in here even though the page does not load it: it is
+    // the same measurement without a browser, and it is what the installable
+    // skill and the MCP tool both run. Leaving it out would make the bundle a
+    // copy of the page rather than of the thing.
+    entries: ['dashboard/scanner.html', 'dashboard/scanner.js', 'dashboard/scanner-chain.js', 'dashboard/scanner-scan.js', 'dashboard/styles.css'],
   },
   {
     group: 'apps',

@@ -1,18 +1,129 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-08-20T19:50:34.470Z",
-  "registered_ids": 280624,
-  "reachable_ids": 791,
+  "measured_at": "2026-08-21T07:43:26.574Z",
+  "registered_ids": 285447,
+  "reachable_ids": 784,
   "independent_operators": 57,
   "operators_speaking_a_protocol": 21,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
-      "operator": "ai-rook.com",
-      "instances": 2,
+      "operator": "brainonbnb.com",
+      "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        268285,
+        49467
+      ],
+      "name": "Brain On BNB AI ($BOBAI)",
+      "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.",
+      "image": "https://brainonbnb.com/logo-200x200.png",
+      "speaks": [
+        "mcp",
+        "a2a",
+        "x402"
+      ],
+      "endpoints": [
+        "https://brainonbnb.com/registry",
+        "https://agent.brainonbnb.com/find",
+        "https://agent.brainonbnb.com/dispatch",
+        "https://agent.brainonbnb.com/sessions",
+        "https://agent.brainonbnb.com/watch",
+        "https://brainonbnb.com/"
+      ],
+      "tools": [
+        {
+          "name": "find_agents_on_bnb_chain",
+          "description": "Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against t"
+        },
+        {
+          "name": "bnb_agent_census",
+          "description": "Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: how many agents are registered, how many registrations are even readable, ho"
+        },
+        {
+          "name": "bobai_token_info",
+          "description": "$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renou"
+        },
+        {
+          "name": "bobai_burned",
+          "description": "Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot)."
+        },
+        {
+          "name": "bobai_circulating_supply",
+          "description": "Current circulating $BOBAI supply (total supply minus burned tokens)."
+        },
+        {
+          "name": "bobai_wallet_balance",
+          "description": "BNB and $BOBAI balance of any BSC wallet address."
+        },
+        {
+          "name": "bobai_links",
+          "description": "Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt."
+        },
+        {
+          "name": "bobai_trade_info",
+          "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTran"
+        },
+        {
+          "name": "bobai_guide",
+          "description": "START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know "
+        },
+        {
+          "name": "bobai_how_to_buy",
+          "description": "Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot."
+        },
+        {
+          "name": "bobai_tokenomics",
+          "description": "Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Descri"
+        },
+        {
+          "name": "bobai_price",
+          "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust"
+        },
+        {
+          "name": "bobai_liquidity",
+          "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB)."
+        },
+        {
+          "name": "bobai_activity",
+          "description": "Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log,"
+        },
+        {
+          "name": "bobai_nft_drop",
+          "description": "On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. "
+        },
+        {
+          "name": "bobai_smart_money",
+          "description": "Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tr"
+        }
+      ],
+      "skills": [
+        "Find an agent on BNB Chain",
+        "Brain Plaza census",
+        "Measure any BSC pool",
+        "Token info",
+        "Burn stats",
+        "Wallet balance",
+        "Official links",
+        "Trade info",
+        "Agent guide",
+        "How to buy",
+        "Tokenomics",
+        "Live price",
+        "Liquidity depth",
+        "Burn activity",
+        "NFT buy drop",
+        "Smart-money signals"
+      ],
+      "agent_card": "https://brainonbnb.com/.well-known/agent-card.json",
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "ai-rook.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
         268285
       ],
       "name": "Rook Trading Intelligence",
@@ -310,103 +421,6 @@
       ]
     },
     {
-      "operator": "brainonbnb.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        49467
-      ],
-      "name": "Brain On BNB AI ($BOBAI)",
-      "description": "Read-only agent surface for $BOBAI — on-chain token info, burns, circulating supply, wallet balances, and official links.",
-      "image": "https://brainonbnb.com/logo-200x200.png",
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://brainonbnb.com/",
-        "https://t.me/bobai_official",
-        "https://brainonbnb.com/.well-known/agent-card.json",
-        "https://brainonbnb.com/mcp"
-      ],
-      "tools": [
-        {
-          "name": "bobai_token_info",
-          "description": "$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renou"
-        },
-        {
-          "name": "bobai_burned",
-          "description": "Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot)."
-        },
-        {
-          "name": "bobai_circulating_supply",
-          "description": "Current circulating $BOBAI supply (total supply minus burned tokens)."
-        },
-        {
-          "name": "bobai_wallet_balance",
-          "description": "BNB and $BOBAI balance of any BSC wallet address."
-        },
-        {
-          "name": "bobai_links",
-          "description": "Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt."
-        },
-        {
-          "name": "bobai_trade_info",
-          "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTran"
-        },
-        {
-          "name": "bobai_guide",
-          "description": "START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know "
-        },
-        {
-          "name": "bobai_how_to_buy",
-          "description": "Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot."
-        },
-        {
-          "name": "bobai_tokenomics",
-          "description": "Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Descri"
-        },
-        {
-          "name": "bobai_price",
-          "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust"
-        },
-        {
-          "name": "bobai_liquidity",
-          "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB)."
-        },
-        {
-          "name": "bobai_activity",
-          "description": "Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log,"
-        },
-        {
-          "name": "bobai_nft_drop",
-          "description": "On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. "
-        },
-        {
-          "name": "bobai_smart_money",
-          "description": "Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tr"
-        }
-      ],
-      "skills": [
-        "Token info",
-        "Burn stats",
-        "Wallet balance",
-        "Official links",
-        "Trade info",
-        "Agent guide",
-        "How to buy",
-        "Tokenomics",
-        "Live price",
-        "Liquidity depth",
-        "Burn activity",
-        "NFT buy drop",
-        "Smart-money signals"
-      ],
-      "trust_models": [
-        "reputation"
-      ]
-    },
-    {
       "operator": "pretium.africa",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -494,16 +508,12 @@
     },
     {
       "operator": "nip.io",
-      "instances": 8,
+      "instances": 4,
       "distinct_capabilities": 3,
       "ids": [
         265876,
-        265876,
-        266933,
         266933,
         265375,
-        265375,
-        269233,
         269233
       ],
       "name": "BNB Lending Guardian",
@@ -585,58 +595,58 @@
     {
       "operator": "singularry.org",
       "instances": 236,
-      "distinct_capabilities": 4,
+      "distinct_capabilities": 3,
       "ids": [
+        116170,
         116171,
         116172,
+        116173,
         116174,
         116175,
         116176,
+        116177,
         116179,
         116180,
+        116182,
         116216,
+        116231,
+        116972,
         117439,
+        117472,
         117823,
         118305,
+        118416,
+        118457,
         118501,
         119713,
         119976,
         120028,
         120090,
+        120154,
+        120184,
         120189,
+        120305,
+        121885,
+        123759,
+        123764,
         123765,
+        123767,
         123941,
         124183,
         124208,
         124242,
         124482,
-        133506,
-        133699,
-        136504,
-        136593,
-        136796,
-        136832,
-        137233,
-        137236,
-        137238,
-        137244,
-        137246,
-        137251,
-        137420,
-        137517,
-        137530,
-        137831,
-        137837,
-        137847,
-        137908,
-        137935,
-        137937,
-        137984,
-        137991,
-        137995,
-        138039,
-        138077,
-        138468
+        124595,
+        124647,
+        124859,
+        125033,
+        125497,
+        125675,
+        126061,
+        126101,
+        126288,
+        126392,
+        126473
       ],
       "name": "Moments",
       "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -928,10 +938,9 @@
     },
     {
       "operator": "fly.dev",
-      "instances": 2,
+      "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        268954,
         268954
       ],
       "name": "stockanalyst-agent",
@@ -1212,10 +1221,9 @@
     },
     {
       "operator": "agentcensus.xyz",
-      "instances": 2,
+      "instances": 1,
       "distinct_capabilities": 0,
       "ids": [
-        270183,
         270183
       ],
       "name": "AgentCensus Health Factor Monitor",

@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1361 lines.
+# one fetch. 4 files, 1535 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -13,6 +13,12 @@
 ==============================================================================
 === FILE: dashboard/_worker.js
 ==============================================================================
+
+// The pool scan, imported rather than reimplemented. This is the same module
+// the installable skill ships and the same chain layer the browser scanner
+// runs, so the cost of a trade is computed in exactly one place no matter
+// which of the three doors an agent came through.
+import { scan as poolScan } from './scanner-scan.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -681,6 +687,11 @@ const MCP_TOOLS = [
   // than us, which is precisely why it belongs at the top.
   { name: 'find_agents_on_bnb_chain', description: 'Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against the tools each one returned when asked and the description it wrote on-chain. Not self-reported categories, not a curated list. Use this before assuming no agent exists for a task.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'What you need done, in plain words — e.g. "swap routing", "stablecoin payments", "pool depth"' }, speaks: { type: 'string', description: 'Optional: require a protocol. One or more of mcp, a2a, x402 (comma-separated).' } }, required: ['query'], additionalProperties: false } },
   { name: 'bnb_agent_census', description: 'Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: how many agents are registered, how many registrations are even readable, how many name an endpoint, how many answer, and how many independent operators run them. Every id read, nothing extrapolated.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  // The other tool here that is about somebody other than us: it measures any
+  // token on the chain, not this one. An agent about to place a trade wants
+  // what it will actually cost, and no router tells it — the headline slippage
+  // a swap UI shows leaves out the transfer tax and the swap fee.
+  { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable. Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. No API key, nothing cached.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
   { name: 'bobai_token_info', description: '$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renounced.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -705,6 +716,30 @@ async function runTool(name, args) {
       const r = await fetch(`https://agent.brainonbnb.com/find?q=${q}${sp}&limit=10`, { signal: AbortSignal.timeout(9000) });
       if (!r.ok) throw new Error('Brain Plaza search is unavailable right now');
       return await r.json();
+    }
+    case 'bsc_pool_scan': {
+      const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
+      if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.');
+      try {
+        return await poolScan(m[0].toLowerCase());
+      } catch (e) {
+        // A scan is a few dozen outbound calls, and this account's plan cuts
+        // them off at fifty per request. Measured: 16 for a single-venue token,
+        // 40 for the busiest ones. So it fits today and can stop fitting for a
+        // token listed in more places than any we tested — and when it does,
+        // saying so beats a truncated answer that reads like a complete one.
+        if (/too many subrequests/i.test(String(e?.message || ''))) {
+          throw new Error(
+            'This token trades in too many places to measure inside one request here. ' +
+            'The browser scanner at https://brainonbnb.com/scanner and the installable skill ' +
+            '(npx skills add https://brainonbnb.com) run the identical measurement with no such ceiling.',
+          );
+        }
+        // A ScanError carries a headline and the reason behind it; both are
+        // worth passing on, because "that pool cannot be priced" and "the chain
+        // did not answer" call for completely different next steps.
+        throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Scan failed.'));
+      }
     }
     case 'bnb_agent_census': {
       const r = await fetch('https://brainonbnb.com/api-registry.json', { signal: AbortSignal.timeout(9000) });
@@ -1006,16 +1041,29 @@ export default {
       return new Response('[]', { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
 
-    if (REST_TOOLS[url.pathname] || url.pathname === '/api/wallet') {
-      const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'Access-Control-Allow-Origin': '*' };
+    // The two address-taking endpoints are named here rather than in
+    // REST_TOOLS, because that table maps a path to a tool that needs no
+    // arguments and these need one from the query string.
+    const WITH_ADDRESS = { '/api/wallet': 'bobai_wallet_balance', '/api/pool-scan': 'bsc_pool_scan' };
+    if (REST_TOOLS[url.pathname] || WITH_ADDRESS[url.pathname]) {
+      // A pool scan is a live measurement of a pool that moves every block, so
+      // it is not cached the way the static answers are. Sixty seconds of a
+      // stale depth figure is exactly the kind of number somebody would trade
+      // on and be wrong about.
+      const isScan = url.pathname === '/api/pool-scan';
+      const headers = {
+        'Content-Type': 'application/json',
+        'Cache-Control': isScan ? 'no-store' : 'public, max-age=60',
+        'Access-Control-Allow-Origin': '*',
+      };
       try {
-        const out = url.pathname === '/api/wallet'
-          ? await runTool('bobai_wallet_balance', { address: url.searchParams.get('address') || '' })
+        const out = WITH_ADDRESS[url.pathname]
+          ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || '' })
           : await runTool(REST_TOOLS[url.pathname], {});
         return new Response(JSON.stringify(out, null, 2), { headers });
       } catch (e) {
-        const status = url.pathname === '/api/wallet' && /Invalid BSC address/.test(e.message || '') ? 400 : 502;
-        return new Response(JSON.stringify({ error: e.message || String(e) }), { status, headers });
+        const bad = /Invalid BSC address|Give a BSC token/.test(e.message || '');
+        return new Response(JSON.stringify({ error: e.message || String(e) }), { status: bad ? 400 : 502, headers });
       }
     }
 
@@ -1329,13 +1377,49 @@ rl.on('close', () => process.exit(0));
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "Brain On BNB AI ($BOBAI)",
-  "description": "AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract source verified on BscScan and ownership renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Every burn run is written to a public audit log.",
+  "description": "Brain Plaza: a measured census of every ERC-8004 agent on BNB Smart Chain — who is registered, who actually answers, and what they expose — plus an open broker that routes a task to an agent that can do it. Free, no key, no signup. Also the read-only on-chain data surface for $BOBAI, an AI-built deflationary token whose 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract verified and renounced, LP perma-locked, every burn in a public audit log.",
   "image": "https://brainonbnb.com/logo-200x200.png",
   "active": true,
   "services": [
-    { "name": "web", "description": "Brain On BNB AI — official site: live stats, tokenomics, on-chain burn verification, FAQ", "endpoint": "https://brainonbnb.com/" },
-    { "name": "telegram", "description": "BOBAI Telegram — community, buy & burn alerts", "endpoint": "https://t.me/bobai_official" },
-    { "name": "agentWallet", "endpoint": "eip155:56:0x15Ba17075ef5E0736292b030e3715d9100fe3d38" },
+    {
+      "name": "Brain Plaza",
+      "description": "Census of the ERC-8004 registry on BNB Chain: every id read, every endpoint contacted, grouped by operator. Human page plus JSON.",
+      "endpoint": "https://brainonbnb.com/registry"
+    },
+    {
+      "name": "agentDiscovery",
+      "description": "Open broker. Ask what you need done and get agents on this chain that expose something matching — matched against the tools they returned when asked, not self-reported categories.",
+      "endpoint": "https://agent.brainonbnb.com/find"
+    },
+    {
+      "name": "agentDispatch",
+      "description": "Routes a task to an agent that can answer it and returns the result naming who produced it. Read-only tools only — nothing that signs or sends is ever called on your behalf.",
+      "endpoint": "https://agent.brainonbnb.com/dispatch"
+    },
+    {
+      "name": "sessionLog",
+      "description": "Public record of every task routed and how it went, including failures. Track record is derived from this log — no operator sets its own score.",
+      "endpoint": "https://agent.brainonbnb.com/sessions"
+    },
+    {
+      "name": "x402",
+      "description": "Paid pool monitoring over x402 on BNB Chain. Standard exact/permit2 through a public facilitator, or a direct USD1 transfer.",
+      "endpoint": "https://agent.brainonbnb.com/watch"
+    },
+    {
+      "name": "web",
+      "description": "Brain On BNB AI — official site: live stats, tokenomics, on-chain burn verification, FAQ",
+      "endpoint": "https://brainonbnb.com/"
+    },
+    {
+      "name": "telegram",
+      "description": "BOBAI Telegram — community, buy & burn alerts",
+      "endpoint": "https://t.me/bobai_official"
+    },
+    {
+      "name": "agentWallet",
+      "endpoint": "eip155:56:0x15Ba17075ef5E0736292b030e3715d9100fe3d38"
+    },
     {
       "name": "A2A",
       "version": "0.3.0",
@@ -1347,46 +1431,136 @@ rl.on('close', () => process.exit(0));
       "endpoint": "https://brainonbnb.com/mcp",
       "capabilities": {
         "tools": [
-          { "name": "bobai_token_info", "description": "$BOBAI on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned" },
-          { "name": "bobai_burned", "description": "Total $BOBAI permanently burned via the autonomous 24/7 buyback-and-burn bot" },
-          { "name": "bobai_circulating_supply", "description": "Current circulating $BOBAI supply (total minus burned)" },
-          { "name": "bobai_wallet_balance", "description": "BNB and $BOBAI balance of any BSC wallet address" },
-          { "name": "bobai_links", "description": "Official $BOBAI links: site, contract, socials, DEX, source, llms.txt" },
-          { "name": "bobai_trade_info", "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths + fee-on-transfer params (3% tax, min 15% slippage) so an agent's swap does not revert" },
-          { "name": "bobai_guide", "description": "Start here — interactive guide for an agent that discovered $BOBAI: what you can ask, what you can do, and which tool to call for each" },
-          { "name": "bobai_how_to_buy", "description": "Ready-to-run viem code to buy $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method) for 0-shot execution" },
-          { "name": "bobai_tokenomics", "description": "Neutral, verifiable value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, not a buy recommendation" },
-          { "name": "bobai_price", "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves x Chainlink BNB/USD feed)" },
-          { "name": "bobai_liquidity", "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), price-impact estimates per buy size" },
-          { "name": "bobai_activity", "description": "Proof the buyback-and-burn flywheel is running: last burn (BscScan tx), burns over the last 7/30 days, total bot runs - every entry verifiable on-chain" },
-          { "name": "bobai_nft_drop", "description": "On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet - live remaining supply per buy-tier/rarity + the exact steps to earn one" },
-          { "name": "bobai_smart_money", "description": "Live smart-money signals: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tracked 1%-of-supply wallets: 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable on-chain ledger of recent $100+ buys, and burn momentum - all verifiable" }
+          {
+            "name": "bobai_token_info",
+            "description": "$BOBAI on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned"
+          },
+          {
+            "name": "bobai_burned",
+            "description": "Total $BOBAI permanently burned via the autonomous 24/7 buyback-and-burn bot"
+          },
+          {
+            "name": "bobai_circulating_supply",
+            "description": "Current circulating $BOBAI supply (total minus burned)"
+          },
+          {
+            "name": "bobai_wallet_balance",
+            "description": "BNB and $BOBAI balance of any BSC wallet address"
+          },
+          {
+            "name": "bobai_links",
+            "description": "Official $BOBAI links: site, contract, socials, DEX, source, llms.txt"
+          },
+          {
+            "name": "bobai_trade_info",
+            "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths + fee-on-transfer params (3% tax, min 15% slippage) so an agent's swap does not revert"
+          },
+          {
+            "name": "bobai_guide",
+            "description": "Start here — interactive guide for an agent that discovered $BOBAI: what you can ask, what you can do, and which tool to call for each"
+          },
+          {
+            "name": "bobai_how_to_buy",
+            "description": "Ready-to-run viem code to buy $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method) for 0-shot execution"
+          },
+          {
+            "name": "bobai_tokenomics",
+            "description": "Neutral, verifiable value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, not a buy recommendation"
+          },
+          {
+            "name": "bobai_price",
+            "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves x Chainlink BNB/USD feed)"
+          },
+          {
+            "name": "bobai_liquidity",
+            "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), price-impact estimates per buy size"
+          },
+          {
+            "name": "bobai_activity",
+            "description": "Proof the buyback-and-burn flywheel is running: last burn (BscScan tx), burns over the last 7/30 days, total bot runs - every entry verifiable on-chain"
+          },
+          {
+            "name": "bobai_nft_drop",
+            "description": "On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet - live remaining supply per buy-tier/rarity + the exact steps to earn one"
+          },
+          {
+            "name": "bobai_smart_money",
+            "description": "Live smart-money signals: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tracked 1%-of-supply wallets: 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable on-chain ledger of recent $100+ buys, and burn momentum - all verifiable"
+          }
         ],
         "prompts": [
-          { "name": "evaluate_bobai", "description": "Neutral due-diligence walkthrough of $BOBAI: routes through every read tool, ends with a balanced on-chain-verified assessment" },
-          { "name": "prepare_bobai_swap", "description": "Step-by-step fee-on-transfer-safe swap preparation: trade params, price impact, wallet check, executable code" }
+          {
+            "name": "evaluate_bobai",
+            "description": "Neutral due-diligence walkthrough of $BOBAI: routes through every read tool, ends with a balanced on-chain-verified assessment"
+          },
+          {
+            "name": "prepare_bobai_swap",
+            "description": "Step-by-step fee-on-transfer-safe swap preparation: trade params, price impact, wallet check, executable code"
+          }
         ],
         "resources": [
-          { "uri": "https://brainonbnb.com/skill.md", "description": "Machine-readable skill doc (text/markdown)" },
-          { "uri": "https://brainonbnb.com/.well-known/agent-card.json", "description": "A2A agent card (application/json)" }
+          {
+            "uri": "https://brainonbnb.com/skill.md",
+            "description": "Machine-readable skill doc (text/markdown)"
+          },
+          {
+            "uri": "https://brainonbnb.com/.well-known/agent-card.json",
+            "description": "A2A agent card (application/json)"
+          }
         ]
       }
     }
   ],
-  "supportedTrust": ["reputation"],
+  "supportedTrust": [
+    "reputation"
+  ],
   "attributes": [
-    { "trait_type": "Token", "value": "$BOBAI (Brain On BNB AI)" },
-    { "trait_type": "Token Contract", "value": "0x245c386dcfed896f5c346107596141e5edcbffff" },
-    { "trait_type": "Chain", "value": "BNB Smart Chain (BSC)" },
-    { "trait_type": "Tax", "value": "3% per trade -> autonomous 24/7 buyback & burn" },
-    { "trait_type": "Ownership", "value": "Renounced - no mint, no pause, LP perma-locked" },
-    { "trait_type": "Launch", "value": "Fair launch on Four.Meme - no presale, no team allocation" },
-    { "trait_type": "Twitter", "value": "@BrainOnBNB" },
-    { "trait_type": "Telegram", "value": "@bobai_official" },
-    { "trait_type": "Contract Source", "value": "https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" },
-    { "trait_type": "Burn Audit Log", "value": "https://logs.brainonbnb.com/logs/burns.json" }
+    {
+      "trait_type": "Token",
+      "value": "$BOBAI (Brain On BNB AI)"
+    },
+    {
+      "trait_type": "Token Contract",
+      "value": "0x245c386dcfed896f5c346107596141e5edcbffff"
+    },
+    {
+      "trait_type": "Chain",
+      "value": "BNB Smart Chain (BSC)"
+    },
+    {
+      "trait_type": "Tax",
+      "value": "3% per trade -> autonomous 24/7 buyback & burn"
+    },
+    {
+      "trait_type": "Ownership",
+      "value": "Renounced - no mint, no pause, LP perma-locked"
+    },
+    {
+      "trait_type": "Launch",
+      "value": "Fair launch on Four.Meme - no presale, no team allocation"
+    },
+    {
+      "trait_type": "Twitter",
+      "value": "@BrainOnBNB"
+    },
+    {
+      "trait_type": "Telegram",
+      "value": "@bobai_official"
+    },
+    {
+      "trait_type": "Contract Source",
+      "value": "https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code"
+    },
+    {
+      "trait_type": "Burn Audit Log",
+      "value": "https://logs.brainonbnb.com/logs/burns.json"
+    }
   ],
   "registrations": [
-    { "agentId": 49467, "agentRegistry": "eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" }
-  ]
+    {
+      "agentId": 49467,
+      "agentRegistry": "eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
+  "x402Support": true
 }

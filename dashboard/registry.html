@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Brain Plaza — the AI agents on BNB Chain that actually answer</title>
 <meta name="description" content="Brain Plaza reads every ERC-8004 agent on BNB Chain and contacts every endpoint they name. Who is actually running, what they can do, and how to reach them.">
-<meta property="og:title" content="Brain Plaza — 280,624 agents registered on BNB Chain, 784 answer">
+<meta property="og:title" content="Brain Plaza — 285,447 agents registered on BNB Chain, 784 answer">
 <meta property="og:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named. Full method, full data, checkable.">
 <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
 <meta property="og:url" content="https://brainonbnb.com/registry">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brain On BNB AI">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Brain Plaza — 280,624 agents registered on BNB Chain, 784 answer">
+<meta name="twitter:title" content="Brain Plaza — 285,447 agents registered on BNB Chain, 784 answer">
 <meta name="twitter:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named.">
 <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
 <link rel="icon" type="image/png" href="/favicon.png?v=4">
 <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
 <link rel="apple-touch-icon" href="/logo.png?v=4">
 <link rel="stylesheet" href="/fonts.css?v=1">
-<link rel="stylesheet" href="/styles.css?v=27">
+<link rel="stylesheet" href="/styles.css?v=28">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
   /* nav/.nav/.nb live in styles.css, but .back-btn and .brand-link do not —
@@ -35,7 +35,13 @@
   .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
     color:var(--gold);white-space:nowrap;text-decoration:none}
   .brand-link:hover{opacity:.85}
-  @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}}
+  @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}
+    /* The header is three items that all refuse to wrap, so on a narrow phone
+       their sum can exceed the screen and the page starts scrolling sideways —
+       which is exactly what /nft/ was doing at 413px in a 360px viewport. The
+       two outer items are the ones people press; the title in the middle is the
+       one that gives way. */
+    .nav{gap:8px}.brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 
   /* Hero copied from scanner.html's .sc-hero rather than approximated: centred,
      same clamp, same -1px tracking, and the gold gradient on <em> that every
@@ -70,7 +76,12 @@
   .rg-top span{font-size:.76rem;color:var(--acc,var(--gold));font-weight:600;
     font-variant-numeric:tabular-nums;white-space:nowrap}
   .rg-bar{height:8px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
-  .rg-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
+  /* The floor on the width below is a PERCENTAGE, and a percentage of a phone
+     is not much: 0.35% of a 312px column is 1.1 pixels, so the bars that matter
+     most here — 784 answering out of 285,447 is genuinely a sliver — rendered
+     as an invisible smear exactly where the point was that the number is tiny.
+     A pixel minimum keeps "almost nothing" visible as almost nothing. */
+  .rg-fill{height:100%;border-radius:4px;min-width:3px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
   .rg-note{font-size:.72rem;color:var(--muted);line-height:1.5}
   .rg-note code{font-size:.74rem}
   table.rg{width:100%;border-collapse:collapse;font-size:.85rem}
@@ -166,22 +177,22 @@
     <div class="blk-head"><span class="blk-tag">Brain Plaza &middot; ERC-8004 on BNB Chain</span><span class="blk-line"></span></div>
 
     <div class="rg-hero">
-      <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2">280,624 agents are registered on BNB Chain. 784 answer. 57 run them.</span></h1>
+      <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2"><span id="rg-live-total">285,447</span> agents are registered on BNB Chain. 784 answer. 57 run them.</span></h1>
       <p class="rg-lead">ERC-8004 gives an AI agent an identity on-chain, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
       <p class="rg-lead">So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. Here is the working core, and how to join it.</p>
-      <p class="rg-when">Measured 2026-08-20 19:50 UTC &middot; 280,624 of 280,624 ids read &middot; 0 left unreadable</p>
+      <p class="rg-when">Measured 2026-08-21 07:43 UTC &middot; 285,447 of 285,447 ids read &middot; 0 left unreadable</p>
     </div>
 
     <div class="rg-grid">
-      <div class="rg-card"><div class="rg-n">280,624</div><div class="rg-l">registered ids</div><div class="rg-s">what the headline counts</div></div>
-      <div class="rg-card"><div class="rg-n">156,114</div><div class="rg-l">readable registrations</div><div class="rg-s">55.6% parse at all</div></div>
-      <div class="rg-card"><div class="rg-n">1,844</div><div class="rg-l">name an endpoint</div><div class="rg-s">0.66% &mdash; an address you could call</div></div>
-      <div class="rg-card"><div class="rg-n">784</div><div class="rg-l">actually answer</div><div class="rg-s">0.28% of everything registered</div></div>
+      <div class="rg-card"><div class="rg-n" id="rg-tile-total">285,447</div><div class="rg-l">registered ids</div><div class="rg-s" id="rg-tile-total-sub">what the headline counts</div></div>
+      <div class="rg-card"><div class="rg-n">156,203</div><div class="rg-l">readable registrations</div><div class="rg-s">54.7% parse at all</div></div>
+      <div class="rg-card"><div class="rg-n">1,844</div><div class="rg-l">name an endpoint</div><div class="rg-s">0.65% &mdash; an address you could call</div></div>
+      <div class="rg-card"><div class="rg-n">784</div><div class="rg-l">actually answer</div><div class="rg-s">0.27% of everything registered</div></div>
     </div>
 
     <div class="rg-box" id="rg-log" hidden>
       <h2>What has actually been asked</h2>
-      <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered.</p>
+      <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered. Once a day we also ask a few ordinary questions of our own so the record keeps building between real requests; those are counted separately and marked on the row, and our own agent is excluded from them.</p>
       <div id="rg-log-body"></div>
     </div>
 
@@ -193,40 +204,40 @@
 
     <div class="rg-box">
       <h2>From a number to a working agent</h2>
-      <p class="rg-sub">Each bar is a share of all 280,624 registered ids. Nothing is extrapolated &mdash; every id was read.</p>
+      <p class="rg-sub">Each bar is a share of all 285,447 registered ids. Nothing is extrapolated &mdash; every id was read.</p>
       
       <div class="rg-step">
-        <div class="rg-top"><b>Registered on-chain</b><span>280,624 &middot; 100.0%</span></div>
+        <div class="rg-top"><b>Registered on-chain</b><span>285,447 &middot; 100.0%</span></div>
         <div class="rg-bar"><div class="rg-fill" style="width:100.000%"></div></div>
         <div class="rg-note">An id exists. That is all this proves.</div>
       </div>
       <div class="rg-step">
-        <div class="rg-top"><b>Registration parses</b><span>156,114 &middot; 55.6%</span></div>
-        <div class="rg-bar"><div class="rg-fill" style="width:55.631%"></div></div>
-        <div class="rg-note">114,610 hold something that is not a readable document; 9,900 are empty.</div>
+        <div class="rg-top"><b>Registration parses</b><span>156,203 &middot; 54.7%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:54.722%"></div></div>
+        <div class="rg-note">119,336 hold something that is not a readable document; 9,908 are empty.</div>
       </div>
       <div class="rg-step">
-        <div class="rg-top"><b>Names any service</b><span>2,350 &middot; 0.84%</span></div>
-        <div class="rg-bar"><div class="rg-fill" style="width:0.837%"></div></div>
+        <div class="rg-top"><b>Names any service</b><span>2,350 &middot; 0.82%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:0.823%"></div></div>
         <div class="rg-note">A registration can be perfectly valid and still describe nothing you can call.</div>
       </div>
       <div class="rg-step">
-        <div class="rg-top"><b>Has an HTTP endpoint</b><span>1,844 &middot; 0.66%</span></div>
-        <div class="rg-bar"><div class="rg-fill" style="width:0.657%"></div></div>
+        <div class="rg-top"><b>Has an HTTP endpoint</b><span>1,844 &middot; 0.65%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:0.646%"></div></div>
         <div class="rg-note">An address &mdash; not yet a promise that anything is behind it.</div>
       </div>
       <div class="rg-step">
-        <div class="rg-top"><b>Endpoint on a real TLD</b><span>1,391 &middot; 0.50%</span></div>
-        <div class="rg-bar"><div class="rg-fill" style="width:0.496%"></div></div>
+        <div class="rg-top"><b>Endpoint on a real TLD</b><span>1,391 &middot; 0.49%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:0.487%"></div></div>
         <div class="rg-note">453 point at domains that cannot resolve &mdash; things like <code>.agent</code>, which was never a TLD.</div>
       </div>
       <div class="rg-step">
-        <div class="rg-top"><b>Answers when contacted</b><span>784 &middot; 0.28%</span></div>
+        <div class="rg-top"><b>Answers when contacted</b><span>784 &middot; 0.27%</span></div>
         <div class="rg-bar"><div class="rg-fill" style="width:0.350%"></div></div>
         <div class="rg-note">Any HTTP response counts, including 401 and 404 &mdash; something is listening.</div>
       </div>
       <div class="rg-step">
-        <div class="rg-top"><b>Answers as an agent</b><span>376 &middot; 0.13%</span></div>
+        <div class="rg-top"><b>Answers as an agent</b><span>418 &middot; 0.15%</span></div>
         <div class="rg-bar"><div class="rg-fill" style="width:0.350%"></div></div>
         <div class="rg-note">Spoke MCP, or served a parsable agent card. Not just a web server.</div>
       </div>
@@ -234,11 +245,18 @@
 
     <div class="rg-box">
       <h2>Who is actually out there</h2>
-      <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form. Showing the first 60 of 791; the rest are in the data file.</p>
+      <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form. Showing the first 60 of 784; the rest are in the data file.</p>
       <input class="rg-filter" id="rg-q" type="search" placeholder="Filter by name, tool or endpoint…" aria-label="Filter agents">
       <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Operator</th><th>What it is &amp; what it can do</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
 <tr>
-      <td class="rg-id">ai-rook.com<span class="rg-fleet">2 ids, identical</span></td>
+      <td class="rg-id">brainonbnb.com</td>
+      <td class="rg-agent">
+        <div class="rg-head"><img class="rg-logo" src="https://brainonbnb.com/logo-200x200.png" alt="" loading="lazy" decoding="async" width="34" height="34" onerror="this.remove()"><div class="rg-nm"><b>Brain On BNB AI ($BOBAI)</b><span class="rg-t rg-mcp">MCP &middot; 16 tools</span><span class="rg-t rg-a2a">agent card</span><span class="rg-t rg-x4">x402</span><span class="rg-t rg-tr">reputation</span></div></div>
+        <div class="rg-desc">Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.</div><div class="rg-caps"><code title="Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against t">find_agents_on_bnb_chain</code> <code title="Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: how many agents are registered, how many registrations are even readable, ho">bnb_agent_census</code> <code title="$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total &amp; circulating supply, amount burned. BEP-20 on BNB Chain, verified &amp; renou">bobai_token_info</code> <code title="Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).">bobai_burned</code> <code title="Current circulating $BOBAI supply (total supply minus burned tokens).">bobai_circulating_supply</code> <code title="BNB and $BOBAI balance of any BSC wallet address.">bobai_wallet_balance</code> <code title="Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt.">bobai_links</code> <code title="How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTran">bobai_trade_info</code> <span class="rg-more">+8</span></div>
+      </td>
+      <td class="rg-ep"><a href="https://brainonbnb.com/registry" target="_blank" rel="noopener nofollow">brainonbnb.com/registry</a></td>
+    </tr><tr>
+      <td class="rg-id">ai-rook.com</td>
       <td class="rg-agent">
         <div class="rg-head"><span class="rg-logo rg-logo-none" aria-hidden="true"></span><div class="rg-nm"><b>Rook Trading Intelligence</b><span class="rg-t rg-mcp">MCP &middot; 10 tools</span><span class="rg-t rg-a2a">agent card</span><span class="rg-t rg-x4">x402</span><span class="rg-t rg-tr">reputation</span><span class="rg-t rg-tr">tee-attestation</span></div></div>
         <div class="rg-desc">Agent Commerce Platform — 72 x402 endpoints (56 paid, 16 free) spanning AI inference (local MiniMax M2.7, 456B MoE), real-time audio (STT/TTS on owned Apple Silicon), document AI, web utilit&hellip;</div><div class="rg-caps"><code title="List the full AI Rook endpoint catalog with prices (52 endpoints: trading intelligence, AI inference via local 456B MoE, blockchain data, dev tools, escrow). ST">list_endpoints</code> <code title="Get exact price, input schema, and REAL measured latency (from production paid calls) for any AI Rook endpoint BEFORE paying. Agents are risk-averse spenders — ">get_quote</code> <code title="Preview a full ERC-8183 escrow job lifecycle on Base WITHOUT touching the chain: exact contract calls with calldata, gas estimates, money split (98% provider / ">escrow_dry_run</code> <code title="Generate a cryptographically signed proof-of-spend receipt for any USDC payment tx on Base. Server verifies the on-chain Transfer event, then signs with the AI ">sign_receipt</code> <code title="FREE taste of the paid /api/market-pulse ($0.05): real BTC price + engine status with CVD/OI/whale fields redacted. Use to evaluate data quality before paying. ">preview_market_pulse</code> <code title="FREE taste of the paid /api/order-flow ($0.25): real price + volume gear with CVD/session levels redacted. Evaluate before paying. Free.">preview_order_flow</code> <code title="FREE taste of the paid /api/trade-idea ($0.25): strategy name + direction only, entry/stop/target redacted. Evaluate before paying. Free.">preview_trade_idea</code> <code title="Read the on-chain state of any ERC-8183 escrow job by ID (Open/Funded/Submitted/Completed/Rejected/Expired, client, provider, budget, deliverable hash). Job 39 ">get_escrow_job</code> <span class="rg-more">+2</span></div>
@@ -252,13 +270,6 @@
       </td>
       <td class="rg-ep"><a href="https://agents.topazdex.com" target="_blank" rel="noopener nofollow">agents.topazdex.com</a></td>
     </tr><tr>
-      <td class="rg-id">brainonbnb.com</td>
-      <td class="rg-agent">
-        <div class="rg-head"><img class="rg-logo" src="https://brainonbnb.com/logo-200x200.png" alt="" loading="lazy" decoding="async" width="34" height="34" onerror="this.remove()"><div class="rg-nm"><b>Brain On BNB AI ($BOBAI)</b><span class="rg-t rg-mcp">MCP &middot; 14 tools</span><span class="rg-t rg-a2a">agent card</span><span class="rg-t rg-tr">reputation</span></div></div>
-        <div class="rg-desc">Read-only agent surface for $BOBAI — on-chain token info, burns, circulating supply, wallet balances, and official links.</div><div class="rg-caps"><code title="$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total &amp; circulating supply, amount burned. BEP-20 on BNB Chain, verified &amp; renou">bobai_token_info</code> <code title="Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).">bobai_burned</code> <code title="Current circulating $BOBAI supply (total supply minus burned tokens).">bobai_circulating_supply</code> <code title="BNB and $BOBAI balance of any BSC wallet address.">bobai_wallet_balance</code> <code title="Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt.">bobai_links</code> <code title="How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTran">bobai_trade_info</code> <code title="START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know ">bobai_guide</code> <code title="Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot.">bobai_how_to_buy</code> <span class="rg-more">+6</span></div>
-      </td>
-      <td class="rg-ep"><a href="https://brainonbnb.com/" target="_blank" rel="noopener nofollow">brainonbnb.com</a></td>
-    </tr><tr>
       <td class="rg-id">pretium.africa</td>
       <td class="rg-agent">
         <div class="rg-head"><img class="rg-logo" src="https://blob.8004scan.app/cb46cfe3c054be19cb76ee9b28885d1718793e2ca70571ab9eaabec4a468af12.jpg" alt="" loading="lazy" decoding="async" width="34" height="34" onerror="this.remove()"><div class="rg-nm"><b>Pretium</b><span class="rg-t rg-mcp">MCP &middot; 13 tools</span><span class="rg-t rg-a2a">agent card</span></div></div>
@@ -266,7 +277,7 @@
       </td>
       <td class="rg-ep"><a href="https://mcp.pretium.africa/mcp" target="_blank" rel="noopener nofollow">mcp.pretium.africa/mcp</a></td>
     </tr><tr>
-      <td class="rg-id">nip.io<span class="rg-fleet">8 ids, 3 variants</span></td>
+      <td class="rg-id">nip.io<span class="rg-fleet">4 ids, 3 variants</span></td>
       <td class="rg-agent">
         <div class="rg-head"><span class="rg-logo rg-logo-none" aria-hidden="true"></span><div class="rg-nm"><b>BNB Lending Guardian</b><span class="rg-t rg-mcp">MCP &middot; 13 tools</span><span class="rg-t rg-a2a">agent card</span><span class="rg-t rg-tr">reputation</span></div></div>
         <div class="rg-desc">Monitors Venus lending positions and protects against liquidation via automatic repayment.</div><div class="rg-caps"><code title="Current picture: health factor, risk band, stress curve and whether the
@@ -285,7 +296,7 @@
       </td>
       <td class="rg-ep"><a href="https://bnb-guardian.172-104-171-139.nip.io/erc8183" target="_blank" rel="noopener nofollow">bnb-guardian.172-104-171-139.nip.io/erc8183</a></td>
     </tr><tr>
-      <td class="rg-id">singularry.org<span class="rg-fleet">236 ids, 4 variants</span></td>
+      <td class="rg-id">singularry.org<span class="rg-fleet">236 ids, 3 variants</span></td>
       <td class="rg-agent">
         <div class="rg-head"><img class="rg-logo" src="https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png" alt="" loading="lazy" decoding="async" width="34" height="34" onerror="this.remove()"><div class="rg-nm"><b>Moments</b><span class="rg-t rg-mcp">MCP &middot; 5 tools</span><span class="rg-t rg-a2a">agent card</span><span class="rg-t rg-tr">reputation</span></div></div>
         <div class="rg-desc">Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.</div><div class="rg-caps"><code title="List Singularry agents currently active on the platform. Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile, and persona name for each.">list_active_agents</code> <code title="Get an agent's current on-chain holdings (BNB + ERC-20 tokens) from Zerion. Includes USD valuations.">get_agent_portfolio</code> <code title="Get an agent's active strategy commitments (allocated capital per strategy).">get_agent_strategies</code> <code title="Get an agent's realised + unrealised PnL over a configurable window. Default window is 7 days.">get_agent_pnl</code> <code title="Get an agent's recent autonomous-loop decisions (executions, monitoring cycles, allocations). Useful for understanding what the agent has been doing.">get_recent_decisions</code></div>
@@ -341,7 +352,7 @@
       </td>
       <td class="rg-ep"><a href="https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json" target="_blank" rel="noopener nofollow">agents.chainhelix.io/rebalancer/.well-known/ag</a></td>
     </tr><tr>
-      <td class="rg-id">fly.dev<span class="rg-fleet">2 ids, identical</span></td>
+      <td class="rg-id">fly.dev</td>
       <td class="rg-agent">
         <div class="rg-head"><span class="rg-logo rg-logo-none" aria-hidden="true"></span><div class="rg-nm"><b>stockanalyst-agent</b><span class="rg-t rg-a2a">agent card</span><span class="rg-t rg-tr">reputation</span></div></div>
         <div class="rg-desc">ERC-8183 seller agent (stockanalyst-agent) — negotiate + notify_funded over A2A.</div><div class="rg-caps"><code>Negotiate an ERC-8183 job</code> <code>Notify the seller a job is funded (request delivery)</code></div>
@@ -462,7 +473,7 @@ biuai
       </td>
       <td class="rg-ep"><a href="https://www.8004scan.io/create" target="_blank" rel="noopener nofollow">www.8004scan.io/create</a></td>
     </tr><tr>
-      <td class="rg-id">agentcensus.xyz<span class="rg-fleet">2 ids, identical</span></td>
+      <td class="rg-id">agentcensus.xyz</td>
       <td class="rg-agent">
         <div class="rg-head"><span class="rg-logo rg-logo-none" aria-hidden="true"></span><div class="rg-nm"><b>AgentCensus Health Factor Monitor</b></div></div>
         <div class="rg-desc">Live Venus Protocol position monitor on BSC. Send an account address, get a signed health report: health factor, liquidity, shortfall, HEALTHY/AT_RISK/LIQUIDATABLE verdict. Built by AgentCen&hellip;</div>
@@ -719,10 +730,10 @@ At its core, the game is built on a structured probability engine inspired b&hel
     </div>
 
     <div class="rg-box">
-      <h2>If your agent is in that 280,624 and not in the 784 list</h2>
+      <h2>If your agent is in that 285,447 and not in the 784 list</h2>
       <p class="rg-sub">Most registrations fail for one of three boring reasons, and all three are fixable in minutes. Nothing below needs our permission &mdash; it is the ERC-8004 spec, plus the two well-known paths every agent runtime already looks for.</p>
       <ol class="rg-fix">
-        <li><b>Your token URI has to parse.</b> 40.8% of registrations hold something that is not a readable document &mdash; truncated base64, HTML, a broken data URI. If <code>tokenURI(yourId)</code> does not decode to JSON, nothing downstream can read you, and no indexer will ever list you.</li>
+        <li><b>Your token URI has to parse.</b> 41.8% of registrations hold something that is not a readable document &mdash; truncated base64, HTML, a broken data URI. If <code>tokenURI(yourId)</code> does not decode to JSON, nothing downstream can read you, and no indexer will ever list you.</li>
         <li><b>Name a service with a real endpoint.</b> A valid registration with no <code>services</code> array describes nothing callable. And the host has to exist: a meaningful share of the endpoints in this registry point at domains that cannot resolve, <code>.agent</code> among them.</li>
         <li><b>Serve something at the well-known paths.</b> <code>/.well-known/agent-card.json</code> for A2A, an MCP endpoint that answers <code>tools/list</code>. This is the difference between a web server and an agent, and right now it is the rarest thing in the whole registry.</li>
       </ol>
@@ -731,7 +742,7 @@ At its core, the game is built on a structured probability engine inspired b&hel
 
     <details class="rg-box rg-method">
       <summary><h2 style="display:inline">How this was measured</h2></summary>
-      <p><b>Registrations.</b> Every id from 1 to 280,624 read through <code>tokenURI()</code> on <code>0x8004&hellip;a432</code>, in batches of 25 across eleven public BSC nodes. Ids a node refused were retried until answered &mdash; <b>0</b> stayed unreadable. That distinction is the whole reliability of this page: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
+      <p><b>Registrations.</b> Every id from 1 to 285,447 read through <code>tokenURI()</code> on <code>0x8004&hellip;a432</code>, in batches of 25 across eleven public BSC nodes. Ids a node refused were retried until answered &mdash; <b>0</b> stayed unreadable. That distinction is the whole reliability of this page: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
       <p><b>Reachability.</b> Every claimed endpoint contacted once. <i>Any</i> HTTP response counts as reachable &mdash; including 401, 403 and 404 &mdash; because something is listening, and an agent behind auth is still an agent. Only a failed connection counts as dead. Being strict here would push the number in the direction that flatters us, which is exactly why we don't.</p>
       <p><b>Capabilities.</b> Endpoints claiming MCP were sent a real <code>tools/list</code> and the returned tool names recorded. Agent cards had to parse as JSON. Most registrations name a bare domain rather than a card path, so the well-known locations were asked directly &mdash; otherwise &ldquo;nobody publishes a card&rdquo; and &ldquo;nobody writes the path down&rdquo; look identical.</p>
       <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good. It is not a ranking and not an endorsement.</p>
@@ -750,6 +761,27 @@ At its core, the game is built on a structured probability engine inspired b&hel
 </div></footer>
 
 <script>
+  // The registry grows by thousands a day, so the headline figure is stale
+  // within hours of a full scan — it was 4,699 short the morning after. The
+  // daily tick knows the current high-water mark, so the page asks it and says
+  // plainly which number came from where. A page that quietly shows yesterday's
+  // total is wrong in the one way this project cannot afford.
+  (function(){
+    var h=document.getElementById('rg-live-total'), t=document.getElementById('rg-tile-total'),
+        sub=document.getElementById('rg-tile-total-sub');
+    if(!h&&!t)return;
+    fetch('https://agent.brainonbnb.com/census',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d||!d.highest_id)return;
+        var n=Number(d.highest_id).toLocaleString('en-US');
+        if(h)h.textContent=n;
+        if(t)t.textContent=n;
+        if(sub)sub.textContent='checked today · the counts below are from the last full scan';
+      })
+      .catch(function(){});
+  })();
+
   // The session log. This is the part that turns a directory into a record:
   // it is the only place on the page where a number describes an operator's
   // behaviour rather than its own description of itself.
@@ -763,10 +795,17 @@ At its core, the game is built on a structured probability engine inspired b&hel
         if(!d||!d.track_record||!d.track_record.length)return;
         var rows=d.track_record.slice(0,12).map(function(r){
           var ms=r.median_ms!=null?r.median_ms+' ms':'&mdash;';
+          // How many of an operator's answers came from our own daily check
+          // rather than from somebody with a real question. Shown per row,
+          // because "4 of 4" reads very differently once you know that three
+          // of the four were us — and the reader should not have to open the
+          // JSON to find that out.
+          var ours=r.of_which_our_scheduled_checks;
           return '<div class="rg-step"><div class="rg-top"><b>'+esc(r.operator)+'</b>'+
             '<span>'+esc(r.reliability)+' &middot; '+ms+'</span></div>'+
             '<div class="rg-note">'+(r.tools_used||[]).slice(0,4).map(function(t){
               return '<code>'+esc(t)+'</code>';}).join(' ')+
+            (ours?' &middot; '+ours+' of those our daily check':'')+
             (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(r.recent_failures[0]):'')+
             '</div></div>';
         });

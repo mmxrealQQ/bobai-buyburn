@@ -2,7 +2,7 @@
 # The contract, the metadata server and the collection page.
 #
 # This is the complete nft-drop bundle as a single file, so it can be read in
-# one fetch. 10 files, 1251 lines.
+# one fetch. 10 files, 1277 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-drop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -83,9 +83,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
 @media(max-width:560px){
   .page{padding-top:50px}
-  .nav{padding:0 14px;height:50px}
+  .nav{padding:0 14px;height:50px;gap:8px}
   .brand-link{font-size:12px}
   .nb{padding:7px 14px;font-size:.72rem}
+  /* Three items that all refuse to wrap add up to more than a 360px phone:
+     measured at 413px, so the page scrolled sideways under the thumb. The two
+     outer items are the ones people press and must keep their full labels, so
+     the title in the middle is the one allowed to give way — it shrinks and
+     ends in an ellipsis instead of pushing the row past the screen. Fits at
+     any width now, not just at the two that happened to be checked. */
+  .brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis}
 }
 
 /* HERO */
@@ -96,7 +103,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .hero p{color:var(--muted);font-size:1.02rem;max-width:680px;margin:0 auto;line-height:1.65}
 .hero p strong{color:var(--gold);font-weight:600}
 .hero-meta{margin-top:26px;display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:center;font-size:.78rem;color:var(--muted)}
-.hero-meta code{font-family:'Space Grotesk',monospace;background:var(--card);border:1px solid var(--border);padding:5px 10px;border-radius:8px;color:var(--gold);font-size:.72rem;letter-spacing:.2px}
+/* A full contract address is 42 unbreakable characters. With the badge padding
+   it stood 5px wider than the hero on a 360px phone, so it is allowed to break
+   — an address split across two lines still copies as one string, whereas a
+   page that scrolls sideways is wrong for everything on it. */
+.hero-meta code{font-family:'Space Grotesk',monospace;background:var(--card);border:1px solid var(--border);padding:5px 10px;border-radius:8px;color:var(--gold);font-size:.72rem;letter-spacing:.2px;overflow-wrap:anywhere}
 .hero-meta a{color:var(--gold);text-decoration:none}
 .hero-meta a:hover{text-decoration:underline}
 .mkt{display:flex;justify-content:center;gap:10px;margin-top:18px;flex-wrap:wrap}
@@ -171,14 +182,25 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 }
 
 /* RARITY DISTRIBUTION */
-.rarity-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+/* minmax(0,1fr), not a bare 1fr. A grid track's automatic minimum is its own
+   content, so "1fr" is a floor rather than a share: the word LEGENDARY plus the
+   card's padding needs about 98px, four of those need 416px, and the column
+   they sit in offers 312px on a 360px phone. The grid simply grew, took the
+   section with it and made the whole page scroll sideways — the fixed header
+   measuring 413px wide was a symptom of this, not the cause. */
+.rarity-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
 .rc{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-top:3px solid;border-radius:var(--radius);padding:16px 10px;text-align:center;transition:all .25s}
 .rc:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.08)}
 .rc .dot{width:14px;height:14px;border-radius:7px;display:inline-block;margin-bottom:6px}
 .rc .name{font-family:'Space Grotesk',sans-serif;font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase}
 .rc .count{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin-top:6px}
 .rc .of{font-size:.62rem;color:var(--muted);margin-top:2px}
-@media(max-width:760px){.rarity-grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:760px){.rarity-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* Four columns still ask for more than a small phone has once the labels are
+   set. Three fit with room to spare, and the last guard is the label itself:
+   allowed to break rather than to widen its column. */
+@media(max-width:480px){.rarity-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.rc .name{overflow-wrap:anywhere}
 
 /* TIER BLOCKS — availability + per-rarity breakdown + progress bar */
 .tier-block{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;transition:border-color .25s}
@@ -219,7 +241,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .rarity-tag{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:6px;font-size:.72rem;font-weight:600;letter-spacing:.2px;border:1px solid}
 .rarity-dot{width:8px;height:8px;border-radius:4px;display:inline-block}
 .ledger-table .drop-note{display:inline-flex;align-items:center;gap:4px;margin-left:7px;padding:2px 8px;border-radius:6px;font-size:.66rem;font-weight:600;letter-spacing:.2px;color:var(--gold);background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.28);vertical-align:middle}
-.ledger-table .wallet a{color:var(--muted);text-decoration:none;font-family:'Space Grotesk',monospace;font-size:.78rem}
+/* Already shortened to 0x5502…4fc0, and it was still breaking across two lines
+   in a narrow column — which turns one recognisable address into two halves
+   that read like neither. Twelve characters have no business wrapping; the
+   table around them scrolls when it must. */
+.ledger-table .wallet a{color:var(--muted);text-decoration:none;font-family:'Space Grotesk',monospace;font-size:.78rem;white-space:nowrap}
 .ledger-table .wallet a:hover{color:var(--gold)}
 .ledger-table .age{color:var(--muted);font-size:.76rem}
 .ledger-table .tx a{color:var(--muted);text-decoration:none;font-size:.74rem}

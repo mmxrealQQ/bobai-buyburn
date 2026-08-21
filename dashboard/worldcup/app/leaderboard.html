@@ -80,7 +80,18 @@
     .uname{font-weight:600;color:var(--text);font-size:14px;display:flex;align-items:center;gap:4px;min-width:0}
     .uname .uname-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .uname .ball{font-size:13px;flex-shrink:0}
-    .umeta{font-size:11px;color:var(--muted)}
+    /* The meta line carries up to four pills after the country. On a 360px
+       phone the forfeit pill stood 29px outside its column and overlapped the
+       score next to it. Wrapping puts a pill that no longer fits on its own
+       line instead; nowrap keeps each pill in one piece when it gets there. */
+    .umeta{font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+    /* min-width:0, NOT white-space:nowrap. Forbidding the break made it worse:
+       one of these pills carries a whole sentence ("didn't reach 26× cap"), and
+       held on one line it stood 107px outside the column instead of 29. A flex
+       item refuses to shrink below its content unless told it may, so this is
+       the line that lets the long pill wrap inside itself while the short ones
+       stay on one line anyway. */
+    .umeta > *{min-width:0}
     /* Tie-breaker pill — shown when this row beat its tied-on-points neighbor on BOBAI balance.
        Actual amounts are NEVER exposed; the server returns just a `bobai_beats_below` flag. */
     .tie-pill{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 7px;background:rgba(240,185,11,.12);border:1px solid rgba(240,185,11,.32);color:var(--gold);font-family:'Space Grotesk';font-weight:600;font-size:9.5px;letter-spacing:.4px;border-radius:99px;text-transform:none;white-space:nowrap;vertical-align:1px}
@@ -213,6 +224,13 @@
 
     @media (max-width: 560px){
       .row{grid-template-columns:28px 26px 1fr minmax(70px,84px) auto;gap:7px;padding:10px 10px}
+      /* The avatar column above is 26px here, and the "sm" preset renders at
+         32 — so every row's avatar stood 3px outside its cell, centred, which
+         means 1.5px over the rank on one side and the name on the other. The
+         size is written inline by the avatar helper, so overriding it needs
+         !important; the same pattern is already used for the champion avatar
+         on the bonus page. */
+      .ava-sm .wc-ava{width:26px !important;height:26px !important}
       .uname{font-size:13px}
       .pts{font-size:15px}
       .prize-cell .pz-pct{font-size:12px}

@@ -100,9 +100,20 @@ const scoreTool = (tool, terms) => {
   return s;
 };
 
-export async function handleDispatch(url, body, env) {
+export async function handleDispatch(url, body, env, opts = {}) {
   const task = String(body?.task || url.searchParams.get('task') || '').slice(0, 300);
   const dry = body?.dry_run === true || url.searchParams.get('dry') === '1';
+  // Marks a run as our own scheduled check rather than somebody's real
+  // question. It changes nothing about how the call is made — same broker,
+  // same read-only rule, same recording — only how the entry is labelled in
+  // the public log. A track record that quietly mixed our probes in with
+  // organic traffic would be inflating itself.
+  //
+  // Taken from the caller ARGUMENT, never from the request body: the body is
+  // whatever a stranger posted, and letting it set this would let anyone file
+  // their traffic under our scheduled checks — which is a small lie in the one
+  // direction the log is supposed to protect against.
+  const probe = opts.probe === true;
   if (!task) return { status: 400, body: { error: 'task is required — describe what you need done' } };
 
   // Reuse the broker to pick candidates, so routing and search can never
@@ -113,7 +124,17 @@ export async function handleDispatch(url, body, env) {
   findUrl.searchParams.set('limit', '6');
   const { handleFind } = await import('./find.js');
   const found = await handleFind(findUrl);
-  const candidates = (found.body?.results || []).filter((a) => (a.endpoints || []).length);
+  // Our own registration is in the index like everybody else's, and for a real
+  // caller that is right — if we are the best match for what they asked, they
+  // should get us. For a scheduled check it is not: an entry in the public
+  // record showing that brainonbnb.com answered brainonbnb.com's own question
+  // proves nothing and pads the log with the one operator whose reliability
+  // nobody is asking us about.
+  const candidates = (found.body?.results || [])
+    .filter((a) => (a.endpoints || []).length)
+    .filter((a) => !opts.excludeOperator || !(a.endpoints || []).some((e) => {
+      try { return new URL(e).hostname.replace(/^www\./, '') === opts.excludeOperator; } catch { return false; }
+    }));
 
   if (!candidates.length) {
     return { status: 200, body: {
@@ -199,7 +220,7 @@ export async function handleDispatch(url, body, env) {
       attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: why });
       // A failure is a fact about this operator and belongs in the record just
       // as much as a success does.
-      if (env) await recordSession(env, { task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: false, outcome: why });
+      if (env) await recordSession(env, { task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: false, probe, outcome: why });
       continue;
     }
 
@@ -214,7 +235,7 @@ export async function handleDispatch(url, body, env) {
     if (!oversized) { try { parsed = JSON.parse(body); } catch { /* plain text is fine */ } }
 
     if (env) await recordSession(env, {
-      task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: true,
+      task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: true, probe,
       outcome: 'answered', excerpt: body.slice(0, 200),
     });
 

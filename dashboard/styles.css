@@ -1105,7 +1105,12 @@
       color:var(--acc,var(--gold));line-height:1.1;font-variant-numeric:tabular-nums}
     .agt-l{margin-top:6px;font-size:.9rem;color:var(--fg)}
     .agt-s{margin-top:2px;font-size:.78rem;color:var(--muted)}
-    .agt-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+    /* min(300px,100%), not a bare 300px: a bare minimum is a floor the track
+       cannot go below even when the container is narrower, so on a 360px phone
+       the cards stood 8px wider than the column that holds them. Wrapping the
+       minimum in min() lets it collapse to the available width on small screens
+       while leaving the two- and three-column behaviour untouched above it. */
+    .agt-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px}
     .agt-card{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);
       border-radius:22px;padding:24px}
     .agt-card h3{font-size:1.05rem;margin:0 0 12px}

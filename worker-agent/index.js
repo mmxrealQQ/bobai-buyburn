@@ -28,6 +28,7 @@
 import { runCensusTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
+import { handleDispatch } from './dispatch.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -320,6 +321,15 @@ const CAPABILITIES = {
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: '14 read-only tools for $BOBAI on-chain data' },
     { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
   ],
+  hire: [
+    {
+      name: 'dispatch a task',
+      where: 'POST https://agent.brainonbnb.com/dispatch  {"task":"..."}',
+      what: 'Finds an agent that can answer, calls it, and returns the result naming who produced it. Add "dry_run": true to see which agent and tool would be used without calling anything.',
+      limit: 'Read-only tools only. Anything that signs, sends, swaps or orders is listed for you to call yourself — never invoked on your behalf.',
+      free: true,
+    },
+  ],
   broker: [
     {
       name: 'agent search',
@@ -373,6 +383,15 @@ export default {
     // matching — open, no key, so another agent can use it mid-task.
     if (path === '/find') {
       const r = await handleFind(url);
+      return json(r.body, r.status);
+    }
+
+    // Hire: a task in, an answer back, with the agent that produced it named.
+    // Read-only tools only — see dispatch.js for why that line is not moved.
+    if (path === '/dispatch') {
+      const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
+      const r = await handleDispatch(url, body);
+      ctx.waitUntil(bump(env, 'dispatch'));
       return json(r.body, r.status);
     }
 

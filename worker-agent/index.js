@@ -29,6 +29,7 @@ import { runCensusTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
 import { handleDispatch } from './dispatch.js';
+import { readSessions, trackRecord } from './sessions.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -321,6 +322,14 @@ const CAPABILITIES = {
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: '14 read-only tools for $BOBAI on-chain data' },
     { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
   ],
+  record: [
+    {
+      name: 'session log',
+      where: 'https://agent.brainonbnb.com/sessions',
+      what: 'Every task routed to another agent, who answered, how long it took, and what failed. The track record is derived from this log — no operator sets its own score.',
+      free: true,
+    },
+  ],
   hire: [
     {
       name: 'dispatch a task',
@@ -390,7 +399,7 @@ export default {
     // Read-only tools only — see dispatch.js for why that line is not moved.
     if (path === '/dispatch') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
-      const r = await handleDispatch(url, body);
+      const r = await handleDispatch(url, body, env);
       ctx.waitUntil(bump(env, 'dispatch'));
       return json(r.body, r.status);
     }
@@ -399,6 +408,22 @@ export default {
     // never merged into one line — one is a sample of two dozen endpoints, the
     // other is every id in the registry, and a chart that averages them would
     // be lying with real numbers.
+    // The public record. Every task this router passed on, and the track
+    // record that falls out of it — derived from the log, never declared by
+    // the operator it describes.
+    if (path === '/sessions') {
+      const sessions = await readSessions(env);
+      const record = trackRecord(sessions);
+      return json({
+        what_this_is: 'Every task Brain Plaza has routed to another agent, and how each one went. Failures included — a record that only showed successes would be marketing.',
+        how_to_read_it: 'Nobody reports their own score here. An operator appears because it was asked something, and its reliability is the count of times it answered. We store what was asked and a short excerpt of the answer, never the full response.',
+        sessions_recorded: sessions.length,
+        operators_seen: record.length,
+        track_record: record,
+        recent: sessions.slice(-40).reverse(),
+      });
+    }
+
     if (path === '/census-history') {
       const raw = JSON.parse((await env.AGENT.get('census:history')) || '[]');
       const daily = raw.filter((p) => p.kind === 'daily');

@@ -1,0 +1,96 @@
+// The public record of every task this router has passed on.
+//
+// This is the part of the Plaza that makes the rest mean anything. A directory
+// lists what an operator says about itself. A broker matches those claims to a
+// question. Neither can tell you whether the agent actually delivers — and that
+// is the only thing a person hiring one wants to know.
+//
+// So every dispatch is written down: what was asked, who was asked, how long
+// they took, and what came back or why nothing did. Nobody reports their own
+// score. The score is the log.
+//
+// Two design points that matter more than they look:
+//
+//   Failures are kept, and kept visible. A record that only shows successes is
+//   marketing. The useful signal is precisely the agent that stopped answering
+//   last Tuesday, and hiding that would make the whole thing worthless.
+//
+//   The task text is stored, the answer is not. What an agent returned can be
+//   long, can contain anything, and belongs to whoever asked. We keep the shape
+//   of the exchange — tool, duration, success — and a short excerpt, never the
+//   full payload.
+//
+// COST: one read and one write per dispatch, on an account near the free-plan
+// KV limit. All sessions live in a single rolling key rather than one key each,
+// which is the difference between two operations a day and two thousand.
+
+const KEY = 'plaza:sessions';
+const MAX_SESSIONS = 400;
+const EXCERPT = 220;
+
+export async function recordSession(env, entry) {
+  try {
+    const log = JSON.parse((await env.AGENT.get(KEY)) || '[]');
+    log.push({
+      at: new Date().toISOString(),
+      task: String(entry.task || '').slice(0, 160),
+      operator: entry.operator || null,
+      agent: entry.agent || null,
+      tool: entry.tool || null,
+      ms: entry.ms ?? null,
+      ok: !!entry.ok,
+      // Why it did not work is the part worth keeping. "no read-only tool
+      // matched" and "did not answer" are different facts about an operator,
+      // and collapsing them into "failed" throws away the useful half.
+      outcome: String(entry.outcome || (entry.ok ? 'answered' : 'no result')).slice(0, 120),
+      excerpt: entry.excerpt ? String(entry.excerpt).replace(/\s+/g, ' ').slice(0, EXCERPT) : null,
+    });
+    while (log.length > MAX_SESSIONS) log.shift();
+    await env.AGENT.put(KEY, JSON.stringify(log));
+  } catch { /* a lost log entry must never fail the dispatch it describes */ }
+}
+
+export async function readSessions(env) {
+  try { return JSON.parse((await env.AGENT.get(KEY)) || '[]'); }
+  catch { return []; }
+}
+
+// The track record, derived rather than declared. Every number here comes from
+// the log above; there is no field an operator can set.
+export function trackRecord(sessions) {
+  const by = new Map();
+  for (const s of sessions) {
+    const k = s.operator || s.agent;
+    if (!k) continue;
+    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, totalMs: 0, timed: 0, tools: new Set(), last: null, failures: [] });
+    const r = by.get(k);
+    r.asked++;
+    if (s.ok) {
+      r.answered++;
+      if (s.tool) r.tools.add(s.tool);
+      if (typeof s.ms === 'number') { r.totalMs += s.ms; r.timed++; }
+    } else if (r.failures.length < 3) {
+      r.failures.push(s.outcome);
+    }
+    if (!r.last || s.at > r.last) r.last = s.at;
+  }
+  return [...by.values()]
+    .map((r) => ({
+      operator: r.operator,
+      agent: r.agent,
+      tasks_routed: r.asked,
+      answered: r.answered,
+      // Stated as a fraction, not a percentage, while the counts are small.
+      // "67%" off three attempts reads as a measurement; "2 of 3" reads as
+      // what it is.
+      reliability: `${r.answered} of ${r.asked}`,
+      median_ms: r.timed ? Math.round(r.totalMs / r.timed) : null,
+      tools_used: [...r.tools].slice(0, 8),
+      last_seen: r.last,
+      ...(r.failures.length ? { recent_failures: r.failures } : {}),
+    }))
+    // Coerced: the operator key arrives as whatever the caller passed, and an
+    // agent id is a number. localeCompare on a number throws, which took the
+    // whole endpoint down with a 500 the first time a session was recorded.
+    .sort((a, b) => b.answered - a.answered || String(a.operator).localeCompare(String(b.operator)));
+}

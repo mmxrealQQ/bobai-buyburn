@@ -20,6 +20,8 @@
 // honest limit of what a router can offer, and it is the same limit the census
 // itself observes: we report what is there, not what it is worth.
 
+import { recordSession } from './sessions.js';
+
 // A tool qualifies as readable if one of these appears as a segment of its
 // name. Kept as a set rather than a prefix regex so that a namespaced name —
 // topaz_get_pool_stats — is treated the same as a bare one.
@@ -98,7 +100,7 @@ const scoreTool = (tool, terms) => {
   return s;
 };
 
-export async function handleDispatch(url, body) {
+export async function handleDispatch(url, body, env) {
   const task = String(body?.task || url.searchParams.get('task') || '').slice(0, 300);
   const dry = body?.dry_run === true || url.searchParams.get('dry') === '1';
   if (!task) return { status: 400, body: { error: 'task is required — describe what you need done' } };
@@ -170,7 +172,7 @@ export async function handleDispatch(url, body) {
     if (dry) {
       return { status: 200, body: {
         task, dispatched: false, dry_run: true,
-        would_call: { agent: agent.name, operator: agent.id, endpoint, tool: pick.name, description: pick.description || null },
+        would_call: { agent: agent.name, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), endpoint, tool: pick.name, description: pick.description || null },
         input_schema: pick.inputSchema || null,
         attempts,
       } };
@@ -188,10 +190,16 @@ export async function handleDispatch(url, body) {
       } };
     }
 
+    const started = Date.now();
     const res = await rpcCall(endpoint, 'tools/call', { name: pick.name, arguments: {} }, 15000).catch(() => null);
+    const took = Date.now() - started;
     const content = res?.result?.content?.[0]?.text;
     if (res?.error || !content) {
-      attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: res?.error?.message || 'no usable result' });
+      const why = res?.error?.message || 'no usable result';
+      attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: why });
+      // A failure is a fact about this operator and belongs in the record just
+      // as much as a success does.
+      if (env) await recordSession(env, { task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: false, outcome: why });
       continue;
     }
 
@@ -205,12 +213,18 @@ export async function handleDispatch(url, body) {
     let parsed = null;
     if (!oversized) { try { parsed = JSON.parse(body); } catch { /* plain text is fine */ } }
 
+    if (env) await recordSession(env, {
+      task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: true,
+      outcome: 'answered', excerpt: body.slice(0, 200),
+    });
+
     return { status: 200, body: {
       task,
       dispatched: true,
+      took_ms: took,
       answered_by: {
         agent: agent.name,
-        operator: agent.id,
+        operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(),
         endpoint,
         tool: pick.name,
         registry_note: 'This agent was found by reading the ERC-8004 registry and contacting it — it is not affiliated with us.',

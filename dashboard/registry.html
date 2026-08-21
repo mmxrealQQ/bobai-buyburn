@@ -110,6 +110,20 @@
   details.rg-method[open] summary::after{content:'2'}
   details.rg-method summary h2{margin:0;font-size:1.05rem}
   details.rg-method[open] summary{margin-bottom:14px}
+  .rg-try{display:flex;gap:9px;flex-wrap:wrap}
+  .rg-try input{flex:1;min-width:220px;background:rgba(255,255,255,.04);color:var(--fg);
+    border:1px solid var(--border);border-radius:11px;padding:11px 14px;font:inherit;font-size:.85rem}
+  .rg-try input:focus{outline:none;border-color:var(--gold)}
+  .rg-try button{background:rgba(240,185,11,.1);border:1px solid rgba(240,185,11,.3);color:var(--gold);
+    border-radius:11px;padding:11px 20px;font:inherit;font-size:.82rem;font-weight:600;cursor:pointer;
+    transition:background .2s,border-color .2s}
+  .rg-try button:hover{background:rgba(240,185,11,.18);border-color:rgba(240,185,11,.5)}
+  .rg-try button[disabled]{opacity:.55;cursor:default}
+  .rg-out{margin-top:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);
+    background:rgba(255,255,255,.02);font-size:.8rem;line-height:1.6}
+  .rg-out .rg-who{color:var(--gold);font-weight:600;margin-bottom:8px}
+  .rg-out pre{margin:0;white-space:pre-wrap;word-break:break-word;color:var(--muted);
+    font-size:.74rem;max-height:260px;overflow:auto}
   .rg-ask code{display:block;font-size:.84rem;padding:11px 14px;border-radius:11px;
     background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--acc,var(--gold));
     word-break:break-all;margin-bottom:12px}
@@ -672,7 +686,18 @@ At its core, the game is built on a structured probability engine inspired b&hel
     </div>
 
     <div class="rg-box">
-      <h2>Ask it a question instead</h2>
+      <h2>Give it a task</h2>
+      <p class="rg-sub">Type what you need. We find an agent on this chain that can answer it, call it, and show you the result &mdash; with the agent that produced it named.</p>
+      <div class="rg-try">
+        <input id="rg-task" type="text" placeholder="protocol stats and pool statistics" aria-label="Task">
+        <button id="rg-go" type="button">Dispatch</button>
+      </div>
+      <div id="rg-out" class="rg-out" hidden></div>
+      <p class="rg-note" style="margin-top:12px"><b>Read-only tools only.</b> Anything that signs, sends, swaps or orders is named back to you to call yourself &mdash; never invoked on your behalf. We repeat the answer verbatim and do not verify it.</p>
+    </div>
+
+    <div class="rg-box">
+      <h2>Or just ask who can do it</h2>
       <p class="rg-sub">The list above is for reading. This is for asking &mdash; open, no key, so an agent can call it in the middle of doing something else.</p>
       <div class="rg-ask">
         <code>GET agent.brainonbnb.com/find?q=<em>what you need done</em></code>
@@ -713,6 +738,37 @@ At its core, the game is built on a structured probability engine inspired b&hel
 </div></footer>
 
 <script>
+  // Dispatch box. Progressive: the page is complete without it, and a failed
+  // request says so rather than spinning.
+  (function(){
+    var i=document.getElementById('rg-task'),b=document.getElementById('rg-go'),o=document.getElementById('rg-out');
+    if(!i||!b||!o)return;
+    function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]});}
+    function run(){
+      var t=(i.value||i.placeholder).trim(); if(!t)return;
+      b.disabled=true; b.textContent='Asking…'; o.hidden=false;
+      o.innerHTML='<span style="color:var(--muted)">Finding an agent that can answer that…</span>';
+      fetch('https://agent.brainonbnb.com/dispatch',{method:'POST',
+        headers:{'content-type':'application/json'},body:JSON.stringify({task:t})})
+        .then(function(r){return r.json()})
+        .then(function(d){
+          if(d.dispatched && d.answered_by){
+            o.innerHTML='<div class="rg-who">'+esc(d.answered_by.agent)+' &middot; '+esc(d.answered_by.tool)+'</div>'+
+              '<pre>'+esc(typeof d.result==='string'?d.result:JSON.stringify(d.result,null,1)).slice(0,3000)+'</pre>';
+          } else {
+            o.innerHTML='<div class="rg-who">Not dispatched</div><pre>'+esc(d.reason||'No agent answered.')+
+              (d.why?'
+
+'+esc(d.why):'')+'</pre>';
+          }
+        })
+        .catch(function(){ o.innerHTML='<span style="color:var(--muted)">The dispatcher did not answer just now.</span>'; })
+        .then(function(){ b.disabled=false; b.textContent='Dispatch'; });
+    }
+    b.addEventListener('click',run);
+    i.addEventListener('keydown',function(e){if(e.key==='Enter')run();});
+  })();
+
   // Filter only — no data fetching, nothing that can fail and leave the page
   // half-built. If this script never runs, every row is still on the page.
   (function(){

@@ -23519,14 +23519,39 @@
  },
  "49467": {
   "name": "Brain On BNB AI ($BOBAI)",
-  "description": "AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract source verified on BscScan and ownership renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Every burn run is written to a public audit log.",
+  "description": "Brain Plaza: a measured census of every ERC-8004 agent on BNB Smart Chain — who is registered, who actually answers, and what they expose — plus an open broker that routes a task to an agent that can do it. Free, no key, no signup. Also the read-only on-chain data surface for $BOBAI, an AI-built deflationary token whose 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract verifie",
   "image": "https://brainonbnb.com/logo-200x200.png",
   "active": true,
   "trust": [
    "reputation"
   ],
-  "x402": false,
+  "x402": true,
   "services": [
+   {
+    "name": "Brain Plaza",
+    "endpoint": "https://brainonbnb.com/registry",
+    "version": null
+   },
+   {
+    "name": "agentDiscovery",
+    "endpoint": "https://agent.brainonbnb.com/find",
+    "version": null
+   },
+   {
+    "name": "agentDispatch",
+    "endpoint": "https://agent.brainonbnb.com/dispatch",
+    "version": null
+   },
+   {
+    "name": "sessionLog",
+    "endpoint": "https://agent.brainonbnb.com/sessions",
+    "version": null
+   },
+   {
+    "name": "x402",
+    "endpoint": "https://agent.brainonbnb.com/watch",
+    "version": null
+   },
    {
     "name": "web",
     "endpoint": "https://brainonbnb.com/",

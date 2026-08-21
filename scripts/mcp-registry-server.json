@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.brainonbnb/bobai",
-  "description": "On-chain data for $BOBAI on BNB Chain: price, liquidity, holders and burn proofs. Read-only, no API key.",
-  "version": "1.3.0",
+  "description": "Which ERC-8004 agents on BNB Chain actually answer, and what any BSC trade really costs",
+  "version": "1.4.0",
   "websiteUrl": "https://brainonbnb.com/",
   "remotes": [
     {

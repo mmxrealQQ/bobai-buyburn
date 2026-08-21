@@ -120,6 +120,40 @@ export async function runCensusTick(env) {
   state.stillUp = up;
   state.lastRun = new Date().toISOString();
 
+  // ---- 3. remember today -------------------------------------------------
+  // A census that only ever reports "now" is a photograph. The registry grows
+  // every day and endpoints come and go; the interesting fact is the movement,
+  // and it is unrecoverable unless somebody writes it down as it happens.
+  //
+  // Two kinds of point, kept apart on purpose. A daily point is cheap and
+  // partial: the registry's high-water mark, plus the hit rate of whichever
+  // slice of endpoints was re-checked. A full point comes from an offline
+  // scan of every id. Averaging one into the other would produce a line that
+  // means nothing — so each carries its own `kind` and the page plots them
+  // differently.
+  const today = state.lastRun.slice(0, 10);
+  const history = JSON.parse((await env.AGENT.get('census:history')) || '[]');
+  const point = {
+    date: today,
+    kind: 'daily',
+    highest_id: state.highestId,
+    new_since_baseline: state.newSinceBaseline,
+    // Reachability from the rotating sample only. Named `sample_` so nobody
+    // reads it as a figure for the whole registry — it is 24 endpoints out of
+    // eighteen hundred, and saying so is the difference between a measurement
+    // and a claim.
+    sample_checked: checked,
+    sample_answered: up,
+  };
+  // One point per day: a re-run replaces the day rather than appending, so a
+  // manual trigger cannot bend the line.
+  const idx = history.findIndex((h) => h.date === today && h.kind === 'daily');
+  if (idx >= 0) history[idx] = point; else history.push(point);
+  // Two years of daily points is a few KB. Trimmed anyway, because unbounded
+  // growth in a KV value is a problem that arrives quietly.
+  while (history.length > 800) history.shift();
+  await env.AGENT.put('census:history', JSON.stringify(history));
+
   // Two writes per run, and only when something actually changed.
   await env.AGENT.put('census:state', JSON.stringify(state));
   await env.AGENT.put('census:latest', JSON.stringify({

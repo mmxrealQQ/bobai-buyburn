@@ -395,6 +395,60 @@ export default {
       return json(r.body, r.status);
     }
 
+    // The series. Daily points and full-scan points are returned separately,
+    // never merged into one line — one is a sample of two dozen endpoints, the
+    // other is every id in the registry, and a chart that averages them would
+    // be lying with real numbers.
+    if (path === '/census-history') {
+      const raw = JSON.parse((await env.AGENT.get('census:history')) || '[]');
+      const daily = raw.filter((p) => p.kind === 'daily');
+      const full = raw.filter((p) => p.kind === 'full');
+      const first = daily[0], last = daily[daily.length - 1];
+      return json({
+        what_this_is: 'How the ERC-8004 registry on BNB Chain has moved since we started watching it.',
+        note: 'Daily points track the registry high-water mark and re-check a rotating slice of known endpoints — a sample, not the whole registry. Full points come from scanning every id offline. They are kept apart because they measure different things.',
+        watching_since: first?.date || null,
+        days_observed: daily.length,
+        growth: first && last ? {
+          from: first.highest_id, to: last.highest_id,
+          new_registrations: (last.highest_id || 0) - (first.highest_id || 0),
+          per_day: daily.length > 1
+            ? Math.round(((last.highest_id || 0) - (first.highest_id || 0)) / (daily.length - 1))
+            : null,
+        } : null,
+        daily,
+        full_scans: full,
+      });
+    }
+
+    // Records a completed offline scan as a fixed point in the series. Secret
+    // guarded: these are the numbers the page quotes, and anyone able to post
+    // them could rewrite the history the page is built on.
+    if (path === '/census-history' && request.method === 'POST') {
+      return json({ error: 'use /census-full' }, 400);
+    }
+    if (path === '/census-full' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      const b = await request.json().catch(() => null);
+      if (!b || !Number.isInteger(b.registered_ids)) return json({ error: 'registered_ids required' }, 400);
+      const hist = JSON.parse((await env.AGENT.get('census:history')) || '[]');
+      const date = (b.date || new Date().toISOString()).slice(0, 10);
+      const point = {
+        date, kind: 'full',
+        registered_ids: b.registered_ids,
+        parse: b.parse ?? null,
+        with_endpoint: b.with_endpoint ?? null,
+        reachable: b.reachable ?? null,
+        operators: b.operators ?? null,
+        mcp: b.mcp ?? null,
+      };
+      const i = hist.findIndex((h) => h.date === date && h.kind === 'full');
+      if (i >= 0) hist[i] = point; else hist.push(point);
+      hist.sort((x, y) => (x.date < y.date ? -1 : 1));
+      await env.AGENT.put('census:history', JSON.stringify(hist));
+      return json({ ok: true, recorded: point, points: hist.length });
+    }
+
     if (path === '/census') {
       const latest = await env.AGENT.get('census:latest');
       if (!latest) return json({ error: 'no census tick has run yet' }, 503);

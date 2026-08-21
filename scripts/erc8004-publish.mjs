@@ -401,6 +401,12 @@ const page = `<!doctype html>
       <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of everything registered' : 'probe pending'}</div></div>
     </div>
 
+    <div class="rg-box" id="rg-move" hidden>
+      <h2>How it is moving</h2>
+      <p class="rg-sub">The registry grows every day. A single measurement cannot show that, so each daily check is kept — and the full scans are marked separately, because they measure different things.</p>
+      <div id="rg-move-body"></div>
+    </div>
+
     <div class="rg-box">
       <h2>From a number to a working agent</h2>
       <p class="rg-sub">Each bar is a share of all ${fmt(total)} registered ids. Nothing is extrapolated &mdash; every id was read.</p>
@@ -483,6 +489,48 @@ ${liveRows}
 </div></footer>
 
 <script>
+  // The series. Hidden until it has something to say — a chart of one point is
+  // worse than no chart, and this section only earns its place once the
+  // registry has actually moved.
+  (function(){
+    var box=document.getElementById('rg-move'), body=document.getElementById('rg-move-body');
+    if(!box||!body)return;
+    var nf=function(n){return Number(n||0).toLocaleString('en-US')};
+    fetch('https://agent.brainonbnb.com/census-history',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d||!d.daily||!d.daily.length)return;
+        var g=d.growth, rows=[], last=d.daily[d.daily.length-1];
+        // Growth measured against the last full scan, not against the first
+        // daily point. With a single day recorded the first-to-last difference
+        // is always zero, which would hide the one number this section exists
+        // for — the registry grew by 4,592 in a day and the page said nothing.
+        var since = last && last.new_since_baseline;
+        var base = (d.full_scans||[]).slice(-1)[0];
+        if(since>0 && base){
+          rows.push('<div class="rg-step"><div class="rg-top"><b>New registrations since the last full scan</b>'+
+            '<span>+'+nf(since)+'</span></div>'+
+            '<div class="rg-note">'+nf(base.registered_ids)+' on '+base.date+' &rarr; '+nf(last.highest_id)+' now'+
+            (g&&g.per_day?' &middot; about '+nf(g.per_day)+' a day':'')+'</div></div>');
+        }
+        (d.full_scans||[]).slice(-3).forEach(function(f){
+          rows.push('<div class="rg-step"><div class="rg-top"><b>Full scan &middot; '+f.date+'</b>'+
+            '<span>'+nf(f.registered_ids)+' ids</span></div>'+
+            '<div class="rg-note">'+nf(f.reachable)+' answered &middot; '+nf(f.operators)+
+            ' operators &middot; '+nf(f.mcp)+' speaking MCP</div></div>');
+        });
+        if(last&&last.sample_checked){
+          rows.push('<div class="rg-step"><div class="rg-top"><b>Last rotating check</b>'+
+            '<span>'+last.sample_answered+'/'+last.sample_checked+'</span></div>'+
+            '<div class="rg-note">'+last.date+' &middot; a sample of known endpoints, re-checked daily so every one comes round about monthly. Not a figure for the whole registry.</div></div>');
+        }
+        if(!rows.length)return;
+        body.innerHTML=rows.join('');
+        box.hidden=false;
+      })
+      .catch(function(){});
+  })();
+
   // Dispatch box. Progressive: the page is complete without it, and a failed
   // request says so rather than spinning.
   (function(){
@@ -502,9 +550,7 @@ ${liveRows}
               '<pre>'+esc(typeof d.result==='string'?d.result:JSON.stringify(d.result,null,1)).slice(0,3000)+'</pre>';
           } else {
             o.innerHTML='<div class="rg-who">Not dispatched</div><pre>'+esc(d.reason||'No agent answered.')+
-              (d.why?'
-
-'+esc(d.why):'')+'</pre>';
+              (d.why? String.fromCharCode(10,10)+esc(d.why) : '')+'</pre>';
           }
         })
         .catch(function(){ o.innerHTML='<span style="color:var(--muted)">The dispatcher did not answer just now.</span>'; })
@@ -533,6 +579,35 @@ ${liveRows}
 </body>
 </html>
 `;
+
+// The inline script is checked before the page is written. A stray newline
+// inside a string literal once broke the whole <script> block — which silently
+// disabled the dispatch box, the filter and the movement section at the same
+// time, on a page that still looked fine. Nothing about it was visible without
+// opening a console.
+//
+// new Function() parses without executing: it catches exactly the class of
+// error that a generator producing JavaScript is prone to, and nothing else.
+{
+  const scripts = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  for (const [i, src] of scripts.entries()) {
+    try { new Function(src); }
+    catch (e) {
+      console.error(`\nRefusing to write registry.html: inline script #${i + 1} does not parse.`);
+      console.error(`  ${e.message}`);
+      console.error('  This is almost always a generated string containing a real newline.\n');
+      process.exit(1);
+    }
+  }
+  // Also assert the page kept its interactive parts, so a template edit cannot
+  // quietly drop one.
+  for (const id of ['rg-task', 'rg-go', 'rg-out', 'rg-q', 'rg-body', 'rg-move']) {
+    if (!page.includes(`id="${id}"`)) {
+      console.error(`\nRefusing to write registry.html: #${id} is missing from the page.\n`);
+      process.exit(1);
+    }
+  }
+}
 
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'registry.html'), page);
 console.log(`wrote dashboard/registry.html (${(page.length / 1024).toFixed(1)} KB) and dashboard/api-registry.json`);

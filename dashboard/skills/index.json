@@ -6,10 +6,10 @@
       "description": "Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, or why a swap quote looks worse than the headline price.",
       "type": "archive",
       "url": "https://brainonbnb.com/skills/bsc-pool-depth.tar.gz",
-      "digest": "sha256:0ddddd5c8516da06b47084b65fe115ffbab21e782e1787f23dd8713fe3801bd9",
+      "digest": "sha256:c241a7bd244bd1be76f35fa38518219e87a0101496ce257ab1e811bbf3ad8ef2",
       "version": "1.0.0",
       "license": "MIT",
-      "bytes": 22991
+      "bytes": 24633
     }
   ]
 }

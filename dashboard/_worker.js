@@ -205,14 +205,14 @@ async function getLiquidity() {
 
 // Live proof the buyback-and-burn flywheel runs — from the bot's public audit
 // log (burns.json, written to KV by the CF-Worker bot).
-let ACTIVITY_ENV = null; // set per-request in fetch(); needed for the ASSETS fallback below
+let WORKER_ENV = null; // set per-request in fetch(); used for the ASSETS fallback and the GoPlus account key
 async function getActivity() {
   // Primary: live log served by the bot worker (custom domain — worker-to-worker fetchable)
   let r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 60 } }).catch(() => null);
   // Fallback: same-origin static copy bundled with the deploy. (The old
   // raw.githubusercontent copy was dropped — the repo has been unreachable
   // since the account flag, so it only cost a round trip on every miss.)
-  if ((!r || !r.ok) && ACTIVITY_ENV) r = await ACTIVITY_ENV.ASSETS.fetch('https://brainonbnb.com/burns.json').catch(() => null);
+  if ((!r || !r.ok) && WORKER_ENV) r = await WORKER_ENV.ASSETS.fetch('https://brainonbnb.com/burns.json').catch(() => null);
   if (!r || !r.ok) throw new Error('burn log unavailable (HTTP ' + (r ? r.status : 'fetch failed') + ')');
   const runs = await r.json();
   const now = Date.now();
@@ -705,7 +705,7 @@ async function runTool(name, args) {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
       if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.');
       try {
-        return await poolScan(m[0].toLowerCase());
+        return await poolScan(m[0].toLowerCase(), WORKER_ENV);
       } catch (e) {
         // A scan is a few dozen outbound calls, and this account's plan cuts
         // them off at fifty per request. Measured: 16 for a single-venue token,
@@ -960,7 +960,7 @@ function etagMatches(header, tag) {
 
 export default {
   async fetch(request, env, ctx) {
-    ACTIVITY_ENV = env;
+    WORKER_ENV = env;
     const url = new URL(request.url);
 
     // Count what agents ask us for, so the public transparency block has real

@@ -28,6 +28,7 @@ export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com'
 export const RPC=RPCS[0],
   LOGS_RPC='https://bsc-rpc.publicnode.com',
   GOPLUS='https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=',
+  GOPLUS_TOKEN='https://api.gopluslabs.io/api/v1/token',
   V2FACTORY='0xca143ce32fe78f1f7019d7d551a6402fc5350c73',
   V3FACTORY='0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
   QUOTER='0xb048bbc1ee6b733fffcfb9e9cef7375518e25997',

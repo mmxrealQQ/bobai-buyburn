@@ -15,7 +15,7 @@
 // assembles the answer. The arithmetic lives one layer down in
 // scanner-chain.js, which the browser page loads directly.
 import {
-  WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS,
+  WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS, GOPLUS_TOKEN,
   balOf, call, hx, addrAt, res2, decStr, rpcBatch,
   classify, priceToken, discover,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues,
@@ -109,23 +109,103 @@ const gpCached = async (a, fetcher) => {
   return fresh;
 };
 
-const askGoPlus = (a) => gpCached(a, async () =>
-  (await goPlusOnce(a, {})) ||
-  (await goPlusOnce(a, {
-    headers: {
-      accept: 'application/json, text/plain, */*',
-      'accept-language': 'en-US,en;q=0.9',
-      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    },
-  })) ||
-  null);
+// --- account key -----------------------------------------------------------
+// Anonymous requests share a quota tied to the caller's IP, and a Worker's IP
+// belongs to all of Cloudflare, so the quota is usually spent before we ask.
+// Measured 2026-08-22 over eight tokens not in the edge cache: two answered,
+// six came back "code 4029 (too many requests)". It is not a hard wall, which
+// is worse than one — the contract section appears for some visitors and not
+// others, on the same token, for no reason anybody can see. An account key
+// moves the quota onto us and is the only thing that fixes it.
+//
+// The secret stays in the Worker. It is not handed to the browser page and not
+// to the packaged skill — both run on somebody else's machine, and a key in a
+// downloadable bundle is a published key. A caller that passes no env stays
+// anonymous and behaves exactly as before.
+// Web Crypto, which the Worker and any Node 19+ have. Older runtimes reach this
+// only through the packaged skill, and there the honest outcome is to stay
+// anonymous rather than to throw in the middle of a scan that otherwise works.
+const sha1Hex = async (s) => {
+  if (typeof crypto === 'undefined' || !crypto.subtle) return null;
+  const b = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+};
 
-export async function scan(input) {
+// sign = sha1(app_key + time + app_secret). Exported so scripts/goplus-check.mjs
+// can hold it against GoPlus's own worked example rather than trusting that the
+// concatenation order was read correctly.
+export const goPlusSign = (key, time, secret) => sha1Hex(`${key}${time}${secret}`);
+
+// One token per isolate, renewed a minute before it lapses. `inflight` matters:
+// several scans can land at once on a cold isolate, and without it each would
+// fetch its own token.
+let gpTok = { value: null, expires: 0, inflight: null };
+
+const goPlusToken = (env) => {
+  if (!env || !env.GOPLUS_APP_KEY || !env.GOPLUS_APP_SECRET) return Promise.resolve(null);
+  const now = () => Math.floor(Date.now() / 1000);
+  if (gpTok.value && gpTok.expires > now() + 60) return Promise.resolve(gpTok.value);
+  if (gpTok.inflight) return gpTok.inflight;
+  gpTok.inflight = (async () => {
+    try {
+      const time = now();
+      const sign = await goPlusSign(env.GOPLUS_APP_KEY, time, env.GOPLUS_APP_SECRET);
+      if (!sign) { gpWhy.reason = 'no SHA-1 available in this runtime'; return null; }
+      const r = await fetch(GOPLUS_TOKEN, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ app_key: env.GOPLUS_APP_KEY, sign, time }),
+        signal: AbortSignal.timeout(7000),
+      });
+      const j = await r.json().catch(() => null);
+      const tok = j && j.result && j.result.access_token;
+      if (!tok) {
+        // Said plainly, because a wrong key and a reachable-but-refusing service
+        // need different fixes and both otherwise show up as "unavailable".
+        gpWhy.reason = 'account key rejected: ' + (j && j.code != null
+          ? 'code ' + j.code + (j.message ? ' (' + String(j.message).slice(0, 60) + ')' : '')
+          : 'HTTP ' + r.status);
+        return null;
+      }
+      gpTok.value = tok;
+      gpTok.expires = now() + Math.max(60, Number(j.result.expires_in) || 3600);
+      return tok;
+    } catch {
+      gpWhy.reason = 'account key request failed';
+      return null;
+    } finally {
+      gpTok.inflight = null;
+    }
+  })();
+  return gpTok.inflight;
+};
+
+const askGoPlus = (a, env) => gpCached(a, async () => {
+  const tok = await goPlusToken(env);
+  // With a key, one request is the whole story: a refusal is then about the
+  // account, and repeating it dressed as a browser only blurs which of the two
+  // paths failed. Without a key, the second attempt stays — it used to help.
+  if (tok) return (await goPlusOnce(a, { headers: { authorization: tok } })) || null;
+  return (await goPlusOnce(a, {})) ||
+    (await goPlusOnce(a, {
+      headers: {
+        accept: 'application/json, text/plain, */*',
+        'accept-language': 'en-US,en;q=0.9',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    })) ||
+    null;
+});
+
+// `env` is optional and only ever carries the GoPlus account key. The Worker
+// passes it; the browser page and the packaged skill call scan(input) with one
+// argument and keep running anonymously.
+export async function scan(input, env) {
   // Fired against the input on the chance it IS the token, because it usually
   // is and this is the slow leg. If the input turns out to be a pool, the
   // answer describes the LP token instead, so it is asked again against the
   // real token once that is known and this first answer dropped.
-  let gpP = askGoPlus(input);
+  let gpP = askGoPlus(input, env);
 
   let what;
   try {
@@ -199,7 +279,7 @@ export async function scan(input) {
       pool.q = Number(hx(bal[0])) / 1e18;
       pool.tok = Number(hx(bal[1])) / Math.pow(10, tokDec);
     }
-    if (token !== input) gpP = askGoPlus(token);
+    if (token !== input) gpP = askGoPlus(token, env);
     // A pasted pool is honoured — you asked about that one. But the factories
     // are still asked what else exists, because a link often points at a side
     // pool while the real depth sits one fee tier over.

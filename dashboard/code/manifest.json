@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 5,
-   "lines": 3232,
-   "zipBytes": 69020,
-   "txtBytes": 206888,
-   "sha256": "d5947bbbd5d6e7e9",
+   "lines": 3313,
+   "zipBytes": 70524,
+   "txtBytes": 211111,
+   "sha256": "dfa20ea1948366d6",
    "reqs": [
     {
      "what": "A static host",
@@ -537,9 +537,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
    "lines": 1562,
-   "zipBytes": 36641,
-   "txtBytes": 102753,
-   "sha256": "93b3ef7f82b611b5",
+   "zipBytes": 36651,
+   "txtBytes": 102776,
+   "sha256": "c9d3e980abd2f009",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

@@ -28,7 +28,12 @@ if (!addr) {
   process.exit(2);
 }
 try {
-  console.log(JSON.stringify(await scan(addr), null, 2));
+  // process.env is passed only so that GOPLUS_APP_KEY / GOPLUS_APP_SECRET are
+  // picked up if you have set your own. Nothing is bundled here: the contract
+  // properties come back as "unavailable" without a key, because GoPlus's free
+  // quota is per IP and a busy one is exhausted before you ask. Everything else
+  // this prints is measured on-chain and needs no account at all.
+  console.log(JSON.stringify(await scan(addr, process.env), null, 2));
 } catch (e) {
   console.log(JSON.stringify({
     error: e.headline || 'Scan failed.',

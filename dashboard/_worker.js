@@ -220,12 +220,6 @@ async function getActivity() {
   const sum = (arr, f) => arr.reduce((a, e) => a + (parseFloat(e[f]) || 0), 0);
   const period = (arr) => ({ burn_runs: arr.length, bobai_burned: Math.round(sum(arr, 'bobaiBurned')), bob_burned: Math.round(sum(arr, 'bobBurned')) });
   const last = runs[runs.length - 1];
-  // Not every entry is a bot run. Entries tagged with a source were burned by
-  // hand — so far, the agent service earnings. They belong in the burn totals,
-  // because the $BOBAI is just as gone, but calling them bot runs would be a
-  // false claim about what runs unattended.
-  const botRuns = runs.filter(e => !e.source);
-  const manual = runs.filter(e => e.source);
   return {
     buyback_bot: 'autonomous, checks every 10 minutes 24/7 — executes a buyback+burn whenever the collected 3% tax reaches the swap threshold',
     buyback_wallet: '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
@@ -233,8 +227,7 @@ async function getActivity() {
     last_burn: last ? { time: last.time, bobai_burned: Math.round(parseFloat(last.bobaiBurned) || 0), burn_tx: 'https://bscscan.com/tx/' + last.bobaiBurnTx, bnb_spent: last.totalBnb } : null,
     last_7_days: period(within(7)),
     last_30_days: period(within(30)),
-    bot_burn_runs_total: botRuns.length,
-    ...(manual.length ? { manual_burns_total: manual.length, manual_burns_note: 'Burns done by hand, not by the bot: earnings from the paid agent service, bought and burned from the service wallet. Counted here and in the burn totals, deliberately not counted as bot runs.' } : {}),
+    bot_burn_runs_total: runs.length,
     audit_log: 'https://logs.brainonbnb.com/logs/burns.json',
     note: 'Burn cadence follows trading volume — the 3% tax funds the buybacks, so more volume means more frequent burns. $BOB is the sister token (1% of the tax burns $BOB). Every burn_tx is verifiable on BscScan. Not financial advice.',
   };

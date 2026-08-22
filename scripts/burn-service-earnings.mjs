@@ -3,9 +3,9 @@
 //
 // WHAT THE PAGE PROMISES, and this script keeps
 //   2. "it lands at 0x690E...4dE4 - a wallet used for nothing else"
-//   3. "from there it buys $BOBAI and is burned, like every other buyback"
-//   4. "every step is a public transaction; the burn shows up in the same log
-//       as the rest"
+//   3. "from there it buys $BOBAI and burns it, the same thing the buyback bot
+//       does with the trade tax"
+//   4. "every step is a public transaction, verifiable on BscScan"
 // So the buy happens FROM the service wallet, not by routing the money through
 // the buyback wallet first. Two reasons that matters. The buyback worker only
 // acts above 0.004 BNB and would sit on this amount forever, and it splits what
@@ -25,7 +25,15 @@
 //   4. Burns every BOBAI received to the dead address.
 //   5. Measures the dead address before and after, so the burned figure is what
 //      the chain says arrived, not what we hoped to send.
-//   6. Writes the log entry to burn-entry.json for the KV append.
+//   6. Writes burn-entry.json as a local record of the run.
+//
+// WHAT IT DELIBERATELY DOES NOT DO
+// It does not append to burns.json. That log is the buyback bot's own record -
+// the runs the wallet at 0xdeFC...01ce made on its own, unattended. A burn a
+// human triggered from a laptop does not belong in it, and putting one there
+// once made bot_burn_runs_total say 348 when the bot had run 347 times. The
+// burn is public either way: it is a transaction on BscScan, and /stats links
+// to it.
 //
 // SAFETY - a bare run changes nothing
 //   Does nothing without --confirm. A bare run prints the plan and exits.
@@ -223,20 +231,20 @@ function selfTest() {
   const entry = {
     time: new Date().toISOString(),
     source: 'x402',
-    note: 'Agent service earnings, bought and burned from the service wallet. Not a tax buyback - no creator or $BOB split.',
+    note: 'Agent service earnings, bought and burned by hand from the service wallet. Not a bot run - deliberately NOT appended to burns.json, which is the buyback bot\'s own log.',
     usd1Spent: formatUnits(usd1Balance, 18),
-    totalBnb: formatUnits(wbnbLeg, 18),
-    bobBurned: '0',
+    bnbLeg: formatUnits(wbnbLeg, 18),
     bobaiBurned: formatUnits(burned, 18),
-    bobaiSwapTx: swapTx,
-    bobaiBurnTx: burnTx,
-    bobaiBlock: Number(burnReceipt.blockNumber),
+    swapTx,
+    burnTx,
+    block: Number(burnReceipt.blockNumber),
   };
   writeFileSync('burn-entry.json', `${JSON.stringify(entry, null, 2)}\n`);
 
   console.log(`\n  burned  ${fmt(burned)} BOBAI  (arrived at the dead address)`);
   console.log(`  block   ${burnReceipt.blockNumber}`);
-  console.log('\nLog entry written to burn-entry.json - append it to burns.json in KV.');
+  console.log('\nRecord written to burn-entry.json. It does NOT go into burns.json - that');
+  console.log('log is the bot\'s unattended runs only. Put the burn tx on /stats instead.');
 })().catch((e) => {
   console.log(e instanceof Refused ? `\n[REFUSED] ${e.message}` : `\n[ERROR] ${e.shortMessage || e.message}`);
   process.exitCode = 1;

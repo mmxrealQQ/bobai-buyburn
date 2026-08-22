@@ -245,7 +245,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-4 files, 1569 lines
+4 files, 1562 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally

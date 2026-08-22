@@ -154,32 +154,48 @@
        as the stylesheet below, so it is one request, not two. -->
   <link rel="preload" href="styles.css?v=28" as="style">
   <link rel="stylesheet" href="styles.css?v=28">
-  <!-- Safari merkt sich die Scrollposition und stellt sie beim Wiederoeffnen
-       wieder her — die Startseite kam dadurch mitten im Hero hoch. Eine
-       Landingpage soll immer oben starten; Deeplinks mit #hash bleiben heil.
+  <!-- Safari remembers the scroll position and puts it back when the page is
+       reopened - the homepage used to come up in the middle of the hero. A
+       landing page should always start at the top; #hash deep links stay intact.
 
-       WICHTIG: das 'load'-Event feuert erst, wenn auch das letzte Bild da ist.
-       Ohne die Wache unten riss der Sprung nach oben einen Besucher zurueck,
-       der laengst angefangen hatte zu lesen — das sah aus, als lade die Seite
-       neu. Sobald jemand selbst scrollt oder tippt, lassen wir die Position
-       darum in Ruhe. -->
+       IMPORTANT: the 'load' event only fires once the last image has arrived.
+       Without the guard below, the jump to the top yanked back a visitor who
+       had long since started reading - it looked like the page was reloading.
+       So once somebody scrolls or taps themselves, we leave the position alone. -->
   <script>
-  /* Markiert das Dokument als "JS laeuft". Der Einblend-Effekt (.fi) setzt
-     Inhalte auf opacity:0 und ist darauf angewiesen, dass ein Observer sie
-     wieder freigibt. Ohne diese Wache blieb bei abgeschaltetem oder
-     fehlgeschlagenem JS die halbe Seite dauerhaft unsichtbar — schwarz. */
+  /* Marks the document as "JS is running". The fade-in effect (.fi) sets content
+     to opacity:0 and depends on an observer releasing it again. Without this
+     guard, half the page stayed permanently invisible - black - whenever JS was
+     switched off or failed to load. */
   document.documentElement.classList.add('js');
   if('scrollRestoration' in history)history.scrollRestoration='manual';
+  /* A reload is not a deep link. Click a nav anchor once and the #hash stays in
+     the address bar, so every later refresh jumps back to that section - on a
+     phone, reliably into The Library. Clearing the hash on a reload, here in the
+     head before anything paints, means the browser never jumps at all. A shared
+     link still works: that is a navigation, not a reload. */
+  var reloaded=(function(){try{
+    var e=performance.getEntriesByType('navigation')[0];
+    if(e&&e.type)return e.type==='reload';
+    return performance.navigation&&performance.navigation.type===1; /* older Safari */
+  }catch(x){return false}})();
+  if(reloaded&&location.hash)history.replaceState(null,'',location.pathname+location.search);
   (function(){var touched=false;
     var mark=function(){touched=true};
-    addEventListener('wheel',mark,{passive:true,once:true});
-    addEventListener('touchstart',mark,{passive:true,once:true});
-    addEventListener('keydown',mark,{once:true});
-    addEventListener('scroll',function(){if(scrollY>0)touched=true},{passive:true});
+    /* Only a real gesture counts as the visitor taking over. A scroll event does
+       not: Safari restores the old position by itself after load, and letting
+       that count as a touch is what left a refresh sitting mid-page with no
+       correction coming. */
+    ['wheel','touchstart','keydown','pointerdown'].forEach(function(t){
+      addEventListener(t,mark,{passive:true,once:true})});
     var top=function(){if(!touched&&!location.hash)scrollTo(0,0)};
-    // Frueh (DOM steht) und noch einmal nach dem letzten Bild.
+    /* Early (DOM is up), after the last image, and a few times after that:
+       Safari puts its remembered position back in its own time, so a single
+       correction loses the race. Any real gesture stops the retries at once. */
     document.addEventListener('DOMContentLoaded',top);
-    addEventListener('load',top);
+    addEventListener('load',function(){[0,80,250,600,1200].forEach(function(d){setTimeout(top,d)})});
+    /* Coming back from the bfcache fires neither DOMContentLoaded nor load. */
+    addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 </head>
 <body>
@@ -939,7 +955,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,569 lines &middot; 36 KB</span>
+          <span class="lib-m">4 files &middot; 1,562 lines &middot; 36 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">

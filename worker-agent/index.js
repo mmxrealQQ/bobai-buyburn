@@ -510,9 +510,10 @@ export default {
         money_flow: {
           '1': 'an agent pays USD1 for a watch',
           '2': `it lands at ${payTo || '(not configured)'} — a wallet used for nothing else`,
-          '3': 'from there it buys $BOBAI and is burned, like every other buyback',
-          '4': 'every step is a public transaction; the burn shows up in the same log as the rest',
-          note: 'Step 3 is done by hand while the amounts are small. It is not automated yet, and this line will say so until it is.',
+          '3': 'from there it buys $BOBAI and burns it, the same thing the buyback bot does with the trade tax',
+          '4': 'every step is a public transaction, verifiable on BscScan',
+          first_burn: '0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
+          note: 'Step 3 is done by hand while the amounts are small. It is not automated yet, and this line will say so until it is. The burn log at logs.brainonbnb.com lists the bot\'s own automated runs only, so a burn done by hand is on chain but not in that log — the transaction above is the record.',
         },
         capabilities: CAPABILITIES,
         generated_at: new Date().toISOString(),

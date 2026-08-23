@@ -5,8 +5,28 @@
 // Binance at www.binance.com/bapi/ramp/v1/public/ramp/b402/bazaar. There is no
 // signup: the docs say a listing appears "within ~30-60 seconds of the first
 // confirmed settle containing the metadata blob", where the blob rides along in
-// paymentPayload.extensions.bazaar. No partner account, no API key — the note
-// in our own memory that one was needed turned out to be wrong.
+// paymentPayload.extensions.bazaar.
+//
+// THE DOCS SAY NO SIGNUP IS NEEDED. THE ENDPOINTS SAY OTHERWISE.
+// "No separate registration, no contract, no back-office signup" describes the
+// listing metadata. It does not describe whether you can reach the settle call
+// that produces a listing. Measured 2026-08-23, and this is the whole story:
+//   www.binance.com/papi/v2/b402/settle            -> 202, empty
+//   www.binance.com/papi/v2/b402/verify            -> 202, empty
+//   www.binance.com/papi/v2/b402/supported         -> 202, empty
+//   www.binance.com/papi/v2/b402/anything-at-all   -> 202, empty
+// A path nobody documented answers exactly like the documented one, so that
+// host is a catch-all and nothing sent to it was ever read. The real host,
+// api.binance.com/papi/v2/b402/settle, answers 403 to every header tried
+// including X-MBX-APIKEY and clientId/accessToken — an auth boundary, which is
+// a different thing from a sinkhole and the only honest read of it.
+//
+// So the Binance partner account is required after all. Two attempts were made
+// before that was clear: one with no payment, one naming a real on-chain
+// 0.50 USD1 transfer. Both answered 202 and neither ever appeared.
+//
+// THE LESSON WORTH KEEPING: before believing a 202, send the same request to a
+// path that cannot exist. If the answer is identical, there is nobody home.
 //
 // WHAT IS ACTUALLY IN THERE (measured 2026-08-23, all 976 entries read)
 //   976 resources, 6 distinct payTo addresses, one of them holding 941 of them.
@@ -296,7 +316,9 @@ for (let i = 1; i <= 12; i++) {
   process.stdout.write('.');
 }
 
-console.log('\n\n  Not listed after 3 minutes.');
-console.log('  The settle endpoint took the request and did nothing visible with it.');
-console.log('  Next lever would be a real signed 0.50 USD1 payment — which needs USD1');
-console.log('  in a wallet we control, and is a decision for a human, not this script.');
+console.log('\n\n  Not listed after 3 minutes — which is the expected outcome.');
+console.log('  www.binance.com/papi/v2/b402/ answers 202 to a path that does not exist,');
+console.log('  so it is a catch-all and nothing sent there is read. The real facilitator');
+console.log('  at api.binance.com refuses with 403 whatever headers it is given.');
+console.log('  Until there is a Binance partner credential, this cannot succeed, and');
+console.log('  re-running it only spends another payment on a sinkhole.');

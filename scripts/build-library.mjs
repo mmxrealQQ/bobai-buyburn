@@ -310,6 +310,36 @@ discoverable to agents rather than only to people.`,
     run: ['node mcp/server.mjs', 'or deploy the Pages worker and point your client at /mcp'],
     entries: ['mcp/server.mjs', 'dashboard/_worker.js', 'dashboard/llms.txt', 'scripts/bobai-agent-card.json'],
   },
+  {
+    group: 'apps',
+    slug: 'agent-service',
+    title: 'The Agent Service — x402, Broker & Census',
+    tagline: 'An agent that sells something, and gets paid without a human in the loop.',
+    about: `The paid half of the agent surface. It answers HTTP 402 with a price, takes USD1
+on BNB Chain by two routes — standard x402 through a public facilitator, or a plain transfer
+plus the transaction hash — verifies the money actually arrived, and only then starts the work.
+It also publishes a catalogue at /.well-known/x402 so an agent holding nothing but the domain
+can discover what is for sale, a broker that searches every ERC-8004 agent on the chain, a
+dispatcher that routes a task to whichever of them can answer it, and the census that keeps
+that picture current. The dispatcher is deliberately read-only: anything that signs, sends or
+swaps is handed back for the caller to do themselves, never executed on their behalf.`,
+    reqs: [
+      {what: 'A wallet to be paid into', ours: 'one BSC wallet, separate from the bots',
+       alt: 'any address — it is only ever a recipient, and the worker never holds its key'},
+      {what: 'Somewhere that runs code on a schedule', ours: 'a Cloudflare Worker, 15-minute cron',
+       alt: 'anything with a timer — the cron drives the watch sweep, the daily census and the canary'},
+      {what: 'Somewhere to keep watches and the census', ours: 'one KV namespace',
+       alt: 'Redis, SQLite, Postgres — it stores one record per watch and one blob per census tick'},
+      {what: 'A payment facilitator, or none', ours: 'the public Dexter facilitator for the standard route',
+       alt: 'the direct-transfer route needs no facilitator at all, which is why both are offered'},
+      {what: 'A BSC RPC endpoint', ours: 'the public endpoints, with failover',
+       alt: 'any node — note that some public RPCs cannot serve eth_getTransactionReceipt, which payment verification needs'},
+      {what: 'Two secrets at runtime: X402_WALLET and the admin trigger secret', ours: 'wrangler secret put',
+       alt: 'the ownership proofs in the catalogue are signed offline and pasted in as constants — the private key never reaches the worker'},
+    ],
+    run: ['npx wrangler deploy', 'node scripts/x402-catalog-proof.mjs --verify  # check the catalogue signs what it claims'],
+    entries: ['worker-agent', 'scripts/x402-catalog-proof.mjs', 'docs/x402-catalog.md'],
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -417,11 +447,27 @@ function scan(path, body) {
       hits.push({path, what, at: body.slice(0, m.index).split('\n').length, sample: m[0].slice(0, 40)});
     }
   }
-  for (const m of body.matchAll(/0x[0-9a-fA-F]{64}/g)) {
-    if (!ALLOWED_HEX64.has(m[0].toLowerCase())) {
-      hits.push({path, what: '64-hex — private key?', at: body.slice(0, m.index).split('\n').length,
-                 sample: m[0].slice(0, 12) + '…'});
-    }
+  // Match the WHOLE hex run, not the first 64 characters of it. Pinned to {64}
+  // this flagged every 130-hex signature as a private key, because a key is a
+  // prefix of one — the gate then refused to build over strings that are public
+  // by design. Reading the full run is what makes the length meaningful.
+  for (const m of body.matchAll(/0x[0-9a-fA-F]{64,}(?![0-9a-fA-F])/g)) {
+    const hex = m[0].slice(2);
+    const before = body.slice(Math.max(0, m.index - 40), m.index);
+
+    // Exactly 65 bytes is an ECDSA signature (r,s,v) and cannot be a 32-byte
+    // key. Ours are the ownership proofs from the x402 catalogue — published on
+    // purpose, at a public URL, and worthless to anyone holding them.
+    if (hex.length === 130) continue;
+
+    // A hash inside a block-explorer transaction link is a public transaction.
+    // The URL is the proof: a private key does not appear after /tx/.
+    if (hex.length === 64 && /(bscscan\.com|etherscan\.io|solscan\.io)\/tx\/$/.test(before)) continue;
+
+    if (hex.length === 64 && ALLOWED_HEX64.has(m[0].toLowerCase())) continue;
+
+    hits.push({path, what: `${hex.length}-hex — private key?`, at: body.slice(0, m.index).split('\n').length,
+               sample: m[0].slice(0, 12) + '…'});
   }
   return hits;
 }
@@ -446,10 +492,29 @@ function selftest() {
   }
   // And the other direction: a public event topic must not trip it, or the gate
   // cries wolf on every file and gets switched off.
-  const topic = 'const T = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";';
-  if (scan('selftest', topic).length) { console.error('  FALSE POSITIVE on a public event topic'); failed++; }
+  // The other direction: things that are public by design must NOT trip it, or
+  // the gate cries wolf on every file and gets switched off. Each of these was
+  // a real false positive that stopped a real build.
+  const clean = [
+    ['const T = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";', 'a public event topic'],
+    ['burn: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e', 'a transaction link'],
+    [`proof: "0x${'ab'.repeat(65)}"`, 'a 65-byte signature'],
+  ];
+  for (const [text, what] of clean) {
+    if (scan('selftest', redact(text)).length) { console.error(`  FALSE POSITIVE on ${what}`); failed++; }
+  }
+  // Loosening the length check must not open a hole: a bare 64-byte hex run is
+  // the shape of a raw keypair, and a key merely sitting near a transaction
+  // link is still a key.
+  for (const [text, what] of [
+    [`const k = "0x${'7f'.repeat(64)}";`, 'a 64-byte hex blob'],
+    [`0x${'d4'.repeat(32)} // near bscscan.com/tx/ but not inside the link`, 'a bare key beside a tx link'],
+  ]) {
+    if (!scan('selftest', redact(text)).length) { console.error(`  MISSED: ${what}`); failed++; }
+  }
+  const total = cases.length + clean.length + 2;
   if (failed) { console.error(`\nself-test failed (${failed}) — the redaction gate is not doing its job.`); process.exit(1); }
-  console.log(`redaction self-test: ${cases.length + 1}/${cases.length + 1} passed`);
+  console.log(`redaction self-test: ${total}/${total} passed`);
 }
 selftest();
 

@@ -889,6 +889,13 @@ const A2A_CARD = {
     { id: 'pool_depth', name: 'Measure any BSC pool',
       description: 'What a trade actually costs on any BNB Chain pool: price impact per size, swap fee, and the transfer tax measured from executed trades rather than read off a label. Installable as a skill: npx skills add https://brainonbnb.com',
       tags: ['defi', 'bsc', 'liquidity', 'trading'] },
+    // The one paid skill. Listed among the free ones on purpose: a card that
+    // advertises only what costs nothing leaves an agent to discover the paid
+    // service by accident, and the price belongs in the first sentence so that
+    // deciding whether to call it never requires calling it.
+    { id: 'pool_watch', name: 'Watch a pool (paid)',
+      description: 'PAID, 0.50 USD1 for 30 days. Continuous monitoring of one PancakeSwap pool: depth recorded every 15 minutes, callback fired when the pool can no longer absorb a trade of your size. Paid over x402 on BNB Chain — standard scheme via a public facilitator, or a direct USD1 transfer. POST https://agent.brainonbnb.com/watch once without payment to be quoted the terms; full catalogue at https://brainonbnb.com/.well-known/x402',
+      tags: ['defi', 'bsc', 'liquidity', 'monitoring', 'x402', 'paid'] },
     { id: 'token_info', name: 'Token info', description: '$BOBAI contract, supply, decimals, amount burned', tags: ['crypto', 'bsc', 'token'] },
     { id: 'burns', name: 'Burn stats', description: 'Total $BOBAI permanently burned', tags: ['crypto', 'deflationary'] },
     { id: 'wallet_balance', name: 'Wallet balance', description: 'BNB + $BOBAI balance of any BSC wallet', tags: ['crypto', 'bsc'] },
@@ -1073,6 +1080,37 @@ export default {
       if (!src || !src.ok) return new Response(JSON.stringify({ error: 'skill manifest unavailable' }), {
         status: 503, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
+      return new Response(await src.text(), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // The x402 catalogue — what we sell, at what price, to which wallet.
+    //
+    // Served from the agent worker rather than written out a second time here.
+    // That worker answers the 402 itself and reads payTo from its own binding,
+    // so proxying its bytes is what keeps the catalogue and the actual price
+    // from ever disagreeing. A hardcoded copy on this domain would be one
+    // deploy away from quoting a price we do not charge.
+    //
+    // The document carries ownership proofs for both origins, so the same bytes
+    // verify whether an agent found it here or on the subdomain.
+    if (url.pathname === '/.well-known/x402') {
+      const src = await fetch('https://agent.brainonbnb.com/.well-known/x402', {
+        signal: AbortSignal.timeout(10000),
+      }).catch(() => null);
+      if (!src || !src.ok) {
+        // Never fall through to the catch-all: it answers 200 with dashboard
+        // HTML, and a discovery client reading that reports a malformed
+        // catalogue instead of an outage it could retry.
+        return new Response(JSON.stringify({
+          error: 'catalogue temporarily unavailable',
+          see: 'https://agent.brainonbnb.com/.well-known/x402',
+        }, null, 2), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
       return new Response(await src.text(), {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
       });

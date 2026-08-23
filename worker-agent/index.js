@@ -31,6 +31,7 @@ import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
 import { handleDispatch } from './dispatch.js';
 import { readSessions, trackRecord } from './sessions.js';
 import { runCanary } from './canary.js';
+import { buildCatalog } from './x402-catalog.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -529,6 +530,19 @@ export default {
 
     const payTo = env.X402_WALLET;
 
+    // The catalogue. Reads the same payTo and price the 402 below quotes, so
+    // the two cannot disagree — an agent that budgets from this file and then
+    // calls /watch finds exactly the terms it was promised.
+    if (path === '/.well-known/x402') {
+      return json(buildCatalog({
+        payTo,
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1`,
+        days: WATCH_DAYS,
+        asset: USD1,
+        network: NETWORK,
+      }), 200, { 'Cache-Control': 'public, max-age=300' });
+    }
+
     if (path === '/') {
       return json({
         service: 'Brain On BNB AI — agent service',
@@ -777,9 +791,30 @@ export default {
     if (path === '/watch' && request.method === 'POST') {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const spec = await request.json().catch(() => null);
-      if (!spec || !/^0x[a-fA-F0-9]{40}$/.test(spec.token || '') || !/^0x[a-fA-F0-9]{40}$/.test(spec.pair || ''))
-        return json({ error: 'token and pair must both be BSC addresses' }, 400);
-      const out = await purchaseWatch(env, ctx, payTo, spec, request.headers.get('PAYMENT-SIGNATURE'));
+      const proof = request.headers.get('PAYMENT-SIGNATURE');
+      const specOk = spec
+        && /^0x[a-fA-F0-9]{40}$/.test(spec.token || '')
+        && /^0x[a-fA-F0-9]{40}$/.test(spec.pair || '');
+
+      // Price discovery must not require a valid body. An x402 client — or an
+      // aggregator indexing the catalogue at /.well-known/x402 — probes the
+      // resource to read its terms out of the 402, and it has no token or pair
+      // to send yet. Answering 400 there makes a listed resource look broken
+      // and hides the price behind a guess at the schema.
+      //
+      // Validation still runs before anything is bought: it is only skipped on
+      // the unpaid call, which sells nothing and charges nothing.
+      if (!proof) {
+        const out = await purchaseWatch(env, ctx, payTo, spec || {}, null);
+        return json(out.body, out.status, out.headers || {});
+      }
+
+      // A payment is on the table, so the spec has to be right before it is
+      // spent. This ordering is deliberate — a caller who pays with a malformed
+      // body gets told, not charged.
+      if (!specOk) return json({ error: 'token and pair must both be BSC addresses' }, 400);
+
+      const out = await purchaseWatch(env, ctx, payTo, spec, proof);
       return json(out.body, out.status, out.headers || {});
     }
 

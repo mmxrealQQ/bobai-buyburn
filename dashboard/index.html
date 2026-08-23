@@ -955,7 +955,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,562 lines &middot; 36 KB</span>
+          <span class="lib-m">4 files &middot; 1,601 lines &middot; 37 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -969,6 +969,29 @@
             <span class="lib-cl">Hand the whole thing to an AI</span>
             <code>curl -sL https://brainonbnb.com/code/agent-tools.txt</code>
             <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/agent-tools.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
+            <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
+          </span>
+          <span class="lib-m">11 files &middot; 2,299 lines &middot; 46 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A wallet to be paid into</span><span class="lib-o"><em>ours</em> one BSC wallet, separate from the bots</span><span class="lib-o"><em>also</em> any address — it is only ever a recipient, and the worker never holds its key</span></li><li><span class="lib-q">Somewhere that runs code on a schedule</span><span class="lib-o"><em>ours</em> a Cloudflare Worker, 15-minute cron</span><span class="lib-o"><em>also</em> anything with a timer — the cron drives the watch sweep, the daily census and the canary</span></li><li><span class="lib-q">Somewhere to keep watches and the census</span><span class="lib-o"><em>ours</em> one KV namespace</span><span class="lib-o"><em>also</em> Redis, SQLite, Postgres — it stores one record per watch and one blob per census tick</span></li><li><span class="lib-q">A payment facilitator, or none</span><span class="lib-o"><em>ours</em> the public Dexter facilitator for the standard route</span><span class="lib-o"><em>also</em> the direct-transfer route needs no facilitator at all, which is why both are offered</span></li><li><span class="lib-q">A BSC RPC endpoint</span><span class="lib-o"><em>ours</em> the public endpoints, with failover</span><span class="lib-o"><em>also</em> any node — note that some public RPCs cannot serve eth_getTransactionReceipt, which payment verification needs</span></li><li><span class="lib-q">Two secrets at runtime: X402_WALLET and the admin trigger secret</span><span class="lib-o"><em>ours</em> wrangler secret put</span><span class="lib-o"><em>also</em> the ownership proofs in the catalogue are signed offline and pasted in as constants — the private key never reaches the worker</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="agent-service" data-title="The Agent Service — x402, Broker &amp; Census">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/agent-service.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/agent-service.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/agent-service.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/agent-service.txt">copy</button>
           </div>
         </div>
       </details>

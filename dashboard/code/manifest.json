@@ -536,10 +536,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1562,
-   "zipBytes": 36651,
-   "txtBytes": 102776,
-   "sha256": "c9d3e980abd2f009",
+   "lines": 1601,
+   "zipBytes": 37383,
+   "txtBytes": 105340,
+   "sha256": "567cf30556c9a39e",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -562,6 +562,62 @@
     "dashboard/llms.txt",
     "mcp/server.mjs",
     "scripts/bobai-agent-card.json"
+   ]
+  },
+  {
+   "slug": "agent-service",
+   "group": "apps",
+   "title": "The Agent Service — x402, Broker & Census",
+   "tagline": "An agent that sells something, and gets paid without a human in the loop.",
+   "files": 11,
+   "lines": 2299,
+   "zipBytes": 46940,
+   "txtBytes": 111127,
+   "sha256": "2e47ae0894da482b",
+   "reqs": [
+    {
+     "what": "A wallet to be paid into",
+     "ours": "one BSC wallet, separate from the bots",
+     "alt": "any address — it is only ever a recipient, and the worker never holds its key"
+    },
+    {
+     "what": "Somewhere that runs code on a schedule",
+     "ours": "a Cloudflare Worker, 15-minute cron",
+     "alt": "anything with a timer — the cron drives the watch sweep, the daily census and the canary"
+    },
+    {
+     "what": "Somewhere to keep watches and the census",
+     "ours": "one KV namespace",
+     "alt": "Redis, SQLite, Postgres — it stores one record per watch and one blob per census tick"
+    },
+    {
+     "what": "A payment facilitator, or none",
+     "ours": "the public Dexter facilitator for the standard route",
+     "alt": "the direct-transfer route needs no facilitator at all, which is why both are offered"
+    },
+    {
+     "what": "A BSC RPC endpoint",
+     "ours": "the public endpoints, with failover",
+     "alt": "any node — note that some public RPCs cannot serve eth_getTransactionReceipt, which payment verification needs"
+    },
+    {
+     "what": "Two secrets at runtime: X402_WALLET and the admin trigger secret",
+     "ours": "wrangler secret put",
+     "alt": "the ownership proofs in the catalogue are signed offline and pasted in as constants — the private key never reaches the worker"
+    }
+   ],
+   "paths": [
+    "docs/x402-catalog.md",
+    "scripts/x402-catalog-proof.mjs",
+    "worker-agent/canary.js",
+    "worker-agent/census.js",
+    "worker-agent/dispatch.js",
+    "worker-agent/find.js",
+    "worker-agent/index.js",
+    "worker-agent/sessions.js",
+    "worker-agent/wrangler.toml",
+    "worker-agent/x402-catalog.js",
+    "worker-agent/x402.js"
    ]
   }
  ]

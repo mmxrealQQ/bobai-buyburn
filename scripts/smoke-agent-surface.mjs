@@ -108,6 +108,52 @@ for (const p of ['/.well-known/agent-skills/index.json', '/.well-known/skills/in
   ok('tarball is gzip, not the HTML fallback', buf[0] === 0x1f && buf[1] === 0x8b);
 }
 
+// ---- the x402 catalogue --------------------------------------------------
+// Published at both origins so an agent holding only one of our domains can
+// still discover that we sell anything. Checked here rather than trusted
+// because the apex answers 200 with dashboard HTML on any unrouted path: a
+// catalogue that fell out of _routes.json would look like a malformed document
+// instead of a missing route, and the status code alone would say 200.
+section('x402 catalogue');
+{
+  const { recoverMessageAddress } = await import('viem');
+
+  // The wallet the resource itself names. Everything below is checked against
+  // this rather than a constant — if the catalogue and the endpoint ever
+  // disagree about where money goes, that is the failure worth catching.
+  const four = await fetch(`${AGENT}/watch`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+  });
+  const fourBody = await four.json().catch(() => null);
+  const payTo = fourBody?.accepts?.find((a) => a.payTo)?.payTo || null;
+  ok('unpaid probe with no body still quotes the price', four.status === 402 && !!payTo,
+    four.status === 402 ? '' : `got ${four.status} — discovery clients cannot read the terms`);
+
+  for (const origin of [AGENT, SITE]) {
+    const label = origin.replace('https://', '');
+    const { r, body, isHtml } = await getText(`${origin}/.well-known/x402`);
+    let j = null; try { j = JSON.parse(body); } catch {}
+    ok(`${label} serves the catalogue as JSON`, r.ok && !isHtml && !!j,
+      isHtml ? 'served the HTML fallback — check _routes.json' : '');
+    if (!j) continue;
+
+    ok(`${label} lists only resources that answer 402`, Array.isArray(j.resources) && j.resources.length > 0);
+    ok(`${label} quotes the same payTo the 402 does`,
+      !payTo || j.instructions?.includes(payTo),
+      payTo && !j.instructions?.includes(payTo) ? `catalogue does not name ${payTo}` : '');
+
+    // The proof only means something if it recovers to the wallet that takes
+    // the money, for the origin it was fetched from.
+    let matched = false;
+    for (const proof of j.ownershipProofs || []) {
+      const addr = await recoverMessageAddress({ message: origin, signature: proof }).catch(() => null);
+      if (addr && payTo && addr.toLowerCase() === payTo.toLowerCase()) matched = true;
+    }
+    ok(`${label} carries an ownership proof that recovers to payTo`, matched,
+      matched ? '' : 'no proof signs this origin — regenerate with scripts/x402-catalog-proof.mjs');
+  }
+}
+
 // ---- the paid surface ----------------------------------------------------
 section('Paid surface');
 {

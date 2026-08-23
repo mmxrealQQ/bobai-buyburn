@@ -359,6 +359,160 @@ const CAPABILITIES = {
   ],
 };
 
+// The one paid tool. Its description says the price in the first sentence:
+// an agent deciding whether to call something should not have to call it to
+// find out that it costs money.
+const WATCH_TOOL = {
+  name: 'bsc_pool_watch',
+  description:
+    'PAID (0.50 USD1, 30 days). Watch one BNB Smart Chain liquidity pool around the clock and '
+    + 'get told the moment it can no longer absorb a trade of your size. Checked every fifteen '
+    + 'minutes for thirty days; fires a callback when depth falls below your threshold. '
+    + 'Call it once WITHOUT `payment` and it answers with the price and where to send it — that '
+    + 'call is free. Measuring a pool once is free too and always will be: use bsc_pool_scan at '
+    + 'https://brainonbnb.com/mcp for that. This tool is only worth paying for because somebody '
+    + 'has to still be running in an hour.',
+  inputSchema: {
+    type: 'object',
+    required: ['token', 'pair'],
+    properties: {
+      token: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$', description: 'The BEP-20 token address.' },
+      pair: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$', description: 'The PancakeSwap pair holding it.' },
+      quote: { type: 'string', description: 'Optional. The other side of the pair, if it is not WBNB.' },
+      depthBelowUsd: {
+        type: 'number',
+        description:
+          'Alert when the pool can no longer absorb a trade of this many dollars. '
+          + 'Leave it out and the watch records depth but never fires, which is a real thing to '
+          + 'want and a bad thing to get by accident.',
+      },
+      callback: { type: 'string', format: 'uri', description: 'Where to POST when it fires. Without one, poll /watch/<id>.' },
+      payment: {
+        type: 'string',
+        description:
+          'The transaction hash of your USD1 transfer, or a base64 x402 payload. Omit it on the '
+          + 'first call to be told what to pay and where.',
+      },
+    },
+  },
+};
+
+// The paid purchase itself, lifted out of the HTTP route so that MCP can sell
+// the same thing without a second copy of the payment logic living beside it.
+// Returns what the caller should be told rather than a Response: the two front
+// doors format it differently, and only one of them can carry a header.
+async function purchaseWatch(env, ctx, payTo, spec, proof) {
+  if (!proof) {
+    // The 402 itself. accepts[] is an array because a second scheme
+    // (eip3009, once a facilitator is in place) will sit beside this one
+    // rather than replace it.
+    // Two ways to pay the same price into the same wallet. The first is
+    // standard x402 that any stock client can execute unattended; the
+    // second is our own direct transfer, which needs no facilitator and
+    // no signature support. A client takes whichever it can do.
+    const resource = 'https://agent.brainonbnb.com/watch';
+    const requirements = {
+      x402Version: 2,
+      accepts: [
+        dexterAccepts({
+          payTo,
+          amountAtomic: WATCH_PRICE_USD1.toString(),
+          description: `Pool watch for ${WATCH_DAYS} days`,
+          resource,
+        }),
+        {
+          scheme: 'exact',
+          network: NETWORK,
+          asset: USD1,
+          maxAmountRequired: WATCH_PRICE_USD1.toString(),
+          payTo,
+          resource,
+          description: `Pool watch for ${WATCH_DAYS} days — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+        },
+      ],
+    };
+    return {
+      status: 402,
+      headers: { 'PAYMENT-REQUIRED': b64(requirements) },
+      requirements,
+      body: {
+        error: 'payment required',
+        how: `Send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain, then repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        accepts: requirements.accepts,
+      },
+    };
+  }
+
+  const parsed = parsePaymentHeader(proof);
+  let check;
+  let tx;
+
+  if (parsed.kind === 'x402') {
+    // Standard x402: the facilitator verifies the signature and moves the
+    // money. We never see a key and never submit a transaction.
+    const reqs = {
+      x402Version: 2,
+      accepts: [dexterAccepts({
+        payTo, amountAtomic: WATCH_PRICE_USD1.toString(),
+        description: `Pool watch for ${WATCH_DAYS} days`,
+        resource: 'https://agent.brainonbnb.com/watch',
+      })],
+    };
+    const r = await verifyAndSettle(parsed.value, reqs.accepts[0]);
+    if (!r.ok) return { status: 402, body: { error: 'payment not accepted', stage: r.stage, reason: r.reason } };
+    tx = (r.tx || `x402:${Date.now()}`).toLowerCase();
+    const already = await env.AGENT.get(`paid:${tx}`);
+    if (already) return { status: 402, body: { error: 'payment not accepted', reason: 'this settlement has already been used' } };
+    check = { ok: true, paid: WATCH_PRICE_USD1, from: r.payer };
+  } else {
+    check = await verifyPayment(env, proof.trim(), payTo, WATCH_PRICE_USD1);
+    if (!check.ok) return { status: 402, body: { error: 'payment not accepted', reason: check.reason } };
+    tx = proof.trim().toLowerCase();
+  }
+  // Marked spent BEFORE the watch is created: if creation fails the caller
+  // has lost nothing they cannot retry with support, whereas the reverse
+  // order lets a retry storm mint watches off one payment.
+  await env.AGENT.put(`paid:${tx}`, '1', { expirationTtl: 60 * 60 * 24 * 400 });
+  await env.AGENT.put(
+    `earn:${tx}`,
+    JSON.stringify({ at: Date.now(), amount: check.paid.toString(), tx, for: 'watch' }),
+    { expirationTtl: 60 * 60 * 24 * 400 },
+  );
+
+  const watch = await createWatch(env, spec, { tx, from: check.from });
+  ctx.waitUntil(bump(env, 'watch_created'));
+
+  // Anything the caller sent that this endpoint does not read is named back
+  // to them. The first paid request in the service's life passed
+  // "threshold_pct", which is not a field here — it was swallowed in
+  // silence, and the watch was created with no threshold at all. It would
+  // have run for thirty days, never fired, and looked like it was working.
+  // A caller who mistypes a field has to be told, or they are paying for
+  // something they did not ask for.
+  const KNOWN = new Set(['token', 'pair', 'quote', 'depthBelowUsd', 'callback']);
+  const ignored = Object.keys(spec || {}).filter((k) => !KNOWN.has(k));
+
+  return { status: 200, body: {
+    ok: true,
+    watch: watch.id,
+    expires: new Date(watch.expiresAt).toISOString(),
+    watching: { token: watch.token, pair: watch.pair, depthBelowUsd: watch.depthBelowUsd },
+    callback: watch.callback ? 'will POST on trigger' : 'none set — poll /watch/<id>',
+    paid: `${fmtUsd1(check.paid)} USD1`,
+    // Stated rather than implied: a watch with no threshold records depth
+    // and never alerts, which is a legitimate thing to want and a terrible
+    // thing to receive by accident.
+    ...(watch.depthBelowUsd == null ? {
+      alerting: 'OFF — no depthBelowUsd was given, so this watch records depth but will never fire. Send depthBelowUsd (a number, in USD) to be alerted when the pool falls below it.',
+    } : {}),
+    ...(ignored.length ? {
+      ignored_fields: ignored,
+      ignored_note: 'These were not recognised and had no effect. The fields this endpoint reads are: token, pair, quote, depthBelowUsd, callback.',
+    } : {}),
+  } };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -532,121 +686,101 @@ export default {
       return json({ ok: true });
     }
 
+    // MCP, carrying exactly one tool: the paid watch.
+    //
+    // WHY THIS EXISTS SEPARATELY FROM brainonbnb.com/mcp
+    // That server has seventeen tools and every one of them is free. This one
+    // has one tool and it costs money. Keeping them apart means an agent that
+    // wants the free surface never has to reason about payment, and the paid
+    // tool does not have to be smuggled into a server advertised as free.
+    //
+    // WHY AN MCP TOOL AT ALL, WHEN /watch ALREADY SELLS IT
+    // Measured 2026-08-23: all 976 entries in Binance's B402 Bazaar are type
+    // "http". Not one is "mcp", though the format has supported it all along.
+    // An agent that speaks MCP and wants to buy something has, today, nothing
+    // in that catalog it can call natively. The tool below is the same product
+    // through the door those agents already have open.
+    if (path === '/mcp') {
+      const cors = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Content-Type': 'application/json',
+      };
+      const rpcOk = (id, result) => new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { headers: cors });
+      const rpcErr = (id, code, message) => new Response(JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } }), { headers: cors });
+
+      if (request.method === 'GET') {
+        return new Response(JSON.stringify({
+          name: 'Brain On BNB AI — paid pool watch',
+          protocol: '2025-06-18',
+          tools: ['bsc_pool_watch'],
+          note: 'One tool, and it is paid. The free tools live at https://brainonbnb.com/mcp.',
+        }), { headers: cors });
+      }
+
+      let body;
+      try { body = await request.json(); } catch { return rpcErr(null, -32700, 'Parse error'); }
+      const { id, method, params } = body || {};
+      if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
+
+      if (method === 'initialize') {
+        return rpcOk(id, {
+          protocolVersion: '2025-06-18',
+          capabilities: { tools: {} },
+          serverInfo: { name: 'Brain On BNB AI — paid pool watch', version: '1.0.0' },
+        });
+      }
+      if (method === 'ping') return rpcOk(id, {});
+      if (method === 'tools/list') {
+        ctx.waitUntil(bump(env, 'mcp'));
+        return rpcOk(id, { tools: [WATCH_TOOL] });
+      }
+      if (method === 'tools/call') {
+        ctx.waitUntil(bump(env, 'mcp'));
+        if (params?.name !== 'bsc_pool_watch') return rpcErr(id ?? null, -32602, 'Unknown tool: ' + params?.name);
+        if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
+        const a = params?.arguments || {};
+        if (!/^0x[a-fA-F0-9]{40}$/.test(a.token || '') || !/^0x[a-fA-F0-9]{40}$/.test(a.pair || '')) {
+          return rpcOk(id, {
+            isError: true,
+            content: [{ type: 'text', text: 'token and pair must both be BSC addresses (0x + 40 hex).' }],
+          });
+        }
+        const { payment, ...spec } = a;
+        const out = await purchaseWatch(env, ctx, payTo, spec, payment || null);
+        // A 402 here is not a failure — it is the price list, which is what a
+        // first call is for. Reporting it as an error would make every client
+        // that checks isError abandon the purchase before it began.
+        // The HTTP wording tells the caller to resend with a header. Over MCP
+        // there is no header to set — the same proof goes in the `payment`
+        // argument — and instructions a caller cannot follow are worse than
+        // none, so the sentence is rewritten for the door it came through.
+        const forMcp = (b) => ({
+          ...b,
+          how: `Send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain, then call this tool again with the same arguments plus payment: "<transaction hash>".`,
+        });
+        const answer = out.status === 402 && !payment
+          ? { payment_required: true, ...forMcp(out.body) }
+          : out.status === 402
+            ? { payment_rejected: true, ...out.body }
+            : out.body;
+        return rpcOk(id, {
+          content: [{ type: 'text', text: JSON.stringify(answer, null, 2) }],
+          structuredContent: answer,
+          ...(out.status === 402 && payment ? { isError: true } : {}),
+        });
+      }
+      return rpcErr(id ?? null, -32601, 'Method not found: ' + method);
+    }
+
     if (path === '/watch' && request.method === 'POST') {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const spec = await request.json().catch(() => null);
       if (!spec || !/^0x[a-fA-F0-9]{40}$/.test(spec.token || '') || !/^0x[a-fA-F0-9]{40}$/.test(spec.pair || ''))
         return json({ error: 'token and pair must both be BSC addresses' }, 400);
-
-      const proof = request.headers.get('PAYMENT-SIGNATURE');
-      if (!proof) {
-        // The 402 itself. accepts[] is an array because a second scheme
-        // (eip3009, once a facilitator is in place) will sit beside this one
-        // rather than replace it.
-        // Two ways to pay the same price into the same wallet. The first is
-        // standard x402 that any stock client can execute unattended; the
-        // second is our own direct transfer, which needs no facilitator and
-        // no signature support. A client takes whichever it can do.
-        const resource = 'https://agent.brainonbnb.com/watch';
-        const requirements = {
-          x402Version: 2,
-          accepts: [
-            dexterAccepts({
-              payTo,
-              amountAtomic: WATCH_PRICE_USD1.toString(),
-              description: `Pool watch for ${WATCH_DAYS} days`,
-              resource,
-            }),
-            {
-              scheme: 'exact',
-              network: NETWORK,
-              asset: USD1,
-              maxAmountRequired: WATCH_PRICE_USD1.toString(),
-              payTo,
-              resource,
-              description: `Pool watch for ${WATCH_DAYS} days — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
-              extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
-            },
-          ],
-        };
-        return json(
-          {
-            error: 'payment required',
-            how: `Send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain, then repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
-            accepts: requirements.accepts,
-          },
-          402,
-          { 'PAYMENT-REQUIRED': b64(requirements) },
-        );
-      }
-
-      const parsed = parsePaymentHeader(proof);
-      let check;
-      let tx;
-
-      if (parsed.kind === 'x402') {
-        // Standard x402: the facilitator verifies the signature and moves the
-        // money. We never see a key and never submit a transaction.
-        const reqs = {
-          x402Version: 2,
-          accepts: [dexterAccepts({
-            payTo, amountAtomic: WATCH_PRICE_USD1.toString(),
-            description: `Pool watch for ${WATCH_DAYS} days`,
-            resource: 'https://agent.brainonbnb.com/watch',
-          })],
-        };
-        const r = await verifyAndSettle(parsed.value, reqs.accepts[0]);
-        if (!r.ok) return json({ error: 'payment not accepted', stage: r.stage, reason: r.reason }, 402);
-        tx = (r.tx || `x402:${Date.now()}`).toLowerCase();
-        const already = await env.AGENT.get(`paid:${tx}`);
-        if (already) return json({ error: 'payment not accepted', reason: 'this settlement has already been used' }, 402);
-        check = { ok: true, paid: WATCH_PRICE_USD1, from: r.payer };
-      } else {
-        check = await verifyPayment(env, proof.trim(), payTo, WATCH_PRICE_USD1);
-        if (!check.ok) return json({ error: 'payment not accepted', reason: check.reason }, 402);
-        tx = proof.trim().toLowerCase();
-      }
-      // Marked spent BEFORE the watch is created: if creation fails the caller
-      // has lost nothing they cannot retry with support, whereas the reverse
-      // order lets a retry storm mint watches off one payment.
-      await env.AGENT.put(`paid:${tx}`, '1', { expirationTtl: 60 * 60 * 24 * 400 });
-      await env.AGENT.put(
-        `earn:${tx}`,
-        JSON.stringify({ at: Date.now(), amount: check.paid.toString(), tx, for: 'watch' }),
-        { expirationTtl: 60 * 60 * 24 * 400 },
-      );
-
-      const watch = await createWatch(env, spec, { tx, from: check.from });
-      ctx.waitUntil(bump(env, 'watch_created'));
-
-      // Anything the caller sent that this endpoint does not read is named back
-      // to them. The first paid request in the service's life passed
-      // "threshold_pct", which is not a field here — it was swallowed in
-      // silence, and the watch was created with no threshold at all. It would
-      // have run for thirty days, never fired, and looked like it was working.
-      // A caller who mistypes a field has to be told, or they are paying for
-      // something they did not ask for.
-      const KNOWN = new Set(['token', 'pair', 'quote', 'depthBelowUsd', 'callback']);
-      const ignored = Object.keys(spec || {}).filter((k) => !KNOWN.has(k));
-
-      return json({
-        ok: true,
-        watch: watch.id,
-        expires: new Date(watch.expiresAt).toISOString(),
-        watching: { token: watch.token, pair: watch.pair, depthBelowUsd: watch.depthBelowUsd },
-        callback: watch.callback ? 'will POST on trigger' : 'none set — poll /watch/<id>',
-        paid: `${fmtUsd1(check.paid)} USD1`,
-        // Stated rather than implied: a watch with no threshold records depth
-        // and never alerts, which is a legitimate thing to want and a terrible
-        // thing to receive by accident.
-        ...(watch.depthBelowUsd == null ? {
-          alerting: 'OFF — no depthBelowUsd was given, so this watch records depth but will never fire. Send depthBelowUsd (a number, in USD) to be alerted when the pool falls below it.',
-        } : {}),
-        ...(ignored.length ? {
-          ignored_fields: ignored,
-          ignored_note: 'These were not recognised and had no effect. The fields this endpoint reads are: token, pair, quote, depthBelowUsd, callback.',
-        } : {}),
-      });
+      const out = await purchaseWatch(env, ctx, payTo, spec, request.headers.get('PAYMENT-SIGNATURE'));
+      return json(out.body, out.status, out.headers || {});
     }
 
     // Runs the watch sweep on demand. Exists because a cron that only fires

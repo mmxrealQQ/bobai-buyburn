@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4078 lines.
+# one fetch. 12 files, 4085 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -759,8 +759,15 @@ const LOGS_RPC_ENDPOINTS = [
 ];
 const LOGS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
+// URL_2 (Allnodes/PublicNode personal token) is asked first, URL (NodeReal
+// MegaNode) second. Both answer the same query identically; the order only
+// decides whose meter runs. NodeReal bills per request against a monthly CU
+// quota that dropped below 20% on 2026-08-23, the PublicNode token does not
+// meter at all, so the metered provider is kept as the reserve rather than
+// spent on routine polling. If URL_2 fails for any reason, NodeReal serves the
+// call exactly as before.
 function keyedEndpoints(env) {
-  return env ? [env.BSC_RPC_KEYED_URL, env.BSC_RPC_KEYED_URL_2].filter(Boolean) : [];
+  return env ? [env.BSC_RPC_KEYED_URL_2, env.BSC_RPC_KEYED_URL].filter(Boolean) : [];
 }
 
 // Free endpoints cap getLogs at ~50 blocks since 2026-06-19. If both keyed

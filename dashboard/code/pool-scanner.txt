@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 5 files, 3313 lines.
+# one fetch. 5 files, 3317 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -702,6 +702,10 @@ const gpCached = async (a, fetcher) => {
 // is worse than one — the contract section appears for some visitors and not
 // others, on the same token, for no reason anybody can see. An account key
 // moves the quota onto us and is the only thing that fixes it.
+//
+// Key set 2026-08-23, and the same eight tokens then answered eight of eight.
+// Note that the key only takes effect after a Pages deployment: uploading the
+// secret alone left the running deployment anonymous and still at 4029.
 //
 // The secret stays in the Worker. It is not handed to the browser page and not
 // to the packaged skill — both run on somebody else's machine, and a key in a

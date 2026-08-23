@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4078,
-   "zipBytes": 57200,
-   "txtBytes": 173507,
-   "sha256": "3b2063e2a26435cb",
+   "lines": 4085,
+   "zipBytes": 57414,
+   "txtBytes": 173996,
+   "sha256": "cddc5ba8aaa3f968",
    "reqs": [
     {
      "what": "A bot token",
@@ -180,10 +180,10 @@
    "title": "NFT Auto-Mint Bot",
    "tagline": "Watches the pair and mints to the buyer, unasked.",
    "files": 2,
-   "lines": 577,
-   "zipBytes": 10855,
-   "txtBytes": 23983,
-   "sha256": "2ae4329445b169cb",
+   "lines": 579,
+   "zipBytes": 10936,
+   "txtBytes": 24134,
+   "sha256": "c03480058f96331d",
    "reqs": [
     {
      "what": "A deployed ERC-721 it is allowed to mint from",
@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 5,
-   "lines": 3313,
-   "zipBytes": 70524,
-   "txtBytes": 211111,
-   "sha256": "dfa20ea1948366d6",
+   "lines": 3317,
+   "zipBytes": 70616,
+   "txtBytes": 211345,
+   "sha256": "c925328a1fa801f6",
    "reqs": [
     {
      "what": "A static host",

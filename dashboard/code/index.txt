@@ -84,7 +84,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 4078 lines
+12 files, 4085 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -107,7 +107,7 @@ txt: https://brainonbnb.com/code/telegram-bot.txt
 NFT Auto-Mint Bot
 -----------------
 Watches the pair and mints to the buyer, unasked.
-2 files, 577 lines
+2 files, 579 lines
 needs:
   - A deployed ERC-721 it is allowed to mint from
       ours: the contract in the NFT Buy Drops bundle
@@ -157,7 +157,7 @@ txt: https://brainonbnb.com/code/prize-pool-bot.txt
 Pool Scanner
 ------------
 Reads any BNB Chain pool. No backend at all.
-5 files, 3313 lines
+5 files, 3317 lines
 needs:
   - A static host
       ours: Cloudflare Pages

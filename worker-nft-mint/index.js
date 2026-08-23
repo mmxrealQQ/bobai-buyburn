@@ -185,7 +185,9 @@ async function getHolderState(env, contractAddr) {
 // the untouched blocks — that's how the 13.7. $109 buy lost its mint. Callers
 // scan in ≤50-block chunks instead and simply retry a failed chunk next run.
 async function getSwapLogs(fromBlock, toBlock, env) {
-  const keyed = [env.BSC_RPC_KEYED_URL, env.BSC_RPC_KEYED_URL_2].filter(Boolean);
+  // URL_2 (PublicNode personal, unmetered) first, NodeReal second — see the
+  // same note in worker-tg-bot. Order only, the answers are identical.
+  const keyed = [env.BSC_RPC_KEYED_URL_2, env.BSC_RPC_KEYED_URL].filter(Boolean);
   for (const rpc of [...keyed, ...LOGS_RPC]) {
     const r = await tryGetLogs(rpc, fromBlock, toBlock);
     if (r !== null) return r;

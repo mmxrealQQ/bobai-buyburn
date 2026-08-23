@@ -118,6 +118,10 @@ const gpCached = async (a, fetcher) => {
 // others, on the same token, for no reason anybody can see. An account key
 // moves the quota onto us and is the only thing that fixes it.
 //
+// Key set 2026-08-23, and the same eight tokens then answered eight of eight.
+// Note that the key only takes effect after a Pages deployment: uploading the
+// secret alone left the running deployment anonymous and still at 4029.
+//
 // The secret stays in the Worker. It is not handed to the browser page and not
 // to the packaged skill — both run on somebody else's machine, and a key in a
 // downloadable bundle is a published key. A caller that passes no env stays

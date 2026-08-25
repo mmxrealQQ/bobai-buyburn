@@ -32,6 +32,7 @@ import { handleDispatch } from './dispatch.js';
 import { readSessions, trackRecord } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
+import { handleHire, decodeJob, ERC8183 } from './hire.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -199,6 +200,11 @@ const SEL = {
 
 const call = (to, data) => rpc('eth_call', [{ to, data }, 'latest']);
 const padAddr = (a) => a.toLowerCase().replace('0x', '').padStart(64, '0');
+
+// getJob(uint256) — the one ERC-8183 read this worker makes directly. Selector
+// from the kernel ABI in @altananetwork/sdk, verified against viem by
+// scripts/erc8183-encoding-check.mjs along with everything hire.js encodes.
+const JOB_CALL = (id) => '0xbf22c457' + BigInt(id).toString(16).padStart(64, '0');
 
 // Depth of a V2 pair in USD, read from the quote side only. One-sided on
 // purpose: it is the number that decides what a sell can actually get out, and
@@ -564,13 +570,53 @@ export default {
       return json(r.body, r.status);
     }
 
-    // Hire: a task in, an answer back, with the agent that produced it named.
-    // Read-only tools only — see dispatch.js for why that line is not moved.
+    // Dispatch: a task in, an answer back, with the agent that produced it
+    // named. Read-only tools only — see dispatch.js for why that line is not
+    // moved. This is the free half of the marketplace: it answers questions.
     if (path === '/dispatch') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
       const r = await handleDispatch(url, body, env);
       ctx.waitUntil(bump(env, 'dispatch'));
       return json(r.body, r.status);
+    }
+
+    // Hire: negotiate a price with a seller agent over A2A and hand back the
+    // ERC-8183 escrow calls, unsigned. This is the paid half — and the reason
+    // it can exist without contradicting the read-only rule is that we build
+    // the transactions and the buyer signs them. See hire.js.
+    if (path === '/hire') {
+      const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
+      const r = await handleHire(url, body, env);
+      ctx.waitUntil(bump(env, 'hire'));
+      return json(r.body, r.status);
+    }
+
+    // One job's state, straight from the kernel. Kept separate from /hire so
+    // that a buyer who funded a job through some other client — the Altana SDK,
+    // their own script, the seller's own page — can still track it here.
+    if (path === '/job') {
+      const id = url.searchParams.get('id');
+      if (!/^\d+$/.test(id || '')) return json({ error: 'id is required — the numeric jobId' }, 400);
+      const raw = await call(ERC8183.commerce, JOB_CALL(id)).catch(() => null);
+      const job = raw ? decodeJob(raw) : null;
+      if (!job) return json({ error: 'job not found or unreadable', id }, 404);
+      ctx.waitUntil(bump(env, 'job'));
+      return json({
+        ...job,
+        chain_id: ERC8183.chainId,
+        kernel: ERC8183.commerce,
+        explorer: `https://bscscan.com/address/${ERC8183.commerce}`,
+        // SUBMITTED is not COMPLETED, and the difference is money: a
+        // deliverable exists, the escrow has not released. Saying so here keeps
+        // anyone reading this endpoint from counting one as the other.
+        means: job.status === 'SUBMITTED'
+          ? 'A deliverable is on-chain and the dispute window is running. The escrow has not released yet.'
+          : job.status === 'COMPLETED' ? 'Delivered and the escrow released to the provider.'
+          : job.status === 'OPEN' ? 'Created but not funded. Nothing is at stake yet.'
+          : job.status === 'FUNDED' ? 'Escrow holds the budget. Waiting on the provider to deliver.'
+          : job.status === 'EXPIRED' ? 'Expired undelivered — the client can call claimRefund(jobId) for the full budget.'
+          : 'Rejected.',
+      });
     }
 
     // The series. Daily points and full-scan points are returned separately,

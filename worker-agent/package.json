@@ -1,0 +1,13 @@
+{
+  "name": "bobai-agent",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "//": "No dependencies, deliberately: this worker verifies payments by reading the chain over plain JSON-RPC, and every byte of ABI encoding in hire.js is hand-rolled and checked against viem by scripts/erc8183-encoding-check.mjs. The type field is what lets that check import the shipping file instead of a copy."
+}

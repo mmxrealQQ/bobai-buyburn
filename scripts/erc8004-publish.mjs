@@ -6,7 +6,22 @@
 // scan artefacts, so there is no path by which the page can claim a number the
 // data does not contain.
 //
-// Usage: node scripts/erc8004-publish.mjs
+// THE WHOLE RITUAL, in order. Every step after the first reads what the one
+// before it wrote, and skipping one leaves a surface stating something no
+// longer true — which is exactly how the page came to publish 302,828 and then
+// count itself down to 299,783 in front of the reader.
+//
+//   node scripts/erc8004-scan.mjs          --dir erc8004-v2   # resumes; never delete
+//   node scripts/erc8004-probe.mjs         --dir erc8004-v2
+//   node scripts/erc8004-a2a-confirm.mjs   --dir erc8004-v2
+//   node scripts/erc8004-publish.mjs       --dir erc8004-v2   # also writes hireable.json
+//   node scripts/erc8004-hire-confirm.mjs  --dir erc8004-v2   # asks each one for a price
+//   node scripts/erc8004-publish.mjs       --dir erc8004-v2   # again, to render the answers
+//   node scripts/census-sync.mjs           --dir erc8004-v2   # hands the scan to the worker
+//   # pull the census line in dashboard/llms.txt from api-registry.json
+//   node scripts/build-library.mjs
+//   npx wrangler pages deploy dashboard --project-name=bobai-dashboard --branch=main --commit-dirty=true
+//   node scripts/smoke-agent-surface.mjs   # checks every one of the above landed
 import fs from 'node:fs';
 import path from 'node:path';
 import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
@@ -538,8 +553,12 @@ ${body}
 // so a chip can never advertise a count the table below it does not have.
 const categoryChips = categorised.map(({ cat, rows }) => {
   const hireable = rows.filter((r) => canHire(r) && r.agentId).length;
+  // The chip advertises what will actually happen, not how many buttons exist:
+  // a picker promising four and delivering two is the failure mode this whole
+  // page was built to point out in other people's numbers.
+  const quoting = rows.filter((r) => canHire(r) && r.agentId && quoteOf(r.agentId)?.quotes).length;
   return `<a class="rg-chip" href="#cat-${cat.id}"><span>${esc(cat.label)}</span>`
-    + `<em>${fmt(rows.length)}${hireable ? ` &middot; ${fmt(hireable)} hireable` : ''}</em></a>`;
+    + `<em>${fmt(rows.length)}${hireable ? ` &middot; ${hireConfirm ? fmt(quoting) + ' quote back' : fmt(hireable) + ' hireable'}` : ''}</em></a>`;
 }).join('');
 
 // What the homepage prints on its marketplace card. Written here rather than

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3338 lines.
+# one fetch. 7 files, 3342 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1035,8 +1035,12 @@ ${body}
 // so a chip can never advertise a count the table below it does not have.
 const categoryChips = categorised.map(({ cat, rows }) => {
   const hireable = rows.filter((r) => canHire(r) && r.agentId).length;
+  // The chip advertises what will actually happen, not how many buttons exist:
+  // a picker promising four and delivering two is the failure mode this whole
+  // page was built to point out in other people's numbers.
+  const quoting = rows.filter((r) => canHire(r) && r.agentId && quoteOf(r.agentId)?.quotes).length;
   return `<a class="rg-chip" href="#cat-${cat.id}"><span>${esc(cat.label)}</span>`
-    + `<em>${fmt(rows.length)}${hireable ? ` &middot; ${fmt(hireable)} hireable` : ''}</em></a>`;
+    + `<em>${fmt(rows.length)}${hireable ? ` &middot; ${hireConfirm ? fmt(quoting) + ' quote back' : fmt(hireable) + ' hireable'}` : ''}</em></a>`;
 }).join('');
 
 // What the homepage prints on its marketplace card. Written here rather than

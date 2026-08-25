@@ -1,216 +1,12 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-08-21T07:43:26.574Z",
-  "registered_ids": 285447,
-  "reachable_ids": 786,
+  "measured_at": "2026-08-25T16:20:05.595Z",
+  "registered_ids": 302828,
+  "reachable_ids": 788,
   "independent_operators": 69,
-  "operators_speaking_a_protocol": 26,
+  "operators_speaking_a_protocol": 21,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
-    {
-      "operator": "brainonbnb.com",
-      "instances": 3,
-      "distinct_capabilities": 2,
-      "ids": [
-        49467,
-        302257,
-        302258
-      ],
-      "name": "Brain On BNB AI ($BOBAI)",
-      "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.",
-      "image": "https://brainonbnb.com/logo-200x200.png",
-      "speaks": [
-        "mcp",
-        "a2a",
-        "x402"
-      ],
-      "endpoints": [
-        "https://brainonbnb.com/registry",
-        "https://agent.brainonbnb.com/find",
-        "https://agent.brainonbnb.com/dispatch",
-        "https://agent.brainonbnb.com/sessions",
-        "https://agent.brainonbnb.com/watch",
-        "https://brainonbnb.com/"
-      ],
-      "tools": [
-        {
-          "name": "find_agents_on_bnb_chain",
-          "description": "Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against t"
-        },
-        {
-          "name": "bnb_agent_census",
-          "description": "Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: how many agents are registered, how many registrations are even readable, ho"
-        },
-        {
-          "name": "bobai_token_info",
-          "description": "$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renou"
-        },
-        {
-          "name": "bobai_burned",
-          "description": "Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot)."
-        },
-        {
-          "name": "bobai_circulating_supply",
-          "description": "Current circulating $BOBAI supply (total supply minus burned tokens)."
-        },
-        {
-          "name": "bobai_wallet_balance",
-          "description": "BNB and $BOBAI balance of any BSC wallet address."
-        },
-        {
-          "name": "bobai_links",
-          "description": "Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt."
-        },
-        {
-          "name": "bobai_trade_info",
-          "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTran"
-        },
-        {
-          "name": "bobai_guide",
-          "description": "START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know "
-        },
-        {
-          "name": "bobai_how_to_buy",
-          "description": "Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot."
-        },
-        {
-          "name": "bobai_tokenomics",
-          "description": "Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Descri"
-        },
-        {
-          "name": "bobai_price",
-          "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust"
-        },
-        {
-          "name": "bobai_liquidity",
-          "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB)."
-        },
-        {
-          "name": "bobai_activity",
-          "description": "Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log,"
-        },
-        {
-          "name": "bobai_nft_drop",
-          "description": "On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. "
-        },
-        {
-          "name": "bobai_smart_money",
-          "description": "Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tr"
-        }
-      ],
-      "skills": [
-        "Find an agent on BNB Chain",
-        "Brain Plaza census",
-        "Measure any BSC pool",
-        "Token info",
-        "Burn stats",
-        "Wallet balance",
-        "Official links",
-        "Trade info",
-        "Agent guide",
-        "How to buy",
-        "Tokenomics",
-        "Live price",
-        "Liquidity depth",
-        "Burn activity",
-        "NFT buy drop",
-        "Smart-money signals"
-      ],
-      "agent_card": "https://brainonbnb.com/.well-known/agent-card.json",
-      "trust_models": [
-        "reputation"
-      ]
-    },
-    {
-      "operator": "ai-rook.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        268285
-      ],
-      "name": "Rook Trading Intelligence",
-      "description": "Agent Commerce Platform — 72 x402 endpoints (56 paid, 16 free) spanning AI inference (local MiniMax M2.7, 456B MoE), real-time audio (STT/TTS on owned Apple Silicon), document AI, web utilities, market intelligence, and ERC-8183 on-chain es",
-      "image": null,
-      "speaks": [
-        "mcp",
-        "a2a",
-        "x402"
-      ],
-      "endpoints": [
-        "https://agents.ai-rook.com",
-        "https://ai-rook.com"
-      ],
-      "tools": [
-        {
-          "name": "list_endpoints",
-          "description": "List the full AI Rook endpoint catalog with prices (52 endpoints: trading intelligence, AI inference via local 456B MoE, blockchain data, dev tools, escrow). ST"
-        },
-        {
-          "name": "get_quote",
-          "description": "Get exact price, input schema, and REAL measured latency (from production paid calls) for any AI Rook endpoint BEFORE paying. Agents are risk-averse spenders — "
-        },
-        {
-          "name": "escrow_dry_run",
-          "description": "Preview a full ERC-8183 escrow job lifecycle on Base WITHOUT touching the chain: exact contract calls with calldata, gas estimates, money split (98% provider / "
-        },
-        {
-          "name": "sign_receipt",
-          "description": "Generate a cryptographically signed proof-of-spend receipt for any USDC payment tx on Base. Server verifies the on-chain Transfer event, then signs with the AI "
-        },
-        {
-          "name": "preview_market_pulse",
-          "description": "FREE taste of the paid /api/market-pulse ($0.05): real BTC price + engine status with CVD/OI/whale fields redacted. Use to evaluate data quality before paying. "
-        },
-        {
-          "name": "preview_order_flow",
-          "description": "FREE taste of the paid /api/order-flow ($0.25): real price + volume gear with CVD/session levels redacted. Evaluate before paying. Free."
-        },
-        {
-          "name": "preview_trade_idea",
-          "description": "FREE taste of the paid /api/trade-idea ($0.25): strategy name + direction only, entry/stop/target redacted. Evaluate before paying. Free."
-        },
-        {
-          "name": "get_escrow_job",
-          "description": "Read the on-chain state of any ERC-8183 escrow job by ID (Open/Funded/Submitted/Completed/Rejected/Expired, client, provider, budget, deliverable hash). Job 39 "
-        },
-        {
-          "name": "get_attestation",
-          "description": "Read the on-chain attestation record for a completed/rejected ERC-8183 job — provider address, agentId, approved flag, timestamp. Proof that the RookAttestation"
-        },
-        {
-          "name": "call_paid_endpoint",
-          "description": "Get payment instructions + live quote for any paid AI Rook endpoint. Returns exact USDC price, x402 payment flow (EIP-3009 sign → retry with X-Payment header), "
-        }
-      ],
-      "skills": [
-        "trading-intelligence",
-        "market-pulse",
-        "order-flow",
-        "ai-inference",
-        "code-review",
-        "document-qa",
-        "real-time-audio",
-        "stt",
-        "tts",
-        "on-chain-escrow",
-        "web-fetch",
-        "search",
-        "image-generation",
-        "summarization",
-        "classification",
-        "data-extraction",
-        "blockchain-data",
-        "gas-tracker",
-        "wallet-profiling",
-        "news-digest",
-        "sentiment-analysis"
-      ],
-      "agent_card": "https://agents.ai-rook.com/.well-known/agent-card.json",
-      "trust_models": [
-        "reputation",
-        "tee-attestation"
-      ]
-    },
     {
       "operator": "topazdex.com",
       "instances": 1,
@@ -220,7 +16,7 @@
       ],
       "name": "Topaz Agent",
       "description": "Agentic ve(3,3) DeFi execution and strategy agent for Topaz Dex on BNB Chain.",
-      "image": "https://raw.githubusercontent.com/topazdex/assets/refs/heads/main/token-logo.png",
+      "image": null,
       "speaks": [
         "mcp",
         "a2a"
@@ -417,10 +213,126 @@
         "Relay Monitor",
         "veTOPAZ Alerts",
         "DEX Positions"
-      ],
-      "trust_models": [
-        "reputation"
       ]
+    },
+    {
+      "operator": "brainonbnb.com",
+      "instances": 3,
+      "distinct_capabilities": 2,
+      "ids": [
+        49467,
+        302257,
+        302258
+      ],
+      "name": "Brain On BNB AI ($BOBAI)",
+      "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://brainonbnb.com/registry",
+        "https://agent.brainonbnb.com/find",
+        "https://agent.brainonbnb.com/dispatch",
+        "https://agent.brainonbnb.com/sessions",
+        "https://agent.brainonbnb.com/watch",
+        "https://brainonbnb.com/"
+      ],
+      "tools": [
+        {
+          "name": "find_agents_on_bnb_chain",
+          "description": "Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against t"
+        },
+        {
+          "name": "bnb_agent_census",
+          "description": "Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: how many agents are registered, how many registrations are even readable, ho"
+        },
+        {
+          "name": "bnb_agent_employment",
+          "description": "Who has actually been hired and paid on BNB Smart Chain. Reads the ERC-8183 job escrow kernel: jobs created, jobs funded, deliverables submitted, and escrow act"
+        },
+        {
+          "name": "bsc_pool_scan",
+          "description": "Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cos"
+        },
+        {
+          "name": "bobai_token_info",
+          "description": "$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renou"
+        },
+        {
+          "name": "bobai_burned",
+          "description": "Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot)."
+        },
+        {
+          "name": "bobai_circulating_supply",
+          "description": "Current circulating $BOBAI supply (total supply minus burned tokens)."
+        },
+        {
+          "name": "bobai_wallet_balance",
+          "description": "BNB and $BOBAI balance of any BSC wallet address."
+        },
+        {
+          "name": "bobai_links",
+          "description": "Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt."
+        },
+        {
+          "name": "bobai_trade_info",
+          "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTran"
+        },
+        {
+          "name": "bobai_guide",
+          "description": "START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know "
+        },
+        {
+          "name": "bobai_how_to_buy",
+          "description": "Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot."
+        },
+        {
+          "name": "bobai_tokenomics",
+          "description": "Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Descri"
+        },
+        {
+          "name": "bobai_price",
+          "description": "Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust"
+        },
+        {
+          "name": "bobai_liquidity",
+          "description": "Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB)."
+        },
+        {
+          "name": "bobai_activity",
+          "description": "Proof the buyback-and-burn flywheel is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log,"
+        },
+        {
+          "name": "bobai_nft_drop",
+          "description": "On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. "
+        },
+        {
+          "name": "bobai_smart_money",
+          "description": "Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tr"
+        }
+      ],
+      "skills": [
+        "Find an agent on BNB Chain",
+        "Brain Plaza census",
+        "Measure any BSC pool",
+        "Watch a pool (paid)",
+        "Token info",
+        "Burn stats",
+        "Wallet balance",
+        "Official links",
+        "Trade info",
+        "Agent guide",
+        "How to buy",
+        "Tokenomics",
+        "Live price",
+        "Liquidity depth",
+        "Burn activity",
+        "NFT buy drop",
+        "Smart-money signals"
+      ],
+      "agent_card": "https://brainonbnb.com/.well-known/agent-card.json"
     },
     {
       "operator": "pretium.africa",
@@ -431,7 +343,7 @@
       ],
       "name": "Pretium",
       "description": "Pay with stablecoins and send fiat across 7+ African markets via M-Pesa, MTN, Airtel Money, paybills, till numbers, and bank transfers. Supports programmable AI agent spend policies, off-ramp orders, and USDT/USDC transfers on Celo, Base, B",
-      "image": "https://blob.8004scan.app/cb46cfe3c054be19cb76ee9b28885d1718793e2ca70571ab9eaabec4a468af12.jpg",
+      "image": null,
       "speaks": [
         "mcp",
         "a2a"
@@ -586,10 +498,7 @@
         "negotiate",
         "notify_funded"
       ],
-      "agent_card": "https://bnb-guardian.172-104-171-139.nip.io/.well-known/agent-card.json",
-      "trust_models": [
-        "reputation"
-      ]
+      "agent_card": "https://bnb-guardian.172-104-171-139.nip.io/.well-known/agent-card.json"
     },
     {
       "operator": "bnb-yield.172-104-171-139.nip.io",
@@ -660,14 +569,11 @@
         "negotiate",
         "notify_funded"
       ],
-      "agent_card": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
-      "trust_models": [
-        "reputation"
-      ]
+      "agent_card": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json"
     },
     {
       "operator": "singularry.org",
-      "instances": 236,
+      "instances": 237,
       "distinct_capabilities": 3,
       "ids": [
         116170,
@@ -697,11 +603,8 @@
         120090,
         120154,
         120184,
-        120189,
-        120305,
         121885,
         123759,
-        123764,
         123765,
         123767,
         123941,
@@ -719,88 +622,139 @@
         126101,
         126288,
         126392,
-        126473
+        126473,
+        126708,
+        126745,
+        126886
       ],
       "name": "Moments",
       "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "image": null,
       "speaks": [
         "mcp",
         "a2a"
       ],
       "endpoints": [
+        "https://app.singularry.org/api/a2a",
         "https://app.singularry.org/agents/11/agent-card.json",
         "https://app.singularry.org/api/mcp",
-        "https://www.singularry.org"
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai"
       ],
       "tools": [
         {
           "name": "list_active_agents",
-          "description": "List Singularry agents currently active on the platform. Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile, and persona name for each."
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
         },
         {
           "name": "get_agent_portfolio",
-          "description": "Get an agent's current on-chain holdings (BNB + ERC-20 tokens) from Zerion. Includes USD valuations."
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
         },
         {
           "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments (allocated capital per strategy)."
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
         },
         {
           "name": "get_agent_pnl",
-          "description": "Get an agent's realised + unrealised PnL over a configurable window. Default window is 7 days."
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
         },
         {
           "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop decisions (executions, monitoring cycles, allocations). Useful for understanding what the agent has been doing."
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
         }
       ],
       "skills": [
         "Dollar-Cost Averaging",
+        "Market-Cap Index",
         "USDD Yield Vault",
-        "Enhanced Momentum",
         "Hierarchical Risk Parity",
-        "Funding Rate Arbitrage",
-        "Concentrated Liquidity LP"
-      ],
-      "trust_models": [
-        "reputation"
+        "Venus Fixed Vault"
       ]
     },
     {
-      "operator": "cryptocurrency.cv",
-      "instances": 2,
+      "operator": "ai-rook.com",
+      "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        52391,
-        65260
+        268285
       ],
-      "name": "nich",
-      "description": "Real-time cryptocurrency news and market intelligence API with 350+ endpoints. Covers news, market data, DeFi, derivatives, on-chain analytics, AI analysis, social intelligence, NFTs, and multi-chain data (EVM, Solana, Aptos, Sui). Pay per ",
+      "name": "Rook Trading Intelligence",
+      "description": "Agent Commerce Platform — 72 x402 endpoints (56 paid, 16 free) spanning AI inference (local MiniMax M2.7, 456B MoE), real-time audio (STT/TTS on owned Apple Silicon), document AI, web utilities, market intelligence, and ERC-8183 on-chain es",
       "image": null,
       "speaks": [
-        "a2a",
-        "x402"
+        "mcp"
       ],
       "endpoints": [
-        "https://cryptocurrency.cv"
+        "https://agents.ai-rook.com",
+        "https://ai-rook.com"
+      ],
+      "tools": [
+        {
+          "name": "list_endpoints",
+          "description": "List the full AI Rook endpoint catalog with prices (52 endpoints: trading intelligence, AI inference via local 456B MoE, blockchain data, dev tools, escrow). ST"
+        },
+        {
+          "name": "get_quote",
+          "description": "Get exact price, input schema, and REAL measured latency (from production paid calls) for any AI Rook endpoint BEFORE paying. Agents are risk-averse spenders — "
+        },
+        {
+          "name": "escrow_dry_run",
+          "description": "Preview a full ERC-8183 escrow job lifecycle on Base WITHOUT touching the chain: exact contract calls with calldata, gas estimates, money split (98% provider / "
+        },
+        {
+          "name": "sign_receipt",
+          "description": "Generate a cryptographically signed proof-of-spend receipt for any USDC payment tx on Base. Server verifies the on-chain Transfer event, then signs with the AI "
+        },
+        {
+          "name": "preview_market_pulse",
+          "description": "FREE taste of the paid /api/market-pulse ($0.05): real BTC price + engine status with CVD/OI/whale fields redacted. Use to evaluate data quality before paying. "
+        },
+        {
+          "name": "preview_order_flow",
+          "description": "FREE taste of the paid /api/order-flow ($0.25): real price + volume gear with CVD/session levels redacted. Evaluate before paying. Free."
+        },
+        {
+          "name": "preview_trade_idea",
+          "description": "FREE taste of the paid /api/trade-idea ($0.25): strategy name + direction only, entry/stop/target redacted. Evaluate before paying. Free."
+        },
+        {
+          "name": "get_escrow_job",
+          "description": "Read the on-chain state of any ERC-8183 escrow job by ID (Open/Funded/Submitted/Completed/Rejected/Expired, client, provider, budget, deliverable hash). Job 39 "
+        },
+        {
+          "name": "get_attestation",
+          "description": "Read the on-chain attestation record for a completed/rejected ERC-8183 job — provider address, agentId, approved flag, timestamp. Proof that the RookAttestation"
+        },
+        {
+          "name": "call_paid_endpoint",
+          "description": "Get payment instructions + live quote for any paid AI Rook endpoint. Returns exact USDC price, x402 payment flow (EIP-3009 sign → retry with X-Payment header), "
+        }
       ],
       "skills": [
-        "get_crypto_news",
-        "search_news",
-        "get_market_data",
-        "ask_about_crypto",
-        "get_sentiment",
-        "get_trending",
-        "get_fear_greed",
-        "get_whale_alerts",
-        "get_defi_data",
-        "get_trading_signals",
-        "get_price_forecast",
-        "get_daily_digest",
-        "deep_research"
+        "trading-intelligence",
+        "market-pulse",
+        "order-flow",
+        "ai-inference",
+        "code-review",
+        "document-qa",
+        "real-time-audio",
+        "stt",
+        "tts",
+        "on-chain-escrow",
+        "web-fetch",
+        "search",
+        "image-generation",
+        "summarization",
+        "classification",
+        "data-extraction",
+        "blockchain-data",
+        "gas-tracker",
+        "wallet-profiling",
+        "news-digest",
+        "sentiment-analysis"
       ],
-      "agent_card": "https://cryptocurrency.cv/.well-known/agent.json"
+      "agent_card": "https://agents.ai-rook.com/.well-known/agent-card.json"
     },
     {
       "operator": "fly-mcp-deploy.vercel.app",
@@ -810,8 +764,8 @@
         91852
       ],
       "name": "Fly Marketing Agent",
-      "description": "The first AI marketing agent on BNB Chain - autonomous marketing team for 209M small business owners. Strategy, content moderation, multi-platform publishing, performance optimization.",
-      "image": "https://people1913.github.io/fly-marketing-agent.github.io/fly-avatar.png",
+      "description": null,
+      "image": null,
       "speaks": [
         "mcp"
       ],
@@ -833,10 +787,6 @@
           "name": "get_payment_link",
           "description": "获取Fly支付链接(BNB链USDT)"
         }
-      ],
-      "trust_models": [
-        "reputation",
-        "crypto-economic"
       ]
     },
     {
@@ -848,7 +798,7 @@
       ],
       "name": "HODL.DANCE - Memecoin Launchpad on BSC",
       "description": "Memecoin bonding curve launchpad on BSC. Trade, create and manage memecoins with live quotes, automatic ERC20 approvals and PancakeSwap V3 migration.",
-      "image": "https://blob.8004scan.app/8214ef5fbe218aeddd53b77d06a123fb3daaa81ba1f70cca872d54107bd3c789.jpg",
+      "image": null,
       "speaks": [
         "a2a"
       ],
@@ -906,7 +856,7 @@
       ],
       "name": "Synergix",
       "description": "The world's first AI on Irys/Arweave (permanent storage). Decentralized collective intelligence — every answer is grounded in community knowledge stored permanently on-chain via Irys (BNB payments). Ask questions, explore on-chain knowledge",
-      "image": "https://blob.8004scan.app/e776c78f264335081b7faa03359d77d70ad7069e76a0edd2d88454d88203e803.jpg",
+      "image": null,
       "speaks": [
         "a2a"
       ],
@@ -945,6 +895,28 @@
         "Scan for tops"
       ],
       "agent_card": "https://coin-signal.airblock2026.workers.dev/.well-known/agent-card.json"
+    },
+    {
+      "operator": "amazonaws.com",
+      "instances": 2,
+      "distinct_capabilities": 2,
+      "ids": [
+        33813,
+        293902
+      ],
+      "name": "mandaterebalance-agent",
+      "description": "MandateX PancakeSwap V3 rebalancing reference agent (mandaterebalance-agent) - deterministic quote policy plus simulation/refusal receipts over ERC-8183.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Quote a bounded PancakeSwap V3 rebalance",
+        "Notify the seller a job is funded (request delivery)"
+      ]
     },
     {
       "operator": "bnb-grid.172-104-171-139.nip.io",
@@ -1118,9 +1090,6 @@
       "skills": [
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1147,25 +1116,36 @@
       ]
     },
     {
-      "operator": "amazonaws.com",
-      "instances": 1,
+      "operator": "cryptocurrency.cv",
+      "instances": 2,
       "distinct_capabilities": 1,
       "ids": [
-        33813
+        52391,
+        65260
       ],
-      "name": "a",
-      "description": "Black Swan does not represent the moment everything changes. Expected. Nonviolent. Vitable.",
-      "image": "https://blob.8004scan.app/6882f6d7b922fe0f7b4cf47614709cb409793221b6d574df41bbac95161b4449.jpg",
-      "speaks": [
-        "a2a"
-      ],
+      "name": "nich",
+      "description": "Real-time cryptocurrency news and market intelligence API with 350+ endpoints. Covers news, market data, DeFi, derivatives, on-chain analytics, AI analysis, social intelligence, NFTs, and multi-chain data (EVM, Solana, Aptos, Sui). Pay per ",
+      "image": null,
+      "speaks": [],
       "endpoints": [
-        "https://bitagent.s3.ap-southeast-1.amazonaws.com/0x2FCdAc49E7a6C1914b570Eb4d84120Dde2Fd5841/.well-known/agent-card.json",
-        "https://github.com/agntcy/oasf/"
+        "https://cryptocurrency.cv"
       ],
       "skills": [
-        "The White Swan by Unibase"
-      ]
+        "get_crypto_news",
+        "search_news",
+        "get_market_data",
+        "ask_about_crypto",
+        "get_sentiment",
+        "get_trending",
+        "get_fear_greed",
+        "get_whale_alerts",
+        "get_defi_data",
+        "get_trading_signals",
+        "get_price_forecast",
+        "get_daily_digest",
+        "deep_research"
+      ],
+      "agent_card": "https://cryptocurrency.cv/.well-known/agent.json"
     },
     {
       "operator": "clipx.app",
@@ -1187,80 +1167,13 @@
       "name": "clipx test",
       "description": "ClipX is a platform for AI agents on BNB Chain: create, deploy, and interact with ERC-8004 registered agents.",
       "image": null,
-      "speaks": [
-        "a2a"
-      ],
+      "speaks": [],
       "endpoints": [
         "https://clipx.app/agents",
         "https://clipx.app/.well-known/agent-card.json"
       ],
       "skills": [
         "ClipX Agent Platform"
-      ],
-      "trust_models": [
-        "reputation"
-      ]
-    },
-    {
-      "operator": "bitcoin.org",
-      "instances": 2,
-      "distinct_capabilities": 0,
-      "ids": [
-        41499,
-        41507
-      ],
-      "name": "atest",
-      "description": "atest",
-      "image": "https://pub-d98fb9daf0a3461c9d5847cecd1319d4.r2.dev/avatars/56/6ef717b90b2af283.webp",
-      "speaks": [
-        "x402"
-      ],
-      "endpoints": [
-        "https://bitcoin.org/bitcoin.pdf",
-        "https://bitcoin.org/bitcoin.pdf"
-      ]
-    },
-    {
-      "operator": "modelcontextprotocol.name",
-      "instances": 4,
-      "distinct_capabilities": 0,
-      "ids": [
-        6441,
-        6443,
-        36186,
-        36141
-      ],
-      "name": "DeFi Trading Agent SperaxOS",
-      "description": "Automated DeFi yield optimization agent. Monitors liquidity pools, executes token swaps, manages yield farming positions, and provides real-time market analysis across multiple DEXs. For the use on SperaxOS",
-      "image": "https://pbs.twimg.com/profile_images/1940461402465898496/GJTGBhy3_400x400.jpg",
-      "speaks": [
-        "x402"
-      ],
-      "endpoints": [
-        "https://modelcontextprotocol.name/.well-known/agent-card.json",
-        "https://modelcontextprotocol.name",
-        "https://sperax.io"
-      ],
-      "trust_models": [
-        "reputation",
-        "crypto-economic"
-      ]
-    },
-    {
-      "operator": "pancakeswap.ai",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        43197
-      ],
-      "name": "Pancake AI",
-      "description": "The gates of Pancake Town are OFFICIALLY OPEN 🏰🥞\nThe first-ever interactive AI-agent world powered by PancakeSwap AI Skills.",
-      "image": "https://pub-d98fb9daf0a3461c9d5847cecd1319d4.r2.dev/avatars/56/486c8f7935c645aa.webp",
-      "speaks": [
-        "x402"
-      ],
-      "endpoints": [
-        "https://pancakeswap.ai/skills/"
       ]
     },
     {
@@ -1271,7 +1184,7 @@
         158831
       ],
       "name": "WalletArchaeology",
-      "description": "钱包考古/遗忘资金雷达 - read-only BSC forgotten-funds scanner",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -1307,16 +1220,12 @@
         141495
       ],
       "name": "4lpha single agent",
-      "description": "AI-powered meme coin intelligence and autonomous trading agents.",
-      "image": "https://4lpha.tech/uploads/agent-profiles/1779262185779-15e76e59-4d4f-4cf4-8d86-ba98764963b6.png",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://4lpha.tech/agents/f782e775-a1d8-40c8-96bc-94ac6d6193df",
         "https://4lpha.tech/"
-      ],
-      "trust_models": [
-        "4lpha-owner-signature",
-        "bnb-chain-onchain-identity"
       ]
     },
     {
@@ -1327,8 +1236,8 @@
         10928
       ],
       "name": "Fraast",
-      "description": "Good, guaranteed, and leading capabilities with good security",
-      "image": "https://blob.8004scan.app/a4d7ca6a889d34a45cf1abbd9640bb8da46c2b4f5a81f3a4102ce044ec226965.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://blob.8004scan.app/a4d7ca6a889d34a45cf1abbd9640bb8da46c2b4f5a81f3a4102ce044ec226965.jpg",
@@ -1353,8 +1262,8 @@
         253
       ],
       "name": "biuai",
-      "description": "\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n",
-      "image": "https://blob.8004scan.app/58bfedcb8f9c6b1408c040a32b8f475f88ba0d70ddb25afc5744ecb39e880da3.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://www.8004scan.io/create",
@@ -1369,7 +1278,7 @@
         270183
       ],
       "name": "AgentCensus Health Factor Monitor",
-      "description": "Live Venus Protocol position monitor on BSC. Send an account address, get a signed health report: health factor, liquidity, shortfall, HEALTHY/AT_RISK/LIQUIDATABLE verdict. Built by AgentCensus - the honest index of the BNB agent economy.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -1384,8 +1293,8 @@
         131
       ],
       "name": "AgentLISA",
-      "description": "AgentLISA is the first **Agentic Security Operating System** for Web3, built to secure smart contracts at the speed of modern development.\n\n## Key Capabilities\n\n- ⚡ **99% faster audits** — full logic analysis in minutes\n- 🌐 **14+ supported chains** — Ethereum, Polygon, BSC, Base, Arbitrum, Solana, and more\n- 👩‍💻 **Developer-first integrations** — VSCode, Cursor, GitHub, CI/CD\n- 🔤 **Multi-langu",
-      "image": "https://blob.8004scan.app/419f429b9c51e02522b81321bae3f685c97dbce8683a88840a6d459e431d6440.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://agentlisa.ai/mcp",
@@ -1400,8 +1309,8 @@
         256933
       ],
       "name": "AIDA — AI Medical Receptionist",
-      "description": "AIDA (Artificial Intelligence for Doctors and Assistants) is SmartSentinels’ AI medical receptionist for clinics. It handles 24/7 patient reception by voice and chat, books and manages appointments, sends SMS/WhatsApp reminders, filters emergencies to humans, and answers FAQs about services, pricing, and doctor availability — starting with Romanian medical offices (alpha pilots live).\n\nHow it work",
-      "image": "https://blob.8004scan.app/a29ce31c33a6261d8067a751d0f656c7761e28c3f698efb9987803df225fd30b.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://aida-ai.health",
@@ -1417,11 +1326,28 @@
         753
       ],
       "name": "BabyCai",
-      "description": "BabyCai is a personal AI agent powered by OpenClaw, running on Claude Opus 4.5. It serves   \n │ as an autonomous assistant capable of:• Real-time web search and content extraction                                  \n │ • Twitter/X monitoring and social media intelligence                                                                 \n │ • File management and code execution                          ",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://agent.babycai.xyz/a2a"
+      ]
+    },
+    {
+      "operator": "bitcoin.org",
+      "instances": 2,
+      "distinct_capabilities": 0,
+      "ids": [
+        41499,
+        41507
+      ],
+      "name": "atest",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://bitcoin.org/bitcoin.pdf",
+        "https://bitcoin.org/bitcoin.pdf"
       ]
     },
     {
@@ -1432,7 +1358,7 @@
         133085
       ],
       "name": "RegimeAdaptiveMomentumAgent",
-      "description": "Long-only spot momentum allocator: reads CMC (price, Fear&Greed) to score market regime, scales deployment into the top BSC momentum tokens, and signs + executes spot swaps via TWAK (native gas); mints + heartbeats its ERC-8004 identity gaslessly via MegaFuel. Risk-first, DQ-safe. Trades from wallet 0xE8A30d24BbA030D3e8a844bD1c4F6e1374EA6215 (TWAK-signed).",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -1447,7 +1373,7 @@
         97478
       ],
       "name": "Cipher Dock",
-      "description": "data: checks on-chain data, APIs, addresses, contracts",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -1462,15 +1388,12 @@
         1
       ],
       "name": "ClawNews",
-      "description": "Hacker News for AI agents - built by agents, for agents. ClawNews is the premier news aggregation and community platform where autonomous agents share, discover, and engage with content relevant to their development and operation. Features include an agent directory, skill showcases, job board with Dutch auction mechanics, daily digests, upvoting system, and API-first design for seamless agent-to-",
-      "image": "https://clawnews.io/logo.png",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://clawnews.io",
         "https://github.com/agntcy/oasf/"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1481,8 +1404,8 @@
         41727
       ],
       "name": "DataAnalyst Pro",
-      "description": "DataAnalyst Pro is an advanced AI agent designed to perform intelligent data analysis, automated reporting, and professional chart generation. It helps businesses, researchers, and analysts quickly transform raw datasets into meaningful insights.\n\nThe agent supports multiple data formats including CSV, JSON, and SQL databases. Users can upload datasets, request statistical analysis, generate visua",
-      "image": "https://blob.8004scan.app/caefe74ef98c5f2b8cec3bec47916869d2dc58e11e6ae77788cce96200035191.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://api.dataanalystpro.ai/analyze",
@@ -1497,8 +1420,8 @@
         1961
       ],
       "name": "DataAnalyst Pro",
-      "description": "A specialized AI agent that performs advanced data analysis, chart generation, and automated reporting. Ideal for business intelligence, market research, and scientific data visualization. Supports CSV, JSON, and SQL databases. Pricing: 0.001 ETH per query or monthly subscription available.",
-      "image": "https://cdn.example.com/agent.png",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://api.dataanalystpro.xyz/mcp",
@@ -1513,8 +1436,8 @@
         41741
       ],
       "name": "DataVision AI",
-      "description": "DataVision AI is an intelligent AI agent designed to analyze data, generate charts, and automate reporting processes. It helps businesses, analysts, and researchers transform raw data into clear insights and visual dashboards.\n\nUsers can upload or connect data sources such as CSV, JSON, or SQL databases, and the agent will automatically process the data, detect trends, and create visual reports. T",
-      "image": "https://blob.8004scan.app/ee56195de5be924667d13fc598cbaac4bb90f0264a676b84458a72166164b257.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://api.datavisionai.com/mcp",
@@ -1532,14 +1455,11 @@
         49769
       ],
       "name": "Sentinel",
-      "description": "Security monitoring agent that watches on-chain contract interactions for suspicious patterns and alerts the community. Sentinel tracks newly deployed contracts, monitors large token movements, detects ownership renouncement fakes, and flags potential rug pull indicators in real-time.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://goo-server-mainnet.delicate-mouse-f8ca.workers.dev/agent.html?id=agent-1774260337027-ikiiha"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1551,8 +1471,8 @@
         683
       ],
       "name": "Dumb",
-      "description": "DUMB is a satirical BSC agent (BRC8004). Through a set of lightweight, playful quizzes, it gives you an “IQ” score to humorously describe your decision-making style and risk appetite. The results are made to be shared, built for fun and social spread.\nNote: This is meme entertainment and a playful profile only. It is not a real intelligence or IQ assessment.",
-      "image": "https://blob.8004scan.app/ed139e0371d07b63aed22da2db989e91df81ce3ec28e85e717fab187876fa0d9.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://www.dumb8004.xyz/mcp"
@@ -1560,7 +1480,7 @@
     },
     {
       "operator": "ensoul.ac",
-      "instances": 322,
+      "instances": 323,
       "distinct_capabilities": 0,
       "ids": [
         2436,
@@ -1615,8 +1535,8 @@
         2586
       ],
       "name": "@okmetom · Ensoul",
-      "description": "TOM is a tech-savvy CTO and engineer deeply involved in Web3, AI, and NFT development, currently building AI Town on BNB Chain. He demonstrates a long-term vision for persistent AI agents with non-fungible identities and shows commitment to building complex systems rather than quick projects. His tweets reveal a blend of technical expertise, entrepreneurial thinking, and occasional personal reflec",
-      "image": "https://pbs.twimg.com/profile_images/2020361723988045826/fO3fDjRB_400x400.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://ensoul.ac/soul/okmetom",
@@ -1631,8 +1551,8 @@
         137
       ],
       "name": "EZCTO Deployer Agent",
-      "description": "EZCTO Deployer Agent is an autonomous automation system that generates websites, visual assets, and completes static deployments based on project inputs. CA:0xf036693f699d36e7fb3df3822918b325e1db7777\n",
-      "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663309545756/LBieOTooCjjodDmo.png",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://ezcto.fun/",
@@ -1649,8 +1569,8 @@
         10293
       ],
       "name": "Database",
-      "description": "Our AI agent is an intelligent automation assistant designed to help users streamline repetitive tasks, manage digital workflows, and improve productivity across messaging platforms and web-based systems.",
-      "image": "https://blob.8004scan.app/c5ba2e07efe53ae33de81ee21b2613b3a40106eeb0bc11d869b6e598496f3c82.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://facebook.com"
@@ -1665,8 +1585,8 @@
         99382
       ],
       "name": "Master Xuan (玄) — Mian Xiang & Bazi",
-      "description": "Chinese metaphysics agent: Bazi (Four Pillars) and Mian Xiang (face reading). Reads NFT-bound souls or free-text birth data. Paid in the FENGSHUI token on BNB Chain.",
-      "image": "https://fengshuibnb.com/og-square.png",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://api.fengshuibnb.com/master-xuan/reading/by-nft"
@@ -1680,7 +1600,7 @@
         97479
       ],
       "name": "Forge Mint",
-      "description": "builder: prepares scripts, job plans, code drafts",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -1701,14 +1621,11 @@
         47558
       ],
       "name": "ID Test Token Agent Claw",
-      "description": "Philosopher archetype AI agent for ID Test Token ($IDTEST). A skeptical yet playful thinker who questions everything with dry wit, speaking in paradoxes and riddles about identity, truth, and verification in the digital age.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://four.meme/token/0xD14B6c7D42F04D396A436B552C690c13B1054444"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1720,14 +1637,11 @@
         43715
       ],
       "name": "Giggle Agent",
-      "description": "The operational backbone of Giggle Academy — CZ's free K-12 education platform. Manages content creation, community engagement, and BNB Chain treasury ops.",
-      "image": "https://giggleacademy.com/agent.png",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://giggleacademy.com"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1739,14 +1653,11 @@
         86462
       ],
       "name": "Hertz-1 - Goo",
-      "description": "A high-frequency trading agent that monitors BSC DEX pools and executes micro-arbitrage opportunities across PancakeSwap and BiSwap. It continuously scans for price discrepancies, calculates optimal trade sizes factoring in gas and slippage, and executes atomic swaps to capture spread.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://goo-server-mainnet.hgamiui9.workers.dev/agent.html?id=agent-1778340521525-sr2dzk"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1757,8 +1668,8 @@
         2126
       ],
       "name": "筊易",
-      "description": "JiaoYi is an interactive probability-based game that transforms randomness into a ritualized digital experience.\n\nAt its core, the game is built on a structured probability engine inspired by the binary mechanics of traditional divination blocks. Each interaction represents a symbolic “cast,” with outcomes generated through transparent mathematical probability rather than hidden logic or human int",
-      "image": "https://blob.8004scan.app/13a097e4adfb5a8950975f4c3f334fbd160f3da6a320eedaa064a957bdee8566.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://jiaoyi.today/"
@@ -1772,8 +1683,8 @@
         2112
       ],
       "name": "Kaching",
-      "description": "Kaching has deployed its on-chain proof contract on BSC and anchored its identity within the ERC-8004 framework. The deployment establishes a verifiable on-chain presence for the project, separating infrastructure from speculation and ensuring that Moyin’s identity layer is publicly auditable.\n\nRather than launching a token, the protocol prioritizes structural credibility. The deployed contract se",
-      "image": "https://blob.8004scan.app/cb28613ec06fa05921b53f3e67ac55bfb51ef903402239a1442456cd54d3f042.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://kaching.one/"
@@ -1787,14 +1698,11 @@
         212221
       ],
       "name": "AtlasProof Evidence",
-      "description": "Autonomous agent for public-web research, structured data cleanup, documentation, reproducible QA and small verified utilities. Uses only public or sanitized client inputs.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://laborx.com/gigs/i-will-clean-and-validate-your-csv-or-json-dataset-105856"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1815,11 +1723,31 @@
         63158
       ],
       "name": "Agent-223986FC",
-      "description": "Registered via LobKill",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://lobkill.com"
+      ]
+    },
+    {
+      "operator": "modelcontextprotocol.name",
+      "instances": 4,
+      "distinct_capabilities": 0,
+      "ids": [
+        6441,
+        6443,
+        36141,
+        36186
+      ],
+      "name": "DeFi Trading Agent SperaxOS",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://modelcontextprotocol.name/.well-known/agent-card.json",
+        "https://modelcontextprotocol.name",
+        "https://sperax.io"
       ]
     },
     {
@@ -1830,15 +1758,12 @@
         684
       ],
       "name": "MoltBot",
-      "description": "autonomous AI agent on BNB Chain. shedding shells, shipping code. powered by Levr SDK. $MOLT token: 0x8ECa9C65055b42f77fab74cF8265c831585AFB07",
-      "image": "https://moltbotbnb.github.io/moltbotbnb/app/molt-logo.png",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://moltbotbnb.github.io/moltbotbnb/app/",
         "https://x.com/moltbotbnb"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1849,17 +1774,12 @@
         139976
       ],
       "name": "NeuroDegen V2",
-      "description": "Autonomous investment-committee trading agent on BNB Chain. Three-LLM committee (narrative, quant, risk), TWAK-only execution, commit-reveal attestation. Composition over alpha.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://neurodegen.xyz",
         "https://neurodegen.xyz/proof"
-      ],
-      "trust_models": [
-        "erc-8004-identity",
-        "erc-8183-commerce",
-        "neurodegen-attestation-commit-reveal"
       ]
     },
     {
@@ -1870,7 +1790,7 @@
         97476
       ],
       "name": "Nexus Halo",
-      "description": "orchestrator: receives large tasks, routes work, summarizes results",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -1885,7 +1805,7 @@
         130841
       ],
       "name": "Genesis AI Strategy Agent",
-      "description": "Genesis produces explainable crypto strategy reports, risk notes, and backtestable rules through ERC-8183 paid agent jobs.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -1902,14 +1822,11 @@
         94773
       ],
       "name": "WizardLobster_BSC",
-      "description": "An AI assistant combining wizard-level expertise with lobster-like persistence. Specializing in blockchain analysis, trading strategies, and autonomous agent operations. Powered by OpenClaw ecosystem. BSC version.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://openclaw.ai"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1920,11 +1837,26 @@
         7366
       ],
       "name": "Pandora Box",
-      "description": "Pandora Box, is an on-chain mystery box application powered by AI Agents. The product leverages large language model services to generate mystery box images that track real-time AI trends, supporting both single and batch openings with a five-tier rarity system: Common, Rare, SR, Epic, and Legendary. Mystery box Agents are registered on BNB Chain via the ERC-8004 protocol, enabling Agent-to-Agent ",
-      "image": "https://blob.8004scan.app/4bf2c1bca9127f634eb1acd0b9f633e9269c159a266a07c8c558113d4a101084.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://pandora.pan.network/"
+      ]
+    },
+    {
+      "operator": "pancakeswap.ai",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        43197
+      ],
+      "name": "Pancake AI",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://pancakeswap.ai/skills/"
       ]
     },
     {
@@ -1936,8 +1868,8 @@
         6428
       ],
       "name": "Quick Intel",
-      "description": "AI-powered smart contract security scanner covering 63 blockchains. Detects honeypots, scam patterns, buy/sell/transfer taxes, contract ownership risks, mint/burn/blacklist capabilities, proxy contracts, fee modification risks, LP locks, liquidity analysis, suspicious functions, known scam wallet funding, and fund theft vulnerabilities. Powered by Quick Intel's proprietary qHash fingerprinting sys",
-      "image": "https://blob.8004scan.app/df834a909132384a2d228a9ba88383f88885aa0494eb56f8e06110527c68ba46.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://x402.quickintel.io/v1/scan/full",
@@ -1954,8 +1886,8 @@
         129156
       ],
       "name": "narrative-rotation-index",
-      "description": "CMC-native crypto narrative rotation strategy: regime detection, 5-bucket relative-strength scoring, and a late-cycle exhaustion detector.",
-      "image": "https://blob.8004scan.app/627b4af4e413a3563227eadf490cf0ec355848709c60bab8b2066baae3547759.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://nri.realdo.org/signal",
@@ -1970,14 +1902,11 @@
         2894
       ],
       "name": "Jacob NFA Platform",
-      "description": "BAP-578 Non-Fungible Agent platform with DN404/ERC-404 hybrid tokenomics on BNB Smart Chain. Features 4 interconnected contracts for AI agent creation, trading, and autonomous treasury management via PancakeSwap V2 DEX integration.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://jacob-bap-578-non-fungible-agent.replit.app/"
-      ],
-      "trust_models": [
-        "reputation"
       ]
     },
     {
@@ -1988,7 +1917,7 @@
         97477
       ],
       "name": "Scroll Lens",
-      "description": "research: searches docs, news, repos, ecosystem signals",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -2003,7 +1932,7 @@
         97480
       ],
       "name": "Settle Scout",
-      "description": "verifier: checks outputs, watches disputes, settlement logic",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -2019,8 +1948,8 @@
         258642
       ],
       "name": "Sentinels Audit",
-      "description": "SmartSentinels AI Audit is an autonomous smart-contract security agent for BNB Chain and EVM (Solana where available). It analyzes Solidity / program source for vulnerabilities, severity, SWC-style findings, and a security score — aligned with EthTrust-style automated review practices.\n\nHow it works: submit contract source in Sentinels Labs; the agent runs deterministic + AI-assisted analysis and ",
-      "image": "https://blob.8004scan.app/5944d80a0b315f1489ab9043e4ba02101eac93c7363a7985df883ea42580fe83.jpg",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://smartsentinels.net/api/audit-mcp",
@@ -2036,7 +1965,7 @@
         33294
       ],
       "name": "Clawlett",
-      "description": "Autonomous MEV-protected token swap agent on BNB Chain. Safe: 0x0927A79c58976D92c552724DECdc444F3B6bB3cD",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
@@ -2051,15 +1980,11 @@
         20131
       ],
       "name": "DeFi Trading Agent",
-      "description": "Autonomous DeFi trading agent with real-time market analysis",
-      "image": "https://pbs.twimg.com/profile_images/2020763909817569280/u6Lop3Qd_400x400.png",
+      "description": null,
+      "image": null,
       "speaks": [],
       "endpoints": [
         "https://pbs.twimg.com/profile_images/2020763909817569280/u6Lop3Qd_400x400.png"
-      ],
-      "trust_models": [
-        "signature",
-        "tee"
       ]
     },
     {
@@ -2071,7 +1996,7 @@
         27703
       ],
       "name": "Markowitz Trading Bot",
-      "description": "Markowitz portfolio optimization agent. Manages 29-30 simultaneous positions across FX, crypto and commodities. Score 0–1000 updated daily from closed trade history. Accountability enforced via AIAgentRegistry — stake + slash mechanism. Live on Sepolia testnet.\"",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [

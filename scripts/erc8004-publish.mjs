@@ -768,6 +768,7 @@ const page = `<!doctype html>
      thing anybody wants and used to be nowhere on the page. */
   .rg-what{margin-top:7px;font-size:.76rem;line-height:1.55;max-width:52ch}
   .rg-what.rg-weak{color:var(--muted);font-style:italic}
+  .rg-paynote{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
   .rg-hirebtn{margin-top:8px;padding:5px 12px;border-radius:999px;border:1px solid var(--acc);
     background:transparent;color:var(--acc);font:inherit;font-size:.72rem;cursor:pointer;white-space:nowrap}
   .rg-hirebtn:hover{background:var(--acc);color:#0b0b0f}
@@ -1410,7 +1411,13 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       var h='<div class="rg-msg"><b>'+esc(q.price||'?')+'</b> to '+esc(plan.provider||'the provider')+
         '<div class="rg-note">'+esc(plan.provider_source||'')+
         (q.estimated_completion_seconds?' · quoted completion '+esc(q.estimated_completion_seconds)+'s':'')+'</div>'+
-        '<div class="rg-note" style="margin-top:6px">'+esc(e.refundable||'')+'</div></div>';
+        '<div class="rg-note" style="margin-top:6px">'+esc(e.refundable||'')+'</div>'+
+        // What the price is denominated in. Without this the last thing a
+        // buyer reads before opening their wallet is a ticker they have never
+        // seen, and that is where a first hire stops.
+        (e.payment_token_note?'<div class="rg-note rg-paynote">'+esc(e.payment_token_note)+
+          (e.payment_token_where?' <a href="'+esc(e.payment_token_where)+'" target="_blank" rel="noopener">Get some \u2197</a>':'')+'</div>':'')+
+        '</div>';
       h+='<div class="rg-msg" id="rg-wallet"></div>';
       h+='<div id="rg-stepwrap"></div>';
       h+='<button class="rg-act rg-ghost" id="rg-showraw">Show the raw calls instead</button>';

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3183 lines.
+# one fetch. 7 files, 3244 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -177,7 +177,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', 'erc8004');
+const DIR = path.join(ROOT, 'data', (() => {
+  // Same flag the scanner takes, so all three halves of the census can be
+  // pointed at one dataset: scan, probe, publish. Without it a v2 scan had to
+  // be moved on top of the live data before it could be used, and the live
+  // census is what the page serves while the new one is still running.
+  //   node scripts/erc8004-probe.mjs --dir erc8004-v2
+  const i = process.argv.indexOf('--dir');
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
+})());
 const HITS = path.join(DIR, 'agents-with-endpoints.jsonl');
 const OUT = path.join(DIR, 'reachable.jsonl');
 const SUMMARY = path.join(DIR, 'census.json');
@@ -221,7 +229,45 @@ if (SELF_TEST) agents.push({
 });
 console.log(`${agents.length.toLocaleString('en-US')} agents claim an endpoint`);
 
-const probeOne = async (url, opts = {}) => {
+// ONE HOST AT A TIME, AND WHY THIS IS NOT A NICETY
+//
+// The worker pool spreads work across twelve workers, which is polite when
+// 1,848 endpoints sit on 96 hosts. It is not polite when 237 of them are the
+// same host: that host then sees twelve simultaneous requests, continuously,
+// for as long as its share of the queue lasts.
+//
+// Measured 2026-08-25, and it very nearly became a published finding. This
+// probe reported 54 agents speaking MCP where the previous run found 130. The
+// drop was not a change on the chain. app.singularry.org carries 237 registry
+// ids; under the barrage it answered 200 on /api/mcp while returning nothing
+// parsable, so most of its agents were recorded as not speaking MCP. Asked
+// once, calmly, a second later, it answers with a full tool list.
+//
+// "MCP agents fell by more than half" would have been a statement about our
+// own manners dressed up as a statement about the ecosystem. A census that
+// overloads what it measures is measuring itself.
+//
+// So requests are serialised per host with a small gap. Different hosts still
+// run in parallel — the pool is untouched — and the run takes longer only
+// where one operator holds many ids, which is exactly where it should.
+const HOST_GAP_MS = 350;
+const hostGate = new Map();
+const politely = (url, run) => {
+  let host;
+  try { host = new URL(url).host; } catch { return run(); }
+  const prev = hostGate.get(host) || Promise.resolve();
+  const next = prev.then(async () => {
+    const out = await run();
+    await new Promise((r) => setTimeout(r, HOST_GAP_MS));
+    return out;
+  });
+  // The chain must not break on a rejection, or one failure strands every
+  // later request to that host forever.
+  hostGate.set(host, next.then(() => {}, () => {}));
+  return next;
+};
+
+const probeOne = (url, opts = {}) => politely(url, async () => {
   try {
     const r = await fetch(url, {
       method: opts.method || 'GET',
@@ -234,7 +280,7 @@ const probeOne = async (url, opts = {}) => {
   } catch (e) {
     return { ok: false, error: String(e && e.name === 'TimeoutError' ? 'timeout' : (e.message || e)).slice(0, 60) };
   }
-};
+});
 
 // WHAT COUNTS AS SPEAKING A2A, AND WHY THIS GOT STRICTER
 // It used to be: any JSON at a well-known path carrying a name, a
@@ -467,7 +513,15 @@ import { PEERS, SURFACE } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', 'erc8004');
+const DIR = path.join(ROOT, 'data', (() => {
+  // Same flag the scanner takes, so all three halves of the census can be
+  // pointed at one dataset: scan, probe, publish. Without it a v2 scan had to
+  // be moved on top of the live data before it could be used, and the live
+  // census is what the page serves while the new one is still running.
+  //   node scripts/erc8004-publish.mjs --dir erc8004-v2
+  const i = process.argv.indexOf('--dir');
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
+})());
 const state = JSON.parse(fs.readFileSync(path.join(DIR, 'scan-state.json'), 'utf8'));
 
 let census = null;
@@ -1211,6 +1265,7 @@ const page = `<!doctype html>
      thing anybody wants and used to be nowhere on the page. */
   .rg-what{margin-top:7px;font-size:.76rem;line-height:1.55;max-width:52ch}
   .rg-what.rg-weak{color:var(--muted);font-style:italic}
+  .rg-paynote{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
   .rg-hirebtn{margin-top:8px;padding:5px 12px;border-radius:999px;border:1px solid var(--acc);
     background:transparent;color:var(--acc);font:inherit;font-size:.72rem;cursor:pointer;white-space:nowrap}
   .rg-hirebtn:hover{background:var(--acc);color:#0b0b0f}
@@ -1853,7 +1908,13 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       var h='<div class="rg-msg"><b>'+esc(q.price||'?')+'</b> to '+esc(plan.provider||'the provider')+
         '<div class="rg-note">'+esc(plan.provider_source||'')+
         (q.estimated_completion_seconds?' · quoted completion '+esc(q.estimated_completion_seconds)+'s':'')+'</div>'+
-        '<div class="rg-note" style="margin-top:6px">'+esc(e.refundable||'')+'</div></div>';
+        '<div class="rg-note" style="margin-top:6px">'+esc(e.refundable||'')+'</div>'+
+        // What the price is denominated in. Without this the last thing a
+        // buyer reads before opening their wallet is a ticker they have never
+        // seen, and that is where a first hire stops.
+        (e.payment_token_note?'<div class="rg-note rg-paynote">'+esc(e.payment_token_note)+
+          (e.payment_token_where?' <a href="'+esc(e.payment_token_where)+'" target="_blank" rel="noopener">Get some \u2197</a>':'')+'</div>':'')+
+        '</div>';
       h+='<div class="rg-msg" id="rg-wallet"></div>';
       h+='<div id="rg-stepwrap"></div>';
       h+='<button class="rg-act rg-ghost" id="rg-showraw">Show the raw calls instead</button>';

@@ -2,29 +2,31 @@
   "what_this_is": "A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.",
   "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "eip155:56",
-  "measured_at": "2026-08-21T07:43:26.574Z",
-  "registered_ids": 285447,
-  "ids_scanned": 285447,
+  "measured_at": "2026-08-25T16:20:05.595Z",
+  "registered_ids": 302828,
+  "ids_scanned": 302828,
   "registrations": {
-    "parses": 156203,
-    "unparsable": 119336,
-    "empty": 9908,
+    "parses": 157013,
+    "unparsable": 4596,
+    "empty": 10172,
     "unread_after_retries": 0,
-    "active_flag": 153775,
-    "names_a_service": 2350,
-    "has_http_endpoint": 1844,
-    "endpoint_on_a_real_tld": 1391,
-    "speaks_mcp": 281,
-    "speaks_a2a": 327,
-    "supports_x402": 13809
+    "active_flag": 154583,
+    "names_a_service": 2354,
+    "has_http_endpoint": 1848,
+    "endpoint_on_a_real_tld": 1395,
+    "speaks_mcp": 282,
+    "speaks_a2a": 331,
+    "supports_x402": 13811
   },
   "reachability": {
-    "claim_an_endpoint": 1844,
-    "probed": 1844,
-    "reachable": 784,
+    "claim_an_endpoint": 1848,
+    "probed": 1848,
+    "reachable": 788,
     "dead": 1060,
-    "answering_mcp": 130,
-    "serving_an_agent_card": 288
+    "answering_mcp": 235,
+    "serving_an_agent_card": 292,
+    "a2a_callable": 278,
+    "a2a_confirmed_by_probe": 2
   },
   "independent_operators": 69,
   "method": {
@@ -33,7 +35,7 @@
     "caveat": "Reachability is a snapshot. An endpoint down at that moment is counted as dead, and one that answers may still do nothing useful."
   },
   "source": "https://brainonbnb.com/registry",
-  "hireable_here": 11,
+  "hireable_here": 12,
   "categories": [
     "rebalancing",
     "grid-trading",

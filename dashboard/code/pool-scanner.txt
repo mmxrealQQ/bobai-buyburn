@@ -1118,8 +1118,8 @@ export async function scan(input, env) {
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=28" as="style">
-  <link rel="stylesheet" href="styles.css?v=28">
+  <link rel="preload" href="styles.css?v=29" as="style">
+  <link rel="stylesheet" href="styles.css?v=29">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the

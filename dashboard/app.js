@@ -977,12 +977,11 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
         .then(r => r.ok ? r.json() : null).catch(() => null),
     ]))
     .then(([live, reg]) => {
-      if(!el('ag-census')) return;
-      const total = (live && live.highest_id) || (reg && reg.registered_ids);
-      if(total) el('ag-census').textContent = nf(total);
-      const answering = reg && reg.reachability && reg.reachability.reachable;
-      if(answering != null) el('ag-census-sub').innerHTML = nf(answering) + ' answer &middot; ' +
-        nf(reg.independent_operators || 0) + ' operators &rarr;';
+      // The Brain Plaza tile that used to live here is gone: the marketplace
+      // card at the top of this block carries the same number and the same
+      // link, and two of each in one block reads as two destinations. The card
+      // fills itself from these same two sources, so the figures still agree.
+      void live; void reg;
     })
     .catch(() => {
       ['ag-asked','ag-earned','ag-watch'].forEach(i => { el(i).textContent = '–'; });

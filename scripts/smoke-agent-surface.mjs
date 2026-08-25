@@ -284,7 +284,12 @@ section('The marketplace, from the front door');
   const { body } = await getText(`${SITE}/`);
   ok('homepage carries the marketplace card', /class="mkt fi"/.test(body));
   ok('the card links to the marketplace', /<a class="mkt fi" href="\/registry">/.test(body));
-  ok('nav offers it directly', /<a href="\/registry">Marketplace<\/a>/.test(body));
+  // The nav deliberately does NOT carry a separate Marketplace entry: the
+  // marketplace lives inside the Agents block, which is where it belongs, and
+  // a second top-level word for the same thing reads as two destinations.
+  ok('the nav is not split between Agents and Marketplace',
+    !/<a href="\/registry">Marketplace<\/a>/.test(body));
+  ok('the Agents block is still linked from the nav', /<a href="#agents">Agents<\/a>/.test(body));
   // The counts are placeholders in the markup on purpose. A number typed into
   // the homepage is a number that drifts away from the page it describes.
   ok('the card does not hard-code its counts',

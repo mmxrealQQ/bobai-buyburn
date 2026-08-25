@@ -268,9 +268,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 5,
    "lines": 3338,
-   "zipBytes": 71012,
+   "zipBytes": 71011,
    "txtBytes": 212906,
-   "sha256": "f414697b3c5fdc74",
+   "sha256": "d2c2686ee94ef5cb",
    "reqs": [
     {
      "what": "A static host",
@@ -637,7 +637,7 @@
    "lines": 2991,
    "zipBytes": 60547,
    "txtBytes": 162660,
-   "sha256": "51ea06f40addb3bd",
+   "sha256": "5d5d6af729a1438c",
    "reqs": [
     {
      "what": "Node 18+ and time",

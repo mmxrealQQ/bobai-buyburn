@@ -152,8 +152,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=28" as="style">
-  <link rel="stylesheet" href="styles.css?v=28">
+  <link rel="preload" href="styles.css?v=29" as="style">
+  <link rel="stylesheet" href="styles.css?v=29">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -207,7 +207,7 @@
 
   <nav><div class="nav">
     <a href="/" class="nl"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"> <span>BOBAI</span></a>
-    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="/registry">Marketplace</a><a href="#agents">Agents</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
+    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#agents">Agents</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
     <div class="nb-group">
       <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
     </div>
@@ -1056,6 +1056,7 @@
         <div class="mkt-nums">
           <div><b id="mkt-total">&ndash;</b><span>agent ids read</span></div>
           <div><b id="mkt-reach">&ndash;</b><span>that answer</span></div>
+          <div><b id="mkt-ops">&ndash;</b><span>independent operators</span></div>
           <div><b id="mkt-hire">&ndash;</b><span>hireable here</span></div>
           <div><b>4</b><span>categories, equally deep</span></div>
         </div>
@@ -1072,7 +1073,6 @@
       <div class="agt-stat fi"><div class="agt-n" id="ag-earned">&ndash;</div><div class="agt-l">earned from agents</div><div class="agt-s" id="ag-earned-sub">paid in USD1, on-chain</div></div>
       <div class="agt-stat fi"><div class="agt-n" id="ag-watch">&ndash;</div><div class="agt-l">pools being watched</div><div class="agt-s">paid, running around the clock</div></div>
       <div class="agt-stat fi"><div class="agt-n" id="ag-surf">4</div><div class="agt-l">ways in</div><div class="agt-s">skill, MCP, REST, browser</div></div>
-      <a class="agt-stat fi agt-link" href="/registry"><div class="agt-n" id="ag-census">&ndash;</div><div class="agt-l">Brain Plaza</div><div class="agt-s" id="ag-census-sub">every agent on BNB Chain &rarr;</div></a>
     </div>
 
     <div class="agt-cols">
@@ -1223,7 +1223,7 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=28" defer></script>
+<script src="app.js?v=29" defer></script>
 <script>
   // The registry grows by thousands a day. The card shows the live high-water
   // mark from the same endpoint /registry reads, so the homepage can never
@@ -1231,7 +1231,8 @@
   (function(){
     var t=document.getElementById('mkt-total'),
         re=document.getElementById('mkt-reach'),
-        hi=document.getElementById('mkt-hire');
+        hi=document.getElementById('mkt-hire'),
+        op=document.getElementById('mkt-ops');
     if(!t)return;
     var n=function(v){return Number(v).toLocaleString('en-US');};
     // The live high-water mark. The registry grows by thousands a day, so a
@@ -1248,6 +1249,7 @@
         if(!d)return;
         if(re&&d.reachability&&d.reachability.reachable!=null)re.textContent=n(d.reachability.reachable);
         if(hi&&d.hireable_here!=null)hi.textContent=n(d.hireable_here);
+        if(op&&d.independent_operators!=null)op.textContent=n(d.independent_operators);
       })
       .catch(function(){});
   })();

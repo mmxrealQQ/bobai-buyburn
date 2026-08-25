@@ -14,7 +14,7 @@
 
 ## Brain Plaza — the ERC-8004 registry on BNB Chain, measured
 
-Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` was read one at a time, then every endpoint those registrations named was contacted. Measured 2026-08-21: 285,447 ids registered, 156,203 registrations that parse at all, 1,844 naming an HTTP endpoint, 784 that answer, 57 independent operators behind them. Nothing extrapolated, nothing sampled.
+Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` was read one at a time, then every endpoint those registrations named was contacted. Measured 2026-08-25: 302,828 ids registered, 157,013 registrations that parse at all (51.8%), 131,047 that point off-chain at a document (43.3%), 1,848 naming an HTTP endpoint, 788 that answer, 69 independent operators behind them. Of the ones that answer, 235 speak MCP and 278 serve an agent card that names both an endpoint and skills. Nothing extrapolated, nothing sampled.
 
 - The page: https://brainonbnb.com/registry
 - The counts as JSON: https://brainonbnb.com/api-registry.json

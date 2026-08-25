@@ -277,6 +277,30 @@ section('The router speaks both protocols');
   ok('and the refusal names the verbs', /action/i.test(j?.reason || ''));
 }
 
+section('The written numbers match the measured ones');
+{
+  // llms.txt is what other people's agents read, and it carried the figures
+  // from a scan four days old for four days: 285,447 registered where the
+  // registry had reached 302,828, and 784 answering where the probe now says
+  // 788. Nothing broke, nothing looked wrong, and every agent that read the
+  // file got a stale answer. Prose that quotes a measurement has to be
+  // checked against the measurement.
+  const [txt, api] = await Promise.all([
+    fetch(`${SITE}/llms.txt`).then((r) => r.text()).catch(() => ''),
+    fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null),
+  ]);
+  const n = (x) => Number(x).toLocaleString('en-US');
+  ok('llms.txt quotes the current census',
+    !!api && txt.includes(n(api.registered_ids)) && txt.includes(n(api.reachability.reachable)),
+    api ? `expected ${n(api.registered_ids)} registered and ${n(api.reachability.reachable)} answering` : 'api-registry unreadable');
+  ok('and the current protocol counts',
+    !!api && txt.includes(n(api.reachability.answering_mcp)) && txt.includes(n(api.reachability.a2a_callable)));
+  // The claim this rescan disproved must not survive anywhere.
+  ok('the disproved "not a readable document" claim is gone',
+    !/not a readable document/i.test(txt));
+  ok('the off-chain share is published as data, not only as prose',
+    Number.isInteger(api?.registrations?.points_offchain));
+}
 section('The marketplace, from the front door');
 {
   // A judge, or anybody else, arriving at brainonbnb.com should not have to

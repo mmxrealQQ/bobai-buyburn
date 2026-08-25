@@ -102,6 +102,11 @@ const api = {
     parses: c.valid,
     unparsable: c.unparsable,
     empty: c.empty,
+    // The correction this rescan existed for. 43% of registrations are an
+    // https link to a document, and the previous census counted those as
+    // holding nothing readable. Published so the claim can be checked
+    // against the data rather than taken from the prose.
+    points_offchain: c.offchain,
     unread_after_retries: c.unread,
     active_flag: c.active,
     names_a_service: c.withServices,

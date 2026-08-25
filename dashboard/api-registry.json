@@ -9,6 +9,7 @@
     "parses": 157013,
     "unparsable": 4596,
     "empty": 10172,
+    "points_offchain": 131047,
     "unread_after_retries": 0,
     "active_flag": 154583,
     "names_a_service": 2354,

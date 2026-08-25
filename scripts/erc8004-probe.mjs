@@ -76,7 +76,45 @@ if (SELF_TEST) agents.push({
 });
 console.log(`${agents.length.toLocaleString('en-US')} agents claim an endpoint`);
 
-const probeOne = async (url, opts = {}) => {
+// ONE HOST AT A TIME, AND WHY THIS IS NOT A NICETY
+//
+// The worker pool spreads work across twelve workers, which is polite when
+// 1,848 endpoints sit on 96 hosts. It is not polite when 237 of them are the
+// same host: that host then sees twelve simultaneous requests, continuously,
+// for as long as its share of the queue lasts.
+//
+// Measured 2026-08-25, and it very nearly became a published finding. This
+// probe reported 54 agents speaking MCP where the previous run found 130. The
+// drop was not a change on the chain. app.singularry.org carries 237 registry
+// ids; under the barrage it answered 200 on /api/mcp while returning nothing
+// parsable, so most of its agents were recorded as not speaking MCP. Asked
+// once, calmly, a second later, it answers with a full tool list.
+//
+// "MCP agents fell by more than half" would have been a statement about our
+// own manners dressed up as a statement about the ecosystem. A census that
+// overloads what it measures is measuring itself.
+//
+// So requests are serialised per host with a small gap. Different hosts still
+// run in parallel — the pool is untouched — and the run takes longer only
+// where one operator holds many ids, which is exactly where it should.
+const HOST_GAP_MS = 350;
+const hostGate = new Map();
+const politely = (url, run) => {
+  let host;
+  try { host = new URL(url).host; } catch { return run(); }
+  const prev = hostGate.get(host) || Promise.resolve();
+  const next = prev.then(async () => {
+    const out = await run();
+    await new Promise((r) => setTimeout(r, HOST_GAP_MS));
+    return out;
+  });
+  // The chain must not break on a rejection, or one failure strands every
+  // later request to that host forever.
+  hostGate.set(host, next.then(() => {}, () => {}));
+  return next;
+};
+
+const probeOne = (url, opts = {}) => politely(url, async () => {
   try {
     const r = await fetch(url, {
       method: opts.method || 'GET',
@@ -89,7 +127,7 @@ const probeOne = async (url, opts = {}) => {
   } catch (e) {
     return { ok: false, error: String(e && e.name === 'TimeoutError' ? 'timeout' : (e.message || e)).slice(0, 60) };
   }
-};
+});
 
 // WHAT COUNTS AS SPEAKING A2A, AND WHY THIS GOT STRICTER
 // It used to be: any JSON at a well-known path carrying a name, a

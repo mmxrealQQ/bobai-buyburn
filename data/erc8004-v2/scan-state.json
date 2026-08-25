@@ -1,0 +1,20 @@
+{
+  "cursor": 85601,
+  "highestId": 302202,
+  "counts": {
+    "unread": 1675,
+    "empty": 7485,
+    "unparsable": 4569,
+    "offchain": 3802,
+    "valid": 68069,
+    "active": 65869,
+    "withServices": 1972,
+    "withHttpEndpoint": 1469,
+    "plausibleEndpoint": 1032,
+    "mcp": 37,
+    "a2a": 19,
+    "x402": 636
+  },
+  "startedAt": "2026-08-25T10:45:09.010Z",
+  "updatedAt": "2026-08-25T11:28:26.999Z"
+}

@@ -168,7 +168,21 @@ export const decodeJob = (hex) => {
 // up scoring zero on functionality.
 // ---------------------------------------------------------------------------
 
-const a2aSend = async (endpoint, data, timeoutMs = 25000) => {
+// A Worker cannot fetch its own custom domain — the request comes back as
+// something that is not the JSON the seller sent, and the failure reads exactly
+// like a broken seller. That matters here because our own agents are on this
+// worker: hiring them over HTTP would fail while hiring a stranger's agent
+// works, which is the wrong way round for a marketplace to behave.
+//
+// So the caller may inject a local delivery function. Nothing about the
+// protocol changes — the same message goes to the same handler, it just does
+// not leave the process. Injected rather than imported so this file stays
+// dependency-free and its ABI self-test keeps working in plain Node.
+const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null) => {
+  if (local) {
+    const r = await local(endpoint, data);
+    if (r) return r;
+  }
   const r = await fetch(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
@@ -255,7 +269,28 @@ const normalize = (q) => {
   return { ...q, currency_symbol: /^0x/.test(c) ? '$U' : (c === 'U' ? '$U' : c || '$U'), asset };
 };
 
-export async function negotiate(endpoint, task, terms) {
+// A quoted price to atomic units of an 18-decimal token.
+//
+// Integer in, integer out: that is what every seller on this chain actually
+// sends. A decimal is accepted because it is unambiguous — an atomic amount is
+// a whole number by construction — and is scaled with string arithmetic rather
+// than a float, because 0.1 * 1e18 in binary floating point is not
+// 100000000000000000 and funding a job one wei short fails at the seller's end
+// with no explanation.
+const DECIMALS = 18;
+export function toAtomic(price) {
+  const raw = String(price ?? '').trim();
+  if (!raw) throw new Error('empty price');
+  if (/^\d+$/.test(raw)) return raw;
+  const m = raw.match(/^(\d*)\.(\d+)$/);
+  if (!m) throw new Error(`"${raw}" is not a number`);
+  const whole = m[1] || '0';
+  const frac = m[2].slice(0, DECIMALS).padEnd(DECIMALS, '0');
+  if (m[2].length > DECIMALS) throw new Error(`"${raw}" has more than ${DECIMALS} decimal places`);
+  return (BigInt(whole) * 10n ** BigInt(DECIMALS) + BigInt(frac)).toString();
+}
+
+export async function negotiate(endpoint, task, terms, local = null) {
   const res = await a2aSend(endpoint, {
     skill: 'negotiate',
     task_description: task,
@@ -266,7 +301,7 @@ export async function negotiate(endpoint, task, terms) {
       deliverables: terms?.deliverables || task,
       quality_standards: terms?.quality_standards || 'current on-chain data, stated as of a timestamp',
     },
-  });
+  }, 25000, local);
   if (!res) return { ok: false, error: 'seller did not return parseable JSON' };
   if (res.error) return { ok: false, error: res.error.message || 'seller rejected the negotiation' };
   const quote = findQuote(res.result);
@@ -284,11 +319,49 @@ export async function negotiate(endpoint, task, terms) {
 // completion estimate so that a slow-but-honest seller is not cut off, and
 // capped so that a mistyped value cannot lock funds for a year.
 const HOUR = 3600;
-const expiryFor = (quote, override) => {
+
+// The floor is not a comfort margin, it is a hard requirement of the escrow,
+// and getting it wrong made every job hired through here undeliverable.
+//
+// The OptimisticPolicy holds a dispute window — measured, 604,800 seconds =
+// seven days — and the escrow can only release after it. A job that expires
+// before that window closes can therefore never complete, so the kernel refuses
+// the provider's submit() outright. It refuses with an unnamed custom error
+// (0x15e5dd74) that appears in no signature database, which is why this cost a
+// real funded job to find: the seller looks broken, the buyer's money sits in
+// escrow until expiry, and nothing anywhere says why.
+//
+// So the window is read from the policy itself rather than assumed, with a day
+// on top for the provider to actually do the work. DISPUTE_WINDOW_FALLBACK is
+// only used if the policy cannot be read, and it is the measured value.
+const DISPUTE_WINDOW_FALLBACK = 7 * 24 * HOUR;
+const DELIVERY_MARGIN = 24 * HOUR;
+const MAX_EXPIRY = 30 * 24 * HOUR;
+
+// disputeWindow() — selector 0x117f5f92, computed from the signature and
+// confirmed against the live policy, which answers 604800.
+const DISPUTE_WINDOW_CALL = '0x117f5f92';
+
+export async function readDisputeWindow(rpcCall) {
+  try {
+    const raw = await rpcCall(ERC8183.policy, DISPUTE_WINDOW_CALL);
+    const v = Number(BigInt(raw));
+    // A policy answering something absurd is a policy we do not understand, and
+    // guessing would put somebody's budget out of reach for a year.
+    if (v > 0 && v <= MAX_EXPIRY) return v;
+  } catch { /* fall through */ }
+  return DISPUTE_WINDOW_FALLBACK;
+}
+
+const expiryFor = (quote, override, disputeWindow = DISPUTE_WINDOW_FALLBACK) => {
   const now = Math.floor(Date.now() / 1000);
-  if (override) return now + Math.max(HOUR, Math.min(Number(override), 30 * 24 * HOUR));
+  const floor = disputeWindow + DELIVERY_MARGIN;
   const est = Number(quote?.estimated_completion_seconds || 0);
-  return now + Math.max(24 * HOUR, Math.min(est * 6, 30 * 24 * HOUR));
+  // An override may lengthen the window but never shorten it below the floor:
+  // a buyer asking for a one-hour expiry is asking for a job that cannot be
+  // delivered, and quietly obeying would be the same bug with a caller to blame.
+  const wanted = override ? Number(override) : Math.max(floor, est * 6);
+  return now + Math.min(Math.max(floor, wanted), MAX_EXPIRY);
 };
 
 // What goes on-chain as the job description. The seller's card says to anchor
@@ -454,7 +527,7 @@ export async function handleHire(url, body, env, opts = {}) {
     } };
   }
 
-  const neg = await negotiate(endpoint, task, body?.terms);
+  const neg = await negotiate(endpoint, task, body?.terms, opts.localA2A || null);
   if (!neg.ok) {
     await recordSession(env, {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
@@ -464,8 +537,25 @@ export async function handleHire(url, body, env, opts = {}) {
   }
 
   const q = neg.quote;
-  const budget = String(q.price);
-  const expiredAt = expiryFor(q, body?.expires_in_seconds);
+  // Every seller measured in the wild quotes atomic units — the flat dialect
+  // and the envelope both send 1000000000000000000 for one $U. But a price is
+  // a string arriving from a stranger, and one that reads "0.10" used to reach
+  // BigInt() and take the whole endpoint down with an unexplained 500. A
+  // decimal point cannot appear in an atomic amount, so it is unambiguous and
+  // is converted rather than rejected; anything that is neither is refused with
+  // a reason the seller's author can act on.
+  let budget;
+  try {
+    budget = toAtomic(q.price);
+  } catch (e) {
+    return { status: 502, body: {
+      error: `the seller quoted a price this buyer cannot use: ${e.message}`,
+      quoted: String(q.price), endpoint, negotiated: true, hireable: false,
+      expected: 'an integer amount in the payment token\'s smallest unit (1 $U = 1000000000000000000), or a decimal amount such as "0.10"',
+    } };
+  }
+  const disputeWindow = await readDisputeWindow(opts.rpcCall || rpcCall);
+  const expiredAt = expiryFor(q, body?.expires_in_seconds, disputeWindow);
   const { provider, provider_source, provider_problem } = await resolveProvider(q, target, opts.rpcCall || rpcCall);
 
   await recordSession(env, {

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 13 files, 2976 lines.
+# one fetch. 17 files, 4049 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1064,6 +1064,217 @@ export async function handleFind(url) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/grid.js
+==============================================================================
+
+// Grid trading parameters for any BNB Chain pool, costed against the real pool.
+//
+// This is the second of the four categories the marketplace has to cover, and
+// like the health-factor agent it computes rather than claims.
+//
+// THE NUMBER EVERY GRID BOT LEAVES OUT
+// A grid earns the spacing between two levels and pays the round trip to get
+// there: buy at level n, sell at level n+1. The round trip costs the swap fee
+// twice, the price impact of each fill, and the transfer tax twice if the token
+// charges one. If the spacing is narrower than that, every completed cycle
+// loses money — reliably, quietly, and faster the better the grid "performs",
+// because more fills means more losses.
+//
+// So the first thing this returns is the break-even spacing. A grid tighter
+// than that number cannot work on that pool, no matter how it is tuned, and
+// saying so is worth more than any parameter set.
+//
+// WHERE THE COSTS COME FROM
+// The pool scanner behind brainonbnb.com/scanner, called over our own MCP
+// endpoint. One implementation of the pool arithmetic, used by the page, the
+// installable skill, the Telegram bot and now this — the same rule that made
+// the BNB price a single Chainlink read everywhere. Costs come back MEASURED:
+// the transfer tax is read from executed trades rather than from a label,
+// because those disagree, sometimes by more than a point.
+//
+// WHAT THIS DOES NOT DO
+// It does not trade, hold funds, or tell anybody what a price will do. It sizes
+// a grid against measured liquidity and states what that grid costs to run. The
+// direction of the market is not a thing we can measure, so we do not sell it.
+
+const SCANNER = 'https://brainonbnb.com/mcp';
+
+// Ten levels over a ±15% band is the shape most grid UIs default to. Kept as a
+// default rather than a recommendation: the interesting output is what that
+// costs, not the shape itself.
+const DEFAULTS = { levels: 10, bandPct: 15, capitalUsd: 1000 };
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+async function scanPool(address) {
+  const r = await fetch(SCANNER, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0', id: 1, method: 'tools/call',
+      params: { name: 'bsc_pool_scan', arguments: { address } },
+    }),
+    signal: AbortSignal.timeout(45000),
+  });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || 'the pool could not be measured');
+  const text = j.result?.content?.[0]?.text;
+  if (!text) throw new Error('the scanner returned nothing readable');
+  const scan = JSON.parse(text);
+  if (!scan.quotable) throw new Error(`${scan.symbol || address} has no pool that can be priced`);
+  return scan;
+}
+
+// What one fill of `usd` actually costs, in percent, as a one-way trade.
+//
+// The scanner measures a fixed ladder of sizes. Inside that ladder the answer is
+// interpolated between two measurements; beyond it, it is derived from the
+// pool's 1%-depth, which for a constant-product pool is a straight line through
+// the origin. The two cases are labelled differently in the output on purpose —
+// a measured number and a derived one should never look alike.
+function costOfFill(scan, usd, side) {
+  const key = side === 'buy' ? 'buyCostPct' : 'sellCostPct';
+  const rows = (scan.tradeCost || []).filter((r) => typeof r[key] === 'number');
+  if (!rows.length) return null;
+
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+
+  if (usd <= first.sizeUsd) return { pct: first[key], basis: 'measured' };
+
+  for (let i = 1; i < rows.length; i++) {
+    const a = rows[i - 1];
+    const b = rows[i];
+    if (usd <= b.sizeUsd) {
+      const t = (usd - a.sizeUsd) / (b.sizeUsd - a.sizeUsd);
+      return { pct: +(a[key] + t * (b[key] - a[key])).toFixed(4), basis: 'measured' };
+    }
+  }
+
+  // Past the measured ladder. Split the last measurement into its fixed part
+  // (swap fee plus tax, which do not grow with size) and its impact part, then
+  // scale only the impact.
+  const depth = side === 'buy' ? scan.onePercentDepth?.buyUsd : scan.onePercentDepth?.sellUsd;
+  const fixedPct = (scan.pool?.swapFeePct || 0)
+    + ((side === 'buy' ? scan.tax?.buyPct : scan.tax?.sellPct) || 0);
+  if (!depth) return { pct: last[key], basis: 'measured-ceiling' };
+  const impactPct = (usd / depth) * 1;
+  return { pct: +(fixedPct + impactPct).toFixed(4), basis: 'derived from 1% depth' };
+}
+
+/**
+ * Plan a grid and cost it against the live pool.
+ * Read-only: measures, computes, and signs nothing.
+ */
+export async function gridPlan(input = {}) {
+  const address = String(input.token || input.address || '').match(/0x[a-fA-F0-9]{40}/)?.[0];
+  if (!address) throw new Error('Give a BSC token or pool address.');
+
+  const levels = Math.round(clamp(Number(input.levels) || DEFAULTS.levels, 2, 100));
+  const bandPct = clamp(Number(input.bandPct) || DEFAULTS.bandPct, 0.5, 90);
+  const capitalUsd = clamp(Number(input.capitalUsd) || DEFAULTS.capitalUsd, 10, 10_000_000);
+
+  const scan = await scanPool(address);
+  const price = scan.price?.usd;
+  if (!price) throw new Error('no live price for that pool');
+
+  // Geometric spacing, not arithmetic. A grid earns a percentage per cycle, so
+  // the levels have to be a percentage apart — evenly spaced dollars would make
+  // the bottom of the range earn several times what the top earns, on the same
+  // capital, and no explanation of the result would make sense.
+  const low = price * (1 - bandPct / 100);
+  const high = price * (1 + bandPct / 100);
+  const ratio = Math.pow(high / low, 1 / (levels - 1));
+  const spacingPct = (ratio - 1) * 100;
+
+  const perLevelUsd = capitalUsd / levels;
+  const buy = costOfFill(scan, perLevelUsd, 'buy');
+  const sell = costOfFill(scan, perLevelUsd, 'sell');
+  if (!buy || !sell) throw new Error('the pool could not be costed at that size');
+
+  const roundTripPct = +(buy.pct + sell.pct).toFixed(4);
+  const netPerCyclePct = +(spacingPct - roundTripPct).toFixed(4);
+  const viable = netPerCyclePct > 0;
+
+  // The spacing at which a cycle breaks exactly even, and the widest grid that
+  // still fits in the band at that spacing. Both are what somebody actually
+  // needs in order to fix an unviable grid.
+  const breakEvenSpacingPct = roundTripPct;
+  const maxLevelsAtBreakEven = Math.max(2, Math.floor(
+    Math.log(high / low) / Math.log(1 + breakEvenSpacingPct / 100) + 1,
+  ));
+
+  const gridLevels = [];
+  for (let i = 0; i < levels; i++) {
+    const p = low * Math.pow(ratio, i);
+    gridLevels.push({
+      level: i + 1,
+      price: +p.toPrecision(8),
+      side: p < price ? 'buy' : 'sell',
+      capital_usd: +perLevelUsd.toFixed(2),
+    });
+  }
+
+  // A grid level big enough to move the price it is trading against is not a
+  // grid level, it is the market. Worth saying out loud, because the capital
+  // figure that triggers it looks perfectly reasonable on a thin pool.
+  const depthRef = scan.onePercentDepth?.buyUsd || 0;
+  const shareOfDepth = depthRef ? perLevelUsd / depthRef : null;
+
+  const warnings = [];
+  if (!viable) {
+    warnings.push(`At ${levels} levels across ±${bandPct}% the spacing is ${spacingPct.toFixed(3)}% and one round trip costs ${roundTripPct.toFixed(3)}%. Every completed cycle loses ${Math.abs(netPerCyclePct).toFixed(3)}%. This grid cannot be tuned into profit — it needs fewer levels, a wider band, or a deeper pool.`);
+  }
+  if (shareOfDepth != null && shareOfDepth > 0.25) {
+    warnings.push(`Each fill is ${(shareOfDepth * 100).toFixed(0)}% of the size that moves this pool 1%. Fills of that size move the price against the next fill, and the cost figures here do not model a grid trading against itself.`);
+  }
+  if (scan.tax?.buyPct === null || scan.tax?.sellPct === null) {
+    warnings.push('No transfer tax could be established for this token, so the costs above exclude it. If it charges one, every figure here is optimistic by twice that rate.');
+  }
+  if (scan.pool?.partialMarket) {
+    warnings.push('Only part of this token\'s liquidity sits in the pool that was read, so real costs may be lower than shown.');
+  }
+
+  return {
+    token: { address: scan.address, symbol: scan.symbol, name: scan.name, price_usd: price },
+    pool: {
+      address: scan.pool?.address, venue: scan.pool?.venue,
+      swap_fee_pct: scan.pool?.swapFeePct,
+      liquidity_usd: scan.pool?.liquidityUsd,
+      one_pct_depth_usd: scan.onePercentDepth?.buyUsd,
+    },
+    transfer_tax: {
+      buy_pct: scan.tax?.buyPct, sell_pct: scan.tax?.sellPct,
+      source: scan.tax?.source,
+    },
+    grid: {
+      levels, band_pct: bandPct, capital_usd: capitalUsd,
+      lower_price: +low.toPrecision(8), upper_price: +high.toPrecision(8),
+      spacing_pct: +spacingPct.toFixed(4),
+      capital_per_level_usd: +perLevelUsd.toFixed(2),
+      prices: gridLevels,
+    },
+    // The whole point of the exercise.
+    economics: {
+      cost_per_buy_pct: buy.pct,
+      cost_per_sell_pct: sell.pct,
+      cost_basis: buy.basis === sell.basis ? buy.basis : `${buy.basis} / ${sell.basis}`,
+      round_trip_cost_pct: roundTripPct,
+      net_per_completed_cycle_pct: netPerCyclePct,
+      net_per_completed_cycle_usd: +(perLevelUsd * netPerCyclePct / 100).toFixed(4),
+      viable,
+      break_even_spacing_pct: +breakEvenSpacingPct.toFixed(4),
+      max_levels_that_still_break_even: maxLevelsAtBreakEven,
+      explanation: 'A cycle is one buy at a level and one sell at the level above. It earns the spacing and pays the round trip: swap fee twice, price impact of each fill, and the transfer tax twice where the token charges one. Spacing below the round-trip cost loses money on every fill.',
+    },
+    warnings,
+    what_this_is_not: 'A view on the price. Nothing here predicts direction — it sizes a grid against measured liquidity and states what running it costs. Measurement only, not financial advice.',
+    measured_at: new Date().toISOString(),
+    source: 'Pool measured live via https://brainonbnb.com/scanner — the same arithmetic the public scanner and the installable skill run.',
+  };
+}
+
+==============================================================================
 === FILE: worker-agent/hire.js
 ==============================================================================
 
@@ -1237,7 +1448,21 @@ export const decodeJob = (hex) => {
 // up scoring zero on functionality.
 // ---------------------------------------------------------------------------
 
-const a2aSend = async (endpoint, data, timeoutMs = 25000) => {
+// A Worker cannot fetch its own custom domain — the request comes back as
+// something that is not the JSON the seller sent, and the failure reads exactly
+// like a broken seller. That matters here because our own agents are on this
+// worker: hiring them over HTTP would fail while hiring a stranger's agent
+// works, which is the wrong way round for a marketplace to behave.
+//
+// So the caller may inject a local delivery function. Nothing about the
+// protocol changes — the same message goes to the same handler, it just does
+// not leave the process. Injected rather than imported so this file stays
+// dependency-free and its ABI self-test keeps working in plain Node.
+const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null) => {
+  if (local) {
+    const r = await local(endpoint, data);
+    if (r) return r;
+  }
   const r = await fetch(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
@@ -1324,7 +1549,28 @@ const normalize = (q) => {
   return { ...q, currency_symbol: /^0x/.test(c) ? '$U' : (c === 'U' ? '$U' : c || '$U'), asset };
 };
 
-export async function negotiate(endpoint, task, terms) {
+// A quoted price to atomic units of an 18-decimal token.
+//
+// Integer in, integer out: that is what every seller on this chain actually
+// sends. A decimal is accepted because it is unambiguous — an atomic amount is
+// a whole number by construction — and is scaled with string arithmetic rather
+// than a float, because 0.1 * 1e18 in binary floating point is not
+// 100000000000000000 and funding a job one wei short fails at the seller's end
+// with no explanation.
+const DECIMALS = 18;
+export function toAtomic(price) {
+  const raw = String(price ?? '').trim();
+  if (!raw) throw new Error('empty price');
+  if (/^\d+$/.test(raw)) return raw;
+  const m = raw.match(/^(\d*)\.(\d+)$/);
+  if (!m) throw new Error(`"${raw}" is not a number`);
+  const whole = m[1] || '0';
+  const frac = m[2].slice(0, DECIMALS).padEnd(DECIMALS, '0');
+  if (m[2].length > DECIMALS) throw new Error(`"${raw}" has more than ${DECIMALS} decimal places`);
+  return (BigInt(whole) * 10n ** BigInt(DECIMALS) + BigInt(frac)).toString();
+}
+
+export async function negotiate(endpoint, task, terms, local = null) {
   const res = await a2aSend(endpoint, {
     skill: 'negotiate',
     task_description: task,
@@ -1335,7 +1581,7 @@ export async function negotiate(endpoint, task, terms) {
       deliverables: terms?.deliverables || task,
       quality_standards: terms?.quality_standards || 'current on-chain data, stated as of a timestamp',
     },
-  });
+  }, 25000, local);
   if (!res) return { ok: false, error: 'seller did not return parseable JSON' };
   if (res.error) return { ok: false, error: res.error.message || 'seller rejected the negotiation' };
   const quote = findQuote(res.result);
@@ -1353,11 +1599,49 @@ export async function negotiate(endpoint, task, terms) {
 // completion estimate so that a slow-but-honest seller is not cut off, and
 // capped so that a mistyped value cannot lock funds for a year.
 const HOUR = 3600;
-const expiryFor = (quote, override) => {
+
+// The floor is not a comfort margin, it is a hard requirement of the escrow,
+// and getting it wrong made every job hired through here undeliverable.
+//
+// The OptimisticPolicy holds a dispute window — measured, 604,800 seconds =
+// seven days — and the escrow can only release after it. A job that expires
+// before that window closes can therefore never complete, so the kernel refuses
+// the provider's submit() outright. It refuses with an unnamed custom error
+// (0x15e5dd74) that appears in no signature database, which is why this cost a
+// real funded job to find: the seller looks broken, the buyer's money sits in
+// escrow until expiry, and nothing anywhere says why.
+//
+// So the window is read from the policy itself rather than assumed, with a day
+// on top for the provider to actually do the work. DISPUTE_WINDOW_FALLBACK is
+// only used if the policy cannot be read, and it is the measured value.
+const DISPUTE_WINDOW_FALLBACK = 7 * 24 * HOUR;
+const DELIVERY_MARGIN = 24 * HOUR;
+const MAX_EXPIRY = 30 * 24 * HOUR;
+
+// disputeWindow() — selector 0x117f5f92, computed from the signature and
+// confirmed against the live policy, which answers 604800.
+const DISPUTE_WINDOW_CALL = '0x117f5f92';
+
+export async function readDisputeWindow(rpcCall) {
+  try {
+    const raw = await rpcCall(ERC8183.policy, DISPUTE_WINDOW_CALL);
+    const v = Number(BigInt(raw));
+    // A policy answering something absurd is a policy we do not understand, and
+    // guessing would put somebody's budget out of reach for a year.
+    if (v > 0 && v <= MAX_EXPIRY) return v;
+  } catch { /* fall through */ }
+  return DISPUTE_WINDOW_FALLBACK;
+}
+
+const expiryFor = (quote, override, disputeWindow = DISPUTE_WINDOW_FALLBACK) => {
   const now = Math.floor(Date.now() / 1000);
-  if (override) return now + Math.max(HOUR, Math.min(Number(override), 30 * 24 * HOUR));
+  const floor = disputeWindow + DELIVERY_MARGIN;
   const est = Number(quote?.estimated_completion_seconds || 0);
-  return now + Math.max(24 * HOUR, Math.min(est * 6, 30 * 24 * HOUR));
+  // An override may lengthen the window but never shorten it below the floor:
+  // a buyer asking for a one-hour expiry is asking for a job that cannot be
+  // delivered, and quietly obeying would be the same bug with a caller to blame.
+  const wanted = override ? Number(override) : Math.max(floor, est * 6);
+  return now + Math.min(Math.max(floor, wanted), MAX_EXPIRY);
 };
 
 // What goes on-chain as the job description. The seller's card says to anchor
@@ -1523,7 +1807,7 @@ export async function handleHire(url, body, env, opts = {}) {
     } };
   }
 
-  const neg = await negotiate(endpoint, task, body?.terms);
+  const neg = await negotiate(endpoint, task, body?.terms, opts.localA2A || null);
   if (!neg.ok) {
     await recordSession(env, {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
@@ -1533,8 +1817,25 @@ export async function handleHire(url, body, env, opts = {}) {
   }
 
   const q = neg.quote;
-  const budget = String(q.price);
-  const expiredAt = expiryFor(q, body?.expires_in_seconds);
+  // Every seller measured in the wild quotes atomic units — the flat dialect
+  // and the envelope both send 1000000000000000000 for one $U. But a price is
+  // a string arriving from a stranger, and one that reads "0.10" used to reach
+  // BigInt() and take the whole endpoint down with an unexplained 500. A
+  // decimal point cannot appear in an atomic amount, so it is unambiguous and
+  // is converted rather than rejected; anything that is neither is refused with
+  // a reason the seller's author can act on.
+  let budget;
+  try {
+    budget = toAtomic(q.price);
+  } catch (e) {
+    return { status: 502, body: {
+      error: `the seller quoted a price this buyer cannot use: ${e.message}`,
+      quoted: String(q.price), endpoint, negotiated: true, hireable: false,
+      expected: 'an integer amount in the payment token\'s smallest unit (1 $U = 1000000000000000000), or a decimal amount such as "0.10"',
+    } };
+  }
+  const disputeWindow = await readDisputeWindow(opts.rpcCall || rpcCall);
+  const expiredAt = expiryFor(q, body?.expires_in_seconds, disputeWindow);
   const { provider, provider_source, provider_problem } = await resolveProvider(q, target, opts.rpcCall || rpcCall);
 
   await recordSession(env, {
@@ -1725,6 +2026,7 @@ import { readSessions, trackRecord } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
+import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -2251,6 +2553,43 @@ export default {
       });
     }
 
+    // The domain proof, on the origin the hireable agents actually name as
+    // their endpoint. The ERC-8004 verifier fetches
+    // /.well-known/agent-registration.json on the endpoint's own host — and
+    // this host answered 404 for it, which is the same failure that left
+    // #49467 unverified for months. An agent nobody can attribute is an
+    // anonymous agent, whatever its description says.
+    if (path === '/.well-known/agent-registration.json') {
+      return json({
+        type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+        name: 'Brain On BNB AI — agent service',
+        description: 'The hireable agents run by Brain On BNB AI on BNB Smart Chain. Negotiation and delivery run over A2A at https://agent.brainonbnb.com/a2a; payment runs through the ERC-8183 escrow kernel.',
+        image: 'https://brainonbnb.com/logo-200x200.png',
+        active: true,
+        registrations: [
+          { agentId: 302257, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+          { agentId: 302258, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+          { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+        ],
+        supportedTrust: ['reputation'],
+        operator: { name: 'Brain On BNB AI', parent_agent: 49467, site: 'https://brainonbnb.com', marketplace: 'https://brainonbnb.com/registry' },
+      });
+    }
+
+    // Being hireable, which is the half a marketplace usually forgets about
+    // itself. A2A JSON-RPC: negotiate a price, then tell us the job is funded
+    // and we deliver it on-chain. See sell.js for why it is A2A and not MCP.
+    if (path === '/a2a' && request.method === 'POST') {
+      return await handleA2A(request, env);
+    }
+
+    // The deliverable of a finished job, served so the digest written on-chain
+    // can be checked against the document it commits to.
+    {
+      const m = path.match(/^\/job\/(\d+)\/result$/);
+      if (m) return await handleJobResult(m[1], env);
+    }
+
     // Public transparency surface. Everything the dashboard block shows comes
     // from here, so the page cannot present a number this endpoint would not.
     // What the self-updating half of the census knows. The headline figures
@@ -2278,7 +2617,20 @@ export default {
     // the transactions and the buyer signs them. See hire.js.
     if (path === '/hire') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
-      const r = await handleHire(url, body, env);
+      // Our own agents live on this worker, and a Worker cannot fetch its own
+      // custom domain. Without this, hiring a stranger's agent would work and
+      // hiring ours would fail — so the message is handed to the same A2A
+      // handler in-process instead of going out and coming back.
+      const r = await handleHire(url, body, env, { localA2A: async (endpoint, data) => {
+        if (new URL(endpoint).host !== url.host) return null;
+        const res = await handleA2A(new Request(endpoint, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
+            params: { message: { role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
+        }), env);
+        return await res.json();
+      } });
       ctx.waitUntil(bump(env, 'hire'));
       return json(r.body, r.status);
     }
@@ -2678,6 +3030,303 @@ export default {
 }
 
 ==============================================================================
+=== FILE: worker-agent/sell.js
+==============================================================================
+
+// The other side of the counter: being hireable.
+//
+// Everything else in this worker is a buyer or a broker. /find says who can do
+// a thing, /dispatch calls them, /hire builds the escrow transactions. None of
+// that makes us hireable, and a marketplace whose own agents cannot be hired is
+// asking of others what it has not done itself.
+//
+// It also fills a hole nobody else can fill. Measured across the whole chain
+// after collapsing the fleet of identical deployments, the four categories the
+// marketplace has to cover have this much genuine depth behind them:
+// yield 4 operators, health factor 2, rebalancing 1, grid trading ZERO. The
+// chain does not contain the variety it is being judged on. So we supply the
+// two thinnest ourselves, honestly, and say where the numbers came from.
+//
+// THE PROTOCOL, WHICH IS NOT MCP
+// Hiring on BNB Chain runs over ERC-8183 and A2A, not MCP. A buyer sends
+// `negotiate` over A2A JSON-RPC, gets a quote naming a provider address and a
+// price, funds a job in the escrow kernel against that address, and tells the
+// seller. The seller does the work and writes the deliverable on-chain, and the
+// escrow releases after the dispute window.
+//
+// We answer in the flat dialect — { provider, price, currency } — because it
+// names the provider outright. The other dialect in production out there omits
+// it, which forces every buyer to guess at the address from a signature, and
+// that guess is wrong in a way that is hard to see. Interoperability is not
+// served by joining in.
+//
+// WHAT IS REFUSED
+// Everything that has not been paid for. Before any work happens the kernel is
+// read: the job must be FUNDED, it must name our provider address, and its
+// budget must cover the quote. A seller that works on an unfunded job is not
+// generous, it is a free API with extra steps.
+
+import { healthFactor, drawdownToLiquidation } from './venus.js';
+import { gridPlan } from './grid.js';
+import { decodeJob, ERC8183 } from './hire.js';
+import { submitDeliverable, providerAccount } from './submit.js';
+
+const RPCS = [
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-dataseed.binance.org',
+  'https://bsc.publicnode.com',
+];
+
+// What we sell, what it costs, and what it is not.
+//
+// Priced low on purpose. The median funded job on this kernel is a cent, the
+// whole escrow has moved 591 $U in its entire history, and a marketplace entry
+// nobody can afford to try is a brochure. 0.10 $U is enough to prove a payment
+// happened and cheap enough that trying it is not a decision.
+export const SERVICES = {
+  health_factor: {
+    id: 'health_factor',
+    name: 'Venus health factor & liquidation distance',
+    category: 'health-factor-monitoring',
+    price: '100000000000000000',
+    price_display: '0.10 $U',
+    deliverables: 'Health factor for a Venus position on BNB Chain, computed market by market from the Comptroller, with the collateral drawdown that would liquidate it and a stress table. Cross-checked against the protocol\'s own getAccountLiquidity — if the two disagree the answer says so instead of guessing.',
+    needs: { address: 'the account whose position to read (0x…)' },
+  },
+  grid_plan: {
+    id: 'grid_plan',
+    name: 'Grid trading plan, costed against the real pool',
+    category: 'grid-trading',
+    price: '100000000000000000',
+    price_display: '0.10 $U',
+    deliverables: 'Grid levels for any BNB Chain pool with the round-trip cost of a cycle measured from the pool itself — swap fee, price impact at your fill size, and the transfer tax read from executed trades rather than a label. States the break-even spacing, which is the number that decides whether the grid can work at all.',
+    needs: { token: 'the token or pool to grid (0x…)', capitalUsd: 'total capital, optional', levels: 'number of levels, optional', bandPct: 'range as ± percent, optional' },
+  },
+};
+
+// Quoted in atomic units, because that is what every seller on this chain
+// actually sends and a marketplace that publishes a census of other people's
+// inconsistencies should not add one. price_display carries the human number.
+const PRICE_WEI = (p) => BigInt(String(p));
+
+// ---------------------------------------------------------------------------
+// Reading the kernel. Deliberately a plain eth_call — the buyer's money is the
+// thing being verified, so it is read from the chain and not from what the
+// buyer told us.
+// ---------------------------------------------------------------------------
+async function readJob(jobId) {
+  const data = '0xbf22c457' + BigInt(jobId).toString(16).padStart(64, '0');
+  for (let i = 0; i < RPCS.length * 2; i++) {
+    try {
+      const r = await fetch(RPCS[i % RPCS.length], {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: ERC8183.commerce, data }, 'latest'] }),
+        signal: AbortSignal.timeout(12000),
+      });
+      const j = await r.json();
+      if (j.result && j.result !== '0x') {
+        const job = decodeJob(j.result);
+        // A job id that does not exist does NOT revert here — the kernel hands
+        // back a zero struct that decodes into a plausible unfunded job. Only
+        // a struct that reports back the id we asked for is a real job.
+        if (job && String(job.id) === String(jobId)) return job;
+        return null;
+      }
+    } catch { /* next endpoint */ }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// The work itself.
+// ---------------------------------------------------------------------------
+async function doWork(serviceId, params) {
+  if (serviceId === 'health_factor') {
+    const account = String(params?.address || params?.account || '').match(/0x[a-fA-F0-9]{40}/)?.[0];
+    if (!account) throw new Error('health_factor needs an address to look at');
+    const position = await healthFactor(account);
+    return { service: 'health_factor', position, ...(position.has_position ? { drawdown: drawdownToLiquidation(position) } : {}) };
+  }
+  if (serviceId === 'grid_plan') {
+    return { service: 'grid_plan', plan: await gridPlan(params || {}) };
+  }
+  throw new Error(`unknown service "${serviceId}"`);
+}
+
+// Which service a free-text task is asking for. Buyers describe what they want
+// in prose, and refusing to answer anything that is not an exact service id
+// would make us the kind of seller that only talks to its own client.
+function pickService(text = '', explicit) {
+  if (explicit && SERVICES[explicit]) return SERVICES[explicit];
+  const t = String(text).toLowerCase();
+  if (/health.?factor|liquidat|collateral|venus|lending|borrow/.test(t)) return SERVICES.health_factor;
+  if (/grid|ladder|range.?bot|dca.?grid/.test(t)) return SERVICES.grid_plan;
+  return null;
+}
+
+const extractParams = (text = '', given = {}) => {
+  const addr = String(text).match(/0x[a-fA-F0-9]{40}/)?.[0];
+  const out = { ...given };
+  if (addr && !out.address && !out.token) { out.address = addr; out.token = addr; }
+  return out;
+};
+
+// ---------------------------------------------------------------------------
+// A2A JSON-RPC.
+// ---------------------------------------------------------------------------
+const rpcOk = (id, result) => Response.json({ jsonrpc: '2.0', id: id ?? 1, result });
+const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 1, error: { code, message } });
+
+const dataParts = (message) => {
+  const parts = message?.parts || [];
+  const out = {};
+  let text = '';
+  for (const p of parts) {
+    if (p?.kind === 'data' && p.data && typeof p.data === 'object') Object.assign(out, p.data);
+    if (p?.kind === 'text' && typeof p.text === 'string') text += ' ' + p.text;
+  }
+  return { data: out, text: text.trim() };
+};
+
+export async function handleA2A(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return rpcErr(null, -32700, 'not JSON'); }
+  const id = body?.id;
+  if (body?.method !== 'message/send') {
+    return rpcErr(id, -32601, `this agent speaks message/send; "${body?.method}" is not implemented`);
+  }
+
+  const { data, text } = dataParts(body?.params?.message);
+  const skill = String(data.skill || data.method || '').toLowerCase();
+  const account = providerAccount(env);
+  const provider = account?.address || env?.AGENT_PROVIDER_WALLET || null;
+
+  // --- what do you sell -------------------------------------------------
+  if (!skill || skill === 'list' || skill === 'capabilities') {
+    return rpcOk(id, {
+      agent: 'Brain on BNB — hireable services',
+      provider,
+      currency: 'U',
+      payment: 'ERC-8183 escrow on BNB Chain, kernel ' + ERC8183.commerce,
+      services: Object.values(SERVICES),
+      can_sign: !!account,
+      how: 'Send skill:"negotiate" with terms.deliverables describing what you need. You get a quote naming this provider address and a price. Fund a job in the kernel against that address, then send skill:"notify_funded" with job_id.',
+    });
+  }
+
+  // --- negotiate ---------------------------------------------------------
+  if (skill === 'negotiate' || skill === 'quote') {
+    if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
+    const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
+    const service = pickService(wanted, data.service);
+    if (!service) {
+      return rpcOk(id, {
+        accepted: false,
+        reason: 'We do not sell that. Two things are for sale here and both are measurements, not opinions.',
+        services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, price: s.price, currency: 'U' })),
+      });
+    }
+    return rpcOk(id, {
+      // Flat dialect: a provider address and a price, which is everything a
+      // buyer needs and is the half the other dialect leaves out.
+      accepted: true,
+      provider,
+      price: service.price,
+      price_display: service.price_display,
+      currency: 'U',
+      service: service.id,
+      category: service.category,
+      deliverables: service.deliverables,
+      needs: service.needs,
+      estimated_completion_seconds: 120,
+      instructions: `Create a job in ${ERC8183.commerce} naming ${provider} as provider, set the budget to ${service.price} (${service.price_display}), fund it, then send skill:"notify_funded" with job_id and the parameters listed under "needs".`,
+      chain_id: 56,
+      verifying_contract: ERC8183.commerce,
+      payment_token: ERC8183.paymentToken,
+    });
+  }
+
+  // --- deliver -----------------------------------------------------------
+  if (skill === 'notify_funded' || skill === 'deliver' || skill === 'start') {
+    const jobId = String(data.job_id ?? data.jobId ?? '').match(/^\d+$/)?.[0];
+    if (!jobId) return rpcErr(id, -32602, 'notify_funded needs job_id');
+    if (!account) return rpcErr(id, -32000, 'this agent cannot deliver: no provider key configured');
+
+    const job = await readJob(jobId);
+    if (!job) return rpcErr(id, -32000, `job ${jobId} does not exist in the kernel`);
+    if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
+      return rpcErr(id, -32000, `job ${jobId} names ${job.provider} as provider. That is not us — we would be working for somebody else's escrow.`);
+    }
+    if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
+      const prior = await env.AGENT.get(`job:${jobId}`, 'json');
+      return rpcOk(id, { already_delivered: true, job_id: jobId, status: job.status, result: prior?.result ?? null, deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result` });
+    }
+    if (job.status !== 'FUNDED') {
+      return rpcErr(id, -32000, `job ${jobId} is ${job.status}. Fund it first — nothing is worked on before the escrow holds the budget.`);
+    }
+
+    const service = pickService(job.description, data.service);
+    if (!service) return rpcErr(id, -32000, 'the job description does not match anything we sell');
+    if (BigInt(job.budget) < PRICE_WEI(service.price)) {
+      return rpcErr(id, -32000, `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}`);
+    }
+
+    const params = extractParams(`${job.description} ${text}`, data.params || data);
+    let result;
+    try {
+      result = await doWork(service.id, params);
+    } catch (e) {
+      // A job we cannot do is not delivered and not charged for. The buyer's
+      // budget stays in escrow and comes back to them at expiry, which is the
+      // correct outcome and the one the kernel already implements.
+      return rpcErr(id, -32000, `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.`);
+    }
+
+    const document = JSON.stringify({
+      job_id: jobId,
+      service: service.id,
+      provider: account.address,
+      client: job.client,
+      produced_at: new Date().toISOString(),
+      result,
+      method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
+      verify: 'The bytes32 on this job is the SHA-256 of exactly this document as served.',
+    });
+
+    const delivery = await submitDeliverable({ env, jobId, document, readJob });
+    await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery, result }), { expirationTtl: 60 * 60 * 24 * 365 });
+
+    return rpcOk(id, {
+      delivered: true,
+      job_id: jobId,
+      service: service.id,
+      result,
+      on_chain: delivery,
+      deliverable_url: `https://agent.brainonbnb.com/job/${jobId}/result`,
+      note: 'The deliverable is on-chain in full, not as a link. The bytes32 is the SHA-256 of the document served at the URL above, so both can be checked against each other.',
+    });
+  }
+
+  return rpcErr(id, -32601, `unknown skill "${skill}". Send skill:"list" to see what is for sale.`);
+}
+
+// The stored deliverable, served so the on-chain digest can be checked against
+// something. A commitment to a document nobody can fetch proves nothing.
+export async function handleJobResult(jobId, env) {
+  const stored = await env.AGENT.get(`job:${jobId}`, 'json');
+  if (!stored) return new Response(JSON.stringify({ error: `no deliverable stored for job ${jobId}` }, null, 2), { status: 404, headers: { 'content-type': 'application/json' } });
+  return new Response(stored.document, {
+    headers: {
+      'content-type': 'application/json',
+      'access-control-allow-origin': '*',
+      'x-deliverable-digest': stored.delivery?.deliverable_digest || '',
+      'x-deliverable-tx': stored.delivery?.tx || '',
+    },
+  });
+}
+
+==============================================================================
 === FILE: worker-agent/sessions.js
 ==============================================================================
 
@@ -2787,6 +3436,450 @@ export function trackRecord(sessions) {
     // whole endpoint down with a 500 the first time a session was recorded.
     .sort((a, b) => b.answered - a.answered || String(a.operator).localeCompare(String(b.operator)));
 }
+
+==============================================================================
+=== FILE: worker-agent/submit.js
+==============================================================================
+
+// Writing a delivered job to the ERC-8183 escrow.
+//
+// This is the only file in this worker that signs anything, and the only one
+// with a dependency. Both facts are deliberate and worth stating where somebody
+// will read them.
+//
+// WHY THERE IS A DEPENDENCY HERE AND NOWHERE ELSE
+// The rest of the worker reads the chain over plain JSON-RPC and hand-rolls its
+// ABI encoding, checked byte-for-byte against viem in
+// scripts/erc8183-encoding-check.mjs. That works because reading needs no
+// cryptography. Signing an EVM transaction needs secp256k1, keccak-256 and RLP,
+// and Web Crypto offers none of the three — it does ECDSA over the NIST curves
+// and not over the curve Ethereum uses. Hand-rolling that would be writing our
+// own signature code to avoid an import, which is the wrong trade in every
+// direction.
+//
+// WHY THE WORKER SIGNS AT ALL
+// Because ERC-8183 makes the provider write its own deliverable, and an agent
+// that needs a human at a keyboard to finish a job is not an agent. We measured
+// what happens to the ones that cannot: 27,195 jobs in this kernel hold a
+// deliverable whose escrow never released, and all four of the BNB Agent Studio
+// reference agents sit at zero completions. Shipping another of those would
+// make our own census an indictment of us.
+//
+// WHAT THE KEY CAN DO, WHICH IS AS LITTLE AS POSSIBLE
+// AGENT_PROVIDER_PRIVATE_KEY signs exactly one call: submit() against the
+// kernel, for a job that names our own address as provider. It holds gas and no
+// tokens, it is not the buyback wallet, not the treasury and not the x402
+// receiving wallet, and nothing in this worker will send value from it.
+
+import { createWalletClient, createPublicClient, http, encodeFunctionData } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { bsc } from 'viem/chains';
+
+import { ERC8183 } from './hire.js';
+
+// submit(uint256 jobId, bytes32 deliverable, bytes payload) — selector
+// 0x9e63798d. Not taken from documentation, which does not exist for this: the
+// selector was read out of a real delivery transaction on the kernel
+// (job 56,655, block 117,850,120) and the signature recovered from it, then
+// confirmed against the bytes32 the contract stores as that job's deliverable.
+const SUBMIT_ABI = [{
+  name: 'submit', type: 'function', stateMutability: 'nonpayable',
+  inputs: [
+    { name: 'jobId', type: 'uint256' },
+    { name: 'deliverable', type: 'bytes32' },
+    { name: 'payload', type: 'bytes' },
+  ],
+  outputs: [],
+}];
+
+const RPCS = [
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-dataseed.binance.org',
+  'https://bsc-dataseed2.defibit.io',
+];
+
+// A misconfigured key must not take the whole endpoint down with a 1101 — which
+// is exactly what it did the first time this was deployed, turning "the secret
+// did not upload cleanly" into an opaque worker exception with no clue in it.
+// It now degrades to "this agent cannot sign", which is a true statement a
+// caller can act on, and keyShape() says why without printing the key.
+export const providerAccount = (env) => {
+  const key = (env?.AGENT_PROVIDER_PRIVATE_KEY || '').trim();
+  if (!/^0x[0-9a-fA-F]{64}$/.test(key.startsWith('0x') ? key : `0x${key}`)) return null;
+  try { return privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`); }
+  catch { return null; }
+};
+
+// Enough to diagnose a bad upload, not enough to be worth stealing: how long the
+// stored value is and whether it is 32 bytes of hex. Never the value.
+export const keyShape = (env) => {
+  const raw = env?.AGENT_PROVIDER_PRIVATE_KEY;
+  if (raw == null) return { present: false };
+  const key = String(raw).trim();
+  return {
+    present: true,
+    stored_length: String(raw).length,
+    trimmed_length: key.length,
+    hex_32_bytes: /^0x[0-9a-fA-F]{64}$/.test(key.startsWith('0x') ? key : `0x${key}`),
+  };
+};
+
+// SHA-256 of the exact bytes we hand over, as the on-chain commitment.
+//
+// The bytes32 slot is not specified anywhere — we checked: the one delivery we
+// reverse-engineered does not hold a keccak of its own payload either. So
+// rather than guess at a convention that does not exist, we commit to a digest
+// anybody can recompute, and the payload says in plain text which digest it is.
+// A commitment nobody can verify is decoration.
+export async function digestOf(bytes) {
+  const buf = await crypto.subtle.digest('SHA-256', bytes);
+  return '0x' + [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+const hexOf = (bytes) => '0x' + [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+/**
+ * Deliver a finished job.
+ *
+ * Refuses unless the chain agrees the job is ours to deliver: funded, naming
+ * this wallet as provider, and not already submitted. Those checks are not
+ * politeness — submit() on somebody else's job either reverts and wastes gas,
+ * or worse, succeeds against a job we were never paid for.
+ */
+export async function submitDeliverable({ env, jobId, document, readJob }) {
+  const account = providerAccount(env);
+  if (!account) throw new Error('no provider key configured — this worker cannot deliver');
+
+  const job = await readJob(jobId);
+  if (!job) throw new Error(`job ${jobId} could not be read from the kernel`);
+  if (job.provider.toLowerCase() !== account.address.toLowerCase()) {
+    throw new Error(`job ${jobId} names ${job.provider} as provider, not us`);
+  }
+  if (job.status === 'SUBMITTED' || job.status === 'COMPLETED') {
+    return { already: true, job, note: 'This job already carries a deliverable on-chain.' };
+  }
+  if (job.status !== 'FUNDED') {
+    throw new Error(`job ${jobId} is ${job.status} — only a FUNDED job can be delivered against`);
+  }
+
+  const bytes = new TextEncoder().encode(document);
+  const deliverable = await digestOf(bytes);
+
+  const publicClient = createPublicClient({ chain: bsc, transport: http(RPCS[0]) });
+  const walletClient = createWalletClient({ account, chain: bsc, transport: http(RPCS[0]) });
+
+  const data = encodeFunctionData({
+    abi: SUBMIT_ABI, functionName: 'submit',
+    args: [BigInt(jobId), deliverable, hexOf(bytes)],
+  });
+
+  // Simulated before it is sent. A revert that costs gas and tells nobody why
+  // is the normal failure mode here, and the simulation names the reason while
+  // it is still free.
+  await publicClient.call({ account, to: ERC8183.commerce, data });
+
+  const hash = await walletClient.sendTransaction({ to: ERC8183.commerce, data });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 60_000 });
+  if (receipt.status !== 'success') throw new Error(`submit reverted in block ${receipt.blockNumber}`);
+
+  return {
+    delivered: true,
+    job_id: String(jobId),
+    tx: hash,
+    explorer: `https://bscscan.com/tx/${hash}`,
+    block: Number(receipt.blockNumber),
+    deliverable_digest: deliverable,
+    digest_algorithm: 'sha-256',
+    bytes: bytes.length,
+    provider: account.address,
+  };
+}
+
+==============================================================================
+=== FILE: worker-agent/venus.js
+==============================================================================
+
+// Health factor for a Venus position on BNB Smart Chain.
+//
+// This is the working half of one of the four categories the marketplace has to
+// cover, and it is deliberately not a wrapper around somebody's API. Every
+// number below comes from a contract read: the markets an account has entered,
+// its balance and debt in each, the collateral factor the protocol applies, and
+// the oracle price the protocol itself uses for liquidation. Nothing is fetched
+// from a dashboard, so nothing can be stale in a way we cannot see.
+//
+// WHY A HEALTH FACTOR AND NOT "liquidity"
+// Venus answers getAccountLiquidity() with a surplus or a shortfall in dollars.
+// That is the number the protocol acts on, but it is useless for deciding when
+// to worry: $5,000 of headroom means something completely different on a
+// $10,000 position than on a $3,000,000 one. The ratio does not have that
+// problem, which is why every lending UI shows it and why an agent monitoring a
+// position needs it.
+//
+//   health factor = weighted collateral / borrowed
+//   liquidatable at < 1.0
+//
+// THE SELF-CHECK THAT MAKES THIS TRUSTWORTHY
+// We compute the position market by market, then compare our own
+// (weighted collateral − borrowed) against Venus's own getAccountLiquidity.
+// The protocol is the authority on its own arithmetic; if our number disagrees
+// with its number, ours is wrong, and the caller is told so rather than handed
+// a plausible figure. A monitoring agent whose maths is silently off is worse
+// than no monitoring agent, because somebody will act on it.
+
+const UNITROLLER = '0xfD36E2c2a6789Db23113685031d7F16329158384';
+
+// Selectors, computed from the signatures rather than copied:
+//   getAllMarkets()                    0xb0772d0b
+//   getAssetsIn(address)               0xabfceffc
+//   markets(address)                   0x8e8f294b   -> (isListed, collateralFactorMantissa, isVenus)
+//   oracle()                           0x7dc0d1d0
+//   getAccountLiquidity(address)       0x5ec88c79   -> (error, liquidity, shortfall)
+//   getAccountSnapshot(address)        0xc37f68e2   -> (error, vTokenBalance, borrowBalance, exchangeRateMantissa)
+//   getUnderlyingPrice(address)        0xfc57d4df
+//   symbol()                           0x95d89b41
+//   underlying()                       0x6f307dc3
+//   decimals()                         0x313ce567
+const SEL = {
+  getAllMarkets: '0xb0772d0b',
+  getAssetsIn: '0xabfceffc',
+  markets: '0x8e8f294b',
+  oracle: '0x7dc0d1d0',
+  getAccountLiquidity: '0x5ec88c79',
+  getAccountSnapshot: '0xc37f68e2',
+  getUnderlyingPrice: '0xfc57d4df',
+  symbol: '0x95d89b41',
+  underlying: '0x6f307dc3',
+  decimals: '0x313ce567',
+};
+
+const RPCS = [
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-dataseed.binance.org',
+  'https://bsc.publicnode.com',
+  'https://bsc-dataseed2.defibit.io',
+  'https://bsc-dataseed3.bnbchain.org',
+];
+
+const addrArg = (a) => String(a).toLowerCase().replace(/^0x/, '').padStart(64, '0');
+const word = (hex, i) => hex.slice(2 + i * 64, 2 + (i + 1) * 64);
+const uint = (hex, i) => BigInt('0x' + (word(hex, i) || '0'));
+const addrAt = (hex, i) => '0x' + word(hex, i).slice(24);
+
+// One batched eth_call per round trip. Reading a position across 52 markets one
+// call at a time is 200+ requests and takes long enough that the price moves
+// underneath the answer, which is exactly the kind of quiet inconsistency a
+// health factor must not have.
+async function batchCall(calls, { rpcs = RPCS } = {}) {
+  const payload = calls.map((c, i) => ({
+    jsonrpc: '2.0', id: i, method: 'eth_call',
+    params: [{ to: c.to, data: c.data }, 'latest'],
+  }));
+  for (let attempt = 0; attempt < rpcs.length * 2; attempt++) {
+    const url = rpcs[attempt % rpcs.length];
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (!Array.isArray(j)) continue;
+      const out = new Array(calls.length).fill(null);
+      let got = 0;
+      for (const item of j) {
+        if (typeof item.id !== 'number' || item.error) continue;
+        out[item.id] = item.result;
+        got++;
+      }
+      // A partial answer would silently drop a market — and a dropped market is
+      // either collateral we did not count or debt we did not count, both of
+      // which move the health factor in a direction nobody asked for.
+      if (got === calls.length) return out;
+    } catch { /* next endpoint */ }
+  }
+  throw new Error('no BSC endpoint answered the batch');
+}
+
+const decodeString = (hex) => {
+  if (!hex || hex === '0x') return null;
+  try {
+    const len = Number(uint(hex, 1));
+    if (!(len > 0) || len > 256) return null;
+    const body = hex.slice(2 + 128, 2 + 128 + len * 2);
+    const bytes = [];
+    for (let i = 0; i < body.length; i += 2) bytes.push(parseInt(body.substr(i, 2), 16));
+    return new TextDecoder().decode(new Uint8Array(bytes));
+  } catch { return null; }
+};
+
+const S = 10n ** 18n;
+const num = (v, dp = 2) => Number(v) / 1e18;
+
+/**
+ * Reads one account's Venus position and returns its health factor.
+ * Read-only: it calls view functions and signs nothing.
+ */
+export async function healthFactor(account) {
+  if (!/^0x[a-fA-F0-9]{40}$/.test(String(account || ''))) {
+    throw new Error('not an address');
+  }
+
+  // Round 1: which markets is this account in, what does the protocol itself
+  // say about its liquidity, and which oracle is authoritative right now.
+  const [assetsRaw, liqRaw, oracleRaw] = await batchCall([
+    { to: UNITROLLER, data: SEL.getAssetsIn + addrArg(account) },
+    { to: UNITROLLER, data: SEL.getAccountLiquidity + addrArg(account) },
+    { to: UNITROLLER, data: SEL.oracle },
+  ]);
+
+  const oracle = addrAt(oracleRaw, 0);
+  const venusError = Number(uint(liqRaw, 0));
+  const venusLiquidity = uint(liqRaw, 1);
+  const venusShortfall = uint(liqRaw, 2);
+
+  const count = Number(uint(assetsRaw, 1));
+  const markets = [];
+  for (let i = 0; i < count; i++) markets.push(addrAt(assetsRaw, 2 + i));
+
+  if (!markets.length) {
+    return {
+      account, protocol: 'Venus', chain: 'eip155:56',
+      has_position: false,
+      note: 'This address has entered no Venus markets. Nothing to monitor — which is an answer, not a failure.',
+      measured_at: new Date().toISOString(),
+    };
+  }
+
+  // Round 2: everything each market knows about this account and about itself.
+  const calls = [];
+  for (const m of markets) {
+    calls.push({ to: m, data: SEL.getAccountSnapshot + addrArg(account) });
+    calls.push({ to: UNITROLLER, data: SEL.markets + addrArg(m) });
+    calls.push({ to: oracle, data: SEL.getUnderlyingPrice + addrArg(m) });
+    calls.push({ to: m, data: SEL.symbol });
+  }
+  const res = await batchCall(calls);
+
+  let weightedCollateral = 0n; // collateral after the protocol's own haircut
+  let rawCollateral = 0n;      // before it, so the haircut is visible
+  let borrowed = 0n;
+  const positions = [];
+
+  for (let i = 0; i < markets.length; i++) {
+    const snap = res[i * 4];
+    const mkt = res[i * 4 + 1];
+    const priceRaw = res[i * 4 + 2];
+    const symbol = decodeString(res[i * 4 + 3]) || markets[i].slice(0, 8);
+
+    const snapErr = Number(uint(snap, 0));
+    if (snapErr !== 0) continue;
+    const vTokens = uint(snap, 1);
+    const borrow = uint(snap, 2);
+    const exchangeRate = uint(snap, 3);
+    const collateralFactor = uint(mkt, 1);
+    const price = uint(priceRaw, 0);
+
+    // The oracle scales its answer so that (underlying amount * price) / 1e18
+    // lands in dollars regardless of the token's own decimals. Keeping every
+    // intermediate in BigInt matters: a position of a few million with 18
+    // decimals overflows a double long before it reaches a percentage.
+    const underlying = (vTokens * exchangeRate) / S;      // underlying units
+    const supplyUsd = (underlying * price) / S;
+    const borrowUsd = (borrow * price) / S;
+    const weightedUsd = (supplyUsd * collateralFactor) / S;
+
+    rawCollateral += supplyUsd;
+    weightedCollateral += weightedUsd;
+    borrowed += borrowUsd;
+
+    if (supplyUsd > 0n || borrowUsd > 0n) {
+      positions.push({
+        market: markets[i],
+        symbol,
+        supplied_usd: num(supplyUsd),
+        borrowed_usd: num(borrowUsd),
+        collateral_factor: Number(collateralFactor) / 1e18,
+        counts_as_collateral_usd: num(weightedUsd),
+      });
+    }
+  }
+
+  // Venus's own arithmetic, as the check. liquidity and shortfall are mutually
+  // exclusive, so their difference is the signed headroom the protocol sees.
+  const venusHeadroom = venusLiquidity - venusShortfall;
+  const ourHeadroom = weightedCollateral - borrowed;
+  const drift = ourHeadroom - venusHeadroom;
+  const driftAbs = drift < 0n ? -drift : drift;
+  // A dollar of tolerance across a position that can run into the millions:
+  // rounding in the per-market integer divisions is expected, disagreement is
+  // not.
+  const agrees = driftAbs <= S;
+
+  const hf = borrowed === 0n ? null : Number(weightedCollateral * 10000n / borrowed) / 10000;
+
+  return {
+    account,
+    protocol: 'Venus',
+    chain: 'eip155:56',
+    has_position: true,
+    health_factor: hf,
+    liquidatable: hf !== null && hf < 1,
+    // What the number means, said plainly, because a bare 1.34 is not an answer
+    // to "should I do something".
+    verdict: hf === null
+      ? 'Collateral supplied, nothing borrowed. A position with no debt cannot be liquidated.'
+      : hf < 1 ? 'Below 1.0 — this position is liquidatable right now.'
+      : hf < 1.15 ? 'Under 1.15 — a small adverse move liquidates this.'
+      : hf < 1.5 ? 'Thin. Survivable, but not much room.'
+      : 'Comfortable.',
+    borrowed_usd: num(borrowed),
+    collateral_usd: num(rawCollateral),
+    collateral_after_haircut_usd: num(weightedCollateral),
+    headroom_usd: num(ourHeadroom),
+    markets_entered: markets.length,
+    positions: positions.sort((a, b) => (b.supplied_usd + b.borrowed_usd) - (a.supplied_usd + a.borrowed_usd)),
+    cross_check: {
+      what: 'Our per-market arithmetic against the protocol\'s own getAccountLiquidity.',
+      venus_headroom_usd: num(venusHeadroom),
+      our_headroom_usd: num(ourHeadroom),
+      difference_usd: num(drift),
+      agrees,
+      venus_error_code: venusError,
+    },
+    measured_at: new Date().toISOString(),
+    source: 'Venus Comptroller ' + UNITROLLER + ', oracle ' + oracle,
+  };
+}
+
+/**
+ * How far the collateral can fall before liquidation, and what that means for
+ * the price of the assets actually backing the position.
+ *
+ * A monitoring agent that only reports today's number is a dashboard. The
+ * question somebody hires an agent for is "how much room do I have", and that
+ * is answerable exactly: liquidation happens when weighted collateral equals
+ * debt, so the tolerable drawdown is 1 − debt/weightedCollateral.
+ */
+export function drawdownToLiquidation(position) {
+  if (!position?.has_position || position.health_factor === null) return null;
+  const hf = position.health_factor;
+  const tolerable = 1 - 1 / hf; // fraction the collateral may lose
+  const stress = [5, 10, 15, 20, 30].map((pct) => ({
+    collateral_drop_pct: pct,
+    health_factor: Number((hf * (1 - pct / 100)).toFixed(4)),
+    liquidatable: hf * (1 - pct / 100) < 1,
+  }));
+  return {
+    tolerable_collateral_drop_pct: Number((tolerable * 100).toFixed(2)),
+    note: 'Assumes the borrowed asset holds its price. A stablecoin debt against volatile collateral is the case this models; the reverse is not.',
+    stress,
+  };
+}
+
+export const VENUS = { UNITROLLER };
 
 ==============================================================================
 === FILE: worker-agent/wrangler.toml

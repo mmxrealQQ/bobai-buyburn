@@ -33,6 +33,7 @@ import { readSessions, trackRecord } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
+import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -559,6 +560,43 @@ export default {
       });
     }
 
+    // The domain proof, on the origin the hireable agents actually name as
+    // their endpoint. The ERC-8004 verifier fetches
+    // /.well-known/agent-registration.json on the endpoint's own host — and
+    // this host answered 404 for it, which is the same failure that left
+    // #49467 unverified for months. An agent nobody can attribute is an
+    // anonymous agent, whatever its description says.
+    if (path === '/.well-known/agent-registration.json') {
+      return json({
+        type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+        name: 'Brain On BNB AI — agent service',
+        description: 'The hireable agents run by Brain On BNB AI on BNB Smart Chain. Negotiation and delivery run over A2A at https://agent.brainonbnb.com/a2a; payment runs through the ERC-8183 escrow kernel.',
+        image: 'https://brainonbnb.com/logo-200x200.png',
+        active: true,
+        registrations: [
+          { agentId: 302257, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+          { agentId: 302258, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+          { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+        ],
+        supportedTrust: ['reputation'],
+        operator: { name: 'Brain On BNB AI', parent_agent: 49467, site: 'https://brainonbnb.com', marketplace: 'https://brainonbnb.com/registry' },
+      });
+    }
+
+    // Being hireable, which is the half a marketplace usually forgets about
+    // itself. A2A JSON-RPC: negotiate a price, then tell us the job is funded
+    // and we deliver it on-chain. See sell.js for why it is A2A and not MCP.
+    if (path === '/a2a' && request.method === 'POST') {
+      return await handleA2A(request, env);
+    }
+
+    // The deliverable of a finished job, served so the digest written on-chain
+    // can be checked against the document it commits to.
+    {
+      const m = path.match(/^\/job\/(\d+)\/result$/);
+      if (m) return await handleJobResult(m[1], env);
+    }
+
     // Public transparency surface. Everything the dashboard block shows comes
     // from here, so the page cannot present a number this endpoint would not.
     // What the self-updating half of the census knows. The headline figures
@@ -586,7 +624,20 @@ export default {
     // the transactions and the buyer signs them. See hire.js.
     if (path === '/hire') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
-      const r = await handleHire(url, body, env);
+      // Our own agents live on this worker, and a Worker cannot fetch its own
+      // custom domain. Without this, hiring a stranger's agent would work and
+      // hiring ours would fail — so the message is handed to the same A2A
+      // handler in-process instead of going out and coming back.
+      const r = await handleHire(url, body, env, { localA2A: async (endpoint, data) => {
+        if (new URL(endpoint).host !== url.host) return null;
+        const res = await handleA2A(new Request(endpoint, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
+            params: { message: { role: 'user', messageId: 'local', parts: [{ kind: 'data', data }] } } }),
+        }), env);
+        return await res.json();
+      } });
       ctx.waitUntil(bump(env, 'hire'));
       return json(r.body, r.status);
     }

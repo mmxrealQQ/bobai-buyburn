@@ -34,7 +34,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const OUT = path.join(ROOT, 'data', 'erc8004');
+// The output directory is selectable so a re-scan with a changed classifier can
+// run to completion beside the live data instead of overwriting it. The page
+// keeps serving the finished census until the new one is finished too.
+//   node scripts/erc8004-scan.mjs --dir erc8004-v2
+const OUT_DIR = (() => {
+  const i = process.argv.indexOf('--dir');
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
+})();
+const OUT = path.join(ROOT, 'data', OUT_DIR);
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 
 // tokenURI(uint256) — the registry is ERC-721 shaped and keeps the whole
@@ -143,6 +151,24 @@ const HTTP_RE = /^https?:\/\/[^\s"']+$/i;
 // an outage, it is an address that was never going to work.
 const REAL_TLD_RE = /\.(com|org|net|io|ai|xyz|app|dev|co|me|fun|finance|tech|cloud|so|gg|sh|to|it|de|fr|uk|eu|us|jp|kr|cn|in|ru|br|es|nl|se|no|fi|pl|ch|at|be|dk|cz|pt|gr|tr|za|au|nz|ca|mx|ar|cl|id|my|sg|th|vn|ph|hk|tw|ae|sa|il|info|biz|online|site|store|space|website|live|life|world|network|systems|digital|studio|agency|solutions|team|group|club|link|click|page|wiki|blog|news|press|art|design|money|market|exchange|capital|fund|trade|bot|chat|inc|ltd|llc)(:\d+)?(\/|$)/i;
 
+// A registration can carry its document in the token URI, or it can point at
+// one. Both are ordinary ERC-721 practice and the first version of this scan
+// only understood the first, which put every off-chain pointer in the same
+// bucket as genuine junk and let the page say 119,336 registrations "are not a
+// readable document". A random sample of 125 ids says otherwise: 50% inline,
+// **43% an https link**, 3% empty. That claim was wrong, and the shape of the
+// mistake matters more than the number — it is the same "counted what was easy
+// to count" error the census exists to expose.
+//
+// So a pointer is now its own state. What is behind it is a separate question
+// with a separate answer, and answering it needs a fetch, not a decode.
+const OFFCHAIN_RE = /^(https?|ipfs|ar):/i;
+
+const hostOfUri = (u) => {
+  try { return new URL(u).hostname.toLowerCase().replace(/^www\./, ''); }
+  catch { return null; }
+};
+
 function classify(raw) {
   if (!raw) return { state: 'unread' };
   const s = decodeString(raw);
@@ -155,7 +181,13 @@ function classify(raw) {
   } else if (s.trim().startsWith('{')) {
     try { meta = JSON.parse(s); } catch { /* not json */ }
   }
-  if (!meta || typeof meta !== 'object') return { state: 'unparsable' };
+  if (!meta || typeof meta !== 'object') {
+    const t = s.trim();
+    if (OFFCHAIN_RE.test(t)) {
+      return { state: 'offchain', uri: t.slice(0, 300), host: hostOfUri(t), scheme: t.split(':')[0].toLowerCase() };
+    }
+    return { state: 'unparsable' };
+  }
 
   const services = Array.isArray(meta.services) ? meta.services : [];
   const endpoints = services
@@ -183,6 +215,10 @@ function classify(raw) {
 fs.mkdirSync(OUT, { recursive: true });
 const STATE_FILE = path.join(OUT, 'scan-state.json');
 const HITS_FILE = path.join(OUT, 'agents-with-endpoints.jsonl');
+// Every registration that points somewhere instead of carrying its document.
+// Kept in full because the follow-up question — does that URL actually serve an
+// agent document — cannot be answered without the URL itself.
+const OFFCHAIN_FILE = path.join(OUT, 'offchain-uris.jsonl');
 
 const loadState = () => {
   try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
@@ -190,7 +226,7 @@ const loadState = () => {
     return {
       cursor: 1,
       highestId: null,
-      counts: { unread: 0, empty: 0, unparsable: 0, valid: 0, active: 0, withServices: 0, withHttpEndpoint: 0, plausibleEndpoint: 0, mcp: 0, a2a: 0, x402: 0 },
+      counts: { unread: 0, empty: 0, unparsable: 0, offchain: 0, valid: 0, active: 0, withServices: 0, withHttpEndpoint: 0, plausibleEndpoint: 0, mcp: 0, a2a: 0, x402: 0 },
       startedAt: null,
       updatedAt: null,
     };
@@ -267,6 +303,7 @@ function report() {
   row('  speaks A2A', c.a2a);
   row('  supports x402', c.x402);
   console.log();
+  row('points off-chain (URL)', c.offchain || 0);
   row('unparsable / not JSON', c.unparsable);
   row('empty token URI', c.empty);
   row('unread (node refused)', c.unread);
@@ -293,6 +330,7 @@ if (!state.highestId) {
 
 const limit = Math.min(Number(arg('--max', state.highestId)) || state.highestId, state.highestId);
 const hits = fs.createWriteStream(HITS_FILE, { flags: 'a' });
+const offchain = fs.createWriteStream(OFFCHAIN_FILE, { flags: 'a' });
 
 // Ids the nodes refused. Drained in patient mode at the end of the run; only
 // what survives THAT is genuinely unreadable.
@@ -324,6 +362,10 @@ while (state.cursor <= limit) {
       const k = state.counts;
       if (c.state === 'unread') { k.unread++; pendingRetry.push(ids[i]); }
       else if (c.state === 'empty') k.empty++;
+      else if (c.state === 'offchain') {
+        k.offchain++;
+        offchain.write(JSON.stringify({ id: ids[i], uri: c.uri, host: c.host, scheme: c.scheme }) + '\n');
+      }
       else if (c.state === 'unparsable') k.unparsable++;
       else {
         k.valid++;
@@ -360,6 +402,10 @@ while (state.cursor <= limit) {
 }
 
 saveState(state);
-hits.end();
+// Both files are closed and flushed before the report reads anything back.
+// end() only asks a stream to close; reporting straight after it reads a short
+// file, which looks exactly like data the scan failed to collect.
+await new Promise((r) => hits.end(r));
+await new Promise((r) => offchain.end(r));
 console.log(`\ndone in ${((Date.now() - t0) / 60000).toFixed(1)} min`);
 report();

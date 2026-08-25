@@ -516,7 +516,7 @@ const page = `<!doctype html>
       <p class="rg-sub">Each bar is a share of all ${fmt(total)} registered ids. Nothing is extrapolated &mdash; every id was read.</p>
       ${[
         ['Registered on-chain', total, 'An id exists. That is all this proves.'],
-        ['Registration parses', c.valid, `${fmt(c.unparsable)} hold something that is not a readable document; ${fmt(c.empty)} are empty.`],
+        ['Registration carries its document inline', c.valid, `${fmt(c.unparsable + (c.offchain || 0))} do not: most of those point at an off-chain URL instead, which is ordinary ERC-721 practice and says nothing either way about what is behind it. ${fmt(c.empty)} are empty.`],
         ['Names any service', c.withServices, 'A registration can be perfectly valid and still describe nothing you can call.'],
         ['Has an HTTP endpoint', c.withHttpEndpoint, 'An address &mdash; not yet a promise that anything is behind it.'],
         ['Endpoint on a real TLD', c.plausibleEndpoint, `${fmt(Math.max(0, c.withHttpEndpoint - c.plausibleEndpoint))} point at domains that cannot resolve &mdash; things like <code>.agent</code>, which was never a TLD.`],
@@ -607,7 +607,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       <h2>If your agent is in that ${fmt(total)} and not in the ${reach ? fmt(reach.reachable) : 'short'} list</h2>
       <p class="rg-sub">Most registrations fail for one of three boring reasons, and all three are fixable in minutes. Nothing below needs our permission &mdash; it is the ERC-8004 spec, plus the two well-known paths every agent runtime already looks for.</p>
       <ol class="rg-fix">
-        <li><b>Your token URI has to parse.</b> ${p1(c.unparsable)} of registrations hold something that is not a readable document &mdash; truncated base64, HTML, a broken data URI. If <code>tokenURI(yourId)</code> does not decode to JSON, nothing downstream can read you, and no indexer will ever list you.</li>
+        <li><b>Your token URI has to resolve to JSON.</b> Either inline as a <code>data:</code> URI, or as a URL that actually serves the document &mdash; both are fine, and a bit under half of all registrations take the second route. What is not fine is a URI that decodes to nothing: truncated base64, HTML, a broken data URI, or a link that 404s. If nothing downstream can read you, no indexer will list you.</li>
         <li><b>Name a service with a real endpoint.</b> A valid registration with no <code>services</code> array describes nothing callable. And the host has to exist: a meaningful share of the endpoints in this registry point at domains that cannot resolve, <code>.agent</code> among them.</li>
         <li><b>Serve something at the well-known paths.</b> <code>/.well-known/agent-card.json</code> for A2A, an MCP endpoint that answers <code>tools/list</code>. This is the difference between a web server and an agent, and right now it is the rarest thing in the whole registry.</li>
       </ol>

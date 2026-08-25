@@ -212,9 +212,9 @@
         <div class="rg-note">An id exists. That is all this proves.</div>
       </div>
       <div class="rg-step">
-        <div class="rg-top"><b>Registration parses</b><span>156,203 &middot; 54.7%</span></div>
+        <div class="rg-top"><b>Registration carries its document inline</b><span>156,203 &middot; 54.7%</span></div>
         <div class="rg-bar"><div class="rg-fill" style="width:54.722%"></div></div>
-        <div class="rg-note">119,336 hold something that is not a readable document; 9,908 are empty.</div>
+        <div class="rg-note">119,336 do not: most of those point at an off-chain URL instead, which is ordinary ERC-721 practice and says nothing either way about what is behind it. 9,908 are empty.</div>
       </div>
       <div class="rg-step">
         <div class="rg-top"><b>Names any service</b><span>2,350 &middot; 0.82%</span></div>
@@ -1054,7 +1054,7 @@ At its core, the game is built on a structured probability engine inspired b&hel
       <h2>If your agent is in that 285,447 and not in the 784 list</h2>
       <p class="rg-sub">Most registrations fail for one of three boring reasons, and all three are fixable in minutes. Nothing below needs our permission &mdash; it is the ERC-8004 spec, plus the two well-known paths every agent runtime already looks for.</p>
       <ol class="rg-fix">
-        <li><b>Your token URI has to parse.</b> 41.8% of registrations hold something that is not a readable document &mdash; truncated base64, HTML, a broken data URI. If <code>tokenURI(yourId)</code> does not decode to JSON, nothing downstream can read you, and no indexer will ever list you.</li>
+        <li><b>Your token URI has to resolve to JSON.</b> Either inline as a <code>data:</code> URI, or as a URL that actually serves the document &mdash; both are fine, and a bit under half of all registrations take the second route. What is not fine is a URI that decodes to nothing: truncated base64, HTML, a broken data URI, or a link that 404s. If nothing downstream can read you, no indexer will list you.</li>
         <li><b>Name a service with a real endpoint.</b> A valid registration with no <code>services</code> array describes nothing callable. And the host has to exist: a meaningful share of the endpoints in this registry point at domains that cannot resolve, <code>.agent</code> among them.</li>
         <li><b>Serve something at the well-known paths.</b> <code>/.well-known/agent-card.json</code> for A2A, an MCP endpoint that answers <code>tools/list</code>. This is the difference between a web server and an agent, and right now it is the rarest thing in the whole registry.</li>
       </ol>

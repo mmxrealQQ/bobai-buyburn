@@ -953,8 +953,17 @@ const AGENT_REGISTRATION = {
   description: 'AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract source verified on BscScan and ownership renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Every burn run is written to a public audit log.',
   image: 'https://brainonbnb.com/logo-200x200.png',
   active: true,
+  // Every agent id this domain claims. The ERC-8004 verifier fetches exactly
+  // this file and matches the ids in it against the registry — a claim only the
+  // domain owner can publish, which is what makes it a proof rather than a
+  // label. #302257 and #302258 are the two hireable agents we run: they are
+  // owned by a separate signing wallet on purpose (its key sits in a worker
+  // secret and must never be near the token wallet), so this list is the thing
+  // that ties them back to us.
   registrations: [
     { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+    { agentId: 302257, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+    { agentId: 302258, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
   ],
   supportedTrust: ['reputation'],
 };

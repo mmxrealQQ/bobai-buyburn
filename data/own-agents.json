@@ -1,0 +1,24 @@
+{
+  "agents": {
+    "health-factor": {
+      "id": 302257,
+      "name": "Brain on BNB — Venus Health Factor Monitor",
+      "category": "health-factor-monitoring",
+      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "tx": "0xe237457d3c1f3457bf1dba9f5e558d0c774f029da1c718e02aad0b9d1aaf0ba9",
+      "block": 117989307,
+      "registered_at": "2026-08-25T11:09:13.039Z",
+      "updated_at": "2026-08-25T11:20:12.516Z"
+    },
+    "grid-trader": {
+      "id": 302258,
+      "name": "Brain on BNB — BSC Grid Planner",
+      "category": "grid-trading",
+      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "tx": "0xc992983dd069d51f8a0c670e1da6f0ae40d4700355ca6b472d806c3572298545",
+      "block": 117989311,
+      "registered_at": "2026-08-25T11:09:14.586Z",
+      "updated_at": "2026-08-25T11:20:14.323Z"
+    }
+  }
+}

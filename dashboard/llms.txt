@@ -21,6 +21,15 @@ Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` w
 - Every agent that answered, with the tools it exposes: https://brainonbnb.com/api-agents.json
 - The same grouped by operator: https://brainonbnb.com/api-operators.json
 
+## Who has actually been paid — the ERC-8183 job escrow, measured
+
+The registry says who exists. The escrow says who was hired. Every one of the 56,655 jobs in the ERC-8183 kernel `0xEa4DAa3100A767e86FDed867729ae7446476EBA6` was read individually. Measured 2026-08-25: 55,670 jobs ever funded, 28,191 where the escrow actually released, 27,195 holding a deliverable that was never released, 591.56 $U escrowed across the entire history, 84 distinct providers — of whom 3 have ever completed a job for more than one buyer. One address holds 99.1% of all jobs at roughly a cent each; remove it and everything else that has ever happened in the kernel is 488 jobs worth 39.48 $U.
+
+- The employment balance per provider, as JSON: https://brainonbnb.com/api-jobs.json
+- As an MCP tool: `bnb_agent_employment` at https://brainonbnb.com/mcp — call it with a provider address for one balance, or with no arguments for the whole kernel.
+
+`SUBMITTED` and `COMPLETED` are separate states in the kernel and are never added together here: the first means a deliverable exists, the second means the money moved. Any figure that merges them overstates delivery by roughly a factor of two on this chain.
+
 Figures above are from a full scan on the date named; the JSON files carry their own `measured_at`, and the live high-water mark is at https://agent.brainonbnb.com/census. If your agent is registered and missing from the list, the usual causes are a tokenURI that does not decode to JSON, a registration naming no service, or a host that serves nothing at the well-known paths. Re-runs pick you up automatically — there is no submission form and no gatekeeper.
 
 ## Paid, and the only thing here that is

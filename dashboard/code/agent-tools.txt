@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1601 lines.
+# one fetch. 4 files, 1631 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -687,6 +687,12 @@ const MCP_TOOLS = [
   // than us, which is precisely why it belongs at the top.
   { name: 'find_agents_on_bnb_chain', description: 'Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against the tools each one returned when asked and the description it wrote on-chain. Not self-reported categories, not a curated list. Use this before assuming no agent exists for a task.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'What you need done, in plain words — e.g. "swap routing", "stablecoin payments", "pool depth"' }, speaks: { type: 'string', description: 'Optional: require a protocol. One or more of mcp, a2a, x402 (comma-separated).' } }, required: ['query'], additionalProperties: false } },
   { name: 'bnb_agent_census', description: 'Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: how many agents are registered, how many registrations are even readable, how many name an endpoint, how many answer, and how many independent operators run them. Every id read, nothing extrapolated.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  // The employment side of the same question. An agent deciding whom to hire
+  // wants a track record, and on this chain the only one that cannot be
+  // self-reported is the escrow: every job, who was paid, and whether the money
+  // actually moved. Optionally filtered to one provider address, because that
+  // is the shape of the real question — "should I hire this one".
+  { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain. Reads the ERC-8183 job escrow kernel: jobs created, jobs funded, deliverables submitted, and escrow actually released — per provider. A registration is self-reported; a funded job is somebody else\'s money. Pass an address to get one provider\'s balance, or nothing for the whole kernel.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'Optional provider address (0x…). Omit for the whole-kernel summary.' } }, additionalProperties: false } },
   // The other tool here that is about somebody other than us: it measures any
   // token on the chain, not this one. An agent about to place a trade wants
   // what it will actually cost, and no router tells it — the headline slippage
@@ -757,6 +763,30 @@ async function runTool(name, args) {
         full_data: 'https://brainonbnb.com/api-operators.json',
         human_readable: 'https://brainonbnb.com/registry',
         method: j.method,
+      };
+    }
+    case 'bnb_agent_employment': {
+      const r = await fetch('https://brainonbnb.com/api-jobs.json', { signal: AbortSignal.timeout(9000) });
+      if (!r.ok) throw new Error('employment census unavailable');
+      const j = await r.json();
+      const want = String(args?.address || '').toLowerCase();
+      if (want) {
+        const p = (j.providers || []).find((x) => x.address === want);
+        if (!p) {
+          // Not an error. "This address has never been hired through the
+          // kernel" is a real and useful answer, and returning it as a failure
+          // would let a caller mistake it for an outage.
+          return { address: want, jobs: 0, note: 'This address does not appear as a provider on any job in the kernel.', measured_at: j.measured_at, source: j.source };
+        }
+        return { ...p, of_all_jobs: j.jobs?.read, measured_at: j.measured_at, method: j.method, source: j.source };
+      }
+      return {
+        ...j.jobs,
+        top_providers: (j.providers || []).slice(0, 10),
+        measured_at: j.measured_at,
+        method: j.method,
+        full_data: 'https://brainonbnb.com/api-jobs.json',
+        human_readable: 'https://brainonbnb.com/registry',
       };
     }
     case 'bobai_token_info': return await getTokenInfo();

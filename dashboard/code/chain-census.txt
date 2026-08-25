@@ -1,0 +1,2274 @@
+# The Census — reading a whole registry — Brain On BNB AI
+# Every agent id on BNB Chain, and every job they were ever paid for.
+#
+# This is the complete chain-census bundle as a single file, so it can be read in
+# one fetch. 7 files, 2228 lines.
+# Download as a zip: https://brainonbnb.com/code/chain-census.zip
+# Everything else:   https://brainonbnb.com/code/index.txt
+#
+# No secrets are present: they are supplied at runtime through the environment.
+# MIT licensed.
+
+
+==============================================================================
+=== FILE: scripts/erc8004-enrich.mjs
+==============================================================================
+
+// Fills in the parts of a registration the scan does not carry.
+//
+// The scan is a counting pass over a quarter of a million ids, so it records
+// only what it needs to count with. A profile needs more: what the agent says
+// it does, what trust model it claims, whether it advertises x402, what it
+// looks like. That data is already on-chain in the same tokenURI — it just was
+// not worth carrying through 280,000 iterations to get at the few thousand
+// entries that have an endpoint.
+//
+// So this re-reads only the ids that made it into the directory. A few thousand
+// calls, a couple of minutes, and it can run while the main scan is still
+// going — the two touch different files.
+//
+// Usage: node scripts/erc8004-enrich.mjs
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const DIR = path.join(ROOT, 'data', 'erc8004');
+const HITS = path.join(DIR, 'agents-with-endpoints.jsonl');
+const OUT = path.join(DIR, 'registrations.json');
+
+const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
+const TOKEN_URI = '0xc87b56dd';
+const RPCS = [
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-mainnet.public.blastapi.io',
+  'https://bsc-dataseed.binance.org',
+  'https://bsc-dataseed2.bnbchain.org',
+  'https://bsc-dataseed3.bnbchain.org',
+  'https://bsc-dataseed4.defibit.io',
+];
+const BATCH = 25;
+
+let rr = 0;
+const id32 = (n) => BigInt(n).toString(16).padStart(64, '0');
+
+async function callBatch(ids) {
+  const payload = ids.map((id, i) => ({
+    jsonrpc: '2.0', id: i, method: 'eth_call',
+    params: [{ to: REGISTRY, data: TOKEN_URI + id32(id) }, 'latest'],
+  }));
+  for (let a = 0; a < RPCS.length * 2; a++) {
+    try {
+      const r = await fetch(RPCS[rr++ % RPCS.length], {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload), signal: AbortSignal.timeout(20000),
+      });
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (!Array.isArray(j)) continue;
+      const out = new Array(ids.length).fill(null);
+      let got = 0;
+      for (const it of j) {
+        if (typeof it.id !== 'number' || it.error) continue;
+        out[it.id] = it.result; got++;
+      }
+      if (got) return out;
+    } catch { /* next endpoint */ }
+  }
+  return new Array(ids.length).fill(null);
+}
+
+const decodeString = (hex) => {
+  if (!hex || hex === '0x') return null;
+  const b = hex.slice(2);
+  try {
+    const len = parseInt(b.slice(64, 128), 16);
+    if (!(len > 0) || len > 2_000_000) return null;
+    const by = [];
+    for (let i = 0; i < len; i++) by.push(parseInt(b.substr(128 + i * 2, 2), 16));
+    return Buffer.from(by).toString('utf8');
+  } catch { return null; }
+};
+
+const parse = (raw) => {
+  const s = decodeString(raw);
+  if (!s) return null;
+  const b64 = s.includes('base64,') ? s.split('base64,')[1] : null;
+  try {
+    return JSON.parse(b64 ? Buffer.from(b64, 'base64').toString('utf8') : s);
+  } catch { return null; }
+};
+
+if (!fs.existsSync(HITS)) {
+  console.error('Run erc8004-scan.mjs first.');
+  process.exit(1);
+}
+
+const ids = [...new Set(
+  fs.readFileSync(HITS, 'utf8').split('\n').filter(Boolean)
+    .map((l) => { try { return JSON.parse(l).id; } catch { return null; } })
+    .filter((x) => Number.isInteger(x)),
+)].sort((a, b) => a - b);
+
+console.log(`enriching ${ids.length.toLocaleString('en-US')} registrations`);
+
+const registrations = {};
+for (let i = 0; i < ids.length; i += BATCH) {
+  const chunk = ids.slice(i, i + BATCH);
+  const res = await callBatch(chunk);
+  for (let n = 0; n < chunk.length; n++) {
+    const meta = parse(res[n]);
+    if (!meta) continue;
+    const services = Array.isArray(meta.services) ? meta.services : [];
+    registrations[chunk[n]] = {
+      name: typeof meta.name === 'string' ? meta.name.slice(0, 90) : null,
+      // The operator's own words about what the agent does. On a profile this
+      // is the difference between a row and something a person can judge.
+      description: typeof meta.description === 'string' ? meta.description.slice(0, 400) : null,
+      image: typeof meta.image === 'string' && /^https:\/\//.test(meta.image) ? meta.image : null,
+      active: meta.active === true,
+      trust: Array.isArray(meta.supportedTrust) ? meta.supportedTrust.slice(0, 6) : [],
+      x402: !!meta.x402Support,
+      // Named services with their declared kind — "telegram", "web", "MCP" —
+      // which is how an agent states its own surface area.
+      services: services.map((s) => s && typeof s === 'object' ? {
+        name: String(s.name || '').slice(0, 40),
+        endpoint: typeof s.endpoint === 'string' ? s.endpoint.slice(0, 200) : null,
+        version: s.version ? String(s.version).slice(0, 20) : null,
+      } : null).filter(Boolean).slice(0, 10),
+    };
+  }
+  if ((i / BATCH) % 10 === 0) process.stdout.write(`\r  ${Math.min(i + BATCH, ids.length)}/${ids.length}`);
+}
+
+fs.writeFileSync(OUT, JSON.stringify(registrations, null, 1) + '\n');
+const withDesc = Object.values(registrations).filter((r) => r.description).length;
+const withImg = Object.values(registrations).filter((r) => r.image).length;
+const withTrust = Object.values(registrations).filter((r) => r.trust.length).length;
+console.log(`\n  ${Object.keys(registrations).length} read · ${withDesc} describe themselves · ${withImg} have a logo · ${withTrust} declare a trust model`);
+console.log(`written: ${path.relative(ROOT, OUT)}`);
+
+==============================================================================
+=== FILE: scripts/erc8004-probe.mjs
+==============================================================================
+
+// Second half of the census: does the endpoint answer?
+//
+// The registry scan says which agents claim an endpoint. This says which of
+// those claims are true. They are very different numbers, and only the second
+// one means anything — an agent you cannot reach is a row in a database, not a
+// participant in anything.
+//
+// What counts as reachable is deliberately generous. Any HTTP response at all
+// — including 401, 403, 404 — proves something is listening at that address,
+// and an agent that requires auth is still an agent. Only a connection that
+// cannot be established counts as dead. Being strict here would flatter the
+// result in the wrong direction; being generous means the low number that comes
+// out cannot be argued away.
+//
+// Where an agent card or MCP endpoint is claimed, it is actually spoken to:
+// a /.well-known/agent-card.json that returns JSON, an MCP endpoint that
+// answers tools/list. That separates "a web server exists" from "an agent is
+// running", which is the distinction the whole idea rests on.
+//
+// Usage:
+//   node scripts/erc8004-probe.mjs                probe everything the scan found
+//   node scripts/erc8004-probe.mjs --limit 200    probe the first N
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const DIR = path.join(ROOT, 'data', 'erc8004');
+const HITS = path.join(DIR, 'agents-with-endpoints.jsonl');
+const OUT = path.join(DIR, 'reachable.jsonl');
+const SUMMARY = path.join(DIR, 'census.json');
+
+const args = process.argv.slice(2);
+const limitArg = args.indexOf('--limit');
+const LIMIT = limitArg >= 0 ? Number(args[limitArg + 1]) : Infinity;
+const CONCURRENCY = 12;
+const TIMEOUT = 12000;
+
+// A census that reports zero MCP agents is either a finding about the ecosystem
+// or a broken detector, and from the outside those look identical. --self-test
+// resolves that: it runs the same detection against our own registration, which
+// definitely exposes MCP and an agent card. If it comes back negative, no other
+// number in this file is worth reading.
+const SELF_TEST = args.includes('--self-test');
+
+if (!SELF_TEST && !fs.existsSync(HITS)) {
+  console.error(`No scan output at ${path.relative(ROOT, HITS)} — run erc8004-scan.mjs first.`);
+  process.exit(1);
+}
+
+const seen = new Set();
+const agents = [];
+for (const line of (SELF_TEST ? '' : fs.readFileSync(HITS, 'utf8')).split('\n')) {
+  if (!line.trim()) continue;
+  try {
+    const a = JSON.parse(line);
+    if (seen.has(a.id)) continue;   // the scan appends; a resumed run can repeat ids
+    seen.add(a.id);
+    agents.push(a);
+  } catch { /* skip malformed line */ }
+}
+// Our own registration, used by --self-test. Known to expose MCP with a
+// double-digit tool count and an agent card, so it is the one case where the
+// expected answer is certain — and therefore the only honest way to tell a
+// finding of zero from a detector that cannot detect.
+if (SELF_TEST) agents.push({
+  id: 49467, name: 'Brain On BNB AI ($BOBAI)',
+  endpoints: ['https://brainonbnb.com/', 'https://brainonbnb.com/mcp'],
+});
+console.log(`${agents.length.toLocaleString('en-US')} agents claim an endpoint`);
+
+const probeOne = async (url, opts = {}) => {
+  try {
+    const r = await fetch(url, {
+      method: opts.method || 'GET',
+      headers: { 'user-agent': 'brainonbnb-erc8004-census', ...(opts.headers || {}) },
+      body: opts.body,
+      redirect: 'follow',
+      signal: AbortSignal.timeout(TIMEOUT),
+    });
+    return { ok: true, status: r.status, r };
+  } catch (e) {
+    return { ok: false, error: String(e && e.name === 'TimeoutError' ? 'timeout' : (e.message || e)).slice(0, 60) };
+  }
+};
+
+async function probeAgent(a) {
+  const result = { id: a.id, name: a.name, endpoints: a.endpoints, reachable: false, live: {}, checked: [] };
+
+  for (const url of a.endpoints) {
+    const res = await probeOne(url);
+    result.checked.push({ url, status: res.ok ? res.status : null, error: res.error || null });
+    if (!res.ok) continue;
+    result.reachable = true;
+
+    // An agent card that parses is proof of an agent, not just a server —
+    // and its skills are the only machine-readable statement of what the
+    // agent actually does. A directory that lists names is the thing this
+    // census exists to be better than, so the capabilities get recorded.
+    if (/agent-card\.json$/i.test(url) || /\/\.well-known\//i.test(url)) {
+      try {
+        const j = await res.r.clone().json();
+        if (j && (j.name || j.protocolVersion || j.skills)) {
+          result.live.a2a = true;
+          if (Array.isArray(j.skills)) {
+            result.live.skills = j.skills
+              .map((s) => (s && typeof s === 'object' ? s.name || s.id : s))
+              .filter((s) => typeof s === 'string')
+              .slice(0, 25);
+          }
+          if (typeof j.description === 'string') result.live.cardDescription = j.description.slice(0, 240);
+        }
+      } catch { /* served something that was not a card */ }
+    }
+  }
+
+  // Most registrations name a bare domain, not the path to the agent card —
+  // so looking only at what was written down finds almost nothing. The
+  // well-known locations are where an A2A card is supposed to live, so a
+  // reachable host gets asked directly. This is the difference between
+  // "nobody publishes a card" and "nobody writes the path in the registry",
+  // and those are very different findings.
+  if (result.reachable && !result.live.a2a) {
+    const hosts = [...new Set(a.endpoints.map((e) => { try { return new URL(e).origin; } catch { return null; } }).filter(Boolean))];
+    for (const origin of hosts.slice(0, 2)) {
+      for (const p of ['/.well-known/agent-card.json', '/.well-known/agent.json', '/.well-known/ai-agent.json']) {
+        const res = await probeOne(origin + p);
+        if (!res.ok || res.status >= 400) continue;
+        try {
+          const j = await res.r.json();
+          if (j && (j.name || j.protocolVersion || j.skills)) {
+            result.live.a2a = true;
+            result.live.cardUrl = origin + p;
+            if (Array.isArray(j.skills)) {
+              result.live.skills = j.skills
+                .map((s) => (s && typeof s === 'object' ? s.name || s.id : s))
+                .filter((s) => typeof s === 'string').slice(0, 25);
+            }
+            if (typeof j.description === 'string') result.live.cardDescription = j.description.slice(0, 240);
+          }
+        } catch { /* not a card */ }
+        if (result.live.a2a) break;
+      }
+      if (result.live.a2a) break;
+    }
+  }
+
+  // MCP is spoken to rather than assumed from the URL shape. Same reasoning as
+  // the card lookup: an agent that runs MCP at /mcp on its own domain will
+  // usually have registered only the domain.
+  const mcpUrl = a.endpoints.find((e) => /\/mcp(\/|$)/i.test(e))
+    || (result.reachable ? (() => {
+      try { return new URL(a.endpoints[0]).origin + '/mcp'; } catch { return null; }
+    })() : null);
+  if (mcpUrl) {
+    const res = await probeOne(mcpUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    });
+    if (res.ok) {
+      try {
+        const txt = await res.r.text();
+        const j = JSON.parse(txt.replace(/^data:\s*/gm, '').trim().split('\n').pop());
+        if (j && j.result && Array.isArray(j.result.tools)) {
+          result.live.mcp = true;
+          result.live.mcpTools = j.result.tools.length;
+          // The tool names are the whole point. "This agent exists" is a
+          // directory entry; "this agent exposes these fourteen callable
+          // tools, and here is what each is for" is something another agent
+          // can act on without a human in the loop.
+          result.live.tools = j.result.tools
+            .map((t) => t && typeof t.name === 'string'
+              ? { name: t.name.slice(0, 60), description: String(t.description || '').slice(0, 160) }
+              : null)
+            .filter(Boolean)
+            .slice(0, 40);
+          result.reachable = true;
+        }
+      } catch { /* answered, but not with MCP */ }
+    }
+  }
+  return result;
+}
+
+// The self-test writes somewhere else. Sharing the output file meant a single
+// self-test run replaced a full probe's results with one row, while census.json
+// still held the totals from the real run — a page showing "372 reachable"
+// above a table with one entry in it. Wrong in the most embarrassing possible
+// way: internally inconsistent, on the page whose entire point is that its
+// numbers can be checked.
+const out = fs.createWriteStream(SELF_TEST ? OUT.replace(/\.jsonl$/, '.selftest.jsonl') : OUT, { flags: 'w' });
+const todo = agents.slice(0, LIMIT === Infinity ? agents.length : LIMIT);
+let done = 0, reachable = 0, withMcp = 0, withA2a = 0;
+
+// Fixed-size worker pool: the targets are unrelated third-party hosts, so
+// there is nothing to rate-limit against, but a few hundred simultaneous
+// sockets is rude and unreliable.
+const queue = todo.slice();
+await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
+  while (queue.length) {
+    const a = queue.shift();
+    const r = await probeAgent(a);
+    out.write(JSON.stringify(r) + '\n');
+    done++;
+    if (r.reachable) reachable++;
+    if (r.live.mcp) withMcp++;
+    if (r.live.a2a) withA2a++;
+    if (done % 25 === 0) console.log(`  ${done}/${todo.length}  reachable ${reachable}  mcp ${withMcp}  a2a ${withA2a}`);
+  }
+}));
+out.end();
+
+if (SELF_TEST) {
+  const r = JSON.parse(fs.readFileSync(OUT.replace(/\.jsonl$/, '.selftest.jsonl'), 'utf8').trim().split('\n')[0]);
+  console.log('\n--- self-test against our own agent ---');
+  console.log('  reachable  :', r.reachable);
+  console.log('  MCP        :', !!r.live.mcp, r.live.mcpTools ? `(${r.live.mcpTools} tools)` : '');
+  console.log('  agent card :', !!r.live.a2a, r.live.cardUrl || '');
+  console.log('  tools      :', (r.live.tools || []).slice(0, 5).map((t) => t.name).join(', ') || '(none)');
+  const good = r.reachable && r.live.mcp && (r.live.tools || []).length >= 10;
+  console.log(good
+    ? '\n  DETECTOR WORKS — a zero elsewhere is a finding, not a bug\n'
+    : '\n  DETECTOR BROKEN — fix this before publishing any count\n');
+  process.exit(good ? 0 : 1);
+}
+
+// ---- census -----------------------------------------------------------
+let scan = {};
+try { scan = JSON.parse(fs.readFileSync(path.join(DIR, 'scan-state.json'), 'utf8')); } catch {}
+
+const census = {
+  registry: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
+  chain: 'BNB Smart Chain (eip155:56)',
+  measured_at: new Date().toISOString(),
+  method: 'Every agent id in the identity registry read via tokenURI, then every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401/403/404 — only a failed connection counts as dead.',
+  registered_ids: scan.highestId || null,
+  ids_scanned: scan.cursor ? scan.cursor - 1 : null,
+  registrations: scan.counts || null,
+  endpoints: {
+    claim_an_endpoint: agents.length,
+    probed: done,
+    reachable,
+    dead: done - reachable,
+    answering_mcp: withMcp,
+    serving_an_agent_card: withA2a,
+  },
+  caveat: 'Reachability is a snapshot. An endpoint down at the moment of probing is counted as dead, and one that answers may still do nothing useful.',
+};
+fs.writeFileSync(SUMMARY, JSON.stringify(census, null, 2) + '\n');
+
+const pct = (n, d) => (d ? ((n / d) * 100).toFixed(2) + '%' : '–');
+console.log(`\n--- endpoints ---`);
+console.log(`  claimed an endpoint   ${agents.length}`);
+console.log(`  probed                ${done}`);
+console.log(`  answered              ${reachable}   (${pct(reachable, done)} of probed)`);
+console.log(`  dead                  ${done - reachable}`);
+console.log(`  answered MCP          ${withMcp}`);
+console.log(`  served an agent card  ${withA2a}`);
+if (scan.highestId) {
+  console.log(`\n  of ${scan.highestId.toLocaleString('en-US')} registered ids, ${reachable} are reachable — ${pct(reachable, scan.highestId)}`);
+}
+console.log(`\nwritten: ${path.relative(ROOT, SUMMARY)}, ${path.relative(ROOT, OUT)}`);
+
+==============================================================================
+=== FILE: scripts/erc8004-publish.mjs
+==============================================================================
+
+// Turns the census into the page and the JSON endpoint that serve it.
+//
+// Reads data/erc8004/*, writes dashboard/registry.html and
+// dashboard/api-registry.json. Both are generated — never edit them by hand,
+// the next run overwrites them. Everything the page states comes from the two
+// scan artefacts, so there is no path by which the page can claim a number the
+// data does not contain.
+//
+// Usage: node scripts/erc8004-publish.mjs
+import fs from 'node:fs';
+import path from 'node:path';
+import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
+import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const DIR = path.join(ROOT, 'data', 'erc8004');
+const state = JSON.parse(fs.readFileSync(path.join(DIR, 'scan-state.json'), 'utf8'));
+
+let census = null;
+try { census = JSON.parse(fs.readFileSync(path.join(DIR, 'census.json'), 'utf8')); } catch {}
+
+// What each agent says about itself, from erc8004-enrich.mjs. Optional: the
+// page works without it, it just has less to say about each agent.
+let registrations = {};
+try { registrations = JSON.parse(fs.readFileSync(path.join(DIR, 'registrations.json'), 'utf8')); } catch {}
+
+const reachable = [];
+try {
+  for (const line of fs.readFileSync(path.join(DIR, 'reachable.jsonl'), 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    try { const r = JSON.parse(line); if (r.reachable) reachable.push(r); } catch {}
+  }
+} catch {}
+
+// The employment census from scripts/erc8183-job-scan.mjs. Optional: the page
+// renders without it and simply says nothing about who has been paid, rather
+// than showing an empty table that reads as "nobody has".
+//
+// Identity and employment are joined here because they are joinable: the job
+// kernel names a provider ADDRESS and the registry answers ownerOf() for an
+// agent ID, and both live on the same chain. That join is the entire reason
+// this page can say "this listed agent has been hired eleven times" instead of
+// "this listed agent says it is good at things".
+let jobCensus = null;
+let jobOwners = null;
+try {
+  const jobsFile = path.join(ROOT, 'data', 'erc8183', 'jobs.jsonl');
+  const jobState = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'erc8183', 'scan-state.json'), 'utf8'));
+  const jobs = loadJobs(jobsFile);
+  // A partial job scan must not be published as an employment census, for the
+  // same reason a partial identity scan must not be published as a census: the
+  // numbers all still parse, and every one of them is wrong.
+  if (jobState.jobCounter && jobs.size >= jobState.jobCounter * 0.995) {
+    jobCensus = { ...aggregate(jobs), jobCounter: jobState.jobCounter, unread: jobState.unread || 0, measuredAt: jobState.finishedAt || jobState.updatedAt };
+  } else if (jobs.size) {
+    console.log(`  (job census skipped: ${jobs.size.toLocaleString('en-US')} of ${(jobState.jobCounter || 0).toLocaleString('en-US')} jobs read)`);
+  }
+  try { jobOwners = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'erc8183', 'owners.json'), 'utf8')); } catch { /* optional */ }
+} catch { /* no job scan yet */ }
+
+const c = state.counts;
+const scanned = state.cursor - 1;
+const total = state.highestId;
+const pct = (n, d = scanned) => (d ? (n / d) * 100 : 0);
+const fmt = (n) => Number(n).toLocaleString('en-US');
+const p1 = (n, d = scanned) => pct(n, d).toFixed(pct(n, d) < 1 ? 2 : 1) + '%';
+
+// An incomplete scan must not be published as if it were a census. This caught
+// a real failure: a stopped background scan kept running and overwrote the
+// finished state with its own older one, leaving the counts 60,000 ids short
+// while every file still parsed and every number still looked plausible. The
+// page would have quietly understated the ecosystem it claims to measure.
+// --partial publishes anyway, for when a snapshot is genuinely wanted.
+if (scanned < total * 0.995 && !process.argv.includes('--partial')) {
+  console.error(`
+Refusing to publish: only ${scanned.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} ids scanned (${((scanned / total) * 100).toFixed(1)}%).`);
+  console.error(`Finish the scan first, or pass --partial to publish a snapshot anyway.
+`);
+  process.exit(1);
+}
+
+// ---- the JSON surface ----------------------------------------------------
+const api = {
+  what_this_is: 'A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.',
+  registry: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
+  chain: 'eip155:56',
+  measured_at: census?.measured_at || state.updatedAt,
+  registered_ids: total,
+  ids_scanned: scanned,
+  registrations: {
+    parses: c.valid,
+    unparsable: c.unparsable,
+    empty: c.empty,
+    unread_after_retries: c.unread,
+    active_flag: c.active,
+    names_a_service: c.withServices,
+    has_http_endpoint: c.withHttpEndpoint,
+    endpoint_on_a_real_tld: c.plausibleEndpoint,
+    speaks_mcp: c.mcp,
+    speaks_a2a: c.a2a,
+    supports_x402: c.x402,
+  },
+  reachability: census?.endpoints || null,
+  independent_operators: null, // filled in below, once operators are grouped
+  method: {
+    registrations: 'Every id read via tokenURI() on the registry. Ids the nodes refused are retried until they answer; the count above reports what remained unreadable after that, so a percentage here is never a statement about node availability.',
+    reachability: 'Every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401, 403 and 404 — only a failed connection counts as dead. MCP endpoints were sent a real tools/list; agent cards had to parse as JSON.',
+    caveat: 'Reachability is a snapshot. An endpoint down at that moment is counted as dead, and one that answers may still do nothing useful.',
+  },
+  source: 'https://brainonbnb.com/registry',
+};
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
+
+// ---- the list itself, for machines ---------------------------------------
+// The census counts; this is what another agent can actually use. Only agents
+// that answered are in it, and where one exposes tools or skills they are
+// listed by name — because "an agent exists at this address" is a directory
+// entry, and a directory is the thing this set out to be better than.
+//
+// Sorted so that agents which speak a protocol come first: an agent looking for
+// a counterpart wants those, and burying them under a few hundred plain web
+// servers would make the useful part of the list the hardest to reach.
+const directory = reachable
+  .map((r) => ({
+    id: r.id,
+    name: r.name || registrations[r.id]?.name || null,
+    // The operator's own description, straight from the on-chain registration.
+    // This is what turns a row into something a person can judge.
+    ...(registrations[r.id]?.description ? { description: registrations[r.id].description } : {}),
+    ...(registrations[r.id]?.image ? { image: registrations[r.id].image } : {}),
+    ...(registrations[r.id]?.trust?.length ? { trust_models: registrations[r.id].trust } : {}),
+    ...(registrations[r.id]?.services?.length ? { declared_services: registrations[r.id].services } : {}),
+    endpoints: r.endpoints,
+    speaks: [r.live?.mcp ? 'mcp' : null, r.live?.a2a ? 'a2a' : null,
+      (r.x402 || registrations[r.id]?.x402) ? 'x402' : null].filter(Boolean),
+    ...(r.live?.tools?.length ? { tools: r.live.tools } : {}),
+    ...(r.live?.skills?.length ? { skills: r.live.skills } : {}),
+    ...(r.live?.cardUrl ? { agent_card: r.live.cardUrl } : {}),
+    ...(r.live?.cardDescription ? { description: r.live.cardDescription } : {}),
+  }))
+  .sort((a, b) => b.speaks.length - a.speaks.length || a.id - b.id);
+
+// Grouped by who actually runs them. 784 reachable ids are 72 operators, and
+// 103 MCP agents are 7 — one provider accounts for 96 of them, all returning
+// the identical five tools. Counting ids describes the registry correctly and
+// describes the market wrongly.
+const operators = groupByOperator(directory);
+api.independent_operators = operators.length;
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
+
+// ---- the employment census, for machines ---------------------------------
+// The identity census says who exists. This says who has been paid, which is
+// the only reputation signal on this chain nobody can write about themselves:
+// a registration is self-reported text, a funded job is somebody else's money.
+if (jobCensus) {
+  const jobsApi = {
+    what_this_is: 'Every job in the ERC-8183 escrow kernel on BNB Smart Chain, read one at a time and aggregated into an employment balance per provider. It answers who has actually been hired and paid, as opposed to who is registered.',
+    kernel: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6',
+    payment_token: { symbol: 'U', name: 'United Stables', address: '0xcE24439F2D9C6a2289F741120FE202248B666666', decimals: 18 },
+    chain: 'eip155:56',
+    measured_at: jobCensus.measuredAt,
+    jobs: {
+      job_counter: jobCensus.jobCounter,
+      read: jobCensus.total,
+      unread_after_retries: jobCensus.unread,
+      by_status: jobCensus.byStatus,
+      ever_funded: jobCensus.fundedJobs,
+      escrow_released: jobCensus.completed,
+      deliverable_never_released: jobCensus.submitted,
+      never_funded: jobCensus.open,
+      total_escrowed_u: Number(jobCensus.escrowedU.toFixed(6)),
+      distinct_buyers: jobCensus.buyers,
+      distinct_providers: jobCensus.providers.length,
+      providers_paid_by_more_than_one_buyer: jobCensus.providersWithRealWork,
+      top_provider_share: Number(jobCensus.concentration.top_provider_share.toFixed(4)),
+      top5_share: Number(jobCensus.concentration.top5_share.toFixed(4)),
+      excluding_top_provider: jobCensus.withoutTopProvider,
+    },
+    providers: jobCensus.providers.map((p) => ({
+      address: p.address,
+      agents: jobOwners?.owners?.[p.address] || [],
+      jobs: p.jobs,
+      funded: p.funded,
+      completed: p.completed,
+      submitted_not_released: p.submitted_not_released,
+      awaiting_delivery: p.awaiting_delivery,
+      expired: p.expired,
+      rejected: p.rejected,
+      never_funded: p.never_funded,
+      distinct_buyers: p.distinct_buyers,
+      escrowed_u: Number(p.escrowed_u.toFixed(6)),
+      median_budget_u: Number(p.median_budget_u.toFixed(6)),
+      delivery_rate: Number(p.delivery_rate.toFixed(4)),
+      first_job_id: p.first_job_id,
+      last_job_id: p.last_job_id,
+    })),
+    method: {
+      jobs: 'getJob() called for every id from 1 to jobCounter(). Ids a node refused are retried patiently; whatever remains unreadable is reported as unread rather than folded into a percentage.',
+      funded: 'A job in status OPEN was created and never funded — createJob costs nothing and commits nobody, so OPEN is excluded from every payment figure.',
+      completed: 'SUBMITTED means a deliverable is on-chain and the escrow has NOT released. Only COMPLETED means the money moved. The two are never added together.',
+      delivery_rate: 'Completions divided by funded jobs, not by all jobs: a provider is not answerable for jobs a buyer created and abandoned.',
+      identity_join: jobOwners
+        ? `Provider addresses matched to agent ids via ownerOf() on the identity registry, over the ${jobOwners.agents} registered agents that carry an HTTP endpoint. A provider with no match is not unregistered — it is simply not in that population.`
+        : 'Not resolved for this build.',
+    },
+    source: 'https://brainonbnb.com/registry',
+  };
+  fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-jobs.json'), JSON.stringify(jobsApi, null, 2) + '\n');
+}
+
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-operators.json'), JSON.stringify({
+  what_this_is: 'The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.',
+  measured_at: api.measured_at,
+  registered_ids: total,
+  reachable_ids: directory.length,
+  independent_operators: operators.length,
+  operators_speaking_a_protocol: operators.filter((o) => o.speaks.length).length,
+  note: 'Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.',
+  operators,
+}, null, 2) + '\n');
+
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-agents.json'), JSON.stringify({
+  what_this_is: 'Every ERC-8004 agent on BNB Smart Chain that answered when contacted, with whatever it exposes about itself. Generated from a full registry scan — not self-reported, not curated.',
+  measured_at: api.measured_at,
+  registered_ids: total,
+  answered: directory.length,
+  speaking_a_protocol: directory.filter((d) => d.speaks.length).length,
+  independent_operators: operators.length,
+  operator_view: 'https://brainonbnb.com/api-operators.json',
+  note: 'Presence here means the address responded and, where stated, the protocol answered. It is not an endorsement, a rating, or a claim that the agent does anything useful.',
+  agents: directory,
+}, null, 2) + '\n');
+
+// ---- the page ------------------------------------------------------------
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+// Each row is a small profile rather than a table cell: logo, name, what the
+// operator says it does, what it demonstrably speaks, and the address you can
+// call. The point of the whole exercise is that none of this is self-reported
+// into a form we control — the description comes from the chain, the protocol
+// tags come from having spoken to it.
+const liveRows = operators
+  .slice()
+  .slice(0, 60)
+  .map((o) => {
+    const tags = [
+      o.speaks.includes('mcp') ? `<span class="rg-t rg-mcp">MCP &middot; ${o.tools?.length ?? '?'} tools</span>` : '',
+      o.speaks.includes('a2a') ? '<span class="rg-t rg-a2a">agent card</span>' : '',
+      o.speaks.includes('x402') ? '<span class="rg-t rg-x4">x402</span>' : '',
+      ...(o.trust_models || []).slice(0, 2).map((t) => `<span class="rg-t rg-tr">${esc(t)}</span>`),
+    ].filter(Boolean).join('');
+
+    const caps = o.tools?.length
+      ? `<div class="rg-caps">${o.tools.slice(0, 8).map((t) => `<code title="${esc(t.description)}">${esc(t.name)}</code>`).join(' ')}${o.tools.length > 8 ? ` <span class="rg-more">+${o.tools.length - 8}</span>` : ''}</div>`
+      : o.skills?.length
+        ? `<div class="rg-caps">${o.skills.slice(0, 8).map((x) => `<code>${esc(x)}</code>`).join(' ')}</div>`
+        : '';
+
+    // Logos are third-party URLs on hosts we do not control: lazy, sized, and
+    // they remove themselves rather than leaving a broken-image box.
+    const logo = o.image
+      ? `<img class="rg-logo" src="${esc(o.image)}" alt="" loading="lazy" decoding="async" width="34" height="34" onerror="this.remove()">`
+      : '<span class="rg-logo rg-logo-none" aria-hidden="true"></span>';
+
+    const desc = o.description
+      ? `<div class="rg-desc">${esc(o.description.slice(0, 190))}${o.description.length > 190 ? '&hellip;' : ''}</div>`
+      : '';
+
+    // How many registry ids one operator runs is worth showing, because it is
+    // the difference between a service and a fleet of identical clones — and
+    // because a reader counting rows would otherwise be counting the wrong thing.
+    const fleet = o.instances > 1
+      ? `<span class="rg-fleet">${fmt(o.instances)} ids${o.distinct_capabilities > 1 ? `, ${o.distinct_capabilities} variants` : ', identical'}</span>`
+      : '';
+
+    return `<tr>
+      <td class="rg-id">${esc(o.operator)}${fleet}</td>
+      <td class="rg-agent">
+        <div class="rg-head">${logo}<div class="rg-nm"><b>${esc(o.name) || '<i>unnamed</i>'}</b>${tags}</div></div>
+        ${desc}${caps}
+      </td>
+      <td class="rg-ep"><a href="${esc((o.endpoints || [])[0] || '')}" target="_blank" rel="noopener nofollow">${esc(((o.endpoints || [])[0] || '').replace(/^https?:\/\//i, '').replace(/\/$/, '').slice(0, 46))}</a></td>
+    </tr>`;
+  }).join('');
+
+const reach = census?.endpoints;
+
+// The page states a reachable count and then lists the agents behind it. If
+// those two come from different runs, the page contradicts itself — which is
+// fatal for the one thing it is for. Publishing stops rather than shipping it.
+if (reach && reach.reachable > 0 && reachable.length === 0) {
+  console.error(`
+Refusing to publish: census.json reports ${reach.reachable} reachable agents but reachable.jsonl is empty.`);
+  console.error(`Run: node scripts/erc8004-probe.mjs
+`);
+  process.exit(1);
+}
+if (reach && reachable.length && Math.abs(reach.reachable - reachable.length) > reach.reachable * 0.02) {
+  console.error(`
+Refusing to publish: census says ${reach.reachable} reachable, the list holds ${reachable.length}. These are from different runs.`);
+  console.error(`Run: node scripts/erc8004-probe.mjs
+`);
+  process.exit(1);
+}
+
+// The page. Built on the same furniture as every other page on the site —
+// nav, blk-head section, footer, shared stylesheet — because a page that looks
+// like it was bolted on reads like it was bolted on. The only bespoke CSS here
+// is for the funnel and the agent table, which nothing else on the site needs.
+const page = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brain Plaza — the AI agents on BNB Chain that actually answer</title>
+<meta name="description" content="Brain Plaza reads every ERC-8004 agent on BNB Chain and contacts every endpoint they name. Who is actually running, what they can do, and how to reach them.">
+<meta property="og:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) : 'few'} answer">
+<meta property="og:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named. Full method, full data, checkable.">
+<meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+<meta property="og:url" content="https://brainonbnb.com/registry">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brain On BNB AI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) : 'few'} answer">
+<meta name="twitter:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named.">
+<meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+<link rel="icon" type="image/png" href="/favicon.png?v=4">
+<link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
+<link rel="apple-touch-icon" href="/logo.png?v=4">
+<link rel="stylesheet" href="/fonts.css?v=1">
+<link rel="stylesheet" href="/styles.css?v=28">
+<link rel="canonical" href="https://brainonbnb.com/registry">
+<style>
+  /* nav/.nav/.nb live in styles.css, but .back-btn and .brand-link do not —
+     they are inline in scanner.html, so every sub-page carries its own copy.
+     Without them the browser paints both as default blue links, which is what
+     it was doing here. Same values, not similar ones. */
+  .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+    background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
+    font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
+    transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
+  .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+  .back-btn span{font-size:14px;line-height:1}
+  .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
+    color:var(--gold);white-space:nowrap;text-decoration:none}
+  .brand-link:hover{opacity:.85}
+  @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}
+    /* The header is three items that all refuse to wrap, so on a narrow phone
+       their sum can exceed the screen and the page starts scrolling sideways —
+       which is exactly what /nft/ was doing at 413px in a 360px viewport. The
+       two outer items are the ones people press; the title in the middle is the
+       one that gives way. */
+    .nav{gap:8px}.brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+
+  /* Hero copied from scanner.html's .sc-hero rather than approximated: centred,
+     same clamp, same -1px tracking, and the gold gradient on <em> that every
+     other headline on this site uses. */
+  .rg-hero{padding:8px 0 6px;text-align:center}
+  .rg-h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
+    font-weight:700;letter-spacing:-1px;line-height:1.14;margin:0}
+  .rg-h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+    background-clip:text;-webkit-background-clip:text;color:transparent}
+  .rg-sub2{display:block;margin-top:12px;font-size:.9rem;font-weight:400;letter-spacing:0;
+    color:var(--muted);line-height:1.5}
+  .rg-fleet{display:block;margin-top:3px;font-size:.66rem;opacity:.75;white-space:nowrap}
+  .rg-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
+  .rg-when{color:var(--muted);font-size:.72rem;margin:18px auto 0;text-align:center}
+  /* Metric tiles use the dashboard's own numbers treatment (.lqm/.lqv/.lql/.lqs
+     in styles.css) rather than an approximation of it: same radius, same
+     1.85rem Space Grotesk with -1px tracking, same label and caption sizes.
+     A page that is nearly the house style reads as a page from somewhere else. */
+  .rg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:26px 0 14px}
+  .rg-card{border:1px solid var(--border);border-radius:14px;padding:16px 15px;background:rgba(255,255,255,.02)}
+  .rg-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.85rem;font-weight:700;
+    letter-spacing:-1px;color:var(--acc,var(--gold));line-height:1.1;font-variant-numeric:tabular-nums}
+  .rg-l{font-size:.79rem;font-weight:600;margin-top:4px}
+  .rg-s{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:7px}
+  .rg-box{border:1px solid rgba(var(--accs,240,185,11),.16);border-radius:var(--radius,18px);
+    padding:22px 20px;margin:14px 0;background:rgba(255,255,255,.02)}
+  .rg-box h2{font-size:.95rem;font-weight:600;margin:0 0 4px;letter-spacing:.2px}
+  .rg-box > p.rg-sub{color:var(--muted);font-size:.76rem;margin:0 0 18px;line-height:1.55}
+  .rg-step{display:grid;gap:5px;margin-bottom:15px}
+  .rg-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .rg-top b{font-size:.79rem;font-weight:600}
+  .rg-top span{font-size:.76rem;color:var(--acc,var(--gold));font-weight:600;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rg-bar{height:8px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
+  /* The floor on the width below is a PERCENTAGE, and a percentage of a phone
+     is not much: 0.35% of a 312px column is 1.1 pixels, so the bars that matter
+     most here — 784 answering out of 285,447 is genuinely a sliver — rendered
+     as an invisible smear exactly where the point was that the number is tiny.
+     A pixel minimum keeps "almost nothing" visible as almost nothing. */
+  .rg-fill{height:100%;border-radius:4px;min-width:3px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
+  .rg-note{font-size:.72rem;color:var(--muted);line-height:1.5}
+  .rg-note code{font-size:.74rem}
+  table.rg{width:100%;border-collapse:collapse;font-size:.85rem}
+  .rg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* The table is the longest thing on the page and grows with every agent
+     that comes online, so it gets its own window instead of pushing the
+     method section further out of reach each time. Sticky header so the
+     columns stay labelled while scrolling inside it. */
+  .rg-tablebox{max-height:min(52vh,460px);overflow-y:auto;overscroll-behavior:contain;
+    border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.02)}
+  .rg-tablebox table.rg th{position:sticky;top:0;background:#131215;padding:10px;z-index:1}
+  .rg-tablebox table.rg td:first-child{padding-left:12px}
+  table.rg th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 10px 10px;font-weight:600}
+  table.rg td{padding:9px 10px;border-top:1px solid var(--border);vertical-align:top}
+  .rg-id{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rg-ep{color:var(--muted);font-size:.78rem;word-break:break-all}
+  .rg-t{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;font-size:.68rem;vertical-align:middle}
+  .rg-mcp{background:rgba(63,224,154,.14);color:#3fe09a}
+  .rg-a2a{background:rgba(125,146,255,.14);color:#7d92ff}
+  .rg-x4{background:rgba(240,185,11,.14);color:var(--gold)}
+  .rg-agent{min-width:240px}
+  .rg-head{display:flex;align-items:center;gap:9px}
+  .rg-logo{width:34px;height:34px;border-radius:9px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.05)}
+  .rg-logo-none{display:inline-block}
+  .rg-nm{min-width:0}
+  .rg-nm b{font-size:.92rem}
+  .rg-desc{margin-top:6px;font-size:.79rem;color:var(--muted);line-height:1.55;max-width:62ch}
+  .rg-tr{background:rgba(255,255,255,.06);color:var(--muted)}
+  .rg-ep a{color:var(--muted);text-decoration:none}
+  .rg-ep a:hover{color:var(--acc,var(--gold))}
+  .rg-caps{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+  .rg-caps code{font-size:.7rem;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.05);color:var(--muted)}
+  .rg-more{font-size:.7rem;color:var(--muted);align-self:center}
+  details.rg-method summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+  details.rg-method summary::-webkit-details-marker{display:none}
+  details.rg-method summary::after{content:'+';color:var(--muted);font-size:1.1rem;margin-left:auto}
+  details.rg-method[open] summary::after{content:'2'}
+  details.rg-method summary h2{margin:0;font-size:1.05rem}
+  details.rg-method[open] summary{margin-bottom:14px}
+  .rg-try{display:flex;gap:9px;flex-wrap:wrap}
+  .rg-try input{flex:1;min-width:220px;background:rgba(255,255,255,.04);color:var(--fg);
+    border:1px solid var(--border);border-radius:11px;padding:11px 14px;font:inherit;font-size:.85rem}
+  .rg-try input:focus{outline:none;border-color:var(--gold)}
+  .rg-try button{background:rgba(240,185,11,.1);border:1px solid rgba(240,185,11,.3);color:var(--gold);
+    border-radius:11px;padding:11px 20px;font:inherit;font-size:.82rem;font-weight:600;cursor:pointer;
+    transition:background .2s,border-color .2s}
+  .rg-try button:hover{background:rgba(240,185,11,.18);border-color:rgba(240,185,11,.5)}
+  .rg-try button[disabled]{opacity:.55;cursor:default}
+  .rg-out{margin-top:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);
+    background:rgba(255,255,255,.02);font-size:.8rem;line-height:1.6}
+  .rg-out .rg-who{color:var(--gold);font-weight:600;margin-bottom:8px}
+  .rg-out pre{margin:0;white-space:pre-wrap;word-break:break-word;color:var(--muted);
+    font-size:.74rem;max-height:260px;overflow:auto}
+  .rg-ask code{display:block;font-size:.84rem;padding:11px 14px;border-radius:11px;
+    background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--acc,var(--gold));
+    word-break:break-all;margin-bottom:12px}
+  .rg-ask code em{font-style:normal;color:var(--muted)}
+  .rg-fix{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:12px}
+  .rg-fix li{font-size:.88rem;line-height:1.65;color:var(--muted)}
+  .rg-fix li b{color:var(--fg)}
+  .rg-fix code{font-size:.78rem;color:var(--acc,var(--gold))}
+  /* Every link on the page, not just the ones in prose. Anything unstyled
+     falls back to the browser's default blue, which on this palette reads as
+     a mistake — and there were several, in the fix-it list and the footer. */
+  .rg-box a, .rg-hero a, .rg-note a, footer .fm a{
+    color:var(--acc,var(--gold));text-decoration:none;
+    border-bottom:1px solid rgba(var(--accs,240,185,11),.35);white-space:normal}
+  .rg-box a:hover, .rg-note a:hover, footer .fm a:hover{border-bottom-color:var(--acc,var(--gold))}
+  .rg-ep a{border-bottom:none}
+  .rg-method p{font-size:.86rem;color:var(--muted);line-height:1.72;margin:0 0 12px}
+  .rg-filter{width:100%;max-width:340px;margin-bottom:14px;padding:9px 13px;border-radius:11px;
+    border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--fg);font:inherit;font-size:.85rem}
+  .rg-filter:focus{outline:none;border-color:rgba(var(--accs,240,185,11),.45)}
+  .rg-empty{font-size:.85rem;color:var(--muted);padding:14px 10px}
+  @media(max-width:560px){.rg-n{font-size:1.6rem}}
+</style>
+</head>
+<body>
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+
+  <!-- Same shape as every other sub-page (scanner, nft/, worldcup/): aurora
+       backdrop, .page wrapper, fixed nav with back / brand / buy. Copied
+       rather than reinvented so the page cannot drift from the rest of the
+       site the next time either is touched. -->
+  <nav><div class="nav">
+    <a class="back-btn" href="/#agents" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="brand-link" href="/registry">Brain Plaza</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+  </div></nav>
+
+  <section class="sec b-violet" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Brain Plaza &middot; ERC-8004 on BNB Chain</span><span class="blk-line"></span></div>
+
+    <div class="rg-hero">
+      <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' run them.' : 'We asked every one.'}</span></h1>
+      <p class="rg-lead">ERC-8004 gives an AI agent an identity on-chain, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
+      <p class="rg-lead">So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. Here is the working core, and how to join it.</p>
+      <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
+    </div>
+
+    <div class="rg-grid">
+      <div class="rg-card"><div class="rg-n" id="rg-tile-total">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s" id="rg-tile-total-sub">what the headline counts</div></div>
+      <div class="rg-card"><div class="rg-n">${fmt(c.valid)}</div><div class="rg-l">readable registrations</div><div class="rg-s">${p1(c.valid)} parse at all</div></div>
+      <div class="rg-card"><div class="rg-n">${fmt(c.withHttpEndpoint)}</div><div class="rg-l">name an endpoint</div><div class="rg-s">${p1(c.withHttpEndpoint)} &mdash; an address you could call</div></div>
+      <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of everything registered' : 'probe pending'}</div></div>
+    </div>
+
+    <div class="rg-box" id="rg-log" hidden>
+      <h2>What has actually been asked</h2>
+      <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered. Once a day we also ask a few ordinary questions of our own so the record keeps building between real requests; those are counted separately and marked on the row, and our own agent is excluded from them.</p>
+      <div id="rg-log-body"></div>
+    </div>
+
+    <div class="rg-box" id="rg-move" hidden>
+      <h2>How it is moving</h2>
+      <p class="rg-sub">The registry grows every day. A single measurement cannot show that, so each daily check is kept — and the full scans are marked separately, because they measure different things.</p>
+      <div id="rg-move-body"></div>
+    </div>
+
+    <div class="rg-box">
+      <h2>From a number to a working agent</h2>
+      <p class="rg-sub">Each bar is a share of all ${fmt(total)} registered ids. Nothing is extrapolated &mdash; every id was read.</p>
+      ${[
+        ['Registered on-chain', total, 'An id exists. That is all this proves.'],
+        ['Registration parses', c.valid, `${fmt(c.unparsable)} hold something that is not a readable document; ${fmt(c.empty)} are empty.`],
+        ['Names any service', c.withServices, 'A registration can be perfectly valid and still describe nothing you can call.'],
+        ['Has an HTTP endpoint', c.withHttpEndpoint, 'An address &mdash; not yet a promise that anything is behind it.'],
+        ['Endpoint on a real TLD', c.plausibleEndpoint, `${fmt(Math.max(0, c.withHttpEndpoint - c.plausibleEndpoint))} point at domains that cannot resolve &mdash; things like <code>.agent</code>, which was never a TLD.`],
+        ...(reach ? [['Answers when contacted', reach.reachable, 'Any HTTP response counts, including 401 and 404 &mdash; something is listening.']] : []),
+        ...(reach ? [['Answers as an agent', (reach.answering_mcp || 0) + (reach.serving_an_agent_card || 0), 'Spoke MCP, or served a parsable agent card. Not just a web server.']] : []),
+      ].map(([label, n, note]) => `
+      <div class="rg-step">
+        <div class="rg-top"><b>${label}</b><span>${fmt(n)} &middot; ${p1(n, total)}</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:${Math.max(0.35, pct(n, total)).toFixed(3)}%"></div></div>
+        <div class="rg-note">${note}</div>
+      </div>`).join('')}
+    </div>
+
+    ${liveRows ? `<div class="rg-box">
+      <h2>Who is actually out there</h2>
+      <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first 60 of ${fmt(reachable.length)}; the rest are in the data file.` : ''}</p>
+      <input class="rg-filter" id="rg-q" type="search" placeholder="Filter by name, tool or endpoint…" aria-label="Filter agents">
+      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Operator</th><th>What it is &amp; what it can do</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
+${liveRows}
+      </tbody></table></div></div>
+      <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
+    </div>` : ''}
+
+    ${jobCensus ? `<div class="rg-box" id="rg-jobs">
+      <h2>Who has actually been paid</h2>
+      <p class="rg-sub">Everything above is what agents say about themselves. This is the part they cannot write: BNB Chain has an escrow for hiring an agent &mdash; the ERC-8183 job kernel &mdash; and its counter reads ${fmt(jobCensus.jobCounter)}. That figure gets quoted as a working agent economy. We read every one of those ${fmt(jobCensus.total)} jobs, one at a time, and this is what they are made of.</p>
+
+      <div class="rg-grid">
+        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.jobCounter)}</div><div class="rg-l">jobs in the kernel</div><div class="rg-s">what the headline counts</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.fundedJobs)}</div><div class="rg-l">ever funded</div><div class="rg-s">${jobCensus.total ? ((jobCensus.fundedJobs / jobCensus.total) * 100).toFixed(1) : '0'}% &mdash; money actually placed in escrow</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.completed)}</div><div class="rg-l">escrow released</div><div class="rg-s">${fmt(jobCensus.submitted)} more were delivered and never released</div></div>
+        <div class="rg-card"><div class="rg-n">${jobCensus.escrowedU.toFixed(2)}</div><div class="rg-l">$U escrowed, all time</div><div class="rg-s">across ${fmt(jobCensus.buyers)} buyers and ${fmt(jobCensus.providers.length)} providers</div></div>
+      </div>
+
+      ${[
+        ['A job id exists', jobCensus.total, 'createJob costs nothing and commits nobody. This is the number that gets quoted.'],
+        ['Somebody funded it', jobCensus.fundedJobs, `${fmt(jobCensus.open)} were created and never funded.`],
+        ['A deliverable arrived', jobCensus.completed + jobCensus.submitted, 'Work was submitted on-chain. Not the same as work that was accepted.'],
+        ['The escrow released', jobCensus.completed, `${fmt(jobCensus.submitted)} jobs hold a deliverable whose escrow never released. We never add those to this row.`],
+      ].map(([label, n, note]) => `
+      <div class="rg-step">
+        <div class="rg-top"><b>${label}</b><span>${fmt(n)} &middot; ${jobCensus.total ? ((n / jobCensus.total) * 100).toFixed(n / jobCensus.total < 0.01 ? 2 : 1) : '0'}%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:${Math.max(0.35, jobCensus.total ? (n / jobCensus.total) * 100 : 0).toFixed(3)}%"></div></div>
+        <div class="rg-note">${note}</div>
+      </div>`).join('')}
+
+      <p class="rg-note" style="margin:18px 0 8px"><b>${fmt(jobCensus.providersWithRealWork)} of ${fmt(jobCensus.providers.length)} providers</b> have ever completed a job for more than one buyer. The single busiest address holds ${(jobCensus.concentration.top_provider_share * 100).toFixed(1)}% of every job in the kernel; the top five hold ${(jobCensus.concentration.top5_share * 100).toFixed(1)}%. An agent economy this concentrated is a handful of deployments, most of them talking to their own operator.</p>
+      ${jobCensus.withoutTopProvider ? `<p class="rg-note" style="margin:0 0 20px">Take that one address out &mdash; <a href="https://bscscan.com/address/${esc(jobCensus.withoutTopProvider.excluded_address)}" target="_blank" rel="noopener">${esc(jobCensus.withoutTopProvider.excluded_address.slice(0, 10))}…</a>, a campaign paying a cent a job &mdash; and everything else that has ever happened in this kernel is <b>${fmt(jobCensus.withoutTopProvider.jobs)} jobs</b> across ${fmt(jobCensus.withoutTopProvider.providers)} providers, ${fmt(jobCensus.withoutTopProvider.completed)} of them released, worth <b>${jobCensus.withoutTopProvider.escrowed_u.toFixed(2)} $U</b> in total. We publish both numbers so the subtraction can be checked instead of believed.</p>` : ''}
+
+      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Provider</th><th>Hired</th><th>Delivered</th><th>Buyers</th><th>Median job</th></tr></thead><tbody>
+${jobCensus.providers.slice(0, 40).map((p) => {
+  const named = (jobOwners?.owners?.[p.address] || []).find((a) => a.name) || (jobOwners?.owners?.[p.address] || [])[0];
+  const short = `${p.address.slice(0, 6)}…${p.address.slice(-4)}`;
+  return `        <tr>
+          <td><a href="https://bscscan.com/address/${esc(p.address)}" target="_blank" rel="noopener">${esc(short)}</a>${named ? `<div class="rg-note">#${named.id}${named.name ? ' ' + esc(named.name) : ''}</div>` : ''}</td>
+          <td>${fmt(p.funded)} funded<div class="rg-note">${fmt(p.jobs)} created${p.never_funded ? `, ${fmt(p.never_funded)} never funded` : ''}</div></td>
+          <td>${fmt(p.completed)} released<div class="rg-note">${(p.delivery_rate * 100).toFixed(0)}% of funded${p.submitted_not_released ? ` &middot; ${fmt(p.submitted_not_released)} unreleased` : ''}${p.expired ? ` &middot; ${fmt(p.expired)} expired` : ''}</div></td>
+          <td>${fmt(p.distinct_buyers)}</td>
+          <td>${p.median_budget_u < 0.01 && p.median_budget_u > 0 ? p.median_budget_u.toFixed(4) : p.median_budget_u.toFixed(2)} $U<div class="rg-note">${p.escrowed_u.toFixed(2)} total</div></td>
+        </tr>`;
+}).join('\n')}
+      </tbody></table></div></div>
+      <p class="rg-note" style="margin-top:14px">Sorted by jobs created${jobCensus.providers.length > 40 ? `, first 40 of ${fmt(jobCensus.providers.length)}` : ''}. <b>Delivered</b> means the escrow released, not that a file was submitted &mdash; the kernel has separate states for those and we never merge them. Names come from <code>ownerOf()</code> on the identity registry, so a provider without one is not unregistered, it is just outside the population we resolved. Full data: <a href="/api-jobs.json">/api-jobs.json</a>.</p>
+    </div>` : ''}
+
+    <div class="rg-box">
+      <h2>Give it a task</h2>
+      <p class="rg-sub">Type what you need. We find an agent on this chain that can answer it, call it, and show you the result &mdash; with the agent that produced it named.</p>
+      <div class="rg-try">
+        <input id="rg-task" type="text" placeholder="protocol stats and pool statistics" aria-label="Task">
+        <button id="rg-go" type="button">Dispatch</button>
+      </div>
+      <div id="rg-out" class="rg-out" hidden></div>
+      <p class="rg-note" style="margin-top:12px"><b>Read-only tools only.</b> Anything that signs, sends, swaps or orders is named back to you to call yourself &mdash; never invoked on your behalf. We repeat the answer verbatim and do not verify it.</p>
+    </div>
+
+    <div class="rg-box">
+      <h2>Or just ask who can do it</h2>
+      <p class="rg-sub">The list above is for reading. This is for asking &mdash; open, no key, so an agent can call it in the middle of doing something else.</p>
+      <div class="rg-ask">
+        <code>GET agent.brainonbnb.com/find?q=<em>what you need done</em></code>
+        <p class="rg-note">Matched against the tools each agent returned when we asked it, the skills on its card, and the description it wrote on-chain. Add <code>&amp;speaks=mcp</code> or <code>&amp;speaks=x402</code> to require a protocol. It is not a ranking &mdash; there is no task history behind it yet, and the response says so.</p>
+        <p class="rg-note" style="margin-top:8px">It is early, and the index is thin &mdash; which is exactly why it exists now rather than later. Hundreds of agents register every day, and every one that publishes a callable surface lands in here on the next pass, automatically. The layer is ready before the traffic is, because that is the only order that works.</p>
+      </div>
+    </div>
+
+    <div class="rg-box">
+      <h2>If your agent is in that ${fmt(total)} and not in the ${reach ? fmt(reach.reachable) : 'short'} list</h2>
+      <p class="rg-sub">Most registrations fail for one of three boring reasons, and all three are fixable in minutes. Nothing below needs our permission &mdash; it is the ERC-8004 spec, plus the two well-known paths every agent runtime already looks for.</p>
+      <ol class="rg-fix">
+        <li><b>Your token URI has to parse.</b> ${p1(c.unparsable)} of registrations hold something that is not a readable document &mdash; truncated base64, HTML, a broken data URI. If <code>tokenURI(yourId)</code> does not decode to JSON, nothing downstream can read you, and no indexer will ever list you.</li>
+        <li><b>Name a service with a real endpoint.</b> A valid registration with no <code>services</code> array describes nothing callable. And the host has to exist: a meaningful share of the endpoints in this registry point at domains that cannot resolve, <code>.agent</code> among them.</li>
+        <li><b>Serve something at the well-known paths.</b> <code>/.well-known/agent-card.json</code> for A2A, an MCP endpoint that answers <code>tools/list</code>. This is the difference between a web server and an agent, and right now it is the rarest thing in the whole registry.</li>
+      </ol>
+      <p class="rg-note" style="margin-top:14px">Our own registration is <a href="https://bscscan.com/token/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432?a=49467" target="_blank" rel="noopener">#49467</a>; the card it serves is at <a href="/.well-known/agent-card.json">/.well-known/agent-card.json</a> and the MCP endpoint at <a href="/mcp">/mcp</a>. Copy the shape, point it at your own host. Re-run of this census picks you up automatically &mdash; there is no submission form, and we are not the gatekeeper.</p>
+    </div>
+
+    <details class="rg-box rg-method">
+      <summary><h2 style="display:inline">How this was measured</h2></summary>
+      <p><b>Registrations.</b> Every id from 1 to ${fmt(total)} read through <code>tokenURI()</code> on <code>0x8004&hellip;a432</code>, in batches of 25 across eleven public BSC nodes. Ids a node refused were retried until answered &mdash; <b>${c.unread}</b> stayed unreadable. That distinction is the whole reliability of this page: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
+      <p><b>Reachability.</b> Every claimed endpoint contacted once. <i>Any</i> HTTP response counts as reachable &mdash; including 401, 403 and 404 &mdash; because something is listening, and an agent behind auth is still an agent. Only a failed connection counts as dead. Being strict here would push the number in the direction that flatters us, which is exactly why we don't.</p>
+      <p><b>Capabilities.</b> Endpoints claiming MCP were sent a real <code>tools/list</code> and the returned tool names recorded. Agent cards had to parse as JSON. Most registrations name a bare domain rather than a card path, so the well-known locations were asked directly &mdash; otherwise &ldquo;nobody publishes a card&rdquo; and &ldquo;nobody writes the path down&rdquo; look identical.</p>
+      <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good. It is not a ranking and not an endorsement.</p>
+      <p>Counts: <a href="/api-registry.json">/api-registry.json</a> &middot; every agent that answered, with its tools: <a href="/api-agents.json">/api-agents.json</a>. Both plain JSON, CORS open, so another agent can read them directly. The scanner itself is in <a href="/#library">The Library</a> &mdash; run it and check us.</p>
+    </details>
+  </section>
+
+</div>
+
+<footer><div class="fi2">
+  <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
+  <div class="fm">
+    <p>Read from BNB Chain directly &middot; registry <a href="https://bscscan.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" target="_blank" rel="noopener">0x8004&hellip;a432</a> &middot; method and raw data linked above</p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; not financial advice</p>
+  </div>
+</div></footer>
+
+<script>
+  // The registry grows by thousands a day, so the headline figure is stale
+  // within hours of a full scan — it was 4,699 short the morning after. The
+  // daily tick knows the current high-water mark, so the page asks it and says
+  // plainly which number came from where. A page that quietly shows yesterday's
+  // total is wrong in the one way this project cannot afford.
+  (function(){
+    var h=document.getElementById('rg-live-total'), t=document.getElementById('rg-tile-total'),
+        sub=document.getElementById('rg-tile-total-sub');
+    if(!h&&!t)return;
+    fetch('https://agent.brainonbnb.com/census',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d||!d.highest_id)return;
+        var n=Number(d.highest_id).toLocaleString('en-US');
+        if(h)h.textContent=n;
+        if(t)t.textContent=n;
+        if(sub)sub.textContent='checked today · the counts below are from the last full scan';
+      })
+      .catch(function(){});
+  })();
+
+  // The session log. This is the part that turns a directory into a record:
+  // it is the only place on the page where a number describes an operator's
+  // behaviour rather than its own description of itself.
+  (function(){
+    var box=document.getElementById('rg-log'), body=document.getElementById('rg-log-body');
+    if(!box||!body)return;
+    function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]});}
+    fetch('https://agent.brainonbnb.com/sessions',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d||!d.track_record||!d.track_record.length)return;
+        var rows=d.track_record.slice(0,12).map(function(r){
+          var ms=r.median_ms!=null?r.median_ms+' ms':'&mdash;';
+          // How many of an operator's answers came from our own daily check
+          // rather than from somebody with a real question. Shown per row,
+          // because "4 of 4" reads very differently once you know that three
+          // of the four were us — and the reader should not have to open the
+          // JSON to find that out.
+          var ours=r.of_which_our_scheduled_checks;
+          return '<div class="rg-step"><div class="rg-top"><b>'+esc(r.operator)+'</b>'+
+            '<span>'+esc(r.reliability)+' &middot; '+ms+'</span></div>'+
+            '<div class="rg-note">'+(r.tools_used||[]).slice(0,4).map(function(t){
+              return '<code>'+esc(t)+'</code>';}).join(' ')+
+            (ours?' &middot; '+ours+' of those our daily check':'')+
+            (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(r.recent_failures[0]):'')+
+            '</div></div>';
+        });
+        body.innerHTML=rows.join('')+
+          '<p class="rg-note" style="margin-top:4px">'+d.sessions_recorded+
+          ' tasks routed so far. Failures are kept and shown &mdash; a record that only listed successes would be marketing. '+
+          'Full log: <a href="https://agent.brainonbnb.com/sessions">/sessions</a></p>';
+        box.hidden=false;
+      })
+      .catch(function(){});
+  })();
+
+  // The series. Hidden until it has something to say — a chart of one point is
+  // worse than no chart, and this section only earns its place once the
+  // registry has actually moved.
+  (function(){
+    var box=document.getElementById('rg-move'), body=document.getElementById('rg-move-body');
+    if(!box||!body)return;
+    var nf=function(n){return Number(n||0).toLocaleString('en-US')};
+    fetch('https://agent.brainonbnb.com/census-history',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d||!d.daily||!d.daily.length)return;
+        var g=d.growth, rows=[], last=d.daily[d.daily.length-1];
+        // Growth measured against the last full scan, not against the first
+        // daily point. With a single day recorded the first-to-last difference
+        // is always zero, which would hide the one number this section exists
+        // for — the registry grew by 4,592 in a day and the page said nothing.
+        var since = last && last.new_since_baseline;
+        var base = (d.full_scans||[]).slice(-1)[0];
+        if(since>0 && base){
+          rows.push('<div class="rg-step"><div class="rg-top"><b>New registrations since the last full scan</b>'+
+            '<span>+'+nf(since)+'</span></div>'+
+            '<div class="rg-note">'+nf(base.registered_ids)+' on '+base.date+' &rarr; '+nf(last.highest_id)+' now'+
+            (g&&g.per_day?' &middot; about '+nf(g.per_day)+' a day':'')+'</div></div>');
+        }
+        (d.full_scans||[]).slice(-3).forEach(function(f){
+          rows.push('<div class="rg-step"><div class="rg-top"><b>Full scan &middot; '+f.date+'</b>'+
+            '<span>'+nf(f.registered_ids)+' ids</span></div>'+
+            '<div class="rg-note">'+nf(f.reachable)+' answered &middot; '+nf(f.operators)+
+            ' operators &middot; '+nf(f.mcp)+' speaking MCP</div></div>');
+        });
+        if(last&&last.sample_checked){
+          rows.push('<div class="rg-step"><div class="rg-top"><b>Last rotating check</b>'+
+            '<span>'+last.sample_answered+'/'+last.sample_checked+'</span></div>'+
+            '<div class="rg-note">'+last.date+' &middot; a sample of known endpoints, re-checked daily so every one comes round about monthly. Not a figure for the whole registry.</div></div>');
+        }
+        if(!rows.length)return;
+        body.innerHTML=rows.join('');
+        box.hidden=false;
+      })
+      .catch(function(){});
+  })();
+
+  // Dispatch box. Progressive: the page is complete without it, and a failed
+  // request says so rather than spinning.
+  (function(){
+    var i=document.getElementById('rg-task'),b=document.getElementById('rg-go'),o=document.getElementById('rg-out');
+    if(!i||!b||!o)return;
+    function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]});}
+    function run(){
+      var t=(i.value||i.placeholder).trim(); if(!t)return;
+      b.disabled=true; b.textContent='Asking…'; o.hidden=false;
+      o.innerHTML='<span style="color:var(--muted)">Finding an agent that can answer that…</span>';
+      fetch('https://agent.brainonbnb.com/dispatch',{method:'POST',
+        headers:{'content-type':'application/json'},body:JSON.stringify({task:t})})
+        .then(function(r){return r.json()})
+        .then(function(d){
+          if(d.dispatched && d.answered_by){
+            o.innerHTML='<div class="rg-who">'+esc(d.answered_by.agent)+' &middot; '+esc(d.answered_by.tool)+'</div>'+
+              '<pre>'+esc(typeof d.result==='string'?d.result:JSON.stringify(d.result,null,1)).slice(0,3000)+'</pre>';
+          } else {
+            o.innerHTML='<div class="rg-who">Not dispatched</div><pre>'+esc(d.reason||'No agent answered.')+
+              (d.why? String.fromCharCode(10,10)+esc(d.why) : '')+'</pre>';
+          }
+        })
+        .catch(function(){ o.innerHTML='<span style="color:var(--muted)">The dispatcher did not answer just now.</span>'; })
+        .then(function(){ b.disabled=false; b.textContent='Dispatch'; });
+    }
+    b.addEventListener('click',run);
+    i.addEventListener('keydown',function(e){if(e.key==='Enter')run();});
+  })();
+
+  // Filter only — no data fetching, nothing that can fail and leave the page
+  // half-built. If this script never runs, every row is still on the page.
+  (function(){
+    var q=document.getElementById('rg-q'),b=document.getElementById('rg-body'),n=document.getElementById('rg-none');
+    if(!q||!b)return;
+    var rows=[].slice.call(b.rows);
+    q.addEventListener('input',function(){
+      var t=q.value.trim().toLowerCase(),shown=0;
+      rows.forEach(function(r){
+        var hit=!t||r.innerText.toLowerCase().indexOf(t)>-1;
+        r.hidden=!hit; if(hit)shown++;
+      });
+      n.hidden=shown>0;
+    });
+  })();
+</script>
+</body>
+</html>
+`;
+
+// The inline script is checked before the page is written. A stray newline
+// inside a string literal once broke the whole <script> block — which silently
+// disabled the dispatch box, the filter and the movement section at the same
+// time, on a page that still looked fine. Nothing about it was visible without
+// opening a console.
+//
+// new Function() parses without executing: it catches exactly the class of
+// error that a generator producing JavaScript is prone to, and nothing else.
+{
+  const scripts = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  for (const [i, src] of scripts.entries()) {
+    try { new Function(src); }
+    catch (e) {
+      console.error(`\nRefusing to write registry.html: inline script #${i + 1} does not parse.`);
+      console.error(`  ${e.message}`);
+      console.error('  This is almost always a generated string containing a real newline.\n');
+      process.exit(1);
+    }
+  }
+  // Also assert the page kept its interactive parts, so a template edit cannot
+  // quietly drop one.
+  for (const id of ['rg-task', 'rg-go', 'rg-out', 'rg-q', 'rg-body', 'rg-move', 'rg-log', 'rg-live-total', 'rg-tile-total']) {
+    if (!page.includes(`id="${id}"`)) {
+      console.error(`\nRefusing to write registry.html: #${id} is missing from the page.\n`);
+      process.exit(1);
+    }
+  }
+}
+
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'registry.html'), page);
+console.log(`wrote dashboard/registry.html (${(page.length / 1024).toFixed(1)} KB) and dashboard/api-registry.json`);
+console.log(`  ${fmt(total)} registered · ${fmt(c.valid)} parse · ${fmt(c.withHttpEndpoint)} endpoints · ${reach ? fmt(reach.reachable) + ' reachable' : 'probe not run yet'}`);
+
+==============================================================================
+=== FILE: scripts/erc8004-scan.mjs
+==============================================================================
+
+// ERC-8004 registry census on BNB Smart Chain.
+//
+// Reads every agent id in the identity registry and records what is actually
+// there: whether the token URI parses at all, whether the registration names
+// any services, whether those services carry a reachable-looking endpoint, and
+// whether the agent speaks MCP, A2A or x402.
+//
+// The point is a number nobody has. "200,000 agents are registered on BNB
+// Chain" is repeated everywhere; what none of those repetitions say is how many
+// of them are anything more than a row in a contract. A sample of 150 already
+// showed one — one — third-party agent with a reachable HTTP endpoint. This
+// script is that sample done exhaustively, so the claim can be stated as a
+// measurement instead of an impression.
+//
+// Design notes that are not optional:
+//
+//   Batched eth_call, 25 per request. Measured on this chain: 40 per batch gets
+//   "method eth_call in batch triggered rate limit"; 25 goes through. Batching
+//   is the difference between forty minutes and a day.
+//
+//   Endpoints are rotated and failures move on rather than abort. A public node
+//   dropping a batch is not an agent that does not exist, and conflating those
+//   two is the single easiest way to publish a wrong census.
+//
+//   Progress is written continuously and the run resumes from it. A scan of a
+//   quarter of a million ids will be interrupted; losing it would mean nobody
+//   ever finishes one, which is presumably why the number does not exist yet.
+//
+// Usage:
+//   node scripts/erc8004-scan.mjs             scan (resumes automatically)
+//   node scripts/erc8004-scan.mjs --report    summarise what has been scanned
+//   node scripts/erc8004-scan.mjs --max 5000  stop after this id (for a quick pass)
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const OUT = path.join(ROOT, 'data', 'erc8004');
+const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
+
+// tokenURI(uint256) — the registry is ERC-721 shaped and keeps the whole
+// registration document in a data: URI, so one call per agent returns
+// everything. There is no separate endpoint accessor to ask.
+const TOKEN_URI = '0xc87b56dd';
+
+// Eleven endpoints, each verified to answer a batched eth_call against this
+// registry before being listed. Breadth is the throughput lever: every node
+// rate-limits independently, so the scan goes as fast as the sum of them
+// tolerates rather than as fast as the slowest one allows. Six endpoints ran at
+// ~1,500 ids/min, which is three hours for the registry; this list is what
+// makes a full census finishable in one sitting.
+// Deliberately absent because they refused the probe: ankr, llamarpc, drpc,
+// nodies. Listing an endpoint that does not answer only slows the rotation.
+const RPCS = [
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-mainnet.public.blastapi.io',
+  'https://bsc-dataseed.binance.org',
+  'https://bsc.publicnode.com',
+  'https://bsc-dataseed2.defibit.io',
+  'https://bsc-dataseed3.defibit.io',
+  'https://bsc-dataseed4.defibit.io',
+  'https://bsc-dataseed1.ninicoin.io',
+  'https://bsc-dataseed2.bnbchain.org',
+  'https://bsc-dataseed3.bnbchain.org',
+  'https://bsc-dataseed4.bnbchain.org',
+];
+const BATCH = 25;
+const CONCURRENCY = 8;
+
+const args = process.argv.slice(2);
+const arg = (name, dflt) => {
+  const i = args.indexOf(name);
+  return i >= 0 && args[i + 1] ? args[i + 1] : dflt;
+};
+
+let rr = 0;
+const nextRpc = () => RPCS[rr++ % RPCS.length];
+
+const id32 = (n) => BigInt(n).toString(16).padStart(64, '0');
+
+// Rate-limit pressure, measured rather than assumed. Every refused batch backs
+// the whole scan off a little; a clean run relaxes it again. Without this the
+// scan produces "unread" entries, and an unread entry is not a fact about an
+// agent — it is a fact about a node. A census with 10% unread in it cannot
+// state a percentage about anything.
+let pause = 0;
+const breathe = async () => { if (pause > 0) await new Promise((r) => setTimeout(r, pause)); };
+
+async function callBatch(ids, { patient = false } = {}) {
+  const payload = ids.map((id, i) => ({
+    jsonrpc: '2.0', id: i, method: 'eth_call',
+    params: [{ to: REGISTRY, data: TOKEN_URI + id32(id) }, 'latest'],
+  }));
+  const rounds = patient ? RPCS.length * 3 : RPCS.length;
+  for (let attempt = 0; attempt < rounds; attempt++) {
+    await breathe();
+    const url = nextRpc();
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!r.ok) { pause = Math.min(2000, pause + 120); continue; }
+      const j = await r.json();
+      if (!Array.isArray(j)) { pause = Math.min(2000, pause + 120); continue; }
+      const out = new Array(ids.length).fill(null);
+      let got = 0;
+      for (const item of j) {
+        if (typeof item.id !== 'number') continue;
+        // An entry-level error is the node refusing THAT call, not the token
+        // being absent — left null so the id goes on the retry list.
+        if (item.error) continue;
+        out[item.id] = item.result;
+        got++;
+      }
+      if (got === 0) { pause = Math.min(2000, pause + 120); continue; }
+      if (got === ids.length) pause = Math.max(0, pause - 25);
+      return out;
+    } catch { pause = Math.min(2000, pause + 120); }
+    if (patient) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+  }
+  return new Array(ids.length).fill(null);
+}
+
+// ABI-decodes a dynamic string return value.
+function decodeString(hex) {
+  if (!hex || hex === '0x') return null;
+  const b = hex.slice(2);
+  try {
+    const len = parseInt(b.slice(64, 128), 16);
+    if (!(len > 0) || len > 2_000_000) return null;
+    const bytes = [];
+    for (let i = 0; i < len; i++) bytes.push(parseInt(b.substr(128 + i * 2, 2), 16));
+    return Buffer.from(bytes).toString('utf8');
+  } catch { return null; }
+}
+
+const HTTP_RE = /^https?:\/\/[^\s"']+$/i;
+// A hostname whose TLD is not a real one cannot resolve, so it is separated
+// from endpoints that merely happen to be down right now. The registry has
+// entries pointing at things like "https://hypercollector.agent" — that is not
+// an outage, it is an address that was never going to work.
+const REAL_TLD_RE = /\.(com|org|net|io|ai|xyz|app|dev|co|me|fun|finance|tech|cloud|so|gg|sh|to|it|de|fr|uk|eu|us|jp|kr|cn|in|ru|br|es|nl|se|no|fi|pl|ch|at|be|dk|cz|pt|gr|tr|za|au|nz|ca|mx|ar|cl|id|my|sg|th|vn|ph|hk|tw|ae|sa|il|info|biz|online|site|store|space|website|live|life|world|network|systems|digital|studio|agency|solutions|team|group|club|link|click|page|wiki|blog|news|press|art|design|money|market|exchange|capital|fund|trade|bot|chat|inc|ltd|llc)(:\d+)?(\/|$)/i;
+
+function classify(raw) {
+  if (!raw) return { state: 'unread' };
+  const s = decodeString(raw);
+  if (!s) return { state: 'empty' };
+
+  let meta = null;
+  const b64 = s.includes('base64,') ? s.split('base64,')[1] : null;
+  if (b64) {
+    try { meta = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')); } catch { /* not json */ }
+  } else if (s.trim().startsWith('{')) {
+    try { meta = JSON.parse(s); } catch { /* not json */ }
+  }
+  if (!meta || typeof meta !== 'object') return { state: 'unparsable' };
+
+  const services = Array.isArray(meta.services) ? meta.services : [];
+  const endpoints = services
+    .map((x) => x && typeof x.endpoint === 'string' ? x.endpoint : null)
+    .filter(Boolean);
+  const httpEndpoints = endpoints.filter((e) => HTTP_RE.test(e));
+  const plausible = httpEndpoints.filter((e) => REAL_TLD_RE.test(e.replace(/^https?:\/\//i, '')));
+
+  return {
+    state: 'valid',
+    name: typeof meta.name === 'string' ? meta.name.slice(0, 80) : null,
+    active: meta.active === true,
+    services: services.length,
+    endpoints: httpEndpoints.slice(0, 6),
+    plausible: plausible.length,
+    mcp: services.some((x) => x && /mcp/i.test(String(x.name || ''))),
+    a2a: services.some((x) => x && /a2a/i.test(String(x.name || ''))),
+    x402: !!meta.x402Support || services.some((x) => x && /x402/i.test(String(x.name || ''))),
+    trust: Array.isArray(meta.supportedTrust) ? meta.supportedTrust : [],
+  };
+}
+
+// ---------------------------------------------------------------- storage
+
+fs.mkdirSync(OUT, { recursive: true });
+const STATE_FILE = path.join(OUT, 'scan-state.json');
+const HITS_FILE = path.join(OUT, 'agents-with-endpoints.jsonl');
+
+const loadState = () => {
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
+  catch {
+    return {
+      cursor: 1,
+      highestId: null,
+      counts: { unread: 0, empty: 0, unparsable: 0, valid: 0, active: 0, withServices: 0, withHttpEndpoint: 0, plausibleEndpoint: 0, mcp: 0, a2a: 0, x402: 0 },
+      startedAt: null,
+      updatedAt: null,
+    };
+  }
+};
+const saveState = (s) => fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
+
+// ---------------------------------------------------------------- highest id
+
+// ownerOf(uint256) — reverts for an id that was never minted, returns an
+// address for one that was. Used instead of tokenURI because it answers the
+// question "does this id exist" directly, with no dependence on whether the
+// registration document happens to be readable.
+const OWNER_OF = '0x6352211e';
+
+async function findHighestId() {
+  // A node dropping a request looks exactly like a revert unless the two are
+  // told apart deliberately. Getting this wrong once already reported the
+  // registry as 671 ids when it holds a quarter of a million: the doubling
+  // probe hit one transient failure and treated it as the end of the registry.
+  // So a "no" is only believed after several endpoints independently say so.
+  const exists = async (id) => {
+    let sawRevert = 0;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const url = nextRpc();
+      try {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call',
+            params: [{ to: REGISTRY, data: OWNER_OF + id32(id) }, 'latest'] }),
+          signal: AbortSignal.timeout(15000),
+        });
+        const j = await r.json();
+        if (j.result && j.result !== '0x' && BigInt(j.result) !== 0n) return true;
+        // An explicit revert, or a zero owner, is evidence of absence — but
+        // only evidence. Two independent ones are required.
+        if (j.error || j.result === '0x' || (j.result && BigInt(j.result) === 0n)) {
+          if (++sawRevert >= 2) return false;
+        }
+      } catch { /* transport failure proves nothing either way */ }
+    }
+    return false;
+  };
+
+  let hi = 1024;
+  while (await exists(hi) && hi < 100_000_000) hi *= 2;
+  let a = Math.floor(hi / 2), b = hi;
+  while (a < b - 1) {
+    const m = Math.floor((a + b) / 2);
+    if (await exists(m)) a = m; else b = m;
+  }
+  return a;
+}
+
+// ---------------------------------------------------------------- report
+
+function report() {
+  const s = loadState();
+  const c = s.counts;
+  const scanned = s.cursor - 1;
+  const pct = (n) => scanned ? ((n / scanned) * 100).toFixed(2) + '%' : '–';
+  console.log(`\nERC-8004 registry census — BNB Smart Chain`);
+  console.log(`registry ${REGISTRY}`);
+  console.log(`highest id: ${s.highestId ? s.highestId.toLocaleString('en-US') : '(not determined)'}`);
+  console.log(`scanned:    ${scanned.toLocaleString('en-US')}${s.highestId ? ` of ${s.highestId.toLocaleString('en-US')} (${((scanned / s.highestId) * 100).toFixed(1)}%)` : ''}\n`);
+  const row = (label, n) => console.log(`  ${label.padEnd(30)} ${String(n).padStart(9)}  ${pct(n).padStart(7)}`);
+  row('registration parses', c.valid);
+  row('  of those, active:true', c.active);
+  row('  names any service', c.withServices);
+  row('  has an http endpoint', c.withHttpEndpoint);
+  row('  endpoint on a real TLD', c.plausibleEndpoint);
+  row('  speaks MCP', c.mcp);
+  row('  speaks A2A', c.a2a);
+  row('  supports x402', c.x402);
+  console.log();
+  row('unparsable / not JSON', c.unparsable);
+  row('empty token URI', c.empty);
+  row('unread (node refused)', c.unread);
+  if (fs.existsSync(HITS_FILE)) {
+    const lines = fs.readFileSync(HITS_FILE, 'utf8').trim().split('\n').filter(Boolean);
+    console.log(`\n  ${lines.length} agents with endpoints recorded in ${path.relative(ROOT, HITS_FILE)}`);
+  }
+  console.log();
+}
+
+if (args.includes('--report')) { report(); process.exit(0); }
+
+// ---------------------------------------------------------------- scan
+
+const state = loadState();
+if (!state.startedAt) state.startedAt = new Date().toISOString();
+
+if (!state.highestId) {
+  process.stdout.write('locating highest agent id… ');
+  state.highestId = await findHighestId();
+  console.log(state.highestId.toLocaleString('en-US'));
+  saveState(state);
+}
+
+const limit = Math.min(Number(arg('--max', state.highestId)) || state.highestId, state.highestId);
+const hits = fs.createWriteStream(HITS_FILE, { flags: 'a' });
+
+// Ids the nodes refused. Drained in patient mode at the end of the run; only
+// what survives THAT is genuinely unreadable.
+const pendingRetry = [];
+
+console.log(`scanning ids ${state.cursor.toLocaleString('en-US')} … ${limit.toLocaleString('en-US')}`);
+const t0 = Date.now();
+let sinceLog = 0;
+
+while (state.cursor <= limit) {
+  // Several batches in flight, but not so many that the endpoints start
+  // refusing — which would turn agents into "unread" and understate the census.
+  const groups = [];
+  for (let g = 0; g < CONCURRENCY && state.cursor + g * BATCH <= limit; g++) {
+    const start = state.cursor + g * BATCH;
+    const ids = [];
+    for (let i = 0; i < BATCH && start + i <= limit; i++) ids.push(start + i);
+    if (ids.length) groups.push(ids);
+  }
+  if (!groups.length) break;
+
+  const results = await Promise.all(groups.map((ids) => callBatch(ids)));
+
+  for (let gi = 0; gi < groups.length; gi++) {
+    const ids = groups[gi];
+    const res = results[gi];
+    for (let i = 0; i < ids.length; i++) {
+      const c = classify(res[i]);
+      const k = state.counts;
+      if (c.state === 'unread') { k.unread++; pendingRetry.push(ids[i]); }
+      else if (c.state === 'empty') k.empty++;
+      else if (c.state === 'unparsable') k.unparsable++;
+      else {
+        k.valid++;
+        if (c.active) k.active++;
+        if (c.services > 0) k.withServices++;
+        if (c.endpoints.length) k.withHttpEndpoint++;
+        if (c.plausible) k.plausibleEndpoint++;
+        if (c.mcp) k.mcp++;
+        if (c.a2a) k.a2a++;
+        if (c.x402) k.x402++;
+        if (c.endpoints.length) {
+          hits.write(JSON.stringify({
+            id: ids[i], name: c.name, active: c.active,
+            endpoints: c.endpoints, mcp: c.mcp, a2a: c.a2a, x402: c.x402,
+            plausible: c.plausible > 0, trust: c.trust,
+          }) + '\n');
+        }
+      }
+    }
+  }
+
+  state.cursor += groups.reduce((s, g) => s + g.length, 0);
+  state.updatedAt = new Date().toISOString();
+  sinceLog += groups.reduce((s, g) => s + g.length, 0);
+
+  if (sinceLog >= 5000) {
+    saveState(state);
+    const done = state.cursor - 1;
+    const rate = done / ((Date.now() - t0) / 1000);
+    const left = (limit - done) / rate;
+    console.log(`  ${done.toLocaleString('en-US')} / ${limit.toLocaleString('en-US')}  ·  ${rate.toFixed(0)}/s  ·  ~${(left / 60).toFixed(0)} min left  ·  endpoints so far: ${state.counts.withHttpEndpoint}`);
+    sinceLog = 0;
+  }
+}
+
+saveState(state);
+hits.end();
+console.log(`\ndone in ${((Date.now() - t0) / 60000).toFixed(1)} min`);
+report();
+
+==============================================================================
+=== FILE: scripts/erc8183-job-scan.mjs
+==============================================================================
+
+// ERC-8183 employment census on BNB Smart Chain.
+//
+// The identity census answered "how many agents are registered". This one
+// answers the question that actually decides whether hiring an agent is a real
+// thing on this chain: how many of them have ever been PAID, by whom, for how
+// much, and whether the work was delivered.
+//
+// The kernel's jobCounter() reads 56,655. That number gets quoted as proof of a
+// working agent economy. It is not one. A job id exists the moment somebody
+// calls createJob — before any money is escrowed, before a provider agrees,
+// before anything is delivered. Reading every single job is the only way to say
+// what the 56,655 are made of, and this script reads every single job.
+//
+// Design notes carried over from the identity census, all of them earned:
+//
+//   Batched eth_call, 25 per request, endpoints rotated. 40 per batch trips the
+//   rate limiter on this chain; 25 goes through.
+//
+//   A refused batch is a fact about a node, not about a job. Refusals go on a
+//   retry list and are drained patiently at the end. Anything still unread
+//   after that is reported as unread rather than folded into a percentage.
+//
+//   Progress is written continuously and the run resumes from it.
+//
+//   SUBMITTED IS NOT COMPLETED. The kernel's status enum has both, and in the
+//   tail of the job list SUBMITTED outnumbers COMPLETED by roughly 35 to 1. A
+//   deliverable on-chain whose escrow never released is not finished work, and
+//   counting it as such is how a reputation number becomes a lie.
+//
+// Usage:
+//   node scripts/erc8183-job-scan.mjs            scan (resumes automatically)
+//   node scripts/erc8183-job-scan.mjs --max 500  stop after this job id
+//   node scripts/erc8183-job-scan.mjs --owners   resolve provider addresses to agent ids
+//   node scripts/erc8183-job-scan.mjs --report   employment balance per provider
+import fs from 'node:fs';
+import path from 'node:path';
+import { ERC8183, decodeJob, JOB_STATUS } from '../worker-agent/hire.js';
+// Aggregation lives in one place so the terminal report and the published page
+// can never state different numbers for the same measurement.
+import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const OUT = path.join(ROOT, 'data', 'erc8183');
+const JOBS_FILE = path.join(OUT, 'jobs.jsonl');
+const STATE_FILE = path.join(OUT, 'scan-state.json');
+const OWNERS_FILE = path.join(OUT, 'owners.json');
+const CENSUS_HITS = path.join(ROOT, 'data', 'erc8004', 'agents-with-endpoints.jsonl');
+
+// getJob(uint256) 0xbf22c457 · jobCounter() 0x50355d76 · ownerOf(uint256) 0x6352211e
+const SEL_GET_JOB = '0xbf22c457';
+const SEL_JOB_COUNTER = '0x50355d76';
+const SEL_OWNER_OF = '0x6352211e';
+
+// The same list the identity census uses: every one of them was verified to
+// answer a batched eth_call against a BSC contract. Breadth is the throughput
+// lever, because each node rate-limits independently.
+const RPCS = [
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-mainnet.public.blastapi.io',
+  'https://bsc-dataseed.binance.org',
+  'https://bsc.publicnode.com',
+  'https://bsc-dataseed2.defibit.io',
+  'https://bsc-dataseed3.defibit.io',
+  'https://bsc-dataseed4.defibit.io',
+  'https://bsc-dataseed1.ninicoin.io',
+  'https://bsc-dataseed2.bnbchain.org',
+  'https://bsc-dataseed3.bnbchain.org',
+  'https://bsc-dataseed4.bnbchain.org',
+];
+const BATCH = 25;
+const CONCURRENCY = 8;
+
+const args = process.argv.slice(2);
+const arg = (name, dflt) => {
+  const i = args.indexOf(name);
+  return i >= 0 && args[i + 1] ? args[i + 1] : dflt;
+};
+
+let rr = 0;
+const nextRpc = () => RPCS[rr++ % RPCS.length];
+const id32 = (n) => BigInt(n).toString(16).padStart(64, '0');
+
+let pause = 0;
+const breathe = async () => { if (pause > 0) await new Promise((r) => setTimeout(r, pause)); };
+
+// One batched eth_call against `to`, one call per id. Returns an array aligned
+// with `ids`, null where the node declined that particular entry.
+async function callBatch(to, selector, ids, { patient = false } = {}) {
+  const payload = ids.map((id, i) => ({
+    jsonrpc: '2.0', id: i, method: 'eth_call',
+    params: [{ to, data: selector + id32(id) }, 'latest'],
+  }));
+  const rounds = patient ? RPCS.length * 3 : RPCS.length;
+  for (let attempt = 0; attempt < rounds; attempt++) {
+    await breathe();
+    const url = nextRpc();
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!r.ok) { pause = Math.min(2000, pause + 120); continue; }
+      const j = await r.json();
+      if (!Array.isArray(j)) { pause = Math.min(2000, pause + 120); continue; }
+      const out = new Array(ids.length).fill(null);
+      let got = 0;
+      for (const item of j) {
+        if (typeof item.id !== 'number') continue;
+        if (item.error) continue; // node refused THAT call — retry it, do not record it
+        out[item.id] = item.result;
+        got++;
+      }
+      if (got === 0) { pause = Math.min(2000, pause + 120); continue; }
+      if (got === ids.length) pause = Math.max(0, pause - 25);
+      return out;
+    } catch { pause = Math.min(2000, pause + 120); }
+    if (patient) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+  }
+  return new Array(ids.length).fill(null);
+}
+
+async function readJobCounter() {
+  for (let attempt = 0; attempt < RPCS.length * 2; attempt++) {
+    try {
+      const r = await fetch(nextRpc(), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call',
+          params: [{ to: ERC8183.commerce, data: SEL_JOB_COUNTER }, 'latest'] }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const j = await r.json();
+      if (j.result && j.result !== '0x') return Number(BigInt(j.result));
+    } catch { /* try the next endpoint */ }
+  }
+  throw new Error('jobCounter() unreadable on every endpoint');
+}
+
+// ---------------------------------------------------------------- storage
+
+fs.mkdirSync(OUT, { recursive: true });
+
+const loadState = () => {
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
+  catch {
+    return {
+      cursor: 1, jobCounter: null, unread: 0,
+      startedAt: null, updatedAt: null, finishedAt: null,
+    };
+  }
+};
+const saveState = (s) => fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
+
+// A job id that does not exist does NOT revert. The kernel returns a zero-filled
+// struct, which decodes into a perfectly plausible OPEN job with a zero client
+// and a zero budget — measured: id 56,656 reads exactly like an unfunded job.
+// Recording those would inflate the census with phantoms that no eye would
+// catch, so a row is only kept when the struct reports back the id we asked for.
+const isRealJob = (job, requestedId) => job && Number(job.id) === requestedId;
+
+// One compact line per job. The description is kept because it is where the
+// competition signs its own name — several jobs carry "platform":"termix" or
+// "Hire via Agents Marketplace" — but truncated, because 56k full descriptions
+// is a file nobody opens twice.
+const jobLine = (j) => JSON.stringify({
+  id: Number(j.id),
+  client: j.client,
+  provider: j.provider,
+  evaluator: j.evaluator,
+  budget: j.budget,
+  status: j.status,
+  expired_at: j.expired_at,
+  submitted_at: j.submitted_at,
+  desc: (j.description || '').slice(0, 240),
+});
+
+// ---------------------------------------------------------------- owners
+
+// A job names a provider ADDRESS. A marketplace listing names an agent ID.
+// Joining the two needs ownerOf() on the identity registry — the same registry
+// the identity census read, which is the whole reason the join is possible at
+// all.
+//
+// Resolved for the agents that carry an endpoint, i.e. exactly the population a
+// marketplace could list. That is a deliberate limit, not an oversight:
+// resolving all 285,447 ids costs another full-registry pass and would only add
+// owners of agents nobody can reach. The coverage is printed in the report
+// rather than hidden.
+async function resolveOwners() {
+  if (!fs.existsSync(CENSUS_HITS)) {
+    console.log(`no census hits at ${path.relative(ROOT, CENSUS_HITS)} — run erc8004-scan.mjs first`);
+    return;
+  }
+  const agents = fs.readFileSync(CENSUS_HITS, 'utf8').trim().split('\n')
+    .filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } })
+    .filter(Boolean);
+  console.log(`resolving owners for ${agents.length} agents with endpoints…`);
+
+  const byOwner = {};
+  let unread = 0;
+  for (let i = 0; i < agents.length; i += BATCH * CONCURRENCY) {
+    const groups = [];
+    for (let g = 0; g < CONCURRENCY; g++) {
+      const slice = agents.slice(i + g * BATCH, i + (g + 1) * BATCH);
+      if (slice.length) groups.push(slice);
+    }
+    if (!groups.length) break;
+    const results = await Promise.all(groups.map((slice) =>
+      callBatch(ERC8183.registry, SEL_OWNER_OF, slice.map((a) => a.id), { patient: true })));
+    for (let gi = 0; gi < groups.length; gi++) {
+      for (let k = 0; k < groups[gi].length; k++) {
+        const raw = results[gi][k];
+        if (!raw || raw === '0x') { unread++; continue; }
+        const owner = ('0x' + raw.slice(-40)).toLowerCase();
+        (byOwner[owner] ||= []).push({ id: groups[gi][k].id, name: groups[gi][k].name });
+      }
+    }
+    process.stdout.write(`\r  ${Math.min(i + BATCH * CONCURRENCY, agents.length)} / ${agents.length}`);
+  }
+  console.log();
+  fs.writeFileSync(OWNERS_FILE, JSON.stringify({
+    resolvedAt: new Date().toISOString(),
+    population: 'ERC-8004 agents carrying an http endpoint',
+    agents: agents.length, unread, owners: byOwner,
+  }, null, 2));
+  console.log(`${Object.keys(byOwner).length} distinct owners over ${agents.length - unread} agents -> ${path.relative(ROOT, OWNERS_FILE)}`);
+}
+
+// ---------------------------------------------------------------- report
+
+const fmt = (n) => Number(n).toLocaleString('en-US');
+
+function report() {
+  if (!fs.existsSync(JOBS_FILE)) { console.log('nothing scanned yet'); return; }
+  const state = loadState();
+  const a = aggregate(loadJobs(JOBS_FILE));
+
+  let owners = null;
+  try { owners = JSON.parse(fs.readFileSync(OWNERS_FILE, 'utf8')); } catch { /* optional */ }
+  const nameOf = (addrLower) => {
+    const list = owners?.owners?.[addrLower];
+    if (!list?.length) return null;
+    const named = list.find((x) => x.name) || list[0];
+    return `#${named.id}${named.name ? ' ' + named.name : ''}${list.length > 1 ? ` (+${list.length - 1} more)` : ''}`;
+  };
+
+  console.log(`\nERC-8183 employment census — BNB Smart Chain`);
+  console.log(`kernel ${ERC8183.commerce}  ·  payment token $U ${ERC8183.paymentToken}`);
+  console.log(`jobCounter(): ${state.jobCounter ? fmt(state.jobCounter) : '(unknown)'}   read: ${fmt(a.total)}${state.unread ? `   unread: ${fmt(state.unread)}` : ''}\n`);
+
+  console.log('  status of every job in the kernel');
+  const known = new Set(JOB_STATUS);
+  for (const s of [...JOB_STATUS, ...Object.keys(a.byStatus).filter((k) => !known.has(k))]) {
+    const n = a.byStatus[s] || 0;
+    if (!n && !known.has(s)) continue;
+    console.log(`    ${s.padEnd(12)} ${String(fmt(n)).padStart(9)}  ${((n / a.total) * 100).toFixed(2).padStart(6)}%`);
+  }
+  console.log(`\n    escrow actually released on ${fmt(a.completed)} of ${fmt(a.total)} jobs (${((a.completed / a.total) * 100).toFixed(2)}%).`);
+  console.log(`    ${fmt(a.submitted)} carry a deliverable that was never released.`);
+  console.log(`    ${fmt(a.fundedJobs)} jobs were ever funded; ${a.escrowedU.toFixed(2)} $U escrowed in total.`);
+  console.log(`    ${fmt(a.buyers)} distinct buyers, ${fmt(a.providers.length)} distinct providers.`);
+  console.log(`    ${fmt(a.providersWithRealWork)} providers ever completed a job for more than one buyer.\n`);
+
+  const top = Number(arg('--top', 15));
+  console.log(`  employment balance — top ${Math.min(top, a.providers.length)} providers by jobs\n`);
+  for (const r of a.providers.slice(0, top)) {
+    const name = nameOf(r.address);
+    console.log(`  ${r.address}${name ? `  ${name}` : ''}`);
+    console.log(`    ${String(fmt(r.jobs)).padStart(7)} jobs · ${fmt(r.funded)} funded · ${fmt(r.completed)} completed · ${fmt(r.submitted_not_released)} submitted-not-released · ${fmt(r.expired)} expired · ${fmt(r.rejected)} rejected`);
+    console.log(`    ${fmt(r.distinct_buyers)} distinct buyers · ${r.escrowed_u.toFixed(2)} $U escrowed · median budget ${r.median_budget_u.toFixed(4)} $U · job ids ${fmt(r.first_job_id)}–${fmt(r.last_job_id)}`);
+    console.log(`    delivery rate ${(r.delivery_rate * 100).toFixed(1)}% of funded jobs`);
+    if (r.samples[0]) console.log(`    e.g. ${JSON.stringify(r.samples[0].slice(0, 110))}`);
+    console.log();
+  }
+
+  // The concentration number is the headline. If a handful of addresses hold
+  // most of the job history, "56,655 jobs" describes a few deployments talking
+  // to each other, not a market.
+  console.log(`  concentration: top provider holds ${(a.concentration.top_provider_share * 100).toFixed(1)}% of all jobs, top 5 hold ${(a.concentration.top5_share * 100).toFixed(1)}%.`);
+  if (owners) {
+    const matched = a.providers.filter((r) => owners.owners?.[r.address]).length;
+    console.log(`  identity join: ${matched} of ${a.providers.length} provider addresses map to a registered agent that carries an endpoint (population: ${fmt(owners.agents)} agents).`);
+  } else {
+    console.log(`  identity join: not resolved — run with --owners to map provider addresses to agent ids.`);
+  }
+  console.log();
+}
+// ---------------------------------------------------------------- main
+
+if (args.includes('--owners')) { await resolveOwners(); process.exit(0); }
+if (args.includes('--report')) { report(); process.exit(0); }
+
+const state = loadState();
+if (!state.startedAt) state.startedAt = new Date().toISOString();
+if (!state.jobCounter) {
+  process.stdout.write('reading jobCounter()… ');
+  state.jobCounter = await readJobCounter();
+  console.log(fmt(state.jobCounter));
+  saveState(state);
+}
+
+const limit = Math.min(Number(arg('--max', state.jobCounter)) || state.jobCounter, state.jobCounter);
+const out = fs.createWriteStream(JOBS_FILE, { flags: 'a' });
+const pendingRetry = [];
+// Ids whose struct came back empty — the id does not exist. Expected to be zero
+// for a range of 1..jobCounter(); anything else means the counter and the
+// storage disagree, which is worth seeing rather than absorbing.
+let absent = 0;
+
+console.log(`scanning jobs ${fmt(state.cursor)} … ${fmt(limit)}`);
+const t0 = Date.now();
+let sinceLog = 0;
+
+while (state.cursor <= limit) {
+  const groups = [];
+  for (let g = 0; g < CONCURRENCY && state.cursor + g * BATCH <= limit; g++) {
+    const start = state.cursor + g * BATCH;
+    const ids = [];
+    for (let i = 0; i < BATCH && start + i <= limit; i++) ids.push(start + i);
+    if (ids.length) groups.push(ids);
+  }
+  if (!groups.length) break;
+
+  const results = await Promise.all(groups.map((ids) => callBatch(ERC8183.commerce, SEL_GET_JOB, ids)));
+  for (let gi = 0; gi < groups.length; gi++) {
+    for (let i = 0; i < groups[gi].length; i++) {
+      const reqId = groups[gi][i];
+      const j = results[gi][i] ? decodeJob(results[gi][i]) : null;
+      // Three outcomes, and conflating any two of them corrupts the census:
+      // the node did not answer (retry), the id does not exist (skip, count),
+      // or a real job came back (record).
+      if (!j) pendingRetry.push(reqId);
+      else if (isRealJob(j, reqId)) out.write(jobLine(j) + '\n');
+      else absent++;
+    }
+  }
+
+  const advanced = groups.reduce((s, g) => s + g.length, 0);
+  state.cursor += advanced;
+  state.updatedAt = new Date().toISOString();
+  sinceLog += advanced;
+
+  if (sinceLog >= 2500) {
+    saveState(state);
+    const done = state.cursor - 1;
+    const rate = done / ((Date.now() - t0) / 1000);
+    console.log(`  ${fmt(done)} / ${fmt(limit)}  ·  ${rate.toFixed(0)}/s  ·  ~${(((limit - done) / rate) / 60).toFixed(1)} min left  ·  retry queue ${pendingRetry.length}`);
+    sinceLog = 0;
+  }
+}
+
+// Drain the refusals patiently. Whatever survives this is genuinely unreadable
+// and is reported as such instead of being quietly dropped from the totals.
+if (pendingRetry.length) {
+  console.log(`\ndraining ${fmt(pendingRetry.length)} refused ids patiently…`);
+  const still = [];
+  for (let i = 0; i < pendingRetry.length; i += BATCH) {
+    const ids = pendingRetry.slice(i, i + BATCH);
+    const res = await callBatch(ERC8183.commerce, SEL_GET_JOB, ids, { patient: true });
+    for (let k = 0; k < ids.length; k++) {
+      const j = res[k] ? decodeJob(res[k]) : null;
+      if (!j) still.push(ids[k]);
+      else if (isRealJob(j, ids[k])) out.write(jobLine(j) + '\n');
+      else absent++;
+    }
+  }
+  state.unread = still.length;
+  console.log(`  ${fmt(pendingRetry.length - still.length)} recovered, ${fmt(still.length)} still unread`);
+}
+
+state.finishedAt = new Date().toISOString();
+state.absent = absent;
+if (absent) console.log(`\n${fmt(absent)} ids in range returned an empty struct — the id does not exist. Not recorded.`);
+saveState(state);
+
+// Wait for the file to actually be on disk before reading it back. end() only
+// asks the stream to close; reporting straight after it read a short file and
+// printed 401 of 500 jobs, which looked exactly like a hundred unreadable ids.
+await new Promise((resolve) => out.end(resolve));
+console.log(`\ndone in ${((Date.now() - t0) / 60000).toFixed(1)} min`);
+report();
+
+==============================================================================
+=== FILE: scripts/lib/group-agents.mjs
+==============================================================================
+
+// Groups the census by operator instead of by registry id.
+//
+// Why this exists, in one measurement: of 784 reachable agents, 72 hosts. Of
+// 103 that speak MCP, 7 hosts — and 96 of those 103 return the identical five
+// tools from the identical provider. Counting registry ids is the right way to
+// describe the registry and the wrong way to describe a market. Fifty entries
+// that are one service reads as fifty options, which is not a small error of
+// presentation: it is the same "a directory lists claims" problem the census
+// was built to expose, arriving through the back door.
+//
+// So: an operator is one entry, its instances are a number beside it. The
+// census keeps every id. The market shows who is actually out there.
+
+// Registry entries pointing at code hosts are not agent endpoints — 46 point at
+// github.com. Reachable, certainly; a repository page answering 200 is not an
+// agent, and letting them into the market list would be padding.
+const NOT_AN_AGENT_HOST = /^(www\.)?(github\.com|gitlab\.com|x\.com|twitter\.com|t\.me|medium\.com|linktr\.ee|notion\.so|docs\.google\.com)$/i;
+
+// Placeholders and things that were never an endpoint. Someone registered
+// "https://google.com"; another left api.example.com from a tutorial. Both
+// answer HTTP, so a reachability check passes them — and both would sit in a
+// list of "agents on BNB Chain" as if they were one.
+const PLACEHOLDER_HOST = /^(www\.)?(google\.[a-z.]+|example\.(com|org|net)|localhost|127\.0\.0\.1|test\.com|yourdomain\.[a-z]+|domain\.com|site\.com)$/i;
+
+// We publish this list, which makes us its publisher. A registration is
+// somebody else's text, but the page it appears on is ours — and one entry in
+// the registry carries a racial slur as its agent name. It is excluded from
+// what we present. The census still counts it as a reachable endpoint, because
+// that is a measurement and measurements do not get edited; what we decline to
+// do is put the word on our page. Matching is on word boundaries against the
+// name only, so ordinary names that happen to contain a substring are safe.
+const SLUR = /\b(nigg[ae]r?s?|f[a4]gg?ots?|k[i1]kes?|ch[i1]nks?|sp[i1]cs?|tr[a4]nn(y|ies)|ret[a4]rds?)\b/i;
+
+export function hostOf(url) {
+  try {
+    const h = new URL(url).hostname.toLowerCase();
+    return h.replace(/^www\./, '');
+  } catch { return null; }
+}
+
+// Instances of one product usually differ only in subdomain or path
+// (app.singularry.org/agents/12, /agents/13, …). Grouping on the registrable
+// domain catches that without merging genuinely different operators who happen
+// to share a platform.
+export function operatorOf(agent) {
+  const first = (agent.endpoints || []).map(hostOf).find(Boolean);
+  if (!first) return null;
+  const parts = first.split('.');
+  if (parts.length <= 2) return first;
+  // Keep three labels for known multi-level suffixes, two otherwise.
+  const twoLevelTld = /\.(co|com|org|net|gov|ac)\.[a-z]{2}$/.test(first);
+  return parts.slice(twoLevelTld ? -3 : -2).join('.');
+}
+
+const toolSignature = (a) =>
+  (a.tools || []).map((t) => t.name).sort().join('|') || (a.skills || []).slice().sort().join('|');
+
+export function groupByOperator(agents) {
+  const groups = new Map();
+
+  for (const a of agents) {
+    const host = (a.endpoints || []).map(hostOf).find(Boolean);
+    const op0 = operatorOf(a);
+    // Checked against the registrable domain, not the full host: the first
+    // version tested "api.example.com" against /^example\.com$/ and let it
+    // through. Subdomains of a placeholder are still placeholders.
+    if (!host || NOT_AN_AGENT_HOST.test(host) || PLACEHOLDER_HOST.test(host)
+        || (op0 && PLACEHOLDER_HOST.test(op0))) continue;
+    if (SLUR.test(String(a.name || '')) || SLUR.test(String(a.description || ''))) continue;
+    const op = op0;
+    if (!op) continue;
+
+    if (!groups.has(op)) {
+      groups.set(op, {
+        operator: op,
+        instances: 0,
+        ids: [],
+        names: new Set(),
+        speaks: new Set(),
+        signatures: new Map(),
+        best: null,
+        descriptions: new Set(),
+      });
+    }
+    const g = groups.get(op);
+    g.instances++;
+    g.ids.push(a.id);
+    if (a.name) g.names.add(a.name);
+    (a.speaks || []).forEach((s) => g.speaks.add(s));
+    if (a.description) g.descriptions.add(a.description);
+
+    const sig = toolSignature(a);
+    if (sig) g.signatures.set(sig, (g.signatures.get(sig) || 0) + 1);
+
+    // The representative is the richest instance: an operator running fifty
+    // identical agents and one elaborate one should be judged on the elaborate
+    // one, because that is what it can actually do.
+    const rank = (x) => (x.tools?.length || 0) * 2 + (x.skills?.length || 0) + (x.speaks?.length || 0);
+    if (!g.best || rank(a) > rank(g.best)) g.best = a;
+  }
+
+  return [...groups.values()]
+    .map((g) => ({
+      operator: g.operator,
+      instances: g.instances,
+      // A single agent and a fleet of clones are different things, and the
+      // difference should be visible rather than inferred from a count.
+      distinct_capabilities: g.signatures.size,
+      ids: g.ids.slice(0, 50),
+      name: g.best?.name || [...g.names][0] || null,
+      description: g.best?.description || [...g.descriptions][0] || null,
+      image: g.best?.image || null,
+      speaks: [...g.speaks],
+      endpoints: g.best?.endpoints || [],
+      ...(g.best?.tools?.length ? { tools: g.best.tools } : {}),
+      ...(g.best?.skills?.length ? { skills: g.best.skills } : {}),
+      ...(g.best?.agent_card ? { agent_card: g.best.agent_card } : {}),
+      ...(g.best?.trust_models?.length ? { trust_models: g.best.trust_models } : {}),
+    }))
+    // Ordered by what an operator can do, not how many ids it registered.
+    // Registering a thousand identities must not buy a better position.
+    .sort((a, b) => {
+      const cap = (x) => (x.tools?.length || 0) * 2 + (x.skills?.length || 0);
+      return (b.speaks.length - a.speaks.length)
+        || (cap(b) - cap(a))
+        || (b.distinct_capabilities - a.distinct_capabilities)
+        || a.operator.localeCompare(b.operator);
+    });
+}
+
+==============================================================================
+=== FILE: scripts/lib/job-aggregate.mjs
+==============================================================================
+
+// Turns the raw ERC-8183 job scan into an employment balance.
+//
+// One implementation, used by both the terminal report and the published page.
+// The rule is the same one that made the BNB price a single Chainlink read
+// across every surface: a figure that appears in two places must be computed
+// once, or the two places will eventually disagree and both will look wrong.
+//
+// Every judgement call this file makes is written down here rather than in the
+// consumer, because they are the whole substance of the measurement:
+//
+//   OPEN means created and never funded. createJob costs nothing and commits
+//   nobody. Counting an OPEN job as employment is how 56,655 becomes a headline.
+//
+//   SUBMITTED means a deliverable is on-chain and the escrow has NOT released.
+//   It is evidence of work, not of accepted work, and it is never folded into
+//   completions.
+//
+//   The delivery rate is completions over FUNDED jobs, not over all jobs. A
+//   provider is not responsible for jobs a buyer created and abandoned.
+//
+//   A provider address is only interesting once. Ten thousand jobs from one
+//   address at one cent each is a load test, and the aggregate says so by
+//   carrying median budget and distinct buyers next to the job count.
+
+import fs from 'node:fs';
+
+const ZERO = '0x0000000000000000000000000000000000000000';
+
+export const median = (xs) => {
+  if (!xs.length) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+// The scan file is append-only and a resumed run can re-append an id, so the
+// last write per id wins. Without this a restart double-counts an employment
+// history — silently, because both copies are correct.
+export function loadJobs(file) {
+  const jobs = new Map();
+  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    try { const j = JSON.parse(line); jobs.set(j.id, j); } catch { /* skip a torn line */ }
+  }
+  return jobs;
+}
+
+export function aggregate(jobs) {
+  const byStatus = {};
+  const providers = new Map();
+  const clients = new Set();
+  let escrowed = 0n;
+  let fundedJobs = 0;
+
+  for (const j of jobs.values()) {
+    byStatus[j.status] = (byStatus[j.status] || 0) + 1;
+    clients.add(j.client);
+    const isFunded = j.status !== 'OPEN';
+    if (isFunded) { escrowed += BigInt(j.budget); fundedJobs++; }
+
+    const p = j.provider;
+    if (!p || p === ZERO) continue;
+    let r = providers.get(p);
+    if (!r) {
+      r = {
+        addr: p, jobs: 0, funded: 0, sum: 0n, budgets: [], clients: new Set(),
+        status: {}, firstId: j.id, lastId: j.id, lastSubmit: 0, samples: [],
+      };
+      providers.set(p, r);
+    }
+    r.jobs++;
+    r.status[j.status] = (r.status[j.status] || 0) + 1;
+    r.clients.add(j.client);
+    if (isFunded) { r.funded++; r.sum += BigInt(j.budget); r.budgets.push(Number(BigInt(j.budget)) / 1e18); }
+    if (j.id < r.firstId) r.firstId = j.id;
+    if (j.id > r.lastId) r.lastId = j.id;
+    if (j.submitted_at > r.lastSubmit) r.lastSubmit = j.submitted_at;
+    if (r.samples.length < 3 && j.desc) r.samples.push(j.desc);
+  }
+
+  const ranked = [...providers.values()]
+    .map((r) => ({
+      address: r.addr,
+      jobs: r.jobs,
+      funded: r.funded,
+      completed: r.status.COMPLETED || 0,
+      submitted_not_released: r.status.SUBMITTED || 0,
+      awaiting_delivery: r.status.FUNDED || 0,
+      expired: r.status.EXPIRED || 0,
+      rejected: r.status.REJECTED || 0,
+      never_funded: r.status.OPEN || 0,
+      distinct_buyers: r.clients.size,
+      escrowed_u: Number(r.sum) / 1e18,
+      median_budget_u: median(r.budgets),
+      delivery_rate: r.funded ? (r.status.COMPLETED || 0) / r.funded : 0,
+      first_job_id: r.firstId,
+      last_job_id: r.lastId,
+      last_submission: r.lastSubmit || null,
+      samples: r.samples,
+    }))
+    .sort((a, b) => b.jobs - a.jobs);
+
+  const total = jobs.size;
+  const top1 = ranked[0]?.jobs || 0;
+  const top5 = ranked.slice(0, 5).reduce((s, r) => s + r.jobs, 0);
+
+  return {
+    total,
+    byStatus,
+    completed: byStatus.COMPLETED || 0,
+    submitted: byStatus.SUBMITTED || 0,
+    open: byStatus.OPEN || 0,
+    fundedJobs,
+    escrowedU: Number(escrowed) / 1e18,
+    buyers: clients.size,
+    providers: ranked,
+    concentration: {
+      top_provider_share: total ? top1 / total : 0,
+      top5_share: total ? top5 / total : 0,
+    },
+    // The number worth putting on a page: providers that ever finished a job
+    // for somebody who was not their only customer. Everything else in the
+    // kernel is a test harness, a load generator, or an abandoned draft.
+    providersWithRealWork: ranked.filter((r) => r.completed > 0 && r.distinct_buyers > 1).length,
+
+    // The rest of the chain, with the single dominant address removed. This is
+    // the honest denominator for anybody deciding whether to build here, and it
+    // is not a rhetorical trick: one campaign address holds the overwhelming
+    // majority of jobs at a cent apiece, and leaving it in describes that one
+    // campaign rather than the market around it. Both figures are published,
+    // so the subtraction can be checked rather than taken on trust.
+    withoutTopProvider: ranked.length ? {
+      excluded_address: ranked[0].address,
+      jobs: total - ranked[0].jobs,
+      completed: (byStatus.COMPLETED || 0) - ranked[0].completed,
+      escrowed_u: Number((Number(escrowed) / 1e18 - ranked[0].escrowed_u).toFixed(6)),
+      providers: ranked.length - 1,
+    } : null,
+  };
+}

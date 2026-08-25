@@ -44,3 +44,7 @@ burn-entry.json
 
 # B402 partner keypair — the private half must never be pushed
 secrets/
+
+# The raw job scan is 23 MB and fully regenerable; the aggregate that the
+# page and the API serve lives in dashboard/api-jobs.json instead.
+data/erc8183/jobs.jsonl

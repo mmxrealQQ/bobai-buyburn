@@ -191,6 +191,20 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
   const last = cen.json?.last_checked_at;
   ok('Plaza', 'self-update ran in the last 48h', last ? ageHours(last) < 48 : false,
     last ? `${fmtAge(ageHours(last))} ago` : 'never');
+
+  // The employment census. Checked the same way as the identity one: served,
+  // complete, and nothing swept under the rug. The third check is the one that
+  // matters — if SUBMITTED ever gets folded into COMPLETED, every reputation
+  // figure on the page becomes flattering and wrong at the same time.
+  const j = await getJson(`${SITE}/api-jobs.json`);
+  ok('Plaza', 'employment census served', !!j.json?.jobs?.read, j.html ? 'HTML fallback' : '');
+  ok('Plaza', 'job scan was complete', j.json?.jobs?.read === j.json?.jobs?.job_counter,
+    j.json ? `${j.json.jobs?.read?.toLocaleString('en-US')} of ${j.json.jobs?.job_counter?.toLocaleString('en-US')}` : '');
+  ok('Plaza', 'delivered is not confused with submitted',
+    typeof j.json?.jobs?.escrow_released === 'number'
+    && typeof j.json?.jobs?.deliverable_never_released === 'number'
+    && j.json.jobs.escrow_released + j.json.jobs.deliverable_never_released <= j.json.jobs.read,
+    j.json ? `${j.json.jobs?.escrow_released?.toLocaleString('en-US')} released, ${j.json.jobs?.deliverable_never_released?.toLocaleString('en-US')} not` : '');
 }
 
 // ---- the site -------------------------------------------------------------

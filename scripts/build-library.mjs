@@ -340,6 +340,40 @@ swaps is handed back for the caller to do themselves, never executed on their be
     run: ['npx wrangler deploy', 'node scripts/x402-catalog-proof.mjs --verify  # check the catalogue signs what it claims'],
     entries: ['worker-agent', 'scripts/x402-catalog-proof.mjs', 'docs/x402-catalog.md'],
   },
+  {
+    group: 'apps',
+    slug: 'chain-census',
+    title: 'The Census — reading a whole registry',
+    tagline: 'Every agent id on BNB Chain, and every job they were ever paid for.',
+    about: `The measurement behind Brain Plaza, and the reason its numbers can be checked
+rather than believed. Two exhaustive scans, no sampling: one reads all 285,447 ids in the
+ERC-8004 identity registry and contacts every endpoint they name; the other reads all 56,655
+jobs in the ERC-8183 escrow kernel and works out who has actually been hired and paid. Both
+resume after interruption, both treat a node refusing a batch as a fact about the node
+rather than about the chain, and both report what stayed unreadable instead of quietly
+dropping it. The publisher turns the two into the page and the JSON endpoints, and refuses
+to publish a scan that did not finish.`,
+    reqs: [
+      {what: 'Node 18+ and time', ours: 'about three hours for the registry, twenty minutes for the jobs',
+       alt: 'both resume, so it can be run in pieces — the state file is the progress'},
+      {what: 'RPC endpoints', ours: 'eleven public BSC nodes in rotation, 25 calls per batch',
+       alt: 'any node list. Breadth matters more than speed: each one rate-limits separately, and 40 per batch is refused where 25 goes through'},
+      {what: 'No keys', ours: 'every call is a read',
+       alt: 'nothing here can move anything, which is why it can be pointed at a stranger’s contract without a second thought'},
+    ],
+    run: [
+      'node scripts/erc8004-scan.mjs           # the identity registry, every id',
+      'node scripts/erc8004-probe.mjs          # does the endpoint answer?',
+      'node scripts/erc8183-job-scan.mjs       # the job escrow, every job',
+      'node scripts/erc8183-job-scan.mjs --owners --report',
+      'node scripts/erc8004-publish.mjs        # writes the page and the JSON',
+    ],
+    entries: [
+      'scripts/erc8004-scan.mjs', 'scripts/erc8004-probe.mjs', 'scripts/erc8004-enrich.mjs',
+      'scripts/erc8004-publish.mjs', 'scripts/erc8183-job-scan.mjs',
+      'scripts/lib/group-agents.mjs', 'scripts/lib/job-aggregate.mjs',
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

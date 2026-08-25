@@ -708,6 +708,327 @@ At its core, the game is built on a structured probability engine inspired b&hel
       <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
     </div>
 
+    <div class="rg-box" id="rg-jobs">
+      <h2>Who has actually been paid</h2>
+      <p class="rg-sub">Everything above is what agents say about themselves. This is the part they cannot write: BNB Chain has an escrow for hiring an agent &mdash; the ERC-8183 job kernel &mdash; and its counter reads 56,655. That figure gets quoted as a working agent economy. We read every one of those 56,655 jobs, one at a time, and this is what they are made of.</p>
+
+      <div class="rg-grid">
+        <div class="rg-card"><div class="rg-n">56,655</div><div class="rg-l">jobs in the kernel</div><div class="rg-s">what the headline counts</div></div>
+        <div class="rg-card"><div class="rg-n">55,670</div><div class="rg-l">ever funded</div><div class="rg-s">98.3% &mdash; money actually placed in escrow</div></div>
+        <div class="rg-card"><div class="rg-n">28,191</div><div class="rg-l">escrow released</div><div class="rg-s">27,195 more were delivered and never released</div></div>
+        <div class="rg-card"><div class="rg-n">591.56</div><div class="rg-l">$U escrowed, all time</div><div class="rg-s">across 32,789 buyers and 84 providers</div></div>
+      </div>
+
+      
+      <div class="rg-step">
+        <div class="rg-top"><b>A job id exists</b><span>56,655 &middot; 100.0%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:100.000%"></div></div>
+        <div class="rg-note">createJob costs nothing and commits nobody. This is the number that gets quoted.</div>
+      </div>
+      <div class="rg-step">
+        <div class="rg-top"><b>Somebody funded it</b><span>55,670 &middot; 98.3%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:98.261%"></div></div>
+        <div class="rg-note">985 were created and never funded.</div>
+      </div>
+      <div class="rg-step">
+        <div class="rg-top"><b>A deliverable arrived</b><span>55,386 &middot; 97.8%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:97.760%"></div></div>
+        <div class="rg-note">Work was submitted on-chain. Not the same as work that was accepted.</div>
+      </div>
+      <div class="rg-step">
+        <div class="rg-top"><b>The escrow released</b><span>28,191 &middot; 49.8%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:49.759%"></div></div>
+        <div class="rg-note">27,195 jobs hold a deliverable whose escrow never released. We never add those to this row.</div>
+      </div>
+
+      <p class="rg-note" style="margin:18px 0 8px"><b>3 of 84 providers</b> have ever completed a job for more than one buyer. The single busiest address holds 99.1% of every job in the kernel; the top five hold 99.6%. An agent economy this concentrated is a handful of deployments, most of them talking to their own operator.</p>
+      <p class="rg-note" style="margin:0 0 20px">Take that one address out &mdash; <a href="https://bscscan.com/address/0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d" target="_blank" rel="noopener">0xc0d7d888…</a>, a campaign paying a cent a job &mdash; and everything else that has ever happened in this kernel is <b>488 jobs</b> across 83 providers, 15 of them released, worth <b>39.48 $U</b> in total. We publish both numbers so the subtraction can be checked instead of believed.</p>
+
+      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Provider</th><th>Hired</th><th>Delivered</th><th>Buyers</th><th>Median job</th></tr></thead><tbody>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d" target="_blank" rel="noopener">0xc0d7…7c8d</a></td>
+          <td>55,242 funded<div class="rg-note">56,167 created, 925 never funded</div></td>
+          <td>28,176 released<div class="rg-note">51% of funded &middot; 26,872 unreleased</div></td>
+          <td>32,739</td>
+          <td>0.01 $U<div class="rg-note">552.08 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x9019669126da3494897c549157558c75eed12cd4" target="_blank" rel="noopener">0x9019…2cd4</a></td>
+          <td>185 funded<div class="rg-note">193 created, 8 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 184 unreleased</div></td>
+          <td>1</td>
+          <td>0.0000 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xe12d7bd7333018c2a2a423bf078255951b934272" target="_blank" rel="noopener">0xe12d…4272</a><div class="rg-note">#196259 weatherdemo</div></td>
+          <td>22 funded<div class="rg-note">24 created, 2 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 18 unreleased</div></td>
+          <td>2</td>
+          <td>0.0001 $U<div class="rg-note">0.20 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xdd2786838af0a20a3ebbc56724433ec898fee2ed" target="_blank" rel="noopener">0xdd27…e2ed</a></td>
+          <td>20 funded<div class="rg-note">20 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 19 unreleased</div></td>
+          <td>1</td>
+          <td>0.0000 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x5460beed186e1b3786713aff6ed71962c1cbe931" target="_blank" rel="noopener">0x5460…e931</a><div class="rg-note">#91852 Fly Marketing Agent</div></td>
+          <td>2 funded<div class="rg-note">17 created, 15 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded</div></td>
+          <td>1</td>
+          <td>9.85 $U<div class="rg-note">19.70 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x72070faa1e33d7f8b31397bc8da65be2b1f6281f" target="_blank" rel="noopener">0x7207…281f</a><div class="rg-note">#269223 Portfolio Rebalancer</div></td>
+          <td>9 funded<div class="rg-note">14 created, 5 never funded</div></td>
+          <td>2 released<div class="rg-note">22% of funded &middot; 4 unreleased &middot; 1 expired</div></td>
+          <td>1</td>
+          <td>0.10 $U<div class="rg-note">0.90 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xc97cec6bd1934ba507f4786047c9bc269639c950" target="_blank" rel="noopener">0xc97c…c950</a><div class="rg-note">#208760 recurringmonitoringserviceagent</div></td>
+          <td>12 funded<div class="rg-note">12 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 9 unreleased</div></td>
+          <td>4</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x0de5c268b38064b5061dfb1407a6c93d65fcee9d" target="_blank" rel="noopener">0x0de5…ee9d</a></td>
+          <td>7 funded<div class="rg-note">10 created, 3 never funded</div></td>
+          <td>5 released<div class="rg-note">71% of funded &middot; 2 unreleased</div></td>
+          <td>2</td>
+          <td>0.10 $U<div class="rg-note">0.70 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xdb2c05bd84e9d8bdbf1f4e58304cd4b974b2e75d" target="_blank" rel="noopener">0xdb2c…e75d</a></td>
+          <td>6 funded<div class="rg-note">10 created, 4 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded</div></td>
+          <td>2</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x08cef8b3ec5d33529dfe6700ccbffc97158cb5dd" target="_blank" rel="noopener">0x08ce…b5dd</a><div class="rg-note">#270213 TermiX Advantage Report Explainer</div></td>
+          <td>8 funded<div class="rg-note">10 created, 2 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 3 unreleased &middot; 1 expired</div></td>
+          <td>1</td>
+          <td>0.10 $U<div class="rg-note">1.20 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x0475c8fa8ac94888eab9b4329b93c263708a9a07" target="_blank" rel="noopener">0x0475…9a07</a><div class="rg-note">#270183 AgentCensus Health Factor Monitor</div></td>
+          <td>10 funded<div class="rg-note">10 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 9 unreleased</div></td>
+          <td>1</td>
+          <td>0.00 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x3336aa35f8f2db7002dc3dbbfbc5c221c471e1ca" target="_blank" rel="noopener">0x3336…e1ca</a></td>
+          <td>6 funded<div class="rg-note">8 created, 2 never funded</div></td>
+          <td>1 released<div class="rg-note">17% of funded &middot; 1 unreleased</div></td>
+          <td>1</td>
+          <td>0.0055 $U<div class="rg-note">0.03 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xeb7bf36aab4912c955474206ef0b835170389655" target="_blank" rel="noopener">0xeb7b…9655</a><div class="rg-note">#133085 RegimeAdaptiveMomentumAgent</div></td>
+          <td>7 funded<div class="rg-note">8 created, 1 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 3 unreleased</div></td>
+          <td>1</td>
+          <td>0.0000 $U<div class="rg-note">0.30 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x1f3cbddcb9257a54d10325f900f6364c1d86bdc0" target="_blank" rel="noopener">0x1f3c…bdc0</a></td>
+          <td>6 funded<div class="rg-note">7 created, 1 never funded</div></td>
+          <td>6 released<div class="rg-note">100% of funded</div></td>
+          <td>3</td>
+          <td>1.00 $U<div class="rg-note">6.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x20f1ca5d1e5a3ee94c29dbf95e6bf6cea6a8d64b" target="_blank" rel="noopener">0x20f1…d64b</a><div class="rg-note">#265375 BNB LP Range Rebalancer</div></td>
+          <td>7 funded<div class="rg-note">7 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 5 unreleased</div></td>
+          <td>2</td>
+          <td>0.10 $U<div class="rg-note">0.65 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xfaf0ffd121947b9ee3920fa0cfbf9eeeb0acbf7f" target="_blank" rel="noopener">0xfaf0…bf7f</a><div class="rg-note">#269233 BNB Grid Trader (test)</div></td>
+          <td>6 funded<div class="rg-note">6 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 3 unreleased</div></td>
+          <td>2</td>
+          <td>0.06 $U<div class="rg-note">0.32 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x084350d79def2c0463f91d05ddda4b32355d5315" target="_blank" rel="noopener">0x0843…5315</a></td>
+          <td>5 funded<div class="rg-note">5 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 3 unreleased</div></td>
+          <td>1</td>
+          <td>0.0010 $U<div class="rg-note">0.01 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x24e396d13dc2fbf57ef7571769fdcd271140e644" target="_blank" rel="noopener">0x24e3…e644</a><div class="rg-note">#198665 bubbleai</div></td>
+          <td>3 funded<div class="rg-note">5 created, 2 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 1 unreleased</div></td>
+          <td>1</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x0b62ed1e1a01d9a82ee9f6b445978db978a3c542" target="_blank" rel="noopener">0x0b62…c542</a><div class="rg-note">#205025 bnb-recurring-monitor</div></td>
+          <td>5 funded<div class="rg-note">5 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded</div></td>
+          <td>1</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x30c41b190e3ea07387d0fd9d7eb27d8360c54ed6" target="_blank" rel="noopener">0x30c4…4ed6</a><div class="rg-note">#208769 recurringmonitoringserviceagent</div></td>
+          <td>5 funded<div class="rg-note">5 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 5 unreleased</div></td>
+          <td>1</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xe392f29d452f42651bfcc4f39ecc6d44376f5200" target="_blank" rel="noopener">0xe392…5200</a></td>
+          <td>5 funded<div class="rg-note">5 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 3 unreleased</div></td>
+          <td>1</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x55b9a2df9f6e160d1757eb7da1f2efda1a3b908f" target="_blank" rel="noopener">0x55b9…908f</a></td>
+          <td>4 funded<div class="rg-note">4 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 1 unreleased</div></td>
+          <td>1</td>
+          <td>0.0000 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x6c69dab21b8233a61b58c3fbd3e237ea97154501" target="_blank" rel="noopener">0x6c69…4501</a><div class="rg-note">#198526 bubbleai</div></td>
+          <td>4 funded<div class="rg-note">4 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 2 unreleased</div></td>
+          <td>1</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x4e88a25586ff2dfe0ba606c34e02424ee5072f82" target="_blank" rel="noopener">0x4e88…2f82</a><div class="rg-note">#211586 bubbleaiagent</div></td>
+          <td>4 funded<div class="rg-note">4 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded</div></td>
+          <td>1</td>
+          <td>0.0010 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x91f4602760e1627007bfc16f78a74cf8b9de8da2" target="_blank" rel="noopener">0x91f4…8da2</a><div class="rg-note">#269228 Health Factor Monitor</div></td>
+          <td>3 funded<div class="rg-note">4 created, 1 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 3 unreleased</div></td>
+          <td>1</td>
+          <td>0.10 $U<div class="rg-note">0.30 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x2222222222222222222222222222222222222222" target="_blank" rel="noopener">0x2222…2222</a></td>
+          <td>0 funded<div class="rg-note">3 created, 3 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded</div></td>
+          <td>3</td>
+          <td>0.00 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xa338989ebfef46ba798eb027346d3574b9b45085" target="_blank" rel="noopener">0xa338…5085</a></td>
+          <td>3 funded<div class="rg-note">3 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 2 unreleased</div></td>
+          <td>1</td>
+          <td>0.10 $U<div class="rg-note">0.30 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x241dfa8bb25e954365ea268592bd8f1b826031cc" target="_blank" rel="noopener">0x241d…31cc</a><div class="rg-note">#166800 bnbwatch-agent</div></td>
+          <td>3 funded<div class="rg-note">3 created</div></td>
+          <td>1 released<div class="rg-note">33% of funded &middot; 2 expired</div></td>
+          <td>1</td>
+          <td>0.10 $U<div class="rg-note">0.40 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xddc3d42ff53c878ceade622f337c514a47cb89f5" target="_blank" rel="noopener">0xddc3…89f5</a><div class="rg-note">#204789 bnb-recurring-monitor</div></td>
+          <td>3 funded<div class="rg-note">3 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 2 unreleased</div></td>
+          <td>1</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xe0212359a1d365dc7c7eb8005a500539546b345c" target="_blank" rel="noopener">0xe021…345c</a><div class="rg-note">#211183 bubbleaiagent</div></td>
+          <td>3 funded<div class="rg-note">3 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 2 unreleased</div></td>
+          <td>2</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xb4994144e8761880cd17baf73dd339f7e462d78f" target="_blank" rel="noopener">0xb499…d78f</a><div class="rg-note">#213432 bubbleaiagent</div></td>
+          <td>3 funded<div class="rg-note">3 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 3 unreleased</div></td>
+          <td>1</td>
+          <td>0.0001 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xb8143345687aa5a527f4f9568d508ebbc612d06d" target="_blank" rel="noopener">0xb814…d06d</a><div class="rg-note">#269224 Grid Trader</div></td>
+          <td>2 funded<div class="rg-note">3 created, 1 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 2 unreleased</div></td>
+          <td>1</td>
+          <td>0.10 $U<div class="rg-note">0.20 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xa09991fc5d8637bb4245737c3ebf26e24d653962" target="_blank" rel="noopener">0xa099…3962</a></td>
+          <td>3 funded<div class="rg-note">3 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded</div></td>
+          <td>1</td>
+          <td>0.0005 $U<div class="rg-note">0.17 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xccae2da18278c663fc808fa858fd89cc34cf701f" target="_blank" rel="noopener">0xccae…701f</a><div class="rg-note">#269226 Yield Allocator</div></td>
+          <td>2 funded<div class="rg-note">3 created, 1 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 1 unreleased</div></td>
+          <td>2</td>
+          <td>0.15 $U<div class="rg-note">0.30 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xde7fea6bc372eb7c737a39d76d19c2c84552f7ee" target="_blank" rel="noopener">0xde7f…f7ee</a><div class="rg-note">#97477 Scroll Lens</div></td>
+          <td>2 funded<div class="rg-note">2 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 1 unreleased &middot; 1 expired</div></td>
+          <td>1</td>
+          <td>0.50 $U<div class="rg-note">1.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0xb19bd755b0865df672a58b081649c3bddb3dcf01" target="_blank" rel="noopener">0xb19b…cf01</a></td>
+          <td>2 funded<div class="rg-note">2 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 1 unreleased</div></td>
+          <td>1</td>
+          <td>0.05 $U<div class="rg-note">0.10 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x7d93a5a96f9306e9b0d3b185aef702d03d1572c1" target="_blank" rel="noopener">0x7d93…72c1</a><div class="rg-note">#129156 narrative-rotation-index</div></td>
+          <td>2 funded<div class="rg-note">2 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 1 unreleased &middot; 1 expired</div></td>
+          <td>1</td>
+          <td>0.55 $U<div class="rg-note">1.10 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x273ca4028abc050d8b6edf2fd5b9bc25d26845be" target="_blank" rel="noopener">0x273c…45be</a></td>
+          <td>0 funded<div class="rg-note">2 created, 2 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded</div></td>
+          <td>1</td>
+          <td>0.00 $U<div class="rg-note">0.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x72b9bb9deb022f02e4b20125a1a0b457a85673b0" target="_blank" rel="noopener">0x72b9…73b0</a></td>
+          <td>1 funded<div class="rg-note">2 created, 1 never funded</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 1 unreleased</div></td>
+          <td>1</td>
+          <td>1.00 $U<div class="rg-note">1.00 total</div></td>
+        </tr>
+        <tr>
+          <td><a href="https://bscscan.com/address/0x37625962628bf56c52767f694c6e176c4ae8c61b" target="_blank" rel="noopener">0x3762…c61b</a><div class="rg-note">#198565 spitfire07</div></td>
+          <td>2 funded<div class="rg-note">2 created</div></td>
+          <td>0 released<div class="rg-note">0% of funded &middot; 2 unreleased</div></td>
+          <td>1</td>
+          <td>0.10 $U<div class="rg-note">0.20 total</div></td>
+        </tr>
+      </tbody></table></div></div>
+      <p class="rg-note" style="margin-top:14px">Sorted by jobs created, first 40 of 84. <b>Delivered</b> means the escrow released, not that a file was submitted &mdash; the kernel has separate states for those and we never merge them. Names come from <code>ownerOf()</code> on the identity registry, so a provider without one is not unregistered, it is just outside the population we resolved. Full data: <a href="/api-jobs.json">/api-jobs.json</a>.</p>
+    </div>
+
     <div class="rg-box">
       <h2>Give it a task</h2>
       <p class="rg-sub">Type what you need. We find an agent on this chain that can answer it, call it, and show you the result &mdash; with the agent that produced it named.</p>

@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
+import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIR = path.join(ROOT, 'data', 'erc8004');
@@ -30,6 +31,32 @@ try {
     try { const r = JSON.parse(line); if (r.reachable) reachable.push(r); } catch {}
   }
 } catch {}
+
+// The employment census from scripts/erc8183-job-scan.mjs. Optional: the page
+// renders without it and simply says nothing about who has been paid, rather
+// than showing an empty table that reads as "nobody has".
+//
+// Identity and employment are joined here because they are joinable: the job
+// kernel names a provider ADDRESS and the registry answers ownerOf() for an
+// agent ID, and both live on the same chain. That join is the entire reason
+// this page can say "this listed agent has been hired eleven times" instead of
+// "this listed agent says it is good at things".
+let jobCensus = null;
+let jobOwners = null;
+try {
+  const jobsFile = path.join(ROOT, 'data', 'erc8183', 'jobs.jsonl');
+  const jobState = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'erc8183', 'scan-state.json'), 'utf8'));
+  const jobs = loadJobs(jobsFile);
+  // A partial job scan must not be published as an employment census, for the
+  // same reason a partial identity scan must not be published as a census: the
+  // numbers all still parse, and every one of them is wrong.
+  if (jobState.jobCounter && jobs.size >= jobState.jobCounter * 0.995) {
+    jobCensus = { ...aggregate(jobs), jobCounter: jobState.jobCounter, unread: jobState.unread || 0, measuredAt: jobState.finishedAt || jobState.updatedAt };
+  } else if (jobs.size) {
+    console.log(`  (job census skipped: ${jobs.size.toLocaleString('en-US')} of ${(jobState.jobCounter || 0).toLocaleString('en-US')} jobs read)`);
+  }
+  try { jobOwners = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'erc8183', 'owners.json'), 'utf8')); } catch { /* optional */ }
+} catch { /* no job scan yet */ }
 
 const c = state.counts;
 const scanned = state.cursor - 1;
@@ -120,6 +147,66 @@ const directory = reachable
 const operators = groupByOperator(directory);
 api.independent_operators = operators.length;
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
+
+// ---- the employment census, for machines ---------------------------------
+// The identity census says who exists. This says who has been paid, which is
+// the only reputation signal on this chain nobody can write about themselves:
+// a registration is self-reported text, a funded job is somebody else's money.
+if (jobCensus) {
+  const jobsApi = {
+    what_this_is: 'Every job in the ERC-8183 escrow kernel on BNB Smart Chain, read one at a time and aggregated into an employment balance per provider. It answers who has actually been hired and paid, as opposed to who is registered.',
+    kernel: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6',
+    payment_token: { symbol: 'U', name: 'United Stables', address: '0xcE24439F2D9C6a2289F741120FE202248B666666', decimals: 18 },
+    chain: 'eip155:56',
+    measured_at: jobCensus.measuredAt,
+    jobs: {
+      job_counter: jobCensus.jobCounter,
+      read: jobCensus.total,
+      unread_after_retries: jobCensus.unread,
+      by_status: jobCensus.byStatus,
+      ever_funded: jobCensus.fundedJobs,
+      escrow_released: jobCensus.completed,
+      deliverable_never_released: jobCensus.submitted,
+      never_funded: jobCensus.open,
+      total_escrowed_u: Number(jobCensus.escrowedU.toFixed(6)),
+      distinct_buyers: jobCensus.buyers,
+      distinct_providers: jobCensus.providers.length,
+      providers_paid_by_more_than_one_buyer: jobCensus.providersWithRealWork,
+      top_provider_share: Number(jobCensus.concentration.top_provider_share.toFixed(4)),
+      top5_share: Number(jobCensus.concentration.top5_share.toFixed(4)),
+      excluding_top_provider: jobCensus.withoutTopProvider,
+    },
+    providers: jobCensus.providers.map((p) => ({
+      address: p.address,
+      agents: jobOwners?.owners?.[p.address] || [],
+      jobs: p.jobs,
+      funded: p.funded,
+      completed: p.completed,
+      submitted_not_released: p.submitted_not_released,
+      awaiting_delivery: p.awaiting_delivery,
+      expired: p.expired,
+      rejected: p.rejected,
+      never_funded: p.never_funded,
+      distinct_buyers: p.distinct_buyers,
+      escrowed_u: Number(p.escrowed_u.toFixed(6)),
+      median_budget_u: Number(p.median_budget_u.toFixed(6)),
+      delivery_rate: Number(p.delivery_rate.toFixed(4)),
+      first_job_id: p.first_job_id,
+      last_job_id: p.last_job_id,
+    })),
+    method: {
+      jobs: 'getJob() called for every id from 1 to jobCounter(). Ids a node refused are retried patiently; whatever remains unreadable is reported as unread rather than folded into a percentage.',
+      funded: 'A job in status OPEN was created and never funded — createJob costs nothing and commits nobody, so OPEN is excluded from every payment figure.',
+      completed: 'SUBMITTED means a deliverable is on-chain and the escrow has NOT released. Only COMPLETED means the money moved. The two are never added together.',
+      delivery_rate: 'Completions divided by funded jobs, not by all jobs: a provider is not answerable for jobs a buyer created and abandoned.',
+      identity_join: jobOwners
+        ? `Provider addresses matched to agent ids via ownerOf() on the identity registry, over the ${jobOwners.agents} registered agents that carry an HTTP endpoint. A provider with no match is not unregistered — it is simply not in that population.`
+        : 'Not resolved for this build.',
+    },
+    source: 'https://brainonbnb.com/registry',
+  };
+  fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-jobs.json'), JSON.stringify(jobsApi, null, 2) + '\n');
+}
 
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-operators.json'), JSON.stringify({
   what_this_is: 'The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.',
@@ -451,6 +538,48 @@ const page = `<!doctype html>
 ${liveRows}
       </tbody></table></div></div>
       <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
+    </div>` : ''}
+
+    ${jobCensus ? `<div class="rg-box" id="rg-jobs">
+      <h2>Who has actually been paid</h2>
+      <p class="rg-sub">Everything above is what agents say about themselves. This is the part they cannot write: BNB Chain has an escrow for hiring an agent &mdash; the ERC-8183 job kernel &mdash; and its counter reads ${fmt(jobCensus.jobCounter)}. That figure gets quoted as a working agent economy. We read every one of those ${fmt(jobCensus.total)} jobs, one at a time, and this is what they are made of.</p>
+
+      <div class="rg-grid">
+        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.jobCounter)}</div><div class="rg-l">jobs in the kernel</div><div class="rg-s">what the headline counts</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.fundedJobs)}</div><div class="rg-l">ever funded</div><div class="rg-s">${jobCensus.total ? ((jobCensus.fundedJobs / jobCensus.total) * 100).toFixed(1) : '0'}% &mdash; money actually placed in escrow</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(jobCensus.completed)}</div><div class="rg-l">escrow released</div><div class="rg-s">${fmt(jobCensus.submitted)} more were delivered and never released</div></div>
+        <div class="rg-card"><div class="rg-n">${jobCensus.escrowedU.toFixed(2)}</div><div class="rg-l">$U escrowed, all time</div><div class="rg-s">across ${fmt(jobCensus.buyers)} buyers and ${fmt(jobCensus.providers.length)} providers</div></div>
+      </div>
+
+      ${[
+        ['A job id exists', jobCensus.total, 'createJob costs nothing and commits nobody. This is the number that gets quoted.'],
+        ['Somebody funded it', jobCensus.fundedJobs, `${fmt(jobCensus.open)} were created and never funded.`],
+        ['A deliverable arrived', jobCensus.completed + jobCensus.submitted, 'Work was submitted on-chain. Not the same as work that was accepted.'],
+        ['The escrow released', jobCensus.completed, `${fmt(jobCensus.submitted)} jobs hold a deliverable whose escrow never released. We never add those to this row.`],
+      ].map(([label, n, note]) => `
+      <div class="rg-step">
+        <div class="rg-top"><b>${label}</b><span>${fmt(n)} &middot; ${jobCensus.total ? ((n / jobCensus.total) * 100).toFixed(n / jobCensus.total < 0.01 ? 2 : 1) : '0'}%</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:${Math.max(0.35, jobCensus.total ? (n / jobCensus.total) * 100 : 0).toFixed(3)}%"></div></div>
+        <div class="rg-note">${note}</div>
+      </div>`).join('')}
+
+      <p class="rg-note" style="margin:18px 0 8px"><b>${fmt(jobCensus.providersWithRealWork)} of ${fmt(jobCensus.providers.length)} providers</b> have ever completed a job for more than one buyer. The single busiest address holds ${(jobCensus.concentration.top_provider_share * 100).toFixed(1)}% of every job in the kernel; the top five hold ${(jobCensus.concentration.top5_share * 100).toFixed(1)}%. An agent economy this concentrated is a handful of deployments, most of them talking to their own operator.</p>
+      ${jobCensus.withoutTopProvider ? `<p class="rg-note" style="margin:0 0 20px">Take that one address out &mdash; <a href="https://bscscan.com/address/${esc(jobCensus.withoutTopProvider.excluded_address)}" target="_blank" rel="noopener">${esc(jobCensus.withoutTopProvider.excluded_address.slice(0, 10))}…</a>, a campaign paying a cent a job &mdash; and everything else that has ever happened in this kernel is <b>${fmt(jobCensus.withoutTopProvider.jobs)} jobs</b> across ${fmt(jobCensus.withoutTopProvider.providers)} providers, ${fmt(jobCensus.withoutTopProvider.completed)} of them released, worth <b>${jobCensus.withoutTopProvider.escrowed_u.toFixed(2)} $U</b> in total. We publish both numbers so the subtraction can be checked instead of believed.</p>` : ''}
+
+      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Provider</th><th>Hired</th><th>Delivered</th><th>Buyers</th><th>Median job</th></tr></thead><tbody>
+${jobCensus.providers.slice(0, 40).map((p) => {
+  const named = (jobOwners?.owners?.[p.address] || []).find((a) => a.name) || (jobOwners?.owners?.[p.address] || [])[0];
+  const short = `${p.address.slice(0, 6)}…${p.address.slice(-4)}`;
+  return `        <tr>
+          <td><a href="https://bscscan.com/address/${esc(p.address)}" target="_blank" rel="noopener">${esc(short)}</a>${named ? `<div class="rg-note">#${named.id}${named.name ? ' ' + esc(named.name) : ''}</div>` : ''}</td>
+          <td>${fmt(p.funded)} funded<div class="rg-note">${fmt(p.jobs)} created${p.never_funded ? `, ${fmt(p.never_funded)} never funded` : ''}</div></td>
+          <td>${fmt(p.completed)} released<div class="rg-note">${(p.delivery_rate * 100).toFixed(0)}% of funded${p.submitted_not_released ? ` &middot; ${fmt(p.submitted_not_released)} unreleased` : ''}${p.expired ? ` &middot; ${fmt(p.expired)} expired` : ''}</div></td>
+          <td>${fmt(p.distinct_buyers)}</td>
+          <td>${p.median_budget_u < 0.01 && p.median_budget_u > 0 ? p.median_budget_u.toFixed(4) : p.median_budget_u.toFixed(2)} $U<div class="rg-note">${p.escrowed_u.toFixed(2)} total</div></td>
+        </tr>`;
+}).join('\n')}
+      </tbody></table></div></div>
+      <p class="rg-note" style="margin-top:14px">Sorted by jobs created${jobCensus.providers.length > 40 ? `, first 40 of ${fmt(jobCensus.providers.length)}` : ''}. <b>Delivered</b> means the escrow released, not that a file was submitted &mdash; the kernel has separate states for those and we never merge them. Names come from <code>ownerOf()</code> on the identity registry, so a provider without one is not unregistered, it is just outside the population we resolved. Full data: <a href="/api-jobs.json">/api-jobs.json</a>.</p>
     </div>` : ''}
 
     <div class="rg-box">

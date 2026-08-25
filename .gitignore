@@ -39,6 +39,9 @@ hello-bobai-meme.jpg
 # the published result lives in dashboard/api-registry.json instead.
 data/erc8004/agents-with-endpoints.jsonl
 data/erc8004/reachable.jsonl
+data/erc8004-v2/agents-with-endpoints.jsonl
+data/erc8004-v2/offchain-uris.jsonl
+data/erc8004-v2/reachable.jsonl
 data-scan.log
 burn-entry.json
 

@@ -346,6 +346,8 @@ const categorised = CATEGORIES.map((cat) => {
       employment: employmentOf([a.id]),
       ours: ownAgents.some((x) => x.id === a.id),
       tele: teleKey(a.id, host),
+      agentId: a.id,
+      speaks: a.speaks || [],
     });
   }
   const claimed = new Set(rows.map((r) => r.label));
@@ -363,6 +365,10 @@ const categorised = CATEGORIES.map((cat) => {
       employment: employmentOf(o.ids || []),
       ours: (o.ids || []).some((id) => ownAgents.some((x) => x.id === id)),
       tele: teleKey(null, o.operator),
+      // A collapsed operator row stands for several ids. Negotiation happens
+      // with one agent, so the first is offered and the panel names which.
+      agentId: (o.ids || [])[0] ?? null,
+      speaks: o.speaks || [],
     });
   }
 
@@ -378,7 +384,18 @@ const categorySections = categorised.map(({ cat, rows }) => {
   const ids = rows.reduce((n, r) => n + r.instances, 0);
   const body = rows.map((r) => {
     const [badge, why] = SOURCE_BADGE[r.hit.source];
-    const hireable = r.ours || (r.employment && r.employment.funded > 0);
+    // CAN BE HIRED and HAS BEEN HIRED are different facts, and the first
+    // version of this column derived the first from the second. The effect was
+    // that an agent nobody had hired yet showed a dash — including the BNB
+    // Yield Optimizer, which negotiates a quote and returns all five escrow
+    // calls when you actually ask it. A marketplace that hides the hire button
+    // on everything unproven can never let anything become proven.
+    //
+    // Speaking A2A is the capability signal: on this chain that is how selling
+    // works, and every ERC-8183 seller here advertises it. History stays in
+    // its own line underneath, where it belongs — an agent that has been paid
+    // is worth more than one that has not, and that is for the reader to weigh.
+    const hireable = r.ours || (r.speaks || []).includes('a2a') || (r.employment && r.employment.funded > 0);
     const hist = r.employment
       ? `${fmt(r.employment.funded)} funded &middot; ${fmt(r.employment.completed)} released${r.employment.submitted_not_released ? ` &middot; ${fmt(r.employment.submitted_not_released)} unreleased` : ''}`
       : 'never hired through the escrow';
@@ -387,7 +404,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
               <div class="rg-note">${esc(r.sub)}</div>${r.tele ? '<div class="rg-live" hidden></div>' : ''}</td>
           <td><span class="rg-t rg-${r.hit.source}" title="${esc(why)}">${badge}</span>
               <div class="rg-note">${esc(r.hit.detail)}</div></td>
-          <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div></td>
+          <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div>${hireable && r.agentId ? `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}">Hire &rarr;</button>` : ''}</td>
         </tr>`;
   }).join(NL);
 
@@ -563,6 +580,37 @@ const page = `<!doctype html>
   .rg-live.rg-dark{color:var(--muted)}
   .rg-live .rg-age{color:var(--muted)}
   .rg-live .rg-mismatch{color:var(--muted);display:block}
+  .rg-hirebtn{margin-top:8px;padding:5px 12px;border-radius:999px;border:1px solid var(--acc);
+    background:transparent;color:var(--acc);font:inherit;font-size:.72rem;cursor:pointer;white-space:nowrap}
+  .rg-hirebtn:hover{background:var(--acc);color:#0b0b0f}
+  /* The panel is a dialog so Escape and the backdrop work without us writing
+     either, and so focus cannot wander back into the page behind it. */
+  #rg-hire{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);
+    padding:0;max-width:640px;width:calc(100% - 32px)}
+  #rg-hire::backdrop{background:rgba(0,0,0,.62)}
+  .rg-hb{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .rg-hb h3{margin:0;font-size:1rem}
+  .rg-hx{border:0;background:transparent;color:var(--muted);font-size:1.3rem;line-height:1;cursor:pointer;padding:0 2px}
+  .rg-hbody{padding:18px 20px;max-height:70vh;overflow-y:auto}
+  .rg-hbody label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:5px}
+  .rg-hbody textarea{width:100%;box-sizing:border-box;min-height:56px;padding:9px 11px;border-radius:9px;
+    border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:.82rem;resize:vertical}
+  .rg-act{margin-top:12px;padding:8px 16px;border-radius:999px;border:1px solid var(--acc);
+    background:var(--acc);color:#0b0b0f;font:inherit;font-size:.8rem;cursor:pointer}
+  .rg-act[disabled]{opacity:.45;cursor:not-allowed}
+  .rg-act.rg-ghost{background:transparent;color:var(--acc)}
+  .rg-step{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+  .rg-step .rg-n{flex:0 0 22px;height:22px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:.68rem;color:var(--muted)}
+  .rg-step.rg-done .rg-n{border-color:#2ecc71;color:#2ecc71}
+  .rg-step .rg-sw{flex:1;min-width:0}
+  .rg-step b{font-size:.82rem}
+  .rg-msg{margin-top:12px;font-size:.75rem;line-height:1.55}
+  .rg-err{color:#ff6b6b}
+  .rg-ok{color:#2ecc71}
+  .rg-raw{width:100%;box-sizing:border-box;margin-top:10px;font-size:.66rem;max-height:200px;overflow:auto;
+    white-space:pre-wrap;word-break:break-all;color:var(--muted);background:var(--bg);
+    border:1px solid var(--line);border-radius:9px;padding:9px}
   .rg-note code{font-size:.74rem}
   .rg-declared{background:rgba(80,220,140,.14);color:#7fe3ab}
   .rg-registered{background:rgba(120,170,255,.14);color:#93b8ff}
@@ -708,6 +756,24 @@ const page = `<!doctype html>
     <div class="blk-head" style="margin-top:34px"><span class="blk-tag">The four categories</span><span class="blk-line"></span></div>
     <p class="rg-lead" style="margin:0 0 18px">A marketplace for BNB Chain is judged on four things equally: rebalancing, grid trading, yield optimisation and health-factor monitoring. Here is every one of them, and how deep the chain actually is in each.</p>
 ${categorySections}
+
+    <dialog id="rg-hire" aria-labelledby="rg-hire-t">
+      <div class="rg-hb">
+        <div>
+          <h3 id="rg-hire-t">Hire an agent</h3>
+          <div class="rg-note" id="rg-hire-sub"></div>
+        </div>
+        <button class="rg-hx" id="rg-hire-x" aria-label="Close">&times;</button>
+      </div>
+      <div class="rg-hbody">
+        <label for="rg-hire-task">What do you want done?</label>
+        <textarea id="rg-hire-task"></textarea>
+        <button class="rg-act" id="rg-hire-quote">Get a quote</button>
+        <div class="rg-msg" id="rg-hire-msg"></div>
+        <div id="rg-hire-steps"></div>
+        <pre class="rg-raw" id="rg-hire-raw" hidden></pre>
+      </div>
+    </dialog>
 
     ${liveRows ? `<div class="rg-box">
       <h2>Who is actually out there</h2>
@@ -1040,6 +1106,243 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         });
       })
       .catch(function(){});
+  })();
+
+  // Hiring, from the page, with the visitor's own wallet.
+  //
+  // WHY THIS EXISTS
+  // Everything needed to hire an agent has been served as an API for a while:
+  // negotiate a quote, get back the five unsigned escrow calls, submit them.
+  // A person reading this page could do none of it. A marketplace whose hire
+  // path is reachable only by writing a script is a directory with extra
+  // documentation, so the same API now has a button on it.
+  //
+  // WHAT THIS DOES NOT DO
+  // It holds no key and signs nothing. Every call is handed to the visitor's
+  // own wallet one at a time, with what it does written next to it, and the
+  // wallet asks before each. There is no batch, no approve-everything, and no
+  // step that runs without a click — the money is the visitor's and the
+  // confirmations should be too.
+  //
+  // WHY THE STEPS ARE NOT COLLAPSED INTO ONE BUTTON
+  // Five transactions is genuinely what ERC-8183 costs: create, bind a dispute
+  // policy, set the budget, approve the token, fund. Hiding that behind one
+  // button would make the flow look cheaper than it is and leave somebody
+  // stranded halfway with no idea which half they are in.
+  (function(){
+    var AGENT='https://agent.brainonbnb.com';
+    var d=document.getElementById('rg-hire'); if(!d||!d.showModal)return;
+    var elSub=document.getElementById('rg-hire-sub'),
+        elTask=document.getElementById('rg-hire-task'),
+        elQuote=document.getElementById('rg-hire-quote'),
+        elMsg=document.getElementById('rg-hire-msg'),
+        elSteps=document.getElementById('rg-hire-steps'),
+        elRaw=document.getElementById('rg-hire-raw');
+    var current=null, plan=null, account=null, jobId=null;
+
+    function esc(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    function say(html,cls){elMsg.className='rg-msg'+(cls?' '+cls:'');elMsg.innerHTML=html;}
+    function shortAddr(a){return a.slice(0,6)+'…'+a.slice(-4);}
+
+    // A starting sentence per category, so the box is never empty and the task
+    // written into the job description is a real one. Editable — the
+    // description is what the seller matches against.
+    var SEED={
+      'health-factor':'health factor and liquidation distance for my Venus position 0x…',
+      'grid-trading':'grid plan for WBNB, 10 levels across a 15% band, $1000 capital',
+      'yield-optimization':'where is the best yield on BNB Chain for USDT right now',
+      'rebalancing':'my LP range has drifted out of band — what should it be'
+    };
+
+    function open(btn){
+      current={id:btn.getAttribute('data-hire'),name:btn.getAttribute('data-name'),cat:btn.getAttribute('data-cat')};
+      plan=null;jobId=null;
+      document.getElementById('rg-hire-t').textContent='Hire '+current.name;
+      elSub.textContent='Agent #'+current.id+' · paid through the ERC-8183 escrow on BNB Chain';
+      elTask.value=SEED[current.cat]||'';
+      elSteps.innerHTML='';elRaw.hidden=true;say('');
+      elQuote.disabled=false;elQuote.textContent='Get a quote';
+      d.showModal();
+    }
+
+    [].slice.call(document.querySelectorAll('.rg-hirebtn')).forEach(function(b){
+      b.addEventListener('click',function(){open(b);});
+    });
+    document.getElementById('rg-hire-x').addEventListener('click',function(){d.close();});
+
+    // --- the quote -------------------------------------------------------
+    elQuote.addEventListener('click',function(){
+      var task=elTask.value.trim();
+      if(!task){say('Describe what you want done first.','rg-err');return;}
+      elQuote.disabled=true;elQuote.textContent='Asking the agent…';
+      say('Negotiating over A2A. This is a live call to the agent, not a price list.');
+      fetch(AGENT+'/hire?agent='+encodeURIComponent(current.id)+'&task='+encodeURIComponent(task),{cache:'no-store'})
+        .then(function(r){return r.json();})
+        .then(function(j){
+          elQuote.textContent='Get a quote';elQuote.disabled=false;
+          if(!j||j.error){say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer'),'rg-err');return;}
+          if(!j.negotiated||!j.calls){
+            // Not every agent in the registry can actually be hired, and
+            // saying so beats a spinner that never resolves.
+            say('This agent did not return a quote. '+esc(j.reason||j.note||'It may advertise ERC-8183 without answering negotiation.'),'rg-err');
+            elRaw.hidden=false;elRaw.textContent=JSON.stringify(j,null,2);
+            return;
+          }
+          plan=j;render();
+        })
+        .catch(function(e){elQuote.disabled=false;elQuote.textContent='Get a quote';say('Could not reach the broker: '+esc(e.message),'rg-err');});
+    });
+
+    function render(){
+      var q=plan.quote||{},e=plan.escrow||{};
+      var h='<div class="rg-msg"><b>'+esc(q.price||'?')+'</b> to '+esc(plan.provider||'the provider')+
+        '<div class="rg-note">'+esc(plan.provider_source||'')+
+        (q.estimated_completion_seconds?' · quoted completion '+esc(q.estimated_completion_seconds)+'s':'')+'</div>'+
+        '<div class="rg-note" style="margin-top:6px">'+esc(e.refundable||'')+'</div></div>';
+      h+='<div class="rg-msg" id="rg-wallet"></div>';
+      h+='<div id="rg-stepwrap"></div>';
+      h+='<button class="rg-act rg-ghost" id="rg-showraw">Show the raw calls instead</button>';
+      elSteps.innerHTML=h;
+      document.getElementById('rg-showraw').addEventListener('click',function(){
+        elRaw.hidden=false;elRaw.textContent=JSON.stringify(plan,null,2);
+      });
+      renderSteps();
+      wallet();
+    }
+
+    function renderSteps(){
+      var w=document.getElementById('rg-stepwrap');if(!w)return;
+      var h='';
+      plan.calls.forEach(function(c,i){
+        var done=c._done===true;
+        h+='<div class="rg-step'+(done?' rg-done':'')+'"><div class="rg-n">'+(done?'✓':(i+1))+'</div>'+
+           '<div class="rg-sw"><b>'+esc(c.what)+'</b>'+
+           '<div class="rg-note">'+esc(c.note||'')+'</div>'+
+           (c._tx?'<div class="rg-note"><a href="https://bscscan.com/tx/'+esc(c._tx)+'" target="_blank" rel="noopener">'+esc(c._tx.slice(0,14))+'… ↗</a></div>':'')+
+           (done?'':'<button class="rg-act" data-step="'+i+'"'+(account?'':' disabled')+'>Send this one</button>')+
+           '</div></div>';
+      });
+      w.innerHTML=h;
+      [].slice.call(w.querySelectorAll('button[data-step]')).forEach(function(b){
+        b.addEventListener('click',function(){run(Number(b.getAttribute('data-step')),b);});
+      });
+    }
+
+    // --- wallet ----------------------------------------------------------
+    function wallet(){
+      var w=document.getElementById('rg-wallet');if(!w)return;
+      if(!window.ethereum){
+        w.innerHTML='<span class="rg-note">No wallet found in this browser. Use the raw calls below and submit them yourself — they are unsigned and complete.</span>';
+        return;
+      }
+      if(account){w.innerHTML='<span class="rg-note rg-ok">Connected '+esc(shortAddr(account))+'</span>';renderSteps();return;}
+      w.innerHTML='<button class="rg-act" id="rg-conn">Connect wallet</button>';
+      document.getElementById('rg-conn').addEventListener('click',function(){
+        window.ethereum.request({method:'eth_requestAccounts'})
+          .then(function(a){account=a&&a[0];return chain();})
+          .then(function(){wallet();})
+          .catch(function(e){say('Wallet: '+esc(e.message||e),'rg-err');});
+      });
+    }
+
+    // BNB Chain or nothing. Sending these calls on another chain would create
+    // a job in a kernel that is not there, which fails in a way that costs gas
+    // and explains nothing.
+    function chain(){
+      return window.ethereum.request({method:'eth_chainId'}).then(function(id){
+        if(id==='0x38')return;
+        return window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x38'}]});
+      });
+    }
+
+    function receipt(tx){
+      return new Promise(function(res,rej){
+        var n=0;
+        (function poll(){
+          window.ethereum.request({method:'eth_getTransactionReceipt',params:[tx]}).then(function(r){
+            if(r&&r.blockNumber){if(r.status==='0x0')rej(new Error('the transaction reverted on-chain'));else res(r);return;}
+            if(++n>90){rej(new Error('not confirmed after 3 minutes'));return;}
+            setTimeout(poll,2000);
+          }).catch(function(){if(++n>90)rej(new Error('lost the transaction'));else setTimeout(poll,2000);});
+        })();
+      });
+    }
+
+    // The jobId is read from the kernel and then VERIFIED against the connected
+    // address. Taking jobCounter() on its own would hand back somebody else's
+    // job whenever two people create one in the same block, and every later
+    // step would then be funding a stranger's escrow.
+    function findJobId(){
+      var kernel=plan.escrow.kernel;
+      return window.ethereum.request({method:'eth_call',params:[{to:kernel,data:'0x50355d76'},'latest']})
+        .then(function(hex){
+          var top=parseInt(hex,16);
+          var tries=[];for(var i=0;i<5&&top-i>0;i++)tries.push(top-i);
+          return tries.reduce(function(p,id){
+            return p.then(function(found){
+              if(found)return found;
+              return fetch(AGENT+'/job?id='+id,{cache:'no-store'}).then(function(r){return r.json();})
+                .then(function(j){
+                  return (j&&j.client&&account&&j.client.toLowerCase()===account.toLowerCase())?String(id):null;
+                }).catch(function(){return null;});
+            });
+          },Promise.resolve(null));
+        });
+    }
+
+    function pad(id){var h=BigInt(id).toString(16);while(h.length<64)h='0'+h;return h;}
+
+    function run(i,btn){
+      var c=plan.calls[i];
+      btn.disabled=true;btn.textContent='Confirm in your wallet…';
+      chain().then(function(){
+        var data=c.data;
+        if(!data&&c.data_template){
+          if(!jobId)throw new Error('the job id is not known yet — send step 1 first');
+          data=c.data_template.replace('<JOBID>',pad(jobId));
+        }
+        if(!data)throw new Error('this step has no call data');
+        return window.ethereum.request({method:'eth_sendTransaction',params:[{from:account,to:c.to,data:data,value:c.value||'0x0'}]});
+      })
+      .then(function(tx){
+        c._tx=tx;btn.textContent='Waiting for confirmation…';
+        say('Sent. Waiting for BNB Chain to confirm.');
+        return receipt(tx);
+      })
+      .then(function(){
+        c._done=true;
+        if(i===0){say('Job created. Reading its id from the kernel.');return findJobId();}
+        return null;
+      })
+      .then(function(id){
+        if(id){jobId=id;say('Job <b>#'+esc(jobId)+'</b> is yours. Four steps left.','rg-ok');}
+        else if(plan.calls.every(function(x){return x._done;}))finish();
+        else say('Step done.','rg-ok');
+        renderSteps();
+      })
+      .catch(function(e){
+        btn.disabled=false;btn.textContent='Send this one';
+        say('Stopped: '+esc(e.message||e)+'. Nothing further was sent.','rg-err');
+      });
+    }
+
+    // Funded is not delivered. The seller has to be told, and the deliverable
+    // arrives on-chain rather than in this page, so the last thing shown is
+    // where to watch for it.
+    function finish(){
+      say('Escrow funded. Telling the seller to deliver…');
+      fetch(AGENT+'/a2a',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({jsonrpc:'2.0',id:1,method:'message/send',params:{message:{role:'user',messageId:'hire-'+jobId,parts:[{kind:'data',data:{skill:'notify_funded',job_id:Number(jobId)}}]}}})})
+        .then(function(r){return r.json();})
+        .then(function(){
+          say('Job <b>#'+esc(jobId)+'</b> is funded and delivery is requested. '+
+              'Track it at <a href="'+AGENT+'/job?id='+esc(jobId)+'" target="_blank" rel="noopener">/job?id='+esc(jobId)+' ↗</a>. '+
+              'The deliverable is written on-chain, not returned here — SUBMITTED means it exists, COMPLETED means the escrow released.','rg-ok');
+        })
+        .catch(function(){
+          say('Escrow is funded, but the delivery request did not go through. Send it yourself: POST '+AGENT+'/a2a with skill notify_funded and job_id '+esc(jobId)+'.','rg-err');
+        });
+    }
   })();
 
   // Filter only — no data fetching, nothing that can fail and leave the page

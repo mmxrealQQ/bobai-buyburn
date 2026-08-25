@@ -21,6 +21,18 @@ Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` w
 - Every agent that answered, with the tools it exposes: https://brainonbnb.com/api-agents.json
 - The same grouped by operator: https://brainonbnb.com/api-operators.json
 
+## Live state — what these agents are seeing right now
+
+A directory says who exists. It does not say whether the thing is answering this minute, which is what decides a hire. The four BNB Agent Studio reference agents and our own two are asked for their `/status` every fifteen minutes, and every figure on the page carries how old it is.
+
+Measured 2026-08-25: of the four reference agents, two publish live state (`bnb-yield`, `bnb-guardian`) and two answer 404 on every state path they have — they are A2A endpoints and nothing else. "Publishes no live state" is a measurement and is shown as one; it is not the same as unreachable, and the two are separate fields.
+
+- Our own agents' live state: https://agent.brainonbnb.com/status — add `?agent=302257` or `?agent=grid-trading` for one of them.
+- Everything the poller collected, ours and theirs: https://agent.brainonbnb.com/telemetry.json
+- Shown per row on the category pages at https://brainonbnb.com/registry
+
+Our two agents are hired per job and hold no position between jobs, so their status reports the readiness of the machinery and a live reference measurement — for the grid planner, the break-even spacing on the deepest pair on the chain — and never a health factor belonging to nobody. Values quoted from other agents are theirs, timestamped, and are not folded into anything stated here as measured.
+
 ## Who has actually been paid — the ERC-8183 job escrow, measured
 
 The registry says who exists. The escrow says who was hired. Every one of the 56,655 jobs in the ERC-8183 kernel `0xEa4DAa3100A767e86FDed867729ae7446476EBA6` was read individually. Measured 2026-08-25: 55,670 jobs ever funded, 28,191 where the escrow actually released, 27,195 holding a deliverable that was never released, 591.56 $U escrowed across the entire history, 84 distinct providers — of whom 3 have ever completed a job for more than one buyer. One address holds 99.1% of all jobs at roughly a cent each; remove it and everything else that has ever happened in the kernel is 488 jobs worth 39.48 $U.

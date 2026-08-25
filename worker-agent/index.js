@@ -580,6 +580,14 @@ export default {
           { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
         ],
         supportedTrust: ['reputation'],
+        // Where the live state is. The card is what an indexer reads, so an
+        // endpoint that is only mentioned on the A2A GET is discoverable by
+        // people and not by the machines this card exists for.
+        endpoints: {
+          a2a: 'https://agent.brainonbnb.com/a2a',
+          status: 'https://agent.brainonbnb.com/status',
+          marketplace: 'https://brainonbnb.com/registry',
+        },
         operator: { name: 'Brain On BNB AI', parent_agent: 49467, site: 'https://brainonbnb.com', marketplace: 'https://brainonbnb.com/registry' },
       });
     }
@@ -603,6 +611,10 @@ export default {
         skills: ['list — what is for sale', 'negotiate — get a quote', 'notify_funded — deliver a job whose escrow is funded'],
         services: Object.values(SERVICES).map((x) => ({ id: x.id, name: x.name, category: x.category, price: x.price, price_display: x.price_display })),
         agents: { 302257: 'Venus Health Factor Monitor', 302258: 'BSC Grid Planner' },
+        // Advertised, not just served. A buyer deciding whether to hire needs
+        // to know the live state exists before it can ask for it, and a card
+        // that omits it leaves the endpoint discoverable only by guessing.
+        status: 'https://agent.brainonbnb.com/status',
         human_readable: 'https://brainonbnb.com/registry',
       });
     }

@@ -34,6 +34,7 @@ import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES } from './sell.js';
+import { refreshTelemetry, readTelemetry } from './telemetry.js';
 
 const RPCS = [
   'https://bsc.publicnode.com',
@@ -762,6 +763,47 @@ export default {
       return json(JSON.parse(latest));
     }
 
+    // Live state of our own two agents, in the shape the rest of this chain
+    // uses it: the four reference agents serve /status, so ours does too, at
+    // the same path and with the same content type. An agent that asks the
+    // market to be machine-readable and is not is a poster.
+    //
+    // Served from the snapshot the cron writes, not computed per request. The
+    // grid probe measures a live pool and the health probe reads the
+    // Comptroller; doing that on every hit would let anybody with a loop spend
+    // our RPC budget and other people's.
+    if (path === '/status') {
+      const t = await readTelemetry(env);
+      if (!t) return json({ error: 'no telemetry tick has run yet' }, 503);
+      const want = url.searchParams.get('agent') || url.searchParams.get('id');
+      if (want) {
+        const one = t.ours.find((a) => String(a.id) === want || a.category === want);
+        if (!one) return json({ error: `no agent "${want}" here`, agents: t.ours.map((a) => ({ id: a.id, category: a.category })) }, 404);
+        return json({ ...one, checked_at: one.checked_at || t.checked_at, method: t.method });
+      }
+      return json({
+        origin: 'https://agent.brainonbnb.com',
+        agents: t.ours,
+        checked_at: t.checked_at,
+        cadence: t.cadence,
+        method: t.method,
+        note: 'Two agents share this origin, so this answers with both. Ask for one with ?agent=302257 or ?agent=grid-trading.',
+      });
+    }
+
+    // Everything the telemetry tick collected, ours and the reference set's,
+    // for the category pages on brainonbnb.com/registry.
+    if (path === '/telemetry.json') {
+      const t = await readTelemetry(env);
+      if (!t) return json({ error: 'no telemetry tick has run yet' }, 503);
+      return json(t);
+    }
+
+    if (path === '/run-telemetry' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      return json(await refreshTelemetry(env));
+    }
+
     if (path === '/stats') {
       const [counters, earnings, watches] = await Promise.all([
         readCounters(env),
@@ -1010,6 +1052,13 @@ export default {
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(checkWatches(env).catch(() => {}));
+
+    // Live state, every tick. Six outbound calls — four peers, one Comptroller
+    // read, one pool measurement — which is why it rides the fifteen-minute
+    // cron rather than being computed when somebody loads the page. A snapshot
+    // fifteen minutes old and labelled with its age is worth more than a fresh
+    // one that costs a stranger's server a request per visitor.
+    ctx.waitUntil(refreshTelemetry(env).catch(() => {}));
 
     // The cron fires every fifteen minutes for the watch checks. The two daily
     // jobs below hang off it, each pinned to ONE tick rather than to an hour:

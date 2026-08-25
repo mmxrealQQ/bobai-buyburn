@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 2511 lines.
+# one fetch. 7 files, 2645 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -432,6 +432,7 @@ import path from 'node:path';
 import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
+import { PEERS, SURFACE } from '../worker-agent/telemetry.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIR = path.join(ROOT, 'data', 'erc8004');
@@ -738,6 +739,17 @@ const SOURCE_BADGE = {
 //   An agent we MATCHED is collapsed to its operator, because that is where
 //   padding lives: 236 registry ids on one host, all the same deployment,
 //   would otherwise fill a category by themselves.
+// Matching a printed row back to the live telemetry the worker collects.
+//
+// The key travels in the HTML as data-tele so the page does not have to guess
+// from a hostname at render time — the mapping from host to poller id lives in
+// one place, next to the poller, and a peer added there shows up here without
+// a second list to keep in step.
+const peerByHost = new Map(PEERS.map((p) => [new URL(p.origin).host, p.id]));
+const teleKey = (id, host) => (
+  id === 302257 || id === 302258 ? `own:${id}` : (peerByHost.get(host) || null)
+);
+
 const categorised = CATEGORIES.map((cat) => {
   const rows = [];
   const seenOperator = new Set();
@@ -753,6 +765,7 @@ const categorised = CATEGORIES.map((cat) => {
       label: a.name || `#${a.id}`, sub: host, instances: 1, hit,
       employment: employmentOf([a.id]),
       ours: ownAgents.some((x) => x.id === a.id),
+      tele: teleKey(a.id, host),
     });
   }
   const claimed = new Set(rows.map((r) => r.label));
@@ -769,6 +782,7 @@ const categorised = CATEGORIES.map((cat) => {
       label: o.name || o.operator, sub: o.operator, instances: o.instances || 1, hit,
       employment: employmentOf(o.ids || []),
       ours: (o.ids || []).some((id) => ownAgents.some((x) => x.id === id)),
+      tele: teleKey(null, o.operator),
     });
   }
 
@@ -788,9 +802,9 @@ const categorySections = categorised.map(({ cat, rows }) => {
     const hist = r.employment
       ? `${fmt(r.employment.funded)} funded &middot; ${fmt(r.employment.completed)} released${r.employment.submitted_not_released ? ` &middot; ${fmt(r.employment.submitted_not_released)} unreleased` : ''}`
       : 'never hired through the escrow';
-    return `        <tr${r.ours ? ' class="rg-ours"' : ''}>
+    return `        <tr${r.ours ? ' class="rg-ours"' : ''}${r.tele ? ` data-tele="${esc(r.tele)}"` : ''}>
           <td><b>${esc(r.label)}</b>${r.ours ? ' <span class="rg-t rg-x4">ours</span>' : ''}${r.instances > 1 ? `<div class="rg-note">${r.instances} registry ids, one deployment</div>` : ''}
-              <div class="rg-note">${esc(r.sub)}</div></td>
+              <div class="rg-note">${esc(r.sub)}</div>${r.tele ? '<div class="rg-live" hidden></div>' : ''}</td>
           <td><span class="rg-t rg-${r.hit.source}" title="${esc(why)}">${badge}</span>
               <div class="rg-note">${esc(r.hit.detail)}</div></td>
           <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div></td>
@@ -961,6 +975,14 @@ const page = `<!doctype html>
      A pixel minimum keeps "almost nothing" visible as almost nothing. */
   .rg-fill{height:100%;border-radius:4px;min-width:3px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
   .rg-note{font-size:.72rem;color:var(--muted);line-height:1.5}
+  /* The live line. Deliberately not styled like the notes above it: those are
+     facts from the last full scan, this one is seconds old and says so. */
+  .rg-live{margin-top:6px;font-size:.72rem;line-height:1.5;color:var(--fg)}
+  .rg-live .rg-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:middle;background:#2ecc71}
+  .rg-live.rg-dark .rg-dot{background:var(--muted)}
+  .rg-live.rg-dark{color:var(--muted)}
+  .rg-live .rg-age{color:var(--muted)}
+  .rg-live .rg-mismatch{color:var(--muted);display:block}
   .rg-note code{font-size:.74rem}
   .rg-declared{background:rgba(80,220,140,.14);color:#7fe3ab}
   .rg-registered{background:rgba(120,170,255,.14);color:#93b8ff}
@@ -1340,6 +1362,106 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     i.addEventListener('keydown',function(e){if(e.key==='Enter')run();});
   })();
 
+  // Live state under the rows that have any.
+  //
+  // WHY THIS IS FETCHED AND NOT BAKED
+  // Everything else in a category row is from the last full scan and is allowed
+  // to be hours old. "Is this thing answering, and what is it seeing" is worth
+  // nothing at that age, so it is asked at page load and stamped with how old
+  // the answer is. A live figure without its age is a worse lie than no figure.
+  //
+  // WHY EVERY VALUE IS ESCAPED
+  // These strings come out of other people's servers. They are printed, so they
+  // are escaped — a directory that renders a stranger's JSON into its own DOM
+  // unescaped is one img-onerror attribute away from being their page.
+  (function(){
+    var SURF = ${JSON.stringify(SURFACE)};
+    var rows=[].slice.call(document.querySelectorAll('tr[data-tele]'));
+    if(!rows.length)return;
+
+    function esc(v){
+      return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function ago(iso){
+      var t=Date.parse(iso); if(!t)return '';
+      var m=Math.round((Date.now()-t)/60000);
+      if(m<1)return 'checked just now';
+      if(m===1)return 'checked 1 min ago';
+      if(m<90)return 'checked '+m+' min ago';
+      var h=Math.round(m/60);
+      return 'checked '+h+(h===1?' hour ago':' hours ago');
+    }
+    // A null in somebody's status document means they do not know. It is shown
+    // as an em dash and never as a zero.
+    function val(v,unit){
+      if(v===null||v===undefined||v==='')return '&mdash;';
+      var out=esc(v);
+      if(typeof v==='string'&&/^0x[0-9a-fA-F]{40}$/.test(v))out=esc(v.slice(0,6)+'…'+v.slice(-4));
+      return out+(unit?esc(unit):'');
+    }
+    function fields(state,cat){
+      var spec=SURF[cat]||SURF[String(cat).replace(/-monitoring$/,'')]||[];
+      var parts=[];
+      spec.forEach(function(f){
+        if(!(f[0] in state))return;
+        parts.push('<span class="rg-age">'+esc(f[1])+'</span> '+val(state[f[0]],f[2]));
+      });
+      return parts;
+    }
+
+    function ourLine(a){
+      var head=a.ready?esc(a.headline||'answering'):'not answering right now';
+      var extra=[];
+      if(a.jobs_delivered)extra.push(esc(a.jobs_delivered)+(a.jobs_delivered===1?' job delivered':' jobs delivered'));
+      if(a.proven_by&&a.proven_by.agreed_with_protocol===true)extra.push('last job agreed with the protocol');
+      if(!a.ready&&a.last_error)extra.push(esc(a.last_error));
+      return '<div class="rg-live'+(a.ready?'':' rg-dark')+'"><span class="rg-dot"></span>'+
+        head+(extra.length?' &middot; '+extra.join(' &middot; '):'')+
+        ' &middot; <span class="rg-age">'+esc(ago(a.checked_at))+'</span></div>';
+    }
+
+    function peerLine(p,section){
+      if(!p.has_live_state){
+        return '<div class="rg-live rg-dark"><span class="rg-dot"></span>'+
+          esc(p.note||'no live state')+
+          ' &middot; <span class="rg-age">'+esc(ago(p.checked_at))+'</span></div>';
+      }
+      var cat=p.declared_category||section;
+      var parts=fields(p.state||{},cat);
+      if(p.state&&p.state.status)parts.unshift(esc(p.state.status));
+      var mism='';
+      // The agent's own word against where our classifier filed it. Printed
+      // rather than quietly resolved: a row that says "matched rebalanc in its
+      // tool description" while the agent itself says yield-optimisation is a
+      // misfiling, and the agent is the better authority on that question.
+      if(p.declared_category&&section&&p.declared_category!==section){
+        mism='<span class="rg-mismatch">its own status calls itself &quot;'+esc(p.declared_category)+'&quot;, not '+esc(section)+'</span>';
+      }
+      return '<div class="rg-live"><span class="rg-dot"></span>'+
+        (parts.length?parts.join(' &middot; '):'answering')+
+        ' &middot; <span class="rg-age">'+esc(ago(p.checked_at))+'</span>'+mism+'</div>';
+    }
+
+    fetch('https://agent.brainonbnb.com/telemetry.json',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d)return;
+        var map={};
+        (d.ours||[]).forEach(function(a){map['own:'+a.id]={ours:true,e:a};});
+        (d.peers||[]).forEach(function(x){map[x.id]={ours:false,e:x};});
+        rows.forEach(function(tr){
+          var slot=tr.querySelector('.rg-live');
+          var m=map[tr.getAttribute('data-tele')];
+          if(!slot||!m)return;
+          var box=tr.closest('.rg-box');
+          var section=box?String(box.id).replace(/^cat-/,''):'';
+          slot.outerHTML=m.ours?ourLine(m.e):peerLine(m.e,section);
+        });
+      })
+      .catch(function(){});
+  })();
+
   // Filter only — no data fetching, nothing that can fail and leave the page
   // half-built. If this script never runs, every row is still on the page.
   (function(){
@@ -1386,6 +1508,18 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       console.error(`\nRefusing to write registry.html: #${id} is missing from the page.\n`);
       process.exit(1);
     }
+  }
+
+  // The live line has no id to check — it is a class on however many rows the
+  // telemetry can be matched to. What can silently break it is teleKey()
+  // returning null for everything: the script would still run, find no rows,
+  // and return without a trace. So the count is asserted, not the markup.
+  const teleRows = (page.match(/ data-tele="/g) || []).length;
+  const liveSlots = (page.match(/class="rg-live" hidden/g) || []).length;
+  if (teleRows < 3 || teleRows !== liveSlots) {
+    console.error(`\nRefusing to write registry.html: ${teleRows} rows carry live telemetry and ${liveSlots} have a slot for it.`);
+    console.error('  Expected at least 3 and the two to match. Check teleKey() against the PEERS list and our own agent ids.\n');
+    process.exit(1);
   }
 }
 

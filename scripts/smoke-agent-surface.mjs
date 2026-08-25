@@ -210,6 +210,48 @@ for (const [label, sig, want] of [
 }
 
 // ---- the public numbers --------------------------------------------------
+section('Live telemetry');
+{
+  // Our own agents answer /status because the rest of this chain does. An
+  // agent that asks the market to be machine-readable and is not is a poster.
+  const j = await fetch(`${AGENT}/status`).then((r) => r.json()).catch(() => null);
+  ok('/status answers', !!j?.agents);
+  ok('both of our agents are in it', (j?.agents || []).length === 2);
+  ok('every figure carries when it was taken', (j?.agents || []).every((a) => !!a.checked_at));
+  ok('says how it was produced', /measured|probe|reference input/i.test(j?.method || ''));
+  // One job, two agents on one origin: the count has to be per service or the
+  // grid planner claims credit for a health-factor delivery. The invariant is
+  // that the per-agent counts sum to no more than the deliverables examined —
+  // an equality check between the two agents would false-alarm the day they
+  // legitimately have the same number.
+  const jobs = (j?.agents || []).map((a) => a.jobs_delivered);
+  const examined = j?.jobs_counted_from?.deliverables_examined;
+  const sum = jobs.reduce((n, v) => n + (v || 0), 0);
+  ok('jobs are attributed per agent, not per origin',
+    examined == null || sum <= examined,
+    `agents claim ${sum} deliveries between them from ${examined} deliverables`);
+
+  const one = await fetch(`${AGENT}/status?agent=302258`).then((r) => r.json()).catch(() => null);
+  ok('a single agent can be asked for', one?.id === 302258);
+}
+{
+  const t = await fetch(`${AGENT}/telemetry.json`).then((r) => r.json()).catch(() => null);
+  ok('/telemetry.json answers', !!t?.peers);
+  ok('polls the four reference agents', (t?.peers || []).length === 4);
+  // The two that publish nothing must be recorded as reachable-without-state,
+  // not as unreachable. Conflating those is the misreading this measures.
+  const silent = (t?.peers || []).filter((p) => p.reachable && !p.has_live_state);
+  ok('separates "no live state" from "unreachable"', silent.length >= 1 && silent.every((p) => !!p.note));
+  ok('every peer entry is timestamped', (t?.peers || []).every((p) => !!p.checked_at));
+}
+{
+  const { body } = await getText(`${SITE}/registry`);
+  const rows = (body.match(/ data-tele="/g) || []).length;
+  ok('registry rows carry a telemetry key', rows >= 3, `${rows} rows`);
+  const csp = (await fetch(`${SITE}/registry`)).headers.get('content-security-policy') || '';
+  ok('CSP allows the registry page to reach the telemetry', csp.includes('https://agent.brainonbnb.com'));
+}
+
 section('Transparency');
 {
   const j = await fetch(`${AGENT}/stats`).then((r) => r.json()).catch(() => null);

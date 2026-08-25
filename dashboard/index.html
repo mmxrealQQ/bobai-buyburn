@@ -207,7 +207,7 @@
 
   <nav><div class="nav">
     <a href="/" class="nl"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"> <span>BOBAI</span></a>
-    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#agents">Agents</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
+    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="/registry">Marketplace</a><a href="#agents">Agents</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
     <div class="nb-group">
       <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
     </div>
@@ -840,7 +840,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">5 files &middot; 3,317 lines &middot; 69 KB</span>
+          <span class="lib-m">5 files &middot; 3,338 lines &middot; 69 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1001,7 +1001,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 2,948 lines &middot; 58 KB</span>
+          <span class="lib-m">7 files &middot; 2,960 lines &middot; 58 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1048,6 +1048,21 @@
 
   <section class="sec b-violet" id="agents">
     <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Agents</span><span class="blk-line"></span></div>
+    <a class="mkt fi" href="/registry">
+      <div class="mkt-in">
+        <div class="mkt-tag">The marketplace</div>
+        <h2 class="mkt-h">Brain Plaza</h2>
+        <p class="mkt-p">Every ERC-8004 agent on BNB Chain, read one id at a time and contacted at the endpoint it names &mdash; then sorted into the four things people actually hire an agent for. Pick one and hire it from the page: the quote is negotiated live and the escrow runs on-chain.</p>
+        <div class="mkt-nums">
+          <div><b id="mkt-total">&ndash;</b><span>agent ids read</span></div>
+          <div><b id="mkt-reach">&ndash;</b><span>that answer</span></div>
+          <div><b id="mkt-hire">&ndash;</b><span>hireable here</span></div>
+          <div><b>4</b><span>categories, equally deep</span></div>
+        </div>
+        <span class="mkt-go">Find and hire an agent &rarr;</span>
+      </div>
+    </a>
+
     <div class="sh fi"><h2>Built For <em>Machines</em></h2>
       <p class="sh-sub">Most of this site is read by people. This part is read by other people's AI agents &mdash; and here is exactly how often, what it earned, and where that money went.</p>
     </div>
@@ -1209,5 +1224,33 @@
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
 <script src="app.js?v=28" defer></script>
+<script>
+  // The registry grows by thousands a day. The card shows the live high-water
+  // mark from the same endpoint /registry reads, so the homepage can never
+  // quote a total the marketplace itself would not.
+  (function(){
+    var t=document.getElementById('mkt-total'),
+        re=document.getElementById('mkt-reach'),
+        hi=document.getElementById('mkt-hire');
+    if(!t)return;
+    var n=function(v){return Number(v).toLocaleString('en-US');};
+    // The live high-water mark. The registry grows by thousands a day, so a
+    // total baked at build time is wrong within hours.
+    fetch('https://agent.brainonbnb.com/census',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){ if(d&&d.highest_id) t.textContent=n(d.highest_id); })
+      .catch(function(){});
+    // The other two come from the file the marketplace page is built from, so
+    // this card cannot print a count that page would not.
+    fetch('/api-registry.json',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d)return;
+        if(re&&d.reachability&&d.reachability.reachable!=null)re.textContent=n(d.reachability.reachable);
+        if(hi&&d.hireable_here!=null)hi.textContent=n(d.hireable_here);
+      })
+      .catch(function(){});
+  })();
+</script>
 </body>
 </html>

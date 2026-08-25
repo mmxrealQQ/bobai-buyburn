@@ -1161,3 +1161,24 @@
        reading the same colour regardless of which block it sits in. */
     #agents a, #agents .agt-live a, #agents .agt-note a{color:var(--gold)}
     #agents .agt-live a{border-bottom:1px solid rgba(240,185,11,.3);text-decoration:none}
+
+    /* Block 05 leads with the marketplace.
+       Before this, somebody arriving at brainonbnb.com found a token dashboard
+       with the agent marketplace as the fifth of eight blocks, behind a heading
+       that said "Agents" and read as our own agent surface rather than as a
+       place to hire one. The marketplace is the thing this project is judged
+       on; it goes at the top of its own block and into the nav. */
+    .mkt{display:block;text-decoration:none;color:inherit;margin:26px 0 30px;border-radius:18px;
+      border:1px solid rgba(var(--accs),.30);background:
+        radial-gradient(120% 140% at 8% 0%,rgba(var(--accs),.13),transparent 62%),var(--card);
+      transition:transform .25s,border-color .25s}
+    .mkt:hover{transform:translateY(-3px);border-color:rgba(var(--accs),.55)}
+    .mkt-in{padding:26px 26px 24px}
+    .mkt-tag{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:rgb(var(--accs))}
+    .mkt-h{margin:8px 0 6px;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.1}
+    .mkt-p{margin:0;max-width:62ch;color:var(--muted);font-size:.92rem;line-height:1.65}
+    .mkt-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;margin:20px 0 18px}
+    .mkt-nums b{display:block;font-size:1.35rem;line-height:1.2;font-variant-numeric:tabular-nums}
+    .mkt-nums span{display:block;font-size:.7rem;color:var(--muted);margin-top:3px}
+    .mkt-go{display:inline-block;padding:9px 20px;border-radius:999px;font-size:.85rem;
+      background:rgb(var(--accs));color:#0b0b0f;font-weight:600}

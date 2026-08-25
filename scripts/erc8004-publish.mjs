@@ -330,6 +330,21 @@ const teleKey = (id, host) => (
   id === 302257 || id === 302258 ? `own:${id}` : (peerByHost.get(host) || null)
 );
 
+// CAN BE HIRED and HAS BEEN HIRED are different facts, and the first version
+// of the table derived the first from the second. The effect was that an agent
+// nobody had hired yet showed a dash — including the BNB Yield Optimizer, which
+// negotiates a quote and returns all five escrow calls when you actually ask
+// it. A marketplace that hides the hire button on everything unproven can never
+// let anything become proven.
+//
+// Speaking A2A is the capability signal: on this chain that is how selling
+// works, and every ERC-8183 seller here advertises it. History stays on its own
+// line underneath, where it belongs.
+//
+// Defined once because the homepage prints the count. Two copies of this rule
+// is how a front page ends up quoting a number the marketplace would not.
+const canHire = (r) => !!(r.ours || (r.speaks || []).includes('a2a') || (r.employment && r.employment.funded > 0));
+
 const categorised = CATEGORIES.map((cat) => {
   const rows = [];
   const seenOperator = new Set();
@@ -384,18 +399,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
   const ids = rows.reduce((n, r) => n + r.instances, 0);
   const body = rows.map((r) => {
     const [badge, why] = SOURCE_BADGE[r.hit.source];
-    // CAN BE HIRED and HAS BEEN HIRED are different facts, and the first
-    // version of this column derived the first from the second. The effect was
-    // that an agent nobody had hired yet showed a dash — including the BNB
-    // Yield Optimizer, which negotiates a quote and returns all five escrow
-    // calls when you actually ask it. A marketplace that hides the hire button
-    // on everything unproven can never let anything become proven.
-    //
-    // Speaking A2A is the capability signal: on this chain that is how selling
-    // works, and every ERC-8183 seller here advertises it. History stays in
-    // its own line underneath, where it belongs — an agent that has been paid
-    // is worth more than one that has not, and that is for the reader to weigh.
-    const hireable = r.ours || (r.speaks || []).includes('a2a') || (r.employment && r.employment.funded > 0);
+    const hireable = canHire(r);
     const hist = r.employment
       ? `${fmt(r.employment.funded)} funded &middot; ${fmt(r.employment.completed)} released${r.employment.submitted_not_released ? ` &middot; ${fmt(r.employment.submitted_not_released)} unreleased` : ''}`
       : 'never hired through the escrow';
@@ -418,6 +422,14 @@ ${body}
       <p class="rg-note" style="margin-top:12px">Ask the broker directly: <code>GET /find?category=${cat.id}</code> at <a href="https://agent.brainonbnb.com/find?category=${cat.id}&amp;limit=10">agent.brainonbnb.com</a> — every result carries how it was categorised.</p>
     </div>`;
 }).join(NL);
+
+// What the homepage prints on its marketplace card. Written here rather than
+// typed there, so the two can never drift apart.
+api.hireable_here = categorised.reduce(
+  (n, { rows }) => n + rows.filter((r) => canHire(r) && r.agentId).length, 0,
+);
+api.categories = CATEGORIES.map((c) => c.id);
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
 
 const liveRows = operators
   .slice()

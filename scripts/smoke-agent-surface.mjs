@@ -252,6 +252,39 @@ section('Live telemetry');
   ok('CSP allows the registry page to reach the telemetry', csp.includes('https://agent.brainonbnb.com'));
 }
 
+section('The marketplace, from the front door');
+{
+  // A judge, or anybody else, arriving at brainonbnb.com should not have to
+  // work out that the marketplace lives behind a heading called "Agents".
+  const { body } = await getText(`${SITE}/`);
+  ok('homepage carries the marketplace card', /class="mkt fi"/.test(body));
+  ok('the card links to the marketplace', /<a class="mkt fi" href="\/registry">/.test(body));
+  ok('nav offers it directly', /<a href="\/registry">Marketplace<\/a>/.test(body));
+  // The counts are placeholders in the markup on purpose. A number typed into
+  // the homepage is a number that drifts away from the page it describes.
+  ok('the card does not hard-code its counts',
+    !/<b id="mkt-(reach|hire)">\d/.test(body),
+    'a count is baked into the markup instead of fetched');
+}
+{
+  const j = await fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null);
+  ok('api-registry publishes the hireable count', Number.isInteger(j?.hireable_here));
+  ok('and it is not zero', (j?.hireable_here || 0) > 0, 'nothing on the page can be hired');
+  ok('it names the four categories', (j?.categories || []).length === 4);
+}
+{
+  // Every category must offer at least one agent that can actually be hired.
+  // "All four, equally deep" is the stated bar; a category with nothing to
+  // hire is the one that fails it.
+  const { body } = await getText(`${SITE}/registry`);
+  const buttons = body.match(/data-cat="([a-z-]+)"/g) || [];
+  const cats = new Set(buttons.map((m) => m.slice(10, -1)));
+  for (const c of ['rebalancing', 'grid-trading', 'yield-optimization', 'health-factor']) {
+    ok(`${c} has something hireable`, cats.has(c));
+  }
+  ok('the hire panel is on the page', /<dialog id="rg-hire"/.test(body));
+}
+
 section('Transparency');
 {
   const j = await fetch(`${AGENT}/stats`).then((r) => r.json()).catch(() => null);

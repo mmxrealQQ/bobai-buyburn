@@ -32,5 +32,12 @@
     "reachability": "Every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401, 403 and 404 — only a failed connection counts as dead. MCP endpoints were sent a real tools/list; agent cards had to parse as JSON.",
     "caveat": "Reachability is a snapshot. An endpoint down at that moment is counted as dead, and one that answers may still do nothing useful."
   },
-  "source": "https://brainonbnb.com/registry"
+  "source": "https://brainonbnb.com/registry",
+  "hireable_here": 11,
+  "categories": [
+    "rebalancing",
+    "grid-trading",
+    "yield-optimization",
+    "health-factor"
+  ]
 }

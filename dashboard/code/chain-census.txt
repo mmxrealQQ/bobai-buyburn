@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3073 lines.
+# one fetch. 7 files, 3183 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -960,6 +960,92 @@ api.hireable_here = categorised.reduce(
 api.categories = CATEGORIES.map((c) => c.id);
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
 
+// ---------------------------------------------------------------------------
+// WHAT 786 ANSWERING AGENTS ACTUALLY ARE
+//
+// Every count in this space is a count of registry ids, and a registry id is
+// the cheapest thing on the chain. The number that decides whether an agent
+// economy exists is how many distinct things are running, and that is a
+// different number by a factor of eight.
+//
+// Nothing here is asserted. Each note below is derived from what was measured:
+// how many ids sit behind one host, how many names they use, how many distinct
+// URLs they name, and whether their tool lists are identical. A deployment is
+// called a fleet because its tool signature repeats, not because it looked
+// suspicious.
+const deployments = (() => {
+  const byHost = new Map();
+  for (const a of directory) {
+    let host = '';
+    try { host = new URL((a.endpoints || [])[0]).host.toLowerCase(); } catch { continue; }
+    if (!byHost.has(host)) byHost.set(host, []);
+    byHost.get(host).push(a);
+  }
+
+  const toolSig = (a) => (a.tools || [])
+    .map((t) => String((t && (t.name || t.id)) || t || '').toLowerCase())
+    .filter(Boolean).sort().join('|');
+
+  const rows = [...byHost.entries()].map(([host, list]) => {
+    const names = new Set(list.map((a) => a.name).filter(Boolean));
+    const urls = new Set(list.flatMap((a) => a.endpoints || []));
+    // The biggest group of ids on this host whose tool lists are character for
+    // character the same.
+    const sigs = new Map();
+    for (const a of list) {
+      const sg = toolSig(a);
+      if (!sg) continue;
+      sigs.set(sg, (sigs.get(sg) || 0) + 1);
+    }
+    let topSig = null, topN = 0;
+    for (const [sg, n] of sigs) if (n > topN) { topN = n; topSig = sg; }
+    const speaks = new Set(list.flatMap((a) => a.speaks || []));
+
+    const notes = [];
+    if (topN > 1) {
+      notes.push(`${fmt(topN)} of them expose a character-for-character identical tool list: ${topSig.split('|').slice(0, 5).join(', ')}`);
+    }
+    // The most-repeated URL, not "are they all identical". Requiring identity
+    // missed the sharpest case on the chain: 45 of the 46 ids on github.com
+    // name the very same page, github.com/agntcy/oasf — a specification
+    // repository. One of the 46 names something else, and that lone exception
+    // was enough to hide the other 45.
+    // Counted per AGENT, not per endpoint entry. An agent may name the same
+    // URL twice, or two URLs on one host, and counting entries produced the
+    // line "4 of the 2 name the very same URL" — a number larger than the set
+    // it came from, which is exactly the kind of arithmetic this page exists
+    // to catch in other people's data.
+    const urlCount = new Map();
+    for (const a of list) {
+      for (const e of new Set(a.endpoints || [])) urlCount.set(e, (urlCount.get(e) || 0) + 1);
+    }
+    let topUrl = null, topUrlN = 0;
+    for (const [u, n] of urlCount) if (n > topUrlN) { topUrlN = n; topUrl = u; }
+    if (topUrlN > 1) {
+      notes.push(topUrlN === list.length
+        ? `all ${fmt(list.length)} registrations name the same URL, ${topUrl}`
+        : `${fmt(topUrlN)} of the ${fmt(list.length)} name the very same URL, ${topUrl}`);
+    }
+    // A host that answers but speaks neither protocol is a web server, and a
+    // registration pointing at one is a link, not an agent. Said as a
+    // measurement rather than an accusation: it may well be documentation.
+    if (!speaks.has('mcp') && !speaks.has('a2a') && list.length > 1) {
+      notes.push('answers as a web page — no MCP, no agent card');
+    }
+    if (names.size > 1 && names.size >= list.length * 0.9 && list.length > 5) {
+      notes.push(`${fmt(names.size)} different names for one deployment`);
+    }
+
+    return { host, ids: list.length, names: names.size, urls: urls.size, topN, notes };
+  }).sort((a, b) => b.ids - a.ids);
+
+  const total = rows.reduce((n, r) => n + r.ids, 0);
+  const top5 = rows.slice(0, 5).reduce((n, r) => n + r.ids, 0);
+  const singles = rows.filter((r) => r.ids === 1).length;
+  const biggestFleet = rows.reduce((best, r) => (r.topN > (best?.topN || 0) ? r : best), null);
+  return { rows, total, top5, singles, biggestFleet, hosts: rows.length };
+})();
+
 const liveRows = operators
   .slice()
   .slice(0, 60)
@@ -1265,6 +1351,30 @@ const page = `<!doctype html>
       <div class="rg-card"><div class="rg-n">${fmt(c.valid)}</div><div class="rg-l">readable registrations</div><div class="rg-s">${p1(c.valid)} parse at all</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.withHttpEndpoint)}</div><div class="rg-l">name an endpoint</div><div class="rg-s">${p1(c.withHttpEndpoint)} &mdash; an address you could call</div></div>
       <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of everything registered' : 'probe pending'}</div></div>
+    </div>
+
+    <div class="rg-box" id="rg-fleets">
+      <h2>What the ones that answer actually are</h2>
+      <p class="rg-sub">Every figure above counts registry ids, and a registry id is the cheapest thing on this chain. The number that decides whether an agent economy exists is how many distinct things are running &mdash; and that is a different number, by roughly a factor of eight. Below is every host behind the ${fmt(deployments.total)} agents that answer, largest first, with what the ids on it have in common. Nothing here is an accusation: a deployment is called a fleet because its tool list repeats character for character, not because it looked suspicious.</p>
+
+      <div class="rg-grid">
+        <div class="rg-card"><div class="rg-n">${fmt(deployments.total)}</div><div class="rg-l">agents that answer</div><div class="rg-s">the number usually quoted</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(deployments.hosts)}</div><div class="rg-l">distinct deployments</div><div class="rg-s">what is actually running</div></div>
+        <div class="rg-card"><div class="rg-n">${p1(deployments.top5, deployments.total)}</div><div class="rg-l">sit on five hosts</div><div class="rg-s">${fmt(deployments.top5)} of ${fmt(deployments.total)} ids</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(deployments.singles)}</div><div class="rg-l">hosts with one id</div><div class="rg-s">the honest long tail</div></div>
+      </div>
+
+      ${deployments.biggestFleet && deployments.biggestFleet.topN > 1 ? `<p class="rg-note" style="margin:14px 0 0">The largest single fleet: <b>${fmt(deployments.biggestFleet.topN)} registry ids on ${esc(deployments.biggestFleet.host)}</b>, under ${fmt(deployments.biggestFleet.names)} different names, every one exposing the same five tools. Counted as ${fmt(deployments.biggestFleet.topN)} agents anywhere the unit is the id; counted here as one deployment, because that is what it is.</p>` : ''}
+
+      <div class="rg-tablebox" style="margin-top:16px"><div class="rg-scroll"><table class="rg"><thead><tr><th>Deployment</th><th>Registry ids</th><th>Names</th><th>What they have in common</th></tr></thead><tbody>
+${deployments.rows.slice(0, 40).map((d) => `        <tr>
+          <td><b>${esc(d.host)}</b></td>
+          <td>${fmt(d.ids)}</td>
+          <td>${fmt(d.names)}</td>
+          <td>${d.notes.length ? `<div class="rg-note">${d.notes.map(esc).join('<br>')}</div>` : '<span class="rg-note">&mdash;</span>'}</td>
+        </tr>`).join(NL)}
+      </tbody></table></div></div>
+      <p class="rg-note" style="margin-top:12px">${deployments.rows.length > 40 ? `Showing the 40 largest of ${fmt(deployments.rows.length)} deployments; the remainder hold one or two ids each. ` : ''}Grouped by the host each registration names. Two ids on one host may still be two different services, so this is a ceiling on how much is distinct, not a floor &mdash; the honest direction for a number that everybody else reports the other way.</p>
     </div>
 
     <div class="rg-box" id="rg-log" hidden>

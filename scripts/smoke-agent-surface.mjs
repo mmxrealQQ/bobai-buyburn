@@ -314,6 +314,18 @@ section('The marketplace, from the front door');
   }
   ok('the hire panel is on the page', /<dialog id="rg-hire"/.test(body));
 
+  // The fleet block, and its arithmetic. "45 of the 46 name the same URL" is
+  // the point of the block; "4 of the 2" was a real line it printed before the
+  // count was fixed, and a number larger than the set it came from is exactly
+  // what this page exists to catch in other people's data.
+  ok('the fleet block is on the page', /id="rg-fleets"/.test(body));
+  const fleet = body.slice(body.indexOf('id="rg-fleets"'), body.indexOf('id="rg-log"'));
+  const overCounts = [...fleet.matchAll(/([\d,]+) of the ([\d,]+) name/g)]
+    .filter((m) => Number(m[1].replace(/,/g, '')) > Number(m[2].replace(/,/g, '')));
+  ok('no subset is larger than its set', overCounts.length === 0,
+    overCounts.map((m) => `${m[1]} of ${m[2]}`).join(', '));
+  ok('it names the largest identical-tool fleet', /identical tool list/.test(fleet));
+
   // The rubric's four steps are: land, find by category, UNDERSTAND WHAT IT
   // DOES, activate. The third was missing entirely — the columns were the
   // agent, how we classified it and whether it had ever been paid. A row

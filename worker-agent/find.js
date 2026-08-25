@@ -15,6 +15,8 @@
 // COST: one subrequest per call, to our own static JSON, which Cloudflare edge-
 // caches. No KV. The list is small enough to filter in memory.
 
+import { classifyAgent, CATEGORY_IDS, categoryOf } from './categories.js';
+
 const AGENTS_URL = 'https://brainonbnb.com/api-agents.json';
 const CACHE_MS = 10 * 60 * 1000;
 
@@ -74,6 +76,18 @@ export async function handleFind(url) {
   const q = url.searchParams.get('q') || '';
   const limit = Math.min(25, Math.max(1, Number(url.searchParams.get('limit')) || 10));
   const needs = (url.searchParams.get('speaks') || '').toLowerCase().split(',').map((x) => x.trim()).filter(Boolean);
+  // The marketplace is judged on four categories, so the broker has to be able
+  // to answer within one. Every hit carries how it was categorised — declared
+  // by the agent, written into its registration, or matched by us — because a
+  // filter that hides the difference is a filter that turns a keyword into a
+  // credential.
+  const wantCategory = (url.searchParams.get('category') || '').trim().toLowerCase() || null;
+  if (wantCategory && !CATEGORY_IDS.includes(wantCategory)) {
+    return { status: 400, body: {
+      error: `unknown category "${wantCategory}"`,
+      categories: CATEGORY_IDS,
+    } };
+  }
 
   let list;
   try { list = await loadAgents(); }
@@ -81,6 +95,15 @@ export async function handleFind(url) {
 
   let pool = list.agents || [];
   if (needs.length) pool = pool.filter((a) => needs.every((n) => (a.speaks || []).includes(n)));
+
+  const catOf = new Map();
+  if (wantCategory) {
+    pool = pool.filter((a) => {
+      const hit = classifyAgent(a).find((m) => m.category === wantCategory);
+      if (hit) catOf.set(a.id, hit);
+      return !!hit;
+    });
+  }
 
   const ts = terms(q);
   const scored = pool
@@ -94,6 +117,8 @@ export async function handleFind(url) {
     body: {
       query: q || null,
       required_protocols: needs.length ? needs : null,
+      category: wantCategory ? { id: wantCategory, label: categoryOf(wantCategory)?.label } : null,
+      categories_available: CATEGORY_IDS,
       searched: pool.length,
       returned: scored.length,
       // Said plainly, because a broker that implies a ranking it cannot support
@@ -109,6 +134,7 @@ export async function handleFind(url) {
         ...(a.tools?.length ? { tools: a.tools.slice(0, 12).map((t) => t.name) } : {}),
         ...(a.skills?.length ? { skills: a.skills.slice(0, 12) } : {}),
         ...(a.agent_card ? { agent_card: a.agent_card } : {}),
+        ...(catOf.has(a.id) ? { categorised: { as: catOf.get(a.id).category, how: catOf.get(a.id).source, evidence: catOf.get(a.id).detail } } : {}),
         match: Math.round(s * 10) / 10,
       })),
       ...(scored.length === 0 && ts.length ? {

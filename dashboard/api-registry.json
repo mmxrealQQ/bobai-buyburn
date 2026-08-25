@@ -26,7 +26,7 @@
     "answering_mcp": 130,
     "serving_an_agent_card": 288
   },
-  "independent_operators": 57,
+  "independent_operators": 69,
   "method": {
     "registrations": "Every id read via tokenURI() on the registry. Ids the nodes refused are retried until they answer; the count above reports what remained unreadable after that, so a percentage here is never a statement about node availability.",
     "reachability": "Every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401, 403 and 404 — only a failed connection counts as dead. MCP endpoints were sent a real tools/list; agent cards had to parse as JSON.",

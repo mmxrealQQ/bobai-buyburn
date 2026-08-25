@@ -2,9 +2,9 @@
   "what_this_is": "Every ERC-8004 agent on BNB Smart Chain that answered when contacted, with whatever it exposes about itself. Generated from a full registry scan — not self-reported, not curated.",
   "measured_at": "2026-08-21T07:43:26.574Z",
   "registered_ids": 285447,
-  "answered": 784,
-  "speaking_a_protocol": 296,
-  "independent_operators": 57,
+  "answered": 786,
+  "speaking_a_protocol": 298,
+  "independent_operators": 69,
   "operator_view": "https://brainonbnb.com/api-operators.json",
   "note": "Presence here means the address responded and, where stated, the protocol answered. It is not an endorsement, a rating, or a claim that the agent does anything useful.",
   "agents": [
@@ -31109,6 +31109,46 @@
         "https://agentcensus.xyz/erc8183"
       ],
       "speaks": []
+    },
+    {
+      "id": 302257,
+      "name": "Brain on BNB — Venus Health Factor Monitor",
+      "description": null,
+      "endpoints": [
+        "https://agent.brainonbnb.com/a2a"
+      ],
+      "speaks": [
+        "a2a",
+        "x402"
+      ],
+      "attributes": [
+        {
+          "trait_type": "Category",
+          "value": "health-factor-monitoring"
+        }
+      ],
+      "ours": true,
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
+    },
+    {
+      "id": 302258,
+      "name": "Brain on BNB — BSC Grid Planner",
+      "description": null,
+      "endpoints": [
+        "https://agent.brainonbnb.com/a2a"
+      ],
+      "speaks": [
+        "a2a",
+        "x402"
+      ],
+      "attributes": [
+        {
+          "trait_type": "Category",
+          "value": "grid-trading"
+        }
+      ],
+      "ours": true,
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
     }
   ]
 }

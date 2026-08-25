@@ -42,6 +42,18 @@ export function hostOf(url) {
 // (app.singularry.org/agents/12, /agents/13, …). Grouping on the registrable
 // domain catches that without merging genuinely different operators who happen
 // to share a platform.
+// Hosting services where the registrable domain is NOT the operator, because
+// anybody can have a name under it. Grouping on the domain there merges
+// unrelated people into one "operator" and quietly deletes diversity.
+//
+// This is not theoretical: all four BNB Agent Studio reference agents live on
+// bnb-yield / bnb-guardian / bnb-lp / bnb-grid under 172-104-171-139.nip.io.
+// nip.io is wildcard DNS — it resolves any IP-shaped label — so collapsing to
+// "nip.io" turned four distinct reference agents into a single operator and
+// made the grid-trading category read as empty when it had one entry in it.
+// One label deeper is the real boundary on these hosts.
+const WILDCARD_HOSTS = /(^|\.)(nip\.io|sslip\.io|xip\.io|traefik\.me|localtest\.me|ngrok\.io|ngrok-free\.app|trycloudflare\.com|loca\.lt|serveo\.net|herokuapp\.com|onrender\.com|fly\.dev|vercel\.app|netlify\.app|pages\.dev|workers\.dev|railway\.app|replit\.dev|glitch\.me|repl\.co|azurewebsites\.net|appspot\.com|firebaseapp\.com|web\.app|github\.io|gitlab\.io|surge\.sh|now\.sh)$/i;
+
 export function operatorOf(agent) {
   const first = (agent.endpoints || []).map(hostOf).find(Boolean);
   if (!first) return null;
@@ -49,7 +61,14 @@ export function operatorOf(agent) {
   if (parts.length <= 2) return first;
   // Keep three labels for known multi-level suffixes, two otherwise.
   const twoLevelTld = /\.(co|com|org|net|gov|ac)\.[a-z]{2}$/.test(first);
-  return parts.slice(twoLevelTld ? -3 : -2).join('.');
+  let keep = twoLevelTld ? 3 : 2;
+  // On a wildcard host, go one label deeper — and on nip.io style hosts the
+  // label below is the IP, so go deeper again to reach the actual service.
+  if (WILDCARD_HOSTS.test(parts.slice(-keep).join('.'))) {
+    keep += 1;
+    if (/^\d+-\d+-\d+-\d+$/.test(parts[parts.length - keep] || '')) keep += 1;
+  }
+  return parts.slice(-Math.min(keep, parts.length)).join('.');
 }
 
 const toolSignature = (a) =>

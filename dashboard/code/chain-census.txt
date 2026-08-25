@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 2274 lines.
+# one fetch. 7 files, 2450 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -431,6 +431,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
+import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIR = path.join(ROOT, 'data', 'erc8004');
@@ -564,6 +565,29 @@ const directory = reachable
 // 103 MCP agents are 7 — one provider accounts for 96 of them, all returning
 // the identical five tools. Counting ids describes the registry correctly and
 // describes the market wrongly.
+// Our own hireable agents, merged in from the registration state file.
+//
+// They are on-chain and answering, but the identity census is a periodic full
+// scan and will only see them on its next pass. Leaving the two categories the
+// chain is thinnest in looking empty until then would misrepresent what a buyer
+// can actually hire today. Merged by id, so the census overwrites this the
+// moment it catches up rather than listing them twice.
+let ownAgents = [];
+try {
+  const own = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'own-agents.json'), 'utf8'));
+  ownAgents = Object.values(own.agents || {}).filter((a) => a.id).map((a) => ({
+    id: a.id,
+    name: a.name,
+    description: null,
+    endpoints: ['https://agent.brainonbnb.com/a2a'],
+    speaks: ['a2a', 'x402'],
+    attributes: [{ trait_type: 'Category', value: a.category }],
+    ours: true,
+    provider: a.owner,
+  }));
+  for (const a of ownAgents) if (!directory.some((d) => d.id === a.id)) directory.push(a);
+} catch { /* nothing registered yet */ }
+
 const operators = groupByOperator(directory);
 api.independent_operators = operators.length;
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
@@ -659,6 +683,131 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (ch) => ({ '&':
 // call. The point of the whole exercise is that none of this is self-reported
 // into a form we control — the description comes from the chain, the protocol
 // tags come from having spoken to it.
+
+// ---- the four categories -------------------------------------------------
+//
+// The marketplace is judged on four, equally: rebalancing, grid trading, yield
+// optimisation, health-factor monitoring. Presenting them means answering an
+// awkward question honestly — the chain does not contain four categories of
+// depth. After collapsing fleets to their operators there is one independent
+// grid trader on all of BNB Chain, and one rebalancer.
+//
+// A marketplace can respond to that by padding the thin shelves with anything
+// whose description contains the right word, or by saying what is there. The
+// second is the only one that survives being checked, so each row carries HOW
+// it was categorised and the exact string that did it.
+const providerOfAgent = new Map();
+if (jobOwners?.owners) {
+  for (const [addr, agents] of Object.entries(jobOwners.owners)) {
+    for (const a of agents) providerOfAgent.set(a.id, addr);
+  }
+}
+for (const a of ownAgents) if (a.provider) providerOfAgent.set(a.id, a.provider.toLowerCase());
+
+const employmentOf = (ids) => {
+  if (!jobCensus) return null;
+  let best = null;
+  for (const id of ids) {
+    const addr = providerOfAgent.get(id);
+    if (!addr) continue;
+    const rec = jobCensus.providers.find((p) => p.address === addr);
+    if (rec && (!best || rec.funded > best.funded)) best = rec;
+  }
+  return best;
+};
+
+const NL = String.fromCharCode(10);
+
+const SOURCE_BADGE = {
+  declared: ['declared', 'The agent\'s own status endpoint returns this category, machine-readable.'],
+  registered: ['on-chain', 'Its ERC-8004 registration carries this category as an attribute.'],
+  derived: ['matched', 'We matched this from what it exposes. It is evidence, not a statement by the agent.'],
+};
+
+// Two different things need two different treatments, and using one for both
+// produced a row reading "Brain On BNB AI — yield optimisation", which we do
+// not do.
+//
+//   An agent that SAYS what it is — live on its own status endpoint, or in its
+//   on-chain registration — is listed as itself. Collapsing it into whatever
+//   else shares its hostname loses the one piece of information that was not a
+//   guess. Our own two agents share an endpoint with the marketplace, and
+//   merging them made all three into one row under a category none of them
+//   declared.
+//
+//   An agent we MATCHED is collapsed to its operator, because that is where
+//   padding lives: 236 registry ids on one host, all the same deployment,
+//   would otherwise fill a category by themselves.
+const categorised = CATEGORIES.map((cat) => {
+  const rows = [];
+  const seenOperator = new Set();
+  const attrsFor = (id) => (ownAgents.find((x) => x.id === id)?.attributes) || [];
+
+  for (const a of directory) {
+    const hit = classifyAgent({ ...a, attributes: attrsFor(a.id) })
+      .find((m) => m.category === cat.id && m.source !== 'derived');
+    if (!hit) continue;
+    let host = '';
+    try { host = new URL((a.endpoints || [])[0]).host; } catch { /* no endpoint */ }
+    rows.push({
+      label: a.name || `#${a.id}`, sub: host, instances: 1, hit,
+      employment: employmentOf([a.id]),
+      ours: ownAgents.some((x) => x.id === a.id),
+    });
+  }
+  const claimed = new Set(rows.map((r) => r.label));
+
+  for (const o of operators) {
+    const hit = classifyAgent({
+      name: o.name || o.operator, description: o.description,
+      tools: o.tools, skills: o.skills, declared_services: o.declared_services,
+    }).find((m) => m.category === cat.id);
+    if (!hit || hit.source !== 'derived') continue;
+    if (seenOperator.has(o.operator) || claimed.has(o.name)) continue;
+    seenOperator.add(o.operator);
+    rows.push({
+      label: o.name || o.operator, sub: o.operator, instances: o.instances || 1, hit,
+      employment: employmentOf(o.ids || []),
+      ours: (o.ids || []).some((id) => ownAgents.some((x) => x.id === id)),
+    });
+  }
+
+  const rank = { declared: 0, registered: 1, derived: 2 };
+  rows.sort((a, b) => (rank[a.hit.source] - rank[b.hit.source])
+    || ((b.employment?.completed || 0) - (a.employment?.completed || 0))
+    || (a.ours === b.ours ? 0 : a.ours ? 1 : -1)
+    || (b.instances - a.instances));
+  return { cat, rows };
+});
+
+const categorySections = categorised.map(({ cat, rows }) => {
+  const ids = rows.reduce((n, r) => n + r.instances, 0);
+  const body = rows.map((r) => {
+    const [badge, why] = SOURCE_BADGE[r.hit.source];
+    const hireable = r.ours || (r.employment && r.employment.funded > 0);
+    const hist = r.employment
+      ? `${fmt(r.employment.funded)} funded &middot; ${fmt(r.employment.completed)} released${r.employment.submitted_not_released ? ` &middot; ${fmt(r.employment.submitted_not_released)} unreleased` : ''}`
+      : 'never hired through the escrow';
+    return `        <tr${r.ours ? ' class="rg-ours"' : ''}>
+          <td><b>${esc(r.label)}</b>${r.ours ? ' <span class="rg-t rg-x4">ours</span>' : ''}${r.instances > 1 ? `<div class="rg-note">${r.instances} registry ids, one deployment</div>` : ''}
+              <div class="rg-note">${esc(r.sub)}</div></td>
+          <td><span class="rg-t rg-${r.hit.source}" title="${esc(why)}">${badge}</span>
+              <div class="rg-note">${esc(r.hit.detail)}</div></td>
+          <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div></td>
+        </tr>`;
+  }).join(NL);
+
+  return `    <div class="rg-box" id="cat-${cat.id}">
+      <h2>${esc(cat.label)}</h2>
+      <p class="rg-sub">${esc(cat.blurb)}</p>
+      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${ids > rows.length ? `, covering ${fmt(ids)} registry ids once fleets are collapsed` : ''}. ${rows.length <= 2 ? 'That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : 'Agents that state their own category are listed individually; ones we matched are collapsed to the operator running them.'}</p>
+      ${rows.length ? `<div class="rg-scroll"><table class="rg"><thead><tr><th>Agent or operator</th><th>How we know</th><th>Hireable &amp; history</th></tr></thead><tbody>
+${body}
+      </tbody></table></div>` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}
+      <p class="rg-note" style="margin-top:12px">Ask the broker directly: <code>GET /find?category=${cat.id}</code> at <a href="https://agent.brainonbnb.com/find?category=${cat.id}&amp;limit=10">agent.brainonbnb.com</a> — every result carries how it was categorised.</p>
+    </div>`;
+}).join(NL);
+
 const liveRows = operators
   .slice()
   .slice(0, 60)
@@ -813,6 +962,10 @@ const page = `<!doctype html>
   .rg-fill{height:100%;border-radius:4px;min-width:3px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
   .rg-note{font-size:.72rem;color:var(--muted);line-height:1.5}
   .rg-note code{font-size:.74rem}
+  .rg-declared{background:rgba(80,220,140,.14);color:#7fe3ab}
+  .rg-registered{background:rgba(120,170,255,.14);color:#93b8ff}
+  .rg-derived{background:rgba(255,255,255,.06);color:var(--muted)}
+  tr.rg-ours td{background:rgba(240,185,11,.045)}
   table.rg{width:100%;border-collapse:collapse;font-size:.85rem}
   .rg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* The table is the longest thing on the page and grows with every agent
@@ -949,6 +1102,10 @@ const page = `<!doctype html>
         <div class="rg-note">${note}</div>
       </div>`).join('')}
     </div>
+
+    <div class="blk-head" style="margin-top:34px"><span class="blk-tag">The four categories</span><span class="blk-line"></span></div>
+    <p class="rg-lead" style="margin:0 0 18px">A marketplace for BNB Chain is judged on four things equally: rebalancing, grid trading, yield optimisation and health-factor monitoring. Here is every one of them, and how deep the chain actually is in each.</p>
+${categorySections}
 
     ${liveRows ? `<div class="rg-box">
       <h2>Who is actually out there</h2>
@@ -2088,6 +2245,18 @@ export function hostOf(url) {
 // (app.singularry.org/agents/12, /agents/13, …). Grouping on the registrable
 // domain catches that without merging genuinely different operators who happen
 // to share a platform.
+// Hosting services where the registrable domain is NOT the operator, because
+// anybody can have a name under it. Grouping on the domain there merges
+// unrelated people into one "operator" and quietly deletes diversity.
+//
+// This is not theoretical: all four BNB Agent Studio reference agents live on
+// bnb-yield / bnb-guardian / bnb-lp / bnb-grid under 172-104-171-139.nip.io.
+// nip.io is wildcard DNS — it resolves any IP-shaped label — so collapsing to
+// "nip.io" turned four distinct reference agents into a single operator and
+// made the grid-trading category read as empty when it had one entry in it.
+// One label deeper is the real boundary on these hosts.
+const WILDCARD_HOSTS = /(^|\.)(nip\.io|sslip\.io|xip\.io|traefik\.me|localtest\.me|ngrok\.io|ngrok-free\.app|trycloudflare\.com|loca\.lt|serveo\.net|herokuapp\.com|onrender\.com|fly\.dev|vercel\.app|netlify\.app|pages\.dev|workers\.dev|railway\.app|replit\.dev|glitch\.me|repl\.co|azurewebsites\.net|appspot\.com|firebaseapp\.com|web\.app|github\.io|gitlab\.io|surge\.sh|now\.sh)$/i;
+
 export function operatorOf(agent) {
   const first = (agent.endpoints || []).map(hostOf).find(Boolean);
   if (!first) return null;
@@ -2095,7 +2264,14 @@ export function operatorOf(agent) {
   if (parts.length <= 2) return first;
   // Keep three labels for known multi-level suffixes, two otherwise.
   const twoLevelTld = /\.(co|com|org|net|gov|ac)\.[a-z]{2}$/.test(first);
-  return parts.slice(twoLevelTld ? -3 : -2).join('.');
+  let keep = twoLevelTld ? 3 : 2;
+  // On a wildcard host, go one label deeper — and on nip.io style hosts the
+  // label below is the IP, so go deeper again to reach the actual service.
+  if (WILDCARD_HOSTS.test(parts.slice(-keep).join('.'))) {
+    keep += 1;
+    if (/^\d+-\d+-\d+-\d+$/.test(parts[parts.length - keep] || '')) keep += 1;
+  }
+  return parts.slice(-Math.min(keep, parts.length)).join('.');
 }
 
 const toolSignature = (a) =>

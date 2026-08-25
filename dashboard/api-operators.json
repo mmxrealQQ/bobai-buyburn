@@ -2,17 +2,19 @@
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
   "measured_at": "2026-08-21T07:43:26.574Z",
   "registered_ids": 285447,
-  "reachable_ids": 784,
-  "independent_operators": 57,
-  "operators_speaking_a_protocol": 21,
+  "reachable_ids": 786,
+  "independent_operators": 69,
+  "operators_speaking_a_protocol": 26,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
       "operator": "brainonbnb.com",
-      "instances": 1,
+      "instances": 3,
       "distinct_capabilities": 1,
       "ids": [
-        49467
+        49467,
+        302257,
+        302258
       ],
       "name": "Brain On BNB AI ($BOBAI)",
       "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.",
@@ -507,14 +509,11 @@
       ]
     },
     {
-      "operator": "nip.io",
-      "instances": 4,
-      "distinct_capabilities": 3,
+      "operator": "bnb-guardian.172-104-171-139.nip.io",
+      "instances": 1,
+      "distinct_capabilities": 1,
       "ids": [
-        265876,
-        266933,
-        265375,
-        269233
+        266933
       ],
       "name": "BNB Lending Guardian",
       "description": "Monitors Venus lending positions and protects against liquidation via automatic repayment.",
@@ -588,6 +587,80 @@
         "notify_funded"
       ],
       "agent_card": "https://bnb-guardian.172-104-171-139.nip.io/.well-known/agent-card.json",
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "bnb-yield.172-104-171-139.nip.io",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        265876
+      ],
+      "name": "BNB Yield Optimizer",
+      "description": "Scans BSC lending and liquidity protocols, calculates risk-adjusted yield, and migrates capital when the improvement is economically meaningful.",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://bnb-yield.172-104-171-139.nip.io/erc8183",
+        "https://bnb-yield.172-104-171-139.nip.io/a2a",
+        "https://bnb-yield.172-104-171-139.nip.io/mcp/"
+      ],
+      "tools": [
+        {
+          "name": "get_status",
+          "description": "Current state: capital, held position, best opportunity, last scan."
+        },
+        {
+          "name": "get_metadata",
+          "description": "What this agent is, which protocols it supports, and its on-chain identity."
+        },
+        {
+          "name": "get_strategy",
+          "description": "The declared strategy and the risk controls currently in force."
+        },
+        {
+          "name": "get_opportunities",
+          "description": "Opportunities from the LAST scan, with risk scores. Does not re-scan —\n    use ``scan_protocols`` for fresh data."
+        },
+        {
+          "name": "get_positions",
+          "description": "What the agent currently holds. This is the AGENT'S OWN capital — it\n    custodies nothing on anyone else's behalf."
+        },
+        {
+          "name": "get_performance",
+          "description": "Migration counts and cumulative gas, derived from the audit log."
+        },
+        {
+          "name": "get_transactions",
+          "description": "The audit trail (spec section 13), newest first."
+        },
+        {
+          "name": "get_chain_info",
+          "description": "Network, block height, gas price and the native token price."
+        },
+        {
+          "name": "scan_protocols",
+          "description": "Read Venus and PancakeSwap live and re-score every opportunity.\n\n    Reads chain and subgraph state; changes no position and signs nothing.\n    Takes roughly 20"
+        },
+        {
+          "name": "simulate_rebalance",
+          "description": "Evaluate the migration rule and return the decision WITHOUT executing.\n\n    Equivalent to ``POST /rebalance?dry_run=true``. This is the closest a model\n    can "
+        },
+        {
+          "name": "pause",
+          "description": "Emergency stop. Refuses all further migrations; scanning continues.\n\n    The only state-changing tool exposed, because it fails SAFE — the worst a\n    hostile p"
+        }
+      ],
+      "skills": [
+        "negotiate",
+        "notify_funded"
+      ],
+      "agent_card": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
       "trust_models": [
         "reputation"
       ]
@@ -730,27 +803,17 @@
       "agent_card": "https://cryptocurrency.cv/.well-known/agent.json"
     },
     {
-      "operator": "vercel.app",
-      "instances": 10,
-      "distinct_capabilities": 5,
+      "operator": "fly-mcp-deploy.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
       "ids": [
-        91852,
-        259573,
-        259574,
-        259575,
-        259576,
-        97476,
-        97477,
-        97478,
-        97479,
-        97480
+        91852
       ],
       "name": "Fly Marketing Agent",
       "description": "The first AI marketing agent on BNB Chain - autonomous marketing team for 209M small business owners. Strategy, content moderation, multi-platform publishing, performance optimization.",
       "image": "https://people1913.github.io/fly-marketing-agent.github.io/fly-avatar.png",
       "speaks": [
-        "mcp",
-        "a2a"
+        "mcp"
       ],
       "endpoints": [
         "https://fly-mcp-deploy.vercel.app/mcp",
@@ -861,40 +924,11 @@
       "agent_card": "https://www.synergix.lol/.well-known/agent.json"
     },
     {
-      "operator": "workers.dev",
-      "instances": 30,
-      "distinct_capabilities": 2,
+      "operator": "airblock2026.workers.dev",
+      "instances": 1,
+      "distinct_capabilities": 1,
       "ids": [
-        172459,
-        198999,
-        204789,
-        211183,
-        211586,
-        212769,
-        212840,
-        212943,
-        212989,
-        213036,
-        213053,
-        213084,
-        213332,
-        213378,
-        213432,
-        49351,
-        49399,
-        49767,
-        49769,
-        86368,
-        86462,
-        198526,
-        198665,
-        198810,
-        199346,
-        205025,
-        205266,
-        207161,
-        207456,
-        207773
+        172459
       ],
       "name": "Bit Monk",
       "description": "Crypto entry/exit timing for trading agents: ask whether a coin is at a bottom (accumulate) or a top (take profit) and get a -100..+100 verdict fused from 20+ technical, on-chain and cycle indicators across daily/weekly/monthly — plus a mar",
@@ -911,6 +945,91 @@
         "Scan for tops"
       ],
       "agent_card": "https://coin-signal.airblock2026.workers.dev/.well-known/agent-card.json"
+    },
+    {
+      "operator": "bnb-grid.172-104-171-139.nip.io",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        269233
+      ],
+      "name": "BNB Grid Trader (test)",
+      "description": "ERC-8183 seller agent (bnbGridTrader-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://bnb-grid.172-104-171-139.nip.io/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "bnb-lp.172-104-171-139.nip.io",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        265375
+      ],
+      "name": "BNB LP Range Rebalancer",
+      "description": "ERC-8183 seller agent (bnbLpRangeRebalancer-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://bnb-lp.172-104-171-139.nip.io/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "bubbleupdappos.workers.dev",
+      "instances": 23,
+      "distinct_capabilities": 1,
+      "ids": [
+        198999,
+        204789,
+        211183,
+        211586,
+        212769,
+        212840,
+        212943,
+        212989,
+        213036,
+        213053,
+        213084,
+        213332,
+        213378,
+        213432,
+        198526,
+        198665,
+        198810,
+        199346,
+        205025,
+        205266,
+        207161,
+        207456,
+        207773
+      ],
+      "name": "bubbleai",
+      "description": "ERC-8183 seller agent (bubbleai-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
     },
     {
       "operator": "chainhelix.io",
@@ -937,7 +1056,49 @@
       ]
     },
     {
-      "operator": "fly.dev",
+      "operator": "explainer-agent.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        270213
+      ],
+      "name": "TermiX Advantage Report Explainer",
+      "description": "ERC-8183 seller agent (explainmainnet1a2b3c-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://explainer-agent.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "neat-coconut.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        208760
+      ],
+      "name": "recurringmonitoringserviceagent",
+      "description": "ERC-8183 seller agent (recurring-monitoring-service-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://cm-5268dad98979f28b-site-0c59465952e0.neat-coconut.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "stockanalyst-agents.fly.dev",
       "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
@@ -963,45 +1124,26 @@
       ]
     },
     {
-      "operator": "neat-coconut.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
+      "operator": "bnb-agent-market.vercel.app",
+      "instances": 4,
+      "distinct_capabilities": 4,
       "ids": [
-        208760
+        259573,
+        259574,
+        259575,
+        259576
       ],
-      "name": "recurringmonitoringserviceagent",
-      "description": "ERC-8183 seller agent (recurring-monitoring-service-agent) — negotiate + notify_funded over A2A.",
+      "name": "HealthGuard",
+      "description": "Watches your loan and repays before it can be liquidated",
       "image": null,
       "speaks": [
         "a2a"
       ],
       "endpoints": [
-        "https://cm-5268dad98979f28b-site-0c59465952e0.neat-coconut.com/.well-known/agent-card.json"
+        "https://bnb-agent-market.vercel.app/agents/healthguard/.well-known/agent-card.json"
       ],
       "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
-      "operator": "onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        270213
-      ],
-      "name": "TermiX Advantage Report Explainer",
-      "description": "ERC-8183 seller agent (explainmainnet1a2b3c-agent) — negotiate + notify_funded over A2A.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://explainer-agent.onrender.com/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
+        "Don't let me get liquidated"
       ]
     },
     {
@@ -1298,6 +1440,21 @@
       ]
     },
     {
+      "operator": "cipher-dock-seven.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        97478
+      ],
+      "name": "Cipher Dock",
+      "description": "data: checks on-chain data, APIs, addresses, contracts",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://cipher-dock-seven.vercel.app/erc8183/status"
+      ]
+    },
+    {
       "operator": "clawnews.io",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -1362,6 +1519,27 @@
       "endpoints": [
         "https://api.datavisionai.com/mcp",
         "https://github.com/agntcy/oasf/"
+      ]
+    },
+    {
+      "operator": "delicate-mouse-f8ca.workers.dev",
+      "instances": 4,
+      "distinct_capabilities": 0,
+      "ids": [
+        49351,
+        49399,
+        49767,
+        49769
+      ],
+      "name": "Sentinel",
+      "description": "Security monitoring agent that watches on-chain contract interactions for suspicious patterns and alerts the community. Sentinel tracks newly deployed contracts, monitors large token movements, detects ownership renouncement fakes, and flags potential rug pull indicators in real-time.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://goo-server-mainnet.delicate-mouse-f8ca.workers.dev/agent.html?id=agent-1774260337027-ikiiha"
+      ],
+      "trust_models": [
+        "reputation"
       ]
     },
     {
@@ -1495,6 +1673,21 @@
       ]
     },
     {
+      "operator": "forge-mint.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        97479
+      ],
+      "name": "Forge Mint",
+      "description": "builder: prepares scripts, job plans, code drafts",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://forge-mint.vercel.app/erc8183/status"
+      ]
+    },
+    {
       "operator": "four.meme",
       "instances": 7,
       "distinct_capabilities": 0,
@@ -1538,19 +1731,19 @@
       ]
     },
     {
-      "operator": "github.io",
-      "instances": 1,
+      "operator": "hgamiui9.workers.dev",
+      "instances": 2,
       "distinct_capabilities": 0,
       "ids": [
-        684
+        86368,
+        86462
       ],
-      "name": "MoltBot",
-      "description": "autonomous AI agent on BNB Chain. shedding shells, shipping code. powered by Levr SDK. $MOLT token: 0x8ECa9C65055b42f77fab74cF8265c831585AFB07",
-      "image": "https://moltbotbnb.github.io/moltbotbnb/app/molt-logo.png",
+      "name": "Hertz-1 - Goo",
+      "description": "A high-frequency trading agent that monitors BSC DEX pools and executes micro-arbitrage opportunities across PancakeSwap and BiSwap. It continuously scans for price discrepancies, calculates optimal trade sizes factoring in gas and slippage, and executes atomic swaps to capture spread.",
+      "image": null,
       "speaks": [],
       "endpoints": [
-        "https://moltbotbnb.github.io/moltbotbnb/app/",
-        "https://x.com/moltbotbnb"
+        "https://goo-server-mainnet.hgamiui9.workers.dev/agent.html?id=agent-1778340521525-sr2dzk"
       ],
       "trust_models": [
         "reputation"
@@ -1630,6 +1823,25 @@
       ]
     },
     {
+      "operator": "moltbotbnb.github.io",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        684
+      ],
+      "name": "MoltBot",
+      "description": "autonomous AI agent on BNB Chain. shedding shells, shipping code. powered by Levr SDK. $MOLT token: 0x8ECa9C65055b42f77fab74cF8265c831585AFB07",
+      "image": "https://moltbotbnb.github.io/moltbotbnb/app/molt-logo.png",
+      "speaks": [],
+      "endpoints": [
+        "https://moltbotbnb.github.io/moltbotbnb/app/",
+        "https://x.com/moltbotbnb"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
       "operator": "neurodegen.xyz",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -1648,6 +1860,21 @@
         "erc-8004-identity",
         "erc-8183-commerce",
         "neurodegen-attestation-commit-reveal"
+      ]
+    },
+    {
+      "operator": "nexus-halo.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        97476
+      ],
+      "name": "Nexus Halo",
+      "description": "orchestrator: receives large tasks, routes work, summarizes results",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://nexus-halo.vercel.app/erc8183/status"
       ]
     },
     {
@@ -1751,6 +1978,36 @@
       ],
       "trust_models": [
         "reputation"
+      ]
+    },
+    {
+      "operator": "scroll-lens.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        97477
+      ],
+      "name": "Scroll Lens",
+      "description": "research: searches docs, news, repos, ecosystem signals",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://scroll-lens.vercel.app/erc8183/status"
+      ]
+    },
+    {
+      "operator": "settle-scout.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        97480
+      ],
+      "name": "Settle Scout",
+      "description": "verifier: checks outputs, watches disputes, settlement logic",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://settle-scout.vercel.app/erc8183/status"
       ]
     },
     {

@@ -932,6 +932,9 @@ const page = `<!doctype html>
     color:var(--gold);font-size:.68rem;font-weight:700;flex:0 0 auto}
   .rg-do-c .rg-note{margin:11px 0 0}
   .rg-do-c .rg-ask code{font-size:.74rem;padding:9px 11px}
+  /* 220px of minimum inside a 218px card is 2px of overflow on a 360px
+     phone. Inside these cards the field simply takes what is there. */
+  .rg-do-c .rg-try input{min-width:0}
   .rg-chips{display:flex;flex-wrap:wrap;gap:8px}
   .rg-chip{display:flex;flex-direction:column;gap:2px;flex:1 1 130px;min-width:0;
     border:1px solid var(--border);border-radius:11px;padding:9px 11px;

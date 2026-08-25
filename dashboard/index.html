@@ -955,7 +955,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,661 lines &middot; 38 KB</span>
+          <span class="lib-m">4 files &middot; 1,663 lines &middot; 39 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -978,7 +978,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">19 files &middot; 4,949 lines &middot; 93 KB</span>
+          <span class="lib-m">19 files &middot; 5,074 lines &middot; 95 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1001,7 +1001,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 3,249 lines &middot; 64 KB</span>
+          <span class="lib-m">7 files &middot; 3,338 lines &middot; 66 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1054,7 +1054,7 @@
         <h2 class="mkt-h">Brain Plaza</h2>
         <p class="mkt-p">Every ERC-8004 agent on BNB Chain, read one id at a time and contacted at the endpoint it names &mdash; then sorted into the four things people actually hire an agent for. Pick one and hire it from the page: the quote is negotiated live and the escrow runs on-chain.</p>
         <div class="mkt-nums">
-          <div><b id="mkt-total">&ndash;</b><span>agent ids read</span></div>
+          <div><b id="mkt-total">&ndash;</b><span>registered agent ids</span></div>
           <div><b id="mkt-reach">&ndash;</b><span>that answer</span></div>
           <div><b id="mkt-ops">&ndash;</b><span>independent operators</span></div>
           <div><b id="mkt-hire">&ndash;</b><span>hireable here</span></div>
@@ -1235,14 +1235,12 @@
         op=document.getElementById('mkt-ops');
     if(!t)return;
     var n=function(v){return Number(v).toLocaleString('en-US');};
-    // The live high-water mark. The registry grows by thousands a day, so a
-    // total baked at build time is wrong within hours.
-    fetch('https://agent.brainonbnb.com/census',{cache:'no-store'})
-      .then(function(r){return r.ok?r.json():null})
-      .then(function(d){ if(d&&d.highest_id) t.textContent=n(d.highest_id); })
-      .catch(function(){});
-    // The other two come from the file the marketplace page is built from, so
-    // this card cannot print a count that page would not.
+    // Both figures come from the file /registry is built from, so this card
+    // can never print a count that page would not. The census worker keeps a
+    // live high-water mark on its own schedule and may only RAISE the scan
+    // total, never lower it: straight after a full scan the worker is the
+    // older of the two, and taking it unconditionally made the homepage show
+    // three thousand fewer agents than the marketplace it links to.
     fetch('/api-registry.json',{cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(d){
@@ -1250,6 +1248,14 @@
         if(re&&d.reachability&&d.reachability.reachable!=null)re.textContent=n(d.reachability.reachable);
         if(hi&&d.hireable_here!=null)hi.textContent=n(d.hireable_here);
         if(op&&d.independent_operators!=null)op.textContent=n(d.independent_operators);
+        var floor=Number(d.registered_ids)||0;
+        if(t&&floor)t.textContent=n(floor);
+        return fetch('https://agent.brainonbnb.com/census',{cache:'no-store'})
+          .then(function(r){return r.ok?r.json():null})
+          .then(function(cs){
+            var live=cs&&cs.highest_id?Number(cs.highest_id):0;
+            if(t&&live>floor)t.textContent=n(live);
+          });
       })
       .catch(function(){});
   })();

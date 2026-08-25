@@ -1,0 +1,128 @@
+{
+  "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
+  "measured_at": "2026-08-25T18:00:50.555Z",
+  "asked": 12,
+  "quoted": 6,
+  "agents": [
+    {
+      "id": 269223,
+      "label": "Portfolio Rebalancer",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://agents.chainhelix.io/a2a",
+      "reason": "seller did not return parseable JSON"
+    },
+    {
+      "id": 33813,
+      "label": "mandaterebalance-agent",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bitagent.s3.ap-southeast-1.amazonaws.com/a2a",
+      "reason": "seller did not return parseable JSON"
+    },
+    {
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
+      "reason": null
+    },
+    {
+      "id": 265375,
+      "label": "BNB LP Range Rebalancer",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+      "reason": null
+    },
+    {
+      "id": 302258,
+      "label": "Brain on BNB — BSC Grid Planner",
+      "category": "grid-trading",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
+    },
+    {
+      "id": 269233,
+      "label": "BNB Grid Trader (test)",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+      "reason": "PermissionError: [Errno 13] Permission denied: '/secrets/wallets/0xFAf0ffd121947B9EE3920Fa0CfbF9EEEB0AcBF7f.json'"
+    },
+    {
+      "id": 116170,
+      "label": "Moments",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://app.singularry.org/api/a2a",
+      "reason": "Invalid params: params.message must be a Message with kind, role and a non-empty parts array"
+    },
+    {
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
+      "reason": null
+    },
+    {
+      "id": 302257,
+      "label": "Brain on BNB — Venus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
+    },
+    {
+      "id": 259573,
+      "label": "HealthGuard",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bnb-agent-market.vercel.app/a2a",
+      "reason": "seller did not return parseable JSON"
+    },
+    {
+      "id": 266933,
+      "label": "BNB Lending Guardian",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": true,
+      "price": "5 $U",
+      "endpoint": "https://bnb-guardian.172-104-171-139.nip.io/a2a",
+      "reason": null
+    },
+    {
+      "id": 270183,
+      "label": "AgentCensus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://agentcensus.xyz/a2a",
+      "reason": "seller did not return parseable JSON"
+    }
+  ]
+}

@@ -25,7 +25,7 @@
 // The receiving wallet's private key is NOT here and must never be. Verifying a
 // payment is a read; the worker never moves funds.
 
-import { runCensusTick } from './census.js';
+import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
 import { handleDispatch } from './dispatch.js';
@@ -1005,6 +1005,14 @@ export default {
       return json({ ok: true, ...r });
     }
 
+    // The hourly high-water probe on its own. Same reason as the two above:
+    // an hour is long enough that "it presumably fires" would ship untested.
+    if (path === '/run-frontier' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      const r = await runFrontierTick(env);
+      return json({ ok: true, ...r });
+    }
+
     // Same reason as /run-census: a job that fires once a day is untestable
     // after a deploy unless it can be triggered by hand.
     if (path === '/run-canary' && request.method === 'POST') {
@@ -1046,6 +1054,21 @@ export default {
         st.newSinceBaseline = 0;
         st.lastScannedNew = seed;
         await env.AGENT.put('census:state', JSON.stringify(st));
+
+        // /census serves the snapshot, not the state — so seeding the state
+        // alone left the public figure on the previous baseline until the next
+        // daily tick, which is how /registry ended up overwriting its own
+        // freshly published headline with a smaller number. The snapshot moves
+        // with the seed; the rotating-check half is left as the last real run
+        // wrote it, because a seed measures no endpoints.
+        const snap = JSON.parse((await env.AGENT.get('census:latest')) || 'null');
+        if (snap) {
+          snap.highest_id = seed;
+          snap.registered_since_baseline = 0;
+          snap.high_water_checked_at = new Date().toISOString();
+          if (snap.frontier) { snap.frontier.read_up_to = seed; snap.frontier.behind_by = 0; }
+          await env.AGENT.put('census:latest', JSON.stringify(snap));
+        }
         seeded = seed;
       }
       return json({ ok: true, stored: clean.length, ...(seeded ? { baseline_highest_id: seeded } : {}) });
@@ -1084,6 +1107,16 @@ export default {
     // known endpoints.
     if (t.getUTCHours() === 3 && firstTickOfHour) {
       ctx.waitUntil(runCensusTick(env).catch(() => {}));
+    }
+
+    // Every other hour, the cheap half on its own: how many ids exist now.
+    // The registry mints thousands a day, so a high-water mark refreshed once
+    // at 03:00 is stale by breakfast — and after an offline full scan it reads
+    // BELOW the figure that scan published, which made the live counter on
+    // /registry walk its own headline backwards. Skipped at 03:0x because the
+    // full tick does the same probe as its first step.
+    if (firstTickOfHour && t.getUTCHours() !== 3) {
+      ctx.waitUntil(runFrontierTick(env).catch(() => {}));
     }
 
     // 15:0x UTC — ask a few real questions and write down how they went. Kept

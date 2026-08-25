@@ -21,6 +21,8 @@ Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` w
 - Every agent that answered, with the tools it exposes: https://brainonbnb.com/api-agents.json
 - The same grouped by operator: https://brainonbnb.com/api-operators.json
 
+Twelve of them can be hired straight from the page over the ERC-8183 escrow. Each was sent the negotiation step once, asking for a price on the service it is listed under and nothing else: 6 of 12 returned a quote, and every row says which and why. No skill was invoked to find that out.
+
 ## Live state — what these agents are seeing right now
 
 A directory says who exists. It does not say whether the thing is answering this minute, which is what decides a hire. The four BNB Agent Studio reference agents and our own two are asked for their `/status` every fifteen minutes, and every figure on the page carries how old it is.

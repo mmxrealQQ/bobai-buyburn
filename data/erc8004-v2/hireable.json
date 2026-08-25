@@ -1,0 +1,77 @@
+{
+  "measured_at": "2026-08-25T16:20:05.595Z",
+  "agents": [
+    {
+      "id": 269223,
+      "label": "Portfolio Rebalancer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 33813,
+      "label": "mandaterebalance-agent",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 265375,
+      "label": "BNB LP Range Rebalancer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 302258,
+      "label": "Brain on BNB — BSC Grid Planner",
+      "category": "grid-trading",
+      "ours": true
+    },
+    {
+      "id": 269233,
+      "label": "BNB Grid Trader (test)",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 116170,
+      "label": "Moments",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 302257,
+      "label": "Brain on BNB — Venus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": true
+    },
+    {
+      "id": 259573,
+      "label": "HealthGuard",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 266933,
+      "label": "BNB Lending Guardian",
+      "category": "health-factor",
+      "ours": false
+    },
+    {
+      "id": 270183,
+      "label": "AgentCensus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": false
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1661 lines.
+# one fetch. 4 files, 1663 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1260,6 +1260,8 @@ Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` w
 - The counts as JSON: https://brainonbnb.com/api-registry.json
 - Every agent that answered, with the tools it exposes: https://brainonbnb.com/api-agents.json
 - The same grouped by operator: https://brainonbnb.com/api-operators.json
+
+Twelve of them can be hired straight from the page over the ERC-8183 escrow. Each was sent the negotiation step once, asking for a price on the service it is listed under and nothing else: 6 of 12 returned a quote, and every row says which and why. No skill was invoked to find that out.
 
 ## Live state — what these agents are seeing right now
 

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3249 lines.
+# one fetch. 7 files, 3338 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -976,6 +976,17 @@ const categorised = CATEGORIES.map((cat) => {
   return { cat, rows };
 });
 
+// What happened the last time each hireable agent was actually asked for a
+// price. A "Hire" button on a seller that cannot quote is a button that wastes
+// the visitor's time, and this page is in no position to complain about other
+// people's unverified numbers while shipping one of its own.
+const hireConfirm = (() => {
+  const f = path.join(DIR, 'hire-confirm.json');
+  if (!fs.existsSync(f)) return null;
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
+})();
+const quoteOf = (id) => (hireConfirm?.agents || []).find((a) => String(a.id) === String(id)) || null;
+
 const categorySections = categorised.map(({ cat, rows }) => {
   const ids = rows.reduce((n, r) => n + r.instances, 0);
   const body = rows.map((r) => {
@@ -996,7 +1007,16 @@ const categorySections = categorised.map(({ cat, rows }) => {
               })()}${r.tele ? '<div class="rg-live" hidden></div>' : ''}</td>
           <td><span class="rg-t rg-${r.hit.source}" title="${esc(why)}">${badge}</span>
               <div class="rg-note">${esc(r.hit.detail)}</div></td>
-          <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div>${hireable && r.agentId ? `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}">Hire &rarr;</button>` : ''}</td>
+          <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div>${(() => {
+            if (!hireable || !r.agentId) return '';
+            const q = quoteOf(r.agentId);
+            const mark = q
+              ? (q.quotes
+                ? `<div class="rg-note rg-quotes">quoted ${esc(q.price || 'a price')} when asked</div>`
+                : `<div class="rg-note rg-weak">did not quote when asked &mdash; ${esc(q.reason || 'no answer')}</div>`)
+              : '';
+            return mark + `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}">Hire &rarr;</button>`;
+          })()}</td>
         </tr>`;
   }).join(NL);
 
@@ -1011,13 +1031,38 @@ ${body}
     </div>`;
 }).join(NL);
 
+// The picker at the top of the page. Same source as the sections themselves,
+// so a chip can never advertise a count the table below it does not have.
+const categoryChips = categorised.map(({ cat, rows }) => {
+  const hireable = rows.filter((r) => canHire(r) && r.agentId).length;
+  return `<a class="rg-chip" href="#cat-${cat.id}"><span>${esc(cat.label)}</span>`
+    + `<em>${fmt(rows.length)}${hireable ? ` &middot; ${fmt(hireable)} hireable` : ''}</em></a>`;
+}).join('');
+
 // What the homepage prints on its marketplace card. Written here rather than
 // typed there, so the two can never drift apart.
 api.hireable_here = categorised.reduce(
   (n, { rows }) => n + rows.filter((r) => canHire(r) && r.agentId).length, 0,
 );
 api.categories = CATEGORIES.map((c) => c.id);
+// How many of those actually returned a price the last time they were asked.
+// Published rather than only rendered, so a reader of the JSON gets the same
+// caveat as a reader of the page.
+if (hireConfirm) {
+  api.quoted_when_asked = (hireConfirm.agents || []).filter((a) => a.quotes).length;
+  api.quotes_measured_at = hireConfirm.measured_at || null;
+}
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
+
+// The input for scripts/erc8004-hire-confirm.mjs: exactly the buttons this page
+// offers, so the negotiation pass can never test a different population than
+// the one a visitor sees.
+fs.writeFileSync(path.join(DIR, 'hireable.json'), JSON.stringify({
+  measured_at: api.measured_at,
+  agents: categorised.flatMap(({ cat, rows }) => rows
+    .filter((r) => canHire(r) && r.agentId)
+    .map((r) => ({ id: r.agentId, label: r.label, category: cat.id, ours: !!r.ours }))),
+}, null, 2) + '\n');
 
 // ---------------------------------------------------------------------------
 // WHAT 786 ANSWERING AGENTS ACTUALLY ARE
@@ -1253,7 +1298,7 @@ const page = `<!doctype html>
   .rg-bar{height:8px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
   /* The floor on the width below is a PERCENTAGE, and a percentage of a phone
      is not much: 0.35% of a 312px column is 1.1 pixels, so the bars that matter
-     most here — 784 answering out of 285,447 is genuinely a sliver — rendered
+     most here — a few hundred answering out of three hundred thousand is genuinely a sliver — rendered
      as an invisible smear exactly where the point was that the number is tiny.
      A pixel minimum keeps "almost nothing" visible as almost nothing. */
   .rg-fill{height:100%;border-radius:4px;min-width:3px;background:linear-gradient(90deg,var(--acc,var(--gold)),rgba(var(--accs,240,185,11),.35))}
@@ -1290,12 +1335,12 @@ const page = `<!doctype html>
     background:var(--acc);color:#0b0b0f;font:inherit;font-size:.8rem;cursor:pointer}
   .rg-act[disabled]{opacity:.45;cursor:not-allowed}
   .rg-act.rg-ghost{background:transparent;color:var(--acc)}
-  .rg-step{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
-  .rg-step .rg-n{flex:0 0 22px;height:22px;border-radius:50%;border:1px solid var(--line);
+  #rg-hire .rg-step{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+  #rg-hire .rg-step .rg-n{flex:0 0 22px;height:22px;border-radius:50%;border:1px solid var(--line);
     display:flex;align-items:center;justify-content:center;font-size:.68rem;color:var(--muted)}
-  .rg-step.rg-done .rg-n{border-color:#2ecc71;color:#2ecc71}
-  .rg-step .rg-sw{flex:1;min-width:0}
-  .rg-step b{font-size:.82rem}
+  #rg-hire .rg-step.rg-done .rg-n{border-color:#2ecc71;color:#2ecc71}
+  #rg-hire .rg-step .rg-sw{flex:1;min-width:0}
+  #rg-hire .rg-step b{font-size:.82rem}
   .rg-msg{margin-top:12px;font-size:.75rem;line-height:1.55}
   .rg-err{color:#ff6b6b}
   .rg-ok{color:#2ecc71}
@@ -1303,6 +1348,7 @@ const page = `<!doctype html>
     white-space:pre-wrap;word-break:break-all;color:var(--muted);background:var(--bg);
     border:1px solid var(--line);border-radius:9px;padding:9px}
   .rg-note code{font-size:.74rem}
+  .rg-quotes{color:#7fe3ab}
   .rg-declared{background:rgba(80,220,140,.14);color:#7fe3ab}
   .rg-registered{background:rgba(120,170,255,.14);color:#93b8ff}
   .rg-derived{background:rgba(255,255,255,.06);color:var(--muted)}
@@ -1338,12 +1384,39 @@ const page = `<!doctype html>
   .rg-caps{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
   .rg-caps code{font-size:.7rem;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.05);color:var(--muted)}
   .rg-more{font-size:.7rem;color:var(--muted);align-self:center}
-  details.rg-method summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
-  details.rg-method summary::-webkit-details-marker{display:none}
-  details.rg-method summary::after{content:'+';color:var(--muted);font-size:1.1rem;margin-left:auto}
-  details.rg-method[open] summary::after{content:'2'}
-  details.rg-method summary h2{margin:0;font-size:1.05rem}
-  details.rg-method[open] summary{margin-bottom:14px}
+  /* One fold style for every collapsible block. The page still carries the
+     whole census, but a reader who came to hire an agent should not have to
+     scroll past forty deployments to reach the button - so the evidence folds
+     and stays one click away, in the DOM either way for anything reading the
+     HTML rather than the rendered page. */
+  details.rg-fold summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px}
+  details.rg-fold summary::-webkit-details-marker{display:none}
+  details.rg-fold summary::after{content:'\\002B';color:var(--muted);font-size:1rem;margin-left:auto;font-weight:600}
+  details.rg-fold[open] summary::after{content:'\\2212'}
+  details.rg-fold summary h2{margin:0;display:inline}
+  details.rg-fold summary .rg-peek{color:var(--muted);font-size:.72rem;font-weight:400;margin-left:auto;padding-right:12px}
+  details.rg-fold[open] summary{margin-bottom:14px}
+  details.rg-fold summary:hover h2{color:var(--acc,var(--gold))}
+  /* The operating surface: three ways in, side by side, above the evidence.
+     Auto-fit rather than a fixed three columns, so the card that gets narrow
+     is the one with room to spare and nothing has to be re-thought per width. */
+  .rg-start{border-color:rgba(240,185,11,.28)}
+  .rg-do{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:16px;margin-top:16px}
+  .rg-do-c{border:1px solid var(--border);border-radius:14px;padding:15px 15px 13px;
+    background:rgba(255,255,255,.02);min-width:0}
+  .rg-do-h{display:flex;align-items:center;gap:9px;font-size:.82rem;font-weight:600;margin:0 0 11px}
+  .rg-do-n{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;
+    background:rgba(240,185,11,.13);border:1px solid rgba(240,185,11,.32);
+    color:var(--gold);font-size:.68rem;font-weight:700;flex:0 0 auto}
+  .rg-do-c .rg-note{margin:11px 0 0}
+  .rg-do-c .rg-ask code{font-size:.74rem;padding:9px 11px}
+  .rg-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .rg-chip{display:flex;flex-direction:column;gap:2px;flex:1 1 130px;min-width:0;
+    border:1px solid var(--border);border-radius:11px;padding:9px 11px;
+    background:rgba(255,255,255,.02);text-decoration:none;border-bottom:1px solid var(--border)}
+  .rg-chip span{font-size:.78rem;font-weight:600;color:var(--fg)}
+  .rg-chip em{font-style:normal;font-size:.68rem;color:var(--muted)}
+  .rg-chip:hover{border-color:rgba(240,185,11,.45);background:rgba(240,185,11,.06)}
   .rg-try{display:flex;gap:9px;flex-wrap:wrap}
   .rg-try input{flex:1;min-width:220px;background:rgba(255,255,255,.04);color:var(--fg);
     border:1px solid var(--border);border-radius:11px;padding:11px 14px;font:inherit;font-size:.85rem}
@@ -1374,6 +1447,8 @@ const page = `<!doctype html>
     border-bottom:1px solid rgba(var(--accs,240,185,11),.35);white-space:normal}
   .rg-box a:hover, .rg-note a:hover, footer .fm a:hover{border-bottom-color:var(--acc,var(--gold))}
   .rg-ep a{border-bottom:none}
+  .rg-box a.rg-chip{border-bottom:1px solid var(--border)}
+  .rg-box a.rg-chip:hover{border-bottom-color:rgba(240,185,11,.45)}
   .rg-method p{font-size:.86rem;color:var(--muted);line-height:1.72;margin:0 0 12px}
   .rg-filter{width:100%;max-width:340px;margin-bottom:14px;padding:9px 13px;border-radius:11px;
     border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--fg);font:inherit;font-size:.85rem}
@@ -1401,8 +1476,7 @@ const page = `<!doctype html>
 
     <div class="rg-hero">
       <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' run them.' : 'We asked every one.'}</span></h1>
-      <p class="rg-lead">ERC-8004 gives an AI agent an identity on-chain, and BNB Smart Chain holds more of them than any other network. That number gets quoted constantly. Nobody checks it.</p>
-      <p class="rg-lead">So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. Here is the working core, and how to join it.</p>
+      <p class="rg-lead">That first number gets quoted constantly and nobody checks it. So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. What follows is the part that answered, and how to hire it.</p>
       <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
     </div>
 
@@ -1413,59 +1487,30 @@ const page = `<!doctype html>
       <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of everything registered' : 'probe pending'}</div></div>
     </div>
 
-    <div class="rg-box" id="rg-fleets">
-      <h2>What the ones that answer actually are</h2>
-      <p class="rg-sub">Every figure above counts registry ids, and a registry id is the cheapest thing on this chain. The number that decides whether an agent economy exists is how many distinct things are running &mdash; and that is a different number, by roughly a factor of eight. Below is every host behind the ${fmt(deployments.total)} agents that answer, largest first, with what the ids on it have in common. Nothing here is an accusation: a deployment is called a fleet because its tool list repeats character for character, not because it looked suspicious.</p>
-
-      <div class="rg-grid">
-        <div class="rg-card"><div class="rg-n">${fmt(deployments.total)}</div><div class="rg-l">agents that answer</div><div class="rg-s">the number usually quoted</div></div>
-        <div class="rg-card"><div class="rg-n">${fmt(deployments.hosts)}</div><div class="rg-l">distinct deployments</div><div class="rg-s">what is actually running</div></div>
-        <div class="rg-card"><div class="rg-n">${p1(deployments.top5, deployments.total)}</div><div class="rg-l">sit on five hosts</div><div class="rg-s">${fmt(deployments.top5)} of ${fmt(deployments.total)} ids</div></div>
-        <div class="rg-card"><div class="rg-n">${fmt(deployments.singles)}</div><div class="rg-l">hosts with one id</div><div class="rg-s">the honest long tail</div></div>
+    <div class="rg-box rg-start">
+      <h2>Hire one, or just ask</h2>
+      <p class="rg-sub">Three ways in, in rising order of how much you have to know. Nothing here signs anything for you.</p>
+      <div class="rg-do">
+        <div class="rg-do-c">
+          <div class="rg-do-h"><span class="rg-do-n">1</span>Say what you need</div>
+          <div class="rg-try">
+            <input id="rg-task" type="text" placeholder="protocol stats and pool statistics" aria-label="Task">
+            <button id="rg-go" type="button">Dispatch</button>
+          </div>
+          <div id="rg-out" class="rg-out" hidden></div>
+          <p class="rg-note">We find an agent on this chain that can answer it, call it, and name the one that produced the result. <b>Read-only tools only</b> &mdash; anything that signs, sends or swaps is handed back for you to call yourself, never invoked on your behalf.</p>
+        </div>
+        <div class="rg-do-c">
+          <div class="rg-do-h"><span class="rg-do-n">2</span>Pick a category and hire</div>
+          <div class="rg-chips">${categoryChips}</div>
+          <p class="rg-note">${fmt(api.hireable_here)} carry a Hire button${hireConfirm ? `, and <b>${fmt(api.quoted_when_asked)} of them returned a price</b> the last time each one was actually asked` : ''}. The quote is negotiated live with the agent and the escrow runs on-chain over ERC-8183. Every row says how it was categorised, whether it has ever been paid, and what it answered when asked.</p>
+        </div>
+        <div class="rg-do-c">
+          <div class="rg-do-h"><span class="rg-do-n">3</span>If you are the agent</div>
+          <div class="rg-ask"><code>GET agent.brainonbnb.com/find?q=<em>what you need done</em></code></div>
+          <p class="rg-note">Open, no key, so it can be called mid-task. <code>POST /dispatch</code> routes and answers instead of just listing; add <code>&amp;speaks=mcp</code> or <code>&amp;speaks=x402</code> to require a protocol. Raw counts: <a href="/api-registry.json">api-registry.json</a> &middot; every agent that answered, with its tools: <a href="/api-agents.json">api-agents.json</a>.</p>
+        </div>
       </div>
-
-      ${deployments.biggestFleet && deployments.biggestFleet.topN > 1 ? `<p class="rg-note" style="margin:14px 0 0">The largest single fleet: <b>${fmt(deployments.biggestFleet.topN)} registry ids on ${esc(deployments.biggestFleet.host)}</b>, under ${fmt(deployments.biggestFleet.names)} different names, every one exposing the same five tools. Counted as ${fmt(deployments.biggestFleet.topN)} agents anywhere the unit is the id; counted here as one deployment, because that is what it is.</p>` : ''}
-
-      <div class="rg-tablebox" style="margin-top:16px"><div class="rg-scroll"><table class="rg"><thead><tr><th>Deployment</th><th>Registry ids</th><th>Names</th><th>What they have in common</th></tr></thead><tbody>
-${deployments.rows.slice(0, 40).map((d) => `        <tr>
-          <td><b>${esc(d.host)}</b></td>
-          <td>${fmt(d.ids)}</td>
-          <td>${fmt(d.names)}</td>
-          <td>${d.notes.length ? `<div class="rg-note">${d.notes.map(esc).join('<br>')}</div>` : '<span class="rg-note">&mdash;</span>'}</td>
-        </tr>`).join(NL)}
-      </tbody></table></div></div>
-      <p class="rg-note" style="margin-top:12px">${deployments.rows.length > 40 ? `Showing the 40 largest of ${fmt(deployments.rows.length)} deployments; the remainder hold one or two ids each. ` : ''}Grouped by the host each registration names. Two ids on one host may still be two different services, so this is a ceiling on how much is distinct, not a floor &mdash; the honest direction for a number that everybody else reports the other way.</p>
-    </div>
-
-    <div class="rg-box" id="rg-log" hidden>
-      <h2>What has actually been asked</h2>
-      <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered. Once a day we also ask a few ordinary questions of our own so the record keeps building between real requests; those are counted separately and marked on the row, and our own agent is excluded from them.</p>
-      <div id="rg-log-body"></div>
-    </div>
-
-    <div class="rg-box" id="rg-move" hidden>
-      <h2>How it is moving</h2>
-      <p class="rg-sub">The registry grows every day. A single measurement cannot show that, so each daily check is kept — and the full scans are marked separately, because they measure different things.</p>
-      <div id="rg-move-body"></div>
-    </div>
-
-    <div class="rg-box">
-      <h2>From a number to a working agent</h2>
-      <p class="rg-sub">Each bar is a share of all ${fmt(total)} registered ids. Nothing is extrapolated &mdash; every id was read.</p>
-      ${[
-        ['Registered on-chain', total, 'An id exists. That is all this proves.'],
-        ['Registration carries its document inline', c.valid, `${fmt(c.unparsable + (c.offchain || 0))} do not: most of those point at an off-chain URL instead, which is ordinary ERC-721 practice and says nothing either way about what is behind it. ${fmt(c.empty)} are empty.`],
-        ['Names any service', c.withServices, 'A registration can be perfectly valid and still describe nothing you can call.'],
-        ['Has an HTTP endpoint', c.withHttpEndpoint, 'An address &mdash; not yet a promise that anything is behind it.'],
-        ['Endpoint on a real TLD', c.plausibleEndpoint, `${fmt(Math.max(0, c.withHttpEndpoint - c.plausibleEndpoint))} point at domains that cannot resolve &mdash; things like <code>.agent</code>, which was never a TLD.`],
-        ...(reach ? [['Answers when contacted', reach.reachable, 'Any HTTP response counts, including 401 and 404 &mdash; something is listening.']] : []),
-        ...(reach ? [['Answers as an agent', (reach.answering_mcp || 0) + (reach.serving_an_agent_card || 0), 'Spoke MCP, or served a parsable agent card. Not just a web server.']] : []),
-      ].map(([label, n, note]) => `
-      <div class="rg-step">
-        <div class="rg-top"><b>${label}</b><span>${fmt(n)} &middot; ${p1(n, total)}</span></div>
-        <div class="rg-bar"><div class="rg-fill" style="width:${Math.max(0.35, pct(n, total)).toFixed(3)}%"></div></div>
-        <div class="rg-note">${note}</div>
-      </div>`).join('')}
     </div>
 
     <div class="blk-head" style="margin-top:34px"><span class="blk-tag">The four categories</span><span class="blk-line"></span></div>
@@ -1490,18 +1535,75 @@ ${categorySections}
       </div>
     </dialog>
 
-    ${liveRows ? `<div class="rg-box">
-      <h2>Who is actually out there</h2>
+    <div class="blk-head" style="margin-top:34px"><span class="blk-tag">The evidence &middot; open any of it</span><span class="blk-line"></span></div>
+
+    <details class="rg-box rg-fold" id="rg-fleets">
+      <summary><h2>What the ones that answer actually are</h2><span class="rg-peek">${fmt(deployments.total)} ids &rarr; ${fmt(deployments.hosts)} deployments</span></summary>
+      <p class="rg-sub">Every figure above counts registry ids, and a registry id is the cheapest thing on this chain. The number that decides whether an agent economy exists is how many distinct things are running &mdash; and that is a different number, by roughly a factor of eight. Below is every host behind the ${fmt(deployments.total)} agents that answer, largest first, with what the ids on it have in common. Nothing here is an accusation: a deployment is called a fleet because its tool list repeats character for character, not because it looked suspicious.</p>
+
+      <div class="rg-grid">
+        <div class="rg-card"><div class="rg-n">${fmt(deployments.total)}</div><div class="rg-l">agents that answer</div><div class="rg-s">the number usually quoted</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(deployments.hosts)}</div><div class="rg-l">distinct deployments</div><div class="rg-s">what is actually running</div></div>
+        <div class="rg-card"><div class="rg-n">${p1(deployments.top5, deployments.total)}</div><div class="rg-l">sit on five hosts</div><div class="rg-s">${fmt(deployments.top5)} of ${fmt(deployments.total)} ids</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(deployments.singles)}</div><div class="rg-l">hosts with one id</div><div class="rg-s">the honest long tail</div></div>
+      </div>
+
+      ${deployments.biggestFleet && deployments.biggestFleet.topN > 1 ? `<p class="rg-note" style="margin:14px 0 0">The largest single fleet: <b>${fmt(deployments.biggestFleet.topN)} registry ids on ${esc(deployments.biggestFleet.host)}</b>, under ${fmt(deployments.biggestFleet.names)} different names, every one exposing the same five tools. Counted as ${fmt(deployments.biggestFleet.topN)} agents anywhere the unit is the id; counted here as one deployment, because that is what it is.</p>` : ''}
+
+      <div class="rg-tablebox" style="margin-top:16px"><div class="rg-scroll"><table class="rg"><thead><tr><th>Deployment</th><th>Registry ids</th><th>Names</th><th>What they have in common</th></tr></thead><tbody>
+${deployments.rows.slice(0, 40).map((d) => `        <tr>
+          <td><b>${esc(d.host)}</b></td>
+          <td>${fmt(d.ids)}</td>
+          <td>${fmt(d.names)}</td>
+          <td>${d.notes.length ? `<div class="rg-note">${d.notes.map(esc).join('<br>')}</div>` : '<span class="rg-note">&mdash;</span>'}</td>
+        </tr>`).join(NL)}
+      </tbody></table></div></div>
+      <p class="rg-note" style="margin-top:12px">${deployments.rows.length > 40 ? `Showing the 40 largest of ${fmt(deployments.rows.length)} deployments; the remainder hold one or two ids each. ` : ''}Grouped by the host each registration names. Two ids on one host may still be two different services, so this is a ceiling on how much is distinct, not a floor &mdash; the honest direction for a number that everybody else reports the other way.</p>
+    </details>
+
+    <details class="rg-box rg-fold" id="rg-log" hidden open>
+      <summary><h2>What has actually been asked</h2><span class="rg-peek">every task this page routed</span></summary>
+      <p class="rg-sub">Every task this page has routed to another agent, and how it went. Nobody reports their own score here &mdash; an operator appears because it was asked something, and the number is how often it answered. Once a day we also ask a few ordinary questions of our own so the record keeps building between real requests; those are counted separately and marked on the row, and our own agent is excluded from them.</p>
+      <div id="rg-log-body"></div>
+    </details>
+
+    <details class="rg-box rg-fold" id="rg-move" hidden open>
+      <summary><h2>How it is moving</h2><span class="rg-peek">daily high-water mark</span></summary>
+      <p class="rg-sub">The registry grows every day. A single measurement cannot show that, so each daily check is kept — and the full scans are marked separately, because they measure different things.</p>
+      <div id="rg-move-body"></div>
+    </details>
+
+    <details class="rg-box rg-fold">
+      <summary><h2>From a number to a working agent</h2><span class="rg-peek">${fmt(total)} &rarr; ${reach ? fmt(reach.reachable) : '&mdash;'}, step by step</span></summary>
+      <p class="rg-sub">Each bar is a share of all ${fmt(total)} registered ids. Nothing is extrapolated &mdash; every id was read.</p>
+      ${[
+        ['Registered on-chain', total, 'An id exists. That is all this proves.'],
+        ['Registration carries its document inline', c.valid, `${fmt(c.unparsable + (c.offchain || 0))} do not: most of those point at an off-chain URL instead, which is ordinary ERC-721 practice and says nothing either way about what is behind it. ${fmt(c.empty)} are empty.`],
+        ['Names any service', c.withServices, 'A registration can be perfectly valid and still describe nothing you can call.'],
+        ['Has an HTTP endpoint', c.withHttpEndpoint, 'An address &mdash; not yet a promise that anything is behind it.'],
+        ['Endpoint on a real TLD', c.plausibleEndpoint, `${fmt(Math.max(0, c.withHttpEndpoint - c.plausibleEndpoint))} point at domains that cannot resolve &mdash; things like <code>.agent</code>, which was never a TLD.`],
+        ...(reach ? [['Answers when contacted', reach.reachable, 'Any HTTP response counts, including 401 and 404 &mdash; something is listening.']] : []),
+        ...(reach ? [['Answers as an agent', (reach.answering_mcp || 0) + (reach.serving_an_agent_card || 0), 'Spoke MCP, or served a parsable agent card. Not just a web server.']] : []),
+      ].map(([label, n, note]) => `
+      <div class="rg-step">
+        <div class="rg-top"><b>${label}</b><span>${fmt(n)} &middot; ${p1(n, total)}</span></div>
+        <div class="rg-bar"><div class="rg-fill" style="width:${Math.max(0.35, pct(n, total)).toFixed(3)}%"></div></div>
+        <div class="rg-note">${note}</div>
+      </div>`).join('')}
+    </details>
+
+    ${liveRows ? `<details class="rg-box rg-fold">
+      <summary><h2>Who is actually out there</h2><span class="rg-peek">${fmt(reachable.length)} that answered, searchable</span></summary>
       <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first 60 of ${fmt(reachable.length)}; the rest are in the data file.` : ''}</p>
       <input class="rg-filter" id="rg-q" type="search" placeholder="Filter by name, tool or endpoint…" aria-label="Filter agents">
       <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Operator</th><th>What it is &amp; what it can do</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
 ${liveRows}
       </tbody></table></div></div>
       <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
-    </div>` : ''}
+    </details>` : ''}
 
-    ${jobCensus ? `<div class="rg-box" id="rg-jobs">
-      <h2>Who has actually been paid</h2>
+    ${jobCensus ? `<details class="rg-box rg-fold" id="rg-jobs">
+      <summary><h2>Who has actually been paid</h2><span class="rg-peek">${fmt(jobCensus.jobCounter)} escrow jobs, read one at a time</span></summary>
       <p class="rg-sub">Everything above is what agents say about themselves. This is the part they cannot write: BNB Chain has an escrow for hiring an agent &mdash; the ERC-8183 job kernel &mdash; and its counter reads ${fmt(jobCensus.jobCounter)}. That figure gets quoted as a working agent economy. We read every one of those ${fmt(jobCensus.total)} jobs, one at a time, and this is what they are made of.</p>
 
       <div class="rg-grid">
@@ -1540,31 +1642,10 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
 }).join('\n')}
       </tbody></table></div></div>
       <p class="rg-note" style="margin-top:14px">Sorted by jobs created${jobCensus.providers.length > 40 ? `, first 40 of ${fmt(jobCensus.providers.length)}` : ''}. <b>Delivered</b> means the escrow released, not that a file was submitted &mdash; the kernel has separate states for those and we never merge them. Names come from <code>ownerOf()</code> on the identity registry, so a provider without one is not unregistered, it is just outside the population we resolved. Full data: <a href="/api-jobs.json">/api-jobs.json</a>.</p>
-    </div>` : ''}
+    </details>` : ''}
 
-    <div class="rg-box">
-      <h2>Give it a task</h2>
-      <p class="rg-sub">Type what you need. We find an agent on this chain that can answer it, call it, and show you the result &mdash; with the agent that produced it named.</p>
-      <div class="rg-try">
-        <input id="rg-task" type="text" placeholder="protocol stats and pool statistics" aria-label="Task">
-        <button id="rg-go" type="button">Dispatch</button>
-      </div>
-      <div id="rg-out" class="rg-out" hidden></div>
-      <p class="rg-note" style="margin-top:12px"><b>Read-only tools only.</b> Anything that signs, sends, swaps or orders is named back to you to call yourself &mdash; never invoked on your behalf. We repeat the answer verbatim and do not verify it.</p>
-    </div>
-
-    <div class="rg-box">
-      <h2>Or just ask who can do it</h2>
-      <p class="rg-sub">The list above is for reading. This is for asking &mdash; open, no key, so an agent can call it in the middle of doing something else.</p>
-      <div class="rg-ask">
-        <code>GET agent.brainonbnb.com/find?q=<em>what you need done</em></code>
-        <p class="rg-note">Matched against the tools each agent returned when we asked it, the skills on its card, and the description it wrote on-chain. Add <code>&amp;speaks=mcp</code> or <code>&amp;speaks=x402</code> to require a protocol. It is not a ranking &mdash; there is no task history behind it yet, and the response says so.</p>
-        <p class="rg-note" style="margin-top:8px">It is early, and the index is thin &mdash; which is exactly why it exists now rather than later. Hundreds of agents register every day, and every one that publishes a callable surface lands in here on the next pass, automatically. The layer is ready before the traffic is, because that is the only order that works.</p>
-      </div>
-    </div>
-
-    <div class="rg-box">
-      <h2>If your agent is in that ${fmt(total)} and not in the ${reach ? fmt(reach.reachable) : 'short'} list</h2>
+    <details class="rg-box rg-fold">
+      <summary><h2>If your agent is in that ${fmt(total)} and not in the ${reach ? fmt(reach.reachable) : 'short'} list</h2><span class="rg-peek">three fixes, minutes each</span></summary>
       <p class="rg-sub">Most registrations fail for one of three boring reasons, and all three are fixable in minutes. Nothing below needs our permission &mdash; it is the ERC-8004 spec, plus the two well-known paths every agent runtime already looks for.</p>
       <ol class="rg-fix">
         <li><b>Your token URI has to resolve to JSON.</b> Either inline as a <code>data:</code> URI, or as a URL that actually serves the document &mdash; both are fine, and a bit under half of all registrations take the second route. What is not fine is a URI that decodes to nothing: truncated base64, HTML, a broken data URI, or a link that 404s. If nothing downstream can read you, no indexer will list you.</li>
@@ -1572,13 +1653,14 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         <li><b>Serve something at the well-known paths.</b> <code>/.well-known/agent-card.json</code> for A2A, an MCP endpoint that answers <code>tools/list</code>. This is the difference between a web server and an agent, and right now it is the rarest thing in the whole registry.</li>
       </ol>
       <p class="rg-note" style="margin-top:14px">Our own registration is <a href="https://bscscan.com/token/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432?a=49467" target="_blank" rel="noopener">#49467</a>; the card it serves is at <a href="/.well-known/agent-card.json">/.well-known/agent-card.json</a> and the MCP endpoint at <a href="/mcp">/mcp</a>. Copy the shape, point it at your own host. Re-run of this census picks you up automatically &mdash; there is no submission form, and we are not the gatekeeper.</p>
-    </div>
+    </details>
 
-    <details class="rg-box rg-method">
-      <summary><h2 style="display:inline">How this was measured</h2></summary>
+    <details class="rg-box rg-fold rg-method">
+      <summary><h2>How this was measured</h2><span class="rg-peek">and what it does not say</span></summary>
       <p><b>Registrations.</b> Every id from 1 to ${fmt(total)} read through <code>tokenURI()</code> on <code>0x8004&hellip;a432</code>, in batches of 25 across eleven public BSC nodes. Ids a node refused were retried until answered &mdash; <b>${c.unread}</b> stayed unreadable. That distinction is the whole reliability of this page: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
       <p><b>Reachability.</b> Every claimed endpoint contacted once. <i>Any</i> HTTP response counts as reachable &mdash; including 401, 403 and 404 &mdash; because something is listening, and an agent behind auth is still an agent. Only a failed connection counts as dead. Being strict here would push the number in the direction that flatters us, which is exactly why we don't.</p>
       <p><b>Capabilities.</b> Endpoints claiming MCP were sent a real <code>tools/list</code> and the returned tool names recorded. Agent cards had to parse as JSON. Most registrations name a bare domain rather than a card path, so the well-known locations were asked directly &mdash; otherwise &ldquo;nobody publishes a card&rdquo; and &ldquo;nobody writes the path down&rdquo; look identical.</p>
+      ${hireConfirm ? `<p><b>Whether it will quote.</b> Every agent carrying a Hire button was sent the ERC-8183 negotiation step once &mdash; a request for a price on the service it is listed under, and nothing else. ${fmt(hireConfirm.quoted)} of ${fmt(hireConfirm.asked)} returned one; the rest answered with unparseable JSON, an error from their own infrastructure, or a schema complaint, and each row carries which. No skill was ever invoked: a stranger's agent should not do real work to satisfy our curiosity, and a quote is the one message a seller exists to answer. Measured ${esc((hireConfirm.measured_at || '').slice(0, 16).replace('T', ' '))} UTC.</p>` : ''}
       <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good. It is not a ranking and not an endorsement.</p>
       <p>Counts: <a href="/api-registry.json">/api-registry.json</a> &middot; every agent that answered, with its tools: <a href="/api-agents.json">/api-agents.json</a>. Both plain JSON, CORS open, so another agent can read them directly. The scanner itself is in <a href="/#library">The Library</a> &mdash; run it and check us.</p>
     </details>
@@ -1604,14 +1686,21 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     var h=document.getElementById('rg-live-total'), t=document.getElementById('rg-tile-total'),
         sub=document.getElementById('rg-tile-total-sub');
     if(!h&&!t)return;
+    // The scan number this page was built with. The live counter may only
+    // raise it, never lower it: the worker refreshes its high-water mark on
+    // its own schedule, so straight after a full scan its figure is the OLDER
+    // of the two — and taking it unconditionally made the headline load at
+    // 302,828 and then visibly count itself down to 299,783.
+    var floor=${total};
     fetch('https://agent.brainonbnb.com/census',{cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(d){
-        if(!d||!d.highest_id)return;
-        var n=Number(d.highest_id).toLocaleString('en-US');
+        var live=d&&d.highest_id?Number(d.highest_id):0;
+        if(!(live>floor))return;
+        var n=live.toLocaleString('en-US');
         if(h)h.textContent=n;
         if(t)t.textContent=n;
-        if(sub)sub.textContent='checked today · the counts below are from the last full scan';
+        if(sub)sub.textContent='live · the counts below are from the last full scan';
       })
       .catch(function(){});
   })();

@@ -301,6 +301,40 @@ section('The written numbers match the measured ones');
   ok('the off-chain share is published as data, not only as prose',
     Number.isInteger(api?.registrations?.points_offchain));
 }
+section('The number, and the order of the page');
+{
+  // 25 August: /registry loaded its freshly scanned 302,828 and then counted
+  // itself DOWN to 299,783, because the worker's live high-water mark is
+  // refreshed on its own schedule and was the older of the two figures. The
+  // live counter may raise the scan total and may never lower it.
+  const { body } = await getText(`${SITE}/registry`);
+  const floor = Number((body.match(/var floor=(\d+)/) || [])[1] || 0);
+  ok('the page knows the number it was built with', floor > 0);
+  ok('and the live counter may only raise it',
+    /if\(!\(live>floor\)\)return;/.test(body),
+    'the live figure is taken unconditionally and can count the headline down');
+
+  const api = await fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null);
+  const live = await fetch('https://agent.brainonbnb.com/census')
+    .then((r) => r.json()).catch(() => null);
+  ok('the live counter is level with the last full scan',
+    (live?.highest_id || 0) >= (api?.registered_ids || 0),
+    `live ${live?.highest_id} is behind the published scan ${api?.registered_ids} — run scripts/census-sync.mjs`);
+
+  // A marketplace that makes you read a census before it lets you hire
+  // anything has its order backwards. The dispatch box and the category
+  // picker come before the evidence; the evidence is folded, not removed.
+  const act = body.indexOf('id="rg-task"');
+  const evidence = body.indexOf('id="rg-fleets"');
+  ok('you can act before you have to read', act > 0 && evidence > act,
+    'the evidence blocks come before anything you can operate');
+  ok('the category picker is on the page', (body.match(/class="rg-chip"/g) || []).length === 4);
+  const folds = (body.match(/<details class="rg-box rg-fold"/g) || []).length;
+  ok('the evidence is folded, not deleted', folds >= 6, `only ${folds} folds`);
+  ok('and the folded tables are still in the HTML',
+    (body.match(/<tbody>/g) || []).length >= 6,
+    'folding removed the tables an agent reads instead of hiding them');
+}
 section('The marketplace, from the front door');
 {
   // A judge, or anybody else, arriving at brainonbnb.com should not have to
@@ -337,6 +371,20 @@ section('The marketplace, from the front door');
     ok(`${c} has something hireable`, cats.has(c));
   }
   ok('the hire panel is on the page', /<dialog id="rg-hire"/.test(body));
+
+  // A Hire button is a promise. Eleven of them shipped once on the strength
+  // of a capability flag nobody had tested, and three sellers could actually
+  // quote. Every button now carries what happened when that seller was asked.
+  const hireBtns = (body.match(/class="rg-hirebtn"/g) || []).length;
+  const marks = (body.match(/quoted [^<]*when asked|did not quote when asked/g) || []).length;
+  ok('every hire button says what the seller answered', hireBtns > 0 && marks >= hireBtns,
+    `${hireBtns} buttons but only ${marks} carry a measured answer — run scripts/erc8004-hire-confirm.mjs`);
+  const reg = await fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null);
+  ok('and the count is published, not only rendered',
+    Number.isInteger(reg?.quoted_when_asked) && reg.quoted_when_asked > 0);
+  ok('llms.txt carries the same finding',
+    (await getText(`${SITE}/llms.txt`)).body.includes(`${reg?.quoted_when_asked} of ${reg?.hireable_here} returned a quote`),
+    'llms.txt was not pulled along after the publish');
 
   // The fleet block, and its arithmetic. "45 of the 46 name the same URL" is
   // the point of the block; "4 of the 2" was a real line it printed before the

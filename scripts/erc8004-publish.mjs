@@ -16,7 +16,15 @@ import { PEERS, SURFACE } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', 'erc8004');
+const DIR = path.join(ROOT, 'data', (() => {
+  // Same flag the scanner takes, so all three halves of the census can be
+  // pointed at one dataset: scan, probe, publish. Without it a v2 scan had to
+  // be moved on top of the live data before it could be used, and the live
+  // census is what the page serves while the new one is still running.
+  //   node scripts/erc8004-publish.mjs --dir erc8004-v2
+  const i = process.argv.indexOf('--dir');
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
+})());
 const state = JSON.parse(fs.readFileSync(path.join(DIR, 'scan-state.json'), 'utf8'));
 
 let census = null;

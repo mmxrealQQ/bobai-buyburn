@@ -24,7 +24,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', 'erc8004');
+const DIR = path.join(ROOT, 'data', (() => {
+  // Same flag the scanner takes, so all three halves of the census can be
+  // pointed at one dataset: scan, probe, publish. Without it a v2 scan had to
+  // be moved on top of the live data before it could be used, and the live
+  // census is what the page serves while the new one is still running.
+  //   node scripts/erc8004-probe.mjs --dir erc8004-v2
+  const i = process.argv.indexOf('--dir');
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
+})());
 const HITS = path.join(DIR, 'agents-with-endpoints.jsonl');
 const OUT = path.join(DIR, 'reachable.jsonl');
 const SUMMARY = path.join(DIR, 'census.json');

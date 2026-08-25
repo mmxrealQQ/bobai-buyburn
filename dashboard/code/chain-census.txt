@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 2450 lines.
+# one fetch. 7 files, 2511 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1733,7 +1733,15 @@ const offchain = fs.createWriteStream(OFFCHAIN_FILE, { flags: 'a' });
 
 // Ids the nodes refused. Drained in patient mode at the end of the run; only
 // what survives THAT is genuinely unreadable.
-const pendingRetry = [];
+//
+// Persisted with the cursor, and that is not a detail. It used to live only in
+// memory, so a run that was interrupted — a laptop closing, an internet drop —
+// lost the list while the cursor had already moved past those ids. They stayed
+// counted as unread forever, and nothing recorded WHICH ones they were, so
+// there was no way to go back for them short of rescanning a quarter of a
+// million ids. An unread entry is a fact about a node, and a census that cannot
+// re-ask the node has quietly turned it into a fact about an agent.
+const pendingRetry = Array.isArray(state.pendingRetry) ? state.pendingRetry.slice() : [];
 
 console.log(`scanning ids ${state.cursor.toLocaleString('en-US')} … ${limit.toLocaleString('en-US')}`);
 const t0 = Date.now();
@@ -1791,6 +1799,7 @@ while (state.cursor <= limit) {
   sinceLog += groups.reduce((s, g) => s + g.length, 0);
 
   if (sinceLog >= 5000) {
+    state.pendingRetry = pendingRetry;
     saveState(state);
     const done = state.cursor - 1;
     const rate = done / ((Date.now() - t0) / 1000);
@@ -1798,6 +1807,58 @@ while (state.cursor <= limit) {
     console.log(`  ${done.toLocaleString('en-US')} / ${limit.toLocaleString('en-US')}  ·  ${rate.toFixed(0)}/s  ·  ~${(left / 60).toFixed(0)} min left  ·  endpoints so far: ${state.counts.withHttpEndpoint}`);
     sinceLog = 0;
   }
+}
+
+// Go back for the ids the nodes refused.
+//
+// The comment above the retry list has claimed since the first version that
+// this happens "at the end of the run". It did not: the list was collected and
+// then dropped on the floor. It never showed because the first full census hit
+// zero refusals, so `unread: 0` was true by luck rather than by design — and
+// the moment a run hit a real outage it carried 1,675 permanently unread ids
+// while still calling itself a census.
+//
+// Patient mode gives every endpoint several tries with backoff. What survives
+// that is genuinely unreadable and is reported as such.
+if (pendingRetry.length) {
+  console.log(`\ndraining ${pendingRetry.length.toLocaleString('en-US')} refused ids patiently…`);
+  const still = [];
+  let recovered = 0;
+  for (let i = 0; i < pendingRetry.length; i += BATCH) {
+    const ids = pendingRetry.slice(i, i + BATCH);
+    const res = await callBatch(ids, { patient: true });
+    for (let k = 0; k < ids.length; k++) {
+      const c = classify(res[k]);
+      if (c.state === 'unread') { still.push(ids[k]); continue; }
+      recovered++;
+      const counts = state.counts;
+      counts.unread = Math.max(0, counts.unread - 1);
+      if (c.state === 'empty') counts.empty++;
+      else if (c.state === 'offchain') {
+        counts.offchain++;
+        offchain.write(JSON.stringify({ id: ids[k], uri: c.uri, host: c.host, scheme: c.scheme }) + '\n');
+      } else if (c.state === 'unparsable') counts.unparsable++;
+      else {
+        counts.valid++;
+        if (c.active) counts.active++;
+        if (c.services > 0) counts.withServices++;
+        if (c.endpoints.length) counts.withHttpEndpoint++;
+        if (c.plausible) counts.plausibleEndpoint++;
+        if (c.mcp) counts.mcp++;
+        if (c.a2a) counts.a2a++;
+        if (c.x402) counts.x402++;
+        if (c.endpoints.length) {
+          hits.write(JSON.stringify({
+            id: ids[k], name: c.name, active: c.active,
+            endpoints: c.endpoints, mcp: c.mcp, a2a: c.a2a, x402: c.x402,
+            plausible: c.plausible > 0, trust: c.trust,
+          }) + '\n');
+        }
+      }
+    }
+  }
+  state.pendingRetry = still;
+  console.log(`  ${recovered.toLocaleString('en-US')} recovered, ${still.length.toLocaleString('en-US')} still unread`);
 }
 
 saveState(state);

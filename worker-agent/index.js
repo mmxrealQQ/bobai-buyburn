@@ -586,8 +586,24 @@ export default {
     // Being hireable, which is the half a marketplace usually forgets about
     // itself. A2A JSON-RPC: negotiate a price, then tell us the job is funded
     // and we deliver it on-chain. See sell.js for why it is A2A and not MCP.
-    if (path === '/a2a' && request.method === 'POST') {
-      return await handleA2A(request, env);
+    if (path === '/a2a') {
+      if (request.method === 'POST') return await handleA2A(request, env);
+      // A GET here is somebody looking, not somebody hiring — a person pasting
+      // the URL, or an indexer checking whether the endpoint is alive. Answering
+      // 404 is technically correct and reads as broken, which is precisely the
+      // misreading this project keeps having to correct in other people's data.
+      return json({
+        endpoint: 'A2A JSON-RPC, POST only',
+        method: 'message/send',
+        example: {
+          jsonrpc: '2.0', id: 1, method: 'message/send',
+          params: { message: { role: 'user', messageId: 'example', parts: [{ kind: 'data', data: { skill: 'list' } }] } },
+        },
+        skills: ['list — what is for sale', 'negotiate — get a quote', 'notify_funded — deliver a job whose escrow is funded'],
+        services: Object.values(SERVICES).map((x) => ({ id: x.id, name: x.name, category: x.category, price: x.price, price_display: x.price_display })),
+        agents: { 302257: 'Venus Health Factor Monitor', 302258: 'BSC Grid Planner' },
+        human_readable: 'https://brainonbnb.com/registry',
+      });
     }
 
     // The deliverable of a finished job, served so the digest written on-chain

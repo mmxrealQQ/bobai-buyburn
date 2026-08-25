@@ -10,7 +10,7 @@
     {
       "operator": "brainonbnb.com",
       "instances": 3,
-      "distinct_capabilities": 1,
+      "distinct_capabilities": 2,
       "ids": [
         49467,
         302257,

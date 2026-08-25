@@ -31113,13 +31113,19 @@
     {
       "id": 302257,
       "name": "Brain on BNB — Venus Health Factor Monitor",
-      "description": null,
+      "description": "Health factor for a Venus position on BNB Chain, computed market by market from the Comptroller, with the collateral drawdown that would liquidate it and a stress table. Cross-checked against the protocol's own getAccountLiquidity — if the two disagree the answer says so instead of guessing.",
       "endpoints": [
         "https://agent.brainonbnb.com/a2a"
       ],
       "speaks": [
         "a2a",
         "x402"
+      ],
+      "skills": [
+        {
+          "name": "health_factor",
+          "description": "Venus health factor & liquidation distance"
+        }
       ],
       "attributes": [
         {
@@ -31133,13 +31139,19 @@
     {
       "id": 302258,
       "name": "Brain on BNB — BSC Grid Planner",
-      "description": null,
+      "description": "Grid levels for any BNB Chain pool with the round-trip cost of a cycle measured from the pool itself — swap fee, price impact at your fill size, and the transfer tax read from executed trades rather than a label. States the break-even spacing, which is the number that decides whether the grid can work at all.",
       "endpoints": [
         "https://agent.brainonbnb.com/a2a"
       ],
       "speaks": [
         "a2a",
         "x402"
+      ],
+      "skills": [
+        {
+          "name": "grid_plan",
+          "description": "Grid trading plan, costed against the real pool"
+        }
       ],
       "attributes": [
         {

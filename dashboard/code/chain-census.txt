@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 2991 lines.
+# one fetch. 7 files, 3073 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -464,6 +464,7 @@ import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
 import { PEERS, SURFACE } from '../worker-agent/telemetry.js';
+import { SERVICES } from '../worker-agent/sell.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIR = path.join(ROOT, 'data', 'erc8004');
@@ -607,16 +608,28 @@ const directory = reachable
 let ownAgents = [];
 try {
   const own = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'own-agents.json'), 'utf8'));
-  ownAgents = Object.values(own.agents || {}).filter((a) => a.id).map((a) => ({
-    id: a.id,
-    name: a.name,
-    description: null,
-    endpoints: ['https://agent.brainonbnb.com/a2a'],
-    speaks: ['a2a', 'x402'],
-    attributes: [{ trait_type: 'Category', value: a.category }],
-    ours: true,
-    provider: a.owner,
-  }));
+  ownAgents = Object.values(own.agents || {}).filter((a) => a.id).map((a) => {
+    // Our own agents were being listed with description: null, so the table
+    // printed "its registration says nothing about what it does" against the
+    // two entries we control — while holding other people to the same standard
+    // one row below. The text comes from the service definition in sell.js,
+    // which is the same sentence the agent sells itself with over A2A and the
+    // same one it delivers against. One source, and it cannot drift from what
+    // is actually for sale.
+    const svc = Object.values(SERVICES).find((x) => x.category === a.category);
+    return {
+      id: a.id,
+      name: a.name,
+      description: svc ? svc.deliverables : null,
+      endpoints: ['https://agent.brainonbnb.com/a2a'],
+      speaks: ['a2a', 'x402'],
+      // What it can be asked for, named the way the seller names it.
+      skills: svc ? [{ name: svc.id, description: svc.name }] : [],
+      attributes: [{ trait_type: 'Category', value: a.category }],
+      ours: true,
+      provider: a.owner,
+    };
+  });
   for (const a of ownAgents) if (!directory.some((d) => d.id === a.id)) directory.push(a);
 } catch { /* nothing registered yet */ }
 
@@ -781,6 +794,60 @@ const teleKey = (id, host) => (
   id === 302257 || id === 302258 ? `own:${id}` : (peerByHost.get(host) || null)
 );
 
+// WHAT IT DOES, WHICH THE TABLE DID NOT SAY
+// The rubric asks that somebody can land, find an agent by category,
+// understand what it does, and activate it. Three of those four were on the
+// page. The columns were the agent, how we classified it, and whether it had
+// ever been paid — all true, none of them an answer to "what does this thing
+// do". A directory that cannot answer that is asking the reader to hire on
+// vibes.
+
+// The tools and skills an agent exposes, which is the machine-readable half of
+// what it does. The ERC-8183 selling handshake is filtered out: negotiate and
+// notify_funded are how you buy from an agent, not something the agent does,
+// and printing them as capabilities makes every seller look identical.
+const HANDSHAKE = /^(negotiate|notify[_ -]?funded|deliver|start|list)$/i;
+const HANDSHAKE_LABEL = /^(negotiate an erc-8183 job|notify the seller)/i;
+const capsOf = (x) => {
+  const out = [];
+  for (const t of x.tools || []) {
+    const name = typeof t === 'string' ? t : (t && (t.name || t.id));
+    if (name && !HANDSHAKE.test(name)) out.push({ name: String(name), why: (t && t.description) || '' });
+  }
+  for (const sk of x.skills || []) {
+    const name = typeof sk === 'string' ? sk : (sk && (sk.name || sk.id));
+    if (!name) continue;
+    if (HANDSHAKE.test(name) || HANDSHAKE_LABEL.test(String(name))) continue;
+    out.push({ name: String(name), why: (sk && sk.description) || '' });
+  }
+  // Same name from tools and skills is one capability, not two.
+  const seen = new Set();
+  return out.filter((c) => (seen.has(c.name.toLowerCase()) ? false : seen.add(c.name.toLowerCase())));
+};
+
+// Some registrations describe the selling handshake instead of the service —
+// "ERC-8183 seller agent (bnbGridTrader-agent) — negotiate + notify_funded over
+// A2A". That is true and tells a buyer nothing. Printing it as the answer to
+// "what does it do" would be repeating a non-answer with a straight face, so it
+// is named as what it is. Three of the four BNB reference agents describe
+// themselves this way.
+const SELLER_BOILERPLATE = /erc-?8183 seller agent|negotiate \+ notify_funded/i;
+
+// Registrations arrive with mojibake often enough to matter: an em dash that
+// went through the wrong encoding twice shows up as a replacement character in
+// the middle of a sentence. We do not silently rewrite somebody's text, but a
+// character that carries no information is dropped rather than printed.
+const clean = (t) => String(t).replace(/\uFFFD/g, '').replace(/\s+/g, ' ').trim();
+
+const describes = (r) => {
+  const d = r.description ? clean(r.description) : '';
+  if (!d) return { text: null, weak: true, why: 'Its registration says nothing about what it does.' };
+  if (SELLER_BOILERPLATE.test(d)) {
+    return { text: null, weak: true, why: 'Describes itself only as an ERC-8183 seller — the registration says nothing about the work.' };
+  }
+  return { text: d.length > 190 ? d.slice(0, 190).replace(/\s+\S*$/, '') + '…' : d, weak: false, why: null };
+};
+
 // CAN BE HIRED and HAS BEEN HIRED are different facts, and the first version
 // of the table derived the first from the second. The effect was that an agent
 // nobody had hired yet showed a dash — including the BNB Yield Optimizer, which
@@ -814,6 +881,8 @@ const categorised = CATEGORIES.map((cat) => {
       tele: teleKey(a.id, host),
       agentId: a.id,
       speaks: a.speaks || [],
+      description: a.description || null,
+      capabilities: capsOf(a),
     });
   }
   const claimed = new Set(rows.map((r) => r.label));
@@ -835,6 +904,8 @@ const categorised = CATEGORIES.map((cat) => {
       // with one agent, so the first is offered and the panel names which.
       agentId: (o.ids || [])[0] ?? null,
       speaks: o.speaks || [],
+      description: o.description || null,
+      capabilities: capsOf(o),
     });
   }
 
@@ -856,7 +927,14 @@ const categorySections = categorised.map(({ cat, rows }) => {
       : 'never hired through the escrow';
     return `        <tr${r.ours ? ' class="rg-ours"' : ''}${r.tele ? ` data-tele="${esc(r.tele)}"` : ''}>
           <td><b>${esc(r.label)}</b>${r.ours ? ' <span class="rg-t rg-x4">ours</span>' : ''}${r.instances > 1 ? `<div class="rg-note">${r.instances} registry ids, one deployment</div>` : ''}
-              <div class="rg-note">${esc(r.sub)}</div>${r.tele ? '<div class="rg-live" hidden></div>' : ''}</td>
+              <div class="rg-note">${esc(r.sub)}</div>
+              ${(() => {
+                const d = describes(r);
+                const caps = (r.capabilities || []).slice(0, 6);
+                const more = (r.capabilities || []).length - caps.length;
+                return `<div class="rg-what${d.weak ? ' rg-weak' : ''}">${d.text ? esc(d.text) : esc(d.why)}</div>`
+                  + (caps.length ? `<div class="rg-caps">${caps.map((c) => `<code${c.why ? ` title="${esc(clean(c.why)).slice(0, 300)}"` : ''}>${esc(c.name)}</code>`).join(' ')}${more > 0 ? ` <span class="rg-more">+${more}</span>` : ''}</div>` : '');
+              })()}${r.tele ? '<div class="rg-live" hidden></div>' : ''}</td>
           <td><span class="rg-t rg-${r.hit.source}" title="${esc(why)}">${badge}</span>
               <div class="rg-note">${esc(r.hit.detail)}</div></td>
           <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div>${hireable && r.agentId ? `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}">Hire &rarr;</button>` : ''}</td>
@@ -1043,6 +1121,10 @@ const page = `<!doctype html>
   .rg-live.rg-dark{color:var(--muted)}
   .rg-live .rg-age{color:var(--muted)}
   .rg-live .rg-mismatch{color:var(--muted);display:block}
+  /* What the agent does. Sits directly under the name because it is the second
+     thing anybody wants and used to be nowhere on the page. */
+  .rg-what{margin-top:7px;font-size:.76rem;line-height:1.55;max-width:52ch}
+  .rg-what.rg-weak{color:var(--muted);font-style:italic}
   .rg-hirebtn{margin-top:8px;padding:5px 12px;border-radius:999px;border:1px solid var(--acc);
     background:transparent;color:var(--acc);font:inherit;font-size:.72rem;cursor:pointer;white-space:nowrap}
   .rg-hirebtn:hover{background:var(--acc);color:#0b0b0f}

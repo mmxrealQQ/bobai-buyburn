@@ -313,6 +313,18 @@ section('The marketplace, from the front door');
     ok(`${c} has something hireable`, cats.has(c));
   }
   ok('the hire panel is on the page', /<dialog id="rg-hire"/.test(body));
+
+  // The rubric's four steps are: land, find by category, UNDERSTAND WHAT IT
+  // DOES, activate. The third was missing entirely — the columns were the
+  // agent, how we classified it and whether it had ever been paid. A row
+  // without a description asks the reader to hire on vibes.
+  const rows = (body.match(/data-cat="[a-z-]+"/g) || []).length;
+  const whats = (body.match(/class="rg-what/g) || []).length;
+  ok('every hireable row says what the agent does', whats >= rows, `${whats} descriptions for ${rows} hireable rows`);
+  // Ours must not be among the ones with nothing to say. Holding others to a
+  // standard we fail on our own two entries is the failure mode here.
+  const ourWeak = /Brain on BNB[^<]*<\/b>[\s\S]{0,400}?rg-what rg-weak/.test(body);
+  ok('our own agents describe themselves', !ourWeak, 'one of ours renders as "says nothing about what it does"');
 }
 
 section('Transparency');

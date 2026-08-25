@@ -50,6 +50,54 @@ const add = (page, severity, what, detail = '') =>
 const html = {};
 for (const p of pages) html[p] = fs.readFileSync(path.join(DASH, p), 'utf8');
 
+// ---------------------------------------------------------------------------
+// SELF-TEST
+//
+// Both of these are failures this file has already shipped, not hypotheticals.
+//
+//  1. The script-stripping regex was written as [\\s\\S] — in a JS regex that
+//     means "a backslash, an s, or an S", so it matched almost nothing and
+//     stripped nothing. The audit then read hrefs that JavaScript builds at
+//     runtime and reported a working link as dead, at HIGH, for a page that
+//     was fine. A false HIGH is worse than no check: it teaches whoever runs
+//     this to skim past the severity that is meant to stop them.
+//
+//  2. The obvious repair — never scan scripts — could just as easily be
+//     over-applied and swallow real dead links. So the test plants one and
+//     requires it to be found.
+//
+// Run: node scripts/site-audit.mjs --self-test
+if (args.includes('--self-test')) {
+  const fails = [];
+  const strip = (x) => x.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+  const withScript = '<a href="/real">r</a><script>var u="<a href=\'/invented\'>";</script>';
+  const stripped = strip(withScript);
+  if (stripped.includes('/invented')) fails.push('script bodies are not being stripped — hrefs built in JS will be read as markup');
+  if (!stripped.includes('/real')) fails.push('stripping removed real markup as well as the script');
+
+  // A planted dead link in real page text must still be caught.
+  const planted = strip('<html><a href="/definitely-not-a-page">x</a></html>');
+  const found = [...planted.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+  if (!found.includes('/definitely-not-a-page')) fails.push('a plain dead link in markup is no longer seen at all');
+
+  // And the file must contain no control characters. One backspace byte, from
+  // a \b that a tool turned into 0x08, is what made the regex unmatchable in
+  // the first place and it was invisible in every editor.
+  const src = fs.readFileSync(new URL(import.meta.url), 'utf8');
+  const ctrl = [...src].filter((c) => c.charCodeAt(0) < 9 || (c.charCodeAt(0) > 13 && c.charCodeAt(0) < 32));
+  if (ctrl.length) fails.push(`this file contains ${ctrl.length} control character(s) — a regex here is probably not what it looks like`);
+
+  if (fails.length) {
+    console.error(`\nself-test FAILED (${fails.length})`);
+    for (const f of fails) console.error(`  x ${f}`);
+    process.exit(1);
+  }
+  console.log('self-test passed: scripts are stripped, real markup survives, dead links are still caught, no control characters');
+  process.exit(0);
+}
+
+
 // Routes served by the worker rather than by a file. Reading them from
 // _routes.json rather than hard-coding means the audit cannot drift from what
 // is actually routed — the first version reported /mcp and /skill.md as dead
@@ -124,8 +172,21 @@ for (const p of pages) {
   }
 
   // ---- internal links ----
+  //
+  // Markup only. A page that builds a link in JavaScript writes something like
+  //   '<a href="' + AGENT + '/job?id=' + esc(id) + '">'
+  // and a regex over the raw file reads the middle of that as a static href
+  // pointing at a file that does not exist. It reported the registry page's
+  // job-tracking link as dead while the link works perfectly at runtime.
+  //
+  // A false HIGH is worse than no check: it trains whoever runs this to skim
+  // past the severity that is supposed to stop them. So script bodies are
+  // removed before the scan — an href inside one is not markup, and whether it
+  // resolves is a question about runtime, which this tool does not answer.
+  // The browser checks in scripts/dashboard-check/ do.
+  const markup = s.replace(/<script[\s\S]*?<\/script>/gi, '');
   const seen = new Set();
-  for (const m of s.matchAll(/href="([^"]+)"/g)) {
+  for (const m of markup.matchAll(/href="([^"]+)"/g)) {
     const href = m[1];
     // Case-insensitive: a third-party registration in the census carried
     // "Https://google.com" with a capital H, which slipped past the lowercase

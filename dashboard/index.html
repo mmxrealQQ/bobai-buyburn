@@ -1057,7 +1057,7 @@
           <div><b id="mkt-total">&ndash;</b><span>registered agent ids</span></div>
           <div><b id="mkt-reach">&ndash;</b><span>that answer</span></div>
           <div><b id="mkt-ops">&ndash;</b><span>independent operators</span></div>
-          <div><b id="mkt-hire">&ndash;</b><span>hireable here</span></div>
+          <div><b id="mkt-hire">&ndash;</b><span>quote back when asked</span></div>
           <div><b>4</b><span>categories, equally deep</span></div>
         </div>
         <span class="mkt-go">Find and hire an agent &rarr;</span>
@@ -1246,7 +1246,11 @@
       .then(function(d){
         if(!d)return;
         if(re&&d.reachability&&d.reachability.reachable!=null)re.textContent=n(d.reachability.reachable);
-        if(hi&&d.hireable_here!=null)hi.textContent=n(d.hireable_here);
+        // The measured number, not the number of buttons: 12 carry a Hire
+        // button and 6 returned a price when each was actually asked. The card
+        // links to the page that says both, so it should not claim the larger.
+        var hireN=d.quoted_when_asked!=null?d.quoted_when_asked:d.hireable_here;
+        if(hi&&hireN!=null)hi.textContent=n(hireN);
         if(op&&d.independent_operators!=null)op.textContent=n(d.independent_operators);
         var floor=Number(d.registered_ids)||0;
         if(t&&floor)t.textContent=n(floor);

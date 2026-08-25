@@ -382,6 +382,10 @@ section('The marketplace, from the front door');
   const reg = await fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null);
   ok('and the count is published, not only rendered',
     Number.isInteger(reg?.quoted_when_asked) && reg.quoted_when_asked > 0);
+  const home = (await getText(SITE)).body;
+  ok('the homepage card promises the measured number, not the button count',
+    /id="mkt-hire"[^<]*<\/b><span>quote back when asked/.test(home),
+    'the card still advertises hireable buttons rather than sellers that quote');
   ok('llms.txt carries the same finding',
     (await getText(`${SITE}/llms.txt`)).body.includes(`${reg?.quoted_when_asked} of ${reg?.hireable_here} returned a quote`),
     'llms.txt was not pulled along after the publish');

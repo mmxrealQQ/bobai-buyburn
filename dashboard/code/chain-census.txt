@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 2960 lines.
+# one fetch. 7 files, 2991 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -236,6 +236,27 @@ const probeOne = async (url, opts = {}) => {
   }
 };
 
+// WHAT COUNTS AS SPEAKING A2A, AND WHY THIS GOT STRICTER
+// It used to be: any JSON at a well-known path carrying a name, a
+// protocolVersion or a skills array. That is much looser than the standard and
+// it over-counted. An A2A card names the URL you POST JSON-RPC to and the
+// skills you can ask for; a document with neither is a description of an agent,
+// not an agent you can reach.
+//
+// Audited on 2026-08-25 across every host behind our A2A-flagged agents: 261 of
+// 290 served a card naming both, 29 did not. One of the 29 is a paid REST
+// catalogue on Arbitrum that publishes an agent.json — we had it filed as an
+// A2A agent on BNB Chain.
+//
+// Both facts are kept. `card` means a document was served, which is worth
+// knowing; `a2a` now means callable. Collapsing them was the original mistake
+// and merging them again would repeat it.
+const cardIsCallable = (j) => !!(
+  j && typeof j === 'object'
+  && typeof j.url === 'string' && /^https?:\/\//i.test(j.url)
+  && Array.isArray(j.skills) && j.skills.some((s) => s && typeof s === 'object' && (s.id || s.name))
+);
+
 async function probeAgent(a) {
   const result = { id: a.id, name: a.name, endpoints: a.endpoints, reachable: false, live: {}, checked: [] };
 
@@ -253,7 +274,8 @@ async function probeAgent(a) {
       try {
         const j = await res.r.clone().json();
         if (j && (j.name || j.protocolVersion || j.skills)) {
-          result.live.a2a = true;
+          result.live.card = true;
+          result.live.a2a = cardIsCallable(j);
           if (Array.isArray(j.skills)) {
             result.live.skills = j.skills
               .map((s) => (s && typeof s === 'object' ? s.name || s.id : s))
@@ -272,7 +294,7 @@ async function probeAgent(a) {
   // reachable host gets asked directly. This is the difference between
   // "nobody publishes a card" and "nobody writes the path in the registry",
   // and those are very different findings.
-  if (result.reachable && !result.live.a2a) {
+  if (result.reachable && !result.live.card) {
     const hosts = [...new Set(a.endpoints.map((e) => { try { return new URL(e).origin; } catch { return null; } }).filter(Boolean))];
     for (const origin of hosts.slice(0, 2)) {
       for (const p of ['/.well-known/agent-card.json', '/.well-known/agent.json', '/.well-known/ai-agent.json']) {
@@ -281,8 +303,10 @@ async function probeAgent(a) {
         try {
           const j = await res.r.json();
           if (j && (j.name || j.protocolVersion || j.skills)) {
-            result.live.a2a = true;
+            result.live.card = true;
+            result.live.a2a = cardIsCallable(j);
             result.live.cardUrl = origin + p;
+            if (typeof j.url === 'string') result.live.a2aUrl = j.url;
             if (Array.isArray(j.skills)) {
               result.live.skills = j.skills
                 .map((s) => (s && typeof s === 'object' ? s.name || s.id : s))
@@ -291,9 +315,9 @@ async function probeAgent(a) {
             if (typeof j.description === 'string') result.live.cardDescription = j.description.slice(0, 240);
           }
         } catch { /* not a card */ }
-        if (result.live.a2a) break;
+        if (result.live.card) break;
       }
-      if (result.live.a2a) break;
+      if (result.live.card) break;
     }
   }
 
@@ -343,7 +367,7 @@ async function probeAgent(a) {
 // numbers can be checked.
 const out = fs.createWriteStream(SELF_TEST ? OUT.replace(/\.jsonl$/, '.selftest.jsonl') : OUT, { flags: 'w' });
 const todo = agents.slice(0, LIMIT === Infinity ? agents.length : LIMIT);
-let done = 0, reachable = 0, withMcp = 0, withA2a = 0;
+let done = 0, reachable = 0, withMcp = 0, withA2a = 0, withCard = 0;
 
 // Fixed-size worker pool: the targets are unrelated third-party hosts, so
 // there is nothing to rate-limit against, but a few hundred simultaneous
@@ -358,7 +382,8 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
     if (r.reachable) reachable++;
     if (r.live.mcp) withMcp++;
     if (r.live.a2a) withA2a++;
-    if (done % 25 === 0) console.log(`  ${done}/${todo.length}  reachable ${reachable}  mcp ${withMcp}  a2a ${withA2a}`);
+    if (r.live.card) withCard++;
+    if (done % 25 === 0) console.log(`  ${done}/${todo.length}  reachable ${reachable}  mcp ${withMcp}  a2a ${withA2a}  cards ${withCard}`);
   }
 }));
 out.end();
@@ -395,7 +420,12 @@ const census = {
     reachable,
     dead: done - reachable,
     answering_mcp: withMcp,
-    serving_an_agent_card: withA2a,
+    // Two different facts, kept apart. A served card means a document exists;
+    // a callable one names the endpoint you POST to and the skills you can ask
+    // for. Ten percent of what we used to call A2A had the first and not the
+    // second — see scripts/a2a-card-audit.mjs.
+    serving_an_agent_card: withCard,
+    a2a_callable: withA2a,
   },
   caveat: 'Reachability is a snapshot. An endpoint down at the moment of probing is counted as dead, and one that answers may still do nothing useful.',
 };
@@ -408,7 +438,8 @@ console.log(`  probed                ${done}`);
 console.log(`  answered              ${reachable}   (${pct(reachable, done)} of probed)`);
 console.log(`  dead                  ${done - reachable}`);
 console.log(`  answered MCP          ${withMcp}`);
-console.log(`  served an agent card  ${withA2a}`);
+console.log(`  served an agent card  ${withCard}`);
+console.log(`  of those, callable   ${withA2a}  (card names both an endpoint and skills)`);
 if (scan.highestId) {
   console.log(`\n  of ${scan.highestId.toLocaleString('en-US')} registered ids, ${reachable} are reachable — ${pct(reachable, scan.highestId)}`);
 }

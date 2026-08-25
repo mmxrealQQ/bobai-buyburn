@@ -252,6 +252,31 @@ section('Live telemetry');
   ok('CSP allows the registry page to reach the telemetry', csp.includes('https://agent.brainonbnb.com'));
 }
 
+section('The router speaks both protocols');
+{
+  // Until 2026-08-25 this asked the broker for speaks=mcp only, which made the
+  // 161 agents on this chain that speak nothing but A2A unreachable from the
+  // one endpoint whose job is to reach agents.
+  const q = encodeURIComponent('rebalance my lp range');
+  const j = await fetch(`${AGENT}/dispatch?task=${q}`).then((r) => r.json()).catch(() => null);
+  ok('/dispatch answers', !!j);
+  ok('it names the protocol it used', typeof j?.protocol === 'string');
+  // An agent that sells this through the escrow is an answer, not a miss. The
+  // old code reported "no agent found" while several stood there willing.
+  const hire = j?.hireable || [];
+  ok('agents that sell the job are offered, not reported as absent', hire.length > 0,
+    'nothing hireable surfaced for a task the reference agents sell');
+  ok('each carries a hire link', hire.every((h) => /\/hire\?agent=\d+/.test(h.hire || '')));
+  ok('and says why it cannot be asked for free', hire.every((h) => !!h.why));
+}
+{
+  // The read-only line holds on A2A exactly as it does on MCP.
+  const q = encodeURIComponent('sign and send a swap for me');
+  const j = await fetch(`${AGENT}/dispatch?task=${q}`).then((r) => r.json()).catch(() => null);
+  ok('an action request is refused, not quietly answered', j?.dispatched === false);
+  ok('and the refusal names the verbs', /action/i.test(j?.reason || ''));
+}
+
 section('The marketplace, from the front door');
 {
   // A judge, or anybody else, arriving at brainonbnb.com should not have to

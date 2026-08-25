@@ -570,10 +570,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 19,
-   "lines": 4716,
-   "zipBytes": 91848,
-   "txtBytes": 227199,
-   "sha256": "2b49f3769fa7a3f3",
+   "lines": 4936,
+   "zipBytes": 95243,
+   "txtBytes": 238972,
+   "sha256": "9070a90c869baa17",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -634,10 +634,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 2960,
-   "zipBytes": 59846,
-   "txtBytes": 160926,
-   "sha256": "c2fc89f86b6e703e",
+   "lines": 2991,
+   "zipBytes": 60547,
+   "txtBytes": 162660,
+   "sha256": "51ea06f40addb3bd",
    "reqs": [
     {
      "what": "Node 18+ and time",

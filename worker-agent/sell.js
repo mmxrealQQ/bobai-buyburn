@@ -9,8 +9,20 @@
 // after collapsing the fleet of identical deployments, the four categories the
 // marketplace has to cover have this much genuine depth behind them:
 // yield 4 operators, health factor 2, rebalancing 1, grid trading ZERO. The
-// chain does not contain the variety it is being judged on. So we supply the
-// two thinnest ourselves, honestly, and say where the numbers came from.
+// chain does not contain the variety it is being judged on. So we supply all
+// four ourselves, honestly, and say where the numbers came from.
+//
+// Each one returns a figure the category's existing tools leave out, because a
+// fifth ranked list of APYs is not depth:
+//   health factor   the collateral drawdown that liquidates, cross-checked
+//                   against Venus's own getAccountLiquidity
+//   grid trading    the break-even spacing, below which no grid can profit
+//   yield           the days until a move pays for its own gas — and a block
+//                   time measured from the chain, because the constant most
+//                   BSC yield figures still use is off by a factor of 6.7
+//   rebalancing     the cost as a share of the money moved, and which holding
+//                   the bill is concentrated in. It refuses to claim what a
+//                   correction is worth, because that is not in any pool.
 //
 // THE PROTOCOL, WHICH IS NOT MCP
 // Hiring on BNB Chain runs over ERC-8183 and A2A, not MCP. A buyer sends
@@ -33,6 +45,8 @@
 
 import { healthFactor, drawdownToLiquidation } from './venus.js';
 import { gridPlan } from './grid.js';
+import { yieldPlan } from './yield.js';
+import { rebalancePlan } from './rebalance.js';
 import { decodeJob, ERC8183 } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
 
@@ -66,6 +80,24 @@ export const SERVICES = {
     price_display: '0.10 $U',
     deliverables: 'Grid levels for any BNB Chain pool with the round-trip cost of a cycle measured from the pool itself — swap fee, price impact at your fill size, and the transfer tax read from executed trades rather than a label. States the break-even spacing, which is the number that decides whether the grid can work at all.',
     needs: { token: 'the token or pool to grid (0x…)', capitalUsd: 'total capital, optional', levels: 'number of levels, optional', bandPct: 'range as ± percent, optional' },
+  },
+  yield_plan: {
+    id: 'yield_plan',
+    name: 'Venus yield ranking, and whether moving pays for itself',
+    category: 'yield-optimization',
+    price: '100000000000000000',
+    price_display: '0.10 $U',
+    deliverables: 'Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked against Venus\'s own published APY, with divergences named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.',
+    needs: { amountUsd: 'position size in USD, optional', from: 'the Venus market held today, optional', currentApyPct: 'what you earn today, optional' },
+  },
+  rebalance_plan: {
+    id: 'rebalance_plan',
+    name: 'Portfolio rebalance, priced against the pools that would execute it',
+    category: 'rebalancing',
+    price: '100000000000000000',
+    price_display: '0.10 $U',
+    deliverables: 'The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool.',
+    needs: { holdings: 'array of { token: "0x…", usd: 1000 }', targets: 'optional map of token → target weight in percent; equal weight if omitted' },
   },
 };
 
@@ -116,6 +148,12 @@ async function doWork(serviceId, params) {
   if (serviceId === 'grid_plan') {
     return { service: 'grid_plan', plan: await gridPlan(params || {}) };
   }
+  if (serviceId === 'yield_plan') {
+    return { service: 'yield_plan', plan: await yieldPlan(params || {}) };
+  }
+  if (serviceId === 'rebalance_plan') {
+    return { service: 'rebalance_plan', plan: await rebalancePlan(params || {}) };
+  }
   throw new Error(`unknown service "${serviceId}"`);
 }
 
@@ -125,6 +163,11 @@ async function doWork(serviceId, params) {
 function pickService(text = '', explicit) {
   if (explicit && SERVICES[explicit]) return SERVICES[explicit];
   const t = String(text).toLowerCase();
+  // Order matters. "venus" appears in both lending questions and yield ones,
+  // so the more specific intent is tested first: somebody asking about APY or
+  // where to earn wants the yield agent even though they said Venus.
+  if (/\bapy\b|\bapr\b|yield|best rate|earn(ing)? (the )?most|where to (put|park|lend)|supply rate/.test(t)) return SERVICES.yield_plan;
+  if (/rebalanc|re-?weight|target weight|allocation|drift|portfolio/.test(t)) return SERVICES.rebalance_plan;
   if (/health.?factor|liquidat|collateral|venus|lending|borrow/.test(t)) return SERVICES.health_factor;
   if (/grid|ladder|range.?bot|dca.?grid/.test(t)) return SERVICES.grid_plan;
   return null;

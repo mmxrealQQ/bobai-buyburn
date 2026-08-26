@@ -321,12 +321,33 @@ if (args.includes('--report')) { report(); process.exit(0); }
 const state = loadState();
 if (!state.startedAt) state.startedAt = new Date().toISOString();
 
-if (!state.highestId) {
-  process.stdout.write('locating highest agent id… ');
-  state.highestId = await findHighestId();
-  console.log(state.highestId.toLocaleString('en-US'));
-  saveState(state);
+// The frontier is re-read on EVERY run, not only the first.
+//
+// It used to be located once and then trusted forever, guarded by
+// `if (!state.highestId)`. That made the census permanently blind to anything
+// registered after the first run: the cursor would reach the old frontier,
+// the script would report a complete scan, and every agent minted since would
+// be missing — with nothing in the output to suggest it. We found this by
+// registering two of our own agents and watching our own marketplace not
+// notice them.
+//
+// A frontier that only ever moves forward is also the safe direction: a node
+// answering badly could report a lower id than we have already scanned, and
+// accepting that would rewind the census.
+process.stdout.write('locating highest agent id… ');
+const foundHighest = await findHighestId();
+const previousHighest = state.highestId || 0;
+state.highestId = Math.max(previousHighest, foundHighest);
+console.log(
+  state.highestId.toLocaleString('en-US')
+  + (previousHighest && state.highestId > previousHighest
+    ? `  (+${(state.highestId - previousHighest).toLocaleString('en-US')} new since the last run)`
+    : previousHighest ? '  (unchanged)' : ''),
+);
+if (foundHighest < previousHighest) {
+  console.log(`  note: the registry reported ${foundHighest.toLocaleString('en-US')}, below the ${previousHighest.toLocaleString('en-US')} already scanned. Keeping the higher figure — a frontier does not move backwards.`);
 }
+saveState(state);
 
 const limit = Math.min(Number(arg('--max', state.highestId)) || state.highestId, state.highestId);
 const hits = fs.createWriteStream(HITS_FILE, { flags: 'a' });

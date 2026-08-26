@@ -279,3 +279,10 @@ export function drawdownToLiquidation(position) {
 }
 
 export const VENUS = { UNITROLLER };
+
+// Shared with the yield agent, which reads the same protocol through the same
+// batched call and the same decoders. Two implementations of "read a Venus
+// market" is how two of our own agents end up quoting different numbers for the
+// same market on the same block — the failure this project has already fixed
+// once for the BNB price and once for the pool arithmetic.
+export const chain = { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS };

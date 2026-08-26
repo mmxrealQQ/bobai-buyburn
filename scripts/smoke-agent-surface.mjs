@@ -216,7 +216,16 @@ section('Live telemetry');
   // agent that asks the market to be machine-readable and is not is a poster.
   const j = await fetch(`${AGENT}/status`).then((r) => r.json()).catch(() => null);
   ok('/status answers', !!j?.agents);
-  ok('both of our agents are in it', (j?.agents || []).length === 2);
+  ok('all four of our agents are in it', (j?.agents || []).length === 4);
+  // One per category is the bar the marketplace is judged against, and it is
+  // the thing most easily lost: registering an agent and forgetting one of the
+  // five places its id has to appear leaves a category silently empty.
+  const cats = new Set((j?.agents || []).map((a) => a.category));
+  ok('one of ours in each of the four categories',
+    ['health-factor', 'grid-trading', 'yield-optimization', 'rebalancing'].every((c) => cats.has(c)),
+    [...cats].join(', '));
+  ok('each of ours reports itself ready', (j?.agents || []).every((a) => a.ready === true),
+    (j?.agents || []).filter((a) => !a.ready).map((a) => a.id + ': ' + (a.last_error || 'not ready')).join(' · ') || 'all ready');
   ok('every figure carries when it was taken', (j?.agents || []).every((a) => !!a.checked_at));
   ok('says how it was produced', /measured|probe|reference input/i.test(j?.method || ''));
   // One job, two agents on one origin: the count has to be per service or the

@@ -27,7 +27,7 @@ import path from 'node:path';
 import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
-import { PEERS, SURFACE } from '../worker-agent/telemetry.js';
+import { PEERS, SURFACE, OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -367,8 +367,13 @@ const SOURCE_BADGE = {
 // one place, next to the poller, and a peer added there shows up here without
 // a second list to keep in step.
 const peerByHost = new Map(PEERS.map((p) => [new URL(p.origin).host, p.id]));
+// Our own agent ids come from the telemetry surface rather than a literal
+// list here. The first version hardcoded two of them, and registering two more
+// would have left the new rows with no live line and no error — the page would
+// simply have been quietly less alive than it claimed.
+const OWN_IDS = new Set(OWN_AGENT_IDS);
 const teleKey = (id, host) => (
-  id === 302257 || id === 302258 ? `own:${id}` : (peerByHost.get(host) || null)
+  OWN_IDS.has(id) ? `own:${id}` : (peerByHost.get(host) || null)
 );
 
 // WHAT IT DOES, WHICH THE TABLE DID NOT SAY

@@ -19,6 +19,24 @@
       "block": 117989311,
       "registered_at": "2026-08-25T11:09:14.586Z",
       "updated_at": "2026-08-25T11:20:14.323Z"
+    },
+    "yield-optimizer": {
+      "id": 304493,
+      "name": "Brain on BNB — Venus Yield Ranking",
+      "category": "yield-optimization",
+      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "tx": "0x1f1c449227d5433d2ad0a6081b010425ab59f45bf9d7a8eae15d352f90a58492",
+      "block": 118146201,
+      "registered_at": "2026-08-26T06:46:49.211Z"
+    },
+    "rebalancer": {
+      "id": 304494,
+      "name": "Brain on BNB — Portfolio Rebalance Pricer",
+      "category": "rebalancing",
+      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "tx": "0x372f29467ba738e982f1bae6e71e35d5f2f672bff843a4577b4df6e51c6f49fb",
+      "block": 118146212,
+      "registered_at": "2026-08-26T06:46:53.577Z"
     }
   }
 }

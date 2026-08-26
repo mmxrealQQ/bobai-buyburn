@@ -135,7 +135,7 @@ for (const key of ['bnb-guardian', 'bnb-yield']) {
   }
 }
 
-for (const key of ['own:302257', 'own:302258']) {
+for (const key of ['own:302257', 'own:302258', 'own:304493', 'own:304494']) {
   const r = rows.find((x) => x.key === key);
   if (!r) { problems.push(`${key}: our own agent has no live row on the page`); continue; }
   if (/not answering/.test(r.text || '')) problems.push(`${key}: our own agent reports itself as not answering`);

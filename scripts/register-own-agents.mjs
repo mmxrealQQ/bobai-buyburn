@@ -38,6 +38,7 @@ import path from 'node:path';
 import { createWalletClient, createPublicClient, http, formatEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
+import { OWN_AGENTS } from './lib/own-agents.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const STATE = path.join(ROOT, 'data', 'own-agents.json');
@@ -57,59 +58,18 @@ const REGISTER_ABI = [{
   outputs: [{ type: 'uint256' }],
 }];
 
-// The two agents. Each document says what the thing measures, how it is paid,
-// and what it will not claim — the last part because every registration in this
-// registry describes an agent at its best and none of them describe a limit.
-const AGENTS = [
-  {
-    slug: 'health-factor',
-    doc: {
-      type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
-      name: 'Venus Health Factor Monitor',
-      description: 'Reads a Venus lending position on BNB Chain market by market and returns its health factor, the collateral drawdown that would liquidate it, and a stress table. Every figure comes from the Comptroller and the protocol\'s own oracle, and the result is cross-checked against Venus\'s getAccountLiquidity — when our arithmetic disagrees with the protocol\'s, the answer says so instead of publishing a plausible number. Hireable over ERC-8183 for 0.10 $U; the deliverable is written on-chain in full, not as a link.',
-      image: 'https://brainonbnb.com/logo-200x200.png',
-      active: true,
-      x402Support: true,
-      services: [
-        { name: 'a2a', description: 'A2A JSON-RPC. Send skill:"negotiate" for a quote, then skill:"notify_funded" with the job id once the escrow holds the budget.', endpoint: A2A },
-        { name: 'agentCard', description: 'Agent card', endpoint: 'https://agent.brainonbnb.com/.well-known/agent-card.json' },
-        { name: 'marketplace', description: 'The marketplace this agent is listed in, with the measured employment history of every provider on this kernel.', endpoint: 'https://brainonbnb.com/registry' },
-      ],
-      supportedTrust: ['reputation'],
-      attributes: [
-        { trait_type: 'Category', value: 'health-factor-monitoring' },
-        { trait_type: 'Protocol', value: 'Venus (BNB Chain)' },
-        { trait_type: 'Hiring', value: 'ERC-8183 escrow, 0.10 $U per job' },
-        { trait_type: 'Payment token', value: '$U 0xcE24439F2D9C6a2289F741120FE202248B666666' },
-        { trait_type: 'Does not', value: 'predict prices, hold funds, or sign anything on a buyer\'s behalf' },
-      ],
-    },
-  },
-  {
-    slug: 'grid-trader',
-    doc: {
-      type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
-      name: 'BSC Grid Planner',
-      description: 'Sizes a grid for any BNB Chain pool and costs it against the pool itself: swap fee, price impact at your actual fill size, and the transfer tax measured from executed trades rather than read off a label. Returns the break-even spacing — the number that decides whether a grid can make money on that pool at all — and refuses to dress up a grid whose spacing is narrower than its own round-trip cost. Hireable over ERC-8183 for 0.10 $U; the deliverable is written on-chain in full.',
-      image: 'https://brainonbnb.com/logo-200x200.png',
-      active: true,
-      x402Support: true,
-      services: [
-        { name: 'a2a', description: 'A2A JSON-RPC. Send skill:"negotiate" for a quote, then skill:"notify_funded" with the job id once the escrow holds the budget.', endpoint: A2A },
-        { name: 'poolScanner', description: 'The same pool measurement, free and without hiring anybody: browser scanner, installable skill, and an MCP tool.', endpoint: 'https://brainonbnb.com/scanner' },
-        { name: 'marketplace', description: 'The marketplace this agent is listed in.', endpoint: 'https://brainonbnb.com/registry' },
-      ],
-      supportedTrust: ['reputation'],
-      attributes: [
-        { trait_type: 'Category', value: 'grid-trading' },
-        { trait_type: 'Venues', value: 'PancakeSwap V2/V3, Uniswap V2, Biswap' },
-        { trait_type: 'Hiring', value: 'ERC-8183 escrow, 0.10 $U per job' },
-        { trait_type: 'Payment token', value: '$U 0xcE24439F2D9C6a2289F741120FE202248B666666' },
-        { trait_type: 'Does not', value: 'trade, hold funds, or take a view on direction' },
-      ],
-    },
-  },
-];
+// The agents. Documents come from scripts/lib/own-agents.mjs, which is also
+// what update-own-agents.mjs reads.
+//
+// This file used to carry its own copy. It had drifted — the local version
+// still called them "Venus Health Factor Monitor" and "BSC Grid Planner"
+// while the shared one had been renamed to "Brain on BNB — …" for attribution.
+// Nothing broke only because registration had already run; the next agent
+// registered from here would have gone on-chain under the old name, and an
+// on-chain document cannot be edited afterwards. Two copies of a document that
+// is written to a chain is exactly what the shared file warns against in its
+// own header.
+const AGENTS = OWN_AGENTS;
 
 const args = process.argv.slice(2);
 const confirm = args.includes('--confirm');

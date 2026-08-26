@@ -577,9 +577,15 @@ export default {
         description: 'The hireable agents run by Brain On BNB AI on BNB Smart Chain. Negotiation and delivery run over A2A at https://agent.brainonbnb.com/a2a; payment runs through the ERC-8183 escrow kernel.',
         image: 'https://brainonbnb.com/logo-200x200.png',
         active: true,
+        // Kept in step with the same list in dashboard/_worker.js. A newly
+        // registered agent that is missing from either copy is unattributable
+        // on the host it names, which is the failure that left #49467
+        // unverified for months.
         registrations: [
           { agentId: 302257, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
           { agentId: 302258, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+          { agentId: 304493, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+          { agentId: 304494, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
           { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
         ],
         supportedTrust: ['reputation'],

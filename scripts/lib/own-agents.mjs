@@ -81,6 +81,51 @@ export const OWN_AGENTS = [
       ],
     }),
   },
+  {
+    slug: 'yield-optimizer',
+    doc: common({
+      name: 'Brain on BNB — Venus Yield Ranking',
+      description: 'Ranks every Venus core-pool market on BNB Chain by what it actually pays a supplier, computed from the rate per block and a block time measured against the chain — not the 10,512,000-blocks-a-year constant that three-second blocks implied and that most published BSC yield figures still assume. BSC now produces a block every 0.45 s, so that constant understates these rates by about 6.7x. Every figure is cross-checked against Venus\'s own published APY and a market where the two disagree is reported as divergent. Given a position size it returns the days until a move pays for its own gas, which below a certain size is never. Hireable over ERC-8183 for 0.10 $U; the deliverable is written on-chain in full. Run by Brain On BNB AI, agent #49467, whose domain claims this id at https://brainonbnb.com/.well-known/agent-registration.json',
+      services: [
+        { name: 'a2a', description: 'A2A JSON-RPC. Send skill:"negotiate" for a quote, then skill:"notify_funded" with the job id once the escrow holds the budget.', endpoint: A2A },
+        { name: 'agentCard', description: 'Agent card', endpoint: 'https://agent.brainonbnb.com/.well-known/agent-card.json' },
+        { name: 'marketplace', description: 'The marketplace this agent is listed in, with the measured employment history of every provider on this escrow kernel.', endpoint: 'https://brainonbnb.com/registry' },
+      ],
+      attributes: [
+        { trait_type: 'Category', value: 'yield-optimization' },
+        { trait_type: 'Protocol', value: 'Venus (BNB Chain)' },
+        { trait_type: 'Operated by', value: 'Brain On BNB AI' },
+        { trait_type: 'Parent agent', value: `${PARENT_AGENT} on ${REGISTRY}` },
+        { trait_type: 'Domain proof', value: 'https://brainonbnb.com/.well-known/agent-registration.json' },
+        { trait_type: 'Hiring', value: 'ERC-8183 escrow, 0.10 $U per job' },
+        { trait_type: 'Payment token', value: '$U 0xcE24439F2D9C6a2289F741120FE202248B666666' },
+        { trait_type: 'Second-sourced', value: 'every rate checked against Venus\'s own published APY' },
+        { trait_type: 'Does not', value: 'move funds, forecast rates, or assume a block time' },
+      ],
+    }),
+  },
+  {
+    slug: 'rebalancer',
+    doc: common({
+      name: 'Brain on BNB — Portfolio Rebalance Pricer',
+      description: 'Prices the route from a BSC portfolio\'s current weights to its target weights against the pools that would actually execute it: swap fee, price impact at the real size, and the transfer tax measured from executed trades rather than read off a label. Returns the cost as a share of the money moved and names the holding the bill is concentrated in — usually one illiquid or taxed position carrying most of the cost for an ordinary share of the value. It does not claim to know whether a rebalance is worth doing: a correction does not earn the dollars it moves, and what it is worth is a judgement about risk rather than a quantity in any pool. Hireable over ERC-8183 for 0.10 $U; the deliverable is written on-chain in full. Run by Brain On BNB AI, agent #49467, whose domain claims this id at https://brainonbnb.com/.well-known/agent-registration.json',
+      services: [
+        { name: 'a2a', description: 'A2A JSON-RPC. Send skill:"negotiate" for a quote, then skill:"notify_funded" with the job id once the escrow holds the budget.', endpoint: A2A },
+        { name: 'poolScanner', description: 'The same pool measurement, free and without hiring anybody: browser scanner, installable skill, and an MCP tool.', endpoint: 'https://brainonbnb.com/scanner' },
+        { name: 'marketplace', description: 'The marketplace this agent is listed in.', endpoint: 'https://brainonbnb.com/registry' },
+      ],
+      attributes: [
+        { trait_type: 'Category', value: 'rebalancing' },
+        { trait_type: 'Venues', value: 'PancakeSwap V2/V3, Uniswap V2, Biswap' },
+        { trait_type: 'Operated by', value: 'Brain On BNB AI' },
+        { trait_type: 'Parent agent', value: `${PARENT_AGENT} on ${REGISTRY}` },
+        { trait_type: 'Domain proof', value: 'https://brainonbnb.com/.well-known/agent-registration.json' },
+        { trait_type: 'Hiring', value: 'ERC-8183 escrow, 0.10 $U per job' },
+        { trait_type: 'Payment token', value: '$U 0xcE24439F2D9C6a2289F741120FE202248B666666' },
+        { trait_type: 'Does not', value: 'trade, hold funds, or decide what you should hold' },
+      ],
+    }),
+  },
 ];
 
 export const toTokenURI = (doc) =>

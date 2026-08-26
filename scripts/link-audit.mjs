@@ -38,6 +38,10 @@
 //   node scripts/link-audit.mjs --self-test
 import fs from 'node:fs';
 import path from 'node:path';
+// The one list of which agents are ours. Imported rather than repeated: a
+// second copy is how #304493 and #304494 came to be missing from one of the
+// two places that already list them.
+import { OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DASH = path.join(ROOT, 'dashboard');
@@ -139,7 +143,27 @@ if (args.includes('--self-test')) {
     if (carrier.includes(k.mustSay + ' ZZ')) fails.push('the disclosure check is not comparing text at all');
   }
 
-  // 7. No control characters in this file. Writing it produced a literal NUL
+  // 7. Section 5 has to know which agents are ours, and it has to get the list
+  //    from the one place that maintains it. An empty list would make the
+  //    section pass by checking nothing, which is how a dead on-chain endpoint
+  //    survived every green run until 2026-08-26.
+  if (!Array.isArray(OWN_AGENT_IDS) || OWN_AGENT_IDS.length < 4) {
+    fails.push(`OWN_AGENT_IDS holds ${OWN_AGENT_IDS?.length ?? 'nothing'} — section 5 would check no endpoint at all and still report green`);
+  }
+  if (OWN_AGENT_IDS?.some((id) => !Number.isInteger(id))) fails.push('OWN_AGENT_IDS contains a non-integer — the id comparison is by Number() and would never match');
+
+  //    And the judgement itself, with the exact failure that survived every
+  //    green run planted: the agent card path our agents name on-chain,
+  //    answering 404.
+  const CARD = 'https://agent.brainonbnb.com/.well-known/agent-card.json';
+  if (!judgeRegistered({ status: 404 }, CARD)) fails.push('a registered endpoint answering 404 is not reported — this is the exact defect section 5 was written for');
+  if (!judgeRegistered({ status: 0, err: 'timeout' }, CARD)) fails.push('an unreachable registered endpoint is not reported');
+  if (!judgeRegistered({ status: 503 }, CARD)) fails.push('a registered endpoint answering 5xx is not reported');
+  if (!judgeRegistered({ status: 200, html: true }, CARD)) fails.push('the 200+HTML trap is not caught on a registered .well-known path');
+  if (judgeRegistered({ status: 200, html: false }, CARD)) fails.push('a healthy registered endpoint is being reported as broken');
+  if (judgeRegistered({ status: 200, html: true }, 'https://brainonbnb.com/registry')) fails.push('an HTML page is being reported as broken for being HTML — /registry is meant to be a page');
+
+  // 8. No control characters in this file. Writing it produced a literal NUL
   //    byte where a space was meant, inside a string comparison — grep called
   //    the file binary and no editor showed anything wrong. site-audit carries
   //    the same guard for the same reason.
@@ -152,11 +176,25 @@ if (args.includes('--self-test')) {
     for (const f of fails) console.error(`  x ${f}`);
     process.exit(1);
   }
-  console.log('self-test passed: nofollow separates ours from theirs, scripts are stripped, HTML-where-JSON is caught, 403 is forgiven but 404 is not, a missing sitemap entry is seen');
+  console.log(`self-test passed: nofollow separates ours from theirs, scripts are stripped, HTML-where-JSON is caught, 403 is forgiven but 404 is not, a missing sitemap entry is seen, and a 404 on the on-chain endpoints of our ${OWN_AGENT_IDS.length} hireable agents plus the parent is reported rather than passed over`);
   process.exit(0);
 }
 
 function looksHtml(body) { return /^\s*(<!doctype\s+html|<html)/i.test(body); }
+
+// How section 5 judges one endpoint an agent registered on-chain. A named
+// function rather than a chain of ifs inside the loop, so the self-test can
+// plant the exact failure that got past every green run — a 404 on a path our
+// own agents publish — and prove it is seen.
+function judgeRegistered(p, url) {
+  if (p.status === 0) return `is unreachable (${p.err})`;
+  if (p.status === 404) return 'answers 404';
+  if (p.status >= 500) return `answers ${p.status}`;
+  // Same rule as section 3: this domain serves the dashboard page for anything
+  // unrouted, so a JSON path answering HTML is a path that was never wired up.
+  if (/\.json$|\/\.well-known\//.test(url) && p.html) return 'answers HTML where JSON was promised';
+  return null;
+}
 function forgiven(host, status) { return BOT_WALLED.has(host) && FORGIVEN.has(status); }
 function sitemapGaps(advertised, sitemapUrls) {
   const have = new Set(sitemapUrls.map((u) => u.replace(SITE, '') || '/'));
@@ -302,6 +340,60 @@ for (const [u, r] of decResults) {
   if (promisedJson && r.html) fail('HTML where JSON was promised', `${u}\n      declared in: ${where} — the domain answers unrouted paths with the dashboard page, so this endpoint is probably not routed`);
 }
 notes.push(`${declared.size} endpoints declared to agents in llms.txt, the agent card and the x402 catalogue`);
+
+// --- 5. the endpoints our own agents publish for themselves ------------------
+//
+// The most permanent links this project has ever set are not on any page. They
+// are in the ERC-8004 registration of our own agents, they are read by
+// indexers and by other marketplaces, and — unlike a page — they cannot be
+// edited after the fact.
+//
+// Nothing checked them, and on 2026-08-26 two of them were dead:
+// #302257 and #304493 both name
+// https://agent.brainonbnb.com/.well-known/agent-card.json, which answered 404.
+// It is also the exact path OUR marketplace fetches to resolve a stranger's
+// agent, so we were requiring a file we did not serve.
+//
+// The list is taken from the DEPLOYED api-agents.json rather than a local copy,
+// because that is the file our own /hire resolves against: if it disagrees with
+// the chain, an agent is unhireable through us and that is a finding in itself.
+{
+  const idxUrl = `${SITE}/api-agents.json`;
+  let index = null, idxStatus = 0;
+  try {
+    const r = await fetch(idxUrl, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(30000) });
+    idxStatus = r.status;
+    index = await r.json();
+  } catch { /* reported below */ }
+  if (!index) {
+    fail('the agent index our own marketplace resolves against is unreadable', `${idxUrl} — status ${idxStatus}. Every hire through /hire resolves an id through this file.`);
+  } else {
+    // OWN_AGENT_IDS is the four hireable agents, because that is what telemetry
+    // reports on. #49467 is the parent agent and its endpoints — /find,
+    // /dispatch, /sessions, /watch — are on-chain in exactly the same way and
+    // just as permanent. /watch is the route that did not exist at all until
+    // 2026-08-26 while the paid endpoint was telling buyers to poll it.
+    const PARENT_AGENT = 49467;
+    const CHECK_IDS = [...OWN_AGENT_IDS, PARENT_AGENT];
+    const all = index.agents || [];
+    const mine = all.filter((a) => CHECK_IDS.includes(Number(a.id)));
+    const missing = CHECK_IDS.filter((id) => !all.some((a) => Number(a.id) === id));
+    if (missing.length) {
+      fail('our own agent is not in the index our marketplace resolves against',
+        `ids ${missing.join(', ')} — /hire answers "no A2A endpoint found" for these, whatever the chain says`);
+    }
+    const urls = [...new Set(mine.flatMap((a) => a.endpoints || []).filter((u) => /^https?:\/\//.test(u)))];
+    const res = await probeAll(urls);
+    for (const [u, p] of res) {
+      const verdict = judgeRegistered(p, u);
+      if (!verdict) continue;
+      const who = mine.filter((a) => (a.endpoints || []).includes(u)).map((a) => '#' + a.id).join(', ');
+      fail(`an endpoint our own agent registers ${verdict}`,
+        `${u}\n      registered by: ${who} — this is on-chain and cannot be edited`);
+    }
+    notes.push(`${urls.length} endpoints registered on-chain by our own ${mine.length} agents`);
+  }
+}
 
 // --- report -----------------------------------------------------------------
 

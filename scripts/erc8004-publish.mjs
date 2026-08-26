@@ -15,6 +15,8 @@
 //   node scripts/erc8004-probe.mjs         --dir erc8004-v2
 //   node scripts/erc8004-a2a-confirm.mjs   --dir erc8004-v2
 //   node scripts/erc8004-publish.mjs       --dir erc8004-v2   # also writes hireable.json
+//   npx wrangler pages deploy dashboard …                     # BEFORE hire-confirm, see below
+//   cd worker-agent && npx wrangler deploy                    # BEFORE hire-confirm, see below
 //   node scripts/erc8004-hire-confirm.mjs  --dir erc8004-v2   # asks each one for a price
 //   node scripts/erc8004-publish.mjs       --dir erc8004-v2   # again, to render the answers
 //   node scripts/census-sync.mjs           --dir erc8004-v2   # hands the scan to the worker
@@ -22,6 +24,15 @@
 //   node scripts/build-library.mjs
 //   npx wrangler pages deploy dashboard --project-name=bobai-dashboard --branch=main --commit-dirty=true
 //   node scripts/smoke-agent-surface.mjs   # checks every one of the above landed
+//
+// WHY TWO DEPLOYS SIT IN THE MIDDLE OF THAT LIST
+// hire-confirm does not ask the agents directly. It asks our live /hire, which
+// resolves an ERC-8004 id through the DEPLOYED api-agents.json and caches that
+// file for ten minutes. So a newly registered agent is unhireable until the
+// dashboard carries it AND the agent worker has been restarted to drop the
+// cache. Run hire-confirm before both and it reports "no A2A endpoint found"
+// for an agent that is perfectly reachable — which is what happened on
+// 2026-08-26, twice, before the cause was clear.
 import fs from 'node:fs';
 import path from 'node:path';
 import { groupByOperator, operatorOf } from './lib/group-agents.mjs';

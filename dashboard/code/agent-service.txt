@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 21 files, 5931 lines.
+# one fetch. 21 files, 5982 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5176,6 +5176,27 @@ const RPCS = [
   'https://bsc-dataseed3.bnbchain.org',
 ];
 
+// Endpoints that actually answer a JSON-RPC BATCH. This is a different list on
+// purpose, and finding out why cost an afternoon.
+//
+// Of the five above, exactly ONE — bsc.publicnode.com — returns results for a
+// batched request. The other four answer 200 with an array containing no
+// results at all, so batchCall's careful walk through five endpoints was really
+// one endpoint and four silent failures. Every batched read in this worker has
+// been running with no failover since it was written; it only ever looked
+// healthy because the one that works is usually up.
+//
+// Measured 2026-08-26 by sending each candidate a 40-call batch and counting
+// results. Also refused: bsc.drpc.org (500), rpc.ankr.com/bsc (200, not an
+// array), bsc-dataseed1.bnbchain.org (0 of 40). Re-measure before trusting an
+// addition — batch support is not something an endpoint advertises.
+const BATCH_RPCS = [
+  'https://bsc.publicnode.com',
+  'https://bsc-rpc.publicnode.com',
+  'https://bsc-mainnet.public.blastapi.io',
+  'https://1rpc.io/bnb',
+];
+
 const addrArg = (a) => String(a).toLowerCase().replace(/^0x/, '').padStart(64, '0');
 const word = (hex, i) => hex.slice(2 + i * 64, 2 + (i + 1) * 64);
 const uint = (hex, i) => BigInt('0x' + (word(hex, i) || '0'));
@@ -5185,7 +5206,7 @@ const addrAt = (hex, i) => '0x' + word(hex, i).slice(24);
 // call at a time is 200+ requests and takes long enough that the price moves
 // underneath the answer, which is exactly the kind of quiet inconsistency a
 // health factor must not have.
-async function batchCall(calls, { rpcs = RPCS } = {}) {
+async function batchCall(calls, { rpcs = BATCH_RPCS } = {}) {
   const payload = calls.map((c, i) => ({
     jsonrpc: '2.0', id: i, method: 'eth_call',
     params: [{ to: c.to, data: c.data }, 'latest'],
@@ -5401,7 +5422,7 @@ export const VENUS = { UNITROLLER };
 // market" is how two of our own agents end up quoting different numbers for the
 // same market on the same block — the failure this project has already fixed
 // once for the BNB price and once for the pool arithmetic.
-export const chain = { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS };
+export const chain = { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS, BATCH_RPCS };
 
 ==============================================================================
 === FILE: worker-agent/wrangler.toml
@@ -5714,7 +5735,7 @@ export function parsePaymentHeader(value) {
 
 import { chain, VENUS } from './venus.js';
 
-const { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS } = chain;
+const { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS, BATCH_RPCS } = chain;
 
 const YSEL = {
   supplyRatePerBlock: '0xae9d70b0',
@@ -5821,30 +5842,60 @@ export async function venusMarkets() {
   const [oracleHex] = await batchCall([{ to: VENUS.UNITROLLER, data: SEL.oracle }]);
   const oracle = addrAt(oracleHex, 0);
 
+  // Seven reads per market, not eight. The eighth was underlying(), whose
+  // result this function never looked at — 52 calls per run spent on nothing,
+  // found while cutting the request count down.
+  const PER_MARKET = 7;
   const calls = vTokens.flatMap((v) => ([
     { to: v, data: SEL.symbol },
     { to: v, data: YSEL.supplyRatePerBlock },
     { to: v, data: YSEL.borrowRatePerBlock },
     { to: v, data: YSEL.getCash },
     { to: v, data: YSEL.totalBorrows },
-    { to: v, data: SEL.underlying },
     { to: oracle, data: SEL.getUnderlyingPrice + addrArg(v) },
     { to: VENUS.UNITROLLER, data: SEL.markets + addrArg(v) },
   ]));
-  // Fifty-two markets times eight reads is 416 calls, and a public BSC endpoint
-  // rejects a JSON-RPC batch that size outright. batchCall insists on a
+  // Three hundred and sixty-four calls, and a public BSC endpoint rejects a
+  // JSON-RPC batch anywhere near that size outright. batchCall insists on a
   // complete answer — correctly, since a dropped market is a missing market —
   // so the whole run failed with "no endpoint answered the batch" rather than
-  // degrading. Caught by our own telemetry reporting the agent not ready.
+  // degrading. Our own telemetry caught it, twice.
   //
-  // Chunked at 96, sequentially. Sequentially because firing the chunks
-  // together at the same host recreates the rate limit that this project once
-  // measured and nearly published as a finding about somebody else.
-  const CHUNK = 96;
+  // Chunked, sequentially, with a pause between chunks and one retry each.
+  // Sequentially because firing the chunks together at one host recreates the
+  // rate limit this project once measured and nearly published as a finding
+  // about somebody else.
+  //
+  // The first attempt used 96 per chunk. It passed from a laptop three runs in
+  // a row and failed from the Worker, where the egress address is shared and
+  // the public endpoints throttle it far sooner — a reminder that "works on my
+  // machine" is a statement about an IP address as much as about code. Smaller
+  // chunks, a breath between them, and a second attempt before giving up: a
+  // throttled endpoint recovers in well under a second, and failing an entire
+  // run over one refused chunk is what took the agent offline.
+  // And the chunks are spread across the endpoints rather than queued at one.
+  //
+  // batchCall walks its endpoint list from index 0 on every call, so ten chunks
+  // in a row all hit the same host inside a second and the tenth got refused.
+  // That is this project's own lesson arriving in a new place: the census once
+  // reported 54 MCP agents instead of 235 for exactly this reason, and nearly
+  // published it as a finding about the chain. Rotating the list by chunk gives
+  // each endpoint a fifth of the work.
+  const CHUNK = 40;
   const res = [];
   for (let i = 0; i < calls.length; i += CHUNK) {
-    const part = await batchCall(calls.slice(i, i + CHUNK));
+    const slice = calls.slice(i, i + CHUNK);
+    const n = i / CHUNK;
+    const rotated = BATCH_RPCS.slice(n % BATCH_RPCS.length).concat(BATCH_RPCS.slice(0, n % BATCH_RPCS.length));
+    let part;
+    try {
+      part = await batchCall(slice, { rpcs: rotated });
+    } catch {
+      await new Promise((r) => setTimeout(r, 400));
+      part = await batchCall(slice, { rpcs: rotated });
+    }
     res.push(...part);
+    if (i + CHUNK < calls.length) await new Promise((r) => setTimeout(r, 120));
   }
 
   const published = await venusPublished();
@@ -5852,7 +5903,7 @@ export async function venusMarkets() {
   const disagreements = [];
 
   for (let i = 0; i < vTokens.length; i++) {
-    const o = i * 8;
+    const o = i * PER_MARKET;
     const v = vTokens[i];
     const symbol = decodeString(res[o]) || v.slice(0, 8);
     const supplyRate = firstWord(res[o + 1]);
@@ -5866,8 +5917,8 @@ export async function venusMarkets() {
     const borrows = firstWord(res[o + 4]) ?? 0n;
     // The oracle prices one whole underlying token, scaled so that price times
     // amount lands in 1e18 regardless of the underlying's own decimals.
-    const price = firstWord(res[o + 6]) ?? 0n;
-    const collateralFactor = res[o + 7] ? Number(uint(res[o + 7], 1)) / 1e18 : null;
+    const price = firstWord(res[o + 5]) ?? 0n;
+    const collateralFactor = res[o + 6] ? Number(uint(res[o + 6], 1)) / 1e18 : null;
 
     const liquidityUsd = Number((cash * price) / 10n ** 18n) / 1e18;
     const borrowedUsd = Number((borrows * price) / 10n ** 18n) / 1e18;

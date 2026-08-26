@@ -36,6 +36,13 @@ import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 
+// The host our hireable agents name on-chain. Written out rather than derived
+// from the incoming request: this exact string is in the registration of
+// #302257 and #304493 and cannot be changed, so a card that reported some other
+// origin — a preview deployment, a workers.dev hostname — would be describing
+// an agent that does not exist.
+const SELF_ORIGIN = 'https://agent.brainonbnb.com';
+
 const RPCS = [
   'https://bsc.publicnode.com',
   'https://bsc-rpc.publicnode.com',
@@ -561,6 +568,72 @@ export default {
         capabilities: CAPABILITIES,
         payment: { protocol: 'x402', network: NETWORK, asset: USD1, symbol: 'USD1', payTo },
         transparency: 'https://agent.brainonbnb.com/stats',
+      });
+    }
+
+    // The A2A discovery card, on the origin the hireable agents live on.
+    //
+    // This host answered 404 here, and #302257 and #304493 name this exact URL
+    // on-chain as one of their endpoints — a dead link written into the
+    // registration of the agents built to be discovered. Worse, it is the path
+    // our OWN marketplace fetches to resolve a stranger's agent
+    // (cardEndpoint() in hire.js): we required of everyone else a file we did
+    // not serve.
+    //
+    // The card on brainonbnb.com is a different thing and stays as it is: it
+    // describes the free public tools and points at the website. It names no
+    // negotiation skill and none of the four hireable services, so an indexer
+    // reading it learns that we sell nothing.
+    //
+    // Skills are derived from SERVICES rather than listed again, because a card
+    // advertising a service the seller does not implement is the failure this
+    // whole project keeps documenting in other people's agents.
+    if (path === '/.well-known/agent-card.json') {
+      return json({
+        protocolVersion: '0.3.0',
+        name: 'Brain On BNB AI — hireable agents',
+        description: 'Four hireable agents on BNB Smart Chain, one in each BNB Agent Studio category. Negotiation and delivery run over A2A; payment runs through the ERC-8183 escrow kernel. Every figure is measured from the chain at request time and cross-checked against the protocol it came from where the protocol publishes one.',
+        // The A2A endpoint, not the website. The card on the apex points at
+        // https://brainonbnb.com/ — an HTML page — which is why a machine
+        // following it finds nothing to talk to.
+        url: `${SELF_ORIGIN}/a2a`,
+        preferredTransport: 'JSONRPC',
+        version: '1.0.0',
+        provider: { organization: 'Brain On BNB AI', url: 'https://brainonbnb.com' },
+        capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },
+        defaultInputModes: ['application/json', 'text/plain'],
+        defaultOutputModes: ['application/json'],
+        skills: [
+          {
+            id: 'negotiate',
+            name: 'Negotiate an ERC-8183 job',
+            description: 'Ask for a price. Returns this provider\'s address, the price in atomic units of the payment token, and the escrow parameters to fund a job against.',
+            tags: ['erc-8183', 'negotiation', 'escrow'],
+            examples: ['quote finding the best yield for my BNB on BNB Chain'],
+          },
+          {
+            id: 'notify_funded',
+            name: 'Notify the seller a job is funded',
+            description: 'Tell the seller a job exists in the kernel and is funded. The seller reads the job from the chain rather than trusting the message, then delivers.',
+            tags: ['erc-8183', 'delivery'],
+          },
+          ...Object.values(SERVICES).map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.deliverables,
+            tags: [s.category, 'bnb-chain', 'measured-on-chain'],
+            // What the buyer has to supply. A card that lists a service and
+            // not its inputs makes the caller guess, and a guessed parameter
+            // fails after the money is already in escrow.
+            inputs: s.needs,
+            price: s.price_display,
+          })),
+        ],
+        // Where the rest of the story is, for a reader rather than a parser.
+        additionalInterfaces: [
+          { transport: 'JSONRPC', url: `${SELF_ORIGIN}/a2a` },
+        ],
+        documentationUrl: 'https://brainonbnb.com/registry',
       });
     }
 

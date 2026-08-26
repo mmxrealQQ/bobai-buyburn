@@ -178,33 +178,76 @@ export const decodeJob = (hex) => {
 // protocol changes — the same message goes to the same handler, it just does
 // not leave the process. Injected rather than imported so this file stays
 // dependency-free and its ABI self-test keeps working in plain Node.
-const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null) => {
+// A host nobody outside the seller's own machine can reach. Cards in the wild
+// really do advertise these — agent 269223 publishes http://127.0.0.1:9101/ as
+// its contact point — and a fetch to one fails in a way indistinguishable from
+// a seller that is merely down. Naming it is the whole difference between "this
+// agent did not answer" and "this agent cannot be answered by anyone".
+const NOT_PUBLIC = /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/i;
+
+const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText = false) => {
   if (local) {
     const r = await local(endpoint, data);
-    if (r) return r;
+    if (r) return { rpc: r };
   }
-  const r = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'message/send',
-      params: {
-        message: {
-          role: 'user',
-          messageId: `plaza-${Date.now().toString(36)}`,
-          parts: [{ kind: 'data', data }],
+  let host = '';
+  try { host = new URL(endpoint).hostname; } catch { return { why: `"${endpoint}" is not a URL` }; }
+  if (NOT_PUBLIC.test(host)) {
+    return { why: `the seller's card names ${host} as its endpoint, which is not reachable from outside its own machine` };
+  }
+
+  let r, text;
+  try {
+    r = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'message/send',
+        params: {
+          message: {
+            role: 'user',
+            messageId: `plaza-${Date.now().toString(36)}`,
+            // REQUIRED by the A2A Message schema, and omitting it is not
+            // harmless: singularry's endpoint answers "params.message must be a
+            // Message with kind, role and a non-empty parts array" and nothing
+            // else. We published that refusal as a fact about their agent for a
+            // day. Every seller that validates its input would do the same.
+            kind: 'message',
+            // A DataPart carries the request as structure and is what every
+            // seller measured here prefers. But a DataPart is OPTIONAL in A2A
+            // and a TextPart is not, so a conforming seller may accept only
+            // text — singularry answers "Only text parts are accepted by this
+            // endpoint" and nothing else. The caller retries as text on exactly
+            // that complaint; the payload is identical either way.
+            parts: asText ? [{ kind: 'text', text: JSON.stringify(data) }] : [{ kind: 'data', data }],
+          },
         },
-      },
-    }),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  const text = await r.text();
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    text = await r.text();
+  } catch (e) {
+    return { why: `the endpoint its card names did not answer (${e.name === 'TimeoutError' ? `no reply in ${timeoutMs / 1000}s` : e.name})` };
+  }
+
   // Same SSE tolerance as the MCP dispatcher: some A2A servers stream, and the
   // payload is the last data line.
   const line = text.trim().split('\n').filter((l) => l.trim()).pop() || '';
-  try { return JSON.parse(line.replace(/^data:\s*/, '')); } catch { return null; }
+  let parsed = null;
+  try { parsed = JSON.parse(line.replace(/^data:\s*/, '')); } catch { /* handled below */ }
+
+  if (!parsed) {
+    const ct = (r.headers.get('content-type') || 'no content-type').split(';')[0];
+    return { why: `the endpoint its card names answered HTTP ${r.status} ${ct}, which is not an A2A reply` };
+  }
+  // Parseable, but not JSON-RPC: agent 33813 answers {"status":"OK"} to every
+  // message, which a caller checking only for a parse error reads as success.
+  if (!parsed.jsonrpc && !parsed.result && !parsed.error) {
+    return { why: `answered ${JSON.stringify(parsed).slice(0, 80)} rather than a JSON-RPC reply` };
+  }
+  return { rpc: parsed };
 };
 
 // Sellers answer in two different shapes, and both are in production on the
@@ -290,9 +333,28 @@ export function toAtomic(price) {
   return (BigInt(whole) * 10n ** BigInt(DECIMALS) + BigInt(frac)).toString();
 }
 
-export async function negotiate(endpoint, task, terms, local = null) {
-  const res = await a2aSend(endpoint, {
-    skill: 'negotiate',
+// How we came by the address we tried, phrased for a reader of the page.
+const WHOSE = {
+  card: 'the endpoint its card names',
+  given: 'the endpoint given for it',
+  convention: 'its card could not be read; the conventional /a2a path then',
+};
+
+// `negotiate` is the name three of the four reference sellers give their
+// handshake skill, so it was hardcoded. The fourth calls it
+// `negotiate-erc8183-job`, and it answers our request with "Unknown or invalid
+// seller skill" — which we published as a finding about them. It is a finding
+// about us: the name is declared in every seller's own card and we were not
+// reading it. Passed in by the resolver, with the old constant as the fallback
+// for a card that declares no skills at all.
+// A seller telling us it will not take a DataPart. Matched narrowly and only
+// used to justify ONE retry: these are strangers' servers, and a marketplace
+// that reacts to any refusal by asking again is a nuisance, not a client.
+const WANTS_TEXT = /only text parts|text parts? (are|is) (only |the only )?accepted|unsupported part|part type/i;
+
+export async function negotiate(endpoint, task, terms, local = null, skill = 'negotiate', source = 'card') {
+  const payload = {
+    skill,
     task_description: task,
     // Both keys are REQUIRED by the reference sellers' card. Omitting either
     // gets a validation error rather than a quote, and the error does not say
@@ -301,11 +363,28 @@ export async function negotiate(endpoint, task, terms, local = null) {
       deliverables: terms?.deliverables || task,
       quality_standards: terms?.quality_standards || 'current on-chain data, stated as of a timestamp',
     },
-  }, 25000, local);
-  if (!res) return { ok: false, error: 'seller did not return parseable JSON' };
-  if (res.error) return { ok: false, error: res.error.message || 'seller rejected the negotiation' };
-  const quote = findQuote(res.result);
-  if (!quote) return { ok: false, error: 'seller answered but returned no price quote' };
+  };
+  let res = await a2aSend(endpoint, payload, 25000, local);
+  if (res.rpc?.error && WANTS_TEXT.test(String(res.rpc.error.message || ''))) {
+    const retry = await a2aSend(endpoint, payload, 25000, local, true);
+    // Only take the retry if it got further. A second failure should report the
+    // FIRST refusal, which named the actual requirement.
+    if (retry.rpc && !retry.rpc.error) res = retry;
+  }
+  // a2aSend now says WHY rather than returning nothing. The old single message
+  // — "seller did not return parseable JSON" — was true of a card pointing at
+  // localhost, of a 404 page, and of an endpoint that answers {"status":"OK"}
+  // to everything, and told a reader nothing about which.
+  // WHOSE address failed matters. When the seller's card named the endpoint,
+  // the failure is theirs to fix. When we could not read a card and fell back
+  // to the conventional /a2a path, the address is OUR guess and saying "the
+  // endpoint its card names" would pin our invention on them — the same false
+  // attribution this whole change exists to stop.
+  if (res.why) return { ok: false, error: res.why.replace(/\bthe endpoint its card names\b/, WHOSE[source] || WHOSE.card) };
+  const rpc = res.rpc;
+  if (rpc.error) return { ok: false, error: rpc.error.message || 'seller rejected the negotiation' };
+  const quote = findQuote(rpc.result);
+  if (!quote) return { ok: false, error: 'seller answered, but its reply carries no price' };
   return { ok: true, quote };
 }
 
@@ -519,15 +598,16 @@ export async function handleHire(url, body, env, opts = {}) {
   if (!target) return { status: 400, body: { error: 'agent is required — an ERC-8004 id or an A2A endpoint URL' } };
 
   const started = Date.now();
-  const endpoint = await resolveA2aEndpoint(target);
-  if (!endpoint) {
+  const resolved = await resolveA2aEndpoint(target);
+  if (!resolved) {
     return { status: 404, body: {
       error: 'no A2A endpoint found for that agent',
       hint: 'Pass an https:// A2A endpoint directly, or an ERC-8004 id that appears in https://brainonbnb.com/api-agents.json',
     } };
   }
+  const { endpoint, skill, source } = resolved;
 
-  const neg = await negotiate(endpoint, task, body?.terms, opts.localA2A || null);
+  const neg = await negotiate(endpoint, task, body?.terms, opts.localA2A || null, skill || 'negotiate', source);
   if (!neg.ok) {
     await recordSession(env, {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
@@ -638,33 +718,66 @@ async function loadIndex() {
 // `/a2a` is wrong for half the reference agents: the LP Rebalancer and the Grid
 // Trader serve A2A at the ORIGIN, and POSTing to /a2a there returns a 404 that
 // looks exactly like a dead agent. Card first, convention only as a fallback.
-async function cardEndpoint(origin) {
-  const r = await fetch(new URL('/.well-known/agent-card.json', origin).href, {
-    signal: AbortSignal.timeout(8000),
-  }).catch(() => null);
-  if (!r?.ok) return null;
-  const card = await r.json().catch(() => null);
-  if (!card) return null;
-  const iface = (card.supportedInterfaces || []).find((i) => i.url);
-  // Cards in the wild declare http:// for a host that only answers https, so
-  // the scheme of the origin we already reached wins over the one in the card.
-  const raw = iface?.url || card.url;
-  if (!raw) return null;
-  try {
-    const u = new URL(raw);
-    const o = new URL(origin);
-    u.protocol = o.protocol;
-    return u.href;
-  } catch { return null; }
+// Returns both the endpoint and the name the seller gives its handshake skill.
+// The card was already being fetched and the skill list already sitting in it —
+// it was simply thrown away, and the negotiation guessed the name instead.
+function negotiationSkill(card) {
+  const skills = Array.isArray(card?.skills) ? card.skills : [];
+  const ids = skills.map((s) => s?.id || s?.name).filter((s) => typeof s === 'string');
+  // Anything that reads as the ERC-8183 handshake. `notify_funded` is the other
+  // half of the same protocol and must never be picked: sending the price
+  // question to it looks to the seller like a payment that never happened.
+  return ids.find((s) => /negotiat/i.test(s) && !/notify/i.test(s)) || null;
 }
 
+// Always returns { endpoint, skill }, either of which may be null.
+//
+// The two halves are independent and must be read independently: the Lending
+// Guardian and the Yield Optimizer publish a card with NO `url` at all but a
+// perfectly good skill list. An earlier draft of this returned null the moment
+// the url was missing and threw the skill away with it — which happened to work
+// only because the name it then guessed was the name they use.
+async function cardAt(cardUrl) {
+  const none = { endpoint: null, skill: null };
+  const r = await fetch(cardUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+  if (!r?.ok) return none;
+  const card = await r.json().catch(() => null);
+  if (!card) return none;
+  const skill = negotiationSkill(card);
+  const iface = (card.supportedInterfaces || []).find((i) => i.url);
+  const raw = iface?.url || card.url;
+  if (!raw) return { endpoint: null, skill };
+  try {
+    const u = new URL(raw);
+    const o = new URL(cardUrl);
+    // Cards in the wild declare http:// for a host that only answers https, so
+    // the scheme of the host we already reached wins — but only when the card
+    // is talking about that same host. A card pointing somewhere else entirely,
+    // including at its own loopback, is reported as it stands rather than
+    // quietly rewritten into something that looks reachable.
+    if (u.hostname === o.hostname) u.protocol = o.protocol;
+    return { endpoint: u.href, skill };
+  } catch { return { endpoint: null, skill }; }
+}
+
+// The conventional location, for an agent that registered an origin rather
+// than a card.
+async function cardEndpoint(origin) {
+  try {
+    return await cardAt(new URL('/.well-known/agent-card.json', origin).href);
+  } catch { return { endpoint: null, skill: null }; }
+}
+
+// Returns { endpoint, skill } — the skill being whatever the seller's own card
+// calls its handshake, or null when the card declares none and the caller
+// should fall back to the conventional name.
 async function resolveA2aEndpoint(target) {
   let origin = null;
   if (/^https?:\/\//i.test(target)) {
     // An explicit endpoint is honoured as given — a caller that knows the path
     // should not be second-guessed. Only a bare origin gets resolved.
     const u = new URL(target);
-    if (u.pathname !== '/' ) return target;
+    if (u.pathname !== '/' ) return { endpoint: target, skill: null, source: 'given' };
     origin = u.origin;
   } else {
     const id = Number(target);
@@ -674,11 +787,35 @@ async function resolveA2aEndpoint(target) {
     const agent = (data.agents || []).find((a) => a.id === id);
     if (!agent) return null;
     const eps = agent.endpoints || [];
+    // An agent that registered its card URL outright is telling us where the
+    // card is, and it is not always at the origin root: 269223 publishes
+    // .../rebalancer/.well-known/agent-card.json. Looking only at the root
+    // meant we never read that card, never saw that it names 127.0.0.1, and
+    // reported a guessed path's 404 instead of the real defect.
+    const cardUrl = eps.find((e) => /agent-card\.json$|\/\.well-known\//i.test(e));
+    if (cardUrl) {
+      const c = await cardAt(cardUrl);
+      if (c?.endpoint) return { endpoint: c.endpoint, skill: c.skill, source: 'card' };
+      if (c?.skill) { /* keep the name; the endpoint still has to be resolved below */ }
+    }
     const direct = eps.find((e) => /\/a2a(\/|$)/i.test(e));
-    if (direct) return direct;
+    // Even with a direct endpoint the card is still worth reading, because it
+    // is where the skill name lives. A card that cannot be fetched is not an
+    // error here — the conventional name is the fallback it always was.
+    if (direct) {
+      let skill = null;
+      try { skill = (await cardEndpoint(new URL(direct).origin)).skill; } catch { /* fallback below */ }
+      // The agent's own registration named this path, so it is not our guess.
+      return { endpoint: direct, skill, source: 'given' };
+    }
     try { origin = new URL(eps[0]).origin; } catch { return null; }
   }
-  return (await cardEndpoint(origin)) || origin + '/a2a';
+  // The card may supply a skill without an endpoint, so the fallback path is
+  // per-field rather than all-or-nothing.
+  const card = await cardEndpoint(origin);
+  return card.endpoint
+    ? { endpoint: card.endpoint, skill: card.skill, source: 'card' }
+    : { endpoint: origin + '/a2a', skill: card.skill, source: 'convention' };
 }
 
 // Where the provider address comes from when the seller does not state one.

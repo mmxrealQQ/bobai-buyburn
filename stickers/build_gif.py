@@ -11,10 +11,11 @@ import os, sys, subprocess
 STK = r'd:/ai/fourmeme/stickers'
 OUT = f'{STK}/out/x'
 os.makedirs(OUT, exist_ok=True)
-FFMPEG = (r'C:/Users/graff/AppData/Local/Microsoft/WinGet/Packages/'
-          r'Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/'
-          r'ffmpeg-8.1.1-full_build/bin/ffmpeg.exe')
-if not os.path.exists(FFMPEG): FFMPEG = 'ffmpeg'
+# ffmpeg is taken from PATH. It used to be an absolute WinGet path, which
+# carried the build machine's Windows account name into every published copy of
+# this file. Set FFMPEG=/full/path/to/ffmpeg if yours is somewhere PATH cannot
+# see it.
+FFMPEG = os.environ.get('FFMPEG', 'ffmpeg')
 
 SIZE = 480  # override with --size N (e.g. 640 for GIPHY/Klipy quality builds)
 

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<!-- Background straight on <html> so the first paint is dark before any
+     stylesheet is parsed — same reason, and same value, as index.html. -->
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+
+  <title>Source — clone it from here</title>
+  <meta name="description" content="The source of brainonbnb.com, served as a git repository from this domain. No account, no platform: git clone https://brainonbnb.com/source.git">
+  <link rel="canonical" href="https://brainonbnb.com/source">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Source — clone it from here">
+  <meta property="og:description" content="The source of brainonbnb.com, served as a git repository from this domain. No account, no platform.">
+  <meta property="og:url" content="https://brainonbnb.com/source">
+  <meta property="og:type" content="website">
+  <style>
+    :root{--bg:#0c0b0c;--fg:#ece8e4;--dim:#9a938d;--line:#241f22;--acc:#f0b90b;--card:#141213}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;
+         font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:760px;margin:0 auto;padding:56px 20px 96px}
+    h1{font-family:'Space Grotesk',Inter,sans-serif;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0 0 6px}
+    h2{font-family:'Space Grotesk',Inter,sans-serif;font-size:20px;margin:38px 0 10px}
+    .lede{color:var(--dim);margin:0 0 30px;font-size:17px}
+    a{color:var(--acc)}
+    /* The clone line is the point of the page, so it is the loudest thing on it
+       and it must survive a narrow screen without pushing the body sideways. */
+    pre{background:var(--card);border:1px solid var(--line);border-radius:10px;
+        padding:14px 16px;overflow-x:auto;margin:0 0 14px;
+        font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    p{margin:0 0 14px}
+    ul{margin:0 0 14px;padding-left:20px}
+    li{margin:0 0 6px}
+    .note{color:var(--dim);font-size:14.5px}
+    .back{display:inline-block;margin-top:34px;color:var(--dim);text-decoration:none;border-bottom:1px solid var(--line)}
+    .back:hover{color:var(--fg)}
+    hr{border:0;border-top:1px solid var(--line);margin:34px 0}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Source</h1>
+  <p class="lede">The code behind this site, served as a git repository from this
+  domain. No account, no platform, nothing to sign up for.</p>
+
+  <pre><code>git clone https://brainonbnb.com/source.git</code></pre>
+
+  <p class="note">It is a normal repository over plain HTTP. Any git client can
+  read it; nothing here needs a token.</p>
+
+  <h2>Why it is hosted here and not on a platform</h2>
+  <p>Because in five weeks two of them stopped being an option. Our GitHub
+  account was flagged by an automated system on 24 July 2026, which hides every
+  repository under it; the appeal has been open ever since. Codeberg changed its
+  Terms of Use on 21 July 2026 to bar both cryptocurrency projects and projects
+  written largely with generative AI tools, and this project is plainly both.</p>
+  <p>A third platform would be the same bet placed a third time. This is a
+  directory on infrastructure we already run, so it cannot be taken away —
+  which felt like the more honest thing to depend on.</p>
+
+  <h2>What is in it</h2>
+  <ul>
+    <li>The marketplace at <a href="/registry">/registry</a> and everything behind it.</li>
+    <li>The agent service: x402 payments, ERC-8183 hiring, the live telemetry.</li>
+    <li>The token infrastructure — buy-back and burn workers, the liquidity tooling.</li>
+    <li>Every audit script, each with its own <code>--self-test</code>.</li>
+    <li>The census data: what we actually measured about the agents on this chain.</li>
+  </ul>
+  <p>Picture material is not included — sticker frames, NFT card renders and hero
+  illustrations are 401 MB of the working repository and are already served from
+  this site. The generators that produce them are in. <code>MIRROR.md</code> in
+  the repository lists exactly what was left out and where it lives instead.</p>
+
+  <h2>Reading it without cloning</h2>
+  <p><a href="/#library">The Library</a> on the home page carries the same code
+  as browsable bundles, grouped by subsystem.</p>
+
+  <hr>
+  <h2>What is verifiably not in it</h2>
+  <p>No credential of any kind, in the tree or in its history. That is measured
+  rather than asserted: <code>scripts/secret-audit.mjs</code> reads every blob,
+  derives an address from every 32-byte hex value it finds, and compares it
+  against the wallets this project actually controls — because a transaction
+  hash and a private key are indistinguishable by shape, and this repository
+  holds thousands of the former. The publication step refuses to run unless that
+  audit comes back clean.</p>
+
+  <a class="back" href="/">&larr; brainonbnb.com</a>
+</div>
+</body>
+</html>

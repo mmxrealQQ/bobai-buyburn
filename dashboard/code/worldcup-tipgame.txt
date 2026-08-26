@@ -2,7 +2,7 @@
 # A full tournament game that paid out on-chain.
 #
 # This is the complete worldcup-tipgame bundle as a single file, so it can be read in
-# one fetch. 45 files, 11236 lines.
+# one fetch. 45 files, 11234 lines.
 # Download as a zip: https://brainonbnb.com/code/worldcup-tipgame.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -11468,5 +11468,3 @@ crons = []
 SUPABASE_URL = "https://aerffjhdsbxpvuulkryr.supabase.co"
 # football-data.org competition code for 2026 WC (override if FIFA's official ID differs)
 FOOTBALL_DATA_COMPETITION = "WC"
-# GH repo for workflow dispatch
-GH_REPO = "mmxrealQQ/bobai-buyburn"

@@ -63,13 +63,14 @@ const FORGIVEN = new Set([403, 429]);
 // quiet while the disclosure is still there. Delete the sentence and this
 // becomes a finding again, which is the point — the link is only acceptable
 // because the reader is warned, so the warning is the thing worth guarding.
-const KNOWN_DEAD = {
-  'https://github.com/mmxrealQQ/bobai-buyburn': {
-    page: 'index.html',
-    mustSay: 'Returns <b>404</b> right now',
-    why: 'GitHub account flagged 2026-07-24, appeal open; nothing was deleted',
-  },
-};
+//
+// Empty since 2026-08-26. Its only entry was the GitHub repo tile, which the
+// home page carried as a 404 with a paragraph of apology. The source is now
+// served from our own domain and the link works, so there is nothing left to
+// exempt. The mechanism stays because the next dead-but-disclosed link will
+// want it, and the self-test exercises it against a synthetic entry so an
+// empty list cannot make that test vacuously pass.
+const KNOWN_DEAD = {};
 
 // Pages that are deliberately outside the sitemap. Each needs a reason, so
 // that adding one is a decision rather than a way to silence the check.
@@ -141,6 +142,17 @@ if (args.includes('--self-test')) {
     const carrier = fs.readFileSync(path.join(DASH, k.page), 'utf8');
     if (!carrier.includes(k.mustSay)) fails.push(`${k.page} no longer contains the disclosure for ${u} — either the page changed or the expected wording is stale`);
     if (carrier.includes(k.mustSay + ' ZZ')) fails.push('the disclosure check is not comparing text at all');
+  }
+  //    KNOWN_DEAD is empty, so the loop above proves nothing on its own. Run the
+  //    same comparison against a synthetic entry: a disclosure that is present
+  //    must pass, and one that is absent must fail. Otherwise the day someone
+  //    adds an exemption, the guard on it has been dead for months.
+  {
+    const carrier = fs.readFileSync(path.join(DASH, 'index.html'), 'utf8');
+    const present = 'Source &mdash; clone it';
+    const absent = 'a sentence this page certainly does not contain ZZ';
+    if (!carrier.includes(present)) fails.push(`the disclosure mechanism reads index.html but cannot find "${present}" — either the tile changed or this check is stale`);
+    if (carrier.includes(absent)) fails.push('the disclosure check matches text that is not there — it is not comparing anything');
   }
 
   // 7. Section 5 has to know which agents are ours, and it has to get the list

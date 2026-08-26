@@ -9,7 +9,8 @@
     "/skill.md",
     "/.well-known/skills/index.json",
     "/.well-known/agent-skills/index.json",
-    "/.well-known/x402"
+    "/.well-known/x402",
+    "/source.git/*"
   ],
   "exclude": []
 }

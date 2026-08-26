@@ -22,6 +22,16 @@ import {join, relative, dirname} from 'node:path';
 import {deflateRawSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 
+// Local-only, gitignored: see scripts/lib/personal-identifiers.mjs. Loaded
+// with a fallback so a checkout without it still builds — the gate then has one
+// rule fewer, and reports that rather than pretending to have applied it.
+let PERSONAL = [], PERSONAL_SAMPLES = [];
+try {
+  const m = await import('./lib/personal-identifiers.mjs');
+  PERSONAL = m.PERSONAL ?? [];
+  PERSONAL_SAMPLES = m.SAMPLES ?? [];
+} catch { /* absent on a machine that has nothing to redact */ }
+
 const ROOT = join(import.meta.dirname, '..');
 const OUT  = join(ROOT, 'dashboard', 'code');
 const SITE = 'https://brainonbnb.com/code';
@@ -465,7 +475,12 @@ const FORBIDDEN = [
   [/\bghp_[A-Za-z0-9]{20,}/g,                               'GitHub token'],
   [/(PRIVATE_KEY|MNEMONIC|SEED_PHRASE|SECRET|PASSWORD|API_KEY|BOT_TOKEN|SERVICE_ROLE[A-Z_]*)\s*[:=]\s*["'][^"'\n]{16,}["']/g,
                                                             'assigned secret literal'],
-  [/\bfabian\b|\bbluewin\b|graf\.fabian/gi,                  'personal identifier'],
+  // The operator's personal identifiers are NOT written here. A rule that
+  // spells out the name it protects publishes that name in every copy of this
+  // script — which is exactly what happened, and what the mirror caught.
+  // They live in scripts/lib/personal-identifiers.mjs, which is gitignored and
+  // never bundled. Without it the gate has one rule fewer and says so.
+  ...PERSONAL.map((re) => [re, 'personal identifier']),
 ];
 
 function redact(body) {
@@ -477,6 +492,12 @@ function redact(body) {
 function scan(path, body) {
   const hits = [];
   for (const [re, what] of FORBIDDEN) {
+    // These regexes are shared, global and therefore STATEFUL. matchAll starts
+    // from lastIndex, so any earlier .test() on the same object makes this scan
+    // begin partway through the text and miss what is in front of it — a gate
+    // that silently checks the second half of every file. Cost an hour to find
+    // when a planted identifier came back clean.
+    re.lastIndex = 0;
     for (const m of body.matchAll(re)) {
       hits.push({path, what, at: body.slice(0, m.index).split('\n').length, sample: m[0].slice(0, 40)});
     }
@@ -518,11 +539,30 @@ function selftest() {
     ['sb_secret_9fKq2LmZx8RtVw4NpQ', 'supabase secret'],
     ['OPENAI_API_KEY = "sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345"', 'openai key'],
     ['PRIVATE_KEY: "correct horse battery staple hunter2!!"',     'assigned secret literal'],
-    ['contact: graf.fabian@example.com',                          'personal identifier'],
+    // Personal identifiers are checked separately, below: this pipeline REDACTS
+    // some of them and REFUSES others, and both outcomes are correct. Listing
+    // them here would demand a refusal for a home path that redact() has
+    // already turned into <home>, and the test would fail on a gate doing its
+    // job.
   ];
   let failed = 0;
   for (const [text, what] of cases) {
     if (!scan('selftest', redact(text)).length) { console.error(`  MISSED: ${what}`); failed++; }
+  }
+
+  // Personal identifiers: the property that matters is that none of them
+  // SURVIVES the pipeline. Redaction rewriting a home path to <home> and the
+  // forbidden scan refusing the operator's name are both passes; the failure is
+  // a specimen coming out the far end unchanged. The specimens live in the
+  // local-only file so this script carries no example of what it protects.
+  for (const sample of PERSONAL_SAMPLES) {
+    const after = redact(sample);
+    const stillThere = PERSONAL.some((re) => { re.lastIndex = 0; return re.test(after); });
+    const refused = scan('selftest', after).length > 0;
+    if (stillThere && !refused) { console.error('  SURVIVED: a personal identifier passed through untouched'); failed++; }
+  }
+  if (PERSONAL.length && !PERSONAL_SAMPLES.length) {
+    console.error('  personal identifier rules loaded with no specimen to prove them'); failed++;
   }
   // And the other direction: a public event topic must not trip it, or the gate
   // cries wolf on every file and gets switched off.
@@ -548,7 +588,11 @@ function selftest() {
   }
   const total = cases.length + clean.length + 2;
   if (failed) { console.error(`\nself-test failed (${failed}) — the redaction gate is not doing its job.`); process.exit(1); }
-  console.log(`redaction self-test: ${total}/${total} passed`);
+  // The personal-identifier count is stated, not implied. When the specimen
+  // list grew from one to four, the old hook kept printing the same green line
+  // while three of the rules went untested — a number that moves is the only
+  // way that shows.
+  console.log(`redaction self-test: ${total}/${total} passed, plus ${PERSONAL_SAMPLES.length} personal-identifier specimen(s) against ${PERSONAL.length} rule(s)`);
 }
 selftest();
 

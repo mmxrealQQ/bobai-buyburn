@@ -1204,6 +1204,35 @@ export default {
       }
     }
 
+    // The public source repository, served over git's plain-HTTP protocol.
+    //
+    // This needs its own branch for one reason: Pages answers an unknown path
+    // with index.html and HTTP 200, and a git client reading the dumb protocol
+    // asks for loose objects BEFORE it falls back to the pack. Every one of
+    // those misses came back as 110 KB of dashboard with a success code, so
+    // git concluded the objects were corrupt and the clone died — measured
+    // live on 2026-08-26, after the repository itself was perfectly fine.
+    //
+    // A 404 is the whole fix: it is what tells the client to look in the pack
+    // instead. Detected by content type rather than by listing what exists,
+    // because nothing under source.git is ever HTML.
+    if (url.pathname.startsWith('/source.git/')) {
+      const asset = await env.ASSETS.fetch(request);
+      const type = asset.headers.get('content-type') || '';
+      if (!asset.ok || type.includes('text/html')) {
+        return new Response('Not found\n', {
+          status: 404,
+          headers: { 'Content-Type': 'text/plain', 'X-Content-Type-Options': 'nosniff' },
+        });
+      }
+      const out = new Response(asset.body, asset);
+      // Git reads bytes; a guessed type on a pack file only invites a proxy to
+      // transform it. Say octet-stream and let it through untouched.
+      out.headers.set('Content-Type', 'application/octet-stream');
+      out.headers.set('X-Content-Type-Options', 'nosniff');
+      return out;
+    }
+
     const response = await env.ASSETS.fetch(request);
     const secure = (h) => {
       h.set('X-Content-Type-Options', 'nosniff');

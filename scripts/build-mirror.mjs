@@ -37,6 +37,17 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Local-only and gitignored: the operator's personal identifiers. Absent on any
+// other machine, which is correct — a checkout that never had them has nothing
+// to look for. See scripts/lib/personal-identifiers.mjs.
+let PERSONAL = [], SAMPLES = [], CLEAN_SAMPLE = null;
+try {
+  const m = await import('./lib/personal-identifiers.mjs');
+  PERSONAL = m.PERSONAL ?? [];
+  SAMPLES = m.SAMPLES ?? [];
+  CLEAN_SAMPLE = m.CLEAN_SAMPLE ?? null;
+} catch { /* absent */ }
+
 const ROOT = path.resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
@@ -59,6 +70,12 @@ const ASSET_TREES = [
 const BINARY_CAP = 96 * 1024;
 const BINARY = /\.(png|jpe?g|gif|webp|mp4|webm|ico|zip|pdf|psd|ai)$/i;
 const KEEP_ALWAYS = /\.(woff2?|ttf)$/i;
+
+// Every identifier comes from the local-only file. None is written here: this
+// script is published, and the first draft of this very list put the handle
+// into the mirror it was meant to keep clean. The gate refused to build and
+// named the line. That is the argument for keeping the literals out of reach.
+const IDENTIFIERS = PERSONAL;
 
 function classify (file, size) {
   if (KEEP_ALWAYS.test(file)) return { keep: true };
@@ -94,6 +111,20 @@ if (args.includes('--self-test')) {
   const src = fs.readFileSync(import.meta.filename, 'utf8');
   // Look for the CALL, not the word — searching for the bare name would match
   // this line and fail the test against itself.
+  // The personal-data gate must actually fire, and it must not fire on
+  // everything. Both the rules and the specimens come from the local-only file:
+  // writing a specimen here would put the identifier into a published script,
+  // and this gate would then refuse to build — the correct outcome, reached the
+  // silly way. An empty rule set is treated as a failure rather than a pass,
+  // because a gate that checks nothing reports green forever.
+  const hits = (text) => IDENTIFIERS.some((re) => { re.lastIndex = 0; return re.test(text); });
+  if (!PERSONAL.length || !SAMPLES.length) {
+    fails.push('scripts/lib/personal-identifiers.mjs did not load — the personal-data gate would pass everything and still report green');
+  } else {
+    for (const s of SAMPLES) if (!hits(s)) fails.push('an identifier specimen is not caught — the gate would publish it');
+    if (CLEAN_SAMPLE && hits(CLEAN_SAMPLE)) fails.push('the gate fires on text carrying no identifier — it would block every build');
+  }
+
   if (!/ls-files/.test(src)) fails.push('file list is not taken from git ls-files');
   if (/fs\.readdirSync\(|fs\.globSync\(/.test(src)) fails.push('script walks the filesystem — .gitignore would be bypassed');
 
@@ -102,7 +133,7 @@ if (args.includes('--self-test')) {
     for (const f of fails) console.error('  - ' + f);
     process.exit(2);
   }
-  console.log(`self-test passed: ${cases.length} classification cases correct — generators and contracts survive their own output trees, fonts survive the size cap, illustrations do not, and the file list comes from git rather than the filesystem`);
+  console.log(`self-test passed: ${cases.length} classification cases correct, the file list comes from git rather than the filesystem, and the personal-data gate catches every identifier specimen while leaving clean text alone (${PERSONAL.length} rules loaded)`);
   process.exit(0);
 }
 
@@ -141,6 +172,44 @@ const byWhy = {};
 for (const d of dropped) byWhy[d.why] = (byWhy[d.why] || { n: 0, size: 0 }), byWhy[d.why].n++, byWhy[d.why].size += d.size;
 for (const [why, v] of Object.entries(byWhy).sort((a, b) => b[1].size - a[1].size)) {
   console.log(`   ${String(v.n).padStart(4)} files  ${mb(v.size).padStart(9)}  ${why}`);
+}
+
+// --------------------------------------------------- personal-data gate
+//
+// The operator's requirement, stated plainly: his name, his address and his
+// handle appear nowhere in what gets published. secret-audit answers a
+// different question — it looks for credentials — and this one slipped past it
+// twice: build-library.mjs spelled the name out inside the very rule meant to
+// redact it, and the MIT licence carried the handle of the account that is
+// currently flagged.
+//
+// Checked against the files about to be copied, not against the repository and
+// not against its history: the mirror is published as a single fresh commit,
+// so what ships is exactly this list and nothing behind it.
+{
+  const found = [];
+  for (const { f } of kept) {
+    if (BINARY.test(f) || KEEP_ALWAYS.test(f)) continue;
+    let text;
+    try { text = fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { continue; }
+    for (const re of IDENTIFIERS) {
+      re.lastIndex = 0;
+      const m = re.exec(text);
+      if (m) {
+        const line = text.slice(0, m.index).split('\n').length;
+        found.push(`${f}:${line} — "${m[0]}"`);
+        break;
+      }
+    }
+  }
+  if (found.length) {
+    console.error(`\nPERSONAL IDENTIFIER IN THE MIRROR (${found.length}) — NOT BUILT:`);
+    for (const f of found) console.error('  ' + f);
+    console.error('\nThe operator asked for none of these to be published. Remove them, or');
+    console.error('exclude the file, and run again.');
+    process.exit(1);
+  }
+  console.log('personal-data gate: passed — no operator name, address or handle in the files being copied.');
 }
 
 if (DRY) {

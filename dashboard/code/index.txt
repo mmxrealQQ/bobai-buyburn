@@ -194,7 +194,7 @@ txt: https://brainonbnb.com/code/nft-drop.txt
 Worldcup Tipping Game
 ---------------------
 A full tournament game that paid out on-chain.
-45 files, 11236 lines
+45 files, 11234 lines
 needs:
   - A Postgres with row-level security and auth
       ours: Supabase, free tier, all the way through
@@ -245,7 +245,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-4 files, 1671 lines
+4 files, 1700 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally

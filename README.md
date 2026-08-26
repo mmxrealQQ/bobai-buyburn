@@ -15,7 +15,6 @@
 </p>
 
 <p align="center">
-  <a href="https://glama.ai/mcp/servers/mmxrealQQ/bobai-buyburn"><img src="https://glama.ai/mcp/servers/mmxrealQQ/bobai-buyburn/badges/score.svg" alt="Glama MCP server score" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 

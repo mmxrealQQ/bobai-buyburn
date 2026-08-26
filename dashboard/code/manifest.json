@@ -347,10 +347,10 @@
    "title": "Worldcup Tipping Game",
    "tagline": "A full tournament game that paid out on-chain.",
    "files": 45,
-   "lines": 11236,
-   "zipBytes": 185786,
-   "txtBytes": 596081,
-   "sha256": "2c517c50e5b54371",
+   "lines": 11234,
+   "zipBytes": 185749,
+   "txtBytes": 596013,
+   "sha256": "cdb2213b5d5ed79f",
    "reqs": [
     {
      "what": "A Postgres with row-level security and auth",
@@ -536,10 +536,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1671,
-   "zipBytes": 39904,
-   "txtBytes": 112329,
-   "sha256": "68bf7eb4b9405111",
+   "lines": 1700,
+   "zipBytes": 40409,
+   "txtBytes": 113843,
+   "sha256": "731d6e11651d85f4",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

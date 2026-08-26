@@ -10,10 +10,11 @@ import os, sys, glob, math, subprocess
 from PIL import Image, ImageDraw, ImageFont
 
 STK = r'd:/ai/fourmeme/stickers'
-FFMPEG = (r'C:/Users/graff/AppData/Local/Microsoft/WinGet/Packages/'
-          r'Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/'
-          r'ffmpeg-8.1.1-full_build/bin/ffmpeg.exe')
-if not os.path.exists(FFMPEG): FFMPEG = 'ffmpeg'
+# ffmpeg is taken from PATH. It used to be an absolute WinGet path, which
+# carried the build machine's Windows account name into every published copy of
+# this file. Set FFMPEG=/full/path/to/ffmpeg if yours is somewhere PATH cannot
+# see it.
+FFMPEG = os.environ.get('FFMPEG', 'ffmpeg')
 
 SIZE = 512; FPS = 24; DUR = 2.9
 

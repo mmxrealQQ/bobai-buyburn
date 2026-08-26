@@ -91,7 +91,7 @@ $BOBAI is a registered ERC-8004 agent (#49467 on BNB Chain). It is a data source
 - What is for sale, and where to pay (x402 catalogue): https://brainonbnb.com/.well-known/x402
 - Registry entry: https://8004scan.io/agents/bsc/49467
 - Smart-money signals (pending buyback reserve = buy pressure, live whale flows 24h/7d + 1d/7d/30d holdings trends, recent $100+ buys with buyer wallet + tx, burn momentum): https://brainonbnb.com/api/smart-money
-- Earnable on-chain reward: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buying wallet — works for agent wallets too. Live supply + steps: https://brainonbnb.com/api/nft-drop
+- Earnable on-chain reward: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buying wallet — works for agent wallets too. Live supply + steps: https://brainonbnb.com/api/nft-drop · drops feed and rarity browser for humans: https://brainonbnb.com/nft/
 
 ## Community
 

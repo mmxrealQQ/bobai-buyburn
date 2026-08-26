@@ -507,7 +507,10 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     watch: watch.id,
     expires: new Date(watch.expiresAt).toISOString(),
     watching: { token: watch.token, pair: watch.pair, depthBelowUsd: watch.depthBelowUsd },
-    callback: watch.callback ? 'will POST on trigger' : 'none set — poll /watch/<id>',
+    callback: watch.callback ? 'will POST on trigger' : 'none set — read it back at the url below',
+    // Spelled out, not left as a pattern to fill in. This is the only copy of
+    // the id the buyer will ever be handed.
+    read_back: `https://agent.brainonbnb.com/watch/${watch.id}`,
     paid: `${fmtUsd1(check.paid)} USD1`,
     // Stated rather than implied: a watch with no threshold records depth
     // and never alerts, which is a legitimate thing to want and a terrible
@@ -953,6 +956,59 @@ export default {
         });
       }
       return rpcErr(id ?? null, -32601, 'Method not found: ' + method);
+    }
+
+    // Reading back one watch. The tool description has always told a buyer
+    // without a callback to "poll /watch/<id>" — and this route did not exist,
+    // so that buyer had no way to reach the thing they paid for. The id is a
+    // v4 UUID handed only to the payer, which is what makes it readable
+    // without a second credential.
+    if (path.startsWith('/watch/') && request.method === 'GET') {
+      const id = path.slice(7);
+      const raw = id && (await env.AGENT.get(`watch:${id}`));
+      // Expired and never-existed are the same answer on purpose: a watch is
+      // deleted the first sweep after it expires, so the service cannot tell
+      // them apart and should not pretend to.
+      if (!raw) return json({ error: 'no watch with that id — it may have expired', watch: id }, 404);
+      const w = JSON.parse(raw);
+      return json({
+        watch: w.id,
+        watching: { token: w.token, pair: w.pair, quote: w.quote, depthBelowUsd: w.depthBelowUsd },
+        callback: w.callback,
+        lastDepthUsd: w.lastDepthUsd,
+        lastCheckedAt: w.lastCheckedAt ? new Date(w.lastCheckedAt).toISOString() : null,
+        // Never checked yet reads as "broken" unless we say why: the sweep runs
+        // on a cron, so a watch bought a minute ago legitimately has no reading.
+        note: w.lastCheckedAt ? undefined : 'not swept yet — the depth check runs on a schedule, first reading follows shortly',
+        triggered: w.triggered.map((t) => ({ at: new Date(t.at).toISOString(), depthUsd: t.depthUsd })),
+        created: new Date(w.createdAt).toISOString(),
+        expires: new Date(w.expiresAt).toISOString(),
+        paidTx: w.paidTx,
+      });
+    }
+
+    // A GET on the resource itself. x402 says the terms live in the 402 that a
+    // POST returns, but a crawler, an agent following llms.txt, or a person
+    // pasting the URL all send GET — and answering "not found" tells every one
+    // of them the service does not exist. It does; this says so, and quotes the
+    // price from the same builder the 402 uses so the two cannot drift apart.
+    if (path === '/watch' && request.method === 'GET') {
+      if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
+      const terms = await purchaseWatch(env, ctx, payTo, {}, null);
+      return json({
+        service: 'pool watch',
+        what: `Continuous depth monitoring of one BSC pool for ${WATCH_DAYS} days, with a callback when depth falls below a threshold you set.`,
+        // Both schemes in accepts[] are quoted, because only one of them is
+        // USD1: a client that takes the facilitator route pays the same amount
+        // in USDC, and a price line naming one asset hides the other.
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator — either lands in the same wallet`,
+        buy: 'POST this same URL with {"token":"0x…","pair":"0x…","depthBelowUsd":1000,"callback":"https://…"}',
+        how: terms.body.how,
+        accepts: terms.body.accepts,
+        read_back: 'GET /watch/<id> — returned to you when the purchase settles',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
+        catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
+      });
     }
 
     if (path === '/watch' && request.method === 'POST') {

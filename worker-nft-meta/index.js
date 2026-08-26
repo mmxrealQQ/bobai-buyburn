@@ -48,9 +48,9 @@ function json(body, opts = {}) {
     status: opts.status || 200,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      // Short cache so wallet/marketplace indexers (Element, Trust, MM) refresh
-      // quickly after a contract metadata change. Image URL itself is long-cached
-      // by the dashboard origin, so the marginal cost of a 30s JSON fetch is tiny.
+      // The default is deliberately short, for the answers that really do change
+      // — the collection root and "not minted yet". A minted token overrides it
+      // with an immutable cache; see the call site for why that is safe here.
       'Cache-Control': opts.cache || 'public, max-age=30, s-maxage=30',
       'Access-Control-Allow-Origin': '*',
     },
@@ -190,6 +190,12 @@ export default {
       ],
     };
 
-    return json(meta);
+    // A minted token's metadata can never change again: tier and rarity are
+    // written on-chain at mint, and the contract is renounced, so there is no
+    // owner left who could repoint the base URI. Serving it with a 30-second
+    // cache told every indexer the opposite — that this is volatile — which is
+    // the wrong signal to send something deciding whether to pin an image.
+    // Only the not-yet-minted 404 stays short: that one really does change.
+    return json(meta, { cache: 'public, max-age=604800, s-maxage=604800, immutable' });
   },
 };

@@ -75,10 +75,30 @@ const pages = walk(DASH)
     };
     const only = arg('only');
     const skip = arg('skip');
-    if (only && !only.some((t) => p.includes(t))) return false;
-    if (skip && skip.some((t) => p.includes(t))) return false;
+    // The home page's path is "/", so a substring match can never single it
+    // out: --only=index matches nothing and --only=/ matches everything. Both
+    // read as a clean run — one because it measured no page at all. "home" and
+    // "index" are therefore aliases for it, which is the only way to honour
+    // "test what we changed" when what changed is the front page.
+    const matches = (t) => (t === 'home' || t === 'index' ? p === '/' : p.includes(t));
+    if (only && !only.some(matches)) return false;
+    if (skip && skip.some(matches)) return false;
     return true;
   });
+
+// A filter that selects nothing must not read as a clean run. --only=index
+// matched no page and the audit reported "0 measurements across 0 pages — no
+// layout problems", which is the most dangerous sentence a checker can print:
+// it is what a passing run looks like.
+if (!pages.length) {
+  console.error('No page matched the filter. Nothing was measured — this is not a pass.');
+  console.error('Available: ' + walk(DASH)
+    .map((p) => '/' + path.relative(DASH, p).replace(/\\/g, '/'))
+    .map((p) => p.replace(/index\.html$/, '').replace(/\.html$/, ''))
+    .filter((p) => !p.includes('debug-ua') && !p.includes('for-designer') && !p.endsWith('/404'))
+    .sort().join(' '));
+  process.exit(2);
+}
 
 // ---- CDP, no npm ----------------------------------------------------------
 // Port and profile are per-run, keyed on the process id. A previous run that

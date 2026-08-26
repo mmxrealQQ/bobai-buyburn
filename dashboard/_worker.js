@@ -1216,6 +1216,21 @@ export default {
     // A 404 is the whole fix: it is what tells the client to look in the pack
     // instead. Detected by content type rather than by listing what exists,
     // because nothing under source.git is ever HTML.
+    // The bare clone URL, with no path after it. git never asks for this — it
+    // appends /info/refs — so anyone requesting it is a person or an agent who
+    // copied the link out of llms.txt. Answering with the dashboard page and a
+    // 200, which is what an unrouted path gets here, is exactly the kind of
+    // confusion this project keeps documenting in other people's endpoints.
+    if (url.pathname === '/source.git' || url.pathname === '/source.git/') {
+      return new Response(
+        'This is a git endpoint, not a page.\n\n'
+        + '  git clone https://brainonbnb.com/source.git\n\n'
+        + 'What is in it, and why it is not on a platform:\n'
+        + '  https://brainonbnb.com/source\n',
+        { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' } },
+      );
+    }
+
     if (url.pathname.startsWith('/source.git/')) {
       const asset = await env.ASSETS.fetch(request);
       const type = asset.headers.get('content-type') || '';

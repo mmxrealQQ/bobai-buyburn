@@ -10,6 +10,7 @@
     "/.well-known/skills/index.json",
     "/.well-known/agent-skills/index.json",
     "/.well-known/x402",
+    "/source.git",
     "/source.git/*"
   ],
   "exclude": []

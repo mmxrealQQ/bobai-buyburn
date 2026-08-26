@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1700 lines.
+# one fetch. 4 files, 1701 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1351,6 +1351,7 @@ Figures above are from a full scan on the date named; the JSON files carry their
 - Contract source (BscScan, verified): https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code
 - Burn audit log (live, every bot run): https://logs.brainonbnb.com/logs/burns.json
 - The code behind all of it, as downloadable bundles: https://brainonbnb.com/#library
+- The same code as a git repository, cloneable without an account: git clone https://brainonbnb.com/source.git (what is in it, and why it is not on a platform: https://brainonbnb.com/source)
 
 ## Where to buy
 

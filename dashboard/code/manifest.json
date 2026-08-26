@@ -536,10 +536,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1663,
-   "zipBytes": 39562,
-   "txtBytes": 111323,
-   "sha256": "a6d8ce2a8f0d4d23",
+   "lines": 1671,
+   "zipBytes": 39904,
+   "txtBytes": 112329,
+   "sha256": "68bf7eb4b9405111",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -569,11 +569,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 19,
-   "lines": 5130,
-   "zipBytes": 98236,
-   "txtBytes": 249284,
-   "sha256": "1caed721214a8e24",
+   "files": 21,
+   "lines": 5931,
+   "zipBytes": 113696,
+   "txtBytes": 291580,
+   "sha256": "5cd35adb6c41ac80",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -618,6 +618,7 @@
     "worker-agent/hire.js",
     "worker-agent/index.js",
     "worker-agent/package.json",
+    "worker-agent/rebalance.js",
     "worker-agent/sell.js",
     "worker-agent/sessions.js",
     "worker-agent/submit.js",
@@ -625,7 +626,8 @@
     "worker-agent/venus.js",
     "worker-agent/wrangler.toml",
     "worker-agent/x402-catalog.js",
-    "worker-agent/x402.js"
+    "worker-agent/x402.js",
+    "worker-agent/yield.js"
    ]
   },
   {
@@ -634,10 +636,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 3360,
-   "zipBytes": 67991,
-   "txtBytes": 186950,
-   "sha256": "726b68e337cce043",
+   "lines": 3386,
+   "zipBytes": 68590,
+   "txtBytes": 188563,
+   "sha256": "17ea0e560604beb6",
    "reqs": [
     {
      "what": "Node 18+ and time",

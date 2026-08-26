@@ -1,6 +1,12 @@
 {
-  "measured_at": "2026-08-25T16:20:05.595Z",
+  "measured_at": "2026-08-26T07:43:47.886Z",
   "agents": [
+    {
+      "id": 304494,
+      "label": "Brain on BNB — Portfolio Rebalance Pricer",
+      "category": "rebalancing",
+      "ours": true
+    },
     {
       "id": 269223,
       "label": "Portfolio Rebalancer",
@@ -32,10 +38,22 @@
       "ours": true
     },
     {
+      "id": 303779,
+      "label": "marketplace-operated-grid-planner",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
       "id": 269233,
       "label": "BNB Grid Trader (test)",
       "category": "grid-trading",
       "ours": false
+    },
+    {
+      "id": 304493,
+      "label": "Brain on BNB — Venus Yield Ranking",
+      "category": "yield-optimization",
+      "ours": true
     },
     {
       "id": 116170,

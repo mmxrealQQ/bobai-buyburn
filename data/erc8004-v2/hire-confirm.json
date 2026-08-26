@@ -1,9 +1,19 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-08-25T18:00:50.555Z",
-  "asked": 12,
-  "quoted": 6,
+  "measured_at": "2026-08-26T07:57:00.948Z",
+  "asked": 15,
+  "quoted": 8,
   "agents": [
+    {
+      "id": 304494,
+      "label": "Brain on BNB — Portfolio Rebalance Pricer",
+      "category": "rebalancing",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
+    },
     {
       "id": 269223,
       "label": "Portfolio Rebalancer",
@@ -55,6 +65,16 @@
       "reason": null
     },
     {
+      "id": 303779,
+      "label": "marketplace-operated-grid-planner",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/fixtures/erc8183/a2a",
+      "reason": "Unknown or invalid seller skill"
+    },
+    {
       "id": 269233,
       "label": "BNB Grid Trader (test)",
       "category": "grid-trading",
@@ -63,6 +83,16 @@
       "price": null,
       "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
       "reason": "PermissionError: [Errno 13] Permission denied: '/secrets/wallets/0xFAf0ffd121947B9EE3920Fa0CfbF9EEEB0AcBF7f.json'"
+    },
+    {
+      "id": 304493,
+      "label": "Brain on BNB — Venus Yield Ranking",
+      "category": "yield-optimization",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
     },
     {
       "id": 116170,

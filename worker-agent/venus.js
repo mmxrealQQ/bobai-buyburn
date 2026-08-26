@@ -60,6 +60,27 @@ const RPCS = [
   'https://bsc-dataseed3.bnbchain.org',
 ];
 
+// Endpoints that actually answer a JSON-RPC BATCH. This is a different list on
+// purpose, and finding out why cost an afternoon.
+//
+// Of the five above, exactly ONE — bsc.publicnode.com — returns results for a
+// batched request. The other four answer 200 with an array containing no
+// results at all, so batchCall's careful walk through five endpoints was really
+// one endpoint and four silent failures. Every batched read in this worker has
+// been running with no failover since it was written; it only ever looked
+// healthy because the one that works is usually up.
+//
+// Measured 2026-08-26 by sending each candidate a 40-call batch and counting
+// results. Also refused: bsc.drpc.org (500), rpc.ankr.com/bsc (200, not an
+// array), bsc-dataseed1.bnbchain.org (0 of 40). Re-measure before trusting an
+// addition — batch support is not something an endpoint advertises.
+const BATCH_RPCS = [
+  'https://bsc.publicnode.com',
+  'https://bsc-rpc.publicnode.com',
+  'https://bsc-mainnet.public.blastapi.io',
+  'https://1rpc.io/bnb',
+];
+
 const addrArg = (a) => String(a).toLowerCase().replace(/^0x/, '').padStart(64, '0');
 const word = (hex, i) => hex.slice(2 + i * 64, 2 + (i + 1) * 64);
 const uint = (hex, i) => BigInt('0x' + (word(hex, i) || '0'));
@@ -69,7 +90,7 @@ const addrAt = (hex, i) => '0x' + word(hex, i).slice(24);
 // call at a time is 200+ requests and takes long enough that the price moves
 // underneath the answer, which is exactly the kind of quiet inconsistency a
 // health factor must not have.
-async function batchCall(calls, { rpcs = RPCS } = {}) {
+async function batchCall(calls, { rpcs = BATCH_RPCS } = {}) {
   const payload = calls.map((c, i) => ({
     jsonrpc: '2.0', id: i, method: 'eth_call',
     params: [{ to: c.to, data: c.data }, 'latest'],
@@ -285,4 +306,4 @@ export const VENUS = { UNITROLLER };
 // market" is how two of our own agents end up quoting different numbers for the
 // same market on the same block — the failure this project has already fixed
 // once for the BNB price and once for the pool arithmetic.
-export const chain = { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS };
+export const chain = { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS, BATCH_RPCS };

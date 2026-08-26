@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1663 lines.
+# one fetch. 4 files, 1671 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -972,14 +972,22 @@ const AGENT_REGISTRATION = {
   // Every agent id this domain claims. The ERC-8004 verifier fetches exactly
   // this file and matches the ids in it against the registry — a claim only the
   // domain owner can publish, which is what makes it a proof rather than a
-  // label. #302257 and #302258 are the two hireable agents we run: they are
-  // owned by a separate signing wallet on purpose (its key sits in a worker
-  // secret and must never be near the token wallet), so this list is the thing
-  // that ties them back to us.
+  // label. The four 30xxxx ids are the hireable agents we run — one per category
+  // this marketplace has to cover. They are owned by a separate signing wallet
+  // on purpose (its key sits in a worker secret and must never be near the token
+  // wallet), so this list is the thing that ties them back to us.
+  //
+  // An id registered on-chain and missing here is an anonymous agent, whatever
+  // its document claims. Adding an agent means adding it in BOTH copies of this
+  // file — here and in worker-agent/index.js, which serves the same proof on the
+  // agent origin, because the verifier fetches it on whichever host the agent
+  // names as its endpoint.
   registrations: [
     { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
     { agentId: 302257, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
     { agentId: 302258, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+    { agentId: 304493, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
+    { agentId: 304494, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
   ],
   supportedTrust: ['reputation'],
 };
@@ -1254,26 +1262,26 @@ export default {
 
 ## Brain Plaza — the ERC-8004 registry on BNB Chain, measured
 
-Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` was read one at a time, then every endpoint those registrations named was contacted. Measured 2026-08-25: 302,828 ids registered, 157,013 registrations that parse at all (51.8%), 131,047 that point off-chain at a document (43.3%), 1,848 naming an HTTP endpoint, 788 that answer, 69 independent operators behind them. Of the ones that answer, 235 speak MCP and 278 serve an agent card that names both an endpoint and skills. Nothing extrapolated, nothing sampled.
+Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` was read one at a time, then every endpoint those registrations named was contacted. Measured 2026-08-26: 304,508 ids registered, 157,123 registrations that parse at all (51.6%), 132,604 that point off-chain at a document (43.5%), 1,853 naming an HTTP endpoint, 793 that answer, 71 independent operators behind them. Of the ones that answer, 242 speak MCP and 282 serve an agent card that names both an endpoint and skills. Nothing extrapolated, nothing sampled.
 
 - The page: https://brainonbnb.com/registry
 - The counts as JSON: https://brainonbnb.com/api-registry.json
 - Every agent that answered, with the tools it exposes: https://brainonbnb.com/api-agents.json
 - The same grouped by operator: https://brainonbnb.com/api-operators.json
 
-Twelve of them can be hired straight from the page over the ERC-8183 escrow. Each was sent the negotiation step once, asking for a price on the service it is listed under and nothing else: 6 of 12 returned a quote, and every row says which and why. No skill was invoked to find that out.
+Fifteen of them can be hired straight from the page over the ERC-8183 escrow. Each was sent the negotiation step once, asking for a price on the service it is listed under and nothing else: 8 of 15 returned a quote, and every row says which and why. No skill was invoked to find that out. Four of the fifteen are ours — one in each category the marketplace has to cover — and all four quote.
 
 ## Live state — what these agents are seeing right now
 
-A directory says who exists. It does not say whether the thing is answering this minute, which is what decides a hire. The four BNB Agent Studio reference agents and our own two are asked for their `/status` every fifteen minutes, and every figure on the page carries how old it is.
+A directory says who exists. It does not say whether the thing is answering this minute, which is what decides a hire. The four BNB Agent Studio reference agents and our own four are asked for their `/status` every fifteen minutes, and every figure on the page carries how old it is.
 
 Measured 2026-08-25: of the four reference agents, two publish live state (`bnb-yield`, `bnb-guardian`) and two answer 404 on every state path they have — they are A2A endpoints and nothing else. "Publishes no live state" is a measurement and is shown as one; it is not the same as unreachable, and the two are separate fields.
 
-- Our own agents' live state: https://agent.brainonbnb.com/status — add `?agent=302257` or `?agent=grid-trading` for one of them.
+- Our own agents' live state: https://agent.brainonbnb.com/status — add `?agent=302257` or `?agent=grid-trading` for one of them. We run one in each of the four categories: #302257 health factor, #302258 grid trading, #304493 yield optimisation, #304494 rebalancing.
 - Everything the poller collected, ours and theirs: https://agent.brainonbnb.com/telemetry.json
 - Shown per row on the category pages at https://brainonbnb.com/registry
 
-Our two agents are hired per job and hold no position between jobs, so their status reports the readiness of the machinery and a live reference measurement — for the grid planner, the break-even spacing on the deepest pair on the chain — and never a health factor belonging to nobody. Values quoted from other agents are theirs, timestamped, and are not folded into anything stated here as measured.
+Our four agents are hired per job and hold no position between jobs, so their status reports the readiness of the machinery and a live reference measurement — for the grid planner the break-even spacing on the deepest pair on the chain, for the yield agent the block time BSC actually runs at (0.45 s, about 70 million blocks a year, not the 10,512,000 most published BSC yield figures still assume) — and never a health factor belonging to nobody. Values quoted from other agents are theirs, timestamped, and are not folded into anything stated here as measured.
 
 ## Who has actually been paid — the ERC-8183 job escrow, measured
 

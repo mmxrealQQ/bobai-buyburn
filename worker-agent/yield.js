@@ -42,7 +42,7 @@
 
 import { chain, VENUS } from './venus.js';
 
-const { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS } = chain;
+const { batchCall, decodeString, word, uint, addrAt, addrArg, SEL, RPCS, BATCH_RPCS } = chain;
 
 const YSEL = {
   supplyRatePerBlock: '0xae9d70b0',
@@ -149,30 +149,60 @@ export async function venusMarkets() {
   const [oracleHex] = await batchCall([{ to: VENUS.UNITROLLER, data: SEL.oracle }]);
   const oracle = addrAt(oracleHex, 0);
 
+  // Seven reads per market, not eight. The eighth was underlying(), whose
+  // result this function never looked at — 52 calls per run spent on nothing,
+  // found while cutting the request count down.
+  const PER_MARKET = 7;
   const calls = vTokens.flatMap((v) => ([
     { to: v, data: SEL.symbol },
     { to: v, data: YSEL.supplyRatePerBlock },
     { to: v, data: YSEL.borrowRatePerBlock },
     { to: v, data: YSEL.getCash },
     { to: v, data: YSEL.totalBorrows },
-    { to: v, data: SEL.underlying },
     { to: oracle, data: SEL.getUnderlyingPrice + addrArg(v) },
     { to: VENUS.UNITROLLER, data: SEL.markets + addrArg(v) },
   ]));
-  // Fifty-two markets times eight reads is 416 calls, and a public BSC endpoint
-  // rejects a JSON-RPC batch that size outright. batchCall insists on a
+  // Three hundred and sixty-four calls, and a public BSC endpoint rejects a
+  // JSON-RPC batch anywhere near that size outright. batchCall insists on a
   // complete answer — correctly, since a dropped market is a missing market —
   // so the whole run failed with "no endpoint answered the batch" rather than
-  // degrading. Caught by our own telemetry reporting the agent not ready.
+  // degrading. Our own telemetry caught it, twice.
   //
-  // Chunked at 96, sequentially. Sequentially because firing the chunks
-  // together at the same host recreates the rate limit that this project once
-  // measured and nearly published as a finding about somebody else.
-  const CHUNK = 96;
+  // Chunked, sequentially, with a pause between chunks and one retry each.
+  // Sequentially because firing the chunks together at one host recreates the
+  // rate limit this project once measured and nearly published as a finding
+  // about somebody else.
+  //
+  // The first attempt used 96 per chunk. It passed from a laptop three runs in
+  // a row and failed from the Worker, where the egress address is shared and
+  // the public endpoints throttle it far sooner — a reminder that "works on my
+  // machine" is a statement about an IP address as much as about code. Smaller
+  // chunks, a breath between them, and a second attempt before giving up: a
+  // throttled endpoint recovers in well under a second, and failing an entire
+  // run over one refused chunk is what took the agent offline.
+  // And the chunks are spread across the endpoints rather than queued at one.
+  //
+  // batchCall walks its endpoint list from index 0 on every call, so ten chunks
+  // in a row all hit the same host inside a second and the tenth got refused.
+  // That is this project's own lesson arriving in a new place: the census once
+  // reported 54 MCP agents instead of 235 for exactly this reason, and nearly
+  // published it as a finding about the chain. Rotating the list by chunk gives
+  // each endpoint a fifth of the work.
+  const CHUNK = 40;
   const res = [];
   for (let i = 0; i < calls.length; i += CHUNK) {
-    const part = await batchCall(calls.slice(i, i + CHUNK));
+    const slice = calls.slice(i, i + CHUNK);
+    const n = i / CHUNK;
+    const rotated = BATCH_RPCS.slice(n % BATCH_RPCS.length).concat(BATCH_RPCS.slice(0, n % BATCH_RPCS.length));
+    let part;
+    try {
+      part = await batchCall(slice, { rpcs: rotated });
+    } catch {
+      await new Promise((r) => setTimeout(r, 400));
+      part = await batchCall(slice, { rpcs: rotated });
+    }
     res.push(...part);
+    if (i + CHUNK < calls.length) await new Promise((r) => setTimeout(r, 120));
   }
 
   const published = await venusPublished();
@@ -180,7 +210,7 @@ export async function venusMarkets() {
   const disagreements = [];
 
   for (let i = 0; i < vTokens.length; i++) {
-    const o = i * 8;
+    const o = i * PER_MARKET;
     const v = vTokens[i];
     const symbol = decodeString(res[o]) || v.slice(0, 8);
     const supplyRate = firstWord(res[o + 1]);
@@ -194,8 +224,8 @@ export async function venusMarkets() {
     const borrows = firstWord(res[o + 4]) ?? 0n;
     // The oracle prices one whole underlying token, scaled so that price times
     // amount lands in 1e18 regardless of the underlying's own decimals.
-    const price = firstWord(res[o + 6]) ?? 0n;
-    const collateralFactor = res[o + 7] ? Number(uint(res[o + 7], 1)) / 1e18 : null;
+    const price = firstWord(res[o + 5]) ?? 0n;
+    const collateralFactor = res[o + 6] ? Number(uint(res[o + 6], 1)) / 1e18 : null;
 
     const liquidityUsd = Number((cash * price) / 10n ** 18n) / 1e18;
     const borrowedUsd = Number((borrows * price) / 10n ** 18n) / 1e18;

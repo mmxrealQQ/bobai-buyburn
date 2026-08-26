@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3360 lines.
+# one fetch. 7 files, 3386 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -524,7 +524,7 @@ import path from 'node:path';
 import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
-import { PEERS, SURFACE } from '../worker-agent/telemetry.js';
+import { PEERS, SURFACE, OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -864,8 +864,13 @@ const SOURCE_BADGE = {
 // one place, next to the poller, and a peer added there shows up here without
 // a second list to keep in step.
 const peerByHost = new Map(PEERS.map((p) => [new URL(p.origin).host, p.id]));
+// Our own agent ids come from the telemetry surface rather than a literal
+// list here. The first version hardcoded two of them, and registering two more
+// would have left the new rows with no live line and no error — the page would
+// simply have been quietly less alive than it claimed.
+const OWN_IDS = new Set(OWN_AGENT_IDS);
 const teleKey = (id, host) => (
-  id === 302257 || id === 302258 ? `own:${id}` : (peerByHost.get(host) || null)
+  OWN_IDS.has(id) ? `own:${id}` : (peerByHost.get(host) || null)
 );
 
 // WHAT IT DOES, WHICH THE TABLE DID NOT SAY
@@ -2569,12 +2574,33 @@ if (args.includes('--report')) { report(); process.exit(0); }
 const state = loadState();
 if (!state.startedAt) state.startedAt = new Date().toISOString();
 
-if (!state.highestId) {
-  process.stdout.write('locating highest agent id… ');
-  state.highestId = await findHighestId();
-  console.log(state.highestId.toLocaleString('en-US'));
-  saveState(state);
+// The frontier is re-read on EVERY run, not only the first.
+//
+// It used to be located once and then trusted forever, guarded by
+// `if (!state.highestId)`. That made the census permanently blind to anything
+// registered after the first run: the cursor would reach the old frontier,
+// the script would report a complete scan, and every agent minted since would
+// be missing — with nothing in the output to suggest it. We found this by
+// registering two of our own agents and watching our own marketplace not
+// notice them.
+//
+// A frontier that only ever moves forward is also the safe direction: a node
+// answering badly could report a lower id than we have already scanned, and
+// accepting that would rewind the census.
+process.stdout.write('locating highest agent id… ');
+const foundHighest = await findHighestId();
+const previousHighest = state.highestId || 0;
+state.highestId = Math.max(previousHighest, foundHighest);
+console.log(
+  state.highestId.toLocaleString('en-US')
+  + (previousHighest && state.highestId > previousHighest
+    ? `  (+${(state.highestId - previousHighest).toLocaleString('en-US')} new since the last run)`
+    : previousHighest ? '  (unchanged)' : ''),
+);
+if (foundHighest < previousHighest) {
+  console.log(`  note: the registry reported ${foundHighest.toLocaleString('en-US')}, below the ${previousHighest.toLocaleString('en-US')} already scanned. Keeping the higher figure — a frontier does not move backwards.`);
 }
+saveState(state);
 
 const limit = Math.min(Number(arg('--max', state.highestId)) || state.highestId, state.highestId);
 const hits = fs.createWriteStream(HITS_FILE, { flags: 'a' });

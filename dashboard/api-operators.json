@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-08-25T16:20:05.595Z",
-  "registered_ids": 302828,
-  "reachable_ids": 788,
-  "independent_operators": 69,
-  "operators_speaking_a_protocol": 21,
+  "measured_at": "2026-08-26T07:43:47.886Z",
+  "registered_ids": 304508,
+  "reachable_ids": 793,
+  "independent_operators": 71,
+  "operators_speaking_a_protocol": 22,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -217,12 +217,14 @@
     },
     {
       "operator": "brainonbnb.com",
-      "instances": 3,
+      "instances": 5,
       "distinct_capabilities": 2,
       "ids": [
         49467,
         302257,
-        302258
+        302258,
+        304493,
+        304494
       ],
       "name": "Brain On BNB AI ($BOBAI)",
       "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.",
@@ -573,7 +575,7 @@
     },
     {
       "operator": "singularry.org",
-      "instances": 237,
+      "instances": 238,
       "distinct_capabilities": 3,
       "ids": [
         116170,
@@ -603,13 +605,13 @@
         120090,
         120154,
         120184,
+        120189,
+        120305,
         121885,
         123759,
+        123764,
         123765,
-        123767,
-        123941,
         124183,
-        124208,
         124242,
         124482,
         124595,
@@ -916,6 +918,27 @@
       "skills": [
         "Quote a bounded PancakeSwap V3 rebalance",
         "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "bnb-agent-marketplace-ruby.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        303779
+      ],
+      "name": "marketplace-operated-grid-planner",
+      "description": "Marketplace-operated Grid seller. It computes deterministic plans and performs no trading or custody. Not an official BNB reference agent.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://bnb-agent-marketplace-ruby.vercel.app/grid/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate a deterministic Grid plan",
+        "Compute and submit a funded Grid plan"
       ]
     },
     {
@@ -1827,6 +1850,21 @@
       "speaks": [],
       "endpoints": [
         "https://openclaw.ai"
+      ]
+    },
+    {
+      "operator": "optimai.network",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        304169
+      ],
+      "name": "OptimAI Search Provider",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://bnbagent.optimai.network/erc8183/health"
       ]
     },
     {

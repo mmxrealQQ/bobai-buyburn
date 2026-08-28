@@ -215,7 +215,7 @@ to run, because there is nothing to run.`,
     // the same measurement without a browser, and it is what the installable
     // skill and the MCP tool both run. Leaving it out would make the bundle a
     // copy of the page rather than of the thing.
-    entries: ['dashboard/scanner.html', 'dashboard/scanner.js', 'dashboard/scanner-chain.js', 'dashboard/scanner-scan.js', 'dashboard/styles.css'],
+    entries: ['dashboard/scanner.html', 'dashboard/scanner.js', 'dashboard/scanner-chain.js', 'dashboard/scanner-scan.js', 'dashboard/tier-scan.js', 'dashboard/styles.css'],
   },
   {
     group: 'apps',

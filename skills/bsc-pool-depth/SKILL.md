@@ -1,7 +1,7 @@
 ---
 name: bsc-pool-depth
-description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, or why a swap quote looks worse than the headline price.
-version: 1.0.0
+description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid per dollar of capital in it. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, or which fee tier to provide liquidity in.
+version: 1.1.0
 license: MIT
 metadata:
   author: brainonbnb
@@ -80,6 +80,40 @@ not translate a high cost into "scam", or a low one into "safe".
 
 **Depth changes block to block.** A scan describes the pool at the moment it
 ran. For anything time-sensitive, re-run rather than reuse.
+
+## The other question: which fee tier to provide liquidity in
+
+```bash
+node scripts/tiers.mjs <token-or-pool-address>
+```
+
+A pair on PancakeSwap does not live in one pool. It lives in up to five at
+once — V2 at 0.25%, and V3 at 0.01%, 0.05%, 0.25% and 1.00% — sharing a price
+and competing for the same flow. Every source an LP can consult ranks those
+pools by the money already parked in them, which is the one number that does not
+answer the question.
+
+This measures each tier over a live window and returns
+`fees_per_1000_usd_parked`: the swap fees that pool actually paid out, divided
+by both sides of its capital in dollars. Measured on the busiest pairs on the
+chain, the tier holding the most capital was routinely not the one paying best,
+and a 1.00% pool held real money on every pair while trading on none of them —
+`idle_capital` names those.
+
+Three things to hold on to when reporting it:
+
+**It is a sample, not a rate.** The window is around forty minutes of chain and
+is returned with the answer in `measured_window`. Do not annualise it. Forty
+minutes of flow says what happened in forty minutes.
+
+**Capital is both sides of the pool.** Dividing by one side makes the identical
+V3 pool look several times better or worse depending on which token you call the
+quote, because concentrated liquidity is not balanced.
+
+**A V3 tier figure is the pool average, not your position.** Capital here is
+what the contract holds, which includes liquidity parked outside the current
+price range earning nothing. A well-placed narrow position earns more than the
+tier number. Impermanent loss is not in the figure at all.
 
 ## What this does not do
 

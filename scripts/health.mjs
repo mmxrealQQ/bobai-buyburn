@@ -129,6 +129,24 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
     scanned?.tax?.source === 'unknown' ? scanned.tax.buyPct === null : true,
     scanned?.tax?.source || '');
 
+  // The tier comparison reads five pools and their logs in one request, so it
+  // sits closer to the outbound-call ceiling than the scan does. Checked on the
+  // same busy token, and checked for the figure rather than for a 200: an
+  // answer that came back with every tier unmeasured is a failure wearing the
+  // shape of a success.
+  const tiers = await fetch(`${SITE}/api/fee-tiers?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`)
+    .then((r) => r.json()).catch(() => null);
+  const priced = (tiers?.tiers || []).filter((t) => t.fees_per_1000_usd_parked != null);
+  ok('Agents', 'fee-tier comparison answers with measured tiers',
+    priced.length >= 2 && !!tiers?.measured_window?.minutes,
+    tiers?.best_paying_tier
+      ? `${priced.length} tiers priced over ${tiers.measured_window.minutes} min, best ${tiers.best_paying_tier}`
+      : (tiers?.error || 'no answer'));
+  // The window has to travel with the figures. A tier yield without the window
+  // it was measured over is the number this tool exists to stop people quoting.
+  ok('Agents', 'the tier figures carry the window they were measured over',
+    !tiers?.tiers?.length || (tiers?.measured_window?.blocks > 0 && /not annualised/i.test(tiers?.measured_window?.note || '')));
+
   const sk = await getJson(`${SITE}/.well-known/skills/index.json`);
   const entry = sk.json?.skills?.[0];
   ok('Agents', 'skill manifest serves JSON', !!entry, sk.html ? 'HTML fallback' : '');

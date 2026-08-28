@@ -28,6 +28,7 @@ const BASE = 'https://brainonbnb.com';
 const PULLED = {
   'dashboard/scanner-chain.js': 'scripts/scanner-chain.mjs',
   'dashboard/scanner-scan.js': 'scripts/scanner-scan.mjs',
+  'dashboard/tier-scan.js': 'scripts/tier-scan.mjs',
 };
 
 const SKILLS = ['bsc-pool-depth'];

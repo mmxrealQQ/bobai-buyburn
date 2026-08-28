@@ -62,6 +62,12 @@ section('Free surface');
     const WITH_ARGS = {
       bobai_wallet_balance: { address: '0x0000000000000000000000000000000000000001' },
       bsc_pool_scan: { address: '0x245c386dcfed896f5c346107596141e5edcbffff' },
+      // Not $BOBAI here, deliberately, and for the opposite reason to the scan
+      // above. $BOBAI trades about twice a day, so every tier comes back with a
+      // window that saw no volume — a correct answer that exercises none of the
+      // measurement. $CAKE trades in four tiers at once and is the token that
+      // gets closest to the outbound-call ceiling, which is what can break.
+      pancakeswap_fee_tiers: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' },
     };
     const args = WITH_ARGS[t.name] || {};
     const res = await fetch(`${SITE}/mcp`, {
@@ -304,6 +310,33 @@ section('The written numbers match the measured ones');
     api ? `expected ${n(api.registered_ids)} registered and ${n(api.reachability.reachable)} answering` : 'api-registry unreadable');
   ok('and the current protocol counts',
     !!api && txt.includes(n(api.reachability.answering_mcp)) && txt.includes(n(api.reachability.a2a_callable)));
+  // The census figures were checked here and the tool count was not, so it
+  // drifted the same way and nobody noticed: llms.txt advertised 17 read-only
+  // tools while the endpoint served 18. An agent that reads the file to decide
+  // whether to bother connecting is being given a number nobody maintains.
+  // Counted against the server rather than kept in step by hand.
+  const served = await fetch(`${SITE}/mcp`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+  }).then((r) => r.json()).then((j) => j?.result?.tools?.length).catch(() => null);
+  const claimed = Number((txt.match(/(\d+)\s+read-only tools/) || [])[1]);
+  ok('llms.txt states the number of tools the endpoint actually serves',
+    !!served && claimed === served,
+    served ? `llms.txt says ${claimed || '(none stated)'}, the endpoint serves ${served}` : 'tools/list did not answer');
+  // Naming a tool that does not exist is the same failure pointing the other
+  // way, and it is the one an agent hits hardest: it calls the name and gets
+  // an error it cannot act on.
+  const namedInLlms = [...txt.matchAll(/`([a-z][a-z0-9_]{4,})`/g)].map((m) => m[1]);
+  const toolNames = await fetch(`${SITE}/mcp`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+  }).then((r) => r.json()).then((j) => (j?.result?.tools || []).map((t) => t.name)).catch(() => []);
+  const invented = namedInLlms.filter((x) => /^(bobai|bsc|bnb|pancakeswap|find)_/.test(x) && !toolNames.includes(x));
+  ok('every tool llms.txt names by hand exists',
+    invented.length === 0, invented.length ? `not served: ${invented.join(', ')}` : '');
+
   // The claim this rescan disproved must not survive anywhere.
   ok('the disproved "not a readable document" claim is gone',
     !/not a readable document/i.test(txt));

@@ -3,6 +3,7 @@
 // runs, so the cost of a trade is computed in exactly one place no matter
 // which of the three doors an agent came through.
 import { scan as poolScan } from './scanner-scan.js';
+import { feeTiers } from './tier-scan.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -682,6 +683,7 @@ const MCP_TOOLS = [
   // what it will actually cost, and no router tells it — the headline slippage
   // a swap UI shows leaves out the transfer tax and the swap fee.
   { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable. Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. No API key, nothing cached.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
+  { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every source ranks them by the money already parked in them, which does not say which one pays. This measures each tier over a live window: swaps, turnover, the fees the pool actually paid out, and those fees per $1,000 of capital in the pool (both sides, because an LP puts up both). It also names tiers holding real money that did not trade at all. Measured, never annualised: the window is about forty minutes of chain and is reported with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' } }, required: ['address'], additionalProperties: false } },
   { name: 'bobai_token_info', description: '$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renounced.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -729,6 +731,23 @@ async function runTool(name, args) {
         // worth passing on, because "that pool cannot be priced" and "the chain
         // did not answer" call for completely different next steps.
         throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Scan failed.'));
+      }
+    }
+    case 'pancakeswap_fee_tiers': {
+      const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
+      if (!m) throw new Error('Give a BSC token or PancakeSwap pool address (0x followed by 40 hex characters), or a link containing one.');
+      try {
+        return await feeTiers(m[0].toLowerCase());
+      } catch (e) {
+        // Same ceiling as the pool scan, and the same reason for naming it: a
+        // truncated answer about where to put money reads like a complete one.
+        if (/too many subrequests/i.test(String(e?.message || ''))) {
+          throw new Error(
+            'This token trades in too many places to measure inside one request here. ' +
+            'The installable skill (npx skills add https://brainonbnb.com) runs the identical measurement with no such ceiling.',
+          );
+        }
+        throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Tier scan failed.'));
       }
     }
     case 'bnb_agent_census': {
@@ -1082,13 +1101,17 @@ export default {
     // The two address-taking endpoints are named here rather than in
     // REST_TOOLS, because that table maps a path to a tool that needs no
     // arguments and these need one from the query string.
-    const WITH_ADDRESS = { '/api/wallet': 'bobai_wallet_balance', '/api/pool-scan': 'bsc_pool_scan' };
+    const WITH_ADDRESS = {
+      '/api/wallet': 'bobai_wallet_balance',
+      '/api/pool-scan': 'bsc_pool_scan',
+      '/api/fee-tiers': 'pancakeswap_fee_tiers',
+    };
     if (REST_TOOLS[url.pathname] || WITH_ADDRESS[url.pathname]) {
       // A pool scan is a live measurement of a pool that moves every block, so
       // it is not cached the way the static answers are. Sixty seconds of a
       // stale depth figure is exactly the kind of number somebody would trade
       // on and be wrong about.
-      const isScan = url.pathname === '/api/pool-scan';
+      const isScan = url.pathname === '/api/pool-scan' || url.pathname === '/api/fee-tiers';
       const headers = {
         'Content-Type': 'application/json',
         'Cache-Control': isScan ? 'no-store' : 'public, max-age=60',

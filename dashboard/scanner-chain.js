@@ -429,7 +429,7 @@ export async function venues(token){
 // transaction say how many arrived. The gap is what was charged, to the wallet
 // that paid it. On a taxed buy the pool emits two transfers, one to the tax sink
 // and one to the buyer; the buyer's is the larger, and the difference is the tax.
-const SWAP_T='0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822',
+export const SWAP_T='0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822',
       // Concentrated liquidity emits a DIFFERENT Swap event, and asking for the
       // V2 one over a V3 pool returns an empty list — which this page then
       // printed as "this pool has not traded in the last two hours" for pools
@@ -446,7 +446,7 @@ const SWAP_T='0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822
 // V3 states the two amounts as SIGNED integers from the pool's point of view:
 // positive went in, negative came out. V2 states four unsigned ones instead.
 const TWO256=1n<<256n,TWO255=1n<<255n;
-const int256=h=>{const v=BigInt('0x'+h);return v>=TWO255?v-TWO256:v};
+export const int256=h=>{const v=BigInt('0x'+h);return v>=TWO255?v-TWO256:v};
 // How long the readable window actually is, in the reader's units. BSC's block
 // time is not a constant — it was 3s, then 1.5s, then 0.75s — so "5,000 blocks
 // is about two hours" was true when it was written and is wrong now. Asked of

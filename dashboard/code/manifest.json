@@ -266,11 +266,11 @@
    "group": "apps",
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
-   "files": 5,
-   "lines": 3338,
-   "zipBytes": 71011,
-   "txtBytes": 212906,
-   "sha256": "d2c2686ee94ef5cb",
+   "files": 6,
+   "lines": 3613,
+   "zipBytes": 76400,
+   "txtBytes": 226268,
+   "sha256": "b84b8a12d19b1543",
    "reqs": [
     {
      "what": "A static host",
@@ -293,7 +293,8 @@
     "dashboard/scanner-scan.js",
     "dashboard/scanner.html",
     "dashboard/scanner.js",
-    "dashboard/styles.css"
+    "dashboard/styles.css",
+    "dashboard/tier-scan.js"
    ]
   },
   {
@@ -536,10 +537,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1701,
-   "zipBytes": 40474,
-   "txtBytes": 114034,
-   "sha256": "1cd30f6cb71a2d74",
+   "lines": 1739,
+   "zipBytes": 41182,
+   "txtBytes": 116886,
+   "sha256": "9c19141ad17e4d73",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

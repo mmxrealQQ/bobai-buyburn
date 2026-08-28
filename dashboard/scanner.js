@@ -123,6 +123,115 @@ function statRow(items){
   });
   return g;
 }
+// ---- fee tiers: the question a liquidity provider has ----------------------
+//
+// Everything above this card answers "what would a trade cost me". This one
+// answers the other side: a pair on PancakeSwap lives in up to five pools at
+// once — V2 at 0.25% and V3 at 0.01/0.05/0.25/1.00% — and every interface,
+// including the venue list further up this page, ranks them by the money
+// already parked in them. That is a record of what other people did. It is not
+// what the pool pays, and the two come apart constantly.
+//
+// WHY THIS ONE CALLS AN ENDPOINT ON A PAGE THAT OTHERWISE CALLS NONE
+// The rest of this page reads the chain straight from the visitor's browser and
+// costs nothing to run. This card asks brainonbnb.com/api/fee-tiers instead,
+// and that is deliberate rather than lazy: the identical measurement is sold to
+// agents through an MCP tool and an ERC-8183 agent, and a page that computed it
+// a second time here would eventually disagree with them about which tier pays
+// best. One number, one source. It is behind a button so the default scan is
+// unchanged, and nothing on this card is fetched unless somebody asks for it.
+function tierCard(token){
+  const c=card('Which fee tier is paying its liquidity providers',
+    'For providing liquidity, not for trading. Measured over a live window and deliberately not annualised.');
+  const btn=el('button','sc-tierbtn','Measure the PancakeSwap tiers');
+  btn.type='button';
+  const out=el('div','tier-out');
+  c.append(btn,out);
+
+  btn.addEventListener('click',async()=>{
+    if(btn.disabled)return;
+    btn.disabled=true;btn.textContent='Measuring…';
+    out.textContent='';
+    try{
+      const r=await fetch('/api/fee-tiers?address='+encodeURIComponent(token));
+      const d=await r.json();
+      if(d.error){renderTierError(out,d.error);return;}
+      renderTiers(out,d);
+      btn.remove();
+    }catch(e){
+      renderTierError(out,'The measurement did not come back. Nothing is cached here, so a retry usually works.');
+    }finally{
+      if(btn.isConnected){btn.disabled=false;btn.textContent='Measure the PancakeSwap tiers';}
+    }
+  });
+  return c;
+}
+
+function renderTierError(out,msg){
+  out.textContent='';
+  out.appendChild(el('p','cd-foot',msg));
+}
+
+function renderTiers(out,d){
+  out.textContent='';
+  const measured=(d.tiers||[]).filter(t=>t.measured);
+
+  // A refused range and a quiet pool arrive as the same emptiness and mean
+  // opposite things — one of them is a fact about somebody's pool and the other
+  // is a fact about our measurement. Never the same sentence.
+  if(!measured.length){
+    out.appendChild(el('p','cd-foot','None of the '+((d.tiers||[]).length)+
+      ' tiers could be read this time: the log endpoint refused the range. That says nothing about whether the pair traded. Try again in a moment.'));
+    return;
+  }
+
+  const rows=el('div','tier-t');
+  const head=el('div','tier-r tier-hr');
+  head.append(el('span','tier-n','tier'),el('span','tier-c','capital in pool'),
+    el('span','tier-v','traded'),el('span','tier-f','pays per $1,000'));
+  rows.appendChild(head);
+
+  const best=d.best_paying_tier, most=d.most_capital_tier;
+  (d.tiers||[]).forEach(t=>{
+    const r=el('div','tier-r'+(t.tier===best?' tier-best':''));
+    const n=el('span','tier-n',t.tier);
+    if(t.tier===most)n.appendChild(el('em','tier-tag','most capital'));
+    r.appendChild(n);
+    r.appendChild(el('span','tier-c',t.capital_usd==null?'—':usd(t.capital_usd)));
+    if(!t.measured){
+      r.appendChild(el('span','tier-v dim','not readable'));
+      r.appendChild(el('span','tier-f dim','—'));
+    }else{
+      r.appendChild(el('span','tier-v',t.volume_usd>0?usd(t.volume_usd):'nothing'));
+      const pays=t.fees_per_1000_usd_parked;
+      r.appendChild(el('span','tier-f'+(t.tier===best?' good':(pays===0?' dim':'')),
+        pays==null?'—':'$'+pays.toFixed(4)));
+    }
+    rows.appendChild(r);
+  });
+  out.appendChild(rows);
+
+  // The sentence the card exists to be able to say, when it is true.
+  if(d.capital_is_in_the_best_paying_tier===false){
+    out.appendChild(el('p','tier-said',
+      most+' holds the most capital. '+best+' is the one paying for it.'));
+  }else if(d.capital_is_in_the_best_paying_tier===true){
+    out.appendChild(el('p','tier-said',
+      best+' holds the most capital and is also paying best.'));
+  }
+
+  const idle=(d.idle_capital||[]).reduce((s,x)=>s+(x.capital_usd||0),0);
+  if(idle>=100){
+    out.appendChild(el('p','cd-foot',usd(idle)+' sits in '+
+      (d.idle_capital.length===1?'a tier that':'tiers that')+' saw no trade at all in this window: '+
+      d.idle_capital.map(x=>x.tier).join(', ')+'.'));
+  }
+
+  const w=d.measured_window||{};
+  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
+    ' minutes of chain — a sample, not a rate, and not annualised. Capital is both sides of the pool; in V3 that includes liquidity parked outside the current range, which earns nothing, so this is the pool average and not any one position. Impermanent loss is not in it.'));
+}
+
 function card(title,sub){
   const c=el('section','cd');
   const h=el('div','cd-h');
@@ -454,6 +563,7 @@ function render(d){
       ' for this token, each holding less than '+usd(dustLine)+'. Everything tradable sits in the pool measured above.'));
   }
 
+  o.appendChild(tierCard(addr));
   o.appendChild(flagsCard(gp,gpOk));
   o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties come from GoPlus and are attributed as such. This page describes a pool — it does not check the deployer’s history, the holder distribution, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
 }

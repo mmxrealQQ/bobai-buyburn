@@ -1,12 +1,22 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-08-26T14:55:07.629Z",
-  "asked": 15,
-  "quoted": 8,
+  "measured_at": "2026-08-28T06:49:30.341Z",
+  "asked": 16,
+  "quoted": 10,
   "agents": [
     {
       "id": 304494,
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
+      "category": "rebalancing",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
+    },
+    {
+      "id": 310460,
+      "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "rebalancing",
       "ours": true,
       "quotes": true,
@@ -79,10 +89,10 @@
       "label": "BNB Grid Trader (test)",
       "category": "grid-trading",
       "ours": false,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "0.1 $U",
       "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
-      "reason": "PermissionError: [Errno 13] Permission denied: '/secrets/wallets/0xFAf0ffd121947B9EE3920Fa0CfbF9EEEB0AcBF7f.json'"
+      "reason": null
     },
     {
       "id": 304493,

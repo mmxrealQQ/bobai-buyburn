@@ -46,6 +46,15 @@ const CHECKS=`(()=>{
     for(const w of ['NaN','undefined','Infinity','null','[object']) if(s.includes(w)) bad.push(where+': "'+w+'"');
   };
   scan(txt,'out'); scan(etxt,'err');
+  // An error box is a legitimate outcome — "that address is not a BSC token"
+  // is the page working. A JavaScript exception rendered INTO that box is not,
+  // and the two were indistinguishable here: a run where every token came back
+  // "Something went wrong … token is not defined" was reported as 13/13 clean,
+  // because the harness only asked whether an error was shown and never what
+  // the error said. A programming error must never pass as a handled one.
+  for(const m of ['is not defined','is not a function','Cannot read propert',
+                  'undefined is not','null is not','Unexpected token','of undefined'])
+    if(etxt.includes(m)||txt.includes(m)) bad.push('js exception surfaced to the reader: "'+m+'"');
   // ladder values
   const rows=[...document.querySelectorAll('.lad-c')].map(c=>
     [...c.querySelectorAll('.lad-r:not(.lad-hr)')].map(r=>({

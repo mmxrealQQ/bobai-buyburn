@@ -1,9 +1,15 @@
 {
-  "measured_at": "2026-08-26T07:43:47.886Z",
+  "measured_at": "2026-08-28T06:37:29.179Z",
   "agents": [
     {
       "id": 304494,
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
+      "category": "rebalancing",
+      "ours": true
+    },
+    {
+      "id": 310460,
+      "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "rebalancing",
       "ours": true
     },

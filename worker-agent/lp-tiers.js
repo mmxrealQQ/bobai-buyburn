@@ -108,7 +108,17 @@ export async function lpTierPlan(input = {}) {
   // as a verdict, and explicitly conditional — the rate is a forty-minute
   // sample and the honest thing is to say what would have to hold, not to
   // pretend it will.
+  //
+  // Three ways there is no comparison to make, and they are not the same
+  // thing. Silence would read as "no move worth making" in all three, which is
+  // only true in one of them: `most_capital_tier` is taken from every tier that
+  // could be weighed, including one whose logs were refused — so the tier
+  // holding the most money can be present and unpriced.
   let move = null;
+  let noMove = null;
+  if (!best) noMove = 'No tier traded in the measured window, so there is nothing to compare.';
+  else if (!mostCapital) noMove = `The tier holding the most capital (${m.most_capital_tier}) could not be priced this run, so the comparison would be against a blank.`;
+  else if (best.tier === mostCapital.tier) noMove = 'The tier holding the most capital is also the one paying best. Nothing to move.';
   if (best && mostCapital && best.tier !== mostCapital.tier) {
     const perWindow = ((best.fees_per_1000_usd_parked - mostCapital.fees_per_1000_usd_parked) / 1000) * capitalUsd;
     const windows = perWindow > 0 ? MOVE_GAS_USD / perWindow : null;
@@ -143,6 +153,7 @@ export async function lpTierPlan(input = {}) {
     capital_is_in_the_best_paying_tier: m.capital_is_in_the_best_paying_tier,
     idle_capital: m.idle_capital,
     move_worth_it: move,
+    no_move_because: move ? null : noMove,
     not_compared: {
       same_venue_other_quotes: m.same_venue_other_quotes,
       other_venues: m.other_venues,

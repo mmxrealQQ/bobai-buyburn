@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-08-26T07:43:47.886Z",
-  "registered_ids": 304508,
-  "reachable_ids": 793,
+  "measured_at": "2026-08-28T06:37:29.179Z",
+  "registered_ids": 310517,
+  "reachable_ids": 795,
   "independent_operators": 71,
-  "operators_speaking_a_protocol": 22,
+  "operators_speaking_a_protocol": 21,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -217,14 +217,15 @@
     },
     {
       "operator": "brainonbnb.com",
-      "instances": 5,
+      "instances": 6,
       "distinct_capabilities": 2,
       "ids": [
         49467,
         302257,
         302258,
         304493,
-        304494
+        304494,
+        310460
       ],
       "name": "Brain On BNB AI ($BOBAI)",
       "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.",
@@ -257,6 +258,10 @@
         {
           "name": "bsc_pool_scan",
           "description": "Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cos"
+        },
+        {
+          "name": "pancakeswap_fee_tiers",
+          "description": "For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% an"
         },
         {
           "name": "bobai_token_info",
@@ -575,7 +580,7 @@
     },
     {
       "operator": "singularry.org",
-      "instances": 238,
+      "instances": 239,
       "distinct_capabilities": 3,
       "ids": [
         116170,
@@ -595,7 +600,6 @@
         117439,
         117472,
         117823,
-        118305,
         118416,
         118457,
         118501,
@@ -611,7 +615,10 @@
         123759,
         123764,
         123765,
+        123767,
+        123941,
         124183,
+        124208,
         124242,
         124482,
         124595,
@@ -620,14 +627,12 @@
         125033,
         125497,
         125675,
-        126061,
         126101,
-        126288,
-        126392,
-        126473,
         126708,
         126745,
-        126886
+        126886,
+        127144,
+        127218
       ],
       "name": "Moments",
       "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -899,6 +904,28 @@
       "agent_card": "https://coin-signal.airblock2026.workers.dev/.well-known/agent-card.json"
     },
     {
+      "operator": "bnb-agent-marketplace-ruby.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        303779
+      ],
+      "name": "marketplace-operated-grid-planner",
+      "description": "Marketplace-operated Grid seller. It computes deterministic plans and performs no trading or custody. Not an official BNB reference agent.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://bnb-agent-marketplace-ruby.vercel.app/grid/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate a deterministic Grid plan",
+        "Negotiate a deterministic Grid plan",
+        "Compute and submit a funded Grid plan"
+      ]
+    },
+    {
       "operator": "amazonaws.com",
       "instances": 2,
       "distinct_capabilities": 2,
@@ -918,27 +945,6 @@
       "skills": [
         "Quote a bounded PancakeSwap V3 rebalance",
         "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
-      "operator": "bnb-agent-marketplace-ruby.vercel.app",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        303779
-      ],
-      "name": "marketplace-operated-grid-planner",
-      "description": "Marketplace-operated Grid seller. It computes deterministic plans and performs no trading or custody. Not an official BNB reference agent.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://bnb-agent-marketplace-ruby.vercel.app/grid/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate a deterministic Grid plan",
-        "Compute and submit a funded Grid plan"
       ]
     },
     {
@@ -1024,7 +1030,8 @@
       "skills": [
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
-      ]
+      ],
+      "agent_card": "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/.well-known/agent-card.json"
     },
     {
       "operator": "chainhelix.io",
@@ -1044,27 +1051,6 @@
       ],
       "endpoints": [
         "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
-      "operator": "explainer-agent.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        270213
-      ],
-      "name": "TermiX Advantage Report Explainer",
-      "description": "ERC-8183 seller agent (explainmainnet1a2b3c-agent) — negotiate + notify_funded over A2A.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://explainer-agent.onrender.com/.well-known/agent-card.json"
       ],
       "skills": [
         "Negotiate an ERC-8183 job",
@@ -1711,6 +1697,22 @@
       "speaks": [],
       "endpoints": [
         "https://kaching.one/"
+      ]
+    },
+    {
+      "operator": "kibu.bot",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        728
+      ],
+      "name": "Kibu",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://kibu.bot/",
+        "https://kibu.bot/api/tokens"
       ]
     },
     {

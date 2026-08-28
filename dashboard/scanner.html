@@ -191,6 +191,32 @@
     .lad-x.good,.lad-x.mid,.lad-x.bad{font-weight:600}
     .cd-legend{font-size:.68rem;color:var(--muted);opacity:.9;line-height:1.6;margin-top:10px}
 
+    /* Fee tiers. Four columns on a desk, two on a phone — the tier name and
+       what it pays are the pair that has to stay side by side, because reading
+       one without the other is the mistake this card exists to prevent. */
+    .sc-tierbtn{margin-top:4px;padding:8px 15px;border-radius:9px;cursor:pointer;
+      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.28);
+      color:var(--gold,#f0b90b);font:inherit;font-size:.78rem;font-weight:600;
+      transition:background .2s,border-color .2s}
+    .sc-tierbtn:hover:not(:disabled){background:rgba(240,185,11,.16);border-color:rgba(240,185,11,.5)}
+    .sc-tierbtn:disabled{opacity:.55;cursor:default}
+    .tier-t{margin-top:14px}
+    .tier-r{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);
+      gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--border);font-size:.8rem}
+    .tier-hr{border-top:0;font-size:.66rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+    .tier-r>span{min-width:0;overflow-wrap:anywhere}
+    .tier-c,.tier-v,.tier-f{text-align:right;font-variant-numeric:tabular-nums}
+    .tier-best .tier-n{font-weight:600}
+    .tier-tag{display:block;font-style:normal;font-size:.62rem;color:var(--muted);letter-spacing:.03em}
+    .tier-said{margin-top:13px;font-size:.82rem;line-height:1.55}
+    @media(max-width:560px){
+      .tier-r{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);row-gap:2px}
+      .tier-hr{display:none}
+      .tier-c,.tier-v{font-size:.72rem;color:var(--muted)}
+      .tier-c{grid-column:1;text-align:left}
+      .tier-v{grid-column:2}
+    }
+
     .dis{font-size:.67rem;color:var(--muted);opacity:.85;line-height:1.65;margin-top:22px;max-width:80ch}
 
     /* The "still being built" notice. Deliberately NOT a native dialog: those
@@ -351,6 +377,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=25" type="module"></script>
+<script src="scanner.js?v=27" type="module"></script>
 </body>
 </html>

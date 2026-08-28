@@ -135,7 +135,13 @@ for (const key of ['bnb-guardian', 'bnb-yield']) {
   }
 }
 
-for (const key of ['own:302257', 'own:302258', 'own:304493', 'own:304494']) {
+// Read from the registration receipts rather than written out here. This list
+// was a literal, and a literal list of our own agents is one that silently
+// stops covering the newest one — the failure it exists to catch is exactly
+// "an agent was registered and one of the places its id belongs was missed".
+const { default: ownState } = await import('../../data/own-agents.json', { with: { type: 'json' } });
+const OWN_KEYS = Object.values(ownState.agents || {}).map((a) => `own:${a.id}`);
+for (const key of OWN_KEYS) {
   const r = rows.find((x) => x.key === key);
   if (!r) { problems.push(`${key}: our own agent has no live row on the page`); continue; }
   if (/not answering/.test(r.text || '')) problems.push(`${key}: our own agent reports itself as not answering`);

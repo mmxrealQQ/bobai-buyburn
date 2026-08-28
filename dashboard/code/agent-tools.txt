@@ -1360,7 +1360,7 @@ A directory says who exists. It does not say whether the thing is answering this
 
 Measured 2026-08-25: of the four reference agents, two publish live state (`bnb-yield`, `bnb-guardian`) and two answer 404 on every state path they have — they are A2A endpoints and nothing else. "Publishes no live state" is a measurement and is shown as one; it is not the same as unreachable, and the two are separate fields.
 
-- Our own agents' live state: https://agent.brainonbnb.com/status — add `?agent=302257` or `?agent=grid-trading` for one of them. We run one in each of the four categories: #302257 health factor, #302258 grid trading, #304493 yield optimisation, #304494 rebalancing.
+- Our own agents' live state: https://agent.brainonbnb.com/status — add `?agent=302257` or `?agent=grid-trading` for one of them. We run one in each of the four categories: #302257 health factor, #302258 grid trading, #304493 yield optimisation, #304494 rebalancing — and #310460, which measures which PancakeSwap fee tier is actually paying its liquidity providers, for the side of the market the other four do not serve.
 - Everything the poller collected, ours and theirs: https://agent.brainonbnb.com/telemetry.json
 - Shown per row on the category pages at https://brainonbnb.com/registry
 

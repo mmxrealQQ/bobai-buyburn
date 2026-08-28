@@ -2,31 +2,31 @@
   "what_this_is": "A census of the ERC-8004 identity registry on BNB Smart Chain: how many agents are registered, how many of those registrations are readable, how many name an endpoint, and how many of those endpoints answer.",
   "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "eip155:56",
-  "measured_at": "2026-08-26T07:43:47.886Z",
-  "registered_ids": 304508,
-  "ids_scanned": 304508,
+  "measured_at": "2026-08-28T06:37:29.179Z",
+  "registered_ids": 310517,
+  "ids_scanned": 310517,
   "registrations": {
-    "parses": 157123,
+    "parses": 157411,
     "unparsable": 4596,
-    "empty": 10185,
-    "points_offchain": 132604,
+    "empty": 10241,
+    "points_offchain": 138269,
     "unread_after_retries": 0,
-    "active_flag": 154691,
-    "names_a_service": 2359,
-    "has_http_endpoint": 1853,
-    "endpoint_on_a_real_tld": 1400,
-    "speaks_mcp": 283,
-    "speaks_a2a": 335,
-    "supports_x402": 13813
+    "active_flag": 154979,
+    "names_a_service": 2361,
+    "has_http_endpoint": 1855,
+    "endpoint_on_a_real_tld": 1402,
+    "speaks_mcp": 284,
+    "speaks_a2a": 337,
+    "supports_x402": 13814
   },
   "reachability": {
-    "claim_an_endpoint": 1853,
-    "probed": 1853,
-    "reachable": 793,
+    "claim_an_endpoint": 1855,
+    "probed": 1855,
+    "reachable": 795,
     "dead": 1060,
-    "answering_mcp": 242,
-    "serving_an_agent_card": 296,
-    "a2a_callable": 282,
+    "answering_mcp": 239,
+    "serving_an_agent_card": 297,
+    "a2a_callable": 283,
     "a2a_confirmed_by_probe": 2
   },
   "independent_operators": 71,
@@ -36,13 +36,13 @@
     "caveat": "Reachability is a snapshot. An endpoint down at that moment is counted as dead, and one that answers may still do nothing useful."
   },
   "source": "https://brainonbnb.com/registry",
-  "hireable_here": 15,
+  "hireable_here": 16,
   "categories": [
     "rebalancing",
     "grid-trading",
     "yield-optimization",
     "health-factor"
   ],
-  "quoted_when_asked": 8,
-  "quotes_measured_at": "2026-08-26T14:55:07.629Z"
+  "quoted_when_asked": 10,
+  "quotes_measured_at": "2026-08-28T06:49:30.341Z"
 }

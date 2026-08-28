@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1739 lines.
+# one fetch. 4 files, 1754 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -905,7 +905,21 @@ async function handleMcp(request) {
         serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.3.0' },
       })), { headers: cors });
     }
-    if (method === 'tools/list') return new Response(JSON.stringify(rpcOk(id, { tools: MCP_TOOLS })), { headers: cors });
+    // Every tool in MCP_TOOLS reads and none of them writes — this worker has
+    // no key, no signer and nothing to spend, so that is a property of the
+    // array rather than something to assert per entry. It is declared with
+    // MCP's own annotation because routers have to decide whether calling a
+    // stranger's tool is safe, and the alternative is guessing from the name.
+    //
+    // Guessing from the name is not hypothetical. Our own router required a
+    // reading verb in the tool name and therefore refused to call `bsc_pool_scan`,
+    // `bobai_price` and thirteen others — 16 of our own 19 tools — while
+    // happily routing anything called `get_*`. A tool that says what it is
+    // should not have to be named a particular way to be reachable.
+    if (method === 'tools/list') {
+      const tools = MCP_TOOLS.map((t) => ({ ...t, annotations: { readOnlyHint: true, destructiveHint: false, ...(t.annotations || {}) } }));
+      return new Response(JSON.stringify(rpcOk(id, { tools })), { headers: cors });
+    }
     if (method === 'tools/call') {
       console.log('[mcp] tools/call', params?.name);
       const out = await runTool(params?.name, params?.arguments || {});
@@ -1323,9 +1337,10 @@ export default {
 - Have a task routed and answered: POST https://agent.brainonbnb.com/dispatch with `{"task":"..."}` — finds an agent, calls it, returns the result naming who produced it. Read-only tools only: anything that signs, sends, swaps or orders is named back to you to call yourself, never invoked on your behalf. Add `"dry_run":true` to see which agent and tool would be used without calling anything.
 - Read the record of every task routed so far, failures included: https://agent.brainonbnb.com/sessions
 - Measure any BSC pool: https://brainonbnb.com/api/pool-scan?address=0x... — real cost per trade size (price impact, swap fee and transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% either way, the transfer tax measured from executed trades rather than taken from a label, and whether the LP is burned or still withdrawable.
-- The same measurement as an installable skill: `npx skills add https://brainonbnb.com`
-- MCP endpoint, 17 read-only tools: https://brainonbnb.com/mcp — `bsc_pool_scan`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.
-- No MCP client? Every tool is also a plain GET: https://brainonbnb.com/api/price · /api/liquidity · /api/pool-scan · /api/activity · /api/smart-money · /api/nft-drop · /api/token · /api/trade · /api/tokenomics · /api/links · /api/guide · /api/how-to-buy · /api/circulating-supply · /api/total-supply
+- Choose a PancakeSwap fee tier to provide liquidity in: https://brainonbnb.com/api/fee-tiers?address=0x... — a pair lives in up to five pools at once (V2 0.25%, V3 0.01/0.05/0.25/1.00%), and this measures what each one actually paid its liquidity providers per $1,000 of capital in it over a live window, both sides counted. Names the tiers holding real money that did not trade at all. Not annualised; the window is returned with the answer.
+- The same measurements as an installable skill: `npx skills add https://brainonbnb.com`
+- MCP endpoint, 19 read-only tools: https://brainonbnb.com/mcp — `bsc_pool_scan`, `pancakeswap_fee_tiers`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.
+- No MCP client? Every tool is also a plain GET: https://brainonbnb.com/api/price · /api/liquidity · /api/pool-scan · /api/fee-tiers · /api/activity · /api/smart-money · /api/nft-drop · /api/token · /api/trade · /api/tokenomics · /api/links · /api/guide · /api/how-to-buy · /api/circulating-supply · /api/total-supply
 
 ## Brain Plaza — the ERC-8004 registry on BNB Chain, measured
 

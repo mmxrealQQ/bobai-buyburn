@@ -268,9 +268,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 3613,
-   "zipBytes": 76400,
+   "zipBytes": 76401,
    "txtBytes": 226268,
-   "sha256": "b84b8a12d19b1543",
+   "sha256": "a68a110ef7aeb37f",
    "reqs": [
     {
      "what": "A static host",
@@ -537,10 +537,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1739,
-   "zipBytes": 41182,
-   "txtBytes": 116886,
-   "sha256": "9c19141ad17e4d73",
+   "lines": 1754,
+   "zipBytes": 41772,
+   "txtBytes": 118300,
+   "sha256": "a39abd29faa9efe1",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -570,11 +570,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 21,
-   "lines": 6192,
-   "zipBytes": 119024,
-   "txtBytes": 306781,
-   "sha256": "d2f5c277dbced9d8",
+   "files": 22,
+   "lines": 6448,
+   "zipBytes": 124917,
+   "txtBytes": 321423,
+   "sha256": "c88f77e9ad34e82d",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -618,6 +618,7 @@
     "worker-agent/grid.js",
     "worker-agent/hire.js",
     "worker-agent/index.js",
+    "worker-agent/lp-tiers.js",
     "worker-agent/package.json",
     "worker-agent/rebalance.js",
     "worker-agent/sell.js",

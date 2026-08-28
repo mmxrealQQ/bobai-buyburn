@@ -81,6 +81,17 @@ if (args.includes('--self-test')) {
   const found = [...planted.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
   if (!found.includes('/definitely-not-a-page')) fails.push('a plain dead link in markup is no longer seen at all');
 
+  // "Stranded" has to mean stranded. This check has now been wrong twice by
+  // recognising only the furniture of the day, so both directions are pinned:
+  // a bare link home counts, and a page with genuinely no exit still fails.
+  const wayBack = (x) => /class="back-btn"/.test(x) || /<nav/.test(x) || /href="(?:\/|https:\/\/brainonbnb\.com\/?)"/.test(x);
+  if (!wayBack('<a class="back" href="/">&larr; brainonbnb.com</a>'))
+    fails.push('a plain link home is not recognised as a way back — /source was reported stranded for exactly this');
+  if (!wayBack('<nav><a class="back-btn" href="/">Dashboard</a></nav>'))
+    fails.push('the dashboard sub-page nav is no longer recognised');
+  if (wayBack('<p>a page with no exit at all</p><a href="/nft/">sideways</a>'))
+    fails.push('a page with no link home is being passed as having a way back');
+
   // And the file must contain no control characters. One backspace byte, from
   // a \b that a tool turned into 0x08, is what made the regex unmatchable in
   // the first place and it was invisible in every editor.
@@ -158,7 +169,13 @@ for (const p of pages) {
   // looked only for <nav> and reported it as trapped, which it never was.
   const ownDesign = !/styles\.css/.test(s);
   if (mainSite && isSub && !exempt) {
-    const wayBack = /class="back-btn"/.test(s) || /<nav/.test(s);
+    // Third time this check has been wrong in the same direction, so it is now
+    // written against the thing that matters rather than against the markup we
+    // happened to use last. It looked for <nav>, then for <nav> or a .back-btn,
+    // and reported /source as stranding its visitors — a page whose last line
+    // is <a class="back" href="/">. What a visitor needs is a link home. A
+    // class name is one way to spot it and not the definition of it.
+    const wayBack = /class="back-btn"/.test(s) || /<nav/.test(s) || /href="(?:\/|https:\/\/brainonbnb\.com\/?)"/.test(s);
     if (!wayBack) add(p, 'high', 'no way back to the site', 'visitor is stranded');
     if (!ownDesign) {
       if (!/<footer/.test(s)) add(p, 'med', 'no footer');

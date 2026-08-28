@@ -24,6 +24,12 @@
 //                   the bill is concentrated in. It refuses to claim what a
 //                   correction is worth, because that is not in any pool.
 //
+// A fifth was added afterwards, and for a different reason than depth: all four
+// above serve somebody spending money. None served a liquidity provider, who
+// has to choose between the up-to-five PancakeSwap pools a pair lives in and is
+// shown, everywhere, the one number that does not answer it — the money already
+// parked in each. lp_tier_plan measures what each tier actually paid instead.
+//
 // THE PROTOCOL, WHICH IS NOT MCP
 // Hiring on BNB Chain runs over ERC-8183 and A2A, not MCP. A buyer sends
 // `negotiate` over A2A JSON-RPC, gets a quote naming a provider address and a
@@ -47,6 +53,7 @@ import { healthFactor, drawdownToLiquidation } from './venus.js';
 import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
+import { lpTierPlan } from './lp-tiers.js';
 import { decodeJob, ERC8183 } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
 
@@ -98,6 +105,18 @@ export const SERVICES = {
     price_display: '0.10 $U',
     deliverables: 'The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool.',
     needs: { holdings: 'array of { token: "0x…", usd: 1000 }', targets: 'optional map of token → target weight in percent; equal weight if omitted' },
+  },
+  lp_tier_plan: {
+    id: 'lp_tier_plan',
+    name: 'Which PancakeSwap fee tier is actually paying its liquidity providers',
+    // The four required categories all serve somebody spending money. This one
+    // serves the other side of the market, and range management is what the
+    // rebalancing category is defined as: "manages LP ranges, resets positions".
+    category: 'rebalancing',
+    price: '100000000000000000',
+    price_display: '0.10 $U',
+    deliverables: 'A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.',
+    needs: { token: 'the token or PancakeSwap pool to compare tiers for (0x…)', capitalUsd: 'how much liquidity you are placing, optional — defaults to 1000' },
   },
 };
 
@@ -154,6 +173,9 @@ async function doWork(serviceId, params) {
   if (serviceId === 'rebalance_plan') {
     return { service: 'rebalance_plan', plan: await rebalancePlan(params || {}) };
   }
+  if (serviceId === 'lp_tier_plan') {
+    return { service: 'lp_tier_plan', plan: await lpTierPlan(params || {}) };
+  }
   throw new Error(`unknown service "${serviceId}"`);
 }
 
@@ -167,6 +189,11 @@ function pickService(text = '', explicit) {
   // so the more specific intent is tested first: somebody asking about APY or
   // where to earn wants the yield agent even though they said Venus.
   if (/\bapy\b|\bapr\b|yield|best rate|earn(ing)? (the )?most|where to (put|park|lend)|supply rate/.test(t)) return SERVICES.yield_plan;
+  // Before the rebalance test, and this order is load-bearing. Someone asking
+  // "which fee tier should I provide liquidity in" is asking about LP range
+  // placement, and the rebalance pattern below matches "allocation" — which
+  // would have quietly sold them a portfolio rebalance instead.
+  if (/fee.?tier|which (pool|tier)|provide liquidity|add liquidity|LP|liquidity provider|where to (lp|pool)|v3 (range|tier)/i.test(t)) return SERVICES.lp_tier_plan;
   if (/rebalanc|re-?weight|target weight|allocation|drift|portfolio/.test(t)) return SERVICES.rebalance_plan;
   if (/health.?factor|liquidat|collateral|venus|lending|borrow/.test(t)) return SERVICES.health_factor;
   if (/grid|ladder|range.?bot|dca.?grid/.test(t)) return SERVICES.grid_plan;

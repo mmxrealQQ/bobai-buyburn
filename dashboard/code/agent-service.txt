@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 21 files, 6192 lines.
+# one fetch. 22 files, 6448 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1002,6 +1002,43 @@ const MUTATING_VERBS = new Set([
   'register', 'authorize', 'confirm', 'calldata', 'tx', 'transaction',
 ]);
 
+// Words that mean a description is describing a reader. Wider than READ_VERBS
+// on purpose: prose says "measures", "returns" and "ranks" where a tool name
+// says "get". Inflections are listed rather than stemmed, because a stemmer
+// that turns "trades" into "trade" would start matching the mutating list.
+const READ_INDICATORS = new Set([
+  ...['get', 'list', 'query', 'search', 'read', 'reads', 'fetch', 'check', 'checks',
+    'show', 'shows', 'find', 'finds', 'describe', 'describes', 'status', 'info',
+    'stats', 'analyse', 'analyze', 'analysis', 'estimate', 'estimates', 'simulate',
+    'view', 'summary', 'report', 'reports', 'reported', 'history', 'balance', 'metadata'],
+  ...['measure', 'measures', 'measured', 'measurement', 'returns', 'returned',
+    'rank', 'ranks', 'ranked', 'ranking', 'compare', 'compares', 'comparison',
+    'compute', 'computes', 'computed', 'calculates', 'answer', 'answers',
+    'answered', 'tells', 'reveals', 'inspects', 'observes', 'monitors',
+    'tracks', 'audits'],
+  // Nouns that only a reader produces. A tool whose description says "census"
+  // or "snapshot" is describing an observation, and requiring it to also
+  // contain a verb from the list above is how `bnb_agent_census` — a count of
+  // other people's agents — came out unroutable.
+  ...['census', 'snapshot', 'overview', 'breakdown', 'figures', 'readout',
+    'depth', 'ranking', 'statistics'],
+]);
+
+// Mutating words that are never a noun a reader would need to measure. Seeing
+// one of these in a description is enough on its own.
+const UNAMBIGUOUS_ACTIONS = new Set([
+  'sign', 'signs', 'execute', 'executes', 'broadcast', 'broadcasts',
+  'submit', 'submits', 'revoke', 'revokes', 'authorize', 'authorizes',
+  'deploy', 'deploys', 'calldata',
+]);
+
+// The ambiguous ones — swap, transfer, burn, trade, stake and the rest are all
+// things a measurement tool legitimately talks ABOUT. They only count against a
+// tool when the description has it acting on something: "swaps your tokens",
+// "sends the transaction", "burns LP". "swap fee" and "transfer tax" are not
+// that, and declining them cost this router its own pool scanner.
+const ACTION_ON_OBJECT = /\b(sign|send|execute|submit|broadcast|approve|transfer|withdraw|deposit|stake|unstake|swap|trade|buy|sell|mint|burn|bridge|deploy|revoke|cancel|claim|redeem|pay)s?\s+(a|an|the|your|their|our|his|her|its|funds?|tokens?|assets?|money|transactions?|orders?|positions?|liquidity|collateral|balances?|wallets?|calldata)\b/i;
+
 // "get_swap_calldata" -> [get, swap, calldata]; "getSwapCalldata" -> the same.
 const segments = (name) => String(name)
   .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -1019,16 +1056,61 @@ export function isReadOnly(tool) {
   // dozen that only report numbers. Namespacing a tool must not make it
   // unroutable.
   const segs = segments(name);
-  if (!segs.some((seg) => READ_VERBS.has(seg))) return false;
-  // Any mutating verb anywhere in the name disqualifies it, wherever it sits.
-  if (segments(name).some((seg) => MUTATING_VERBS.has(seg))) return false;
-  // A description promising an action overrides an innocent-looking name.
-  // The name is the strong signal, but an operator who calls a mutating tool
-  // "get_info" and says so in its description should still be believed. Any
-  // mutating verb in the description is enough to decline: a read-only tool has
-  // no reason to mention signing or sending, and the cost of being wrong here
-  // is asymmetric — a missed routing versus somebody's funds.
-  if (segments(desc).some((seg) => MUTATING_VERBS.has(seg))) return false;
+  // A mutating verb anywhere in the name disqualifies it, wherever it sits, and
+  // this is checked FIRST so that no declaration below can talk its way past it.
+  if (segs.some((seg) => MUTATING_VERBS.has(seg))) return false;
+
+  // MCP has a way for a server to state this outright, and asking beats
+  // guessing. `readOnlyHint: false` is a refusal we honour even when the name
+  // looks innocent; `true` satisfies the requirement below.
+  const hint = tool?.annotations?.readOnlyHint;
+  if (hint === false || tool?.annotations?.destructiveHint === true) return false;
+
+  // WHY THIS IS NOT "A READING VERB IN THE NAME, OR NOTHING"
+  // It used to be exactly that, and the rule was measured against our own
+  // server: it could reach 3 of our 19 tools. `bsc_pool_scan`, the measurement
+  // this whole marketplace is built on, was unroutable because "scan" is not on
+  // a list of twenty-five verbs — and so were `bobai_price`, `bnb_agent_census`
+  // and twelve more. The same silence applies to every other agent on the
+  // chain: a tool called `pool_depth` or `apy_ranking` was dropped without a
+  // word. The absence of a reading verb was being treated as evidence of
+  // writing, and it is not evidence of anything.
+  //
+  // What replaced it still requires a positive signal — a tool has to look like
+  // a reader somewhere — but accepts the two other places it can appear: the
+  // server's own annotation, and the description. Nothing here loosens the
+  // mutating checks, which are what actually protect somebody's funds.
+  const readsByName = segs.some((seg) => READ_VERBS.has(seg));
+  const readsByDescription = segments(desc).some((seg) => READ_INDICATORS.has(seg));
+  if (!(hint === true || readsByName || readsByDescription)) return false;
+  // A description promising an action overrides an innocent-looking name. An
+  // operator who calls a mutating tool "get_info" and says what it does in the
+  // description should still be believed.
+  //
+  // But this used to decline on ANY mutating word anywhere in the description,
+  // and that was wrong in a way that hit exactly the tools worth routing to. A
+  // pool measurement has every reason to say "swap fee", "transfer tax" and
+  // "whether the LP is burned" — those are the nouns it measures, not actions
+  // it takes. Our own `bsc_pool_scan` was declined on the word "swap" in a
+  // sentence explaining that it never places one.
+  //
+  // So the words split by how ambiguous they are. Some are never nouns here and
+  // stay an outright veto. The rest only veto when the description uses them as
+  // something the tool DOES — the word followed by a thing it would do it to.
+  //
+  // An explicit `readOnlyHint: true` beats the prose, and only the prose. The
+  // name check above is never overridable — a server calling something
+  // `send_funds` cannot declare its way past it — but a description is weak
+  // evidence and a declaration is strong. `bobai_nft_drop` is the case: it
+  // reports a reward, and its description explains that a purchase "auto-mints
+  // a collectible", which is a sentence about the contract and not about the
+  // tool. Prose cannot tell those apart. The server can.
+  // The unambiguous words are never overridable either. A server that declares
+  // readOnlyHint while its own description says the tool signs or broadcasts is
+  // contradicting itself, and the half of the contradiction that costs money is
+  // the half to believe.
+  if (segments(desc).some((seg) => UNAMBIGUOUS_ACTIONS.has(seg))) return false;
+  if (hint !== true && ACTION_ON_OBJECT.test(desc)) return false;
   return true;
 }
 
@@ -3938,6 +4020,158 @@ export default {
 };
 
 ==============================================================================
+=== FILE: worker-agent/lp-tiers.js
+==============================================================================
+
+// Where to put liquidity on PancakeSwap, and what the pool it is sitting in
+// actually paid the people already in it.
+//
+// The four agents before this one all serve somebody spending money: a trader
+// sizing a grid, a borrower watching a health factor, a holder rebalancing, a
+// lender chasing a rate. None of them serves the other side of the market. A
+// liquidity provider has a decision to make that nothing on the chain helps
+// with, and it is not a small one.
+//
+// THE DECISION
+// A pair on PancakeSwap does not live in one pool. It lives in up to five at
+// once — V2 at 0.25%, and V3 at 0.01%, 0.05%, 0.25% and 1.00% — sharing a price
+// and competing for the same flow. Every interface ranks them by the money
+// already parked in them. That number is a measure of what other people did,
+// not of what the pool pays, and the two come apart constantly: measured across
+// six of the busiest pairs on the chain, the tier holding the most capital was
+// routinely not the tier paying best.
+//
+// WHAT THIS RETURNS
+// Per tier: the fees the pool actually paid out over a measured window, divided
+// by the capital in it. Plus the tiers holding real money that did not trade at
+// all — a 1.00% pool exists on every pair, holds money on every pair, and on
+// none of the six did it see a single swap.
+//
+// WHAT IT REFUSES TO DO
+// It does not annualise. The window is about forty minutes of chain, it travels
+// with every figure, and turning it into an APR would be the exact move this
+// marketplace was built to argue against. It does not know impermanent loss, so
+// it says so rather than implying a tier is "best" in a sense it cannot measure.
+// And it does not tell anyone to move: a tier that pays better today is not a
+// reason to pay gas twice, which is why the answer carries what a move costs
+// against what the difference is worth.
+// The measurement itself lives once, in the dashboard worker, and is reached
+// over our own MCP endpoint — the same way the grid and rebalance agents reach
+// the pool scan. Not imported: this is a different Worker, and a second copy of
+// the arithmetic is how a fee table drifts. The custom domain is deliberate;
+// a *.workers.dev loopback answers 404 from inside another Worker.
+const MEASURE = 'https://brainonbnb.com/mcp';
+
+const round = (n, d = 6) => (n == null ? null : +Number(n).toFixed(d));
+
+async function measure(address) {
+  const r = await fetch(MEASURE, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0', id: 1, method: 'tools/call',
+      params: { name: 'pancakeswap_fee_tiers', arguments: { address } },
+    }),
+    signal: AbortSignal.timeout(45000),
+  });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || 'the tiers could not be measured');
+  const text = j.result?.content?.[0]?.text;
+  if (!text) throw new Error('the measurement returned nothing readable');
+  const m = JSON.parse(text);
+  if (m.error) throw new Error(m.error);
+  return m;
+}
+
+// A move costs two transactions — withdrawing from one pool and adding to
+// another — plus whatever the price moved in between. Gas on BSC is cheap and
+// this is deliberately generous rather than flattering: an agent whose answer
+// is "yes, move" should have had to clear a real bar to say it.
+const MOVE_GAS_USD = 0.60;
+
+export async function lpTierPlan(input = {}) {
+  const address = String(input.token || input.address || input.pool || '')
+    .match(/0x[a-fA-F0-9]{40}/)?.[0];
+  if (!address) throw new Error('lp_tier_plan needs a token or pool address (0x…)');
+  const capitalUsd = Number(input.capitalUsd) > 0 ? Number(input.capitalUsd) : 1000;
+
+  const m = await measure(address.toLowerCase());
+
+  const priced = (m.tiers || []).filter((t) => t.fees_per_1000_usd_parked != null);
+  const traded = priced.filter((t) => t.volume_usd > 0)
+    .sort((a, b) => b.fees_per_1000_usd_parked - a.fees_per_1000_usd_parked);
+
+  // What the capital in question would have earned in each tier over the window
+  // that was actually measured. Stated in dollars because "0.0166 per 1000" is
+  // not a quantity anybody can weigh a decision against, and stated for the
+  // window rather than for a year because that is the only period it is true of.
+  const perTier = (m.tiers || []).map((t) => ({
+    tier: t.tier,
+    pool: t.pool,
+    fee_pct: t.fee_pct,
+    capital_in_pool_usd: t.capital_usd,
+    measured: t.measured === true,
+    ...(t.measured
+      ? {
+          swaps: t.swaps,
+          volume_usd: t.volume_usd,
+          your_share_of_fees_usd_in_window:
+            t.fees_per_1000_usd_parked == null
+              ? null
+              : round((t.fees_per_1000_usd_parked / 1000) * capitalUsd, 6),
+        }
+      : { reason: t.reason }),
+  }));
+
+  const best = traded[0] || null;
+  const mostCapital = m.most_capital_tier
+    ? priced.find((t) => t.tier === m.most_capital_tier) || null
+    : null;
+
+  // The comparison that decides anything: how long the better tier needs to run
+  // at this rate before it has paid for the move. Reported as a duration, not
+  // as a verdict, and explicitly conditional — the rate is a forty-minute
+  // sample and the honest thing is to say what would have to hold, not to
+  // pretend it will.
+  let move = null;
+  if (best && mostCapital && best.tier !== mostCapital.tier) {
+    const perWindow = ((best.fees_per_1000_usd_parked - mostCapital.fees_per_1000_usd_parked) / 1000) * capitalUsd;
+    const windows = perWindow > 0 ? MOVE_GAS_USD / perWindow : null;
+    const minutes = windows != null && m.measured_window?.minutes
+      ? windows * m.measured_window.minutes
+      : null;
+    move = {
+      from: mostCapital.tier,
+      to: best.tier,
+      extra_fees_usd_per_window: round(perWindow, 6),
+      assumed_move_cost_usd: MOVE_GAS_USD,
+      windows_to_break_even: windows == null ? null : round(windows, 2),
+      hours_to_break_even_if_this_rate_held: minutes == null ? null : round(minutes / 60, 2),
+      caveat: 'The rate is a single measured window. This is what would have to hold for the move to pay, not a forecast that it will.',
+    };
+  }
+
+  return {
+    service: 'lp_tier_plan',
+    pair: { token: m.token, quote: m.quote },
+    capital_considered_usd: capitalUsd,
+    measured_window: m.measured_window,
+    tiers: perTier,
+    best_paying_tier: m.best_paying_tier,
+    most_capital_tier: m.most_capital_tier,
+    // The single sentence the whole service exists to be able to say.
+    capital_is_in_the_best_paying_tier: m.capital_is_in_the_best_paying_tier,
+    idle_capital: m.idle_capital,
+    move_worth_it: move,
+    not_compared: {
+      same_venue_other_quotes: m.same_venue_other_quotes,
+      other_venues: m.other_venues,
+    },
+    limits: m.caveats,
+  };
+}
+
+==============================================================================
 === FILE: worker-agent/package.json
 ==============================================================================
 
@@ -4257,6 +4491,12 @@ export async function rebalancePlan(input = {}) {
 //                   the bill is concentrated in. It refuses to claim what a
 //                   correction is worth, because that is not in any pool.
 //
+// A fifth was added afterwards, and for a different reason than depth: all four
+// above serve somebody spending money. None served a liquidity provider, who
+// has to choose between the up-to-five PancakeSwap pools a pair lives in and is
+// shown, everywhere, the one number that does not answer it — the money already
+// parked in each. lp_tier_plan measures what each tier actually paid instead.
+//
 // THE PROTOCOL, WHICH IS NOT MCP
 // Hiring on BNB Chain runs over ERC-8183 and A2A, not MCP. A buyer sends
 // `negotiate` over A2A JSON-RPC, gets a quote naming a provider address and a
@@ -4280,6 +4520,7 @@ import { healthFactor, drawdownToLiquidation } from './venus.js';
 import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
+import { lpTierPlan } from './lp-tiers.js';
 import { decodeJob, ERC8183 } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
 
@@ -4331,6 +4572,18 @@ export const SERVICES = {
     price_display: '0.10 $U',
     deliverables: 'The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool.',
     needs: { holdings: 'array of { token: "0x…", usd: 1000 }', targets: 'optional map of token → target weight in percent; equal weight if omitted' },
+  },
+  lp_tier_plan: {
+    id: 'lp_tier_plan',
+    name: 'Which PancakeSwap fee tier is actually paying its liquidity providers',
+    // The four required categories all serve somebody spending money. This one
+    // serves the other side of the market, and range management is what the
+    // rebalancing category is defined as: "manages LP ranges, resets positions".
+    category: 'rebalancing',
+    price: '100000000000000000',
+    price_display: '0.10 $U',
+    deliverables: 'A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.',
+    needs: { token: 'the token or PancakeSwap pool to compare tiers for (0x…)', capitalUsd: 'how much liquidity you are placing, optional — defaults to 1000' },
   },
 };
 
@@ -4387,6 +4640,9 @@ async function doWork(serviceId, params) {
   if (serviceId === 'rebalance_plan') {
     return { service: 'rebalance_plan', plan: await rebalancePlan(params || {}) };
   }
+  if (serviceId === 'lp_tier_plan') {
+    return { service: 'lp_tier_plan', plan: await lpTierPlan(params || {}) };
+  }
   throw new Error(`unknown service "${serviceId}"`);
 }
 
@@ -4400,6 +4656,11 @@ function pickService(text = '', explicit) {
   // so the more specific intent is tested first: somebody asking about APY or
   // where to earn wants the yield agent even though they said Venus.
   if (/\bapy\b|\bapr\b|yield|best rate|earn(ing)? (the )?most|where to (put|park|lend)|supply rate/.test(t)) return SERVICES.yield_plan;
+  // Before the rebalance test, and this order is load-bearing. Someone asking
+  // "which fee tier should I provide liquidity in" is asking about LP range
+  // placement, and the rebalance pattern below matches "allocation" — which
+  // would have quietly sold them a portfolio rebalance instead.
+  if (/fee.?tier|which (pool|tier)|provide liquidity|add liquidity|LP|liquidity provider|where to (lp|pool)|v3 (range|tier)/i.test(t)) return SERVICES.lp_tier_plan;
   if (/rebalanc|re-?weight|target weight|allocation|drift|portfolio/.test(t)) return SERVICES.rebalance_plan;
   if (/health.?factor|liquidat|collateral|venus|lending|borrow/.test(t)) return SERVICES.health_factor;
   if (/grid|ladder|range.?bot|dca.?grid/.test(t)) return SERVICES.grid_plan;

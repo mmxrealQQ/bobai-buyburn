@@ -47,6 +47,43 @@ const MUTATING_VERBS = new Set([
   'register', 'authorize', 'confirm', 'calldata', 'tx', 'transaction',
 ]);
 
+// Words that mean a description is describing a reader. Wider than READ_VERBS
+// on purpose: prose says "measures", "returns" and "ranks" where a tool name
+// says "get". Inflections are listed rather than stemmed, because a stemmer
+// that turns "trades" into "trade" would start matching the mutating list.
+const READ_INDICATORS = new Set([
+  ...['get', 'list', 'query', 'search', 'read', 'reads', 'fetch', 'check', 'checks',
+    'show', 'shows', 'find', 'finds', 'describe', 'describes', 'status', 'info',
+    'stats', 'analyse', 'analyze', 'analysis', 'estimate', 'estimates', 'simulate',
+    'view', 'summary', 'report', 'reports', 'reported', 'history', 'balance', 'metadata'],
+  ...['measure', 'measures', 'measured', 'measurement', 'returns', 'returned',
+    'rank', 'ranks', 'ranked', 'ranking', 'compare', 'compares', 'comparison',
+    'compute', 'computes', 'computed', 'calculates', 'answer', 'answers',
+    'answered', 'tells', 'reveals', 'inspects', 'observes', 'monitors',
+    'tracks', 'audits'],
+  // Nouns that only a reader produces. A tool whose description says "census"
+  // or "snapshot" is describing an observation, and requiring it to also
+  // contain a verb from the list above is how `bnb_agent_census` — a count of
+  // other people's agents — came out unroutable.
+  ...['census', 'snapshot', 'overview', 'breakdown', 'figures', 'readout',
+    'depth', 'ranking', 'statistics'],
+]);
+
+// Mutating words that are never a noun a reader would need to measure. Seeing
+// one of these in a description is enough on its own.
+const UNAMBIGUOUS_ACTIONS = new Set([
+  'sign', 'signs', 'execute', 'executes', 'broadcast', 'broadcasts',
+  'submit', 'submits', 'revoke', 'revokes', 'authorize', 'authorizes',
+  'deploy', 'deploys', 'calldata',
+]);
+
+// The ambiguous ones — swap, transfer, burn, trade, stake and the rest are all
+// things a measurement tool legitimately talks ABOUT. They only count against a
+// tool when the description has it acting on something: "swaps your tokens",
+// "sends the transaction", "burns LP". "swap fee" and "transfer tax" are not
+// that, and declining them cost this router its own pool scanner.
+const ACTION_ON_OBJECT = /\b(sign|send|execute|submit|broadcast|approve|transfer|withdraw|deposit|stake|unstake|swap|trade|buy|sell|mint|burn|bridge|deploy|revoke|cancel|claim|redeem|pay)s?\s+(a|an|the|your|their|our|his|her|its|funds?|tokens?|assets?|money|transactions?|orders?|positions?|liquidity|collateral|balances?|wallets?|calldata)\b/i;
+
 // "get_swap_calldata" -> [get, swap, calldata]; "getSwapCalldata" -> the same.
 const segments = (name) => String(name)
   .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -64,16 +101,61 @@ export function isReadOnly(tool) {
   // dozen that only report numbers. Namespacing a tool must not make it
   // unroutable.
   const segs = segments(name);
-  if (!segs.some((seg) => READ_VERBS.has(seg))) return false;
-  // Any mutating verb anywhere in the name disqualifies it, wherever it sits.
-  if (segments(name).some((seg) => MUTATING_VERBS.has(seg))) return false;
-  // A description promising an action overrides an innocent-looking name.
-  // The name is the strong signal, but an operator who calls a mutating tool
-  // "get_info" and says so in its description should still be believed. Any
-  // mutating verb in the description is enough to decline: a read-only tool has
-  // no reason to mention signing or sending, and the cost of being wrong here
-  // is asymmetric — a missed routing versus somebody's funds.
-  if (segments(desc).some((seg) => MUTATING_VERBS.has(seg))) return false;
+  // A mutating verb anywhere in the name disqualifies it, wherever it sits, and
+  // this is checked FIRST so that no declaration below can talk its way past it.
+  if (segs.some((seg) => MUTATING_VERBS.has(seg))) return false;
+
+  // MCP has a way for a server to state this outright, and asking beats
+  // guessing. `readOnlyHint: false` is a refusal we honour even when the name
+  // looks innocent; `true` satisfies the requirement below.
+  const hint = tool?.annotations?.readOnlyHint;
+  if (hint === false || tool?.annotations?.destructiveHint === true) return false;
+
+  // WHY THIS IS NOT "A READING VERB IN THE NAME, OR NOTHING"
+  // It used to be exactly that, and the rule was measured against our own
+  // server: it could reach 3 of our 19 tools. `bsc_pool_scan`, the measurement
+  // this whole marketplace is built on, was unroutable because "scan" is not on
+  // a list of twenty-five verbs — and so were `bobai_price`, `bnb_agent_census`
+  // and twelve more. The same silence applies to every other agent on the
+  // chain: a tool called `pool_depth` or `apy_ranking` was dropped without a
+  // word. The absence of a reading verb was being treated as evidence of
+  // writing, and it is not evidence of anything.
+  //
+  // What replaced it still requires a positive signal — a tool has to look like
+  // a reader somewhere — but accepts the two other places it can appear: the
+  // server's own annotation, and the description. Nothing here loosens the
+  // mutating checks, which are what actually protect somebody's funds.
+  const readsByName = segs.some((seg) => READ_VERBS.has(seg));
+  const readsByDescription = segments(desc).some((seg) => READ_INDICATORS.has(seg));
+  if (!(hint === true || readsByName || readsByDescription)) return false;
+  // A description promising an action overrides an innocent-looking name. An
+  // operator who calls a mutating tool "get_info" and says what it does in the
+  // description should still be believed.
+  //
+  // But this used to decline on ANY mutating word anywhere in the description,
+  // and that was wrong in a way that hit exactly the tools worth routing to. A
+  // pool measurement has every reason to say "swap fee", "transfer tax" and
+  // "whether the LP is burned" — those are the nouns it measures, not actions
+  // it takes. Our own `bsc_pool_scan` was declined on the word "swap" in a
+  // sentence explaining that it never places one.
+  //
+  // So the words split by how ambiguous they are. Some are never nouns here and
+  // stay an outright veto. The rest only veto when the description uses them as
+  // something the tool DOES — the word followed by a thing it would do it to.
+  //
+  // An explicit `readOnlyHint: true` beats the prose, and only the prose. The
+  // name check above is never overridable — a server calling something
+  // `send_funds` cannot declare its way past it — but a description is weak
+  // evidence and a declaration is strong. `bobai_nft_drop` is the case: it
+  // reports a reward, and its description explains that a purchase "auto-mints
+  // a collectible", which is a sentence about the contract and not about the
+  // tool. Prose cannot tell those apart. The server can.
+  // The unambiguous words are never overridable either. A server that declares
+  // readOnlyHint while its own description says the tool signs or broadcasts is
+  // contradicting itself, and the half of the contradiction that costs money is
+  // the half to believe.
+  if (segments(desc).some((seg) => UNAMBIGUOUS_ACTIONS.has(seg))) return false;
+  if (hint !== true && ACTION_ON_OBJECT.test(desc)) return false;
   return true;
 }
 

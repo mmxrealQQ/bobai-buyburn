@@ -889,7 +889,21 @@ async function handleMcp(request) {
         serverInfo: { name: 'Brain On BNB AI ($BOBAI)', version: '1.3.0' },
       })), { headers: cors });
     }
-    if (method === 'tools/list') return new Response(JSON.stringify(rpcOk(id, { tools: MCP_TOOLS })), { headers: cors });
+    // Every tool in MCP_TOOLS reads and none of them writes — this worker has
+    // no key, no signer and nothing to spend, so that is a property of the
+    // array rather than something to assert per entry. It is declared with
+    // MCP's own annotation because routers have to decide whether calling a
+    // stranger's tool is safe, and the alternative is guessing from the name.
+    //
+    // Guessing from the name is not hypothetical. Our own router required a
+    // reading verb in the tool name and therefore refused to call `bsc_pool_scan`,
+    // `bobai_price` and thirteen others — 16 of our own 19 tools — while
+    // happily routing anything called `get_*`. A tool that says what it is
+    // should not have to be named a particular way to be reachable.
+    if (method === 'tools/list') {
+      const tools = MCP_TOOLS.map((t) => ({ ...t, annotations: { readOnlyHint: true, destructiveHint: false, ...(t.annotations || {}) } }));
+      return new Response(JSON.stringify(rpcOk(id, { tools })), { headers: cors });
+    }
     if (method === 'tools/call') {
       console.log('[mcp] tools/call', params?.name);
       const out = await runTool(params?.name, params?.arguments || {});

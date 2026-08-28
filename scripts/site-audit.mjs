@@ -50,6 +50,61 @@ const add = (page, severity, what, detail = '') =>
 const html = {};
 for (const p of pages) html[p] = fs.readFileSync(path.join(DASH, p), 'utf8');
 
+// Comparing a question in JSON against the same question in markup means
+// getting past the ways the two are allowed to differ: the markup carries an
+// entity for the ampersand and a caret glyph inside the summary, and neither is
+// a difference a reader would see.
+const norm = (t) => String(t)
+  .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&#x[0-9a-f]+;|&#\d+;/gi, '')
+  .replace(/[‐-―−]/g, '-')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLowerCase();
+
+// Rule-level comparison against the shared stylesheet.
+//
+// Deliberately blunt about what it will not claim: anything inside an @-block
+// (@media, @keyframes, @supports) is skipped entirely. A `50%` step inside one
+// animation is not the same rule as a `50%` step inside another, and comparing
+// them by selector alone produced matches that meant nothing.
+const cssRules = (css) => {
+  const out = new Map();
+  const s = String(css).replace(/\/\*[\s\S]*?\*\//g, '');
+  let depth = 0, buf = '', sel = null;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '{') {
+      if (depth === 0) sel = buf.trim().replace(/\s+/g, ' ');
+      depth++; buf = ''; continue;
+    }
+    if (ch === '}') {
+      depth--;
+      if (depth === 0 && sel && !sel.startsWith('@')) {
+        out.set(sel, buf.replace(/\s+/g, '').replace(/;$/, ''));
+      }
+      // An @-block's contents are skipped by resetting rather than recursing.
+      if (depth < 0) depth = 0;
+      buf = ''; sel = null; continue;
+    }
+    buf += ch;
+  }
+  return out;
+};
+
+let SHARED = null;
+const duplicatedRules = (inlineCss) => {
+  if (SHARED === null) {
+    try { SHARED = cssRules(fs.readFileSync(path.join(DASH, 'styles.css'), 'utf8')); }
+    catch { SHARED = new Map(); }
+  }
+  const mine = cssRules(inlineCss);
+  const dup = [];
+  for (const [sel, body] of mine) {
+    if (SHARED.has(sel) && SHARED.get(sel) === body) dup.push(sel);
+  }
+  return dup;
+};
+
 // ---------------------------------------------------------------------------
 // SELF-TEST
 //
@@ -80,6 +135,22 @@ if (args.includes('--self-test')) {
   const planted = strip('<html><a href="/definitely-not-a-page">x</a></html>');
   const found = [...planted.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
   if (!found.includes('/definitely-not-a-page')) fails.push('a plain dead link in markup is no longer seen at all');
+
+  // Duplication has to mean duplication. Both directions, because the repair
+  // for one is a way of causing the other: a page that carries its own design
+  // must not be reported, and a page that really does repeat the shared sheet
+  // must be. The guard is a stylesheet link and not the string anywhere —
+  // nft/index.html mentions styles.css in a comment and never loads it.
+  {
+    const shared = 'a{color:red}\n.b{margin:0}\n@media (max-width:1px){.b{margin:9px}}';
+    const rules = cssRules(shared);
+    if (rules.get('a') !== 'color:red') fails.push('the rule parser no longer reads a plain rule');
+    if (rules.has('.b') && rules.get('.b') === 'margin:9px') fails.push('a rule inside @media is being read as a top-level rule');
+    const linked = '<link rel="stylesheet" href="styles.css?v=1">';
+    if (!/<link[^>]+href=["'][^"']*styles\.css/i.test(linked)) fails.push('a real stylesheet link is not recognised');
+    if (/<link[^>]+href=["'][^"']*styles\.css/i.test('<!-- see dashboard/styles.css for why -->'))
+      fails.push('a comment mentioning styles.css is being read as loading it');
+  }
 
   // "Stranded" has to mean stranded. This check has now been wrong twice by
   // recognising only the furniture of the day, so both directions are pinned:
@@ -218,9 +289,68 @@ for (const p of pages) {
   const kb = Buffer.byteLength(s) / 1024;
   if (kb > 250) add(p, 'med', `page is ${Math.round(kb)} KB`, 'long download before anything renders');
 
-  // ---- inline style bulk: a sign a page drifted from the shared stylesheet ----
-  const inline = [...s.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + m[1].length, 0);
-  if (inline > 12000) add(p, 'low', `${Math.round(inline / 1024)} KB inline CSS`, 'may duplicate styles.css');
+  // ---- structured data has to describe the page it is on ----
+  //
+  // A FAQPage block is a claim to a search engine about what a visitor can read
+  // here. If the two drift, the markup is describing a page that does not
+  // exist — which is the thing structured-data guidelines are about, and it
+  // happens silently because nothing on the page looks wrong.
+  for (const m of s.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    let parsed;
+    try { parsed = JSON.parse(m[1]); }
+    catch (e) { add(p, 'high', 'structured data does not parse', String(e.message).slice(0, 80)); continue; }
+    const nodes = Array.isArray(parsed) ? parsed : (parsed['@graph'] || [parsed]);
+    for (const n of nodes) {
+      if (n['@type'] !== 'FAQPage') continue;
+      const claimed = (n.mainEntity || []).map((q) => norm(q.name));
+      // Only the FAQ's own accordions. The page uses <details> elsewhere — the
+      // code library, the finished campaign notes — and comparing against every
+      // <summary> on the page reported seventeen "missing FAQ questions" that
+      // were never FAQ questions. A check that cries wolf on a page that is
+      // right teaches people to stop reading it.
+      const shown = [...s.matchAll(/<details[^>]*class="[^"]*faq-item[^"]*"[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>/g)]
+        .map((x) => norm(x[1].replace(/<[^>]*>/g, '')));
+      const missing = claimed.filter((q) => !shown.includes(q));
+      if (missing.length) {
+        add(p, 'med', `${missing.length} FAQ question(s) in the structured data are not on the page`,
+          missing.slice(0, 3).join(' | '));
+      }
+      const unclaimed = shown.filter((q) => q && !claimed.includes(q));
+      if (claimed.length && unclaimed.length) {
+        add(p, 'low', `${unclaimed.length} FAQ question(s) on the page are missing from the structured data`,
+          unclaimed.slice(0, 3).join(' | '));
+      }
+    }
+  }
+
+  // ---- inline style that actually repeats the shared stylesheet ----
+  //
+  // This used to report the SIZE of a page's inline CSS and guess that it "may
+  // duplicate styles.css". Measured: of the five pages it flagged, three
+  // duplicate nothing at all — scanner.html has 115 inline rules and none of
+  // them is a rule styles.css already carries. It was reporting a page for
+  // having its own design, every run, in a severity band people learn to skim.
+  //
+  // Now it counts the rules that are genuinely repeated: same selector, same
+  // declarations. A selector that appears in both with a DIFFERENT body is not
+  // a duplicate — that is a page deliberately overriding the shared sheet, and
+  // saying so would be the same false alarm wearing a better disguise.
+  //
+  // The guard has to be an actual stylesheet LINK, not the string appearing
+  // anywhere. Testing the whole page for "styles.css" matched a comment in
+  // nft/index.html that mentions the shared sheet by name — a page which does
+  // not load it at all. Six of its rules looked like duplicates of a stylesheet
+  // that is never on that page, and deleting them would have taken the styling
+  // with them. A page that carries its own design is not duplicating anything.
+  const inlineCss = [...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+  const loadsShared = /<link[^>]+href=["'][^"']*styles\.css/i.test(s);
+  if (inlineCss && loadsShared) {
+    const dup = duplicatedRules(inlineCss);
+    if (dup.length) {
+      add(p, 'low', `${dup.length} inline rule${dup.length === 1 ? '' : 's'} styles.css already carries`,
+        dup.slice(0, 6).join(' · ') + (dup.length > 6 ? ' …' : ''));
+    }
+  }
 }
 
 // ---- report ----

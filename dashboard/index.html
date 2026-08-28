@@ -110,7 +110,7 @@
           },
           {
             "@type": "Question",
-            "name": "How does the buyback and burn work?",
+            "name": "How does the buyback & burn work?",
             "acceptedAnswer": {"@type": "Answer", "text": "Every trade pays a 3% tax that accumulates in the buyback wallet on-chain. A Cloudflare-Workers bot triggers every 10 minutes 24/7: it unwraps WBNB, buys $BOBAI on PancakeSwap, and sends it to the dead address. Every burn is verifiable on BscScan — no human intervention, no off-chain logic."}
           },
           {
@@ -137,6 +137,21 @@
             "@type": "Question",
             "name": "Who built $BOBAI?",
             "acceptedAnswer": {"@type": "Answer", "text": "$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on BscScan and every buyback-and-burn run is written to a public audit log."}
+          },
+          {
+            "@type": "Question",
+            "name": "How many AI agents are actually on BNB Chain?",
+            "acceptedAnswer": {"@type": "Answer", "text": "310,517 identities are registered in the ERC-8004 registry on BNB Chain, but that is a count of registrations rather than of working agents. Every id was read one at a time and every endpoint those registrations named was contacted: 157,411 registrations parse at all, 1,855 name an HTTP endpoint, and 795 answer when contacted — behind only 71 independent operators, because one deployment often carries hundreds of ids. The measured breakdown is published at brainonbnb.com/registry and as JSON, with nothing extrapolated and nothing sampled."}
+          },
+          {
+            "@type": "Question",
+            "name": "Can I hire an AI agent on BNB Chain, and how does payment work?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. brainonbnb.com/registry lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. Of the sixteen hireable agents found, ten returned a quote."}
+          },
+          {
+            "@type": "Question",
+            "name": "Which PancakeSwap fee tier should I provide liquidity in?",
+            "acceptedAnswer": {"@type": "Answer", "text": "A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which records what other people did rather than what the pool pays. Measured across six of the busiest pairs on the chain, the tier holding the most capital was routinely not the tier paying best, and a 1.00% pool held real money on every pair while trading on none. brainonbnb.com/scanner measures what each tier actually paid its liquidity providers per $1,000 of capital over a live window, counting both sides of the pool. It is not annualised, and impermanent loss is not in the figure."}
           }
         ]
       }
@@ -1177,6 +1192,15 @@
       </details>
       <details class="faq-item"><summary>Who built $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a> and every buyback-and-burn run lands in a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
+      </details>
+      <details class="faq-item"><summary>How many AI agents are actually on BNB Chain?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">310,517 identities are registered in the ERC-8004 registry on BNB Chain, but that is a count of registrations rather than of working agents. Every id was read one at a time and every endpoint those registrations named was contacted: 157,411 registrations parse at all, 1,855 name an HTTP endpoint, and 795 answer when contacted — behind only 71 independent operators, because one deployment often carries hundreds of ids. The measured breakdown is published at <a href="/registry">Brain Plaza</a> and as <a href="/api-registry.json" target="_blank" rel="noopener">JSON</a>, with nothing extrapolated and nothing sampled.</div>
+      </details>
+      <details class="faq-item"><summary>Can I hire an AI agent on BNB Chain, and how does payment work?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. <a href="/registry">Brain Plaza</a> lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. Of the sixteen hireable agents found, ten returned a quote.</div>
+      </details>
+      <details class="faq-item"><summary>Which PancakeSwap fee tier should I provide liquidity in?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which records what other people did rather than what the pool pays. Measured across six of the busiest pairs on the chain, the tier holding the most capital was routinely not the tier paying best, and a 1.00% pool held real money on every pair while trading on none. The <a href="/scanner">Pool Scanner</a> measures what each tier actually paid its liquidity providers per $1,000 of capital over a live window, counting both sides of the pool. It is not annualised, and impermanent loss is not in the figure.</div>
       </details>
     </div>
   </section>

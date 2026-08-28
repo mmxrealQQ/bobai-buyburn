@@ -348,6 +348,21 @@ section('The written numbers match the measured ones');
   ok('every tool llms.txt names by hand exists',
     invented.length === 0, invented.length ? `not served: ${invented.join(', ')}` : '');
 
+  // The whitepaper carries the same count and drifted further and for longer:
+  // it advertised nine read-only tools while nineteen were served, and listed
+  // only the ones about our own token. It is the document a reader treats as
+  // the considered version, so a stale number there costs more than in a file
+  // written for machines.
+  const wp = (await getText(`${SITE}/whitepaper`)).body;
+  const wpClaim = Number((wp.match(/>(\d+)\s+read-only tools</) || wp.match(/(\d+)\s+read-only tools/) || [])[1]);
+  ok('the whitepaper states the number of tools the endpoint actually serves',
+    !!served && wpClaim === served,
+    served ? `whitepaper says ${wpClaim || '(none stated)'}, the endpoint serves ${served}` : 'tools/list did not answer');
+  const wpNamed = [...wp.matchAll(/<strong>([a-z][a-z0-9_]{4,})<\/strong>/g)].map((m) => m[1]);
+  const wpInvented = wpNamed.filter((x) => /^(bobai|bsc|bnb|pancakeswap|find)_/.test(x) && !toolNames.includes(x));
+  ok('every tool the whitepaper names by hand exists',
+    wpInvented.length === 0, wpInvented.length ? `not served: ${wpInvented.join(', ')}` : `${wpNamed.filter((x) => toolNames.includes(x)).length} named`);
+
   // The claim this rescan disproved must not survive anywhere.
   ok('the disproved "not a readable document" claim is gone',
     !/not a readable document/i.test(txt));

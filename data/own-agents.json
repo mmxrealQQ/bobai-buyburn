@@ -37,6 +37,15 @@
       "tx": "0x372f29467ba738e982f1bae6e71e35d5f2f672bff843a4577b4df6e51c6f49fb",
       "block": 118146212,
       "registered_at": "2026-08-26T06:46:53.577Z"
+    },
+    "lp-placement": {
+      "id": 310460,
+      "name": "Brain on BNB — PancakeSwap Fee Tier Placement",
+      "category": "rebalancing",
+      "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+      "tx": "0x09202a6ab252d345b85724676bfee705d8d8c07cabcff6297b8c183f6e515abd",
+      "block": 118521128,
+      "registered_at": "2026-08-28T05:39:45.780Z"
     }
   }
 }

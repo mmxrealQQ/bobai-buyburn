@@ -80,6 +80,42 @@ if (args.includes('--self-test')) {
   if (!args.includes('--live')) process.exit(0);
 }
 
+// ---- the domain proof, on both origins, against what is actually on-chain ----
+//
+// An ERC-8004 verifier fetches /.well-known/agent-registration.json on the host
+// an agent names, and believes the ids it finds there. That list is written by
+// hand in two files — dashboard/_worker.js and worker-agent/index.js — and both
+// carry a comment asking whoever edits one to remember the other. A comment is
+// not a check. #49467 sat unverified for months on exactly this.
+//
+// The truth is data/own-agents.json, written by the registration script from
+// the transaction receipt. Both origins are held against it.
+{
+  const { default: state } = await import('../data/own-agents.json', { with: { type: 'json' } });
+  const registered = Object.values(state.agents || {}).map((a) => a.id).sort((a, b) => a - b);
+  const PARENT = 49467;
+  const expected = [...new Set([...registered, PARENT])].sort((a, b) => a - b);
+
+  const origins = ['https://brainonbnb.com', 'https://agent.brainonbnb.com'];
+  console.log('\nDomain proof — the ids each origin claims, against the chain');
+  for (const origin of origins) {
+    const doc = await fetch(`${origin}/.well-known/agent-registration.json`)
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (!doc) { console.error(`  ${origin} — did not serve the proof`); process.exitCode = 1; continue; }
+    const claimed = (doc.registrations || []).map((r) => Number(r.agentId)).sort((a, b) => a - b);
+    const missing = expected.filter((id) => !claimed.includes(id));
+    const extra = claimed.filter((id) => !expected.includes(id));
+    if (missing.length || extra.length) {
+      console.error(`  ${origin} — claims ${claimed.length}, expected ${expected.length}`);
+      if (missing.length) console.error(`      missing (unattributable on this host): ${missing.join(', ')}`);
+      if (extra.length) console.error(`      claims an id we have no receipt for: ${extra.join(', ')}`);
+      process.exitCode = 1;
+    } else {
+      console.log(`  ${origin} — all ${claimed.length} ids, matching the receipts`);
+    }
+  }
+}
+
 // ---- live: how much of our own server can our own router actually reach ----
 const listed = await fetch(`${SITE}/mcp`, {
   method: 'POST',

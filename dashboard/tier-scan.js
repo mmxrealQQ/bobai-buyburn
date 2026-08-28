@@ -189,13 +189,21 @@ export async function feeTiers(input) {
     const c = order[i].c;
     const quoteIs0 = addrAt(order[i].zero) === quote;
     const topics = [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T];
+    // One endpoint serves these ranges and it rate-limits, so a refusal is
+    // often a queue rather than a verdict. Retried once, briefly, because five
+    // tiers asked back to back while three other probes are also reading logs
+    // was enough to have every tier come back unmeasured — which then rendered
+    // as "nothing traded" for a pair that trades every block.
     let logs = null;
-    try {
-      logs = await rpc('eth_getLogs', [{
-        address: c.pair, topics,
-        fromBlock: '0x' + from.toString(16), toBlock: '0x' + head.toString(16),
-      }], LOGS_RPC);
-    } catch { logs = null; }
+    for (let attempt = 0; attempt < 2 && logs === null; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 350));
+      try {
+        logs = await rpc('eth_getLogs', [{
+          address: c.pair, topics,
+          fromBlock: '0x' + from.toString(16), toBlock: '0x' + head.toString(16),
+        }], LOGS_RPC);
+      } catch { logs = null; }
+    }
 
     const capitalUsd = tokenUsd == null ? null : c.q * c.usd + c.tok * tokenUsd;
     const row = {
@@ -247,6 +255,12 @@ export async function feeTiers(input) {
       note: 'A single sample of live chain, not a rate. It is not annualised here and should not be annualised from here: forty minutes of flow says what happened in forty minutes.',
     },
     tiers,
+    // How many tiers were actually read, kept separate from how many exist.
+    // Without this, a run where the log endpoint refused every range is
+    // indistinguishable from a pair that nobody traded — the two look the same
+    // from outside and mean opposite things, and the first is about us.
+    tiers_measured: measured.length,
+    tiers_found: tiers.length,
     // The two answers side by side are the whole point: an LP is shown the
     // first number everywhere and needs the second one.
     best_paying_tier: traded.length ? traded[0].tier : null,
@@ -267,9 +281,11 @@ export async function feeTiers(input) {
         : `Token priced at ${tokPrice.direct ? 'its own quote' : 'one hop through BNB'}; the pool totals inherit that.`,
       'Fees are the pool fee applied to measured turnover. PancakeSwap pays a share of that to the protocol, so what reaches liquidity providers is somewhat less.',
       'Impermanent loss is not in this figure. A tier can pay best and still be the worse place to be.',
-      traded.length === 0
-        ? 'Nothing traded on any tier in this window, so no tier is ranked.'
-        : 'Ranking covers only the tiers that traded in this window.',
+      measured.length === 0
+        ? 'No tier could be read: the log endpoint refused every range. This says nothing about whether the pair traded — it says the measurement did not happen. Retry.'
+        : traded.length === 0
+          ? `Nothing traded on any of the ${measured.length} tiers that could be read, so no tier is ranked.`
+          : `Ranking covers the ${traded.length} of ${measured.length} readable tiers that traded in this window.`,
     ],
   };
 }

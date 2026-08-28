@@ -37,6 +37,7 @@ import { healthFactor } from './venus.js';
 import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
+import { lpTierPlan } from './lp-tiers.js';
 
 const KEY = 'telemetry:latest';
 
@@ -66,7 +67,7 @@ const PEERS = [
 // own literal copy of the list, so registering an agent meant remembering all
 // of them — and the one that gets forgotten fails silently, as a row that is
 // simply never live.
-const OWN_AGENT_IDS = [302257, 302258, 304493, 304494];
+const OWN_AGENT_IDS = [302257, 302258, 304493, 304494, 310460];
 
 const SURFACE = {
   'health-factor': [
@@ -161,6 +162,10 @@ const SELF_ACCOUNT = '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963';
 // so the break-even spacing it yields is the floor — no BNB Chain grid costs
 // less to run than this, and a buyer can read their own pool against it.
 const REFERENCE_POOL = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+// The LP probe uses CAKE rather than WBNB: it is PancakeSwap's own token,
+// four of its five fee tiers see flow in a normal window, and the fifth holds
+// money and sees none — which is the whole point being demonstrated.
+const CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';
 
 async function probeHealthFactor(lastJob) {
   const at = new Date().toISOString();
@@ -295,6 +300,54 @@ async function probeRebalance() {
   }
 }
 
+// The LP agent, probed on the pair with the most fee tiers actually trading.
+//
+// The headline here is a claim nothing else on this chain publishes, and it is
+// re-checked every run rather than asserted once: whether the PancakeSwap tier
+// holding the most capital is the one paying best. It usually is not, and on
+// the run where it is, this says so.
+async function probeLpTiers() {
+  const at = new Date().toISOString();
+  try {
+    const plan = await lpTierPlan({ token: CAKE, capitalUsd: 1000 });
+    const aligned = plan.capital_is_in_the_best_paying_tier;
+    const idle = (plan.idle_capital || []).reduce((s, x) => s + (x.capital_usd || 0), 0);
+    return {
+      ready: true,
+      checked_at: at,
+      live: {
+        reference_pair: `${plan.pair?.token?.symbol || 'CAKE'}/${plan.pair?.quote?.symbol || 'BNB'}`,
+        tiers_found: plan.tiers_found ?? (plan.tiers || []).length,
+        tiers_measured: plan.tiers_measured ?? null,
+        best_paying_tier: plan.best_paying_tier,
+        most_capital_tier: plan.most_capital_tier,
+        capital_is_in_the_best_paying_tier: aligned,
+        idle_capital_usd: Math.round(idle),
+        measured_over_minutes: plan.measured_window?.minutes ?? null,
+      },
+      // Three different outcomes that a single sentence used to flatten into
+      // one. "None traded" was printed for CAKE — a pair that trades every
+      // block — on a run where the log endpoint had refused every range. That
+      // is a statement about our measurement wearing the clothes of a
+      // statement about the market.
+      headline: plan.best_paying_tier
+        ? (aligned === false
+          ? `${plan.most_capital_tier} holds the most capital, ${plan.best_paying_tier} is paying best`
+          : `${plan.best_paying_tier} holds the most capital and is paying best`)
+        : (plan.tiers_measured === 0
+          ? 'the log endpoint refused every range — not measured this tick, which is not the same as nothing trading'
+          : `none of the ${plan.tiers_measured} readable tiers traded in this window`),
+      measures: 'what each PancakeSwap fee tier actually paid its liquidity providers per dollar of capital in it',
+      // Said here rather than only in the deliverable, because a number on a
+      // status page is the one most likely to be quoted without its window.
+      note: `Measured over ${plan.measured_window?.minutes ?? '~38'} minutes of chain and deliberately not annualised. Capital is both sides of the pool, and in V3 includes liquidity parked outside the current range, which earns nothing.`,
+      last_error: null,
+    };
+  } catch (e) {
+    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+  }
+}
+
 // Jobs we have actually delivered, counted from the stored deliverables rather
 // than from a tally we keep ourselves. A counter we increment is a counter we
 // can get wrong; the deliverables are what the on-chain digests commit to.
@@ -368,12 +421,13 @@ export async function refreshTelemetry(env) {
   // Jobs first: the health-factor probe carries the last real delivery as its
   // proof of arithmetic, so it needs the answer before it runs.
   const jobs = await ownJobs(env);
-  const [peers, hf, grid, yld, reb] = await Promise.all([
+  const [peers, hf, grid, yld, reb, lp] = await Promise.all([
     Promise.all(PEERS.map(askPeer)),
     probeHealthFactor(jobs.last.health_factor || null),
     probeGrid(),
     probeYield(),
     probeRebalance(),
+    probeLpTiers(),
   ]);
 
   // Null means the job list could not be read, and stays null. A KV failure
@@ -426,6 +480,17 @@ export async function refreshTelemetry(env) {
         last_delivery: jobs.last.rebalance_plan || null,
         ...reb,
       },
+      {
+        id: 310460,
+        name: 'Brain on BNB — PancakeSwap Fee Tier Placement',
+        category: 'rebalancing',
+        origin: 'https://agent.brainonbnb.com',
+        hireable: 'ERC-8183',
+        price: '0.10 $U',
+        jobs_delivered: delivered('lp_tier_plan'),
+        last_delivery: jobs.last.lp_tier_plan || null,
+        ...lp,
+      },
     ],
     peers,
     // How many deliverables the per-agent counts were derived from. Published
@@ -433,7 +498,7 @@ export async function refreshTelemetry(env) {
     // of the per-agent counts can never exceed the number of deliverables
     // examined. When the count was origin-wide, one job produced a sum of two.
     jobs_counted_from: { deliverables_examined: jobs.byService ? Object.values(jobs.byService).reduce((n, v) => n + v, 0) : null, truncated: jobs.truncated },
-    method: 'Our own four entries are measured by running the service against a reference input, through the same code a paid job runs. The peer entries are quotes: each agent\'s own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run.',
+    method: 'Our own five entries are measured by running the service against a reference input, through the same code a paid job runs. The peer entries are quotes: each agent\'s own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run.',
     cadence: 'every 15 minutes',
   };
 

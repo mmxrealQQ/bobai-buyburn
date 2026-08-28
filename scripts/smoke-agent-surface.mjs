@@ -222,7 +222,18 @@ section('Live telemetry');
   // agent that asks the market to be machine-readable and is not is a poster.
   const j = await fetch(`${AGENT}/status`).then((r) => r.json()).catch(() => null);
   ok('/status answers', !!j?.agents);
-  ok('all four of our agents are in it', (j?.agents || []).length === 4);
+  // Counted against the registration receipts rather than against a literal.
+  // This check said "all four" and started failing the day a fifth agent was
+  // registered — which is the right alarm for the wrong reason: what matters
+  // is that every agent we have a receipt for is here, not that there are four
+  // of them. A hardcoded count has to be edited every time it is right.
+  const { default: ownState } = await import('../data/own-agents.json', { with: { type: 'json' } });
+  const receipts = Object.values(ownState.agents || {}).map((a) => a.id);
+  const shown = new Set((j?.agents || []).map((a) => Number(a.id)));
+  const absent = receipts.filter((id) => !shown.has(id));
+  ok('every agent we hold a registration receipt for is in it',
+    absent.length === 0 && shown.size === receipts.length,
+    absent.length ? `missing: ${absent.join(', ')}` : `${shown.size} shown, ${receipts.length} registered`);
   // One per category is the bar the marketplace is judged against, and it is
   // the thing most easily lost: registering an agent and forgetting one of the
   // five places its id has to appear leaves a category silently empty.

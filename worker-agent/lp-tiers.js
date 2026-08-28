@@ -131,6 +131,11 @@ export async function lpTierPlan(input = {}) {
     pair: { token: m.token, quote: m.quote },
     capital_considered_usd: capitalUsd,
     measured_window: m.measured_window,
+    // Kept apart deliberately: how many tiers exist, and how many could be
+    // read. A run where the log endpoint refused every range must never be
+    // reported as a pair that nobody traded.
+    tiers_found: m.tiers_found ?? (m.tiers || []).length,
+    tiers_measured: m.tiers_measured ?? (m.tiers || []).filter((t) => t.measured).length,
     tiers: perTier,
     best_paying_tier: m.best_paying_tier,
     most_capital_tier: m.most_capital_tier,

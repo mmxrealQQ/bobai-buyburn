@@ -538,9 +538,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
    "lines": 1765,
-   "zipBytes": 42485,
-   "txtBytes": 119915,
-   "sha256": "4f24707771475535",
+   "zipBytes": 42452,
+   "txtBytes": 120030,
+   "sha256": "8869705bc49e2d7a",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -639,10 +639,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 3399,
-   "zipBytes": 69289,
-   "txtBytes": 190267,
-   "sha256": "6e18119aceb24724",
+   "lines": 3423,
+   "zipBytes": 69829,
+   "txtBytes": 191610,
+   "sha256": "db570c9067555f12",
    "reqs": [
     {
      "what": "Node 18+ and time",

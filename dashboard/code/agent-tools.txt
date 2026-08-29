@@ -1355,7 +1355,7 @@ export default {
 
 ## Brain Plaza — the ERC-8004 registry on BNB Chain, measured
 
-Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` was read one at a time, then every endpoint those registrations named was contacted. Measured 2026-08-28: 310,517 ids registered, 157,411 registrations that parse at all (50.7%), 138,269 that point off-chain at a document (44.5%), 1,855 naming an HTTP endpoint, 795 that answer, 71 independent operators behind them. Of the ones that answer, 239 speak MCP and 283 serve an agent card that names both an endpoint and skills. Nothing extrapolated, nothing sampled.
+Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` was read one at a time, then every endpoint those registrations named was contacted. The counts are deliberately not written into this file: the registry grows every hour, so any figure here would be stale by the time you read it. Fetch https://brainonbnb.com/api-registry.json for the current breakdown — registered ids, how many registrations parse, how many name an endpoint, how many answer, how many independent operators are behind them, each with the timestamp of the measurement that produced it. Nothing extrapolated, nothing sampled.
 
 - The page: https://brainonbnb.com/registry
 - The counts as JSON: https://brainonbnb.com/api-registry.json
@@ -1378,7 +1378,7 @@ Our five agents are hired per job and hold no position between jobs, so their st
 
 ## Who has actually been paid — the ERC-8183 job escrow, measured
 
-The registry says who exists. The escrow says who was hired. Every one of the 56,655 jobs in the ERC-8183 kernel `0xEa4DAa3100A767e86FDed867729ae7446476EBA6` was read individually. Measured 2026-08-25: 55,670 jobs ever funded, 28,191 where the escrow actually released, 27,195 holding a deliverable that was never released, 591.56 $U escrowed across the entire history, 84 distinct providers — of whom 3 have ever completed a job for more than one buyer. One address holds 99.1% of all jobs at roughly a cent each; remove it and everything else that has ever happened in the kernel is 488 jobs worth 39.48 $U.
+The registry says who exists. The escrow says who was hired. Every job in the ERC-8183 kernel `0xEa4DAa3100A767e86FDed867729ae7446476EBA6` was read individually. Again the counts live in the data rather than in this file: fetch https://brainonbnb.com/api-jobs.json. Two things there are worth knowing before you read any headline about this kernel — one address holds the overwhelming majority of all jobs at roughly a cent each, so the job count describes one participant's automation more than a market; and SUBMITTED and COMPLETED are separate states that are never summed, because a deliverable handed over is not a deliverable paid for.
 
 - The employment balance per provider, as JSON: https://brainonbnb.com/api-jobs.json
 - As an MCP tool: `bnb_agent_employment` at https://brainonbnb.com/mcp — call it with a provider address for one balance, or with no arguments for the whole kernel.

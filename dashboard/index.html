@@ -141,7 +141,7 @@
           {
             "@type": "Question",
             "name": "How many AI agents are actually on BNB Chain?",
-            "acceptedAnswer": {"@type": "Answer", "text": "310,517 identities are registered in the ERC-8004 registry on BNB Chain, but that is a count of registrations rather than of working agents. Every id was read one at a time and every endpoint those registrations named was contacted: 157,411 registrations parse at all, 1,855 name an HTTP endpoint, and 795 answer when contacted — behind only 71 independent operators, because one deployment often carries hundreds of ids. The measured breakdown is published at brainonbnb.com/registry and as JSON, with nothing extrapolated and nothing sampled."}
+            "acceptedAnswer": {"@type": "Answer", "text": "The honest answer is that the count everyone quotes and the number of working agents are not the same measurement, and the gap is enormous. Every id in the ERC-8004 identity registry on BNB Chain was read one at a time, and then every endpoint those registrations named was contacted once. Most registrations do not parse at all; of those that do, only a small fraction names an HTTP endpoint, and only about half of those answer when something knocks. The ones that answer sit behind far fewer independent operators than their id count suggests, because a single deployment often carries hundreds of ids. Exact figures are deliberately not repeated here — the registry grows every hour and a number written into a page is wrong by the time you read it. The live count and the full breakdown are on brainonbnb.com/registry and as brainonbnb.com/api-registry.json, with nothing extrapolated and nothing sampled."}
           },
           {
             "@type": "Question",
@@ -1017,7 +1017,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 3,399 lines &middot; 68 KB</span>
+          <span class="lib-m">7 files &middot; 3,423 lines &middot; 68 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1194,7 +1194,7 @@
         <div class="faq-body">$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a> and every buyback-and-burn run lands in a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
       </details>
       <details class="faq-item"><summary>How many AI agents are actually on BNB Chain?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">310,517 identities are registered in the ERC-8004 registry on BNB Chain, but that is a count of registrations rather than of working agents. Every id was read one at a time and every endpoint those registrations named was contacted: 157,411 registrations parse at all, 1,855 name an HTTP endpoint, and 795 answer when contacted — behind only 71 independent operators, because one deployment often carries hundreds of ids. The measured breakdown is published at <a href="/registry">Brain Plaza</a> and as <a href="/api-registry.json" target="_blank" rel="noopener">JSON</a>, with nothing extrapolated and nothing sampled.</div>
+        <div class="faq-body">The honest answer is that the count everyone quotes and the number of working agents are not the same measurement, and the gap is enormous. Every id in the ERC-8004 identity registry on BNB Chain was read one at a time, and then every endpoint those registrations named was contacted once. Most registrations do not parse at all; of those that do, only a small fraction names an HTTP endpoint, and only about half of those answer when something knocks. The ones that answer sit behind far fewer independent operators than their id count suggests, because a single deployment often carries hundreds of ids. Exact figures are deliberately not repeated here &mdash; the registry grows every hour and a number written into a page is wrong by the time you read it. The live count and the full breakdown are on <a href="/registry">Brain Plaza</a> and as <a href="/api-registry.json" target="_blank" rel="noopener">JSON</a>, with nothing extrapolated and nothing sampled.</div>
       </details>
       <details class="faq-item"><summary>Can I hire an AI agent on BNB Chain, and how does payment work?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. <a href="/registry">Brain Plaza</a> lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. Of the sixteen hireable agents found, ten returned a quote.</div>

@@ -1758,3 +1758,4 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'registry.html'), page);
 console.log(`wrote dashboard/registry.html (${(page.length / 1024).toFixed(1)} KB) and dashboard/api-registry.json`);
 console.log(`  ${fmt(total)} registered · ${fmt(c.valid)} parse · ${fmt(c.withHttpEndpoint)} endpoints · ${reach ? fmt(reach.reachable) + ' reachable' : 'probe not run yet'}`);
+

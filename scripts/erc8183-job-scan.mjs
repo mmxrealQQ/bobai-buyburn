@@ -295,10 +295,34 @@ if (args.includes('--report')) { report(); process.exit(0); }
 
 const state = loadState();
 if (!state.startedAt) state.startedAt = new Date().toISOString();
-if (!state.jobCounter) {
+
+// The counter is re-read on EVERY run, and this is not a detail.
+//
+// It used to be read once and stored, so a resumed scan compared its cursor
+// against a number from the first run and concluded it was finished. On 29
+// August the state file said 56,655 while four independent nodes said 56,665:
+// ten jobs the census had never seen, reported on the page as "56,655 of 56,655
+// read" — a complete census by its own account, blind by construction. A kernel
+// that only grows makes that failure permanent and silent, and it is the exact
+// shape this project refuses everywhere else: unread and complete must never
+// render the same.
+//
+// The stored value survives only as a fallback for an unreadable chain, and
+// then it says so rather than passing itself off as current.
+{
   process.stdout.write('reading jobCounter()… ');
-  state.jobCounter = await readJobCounter();
-  console.log(fmt(state.jobCounter));
+  let live = null;
+  try { live = await readJobCounter(); } catch { /* handled below */ }
+  if (live == null) {
+    if (!state.jobCounter) { console.error('unreadable, and no earlier value to fall back on.'); process.exit(1); }
+    console.log(`unreadable — carrying on with the ${fmt(state.jobCounter)} from ${state.updatedAt || 'an earlier run'}, which may be behind.`);
+    state.counterIsStale = true;
+  } else {
+    const grew = state.jobCounter && live > state.jobCounter ? live - state.jobCounter : 0;
+    console.log(`${fmt(live)}${grew ? ` (+${fmt(grew)} since the last run)` : ''}`);
+    state.jobCounter = live;
+    state.counterIsStale = false;
+  }
   saveState(state);
 }
 

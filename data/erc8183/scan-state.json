@@ -1,8 +1,10 @@
 {
-  "cursor": 56656,
-  "jobCounter": 56655,
+  "cursor": 56666,
+  "jobCounter": 56665,
   "unread": 0,
   "startedAt": "2026-08-25T09:13:48.542Z",
-  "updatedAt": "2026-08-25T09:39:25.760Z",
-  "finishedAt": "2026-08-25T09:39:25.760Z"
+  "updatedAt": "2026-08-29T09:06:15.437Z",
+  "finishedAt": "2026-08-29T09:06:15.438Z",
+  "absent": 0,
+  "counterIsStale": false
 }

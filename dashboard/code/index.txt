@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-service.txt
 The Census — reading a whole registry
 -------------------------------------
 Every agent id on BNB Chain, and every job they were ever paid for.
-7 files, 3399 lines
+7 files, 3423 lines
 needs:
   - Node 18+ and time
       ours: about three hours for the registry, twenty minutes for the jobs

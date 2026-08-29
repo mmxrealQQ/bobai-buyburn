@@ -8,35 +8,35 @@
     "decimals": 18
   },
   "chain": "eip155:56",
-  "measured_at": "2026-08-25T09:39:25.760Z",
+  "measured_at": "2026-08-29T09:06:15.438Z",
   "jobs": {
-    "job_counter": 56655,
-    "read": 56655,
+    "job_counter": 56665,
+    "read": 56665,
     "unread_after_retries": 0,
     "by_status": {
-      "OPEN": 985,
+      "OPEN": 987,
       "COMPLETED": 28191,
-      "SUBMITTED": 27195,
-      "FUNDED": 274,
+      "SUBMITTED": 27197,
+      "FUNDED": 280,
       "EXPIRED": 8,
       "REJECTED": 2
     },
-    "ever_funded": 55670,
+    "ever_funded": 55678,
     "escrow_released": 28191,
-    "deliverable_never_released": 27195,
-    "never_funded": 985,
-    "total_escrowed_u": 591.561029,
-    "distinct_buyers": 32789,
-    "distinct_providers": 84,
+    "deliverable_never_released": 27197,
+    "never_funded": 987,
+    "total_escrowed_u": 593.171029,
+    "distinct_buyers": 32791,
+    "distinct_providers": 90,
     "providers_paid_by_more_than_one_buyer": 3,
-    "top_provider_share": 0.9914,
-    "top5_share": 0.9959,
+    "top_provider_share": 0.9912,
+    "top5_share": 0.9957,
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
-      "jobs": 488,
+      "jobs": 498,
       "completed": 15,
-      "escrowed_u": 39.481029,
-      "providers": 83
+      "escrowed_u": 41.091029,
+      "providers": 89
     }
   },
   "providers": [
@@ -694,6 +694,29 @@
       "last_job_id": 56573
     },
     {
+      "address": "0xe728a6ee2cbf57c3c7b070de0398b7dc0389129b",
+      "agents": [
+        {
+          "id": 268954,
+          "name": "stockanalyst-agent"
+        }
+      ],
+      "jobs": 3,
+      "funded": 3,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 3,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 3,
+      "escrowed_u": 2.21,
+      "median_budget_u": 1,
+      "delivery_rate": 0,
+      "first_job_id": 56592,
+      "last_job_id": 56659
+    },
+    {
       "address": "0xb8143345687aa5a527f4f9568d508ebbc612d06d",
       "agents": [
         {
@@ -756,6 +779,24 @@
       "delivery_rate": 0,
       "first_job_id": 56647,
       "last_job_id": 56654
+    },
+    {
+      "address": "0xa2a2012e52fd075c0f3146e37e833e7294ee52b5",
+      "agents": [],
+      "jobs": 3,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 2,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.01,
+      "median_budget_u": 0.01,
+      "delivery_rate": 0,
+      "first_job_id": 56660,
+      "last_job_id": 56662
     },
     {
       "address": "0xde7fea6bc372eb7c737a39d76d19c2c84552f7ee",
@@ -1027,27 +1068,22 @@
       "last_job_id": 56578
     },
     {
-      "address": "0xe728a6ee2cbf57c3c7b070de0398b7dc0389129b",
-      "agents": [
-        {
-          "id": 268954,
-          "name": "stockanalyst-agent"
-        }
-      ],
+      "address": "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963",
+      "agents": [],
       "jobs": 2,
       "funded": 2,
       "completed": 0,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 2,
+      "submitted_not_released": 1,
+      "awaiting_delivery": 1,
       "expired": 0,
       "rejected": 0,
       "never_funded": 0,
-      "distinct_buyers": 2,
-      "escrowed_u": 1.21,
-      "median_budget_u": 0.605,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.2,
+      "median_budget_u": 0.1,
       "delivery_rate": 0,
-      "first_job_id": 56592,
-      "last_job_id": 56593
+      "first_job_id": 56656,
+      "last_job_id": 56657
     },
     {
       "address": "0xdfa6c5ca67311d2e863e72c036a507f2f609df76",
@@ -1776,6 +1812,91 @@
       "delivery_rate": 0,
       "first_job_id": 56643,
       "last_job_id": 56643
+    },
+    {
+      "address": "0x044fe77ec25087b22643724f10862aa8ff46644b",
+      "agents": [],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56658,
+      "last_job_id": 56658
+    },
+    {
+      "address": "0xa891e1743c5c8f00b7e216bc026c37914ddcd9c3",
+      "agents": [],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56663,
+      "last_job_id": 56663
+    },
+    {
+      "address": "0xbbfd4c1e74bbc25047c9e6dfb9136f5a7055d1cc",
+      "agents": [],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56664,
+      "last_job_id": 56664
+    },
+    {
+      "address": "0x4e21f74143660ee576f4d2ac26bd30729a849f55",
+      "agents": [
+        {
+          "id": 256933,
+          "name": "AIDA — AI Medical Receptionist"
+        },
+        {
+          "id": 258641,
+          "name": "Sentinels Audit"
+        },
+        {
+          "id": 258642,
+          "name": "Sentinels Prediction"
+        }
+      ],
+      "jobs": 1,
+      "funded": 1,
+      "completed": 0,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 1,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 0,
+      "distinct_buyers": 1,
+      "escrowed_u": 0.1,
+      "median_budget_u": 0.1,
+      "delivery_rate": 0,
+      "first_job_id": 56665,
+      "last_job_id": 56665
     }
   ],
   "method": {

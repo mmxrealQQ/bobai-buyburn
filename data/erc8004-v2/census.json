@@ -1,17 +1,17 @@
 {
   "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "BNB Smart Chain (eip155:56)",
-  "measured_at": "2026-08-28T06:37:29.179Z",
+  "measured_at": "2026-08-29T09:33:43.611Z",
   "method": "Every agent id in the identity registry read via tokenURI, then every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401/403/404 — only a failed connection counts as dead.",
-  "registered_ids": 310517,
-  "ids_scanned": 310517,
+  "registered_ids": 316472,
+  "ids_scanned": 316472,
   "registrations": {
     "unread": 0,
-    "empty": 10241,
+    "empty": 10320,
     "unparsable": 4596,
-    "offchain": 138269,
-    "valid": 157411,
-    "active": 154979,
+    "offchain": 143982,
+    "valid": 157574,
+    "active": 155142,
     "withServices": 2361,
     "withHttpEndpoint": 1855,
     "plausibleEndpoint": 1402,
@@ -22,12 +22,11 @@
   "endpoints": {
     "claim_an_endpoint": 1855,
     "probed": 1855,
-    "reachable": 795,
-    "dead": 1060,
-    "answering_mcp": 239,
-    "serving_an_agent_card": 297,
-    "a2a_callable": 283,
-    "a2a_confirmed_by_probe": 2
+    "reachable": 796,
+    "dead": 1059,
+    "answering_mcp": 236,
+    "serving_an_agent_card": 298,
+    "a2a_callable": 282
   },
   "caveat": "Reachability is a snapshot. An endpoint down at the moment of probing is counted as dead, and one that answers may still do nothing useful."
 }

@@ -186,20 +186,20 @@
     <article class="task">
       <div class="t-h"><span class="t-n">Task 3</span><span class="t-c">agent discovery / hiring</span></div>
       <h3>Find me an agent on BNB Smart Chain that monitors a Venus health factor, and tell me what it charges.</h3>
-      <p class="t-w">The identity registry is 310,517 ids with no index and no search. Nothing about it is queryable by what an agent does.</p>
+      <p class="t-w">The identity registry holds hundreds of thousands of ids with no index and no search, and it grows every hour. Nothing about it is queryable by what an agent does.</p>
 
       <div class="cmp">
         <div class="col good">
           <div class="col-h">Asking the agent</div>
-          <div class="big">211 ms</div>
+          <div class="big">387 ms</div>
           <div class="sub">1 request</div>
           <div class="verdict">Answered the question</div>
           
         </div>
         <div class="col bad">
           <div class="col-h">Doing it by hand</div>
-          <div class="big">9,539 ms</div>
-          <div class="sub">150 requests</div>
+          <div class="big">11,559 ms</div>
+          <div class="sub">187 requests</div>
           <div class="verdict">Did not answer</div>
           <p class="miss">no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.05% of it.</p>
         </div>
@@ -219,7 +219,7 @@
     </ul>
 
     <div class="foot">
-      Raw measurement: <a href="/api-advantage.json">/api-advantage.json</a> &middot; measured 2026-08-29T08:56:08.600Z against <code>https://bsc-dataseed.binance.org</code> on BNB Smart Chain (eip155:56).<br>
+      Raw measurement: <a href="/api-advantage.json">/api-advantage.json</a> &middot; measured 2026-08-29T09:26:17.164Z against <code>https://bsc-dataseed.binance.org</code> on BNB Smart Chain (eip155:56).<br>
       The agent side is <code>/api/fee-tiers</code>, <code>/api/pool-scan</code> and <code>agent.brainonbnb.com/find</code> — the same public endpoints documented on <a href="/registry">Brain Plaza</a>. The hand-done side is <code>scripts/advantage-report.mjs</code>, published with the rest of the source at <a href="/source">/source</a>.
     </div>
   </section>

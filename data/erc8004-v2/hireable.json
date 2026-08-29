@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-08-28T06:37:29.179Z",
+  "measured_at": "2026-08-29T09:33:43.611Z",
   "agents": [
     {
       "id": 304494,
@@ -22,12 +22,6 @@
     {
       "id": 33813,
       "label": "mandaterebalance-agent",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
       "category": "rebalancing",
       "ours": false
     },
@@ -68,12 +62,6 @@
       "ours": false
     },
     {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
       "id": 302257,
       "label": "Brain on BNB — Venus Health Factor Monitor",
       "category": "health-factor",
@@ -82,12 +70,6 @@
     {
       "id": 259573,
       "label": "HealthGuard",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
-      "id": 266933,
-      "label": "BNB Lending Guardian",
       "category": "health-factor",
       "ours": false
     },

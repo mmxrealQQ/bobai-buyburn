@@ -335,8 +335,33 @@ async function task2Manual() {
   };
 }
 
+// How many ids the registry holds right now. ownerOf() answers "does this id
+// exist" directly; doubling past the end and then bisecting costs about twenty
+// calls and never has to trust a number somebody typed.
+async function highestRegistryId(m) {
+  const OWNER_OF = '0x6352211e';
+  const exists = async (id) => {
+    try {
+      const r = await call(m, ERC8004_REGISTRY, OWNER_OF + pad('0x' + id.toString(16)));
+      return Boolean(r && r !== '0x' && BigInt(r) !== 0n);
+    } catch { return false; }
+  };
+  let hi = 1;
+  while (await exists(hi * 2) && hi < 1 << 24) hi *= 2;
+  let lo = hi;
+  hi *= 2;
+  while (lo + 1 < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (await exists(mid)) lo = mid; else hi = mid;
+  }
+  return lo;
+}
+
 // ---- task 3: find someone on this chain who can do the job -----------------
-// The marketplace task. The registry holds 310,517 ids and no index.
+// The marketplace task. The registry has no index, and its size is read from
+// the chain rather than written here: a hardcoded total is a measurement that
+// silently ages, and this file exists to argue against exactly that. It was
+// 310,517 when this task was first written and 316,472 six days later.
 async function task3Agent() {
   const m = meter();
   const found = await getJson(m, `${AGENT}/find?q=${encodeURIComponent('monitor a Venus health factor and warn me before liquidation')}&limit=5`);
@@ -362,7 +387,10 @@ async function task3Manual() {
   let read = 0, withDocument = 0;
   // Sampled from the newest ids, which are the most likely to be live — a
   // person starting at id 1 would fare worse, so this is the generous version.
-  for (let id = 310517; id > 310517 - SAMPLE; id--) {
+  // Highest minted id, asked of the registry itself. ownerOf() reverts for an
+  // id that was never minted, so a plain doubling-then-bisect finds the top.
+  const highest = await highestRegistryId(m);
+  for (let id = highest; id > highest - SAMPLE; id--) {
     try {
       const uri = await call(m, ERC8004_REGISTRY, SEL.tokenURI + pad('0x' + id.toString(16)));
       read++;
@@ -371,13 +399,14 @@ async function task3Manual() {
   }
   const elapsed = Date.now() - started;
   const perId = elapsed / Math.max(read, 1);
-  const total = 310517;
+  const total = highest;
 
   return {
     ...m.done(),
     answer: {
       answered: false,
       could_not_answer: 'no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.05% of it.',
+      registry_ids_at_measurement: total,
       sampled_ids: read,
       ids_with_a_document: withDocument,
       ms_per_id_measured: Math.round(perId),
@@ -449,7 +478,7 @@ const TASKS = SELF_TEST ? [] : [
     n: 3,
     category: 'agent discovery / hiring',
     question: 'Find me an agent on BNB Smart Chain that monitors a Venus health factor, and tell me what it charges.',
-    why_it_is_hard: 'The identity registry is 310,517 ids with no index and no search. Nothing about it is queryable by what an agent does.',
+    why_it_is_hard: 'The identity registry holds hundreds of thousands of ids with no index and no search, and it grows every hour. Nothing about it is queryable by what an agent does.',
     agent: task3Agent, manual: task3Manual,
   },
 ];

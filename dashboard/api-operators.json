@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-08-28T06:37:29.179Z",
-  "registered_ids": 310517,
-  "reachable_ids": 795,
-  "independent_operators": 71,
-  "operators_speaking_a_protocol": 25,
+  "measured_at": "2026-08-29T09:33:43.611Z",
+  "registered_ids": 316472,
+  "reachable_ids": 796,
+  "independent_operators": 72,
+  "operators_speaking_a_protocol": 26,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -77,16 +77,16 @@
           "description": "Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt."
         },
         {
-          "name": "bobai_trade_info",
-          "description": "How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTran"
+          "name": "bobai_dex_info",
+          "description": "The DEX parameters a $BOBAI trade needs, read from the chain: PancakeSwap V2 router, pair, both swap paths, and the fee-on-transfer settings (3% tax, minimum 15"
         },
         {
           "name": "bobai_guide",
           "description": "START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know "
         },
         {
-          "name": "bobai_how_to_buy",
-          "description": "Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot."
+          "name": "bobai_purchase_guide",
+          "description": "Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the 15% slippage floor and the fee-on-transfer method na"
         },
         {
           "name": "bobai_tokenomics",
@@ -524,6 +524,110 @@
       ]
     },
     {
+      "operator": "singularry.org",
+      "instances": 239,
+      "distinct_capabilities": 3,
+      "ids": [
+        116170,
+        116171,
+        116172,
+        116173,
+        116174,
+        116175,
+        116176,
+        116177,
+        116179,
+        116180,
+        116182,
+        116216,
+        116231,
+        116972,
+        117439,
+        117472,
+        117823,
+        118305,
+        118416,
+        118457,
+        118501,
+        119713,
+        119976,
+        120028,
+        120090,
+        120154,
+        120184,
+        120189,
+        120305,
+        121885,
+        123759,
+        123764,
+        123767,
+        123941,
+        124183,
+        124208,
+        124242,
+        124482,
+        124595,
+        124647,
+        124859,
+        125033,
+        125497,
+        125675,
+        126061,
+        126101,
+        126288,
+        126392,
+        126473,
+        126708
+      ],
+      "name": "Moments",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://app.singularry.org/api/a2a",
+        "https://app.singularry.org/agents/11/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "Hierarchical Risk Parity",
+        "Venus Fixed Vault"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
       "operator": "bnb-guardian.172-104-171-139.nip.io",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -534,8 +638,7 @@
       "description": "Monitors Venus lending positions and protects against liquidation via automatic repayment.",
       "image": null,
       "speaks": [
-        "mcp",
-        "a2a"
+        "mcp"
       ],
       "endpoints": [
         "https://bnb-guardian.172-104-171-139.nip.io/erc8183",
@@ -617,8 +720,7 @@
       "description": "Scans BSC lending and liquidity protocols, calculates risk-adjusted yield, and migrates capital when the improvement is economically meaningful.",
       "image": null,
       "speaks": [
-        "mcp",
-        "a2a"
+        "mcp"
       ],
       "endpoints": [
         "https://bnb-yield.172-104-171-139.nip.io/erc8183",
@@ -676,110 +778,6 @@
         "notify_funded"
       ],
       "agent_card": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
-      "trust_models": [
-        "reputation"
-      ]
-    },
-    {
-      "operator": "singularry.org",
-      "instances": 239,
-      "distinct_capabilities": 3,
-      "ids": [
-        116170,
-        116171,
-        116172,
-        116173,
-        116174,
-        116175,
-        116176,
-        116177,
-        116179,
-        116180,
-        116182,
-        116216,
-        116231,
-        116972,
-        117439,
-        117472,
-        117823,
-        118416,
-        118457,
-        118501,
-        119713,
-        119976,
-        120028,
-        120090,
-        120154,
-        120184,
-        120189,
-        120305,
-        121885,
-        123759,
-        123764,
-        123765,
-        123767,
-        123941,
-        124183,
-        124208,
-        124242,
-        124482,
-        124595,
-        124647,
-        124859,
-        125033,
-        125497,
-        125675,
-        126101,
-        126708,
-        126745,
-        126886,
-        127144,
-        127218
-      ],
-      "name": "Moments",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://app.singularry.org/api/a2a",
-        "https://app.singularry.org/agents/11/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "Hierarchical Risk Parity",
-        "Venus Fixed Vault"
-      ],
       "trust_models": [
         "reputation"
       ]
@@ -1089,8 +1087,7 @@
       "skills": [
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
-      ],
-      "agent_card": "https://cm-3c862a61841d384e-site-36e24663f69d.bubbleupdappos.workers.dev/.well-known/agent-card.json"
+      ]
     },
     {
       "operator": "chainhelix.io",
@@ -1110,6 +1107,27 @@
       ],
       "endpoints": [
         "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "explainer-agent.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        270213
+      ],
+      "name": "TermiX Advantage Report Explainer",
+      "description": "ERC-8183 seller agent (explainmainnet1a2b3c-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://explainer-agent.onrender.com/.well-known/agent-card.json"
       ],
       "skills": [
         "Negotiate an ERC-8183 job",

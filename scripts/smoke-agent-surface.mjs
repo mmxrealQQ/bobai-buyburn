@@ -305,22 +305,36 @@ section('The router speaks both protocols');
 
 section('The written numbers match the measured ones');
 {
-  // llms.txt is what other people's agents read, and it carried the figures
-  // from a scan four days old for four days: 285,447 registered where the
-  // registry had reached 302,828, and 784 answering where the probe now says
-  // 788. Nothing broke, nothing looked wrong, and every agent that read the
-  // file got a stale answer. Prose that quotes a measurement has to be
-  // checked against the measurement.
+  // llms.txt is what other people's agents read, and it used to carry the census
+  // figures in prose. They went stale — 285,447 registered where the registry
+  // had reached 302,828 — so this section checked them against the measurement
+  // and demanded they match.
+  //
+  // On 29 August the approach changed, because keeping a copy correct is a
+  // weaker guarantee than not keeping one. The counts are gone from llms.txt;
+  // it points an agent at /api-registry.json, which is the measurement rather
+  // than a transcription of it. So the check inverts: the failure to catch is
+  // no longer a stale number, it is a number reappearing at all.
+  //
+  // Pinned in both directions — it must accept a file that names no counts and
+  // points at the JSON, and it must refuse one that hardcodes the current
+  // census even while that census is correct. A number that is right today is
+  // exactly how the last one started.
   const [txt, api] = await Promise.all([
     fetch(`${SITE}/llms.txt`).then((r) => r.text()).catch(() => ''),
     fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null),
   ]);
   const n = (x) => Number(x).toLocaleString('en-US');
-  ok('llms.txt quotes the current census',
-    !!api && txt.includes(n(api.registered_ids)) && txt.includes(n(api.reachability.reachable)),
-    api ? `expected ${n(api.registered_ids)} registered and ${n(api.reachability.reachable)} answering` : 'api-registry unreadable');
-  ok('and the current protocol counts',
-    !!api && txt.includes(n(api.reachability.answering_mcp)) && txt.includes(n(api.reachability.a2a_callable)));
+  const censusFigures = api ? [api.registered_ids, api.registrations.parses, api.reachability.reachable,
+    api.reachability.answering_mcp, api.reachability.a2a_callable] : [];
+  const quoted = censusFigures.filter((v) => txt.includes(n(v)));
+  ok('llms.txt names no census count of its own',
+    !!api && quoted.length === 0,
+    quoted.length ? `it hardcodes ${quoted.map(n).join(', ')} — correct today, stale tomorrow; point at the JSON instead`
+      : 'no census figure is transcribed into the file');
+  ok('and sends an agent to the measurement itself',
+    txt.includes('/api-registry.json') && txt.includes('/api-jobs.json'),
+    'an agent reading this file has no way to reach the current numbers');
   // The census figures were checked here and the tool count was not, so it
   // drifted the same way and nobody noticed: llms.txt advertised 17 read-only
   // tools while the endpoint served 18. An agent that reads the file to decide
@@ -454,9 +468,13 @@ section('The marketplace, from the front door');
   ok('the homepage card promises the measured number, not the button count',
     /id="mkt-hire"[^<]*<\/b><span>quote back when asked/.test(home),
     'the card still advertises hireable buttons rather than sellers that quote');
-  ok('llms.txt carries the same finding',
-    (await getText(`${SITE}/llms.txt`)).body.includes(`${reg?.quoted_when_asked} of ${reg?.hireable_here} returned a quote`),
-    'llms.txt was not pulled along after the publish');
+  // Same reasoning as the census counts above: the quote tally is measured
+  // afresh every time hire-confirm runs, so llms.txt must not carry a copy of
+  // it. What it owes an agent is the route to the live figure.
+  const llmsTxt = (await getText(`${SITE}/llms.txt`)).body;
+  ok('llms.txt does not carry a copy of the quote tally',
+    !llmsTxt.includes(`${reg?.quoted_when_asked} of ${reg?.hireable_here} returned a quote`),
+    'the tally is transcribed there and will be wrong after the next hire-confirm run');
 
   // The fleet block, and its arithmetic. "45 of the 46 name the same URL" is
   // the point of the block; "4 of the 2" was a real line it printed before the

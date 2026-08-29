@@ -1,7 +1,7 @@
 {
   "what_this_is": "Three real tasks on BNB Smart Chain, each done twice: once by asking an agent, once by hand. Wall-clock and request counts, measured on one machine in one run.",
   "how_to_read_it": "The manual path is a script making the same calls a person would have to make — no page loads, no reading, no typing. Every ratio here is therefore a floor, not an estimate of what a person costs. Where a path could not answer at all, that is recorded as an unanswered question and never as a fast one.",
-  "measured_at": "2026-08-29T08:56:08.600Z",
+  "measured_at": "2026-08-29T09:26:17.164Z",
   "chain": "BNB Smart Chain (eip155:56)",
   "rpc": "https://bsc-dataseed.binance.org",
   "tasks": [
@@ -169,9 +169,9 @@
       "task": 3,
       "category": "agent discovery / hiring",
       "question": "Find me an agent on BNB Smart Chain that monitors a Venus health factor, and tell me what it charges.",
-      "why_it_is_hard": "The identity registry is 310,517 ids with no index and no search. Nothing about it is queryable by what an agent does.",
+      "why_it_is_hard": "The identity registry holds hundreds of thousands of ids with no index and no search, and it grows every hour. Nothing about it is queryable by what an agent does.",
       "agent": {
-        "ms": 211,
+        "ms": 387,
         "requests": 1,
         "answer": {
           "answered": true,
@@ -198,15 +198,16 @@
         "error": null
       },
       "manual": {
-        "ms": 9539,
-        "requests": 150,
+        "ms": 11559,
+        "requests": 187,
         "answer": {
           "answered": false,
           "could_not_answer": "no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.05% of it.",
+          "registry_ids_at_measurement": 316507,
           "sampled_ids": 150,
-          "ids_with_a_document": 146,
-          "ms_per_id_measured": 64,
-          "extrapolated_hours_to_read_the_registry": 5.5,
+          "ids_with_a_document": 150,
+          "ms_per_id_measured": 77,
+          "extrapolated_hours_to_read_the_registry": 6.8,
           "note": "Reading every id is only step one: the documents then have to be fetched, parsed and probed before any of them can be called, and 1,060 of the endpoints that claim to exist do not answer."
         },
         "error": null
@@ -224,5 +225,6 @@
     "The manual path is a lower bound on human effort and is described that way everywhere it appears.",
     "Task 3 extrapolates from a measured per-id rate over a 150-id sample. The extrapolation is labelled; the measurement is real.",
     "Speed is the weakest of the three columns. Two of the three tasks produce a different answer by hand, not merely a later one."
-  ]
+  ],
+  "note_partial_run": "Task 3 was re-measured on its own; the other tasks carry their earlier measurement."
 }

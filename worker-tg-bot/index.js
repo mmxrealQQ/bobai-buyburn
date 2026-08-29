@@ -2270,6 +2270,28 @@ export default {
     // which acts as the visual "this is an update" header) followed by the announcement.
     // Used by tg-update.js to broadcast workshop updates without exposing BOT_TOKEN locally.
     const url = new URL(request.url);
+
+    // === /health — liveness, readable by anyone, secrets by nobody ===
+    // Reports the last cron tick (written every tenth minute by scheduled()),
+    // its age, and whether the bot is configured to post at all. A check that
+    // only proved the worker answers HTTP would be worthless: a worker whose
+    // cron has stopped still answers HTTP perfectly.
+    if (url.pathname === '/health' && request.method === 'GET') {
+      const last = await env.KV.get('last_cron');
+      const ageSeconds = last ? Math.round((Date.now() - new Date(last).getTime()) / 1000) : null;
+      return new Response(JSON.stringify({
+        ok: true,
+        worker: 'bobai-tg-bot',
+        last_cron: last || null,
+        age_seconds: ageSeconds,
+        // A heartbeat older than a quarter hour means the every-minute cron has
+        // missed its ten-minute write, which is a stopped worker, not a lull.
+        cron_alive: ageSeconds !== null && ageSeconds < 900,
+        channel_configured: Boolean(env.BOT_TOKEN && TG_CHAT_ID),
+        alerts: ['buys', 'burns'],
+      }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+
     if (url.pathname === '/broadcast' && request.method === 'POST') {
       const got = request.headers.get('x-broadcast-secret') || '';
       const want = env.BROADCAST_SECRET || '';
@@ -2844,6 +2866,22 @@ export default {
     TG_BOT_TOKEN = env.BOT_TOKEN;
     TG_INTERNAL_CHAT_ID = env.TG_INTERNAL_CHAT_ID || '';
     WHALE_ENV = env;
+
+    // === HEARTBEAT ===
+    // This bot was in no health check at all: it posts buys and burns into the
+    // channel, and a stopped cron looks exactly like a quiet market. Every
+    // other bot proves liveness through logs.brainonbnb.com/health; this one
+    // had nothing to prove it with, so it writes its own timestamp and serves
+    // it on GET /health below.
+    //
+    // Every tenth minute, not every minute. The cron runs 1,440 times a day and
+    // a KV write per tick would spend the daily write budget on a heartbeat
+    // nobody reads that often — 144 is plenty to tell a running worker from a
+    // stopped one, and the freshness check downstream allows for it.
+    if (new Date().getMinutes() % 10 === 0) {
+      try { await env.KV.put('last_cron', new Date().toISOString()); }
+      catch (e) { console.error('[HEARTBEAT ERROR]', e.message || e); }
+    }
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===
     await ensureCommandsRegistered(env);

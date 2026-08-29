@@ -18,6 +18,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { CENSUS_DIR } from './lib/census-dir.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const arg = (name, fallback) => {
@@ -25,7 +26,7 @@ const arg = (name, fallback) => {
   return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 };
 
-const DIR = path.join(ROOT, 'data', arg('dir', 'erc8004'));
+const DIR = path.join(ROOT, 'data', arg('dir', CENSUS_DIR));
 const ORIGIN = arg('origin', 'https://agent.brainonbnb.com');
 
 const secret = (() => {

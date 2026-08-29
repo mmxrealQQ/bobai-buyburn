@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 22 files, 6530 lines.
+# one fetch. 22 files, 6524 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2791,6 +2791,7 @@ import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
+import { registrations } from '../shared/agent-registrations.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -3406,18 +3407,11 @@ export default {
         description: 'The hireable agents run by Brain On BNB AI on BNB Smart Chain. Negotiation and delivery run over A2A at https://agent.brainonbnb.com/a2a; payment runs through the ERC-8183 escrow kernel.',
         image: 'https://brainonbnb.com/logo-200x200.png',
         active: true,
-        // Kept in step with the same list in dashboard/_worker.js. A newly
-        // registered agent that is missing from either copy is unattributable
-        // on the host it names, which is the failure that left #49467
-        // unverified for months.
-        registrations: [
-          { agentId: 302257, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 302258, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 304493, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 304494, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 310460, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-        ],
+        // The same list dashboard/_worker.js serves on the other origin, from
+        // shared/agent-registrations.js. A newly registered agent missing from
+        // the proof is unattributable on the host it names, which is the
+        // failure that left #49467 unverified for months.
+        registrations: registrations(),
         supportedTrust: ['reputation'],
         // Where the live state is. The card is what an indexer reads, so an
         // endpoint that is only mentioned on the A2A GET is discoverable by
@@ -5158,6 +5152,7 @@ import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
+import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 
 const KEY = 'telemetry:latest';
 
@@ -5181,13 +5176,12 @@ const PEERS = [
 // unit-fixing, no filling in of a null. A null in their document means they do
 // not currently know, and rewriting that as a zero would be inventing a
 // measurement.
-// The agents we run ourselves, in one place. These ids appear in the domain
-// proof on two origins, in the telemetry document, in the registry page's
-// live-line mapping and in two check scripts. The first four of those had their
-// own literal copy of the list, so registering an agent meant remembering all
-// of them — and the one that gets forgotten fails silently, as a row that is
-// simply never live.
-const OWN_AGENT_IDS = [302257, 302258, 304493, 304494, 310460];
+// The agents we run ourselves come from shared/agent-registrations.js
+// (imported at the top), which the domain proof on both origins is built from
+// as well. Registering an agent used to mean remembering four separate literal
+// copies, and the one that gets forgotten fails silently, as a row that is
+// simply never live. Re-exported below because this module is what the check
+// scripts already import.
 
 const SURFACE = {
   'health-factor': [

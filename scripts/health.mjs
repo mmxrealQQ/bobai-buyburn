@@ -17,9 +17,17 @@
 //   Liveness comes from the heartbeat; the burn log only says how busy it was.
 //
 // Usage: node scripts/health.mjs
+import { createPublicClient, http } from 'viem';
+import { bsc } from 'viem/chains';
+import { WALLETS, SOURCE, assess, bnb } from './lib/gas-wallets.mjs';
+
 const SITE = 'https://brainonbnb.com';
 const AGENT = 'https://agent.brainonbnb.com';
 const LOGS = 'https://logs.brainonbnb.com';
+// The Telegram bot has no custom domain; workers.dev is its only public origin.
+const TG_BOT = 'https://bobai-tg-bot.bobbuildonbnb.workers.dev';
+// Explicit, so the gas section reads the same node the bots spend against.
+const RPC = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org';
 
 const UA = { 'user-agent': 'bobai-smoke-test' }; // not counted in public stats
 const _fetch = globalThis.fetch;
@@ -54,6 +62,24 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
     const d = j.devBuyback ? ageHours(j.devBuyback) : null;
     ok('Bots', 'buyback bot ran recently', b !== null && b < 1, b === null ? 'no timestamp' : `last run ${fmtAge(b)} ago`);
     ok('Bots', 'dev-buyback bot ran recently', d !== null && d < 3, d === null ? 'no timestamp' : `last run ${fmtAge(d)} ago`);
+  }
+}
+{
+  // The Telegram bot was in no check at all until 29 August. It is the surface
+  // the channel sees — buy alerts, burn alerts, every command — and a stopped
+  // cron is indistinguishable from a quiet market from the outside. So it
+  // publishes its own heartbeat, written every tenth minute by its cron, and
+  // this reads the age of it rather than the fact that the worker answers:
+  // a worker whose cron has died still serves HTTP perfectly.
+  const h = await getJson(`${TG_BOT}/health`);
+  const j = h.json;
+  ok('Bots', 'telegram bot answers', !!j?.ok, h.error || (h.html ? 'HTML fallback' : ''));
+  if (j) {
+    const age = typeof j.age_seconds === 'number' ? j.age_seconds : null;
+    ok('Bots', 'telegram bot cron alive', j.cron_alive === true,
+      age === null ? 'no heartbeat recorded yet' : `last tick ${fmtAge(age / 3600)} ago`);
+    ok('Bots', 'telegram bot can post', j.channel_configured === true,
+      j.channel_configured ? 'token + chat id set' : 'BOT_TOKEN or chat id missing — alerts would fail silently');
   }
 }
 {
@@ -223,6 +249,29 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
     && typeof j.json?.jobs?.deliverable_never_released === 'number'
     && j.json.jobs.escrow_released + j.json.jobs.deliverable_never_released <= j.json.jobs.read,
     j.json ? `${j.json.jobs?.escrow_released?.toLocaleString('en-US')} released, ${j.json.jobs?.deliverable_never_released?.toLocaleString('en-US')} not` : '');
+}
+
+// ---- can the bots still pay ------------------------------------------------
+// Everything above proves a service answers. This proves it can still act.
+// A wallet at zero throws nothing, logs nothing and answers every endpoint
+// normally — it just stops sending transactions, which from the outside is a
+// quiet market rather than a stopped bot. Balances are public, so this needs no
+// key; scripts/gas-check.mjs is the same measurement on its own with the
+// per-wallet detail and the refill plan.
+{
+  const client = createPublicClient({ chain: bsc, transport: http(RPC) });
+  for (const w of WALLETS) {
+    let balance = null;
+    try { balance = await client.getBalance({ address: w.address }); } catch { balance = null; }
+    const a = assess(w, balance);
+    ok('Gas', `${w.name} can pay`, a.state === 'ok',
+      a.state === 'unknown' ? 'balance unreadable — not the same as empty'
+        : `${bnb(balance)}, ${a.cycles} cycle(s) of ${w.does}${a.state === 'low' ? ` — below floor, short ${bnb(a.short)}` : ''}`);
+  }
+  let src = null;
+  try { src = await client.getBalance({ address: SOURCE.address }); } catch { src = null; }
+  ok('Gas', 'the refill source holds its reserve', src !== null && src >= SOURCE.reserve,
+    src === null ? 'balance unreadable' : `${bnb(src)} against a ${bnb(SOURCE.reserve)} reserve — this is the wallet to top up by hand`);
 }
 
 // ---- the site -------------------------------------------------------------

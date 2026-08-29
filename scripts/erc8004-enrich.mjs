@@ -11,12 +11,20 @@
 // calls, a couple of minutes, and it can run while the main scan is still
 // going — the two touch different files.
 //
-// Usage: node scripts/erc8004-enrich.mjs
+// This step had no --dir flag while every other census script had one, so it
+// could only ever write into the first census. The second census therefore
+// never got a registrations.json at all, and the publisher — which reads that
+// file for descriptions and images — silently fell back to an empty object:
+// 795 published agents, 0 images. A missing enrichment looks exactly like an
+// agent that declared nothing, which is why it went unnoticed for three days.
+//
+// Usage: node scripts/erc8004-enrich.mjs        (add --dir for a rescan)
 import fs from 'node:fs';
 import path from 'node:path';
+import { censusDirArg } from './lib/census-dir.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', 'erc8004');
+const DIR = path.join(ROOT, 'data', censusDirArg());
 const HITS = path.join(DIR, 'agents-with-endpoints.jsonl');
 const OUT = path.join(DIR, 'registrations.json');
 

@@ -32,16 +32,14 @@
 //   node scripts/erc8004-scan.mjs --max 5000  stop after this id (for a quick pass)
 import fs from 'node:fs';
 import path from 'node:path';
+import { censusDirArg } from './lib/census-dir.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 // The output directory is selectable so a re-scan with a changed classifier can
 // run to completion beside the live data instead of overwriting it. The page
 // keeps serving the finished census until the new one is finished too.
-//   node scripts/erc8004-scan.mjs --dir erc8004-v2
-const OUT_DIR = (() => {
-  const i = process.argv.indexOf('--dir');
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
-})();
+//   node scripts/erc8004-scan.mjs --dir erc8004-v3
+const OUT_DIR = censusDirArg();
 const OUT = path.join(ROOT, 'data', OUT_DIR);
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 

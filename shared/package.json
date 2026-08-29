@@ -1,0 +1,7 @@
+{
+  "name": "bobai-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "//": "Marker only, no dependencies. The repo root is CommonJS while worker-agent declares type:module, so a .js file here would be CommonJS to Node and its named exports invisible to the ESM workers and scripts that import it — the bundlers accept the file either way, which is why that breaks in Node long after a deploy has succeeded. This file is what makes one shared module readable from both sides."
+}

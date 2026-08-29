@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3397 lines.
+# one fetch. 7 files, 3398 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -27,12 +27,20 @@
 // calls, a couple of minutes, and it can run while the main scan is still
 // going — the two touch different files.
 //
-// Usage: node scripts/erc8004-enrich.mjs
+// This step had no --dir flag while every other census script had one, so it
+// could only ever write into the first census. The second census therefore
+// never got a registrations.json at all, and the publisher — which reads that
+// file for descriptions and images — silently fell back to an empty object:
+// 795 published agents, 0 images. A missing enrichment looks exactly like an
+// agent that declared nothing, which is why it went unnoticed for three days.
+//
+// Usage: node scripts/erc8004-enrich.mjs        (add --dir for a rescan)
 import fs from 'node:fs';
 import path from 'node:path';
+import { censusDirArg } from './lib/census-dir.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', 'erc8004');
+const DIR = path.join(ROOT, 'data', censusDirArg());
 const HITS = path.join(DIR, 'agents-with-endpoints.jsonl');
 const OUT = path.join(DIR, 'registrations.json');
 
@@ -175,17 +183,14 @@ console.log(`written: ${path.relative(ROOT, OUT)}`);
 //   node scripts/erc8004-probe.mjs --limit 200    probe the first N
 import fs from 'node:fs';
 import path from 'node:path';
+import { censusDirArg } from './lib/census-dir.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', (() => {
-  // Same flag the scanner takes, so all three halves of the census can be
-  // pointed at one dataset: scan, probe, publish. Without it a v2 scan had to
-  // be moved on top of the live data before it could be used, and the live
-  // census is what the page serves while the new one is still running.
-  //   node scripts/erc8004-probe.mjs --dir erc8004-v2
-  const i = process.argv.indexOf('--dir');
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
-})());
+// Same flag the scanner takes, so all halves of the census can be pointed at
+// one dataset: scan, enrich, probe, publish. Defaults to the live census; a
+// rescan gets its own directory (--dir erc8004-v3) so it never overwrites the
+// data the page is serving while it runs.
+const DIR = path.join(ROOT, 'data', censusDirArg());
 const HITS = path.join(DIR, 'agents-with-endpoints.jsonl');
 const OUT = path.join(DIR, 'reachable.jsonl');
 const SUMMARY = path.join(DIR, 'census.json');
@@ -532,6 +537,7 @@ console.log(`\nwritten: ${path.relative(ROOT, SUMMARY)}, ${path.relative(ROOT, O
 // 2026-08-26, twice, before the cause was clear.
 import fs from 'node:fs';
 import path from 'node:path';
+import { censusDirArg } from './lib/census-dir.mjs';
 import { groupByOperator, operatorOf } from './lib/group-agents.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
@@ -539,15 +545,11 @@ import { PEERS, SURFACE, OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', (() => {
-  // Same flag the scanner takes, so all three halves of the census can be
-  // pointed at one dataset: scan, probe, publish. Without it a v2 scan had to
-  // be moved on top of the live data before it could be used, and the live
-  // census is what the page serves while the new one is still running.
-  //   node scripts/erc8004-publish.mjs --dir erc8004-v2
-  const i = process.argv.indexOf('--dir');
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
-})());
+// Same flag the scanner takes, so all halves of the census can be pointed at
+// one dataset: scan, enrich, probe, publish. Defaults to the live census; a
+// rescan gets its own directory (--dir erc8004-v3) so it never overwrites the
+// data the page is serving while it runs.
+const DIR = path.join(ROOT, 'data', censusDirArg());
 const state = JSON.parse(fs.readFileSync(path.join(DIR, 'scan-state.json'), 'utf8'));
 
 let census = null;
@@ -2296,16 +2298,14 @@ console.log(`  ${fmt(total)} registered · ${fmt(c.valid)} parse · ${fmt(c.with
 //   node scripts/erc8004-scan.mjs --max 5000  stop after this id (for a quick pass)
 import fs from 'node:fs';
 import path from 'node:path';
+import { censusDirArg } from './lib/census-dir.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 // The output directory is selectable so a re-scan with a changed classifier can
 // run to completion beside the live data instead of overwriting it. The page
 // keeps serving the finished census until the new one is finished too.
-//   node scripts/erc8004-scan.mjs --dir erc8004-v2
-const OUT_DIR = (() => {
-  const i = process.argv.indexOf('--dir');
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
-})();
+//   node scripts/erc8004-scan.mjs --dir erc8004-v3
+const OUT_DIR = censusDirArg();
 const OUT = path.join(ROOT, 'data', OUT_DIR);
 const REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 
@@ -2799,6 +2799,7 @@ import path from 'node:path';
 import { ERC8183, decodeJob, JOB_STATUS } from '../worker-agent/hire.js';
 // Aggregation lives in one place so the terminal report and the published page
 // can never state different numbers for the same measurement.
+import { censusDirArg } from './lib/census-dir.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -2806,7 +2807,7 @@ const OUT = path.join(ROOT, 'data', 'erc8183');
 const JOBS_FILE = path.join(OUT, 'jobs.jsonl');
 const STATE_FILE = path.join(OUT, 'scan-state.json');
 const OWNERS_FILE = path.join(OUT, 'owners.json');
-const CENSUS_HITS = path.join(ROOT, 'data', 'erc8004', 'agents-with-endpoints.jsonl');
+const CENSUS_HITS = path.join(ROOT, 'data', censusDirArg(), 'agents-with-endpoints.jsonl');
 
 // getJob(uint256) 0xbf22c457 · jobCounter() 0x50355d76 · ownerOf(uint256) 0x6352211e
 const SEL_GET_JOB = '0xbf22c457';

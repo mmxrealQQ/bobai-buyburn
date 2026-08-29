@@ -37,6 +37,7 @@ import path from 'node:path';
 import { ERC8183, decodeJob, JOB_STATUS } from '../worker-agent/hire.js';
 // Aggregation lives in one place so the terminal report and the published page
 // can never state different numbers for the same measurement.
+import { censusDirArg } from './lib/census-dir.mjs';
 import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -44,7 +45,7 @@ const OUT = path.join(ROOT, 'data', 'erc8183');
 const JOBS_FILE = path.join(OUT, 'jobs.jsonl');
 const STATE_FILE = path.join(OUT, 'scan-state.json');
 const OWNERS_FILE = path.join(OUT, 'owners.json');
-const CENSUS_HITS = path.join(ROOT, 'data', 'erc8004', 'agents-with-endpoints.jsonl');
+const CENSUS_HITS = path.join(ROOT, 'data', censusDirArg(), 'agents-with-endpoints.jsonl');
 
 // getJob(uint256) 0xbf22c457 · jobCounter() 0x50355d76 · ownerOf(uint256) 0x6352211e
 const SEL_GET_JOB = '0xbf22c457';

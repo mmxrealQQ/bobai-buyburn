@@ -35,6 +35,7 @@ import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
+import { registrations } from '../shared/agent-registrations.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -650,18 +651,11 @@ export default {
         description: 'The hireable agents run by Brain On BNB AI on BNB Smart Chain. Negotiation and delivery run over A2A at https://agent.brainonbnb.com/a2a; payment runs through the ERC-8183 escrow kernel.',
         image: 'https://brainonbnb.com/logo-200x200.png',
         active: true,
-        // Kept in step with the same list in dashboard/_worker.js. A newly
-        // registered agent that is missing from either copy is unattributable
-        // on the host it names, which is the failure that left #49467
-        // unverified for months.
-        registrations: [
-          { agentId: 302257, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 302258, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 304493, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 304494, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 310460, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-          { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-        ],
+        // The same list dashboard/_worker.js serves on the other origin, from
+        // shared/agent-registrations.js. A newly registered agent missing from
+        // the proof is unattributable on the host it names, which is the
+        // failure that left #49467 unverified for months.
+        registrations: registrations(),
         supportedTrust: ['reputation'],
         // Where the live state is. The card is what an indexer reads, so an
         // endpoint that is only mentioned on the A2A GET is discoverable by

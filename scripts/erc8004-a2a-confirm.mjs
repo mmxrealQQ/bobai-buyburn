@@ -24,15 +24,13 @@
 // real skill to find out whether an agent is real would be making somebody
 // work to satisfy our curiosity.
 //
-// Run: node scripts/erc8004-a2a-confirm.mjs --dir erc8004-v2
+// Run: node scripts/erc8004-a2a-confirm.mjs        (add --dir for a rescan)
 import fs from 'node:fs';
 import path from 'node:path';
+import { censusDirArg } from './lib/census-dir.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DIR = path.join(ROOT, 'data', (() => {
-  const i = process.argv.indexOf('--dir');
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : 'erc8004';
-})());
+const DIR = path.join(ROOT, 'data', censusDirArg());
 const REACHABLE = path.join(DIR, 'reachable.jsonl');
 const CENSUS = path.join(DIR, 'census.json');
 const DRY = process.argv.includes('--dry');

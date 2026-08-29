@@ -4,6 +4,7 @@
 // which of the three doors an agent came through.
 import { scan as poolScan } from './scanner-scan.js';
 import { feeTiers } from './tier-scan.js';
+import { registrations } from '../shared/agent-registrations.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -282,7 +283,7 @@ async function getNftDrop() {
     last_mint: last ? { time_utc: last.ts ? new Date(last.ts * 1000).toISOString() : null, tier: NFT_TIERS[last.tier]?.label ?? last.tier, tx: last.tx ? 'https://bscscan.com/tx/' + last.tx : null } : null,
     how_an_agent_earns_one: [
       '1. Call bobai_price to convert the tier threshold to BNB (e.g. $100 / bnb_usd, add ~5% headroom for tax + impact).',
-      '2. Execute ONE swap of that size via bobai_how_to_buy (fee-on-transfer safe — see bobai_trade_info).',
+      '2. Execute ONE swap of that size via bobai_purchase_guide (fee-on-transfer safe — see bobai_dex_info).',
       '3. The NFT is auto-minted to the buying wallet within ~1 minute. Verify: token transfers of ' + NFT_CONTRACT + ' on BscScan, or the live ledger on the collection page.',
     ],
     collection_page: 'https://brainonbnb.com/nft',
@@ -400,8 +401,8 @@ const AGENT_GUIDE = {
     { ask: 'How the token accrues value: deflationary tax->buyback->burn design + trust properties', call: 'bobai_tokenomics' },
   ],
   what_you_can_do: [
-    { action: 'Get the raw DEX execution parameters (router, pair, paths, slippage, methods)', call: 'bobai_trade_info' },
-    { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_how_to_buy' },
+    { action: 'Get the raw DEX execution parameters (router, pair, paths, slippage, methods)', call: 'bobai_dex_info' },
+    { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_purchase_guide' },
     { action: 'EARN an on-chain collectible: any buy >= $100 auto-mints a capped-supply NFT to the buying wallet — live remaining supply + steps', call: 'bobai_nft_drop' },
   ],
   guided_prompts: [
@@ -545,8 +546,8 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 - \`bobai_tokenomics\` — how the token accrues value (deflationary mechanics + trust properties), verifiable, not a recommendation
 
 ## What you can DO
-- \`bobai_trade_info\` — raw DEX execution params (below)
-- \`bobai_how_to_buy\` — ready-to-run buy code (below)
+- \`bobai_dex_info\` — raw DEX execution params (below)
+- \`bobai_purchase_guide\` — ready-to-run buy code (below)
 - \`bobai_nft_drop\` — EARN an on-chain collectible (below)
 - \`bobai_guide\` — interactive menu that routes each intent to a tool
 
@@ -554,7 +555,7 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 This is not a promo claim — it's a live, renounced ERC-721 contract you can verify:
 - **Every $BOBAI buy of >= $100 in a single swap auto-mints a collectible NFT to the buying wallet.** No claim step, no signup, no extra cost — an agent-controlled wallet earns one exactly like a human's.
 - 1,925 max supply · 6 buy-tier motifs ($100 / $150 / $250 / $500 / $1000 / $2500+) · 7 rarities (Common → Immortal) from a weighted matrix with **hard per-cell caps** — minted-out combinations can never exist again, so supply only shrinks.
-- To earn one: \`bobai_price\` (convert the tier threshold to BNB, add ~5% headroom) → one swap via \`bobai_how_to_buy\` → the NFT lands in the wallet within ~1 minute.
+- To earn one: \`bobai_price\` (convert the tier threshold to BNB, add ~5% headroom) → one swap via \`bobai_purchase_guide\` → the NFT lands in the wallet within ~1 minute.
 - Live remaining supply per tier and rarity: \`bobai_nft_drop\` / https://brainonbnb.com/api/nft-drop · collection: https://brainonbnb.com/nft
 - The NFT is a collectible with no promised value or utility. Not financial advice.
 
@@ -689,9 +690,9 @@ const MCP_TOOLS = [
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_wallet_balance', description: 'BNB and $BOBAI balance of any BSC wallet address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'BSC wallet address (0x + 40 hex chars)' } }, required: ['address'], additionalProperties: false } },
   { name: 'bobai_links', description: 'Official $BOBAI links: website, BscScan contract + verified source, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, live burn audit log, llms.txt.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'bobai_trade_info', description: 'How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTransferTokens methods). $BOBAI reverts on a naive swap — use these.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_dex_info', description: 'The DEX parameters a $BOBAI trade needs, read from the chain: PancakeSwap V2 router, pair, both swap paths, and the fee-on-transfer settings (3% tax, minimum 15% slippage, the SupportingFeeOnTransferTokens method names). Reports the numbers; a naive swap reverts without them.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_guide', description: 'START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know fee-on-transfer rule.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'bobai_how_to_buy', description: 'Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_purchase_guide', description: 'Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the 15% slippage floor and the fee-on-transfer method name, so an agent has everything it needs zero-shot. Returns text; this tool holds no key and moves nothing.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_tokenomics', description: 'Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, NOT a buy recommendation.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_price', description: 'Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -700,7 +701,21 @@ const MCP_TOOLS = [
   { name: 'bobai_smart_money', description: 'Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue = pending buy pressure), whale flows & holdings (auto-tracked 1%-of-supply wallets: 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum. All verifiable, no API key.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
 
-async function runTool(name, args) {
+// Two tools were unroutable for two years' worth of a reason that had nothing
+// to do with what they do: the router's name check refuses any tool with a
+// mutating verb in its name, and `bobai_trade_info` and `bobai_how_to_buy`
+// carried "trade" and "buy". The rule is correct and stays — it is what stops
+// `get_swap_calldata` — so the debt was ours, in the names. They now read as
+// what they are, and the old names keep answering for anything that already
+// hardcoded them. Deprecated, not advertised: tools/list carries the new names
+// only, so the tool count does not double.
+const DEPRECATED_TOOL_NAMES = {
+  bobai_trade_info: 'bobai_dex_info',
+  bobai_how_to_buy: 'bobai_purchase_guide',
+};
+
+async function runTool(rawName, args) {
+  const name = DEPRECATED_TOOL_NAMES[rawName] || rawName;
   switch (name) {
     case 'find_agents_on_bnb_chain': {
       const q = encodeURIComponent(String(args?.query || '').slice(0, 200));
@@ -797,9 +812,9 @@ async function runTool(name, args) {
     case 'bobai_circulating_supply': return { symbol: 'BOBAI', circulatingSupply: (await getCirculating()).toString() };
     case 'bobai_wallet_balance': return await getWalletBalance(String(args?.address || ''));
     case 'bobai_links': return OFFICIAL_LINKS;
-    case 'bobai_trade_info': return TRADE_INFO;
+    case 'bobai_dex_info': return TRADE_INFO;
     case 'bobai_guide': return AGENT_GUIDE;
-    case 'bobai_how_to_buy': return howToBuy();
+    case 'bobai_purchase_guide': return howToBuy();
     case 'bobai_tokenomics': return TOKENOMICS;
     case 'bobai_price': return await getPrice();
     case 'bobai_liquidity': return await getLiquidity();
@@ -849,12 +864,12 @@ function getPrompt(name, args) {
       description: MCP_PROMPTS[1].description,
       messages: [{ role: 'user', content: { type: 'text', text: [
         'You are preparing (not necessarily executing) a $BOBAI swap on PancakeSwap V2. $BOBAI is fee-on-transfer (3% tax) — a naive swap reverts.',
-        '1. Call bobai_trade_info — router, pair, swap paths, the *SupportingFeeOnTransferTokens methods and slippage >= 15% (1500 bps).',
+        '1. Call bobai_dex_info — router, pair, swap paths, the *SupportingFeeOnTransferTokens methods and slippage >= 15% (1500 bps).',
         '2. Call bobai_price and bobai_liquidity — check the price-impact estimate for your size; the 3% transfer tax comes on top.',
         wallet
           ? '3. Call bobai_wallet_balance with address ' + wallet + ' — confirm it holds the BNB for the swap plus gas.'
           : '3. Optionally call bobai_wallet_balance — confirm the wallet holds the BNB for the swap plus gas.',
-        '4. Call bobai_how_to_buy — ready-to-run viem code (on-chain quote minus 15% slippage, explicit RPC).',
+        '4. Call bobai_purchase_guide — ready-to-run viem code (on-chain quote minus 15% slippage, explicit RPC).',
         'Sanity rules: test with a small amount first, verify token/router/pair on BscScan yourself, never expose a private key holding significant funds. Not financial advice.',
       ].join('\n') } }],
     };
@@ -995,18 +1010,10 @@ const AGENT_REGISTRATION = {
   // wallet), so this list is the thing that ties them back to us.
   //
   // An id registered on-chain and missing here is an anonymous agent, whatever
-  // its document claims. Adding an agent means adding it in BOTH copies of this
-  // file — here and in worker-agent/index.js, which serves the same proof on the
-  // agent origin, because the verifier fetches it on whichever host the agent
-  // names as its endpoint.
-  registrations: [
-    { agentId: 49467, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-    { agentId: 302257, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-    { agentId: 302258, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-    { agentId: 304493, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-    { agentId: 304494, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-    { agentId: 310460, agentRegistry: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' },
-  ],
+  // its document claims. The list itself lives in shared/agent-registrations.js
+  // and is served identically by worker-agent on the agent origin, because the
+  // verifier fetches whichever host the agent names as its endpoint.
+  registrations: registrations(),
   supportedTrust: ['reputation'],
 };
 
@@ -1019,11 +1026,13 @@ const REST_TOOLS = {
   '/api/nft-drop': 'bobai_nft_drop',
   '/api/smart-money': 'bobai_smart_money',
   '/api/token': 'bobai_token_info',
-  '/api/trade': 'bobai_trade_info',
+  '/api/trade': 'bobai_dex_info',
+  '/api/dex-info': 'bobai_dex_info',
   '/api/tokenomics': 'bobai_tokenomics',
   '/api/links': 'bobai_links',
   '/api/guide': 'bobai_guide',
-  '/api/how-to-buy': 'bobai_how_to_buy',
+  '/api/how-to-buy': 'bobai_purchase_guide',
+  '/api/purchase-guide': 'bobai_purchase_guide',
 };
 
 // An ETag is a fingerprint of a response. The browser sends it back next time

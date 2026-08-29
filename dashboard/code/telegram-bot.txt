@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4085 lines.
+# one fetch. 12 files, 4018 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -782,9 +782,6 @@ function narrowToRecent(fromBlock, maxBlocks = 50) {
 const PHOTO_WELCOME = 'AgACAgQAAyEGAATh_8g_AAPfadI1EORIV-4JDTPKnQmo3il3NPsAAkYNaxtDCplSMrzv51Lm4QEBAAMCAAN4AAM7BA';
 const PHOTO_BIGBUY = 'AgACAgQAAyEGAATh_8g_AAPgadI1EEm5Qa4VhE6mqWf0m6PuFMYAAkcNaxtDCplSLzBgWf5z1mMBAAMCAAN4AAM7BA';
 const PHOTO_BURN = 'AgACAgQAAyEGAATh_8g_AAIB0mnWDmHKwNjMTlDUC3WLJRO30ii_AAKBDGsbUeywUgNqPnsGFkssAQADAgADeAADOwQ';
-// Donation illus served by URL (TG caches them server-side after first fetch)
-const PHOTO_DONATION_BNB  = 'https://brainonbnb.com/worldcup/app/illus/donation-bnb.webp?v=2';
-const PHOTO_DONATION_USDT = 'https://brainonbnb.com/worldcup/app/illus/donation-usdt.webp';
 
 // Known bot/system wallets to ignore in buy alerts
 const IGNORED_WALLETS = new Set([
@@ -1283,21 +1280,6 @@ function getBurnEmojis(usdValue) {
   return { bar, icon };
 }
 
-function getDonationEmojis(usdValue, token) {
-  const symbol = token === 'BNB' ? '🟡' : '💵';
-  const count = Math.max(Math.floor(usdValue / 2), 1);
-  const bar = symbol.repeat(count);
-  let icon;
-  if (usdValue >= 250)      icon = '🐐 GOAT!';
-  else if (usdValue >= 100) icon = '🏆 CHAMPION!';
-  else if (usdValue >= 50)  icon = '🎯 HAT-TRICK!';
-  else if (usdValue >= 25)  icon = '🥅 GOAL!';
-  else if (usdValue >= 10)  icon = '🎽 SUPPORTER!';
-  else if (usdValue >= 5)   icon = '🏟️ KICKOFF!';
-  else                      icon = '🍺 WARMUP!';
-  return { bar, icon };
-}
-
 // One-shot fetch of the full NFT state (tiers + drops) from the dashboard API.
 // Returns { minted, cap, drops } or null on failure.
 async function fetchNftState() {
@@ -1415,47 +1397,6 @@ async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice) {
     return result?.ok === true;
   } catch (err) {
     console.error('[POST BURN ERROR]', err.message || err);
-    return false;
-  }
-}
-
-// ==================== DONATION BOT ====================
-
-async function postDonationAlert(donation, pool, bobaiPriceUsd) {
-  try {
-    const token     = donation.token; // 'BNB' or 'USDT'
-    const amountIn  = parseFloat(donation.amount_in)    || 0;
-    const bobaiAdd  = parseFloat(donation.amount_bobai) || 0;
-    const hasPrice  = bobaiPriceUsd && bobaiPriceUsd > 0;
-    const usdValue  = hasPrice ? bobaiAdd * bobaiPriceUsd : 0;
-    const usdStr    = hasPrice ? formatUsd(usdValue) : 'n/a';
-    const { bar, icon } = getDonationEmojis(usdValue, token);
-
-    const totalPool    = pool ? parseFloat(pool.total_bobai) || 0 : 0;
-    const totalPoolUsdStr = hasPrice ? formatUsd(totalPool * bobaiPriceUsd) : 'n/a';
-    const symbol       = token === 'BNB' ? '🟡' : '💵';
-    const amountStr    = token === 'BNB' ? amountIn.toFixed(6) : amountIn.toFixed(2);
-
-    const message = `${bar}
-<b>${icon}</b>
-
-🪙 <b>+${formatNumber(bobaiAdd)} BOBAI</b> donated <b>(${usdStr})</b>
-${symbol} Donation: <b>${amountStr} ${token}</b>
-🏆 Prize Pool: <b>${formatNumber(totalPool)} BOBAI</b> (${totalPoolUsdStr})
-
-💡 <i>Every donation fuels the World Cup prize pool!</i>
-
-🔗 <a href="https://bscscan.com/tx/${donation.swap_tx_hash}">TX</a> · <a href="${WORLDCUP_URL}/app/prize-pool.html">Prize Pool</a> · <a href="${WORLDCUP_URL}">Worldcup</a>`;
-
-    const result = await tg('sendPhoto', {
-      chat_id: TG_CHAT_ID,
-      photo: token === 'BNB' ? PHOTO_DONATION_BNB : PHOTO_DONATION_USDT,
-      caption: message,
-      parse_mode: 'HTML',
-    });
-    return result?.ok === true;
-  } catch (err) {
-    console.error('[POST DONATION ERROR]', err.message || err);
     return false;
   }
 }
@@ -2805,17 +2746,7 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 ☄️ $150+ → APOCALYPSE BURN!
 💥 $250+ → SUPERNOVA BURN!
 
-⚽ <b>Worldcup Donation Tiers</b>
-🍺 &lt;$5 → WARMUP!
-🏟️ $5+ → KICKOFF!
-🎽 $10+ → SUPPORTER!
-🥅 $25+ → GOAL!
-🎯 $50+ → HAT-TRICK!
-🏆 $100+ → CHAMPION!
-🐐 $250+ → GOAT!
-
-💡 <i>Buys under $100 are not alerted.</i>
-💡 <i>Donation symbols: 🟡 BNB · 💵 USDT</i>`;
+💡 <i>Buys under $100 are not alerted.</i>`;
       break;
     }
 
@@ -3025,6 +2956,28 @@ export default {
     // which acts as the visual "this is an update" header) followed by the announcement.
     // Used by tg-update.js to broadcast workshop updates without exposing BOT_TOKEN locally.
     const url = new URL(request.url);
+
+    // === /health — liveness, readable by anyone, secrets by nobody ===
+    // Reports the last cron tick (written every tenth minute by scheduled()),
+    // its age, and whether the bot is configured to post at all. A check that
+    // only proved the worker answers HTTP would be worthless: a worker whose
+    // cron has stopped still answers HTTP perfectly.
+    if (url.pathname === '/health' && request.method === 'GET') {
+      const last = await env.KV.get('last_cron');
+      const ageSeconds = last ? Math.round((Date.now() - new Date(last).getTime()) / 1000) : null;
+      return new Response(JSON.stringify({
+        ok: true,
+        worker: 'bobai-tg-bot',
+        last_cron: last || null,
+        age_seconds: ageSeconds,
+        // A heartbeat older than a quarter hour means the every-minute cron has
+        // missed its ten-minute write, which is a stopped worker, not a lull.
+        cron_alive: ageSeconds !== null && ageSeconds < 900,
+        channel_configured: Boolean(env.BOT_TOKEN && TG_CHAT_ID),
+        alerts: ['buys', 'burns'],
+      }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+
     if (url.pathname === '/broadcast' && request.method === 'POST') {
       const got = request.headers.get('x-broadcast-secret') || '';
       const want = env.BROADCAST_SECRET || '';
@@ -3600,6 +3553,22 @@ export default {
     TG_INTERNAL_CHAT_ID = env.TG_INTERNAL_CHAT_ID || '';
     WHALE_ENV = env;
 
+    // === HEARTBEAT ===
+    // This bot was in no health check at all: it posts buys and burns into the
+    // channel, and a stopped cron looks exactly like a quiet market. Every
+    // other bot proves liveness through logs.brainonbnb.com/health; this one
+    // had nothing to prove it with, so it writes its own timestamp and serves
+    // it on GET /health below.
+    //
+    // Every tenth minute, not every minute. The cron runs 1,440 times a day and
+    // a KV write per tick would spend the daily write budget on a heartbeat
+    // nobody reads that often — 144 is plenty to tell a running worker from a
+    // stopped one, and the freshness check downstream allows for it.
+    if (new Date().getMinutes() % 10 === 0) {
+      try { await env.KV.put('last_cron', new Date().toISOString()); }
+      catch (e) { console.error('[HEARTBEAT ERROR]', e.message || e); }
+    }
+
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===
     await ensureCommandsRegistered(env);
 
@@ -4093,45 +4062,9 @@ export default {
       console.error('[BURN BOT ERROR]', err.message || err);
     }
 
-    // === DONATION ALERTS ===
-    try {
-      const postedDonRaw = await env.KV.get('posted_donations');
-      const isBootstrap  = postedDonRaw === null;
-      const postedDonSet = new Set(postedDonRaw ? JSON.parse(postedDonRaw) : []);
-      const prevDonSize  = postedDonSet.size;
-
-      // Fetch last 10 BNB/USDT donations (TAX excluded)
-      const donations = await fetchWorldcupDonations(10, false);
-      if (donations.length > 0) {
-        const pool = isBootstrap ? null : await fetchWorldcupPool();
-        const bobaiPriceUsd = pool ? parseFloat(pool.bobai_price_usd) || 0 : 0;
-
-        // Process oldest-first so the chat order is chronological
-        for (const don of donations.slice().reverse()) {
-          const txHash = don.swap_tx_hash;
-          if (!txHash || postedDonSet.has(txHash)) continue;
-
-          if (isBootstrap) {
-            // First run: mark existing donations as seen, don't alert
-            postedDonSet.add(txHash);
-            continue;
-          }
-
-          const sent = await postDonationAlert(don, pool, bobaiPriceUsd);
-          if (sent) postedDonSet.add(txHash);
-        }
-
-        if (postedDonSet.size > prevDonSize) {
-          const postedDonArr = [...postedDonSet].slice(-50);
-          await env.KV.put('posted_donations', JSON.stringify(postedDonArr));
-        }
-      } else if (isBootstrap) {
-        // No donations yet — seed empty array so we don't re-bootstrap next cron
-        await env.KV.put('posted_donations', '[]');
-      }
-    } catch (err) {
-      console.error('[DONATION BOT ERROR]', err.message || err);
-    }
+    // Donation alerts retired 2026-08-29: the WC26 prize pool closed with the
+    // tournament (payout 2026-07-20), so no new donations can arrive. The
+    // /worldcup command still serves the frozen final numbers on demand.
 
     // === CAPTCHA CLEANUP (every 2 min) ===
     if (new Date().getMinutes() % 2 === 0) {

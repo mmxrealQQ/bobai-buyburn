@@ -133,8 +133,13 @@ if (!tools.length) {
 //
 // A tool whose NAME carries a mutating verb is refused by design, and the rule
 // is not going to be relaxed: it is what stops `get_swap_calldata`. When one of
-// ours lands there it is a naming debt of ours — `bobai_trade_info` reads, and
-// is named after the thing it reads about. Worth knowing, not worth failing on.
+// ours lands there it is a naming debt of ours, not a reason to loosen the rule.
+// Two of ours sat here — `bobai_trade_info` and `bobai_how_to_buy`, both pure
+// readers named after the thing they read about — and on 29 August they were
+// renamed to `bobai_dex_info` and `bobai_purchase_guide` instead. The old names
+// still answer as deprecated aliases; they are simply no longer advertised, so
+// nothing a stranger's router can see carries a verb it has to refuse. This
+// list stays for the next one: it is worth knowing, not worth failing on.
 //
 // A tool refused for any other reason IS a bug, because everything this server
 // publishes reads: the worker holds no key and has nothing to spend.

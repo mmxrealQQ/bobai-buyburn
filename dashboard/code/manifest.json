@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4085,
-   "zipBytes": 57414,
-   "txtBytes": 173996,
-   "sha256": "cddc5ba8aaa3f968",
+   "lines": 4018,
+   "zipBytes": 57162,
+   "txtBytes": 171883,
+   "sha256": "4d5ffaab8e115f2c",
    "reqs": [
     {
      "what": "A bot token",
@@ -537,10 +537,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1755,
-   "zipBytes": 41848,
-   "txtBytes": 118618,
-   "sha256": "5b919609c6b6cbc3",
+   "lines": 1764,
+   "zipBytes": 42233,
+   "txtBytes": 119319,
+   "sha256": "327feab73b9761d0",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 22,
-   "lines": 6530,
-   "zipBytes": 126302,
-   "txtBytes": 326208,
-   "sha256": "b325941f0105fc8f",
+   "lines": 6524,
+   "zipBytes": 126179,
+   "txtBytes": 325698,
+   "sha256": "da712dd64b4a77ca",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -638,10 +638,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 3397,
-   "zipBytes": 68891,
-   "txtBytes": 189325,
-   "sha256": "8d175ef3dda6ea84",
+   "lines": 3398,
+   "zipBytes": 69062,
+   "txtBytes": 189596,
+   "sha256": "e750dcfa1fe2d7fe",
    "reqs": [
     {
      "what": "Node 18+ and time",

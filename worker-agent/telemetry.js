@@ -38,6 +38,7 @@ import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
+import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 
 const KEY = 'telemetry:latest';
 
@@ -61,13 +62,12 @@ const PEERS = [
 // unit-fixing, no filling in of a null. A null in their document means they do
 // not currently know, and rewriting that as a zero would be inventing a
 // measurement.
-// The agents we run ourselves, in one place. These ids appear in the domain
-// proof on two origins, in the telemetry document, in the registry page's
-// live-line mapping and in two check scripts. The first four of those had their
-// own literal copy of the list, so registering an agent meant remembering all
-// of them — and the one that gets forgotten fails silently, as a row that is
-// simply never live.
-const OWN_AGENT_IDS = [302257, 302258, 304493, 304494, 310460];
+// The agents we run ourselves come from shared/agent-registrations.js
+// (imported at the top), which the domain proof on both origins is built from
+// as well. Registering an agent used to mean remembering four separate literal
+// copies, and the one that gets forgotten fails silently, as a row that is
+// simply never live. Re-exported below because this module is what the check
+// scripts already import.
 
 const SURFACE = {
   'health-factor': [

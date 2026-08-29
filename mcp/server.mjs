@@ -25,9 +25,9 @@ const TOOLS = [
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: noArgs, rest: '/api/token' },
   { name: 'bobai_wallet_balance', description: 'BNB and $BOBAI balance of any BSC wallet address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'BSC wallet address (0x + 40 hex chars)' } }, required: ['address'], additionalProperties: false }, rest: '/api/wallet' },
   { name: 'bobai_links', description: 'Official $BOBAI links: website, BscScan contract, X, Telegram, DexScreener, GeckoTerminal, CoinGecko, GitHub source, llms.txt.', inputSchema: noArgs, rest: '/api/links' },
-  { name: 'bobai_trade_info', description: 'How to swap $BOBAI on-chain: PancakeSwap V2 router, pair, swap paths, and the critical fee-on-transfer parameters (3% tax, min 15% slippage, SupportingFeeOnTransferTokens methods). $BOBAI reverts on a naive swap — use these.', inputSchema: noArgs, rest: '/api/trade' },
+  { name: 'bobai_dex_info', description: 'The DEX parameters a $BOBAI trade needs, read from the chain: PancakeSwap V2 router, pair, both swap paths, and the fee-on-transfer settings (3% tax, minimum 15% slippage, the SupportingFeeOnTransferTokens method names). Reports the numbers; a naive swap reverts without them.', inputSchema: noArgs, rest: '/api/trade' },
   { name: 'bobai_guide', description: 'START HERE. Interactive guide for an agent that just discovered $BOBAI: what you can ask, what you can do, and which tool to call for each — plus the must-know fee-on-transfer rule.', inputSchema: noArgs, rest: '/api/guide' },
-  { name: 'bobai_how_to_buy', description: 'Ready-to-run viem code to BUY $BOBAI with BNB on PancakeSwap V2 (on-chain quote + 15% slippage + fee-on-transfer method), so an agent can execute a swap 0-shot.', inputSchema: noArgs, rest: '/api/how-to-buy' },
+  { name: 'bobai_purchase_guide', description: 'Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the 15% slippage floor and the fee-on-transfer method name, so an agent has everything it needs zero-shot. Returns text; this tool holds no key and moves nothing.', inputSchema: noArgs, rest: '/api/how-to-buy' },
   { name: 'bobai_tokenomics', description: 'Neutral, verifiable value-accrual mechanics of $BOBAI: the deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch). Describes how the token works, NOT a buy recommendation.', inputSchema: noArgs, rest: '/api/tokenomics' },
   { name: 'bobai_price', description: 'Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust.', inputSchema: noArgs, rest: '/api/price' },
   { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB).', inputSchema: noArgs, rest: '/api/liquidity' },
@@ -95,12 +95,12 @@ function getPrompt(name, args) {
       description: PROMPTS[1].description,
       messages: [{ role: 'user', content: { type: 'text', text: [
         'You are preparing (not necessarily executing) a $BOBAI swap on PancakeSwap V2. $BOBAI is fee-on-transfer (3% tax) — a naive swap reverts.',
-        '1. Call bobai_trade_info — router, pair, swap paths, the *SupportingFeeOnTransferTokens methods and slippage >= 15% (1500 bps).',
+        '1. Call bobai_dex_info — router, pair, swap paths, the *SupportingFeeOnTransferTokens methods and slippage >= 15% (1500 bps).',
         '2. Call bobai_price and bobai_liquidity — check the price-impact estimate for your size; the 3% transfer tax comes on top.',
         wallet
           ? '3. Call bobai_wallet_balance with address ' + wallet + ' — confirm it holds the BNB for the swap plus gas.'
           : '3. Optionally call bobai_wallet_balance — confirm the wallet holds the BNB for the swap plus gas.',
-        '4. Call bobai_how_to_buy — ready-to-run viem code (on-chain quote minus 15% slippage, explicit RPC).',
+        '4. Call bobai_purchase_guide — ready-to-run viem code (on-chain quote minus 15% slippage, explicit RPC).',
         'Sanity rules: test with a small amount first, verify token/router/pair on BscScan yourself, never expose a private key holding significant funds. Not financial advice.',
       ].join('\n') } }],
     };

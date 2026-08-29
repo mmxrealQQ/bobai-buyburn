@@ -101,7 +101,7 @@ if (args.includes('--self-test')) {
     ['dashboard/favicon.ico',       10 * 1024, true,  'small icon must survive'],
     ['dashboard/index.html',       180 * 1024, true,  'html is never binary, must survive'],
     ['scripts/health.mjs',              20000, true,  'script must survive'],
-    ['data/erc8004/registrations.json', 1 << 20, true, 'evidence json must survive whatever its size'],
+    ['data/erc8004-v2/registrations.json', 1 << 20, true, 'evidence json must survive whatever its size'],
   ];
   for (const [f, size, want, why] of cases) {
     const got = classify(f, size).keep;

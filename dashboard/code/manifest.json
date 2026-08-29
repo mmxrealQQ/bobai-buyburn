@@ -570,11 +570,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 22,
-   "lines": 6524,
-   "zipBytes": 126179,
-   "txtBytes": 325698,
-   "sha256": "da712dd64b4a77ca",
+   "files": 23,
+   "lines": 6699,
+   "zipBytes": 130063,
+   "txtBytes": 334021,
+   "sha256": "9c0ae5b8ffc020ba",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -622,6 +622,7 @@
     "worker-agent/package.json",
     "worker-agent/rebalance.js",
     "worker-agent/sell.js",
+    "worker-agent/session.js",
     "worker-agent/sessions.js",
     "worker-agent/submit.js",
     "worker-agent/telemetry.js",
@@ -639,9 +640,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 3398,
-   "zipBytes": 69062,
-   "txtBytes": 189596,
-   "sha256": "e750dcfa1fe2d7fe",
+   "zipBytes": 69070,
+   "txtBytes": 189638,
+   "sha256": "7f706489f4aa2530",
    "reqs": [
     {
      "what": "Node 18+ and time",

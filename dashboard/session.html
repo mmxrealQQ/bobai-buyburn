@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/fonts.css?v=1">
+<title>What this agent may spend — read from the chain</title>
+<meta name="description" content="The spending authority delegated to the Brain on BNB agent: an allowlist of contracts, a daily cap and an expiry, registered in the Altana KeyStore and readable by anyone with two view calls.">
+<link rel="canonical" href="https://brainonbnb.com/session">
+<link rel="icon" type="image/png" href="/favicon.png?v=4">
+<meta property="og:title" content="What this agent may spend — read from the chain">
+<meta property="og:description" content="An allowlist, a daily cap and an expiry, enforced by the account contract and registered on-chain. Not a claim in a README.">
+<meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+<meta property="og:url" content="https://brainonbnb.com/session">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/styles.css?v=29">
+<style>
+  .ses{max-width:900px;margin:0 auto}
+  .ses h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(26px,5vw,40px);line-height:1.1;margin:0 0 14px}
+  .lead{color:var(--muted);font-size:17px;line-height:1.6;max-width:68ch}
+  .card{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:18px 20px;margin:18px 0}
+  .card h2{font-family:'Space Grotesk',system-ui,sans-serif;font-size:17px;margin:0 0 12px}
+  .kv{display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:8px 16px;font-size:14.5px}
+  @media(max-width:560px){.kv{grid-template-columns:1fr}.kv dt{color:var(--muted);margin-top:8px}}
+  dt{color:var(--muted)}
+  dd{margin:0;word-break:break-all;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .ok{background:rgba(127,209,163,.14);color:#7fd1a3}
+  .no{background:rgba(226,160,63,.14);color:#e2a03f}
+  .muted{color:var(--muted);font-size:14px;line-height:1.65}
+  code{background:rgba(255,255,255,.05);padding:2px 6px;border-radius:5px;font-size:12.5px;word-break:break-all}
+  .ev{font-size:14px;line-height:1.9}
+  .ev a{word-break:break-all}
+  .rule{border-left:2px solid var(--border);padding-left:16px;margin:14px 0}
+</style>
+</head>
+<body>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="brand-link" href="/session">Agent spending authority</a>
+    <a class="nb" href="/registry">Brain Plaza</a>
+  </div></nav>
+
+  <section class="sec b-blue ses" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Control &middot; Altana session</span><span class="blk-line"></span></div>
+
+    <h1>What this agent may spend</h1>
+    <p class="lead">Every other wallet in this project is a private key with unlimited authority over what it holds. This one is not. Its spending is delegated through an Altana session: an allowlist of contracts, a cap per day, and an expiry &mdash; enforced by the account contract, so a call outside the scope reverts before it runs. The session's key is registered in the on-chain KeyStore, which means you do not have to take any of this on our word.</p>
+
+    <div class="card">
+      <h2>Live, read from the KeyStore</h2>
+      <div id="live" class="muted">reading the chain&hellip;</div>
+    </div>
+
+    <div class="card">
+      <h2>The leash, proven in both directions on BNB mainnet</h2>
+      <p class="muted">A session that performs an allowed call proves the key works. It says nothing about whether the limits are attached. So both were run:</p>
+      <div class="ev">
+        &bull; An <strong>allowed</strong> call &mdash; <code>approve()</code> on $U, signed by the session key, not by the admin key:<br>
+        <a href="https://bscscan.com/tx/0x55128a7f373a9dc4fd0787d97489d5601a3663666e0ee5f155fd88b2589df588" target="_blank" rel="noopener">0x55128a7f&hellip;89df588</a> &mdash; succeeded.<br><br>
+        &bull; A <strong>refused</strong> call &mdash; the same key attempting <code>transfer()</code> of $U to an address of our own choosing, which is the exact move a stolen session key would make. The account rejected it with <code>UnauthorizedCall</code>. There is no transaction to link, because it never became one.<br><br>
+        &bull; A <strong>revocation</strong> &mdash; an earlier session, ended before its expiry:<br>
+        <a href="https://bscscan.com/tx/0x363aaffdc70faa1cae5ffc65c2411dc9c0492ad1f6c7903345e0e6fbd58e9e38" target="_blank" rel="noopener">0x363aaff&hellip;8e9e38</a>. Its key disappeared from the list above within one block.
+      </div>
+      <div class="rule muted">
+        One thing the allowed call taught us that is worth writing down: the account set the allowance and then reset it to zero <em>in the same transaction</em>. A session key cannot leave a standing allowance behind it. That is a property of the account, not of our code, and we only found it by decoding the receipt.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Revoking it</h2>
+      <p class="muted">Revocation is one transaction from the wallet's admin key, and it takes effect immediately &mdash; the entry above stops validating and the key vanishes from the list.</p>
+      <p class="muted">There is deliberately <strong>no revoke button on this page</strong>. A public endpoint that could end the session would be an off-switch for our agent that any stranger could press: a denial-of-service wearing the costume of a safety feature. The admin key is not on any worker, and the revocation runs from the operator's own machine:</p>
+      <p><code>node scripts/altana-session.mjs --mainnet --revoke --confirm</code></p>
+      <p class="muted">The visibility is the part that has to be public, and it is: anyone can call <code>getKeys()</code> and <code>isValidKey()</code> on the KeyStore and get the same answer this page shows, without asking us.</p>
+    </div>
+
+    <p class="muted">Raw: <a href="https://agent.brainonbnb.com/session">agent.brainonbnb.com/session</a> &middot; source at <a href="/source">/source</a> (<code>scripts/altana-session.mjs</code>, <code>worker-agent/session.js</code>).</p>
+  </section>
+</div>
+
+<script>
+// The page renders what the endpoint returns and nothing it does not. In
+// particular a key whose validity could not be read shows as "unknown" rather
+// than as revoked: those are different states, and rendering the unreadable one
+// as the safe-looking one is how a live session gets mistaken for a dead one.
+(async () => {
+  const el = document.getElementById('live');
+  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  try {
+    const r = await fetch('https://agent.brainonbnb.com/session', { cache: 'no-store' });
+    if (!r.ok) throw new Error('endpoint answered ' + r.status);
+    const j = await r.json();
+    const rows = [];
+    rows.push(['Agent wallet', '<code>' + esc(j.agent_wallet || 'not configured') + '</code>']);
+    for (const c of j.chains || []) {
+      if (c.error) {
+        rows.push([esc(c.chain), '<span class="pill no">unreadable</span> <span class="muted">' + esc(c.error) + '</span>']);
+        continue;
+      }
+      const keys = (c.keys || []).map((k) => {
+        const pill = k.valid === true ? '<span class="pill ok">valid</span>'
+          : k.valid === false ? '<span class="pill no">revoked or expired</span>'
+          : '<span class="pill no">validity unreadable</span>';
+        return '<div style="margin-bottom:6px"><code>' + esc(k.keyId) + '</code> ' + pill + '</div>';
+      }).join('');
+      rows.push([esc(c.chain), (keys || '<span class="muted">no session key registered</span>')
+        + '<div class="muted" style="margin-top:6px">KeyStore <code>' + esc(c.keystore) + '</code></div>']);
+    }
+    el.innerHTML = '<dl class="kv">' + rows.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('') + '</dl>';
+  } catch (e) {
+    // A failed read says so. It does not quietly render an empty list, which
+    // would read as "this agent has no spending authority at all".
+    el.innerHTML = '<span class="pill no">could not read</span> <span class="muted">'
+      + esc(e.message || e) + ' &mdash; this is a failure to read the chain, not a statement that no session exists.</span>';
+  }
+})();
+</script>
+</body>
+</html>

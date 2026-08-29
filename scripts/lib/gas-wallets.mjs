@@ -81,6 +81,22 @@ export const WALLETS = [
     does: 'delivering hired jobs on-chain (ERC-8183)',
   },
   {
+    key: 'altana',
+    name: 'altana agent wallet',
+    env: 'ALTANA_ADMIN_PRIVATE_KEY',
+    address: '0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3',
+    // The Altana smart account. Its work is granting a session, spending
+    // through it, and revoking — each one transaction, but a grant also carries
+    // the KeyStore registration, so budget generously. It is on this roster for
+    // the same reason as the others: an agent whose wallet is empty stops being
+    // able to prove anything about itself, and the KeyStore entry it registered
+    // outlives its ability to revoke it.
+    cycleGas: 600_000,
+    floorCycles: 2,
+    targetCycles: 8,
+    does: 'granting, using and revoking its own spending sessions',
+  },
+  {
     key: 'x402',
     name: 'x402 service',
     env: 'X402_PRIVATE_KEY',

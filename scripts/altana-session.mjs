@@ -19,7 +19,8 @@
 // WHAT THIS SCRIPT DOES
 //   --status     (default) what exists right now, read from the chain
 //   --grant      grant the session and register it in the Keystore
-//   --execute    spend through the session key: a real ERC-8183 job
+//   --execute    spend through the session key: a real call, on the allowlist
+//   --probe      try a call that is NOT on the allowlist, and show it refused
 //   --revoke     end it early
 //   --self-test  pin the permission construction, no network
 //
@@ -65,7 +66,7 @@ const SESSION_FILE = path.join(ROOT, 'temp', 'altana', `session-${NET.chainId}.j
 // Everything else on the chain is outside the scope, including any transfer of
 // $U to an address of our own choosing. A session that could do that would be a
 // wallet with extra steps.
-export function sessionPolicy(kernel, { limit, period = 'day', days = 7 } = {}) {
+export function sessionPolicy(kernel, { limit, nativeLimit, period = 'day', days = 7 } = {}) {
   return {
     permissions: {
       calls: [
@@ -75,7 +76,22 @@ export function sessionPolicy(kernel, { limit, period = 'day', days = 7 } = {}) 
       // $U carries 18 decimals on BNB Chain. The SDK's own documentation warns
       // that the same token is 6 decimals elsewhere, and a cap written for the
       // wrong decimals is a cap that is a million times too generous.
-      spend: [{ limit, period, token: kernel.paymentToken }],
+      //
+      // The second entry is the native token, and it is not optional. A session
+      // with a $U cap and nothing else was granted and registered correctly and
+      // then reverted with `NoSpendPermissions` from the account contract on
+      // the first call: executing costs a fee, the fee is paid in native, and a
+      // key with no native allowance cannot pay it. The error names the missing
+      // permission rather than the fee, which is why this looked like a bug in
+      // the $U rule for two attempts.
+      //
+      // It is capped rather than waived. An uncapped native allowance is a
+      // session key that can drain the wallet's gas at leisure, which is a
+      // smaller disaster than losing the $U but the same shape of one.
+      spend: [
+        { limit, period, token: kernel.paymentToken },
+        { limit: nativeLimit, period },
+      ],
     },
     expiry: Math.floor(Date.now() / 1000) + days * 86400,
   };
@@ -87,11 +103,16 @@ export function sessionPolicy(kernel, { limit, period = 'day', days = 7 } = {}) 
 // key is a rounding error rather than an incident.
 const DAILY_CAP = 1_000000000000000000n;
 
+// The session's own gas allowance for a day. At the 0.05 gwei BSC has settled
+// at, 0.002 BNB is some forty transactions — plenty for an agent that hires,
+// and far too little to be worth stealing the key for.
+const DAILY_GAS_CAP = 2_000000000000000n;
+
 // ---- self-test -------------------------------------------------------------
 if (SELF_TEST) {
   const fails = [];
   const k = ERC8183_ADDRESSES[97];
-  const p = sessionPolicy(k, { limit: DAILY_CAP });
+  const p = sessionPolicy(k, { limit: DAILY_CAP, nativeLimit: DAILY_GAS_CAP });
 
   // The allowlist has to actually list something. An empty or missing `calls`
   // means every target is allowed — the SDK says so explicitly — and that is
@@ -109,8 +130,16 @@ if (SELF_TEST) {
 
   // The cap must exist, be positive, and be denominated in the token's own
   // decimals. A cap of 1 with 18-decimal $U is not one dollar, it is a wei.
-  const spend = p.permissions.spend?.[0];
+  const spend = p.permissions.spend?.find((x) => x.token);
+  const native = p.permissions.spend?.find((x) => !x.token);
   if (!spend) fails.push('no spend cap');
+  // Without a native allowance the account reverts with NoSpendPermissions on
+  // the first call — a session that grants and registers cleanly and then
+  // cannot do anything. That failure cost two grants to find, so it is pinned.
+  if (!native) fails.push('no native spend cap — the key cannot pay the fee for its own calls and every execute reverts with NoSpendPermissions');
+  if (native && native.limit <= 0n) fails.push('the native cap is zero, which is the same as not having one');
+  // And the other direction: an allowance big enough to be worth taking.
+  if (native && native.limit > 100000000000000000n) fails.push('the native cap is over 0.1 BNB per period, which is a gas allowance in name only');
   if (spend && spend.limit <= 0n) fails.push('the spend cap is zero or negative');
   if (spend && spend.token?.toLowerCase() !== k.paymentToken.toLowerCase()) fails.push('the cap is on the wrong token, so $U is uncapped');
   if (spend && spend.limit === 1n) fails.push('a limit of 1 unit reads as one dollar and is one wei');
@@ -123,7 +152,7 @@ if (SELF_TEST) {
 
   // Same policy on both deployments, or the testnet run proves nothing about
   // the mainnet one.
-  const pm = sessionPolicy(ERC8183_ADDRESSES[56], { limit: DAILY_CAP });
+  const pm = sessionPolicy(ERC8183_ADDRESSES[56], { limit: DAILY_CAP, nativeLimit: DAILY_GAS_CAP });
   const shape = (x) => JSON.stringify(x.permissions, (key, v) => (key === 'to' || key === 'token' ? '<addr>' : typeof v === 'bigint' ? String(v) : v));
   if (shape(p) !== shape(pm)) fails.push('the testnet and mainnet policies differ in shape — the testnet run would not be evidence for the mainnet one');
   const mainTargets = pm.permissions.calls.map((c) => c.to.toLowerCase());
@@ -160,9 +189,26 @@ if (!SELF_TEST) {
   const loadSession = () => {
     try {
       const raw = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
-      // The signer is rebuilt rather than stored as an object: the SDK's Signer
-      // carries a function, and JSON.parse cannot bring one back.
-      return { ...raw, signer: signerFromPrivateKey(raw.signerPrivateKey), expiry: Number(raw.expiry) };
+      // Two things JSON cannot carry, and both of them are load-bearing.
+      //
+      // The signer holds a function, so it is rebuilt from the stored key.
+      //
+      // The spend limit is a bigint, and JSON.stringify turned it into a
+      // string on the way out. Handing that string back to execute() produced
+      // `NoSpendPermissions` from the account contract — a real revert, on a
+      // session that was correctly registered on-chain moments earlier. The
+      // Altana docs say it outright: the persisted Session must be byte-exact
+      // on execute. A string where a bigint belongs is not byte-exact, and the
+      // failure surfaces at the account rather than at the type system.
+      return {
+        ...raw,
+        signer: signerFromPrivateKey(raw.signerPrivateKey),
+        expiry: Number(raw.expiry),
+        permissions: {
+          ...raw.permissions,
+          spend: (raw.permissions?.spend || []).map((s) => ({ ...s, limit: BigInt(s.limit) })),
+        },
+      };
     } catch { return null; }
   };
   const saveSession = (s) => {
@@ -196,7 +242,7 @@ if (!SELF_TEST) {
     console.log(`  granted        ${existing.grantedAt}`);
     console.log(`  expires        ${new Date(existing.expiry * 1000).toISOString()} (${left > 0 ? `${(left / 3600).toFixed(1)} h left` : 'EXPIRED'})`);
     console.log(`  may call       ${existing.permissions.calls.map((c) => `${c.to}${c.signature ? ' :: ' + c.signature : ''}`).join('\n                 ')}`);
-    console.log(`  may spend      ${existing.permissions.spend.map((s) => `${Number(BigInt(s.limit)) / 1e18} $U per ${s.period}`).join(', ')}`);
+    console.log(`  may spend      ${existing.permissions.spend.map((s) => `${Number(BigInt(s.limit)) / 1e18} ${s.token ? '$U' : 'BNB (fees)'} per ${s.period}`).join(' · ')}`);
   } else {
     console.log('\n  session        none granted on this chain yet');
   }
@@ -204,10 +250,11 @@ if (!SELF_TEST) {
   const want = (flag) => process.argv.includes(flag);
 
   if (want('--grant')) {
-    const policy = sessionPolicy(KERNEL, { limit: DAILY_CAP });
+    const policy = sessionPolicy(KERNEL, { limit: DAILY_CAP, nativeLimit: DAILY_GAS_CAP });
     console.log('\nPlan — grant a session');
     console.log(`  allowlist   ${policy.permissions.calls.map((c) => `${c.to}${c.signature ? ' :: ' + c.signature : ''}`).join('\n              ')}`);
     console.log(`  spend cap   ${Number(policy.permissions.spend[0].limit) / 1e18} $U per ${policy.permissions.spend[0].period}`);
+    console.log(`  gas cap     ${Number(policy.permissions.spend[1].limit) / 1e18} BNB per ${policy.permissions.spend[1].period} — the key pays its own fees, and only these`);
     console.log(`  expires     ${new Date(policy.expiry * 1000).toISOString()}`);
     console.log(`  registered  yes — written to the Keystore at ${NET.keyStore}, so the limits are readable by anyone`);
     if (!CONFIRM) {
@@ -253,6 +300,42 @@ if (!SELF_TEST) {
     }
   }
 
+  // The half of the evidence that is easy to skip. A session that performs an
+  // allowed call proves the key works; it says nothing about whether the leash
+  // is attached. This tries a transfer of $U to an address of our own choosing
+  // — the exact move a stolen session key would make — and expects the account
+  // to refuse it at validation. A revert here is the feature working.
+  if (want('--probe')) {
+    if (!existing) { console.error('\nNo session on this chain. Grant one first.'); process.exitCode = 1; }
+    else {
+      const { encodeFunctionData } = await import('viem');
+      const erc20 = parseAbi(['function transfer(address to, uint256 amount) returns (bool)']);
+      console.log('\nProbe — a call the session must NOT be able to make');
+      console.log(`  call        transfer(${adminAddress}, 0.00001 $U) on $U`);
+      console.log('  expected    refused: $U is allowlisted for approve() only');
+      if (!CONFIRM) console.log('\nNothing attempted. Re-run with --confirm.');
+      else {
+        try {
+          const r = await client.execute({
+            session: existing,
+            calls: [{
+              to: KERNEL.paymentToken,
+              data: encodeFunctionData({ abi: erc20, functionName: 'transfer', args: [adminAddress, 10000000000000n] }),
+            }],
+          });
+          // Reaching here is the bad outcome, and it is reported as one.
+          console.error(`\nFAILED — the call went through: ${NET.explorer}/tx/${r.transactionHash || ''}`);
+          console.error('The session key can move $U freely. The allowlist is not doing anything.');
+          process.exitCode = 1;
+        } catch (e) {
+          const name = e.abiError?.name || e.shortMessage || e.message || String(e);
+          console.log(`\nrefused by the account — ${name}`);
+          console.log('  The leash holds: the same key that just made an allowed call cannot make this one.');
+        }
+      }
+    }
+  }
+
   if (want('--revoke')) {
     if (!existing) { console.error('\nNo session to revoke.'); process.exitCode = 1; }
     else {
@@ -268,7 +351,7 @@ if (!SELF_TEST) {
     }
   }
 
-  if (!want('--grant') && !want('--execute') && !want('--revoke')) {
-    console.log('\n  --grant / --execute / --revoke   (each needs --confirm to write)');
+  if (!want('--grant') && !want('--execute') && !want('--probe') && !want('--revoke')) {
+    console.log('\n  --grant / --execute / --probe / --revoke   (each needs --confirm to write)');
   }
 }

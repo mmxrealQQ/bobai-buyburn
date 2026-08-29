@@ -1,6 +1,6 @@
 // Turns the census into the page and the JSON endpoint that serve it.
 //
-// Reads data/erc8004/*, writes dashboard/registry.html and
+// Reads the live census under data/ (scripts/lib/census-dir.mjs), writes dashboard/registry.html and
 // dashboard/api-registry.json. Both are generated — never edit them by hand,
 // the next run overwrites them. Everything the page states comes from the two
 // scan artefacts, so there is no path by which the page can claim a number the

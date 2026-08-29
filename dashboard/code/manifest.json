@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 3779,
-   "zipBytes": 79472,
-   "txtBytes": 235348,
-   "sha256": "d6d347520f217531",
+   "lines": 3826,
+   "zipBytes": 80634,
+   "txtBytes": 238678,
+   "sha256": "e15f601547d2b12b",
    "reqs": [
     {
      "what": "A static host",
@@ -537,10 +537,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1764,
-   "zipBytes": 42233,
-   "txtBytes": 119319,
-   "sha256": "327feab73b9761d0",
+   "lines": 1765,
+   "zipBytes": 42485,
+   "txtBytes": 119915,
+   "sha256": "4f24707771475535",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -639,10 +639,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 3398,
-   "zipBytes": 69070,
-   "txtBytes": 189638,
-   "sha256": "7f706489f4aa2530",
+   "lines": 3399,
+   "zipBytes": 69289,
+   "txtBytes": 190267,
+   "sha256": "6e18119aceb24724",
    "reqs": [
     {
      "what": "Node 18+ and time",

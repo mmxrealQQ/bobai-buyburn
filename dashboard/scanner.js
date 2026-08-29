@@ -211,8 +211,20 @@ function renderTiers(out,d){
   });
   out.appendChild(rows);
 
+  // When a tier could not be read there is no winner, and the card says why
+  // rather than quietly dropping the verdict line. A panel that shows four
+  // priced tiers and no conclusion reads as "nothing to conclude", when what
+  // actually happened is that the fifth tier — possibly the winning one — was
+  // never measured.
+  if(d.comparison_complete===false){
+    const n=(d.tiers_unreadable||[]).length;
+    out.appendChild(el('p','tier-said',
+      n+' of '+(d.tiers_found||0)+' tiers could not be read just now, so no tier is called best'+
+      (d.best_paying_tier_among_readable?' — of the ones that were read, '+d.best_paying_tier_among_readable+' paid most':'')+
+      '. Ask again in a moment.'));
+  }
   // The sentence the card exists to be able to say, when it is true.
-  if(d.capital_is_in_the_best_paying_tier===false){
+  else if(d.capital_is_in_the_best_paying_tier===false){
     out.appendChild(el('p','tier-said',
       most+' holds the most capital. '+best+' is the one paying for it.'));
   }else if(d.capital_is_in_the_best_paying_tier===true){

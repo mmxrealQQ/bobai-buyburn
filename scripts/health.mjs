@@ -163,11 +163,17 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
   const tiers = await fetch(`${SITE}/api/fee-tiers?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`)
     .then((r) => r.json()).catch(() => null);
   const priced = (tiers?.tiers || []).filter((t) => t.fees_per_1000_usd_parked != null);
+  // An incomplete comparison is a correct answer, not a failed one — since
+  // 2026-08-29 the tool withholds the winner when a tier could not be read,
+  // because ranking over whatever survived the rate limiter named the wrong
+  // tier under load. So this reports completeness rather than demanding it, and
+  // still fails when nothing at all came back priced.
   ok('Agents', 'fee-tier comparison answers with measured tiers',
     priced.length >= 2 && !!tiers?.measured_window?.minutes,
-    tiers?.best_paying_tier
-      ? `${priced.length} tiers priced over ${tiers.measured_window.minutes} min, best ${tiers.best_paying_tier}`
-      : (tiers?.error || 'no answer'));
+    !tiers || tiers.error ? (tiers?.error || 'no answer')
+      : tiers.comparison_complete === false
+        ? `${priced.length} tiers priced over ${tiers.measured_window?.minutes} min; ${tiers.tiers_unreadable?.length} unreadable, so no winner declared — correct behaviour under a throttled log endpoint`
+        : `${priced.length} tiers priced over ${tiers.measured_window?.minutes} min, best ${tiers.best_paying_tier}`);
   // The window has to travel with the figures. A tier yield without the window
   // it was measured over is the number this tool exists to stop people quoting.
   ok('Agents', 'the tier figures carry the window they were measured over',

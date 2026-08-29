@@ -25,8 +25,15 @@
 export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com',
   'https://bsc-dataseed1.defibit.io','https://bsc-mainnet.public.blastapi.io',
   'https://bsc-dataseed.binance.org','https://1rpc.io/bnb'];
+// Endpoints measured on 2026-08-29 against a 5,000-block eth_getLogs on a busy
+// pair: only these two answered it at all. defibit and Binance's own dataseed
+// said "limit exceeded", blastapi and drpc rate-limited, 1rpc caps the range at
+// fifty blocks, llamarpc did not resolve. They share an operator, so they
+// probably share a budget — but two hostnames spread a burst of five tier
+// queries better than one does, and the caller cannot be asked to go slower.
+export const LOGS_RPCS=['https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
 export const RPC=RPCS[0],
-  LOGS_RPC='https://bsc-rpc.publicnode.com',
+  LOGS_RPC=LOGS_RPCS[0],
   GOPLUS='https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=',
   GOPLUS_TOKEN='https://api.gopluslabs.io/api/v1/token',
   V2FACTORY='0xca143ce32fe78f1f7019d7d551a6402fc5350c73',

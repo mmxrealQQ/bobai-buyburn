@@ -23,7 +23,7 @@
 // comparison — a tier ranking is a question about one venue's fee ladder, and
 // silently folding another venue into it would answer a different question.
 import {
-  QUOTES, BNB_PAIR, WBNB, LOGS_RPC, SEL as S,
+  QUOTES, BNB_PAIR, WBNB, LOGS_RPC, LOGS_RPCS, SEL as S,
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
@@ -194,14 +194,21 @@ export async function feeTiers(input) {
     // tiers asked back to back while three other probes are also reading logs
     // was enough to have every tier come back unmeasured — which then rendered
     // as "nothing traded" for a pair that trades every block.
+    //
+    // Three attempts across both endpoints that were measured to serve this
+    // range at all, starting from a different one per tier so five tiers do not
+    // queue behind each other on the same host. Measured 2026-08-29: five
+    // concurrent callers left 0 to 2 of 5 tiers readable, against 4 to 5 when
+    // asked one at a time.
     let logs = null;
-    for (let attempt = 0; attempt < 2 && logs === null; attempt++) {
-      if (attempt) await new Promise((r) => setTimeout(r, 350));
+    for (let attempt = 0; attempt < 3 && logs === null; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
+      const endpoint = LOGS_RPCS[(i + attempt) % LOGS_RPCS.length];
       try {
         logs = await rpc('eth_getLogs', [{
           address: c.pair, topics,
           fromBlock: '0x' + from.toString(16), toBlock: '0x' + head.toString(16),
-        }], LOGS_RPC);
+        }], endpoint);
       } catch { logs = null; }
     }
 
@@ -266,12 +273,31 @@ export async function feeTiers(input) {
     // from outside and mean opposite things, and the first is about us.
     tiers_measured: measured.length,
     tiers_found: tiers.length,
+    // WHY THE VERDICT GOES NULL WHEN A TIER COULD NOT BE READ
+    //
+    // These three fields used to be computed over whatever happened to be
+    // readable, and that turned a throttled request into a wrong answer instead
+    // of a missing one. Measured on 2026-08-29 with five callers at once: asked
+    // one at a time, CAKE/WBNB reports V3 0.01% as the best-paying tier; asked
+    // concurrently, two of five tiers came back unreadable and the same endpoint
+    // answered "V2 0.25%" — the tier with the most capital, which is exactly the
+    // wrong answer this tool exists to correct, delivered with no sign that
+    // anything had been skipped.
+    //
+    // A ranking over an unknown subset is not a ranking. So the headline verdict
+    // is withheld unless every tier was read, and the partial result is still
+    // offered under a name that says what it is.
+    comparison_complete: measured.length === tiers.length,
+    tiers_unreadable: tiers.filter((v) => !v.measured).map((v) => v.tier),
     // The two answers side by side are the whole point: an LP is shown the
     // first number everywhere and needs the second one.
-    best_paying_tier: traded.length ? traded[0].tier : null,
+    best_paying_tier: measured.length === tiers.length && traded.length ? traded[0].tier : null,
+    best_paying_tier_among_readable: traded.length ? traded[0].tier : null,
     most_capital_tier: mostCapital ? mostCapital.tier : null,
     capital_is_in_the_best_paying_tier:
-      traded.length && mostCapital ? traded[0].tier === mostCapital.tier : null,
+      measured.length === tiers.length && traded.length && mostCapital
+        ? traded[0].tier === mostCapital.tier
+        : null,
     idle_capital: idle,
     // Not part of the comparison, and named so that is visible. An LP looking
     // at the wrong pair entirely is a likelier mistake than an LP in the wrong
@@ -290,7 +316,9 @@ export async function feeTiers(input) {
         ? 'No tier could be read: the log endpoint refused every range. This says nothing about whether the pair traded — it says the measurement did not happen. Retry.'
         : traded.length === 0
           ? `Nothing traded on any of the ${measured.length} tiers that could be read, so no tier is ranked.`
-          : `Ranking covers the ${traded.length} of ${measured.length} readable tiers that traded in this window.`,
+          : measured.length < tiers.length
+            ? `Incomplete: ${tiers.length - measured.length} of ${tiers.length} tiers could not be read, so no winner is declared. A ranking over an unknown subset would name whichever tier happened to be readable, and the tiers that go missing under load are not random — they are the ones being asked about most. The partial result is in best_paying_tier_among_readable. Retry for a complete one.`
+            : `Ranking covers the ${traded.length} of ${measured.length} readable tiers that traded in this window.`,
     ],
   };
 }

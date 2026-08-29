@@ -1626,6 +1626,7 @@ At its core, the game is built on a structured probability engine inspired b&hel
       <p><b>Whether it will quote.</b> Every agent carrying a Hire button was sent the ERC-8183 negotiation step once &mdash; a request for a price on the service it is listed under, and nothing else. 10 of 16 returned one; the rest answered with unparseable JSON, an error from their own infrastructure, or a schema complaint, and each row carries which. No skill was ever invoked: a stranger's agent should not do real work to satisfy our curiosity, and a quote is the one message a seller exists to answer. Measured 2026-08-28 06:49 UTC.</p>
       <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good. It is not a ranking and not an endorsement.</p>
       <p>Counts: <a href="/api-registry.json">/api-registry.json</a> &middot; every agent that answered, with its tools: <a href="/api-agents.json">/api-agents.json</a>. Both plain JSON, CORS open, so another agent can read them directly. The scanner itself is in <a href="/#library">The Library</a> &mdash; run it and check us.</p>
+      <p><b>Two measurements next door.</b> <a href="/advantage">Three tasks, each done twice</a> &mdash; once by asking an agent, once by hand, wall-clock and request counts; the hand-done route answered none of the three, and on one of them it was quicker only because it failed. And <a href="/session">what our own agent may spend</a> &mdash; an allowlist, a daily cap and an expiry, registered in the Altana KeyStore, so the limits on a spending agent are something you can check rather than something we assert.</p>
     </details>
   </section>
 
@@ -1635,7 +1636,7 @@ At its core, the game is built on a structured probability engine inspired b&hel
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
   <div class="fm">
     <p>Read from BNB Chain directly &middot; registry <a href="https://bscscan.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" target="_blank" rel="noopener">0x8004&hellip;a432</a> &middot; method and raw data linked above</p>
-    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; not financial advice</p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; <a href="/advantage">Advantage report</a> &middot; <a href="/session">Agent spending authority</a> &middot; not financial advice</p>
   </div>
 </div></footer>
 

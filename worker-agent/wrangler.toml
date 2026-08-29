@@ -13,3 +13,11 @@ crons = ["*/15 * * * *"]
 [[kv_namespaces]]
 binding = "AGENT"
 id = "ebebebbecec1485aa74ef1f14417c120"
+
+# The agent's Altana smart-account address, read by /session to look up its
+# spending authority in the on-chain KeyStore. A plain var and not a secret:
+# it is an address, it is meant to be looked up, and the whole point of the
+# endpoint is that a stranger can make the same call. The admin key that can
+# grant or revoke against it is not on this worker and must never be.
+[vars]
+ALTANA_AGENT_WALLET = "0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3"

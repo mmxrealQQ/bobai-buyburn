@@ -13,6 +13,7 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
+    "@altananetwork/sdk": "^0.8.0",
     "canvas": "^3.2.2",
     "dotenv": "^17.3.1",
     "viem": "^2.47.6"

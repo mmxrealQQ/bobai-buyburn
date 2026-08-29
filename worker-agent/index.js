@@ -36,6 +36,7 @@ import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations } from '../shared/agent-registrations.js';
+import { handleSession } from './session.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -861,6 +862,14 @@ export default {
     // grid probe measures a live pool and the health probe reads the
     // Comptroller; doing that on every hit would let anybody with a loop spend
     // our RPC budget and other people's.
+    // What this agent is allowed to SPEND, as opposed to what it can do. Read
+    // from the Altana KeyStore on-chain rather than from our own config, so the
+    // answer is one a stranger can reproduce with two view calls. See
+    // session.js for why revocation is deliberately not reachable from here.
+    if (path === '/session') {
+      return json(await handleSession(url, env));
+    }
+
     if (path === '/status') {
       const t = await readTelemetry(env);
       if (!t) return json({ error: 'no telemetry tick has run yet' }, 503);

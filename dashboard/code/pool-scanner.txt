@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 3765 lines.
+# one fetch. 6 files, 3779 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1022,6 +1022,15 @@ export async function scan(input, env) {
       swapFeePct: +(pool.fee * 100).toFixed(4),
       tokenReserve: pool.tok, quoteReserve: pool.q,
       liquidityUsd: Math.round(hard),
+      // Which of the two possible meanings this figure has, said out loud.
+      // liquidityUsd is the QUOTE SIDE ONLY — the BNB or USDT actually in the
+      // pool, the half that does not evaporate when the token's own price does.
+      // pancakeswap_fee_tiers reports capital_usd for the same pool counting
+      // BOTH sides, because an LP has to put up both, so the two figures differ
+      // by roughly 2x on purpose. Without this line they read as a contradiction
+      // between our own endpoints, which is how a correct number loses an
+      // argument it should win.
+      liquidityBasis: 'quote side only — the hard asset in the pool. Counting both sides, as an LP would, is roughly twice this; that is what pancakeswap_fee_tiers reports as capital_usd.',
       shareOfLiquidity: +share.toFixed(4),
       partialMarket: partial != null,
     },
@@ -3727,6 +3736,11 @@ export async function feeTiers(input) {
       quote_held: +c.q.toFixed(6),
       quote_held_usd: +(c.q * c.usd).toFixed(2),
       token_held: +c.tok.toFixed(6),
+      // BOTH sides of the pool, because an LP puts up both and is paid on both.
+      // bsc_pool_scan's liquidityUsd for the same pool is the quote side only —
+      // a deliberately more conservative figure for a different question — and
+      // the two are labelled rather than reconciled, because reconciling them
+      // would mean one of the questions getting the wrong answer.
       capital_usd: capitalUsd == null ? null : +capitalUsd.toFixed(2),
     };
     // A refused range and a quiet pool arrive as the same emptiness and mean

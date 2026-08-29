@@ -1,0 +1,198 @@
+#!/usr/bin/env node
+// Renders data/advantage/report.json into dashboard/advantage.html.
+//
+// Generated rather than written by hand for the same reason /registry is: the
+// page states measurements, and a measurement that gets retyped into HTML is a
+// measurement that will eventually disagree with the file it came from. Re-run
+// scripts/advantage-report.mjs, re-run this, deploy — the page cannot drift
+// from the run that produced it.
+//
+//   node scripts/advantage-report.mjs && node scripts/advantage-publish.mjs
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const report = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'advantage', 'report.json'), 'utf8'));
+
+if (!report.tasks?.length) {
+  console.error('report.json holds no tasks — run scripts/advantage-report.mjs first');
+  process.exit(1);
+}
+
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const usd = (n) => (n == null ? '—' : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 }));
+const ms = (n) => (n == null ? '—' : `${Number(n).toLocaleString('en-US')} ms`);
+
+// How many of the three the hand-done path actually answered. This is the
+// headline, and it is counted from the data rather than asserted in prose.
+const answeredManually = report.tasks.filter((t) => t.manual?.answer?.answered).length;
+const answeredByAgent = report.tasks.filter((t) => t.agent?.answer?.answered).length;
+
+const taskCard = (t) => {
+  const a = t.agent?.answer || {};
+  const mn = t.manual?.answer || {};
+  const agentOk = a.answered;
+  const manualOk = mn.answered;
+
+  // Task 1 carries the evidence table: the tier a public interface points at,
+  // against the one that actually paid.
+  const tierRows = (a.tiers || []).map((x) => `
+        <tr${x.tier === a.best_paying_tier ? ' class="win"' : ''}>
+          <td>${esc(x.tier)}</td>
+          <td class="n">${usd(x.capital_usd)}</td>
+          <td class="n">${x.swaps == null ? '<span class="unm">not measurable</span>' : x.swaps}</td>
+          <td class="n">${x.fees_paid_usd == null ? '—' : usd(x.fees_paid_usd)}</td>
+          <td class="n">${x.fees_per_1000_usd_parked == null ? '—' : '$' + x.fees_per_1000_usd_parked.toFixed(5)}</td>
+        </tr>`).join('');
+
+  const evidence = t.task === 1 && (a.tiers || []).length ? `
+      <div class="ev">
+        <div class="ev-h">What the five pools actually paid, over ${esc(a.window?.minutes ?? '')} minutes of chain</div>
+        <div class="tw"><table>
+          <thead><tr><th>Tier</th><th class="n">Capital parked</th><th class="n">Swaps</th><th class="n">Fees paid</th><th class="n">Fees per $1,000 parked</th></tr></thead>
+          <tbody>${tierRows}</tbody>
+        </table></div>
+        <p class="ev-n">The tier holding the most capital is <strong>${esc(a.most_capital_tier)}</strong>. The tier that paid best is <strong>${esc(a.best_paying_tier)}</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single ${esc(a.window?.minutes ?? '')}-minute window and deliberately not annualised — forty minutes of flow says what happened in forty minutes.</p>
+      </div>` : '';
+
+  return `
+    <article class="task">
+      <div class="t-h"><span class="t-n">Task ${t.task}</span><span class="t-c">${esc(t.category)}</span></div>
+      <h3>${esc(t.question)}</h3>
+      <p class="t-w">${esc(t.why_it_is_hard)}</p>
+
+      <div class="cmp">
+        <div class="col ${agentOk ? 'good' : 'bad'}">
+          <div class="col-h">Asking the agent</div>
+          <div class="big">${ms(t.agent?.ms)}</div>
+          <div class="sub">${t.agent?.requests ?? '—'} request${t.agent?.requests === 1 ? '' : 's'}</div>
+          <div class="verdict">${agentOk ? 'Answered the question' : 'Did not answer'}</div>
+          ${a.could_not_answer ? `<p class="miss">${esc(a.could_not_answer)}</p>` : ''}
+        </div>
+        <div class="col ${manualOk ? 'good' : 'bad'}">
+          <div class="col-h">Doing it by hand</div>
+          <div class="big">${ms(t.manual?.ms)}</div>
+          <div class="sub">${t.manual?.requests ?? '—'} request${t.manual?.requests === 1 ? '' : 's'}</div>
+          <div class="verdict">${manualOk ? 'Answered the question' : 'Did not answer'}</div>
+          ${mn.could_not_answer ? `<p class="miss">${esc(mn.could_not_answer)}</p>` : ''}
+        </div>
+      </div>
+
+      <p class="ratio">${t.ratio_lower_bound
+        ? `${t.ratio_lower_bound}&times; longer by hand — and that is a floor, not an estimate: the hand-done path here is a script, with no page loads, no reading and no typing.`
+        : 'No time ratio is published for this task. One of the two paths never produced the answer, and dividing a time by a non-answer would turn a failure into a benchmark.'}</p>
+      ${evidence}
+    </article>`;
+};
+
+const html = `<!DOCTYPE html>
+<!-- Generated by scripts/advantage-publish.mjs from data/advantage/report.json.
+     Do not edit by hand: the numbers here are a measurement, and a measurement
+     retyped into HTML is one that will eventually disagree with its source. -->
+<html lang="en" style="background:#0c0b0c">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/fonts.css?v=1">
+<title>Agent Advantage Report — three tasks, done twice</title>
+<meta name="description" content="Three real BNB Smart Chain tasks, each done twice: once by asking an agent, once by hand. Wall-clock, request counts, and what the hand-done path could not answer at all.">
+<link rel="canonical" href="https://brainonbnb.com/advantage">
+<link rel="icon" type="image/png" href="/favicon.png?v=4">
+<meta property="og:title" content="Agent Advantage Report — three tasks, done twice">
+<meta property="og:description" content="We set out to measure how much faster an agent is. What we measured is that the hand-done route did not answer ${3 - answeredManually} of the 3 questions at all.">
+<meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+<meta property="og:url" content="https://brainonbnb.com/advantage">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/styles.css?v=29">
+<style>
+  .adv{max-width:960px;margin:0 auto}
+  .hero h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(28px,5vw,44px);line-height:1.08;margin:0 0 14px}
+  .hero .lead{color:var(--muted);font-size:17px;line-height:1.6;max-width:70ch}
+  .headline{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:18px 20px;margin:24px 0}
+  .headline strong{color:var(--gold)}
+  .method{border-left:2px solid var(--border);padding:2px 0 2px 16px;margin:22px 0;color:var(--muted);font-size:14.5px;line-height:1.65}
+  .method b{color:#e9e6e3;font-weight:600}
+  .task{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:20px;margin:18px 0}
+  .t-h{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+  .t-n{font-family:'Space Grotesk',system-ui,sans-serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
+  .t-c{font-size:12px;color:var(--muted)}
+  .task h3{font-family:'Space Grotesk',system-ui,sans-serif;font-size:19px;line-height:1.35;margin:0 0 8px}
+  .t-w{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0 0 16px}
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:640px){.cmp{grid-template-columns:1fr}}
+  .col{border:1px solid var(--border);border-radius:12px;padding:14px}
+  .col-h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .big{font-family:'Space Grotesk',system-ui,sans-serif;font-size:26px}
+  .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .verdict{margin-top:10px;font-size:13.5px;font-weight:600}
+  .col.good .verdict{color:#7fd1a3}
+  .col.bad .verdict{color:#e2a03f}
+  .miss{color:var(--muted);font-size:13px;line-height:1.55;margin:8px 0 0}
+  .ratio{margin:14px 0 0;font-size:14px;color:var(--muted);line-height:1.6}
+  .ev{margin-top:18px;border-top:1px solid var(--border);padding-top:16px}
+  .ev-h{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .tw{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border)}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tr.win td{color:var(--gold)}
+  .unm{color:#e2a03f}
+  .ev-n{color:var(--muted);font-size:13.5px;line-height:1.6;margin:10px 0 0}
+  .caveats li{color:var(--muted);font-size:14px;line-height:1.65;margin-bottom:6px}
+  .foot{color:var(--muted);font-size:13.5px;line-height:1.7;margin-top:26px;border-top:1px solid var(--border);padding-top:16px}
+  .foot code{background:rgba(255,255,255,.05);padding:2px 6px;border-radius:5px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
+    <a class="brand-link" href="/advantage">Agent Advantage Report</a>
+    <a class="nb" href="/registry">Brain Plaza</a>
+  </div></nav>
+
+  <section class="sec b-blue adv" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Report &middot; measured ${esc(report.measured_at.slice(0, 10))}</span><span class="blk-line"></span></div>
+
+    <div class="hero">
+      <h1>Three tasks, each done twice</h1>
+      <p class="lead">Once by asking an agent. Once by hand — every call a person would have to make, in the same minute, over the same node. The plan was to measure how much time an agent saves.</p>
+    </div>
+
+    <div class="headline">
+      That is not what came back. The hand-done route answered <strong>${answeredManually} of ${report.tasks.length}</strong> questions; the agent answered <strong>${answeredByAgent} of ${report.tasks.length}</strong>. On one task the hand-done path was <em>quicker</em> — because the public node refused its log queries, so it skipped the only expensive step and returned a number it already had. The fastest path in any comparison is always the broken one, which is why no ratio is published where a side failed to answer.
+    </div>
+
+    <div class="method">
+      <b>How the hand-done path was measured.</b> It is a script issuing the same calls a person would have to issue — no page loads, no reading, no typing an address into a block explorer, no deciding which explorer to open. It is therefore a <b>floor</b> on what a person costs, never an estimate of it. Inflating that side would have been easy and would have made this document worthless.<br><br>
+      <b>What is recorded as a failure.</b> A query the node refused is recorded as unmeasured, never as zero. &ldquo;Nobody traded in this pool&rdquo; and &ldquo;we could not look&rdquo; are different answers, and a report that renders them the same is worse than no report.<br><br>
+      <b>What can be re-run.</b> Everything. <code>node scripts/advantage-report.mjs</code> writes the JSON this page is generated from; the endpoints it calls are public, need no key, and are the same ones any caller gets.
+    </div>
+
+${report.tasks.map(taskCard).join('\n')}
+
+    <h2 style="font-family:'Space Grotesk',system-ui,sans-serif;font-size:20px;margin:30px 0 12px">What this does and does not show</h2>
+    <ul class="caveats">
+      ${report.caveats.map((c) => `<li>${esc(c)}</li>`).join('\n      ')}
+      <li>Every endpoint used on the agent side is free and unauthenticated. The cost difference in this report is not a subscription — it is a person.</li>
+    </ul>
+
+    <div class="foot">
+      Raw measurement: <a href="/api-advantage.json">/api-advantage.json</a> &middot; measured ${esc(report.measured_at)} against <code>${esc(report.rpc)}</code> on ${esc(report.chain)}.<br>
+      The agent side is <code>/api/fee-tiers</code>, <code>/api/pool-scan</code> and <code>agent.brainonbnb.com/find</code> — the same public endpoints documented on <a href="/registry">Brain Plaza</a>. The hand-done side is <code>scripts/advantage-report.mjs</code>, published with the rest of the source at <a href="/source">/source</a>.
+    </div>
+  </section>
+</div>
+</body>
+</html>
+`;
+
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'advantage.html'), html);
+// The raw file next to the page, so the claim and its evidence ship together.
+fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-advantage.json'), JSON.stringify(report, null, 2) + '\n');
+console.log(`wrote dashboard/advantage.html (${(html.length / 1024).toFixed(1)} KB) and dashboard/api-advantage.json`);
+console.log(`  hand-done path answered ${answeredManually} of ${report.tasks.length}; agent answered ${answeredByAgent} of ${report.tasks.length}`);

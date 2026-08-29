@@ -212,6 +212,11 @@ export async function feeTiers(input) {
       quote_held: +c.q.toFixed(6),
       quote_held_usd: +(c.q * c.usd).toFixed(2),
       token_held: +c.tok.toFixed(6),
+      // BOTH sides of the pool, because an LP puts up both and is paid on both.
+      // bsc_pool_scan's liquidityUsd for the same pool is the quote side only —
+      // a deliberately more conservative figure for a different question — and
+      // the two are labelled rather than reconciled, because reconciling them
+      // would mean one of the questions getting the wrong answer.
       capital_usd: capitalUsd == null ? null : +capitalUsd.toFixed(2),
     };
     // A refused range and a quiet pool arrive as the same emptiness and mean

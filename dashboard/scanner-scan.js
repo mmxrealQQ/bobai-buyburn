@@ -437,6 +437,15 @@ export async function scan(input, env) {
       swapFeePct: +(pool.fee * 100).toFixed(4),
       tokenReserve: pool.tok, quoteReserve: pool.q,
       liquidityUsd: Math.round(hard),
+      // Which of the two possible meanings this figure has, said out loud.
+      // liquidityUsd is the QUOTE SIDE ONLY — the BNB or USDT actually in the
+      // pool, the half that does not evaporate when the token's own price does.
+      // pancakeswap_fee_tiers reports capital_usd for the same pool counting
+      // BOTH sides, because an LP has to put up both, so the two figures differ
+      // by roughly 2x on purpose. Without this line they read as a contradiction
+      // between our own endpoints, which is how a correct number loses an
+      // argument it should win.
+      liquidityBasis: 'quote side only — the hard asset in the pool. Counting both sides, as an LP would, is roughly twice this; that is what pancakeswap_fee_tiers reports as capital_usd.',
       shareOfLiquidity: +share.toFixed(4),
       partialMarket: partial != null,
     },

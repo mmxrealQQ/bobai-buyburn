@@ -95,14 +95,14 @@
       <div class="cmp">
         <div class="col good">
           <div class="col-h">Asking the agent</div>
-          <div class="big">2,715 ms</div>
+          <div class="big">2,833 ms</div>
           <div class="sub">1 request</div>
           <div class="verdict">Answered the question</div>
           
         </div>
         <div class="col bad">
           <div class="col-h">Doing it by hand</div>
-          <div class="big">1,957 ms</div>
+          <div class="big">1,553 ms</div>
           <div class="sub">22 requests</div>
           <div class="verdict">Did not answer</div>
           <p class="miss">the public node refused the log range, so no tier could be priced — only the capital ranking survived, which is the number every public interface already shows</p>
@@ -112,47 +112,47 @@
       <p class="ratio">No time ratio is published for this task. One of the two paths never produced the answer, and dividing a time by a non-answer would turn a failure into a benchmark.</p>
       
       <div class="ev">
-        <div class="ev-h">What the five pools actually paid, over 37.5 minutes of chain</div>
+        <div class="ev-h">What the five pools actually paid, over  minutes of chain</div>
         <div class="tw"><table>
           <thead><tr><th>Tier</th><th class="n">Capital parked</th><th class="n">Swaps</th><th class="n">Fees paid</th><th class="n">Fees per $1,000 parked</th></tr></thead>
           <tbody>
         <tr>
           <td>V2 0.25%</td>
-          <td class="n">$16,785,703.34</td>
-          <td class="n">55</td>
-          <td class="n">$12.75</td>
-          <td class="n">$0.00076</td>
+          <td class="n">$16,788,287.11</td>
+          <td class="n">47</td>
+          <td class="n">$3.06</td>
+          <td class="n">$0.00018</td>
         </tr>
         <tr class="win">
           <td>V3 0.01%</td>
-          <td class="n">$24,249.05</td>
-          <td class="n">130</td>
-          <td class="n">$0.64</td>
-          <td class="n">$0.02659</td>
+          <td class="n">$24,253.04</td>
+          <td class="n">183</td>
+          <td class="n">$0.69</td>
+          <td class="n">$0.02865</td>
         </tr>
         <tr>
           <td>V3 0.05%</td>
-          <td class="n">$1,125,401.84</td>
-          <td class="n">50</td>
-          <td class="n">$8.56</td>
-          <td class="n">$0.00761</td>
+          <td class="n">$1,125,592.03</td>
+          <td class="n">86</td>
+          <td class="n">$18.94</td>
+          <td class="n">$0.01682</td>
         </tr>
         <tr>
           <td>V3 0.25%</td>
-          <td class="n">$3,953,134.38</td>
-          <td class="n">2</td>
-          <td class="n">$4.93</td>
-          <td class="n">$0.00125</td>
+          <td class="n">$3,954,044.46</td>
+          <td class="n">4</td>
+          <td class="n">$2.17</td>
+          <td class="n">$0.00055</td>
         </tr>
         <tr>
           <td>V3 1.00%</td>
-          <td class="n">$2,881.25</td>
-          <td class="n">2</td>
+          <td class="n">$2,863.54</td>
+          <td class="n">0</td>
           <td class="n">$0</td>
-          <td class="n">$0.00139</td>
+          <td class="n">$0.00000</td>
         </tr></tbody>
         </table></div>
-        <p class="ev-n">The tier holding the most capital is <strong>V2 0.25%</strong>. The tier that paid best is <strong>V3 0.01%</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single 37.5-minute window and deliberately not annualised — forty minutes of flow says what happened in forty minutes.</p>
+        <p class="ev-n">The tier holding the most capital is <strong>V2 0.25%</strong>. The tier that paid best is <strong>V3 0.01%</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single -minute window and deliberately not annualised — forty minutes of flow says what happened in forty minutes.</p>
       </div>
     </article>
 
@@ -164,14 +164,14 @@
       <div class="cmp">
         <div class="col good">
           <div class="col-h">Asking the agent</div>
-          <div class="big">3,394 ms</div>
+          <div class="big">3,278 ms</div>
           <div class="sub">1 request</div>
           <div class="verdict">Answered the question</div>
           
         </div>
         <div class="col bad">
           <div class="col-h">Doing it by hand</div>
-          <div class="big">345 ms</div>
+          <div class="big">382 ms</div>
           <div class="sub">6 requests</div>
           <div class="verdict">Did not answer</div>
           <p class="miss">the transfer tax and the share of liquidity this pool represents are both missing. Neither is a field to read: the tax only exists in the difference between what a swap sent and what arrived, and the share needs every other pool on every other venue found first.</p>
@@ -190,14 +190,14 @@
       <div class="cmp">
         <div class="col good">
           <div class="col-h">Asking the agent</div>
-          <div class="big">99 ms</div>
+          <div class="big">211 ms</div>
           <div class="sub">1 request</div>
           <div class="verdict">Answered the question</div>
           
         </div>
         <div class="col bad">
           <div class="col-h">Doing it by hand</div>
-          <div class="big">10,124 ms</div>
+          <div class="big">9,539 ms</div>
           <div class="sub">150 requests</div>
           <div class="verdict">Did not answer</div>
           <p class="miss">no candidate was produced. The registry has no index: 150 ids were read to measure the rate, and that is 0.05% of it.</p>
@@ -218,7 +218,7 @@
     </ul>
 
     <div class="foot">
-      Raw measurement: <a href="/api-advantage.json">/api-advantage.json</a> &middot; measured 2026-08-29T07:28:08.697Z against <code>https://bsc-dataseed.binance.org</code> on BNB Smart Chain (eip155:56).<br>
+      Raw measurement: <a href="/api-advantage.json">/api-advantage.json</a> &middot; measured 2026-08-29T08:56:08.600Z against <code>https://bsc-dataseed.binance.org</code> on BNB Smart Chain (eip155:56).<br>
       The agent side is <code>/api/fee-tiers</code>, <code>/api/pool-scan</code> and <code>agent.brainonbnb.com/find</code> — the same public endpoints documented on <a href="/registry">Brain Plaza</a>. The hand-done side is <code>scripts/advantage-report.mjs</code>, published with the rest of the source at <a href="/source">/source</a>.
     </div>
   </section>

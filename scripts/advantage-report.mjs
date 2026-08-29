@@ -127,7 +127,16 @@ const SEL = {
 // them, which is not a statement about what they pay.
 async function task1Agent() {
   const m = meter();
-  const j = await getJson(m, `${SITE}/api/fee-tiers?address=${CAKE}`);
+  // The tool withholds its verdict when a tier could not be read, and its own
+  // caveat says to ask again. So this asks again — up to twice more, with every
+  // attempt counted in the request total, because a caller who retried twice
+  // made three requests and an honest comparison has to carry that. Taking the
+  // first incomplete answer as a refusal would score the tool's honesty as a
+  // failure, which is precisely backwards.
+  let j = await getJson(m, `${SITE}/api/fee-tiers?address=${CAKE}`);
+  for (let attempt = 0; attempt < 2 && j.comparison_complete === false; attempt++) {
+    j = await getJson(m, `${SITE}/api/fee-tiers?address=${CAKE}`);
+  }
   return {
     ...m.done(),
     answer: {
@@ -504,6 +513,22 @@ const report = {
 // that damages what it checks.
 if (!SELF_TEST) {
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  fs.writeFileSync(path.join(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
-  console.log(`\nwrote data/advantage/report.json — ${results.length} task(s)`);
+  const file = path.join(OUT_DIR, 'report.json');
+  // A --task run measures one task and must not replace a report holding
+  // three. The first version did exactly that: one debugging run left the
+  // published page's source carrying a single task, and nothing would have said
+  // so until somebody regenerated the page. Single-task results are merged into
+  // whatever is already on disk, by task number.
+  if (ONLY) {
+    let prior = null;
+    try { prior = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* first run */ }
+    if (prior?.tasks?.length) {
+      const merged = prior.tasks.map((t) => results.find((r) => r.task === t.task) || t);
+      for (const r of results) if (!merged.some((t) => t.task === r.task)) merged.push(r);
+      report.tasks = merged.sort((a, b) => a.task - b.task);
+      report.note_partial_run = `Task ${ONLY} was re-measured on its own; the other tasks carry their earlier measurement.`;
+    }
+  }
+  fs.writeFileSync(file, JSON.stringify(report, null, 2));
+  console.log(`\nwrote data/advantage/report.json — ${report.tasks.length} task(s)${ONLY ? ` (task ${ONLY} re-measured, the rest kept)` : ''}`);
 }

@@ -249,13 +249,28 @@ if (!SEND) {
     })()`);
     if (s.msg !== last) { console.log(`  · ${s.msg.replace(/\s+/g, ' ').slice(0, 120)}`); last = s.msg; }
     if (s.err) { problems.push(`the panel reported an error: ${s.msg.slice(0, 160)}`); break; }
-    if (sent.length >= 5 && !s.hasNext) break;
+    // Do not stop at the fifth transaction. Funding is not the end of the
+    // path: the panel then asks the seller to deliver, and that request can be
+    // refused — the first real run closed the browser mid-notify and left a
+    // funded job nobody had asked anyone to work on. Wait for the panel to say
+    // how that went.
+    if (sent.length >= 5 && !s.hasNext) {
+      if (/delivery is requested|declined to deliver|did not go through/i.test(s.msg)) break;
+      continue;
+    }
     if (s.hasNext && sent.length < 5) {
       await evaluate(`(function(){var b=document.querySelector('#rg-stepwrap button[data-step]:not([disabled])'); if(b) b.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));})()`);
       await wait(1000);
     }
   }
   if (sent.length < 5) problems.push(`only ${sent.length} of 5 steps were sent`);
+  const ending = await evaluate(`document.getElementById('rg-hire-msg').textContent.trim()`);
+  console.log(`\n  ending: ${ending.replace(/\s+/g, ' ').slice(0, 200)}`);
+  if (/declined to deliver/i.test(ending)) {
+    problems.push('the escrow was funded and the seller then declined the work — the task the panel seeds is one its own seller cannot fulfil');
+  } else if (!/delivery is requested/i.test(ending)) {
+    problems.push(`the run ended without a delivery verdict: ${ending.slice(0, 160)}`);
+  }
 }
 
 ws.close();

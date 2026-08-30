@@ -1536,19 +1536,35 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     // A starting sentence per category, so the box is never empty and the task
     // written into the job description is a real one. Editable — the
     // description is what the seller matches against.
+    //
+    // Every seller behind these buttons needs a real 0x address in the task
+    // except the yield ranking: venus.js, grid.js, lp-tiers.js and
+    // rebalance.js each refuse without one. These seeds used to name a token
+    // by symbol ("WBNB") or carry a literal "0x…" placeholder, so a buyer who
+    // took the suggested wording funded a job the seller then declined — and
+    // found out after paying, with the escrow already full. That is exactly
+    // how job 56670 ended: "Give a BSC token or pool address."
+    //
+    // A seed is a promise that the sentence works as written. These do.
+    var SEED_TOKEN='0x245c386dcfed896f5c346107596141e5edcbffff';
     var SEED={
-      'health-factor':'health factor and liquidation distance for my Venus position 0x…',
-      'grid-trading':'grid plan for WBNB, 10 levels across a 15% band, $1000 capital',
+      'health-factor':'health factor and liquidation distance for the Venus position at <ADDR>',
+      'grid-trading':'grid plan for '+SEED_TOKEN+', 10 levels across a 15% band, $1000 capital',
       'yield-optimization':'where is the best yield on BNB Chain for USDT right now',
-      'rebalancing':'my LP range has drifted out of band — what should it be'
+      'rebalancing':'rebalance holdings [{"token":"'+SEED_TOKEN+'","usd":1000}] — what should the range be'
     };
+    // "my position" means the wallet in front of us when there is one. Before
+    // connecting it falls back to a real address, so the seeded sentence is
+    // still fulfillable rather than a placeholder that fails at delivery.
+    function seedFor(cat){return String(SEED[cat]||'').replace('<ADDR>',account||SEED_TOKEN);}
 
+    var seeded='';
     function open(btn){
       current={id:btn.getAttribute('data-hire'),name:btn.getAttribute('data-name'),cat:btn.getAttribute('data-cat')};
       plan=null;jobId=null;
       document.getElementById('rg-hire-t').textContent='Hire '+current.name;
       elSub.textContent='Agent #'+current.id+' · paid through the ERC-8183 escrow on BNB Chain';
-      elTask.value=SEED[current.cat]||'';
+      elTask.value=seedFor(current.cat);seeded=elTask.value;
       elSteps.innerHTML='';elRaw.hidden=true;say('');
       elQuote.disabled=false;elQuote.textContent='Get a quote';
       d.showModal();
@@ -1643,7 +1659,14 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         w.innerHTML='<span class="rg-note">No wallet found in this browser. Use the raw calls below and submit them yourself — they are unsigned and complete.</span>';
         return;
       }
-      if(account){w.innerHTML='<span class="rg-note rg-ok">Connected '+esc(shortAddr(account))+'</span>';renderSteps();return;}
+      if(account){
+        w.innerHTML='<span class="rg-note rg-ok">Connected '+esc(shortAddr(account))+'</span>';
+        // Now that there is a wallet, "my position" has an answer. Only if the
+        // buyer has not touched the box - overwriting somebody's own wording
+        // the moment they connect would be worse than a stale placeholder.
+        if(current&&elTask&&elTask.value===seeded){elTask.value=seedFor(current.cat);seeded=elTask.value;}
+        renderSteps();return;
+      }
       w.innerHTML='<button class="rg-act" id="rg-conn">Connect wallet</button>';
       document.getElementById('rg-conn').addEventListener('click',function(){
         window.ethereum.request({method:'eth_requestAccounts'})
@@ -1775,9 +1798,21 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     function finish(){
       say('Escrow funded. Telling the seller to deliver…');
       fetch(AGENT+'/a2a',{method:'POST',headers:{'content-type':'application/json'},
-        body:JSON.stringify({jsonrpc:'2.0',id:1,method:'message/send',params:{message:{role:'user',messageId:'hire-'+jobId,parts:[{kind:'data',data:{skill:'notify_funded',job_id:Number(jobId)}}]}}})})
+        body:JSON.stringify({jsonrpc:'2.0',id:1,method:'message/send',params:{message:{role:'user',kind:'message',messageId:'hire-'+jobId,parts:[{kind:'data',data:{skill:'notify_funded',job_id:Number(jobId)}}]}}})})
         .then(function(r){return r.json();})
-        .then(function(){
+        .then(function(j){
+          // The seller answers JSON-RPC, so a refusal arrives as a 200 with an
+          // error member. This used to ignore the body entirely and report
+          // success either way — a buyer whose seller declined the work read
+          // "delivery is requested" in green while nothing had been accepted.
+          // A refusal here is the one message that must not be swallowed: the
+          // escrow is already full.
+          if(j&&j.error){
+            say('The escrow is funded, but the seller declined to deliver: '+esc(j.error.message||'no reason given')+
+                ' Your budget is untouched and returns to you when the job expires. '+
+                'Job <b>#'+esc(jobId)+'</b> · <a href="'+AGENT+'/job?id='+esc(jobId)+'" target="_blank" rel="noopener">/job?id='+esc(jobId)+' ↗</a>','rg-err');
+            return;
+          }
           say('Job <b>#'+esc(jobId)+'</b> is funded and delivery is requested. '+
               'Track it at <a href="'+AGENT+'/job?id='+esc(jobId)+'" target="_blank" rel="noopener">/job?id='+esc(jobId)+' ↗</a>. '+
               'The deliverable is written on-chain, not returned here — SUBMITTED means it exists, COMPLETED means the escrow released.','rg-ok');

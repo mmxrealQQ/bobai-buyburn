@@ -204,6 +204,35 @@ const extractParams = (text = '', given = {}) => {
   const addr = String(text).match(/0x[a-fA-F0-9]{40}/)?.[0];
   const out = { ...given };
   if (addr && !out.address && !out.token) { out.address = addr; out.token = addr; }
+
+  // rebalance_plan is the one service that needs a list rather than a single
+  // address, and free text could never produce one. A job hired through the
+  // panel arrived here with `token` set and `holdings` empty, so the service
+  // refused every time — and it refused AFTER the buyer had funded the escrow,
+  // which is the most expensive moment to discover that a category cannot be
+  // delivered at all. The strictness in rebalance.js is right; what was missing
+  // was the bridge from a sentence to a portfolio.
+  if (!Array.isArray(out.holdings)) {
+    const arr = String(text).match(/\[\s*\{[\s\S]*?\}\s*\]/)?.[0];
+    if (arr) {
+      try {
+        const parsed = JSON.parse(arr);
+        if (Array.isArray(parsed) && parsed.length) out.holdings = parsed;
+      } catch { /* not JSON after all — fall through to the addresses */ }
+    }
+  }
+  // No list in the text: read every address in the sentence as one holding and
+  // split the stated capital evenly between them. Equal weight is the only
+  // split that does not smuggle in a view about what the portfolio should be,
+  // which is the same reasoning rebalance.js already applies to its targets.
+  if (!Array.isArray(out.holdings) || !out.holdings.length) {
+    const tokens = [...new Set(String(text).match(/0x[a-fA-F0-9]{40}/g) || [])];
+    if (tokens.length) {
+      const stated = Number(String(text).match(/\$\s?([\d,]+)/)?.[1]?.replace(/,/g, ''));
+      const usd = stated > 0 ? stated : 1000;
+      out.holdings = tokens.map((t) => ({ token: t, usd: usd / tokens.length }));
+    }
+  }
   return out;
 };
 

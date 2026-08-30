@@ -1474,7 +1474,7 @@ export async function scan(input, env) {
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
   <div class="fm">
     <p>Read live from BNB Chain in your own browser &mdash; nothing stored, nothing logged &middot; contract properties by <a href="https://gopluslabs.io" target="_blank" rel="noopener">GoPlus</a> &middot; venue index by <a href="https://dexscreener.com" target="_blank" rel="noopener">DexScreener</a></p>
-    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; not financial advice</p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a></p>
   </div>
 </div></footer>
 </div>

@@ -46,7 +46,7 @@ const AURORA = '<div class="aur" aria-hidden="true"><i class="a1"></i><i class="
 const FOOTER = `<footer><div class="fi2">
   <div class="fb"><img src="/logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
   <div class="fm">
-    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; not financial advice</p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a></p>
   </div>
 </div></footer>`;
 

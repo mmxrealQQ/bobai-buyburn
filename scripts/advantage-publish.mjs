@@ -192,7 +192,7 @@ ${report.tasks.map(taskCard).join('\n')}
   <div class="fb"><img src="/logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
   <div class="fm">
     <p>Both paths measured from one machine in one run &middot; the raw measurement is <a href="/api-advantage.json">/api-advantage.json</a> &middot; the script that produced it is published at <a href="/source">/source</a></p>
-    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; not financial advice</p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/whitepaper">Whitepaper</a></p>
   </div>
 </div></footer>
 </div>

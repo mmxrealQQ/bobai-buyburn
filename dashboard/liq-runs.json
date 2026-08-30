@@ -73,6 +73,14 @@
       "bnb": "0.040064131622777276",
       "addLiqTx": "0x703068b42d5e011f40d38f1dec9b8e917e184691c28b1211410a5f78ce08dd4c",
       "lpBurnTx": "0xff4bd63e0bb005a1cd7fbbbf6aacad9a5f0b9a2a293a354c95639c1c6e9e1543"
+    },
+    {
+      "time": "2026-08-30T04:13:48.179Z",
+      "lp": "411.787911031872956845",
+      "bobai": "1198243.898354935",
+      "bnb": "0.168439351572907234",
+      "addLiqTx": "0xc31ec0644d7ad2b123bf98aba2dd67bd9f6315b28db5694856e7310f6ea6fa13",
+      "lpBurnTx": "0x984171a63bd4b8edada9de76af34272336d5bc250d88adc4d64dfb5cc2d1b422"
     }
   ]
 }

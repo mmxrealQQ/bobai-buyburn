@@ -1569,7 +1569,20 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         .then(function(r){return r.json();})
         .then(function(j){
           elQuote.textContent='Get a quote';elQuote.disabled=false;
-          if(!j||j.error){say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer'),'rg-err');return;}
+          if(!j||j.error){
+            say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer'),'rg-err');
+            // Show the address the broker actually tried. Without it the
+            // reader gets a verdict about a stranger's agent and no way to
+            // check it - "the endpoint its card names answered 404" names no
+            // endpoint. Every other claim on this page can be followed to its
+            // source, and this one is about somebody else's software, which is
+            // exactly when it has to be checkable.
+            //
+            // Text, never a link: several of these point at 127.0.0.1 or a
+            // dead host, and a link invites a click that teaches nothing.
+            if(j&&j.endpoint){elRaw.hidden=false;elRaw.textContent='tried: '+j.endpoint+'\\n\\n'+JSON.stringify(j,null,2);}
+            return;
+          }
           if(!j.negotiated||!j.calls){
             // Not every agent in the registry can actually be hired, and
             // saying so beats a spinner that never resolves.

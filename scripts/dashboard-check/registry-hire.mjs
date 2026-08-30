@@ -120,6 +120,32 @@ if (OURS) {
       sendButtons: w ? w.querySelectorAll('button[data-step]').length : 0,
       wallet: (document.getElementById('rg-wallet')||{}).textContent || '',
       quoteLine: (document.querySelector('#rg-hire-steps .rg-msg')||{}).textContent || '',
+      // The quote is four separate blocks - price and provider, where the
+      // provider address came from, the refund rule, what the price is
+      // denominated in - and textContent runs them together, which is why this
+      // check used to print "...5963declared by the seller". That was the
+      // reader, not the page. Measured instead of assumed: each block is
+      // reported with its computed display and its top edge, so a stylesheet
+      // that ever collapses them onto one line fails here rather than being
+      // argued about from a smashed-together string.
+      quoteBlocks: (() => {
+        const box = document.querySelector('#rg-hire-steps .rg-msg');
+        if (!box) return null;
+        const out = [];
+        const notes = [...box.querySelectorAll(':scope > .rg-note')];
+        const headline = [...box.childNodes]
+          .filter((n) => n.nodeType === 3 || (n.nodeType === 1 && !n.classList.contains('rg-note')))
+          .map((n) => n.textContent).join('').replace(/\\s+/g, ' ').trim();
+        out.push({ what: 'price and provider', top: Math.round(box.getBoundingClientRect().top),
+                   display: 'block', text: headline.slice(0, 120) });
+        for (const n of notes) {
+          out.push({ what: (n.className || 'note').replace(/\\s+/g, ' '),
+                     top: Math.round(n.getBoundingClientRect().top),
+                     display: getComputedStyle(n).display,
+                     text: n.textContent.replace(/\\s+/g, ' ').trim().slice(0, 120) });
+        }
+        return out;
+      })(),
     };
   })()`);
 
@@ -128,10 +154,88 @@ if (OURS) {
   // panel is quietly showing a partial flow.
   if (quote.steps !== 5) problems.push(`expected 5 escrow steps, the panel rendered ${quote.steps}`);
   if (!/\d/.test(quote.quoteLine)) problems.push('the quote line shows no price');
+  // The four blocks have to stack. An inline display, or two of them sharing a
+  // top edge, is the address running into the sentence after it - the last
+  // thing a buyer reads before opening a wallet, so it is worth an assertion
+  // rather than an eyeball.
+  const blocks = quote.quoteBlocks || [];
+  if (blocks.length < 3) problems.push(`the quote rendered ${blocks.length} blocks, expected at least 3`);
+  for (const b of blocks.slice(1)) {
+    if (b.display === 'inline') problems.push(`quote block "${b.what}" is inline — it will run into the text before it`);
+  }
+  for (let i = 1; i < blocks.length; i++) {
+    if (blocks[i].top <= blocks[i - 1].top) {
+      problems.push(`quote blocks share a line: "${blocks[i - 1].what}" and "${blocks[i].what}" both start at y=${blocks[i].top}`);
+    }
+  }
   // Headless Chrome has no wallet, and the panel must say so rather than
   // rendering dead buttons.
   if (!/No wallet found/i.test(quote.wallet)) problems.push('with no wallet present the panel did not say so');
   if (quote.sendButtons !== 5) problems.push(`expected a send button per step, found ${quote.sendButtons}`);
+}
+
+// ---- the path nobody was driving ------------------------------------------
+// Everything above hires one of ours, which always answers. Six of the buttons
+// on this page belong to agents that did not quote when the market was last
+// asked, and clicking one of those is a thing a visitor will do first, not
+// last: they are strangers' agents and they are listed among the rest on
+// purpose. A dead-end click - a spinner that never resolves, or a verdict
+// about somebody else's software with nothing to check it against - is the
+// worst thing this panel can do, and it was untested.
+//
+// The agent is picked off the page rather than hardcoded: the row that says
+// "did not quote when asked" renders immediately before its own button, so the
+// set stays right when the next quote run changes it.
+//
+// The broker answers 502 when a seller cannot be reached, so driving this on
+// purpose logs a console error every single time. Errors from here on are
+// expected and are counted separately - a checker that reports the same
+// message on every run has taught the reader to ignore its output.
+const errorsBeforeFailDrive = consoleErrors.length;
+let fail = null;
+{
+  const failing = await evaluate(`[...document.querySelectorAll('.rg-hirebtn')]
+    .filter(b => b.previousElementSibling && b.previousElementSibling.className.indexOf('rg-weak') >= 0)
+    .map(b => b.getAttribute('data-hire'))`);
+  if (!failing?.length) {
+    console.log('\nno non-quoting agent on the page to drive — skipped');
+  } else {
+    const pick = failing[0];
+    await evaluate(`(function(){var d=document.getElementById('rg-hire'); if(d&&d.open) d.close();})()`);
+    await wait(200);
+    await evaluate(`document.querySelector('.rg-hirebtn[data-hire="${pick}"]').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}))`);
+    await wait(300);
+    await evaluate(`document.getElementById('rg-hire-quote').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}))`);
+    const t0 = Date.now();
+    for (let i = 0; i < 45; i++) {
+      await wait(1000);
+      fail = await evaluate(`(function(){
+        var m=document.getElementById('rg-hire-msg');
+        var raw=document.getElementById('rg-hire-raw');
+        var b=document.getElementById('rg-hire-quote');
+        return { err: m.className.indexOf('rg-err')>=0,
+                 msg: m.textContent.trim(),
+                 rawShown: raw ? !raw.hidden : false,
+                 tried: raw ? raw.textContent.split('\\n')[0] : '',
+                 buttonBack: b ? !b.disabled : false };
+      })()`);
+      if (fail.err) break;
+    }
+    fail = { ...(fail || {}), id: pick, ms: Date.now() - t0 };
+    if (!fail.err) {
+      problems.push(`#${pick} did not quote and the panel never said so — it sat there for ${(fail.ms / 1000).toFixed(0)}s`);
+    } else {
+      // "no answer" is the fallback the panel prints when the broker sends
+      // nothing usable. Reaching it means the reader learned nothing.
+      if (/no answer$/i.test(fail.msg)) problems.push(`#${pick} failed with the generic fallback rather than a reason`);
+      // The endpoint the broker actually tried. A verdict about a stranger's
+      // agent that names no address cannot be checked by the person reading it.
+      if (!fail.rawShown || fail.tried.indexOf('tried: ') !== 0) {
+        problems.push(`#${pick} was declared unable to quote without showing the endpoint that was tried`);
+      }
+      if (!fail.buttonBack) problems.push(`#${pick} left the quote button disabled — the visitor cannot retry`);
+    }
+  }
 }
 
 ws.close();
@@ -141,13 +245,28 @@ console.log(`\n${buttons?.length || 0} hire buttons across ${cats.size} categori
 for (const b of buttons || []) console.log(`  ${String(b.id).padEnd(8)} ${b.cat.padEnd(20)} ${b.name}`);
 if (quote) {
   console.log(`\nnegotiated in-page for #${OURS.id}:`);
-  console.log(`  quote   ${quote.quoteLine.replace(/\s+/g, ' ').trim().slice(0, 150)}`);
+  // One line per rendered block, with the y it starts at. Printing the joined
+  // textContent here is what made a correct page look broken.
+  for (const b of quote.quoteBlocks || []) {
+    console.log(`  y=${String(b.top).padStart(4)}  ${b.text}`);
+  }
   console.log(`  steps   ${quote.steps} rendered, ${quote.sendButtons} sendable`);
   console.log(`  wallet  ${quote.wallet.replace(/\s+/g, ' ').trim().slice(0, 90)}`);
 }
-if (consoleErrors.length) {
-  console.log(`\n${consoleErrors.length} console error(s):`);
-  for (const e of consoleErrors.slice(0, 5)) console.log(`  ${e.slice(0, 200)}`);
+if (fail && fail.id) {
+  console.log(`\nan agent that does not answer, #${fail.id}:`);
+  console.log(`  said it in ${(fail.ms / 1000).toFixed(1)}s`);
+  console.log(`  ${fail.msg.replace(/\s+/g, ' ').slice(0, 140)}`);
+  console.log(`  ${fail.tried || '(no endpoint shown)'}`);
+}
+const realErrors = consoleErrors.slice(0, errorsBeforeFailDrive);
+const expectedErrors = consoleErrors.length - errorsBeforeFailDrive;
+if (realErrors.length) {
+  console.log(`\n${realErrors.length} console error(s):`);
+  for (const e of realErrors.slice(0, 5)) console.log(`  ${e.slice(0, 200)}`);
+}
+if (expectedErrors) {
+  console.log(`\n${expectedErrors} console error(s) from the deliberate failure drive — expected, the broker answers 502 for a seller it cannot reach`);
 }
 
 if (problems.length) {

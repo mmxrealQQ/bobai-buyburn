@@ -639,10 +639,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 3469,
-   "zipBytes": 71128,
-   "txtBytes": 195353,
-   "sha256": "94f5d3442bcc0888",
+   "lines": 3482,
+   "zipBytes": 71362,
+   "txtBytes": 196119,
+   "sha256": "2fc3a6b8e26d6a0b",
    "reqs": [
     {
      "what": "Node 18+ and time",

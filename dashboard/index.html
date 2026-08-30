@@ -146,7 +146,7 @@
           {
             "@type": "Question",
             "name": "Can I hire an AI agent on BNB Chain, and how does payment work?",
-            "acceptedAnswer": {"@type": "Answer", "text": "Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. brainonbnb.com/registry lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. Of the sixteen hireable agents found, ten returned a quote."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. brainonbnb.com/registry lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. The current tally, and how it was measured, are on that page."}
           },
           {
             "@type": "Question",
@@ -971,7 +971,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,765 lines &middot; 41 KB</span>
+          <span class="lib-m">4 files &middot; 1,765 lines &middot; 42 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1017,7 +1017,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 3,423 lines &middot; 68 KB</span>
+          <span class="lib-m">7 files &middot; 3,469 lines &middot; 69 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1197,7 +1197,7 @@
         <div class="faq-body">The honest answer is that the count everyone quotes and the number of working agents are not the same measurement, and the gap is enormous. Every id in the ERC-8004 identity registry on BNB Chain was read one at a time, and then every endpoint those registrations named was contacted once. Most registrations do not parse at all; of those that do, only a small fraction names an HTTP endpoint, and only about half of those answer when something knocks. The ones that answer sit behind far fewer independent operators than their id count suggests, because a single deployment often carries hundreds of ids. Exact figures are deliberately not repeated here &mdash; the registry grows every hour and a number written into a page is wrong by the time you read it. The live count and the full breakdown are on <a href="/registry">Brain Plaza</a> and as <a href="/api-registry.json" target="_blank" rel="noopener">JSON</a>, with nothing extrapolated and nothing sampled.</div>
       </details>
       <details class="faq-item"><summary>Can I hire an AI agent on BNB Chain, and how does payment work?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. <a href="/registry">Brain Plaza</a> lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. Of the sixteen hireable agents found, ten returned a quote.</div>
+        <div class="faq-body">Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. <a href="/registry">Brain Plaza</a> lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. The current tally, and how it was measured, are on that page.</div>
       </details>
       <details class="faq-item"><summary>Which PancakeSwap fee tier should I provide liquidity in?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which records what other people did rather than what the pool pays. Measured across six of the busiest pairs on the chain, the tier holding the most capital was routinely not the tier paying best, and a 1.00% pool held real money on every pair while trading on none. The <a href="/scanner">Pool Scanner</a> measures what each tier actually paid its liquidity providers per $1,000 of capital over a live window, counting both sides of the pool. It is not annualised, and impermanent loss is not in the figure.</div>
@@ -1271,10 +1271,14 @@
       .then(function(d){
         if(!d)return;
         if(re&&d.reachability&&d.reachability.reachable!=null)re.textContent=n(d.reachability.reachable);
-        // The measured number, not the number of buttons: 12 carry a Hire
-        // button and 6 returned a price when each was actually asked. The card
-        // links to the page that says both, so it should not claim the larger.
-        var hireN=d.quoted_when_asked!=null?d.quoted_when_asked:d.hireable_here;
+        // The measured number, not the number of buttons, and specifically the
+        // one counted over the buttons THIS card links to. quoted_when_asked is
+        // a different denominator - it counts every ask the quote run made,
+        // including agents that no longer carry a button and one agent asked
+        // twice because it is listed in two categories. Printing it here made
+        // the card claim more sellers than /registry would show.
+        var hireN=d.quoted_of_hireable!=null?d.quoted_of_hireable
+                 :d.quoted_when_asked!=null?d.quoted_when_asked:d.hireable_here;
         if(hi&&hireN!=null)hi.textContent=n(hireN);
         if(op&&d.independent_operators!=null)op.textContent=n(d.independent_operators);
         var floor=Number(d.registered_ids)||0;

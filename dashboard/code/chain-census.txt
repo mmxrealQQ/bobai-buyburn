@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3423 lines.
+# one fetch. 7 files, 3469 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1078,15 +1078,32 @@ const categoryChips = categorised.map(({ cat, rows }) => {
 
 // What the homepage prints on its marketplace card. Written here rather than
 // typed there, so the two can never drift apart.
-api.hireable_here = categorised.reduce(
-  (n, { rows }) => n + rows.filter((r) => canHire(r) && r.agentId).length, 0,
-);
+//
+// The exact rows that render a Hire button, kept as a list rather than a count.
+// Everything below that says "of them" has to point at THIS set, because it is
+// the set standing next to the sentence on the page.
+const hireableRows = categorised.flatMap(({ rows }) => rows.filter((r) => canHire(r) && r.agentId));
+api.hireable_here = hireableRows.length;
 api.categories = CATEGORIES.map((c) => c.id);
-// How many of those actually returned a price the last time they were asked.
-// Published rather than only rendered, so a reader of the JSON gets the same
-// caveat as a reader of the page.
+// Three different questions live here, and they had been answered with one
+// number. Splitting them is the whole fix:
+//
+//   quote_asks          how many times the negotiation step was sent
+//   quote_agents_asked  how many distinct agents that was (an agent listed in
+//                       two categories is asked once per category, because a
+//                       generic request is a finding about the request)
+//   quoted_when_asked   how many of those asks came back with a price
+//   quoted_of_hireable  of the buttons THIS page renders, how many quoted
+//
+// The last one is the only one the hire block may use. The page had been
+// printing quoted_when_asked (10, out of 16 asks) directly under a count of 13
+// buttons, while its own rows rendered 7 prices and 6 refusals.
 if (hireConfirm) {
-  api.quoted_when_asked = (hireConfirm.agents || []).filter((a) => a.quotes).length;
+  const asks = hireConfirm.agents || [];
+  api.quote_asks = asks.length;
+  api.quote_agents_asked = new Set(asks.map((a) => String(a.id))).size;
+  api.quoted_when_asked = asks.filter((a) => a.quotes).length;
+  api.quoted_of_hireable = hireableRows.filter((r) => quoteOf(r.agentId)?.quotes).length;
   api.quotes_measured_at = hireConfirm.measured_at || null;
 }
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
@@ -1184,8 +1201,36 @@ const deployments = (() => {
   const top5 = rows.slice(0, 5).reduce((n, r) => n + r.ids, 0);
   const singles = rows.filter((r) => r.ids === 1).length;
   const biggestFleet = rows.reduce((best, r) => (r.topN > (best?.topN || 0) ? r : best), null);
-  return { rows, total, top5, singles, biggestFleet, hosts: rows.length };
+
+  // This page prints two counts of "who is behind the 796" — hosts here, and
+  // operators in the headline — and they are not the same number. A reader who
+  // meets both without being told the difference has to assume one of them is
+  // stale, which is the reasonable assumption and the wrong one.
+  //
+  // So the difference is derived rather than asserted, from the same two
+  // groupings that produce the numbers. It has to reconcile exactly:
+  //   hosts - notAgentHosts - collapsed = operators
+  // If a future rule change breaks that, the self-test below says so instead of
+  // the page quietly printing an explanation that no longer explains anything.
+  const known = new Set(operators.map((o) => o.operator));
+  const notAgentHosts = rows.filter((r) => !known.has(operatorOf(byHost.get(r.host)[0]))).length;
+  const seen = new Set();
+  let collapsed = 0;
+  for (const r of rows) {
+    const op = operatorOf(byHost.get(r.host)[0]);
+    if (!known.has(op)) continue;
+    if (seen.has(op)) collapsed++;
+    else seen.add(op);
+  }
+  return { rows, total, top5, singles, biggestFleet, hosts: rows.length, notAgentHosts, collapsed };
 })();
+
+// The reconciliation is arithmetic, so it can be checked rather than trusted.
+// A wrong explanation of two correct numbers is worse than no explanation.
+if (deployments.hosts - deployments.notAgentHosts - deployments.collapsed !== operators.length) {
+  throw new Error(`host/operator reconciliation is off: ${deployments.hosts} hosts - ${deployments.notAgentHosts}`
+    + ` non-agent - ${deployments.collapsed} collapsed != ${operators.length} operators`);
+}
 
 const liveRows = operators
   .slice()
@@ -1515,7 +1560,7 @@ const page = `<!doctype html>
     <div class="blk-head"><span class="blk-tag">Brain Plaza &middot; ERC-8004 on BNB Chain</span><span class="blk-line"></span></div>
 
     <div class="rg-hero">
-      <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' run them.' : 'We asked every one.'}</span></h1>
+      <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' operators run them.' : 'We asked every one.'}</span></h1>
       <p class="rg-lead">That first number gets quoted constantly and nobody checks it. So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. What follows is the part that answered, and how to hire it.</p>
       <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
     </div>
@@ -1543,7 +1588,7 @@ const page = `<!doctype html>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">2</span>Pick a category and hire</div>
           <div class="rg-chips">${categoryChips}</div>
-          <p class="rg-note">${fmt(api.hireable_here)} carry a Hire button${hireConfirm ? `, and <b>${fmt(api.quoted_when_asked)} of them returned a price</b> the last time each one was actually asked` : ''}. The quote is negotiated live with the agent and the escrow runs on-chain over ERC-8183. Every row says how it was categorised, whether it has ever been paid, and what it answered when asked.</p>
+          <p class="rg-note">${fmt(api.hireable_here)} carry a Hire button${hireConfirm ? `, and <b>${fmt(api.quoted_of_hireable)} of them returned a price</b> the last time each one was actually asked` : ''}. The quote is negotiated live with the agent and the escrow runs on-chain over ERC-8183. Every row says how it was categorised, whether it has ever been paid, and what it answered when asked.</p>
         </div>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">3</span>If you are the agent</div>
@@ -1578,12 +1623,13 @@ ${categorySections}
     <div class="blk-head" style="margin-top:34px"><span class="blk-tag">The evidence &middot; open any of it</span><span class="blk-line"></span></div>
 
     <details class="rg-box rg-fold" id="rg-fleets">
-      <summary><h2>What the ones that answer actually are</h2><span class="rg-peek">${fmt(deployments.total)} ids &rarr; ${fmt(deployments.hosts)} deployments</span></summary>
+      <summary><h2>What the ones that answer actually are</h2><span class="rg-peek">${fmt(deployments.total)} ids &rarr; ${fmt(deployments.hosts)} hosts</span></summary>
       <p class="rg-sub">Every figure above counts registry ids, and a registry id is the cheapest thing on this chain. The number that decides whether an agent economy exists is how many distinct things are running &mdash; and that is a different number, by roughly a factor of eight. Below is every host behind the ${fmt(deployments.total)} agents that answer, largest first, with what the ids on it have in common. Nothing here is an accusation: a deployment is called a fleet because its tool list repeats character for character, not because it looked suspicious.</p>
+      <p class="rg-sub"><b>Two counts, two units.</b> This section counts <b>hosts</b> &mdash; every distinct hostname a registration names, exactly as written. The headline counts <b>operators</b>, which is the coarser unit: ${fmt(deployments.hosts)} hosts, minus ${fmt(deployments.notAgentHosts)} the operator grouping drops as not an agent endpoint at all &mdash; code hosts, social links and placeholders like example.com &mdash; minus ${fmt(deployments.collapsed)} that are further subdomains of an operator already counted, leaves ${fmt(operators.length)}. Neither number is stale and neither is the other one: a host is a place, an operator is a party.</p>
 
       <div class="rg-grid">
         <div class="rg-card"><div class="rg-n">${fmt(deployments.total)}</div><div class="rg-l">agents that answer</div><div class="rg-s">the number usually quoted</div></div>
-        <div class="rg-card"><div class="rg-n">${fmt(deployments.hosts)}</div><div class="rg-l">distinct deployments</div><div class="rg-s">what is actually running</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(deployments.hosts)}</div><div class="rg-l">distinct hosts</div><div class="rg-s">${fmt(operators.length)} operators once they are collapsed</div></div>
         <div class="rg-card"><div class="rg-n">${p1(deployments.top5, deployments.total)}</div><div class="rg-l">sit on five hosts</div><div class="rg-s">${fmt(deployments.top5)} of ${fmt(deployments.total)} ids</div></div>
         <div class="rg-card"><div class="rg-n">${fmt(deployments.singles)}</div><div class="rg-l">hosts with one id</div><div class="rg-s">the honest long tail</div></div>
       </div>
@@ -1598,7 +1644,7 @@ ${deployments.rows.slice(0, 40).map((d) => `        <tr>
           <td>${d.notes.length ? `<div class="rg-note">${d.notes.map(esc).join('<br>')}</div>` : '<span class="rg-note">&mdash;</span>'}</td>
         </tr>`).join(NL)}
       </tbody></table></div></div>
-      <p class="rg-note" style="margin-top:12px">${deployments.rows.length > 40 ? `Showing the 40 largest of ${fmt(deployments.rows.length)} deployments; the remainder hold one or two ids each. ` : ''}Grouped by the host each registration names. Two ids on one host may still be two different services, so this is a ceiling on how much is distinct, not a floor &mdash; the honest direction for a number that everybody else reports the other way.</p>
+      <p class="rg-note" style="margin-top:12px">${deployments.rows.length > 40 ? `Showing the 40 largest of ${fmt(deployments.rows.length)} hosts; the remainder hold one or two ids each. ` : ''}Grouped by the host each registration names. Two ids on one host may still be two different services, so this is a ceiling on how much is distinct, not a floor &mdash; the honest direction for a number that everybody else reports the other way.</p>
     </details>
 
     <details class="rg-box rg-fold" id="rg-log" hidden open>
@@ -1700,7 +1746,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       <p><b>Registrations.</b> Every id from 1 to ${fmt(total)} read through <code>tokenURI()</code> on <code>0x8004&hellip;a432</code>, in batches of 25 across eleven public BSC nodes. Ids a node refused were retried until answered &mdash; <b>${c.unread}</b> stayed unreadable. That distinction is the whole reliability of this page: a refused request is a fact about a node, not about an agent, and counting one as the other is how you publish a wrong census.</p>
       <p><b>Reachability.</b> Every claimed endpoint contacted once. <i>Any</i> HTTP response counts as reachable &mdash; including 401, 403 and 404 &mdash; because something is listening, and an agent behind auth is still an agent. Only a failed connection counts as dead. Being strict here would push the number in the direction that flatters us, which is exactly why we don't.</p>
       <p><b>Capabilities.</b> Endpoints claiming MCP were sent a real <code>tools/list</code> and the returned tool names recorded. Agent cards had to parse as JSON. Most registrations name a bare domain rather than a card path, so the well-known locations were asked directly &mdash; otherwise &ldquo;nobody publishes a card&rdquo; and &ldquo;nobody writes the path down&rdquo; look identical.</p>
-      ${hireConfirm ? `<p><b>Whether it will quote.</b> Every agent carrying a Hire button was sent the ERC-8183 negotiation step once &mdash; a request for a price on the service it is listed under, and nothing else. ${fmt(hireConfirm.quoted)} of ${fmt(hireConfirm.asked)} returned one; the rest answered with unparseable JSON, an error from their own infrastructure, or a schema complaint, and each row carries which. No skill was ever invoked: a stranger's agent should not do real work to satisfy our curiosity, and a quote is the one message a seller exists to answer. Measured ${esc((hireConfirm.measured_at || '').slice(0, 16).replace('T', ' '))} UTC.</p>` : ''}
+      ${hireConfirm ? `<p><b>Whether it will quote.</b> The quote run sends the ERC-8183 negotiation step once per agent <em>and category</em> &mdash; a request for a price on the service it is listed under, and nothing else. A generic request would only be a finding about the request, so an agent listed in two categories is asked once for each. That run made <b>${fmt(api.quote_asks)} asks across ${fmt(api.quote_agents_asked)} agents</b> and <b>${fmt(api.quoted_when_asked)}</b> came back with a price; the rest answered with unparseable JSON, an error from their own infrastructure, or a schema complaint, and each row carries which. Of the ${fmt(api.hireable_here)} agents carrying a Hire button on this page, <b>${fmt(api.quoted_of_hireable)}</b> quoted &mdash; the run and the page are separate measurements taken at different moments, so the two sets are not identical and neither number is the other one. No skill was ever invoked: a stranger's agent should not do real work to satisfy our curiosity, and a quote is the one message a seller exists to answer. Measured ${esc((hireConfirm.measured_at || '').slice(0, 16).replace('T', ' '))} UTC.</p>` : ''}
       <p><b>What this does not say.</b> Reachability is a snapshot: an endpoint down at that moment counts as dead here, and one that answers may still do nothing useful. This measures whether something is there, not whether it is good. It is not a ranking and not an endorsement.</p>
       <p>Counts: <a href="/api-registry.json">/api-registry.json</a> &middot; every agent that answered, with its tools: <a href="/api-agents.json">/api-agents.json</a>. Both plain JSON, CORS open, so another agent can read them directly. The scanner itself is in <a href="/#library">The Library</a> &mdash; run it and check us.</p>
       <p><b>Two measurements next door.</b> <a href="/advantage">Three tasks, each done twice</a> &mdash; once by asking an agent, once by hand, wall-clock and request counts; the hand-done route answered none of the three, and on one of them it was quicker only because it failed. And <a href="/session">what our own agent may spend</a> &mdash; an allowlist, a daily cap and an expiry, registered in the Altana KeyStore, so the limits on a spending agent are something you can check rather than something we assert.</p>
@@ -1713,7 +1759,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
   <div class="fm">
     <p>Read from BNB Chain directly &middot; registry <a href="https://bscscan.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" target="_blank" rel="noopener">0x8004&hellip;a432</a> &middot; method and raw data linked above</p>
-    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; <a href="/advantage">Advantage report</a> &middot; <a href="/session">Agent spending authority</a> &middot; not financial advice</p>
+    <p style="margin-top:6px;opacity:.75">Made by <a href="/">Brain On BNB AI</a> &middot; <a href="/whitepaper">Whitepaper</a> &middot; <a href="/advantage">Advantage report</a> &middot; <a href="/session">Agent spending authority</a></p>
   </div>
 </div></footer>
 

@@ -464,6 +464,21 @@ section('The marketplace, from the front door');
   const reg = await fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null);
   ok('and the count is published, not only rendered',
     Number.isInteger(reg?.quoted_when_asked) && reg.quoted_when_asked > 0);
+  // The two quote figures have different denominators, and printing one under
+  // the other one's count is the bug this pair of checks exists to prevent.
+  // quoted_of_hireable is counted over the buttons the page renders; it can
+  // never exceed them, and it is the only one the hire block may say "of them"
+  // about.
+  ok('the two quote counts are published with their own denominators',
+    Number.isInteger(reg?.quoted_of_hireable) && Number.isInteger(reg?.quote_asks)
+    && Number.isInteger(reg?.quote_agents_asked)
+    && reg.quoted_of_hireable <= reg.hireable_here
+    && reg.quoted_when_asked <= reg.quote_asks
+    && reg.quote_agents_asked <= reg.quote_asks,
+    'a quote tally is larger than the set it was counted over');
+  ok('the hire block counts quotes over its own buttons, not over the quote run',
+    new RegExp(`${reg?.hireable_here} carry a Hire button, and <b>${reg?.quoted_of_hireable} of them returned a price`).test(body),
+    'the block prints a numerator from the quote run under a count of buttons');
   const home = (await getText(SITE)).body;
   ok('the homepage card promises the measured number, not the button count',
     /id="mkt-hire"[^<]*<\/b><span>quote back when asked/.test(home),
@@ -471,9 +486,26 @@ section('The marketplace, from the front door');
   // Same reasoning as the census counts above: the quote tally is measured
   // afresh every time hire-confirm runs, so llms.txt must not carry a copy of
   // it. What it owes an agent is the route to the live figure.
+  //
+  // This guard used to build the single string `<quoted_when_asked> of
+  // <hireable_here>` and assert its absence. Those two figures have different
+  // denominators and never appear side by side, so the string could not occur:
+  // the check passed on every run while the file carried "10 of 16 returned a
+  // quote" and "Sixteen of them can be hired" one clause earlier. A guard that
+  // cannot fail is not a guard, so this one is pinned in both directions.
+  const NUM = String.raw`(?:\d{1,4}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)`;
+  const TALLY = new RegExp(String.raw`\b${NUM}\s+of\s+${NUM}\b`, 'i');
+  const HIRE_COUNT = new RegExp(String.raw`\b${NUM}\s+(?:of\s+them\s+)?(?:can\s+be\s+hired|carry\s+a\s+hire\s+button)`, 'i');
+  const carriesTally = (t) => TALLY.test(t) || HIRE_COUNT.test(t);
+  ok('the tally guard still fires on the lines it was written for',
+    carriesTally('Sixteen of them can be hired straight from the page')
+    && carriesTally('10 of 16 returned a quote')
+    && carriesTally('13 carry a Hire button')
+    && !carriesTally('Five of the hireable ones are ours, and all five quote.'),
+    'the pattern stopped matching the transcriptions it exists to catch, or started matching prose that carries no count');
   const llmsTxt = (await getText(`${SITE}/llms.txt`)).body;
   ok('llms.txt does not carry a copy of the quote tally',
-    !llmsTxt.includes(`${reg?.quoted_when_asked} of ${reg?.hireable_here} returned a quote`),
+    !carriesTally(llmsTxt),
     'the tally is transcribed there and will be wrong after the next hire-confirm run');
 
   // The fleet block, and its arithmetic. "45 of the 46 name the same URL" is

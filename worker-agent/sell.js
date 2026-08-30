@@ -239,8 +239,20 @@ const extractParams = (text = '', given = {}) => {
 // ---------------------------------------------------------------------------
 // A2A JSON-RPC.
 // ---------------------------------------------------------------------------
-const rpcOk = (id, result) => Response.json({ jsonrpc: '2.0', id: id ?? 1, result });
-const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 1, error: { code, message } });
+// Every other endpoint on this worker answers through a helper that sets
+// Access-Control-Allow-Origin; these two used Response.json directly and set
+// nothing. The preflight passed — OPTIONS is handled centrally and says POST is
+// allowed — so a browser sent the request, the worker did the work, and then
+// the browser threw the response away for want of one header. From the page it
+// looks like the network failed.
+//
+// This is the last step of the hire flow, so the cost of that missing header
+// was specific: the escrow was funded and the seller was never told to deliver.
+// Node never saw it, because CORS is a browser rule and every test of this
+// endpoint had been made from Node.
+const RPC_HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
+const rpcOk = (id, result) => Response.json({ jsonrpc: '2.0', id: id ?? 1, result }, { headers: RPC_HEADERS });
+const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 1, error: { code, message } }, { headers: RPC_HEADERS });
 
 const dataParts = (message) => {
   const parts = message?.parts || [];

@@ -2,7 +2,7 @@
   "_note": "Chain-verified split of the LP sitting at the dead address, from a full eth_getLogs scan of every Transfer into it (blocks 88990359 - 115088761, scanned 2026-08-10). Exactly three senders exist and they sum to the on-chain balance to the decimal. The launch mint is a single past event and can never change, so the page treats it as the fixed value and derives the dev total as the remainder — that way it stays correct after every future run without redeploying.",
   "verifiedAtBlock": 115088761,
   "launch": {
-    "lp": 59396.968237980844,
+    "lp": 59396.96961656815,
     "from": "0x0000000000000000000000000000000000000000",
     "block": 88990359,
     "note": "LP minted straight into the dead address when the pool was created"

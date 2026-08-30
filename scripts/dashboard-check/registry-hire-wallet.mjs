@@ -189,12 +189,42 @@ const walletLine = await evaluate(`(document.getElementById('rg-wallet')||{}).te
 console.log(`panel sees the wallet: ${walletLine.replace(/\s+/g, ' ').trim().slice(0, 100)}\n`);
 if (/No wallet found/i.test(walletLine)) problems.push('the panel still says there is no wallet, with one injected');
 
-const steps = await evaluate(`document.querySelectorAll('#rg-stepwrap button[data-step]').length`);
-console.log(`${steps} sendable steps\n`);
+// Before connecting, the steps must be dead. This is not decoration: the first
+// version of this test dispatched a synthetic click straight at step 1 without
+// connecting, the listener ran anyway - a dispatched event reaches a listener
+// on a disabled button, where a real click does not - and the panel sent a
+// transaction with `from` undefined. That looked exactly like a panel bug and
+// was not one. Measured here so the harness can never mistake its own shortcut
+// for a defect again.
+const before = await evaluate(`(function(){
+  var b=[...document.querySelectorAll('#rg-stepwrap button[data-step]')];
+  return { total: b.length, disabled: b.filter(function(x){return x.disabled;}).length };
+})()`);
+console.log(`${before.total} steps rendered, ${before.disabled} disabled before connecting`);
+if (before.total && before.disabled !== before.total) {
+  problems.push(`${before.total - before.disabled} step button(s) are live before a wallet is connected — a click there spends gas on a job the panel cannot then identify`);
+}
+
+// Connect the way a person does, through the panel's own button.
+await evaluate(`(function(){var b=document.getElementById('rg-conn'); if(b) b.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));})()`);
+for (let i = 0; i < 20; i++) {
+  await wait(500);
+  if (await evaluate(`/Connected/.test((document.getElementById('rg-wallet')||{}).textContent||'')`)) break;
+}
+const connected = await evaluate(`((document.getElementById('rg-wallet')||{}).textContent||'').trim()`);
+console.log(`after connecting: ${connected.replace(/\s+/g, ' ').slice(0, 80)}`);
+if (!/Connected/.test(connected)) problems.push('the panel never reported the wallet as connected');
+
+const after = await evaluate(`(function(){
+  var b=[...document.querySelectorAll('#rg-stepwrap button[data-step]')];
+  return { total: b.length, enabled: b.filter(function(x){return !x.disabled;}).length };
+})()`);
+console.log(`${after.enabled} of ${after.total} steps sendable once connected\n`);
+if (!after.enabled) problems.push('the steps stayed disabled after connecting');
 
 // Click step 1. In plan mode the bridge refuses to broadcast, which the panel
 // reports as a wallet rejection - the correct behaviour for a declined signature.
-await evaluate(`document.querySelector('#rg-stepwrap button[data-step]').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}))`);
+await evaluate(`document.querySelector('#rg-stepwrap button[data-step]:not([disabled])').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}))`);
 
 if (!SEND) {
   for (let i = 0; i < 20 && !sent.length; i++) await wait(500);

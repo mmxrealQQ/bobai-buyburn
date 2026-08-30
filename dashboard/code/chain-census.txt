@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3482 lines.
+# one fetch. 7 files, 3517 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2182,7 +2182,36 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     // address. Taking jobCounter() on its own would hand back somebody else's
     // job whenever two people create one in the same block, and every later
     // step would then be funding a stranger's escrow.
-    function findJobId(){
+    // The job id is in the receipt of the transaction we just sent: the kernel
+    // logs it as the first indexed topic, with the client as the second. That
+    // is authoritative and free.
+    //
+    // The counter walk below it is a guess by comparison. It reads
+    // jobCounter() and checks five ids downwards, so it depends on the node
+    // answering 'latest' being as current as the node that returned the
+    // receipt - and if it is one block behind, the real id sits ABOVE the
+    // window and is never looked at. The buyer has then paid gas for a job the
+    // panel refuses to identify, and every later step needs that id. It also
+    // cannot tell our job from a stranger's created in the same block except
+    // by the client check, which is exactly the check the log gives directly.
+    function jobIdFromReceipt(r){
+      if(!r||!r.logs||!account)return null;
+      var kernel=String(plan.escrow.kernel).toLowerCase();
+      var me=account.toLowerCase().slice(2);
+      for(var i=0;i<r.logs.length;i++){
+        var l=r.logs[i];
+        if(String(l.address||'').toLowerCase()!==kernel)continue;
+        var t=l.topics||[];
+        if(t.length<3)continue;
+        if(String(t[2]).toLowerCase().indexOf(me)<0)continue;
+        try{return BigInt(t[1]).toString();}catch(e){}
+      }
+      return null;
+    }
+
+    function findJobId(r){
+      var fromLog=jobIdFromReceipt(r);
+      if(fromLog)return Promise.resolve(fromLog);
       var kernel=plan.escrow.kernel;
       return window.ethereum.request({method:'eth_call',params:[{to:kernel,data:'0x50355d76'},'latest']})
         .then(function(hex){
@@ -2219,13 +2248,19 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         say('Sent. Waiting for BNB Chain to confirm.');
         return receipt(tx);
       })
-      .then(function(){
+      .then(function(r){
         c._done=true;
-        if(i===0){say('Job created. Reading its id from the kernel.');return findJobId();}
+        if(i===0){say('Job created. Reading its id from the receipt.');return findJobId(r);}
         return null;
       })
       .then(function(id){
         if(id){jobId=id;say('Job <b>#'+esc(jobId)+'</b> is yours. Four steps left.','rg-ok');}
+        // Step 1 is the one that cannot be shrugged off. If its id never came
+        // back, the buyer has paid gas for a job on-chain and every remaining
+        // step needs an id nobody has - and this used to report that in green
+        // as "Step done.", which is the most expensive kind of wrong. Say what
+        // happened and hand over the transaction, which contains the id.
+        else if(i===0){say('The job was created on-chain, but its id could not be read back, and the four remaining steps need it. Nothing beyond gas has been spent. Your transaction: <a href="https://bscscan.com/tx/'+esc(c._tx||'')+'" target="_blank" rel="noopener">'+esc(String(c._tx||'').slice(0,14))+'… ↗</a> — the id is the first indexed value in its log.','rg-err');}
         else if(plan.calls.every(function(x){return x._done;}))finish();
         else say('Step done.','rg-ok');
         renderSteps();

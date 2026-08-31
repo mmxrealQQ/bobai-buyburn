@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 23 files, 6745 lines.
+# one fetch. 23 files, 6768 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2791,7 +2791,7 @@ import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
-import { registrations } from '../shared/agent-registrations.js';
+import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
@@ -3350,7 +3350,10 @@ export default {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain On BNB AI — hireable agents',
-        description: 'Four hireable agents on BNB Smart Chain, one in each BNB Agent Studio category. Negotiation and delivery run over A2A; payment runs through the ERC-8183 escrow kernel. Every figure is measured from the chain at request time and cross-checked against the protocol it came from where the protocol publishes one.',
+        // Counted from the list, not typed. It said "four" for three days
+        // after the fifth agent went live — a number in prose is a number that
+        // goes stale the moment somebody registers something.
+        description: `${OWN_AGENT_IDS.length} hireable agents on BNB Smart Chain, covering every BNB Agent Studio category. Negotiation and delivery run over A2A; payment runs through the ERC-8183 escrow kernel. Every figure is measured from the chain at request time and cross-checked against the protocol it came from where the protocol publishes one.`,
         // The A2A endpoint, not the website. The card on the apex points at
         // https://brainonbnb.com/ — an HTML page — which is why a machine
         // following it finds nothing to talk to.
@@ -3359,6 +3362,26 @@ export default {
         version: '1.0.0',
         provider: { organization: 'Brain On BNB AI', url: 'https://brainonbnb.com' },
         capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },
+        // THE LINK BACK TO THE CHAIN, which this card did not carry.
+        //
+        // /.well-known/agent-registration.json has listed these ids since the
+        // day it was written, and that document is what a verifier fetches
+        // AFTER it already knows which ids to check. The A2A card is what a
+        // client reads FIRST, and without registrations on it there was no
+        // machine-readable path from "I am talking to this endpoint" to "these
+        // are its on-chain identities" — the same gap this marketplace flags
+        // in other people's cards.
+        registrations: registrations(),
+        // Declared here as well as in the registration document, because the
+        // two are read by different clients and a trust model that appears on
+        // only one of them is a trust model half the readers never see. It is
+        // backed: the ratings are readable at the ReputationRegistry below,
+        // and the marketplace prints them per agent.
+        supportedTrust: ['reputation'],
+        trustRegistries: {
+          identity: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
+          reputation: 'eip155:56:0x8004BAa17C55a88189AE136b182e5fdA19dE9b63',
+        },
         defaultInputModes: ['application/json', 'text/plain'],
         defaultOutputModes: ['application/json'],
         skills: [

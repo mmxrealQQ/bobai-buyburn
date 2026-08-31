@@ -502,6 +502,52 @@ const hireConfirm = (() => {
 })();
 const quoteOf = (id) => (hireConfirm?.agents || []).find((a) => String(a.id) === String(id)) || null;
 
+// The other half of ERC-8004. The identity registry says who exists, the
+// escrow census says who has been paid, and this says who has been RATED —
+// which on this chain is not stars out of five but machine-written
+// attestations: uptime as a percentage, response time in milliseconds, each
+// over a window that travels with the figure.
+//
+// A value is only ever printed next to its own unit and its own window. Two
+// uptimes measured over 1d and 7d are two measurements of two periods, and a
+// single "score" folded out of them would be a number nobody took.
+const reputation = (() => {
+  const f = path.join(DIR, 'reputation.json');
+  if (!fs.existsSync(f)) return null;
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
+})();
+const ratingOf = (id) => (reputation?.agents || []).find((a) => String(a.id) === String(id) && a.latest) || null;
+const METRIC_LABEL = { uptime: 'uptime', responseTime: 'response', liveness: 'liveness' };
+const OPERATIONAL_TAGS = new Set(['uptime', 'responsetime', 'latency', 'liveness']);
+
+// WHAT GOES ON A ROW, AND WHAT DOES NOT.
+//
+// The registry holds two kinds of claim under one roof. An uptime or a
+// response time is a measurement somebody else can go and take again. A
+// "personality" of 70 is a taste claim about a stranger's agent, and on this
+// chain 20,696 of the 20,732 attestations are that — six tags, written in
+// bulk, with 70 as the commonest value in seven cases out of ten.
+//
+// Printing "personality 70" in the column a buyer reads to decide would be
+// repeating a non-answer with a straight face, which is exactly what this page
+// refuses to do one column to the left. So the row carries the measurements,
+// and says plainly when all an agent has is taste.
+const ratingLine = (id) => {
+  const r = ratingOf(id);
+  if (!r) return '';
+  const n = (r.clients || []).length;
+  const by = `<span class="rg-repby"> attested by ${n} ${n === 1 ? 'address' : 'addresses'}</span>`;
+  const entries = Object.entries(r.latest);
+  const measured = entries.filter(([tag]) => OPERATIONAL_TAGS.has(tag.toLowerCase()));
+  if (measured.length) {
+    const parts = measured.map(([tag, v]) => `${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[tag] || tag)}${v.window ? ` over ${esc(v.window)}` : ''}`);
+    return `<div class="rg-note rg-rep" title="Read live from the ERC-8004 ReputationRegistry at ${REPUTATION_ADDR}. A measurement somebody else took, and one you could take again.">${parts.join(' &middot; ')}${by}</div>`;
+  }
+  const tags = entries.map(([t]) => t).slice(0, 3).join(', ');
+  return `<div class="rg-note rg-repweak" title="Read live from the ERC-8004 ReputationRegistry at ${REPUTATION_ADDR}.">rated only on ${esc(tags)}${entries.length > 3 ? ' and more' : ''} &mdash; nothing measurable${by}</div>`;
+};
+const REPUTATION_ADDR = '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63';
+
 const categorised = CATEGORIES.map((cat) => {
   const rows = [];
   const seenOperator = new Set();
@@ -574,6 +620,23 @@ const categorised = CATEGORIES.map((cat) => {
   return { cat, rows };
 });
 
+if (reputation) {
+  fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-reputation.json'), JSON.stringify({
+    what_this_is: reputation.what_this_is,
+    contract: reputation.contract,
+    identity_registry: reputation.identity_registry,
+    chain: reputation.chain,
+    measured_at: reputation.measured_at,
+    population: reputation.population,
+    rated: reputation.rated,
+    raters: reputation.raters,
+    how_to_read_it: 'tag1 is the metric and tag2 the window it covers. value carries its own decimals: 10000 at 2 decimals under "uptime" is 100.00 percent. Values under different tags are different units and are never combined.',
+    agents: (reputation.agents || []).filter((a) => a.latest).map((a) => ({
+      id: a.id, name: a.name, raters: (a.clients || []).length, latest: a.latest,
+    })),
+  }, null, 2) + '\n');
+}
+
 const categorySections = categorised.map(({ cat, rows }) => {
   const ids = rows.reduce((n, r) => n + r.instances, 0);
   const body = rows.map((r) => {
@@ -596,13 +659,14 @@ const categorySections = categorised.map(({ cat, rows }) => {
               <div class="rg-note">${esc(r.hit.detail)}</div></td>
           <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div>${(() => {
             if (!hireable || !r.agentId) return '';
+            const rep = ratingLine(r.agentId);
             const q = quoteOf(r.agentId);
             const mark = q
               ? (q.quotes
                 ? `<div class="rg-note rg-quotes">quoted ${esc(q.price || 'a price')} when asked</div>`
                 : `<div class="rg-note rg-weak">did not quote when asked &mdash; ${esc(q.reason || 'no answer')}</div>`)
               : '';
-            return mark + `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''}>Hire &rarr;</button>`;
+            return rep + mark + `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''}>Hire &rarr;</button>`;
           })()}</td>
         </tr>`;
   }).join(NL);
@@ -986,6 +1050,9 @@ const page = `<!doctype html>
     border:1px solid var(--line);border-radius:9px;padding:9px}
   .rg-note code{font-size:.74rem}
   .rg-quotes{color:#7fe3ab}
+  .rg-rep{color:#93b8ff}
+  .rg-repweak{color:var(--muted);font-style:italic}
+  .rg-repby{color:var(--muted)}
   .rg-declared{background:rgba(80,220,140,.14);color:#7fe3ab}
   .rg-registered{background:rgba(120,170,255,.14);color:#93b8ff}
   .rg-derived{background:rgba(255,255,255,.06);color:var(--muted)}
@@ -1242,6 +1309,45 @@ ${liveRows}
       </tbody></table></div></div>
       <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
     </details>` : ''}
+
+    ${reputation ? `<details class="rg-box rg-fold" id="rg-rated">
+      <summary><h2>Who has actually been rated</h2><span class="rg-peek">${fmt(reputation.rated.attestations)} ratings &rarr; ${fmt(reputation.checkable.attestations)} you could check</span></summary>
+      <p class="rg-sub">ERC-8004 has a second registry almost nothing reads. The <b>ReputationRegistry</b> is live on BNB Smart Chain at <code>${esc(reputation.contract)}</code>, bound to the same identity registry counted above, and we read it one index at a time for every agent that answered. It holds <b>${fmt(reputation.rated.attestations)} ratings across ${fmt(reputation.rated.agents)} of the ${fmt(reputation.population.asked)} agents we asked about</b>, written by ${fmt(reputation.rated.distinct_raters)} addresses. On the face of it, a reputation layer.</p>
+      <p class="rg-sub"><b>Then you read what they say.</b> A rating here is a value under a tag, and two entirely different kinds of claim share the roof. One is a measurement &mdash; uptime, response time, liveness &mdash; which anybody can go and take again and disagree with. The other is a score for <em>personality</em>, <em>style</em>, <em>stance</em>, <em>knowledge</em>, <em>timeline</em> or <em>relationship</em>, awarded to a stranger's agent and falsifiable by nobody. Sorted that way, the ${fmt(reputation.rated.attestations)} becomes <b>${fmt(reputation.checkable.attestations)} measurements over ${fmt(reputation.checkable.agents)} agents</b> and ${fmt(reputation.rated.attestations - reputation.checkable.attestations)} opinions. That is not a rounding difference. It is the whole number.</p>
+
+      <div class="rg-grid">
+        <div class="rg-card"><div class="rg-n">${fmt(reputation.rated.attestations)}</div><div class="rg-l">ratings on chain</div><div class="rg-s">the figure a count would report</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(reputation.checkable.attestations)}</div><div class="rg-l">that state something measurable</div><div class="rg-s">${(reputation.checkable.tags || []).join(', ') || 'none'} &mdash; over ${fmt(reputation.checkable.agents)} agents</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(reputation.rated.distinct_raters)}</div><div class="rg-l">addresses wrote all of it</div><div class="rg-s">${fmt(reputation.multi_rated)} agents were rated by more than one</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(reputation.rated.agents)}</div><div class="rg-l">agents carry any rating</div><div class="rg-s">of ${fmt(reputation.population.asked)} that answer &mdash; the rest, nothing</div></div>
+      </div>
+
+      <p class="rg-note" style="margin:16px 0 8px">Every tag in the registry, largest first. <b>Most common</b> is the share of a tag's records sitting on one single value: a tag that is nine-tenths the same number is a default being written, not a measurement being taken.</p>
+      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Tag</th><th>Ratings</th><th>Agents</th><th>Range</th><th>Most common</th></tr></thead><tbody>
+${(reputation.tags || []).slice(0, 12).map((t) => `        <tr>
+          <td><b>${esc(t.tag)}</b>${t.operational ? ' <span class="rg-t rg-declared" title="A measurement a third party can take again.">measurable</span>' : ''}</td>
+          <td>${fmt(t.attestations)}</td>
+          <td>${fmt(t.agents)}</td>
+          <td>${esc(String(t.min))}${t.unit ? esc(t.unit) : ''} &ndash; ${esc(String(t.max))}${t.unit ? esc(t.unit) : ''}</td>
+          <td>${esc(String(t.most_common))}${t.unit ? esc(t.unit) : ''} <span class="rg-repby">in ${(t.most_common_share * 100).toFixed(0)}%</span></td>
+        </tr>`).join(NL)}
+      </tbody></table></div></div>
+
+      ${reputation.checkable.attestations ? `<p class="rg-note" style="margin:18px 0 8px">And here is all of it &mdash; every measurable rating on the agents that answer, in one table, because it fits in one table.</p>
+      <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Agent</th><th>What was measured</th><th>By</th></tr></thead><tbody>
+${reputation.agents.filter((a) => a.latest && Object.keys(a.latest).some((t) => OPERATIONAL_TAGS.has(t.toLowerCase())))
+    .slice(0, 30).map((a) => `        <tr${OWN_AGENT_IDS.includes(Number(a.id)) ? ' class="rg-ours"' : ''}>
+          <td><b>${esc(a.name || ('#' + a.id))}</b>${OWN_AGENT_IDS.includes(Number(a.id)) ? ' <span class="rg-t rg-x4">ours</span>' : ''}<div class="rg-note">#${a.id}</div></td>
+          <td>${Object.entries(a.latest).filter(([t]) => OPERATIONAL_TAGS.has(t.toLowerCase()))
+    .map(([tag, v]) => `<span class="rg-rep">${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[tag] || tag)}${v.window ? ` over ${esc(v.window)}` : ''}</span>`).join(' &middot; ')}</td>
+          <td><div class="rg-note">${(a.clients || []).map((c) => esc(c.slice(0, 6) + '…' + c.slice(-4))).join(', ')}</div></td>
+        </tr>`).join(NL)}
+      </tbody></table></div></div>` : '<p class="rg-note">Not one rating in the whole registry states something a third party could check.</p>'}
+
+      <p class="rg-note" style="margin-top:14px"><b>None of this is an accusation.</b> Writing a personality score is not misconduct, and an agent nobody has rated is not a worse agent &mdash; ours were unrated until somebody came along and measured them. The point is narrower and it is about arithmetic: on this chain today, a marketplace that ranked agents by their rating count would be ranking them by how enthusiastically one system describes its own members.</p>
+      <p class="rg-note">Read live from the contract, not from an indexer: <code>getClients(agentId)</code>, then <code>getLastIndex(agentId, client)</code>, then <code>readFeedback</code> for every index &mdash; ${fmt(reputation.rated.attestations)} calls. Measured ${esc((reputation.measured_at || '').slice(0, 16).replace('T', ' '))} UTC, machine-readable at <a href="/api-reputation.json">api-reputation.json</a>. The reader is <code>scripts/erc8004-reputation-scan.mjs</code>; its ABI was recovered by calling the contract until something answered, because the published interface names the functions without their types, so it carries a self-test that pins the decoder against a record on the chain right now.</p>
+    </details>` : ''}
+
 
     ${jobCensus ? `<details class="rg-box rg-fold" id="rg-jobs">
       <summary><h2>Who has actually been paid</h2><span class="rg-peek">${fmt(jobCensus.jobCounter)} escrow jobs, read one at a time</span></summary>

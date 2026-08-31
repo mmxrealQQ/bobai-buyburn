@@ -836,6 +836,7 @@ async function scan(input){
       (e&&e.message?e.message+'. ':'')+'Nothing here is cached, so trying again often works. If it keeps failing, the address may not be a BSC token or pool.');
   }finally{
     busy(false);
+    again.hidden=false;
     // The net. If nothing was drawn and no error was shown, say so plainly
     // rather than leaving a blank page that looks like the token's fault.
     const out=$('sc-out');
@@ -856,5 +857,34 @@ function submit(){
 }
 $('sc-go').addEventListener('click',submit);
 $('sc-in').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
+
+// ── Scanning a second token ────────────────────────────────────────────────
+// The scanned address stays in the field on purpose, but that made the next
+// scan a chore: select the whole thing, delete it, then paste. Three ways out,
+// because the field is far above the fold once a result is drawn: a cross in
+// the field, a button under the result, and select-on-click so a paste simply
+// replaces what is there.
+const again=$('sc-again'),clearBtn=$('sc-clear');
+const showClear=()=>{clearBtn.hidden=!$('sc-in').value};
+function startOver(scroll){
+  $('sc-in').value='';showClear();
+  const o=$('sc-out');o.hidden=true;o.textContent='';
+  $('sc-err').hidden=true;$('sc-status').textContent='';
+  const teaser=$('sc-what');if(teaser)teaser.hidden=false;
+  again.hidden=true;
+  // The URL still carried the old token; left alone, a reload would scan a
+  // token that is no longer on the screen.
+  try{history.replaceState(null,'',location.pathname)}catch(e){}
+  if(scroll)$('sc-in').scrollIntoView({block:'center',behavior:'smooth'});
+  $('sc-in').focus();
+}
+clearBtn.addEventListener('click',()=>startOver(false));
+$('sc-again-btn').addEventListener('click',()=>startOver(true));
+$('sc-in').addEventListener('input',showClear);
+$('sc-in').addEventListener('focus',()=>{if(!again.hidden)$('sc-in').select()});
+showClear();
 (function(){const t=parseInput(new URLSearchParams(location.search).get('token'));
-  if(t){$('sc-in').value=t;scan(t)}})();
+  // Setting .value from script fires no input event, so the clear cross has
+  // to be told by hand — otherwise arriving via ?token= shows an address with
+  // no way to clear it, which is the one arrival that matters most.
+  if(t){$('sc-in').value=t;showClear();scan(t)}})();

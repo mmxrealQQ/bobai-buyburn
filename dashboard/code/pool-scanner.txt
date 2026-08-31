@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 3826 lines.
+# one fetch. 6 files, 3883 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1183,13 +1183,32 @@ export async function scan(input, env) {
       font-family:'Space Grotesk',sans-serif}
     .sc-form input::placeholder{color:var(--muted);opacity:.7}
     .sc-form input:focus{outline:none;border-color:var(--gold)}
-    .sc-form button{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;border:0;
+    .sc-form>button{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;border:0;
       border-radius:999px;padding:15px 34px;font-weight:700;font-size:.8rem;cursor:pointer;
       font-family:inherit;white-space:nowrap;letter-spacing:.3px}
-    .sc-form button:disabled{opacity:.5;cursor:default}
+    .sc-form>button:disabled{opacity:.5;cursor:default}
     .sc-hint{font-size:.69rem;color:var(--muted);opacity:.8;margin-top:11px}
     .sc-status{font-size:.73rem;color:var(--gold);margin-top:10px;min-height:1.2em}
-    @media (max-width:560px){.sc-form{flex-direction:column}.sc-form button{width:100%}}
+    /* Scanning a second token. The address that was just read stays in the
+       field on purpose — it is the answer to "what am I looking at" — but that
+       turned the next scan into a chore: select forty-two characters, delete,
+       paste. A cross in the field, and a button under the result, because by
+       the time you have read the result the field is far above the fold. */
+    .sc-field{position:relative;flex:1;min-width:0;display:flex}
+    .sc-field input{width:100%;padding-right:40px}
+    .sc-x{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:26px;height:26px;
+      padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:var(--muted);
+      font-size:1.05rem;line-height:1;cursor:pointer;display:grid;place-items:center;
+      transition:background .2s,color .2s}
+    .sc-x:hover{background:rgba(240,185,11,.2);color:var(--text)}
+    .sc-x:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+    .sc-again{margin:24px 0 0;text-align:center}
+    .sc-again button{background:transparent;color:var(--gold);border:1px solid rgba(240,185,11,.35);
+      border-radius:10px;padding:11px 22px;font:inherit;font-weight:600;cursor:pointer;
+      transition:background .2s,border-color .2s}
+    .sc-again button:hover{background:rgba(240,185,11,.12);border-color:rgba(240,185,11,.6)}
+    .sc-again button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+    @media (max-width:560px){.sc-form{flex-direction:column}.sc-form>button{width:100%}}
 
     .hd{padding-bottom:18px;border-bottom:1px solid var(--border);margin-top:30px}
     .hd-t{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
@@ -1416,9 +1435,12 @@ export async function scan(input, env) {
       <h1>How deep is <em>any</em> BSC pool, really?</h1>
       <p class="sc-lead">A liquidity headline is half fiction: half of it is the token itself, valued at its own price, so it shrinks exactly when it would be needed. This reads a pool the way a trader meets it &mdash; what a trade of a given size does to the price, what it actually costs once the transfer tax is measured from real trades, and whether the LP is burned, merely locked, or sitting in a wallet that can pull it tonight.</p>
       <div class="sc-form">
-        <input id="sc-in" type="text" spellcheck="false" autocomplete="off"
-               placeholder="Token address, pool address, or a DexScreener link"
-               aria-label="BSC token or pool address">
+        <div class="sc-field">
+          <input id="sc-in" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="Token address, pool address, or a DexScreener link"
+                 aria-label="BSC token or pool address">
+          <button id="sc-clear" class="sc-x" type="button" aria-label="Clear the address" hidden>&times;</button>
+        </div>
         <button id="sc-go" type="button">Scan</button>
       </div>
       <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
@@ -1451,6 +1473,11 @@ export async function scan(input, env) {
     <div class="warn" id="sc-err" hidden></div>
     <div id="sc-out" hidden></div>
 
+    <!-- The way back to the top, shown only once a scan has run. -->
+    <div class="sc-again" id="sc-again" hidden>
+      <button type="button" id="sc-again-btn">Scan another token</button>
+    </div>
+
     <!-- Never hidden, by anything. The opening dialog says this once, before
          anyone has seen a figure; this says it where the figures are. -->
     <div class="sc-note">
@@ -1479,7 +1506,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=28" type="module"></script>
+<script src="scanner.js?v=30" type="module"></script>
 </body>
 </html>
 
@@ -2325,6 +2352,7 @@ async function scan(input){
       (e&&e.message?e.message+'. ':'')+'Nothing here is cached, so trying again often works. If it keeps failing, the address may not be a BSC token or pool.');
   }finally{
     busy(false);
+    again.hidden=false;
     // The net. If nothing was drawn and no error was shown, say so plainly
     // rather than leaving a blank page that looks like the token's fault.
     const out=$('sc-out');
@@ -2345,8 +2373,37 @@ function submit(){
 }
 $('sc-go').addEventListener('click',submit);
 $('sc-in').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
+
+// ── Scanning a second token ────────────────────────────────────────────────
+// The scanned address stays in the field on purpose, but that made the next
+// scan a chore: select the whole thing, delete it, then paste. Three ways out,
+// because the field is far above the fold once a result is drawn: a cross in
+// the field, a button under the result, and select-on-click so a paste simply
+// replaces what is there.
+const again=$('sc-again'),clearBtn=$('sc-clear');
+const showClear=()=>{clearBtn.hidden=!$('sc-in').value};
+function startOver(scroll){
+  $('sc-in').value='';showClear();
+  const o=$('sc-out');o.hidden=true;o.textContent='';
+  $('sc-err').hidden=true;$('sc-status').textContent='';
+  const teaser=$('sc-what');if(teaser)teaser.hidden=false;
+  again.hidden=true;
+  // The URL still carried the old token; left alone, a reload would scan a
+  // token that is no longer on the screen.
+  try{history.replaceState(null,'',location.pathname)}catch(e){}
+  if(scroll)$('sc-in').scrollIntoView({block:'center',behavior:'smooth'});
+  $('sc-in').focus();
+}
+clearBtn.addEventListener('click',()=>startOver(false));
+$('sc-again-btn').addEventListener('click',()=>startOver(true));
+$('sc-in').addEventListener('input',showClear);
+$('sc-in').addEventListener('focus',()=>{if(!again.hidden)$('sc-in').select()});
+showClear();
 (function(){const t=parseInput(new URLSearchParams(location.search).get('token'));
-  if(t){$('sc-in').value=t;scan(t)}})();
+  // Setting .value from script fires no input event, so the clear cross has
+  // to be told by hand — otherwise arriving via ?token= shows an address with
+  // no way to clear it, which is the one arrival that matters most.
+  if(t){$('sc-in').value=t;showClear();scan(t)}})();
 
 ==============================================================================
 === FILE: dashboard/styles.css

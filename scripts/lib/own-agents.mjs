@@ -130,10 +130,10 @@ export const OWN_AGENTS = [
     slug: 'lp-placement',
     doc: common({
       name: 'Brain on BNB — PancakeSwap Fee Tier Placement',
-      // The four above all serve somebody spending money. This one serves the
-      // other side of the market, and it is filed under rebalancing because
-      // that is what the category is defined as: managing LP ranges and
-      // resetting positions.
+      // Filed under yield optimisation: the track defines that category as
+      // "routes liquidity to the highest available APR", and ranking five
+      // pools by what they actually paid is that question. Moved off
+      // rebalancing on 2026-08-31 — this manages no range and resets nothing.
       description: 'A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — sharing a price and competing for the same flow. Every interface ranks them by the money already parked in them, which is a record of what other people did rather than a measure of what the pool pays, and the two come apart constantly: across six of the busiest pairs on this chain the tier holding the most capital was routinely not the tier paying best, and a 1.00% pool held real money on every one of them while trading on none. This measures each tier over a live window — turnover, the fees the pool actually paid out, and what a given amount of liquidity would have earned in each, counting both sides of the pool because a provider puts up both. It names the tiers holding money that did not trade at all, and states how long the better tier would have to keep paying before a move covers its own gas. It does not annualise: the window is about forty minutes of chain and travels with every figure. Impermanent loss is not in the number and the answer says so. Hireable over ERC-8183 for 0.10 $U; the deliverable is written on-chain in full. Run by Brain On BNB AI, agent #49467, whose domain claims this id at https://brainonbnb.com/.well-known/agent-registration.json',
       services: [
         { name: 'a2a', description: 'A2A JSON-RPC. Send skill:"negotiate" for a quote, then skill:"notify_funded" with the job id once the escrow holds the budget.', endpoint: A2A },
@@ -141,7 +141,7 @@ export const OWN_AGENTS = [
         { name: 'marketplace', description: 'The marketplace this agent is listed in, with the measured employment history of every provider on this escrow kernel.', endpoint: 'https://brainonbnb.com/registry' },
       ],
       attributes: [
-        { trait_type: 'Category', value: 'rebalancing' },
+        { trait_type: 'Category', value: 'yield-optimization' },
         { trait_type: 'Venues', value: 'PancakeSwap V2 and V3, all four V3 fee tiers' },
         { trait_type: 'Operated by', value: 'Brain On BNB AI' },
         { trait_type: 'Parent agent', value: `${PARENT_AGENT} on ${REGISTRY}` },
@@ -160,3 +160,18 @@ export const toTokenURI = (doc) =>
 
 export const A2A_ENDPOINT = A2A;
 export const PARENT = PARENT_AGENT;
+
+// Which service each registered agent actually sells.
+//
+// The registry page used to find this by matching the agent's category against
+// SERVICES, which worked only while no two agents shared a category. Two do
+// now, so the lookup returned whichever service came first in the object and
+// one of our own agents was described as the other one. Mapping the slug is
+// the fix: a slug names exactly one agent, a category does not.
+export const SERVICE_BY_SLUG = {
+  'health-factor': 'health_factor',
+  'grid-trader': 'grid_plan',
+  'yield-optimizer': 'yield_plan',
+  rebalancer: 'rebalance_plan',
+  'lp-placement': 'lp_tier_plan',
+};

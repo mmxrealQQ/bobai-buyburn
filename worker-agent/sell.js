@@ -109,10 +109,15 @@ export const SERVICES = {
   lp_tier_plan: {
     id: 'lp_tier_plan',
     name: 'Which PancakeSwap fee tier is actually paying its liquidity providers',
-    // The four required categories all serve somebody spending money. This one
-    // serves the other side of the market, and range management is what the
-    // rebalancing category is defined as: "manages LP ranges, resets positions".
-    category: 'rebalancing',
+    // Filed under yield optimisation, which the track defines as "routes
+    // liquidity to the highest available APR". That is literally this service:
+    // it ranks five pools sharing one price by what they actually paid out and
+    // says when a move covers its own gas. It sat under rebalancing at first on
+    // the reading that a fee tier is a position being reset — but this moves no
+    // range and resets nothing. The category that names APR is the one it
+    // belongs in, and the four sections come out more even as a side effect
+    // rather than as the reason.
+    category: 'yield-optimization',
     price: '100000000000000000',
     price_display: '0.10 $U',
     deliverables: 'A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.',

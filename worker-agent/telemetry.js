@@ -483,7 +483,7 @@ export async function refreshTelemetry(env) {
       {
         id: 310460,
         name: 'Brain on BNB — PancakeSwap Fee Tier Placement',
-        category: 'rebalancing',
+        category: 'yield-optimization',
         origin: 'https://agent.brainonbnb.com',
         hireable: 'ERC-8183',
         price: '0.10 $U',

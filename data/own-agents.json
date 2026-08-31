@@ -41,11 +41,13 @@
     "lp-placement": {
       "id": 310460,
       "name": "Brain on BNB — PancakeSwap Fee Tier Placement",
-      "category": "rebalancing",
+      "category": "yield-optimization",
       "owner": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
       "tx": "0x09202a6ab252d345b85724676bfee705d8d8c07cabcff6297b8c183f6e515abd",
       "block": 118521128,
-      "registered_at": "2026-08-28T05:39:45.780Z"
+      "registered_at": "2026-08-28T05:39:45.780Z",
+      "recategorised_at": "2026-08-31",
+      "updated_at": "2026-08-31T05:07:41.698Z"
     }
   }
 }

@@ -2,14 +2,14 @@
   "measured_at": "2026-08-29T09:33:43.611Z",
   "agents": [
     {
-      "id": 304494,
-      "label": "Brain on BNB — Portfolio Rebalance Pricer",
+      "id": 265375,
+      "label": "BNB LP Range Rebalancer",
       "category": "rebalancing",
-      "ours": true
+      "ours": false
     },
     {
-      "id": 310460,
-      "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
+      "id": 304494,
+      "label": "Brain on BNB — Portfolio Rebalance Pricer",
       "category": "rebalancing",
       "ours": true
     },
@@ -26,9 +26,9 @@
       "ours": false
     },
     {
-      "id": 265375,
-      "label": "BNB LP Range Rebalancer",
-      "category": "rebalancing",
+      "id": 269233,
+      "label": "BNB Grid Trader (test)",
+      "category": "grid-trading",
       "ours": false
     },
     {
@@ -44,14 +44,14 @@
       "ours": false
     },
     {
-      "id": 269233,
-      "label": "BNB Grid Trader (test)",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
       "id": 304493,
       "label": "Brain on BNB — Venus Yield Ranking",
+      "category": "yield-optimization",
+      "ours": true
+    },
+    {
+      "id": 310460,
+      "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
       "ours": true
     },
@@ -68,14 +68,14 @@
       "ours": true
     },
     {
-      "id": 259573,
-      "label": "HealthGuard",
+      "id": 270183,
+      "label": "AgentCensus Health Factor Monitor",
       "category": "health-factor",
       "ours": false
     },
     {
-      "id": 270183,
-      "label": "AgentCensus Health Factor Monitor",
+      "id": 259573,
+      "label": "HealthGuard",
       "category": "health-factor",
       "ours": false
     }

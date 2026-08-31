@@ -183,7 +183,7 @@
     {
       "id": 302257,
       "name": "Brain on BNB — Venus Health Factor Monitor",
-      "description": "Four hireable agents on BNB Smart Chain, one in each BNB Agent Studio category. Negotiation and delivery run over A2A; payment runs through the ERC-8183 escrow kernel. Every figure is measured from the chain at request time and cross-checke",
+      "description": "Health factor for a Venus position on BNB Chain, computed market by market from the Comptroller, with the collateral drawdown that would liquidate it and a stress table. Cross-checked against the protocol's own getAccountLiquidity — if the two disagree the answer says so instead of guessing.",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "trust_models": [
         "reputation"
@@ -206,35 +206,33 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a",
-        "https://agent.brainonbnb.com/.well-known/agent-card.json",
-        "https://brainonbnb.com/registry"
+        "https://agent.brainonbnb.com/a2a"
       ],
       "speaks": [
-        "mcp",
         "a2a",
         "x402"
       ],
-      "tools": [
+      "tools": [],
+      "skills": [
         {
-          "name": "bsc_pool_watch",
-          "description": "PAID (0.50 USD1, 30 days). Watch one BNB Smart Chain liquidity pool around the clock and get told the moment it can no longer absorb a trade of your size. Check"
+          "name": "health_factor",
+          "description": "Venus health factor & liquidation distance"
         }
       ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded",
-        "Venus health factor & liquidation distance",
-        "Grid trading plan, costed against the real pool",
-        "Venus yield ranking, and whether moving pays for itself",
-        "Portfolio rebalance, priced against the pools that would execute it",
-        "Which PancakeSwap fee tier is actually paying its liquidity providers"
-      ]
+      "seed": "health factor and liquidation distance for the Venus position at <ADDR>",
+      "attributes": [
+        {
+          "trait_type": "Category",
+          "value": "health-factor-monitoring"
+        }
+      ],
+      "ours": true,
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
     },
     {
       "id": 302258,
       "name": "Brain on BNB — BSC Grid Planner",
-      "description": "Four hireable agents on BNB Smart Chain, one in each BNB Agent Studio category. Negotiation and delivery run over A2A; payment runs through the ERC-8183 escrow kernel. Every figure is measured from the chain at request time and cross-checke",
+      "description": "Grid levels for any BNB Chain pool with the round-trip cost of a cycle measured from the pool itself — swap fee, price impact at your fill size, and the transfer tax read from executed trades rather than a label. States the break-even spacing, which is the number that decides whether the grid can work at all.",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "trust_models": [
         "reputation"
@@ -257,36 +255,34 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a",
-        "https://brainonbnb.com/scanner",
-        "https://brainonbnb.com/registry"
+        "https://agent.brainonbnb.com/a2a"
       ],
       "speaks": [
-        "mcp",
         "a2a",
         "x402"
       ],
-      "tools": [
+      "tools": [],
+      "skills": [
         {
-          "name": "bsc_pool_watch",
-          "description": "PAID (0.50 USD1, 30 days). Watch one BNB Smart Chain liquidity pool around the clock and get told the moment it can no longer absorb a trade of your size. Check"
+          "name": "grid_plan",
+          "description": "Grid trading plan, costed against the real pool"
         }
       ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded",
-        "Venus health factor & liquidation distance",
-        "Grid trading plan, costed against the real pool",
-        "Venus yield ranking, and whether moving pays for itself",
-        "Portfolio rebalance, priced against the pools that would execute it",
-        "Which PancakeSwap fee tier is actually paying its liquidity providers"
+      "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json",
+      "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital",
+      "attributes": [
+        {
+          "trait_type": "Category",
+          "value": "grid-trading"
+        }
       ],
-      "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json"
+      "ours": true,
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
     },
     {
       "id": 304493,
       "name": "Brain on BNB — Venus Yield Ranking",
-      "description": "Four hireable agents on BNB Smart Chain, one in each BNB Agent Studio category. Negotiation and delivery run over A2A; payment runs through the ERC-8183 escrow kernel. Every figure is measured from the chain at request time and cross-checke",
+      "description": "Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked against Venus's own published APY, with divergences named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "trust_models": [
         "reputation"
@@ -309,35 +305,33 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a",
-        "https://agent.brainonbnb.com/.well-known/agent-card.json",
-        "https://brainonbnb.com/registry"
+        "https://agent.brainonbnb.com/a2a"
       ],
       "speaks": [
-        "mcp",
         "a2a",
         "x402"
       ],
-      "tools": [
+      "tools": [],
+      "skills": [
         {
-          "name": "bsc_pool_watch",
-          "description": "PAID (0.50 USD1, 30 days). Watch one BNB Smart Chain liquidity pool around the clock and get told the moment it can no longer absorb a trade of your size. Check"
+          "name": "yield_plan",
+          "description": "Venus yield ranking, and whether moving pays for itself"
         }
       ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded",
-        "Venus health factor & liquidation distance",
-        "Grid trading plan, costed against the real pool",
-        "Venus yield ranking, and whether moving pays for itself",
-        "Portfolio rebalance, priced against the pools that would execute it",
-        "Which PancakeSwap fee tier is actually paying its liquidity providers"
-      ]
+      "seed": "where is the best yield on BNB Chain for USDT right now",
+      "attributes": [
+        {
+          "trait_type": "Category",
+          "value": "yield-optimization"
+        }
+      ],
+      "ours": true,
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
     },
     {
       "id": 304494,
       "name": "Brain on BNB — Portfolio Rebalance Pricer",
-      "description": "Four hireable agents on BNB Smart Chain, one in each BNB Agent Studio category. Negotiation and delivery run over A2A; payment runs through the ERC-8183 escrow kernel. Every figure is measured from the chain at request time and cross-checke",
+      "description": "The swaps that move a BSC portfolio to target weights, each one costed against its own pool: swap fee, price impact at the actual size, and the transfer tax measured from executed trades. Returns the cost as a share of the money moved, and names the holding the bill is concentrated in. It does not claim to know what a correction is worth — that is a judgement about risk, not a quantity in a pool.",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "trust_models": [
         "reputation"
@@ -360,36 +354,34 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a",
-        "https://brainonbnb.com/scanner",
-        "https://brainonbnb.com/registry"
+        "https://agent.brainonbnb.com/a2a"
       ],
       "speaks": [
-        "mcp",
         "a2a",
         "x402"
       ],
-      "tools": [
+      "tools": [],
+      "skills": [
         {
-          "name": "bsc_pool_watch",
-          "description": "PAID (0.50 USD1, 30 days). Watch one BNB Smart Chain liquidity pool around the clock and get told the moment it can no longer absorb a trade of your size. Check"
+          "name": "rebalance_plan",
+          "description": "Portfolio rebalance, priced against the pools that would execute it"
         }
       ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded",
-        "Venus health factor & liquidation distance",
-        "Grid trading plan, costed against the real pool",
-        "Venus yield ranking, and whether moving pays for itself",
-        "Portfolio rebalance, priced against the pools that would execute it",
-        "Which PancakeSwap fee tier is actually paying its liquidity providers"
+      "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json",
+      "seed": "rebalance holdings [{\"token\":\"0x245c386dcfed896f5c346107596141e5edcbffff\",\"usd\":1000}] — what should the range be",
+      "attributes": [
+        {
+          "trait_type": "Category",
+          "value": "rebalancing"
+        }
       ],
-      "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json"
+      "ours": true,
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
     },
     {
       "id": 310460,
       "name": "Brain on BNB — PancakeSwap Fee Tier Placement",
-      "description": "Four hireable agents on BNB Smart Chain, one in each BNB Agent Studio category. Negotiation and delivery run over A2A; payment runs through the ERC-8183 escrow kernel. Every figure is measured from the chain at request time and cross-checke",
+      "description": "A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "trust_models": [
         "reputation"
@@ -412,31 +404,29 @@
         }
       ],
       "endpoints": [
-        "https://agent.brainonbnb.com/a2a",
-        "https://brainonbnb.com/api/fee-tiers",
-        "https://brainonbnb.com/registry"
+        "https://agent.brainonbnb.com/a2a"
       ],
       "speaks": [
-        "mcp",
         "a2a",
         "x402"
       ],
-      "tools": [
+      "tools": [],
+      "skills": [
         {
-          "name": "bsc_pool_watch",
-          "description": "PAID (0.50 USD1, 30 days). Watch one BNB Smart Chain liquidity pool around the clock and get told the moment it can no longer absorb a trade of your size. Check"
+          "name": "lp_tier_plan",
+          "description": "Which PancakeSwap fee tier is actually paying its liquidity providers"
         }
       ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded",
-        "Venus health factor & liquidation distance",
-        "Grid trading plan, costed against the real pool",
-        "Venus yield ranking, and whether moving pays for itself",
-        "Portfolio rebalance, priced against the pools that would execute it",
-        "Which PancakeSwap fee tier is actually paying its liquidity providers"
+      "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json",
+      "seed": "which PancakeSwap fee tier is actually paying for 0x245c386dcfed896f5c346107596141e5edcbffff, placing $1000 of liquidity",
+      "attributes": [
+        {
+          "trait_type": "Category",
+          "value": "yield-optimization"
+        }
       ],
-      "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json"
+      "ours": true,
+      "provider": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963"
     },
     {
       "id": 113284,

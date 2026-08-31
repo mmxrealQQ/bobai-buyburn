@@ -1,22 +1,12 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-08-29T08:42:25.543Z",
-  "asked": 16,
-  "quoted": 10,
+  "measured_at": "2026-08-31T05:08:57.546Z",
+  "asked": 13,
+  "quoted": 7,
   "agents": [
     {
       "id": 304494,
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
-      "category": "rebalancing",
-      "ours": true,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://agent.brainonbnb.com/a2a",
-      "reason": null
-    },
-    {
-      "id": 310460,
-      "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "rebalancing",
       "ours": true,
       "quotes": true,
@@ -43,16 +33,6 @@
       "price": null,
       "endpoint": "https://testnet-api.bitagent.io/aip/0xf357a45400fa4b741482be1877dc238323f3108e807bf92cb2e78eeb323d53e8",
       "reason": "answered {\"status\":\"OK\"} rather than a JSON-RPC reply"
-    },
-    {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
-      "reason": null
     },
     {
       "id": 265375,
@@ -105,6 +85,16 @@
       "reason": null
     },
     {
+      "id": 310460,
+      "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
+      "category": "yield-optimization",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "reason": null
+    },
+    {
       "id": 116170,
       "label": "Moments",
       "category": "yield-optimization",
@@ -113,16 +103,6 @@
       "price": null,
       "endpoint": "https://app.singularry.org/api/a2a",
       "reason": "seller answered, but its reply carries no price"
-    },
-    {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
-      "reason": null
     },
     {
       "id": 302257,
@@ -143,16 +123,6 @@
       "price": null,
       "endpoint": "https://bnb-agent-market.vercel.app/agents/healthguard",
       "reason": "the endpoint its card names answered HTTP 404 text/html, which is not an A2A reply"
-    },
-    {
-      "id": 266933,
-      "label": "BNB Lending Guardian",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": true,
-      "price": "5 $U",
-      "endpoint": "https://bnb-guardian.172-104-171-139.nip.io/a2a",
-      "reason": null
     },
     {
       "id": 270183,

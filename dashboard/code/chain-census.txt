@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3552 lines.
+# one fetch. 7 files, 3613 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -543,6 +543,7 @@ import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
 import { PEERS, SURFACE, OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
+import { SERVICE_BY_SLUG } from './lib/own-agents.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 // Same flag the scanner takes, so all halves of the census can be pointed at
@@ -692,10 +693,28 @@ const directory = reachable
 // chain is thinnest in looking empty until then would misrepresent what a buyer
 // can actually hire today. Merged by id, so the census overwrites this the
 // moment it catches up rather than listing them twice.
+// The sentence the hire box opens with, per seller rather than per category.
+//
+// It used to be one template per category, which broke the moment two agents
+// shared a category and needed different inputs: the yield template is a plain
+// question with no address in it, and the fee-tier seller refuses without one.
+// A buyer who took the suggested wording would have funded a job the seller
+// then declined — the exact failure that cost job 56670, discovered after
+// paying. A seed is a promise that the sentence works as written.
+const SEED_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const SEED_TASKS = {
+  health_factor: 'health factor and liquidation distance for the Venus position at <ADDR>',
+  grid_plan: `grid plan for ${SEED_TOKEN}, 10 levels across a 15% band, $1000 capital`,
+  yield_plan: 'where is the best yield on BNB Chain for USDT right now',
+  rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":1000}] — what should the range be`,
+  lp_tier_plan: `which PancakeSwap fee tier is actually paying for ${SEED_TOKEN}, placing $1000 of liquidity`,
+};
+const seedTask = (svc) => SEED_TASKS[svc.id] || null;
+
 let ownAgents = [];
 try {
   const own = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'own-agents.json'), 'utf8'));
-  ownAgents = Object.values(own.agents || {}).filter((a) => a.id).map((a) => {
+  ownAgents = Object.entries(own.agents || {}).filter(([, a]) => a.id).map(([slug, a]) => {
     // Our own agents were being listed with description: null, so the table
     // printed "its registration says nothing about what it does" against the
     // two entries we control — while holding other people to the same standard
@@ -703,21 +722,40 @@ try {
     // which is the same sentence the agent sells itself with over A2A and the
     // same one it delivers against. One source, and it cannot drift from what
     // is actually for sale.
-    const svc = Object.values(SERVICES).find((x) => x.category === a.category);
+    //
+    // BY SLUG, NOT BY CATEGORY. The lookup used to match on category, which
+    // holds only while no two agents share one. Two do, and `find` returned
+    // whichever service was declared first — so one of our own agents was
+    // described as the other one, in the section a judge is asked to compare
+    // agents in. A slug names exactly one agent; a category does not.
+    const svc = SERVICES[SERVICE_BY_SLUG[slug]] || null;
     return {
       id: a.id,
       name: a.name,
       description: svc ? svc.deliverables : null,
       endpoints: ['https://agent.brainonbnb.com/a2a'],
       speaks: ['a2a', 'x402'],
-      // What it can be asked for, named the way the seller names it.
+      // What it can be asked for, named the way the seller names it. Empty
+      // tools on purpose: see the merge below.
       skills: svc ? [{ name: svc.id, description: svc.name }] : [],
+      tools: [],
+      seed: svc ? seedTask(svc) : null,
       attributes: [{ trait_type: 'Category', value: a.category }],
       ours: true,
       provider: a.owner,
     };
   });
-  for (const a of ownAgents) if (!directory.some((d) => d.id === a.id)) directory.push(a);
+  // OUR DEFINITION WINS, rather than being dropped when the census already has
+  // the id. Five agents sell from one A2A endpoint, and one endpoint serves one
+  // agent card, so the enrichment step gave all five the same description and
+  // the same six capabilities. On a page whose whole job is helping somebody
+  // choose between agents, that printed the identical paragraph four times,
+  // once per category. The per-agent on-chain document is the truth; the
+  // shared card is an artefact of how they are hosted.
+  for (const a of ownAgents) {
+    const i = directory.findIndex((d) => d.id === a.id);
+    if (i < 0) directory.push(a); else directory[i] = { ...directory[i], ...a };
+  }
 } catch { /* nothing registered yet */ }
 
 const operators = groupByOperator(directory);
@@ -955,6 +993,17 @@ const describes = (r) => {
 // is how a front page ends up quoting a number the marketplace would not.
 const canHire = (r) => !!(r.ours || (r.speaks || []).includes('a2a') || (r.employment && r.employment.funded > 0));
 
+// What happened the last time each hireable agent was actually asked for a
+// price. A "Hire" button on a seller that cannot quote is a button that wastes
+// the visitor's time, and this page is in no position to complain about other
+// people's unverified numbers while shipping one of its own.
+const hireConfirm = (() => {
+  const f = path.join(DIR, 'hire-confirm.json');
+  if (!fs.existsSync(f)) return null;
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
+})();
+const quoteOf = (id) => (hireConfirm?.agents || []).find((a) => String(a.id) === String(id)) || null;
+
 const categorised = CATEGORIES.map((cat) => {
   const rows = [];
   const seenOperator = new Set();
@@ -975,6 +1024,7 @@ const categorised = CATEGORIES.map((cat) => {
       speaks: a.speaks || [],
       description: a.description || null,
       capabilities: capsOf(a),
+      seed: a.seed || null,
     });
   }
   const claimed = new Set(rows.map((r) => r.label));
@@ -1001,24 +1051,30 @@ const categorised = CATEGORIES.map((cat) => {
     });
   }
 
+  // ORDERED BY EVIDENCE, NOT BY OWNERSHIP.
+  //
+  // The old order led with how an agent was categorised, and every agent we
+  // run declares its own category on-chain while most strangers are matched
+  // from their text. The effect was that all four sections opened with a row
+  // of ours — which reads as a marketplace preferring its operator, and buries
+  // the row in the section with the longest paid history.
+  //
+  // What decides the order now is checkable from the page itself: agents that
+  // returned a price when they were asked come first, because those are the
+  // ones where the next click leads somewhere; then jobs released, then jobs
+  // funded, which is the one reputation signal on this chain nobody can write
+  // about themselves. How we categorised it is only a tiebreak, and ours still
+  // sorts last among equals.
+  const answers = (r) => (r.agentId && quoteOf(r.agentId)?.quotes ? 0 : 1);
   const rank = { declared: 0, registered: 1, derived: 2 };
-  rows.sort((a, b) => (rank[a.hit.source] - rank[b.hit.source])
+  rows.sort((a, b) => (answers(a) - answers(b))
     || ((b.employment?.completed || 0) - (a.employment?.completed || 0))
+    || ((b.employment?.funded || 0) - (a.employment?.funded || 0))
+    || (rank[a.hit.source] - rank[b.hit.source])
     || (a.ours === b.ours ? 0 : a.ours ? 1 : -1)
     || (b.instances - a.instances));
   return { cat, rows };
 });
-
-// What happened the last time each hireable agent was actually asked for a
-// price. A "Hire" button on a seller that cannot quote is a button that wastes
-// the visitor's time, and this page is in no position to complain about other
-// people's unverified numbers while shipping one of its own.
-const hireConfirm = (() => {
-  const f = path.join(DIR, 'hire-confirm.json');
-  if (!fs.existsSync(f)) return null;
-  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
-})();
-const quoteOf = (id) => (hireConfirm?.agents || []).find((a) => String(a.id) === String(id)) || null;
 
 const categorySections = categorised.map(({ cat, rows }) => {
   const ids = rows.reduce((n, r) => n + r.instances, 0);
@@ -1048,7 +1104,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
                 ? `<div class="rg-note rg-quotes">quoted ${esc(q.price || 'a price')} when asked</div>`
                 : `<div class="rg-note rg-weak">did not quote when asked &mdash; ${esc(q.reason || 'no answer')}</div>`)
               : '';
-            return mark + `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}">Hire &rarr;</button>`;
+            return mark + `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''}>Hire &rarr;</button>`;
           })()}</td>
         </tr>`;
   }).join(NL);
@@ -1057,6 +1113,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
       <h2>${esc(cat.label)}</h2>
       <p class="rg-sub">${esc(cat.blurb)}</p>
       <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${ids > rows.length ? `, covering ${fmt(ids)} registry ids once fleets are collapsed` : ''}. ${rows.length <= 2 ? 'That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : 'Agents that state their own category are listed individually; ones we matched are collapsed to the operator running them.'}</p>
+      ${rows.length > 1 ? '<p class="rg-note" style="margin:-8px 0 16px">Ordered by evidence rather than by who runs it: the ones that returned a price when asked come first, then by jobs released, then by jobs funded.</p>' : ''}
       ${rows.length ? `<div class="rg-scroll"><table class="rg"><thead><tr><th>Agent or operator</th><th>How we know</th><th>Hireable &amp; history</th></tr></thead><tbody>
 ${body}
       </tbody></table></div>` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}
@@ -2058,15 +2115,19 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     // "my position" means the wallet in front of us when there is one. Before
     // connecting it falls back to a real address, so the seeded sentence is
     // still fulfillable rather than a placeholder that fails at delivery.
-    function seedFor(cat){return String(SEED[cat]||'').replace('<ADDR>',account||SEED_TOKEN);}
+    // A seller's own template beats the category one. Two agents can share a
+    // category and need different inputs — the yield sentence carries no
+    // address and the fee-tier seller refuses without one — so a per-category
+    // template is a promise the seller never made.
+    function seedFor(cat,own){return String(own||SEED[cat]||'').replace('<ADDR>',account||SEED_TOKEN);}
 
     var seeded='';
     function open(btn){
-      current={id:btn.getAttribute('data-hire'),name:btn.getAttribute('data-name'),cat:btn.getAttribute('data-cat')};
+      current={id:btn.getAttribute('data-hire'),name:btn.getAttribute('data-name'),cat:btn.getAttribute('data-cat'),seed:btn.getAttribute('data-seed')};
       plan=null;jobId=null;
       document.getElementById('rg-hire-t').textContent='Hire '+current.name;
       elSub.textContent='Agent #'+current.id+' · paid through the ERC-8183 escrow on BNB Chain';
-      elTask.value=seedFor(current.cat);seeded=elTask.value;
+      elTask.value=seedFor(current.cat,current.seed);seeded=elTask.value;
       elSteps.innerHTML='';elRaw.hidden=true;say('');
       elQuote.disabled=false;elQuote.textContent='Get a quote';
       d.showModal();
@@ -2166,7 +2227,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         // Now that there is a wallet, "my position" has an answer. Only if the
         // buyer has not touched the box - overwriting somebody's own wording
         // the moment they connect would be worse than a stale placeholder.
-        if(current&&elTask&&elTask.value===seeded){elTask.value=seedFor(current.cat);seeded=elTask.value;}
+        if(current&&elTask&&elTask.value===seeded){elTask.value=seedFor(current.cat,current.seed);seeded=elTask.value;}
         renderSteps();return;
       }
       w.innerHTML='<button class="rg-act" id="rg-conn">Connect wallet</button>';

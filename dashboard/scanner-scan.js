@@ -205,6 +205,12 @@ const askGoPlus = (a, env) => gpCached(a, async () => {
 // passes it; the browser page and the packaged skill call scan(input) with one
 // argument and keep running anonymously.
 export async function scan(input, env) {
+  // Lowercased at the door, for the reason spelled out in tier-scan.js: every
+  // address comparison downstream is a string comparison against a value that
+  // came back from `addrAt`, which is lowercase. A checksummed address does not
+  // error, it just matches nothing — and a scan that matches nothing still
+  // returns a full, confident, wrong answer.
+  input = String(input || '').toLowerCase();
   // Fired against the input on the chance it IS the token, because it usually
   // is and this is the slow leg. If the input turns out to be a pool, the
   // answer describes the LP token instead, so it is asked again against the

@@ -70,14 +70,26 @@ section('Free surface');
       pancakeswap_fee_tiers: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' },
     };
     const args = WITH_ARGS[t.name] || {};
-    const res = await fetch(`${SITE}/mcp`, {
+    const ask = () => fetch(`${SITE}/mcp`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: t.name, arguments: args } }),
-    }).then((x) => x.json()).catch(() => ({}));
-    const txt = res.result?.content?.[0]?.text || '';
-    if (!res.error && txt && !/"error"/.test(txt)) good++;
-    else broken.push(t.name);
+      signal: AbortSignal.timeout(40000),
+    }).then((x) => x.json()).catch((e) => ({ error: { message: 'request failed: ' + e.name } }));
+    const fine = (r) => !r.error && (r.result?.content?.[0]?.text || '') && !/"error"/.test(r.result.content[0].text);
+    // ONE RETRY, BECAUSE THIS LOOP IS ITS OWN WORST CALLER.
+    //
+    // The tools are asked back to back and several of them read the same public
+    // BSC endpoints; the two measuring ones read them hard. Under that load the
+    // heaviest tool comes back throttled, and a single attempt would report
+    // "pancakeswap_fee_tiers is broken" — a statement about somebody's tool that
+    // was really a statement about this loop. Asked once more, two seconds
+    // later, it answers. A tool that fails twice is a finding; a tool that
+    // fails behind eighteen other calls is a queue.
+    let res = await ask();
+    if (!fine(res)) { await new Promise((r) => setTimeout(r, 2000)); res = await ask(); }
+    if (fine(res)) good++;
+    else broken.push(t.name + (res.error?.message ? ' (' + String(res.error.message).slice(0, 60) + ')' : ''));
   }
   ok('every MCP tool returns data', broken.length === 0, broken.join(', '));
 }

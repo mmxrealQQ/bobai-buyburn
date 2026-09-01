@@ -160,8 +160,32 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
   // same busy token, and checked for the figure rather than for a 200: an
   // answer that came back with every tier unmeasured is a failure wearing the
   // shape of a success.
-  const tiers = await fetch(`${SITE}/api/fee-tiers?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`)
-    .then((r) => r.json()).catch(() => null);
+  // ONE PATIENT RETRY, AND THE REASON IS THIS CHECKER'S OWN LOAD.
+  //
+  // The pool scan directly above asks for the same token and reads the same
+  // public endpoints. Run back to back they throttle each other, and the tier
+  // scan then came back as a bare "no answer" — the identical line this check
+  // would print if the endpoint were dead. A checker that cannot tell its own
+  // footprint from an outage will eventually report one as the other, and the
+  // day it matters it will be the wrong way round. So: a breath between the
+  // two, one retry, and whatever actually came back gets named.
+  const askTiers = async () => {
+    try {
+      const r = await fetch(`${SITE}/api/fee-tiers?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`,
+        { signal: AbortSignal.timeout(30000) });
+      const text = await r.text();
+      try { return { ...JSON.parse(text), _status: r.status }; }
+      catch { return { error: `HTTP ${r.status}, not JSON: ${text.slice(0, 80)}`, _status: r.status }; }
+    } catch (e) { return { error: `request failed: ${e.name}`, _status: 0 }; }
+  };
+  await new Promise((r) => setTimeout(r, 1500));
+  let tiers = await askTiers();
+  if (!tiers?.tiers?.length) {
+    await new Promise((r) => setTimeout(r, 4000));
+    const again = await askTiers();
+    if (again?.tiers?.length) tiers = again;
+    else tiers = { ...tiers, error: `${tiers.error || 'no tiers'} (twice, 4s apart)` };
+  }
   const priced = (tiers?.tiers || []).filter((t) => t.fees_per_1000_usd_parked != null);
   // An incomplete comparison is a correct answer, not a failed one — since
   // 2026-08-29 the tool withholds the winner when a tier could not be read,
@@ -178,6 +202,25 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
   // it was measured over is the number this tool exists to stop people quoting.
   ok('Agents', 'the tier figures carry the window they were measured over',
     !tiers?.tiers?.length || (tiers?.measured_window?.blocks > 0 && /not annualised/i.test(tiers?.measured_window?.note || '')));
+
+  // WORKING CAPITAL, checked for the property that makes it worth having.
+  //
+  // Not "is the field present" — a field that is present and equal to the pool
+  // balance would mean the tick walk silently degraded to counting everything,
+  // and the panel would keep printing a number that had quietly stopped saying
+  // anything. So: it must be there, it must be a strict subset of what the pool
+  // holds, and on a V2 pool it must land on the closed form it cannot avoid
+  // (1 - 1/sqrt(1.02) = 0.985% of the balance, whatever the pool's size).
+  const withBand = (tiers?.tiers || []).filter((t) => t.working_capital_usd != null);
+  const v2row = (tiers?.tiers || []).find((t) => /^V2/.test(t.tier) && t.working_share_pct != null);
+  const expectV2 = (1 - 1 / Math.sqrt(1 + (tiers?.band_pct || 2) / 100)) * 100;
+  ok('Agents', 'working capital is measured and is a subset of the pool',
+    withBand.length >= 2
+      && withBand.every((t) => t.working_capital_usd <= t.capital_usd * 1.005)
+      && (!v2row || Math.abs(v2row.working_share_pct - expectV2) < 0.05),
+    !withBand.length ? 'no tier carried a working-capital figure'
+      : `${withBand.length} tiers, band ±${tiers?.band_pct}%`
+        + (v2row ? `, V2 share ${v2row.working_share_pct}% against ${expectV2.toFixed(3)}% required by the constant-product identity` : ''));
 
   const sk = await getJson(`${SITE}/.well-known/skills/index.json`);
   const entry = sk.json?.skills?.[0];

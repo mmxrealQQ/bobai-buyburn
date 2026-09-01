@@ -27,7 +27,16 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
+  bandDepthV2, bandDepthV3,
 } from './scanner-chain.js';
+
+// How wide "at the price" is taken to be. Two percent is not a preference: it
+// is roughly where a position stops being a liquidity position and starts being
+// a bet on direction, and it is narrow enough that the answer differs per tier
+// instead of converging on the balance sheet. It travels with every figure
+// derived from it, because a working-capital number without its band is not a
+// number anybody can check.
+const BAND_PCT = 2;
 
 export class TierError extends Error {
   constructor(headline, detail) {
@@ -75,6 +84,18 @@ const turnover = (logs, kind, quoteIs0) => {
 };
 
 export async function feeTiers(input) {
+  // NORMALISED HERE, not left to the caller.
+  //
+  // Everything downstream compares addresses as strings — which side of a pool
+  // the token is, which candidate is the same pool, whether a quote is one of
+  // the known ones — and `addrAt` returns them lowercase. A checksummed address
+  // therefore matches nothing, and the failure is not an error: the comparisons
+  // simply all come out false, the token gets priced through the wrong path,
+  // and the answer arrives complete and wrong. Measured 2026-09-01 with CAKE:
+  // the identical address in checksum case reported the V2 pool as holding
+  // $6.48 BILLION against its true $17.4 million, with no warning of any kind.
+  // Every caller today happens to lowercase; the next one will not.
+  input = String(input || '').toLowerCase();
   let what;
   try {
     what = await classify(input);
@@ -176,6 +197,22 @@ export async function feeTiers(input) {
   // inverts if it is ever wrong and one batched call is cheap insurance.
   const zeros = await rpcBatch(mine.map((c) => call(c.pair, S.token0)));
 
+  // WHERE THE CAPITAL ACTUALLY STANDS, read before the ladder is walked.
+  //
+  // Until now every figure here divided fees by what the pool contract holds,
+  // with a caveat admitting that V3 balances include liquidity parked outside
+  // the price range, earning nothing. That caveat is now a measurement: the
+  // pool's own tick data says how much of each side stands within two percent
+  // of the current price, which is the capital a new dollar would actually be
+  // competing with. Asked for every V3 tier in one batched pass rather than
+  // per tier, because tier-by-tier is the pattern that came back half-read.
+  const v3rows = mine.filter((c) => c.kind === 'v3');
+  let bandByPool = new Map();
+  try {
+    const got = await bandDepthV3(v3rows.map((c) => c.pair), BAND_PCT);
+    v3rows.forEach((c, i) => { if (got[i]) bandByPool.set(c.pair, got[i]); });
+  } catch { bandByPool = new Map(); }
+
   // The ladder is read in ladder order — V2 first, then V3 by rising fee. The
   // discovery order is by depth, which changes between two calls a minute apart
   // and would make the same pair look reshuffled every time it is asked about.
@@ -213,6 +250,35 @@ export async function feeTiers(input) {
     }
 
     const capitalUsd = tokenUsd == null ? null : c.q * c.usd + c.tok * tokenUsd;
+
+    // The same band question asked of both pool shapes, because exempting V2
+    // would smuggle the old answer back in. A constant-product pool is a
+    // full-range position, so the share of it standing within two percent is
+    // 1 - 1/sqrt(1.02) — about 0.985% — no matter how large the pool is. That
+    // is not a flaw in V2 and it is not an argument against it; it is the
+    // reason a $40M V2 pool and a $2M V3 pool can be the same size where it
+    // counts, and neither pool's own interface will ever tell you that.
+    const tokenIs0 = !quoteIs0;
+    let band = null;
+    if (c.kind === 'v3') band = bandByPool.get(c.pair) || null;
+    else {
+      const rTok = c.tok * Math.pow(10, tokDec), rQ = c.q * 1e18;
+      band = bandDepthV2(tokenIs0 ? rTok : rQ, tokenIs0 ? rQ : rTok, BAND_PCT);
+    }
+    let workingUsd = null, workingShare = null;
+    if (band && tokenUsd != null) {
+      const tokAmt = (tokenIs0 ? band.amount0 : band.amount1) / Math.pow(10, tokDec);
+      const qAmt = (tokenIs0 ? band.amount1 : band.amount0) / 1e18;
+      // An amount inside the band can never exceed what the contract holds. If
+      // it does, the walk is wrong and the honest output is nothing at all —
+      // a number that fails its own arithmetic must not be published because
+      // it happens to look reasonable.
+      if (tokAmt <= c.tok * 1.005 && qAmt <= c.q * 1.005) {
+        workingUsd = tokAmt * tokenUsd + qAmt * c.usd;
+        workingShare = capitalUsd > 0 ? (workingUsd / capitalUsd) * 100 : null;
+      }
+    }
+
     const row = {
       tier: label(c), venue: c.venue, pool: c.pair,
       fee_pct: +(c.fee * 100).toFixed(4),
@@ -225,6 +291,13 @@ export async function feeTiers(input) {
       // the two are labelled rather than reconciled, because reconciling them
       // would mean one of the questions getting the wrong answer.
       capital_usd: capitalUsd == null ? null : +capitalUsd.toFixed(2),
+      // The capital standing within the band, and how little of the balance
+      // that can be. Null rather than zero when it could not be read: an empty
+      // band and an unread one are opposite facts.
+      working_capital_usd: workingUsd == null ? null : +workingUsd.toFixed(2),
+      working_share_pct: workingShare == null ? null : +workingShare.toFixed(2),
+      band_pct: BAND_PCT,
+      band_complete: band ? band.complete !== false : null,
     };
     // A refused range and a quiet pool arrive as the same emptiness and mean
     // opposite things. Only one of them may be reported as a fact about a pool.
@@ -241,6 +314,11 @@ export async function feeTiers(input) {
       row.fees_paid_usd = +(fees * c.usd).toFixed(6);
       row.fees_per_1000_usd_parked =
         capitalUsd > 0 ? +(((fees * c.usd) / capitalUsd) * 1000).toFixed(6) : null;
+      // The same fees over the capital that was actually in a position to earn
+      // them. This is the figure an LP is choosing between tiers with; the one
+      // above is the figure every interface shows instead.
+      row.fees_per_1000_usd_working =
+        workingUsd > 0 ? +(((fees * c.usd) / workingUsd) * 1000).toFixed(6) : null;
     }
     tiers.push(row);
   }
@@ -249,6 +327,19 @@ export async function feeTiers(input) {
   const traded = measured
     .filter((v) => v.fees_per_1000_usd_parked != null && v.volume_usd > 0)
     .sort((a, b) => b.fees_per_1000_usd_parked - a.fees_per_1000_usd_parked);
+
+  // The ranking the whole tool is for, run a second time over the denominator
+  // that was previously only apologised for. It is withheld under exactly the
+  // same conditions as the first one, plus one of its own: every band must have
+  // been read whole. A tier whose tick set was truncated has a working figure
+  // that is too small in a direction that would flatter its rivals.
+  const bandsWhole = tiers.every((v) => v.band_complete !== false);
+  const working = measured
+    .filter((v) => v.fees_per_1000_usd_working != null && v.volume_usd > 0)
+    .sort((a, b) => b.fees_per_1000_usd_working - a.fees_per_1000_usd_working);
+  const mostWorking = [...tiers]
+    .filter((v) => v.working_capital_usd != null)
+    .sort((a, b) => b.working_capital_usd - a.working_capital_usd)[0];
 
   const minutes = await windowMinutes(from, head);
   const mostCapital = [...tiers]
@@ -294,6 +385,26 @@ export async function feeTiers(input) {
     best_paying_tier: measured.length === tiers.length && traded.length ? traded[0].tier : null,
     best_paying_tier_among_readable: traded.length ? traded[0].tier : null,
     most_capital_tier: mostCapital ? mostCapital.tier : null,
+    // THE SECOND ANSWER, over working capital rather than parked capital.
+    //
+    // Both are kept and neither replaces the other. Fees over parked capital is
+    // what a tier returns on the money committed to it, which is the honest
+    // answer for capital already sitting there. Fees over working capital is
+    // what a tier returns on the money that was in a position to earn, which is
+    // the honest answer for a dollar not yet committed. They disagree often,
+    // and the disagreement is the finding, not an error to be reconciled away.
+    band_pct: BAND_PCT,
+    bands_complete: bandsWhole,
+    best_paying_tier_by_working_capital:
+      measured.length === tiers.length && bandsWhole && working.length ? working[0].tier : null,
+    best_paying_tier_by_working_capital_among_readable: working.length ? working[0].tier : null,
+    most_working_capital_tier: mostWorking ? mostWorking.tier : null,
+    // Does changing the denominator change the answer? When it does, every
+    // interface an LP can consult is pointing at the other tier.
+    working_capital_changes_the_answer:
+      measured.length === tiers.length && bandsWhole && working.length && traded.length
+        ? working[0].tier !== traded[0].tier
+        : null,
     capital_is_in_the_best_paying_tier:
       measured.length === tiers.length && traded.length && mostCapital
         ? traded[0].tier === mostCapital.tier
@@ -306,7 +417,9 @@ export async function feeTiers(input) {
     other_venues: otherVenues,
     caveats: [
       'Capital is both sides of the pool in dollars, not one side. On V3 the two sides are not worth the same, and dividing by one of them makes the identical pool look several times better or worse depending on which token you call the quote.',
-      'Capital is what the pool contract holds. In V3 that includes liquidity sitting outside the current price range, which earns nothing — so a well-placed narrow position earns more than the tier figure here, and this number is the pool average rather than any one position.',
+      `Capital is what the pool contract holds. Working capital is the part of it standing within ${BAND_PCT}% of the current price, read from the pool's own tick data — the rest is on the balance sheet and earns nothing while the price is where it is. The two denominators answer different questions and both are given: parked capital is what a tier returns on money already committed to it, working capital is what it returns on a dollar you have not committed yet.`,
+      `Working capital assumes the price stays inside the band. It will not stay there forever, and a position placed there stops earning the moment it leaves — so the working figure is the better guide to where a dollar earns today and says nothing about how long it keeps earning.`,
+      'The tick walk behind the working figure was checked against PancakeSwap\'s own quoter on live pools and agreed to within 0.002%, the difference being the pool rounding in its own favour at every tick it crosses.',
       tokenUsd == null
         ? 'This token could not be priced against BNB, so no pool could be totalled and no tier is ranked. The per-tier turnover below is still measured.'
         : `Token priced at ${tokPrice.direct ? 'its own quote' : 'one hop through BNB'}; the pool totals inherit that.`,

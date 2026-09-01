@@ -12,7 +12,7 @@
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
-  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=13';
+  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=14';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -185,52 +185,106 @@ function renderTiers(out,d){
     return;
   }
 
+  // THE ANSWER FIRST, THE EVIDENCE UNDER IT.
+  //
+  // The table below is five rows of numbers that a liquidity provider has to
+  // hold in their head simultaneously to get an answer out of. The answer is
+  // two sentences, so it goes first, in the same shape the scan result uses
+  // further up this page.
+  const best=d.best_paying_tier, most=d.most_capital_tier;
+  const bestW=d.best_paying_tier_by_working_capital, mostW=d.most_working_capital_tier;
+  const ans=el('div','vd tier-ans');
+  const line=(tone,head,body)=>{
+    const r=el('div','vd-r vd-'+tone);
+    r.appendChild(el('b',null,head));
+    if(body)r.appendChild(el('span',null,body));
+    ans.appendChild(r);
+  };
+  const row=t=>(d.tiers||[]).find(x=>x.tier===t);
+
+  // 1. Where a new dollar earns most. Withheld — loudly — when any tier went
+  //    unread or any band came back truncated, because a ranking over a subset
+  //    names whichever tier happened to be readable.
+  if(bestW){
+    const b=row(bestW);
+    line('good',bestW+' pays the most per dollar that is actually working.',
+      b&&b.fees_per_1000_usd_working!=null
+        ?'It paid $'+b.fees_per_1000_usd_working.toFixed(4)+' per $1,000 of capital standing within '+
+         (d.band_pct||2)+'% of the price, over this window. That is the figure to compare, because a dollar you add only earns beside the capital that is at the price.'
+        :'Measured over the capital standing at the price rather than the capital in the pool.');
+  }else if(d.comparison_complete===false){
+    const n=(d.tiers_unreadable||[]).length;
+    line('unknown',n+' of '+(d.tiers_found||0)+' tiers could not be read, so no tier is called best.',
+      (d.best_paying_tier_among_readable?'Of the ones that were read, '+d.best_paying_tier_among_readable+' paid most. ':'')+
+      'A ranking over an unknown subset would name whichever tier happened to answer. Ask again in a moment.');
+  }else if(d.bands_complete===false){
+    line('unknown','The tick book was too dense to read whole, so no tier is called best.',
+      'One of these pools has more price levels inside the band than can be read in one pass. The capital shown for it is understated, and understating one tier flatters the others.');
+  }else{
+    line('unknown','Nothing traded on any tier that could be read in this window.',
+      'No fees were paid, so no tier can be ranked by what it paid. The capital figures below still hold.');
+  }
+
+  // 2. The finding this panel exists for: what a pool HOLDS and what it has
+  //    standing at the price are different numbers, and every interface an LP
+  //    can consult shows the first one.
+  if(most&&mostW&&most!==mostW){
+    const a=row(most), b=row(mostW);
+    line('mid',most+' holds the most money. '+mostW+' has the most of it at the price.',
+      (a&&a.capital_usd!=null&&a.working_capital_usd!=null&&b&&b.working_capital_usd!=null)
+        ?most+' holds '+usd(a.capital_usd)+' and stands '+usd(a.working_capital_usd)+' within '+(d.band_pct||2)+
+         '% of the price. '+mostW+' stands '+usd(b.working_capital_usd)+'. Depth on a listing page is the first number; what you compete with is the second.'
+        :'');
+  }else if(d.working_capital_changes_the_answer===true&&best&&bestW&&best!==bestW){
+    line('mid','By the usual measure '+best+' looks best. By working capital '+bestW+' is.',
+      'Dividing the same fees by everything the pool holds rewards a pool for capital that earns nothing. Both figures are in the table.');
+  }else if(most&&mostW&&most===mostW&&bestW){
+    line('mid',most+' both holds the most and stands the most at the price.',
+      'The two measures agree here, which is worth knowing rather than assuming.');
+  }
+  out.appendChild(ans);
+
   const rows=el('div','tier-t');
   const head=el('div','tier-r tier-hr');
-  head.append(el('span','tier-n','tier'),el('span','tier-c','capital in pool'),
-    el('span','tier-v','traded'),el('span','tier-f','pays per $1,000'));
+  head.append(el('span','tier-n','tier'),el('span','tier-c','in the pool'),
+    el('span','tier-w','at the price'),el('span','tier-v','traded'),
+    el('span','tier-f','pays per $1,000 working'));
   rows.appendChild(head);
 
-  const best=d.best_paying_tier, most=d.most_capital_tier;
+  // The header disappears below 560px, so each figure carries its own label
+  // that only shows there. Two unexplained numbers side by side on a phone is
+  // how a panel with more information ends up saying less.
+  const cell=(cls,label,text,extra)=>{
+    const s=el('span',cls+(extra||''));
+    s.appendChild(el('i','tl',label));
+    s.appendChild(document.createTextNode(text));
+    return s;
+  };
+
   (d.tiers||[]).forEach(t=>{
-    const r=el('div','tier-r'+(t.tier===best?' tier-best':''));
+    const r=el('div','tier-r'+(t.tier===bestW?' tier-best':''));
     const n=el('span','tier-n',t.tier);
     if(t.tier===most)n.appendChild(el('em','tier-tag','most capital'));
+    else if(t.tier===mostW)n.appendChild(el('em','tier-tag','most at the price'));
     r.appendChild(n);
-    r.appendChild(el('span','tier-c',t.capital_usd==null?'—':usd(t.capital_usd)));
+    r.appendChild(cell('tier-c','in the pool',t.capital_usd==null?'—':usd(t.capital_usd)));
+    // Share as well as amount: "$171K of $17.4M" is the whole point, and one
+    // percent reads harder than it should without the figure it is a share of.
+    r.appendChild(cell('tier-w','at the price',
+      t.working_capital_usd==null?'—':usd(t.working_capital_usd)+
+        (t.working_share_pct!=null?' ('+t.working_share_pct.toFixed(t.working_share_pct<10?1:0)+'%)':'')));
     if(!t.measured){
-      r.appendChild(el('span','tier-v dim','not readable'));
-      r.appendChild(el('span','tier-f dim','—'));
+      r.appendChild(cell('tier-v dim','traded','not readable'));
+      r.appendChild(cell('tier-f dim','pays per $1,000','—'));
     }else{
-      r.appendChild(el('span','tier-v',t.volume_usd>0?usd(t.volume_usd):'nothing'));
-      const pays=t.fees_per_1000_usd_parked;
-      r.appendChild(el('span','tier-f'+(t.tier===best?' good':(pays===0?' dim':'')),
-        pays==null?'—':'$'+pays.toFixed(4)));
+      r.appendChild(cell('tier-v','traded',t.volume_usd>0?usd(t.volume_usd):'nothing'));
+      const pays=t.fees_per_1000_usd_working;
+      r.appendChild(cell('tier-f','pays per $1,000',pays==null?'—':'$'+pays.toFixed(4),
+        t.tier===bestW?' good':(pays===0?' dim':'')));
     }
     rows.appendChild(r);
   });
   out.appendChild(rows);
-
-  // When a tier could not be read there is no winner, and the card says why
-  // rather than quietly dropping the verdict line. A panel that shows four
-  // priced tiers and no conclusion reads as "nothing to conclude", when what
-  // actually happened is that the fifth tier — possibly the winning one — was
-  // never measured.
-  if(d.comparison_complete===false){
-    const n=(d.tiers_unreadable||[]).length;
-    out.appendChild(el('p','tier-said',
-      n+' of '+(d.tiers_found||0)+' tiers could not be read just now, so no tier is called best'+
-      (d.best_paying_tier_among_readable?' — of the ones that were read, '+d.best_paying_tier_among_readable+' paid most':'')+
-      '. Ask again in a moment.'));
-  }
-  // The sentence the card exists to be able to say, when it is true.
-  else if(d.capital_is_in_the_best_paying_tier===false){
-    out.appendChild(el('p','tier-said',
-      most+' holds the most capital. '+best+' is the one paying for it.'));
-  }else if(d.capital_is_in_the_best_paying_tier===true){
-    out.appendChild(el('p','tier-said',
-      best+' holds the most capital and is also paying best.'));
-  }
 
   const idle=(d.idle_capital||[]).reduce((s,x)=>s+(x.capital_usd||0),0);
   if(idle>=100){
@@ -241,7 +295,8 @@ function renderTiers(out,d){
 
   const w=d.measured_window||{};
   out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
-    ' minutes of chain — a sample, not a rate, and not annualised. Capital is both sides of the pool; in V3 that includes liquidity parked outside the current range, which earns nothing, so this is the pool average and not any one position. Impermanent loss is not in it.'));
+    ' minutes of chain — a sample, not a rate, and not annualised. Capital is both sides of the pool. "At the price" is the part of it standing within '+
+    (d.band_pct||2)+'% of the current price, walked from the pool’s own tick data and checked against PancakeSwap’s quoter; the rest is on the balance sheet and earns nothing while the price is where it is. It assumes the price stays in that band, which it will not do forever. Impermanent loss is not in any of this.'));
 }
 
 function card(title,sub){

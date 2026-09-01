@@ -232,21 +232,32 @@
       transition:background .2s,border-color .2s}
     .sc-tierbtn:hover:not(:disabled){background:rgba(240,185,11,.16);border-color:rgba(240,185,11,.5)}
     .sc-tierbtn:disabled{opacity:.55;cursor:default}
-    .tier-t{margin-top:14px}
-    .tier-r{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);
+    .tier-ans{margin-top:14px}
+    .tier-t{margin-top:16px}
+    .tier-r{display:grid;
+      grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);
       gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--border);font-size:.8rem}
     .tier-hr{border-top:0;font-size:.66rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
     .tier-r>span{min-width:0;overflow-wrap:anywhere}
-    .tier-c,.tier-v,.tier-f{text-align:right;font-variant-numeric:tabular-nums}
+    .tier-c,.tier-w,.tier-v,.tier-f{text-align:right;font-variant-numeric:tabular-nums}
     .tier-best .tier-n{font-weight:600}
     .tier-tag{display:block;font-style:normal;font-size:.62rem;color:var(--muted);letter-spacing:.03em}
     .tier-said{margin-top:13px;font-size:.82rem;line-height:1.55}
+    /* Each figure carries its own label, shown only where the header row is
+       not. Four unlabelled numbers stacked on a phone is more information
+       arriving as less. */
+    .tl{display:none}
     @media(max-width:560px){
-      .tier-r{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);row-gap:2px}
+      .tier-r{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:4px}
       .tier-hr{display:none}
-      .tier-c,.tier-v{font-size:.72rem;color:var(--muted)}
-      .tier-c{grid-column:1;text-align:left}
-      .tier-v{grid-column:2}
+      .tier-n{grid-column:1;grid-row:1}
+      .tier-f{grid-column:2;grid-row:1}
+      .tier-c{grid-column:1;grid-row:2;text-align:left}
+      .tier-w{grid-column:2;grid-row:2}
+      .tier-v{grid-column:1;grid-row:3;text-align:left}
+      .tier-c,.tier-w,.tier-v{font-size:.72rem;color:var(--muted)}
+      .tl{display:block;font-style:normal;font-size:.6rem;letter-spacing:.04em;
+        text-transform:uppercase;color:var(--muted);opacity:.75}
     }
 
     .dis{font-size:.67rem;color:var(--muted);opacity:.85;line-height:1.65;margin-top:22px;max-width:80ch}
@@ -429,6 +440,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=33" type="module"></script>
+<script src="scanner.js?v=34" type="module"></script>
 </body>
 </html>

@@ -22,6 +22,17 @@
 // all — a 1.00% pool exists on every pair, holds money on every pair, and on
 // none of the six did it see a single swap.
 //
+// AND SINCE 2026-09-01, THE DENOMINATOR THAT DECIDES IT
+// "The capital in it" was the whole pool balance, which for concentrated
+// liquidity is mostly capital parked away from the price earning nothing. So
+// every tier is now also measured at the price: the pool's own tick book is
+// walked to find what is standing within a couple of percent of where trades
+// are happening, and this position's own size goes into that denominator,
+// because arriving is what dilutes it. Both answers are returned. Somebody
+// already in a pool is asking what their committed money returns; somebody with
+// a dollar to place is asking a different question, and until now this service
+// answered the first one for both of them.
+//
 // WHAT IT REFUSES TO DO
 // It does not annualise. The window is about forty minutes of chain, it travels
 // with every figure, and turning it into an APR would be the exact move this
@@ -76,24 +87,47 @@ export async function lpTierPlan(input = {}) {
   const traded = priced.filter((t) => t.volume_usd > 0)
     .sort((a, b) => b.fees_per_1000_usd_parked - a.fees_per_1000_usd_parked);
 
-  // What the capital in question would have earned in each tier over the window
-  // that was actually measured. Stated in dollars because "0.0166 per 1000" is
-  // not a quantity anybody can weigh a decision against, and stated for the
-  // window rather than for a year because that is the only period it is true of.
+  // WHAT THIS CAPITAL WOULD ACTUALLY HAVE EARNED, and the arithmetic behind it.
+  //
+  // Stated in dollars because "0.0166 per 1000" is not a quantity anybody can
+  // weigh a decision against, and stated for the measured window rather than
+  // for a year because that is the only period it is true of.
+  //
+  // Fees go to the liquidity standing where the swap happens, split by share.
+  // So a position placed at the price does not earn its share of the POOL — it
+  // earns its share of the capital that was at the price, and its own arrival
+  // is part of that denominator. Both parts matter and both were missing: the
+  // old figure divided by the whole balance (understating a well-placed
+  // position, often by a factor of fifty) and ignored dilution (overstating a
+  // large position in a thin band). They pulled in opposite directions, which
+  // is the worst way for two errors to sit in one number.
+  const earned = (t, working) => {
+    if (t.fees_paid_usd == null) return null;
+    const denom = (working == null ? t.capital_usd : working) + capitalUsd;
+    return denom > 0 ? round(t.fees_paid_usd * (capitalUsd / denom), 6) : null;
+  };
   const perTier = (m.tiers || []).map((t) => ({
     tier: t.tier,
     pool: t.pool,
     fee_pct: t.fee_pct,
     capital_in_pool_usd: t.capital_usd,
+    // What of that is standing within the measured band of the current price.
+    // Null means it could not be read, never zero.
+    capital_at_the_price_usd: t.working_capital_usd ?? null,
+    share_of_pool_at_the_price_pct: t.working_share_pct ?? null,
     measured: t.measured === true,
     ...(t.measured
       ? {
           swaps: t.swaps,
           volume_usd: t.volume_usd,
-          your_share_of_fees_usd_in_window:
-            t.fees_per_1000_usd_parked == null
-              ? null
-              : round((t.fees_per_1000_usd_parked / 1000) * capitalUsd, 6),
+          // The decision figure: this capital, placed at the price, earning its
+          // share against the capital already there plus itself.
+          your_fees_usd_in_window_if_placed_at_the_price:
+            t.working_capital_usd == null ? null : earned(t, t.working_capital_usd),
+          // The same sum on the pool-average basis every interface uses, kept
+          // so the two can be compared rather than one quietly replacing the
+          // other. It is what a full-range position would have earned.
+          your_fees_usd_in_window_spread_like_the_pool: earned(t, null),
         }
       : { reason: t.reason }),
   }));
@@ -120,7 +154,20 @@ export async function lpTierPlan(input = {}) {
   else if (!mostCapital) noMove = `The tier holding the most capital (${m.most_capital_tier}) could not be priced this run, so the comparison would be against a blank.`;
   else if (best.tier === mostCapital.tier) noMove = 'The tier holding the most capital is also the one paying best. Nothing to move.';
   if (best && mostCapital && best.tier !== mostCapital.tier) {
-    const perWindow = ((best.fees_per_1000_usd_parked - mostCapital.fees_per_1000_usd_parked) / 1000) * capitalUsd;
+    // The gap is taken on the basis the position would actually be held on. If
+    // both tiers could be read at the price, that is the at-the-price figure,
+    // which is the one a move is decided by; if either could not, it falls back
+    // to the pool-average basis and says so rather than mixing the two — a gap
+    // where one side is measured at the price and the other across the whole
+    // balance is not a gap, it is two different questions subtracted.
+    const bothAtPrice = best.working_capital_usd != null && mostCapital.working_capital_usd != null;
+    const gain = (t) => {
+      const denom = (bothAtPrice ? t.working_capital_usd : t.capital_usd) + capitalUsd;
+      return denom > 0 && t.fees_paid_usd != null ? t.fees_paid_usd * (capitalUsd / denom) : 0;
+    };
+    const perWindow = bothAtPrice
+      ? gain(best) - gain(mostCapital)
+      : ((best.fees_per_1000_usd_parked - mostCapital.fees_per_1000_usd_parked) / 1000) * capitalUsd;
     const windows = perWindow > 0 ? MOVE_GAS_USD / perWindow : null;
     const minutes = windows != null && m.measured_window?.minutes
       ? windows * m.measured_window.minutes
@@ -132,6 +179,9 @@ export async function lpTierPlan(input = {}) {
       assumed_move_cost_usd: MOVE_GAS_USD,
       windows_to_break_even: windows == null ? null : round(windows, 2),
       hours_to_break_even_if_this_rate_held: minutes == null ? null : round(minutes / 60, 2),
+      measured_on: bothAtPrice
+        ? `capital standing within ${m.band_pct ?? 2}% of the price in both tiers, with this position's own size in the denominator`
+        : 'the whole pool balance in both tiers — the at-the-price figure was unreadable for one of them',
       caveat: 'The rate is a single measured window. This is what would have to hold for the move to pay, not a forecast that it will.',
     };
   }
@@ -149,6 +199,15 @@ export async function lpTierPlan(input = {}) {
     tiers: perTier,
     best_paying_tier: m.best_paying_tier,
     most_capital_tier: m.most_capital_tier,
+    // The same two questions asked over the capital that was actually earning.
+    // Kept beside the originals rather than replacing them: an LP already in a
+    // pool is asking the first pair, an LP with a dollar to place is asking
+    // the second, and the two answers differ often enough that collapsing them
+    // would be picking a winner on the reader's behalf.
+    band_pct: m.band_pct,
+    best_paying_tier_at_the_price: m.best_paying_tier_by_working_capital,
+    most_capital_at_the_price_tier: m.most_working_capital_tier,
+    the_denominator_changes_the_answer: m.working_capital_changes_the_answer,
     // The single sentence the whole service exists to be able to say.
     capital_is_in_the_best_paying_tier: m.capital_is_in_the_best_paying_tier,
     idle_capital: m.idle_capital,

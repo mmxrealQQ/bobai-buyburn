@@ -136,11 +136,11 @@ async function tryPost(url,body){
     return await r.json();
   }catch(e){return null}
 }
-export async function rpcBatch(calls,url){
+export async function rpcBatch(calls,url,block='latest'){
   const out=[];
   for(let i=0;i<calls.length;i+=MAX_BATCH){
     const part=calls.slice(i,i+MAX_BATCH);
-    const body=part.map((c,k)=>({jsonrpc:'2.0',id:k,method:'eth_call',params:[c,'latest']}));
+    const body=part.map((c,k)=>({jsonrpc:'2.0',id:k,method:'eth_call',params:[c,block]}));
     let slot=null;
     const pool=url?[url]:RPCS;
     for(let n=0;n<pool.length&&!slot;n++){
@@ -568,4 +568,305 @@ export async function measureTax(token,pair,tokenIs0,kind){
     return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,
       spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
   }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
+}
+
+
+// === MANY READS, ONE REQUEST ===
+//
+// Reading a V3 pool's tick book is hundreds of eth_calls, and a JSON-RPC batch
+// carries at most about 25 of them before this endpoint refuses the request. On
+// the Workers free plan a single incoming request may make 50 outgoing ones, so
+// the tick walk alone would spend a third of that budget and a busy pair with
+// one extra price hop would fall off the edge — as "too many subrequests",
+// which arrives as a failed scan rather than a slow one.
+//
+// Multicall3 is deployed on BNB Chain at the same address it uses everywhere,
+// and it turns any number of view calls into ONE. Measured 2026-09-01: 400
+// ticks() reads returned in 210 ms in a single call, byte for byte identical to
+// the same 400 asked one at a time.
+//
+// It is a fast path, not a dependency. If the aggregate call fails for any
+// reason the plain batch runs instead and the answer is the same, only slower —
+// a helper contract must never be the reason a measurement cannot be made.
+export const MULTICALL3='0xca11bde05977b3631167028862be2a173976ca11';
+const w256=v=>BigInt(v).toString(16).padStart(64,'0');
+const MC_CHUNK=500;
+
+const encodeAggregate3=calls=>{
+  const structs=calls.map(c=>{
+    const d=c.data.slice(2),pad=d+'0'.repeat((64-(d.length%64))%64);
+    // (address target, bool allowFailure, bytes callData) — allowFailure is on,
+    // so one reverting call cannot take the other four hundred with it.
+    return '0'.repeat(24)+c.to.slice(2).toLowerCase()+w256(0)+w256(0x60)+w256(d.length/2)+pad;
+  });
+  let off=32*calls.length,offs='';
+  for(const s of structs){offs+=w256(off);off+=s.length/2}
+  return '0x82ad56cb'+w256(0x20)+w256(calls.length)+offs+structs.join('');
+};
+
+// Every offset below is a BYTE offset into the returned data, which is how the
+// ABI states them. Reading one of them as a word index instead is not a crash:
+// it lands on a different word that also parses as a number, and the decode
+// then fails somewhere further along. The first port of this did exactly that,
+// and the only symptom was that the fast path silently stopped being taken —
+// the answers stayed right and the request count went UP by one.
+const decodeAggregate3=(hex,n)=>{
+  const b=hex.slice(2),at=o=>b.slice(o*2,o*2+64);
+  const arr=Number(BigInt('0x'+at(0)));
+  const len=Number(BigInt('0x'+at(arr)));
+  if(len!==n)throw new Error('multicall returned '+len+' of '+n);
+  const head=arr+32,out=[];
+  for(let i=0;i<len;i++){
+    const o=head+Number(BigInt('0x'+at(head+i*32)));
+    const ok=BigInt('0x'+at(o))===1n;
+    // Offsets inside the tuple are relative to the tuple's own start, not to
+    // the word that carries them.
+    const dOff=o+Number(BigInt('0x'+at(o+32)));
+    const bytes=Number(BigInt('0x'+at(dOff)));
+    out.push(ok?'0x'+b.slice((dOff+32)*2,(dOff+32)*2+bytes*2):null);
+  }
+  return out;
+};
+
+// `block` pins every call to one block instead of to whatever "latest" means at
+// the moment each request lands. That is not a refinement, it is the difference
+// between a consistent reading and a stitched one: read as a plain batch, a
+// pool's tick book arrives over about two seconds of a chain that produces a
+// block every 0.45, so the far end of the book is a different pool state from
+// the near end. Measured on WBNB/USDT: stitched, the walk disagreed with the
+// pool's own quoter by 0.002%; from one block, by nothing at all.
+export async function multicall(calls,url,block='latest'){
+  if(!calls.length)return [];
+  try{
+    const out=[];
+    for(let i=0;i<calls.length;i+=MC_CHUNK){
+      const part=calls.slice(i,i+MC_CHUNK);
+      const r=await rpc('eth_call',[{to:MULTICALL3,data:encodeAggregate3(part)},block],url);
+      if(!r||r==='0x')throw new Error('empty aggregate');
+      out.push(...decodeAggregate3(r,part.length));
+    }
+    return out;
+  }catch(e){
+    // Same answer, more requests. Worth a line in the log rather than a silent
+    // difference in cost between two runs of the same scan.
+    return rpcBatch(calls,url,block);
+  }
+}
+
+// === WHERE THE CAPITAL ACTUALLY SITS ===
+//
+// Every figure this project publishes about a V3 pool has so far divided by
+// what the pool CONTRACT HOLDS, and said so in a caveat: "in V3 that includes
+// liquidity sitting outside the current price range, which earns nothing."
+// A caveat is a promise to measure something later. This is later.
+//
+// A liquidity provider is not paid for holding tokens. They are paid for the
+// liquidity standing where the price is when a swap goes through, in proportion
+// to their share of it. Capital parked two hundred percent away is on the
+// books, in the balance, in every chart of "TVL" — and earns nothing. So the
+// denominator an LP needs is not the pool's balance but the capital standing in
+// the band the price is actually in.
+//
+// This reconstructs that from the pool's own tick data: the active liquidity at
+// the current price, then every initialised tick inside the band with the net
+// liquidity it adds or removes, walked outward in both directions. Each
+// resulting segment is converted to token amounts with the standard
+// concentrated-liquidity identities, so what comes back is not an index or a
+// score. It is an amount of each token, in the band, and it can be checked — it
+// can never exceed what the contract holds.
+//
+// V2 is measured the same way rather than exempted. A constant-product pool is
+// a full-range position with L = sqrt(x*y), so the same band question has the
+// same kind of answer — and that is the comparison that matters, because a V2
+// pool holding forty million dollars may stand less capital at the price than a
+// V3 pool holding two.
+const TICK_BASE=1.0001;
+// sqrt(1.0001^t), the pool's sqrtPrice at a tick, in raw token units. Number
+// rather than the Q96 integer: every use below is a difference of two nearby
+// roots multiplied by a liquidity, and doubles carry that to about twelve
+// significant figures, which is nine more than any dollar figure here needs.
+const sqrtAtTick=t=>Math.pow(TICK_BASE,t/2);
+const fdiv=(a,b)=>Math.floor(a/b);
+// int24 and int16 arguments are two's complement, sign-extended to a full word.
+const iword=v=>{const b=BigInt(v);return ((b<0n?(1n<<256n)+b:b).toString(16)).padStart(64,'0')};
+const TICKS_SEL='0xf30dba93',BITMAP_SEL='0x5339c296',
+      LIQUIDITY_SEL='0x1a686502',SPACING_SEL='0xd0c93a7c';
+const int128At=w=>{const v=BigInt('0x'+w);return v>=TWO255?v-TWO256:v};
+// slot0 answers sqrtPriceX96 in word 0 and the current tick, signed, in word 1.
+const int24At=w=>{const v=BigInt('0x'+w);return Number(v>=TWO255?v-TWO256:v)};
+
+// The amounts one liquidity segment holds between two roots, given where the
+// price stands. Above the price a segment is entirely token0, below it entirely
+// token1, and the segment containing the price holds both — which is why both
+// walks below start at the price itself rather than at a tick boundary.
+export function segAmounts(L,sLo,sHi,sP){
+  if(!(L>0)||!(sHi>sLo))return [0,0];
+  if(sHi<=sP)return [0,L*(sHi-sLo)];
+  if(sLo>=sP)return [L*(1/sLo-1/sHi),0];
+  return [L*(1/sP-1/sHi),L*(sP-sLo)];
+}
+
+// A constant-product pool as the full-range position it is. No RPC: by the time
+// this is worth asking, the reserves are already known.
+export function bandDepthV2(r0,r1,bandPct){
+  if(!(r0>0)||!(r1>0))return null;
+  const L=Math.sqrt(r0*r1),sP=Math.sqrt(r1/r0),k=Math.sqrt(1+bandPct/100);
+  const [a0,a1]=segAmounts(L,sP/k,sP*k,sP);
+  return {amount0:a0,amount1:a1,complete:true,initialized_ticks:null};
+}
+
+// The same question asked of concentrated liquidity, which has to be walked.
+//
+// Three rounds for ALL pools at once rather than three rounds per pool: state,
+// then bitmap words, then the initialised ticks those words point at. These
+// endpoints rate-limit per request, and five tiers asked one after another is
+// exactly the pattern that came back half-unreadable before.
+// The cap is 400 because that is enough to never bite at the band this is used
+// with: two percent is 198 ticks either side, and the finest spacing PancakeSwap
+// runs is one, so 397 is the most a complete answer can ever need. It was 192
+// first, and WBNB/USDT at the 0.01% tier came back truncated — understated by a
+// quarter, flagged, but still a smaller number that looked like a real one.
+export async function bandDepthV3(pools,bandPct,maxTicks=400){
+  if(!pools.length)return [];
+  // ONE BLOCK FOR ALL THREE ROUNDS.
+  //
+  // The price, the active liquidity and every tick have to come from the same
+  // state or they describe a pool that never existed: the price from one block
+  // and the book from the next is a book with a hole in it. Multicall3 answers
+  // its own block number in the same call that reads the state, so pinning the
+  // two later rounds to it costs nothing — no extra request, no guess about
+  // which block "latest" meant a moment ago.
+  const stCalls=[call(MULTICALL3,'0x42cbb15c'),   // getBlockNumber()
+    ...pools.flatMap(p=>[call(p,S.slot0),call(p,LIQUIDITY_SEL),call(p,SPACING_SEL)])];
+  const st0=await multicall(stCalls);
+  const blk=st0[0]&&st0[0]!=='0x'?'0x'+BigInt(st0[0]).toString(16):'latest';
+  const st=st0.slice(1);
+  const base=pools.map((p,i)=>{
+    const s=st[i*3];
+    if(!s||s.length<130)return null;
+    const sqrtP=Number(BigInt('0x'+s.slice(2,66)))/Number(Q96);
+    const tick=int24At(s.slice(66,130));
+    const L=Number(hx(st[i*3+1]));
+    const spacing=Number(hx(st[i*3+2]))||1;
+    if(!(sqrtP>0))return null;
+    // The band is set in price, not in ticks, so its edges are exact instead of
+    // rounded to a spacing that differs per tier. The tick bounds only decide
+    // which ticks have to be read.
+    const k=Math.sqrt(1+bandPct/100);
+    const span=Math.ceil(Math.log(1+bandPct/100)/Math.log(TICK_BASE));
+    return {pool:p,sqrtP,tick,L,spacing,
+      sLo:sqrtP/k,sHi:sqrtP*k,tLo:tick-span,tHi:tick+span};
+  });
+
+  // Which bitmap words cover the band. Ticks are stored compressed by spacing
+  // and packed 256 to a word, so a wide-spacing tier is one word and a
+  // spacing-of-one tier at two percent is two or three.
+  const wordCalls=[],wordOwner=[];
+  base.forEach((b,i)=>{
+    if(!b)return;
+    const cLo=fdiv(b.tLo,b.spacing),cHi=fdiv(b.tHi,b.spacing);
+    for(let w=fdiv(cLo,256);w<=fdiv(cHi,256);w++){
+      wordCalls.push(call(b.pool,BITMAP_SEL+iword(w)));wordOwner.push([i,w]);
+    }
+  });
+  const words=wordCalls.length?await multicall(wordCalls,undefined,blk):[];
+
+  const want=base.map(()=>[]);
+  words.forEach((w,n)=>{
+    const [i,word]=wordOwner[n],b=base[i];
+    if(!w||w==='0x')return;
+    const bits=BigInt(w);
+    for(let bit=0;bit<256;bit++){
+      if((bits>>BigInt(bit))&1n){
+        const t=(word*256+bit)*b.spacing;
+        if(t>=b.tLo&&t<=b.tHi)want[i].push(t);
+      }
+    }
+  });
+
+  // A cap, and it is reported rather than silently applied. A spacing-of-one
+  // tier on a busy pair can carry several hundred initialised ticks inside two
+  // percent, and reading all of them costs more round trips than the answer is
+  // worth — but a figure computed over a truncated tick set is a smaller number
+  // that looks like a real one, so it says which one it is.
+  const truncated=base.map(()=>false);
+  want.forEach((list,i)=>{
+    if(!base[i])return;
+    list.sort((a,b)=>a-b);
+    if(list.length>maxTicks){
+      // Keep the ticks NEAREST the price: they carry the liquidity a swap meets
+      // first, so dropping the far edge understates the band by the least.
+      const c=base[i].tick;
+      want[i]=list.slice().sort((a,b)=>Math.abs(a-c)-Math.abs(b-c))
+        .slice(0,maxTicks).sort((a,b)=>a-b);
+      truncated[i]=true;
+    }
+  });
+
+  const tickCalls=[],tickOwner=[];
+  want.forEach((list,i)=>list.forEach(t=>{
+    tickCalls.push(call(base[i].pool,TICKS_SEL+iword(t)));tickOwner.push([i,t]);
+  }));
+  // The one round that is worth aggregating. State and bitmap words are a
+  // dozen calls between them and fit in a single batch already; the ticks are
+  // hundreds, and asked as a plain batch they cost sixteen of the fifty
+  // outgoing requests a Worker gets. Through Multicall3 they cost one.
+  const tickRes=tickCalls.length?await multicall(tickCalls,undefined,blk):[];
+  const nets=base.map(()=>new Map());
+  tickRes.forEach((r,n)=>{
+    const [i,t]=tickOwner[n];
+    if(r&&r.length>=130)nets[i].set(t,int128At(r.slice(66,130)));
+  });
+
+  return base.map((b,i)=>{
+    if(!b)return null;
+    const net=nets[i],inBand=want[i];
+    let a0=0,a1=0,inUp=0,inDown=0;
+    // Upward from the price. Crossing an initialised tick from below adds its
+    // net liquidity; the first segment starts at the price, because the tick
+    // the price sits in is only partly above it.
+    //
+    // The same walk answers a second question for free, and it is the one that
+    // makes this checkable: the token1 a buyer would have to put in to drag the
+    // price to the upper edge is the y-side of exactly these segments. That
+    // number can be handed to the pool's own quoter, and the quoter's answer
+    // has to come back as the token0 counted here. Nothing else in this file
+    // has an independent oracle; this does.
+    let L=b.L,cur=b.sqrtP;
+    for(const t of inBand.filter(t=>t>b.tick)){
+      const s=Math.min(sqrtAtTick(t),b.sHi);
+      const [x,y]=segAmounts(L,cur,s,b.sqrtP);a0+=x;a1+=y;
+      inUp+=L*(s-cur);
+      cur=s;
+      if(cur>=b.sHi)break;
+      L+=Number(net.get(t)||0n);
+    }
+    if(cur<b.sHi){
+      const [x,y]=segAmounts(L,cur,b.sHi,b.sqrtP);a0+=x;a1+=y;
+      inUp+=L*(b.sHi-cur);
+    }
+    // And downward. Crossing an initialised tick from above removes it — the
+    // same net, the other way round, which is the identity the pool itself uses
+    // when a swap walks the book.
+    L=b.L;cur=b.sqrtP;
+    for(const t of inBand.filter(t=>t<=b.tick).sort((x,y)=>y-x)){
+      const s=Math.max(sqrtAtTick(t),b.sLo);
+      const [x,y]=segAmounts(L,s,cur,b.sqrtP);a0+=x;a1+=y;
+      inDown+=L*(1/s-1/cur);
+      cur=s;
+      if(cur<=b.sLo)break;
+      L-=Number(net.get(t)||0n);
+    }
+    if(cur>b.sLo){
+      const [x,y]=segAmounts(L,b.sLo,cur,b.sqrtP);a0+=x;a1+=y;
+      inDown+=L*(1/b.sLo-1/cur);
+    }
+    return {amount0:a0,amount1:a1,tick:b.tick,spacing:b.spacing,
+      complete:!truncated[i],initialized_ticks:inBand.length,
+      band_ticks:[b.tLo,b.tHi],
+      // What it would take to walk the price to either edge, before the pool
+      // fee is added on top of the input. Amount out is the holding on that
+      // side, which is why it is not repeated here.
+      to_upper_in1:inUp,to_lower_in0:inDown};
+  });
 }

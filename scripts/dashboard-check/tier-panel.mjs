@@ -102,14 +102,35 @@ const R = await ev(`(() => {
   const rows = [...document.querySelectorAll('.tier-r:not(.tier-hr)')].map(r => ({
     tier: r.querySelector('.tier-n')?.innerText.trim(),
     cap: r.querySelector('.tier-c')?.textContent.trim(),
+    work: r.querySelector('.tier-w')?.textContent.trim(),
     vol: r.querySelector('.tier-v')?.textContent.trim(),
     pays: r.querySelector('.tier-f')?.textContent.trim(),
   }));
+  // Every figure the panel prints for money, parsed back out of the rendered
+  // text rather than out of the JSON. What the reader sees is what is checked.
+  const money = (s) => {
+    if (!s) return null;
+    const m = String(s).replace(/,/g, '').match(/\$\s*([0-9.]+)\s*([KMB])?/i);
+    if (!m) return null;
+    const mult = { k: 1e3, m: 1e6, b: 1e9 }[(m[2] || '').toLowerCase()] || 1;
+    return parseFloat(m[1]) * mult;
+  };
   const doc = document.documentElement;
   return {
     text: out.innerText,
     rows,
-    said: document.querySelector('.tier-said')?.textContent || null,
+    said: document.querySelector('.tier-ans')?.innerText.trim() || null,
+    // Rows where the panel claims more capital is standing at the price than
+    // the pool holds in total. That is arithmetically impossible, so finding
+    // one means the tick walk degraded into counting something else.
+    impossible: rows.filter(r => {
+      const c = money(r.cap), w = money(r.work);
+      return c != null && w != null && w > c * 1.01;
+    }).map(r => r.tier + ': ' + r.work + ' at the price of ' + r.cap + ' held'),
+    // Below the header breakpoint every figure has to carry its own label.
+    labels: [...document.querySelectorAll('.tier-r:not(.tier-hr) .tl')]
+      .filter(e => getComputedStyle(e).display !== 'none').length,
+    withWork: rows.filter(r => r.work && r.work !== '—').length,
     overflow: doc.scrollWidth - doc.clientWidth,
     widest: Math.max(0, ...[...document.querySelectorAll('.tier-r')].map(e => e.getBoundingClientRect().right)) - doc.clientWidth,
   };
@@ -130,7 +151,29 @@ else {
     problems.push('the text claims both that nothing traded and that the range was refused — those are different facts');
   }
   if (priced.length >= 2 && !R.said) {
-    problems.push('two or more tiers are priced but the card does not say which holds the capital and which pays');
+    problems.push('two or more tiers are priced but the card gives no answer above the table');
+  }
+  // The answer has to name a tier that is actually in the table. A sentence
+  // that names nothing reads like an answer and is not one, and a sentence
+  // naming a tier the table does not show is worse than either.
+  if (R.said && R.rows.length && !R.rows.some((r) => r.tier && R.said.includes(r.tier.split(String.fromCharCode(10))[0]))) {
+    problems.push('the answer above the table names no tier from the table');
+  }
+  // Working capital: present, and never larger than the pool it is part of.
+  if (R.rows.length >= 2 && R.withWork < 2) {
+    problems.push("the 'at the price' figure is missing from the table — that column is the whole point of the panel");
+  }
+  for (const bad of R.impossible || []) {
+    problems.push('more capital at the price than the pool holds — ' + bad);
+  }
+  // Below 560px the header row is hidden by design, so each figure must carry
+  // its own label. Unlabelled numbers stacked on a phone is how a panel with
+  // more information ends up saying less.
+  if (W <= 560 && R.rows.length && !R.labels) {
+    problems.push('at ' + W + 'px the header is hidden and no figure carries its own label');
+  }
+  if (W > 560 && R.labels) {
+    problems.push('the phone-only labels are showing at ' + W + 'px, where the header already names the columns');
   }
   // Never annualised, and the window always travels with the figures.
   if (R.rows.length && !/minutes of chain/i.test(R.text)) {

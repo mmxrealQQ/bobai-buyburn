@@ -1,7 +1,7 @@
 ---
 name: bsc-pool-depth
-description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid per dollar of capital in it. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, or which fee tier to provide liquidity in.
-version: 1.1.0
+description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid — per dollar of capital in it, and per dollar of capital standing within 2% of the price, which is the only part of it earning. And it replays candidate V3 price ranges against the swaps that really happened, reporting what each width would have collected and how much of the window it stayed in range. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, or which fee tier and which price range to provide liquidity in.
+version: 1.2.0
 license: MIT
 metadata:
   author: brainonbnb
@@ -110,10 +110,42 @@ minutes of flow says what happened in forty minutes.
 V3 pool look several times better or worse depending on which token you call the
 quote, because concentrated liquidity is not balanced.
 
-**A V3 tier figure is the pool average, not your position.** Capital here is
+**A V3 tier figure has two denominators and they disagree.** `capital_usd` is
 what the contract holds, which includes liquidity parked outside the current
-price range earning nothing. A well-placed narrow position earns more than the
-tier number. Impermanent loss is not in the figure at all.
+price range earning nothing; `working_capital_usd` is the part standing within
+2% of the price, read from the pool's own tick book. The first is what a
+committed position returns on, the second is what a dollar you have not placed
+yet would compete with, and `working_capital_changes_the_answer` says when the
+choice of denominator flips which tier wins. Impermanent loss is in neither.
+
+## The third question: which price range
+
+```bash
+node scripts/ranges.mjs <token-or-v3-pool-address> --usd 1000
+```
+
+Having picked a tier, a V3 provider still has to say between which two prices
+the money sits, and that decision moves the result far more than the tier does.
+On CAKE/BNB a ±0.5% range collected roughly 400 times what the same money
+collects spread across every price.
+
+This does not model and does not forecast. The V3 `Swap` event carries the
+liquidity that was active when the trade went through, so a position of the
+stated size is walked through the swaps that actually happened: in range or not,
+and what share of the liquidity standing there it would have been — with its own
+size in the denominator, because arriving is what dilutes it.
+
+Per candidate width it returns the fees collected, `share_of_window_in_range_pct`,
+and `times_it_crossed_the_edge`. Two things to hold on to:
+
+**"Held" means in range for the whole window**, not "was never seen leaving".
+The position is centred on today's price and replayed backwards, so a narrow
+range the price wandered into halfway through has left nothing — and reporting
+that as held is a real mistake this made once.
+
+**Impermanent loss is not in it, and it is worst exactly where the fees are
+best.** The narrow range that collected the most is also the one that ends
+furthest from the composition it started in. Fees are not returns.
 
 ## What this does not do
 

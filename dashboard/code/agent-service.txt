@@ -4228,11 +4228,11 @@ export async function lpTierPlan(input = {}) {
   const traded = priced.filter((t) => t.volume_usd > 0)
     .sort((a, b) => b.fees_per_1000_usd_parked - a.fees_per_1000_usd_parked);
 
-  // What the capital in question would have earned in each tier over the window
-  // that was actually measured. Stated in dollars because "0.0166 per 1000" is
-  // not a quantity anybody can weigh a decision against, and stated for the
-  // window rather than for a year because that is the only period it is true of.
   // WHAT THIS CAPITAL WOULD ACTUALLY HAVE EARNED, and the arithmetic behind it.
+  //
+  // Stated in dollars because "0.0166 per 1000" is not a quantity anybody can
+  // weigh a decision against, and stated for the measured window rather than
+  // for a year because that is the only period it is true of.
   //
   // Fees go to the liquidity standing where the swap happens, split by share.
   // So a position placed at the price does not earn its share of the POOL — it

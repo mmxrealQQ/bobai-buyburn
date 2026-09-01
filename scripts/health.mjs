@@ -37,6 +37,18 @@ globalThis.fetch = (url, init = {}) =>
 const results = [];
 const ok = (area, name, good, detail = '') => results.push({ area, name, good, detail });
 
+// Like getJson, but it never turns a failure into a blank. Whatever came back —
+// a status, a body that was not JSON, a timeout — is carried into the message,
+// because "no answer" printed for a throttled request and for a dead endpoint
+// is the same sentence about two different worlds.
+const askJson = async (url, ms = 30000) => {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(ms) });
+    const text = await r.text();
+    try { return { ...JSON.parse(text), _status: r.status }; }
+    catch { return { error: `HTTP ${r.status}, not JSON: ${text.slice(0, 80)}`, _status: r.status }; }
+  } catch (e) { return { error: `request failed: ${e.name}`, _status: 0 }; }
+};
 const getJson = async (url, init) => {
   try {
     const r = await fetch(url, { ...init, signal: AbortSignal.timeout(20000) });
@@ -169,15 +181,7 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
   // footprint from an outage will eventually report one as the other, and the
   // day it matters it will be the wrong way round. So: a breath between the
   // two, one retry, and whatever actually came back gets named.
-  const askTiers = async () => {
-    try {
-      const r = await fetch(`${SITE}/api/fee-tiers?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`,
-        { signal: AbortSignal.timeout(30000) });
-      const text = await r.text();
-      try { return { ...JSON.parse(text), _status: r.status }; }
-      catch { return { error: `HTTP ${r.status}, not JSON: ${text.slice(0, 80)}`, _status: r.status }; }
-    } catch (e) { return { error: `request failed: ${e.name}`, _status: 0 }; }
-  };
+  const askTiers = () => askJson(`${SITE}/api/fee-tiers?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`);
   await new Promise((r) => setTimeout(r, 1500));
   let tiers = await askTiers();
   if (!tiers?.tiers?.length) {
@@ -221,6 +225,31 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
     !withBand.length ? 'no tier carried a working-capital figure'
       : `${withBand.length} tiers, band ±${tiers?.band_pct}%`
         + (v2row ? `, V2 share ${v2row.working_share_pct}% against ${expectV2.toFixed(3)}% required by the constant-product identity` : ''));
+
+  // THE RANGE REPLAY, checked for the property that makes it honest.
+  //
+  // Not "did it answer" but "does it still discriminate": a wider range must
+  // never be in range for less of the window than a narrower one inside it, and
+  // a full-range position must collect least of all. If the width ever stopped
+  // being used, every row would still be a plausible number and the ordering
+  // would quietly go flat — which is the failure that looks most like success.
+  await new Promise((r) => setTimeout(r, 1500));
+  let rng = await askJson(`${SITE}/api/range-plan?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`);
+  if (!rng?.ranges?.length) {
+    await new Promise((r) => setTimeout(r, 4000));
+    const again = await askJson(`${SITE}/api/range-plan?address=0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82`);
+    if (again?.ranges?.length) rng = again; else rng = { ...rng, error: `${rng.error || 'no ranges'} (twice, 4s apart)` };
+  }
+  const rr = (rng?.ranges || []).filter((r) => !r.full_range);
+  const rfull = (rng?.ranges || []).find((r) => r.full_range);
+  const widerHoldsMore = rr.every((r, i) => i === 0 || r.share_of_window_in_range_pct == null
+    || rr[i - 1].share_of_window_in_range_pct == null
+    || r.share_of_window_in_range_pct >= rr[i - 1].share_of_window_in_range_pct - 0.05);
+  ok('Agents', 'the range replay still separates the widths',
+    rr.length >= 4 && !!rfull && widerHoldsMore
+      && rfull.fees_usd_in_window <= Math.min(...rr.map((r) => r.fees_usd_in_window)) * 1.001,
+    !rr.length ? (rng?.error || 'no answer')
+      : `${rng.measured_window?.swaps} swaps over ${rng.measured_window?.minutes} min; narrowest that held ${rng.narrowest_range_that_held_the_whole_window || 'none'}`);
 
   const sk = await getJson(`${SITE}/.well-known/skills/index.json`);
   const entry = sk.json?.skills?.[0];

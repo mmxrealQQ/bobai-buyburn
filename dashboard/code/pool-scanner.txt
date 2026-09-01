@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 4575 lines.
+# one fetch. 6 files, 4698 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1849,7 +1849,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=34" type="module"></script>
+<script src="scanner.js?v=36" type="module"></script>
 </body>
 </html>
 
@@ -2156,6 +2156,128 @@ function renderTiers(out,d){
   out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
     ' minutes of chain — a sample, not a rate, and not annualised. Capital is both sides of the pool. "At the price" is the part of it standing within '+
     (d.band_pct||2)+'% of the current price, walked from the pool’s own tick data and checked against PancakeSwap’s quoter; the rest is on the balance sheet and earns nothing while the price is where it is. It assumes the price stays in that band, which it will not do forever. Impermanent loss is not in any of this.'));
+}
+
+// THE QUESTION AFTER THE TIER, and the only one V3 really forces.
+//
+// The card above answers which of the five pools sharing this pair is worth
+// being in. Having picked one, a liquidity provider still has to say between
+// which two prices the money sits, and that decision moves the outcome far more
+// than the tier does — three orders of magnitude, on the pair this was built
+// against. Every interface offers a preset for it.
+//
+// This is not a preset and not a forecast. The V3 Swap event carries the
+// liquidity that was active when each trade went through, so a position of a
+// chosen size is walked back through the trades that actually happened: in
+// range or not, and what share of the liquidity standing there it would have
+// been. Behind a button, like the tier card, because it costs a measurement.
+function rangeCard(token){
+  const c=card('Which price range, if you did provide liquidity',
+    'A V3 position is not in a pool, it is between two prices. Replayed against the trades that actually happened in a live window.');
+  const btn=el('button','sc-tierbtn','Replay the ranges');
+  btn.type='button';
+  const out=el('div','tier-out');
+  c.append(btn,out);
+
+  btn.addEventListener('click',async()=>{
+    if(btn.disabled)return;
+    btn.disabled=true;btn.textContent='Replaying…';
+    out.textContent='';
+    try{
+      const r=await fetch('/api/range-plan?address='+encodeURIComponent(token));
+      const d=await r.json();
+      if(d.error){renderTierError(out,d.error);return;}
+      renderRanges(out,d);
+      btn.remove();
+    }catch(e){
+      renderTierError(out,'The replay did not come back. Nothing is cached here, so a retry usually works.');
+    }finally{
+      if(btn.isConnected){btn.disabled=false;btn.textContent='Replay the ranges';}
+    }
+  });
+  return c;
+}
+
+function renderRanges(out,d){
+  out.textContent='';
+  const rows=d.ranges||[];
+  const w=d.measured_window||{};
+  if(!rows.length||!w.swaps){
+    out.appendChild(el('p','cd-foot','No swap in the measured window, so there is nothing to replay a position against. That is a fact about this pool in the last forty minutes, not about the ranges.'));
+    return;
+  }
+
+  const ans=el('div','vd tier-ans');
+  const line=(tone,head,body)=>{
+    const r=el('div','vd-r vd-'+tone);
+    r.appendChild(el('b',null,head));
+    if(body)r.appendChild(el('span',null,body));
+    ans.appendChild(r);
+  };
+  const held=d.narrowest_range_that_held_the_whole_window;
+  const best=d.best_earning_range_in_this_window;
+
+  // The honest headline is the narrowest range that HELD, not the one that
+  // earned most. The best earner is regularly a range the price walked out of,
+  // and naming that as the answer would be recommending a position on the
+  // strength of the forty minutes before it broke.
+  if(held){
+    const row=rows.find(r=>r.width_pct!=null&&('±'+r.width_pct+'%')===held);
+    const full=rows.find(r=>r.full_range);
+    line('good',held+' is the narrowest range that held for the whole window.',
+      (row&&full&&full.fees_usd_in_window>0)
+        ? 'On $'+nf(d.capital_considered_usd)+' it would have collected $'+row.fees_usd_in_window.toFixed(6)+
+          ' — about '+Math.round(row.fees_usd_in_window/full.fees_usd_in_window)+
+          ' times what the same money makes spread across every price. Narrow is where the fees are; it is also where the work is.'
+        : 'Narrower ranges earn more per dollar and stop earning the moment the price leaves them.');
+  }else{
+    line('unknown','No range on this list held for the whole window.',
+      'On this pool, in these forty minutes, the price was outside every width at some point. That is worth knowing before placing anything, and it is why the crossing count is a column rather than a footnote.');
+  }
+  if(best&&held&&best!==held){
+    const b=rows.find(r=>('±'+r.width_pct+'%')===best);
+    line('mid',best+' collected the most — and the price crossed its edge '+
+      (b?b.times_it_crossed_the_edge:'')+(b&&b.times_it_crossed_the_edge===1?' time':' times')+'.',
+      'A position there earns nothing while it is outside, and putting it back costs gas and re-enters at the new price. The narrower range wins on paper for exactly as long as it holds.');
+  }
+  out.appendChild(ans);
+
+  const t=el('div','tier-t');
+  const head=el('div','tier-r tier-hr');
+  head.append(el('span','tier-n','range'),el('span','tier-c','between'),
+    el('span','tier-w','in range'),el('span','tier-v','edge crossed'),
+    el('span','tier-f','collected on $'+nf(d.capital_considered_usd)));
+  t.appendChild(head);
+  const cell=(cls,label,text,extra)=>{
+    const s=el('span',cls+(extra||''));
+    s.appendChild(el('i','tl',label));
+    s.appendChild(document.createTextNode(text));
+    return s;
+  };
+  rows.forEach(r=>{
+    const isHeld=held&&('±'+r.width_pct+'%')===held;
+    const row=el('div','tier-r'+(isHeld?' tier-best':''));
+    const n=el('span','tier-n',r.full_range?'full range':'±'+r.width_pct+'%');
+    if(isHeld)n.appendChild(el('em','tier-tag','narrowest that held'));
+    row.appendChild(n);
+    row.appendChild(cell('tier-c','between',
+      r.price_range?(r.price_range.low+' – '+r.price_range.high):'every price'));
+    row.appendChild(cell('tier-w','in range',
+      r.share_of_window_in_range_pct==null?'—':r.share_of_window_in_range_pct+'%'));
+    row.appendChild(cell('tier-v','edge crossed',
+      r.times_it_crossed_the_edge===0?'never':r.times_it_crossed_the_edge+'×'));
+    row.appendChild(cell('tier-f','collected','$'+r.fees_usd_in_window.toFixed(6),
+      isHeld?' good':(r.fees_usd_in_window===0?' dim':'')));
+    t.appendChild(row);
+  });
+  out.appendChild(t);
+
+  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
+    ' minutes of chain — a sample, not a rate, and not annualised. Replayed against the '+w.swaps+
+    ' swaps that actually happened in it, using the liquidity the pool itself reported as active at each one — not a simulation of a market, arithmetic over trades that occurred. The pool paid $'+
+    (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them. Not annualised: what a range did over forty minutes is not what it does over a year. '+
+    (d.tier_chosen_because?'Pool picked for you: the '+d.tier_chosen_because+' — which tier PAYS best is the card above. ':'')+
+    'Impermanent loss is not in any of this, and it is worst exactly where the fees are best.'));
 }
 
 function card(title,sub){
@@ -2613,6 +2735,7 @@ function render(d){
   }
 
   o.appendChild(tierCard(addr));
+  o.appendChild(rangeCard(addr));
   o.appendChild(flagsCard(gp,gpOk));
   o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties come from GoPlus and are attributed as such. This page describes a pool — it does not check the deployer’s history, the holder distribution, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
 }

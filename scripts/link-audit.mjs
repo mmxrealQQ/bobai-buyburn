@@ -326,12 +326,31 @@ const addDeclared = (u, src) => {
   u = u.replace(/[.,;:`)\]]+$/, '');
   if (!/^https?:\/\//.test(u)) return;
   if (!/brainonbnb\.(com|ai)/.test(u)) return;
-  if (u.includes('0x...') || u.includes('<') || u.includes('…')) return; // placeholders, not addresses
+  // A PLACEHOLDER IS NOT A REASON TO SKIP THE ENDPOINT.
+  //
+  // These lines are written for agents, so they carry example arguments:
+  // "…/api/fee-tiers?address=0x...". The first version dropped the whole URL on
+  // sight of the placeholder, which meant the endpoint behind it was never
+  // probed at all — and the one failure that matters here is an unrouted path,
+  // which this domain answers with 200 and the dashboard HTML. Every endpoint
+  // named in llms.txt was in that blind spot. Now the query is stripped and the
+  // path itself is checked; a 400 for a missing argument is a fine answer, an
+  // HTML page is not.
+  if (u.includes('<') || u.includes('…')) return;
+  if (/0x\.\.\.|\{|\}/.test(u)) u = u.split('?')[0];
   if (!declared.has(u)) declared.set(u, new Set());
   declared.get(u).add(src);
 };
 
-for (const m of fs.readFileSync(path.join(DASH, 'llms.txt'), 'utf8').matchAll(/https?:\/\/[^\s)>,"'`]+/g)) addDeclared(m[0], 'llms.txt');
+const llms = fs.readFileSync(path.join(DASH, 'llms.txt'), 'utf8');
+for (const m of llms.matchAll(/https?:\/\/[^\s)>,"'`]+/g)) addDeclared(m[0], 'llms.txt');
+// And the bare paths. The "no MCP client?" line lists fifteen endpoints as
+// "/api/price · /api/liquidity · …" — a promise in exactly the same sense as a
+// full URL, made to exactly the same reader, and invisible to a matcher looking
+// for https://. Fourteen of the fifteen were never probed by anything.
+for (const m of llms.matchAll(/(?<![\w.\/])(\/(?:api|\.well-known)\/[a-z0-9][a-z0-9\-\/.]*)/gi)) {
+  addDeclared(SITE + m[1].replace(/[.,;:]+$/, ''), 'llms.txt (bare path)');
+}
 
 for (const [label, url] of [['agent card', `${SITE}/.well-known/agent-card.json`], ['x402 catalogue', `${SITE}/.well-known/x402`]]) {
   const r = await probe(url);

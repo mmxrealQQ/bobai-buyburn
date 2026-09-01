@@ -68,6 +68,10 @@ section('Free surface');
       // measurement. $CAKE trades in four tiers at once and is the token that
       // gets closest to the outbound-call ceiling, which is what can break.
       pancakeswap_fee_tiers: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' },
+      // Same token, same reason, and a size: the replay reports what a position
+      // of a stated value would have collected, so calling it without one would
+      // exercise the default rather than the argument.
+      pancakeswap_range_plan: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', capitalUsd: 1000 },
     };
     const args = WITH_ARGS[t.name] || {};
     const ask = () => fetch(`${SITE}/mcp`, {

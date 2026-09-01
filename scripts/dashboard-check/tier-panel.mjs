@@ -13,8 +13,14 @@
 // different sentences and the card is required to use the right one.
 //
 // Usage:
-//   node scripts/dashboard-check/tier-panel.mjs           desktop
-//   W=390 node scripts/dashboard-check/tier-panel.mjs     phone
+//   node scripts/dashboard-check/tier-panel.mjs             desktop, fee tiers
+//   W=390 node scripts/dashboard-check/tier-panel.mjs       phone
+//   PANEL=range node scripts/dashboard-check/tier-panel.mjs the range replay
+//
+// Two cards, one checker. They are built from the same markup — the same rows,
+// the same phone labels, the same answer block above the table — so checking
+// them with two near-identical files would mean fixing every assertion twice
+// and forgetting once. PANEL picks which button gets pressed.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -27,6 +33,10 @@ const H = Number(process.env.H || 900);
 // CAKE: four of its five tiers normally see flow and the fifth holds money and
 // sees none, which exercises both the ranking and the idle-capital line.
 const TOKEN = process.env.TOKEN || '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
+// Which of the two cards on the page. They share every class, so the choice is
+// made by position: the fee tiers first, the range replay under it.
+const PANEL = (process.env.PANEL || 'tiers').toLowerCase();
+const NTH = PANEL === 'range' ? 1 : 0;
 // A fresh query key every run. Cloudflare caches per key, and a stale
 // scanner.js is exactly how a fixed page kept reporting the old bug.
 const URL = `https://brainonbnb.com/scanner?token=${TOKEN}&probe=${Math.floor(Math.random() * 1e9)}`;
@@ -79,27 +89,28 @@ await ev(`(document.getElementById('wip-ok')||{click(){}}).click()`);
 let appeared = false;
 for (let i = 0; i < 60; i++) {
   await wait(500);
-  if (await ev(`!!document.querySelector('.sc-tierbtn')`)) { appeared = true; break; }
+  if (await ev(`document.querySelectorAll('.sc-tierbtn').length > ${NTH}`)) { appeared = true; break; }
 }
-if (!appeared) problems.push('the fee-tier card never appeared after a scan');
+if (!appeared) problems.push(`the ${PANEL} card never appeared after a scan`);
 
 if (appeared) {
-  await ev(`document.querySelector('.sc-tierbtn').scrollIntoView({block:'center'})`);
+  await ev(`document.querySelectorAll('.sc-tierbtn')[${NTH}].scrollIntoView({block:'center'})`);
   await wait(300);
-  await ev(`document.querySelector('.sc-tierbtn').click()`);
+  await ev(`document.querySelectorAll('.sc-tierbtn')[${NTH}].click()`);
 
   let rendered = false;
   for (let i = 0; i < 90; i++) {
     await wait(500);
-    if (await ev(`!!document.querySelector('.tier-t') || !!document.querySelector('.tier-out .cd-foot')`)) { rendered = true; break; }
+    if (await ev(`(() => { const o = document.querySelectorAll('.tier-out')[${NTH}]; return !!o && (!!o.querySelector('.tier-t') || !!o.querySelector('.cd-foot')); })()`)) { rendered = true; break; }
   }
   if (!rendered) problems.push('the button was pressed and nothing came back within 45 seconds');
 }
 
 const R = await ev(`(() => {
-  const out = document.querySelector('.tier-out');
+  const NTH_ = ${NTH};
+  const out = document.querySelectorAll('.tier-out')[NTH_];
   if (!out) return { missing: true };
-  const rows = [...document.querySelectorAll('.tier-r:not(.tier-hr)')].map(r => ({
+  const rows = [...out.querySelectorAll('.tier-r:not(.tier-hr)')].map(r => ({
     tier: r.querySelector('.tier-n')?.innerText.trim(),
     cap: r.querySelector('.tier-c')?.textContent.trim(),
     work: r.querySelector('.tier-w')?.textContent.trim(),
@@ -119,7 +130,7 @@ const R = await ev(`(() => {
   return {
     text: out.innerText,
     rows,
-    said: document.querySelector('.tier-ans')?.innerText.trim() || null,
+    said: out.querySelector('.tier-ans')?.innerText.trim() || null,
     // Rows where the panel claims more capital is standing at the price than
     // the pool holds in total. That is arithmetically impossible, so finding
     // one means the tick walk degraded into counting something else.
@@ -128,11 +139,11 @@ const R = await ev(`(() => {
       return c != null && w != null && w > c * 1.01;
     }).map(r => r.tier + ': ' + r.work + ' at the price of ' + r.cap + ' held'),
     // Below the header breakpoint every figure has to carry its own label.
-    labels: [...document.querySelectorAll('.tier-r:not(.tier-hr) .tl')]
+    labels: [...out.querySelectorAll('.tier-r:not(.tier-hr) .tl')]
       .filter(e => getComputedStyle(e).display !== 'none').length,
     withWork: rows.filter(r => r.work && r.work !== '—').length,
     overflow: doc.scrollWidth - doc.clientWidth,
-    widest: Math.max(0, ...[...document.querySelectorAll('.tier-r')].map(e => e.getBoundingClientRect().right)) - doc.clientWidth,
+    widest: Math.max(0, ...[...out.querySelectorAll('.tier-r')].map(e => e.getBoundingClientRect().right)) - doc.clientWidth,
   };
 })()`);
 

@@ -253,6 +253,126 @@ function card(title,sub){
   return c;
 }
 
+// ---- the answer, before the evidence ---------------------------------------
+//
+// Everything below this is a measurement and every one of them is worth having.
+// None of them is the sentence somebody came here for. The result used to open
+// with "Hard USDT backing" and "Liquidity / Mcap" — correct, and neither is a
+// phrase a person uses about their own money. So the first thing on the page is
+// now three plain answers: what a normal-sized trade costs you, whether the
+// token takes a cut of every trade, and whether anybody can walk off with the
+// liquidity. The numbers are the same ones the cards below carry; nothing new
+// is computed and nothing is rounded into a claim.
+//
+// A line that cannot be answered says so. "Could not be measured" is an honest
+// line; a green tick that means "we did not look" is not.
+function verdictCard(d,pool,gp,gpOk,tax){
+  const c=el('section','cd vd-card');
+  const h=el('div','cd-h');
+  h.appendChild(el('h3',null,'The short answer'));
+  h.appendChild(el('p',null,'The three things worth knowing before you trade this, in plain words. Every one of them is measured below.'));
+  c.appendChild(h);
+  const list=el('div','vd');
+
+  const line=(tone,head,body)=>{
+    const r=el('div','vd-r vd-'+tone);
+    r.appendChild(el('b',null,head));
+    r.appendChild(el('span',null,body));
+    list.appendChild(r);
+  };
+
+  // 1. What a normal trade costs. The reference size is the row closest to $500
+  //    rather than the smallest or the largest: the smallest flatters the pool
+  //    and the largest scares people away from one that would have been fine.
+  const rows=(d.rows||[]).slice().sort((a,b)=>Math.abs(a.usd-500)-Math.abs(b.usd-500));
+  const ref=rows[0];
+  const floors={buy:(1-(1-d.taxB)*(1-pool.fee))*100, sell:(1-(1-d.taxS)*(1-pool.fee))*100};
+  if(ref&&ref.buyCost!=null&&ref.sellCost!=null){
+    const worst=Math.max(ref.buyCost,ref.sellCost);
+    const toll=Math.max(floors.buy,floors.sell);
+    // Measured against the unavoidable toll for THIS pool, not against a fixed
+    // percentage: 3% is cheap in a 1% fee tier with a 2% tax and dreadful in a
+    // 0.05% pool with none.
+    const tone=toll>0?(worst<=toll*1.5?'good':worst<=toll*3?'mid':'bad'):'mid';
+    line(tone,'A $'+nf(ref.usd)+' trade costs you '+ref.buyCost.toFixed(1)+'% to buy and '+ref.sellCost.toFixed(1)+'% to sell.',
+      'That is the whole cost: the pool fee, any transfer tax, and how far your own trade moves the price. '
+      +(toll>0?'About '+toll.toFixed(1)+'% of it is unavoidable at any size in this pool; the rest is depth.'
+             :'Round trip, that is about '+(ref.buyCost+ref.sellCost).toFixed(1)+'% before the price moves at all.'));
+  }else{
+    line('unknown','A trade of this size could not be priced.',
+      'The quoter did not return a price for every size, so no cost figure is shown at all rather than a partial one.');
+  }
+
+  // 2. The tax. The figure most likely to be wrong elsewhere, which is why this
+  //    page measures it from executed trades instead of reading the label.
+  const measured=tax&&tax.ok&&(tax.buy!=null||tax.sell!=null);
+  if(d.taxB||d.taxS){
+    const both=Math.round(d.taxB*1000)===Math.round(d.taxS*1000);
+    line(d.taxB>=0.10||d.taxS>=0.10?'bad':'mid',
+      both?'This token takes '+pc(d.taxB*100)+' out of every trade.'
+          :'This token takes '+pc(d.taxB*100)+' when you buy and '+pc(d.taxS*100)+' when you sell.',
+      (measured?'Measured from trades that actually executed, not read off the contract label.'
+              :'Reported by GoPlus and not verified here — no executed trade was available to measure it from.')
+      +' It is already included in the cost above.');
+  }else if(measured){
+    line('good','No transfer tax. You keep what you trade, minus the pool fee.',
+      'Measured from trades that actually executed. A token can still add one later if its contract allows it.');
+  }else{
+    line('unknown','Whether it takes a transfer tax could not be established.',
+      'No executed trade was available to measure it from, and no label is trusted in its place. Treat the cost above as a floor.');
+  }
+
+  // 3. Who can remove the liquidity. On a concentrated-liquidity pool there are
+  //    no LP tokens to burn, so the honest line is that this question does not
+  //    apply rather than a reassuring one that does not mean anything.
+  if(pool.kind==='v2'){
+    const burnedPct=d.lpTot>0?(d.lpDead+d.lpNull)/d.lpTot*100:0;
+    const feePct=d.lpTot>0&&d.lpFee>0?d.lpFee/d.lpTot*100:0;
+    const free=Math.max(0,100-burnedPct-feePct);
+    if(burnedPct>=99){
+      line('good','Nobody can pull the liquidity out. It is burned.',
+        pc(burnedPct)+' of the LP tokens sit at a dead address. Burned liquidity can never be withdrawn by anyone, including the people who put it there.');
+    }else if(free>=50){
+      // "Somebody can pull this" is the right warning for one wallet holding
+      // the lot and the wrong one for a blue chip whose LP sits across
+      // thousands of addresses. Both are "not burned"; only one is a person who
+      // could empty the pool tonight, and the largest single holder is what
+      // separates them.
+      const others=(gp.lp_holders||[]).filter(x=>{const a=(x.address||'').toLowerCase();
+        return a!==DEAD&&a!==NULLA&&a!==(d.feeTo||'')&&x.is_locked!==1});
+      const top=others.sort((a,b)=>(parseFloat(b.percent)||0)-(parseFloat(a.percent)||0))[0];
+      const topPct=top?(parseFloat(top.percent)||0)*100:null;
+      if(gpOk&&topPct!=null&&topPct<10){
+        line('mid','The liquidity is not burned, but no single wallet holds much of it.',
+          pc(free)+' of the LP can be withdrawn in principle, spread across many holders — the largest one has '+pc(topPct)+
+          '. Nobody here can empty the pool on their own; a lot of them leaving at once is a different question, and not one this page can answer.');
+      }else if(gpOk&&topPct!=null){
+        line('bad','One wallet can withdraw most of this liquidity.',
+          pc(free)+' of the LP is neither burned nor at the exchange, and a single wallet holds '+pc(topPct)+
+          ' of it. That is not proof of anything — plenty of honest pools look like this — but it is the risk that empties a pool overnight.');
+      }else{
+        // Not burned is measured on-chain and certain. WHO holds it is not:
+        // without the holder list this page cannot tell one wallet from ten
+        // thousand, and those are very different risks. Saying "somebody can
+        // pull this" here would be a claim built on the half we could not read.
+        line('unknown','The liquidity is not burned, and we could not see who holds it.',
+          pc(free)+' of the LP is withdrawable in principle — that part is read from the chain. The holder list comes from GoPlus, which did not answer for this pool, so whether that is one wallet or thousands is unknown rather than fine.');
+      }
+    }else{
+      line('mid','Part of the liquidity can still be withdrawn.',
+        pc(burnedPct)+' is burned for good; about '+pc(free)+' is not. The breakdown, including who holds the largest unburned share, is further down.');
+    }
+  }else{
+    line('unknown','“Is the liquidity burned?” does not apply to this pool.',
+      'It is a concentrated-liquidity pool: liquidity is held as individual positions rather than as LP tokens, so there is nothing to burn. Any position here can be closed by whoever opened it, at any time.');
+  }
+
+  c.appendChild(list);
+  c.appendChild(el('p','cd-legend',
+    'None of this says whether the token is a good idea. It says what trading it would cost you today and who could change that.'));
+  return c;
+}
+
 function renderLadder(rows,taxNote,floors){
   const wrap=el('div','lad');
   [['buy','Buying','up'],['sell','Selling','down']].forEach(([side,label,dir])=>{
@@ -405,6 +525,9 @@ function render(d){
     link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair));
   head.appendChild(lnk);
   o.appendChild(head);
+
+  // The answer first. Everything after it is why.
+  o.appendChild(verdictCard(d,pool,gp,gpOk,tax));
 
   // headline stats
   o.appendChild(statRow([

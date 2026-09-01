@@ -198,6 +198,31 @@
     .lad-x.good,.lad-x.mid,.lad-x.bad{font-weight:600}
     .cd-legend{font-size:.68rem;color:var(--muted);opacity:.9;line-height:1.6;margin-top:10px}
 
+    /* THE SHORT ANSWER, above every measurement.
+       The result opened with "Hard USDT backing" and "Liquidity / Mcap" — both
+       correct, neither a phrase anybody uses about their own money. These three
+       lines say what a trade costs, whether the token takes a cut, and whether
+       the liquidity can be pulled. The colour is the same vocabulary the ladder
+       already uses, so a green line here and a green cell there mean the same
+       thing. A line that could not be measured is grey and says so: a tick that
+       means "we did not look" would be the one dishonest thing on this page. */
+    .vd-card{margin-top:14px;border-color:rgba(240,185,11,.3);background:rgba(240,185,11,.04)}
+    .vd{display:grid;gap:9px;margin-top:4px}
+    .vd-r{position:relative;padding:10px 13px 10px 38px;border:1px solid var(--line,rgba(240,185,11,.16));
+      border-radius:12px;background:rgba(0,0,0,.18);min-width:0}
+    .vd-r b{display:block;font-size:.88rem;line-height:1.45;font-weight:600;overflow-wrap:anywhere}
+    .vd-r span{display:block;font-size:.75rem;line-height:1.6;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+    .vd-r::before{position:absolute;left:12px;top:11px;font-size:.9rem;line-height:1.2;font-weight:700}
+    .vd-good::before{content:'¹3';color:#3fe09a}
+    .vd-mid::before{content:'1';color:#ffc46b}
+    .vd-bad::before{content:'a0';color:#ff8f6b}
+    .vd-unknown::before{content:'f';color:var(--muted)}
+    .vd-good{border-color:rgba(63,224,154,.28)}
+    .vd-mid{border-color:rgba(255,196,107,.28)}
+    .vd-bad{border-color:rgba(255,143,107,.32)}
+    .vd-good b{color:#3fe09a} .vd-mid b{color:#ffc46b} .vd-bad b{color:#ff8f6b}
+    .vd-unknown b{color:var(--muted)}
+
     /* Fee tiers. Four columns on a desk, two on a phone — the tier name and
        what it pays are the pair that has to stay side by side, because reading
        one without the other is the mistake this card exists to prevent. */
@@ -404,6 +429,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=30" type="module"></script>
+<script src="scanner.js?v=33" type="module"></script>
 </body>
 </html>

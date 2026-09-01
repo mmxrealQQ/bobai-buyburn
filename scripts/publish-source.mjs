@@ -196,6 +196,42 @@ if (!fs.existsSync(MIRROR)) {
   process.exit(1);
 }
 
+// IS THE MIRROR OLDER THAN THE REPOSITORY IT CLAIMS TO BE?
+//
+// This script publishes whatever build-mirror.mjs last wrote. It does not build
+// it. On 2026-09-01 that meant publishing a tree from an earlier session: the
+// deploy succeeded, --verify passed, and sixteen files that the site had been
+// telling people to `git clone` were simply not in it. The verification could
+// not catch it — it clones the published mirror and compares it against the
+// local mirror, and both were equally stale. A check that compares a copy
+// against a copy of the same copy will agree with itself forever.
+//
+// So the freshness is checked against the thing the mirror is supposed to be a
+// mirror OF. Refusing here is the whole point: a stale publish is not a broken
+// page, it is a page that keeps its promise with the wrong contents.
+{
+  const newest = (dir, skip) => {
+    let t = 0;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (skip.includes(e.name)) continue;
+      const p = path.join(dir, e.name);
+      t = Math.max(t, e.isDirectory() ? newest(p, skip) : fs.statSync(p).mtimeMs);
+    }
+    return t;
+  };
+  const repoNewest = newest(ROOT, ['.git', 'node_modules', 'dashboard', '.env', 'data']);
+  const mirrorStamp = fs.statSync(path.join(MIRROR, 'MIRROR.md')).mtimeMs;
+  if (repoNewest > mirrorStamp + 1000) {
+    const age = Math.round((repoNewest - mirrorStamp) / 60000);
+    console.error(`The mirror at ${MIRROR} is ${age} minute(s) older than this repository.`);
+    console.error('Publishing it would put an out-of-date tree behind a `git clone` this site advertises.');
+    console.error('Run: node scripts/build-mirror.mjs   (then this again)');
+    console.error('Override with --stale if you really mean to publish the older tree.');
+    if (!process.argv.includes('--stale')) process.exit(1);
+    console.error('--stale given: publishing the older tree anyway.');
+  }
+}
+
 const stamp = fs.readFileSync(path.join(MIRROR, 'MIRROR.md'), 'utf8').match(/^# (.+)$/m)?.[1] ?? 'source';
 buildBare(MIRROR, OUT, `Public source of brainonbnb.com
 

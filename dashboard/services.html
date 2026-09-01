@@ -219,6 +219,12 @@
           <span>read-only tools over MCP: measure any BSC pool before trading it, search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data</span></li>
         <li><b><a href="https://brainonbnb.com/api/*" rel="noopener">REST endpoints</a></b>
           <span>the same tools as plain GET, for agents that do not speak MCP</span></li>
+        <li><b><a href="https://brainonbnb.com/api/fee-tiers?address=0x..." rel="noopener">which fee tier pays</a></b>
+          <span>a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.</span></li>
+        <li><b><a href="https://brainonbnb.com/api/range-plan?address=0x...&amp;capitalUsd=1000" rel="noopener">which price range</a></b>
+          <span>a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.</span></li>
+        <li><b><a href="https://brainonbnb.com/api/best-route?address=0x...&amp;usd=250" rel="noopener">which route, and can you get out</a></b>
+          <span>which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.</span></li>
     </ul>
     <h3 class="sv-needs-h" style="margin:18px 0 4px;font-size:.85rem">Finding somebody else</h3>
     <p class="sv-sub" style="margin-bottom:10px">We will happily point you at an agent that is not ours.</p>

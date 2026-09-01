@@ -251,6 +251,41 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
     !rr.length ? (rng?.error || 'no answer')
       : `${rng.measured_window?.swaps} swaps over ${rng.measured_window?.minutes} min; narrowest that held ${rng.narrowest_range_that_held_the_whole_window || 'none'}`);
 
+  // THE ROUTE CHECK, held to the one relation it cannot fake.
+  //
+  // Asked about $BOBAI, which charges a measurable transfer tax. The round trip
+  // reported after tax, divided by the same trip through the pools alone, has
+  // to equal (1 - buy) x (1 - sell) from the measured tax. If the tax ever
+  // stopped being folded in — the bug this shipped with once, where a 3% token
+  // was reported as returning 98.6% of a round trip — that ratio goes to
+  // exactly 1 and this check is the only thing that would notice.
+  await new Promise((r) => setTimeout(r, 1500));
+  const route = await askJson(`${SITE}/api/best-route?address=0x245c386dcfed896f5c346107596141e5edcbffff&usd=100`);
+  const rt = route?.round_trip || {};
+  const tx = route?.transfer_tax || {};
+  const implied = (1 - (tx.buy_pct || 0) / 100) * (1 - (tx.sell_pct || 0) / 100);
+  const seen = rt.you_keep_pct_pools_only > 0 ? rt.you_keep_pct / rt.you_keep_pct_pools_only : null;
+  // $BOBAI trades a few times a day, so the tax is not always measurable inside
+  // a 5,000-block window. When it is not, the ratio above is trivially 1.0 and
+  // proves nothing — a green tick that means "we did not look" is the exact
+  // failure this file exists to avoid. So there are two criteria, and which one
+  // applied is stated rather than hidden: with a measured tax, the ratio has to
+  // match it; without one, the answer has to carry the caveat saying the round
+  // trip is optimistic. Either the arithmetic is verified or the honesty is.
+  const taxSeen = (tx.buy_pct || 0) + (tx.sell_pct || 0) > 0;
+  const sane = rt.you_keep_pct != null && rt.you_keep_pct < 100
+    && rt.you_keep_pct <= rt.you_keep_pct_pools_only + 0.001;
+  ok('Agents', taxSeen
+    ? 'the route check folds the measured transfer tax into the round trip'
+    : 'the route check declares a tax it could not measure',
+    taxSeen
+      ? (seen != null && Math.abs(seen - implied) < 0.005 && sane)
+      : (sane && !!route?.round_trip_caveat),
+    !route?.round_trip ? (route?.error || 'no answer')
+      : taxSeen
+        ? `keeps ${rt.you_keep_pct}% after tax against ${rt.you_keep_pct_pools_only}% through the pools alone; the measured ${tx.buy_pct}%/${tx.sell_pct}% tax implies ${implied.toFixed(4)} and the answer shows ${seen.toFixed(4)}`
+        : `no trade in the window to measure the tax from, so the ratio would be a vacuous 1.0 — checked instead that the answer says so: "${String(route?.round_trip_caveat || 'NO CAVEAT').slice(0, 90)}"`);
+
   const sk = await getJson(`${SITE}/.well-known/skills/index.json`);
   const entry = sk.json?.skills?.[0];
   ok('Agents', 'skill manifest serves JSON', !!entry, sk.html ? 'HTML fallback' : '');

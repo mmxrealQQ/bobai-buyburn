@@ -5,6 +5,7 @@
 import { scan as poolScan } from './scanner-scan.js';
 import { feeTiers } from './tier-scan.js';
 import { rangePlan } from './range-scan.js';
+import { swapRoute } from './swap-route.js';
 import { registrations } from '../shared/agent-registrations.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -687,6 +688,13 @@ const MCP_TOOLS = [
   { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable. Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. No API key, nothing cached.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
   { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every source ranks them by the money already parked in them, which does not say which one pays. This measures each tier over a live window: swaps, turnover, the fees the pool actually paid out, and those fees per $1,000 of capital — over TWO denominators. The first is everything the pool holds, which is what every interface shows. The second is the capital standing within 2% of the current price, reconstructed by walking the tick book of the pool itself, because concentrated liquidity parked far from the price earns nothing and a new dollar only competes with the capital that is at the price. The two rankings disagree often, and both are returned. It also names tiers holding real money that did not trade at all. Measured, never annualised: the window is about forty minutes of chain and is reported with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' } }, required: ['address'], additionalProperties: false } },
   { name: 'pancakeswap_range_plan', description: 'For a liquidity provider who has picked a PancakeSwap V3 pool and now has to pick a PRICE RANGE - the decision concentrated liquidity actually forces, and the one every interface answers with a preset. This does not model and does not forecast. It replays: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of a stated size is walked through the swaps that really happened in a live window and asked, at each one, whether it was in range and what share of the active liquidity it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price walked out. Impermanent loss is not in it, and it is worst exactly where the fees are best. The window is about forty minutes and travels with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap V3 pool address to pin the pool' }, capitalUsd: { type: 'number', description: 'Size of the position in dollars, optional - defaults to 1000' } }, required: ['address'], additionalProperties: false } },
+  // NAMED best_route AND NOT swap_route, deliberately. Our own dispatcher — and
+  // any other router built the same way — refuses a tool with a mutating verb
+  // anywhere in its NAME, which is the rule that stops `get_swap_calldata` from
+  // being called by mistake. It is a good rule and it does not get bent for us:
+  // this tool was unreachable as `pancakeswap_swap_route` and the name was the
+  // debt, exactly as it was for the two tools renamed on 2026-08-29.
+  { name: 'pancakeswap_best_route', description: 'For an agent about to swap on PancakeSwap, and for the two questions it has to answer before signing. FIRST: which of the up-to-five pools the pair lives in actually returns the most AT THIS SIZE, quoted by the venue itself rather than ranked by depth - the deepest pool is regularly not the cheapest one for the trade being made. SECOND: what comes back if the proceeds are sold straight back on the same route, with the transfer tax measured from executed trades applied to the amounts carried between the legs, because the tax is taken outside the pool where no quoter can see it. Returns the best route, what every other route would have cost, the round trip with and without the tax, and the slippage this size really needs. It is not a safety certificate and does not use the word: it cannot see an owner who has not acted yet, and it says so.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
   { name: 'bobai_token_info', description: '$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renounced.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -775,6 +783,16 @@ async function runTool(rawName, args) {
         return await rangePlan(m[0].toLowerCase(), { capitalUsd: capitalUsd > 0 ? capitalUsd : undefined });
       } catch (e) {
         throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Range replay failed.'));
+      }
+    }
+    case 'pancakeswap_best_route': {
+      const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
+      if (!m) throw new Error('Give a BSC token or PancakeSwap pool address (0x followed by 40 hex characters), or a link containing one.');
+      const usd = Number(args?.usd);
+      try {
+        return await swapRoute(m[0].toLowerCase(), { usd: usd > 0 ? usd : undefined });
+      } catch (e) {
+        throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Route check failed.'));
       }
     }
     case 'bnb_agent_census': {
@@ -1142,6 +1160,7 @@ export default {
       '/api/pool-scan': 'bsc_pool_scan',
       '/api/fee-tiers': 'pancakeswap_fee_tiers',
       '/api/range-plan': 'pancakeswap_range_plan',
+      '/api/best-route': 'pancakeswap_best_route',
     };
     if (REST_TOOLS[url.pathname] || WITH_ADDRESS[url.pathname]) {
       // A pool scan is a live measurement of a pool that moves every block, so
@@ -1149,7 +1168,7 @@ export default {
       // stale depth figure is exactly the kind of number somebody would trade
       // on and be wrong about.
       const isScan = url.pathname === '/api/pool-scan' || url.pathname === '/api/fee-tiers'
-        || url.pathname === '/api/range-plan';
+        || url.pathname === '/api/range-plan' || url.pathname === '/api/best-route';
       const headers = {
         'Content-Type': 'application/json',
         'Cache-Control': isScan ? 'no-store' : 'public, max-age=60',

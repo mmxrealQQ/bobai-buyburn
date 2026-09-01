@@ -72,6 +72,10 @@ section('Free surface');
       // of a stated value would have collected, so calling it without one would
       // exercise the default rather than the argument.
       pancakeswap_range_plan: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', capitalUsd: 1000 },
+      // A size that every tier can quote. Asking with the default would still
+      // exercise the argument path, but $250 is the size the round trip was
+      // measured at and keeps the check comparable between runs.
+      pancakeswap_best_route: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', usd: 250 },
     };
     const args = WITH_ARGS[t.name] || {};
     const ask = () => fetch(`${SITE}/mcp`, {

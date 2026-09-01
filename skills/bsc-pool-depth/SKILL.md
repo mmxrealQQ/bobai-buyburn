@@ -1,7 +1,7 @@
 ---
 name: bsc-pool-depth
-description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid — per dollar of capital in it, and per dollar of capital standing within 2% of the price, which is the only part of it earning. And it replays candidate V3 price ranges against the swaps that really happened, reporting what each width would have collected and how much of the window it stayed in range. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, or which fee tier and which price range to provide liquidity in.
-version: 1.2.0
+description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid — per dollar of capital in it, and per dollar of capital standing within 2% of the price, which is the only part of it earning. And it replays candidate V3 price ranges against the swaps that really happened, reporting what each width would have collected and how much of the window it stayed in range. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, which fee tier and which price range to provide liquidity in, or which PancakeSwap route a swap should take and whether the proceeds can be sold back.
+version: 1.3.0
 license: MIT
 metadata:
   author: brainonbnb
@@ -146,6 +146,36 @@ that as held is a real mistake this made once.
 **Impermanent loss is not in it, and it is worst exactly where the fees are
 best.** The narrow range that collected the most is also the one that ends
 furthest from the composition it started in. Fees are not returns.
+
+## Before a swap: which route, and can you get back out
+
+```bash
+node scripts/route.mjs <token-or-pool-address> --usd 250
+```
+
+Two questions, both of which an automated swap has to answer before it signs.
+
+**Which route.** The pair lives in up to five PancakeSwap pools. Each is quoted
+by the venue for the exact size, and the winner is whichever really returns the
+most. The deepest pool is regularly not the cheapest one for the trade being
+made — depth is a fact about the pool, cost is a fact about the trade. Every
+losing route is returned with how much worse it was.
+
+**And whether you can get out.** The proceeds are sold straight back on the same
+route, both legs quoted, with the transfer tax measured from executed trades
+applied to the amounts carried between them — the tax is taken outside the pool,
+where no quoter can see it. `you_keep_pct` includes it;
+`you_keep_pct_pools_only` is the same trip through the pools alone, so the tax
+appears as its own cost rather than as bad depth.
+
+`slippage_bps_needed` is what that size really needs. A fee-on-transfer token
+gets 1500 bps, because a router compares its pre-tax quote against a post-tax
+delivery and anything tighter reverts every time — the tolerance is not the
+loss, the tax is taken either way.
+
+It does not use the word "safe" and is not a certificate. It cannot see an owner
+who has not acted yet, a proxy that has not been upgraded yet, or a blacklist
+you are not on today, and `cannot_see` says so in every answer.
 
 ## What this does not do
 

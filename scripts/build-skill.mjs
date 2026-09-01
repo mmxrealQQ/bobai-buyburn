@@ -30,6 +30,7 @@ const PULLED = {
   'dashboard/scanner-scan.js': 'scripts/scanner-scan.mjs',
   'dashboard/tier-scan.js': 'scripts/tier-scan.mjs',
   'dashboard/range-scan.js': 'scripts/range-scan.mjs',
+  'dashboard/swap-route.js': 'scripts/swap-route.mjs',
 };
 
 const SKILLS = ['bsc-pool-depth'];

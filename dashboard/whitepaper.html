@@ -324,7 +324,7 @@
     </ul>
   </div>
 
-  <p>The MCP endpoint exposes <span class="highlight">20 read-only tools</span>, all served from Cloudflare's edge (always-on, no server). Every one of them declares <code>readOnlyHint</code>, so another agent's router can tell what is safe to call without guessing from the name.</p>
+  <p>The MCP endpoint exposes <span class="highlight">21 read-only tools</span>, all served from Cloudflare's edge (always-on, no server). Every one of them declares <code>readOnlyHint</code>, so another agent's router can tell what is safe to call without guessing from the name.</p>
   <p>Four of them are about this chain rather than about this token, and are the ones most likely to be useful to somebody with no interest in BOBAI at all:</p>
   <ul>
     <li><strong>bsc_pool_scan</strong> &mdash; what a trade on any BNB Chain token would actually cost before it is placed: price impact, swap fee and transfer tax together, the USD size that moves the price 1% in each direction, and whether the LP is burned or still withdrawable. The transfer tax is measured from executed trades rather than read off a label, because the two disagree &mdash; one token was labelled 4.45% sell tax while its last four on-chain sells were charged exactly 3.000%.</li>

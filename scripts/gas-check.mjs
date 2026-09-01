@@ -128,9 +128,13 @@ if (AS_JSON) {
   console.log(`Gas — can each bot still pay? (thresholds priced at ${Number(PLANNING_GAS_PRICE) / 1e9} gwei, BSC is currently far below that)\n`);
   for (const { w, balance, a, isSource } of rows) {
     if (isSource) continue;
-    const mark = a.state === 'ok' ? 'ok  ' : a.state === 'low' ? 'LOW ' : '????';
+    // 'dormant' is a deliberate empty, not an unknown one. Rendering it as ????
+    // alongside a genuinely unreadable balance would put a decision and a
+    // failure under the same symbol.
+    const mark = a.state === 'ok' ? 'ok  ' : a.state === 'low' ? 'LOW ' : a.state === 'dormant' ? '--  ' : '????';
     const left = a.cycles === null ? 'balance unreadable' : `${a.cycles} more ${a.cycles === 1 ? 'cycle' : 'cycles'} of ${w.does}`;
-    const need = a.state === 'low' ? `  → needs ${bnb(a.short)} to reach target` : '';
+    const need = a.state === 'low' ? `  → needs ${bnb(a.short)} to reach target`
+      : a.state === 'dormant' ? '  not funded yet — nothing is open, so nothing can stall' : '';
     console.log(`  ${mark} ${w.name.padEnd(20)} ${balance === null ? '   unknown' : bnb(balance).padStart(11)}   ${left}${need}`);
   }
   const src = rows.find((r) => r.isSource);

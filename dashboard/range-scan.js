@@ -48,6 +48,22 @@ export class RangeError extends Error {
 const WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
 const FULL = 1e6; // stands in for min/max tick — a full-range position
 
+// WHAT PUTTING A RANGE BACK COSTS, and why it belongs in this answer.
+//
+// A narrow range collects more per dollar and is walked out of more often, and
+// a comparison that reports only the first half recommends a position that
+// bleeds. Every re-entry is four calls — decrease, collect, burn, mint — and on
+// BSC that is about 700,000 gas. Priced at 1 gwei rather than at the current
+// floor of roughly 0.05, for the same reason the gas roster plans at 1 gwei: a
+// figure that only holds while the chain is quiet is not a figure to size a
+// position with.
+//
+// It is an assumption, so it is returned with the answer and can be replaced by
+// the caller. What must never happen is it being left out and the narrow range
+// looking free.
+const REBALANCE_GAS = 700000n;
+const REBALANCE_GAS_PRICE = 1000000000n; // 1 gwei
+
 const sqrtAt = (pct) => Math.sqrt(1 + pct / 100);
 
 // How long the window really was, asked of the chain rather than derived from a
@@ -229,6 +245,8 @@ export async function rangePlan(input, opts = {}) {
     return {
       width_pct: w === FULL ? null : w,
       full_range: w === FULL,
+      _crossings: crossings,
+      _fees: fees,
       // Filled in below, once, in the unit somebody would actually type.
       price_range: null,
       swaps_in_range: inRange,
@@ -248,9 +266,30 @@ export async function rangePlan(input, opts = {}) {
       unit: `${qSym} per ${tokSym || 'token'}` };
   });
 
+  // The cost of one re-entry, in dollars, from the live BNB price rather than
+  // from a number typed into this file a month ago.
+  const rebalanceUsd = opts.rebalanceCostUsd != null
+    ? Number(opts.rebalanceCostUsd)
+    : (Number(REBALANCE_GAS * REBALANCE_GAS_PRICE) / 1e18) * bnbUsd;
+  rows.forEach((r) => {
+    // Fees minus what it would have cost to put the position back each time the
+    // price crossed out. Same window on both sides of the subtraction, so this
+    // is a comparison and not a rate — and it can go negative, which is the
+    // whole point: a range that collects the most and is nursed four times can
+    // be the worst place in the list.
+    r.assumed_rebalance_cost_usd = +rebalanceUsd.toFixed(6);
+    r.net_after_rebalancing_usd_in_window =
+      +(r._fees - (r.full_range ? 0 : r._crossings * rebalanceUsd)).toFixed(6);
+    delete r._crossings; delete r._fees;
+  });
+
   const minutes = await windowMinutes(from, head);
   const best = rows.filter((r) => r.fees_usd_in_window > 0)
     .sort((a, b) => b.fees_usd_in_window - a.fees_usd_in_window)[0] || null;
+  // The width that came out ahead once the nursing was paid for. This is the
+  // one an unattended position should be sized by, and it is regularly not the
+  // one that collected most.
+  const bestNet = rows.slice().sort((a, b) => b.net_after_rebalancing_usd_in_window - a.net_after_rebalancing_usd_in_window)[0] || null;
   const fullRow = rows.find((r) => r.full_range);
   // HELD means in range for the WHOLE window, not "was never seen leaving".
   // Those are different claims and the second one is satisfied by a range the
@@ -278,11 +317,15 @@ export async function rangePlan(input, opts = {}) {
     // The two sentences worth having.
     best_earning_range_in_this_window: best
       ? (best.full_range ? 'full range' : `±${best.width_pct}%`) : null,
+    best_range_after_paying_to_put_it_back: bestNet
+      ? (bestNet.full_range ? 'full range' : `±${bestNet.width_pct}%`) : null,
+    rebalance_cost_usd_assumed: +rebalanceUsd.toFixed(6),
     narrowest_range_that_held_the_whole_window: narrowestHeld ? `±${narrowestHeld.width_pct}%` : null,
     times_better_than_full_range: (best && fullRow && fullRow.fees_usd_in_window > 0)
       ? +(best.fees_usd_in_window / fullRow.fees_usd_in_window).toFixed(1) : null,
     caveats: [
       `Replayed against the ${swaps.length} swaps that actually happened in this window, using the liquidity the pool reported as active at each one. It is not a simulation of a market; it is arithmetic over trades that occurred.`,
+      `Putting a range back costs gas, so every crossing is charged at $${rebalanceUsd.toFixed(4)} — 700,000 gas priced at 1 gwei, well above the current floor, because a position sized on a quiet chain is stranded by a busy hour. Both sides of that subtraction are the same window, so it is a comparison rather than a rate. It can go negative, and when it does the range collected more than it was worth.`,
       `The window is ${minutes == null ? 'about forty' : minutes.toFixed(1)} minutes of chain and travels with every figure above, because a fee figure without the period it was earned over is the number this project exists to stop people quoting.`,
       'The position is placed around the price as it stands now, then walked back through the window. A position opened at the start of the window would have sat slightly differently.',
       'Impermanent loss is not in any of this, and it is worst exactly where the fees are best: the narrow range that captured the most is also the one that ends furthest from what it started as.',

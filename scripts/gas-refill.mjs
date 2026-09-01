@@ -55,6 +55,10 @@ if (SELF_TEST) {
     if (p.transfers.length) fails.push('planned a transfer for a wallet sitting exactly on its floor');
   }
   // One wei under the floor is not.
+  //
+  // A wallet marked dormant-when-empty is NOT dormant one wei under its floor —
+  // it has been funded and has fallen, which is the case that matters — so it
+  // is expected here like any other.
   {
     const p = planRefills(at((w) => floorOf(w) - 1n), rich);
     if (p.transfers.length !== keys.length) fails.push(`only ${p.transfers.length} of ${keys.length} wallets under the floor were planned for`);
@@ -87,17 +91,46 @@ if (SELF_TEST) {
     const p = planRefills(empty, null);
     if (!p.blocked.length) fails.push('planned to send from a source whose balance is unknown');
   }
-  // A source with room funds everything.
+  // A source with room funds everything that is meant to be funded.
+  //
+  // "Everything" stopped meaning "every wallet" when the liquidity position
+  // joined the roster: it is deliberately empty until somebody decides to open
+  // a position, and an automatic refill must not make that decision. So the
+  // expected total is over the wallets that are not dormant, and the dormant
+  // one has to show up as skipped rather than silently missing — which is the
+  // difference between a wallet left alone on purpose and one forgotten.
   {
     const empty = at(() => 0n);
-    const need = WALLETS.reduce((s, w) => s + targetOf(w), 0n);
+    const fundable = WALLETS.filter((w) => !w.dormantWhenEmpty);
+    const need = fundable.reduce((s, w) => s + targetOf(w), 0n);
     const p = planRefills(empty, SOURCE.reserve + need);
     if (p.blocked.length) fails.push(`blocked a fundable plan: ${p.blocked.join('; ')}`);
     if (p.total !== need) fails.push('the plan total does not equal what the wallets are short');
+    if (p.transfers.length !== fundable.length) fails.push(`planned ${p.transfers.length} transfers for ${fundable.length} fundable wallets`);
+    const dormant = WALLETS.filter((w) => w.dormantWhenEmpty);
+    for (const d of dormant) {
+      if (p.transfers.some((t) => t.wallet.key === d.key)) fails.push(`${d.key}: an empty dormant wallet was topped up automatically`);
+      if (!p.skipped.some((sk) => sk.wallet.key === d.key)) fails.push(`${d.key}: an empty dormant wallet was neither funded nor reported as skipped`);
+    }
+  }
+  // And the other direction: once it holds anything at all, it is an ordinary
+  // wallet. A flag that turned a real shortfall into silence would be worse
+  // than not having the flag.
+  {
+    const dormant = WALLETS.filter((w) => w.dormantWhenEmpty);
+    for (const d of dormant) {
+      const balances = at((w) => targetOf(w));
+      balances[d.key] = 1n;
+      const p = planRefills(balances, rich);
+      if (!p.transfers.some((t) => t.wallet.key === d.key))
+        fails.push(`${d.key}: holds 1 wei and was still treated as dormant — a funded wallet running dry must be reported`);
+    }
   }
   // The caps are real, in both directions.
   {
     if (MAX_PER_RUN <= MAX_PER_TRANSFER) fails.push('the per-run cap is not above the per-transfer cap, so one transfer could never be the thing that trips it');
+    // Every wallet, dormant included: the cap has to survive the day the
+    // dormant one is funded and then runs dry with the rest.
     const need = WALLETS.reduce((s, w) => s + targetOf(w), 0n);
     if (need > MAX_PER_RUN) fails.push(`funding every wallet from empty needs ${bnb(need)}, over the per-run cap of ${bnb(MAX_PER_RUN)} — the normal worst case must fit inside the cap or the cap fires on a legitimate day`);
     for (const w of WALLETS) {

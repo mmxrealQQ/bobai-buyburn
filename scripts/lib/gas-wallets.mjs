@@ -97,6 +97,27 @@ export const WALLETS = [
     does: 'granting, using and revoking its own spending sessions',
   },
   {
+    key: 'lp',
+    name: 'liquidity position',
+    env: 'LP_PRIVATE_KEY',
+    address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+    // Holds the project's own PancakeSwap V3 position. One cycle is a collect
+    // plus the sale, buy and burn that follow it — five transactions, of which
+    // the mint-shaped ones are the expensive ones.
+    cycleGas: 1_200_000,
+    floorCycles: 1,
+    targetCycles: 3,
+    does: 'collecting position fees and turning them into a $BOBAI burn',
+    // DORMANT UNTIL FUNDED, and this flag is the difference between a roster
+    // that gets read and one that gets ignored. This wallet is deliberately
+    // empty until somebody decides to open the position; reporting that as
+    // "low on gas" every hour would train everybody to skip the gas section,
+    // and the day the buyback wallet actually ran dry it would be skipped too.
+    // An empty wallet here is a decision. A wallet that once held BNB and is
+    // now under the floor is a problem, and that one is reported.
+    dormantWhenEmpty: true,
+  },
+  {
     key: 'x402',
     name: 'x402 service',
     env: 'X402_PRIVATE_KEY',
@@ -155,6 +176,12 @@ export function assess(w, balance) {
   if (balance === null || balance === undefined) {
     return { state: 'unknown', short: null, cycles: null };
   }
+  // A wallet that is empty on purpose is not a wallet in trouble. Only the
+  // roster knows which is which, so the distinction lives here rather than in
+  // every caller deciding for itself.
+  if (w.dormantWhenEmpty && balance === 0n) {
+    return { state: 'dormant', short: 0n, cycles: 0 };
+  }
   const floor = floorOf(w);
   const target = targetOf(w);
   if (balance >= floor) return { state: 'ok', short: 0n, cycles: cyclesLeft(w, balance) };
@@ -186,6 +213,16 @@ export function planRefills(balances, sourceBalance) {
       continue;
     }
     if (a.state === 'ok') continue;
+    // A wallet that is empty on purpose is not topped up. The first version of
+    // this planned a transfer of exactly 0.00000 BNB to it — harmless in effect
+    // and wrong in every other way: it appears in the plan as a transfer, it
+    // would cost gas to send nothing, and it puts a deliberate state in the
+    // same list as a wallet that is genuinely running dry. Funding this one is
+    // a decision, and decisions do not belong in an automatic refill.
+    if (a.state === 'dormant') {
+      skipped.push({ wallet: w, why: 'not funded yet, and deliberately so — funding it is a decision, not a top-up' });
+      continue;
+    }
     if (a.short > MAX_PER_TRANSFER) {
       skipped.push({ wallet: w, why: `top-up of ${bnb(a.short)} exceeds the ${bnb(MAX_PER_TRANSFER)} per-transfer cap — refusing rather than sending it` });
       continue;

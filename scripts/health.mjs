@@ -342,8 +342,12 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
     let balance = null;
     try { balance = await client.getBalance({ address: w.address }); } catch { balance = null; }
     const a = assess(w, balance);
-    ok('Gas', `${w.name} can pay`, a.state === 'ok',
+    // A wallet that is empty on purpose passes. It is reported, with the reason,
+    // so it is visible without being an alarm — a health check that is red for
+    // a decision teaches everybody to ignore red.
+    ok('Gas', `${w.name} can pay`, a.state === 'ok' || a.state === 'dormant',
       a.state === 'unknown' ? 'balance unreadable — not the same as empty'
+        : a.state === 'dormant' ? 'not funded yet, and deliberately so — no position is open'
         : `${bnb(balance)}, ${a.cycles} cycle(s) of ${w.does}${a.state === 'low' ? ` — below floor, short ${bnb(a.short)}` : ''}`);
   }
   let src = null;

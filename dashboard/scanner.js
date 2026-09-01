@@ -33,6 +33,20 @@ const tiny=n=>{
 };
 const usd=n=>n==null?'—':n>=1000?'$'+nf(n):n>=1?'$'+nf(n,2):n>=0.01?'$'+nf(n,4):'$'+tiny(n);
 const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'—';
+// What a rebalance costs, said in units of what the position earns rather than
+// in dollars — a dollar figure means nothing without the thing it is compared
+// against. Rounded to whole windows only when there are whole windows to round
+// to: the first version printed "about 0 windows" whenever the fees for one
+// window happened to exceed the gas, which is the case this sentence exists to
+// describe as GOOD news.
+const costInWindows=(cost,fees)=>{
+  if(!(cost>0))return 'nothing measurable';
+  if(!(fees>0))return 'more than this range collected at all';
+  const n=cost/fees;
+  if(n>=1.5)return Math.round(n)+' windows of what it collected';
+  if(n>=0.75)return 'about one window of what it collected';
+  return Math.round(n*100)+'% of what it collected in one window';
+};
 // Two decimals lie at both ends: 99.998% burned rounds to a flat "100.00%",
 // claiming more than the chain says, and a real 0.002% rounds to "0.00%",
 // claiming it is not there. A sell tax of 4.45% must never print as "4.5%".
@@ -379,7 +393,20 @@ function renderRanges(out,d){
     const b=rows.find(r=>('±'+r.width_pct+'%')===best);
     line('mid',best+' collected the most — and the price crossed its edge '+
       (b?b.times_it_crossed_the_edge:'')+(b&&b.times_it_crossed_the_edge===1?' time':' times')+'.',
-      'A position there earns nothing while it is outside, and putting it back costs gas and re-enters at the new price. The narrower range wins on paper for exactly as long as it holds.');
+      'A position there earns nothing while it is outside, and putting it back costs about $'+
+      (d.rebalance_cost_usd_assumed||0).toFixed(2)+' in gas — '+
+      costInWindows(d.rebalance_cost_usd_assumed,b&&b.fees_usd_in_window)+
+      '. After paying for that, '+(d.best_range_after_paying_to_put_it_back||'nothing here')+' came out ahead.');
+  }
+  // The sentence that stops a narrow range looking free even when it held: the
+  // cost of nursing it is a real number and it belongs beside the reward.
+  else if(held){
+    const hr=rows.find(r=>('±'+r.width_pct+'%')===held);
+    if(hr&&hr.fees_usd_in_window>0&&d.rebalance_cost_usd_assumed>0){
+      line('mid','One crossing costs '+costInWindows(d.rebalance_cost_usd_assumed,hr.fees_usd_in_window)+'.',
+        'Putting a position back is roughly $'+d.rebalance_cost_usd_assumed.toFixed(2)+
+        ' of gas — 700,000 units priced well above the current floor. It did not happen in this window. It is the thing to watch if it does.');
+    }
   }
   out.appendChild(ans);
 

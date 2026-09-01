@@ -77,6 +77,64 @@
     .nm a:hover{color:var(--gold)}
     .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:9px 24px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
     .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
+
+    /* The sub-page header: a way back, the page's name, one action.
+       WHY IT MOVED HERE. These two classes were written into registry.html and
+       scanner.html as two byte-identical inline copies, and styles.css — the
+       file every page loads — did not have them at all. So /advantage and
+       /services used the same markup as the other sub-pages and rendered it as
+       three unstyled links, because the styling lived on the pages that
+       happened to be written first. A shared shell that is not in the shared
+       stylesheet is not a shell. */
+    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
+      font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
+      transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
+    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+    .back-btn span{font-size:14px;line-height:1}
+    .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
+      color:var(--gold);white-space:nowrap;text-decoration:none}
+    .brand-link:hover{opacity:.85}
+
+    /* THE PRIMER: the first thing on a sub-page, for somebody who has never
+       heard of any of this.
+       Every one of these pages opened with a sentence that was true, careful
+       and completely opaque to a newcomer — "a liquidity headline is half
+       fiction", "316,472 agents are registered and nobody checks it". Good
+       lines, and both of them assume the reader already knows what the page is
+       for. This block goes above all of it and answers three questions in the
+       order a stranger asks them: what is this, what can I do here, and what do
+       I press first. The clever line keeps its place, one screen further down,
+       where it is an argument rather than an introduction. */
+    .primer{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);
+      padding:18px 20px;margin:0 0 26px}
+    .primer-what{font-size:.95rem;line-height:1.6;color:var(--text);margin:0}
+    .primer-what b{color:var(--gold);font-weight:600}
+    .primer-do{list-style:none;display:grid;gap:8px;margin:14px 0 0;padding:0;
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+    .primer-do li{position:relative;padding:9px 12px 9px 34px;border:1px solid var(--border);
+      border-radius:12px;background:rgba(255,255,255,.02);font-size:.8rem;line-height:1.5;
+      color:var(--muted);min-width:0;overflow-wrap:anywhere}
+    .primer-do li b{display:block;color:var(--text);font-size:.82rem;font-weight:600;margin-bottom:2px}
+    /* Counter rather than typed numbers: a list that renumbers itself cannot
+       end up saying 1, 2, 2 after an edit. */
+    .primer-do{counter-reset:primer}
+    .primer-do li::before{counter-increment:primer;content:counter(primer);
+      position:absolute;left:11px;top:9px;width:17px;height:17px;border-radius:50%;
+      border:1px solid rgba(240,185,11,.35);color:var(--gold);font-size:.65rem;font-weight:700;
+      display:flex;align-items:center;justify-content:center;line-height:1}
+    .primer-how{margin:14px 0 0;font-size:.82rem;line-height:1.6;color:var(--muted)}
+    .primer-how b{color:var(--text);font-weight:600}
+    .primer-how a{color:var(--gold)}
+    /* Three items that all refuse to wrap, so on a narrow phone their sum can
+       exceed the screen and the page starts scrolling sideways. The two outer
+       items are the ones people press; the title in the middle gives way. */
+    @media (max-width:560px){
+      .brand-link{font-size:12px}
+      .nb{padding:7px 14px;font-size:.72rem}
+      .nav{gap:8px}
+      .brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    }
     /* Hidden while the hero (which has its own big Buy CTA) is on screen, so the
        two identical gold buttons are never visible at the same time. */
     .nb-group{display:flex;gap:8px;align-items:center;opacity:0;visibility:hidden;

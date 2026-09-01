@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 3883 lines.
+# one fetch. 6 files, 3941 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1134,8 +1134,8 @@ export async function scan(input, env) {
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=29" as="style">
-  <link rel="stylesheet" href="styles.css?v=29">
+  <link rel="preload" href="styles.css?v=31" as="style">
+  <link rel="stylesheet" href="styles.css?v=31">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -1155,21 +1155,9 @@ export async function scan(input, env) {
     html{overscroll-behavior-x:none}
     body{overscroll-behavior-x:none}
 
-    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
-      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
-      font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
-      transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
-    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
-    .back-btn span{font-size:14px;line-height:1}
-    .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
-      color:var(--gold);white-space:nowrap;text-decoration:none}
-    .brand-link:hover{opacity:.85}
-    @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}
-      /* Fits at 360px only because the three labels happen to add up to exactly
-         that. Below it, or with a longer title, the row would push the page
-         sideways — which is what /nft/ was doing. The title gives way; the two
-         things people press keep their labels. */
-      .nav{gap:8px}.brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+  /* .back-btn / .brand-link and their narrow-screen rules now live in
+     styles.css, where every page that uses this header can see them. */
+
 
     .sc-hero{padding:8px 0 6px;text-align:center}
     .sc-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
@@ -1430,6 +1418,18 @@ export async function scan(input, env) {
 
   <section class="sec b-blue" style="margin-top:86px">
     <div class="blk-head"><span class="blk-tag">Tool &middot; Pool Scanner</span><span class="blk-line"></span></div>
+
+    <!-- Said plainly before it is said well. The lead below is the better
+         sentence and it assumes the reader knows what a liquidity pool is. -->
+    <section class="primer" style="max-width:820px;margin:0 auto 22px">
+      <p class="primer-what"><b>What this is.</b> Before you buy a token on BNB Chain, this tells you what buying it would actually cost you &mdash; not the advertised price, the real one, including the part most sites do not show. Paste an address, press Scan, read the answer. It takes a few seconds and costs nothing.</p>
+      <ul class="primer-do">
+        <li><b>What a trade really costs</b>At six sizes from $100 to $2,500, so you can see where it stops being worth it.</li>
+        <li><b>The hidden tax</b>Many tokens take a cut of every trade. We measure it from trades that really happened, not from what the contract claims.</li>
+        <li><b>Who can pull the money out</b>Whether the liquidity is burned for good, merely locked, or sitting in a wallet that can empty it tonight.</li>
+      </ul>
+      <p class="primer-how"><b>How to use it:</b> paste a token address, a pool address or a DexScreener link into the box below and press Scan. <b>No wallet, no signup, nothing is sent from your account</b> &mdash; this only reads public data from the chain. If a pool cannot be measured exactly, it shows nothing rather than a wrong number.</p>
+    </section>
 
     <div class="sc-hero">
       <h1>How deep is <em>any</em> BSC pool, really?</h1>
@@ -2488,6 +2488,64 @@ showClear();
     .nm a:hover{color:var(--gold)}
     .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:9px 24px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
     .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
+
+    /* The sub-page header: a way back, the page's name, one action.
+       WHY IT MOVED HERE. These two classes were written into registry.html and
+       scanner.html as two byte-identical inline copies, and styles.css — the
+       file every page loads — did not have them at all. So /advantage and
+       /services used the same markup as the other sub-pages and rendered it as
+       three unstyled links, because the styling lived on the pages that
+       happened to be written first. A shared shell that is not in the shared
+       stylesheet is not a shell. */
+    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
+      font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
+      transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
+    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+    .back-btn span{font-size:14px;line-height:1}
+    .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
+      color:var(--gold);white-space:nowrap;text-decoration:none}
+    .brand-link:hover{opacity:.85}
+
+    /* THE PRIMER: the first thing on a sub-page, for somebody who has never
+       heard of any of this.
+       Every one of these pages opened with a sentence that was true, careful
+       and completely opaque to a newcomer — "a liquidity headline is half
+       fiction", "316,472 agents are registered and nobody checks it". Good
+       lines, and both of them assume the reader already knows what the page is
+       for. This block goes above all of it and answers three questions in the
+       order a stranger asks them: what is this, what can I do here, and what do
+       I press first. The clever line keeps its place, one screen further down,
+       where it is an argument rather than an introduction. */
+    .primer{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);
+      padding:18px 20px;margin:0 0 26px}
+    .primer-what{font-size:.95rem;line-height:1.6;color:var(--text);margin:0}
+    .primer-what b{color:var(--gold);font-weight:600}
+    .primer-do{list-style:none;display:grid;gap:8px;margin:14px 0 0;padding:0;
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+    .primer-do li{position:relative;padding:9px 12px 9px 34px;border:1px solid var(--border);
+      border-radius:12px;background:rgba(255,255,255,.02);font-size:.8rem;line-height:1.5;
+      color:var(--muted);min-width:0;overflow-wrap:anywhere}
+    .primer-do li b{display:block;color:var(--text);font-size:.82rem;font-weight:600;margin-bottom:2px}
+    /* Counter rather than typed numbers: a list that renumbers itself cannot
+       end up saying 1, 2, 2 after an edit. */
+    .primer-do{counter-reset:primer}
+    .primer-do li::before{counter-increment:primer;content:counter(primer);
+      position:absolute;left:11px;top:9px;width:17px;height:17px;border-radius:50%;
+      border:1px solid rgba(240,185,11,.35);color:var(--gold);font-size:.65rem;font-weight:700;
+      display:flex;align-items:center;justify-content:center;line-height:1}
+    .primer-how{margin:14px 0 0;font-size:.82rem;line-height:1.6;color:var(--muted)}
+    .primer-how b{color:var(--text);font-weight:600}
+    .primer-how a{color:var(--gold)}
+    /* Three items that all refuse to wrap, so on a narrow phone their sum can
+       exceed the screen and the page starts scrolling sideways. The two outer
+       items are the ones people press; the title in the middle gives way. */
+    @media (max-width:560px){
+      .brand-link{font-size:12px}
+      .nb{padding:7px 14px;font-size:.72rem}
+      .nav{gap:8px}
+      .brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    }
     /* Hidden while the hero (which has its own big Buy CTA) is on screen, so the
        two identical gold buttons are never visible at the same time. */
     .nb-group{display:flex;gap:8px;align-items:center;opacity:0;visibility:hidden;

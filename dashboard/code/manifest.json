@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 3883,
-   "zipBytes": 81634,
-   "txtBytes": 242149,
-   "sha256": "b3622f36caa7c3ca",
+   "lines": 3941,
+   "zipBytes": 82994,
+   "txtBytes": 246393,
+   "sha256": "14eed9aed4c7bede",
    "reqs": [
     {
      "what": "A static host",
@@ -641,9 +641,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 3747,
-   "zipBytes": 78767,
-   "txtBytes": 218842,
-   "sha256": "61bcf1c6d63acac4",
+   "zipBytes": 78991,
+   "txtBytes": 219291,
+   "sha256": "afa128aebe4b6220",
    "reqs": [
     {
      "what": "Node 18+ and time",

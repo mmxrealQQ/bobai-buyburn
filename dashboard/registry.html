@@ -19,29 +19,16 @@
 <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
 <link rel="apple-touch-icon" href="/logo.png?v=4">
 <link rel="stylesheet" href="/fonts.css?v=1">
-<link rel="stylesheet" href="/styles.css?v=29">
+<link rel="stylesheet" href="/styles.css?v=31">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
   /* nav/.nav/.nb live in styles.css, but .back-btn and .brand-link do not —
      they are inline in scanner.html, so every sub-page carries its own copy.
      Without them the browser paints both as default blue links, which is what
      it was doing here. Same values, not similar ones. */
-  .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
-    background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
-    font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
-    transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
-  .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
-  .back-btn span{font-size:14px;line-height:1}
-  .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
-    color:var(--gold);white-space:nowrap;text-decoration:none}
-  .brand-link:hover{opacity:.85}
-  @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}
-    /* The header is three items that all refuse to wrap, so on a narrow phone
-       their sum can exceed the screen and the page starts scrolling sideways —
-       which is exactly what /nft/ was doing at 413px in a 360px viewport. The
-       two outer items are the ones people press; the title in the middle is the
-       one that gives way. */
-    .nav{gap:8px}.brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+  /* .back-btn / .brand-link and their narrow-screen rules now live in
+     styles.css, where every page that uses this header can see them. */
+
 
   /* Hero copied from scanner.html's .sc-hero rather than approximated: centred,
      same clamp, same -1px tracking, and the gold gradient on <em> that every
@@ -273,6 +260,19 @@
       <p class="rg-lead">That first number gets quoted constantly and nobody checks it. So we read the whole registry &mdash; every id, one at a time &mdash; then contacted every endpoint it named. What follows is the part that answered, and how to hire it.</p>
       <p class="rg-when">Measured 2026-08-29 09:33 UTC &middot; 316,472 of 316,472 ids read &middot; 0 left unreadable</p>
     </div>
+
+    <!-- For somebody who has never heard of any of this. The line above is an
+         argument and it needs the reader to already know what an agent
+         registry is; this says what the page is before it says why it matters. -->
+    <section class="primer">
+      <p class="primer-what"><b>What this is.</b> An AI agent is a program somebody else runs that will do one job for you &mdash; check a lending position, price a trade, rank a yield &mdash; and get paid for it automatically. On BNB Chain they register themselves in a public list. Anyone can add an entry to that list, and most entries do not work. This page is that list, checked: we contacted every single one and kept the ones that answered.</p>
+      <ul class="primer-do">
+        <li><b>Ask for something</b>Type what you need in plain words. We find an agent that can answer, call it, and tell you which one produced the result.</li>
+        <li><b>Hire one directly</b>Pick a category, press Hire, pay about ten cents from your own wallet. The answer is delivered on-chain.</li>
+        <li><b>Check before you trust</b>Every row says how we know what it does, whether it quoted a price when asked, and what it has actually been paid for.</li>
+      </ul>
+      <p class="primer-how"><b>Start here:</b> type a task in the box below and press Dispatch &mdash; it costs nothing and signs nothing. <b>You do not need a wallet</b> until you decide to hire somebody. Never heard of $U? It is the stablecoin these jobs are priced in; ten cents is ten cents.</p>
+    </section>
 
     <div class="rg-grid">
       <div class="rg-card"><div class="rg-n" id="rg-tile-total">316,472</div><div class="rg-l">registered ids</div><div class="rg-s" id="rg-tile-total-sub">what the headline counts</div></div>

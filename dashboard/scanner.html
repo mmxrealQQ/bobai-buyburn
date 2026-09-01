@@ -32,8 +32,8 @@
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=29" as="style">
-  <link rel="stylesheet" href="styles.css?v=29">
+  <link rel="preload" href="styles.css?v=31" as="style">
+  <link rel="stylesheet" href="styles.css?v=31">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -53,21 +53,9 @@
     html{overscroll-behavior-x:none}
     body{overscroll-behavior-x:none}
 
-    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
-      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
-      font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
-      transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
-    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
-    .back-btn span{font-size:14px;line-height:1}
-    .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
-      color:var(--gold);white-space:nowrap;text-decoration:none}
-    .brand-link:hover{opacity:.85}
-    @media (max-width:560px){.brand-link{font-size:12px}.nb{padding:7px 14px;font-size:.72rem}
-      /* Fits at 360px only because the three labels happen to add up to exactly
-         that. Below it, or with a longer title, the row would push the page
-         sideways — which is what /nft/ was doing. The title gives way; the two
-         things people press keep their labels. */
-      .nav{gap:8px}.brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+  /* .back-btn / .brand-link and their narrow-screen rules now live in
+     styles.css, where every page that uses this header can see them. */
+
 
     .sc-hero{padding:8px 0 6px;text-align:center}
     .sc-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
@@ -328,6 +316,18 @@
 
   <section class="sec b-blue" style="margin-top:86px">
     <div class="blk-head"><span class="blk-tag">Tool &middot; Pool Scanner</span><span class="blk-line"></span></div>
+
+    <!-- Said plainly before it is said well. The lead below is the better
+         sentence and it assumes the reader knows what a liquidity pool is. -->
+    <section class="primer" style="max-width:820px;margin:0 auto 22px">
+      <p class="primer-what"><b>What this is.</b> Before you buy a token on BNB Chain, this tells you what buying it would actually cost you &mdash; not the advertised price, the real one, including the part most sites do not show. Paste an address, press Scan, read the answer. It takes a few seconds and costs nothing.</p>
+      <ul class="primer-do">
+        <li><b>What a trade really costs</b>At six sizes from $100 to $2,500, so you can see where it stops being worth it.</li>
+        <li><b>The hidden tax</b>Many tokens take a cut of every trade. We measure it from trades that really happened, not from what the contract claims.</li>
+        <li><b>Who can pull the money out</b>Whether the liquidity is burned for good, merely locked, or sitting in a wallet that can empty it tonight.</li>
+      </ul>
+      <p class="primer-how"><b>How to use it:</b> paste a token address, a pool address or a DexScreener link into the box below and press Scan. <b>No wallet, no signup, nothing is sent from your account</b> &mdash; this only reads public data from the chain. If a pool cannot be measured exactly, it shows nothing rather than a wrong number.</p>
+    </section>
 
     <div class="sc-hero">
       <h1>How deep is <em>any</em> BSC pool, really?</h1>

@@ -33,6 +33,90 @@ const getText = async (url, init) => {
 
 const section = (t) => console.log(`\n${t}`);
 
+// The readiness verdict as a pure function of the rows and the clock, so it can
+// be pinned against invented rows as well as against whatever the live origin
+// happens to be doing today. A detector that has only ever been watched
+// agreeing has not been tested — six of them were wrong on one day in August.
+const STALE_MIN = 45;
+function readiness(agents, nowMs) {
+  const ages = agents.map((a) => (a.checked_at ? (nowMs - Date.parse(a.checked_at)) / 60000 : null));
+  const known = ages.filter((v) => v != null && Number.isFinite(v));
+  // The oldest row decides. One fresh row does not make a stale snapshot fresh,
+  // and a missing checked_at anywhere means the age is not known at all.
+  const age_min = known.length === agents.length && known.length ? Math.round(Math.max(...known)) : null;
+  const failing = agents.filter((a) => a.ready !== true);
+  const named = (a) => a.not_ready_because === 'chain_unreachable' || a.not_ready_because === 'agent_error';
+  return {
+    // Three missed ticks of grace on a fifteen-minute cadence: one skipped cron
+    // is not a story, four in a row is.
+    fresh: age_min != null && age_min <= STALE_MIN,
+    age_min,
+    // Does the ORIGIN carry the classifier at all? The field is written on
+    // every row, ready or not, so this answers even on a day when nothing
+    // fails — otherwise the verdict below would quietly be trusted on an origin
+    // that never names a cause, and would look green for the wrong reason.
+    published: agents.length > 0 && agents.every((a) => 'not_ready_because' in a),
+    unpublished: agents.filter((a) => !('not_ready_because' in a)).map((a) => a.id),
+    // Only failures have to be classified; a ready row has nothing to explain.
+    classified: failing.every(named),
+    unclassified: failing.filter((a) => !named(a)).map((a) => a.id),
+    // Anything not demonstrably the chain counts against us, including a row
+    // that declines to say. A verdict in doubt has to accuse itself, or every
+    // unknown fault quietly becomes somebody else's problem.
+    broken: failing.filter((a) => a.not_ready_because !== 'chain_unreachable'),
+    upstream: failing.filter((a) => a.not_ready_because === 'chain_unreachable'),
+    // Rows that only answered because the probe asked twice. Not a failure and
+    // not nothing: it is the chain going soft under us, reported before it
+    // becomes the outage above rather than after.
+    retried: agents.filter((a) => a.chain_needed_a_second_attempt === true),
+  };
+}
+
+// ---- the detector, pinned against invented rows ---------------------------
+// Costs no network and runs every time, because the readiness verdict above is
+// the check that was wrong on 2026-09-01 and the one most likely to be wrong
+// again. Both directions: it has to stay quiet on what is fine AND go red on
+// what is not. A detector only ever watched agreeing has not been tested.
+section('Readiness verdict, self-test');
+{
+  const fresh = new Date(Date.now() - 4 * 60000).toISOString();
+  const rows = (...a) => a.map((x, i) => ({ id: 900 + i, checked_at: fresh, ...x }));
+
+  const green = readiness(rows({ ready: true, not_ready_because: null }, { ready: true, not_ready_because: null }), Date.now());
+  ok('stays quiet when every agent is ready', green.fresh && green.broken.length === 0 && green.upstream.length === 0 && green.classified && green.published);
+  // An all-green origin that predates the classifier: every agent ready, and
+  // still not a source this verdict may be read from.
+  ok('notices an origin that names no causes even when all rows are ready',
+    readiness(rows({ ready: true }, { ready: true }), Date.now()).published === false);
+
+  const ours = readiness(rows({ ready: true }, { ready: false, not_ready_because: 'agent_error', last_error: 'x is not a function' }), Date.now());
+  ok('goes red on a fault in our own code', ours.broken.length === 1 && ours.upstream.length === 0 && ours.classified);
+
+  const theirs = readiness(rows({ ready: true }, { ready: false, not_ready_because: 'chain_unreachable', last_error: 'every BSC endpoint refused this request' }), Date.now());
+  ok('does not blame us when the chain refused', theirs.broken.length === 0 && theirs.upstream.length === 1 && theirs.classified);
+
+  // The failure this whole change is about: a not-ready row that says nothing
+  // about why. It must count against us, not slip through as upstream.
+  const mute = readiness(rows({ ready: false, last_error: 'every BSC endpoint refused this request' }), Date.now());
+  ok('a failure that will not name its cause counts against us',
+    mute.broken.length === 1 && mute.upstream.length === 0 && mute.classified === false && mute.unclassified.length === 1);
+
+  // A tick that survived on its second attempt is neither broken nor silent.
+  const soft = readiness(rows({ ready: true, not_ready_because: null, chain_needed_a_second_attempt: true }), Date.now());
+  ok('sees a probe that only answered on the second ask', soft.retried.length === 1 && soft.broken.length === 0);
+  ok('does not invent a retry that did not happen',
+    readiness(rows({ ready: true, not_ready_because: null }), Date.now()).retried.length === 0);
+
+  const old = new Date(Date.now() - 90 * 60000).toISOString();
+  ok('calls a ninety-minute-old snapshot stale',
+    readiness([{ id: 1, ready: true, checked_at: old }], Date.now()).fresh === false);
+  // One fresh row must not launder a stale one: the oldest decides.
+  ok('one fresh row does not make a stale snapshot fresh',
+    readiness([{ id: 1, ready: true, checked_at: fresh }, { id: 2, ready: true, checked_at: old }], Date.now()).fresh === false);
+  ok('a row with no timestamp leaves the age unknown, not zero',
+    readiness([{ id: 1, ready: true }], Date.now()).age_min === null);
+}
+
 // ---- the free surface ----------------------------------------------------
 section('Free surface');
 {
@@ -261,8 +345,44 @@ section('Live telemetry');
   ok('one of ours in each of the four categories',
     ['health-factor', 'grid-trading', 'yield-optimization', 'rebalancing'].every((c) => cats.has(c)),
     [...cats].join(', '));
-  ok('each of ours reports itself ready', (j?.agents || []).every((a) => a.ready === true),
-    (j?.agents || []).filter((a) => !a.ready).map((a) => a.id + ': ' + (a.last_error || 'not ready')).join(' · ') || 'all ready');
+  // READINESS, SPLIT INTO THE THREE THINGS IT USED TO MEAN
+  //
+  // This was one check — "each of ours reports itself ready" — and on
+  // 2026-09-01 it went red saying
+  // "302258: every BSC endpoint refused this request". That is not a broken
+  // agent; it is a throttled BSC node, read off a snapshot that may already
+  // have been fifteen minutes old. The sentence carried nothing to tell the
+  // three cases apart, so the diagnosis had to be done by hand — and would have
+  // had to be done again on every recurrence.
+  //
+  // worker-agent/telemetry.js now classifies the cause where the error still
+  // exists and publishes it as not_ready_because. The cases are read apart
+  // here, and only the one that is ours may turn this run red.
+  const verdict = readiness(j?.agents || [], Date.now());
+  ok('the readiness snapshot is fresh enough to judge by', verdict.fresh,
+    verdict.age_min == null ? 'a row is missing checked_at' : `oldest row ${verdict.age_min} min old, cadence is 15`);
+  // Pins the deploy and not only the agents: an origin still running the code
+  // that could not tell the causes apart writes no such field, and this check
+  // is the only one that would notice on a day when nothing fails.
+  ok('the origin publishes what a fault would be blamed on', verdict.published,
+    verdict.unpublished.length ? `no not_ready_because on: ${verdict.unpublished.join(', ')}` : 'no rows');
+  ok('every failing row says whether the fault is ours', verdict.classified,
+    verdict.unclassified.length ? `unnamed cause on: ${verdict.unclassified.join(', ')}` : 'nothing unclassified');
+  // The only case that is a defect in this repo.
+  ok('none of ours is failing in its own code', verdict.broken.length === 0,
+    verdict.broken.map((a) => `${a.id}: ${a.last_error || 'no reason given'}`).join(' | ') || 'none');
+  // Neither a pass nor a fault of ours: named and visible, because an upstream
+  // refusal that never lifts is still worth acting on — just not in this repo.
+  if (verdict.upstream.length) {
+    console.log(`  note  ${verdict.upstream.length} of ours could not reach the chain on that tick`
+      + ` — ${verdict.upstream.map((a) => a.id).join(', ')}; not counted against us`);
+  } else {
+    ok('all of ours reached the chain on that tick', true);
+  }
+  if (verdict.retried.length) {
+    console.log(`  note  ${verdict.retried.map((a) => a.id).join(', ')} answered only on a second ask`
+      + ' — the chain was refusing and gave way; worth watching, not a fault');
+  }
   ok('every figure carries when it was taken', (j?.agents || []).every((a) => !!a.checked_at));
   ok('says how it was produced', /measured|probe|reference input/i.test(j?.method || ''));
   // One job, two agents on one origin: the count has to be per service or the

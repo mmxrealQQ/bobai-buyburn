@@ -167,11 +167,104 @@ const REFERENCE_POOL = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 // money and sees none — which is the whole point being demonstrated.
 const CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';
 
+// WHY A FAILED PROBE HAS TO SAY WHICH KIND OF FAILURE IT WAS
+//
+// Each of the five probes below used to answer every failure with the same
+// sentence — ready:false, "not answering right now" — although three quite
+// different things hide behind it:
+//
+//   1. the agent's own code broke        — ours, and the only urgent one
+//   2. every BSC endpoint refused a read — upstream, and usually over in
+//                                          seconds; the agent is fine
+//   3. neither; the snapshot is just old — nothing is wrong at all
+//
+// Measured 2026-09-01: the surface check went red with
+// "302258: every BSC endpoint refused this request". That reads as a dead grid
+// planner and was a throttled node — the agent had not been asked a question it
+// failed to answer, it had not been able to ask the chain one. Telling the
+// three apart cost an evening, and would have cost it again on the next tick,
+// because the sentence carried nothing to tell them apart WITH.
+//
+// So the cause is classified here, where the error still exists, and published
+// as a field. The page and the checks read the field instead of guessing from
+// prose. Same rule the fee-tier headline already follows further down: an
+// unmeasured tick and an empty result must never print the same words.
+
+// Phrases that mean the chain would not answer, not that we asked it wrongly.
+// Deliberately narrow. A revert IS an answer and never matches here, and an
+// agent bug — a TypeError, a bad field — matches nothing in this list, so it
+// keeps its own classification and stays red where it belongs.
+const CHAIN_REFUSED = /every BSC endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
+
+const isChainRefusal = (e) => {
+  const m = String(e?.message || e);
+  if (/revert|execution/i.test(m)) return false;
+  return CHAIN_REFUSED.test(m);
+};
+
+/**
+ * The failure half of a probe, with the cause named.
+ *
+ * `not_ready_because` is 'chain_unreachable' or 'agent_error'. Anything that is
+ * not demonstrably the chain is called ours: a classifier in doubt has to
+ * accuse itself, or every unknown fault quietly becomes somebody else's.
+ */
+function notReady(e, at, attempt = {}, extra = {}) {
+  const last_error = String(e?.message || e).slice(0, 140);
+  const upstream = isChainRefusal(e);
+  return {
+    ready: false,
+    not_ready_because: upstream ? 'chain_unreachable' : 'agent_error',
+    chain_needed_a_second_attempt: attempt.retried === true,
+    checked_at: at,
+    live: null,
+    headline: upstream
+      ? 'the chain refused every endpoint this tick — not measured, which is not the same as not working'
+      : 'not answering right now',
+    last_error,
+    ...extra,
+  };
+}
+
+/**
+ * Run a probe, and give it a second chance if — and only if — the chain was
+ * what refused.
+ *
+ * A probe that threw a TypeError will throw the same TypeError a second later,
+ * so retrying that only delays an honest red. A throttled endpoint is often
+ * free again within a second or two, and the five probes run together against
+ * one pool of nodes, so some of this contention is our own
+ * (the census learned the same lesson and serialised its per-host probes).
+ * Serialising all five here would fix that outright, and it is still the right
+ * answer if this ever stops being enough. It is not free: five refreshes timed
+ * 2026-09-01 ran 15s, 16s, 19s, 20s and 74s, and one exceeded three minutes, so
+ * the parallel version is already slow enough to matter on the cold-key path,
+ * where a waiting request pays for it. One retry, only on the upstream class,
+ * costs nothing on a healthy tick and is paid only after something has already
+ * gone wrong.
+ */
+async function withSecondChance(run, attempt = {}) {
+  try {
+    return await run();
+  } catch (e) {
+    if (!isChainRefusal(e)) throw e;
+    // Recorded, not swallowed. A retry that leaves no trace turns a degrading
+    // chain into a page that looks perfectly healthy right up to the tick where
+    // it stops working — the same mistake as printing "none traded"
+    // for a pair that trades every block. A tick that only came back on the
+    // second ask is a different fact from a tick that came back.
+    attempt.retried = true;
+    await new Promise((r) => setTimeout(r, 1500));
+    return await run();
+  }
+}
+
 async function probeHealthFactor(lastJob) {
   const at = new Date().toISOString();
   const started = Date.now();
+  const attempt = {};
   try {
-    const hf = await healthFactor(SELF_ACCOUNT);
+    const hf = await withSecondChance(() => healthFactor(SELF_ACCOUNT), attempt);
     return {
       ready: true,
       checked_at: at,
@@ -198,17 +291,20 @@ async function probeHealthFactor(lastJob) {
         ? { job_id: lastJob.job_id, agreed_with_protocol: lastJob.agrees, at: lastJob.at }
         : null,
       note: 'This agent holds no position of its own; it is hired per job. The probe runs the full pipeline against our own wallet, which has entered no Venus market — so it shows the machinery answering, not a health factor. The arithmetic itself is checked against Venus\'s own getAccountLiquidity on every real job.',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, proven_by: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt, { proven_by: null });
   }
 }
 
 async function probeGrid() {
   const at = new Date().toISOString();
+  const attempt = {};
   try {
-    const plan = await gridPlan({ token: REFERENCE_POOL, levels: 10, bandPct: 15, capitalUsd: 1000 });
+    const plan = await withSecondChance(() => gridPlan({ token: REFERENCE_POOL, levels: 10, bandPct: 15, capitalUsd: 1000 }), attempt);
     return {
       ready: true,
       checked_at: at,
@@ -224,10 +320,12 @@ async function probeGrid() {
         : 'pool measured, spacing not derivable',
       measures: 'grid levels for any BNB Chain pool with the round-trip cost of a cycle measured from the pool itself',
       note: 'Measured on the deepest pair on the chain, so this is the floor: no grid on BNB Chain costs less per cycle than this. A thinner pool costs more.',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt);
   }
 }
 
@@ -237,8 +335,9 @@ async function probeGrid() {
 // compute it from a stale block constant is not.
 async function probeYield() {
   const at = new Date().toISOString();
+  const attempt = {};
   try {
-    const plan = await yieldPlan({});
+    const plan = await withSecondChance(() => yieldPlan({}), attempt);
     const best = plan.best_available || null;
     return {
       ready: true,
@@ -257,10 +356,12 @@ async function probeYield() {
         : 'markets read, block time not measurable',
       measures: 'every Venus core-pool market ranked by what it actually pays, and the days until a move pays for its own gas',
       note: 'The APY depends entirely on the block time, which is measured here from two blocks a hundred thousand apart rather than assumed. Cross-checked against Venus’s own published figures.',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt);
   }
 }
 
@@ -269,13 +370,14 @@ async function probeYield() {
 // corrections has not been tested on anything that matters.
 async function probeRebalance() {
   const at = new Date().toISOString();
+  const attempt = {};
   try {
-    const plan = await rebalancePlan({
+    const plan = await withSecondChance(() => rebalancePlan({
       holdings: [
         { token: REFERENCE_POOL, usd: 600 },
         { token: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', usd: 400 },
       ],
-    });
+    }), attempt);
     const e = plan.economics || {};
     const top = (plan.where_the_cost_sits || [])[0] || null;
     return {
@@ -293,10 +395,12 @@ async function probeRebalance() {
         : 'pools measured, cost not derivable',
       measures: 'the swaps to reach target weights, priced against the pools that would execute them',
       note: 'It does not claim whether rebalancing is worth doing. A correction does not earn the dollars it moves, and what it is worth is a judgement about risk rather than a quantity in any pool.',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt);
   }
 }
 
@@ -308,8 +412,9 @@ async function probeRebalance() {
 // the run where it is, this says so.
 async function probeLpTiers() {
   const at = new Date().toISOString();
+  const attempt = {};
   try {
-    const plan = await lpTierPlan({ token: CAKE, capitalUsd: 1000 });
+    const plan = await withSecondChance(() => lpTierPlan({ token: CAKE, capitalUsd: 1000 }), attempt);
     const aligned = plan.capital_is_in_the_best_paying_tier;
     const idle = (plan.idle_capital || []).reduce((s, x) => s + (x.capital_usd || 0), 0);
     return {
@@ -341,10 +446,12 @@ async function probeLpTiers() {
       // Said here rather than only in the deliverable, because a number on a
       // status page is the one most likely to be quoted without its window.
       note: `Measured over ${plan.measured_window?.minutes ?? '~38'} minutes of chain and deliberately not annualised. Capital is both sides of the pool, and in V3 includes liquidity parked outside the current range, which earns nothing.`,
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt);
   }
 }
 

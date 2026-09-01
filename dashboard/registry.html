@@ -2263,7 +2263,12 @@ At its core, the game is built on a structured probability engine inspired b&hel
     }
 
     function ourLine(a){
-      var head=a.ready?esc(a.headline||'answering'):'not answering right now';
+      // A row that is not ready used to print the same four words whatever had
+      // happened. The origin now says which of the two it was and writes the
+      // sentence for it, so the sentence is taken rather than replaced here:
+      // "the chain refused every endpoint this tick" is a fact about the chain
+      // and reads nothing like a broken agent, which is the whole distinction.
+      var head=esc(a.headline||(a.ready?'answering':'not answering right now'));
       var extra=[];
       if(a.jobs_delivered)extra.push(esc(a.jobs_delivered)+(a.jobs_delivered===1?' job delivered':' jobs delivered'));
       if(a.proven_by&&a.proven_by.agreed_with_protocol===true)extra.push('last job agreed with the protocol');

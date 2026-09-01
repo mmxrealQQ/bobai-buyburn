@@ -63,11 +63,26 @@ const ev = async expr => {
 
 await send('Page.enable'); await send('Runtime.enable');
 await send('Page.navigate', { url: 'https://brainonbnb.com/?probe=' + Math.floor(Math.random() * 1e9) });
-for (let i = 0; i < 30; i++) { await wait(1000); if (await ev(`(document.getElementById('lq-up1')||{}).textContent !== '--'`)) break; }
+// The block is below the fold and its figures are fetched when it comes into
+// view, so a checker that never scrolls waits thirty seconds for placeholders
+// and then reports every dollar figure as a 100% gap. That is what it did until
+// 1 September, while the depth-panel checker one directory over was reading the
+// same tiles correctly — a false alarm on a page that was right the whole time.
+await ev(`(document.getElementById('lq-tvl')||{scrollIntoView(){}}).scrollIntoView({block:'center'})`);
+let filled = false;
+for (let i = 0; i < 40; i++) {
+  await wait(1000);
+  if (await ev(`(document.getElementById('lq-up1')||{}).textContent !== '--'`)) { filled = true; break; }
+}
+if (!filled) {
+  console.error('the liquidity block never filled in 40s — nothing was compared, and that is not a pass');
+  ws.close(); chrome.kill(); process.exit(1);
+}
 
 const num = s => Number(String(s).replace(/[^0-9.]/g, ''));
 const page = await ev(`(() => { const t = id => (document.getElementById(id)||{}).textContent;
   return { tvl: t('lq-tvl'), bnbUsd: t('lq-bnb-usd'), bnb: t('lq-bnb'), up1: t('lq-up1'), dn1: t('lq-dn1'), px: window.__bobaiPx }; })()`);
+if (process.argv.includes('--debug')) console.error('RAW PAGE', JSON.stringify(page));
 const chain = await fromChain();
 ws.close(); chrome.kill();
 

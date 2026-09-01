@@ -994,7 +994,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">24 files &middot; 6,911 lines &middot; 0.1 MB</span>
+          <span class="lib-m">24 files &middot; 6,917 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1065,19 +1065,42 @@
   <section class="sec b-violet" id="agents">
     <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Agents</span><span class="blk-line"></span></div>
 
-    <!-- The way in for somebody who does not yet know what any of this is. The
-         card below is the marketplace and the block after it is the machine
-         surface; both assume you already know which one you want. This line
-         does not. -->
-    <p class="agt-live fi" style="margin:0 0 18px"><a href="/services"><b>What we can do for you &rarr;</b></a>
-      &mdash; the whole offer on one page, in plain words: what is free to use in a browser,
-      what costs about ten cents, and what your own AI assistant can call directly.</p>
+    <!-- THE WAY IN, in the same shape the four sub-pages use.
+         What was here before was one link and a sentence, sitting above a
+         marketplace card and a machine surface that both assume you already
+         know which one you want. Somebody who does not know is the person this
+         block is for, and the primer is what /registry, /scanner and /services
+         each open with — so the front door and the rooms behind it now read
+         the same way. No new CSS: this is the same component. -->
+    <div class="primer fi">
+      <p class="primer-what"><b>Three things live here.</b> A marketplace of every AI agent registered
+        on BNB Chain, which you can hire from the page. A set of measurements for anyone putting money
+        into a PancakeSwap pool. And the same measurements sold to other people&rsquo;s agents, which is
+        where this project earns from outside its own trading tax.</p>
+      <ul class="primer-do">
+        <li><b><a href="/services">See the whole offer in plain words &rarr;</a></b>What is free to use in a
+          browser, what costs about ten cents, and what your own AI assistant can call directly. One page,
+          generated from the same source the machines read, so it cannot say something different from them.</li>
+        <li><b><a href="/scanner">Measure a pool before you commit to it &rarr;</a></b>What a trade really costs
+          at your size and which route is cheapest. Which of the five PancakeSwap fee tiers actually paid its
+          liquidity providers &mdash; per dollar in the pool, and per dollar standing at the price, which is the
+          only part earning. And which price range would have collected what, replayed against the trades that
+          really happened.</li>
+        <li><b><a href="/registry">Find and hire an agent &rarr;</a></b>Every registered agent read one id at a
+          time and contacted at the endpoint it names, then sorted into the four things people actually hire an
+          agent for. Pick one and hire it from the page: the quote is negotiated live and the escrow runs
+          on-chain.</li>
+      </ul>
+      <p class="primer-how"><b>Where to start:</b> if you have a token or a pool in mind, the
+        <a href="/scanner">scanner</a> answers in one paste and costs nothing. If you want to know what is on
+        offer at all, <a href="/services">the offer page</a> is the short version.</p>
+    </div>
 
     <a class="mkt fi" href="/registry">
       <div class="mkt-in">
         <div class="mkt-tag">The marketplace</div>
         <h2 class="mkt-h">Brain Plaza</h2>
-        <p class="mkt-p">Every ERC-8004 agent on BNB Chain, read one id at a time and contacted at the endpoint it names &mdash; then sorted into the four things people actually hire an agent for. Pick one and hire it from the page: the quote is negotiated live and the escrow runs on-chain.</p>
+        <p class="mkt-p">Read one id at a time from the registry and contacted where each one says it can be reached &mdash; so the count below is what answered, not what registered. Ordered by what they can be shown to do.</p>
         <div class="mkt-nums">
           <div><b id="mkt-total">&ndash;</b><span>registered agent ids</span></div>
           <div><b id="mkt-reach">&ndash;</b><span>that answer</span></div>

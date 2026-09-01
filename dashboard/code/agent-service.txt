@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 24 files, 6911 lines.
+# one fetch. 24 files, 6917 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -421,6 +421,12 @@ export const CAPABILITIES = {
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it, search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
     { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
+    // The three PancakeSwap answers, named rather than left inside "read-only
+    // tools over MCP". Somebody arriving with a decision to make is looking for
+    // the decision, not for the protocol it is delivered over.
+    { name: 'which fee tier pays', where: 'https://brainonbnb.com/api/fee-tiers?address=0x...', what: 'a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.' },
+    { name: 'which price range', where: 'https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000', what: 'a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.' },
+    { name: 'which route, and can you get out', where: 'https://brainonbnb.com/api/best-route?address=0x...&usd=250', what: 'which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.' },
   ],
   record: [
     {

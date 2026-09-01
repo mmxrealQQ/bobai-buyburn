@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3747 lines.
+# one fetch. 7 files, 3816 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1155,38 +1155,68 @@ if (reputation) {
   }, null, 2) + '\n');
 }
 
+// ONE AGENT, ONE CARD.
+//
+// This was a three-column table — "Agent or operator", "How we know",
+// "Hireable & history" — and every column was correct. It was also the wrong
+// shape for the person it has to convince. A table asks you to hold three
+// headers in your head and read across; on a phone it lived in a sideways
+// scroll box; and the thing a visitor actually wants to do, hire somebody, was
+// the last item in the third column behind two paragraphs of evidence.
+//
+// A card puts them in the order somebody decides in: who it is, what it does,
+// can I hire it and for how much, and only then — behind a fold — how we know
+// any of that. The evidence is not reduced by one word. It stops being the
+// first thing in the way of the button.
 const categorySections = categorised.map(({ cat, rows }) => {
   const ids = rows.reduce((n, r) => n + r.instances, 0);
   const body = rows.map((r) => {
     const [badge, why] = SOURCE_BADGE[r.hit.source];
     const hireable = canHire(r);
-    const hist = r.employment
-      ? `${fmt(r.employment.funded)} funded &middot; ${fmt(r.employment.completed)} released${r.employment.submitted_not_released ? ` &middot; ${fmt(r.employment.submitted_not_released)} unreleased` : ''}`
-      : 'never hired through the escrow';
-    return `        <tr${r.ours ? ' class="rg-ours"' : ''}${r.tele ? ` data-tele="${esc(r.tele)}"` : ''}>
-          <td><b>${esc(r.label)}</b>${r.ours ? ' <span class="rg-t rg-x4">ours</span>' : ''}${r.instances > 1 ? `<div class="rg-note">${r.instances} registry ids, one deployment</div>` : ''}
-              <div class="rg-note">${esc(r.sub)}</div>
-              ${(() => {
-                const d = describes(r);
-                const caps = (r.capabilities || []).slice(0, 6);
-                const more = (r.capabilities || []).length - caps.length;
-                return `<div class="rg-what${d.weak ? ' rg-weak' : ''}">${d.text ? esc(d.text) : esc(d.why)}</div>`
-                  + (caps.length ? `<div class="rg-caps">${caps.map((c) => `<code${c.why ? ` title="${esc(clean(c.why)).slice(0, 300)}"` : ''}>${esc(c.name)}</code>`).join(' ')}${more > 0 ? ` <span class="rg-more">+${more}</span>` : ''}</div>` : '');
-              })()}${r.tele ? '<div class="rg-live" hidden></div>' : ''}</td>
-          <td><span class="rg-t rg-${r.hit.source}" title="${esc(why)}">${badge}</span>
-              <div class="rg-note">${esc(r.hit.detail)}</div></td>
-          <td>${hireable ? 'ERC-8183' : '&mdash;'}<div class="rg-note">${hist}</div>${(() => {
-            if (!hireable || !r.agentId) return '';
-            const rep = ratingLine(r.agentId);
-            const q = quoteOf(r.agentId);
-            const mark = q
-              ? (q.quotes
-                ? `<div class="rg-note rg-quotes">quoted ${esc(q.price || 'a price')} when asked</div>`
-                : `<div class="rg-note rg-weak">did not quote when asked &mdash; ${esc(q.reason || 'no answer')}</div>`)
-              : '';
-            return rep + mark + `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''}>Hire &rarr;</button>`;
-          })()}</td>
-        </tr>`;
+    const q = hireable && r.agentId ? quoteOf(r.agentId) : null;
+    const d = describes(r);
+    const caps = (r.capabilities || []).slice(0, 6);
+    const more = (r.capabilities || []).length - caps.length;
+
+    // The facts a buyer weighs, each as one short line that says what it means
+    // rather than what it is called. "0 released" is a number; "nobody has been
+    // paid out yet" is the same number in a language somebody can act on.
+    const facts = [];
+    if (q) {
+      facts.push(q.quotes
+        ? `<li class="rgc-yes">Answers with a price when asked: <b>${esc(q.price || 'a price')}</b></li>`
+        : `<li class="rgc-no">Did not answer when we asked it for a price &mdash; ${esc(q.reason || 'no answer')}</li>`);
+    }
+    if (r.employment) {
+      const e = r.employment;
+      facts.push(e.funded
+        ? `<li>Hired ${fmt(e.funded)} ${e.funded === 1 ? 'time' : 'times'} through the escrow${e.completed ? `, ${fmt(e.completed)} paid out` : ', none paid out yet'}${e.submitted_not_released ? ` (${fmt(e.submitted_not_released)} delivered, still in the dispute window)` : ''}</li>`
+        : '<li>Never been hired through the escrow</li>');
+    } else if (hireable) {
+      facts.push('<li>Never been hired through the escrow</li>');
+    }
+    const rep = r.agentId ? ratingLine(r.agentId) : '';
+
+    return `        <article class="rgc${r.ours ? ' rg-ours' : ''}"${r.tele ? ` data-tele="${esc(r.tele)}"` : ''}>
+          <div class="rgc-h">
+            <div class="rgc-id">
+              <b>${esc(r.label)}</b>${r.ours ? ' <span class="rg-t rg-x4">ours</span>' : ''}
+              <div class="rg-note">${esc(r.sub)}${r.instances > 1 ? ` &middot; ${r.instances} registry ids, one deployment` : ''}</div>
+            </div>
+            ${hireable && r.agentId
+    ? `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''}>Hire${q && q.quotes && q.price ? ` &mdash; ${esc(q.price)}` : ''} &rarr;</button>`
+    : '<span class="rgc-nohire">Not hireable</span>'}
+          </div>
+          <p class="rgc-what${d.weak ? ' rg-weak' : ''}">${d.text ? esc(d.text) : esc(d.why)}</p>
+          ${facts.length ? `<ul class="rgc-facts">${facts.join('')}</ul>` : ''}
+          ${rep}
+          ${r.tele ? '<div class="rg-live" hidden></div>' : ''}
+          <details class="rgc-ev">
+            <summary>How we know this <span class="rg-t rg-${r.hit.source}" title="${esc(why)}">${badge}</span></summary>
+            <div class="rg-note">${esc(r.hit.detail)}</div>
+            ${caps.length ? `<div class="rg-caps">${caps.map((c) => `<code${c.why ? ` title="${esc(clean(c.why)).slice(0, 300)}"` : ''}>${esc(c.name)}</code>`).join(' ')}${more > 0 ? ` <span class="rg-more">+${more}</span>` : ''}</div>` : ''}
+          </details>
+        </article>`;
   }).join(NL);
 
   return `    <div class="rg-box" id="cat-${cat.id}">
@@ -1194,9 +1224,9 @@ const categorySections = categorised.map(({ cat, rows }) => {
       <p class="rg-sub">${esc(cat.blurb)}</p>
       <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${ids > rows.length ? `, covering ${fmt(ids)} registry ids once fleets are collapsed` : ''}. ${rows.length <= 2 ? 'That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : 'Agents that state their own category are listed individually; ones we matched are collapsed to the operator running them.'}</p>
       ${rows.length > 1 ? '<p class="rg-note" style="margin:-8px 0 16px">Ordered by evidence rather than by who runs it: the ones that returned a price when asked come first, then by jobs released, then by jobs funded.</p>' : ''}
-      ${rows.length ? `<div class="rg-scroll"><table class="rg"><thead><tr><th>Agent or operator</th><th>How we know</th><th>Hireable &amp; history</th></tr></thead><tbody>
+      ${rows.length ? `<div class="rgc-list">
 ${body}
-      </tbody></table></div>` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}
+      </div>` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}
       <p class="rg-note" style="margin-top:12px">Ask the broker directly: <code>GET /find?category=${cat.id}</code> at <a href="https://agent.brainonbnb.com/find?category=${cat.id}&amp;limit=10">agent.brainonbnb.com</a> — every result carries how it was categorised.</p>
     </div>`;
 }).join(NL);
@@ -1533,6 +1563,45 @@ const page = `<!doctype html>
   .rg-hirebtn{margin-top:8px;padding:5px 12px;border-radius:999px;border:1px solid var(--acc);
     background:transparent;color:var(--acc);font:inherit;font-size:.72rem;cursor:pointer;white-space:nowrap}
   .rg-hirebtn:hover{background:var(--acc);color:#0b0b0f}
+
+  /* The agent card. Replaces a three-column table that was correct and hard to
+     read: on a phone it lived in a sideways scroll box, and the button was the
+     last thing in the last column. */
+  .rgc-list{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))}
+  .rgc{border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.02);
+    padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:8px}
+  .rgc.rg-ours{border-color:rgba(var(--accs,240,185,11),.35);background:rgba(var(--accs,240,185,11),.05)}
+  .rgc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .rgc-id{min-width:0;flex:1 1 auto}
+  .rgc-id > b{font-size:.86rem;font-weight:600;overflow-wrap:anywhere}
+  .rgc .rg-note{overflow-wrap:anywhere}
+  .rgc-what{font-size:.79rem;line-height:1.6;color:var(--muted);margin:0;overflow-wrap:anywhere}
+  .rgc-what.rg-weak{opacity:.75;font-style:italic}
+  /* The two or three lines somebody actually decides on. A tick and a dash,
+     because "quoted 0.1 $U when asked" and "did not quote" were previously the
+     same grey and one of them is the answer to the question being asked. */
+  .rgc-facts{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+  .rgc-facts li{position:relative;padding-left:16px;font-size:.75rem;line-height:1.55;color:var(--muted);
+    overflow-wrap:anywhere}
+  .rgc-facts li::before{content:'3';position:absolute;left:0;top:0;color:var(--muted)}
+  .rgc-facts li.rgc-yes{color:var(--text)}
+  .rgc-facts li.rgc-yes::before{content:'¹3';color:#2ecc71}
+  .rgc-facts li.rgc-yes b{color:var(--acc,var(--gold))}
+  .rgc-facts li.rgc-no::before{content:' d7';color:#ff6b6b}
+  .rgc .rg-hirebtn{margin-top:0;flex:0 0 auto;white-space:nowrap}
+  .rgc-nohire{flex:0 0 auto;font-size:.7rem;color:var(--muted);border:1px solid var(--line);
+    border-radius:999px;padding:4px 10px;white-space:nowrap}
+  /* The evidence keeps every word it had; it stops being in front of the
+     button. Closed by default is a choice about order, not about candour. */
+  .rgc-ev{margin-top:auto;border-top:1px solid var(--line);padding-top:8px}
+  .rgc-ev summary{cursor:pointer;font-size:.72rem;color:var(--muted);list-style:none;
+    display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .rgc-ev summary::-webkit-details-marker{display:none}
+  .rgc-ev summary::before{content:'b8';display:inline-block;transition:transform .2s;color:var(--muted)}
+  .rgc-ev[open] summary::before{transform:rotate(90deg)}
+  .rgc-ev summary:hover{color:var(--acc,var(--gold))}
+  .rgc-ev > .rg-note{margin-top:7px}
+  .rgc .rg-live{margin-top:0}
   /* The panel is a dialog so Escape and the backdrop work without us writing
      either, and so focus cannot wander back into the page behind it. */
   #rg-hire{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);
@@ -2104,7 +2173,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   // unescaped is one img-onerror attribute away from being their page.
   (function(){
     var SURF = ${JSON.stringify(SURFACE)};
-    var rows=[].slice.call(document.querySelectorAll('tr[data-tele]'));
+    var rows=[].slice.call(document.querySelectorAll('[data-tele]'));
     if(!rows.length)return;
 
     function esc(v){

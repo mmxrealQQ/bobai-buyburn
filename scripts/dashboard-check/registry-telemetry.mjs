@@ -77,8 +77,8 @@ await send('Page.navigate', { url: URL });
 
 // Wait for the fetch to land rather than for a fixed time: a fixed sleep either
 // wastes seconds or reports a false negative on a slow morning.
-const SLOTS = `document.querySelectorAll('tr[data-tele] .rg-live').length`;
-const FILLED = `[...document.querySelectorAll('tr[data-tele] .rg-live')].filter(function(n){return !n.hidden}).length`;
+const SLOTS = `document.querySelectorAll('[data-tele] .rg-live').length`;
+const FILLED = `[...document.querySelectorAll('[data-tele] .rg-live')].filter(function(n){return !n.hidden}).length`;
 let filled = 0;
 for (let i = 0; i < 30; i++) {
   await wait(1000);
@@ -88,7 +88,7 @@ for (let i = 0; i < 30; i++) {
 
 const READ = `(() => {
   const out = [];
-  document.querySelectorAll('tr[data-tele]').forEach((tr) => {
+  document.querySelectorAll('[data-tele]').forEach((tr) => {
     const live = tr.querySelector('.rg-live');
     const box = tr.closest('.rg-box');
     out.push({

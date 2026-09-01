@@ -413,8 +413,15 @@ section('The number, and the order of the page');
   ok('the category picker is on the page', (body.match(/class="rg-chip"/g) || []).length === 4);
   const folds = (body.match(/<details class="rg-box rg-fold"/g) || []).length;
   ok('the evidence is folded, not deleted', folds >= 6, `only ${folds} folds`);
+  // Counted INSIDE the folds, which is what the claim is about. The old check
+  // counted every <tbody> on the page and passed on the four category tables,
+  // which were never folded — so it would have gone green with the evidence
+  // gone. When the category tables became cards the number fell below its
+  // threshold and the check failed for the wrong reason, which is how this was
+  // noticed.
+  const foldedHtml = body.slice(body.indexOf('<details class="rg-box rg-fold"'));
   ok('and the folded tables are still in the HTML',
-    (body.match(/<tbody>/g) || []).length >= 6,
+    (foldedHtml.match(/<tbody>/g) || []).length >= 4,
     'folding removed the tables an agent reads instead of hiding them');
 }
 section('The marketplace, from the front door');
@@ -458,7 +465,10 @@ section('The marketplace, from the front door');
   // of a capability flag nobody had tested, and three sellers could actually
   // quote. Every button now carries what happened when that seller was asked.
   const hireBtns = (body.match(/class="rg-hirebtn"/g) || []).length;
-  const marks = (body.match(/quoted [^<]*when asked|did not quote when asked/g) || []).length;
+  // The wording changed when the tables became cards ("Answers with a price
+  // when asked" / "Did not answer when we asked it"). The invariant did not:
+  // every button says what happened when that seller was asked.
+  const marks = (body.match(/Answers with a price when asked|Did not answer when we asked/g) || []).length;
   ok('every hire button says what the seller answered', hireBtns > 0 && marks >= hireBtns,
     `${hireBtns} buttons but only ${marks} carry a measured answer — run scripts/erc8004-hire-confirm.mjs`);
   const reg = await fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null);
@@ -525,7 +535,9 @@ section('The marketplace, from the front door');
   // agent, how we classified it and whether it had ever been paid. A row
   // without a description asks the reader to hire on vibes.
   const rows = (body.match(/data-cat="[a-z-]+"/g) || []).length;
-  const whats = (body.match(/class="rg-what/g) || []).length;
+  // rg-what was the table cell; rgc-what is the card. Both are the sentence
+  // that says what the agent does, which is the thing being counted.
+  const whats = (body.match(/class="rgc?-what/g) || []).length;
   ok('every hireable row says what the agent does', whats >= rows, `${whats} descriptions for ${rows} hireable rows`);
   // Ours must not be among the ones with nothing to say. Holding others to a
   // standard we fail on our own two entries is the failure mode here.

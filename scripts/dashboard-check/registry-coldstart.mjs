@@ -117,7 +117,11 @@ for (const c of CATS) {
   const d = await ev(`(()=>{
     const box = document.getElementById(${JSON.stringify(c.id)});
     if(!box) return { missing: true };
-    const rows = [...box.querySelectorAll('tbody tr')];
+    // The category listing became cards on 1 September; it was 'tbody tr'.
+    // The clicks kept working and only the counting went to zero, which is
+    // exactly the shape of a checker that measures the markup instead of the
+    // thing — so it now accepts either.
+    const rows = [...box.querySelectorAll('.rgc, tbody tr')];
     const btns = [...box.querySelectorAll('.rg-hirebtn')];
     return {
       reached: Math.round(box.getBoundingClientRect().top),
@@ -125,16 +129,19 @@ for (const c of CATS) {
       explains: !!box.querySelector('.rg-sub'),
       rows: rows.length,
       described: rows.filter(r=>{
-        const t=(r.querySelector('.rg-what')||r.querySelector('.rg-caps')||{}).textContent||'';
+        // .rgc-what is the card, .rg-what was the table cell. Both sit OUTSIDE
+        // the evidence fold on purpose: a description a reader has to open a
+        // disclosure to see is not a description they can choose from.
+        const t=(r.querySelector('.rgc-what')||r.querySelector('.rg-what')||r.querySelector('.rg-caps')||{}).textContent||'';
         return t.trim().length>25;
       }).length,
       hireable: btns.length,
-      quoting: box.querySelectorAll('.rg-quotes').length,
+      quoting: box.querySelectorAll('.rg-quotes, .rgc-yes').length,
       warned: box.querySelectorAll('.rg-weak').length,
       firstBtn: btns.length ? {
         name: btns[0].getAttribute('data-name'),
         cat: btns[0].getAttribute('data-cat'),
-        ours: !!btns[0].closest('tr.rg-ours'),
+        ours: !!btns[0].closest('.rg-ours'),
       } : null,
     };
   })()`);

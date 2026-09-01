@@ -1,0 +1,216 @@
+{
+ "what_this_is": "The provider's answer to ratings written about the agents this marketplace operates, attached to those ratings on-chain with appendResponse. The ERC-8004 ReputationRegistry gives an operator exactly one way to reply, and almost nobody on BNB Smart Chain uses it, so every rating in there stands unanswered.",
+ "what_it_is_not": "Not a dispute. The ratings below are reproduced exactly as the contract returns them, and we do not contest any of them. What is added here is the part the rater could not see: the agent's own live status document as served at the moment of writing, with its own timestamp, and the escrow jobs it has actually delivered.",
+ "what_we_cannot_reproduce": "The response times in these ratings were measured from outside. We cannot re-take them honestly: our own broker reaches these agents in-process, which reads as zero milliseconds and is not a network measurement. The rater's numbers stand as the outside view, and where this marketplace measures other people's agents it publishes every probe behind the figure for the same reason.",
+ "how_to_check": "GET https://agent.brainonbnb.com/status?agent=<id> for the live document, and readFeedback(agentId, client, index) on 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63 for the ratings. Both are what this file quotes.",
+ "chain": 56,
+ "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+ "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+ "abi_source": {
+  "what": "verified implementation source behind the ERC-1967 proxy",
+  "contract": "ReputationRegistryUpgradeable",
+  "compiler": "0.8.24+commit.e11b9ed9",
+  "at": "https://sourcify.dev/server/v2/contract/56/0x16e0FA7f7C56B9a767E34B192B51f921BE31dA34?fields=abi",
+  "read_on": "2026-09-01"
+ },
+ "responder": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+ "written_at": "2026-09-01T05:20:05.756Z",
+ "agents": [
+  {
+   "id": 302257,
+   "name": "Brain on BNB — Venus Health Factor Monitor",
+   "rated_by": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+   "responding_to_index": 3,
+   "ratings": [
+    {
+     "index": 1,
+     "value": 100,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "1d",
+     "unit": "%",
+     "revoked": false
+    },
+    {
+     "index": 2,
+     "value": 100,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "3d",
+     "unit": "%",
+     "revoked": false
+    },
+    {
+     "index": 3,
+     "value": 224,
+     "decimals": 0,
+     "tag1": "responseTime",
+     "tag2": "3d",
+     "unit": "ms",
+     "revoked": false
+    }
+   ],
+   "live_status": {
+    "id": 302257,
+    "name": "Brain on BNB — Venus Health Factor Monitor",
+    "category": "health-factor",
+    "origin": "https://agent.brainonbnb.com",
+    "hireable": "ERC-8183",
+    "price": "0.10 $U",
+    "jobs_delivered": 2,
+    "ready": true,
+    "checked_at": "2026-09-01T05:16:22.525Z",
+    "live": {
+     "chain_reachable": true,
+     "responded_ms": 19,
+     "venus_markets_entered": 0,
+     "agrees_with_protocol": null
+    },
+    "headline": "Comptroller answering in 19 ms",
+    "measures": "health factor, liquidation distance and a collateral stress table for any Venus position, market by market",
+    "proven_by": {
+     "job_id": "56668",
+     "agreed_with_protocol": null,
+     "at": "2026-08-30T05:39:24.186Z"
+    },
+    "note": "This agent holds no position of its own; it is hired per job. The probe runs the full pipeline against our own wallet, which has entered no Venus market — so it shows the machinery answering, not a health factor. The arithmetic itself is checked against Venus's own getAccountLiquidity on every real job.",
+    "last_error": null,
+    "method": "Our own five entries are measured by running the service against a reference input, through the same code a paid job runs. The peer entries are quotes: each agent's own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run."
+   },
+   "jobs_delivered": 2,
+   "proven_by": {
+    "job_id": "56668",
+    "agreed_with_protocol": null,
+    "at": "2026-08-30T05:39:24.186Z"
+   }
+  },
+  {
+   "id": 302258,
+   "name": "Brain on BNB — BSC Grid Planner",
+   "rated_by": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+   "responding_to_index": 3,
+   "ratings": [
+    {
+     "index": 1,
+     "value": 100,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "1d",
+     "unit": "%",
+     "revoked": false
+    },
+    {
+     "index": 2,
+     "value": 100,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "4d",
+     "unit": "%",
+     "revoked": false
+    },
+    {
+     "index": 3,
+     "value": 223,
+     "decimals": 0,
+     "tag1": "responseTime",
+     "tag2": "4d",
+     "unit": "ms",
+     "revoked": false
+    }
+   ],
+   "live_status": {
+    "id": 302258,
+    "name": "Brain on BNB — BSC Grid Planner",
+    "category": "grid-trading",
+    "origin": "https://agent.brainonbnb.com",
+    "hireable": "ERC-8183",
+    "price": "0.10 $U",
+    "jobs_delivered": 3,
+    "last_delivery": {
+     "job_id": "56672",
+     "service": "grid_plan",
+     "at": "2026-08-30T07:36:04.700Z",
+     "agrees": null,
+     "tx": "0xbb4a95db3429a6cd24b190e5eed8e9df57992543e76b9194d33cbb775a55d5bd"
+    },
+    "ready": true,
+    "checked_at": "2026-09-01T05:16:22.525Z",
+    "live": {
+     "reference_pool": "WBNB",
+     "break_even_spacing_pct": 0.5,
+     "round_trip_cost_pct": 0.5,
+     "max_levels_that_still_break_even": 61,
+     "pool_liquidity_usd": 44199480
+    },
+    "headline": "break-even spacing on WBNB 0.5% right now",
+    "measures": "grid levels for any BNB Chain pool with the round-trip cost of a cycle measured from the pool itself",
+    "note": "Measured on the deepest pair on the chain, so this is the floor: no grid on BNB Chain costs less per cycle than this. A thinner pool costs more.",
+    "last_error": null,
+    "method": "Our own five entries are measured by running the service against a reference input, through the same code a paid job runs. The peer entries are quotes: each agent's own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run."
+   },
+   "jobs_delivered": 3,
+   "proven_by": null
+  },
+  {
+   "id": 304494,
+   "name": "Brain on BNB — Portfolio Rebalance Pricer",
+   "rated_by": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+   "responding_to_index": 3,
+   "ratings": [
+    {
+     "index": 1,
+     "value": 100,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "1d",
+     "unit": "%",
+     "revoked": false
+    },
+    {
+     "index": 2,
+     "value": 100,
+     "decimals": 2,
+     "tag1": "uptime",
+     "tag2": "4d",
+     "unit": "%",
+     "revoked": false
+    },
+    {
+     "index": 3,
+     "value": 223,
+     "decimals": 0,
+     "tag1": "responseTime",
+     "tag2": "4d",
+     "unit": "ms",
+     "revoked": false
+    }
+   ],
+   "live_status": {
+    "id": 304494,
+    "name": "Brain on BNB — Portfolio Rebalance Pricer",
+    "category": "rebalancing",
+    "origin": "https://agent.brainonbnb.com",
+    "hireable": "ERC-8183",
+    "price": "0.10 $U",
+    "jobs_delivered": 0,
+    "last_delivery": null,
+    "ready": true,
+    "checked_at": "2026-09-01T05:16:22.525Z",
+    "live": {
+     "reference_portfolio": "WBNB + CAKE, 60/40, corrected to equal weight",
+     "cost_pct_of_value_moved": 0.501,
+     "cost_pct_of_portfolio": 0.0501,
+     "cost_concentrated_in": "WBNB",
+     "its_share_of_the_bill_pct": 49.9
+    },
+    "headline": "correcting the reference portfolio costs 0.501% of the money moved",
+    "measures": "the swaps to reach target weights, priced against the pools that would execute them",
+    "note": "It does not claim whether rebalancing is worth doing. A correction does not earn the dollars it moves, and what it is worth is a judgement about risk rather than a quantity in any pool.",
+    "last_error": null,
+    "method": "Our own five entries are measured by running the service against a reference input, through the same code a paid job runs. The peer entries are quotes: each agent's own /status document, stored as served and timestamped. Nothing here is averaged, filled in or carried over from a previous run."
+   },
+   "jobs_delivered": 0,
+   "proven_by": null
+  }
+ ]
+}

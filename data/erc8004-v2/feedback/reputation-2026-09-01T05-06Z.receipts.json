@@ -1,0 +1,31 @@
+{
+ "evidence": "https://brainonbnb.com/evidence/reputation-2026-09-01T05-06Z.json",
+ "evidence_hash": "0xdbee99f03111b8a85f9968e91c9ec02d4a04d09a58d6956fc715e8b07e209978",
+ "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+ "chain": 56,
+ "written_by": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+ "written": [
+  {
+   "id": 265375,
+   "tag1": "responseTime",
+   "tag2": "4m",
+   "value": 189,
+   "unit": "ms",
+   "tx": "0xb4ff6e80f21c5cf99f6fa829865f50d63ed8cc8346edcc4ab76d1426da7375e2",
+   "index": 1,
+   "block": 119284757,
+   "at": "2026-09-01T05:08:24.358Z"
+  },
+  {
+   "id": 269233,
+   "tag1": "responseTime",
+   "tag2": "4m",
+   "value": 176,
+   "unit": "ms",
+   "tx": "0x2d7ec0690e0337bcc0c46bf08a3de6b654ea743b45f3e945f2e0642a6b41c245",
+   "index": 1,
+   "block": 119284760,
+   "at": "2026-09-01T05:08:25.581Z"
+  }
+ ]
+}

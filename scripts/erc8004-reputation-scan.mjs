@@ -11,16 +11,21 @@
 // contract. A claim nobody backs is the same class of thing this marketplace
 // spends its time catching in other people's registrations.
 //
-// THE SHAPE, MEASURED RATHER THAN ASSUMED
+// THE SHAPE — RECOVERED FIRST, THEN VERIFIED
 //   getClients(uint256 agentId)                      -> address[]
 //   getLastIndex(uint256 agentId, address client)    -> uint64      (1-based)
 //   readFeedback(uint256, address, uint64 index)
-//        -> (uint128 value, uint8 valueDecimals, string tag1, string tag2, bool isRevoked)
-// The README for these contracts names the functions and not their types, and
-// every getSummary/readAllFeedback shape we tried reverted empty — an empty
-// revert says "wrong selector or wrong arguments" and nothing else, so the ABI
-// here was recovered by calling until something answered and decoding what came
-// back. Do not "tidy" it against the README.
+//        -> (int128 value, uint8 valueDecimals, string tag1, string tag2, bool isRevoked)
+// The README for these contracts names the functions and not their types, so
+// this was originally recovered by calling the contract until something
+// answered. On 1 September 2026 the implementation behind the proxy turned out
+// to be verified source and could simply be read (see lib/erc8004-reputation.mjs),
+// which corrected one type: `value` is int128, not uint128. Nothing on this
+// chain is negative today, so no published number was ever wrong — but the
+// first negative rating would have decoded as 3.4e38 instead of a minus sign.
+// The other correction: getSummary and readAllFeedback never had a wrong
+// selector. They revert with "clientAddresses required" on an empty client
+// list. They work; we were calling them wrongly.
 //
 // TAGS ARE UNITS, NOT LABELS. tag1 is the metric ("uptime", "responseTime"),
 // tag2 is the window ("1d", "2d", "3d"). 10000 with 2 decimals under "uptime"
@@ -36,6 +41,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createPublicClient, http, toFunctionSelector, encodeAbiParameters, parseAbiParameters, decodeAbiParameters } from 'viem';
 import { bsc } from 'viem/chains';
+import { isOperational, unitFor } from './lib/erc8004-reputation.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const arg = (k, d) => {
@@ -101,23 +107,25 @@ const readFeedback = async (id, client, index) => {
   const d = await raw(SEL.read + encodeAbiParameters(parseAbiParameters('uint256, address, uint64'), [BigInt(id), client, BigInt(index)]).slice(2));
   if (!d || d === '0x') return null;
   const [value, decimals, tag1, tag2, revoked] = decodeAbiParameters(
-    parseAbiParameters('uint128, uint8, string, string, bool'), d,
+    parseAbiParameters('int128, uint8, string, string, bool'), d,
   );
   return { value: Number(value), decimals: Number(decimals), tag1, tag2, revoked };
 };
 
 // A value only means something next to its unit, so the unit travels with it.
 const asNumber = (f) => f.value / 10 ** f.decimals;
-const UNITS = { uptime: '%', responsetime: 'ms', latency: 'ms' };
-const unitFor = (tag) => UNITS[String(tag || '').toLowerCase()] || '';
 
-// TWO KINDS OF CLAIM, AND THEY ARE NOT COMPARABLE.
+// TWO KINDS OF CLAIM, AND THEY ARE NOT COMPARABLE — the set that decides which
+// is which lives in lib/erc8004-reputation.mjs, because the writer
+// (erc8004-give-feedback.mjs) enforces the same list as a rule about what this
+// project is willing to put on a public registry. A reader that separates
+// measurement from taste while the writer does not obey the separation would be
+// a rule we only apply to other people.
 //
-// An uptime or a response time is a measurement: a third party can go and take
-// it again, and disagree. A "personality" of 70 is a taste claim about
-// somebody else's agent — unfalsifiable, and on this chain written in bulk with
-// the same constant. Both live in the same registry, and a marketplace that
-// adds them up publishes a reputation layer that does not exist.
+// This sentence travels with the summary rather than with the raw records: the
+// first version of this file called every record an attestation "not an
+// opinion", which the reaggregation then disproved, and a stale sentence
+// survived into the published API because only the numbers were refreshed.
 const WHAT_THIS_IS = [
   'Every rating in the ERC-8004 ReputationRegistry on BNB Smart Chain for the agents this marketplace lists.',
   'tag1 is what is being claimed, tag2 is the window it covers, and the value carries its own decimal places.',
@@ -126,8 +134,49 @@ const WHAT_THIS_IS = [
   'The `checkable` block separates them; on this chain today almost all of it is the second kind.',
 ].join(' ');
 
-const OPERATIONAL = new Set(['uptime', 'responsetime', 'latency', 'liveness']);
-const isOperational = (tag) => OPERATIONAL.has(String(tag || '').toLowerCase());
+// Latest value per metric, PER RATER. Not an average across windows: a 1d and
+// a 3d uptime are two different measurements of two different periods, and
+// averaging them would invent a window nobody measured.
+//
+// WHY THIS IS A LIST PER TAG AND NOT ONE VALUE
+// feedbackIndex is per (agent, client). Index 2 from one rater is not "newer"
+// than index 1 from another, and the record the contract stores carries no
+// timestamp to break the tie. The first version of this function kept one value
+// per tag by highest index, which silently dropped a second rater's measurement
+// the moment one existed — and one existed the day this marketplace wrote its
+// own. Two independent parties measuring the same agent is the most useful
+// thing a reputation registry can show; hiding one of them for a tidier row
+// would throw away the only part that makes the registry worth reading.
+const byTag = (rec) => {
+  const m = {};
+  for (const f of rec.feedback || []) {
+    if (f.revoked) continue;
+    const k = f.tag1 || '(untagged)';
+    if (!m[k]) m[k] = new Map();
+    const prev = m[k].get(f.client);
+    if (!prev || f.index > prev.index) {
+      m[k].set(f.client, { client: f.client, value: f.number, unit: f.unit, window: f.tag2 || null, index: f.index });
+    }
+  }
+  return Object.fromEntries(Object.entries(m).map(([k, v]) => [k, [...v.values()].sort((a, b) => a.client.localeCompare(b.client))]));
+};
+
+// Everything the registry holds about one agent. The full scan and the targeted
+// refresh must read identically, or a refreshed row would differ from a scanned
+// one for reasons nobody could see.
+async function readAgent(id, name) {
+  const cs = await getClients(id);
+  const rec = { id, name: name || null, clients: cs, feedback: [] };
+  for (const c of cs) {
+    const last = await getLastIndex(id, c);
+    for (let i = 1; i <= last; i++) {
+      const f = await readFeedback(id, c, i);
+      if (!f) continue;
+      rec.feedback.push({ client: c, index: i, ...f, number: asNumber(f), unit: unitFor(f.tag1) });
+    }
+  }
+  return rec;
+}
 
 // Everything derived from the raw records, in one place, so `--reaggregate`
 // and a fresh scan can never produce two different summaries of one file.
@@ -216,12 +265,24 @@ if (SELFTEST) {
   const none = await getClients(304493);
   if (none.length) problems.push(`#304493 was expected to have no raters and returned ${none.length}`);
 
+  // The signed-value pin. Until 1 September this decoder read `value` as
+  // uint128, which is right for every record on this chain today and wrong for
+  // the first one anybody writes below zero: -5 would have been published as
+  // 3.4e38. There is no negative record to read, so the check is made against a
+  // payload instead — which is also what stops the type being "tidied" back.
+  const negative = decodeAbiParameters(
+    parseAbiParameters('int128, uint8, string, string, bool'),
+    encodeAbiParameters(parseAbiParameters('int128, uint8, string, string, bool'), [-5n, 0, 'uptime', '1d', false]),
+  );
+  if (Number(negative[0]) !== -5) problems.push(`a value of -5 decoded as ${negative[0]} — value is int128, not uint128`);
+
   console.log('\nReputation decoder self-test');
   if (problems.length) { for (const p of problems) console.log('  x ' + p); process.exit(1); }
   console.log('  bound to the same identity registry we census');
   console.log(`  known record decodes to ${KNOWN.value}${unitFor(KNOWN.tag1)} ${KNOWN.tag1}/${KNOWN.tag2}`);
   console.log('  an index past the end returns nothing, not a zero');
   console.log('  an unrated agent returns no raters');
+  console.log('  a negative value decodes as negative, not as 3.4e38');
   console.log('\nno problems.');
   process.exit(0);
 }
@@ -238,7 +299,13 @@ if (process.argv.includes('--reaggregate')) {
   // first version of this file called every record an attestation "not an
   // opinion", which the reaggregation then disproved — and a stale sentence
   // survived into the published API because only the numbers were refreshed.
-  const next = { ...j, what_this_is: WHAT_THIS_IS, ...analyse(j.agents || []), agents: j.agents, reaggregated_at: new Date().toISOString() };
+  // `latest` is derived too, not carried over. It changed shape once already —
+  // from one value per tag to one per rater — and a reaggregation that refreshed
+  // the numbers while leaving the old shape in place would publish two shapes in
+  // one file, which is how a renderer ends up printing one rater and dropping
+  // the other.
+  const agents = (j.agents || []).map((a) => (a.feedback ? { ...a, latest: byTag(a) } : a));
+  const next = { ...j, what_this_is: WHAT_THIS_IS, ...analyse(agents), agents, reaggregated_at: new Date().toISOString() };
   fs.writeFileSync(f, JSON.stringify(next, null, 1) + '\n');
   console.log(`re-derived the summary of ${j.rated.attestations} attestations over ${j.rated.agents} agents`);
   console.log(`  checkable: ${next.checkable.attestations} attestations over ${next.checkable.agents} agents (${next.checkable.tags.join(', ')})`);
@@ -246,6 +313,47 @@ if (process.argv.includes('--reaggregate')) {
   for (const t of next.tags.slice(0, 8)) {
     console.log(`  ${t.tag.padEnd(14)} ${String(t.attestations).padStart(6)} · ${String(t.agents).padStart(4)} agents · most common ${t.most_common} in ${(t.most_common_share * 100).toFixed(0)}%`);
   }
+  process.exit(0);
+}
+
+// ── refresh a few agents without re-reading 20,000 attestations ───────────
+// A full --all scan is 20,732 calls and about twenty minutes, and it is not
+// resumable: a failure at minute nineteen costs the lot. That is the wrong
+// tool for "we just wrote two attestations and the file should say so". This
+// re-reads exactly the named agents, merges them into the file that is already
+// there, and re-derives the summary through the same analyse() the scan uses.
+if (arg('refresh', false)) {
+  const wanted = String(arg('refresh', '')).split(/[,\s]+/).filter(Boolean).map(Number);
+  if (!wanted.length) { console.error('--refresh needs one or more agent ids'); process.exit(1); }
+  const f = path.join(DIR, 'reputation.json');
+  const j = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const agents = (j.agents || []).slice();
+  for (const id of wanted) {
+    const before = agents.findIndex((a) => Number(a.id) === id);
+    const rec = await readAgent(id, before > -1 ? agents[before].name : null);
+    rec.latest = byTag(rec);
+    const was = before > -1 ? (agents[before].feedback?.length || 0) : 0;
+    if (before > -1) agents[before] = rec; else agents.push(rec);
+    console.log(`  ${String(id).padEnd(8)} ${was} -> ${rec.feedback.length} attestations from ${rec.clients.length} client(s)`);
+  }
+  const attestations = agents.reduce((n, a) => n + (a.feedback?.length || 0), 0);
+  const distinct = new Set();
+  for (const a of agents) for (const fb of a.feedback || []) distinct.add(fb.client);
+  const next = {
+    ...j,
+    what_this_is: WHAT_THIS_IS,
+    rated: { ...j.rated, agents: agents.filter((a) => a.feedback?.length).length, attestations, distinct_raters: distinct.size },
+    ...analyse(agents),
+    agents,
+    refreshed_at: new Date().toISOString(),
+    // The scan timestamp is NOT moved. Most of this file is still as old as the
+    // scan that produced it, and stamping it "now" because two rows were
+    // re-read would age-launder the other 794.
+    refreshed: wanted,
+  };
+  fs.writeFileSync(f, JSON.stringify(next, null, 1) + '\n');
+  console.log(`\n${attestations} attestations over ${next.rated.agents} agents · checkable ${next.checkable.attestations} over ${next.checkable.agents}`);
+  console.log(`refreshed ${wanted.length} agent(s) in ${path.relative(ROOT, f)} — scan timestamp left at ${String(j.measured_at).slice(0, 16)}`);
   process.exit(0);
 }
 
@@ -287,17 +395,8 @@ await Promise.all(Array.from({ length: CONC }, async () => {
     const id = queue.shift();
     if (id === undefined) return;
     try {
-      const cs = await getClients(id);
-      const rec = { id, name: names.get(id) || null, clients: cs, feedback: [] };
-      for (const c of cs) {
-        const last = await getLastIndex(id, c);
-        for (let i = 1; i <= last; i++) {
-          const f = await readFeedback(id, c, i);
-          if (!f) continue;
-          rec.feedback.push({ client: c, index: i, ...f, number: asNumber(f), unit: unitFor(f.tag1) });
-        }
-        raters.set(c, (raters.get(c) || 0) + 1);
-      }
+      const rec = await readAgent(id, names.get(id) || null);
+      for (const c of rec.clients) raters.set(c, (raters.get(c) || 0) + 1);
       if (rec.feedback.length) { rated++; attestations += rec.feedback.length; out.push(rec); }
     } catch (e) {
       failed++;
@@ -307,18 +406,6 @@ await Promise.all(Array.from({ length: CONC }, async () => {
   }
 }));
 
-// Latest value per metric, per agent. Not an average across windows: a 1d and
-// a 3d uptime are two different measurements of two different periods, and
-// averaging them would invent a window nobody measured.
-const byTag = (rec) => {
-  const m = {};
-  for (const f of rec.feedback || []) {
-    if (f.revoked) continue;
-    const k = f.tag1 || '(untagged)';
-    if (!m[k] || f.index > m[k].index) m[k] = { value: f.number, unit: f.unit, window: f.tag2 || null, index: f.index, client: f.client };
-  }
-  return m;
-};
 for (const rec of out) if (rec.feedback) rec.latest = byTag(rec);
 
 const kept = out.filter((r) => r.feedback?.length || r.error).sort((a, b) => (b.feedback?.length || 0) - (a.feedback?.length || 0));
@@ -344,7 +431,7 @@ if (failed) console.log(`unreadable       ${failed}`);
 console.log('');
 for (const r of payload.agents.slice(0, 14)) {
   if (r.error) { console.log(`  ${String(r.id).padEnd(8)} ${String(r.name || '').slice(0, 34).padEnd(36)} unreadable: ${r.error}`); continue; }
-  const bits = Object.entries(r.latest || {}).map(([tag, v]) => `${tag} ${v.value}${v.unit}${v.window ? ` /${v.window}` : ''}`);
+  const bits = Object.entries(r.latest || {}).flatMap(([tag, vs]) => vs.map((v) => `${tag} ${v.value}${v.unit}${v.window ? ` /${v.window}` : ''}`));
   console.log(`  ${String(r.id).padEnd(8)} ${String(r.name || '').slice(0, 34).padEnd(36)} ${bits.join(' · ')}`);
 }
 console.log(`\nwrote ${path.relative(ROOT, path.join(DIR, 'reputation.json'))}`);

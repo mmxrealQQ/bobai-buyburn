@@ -187,8 +187,11 @@ const NOT_PUBLIC = /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|169\.254\.|172\
 
 const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText = false) => {
   if (local) {
+    const t = Date.now();
     const r = await local(endpoint, data);
-    if (r) return { rpc: r };
+    // A loopback timing is not comparable to a network one and must never be
+    // published as though it were: our own agents answer in-process here.
+    if (r) return { rpc: r, ms: Date.now() - t, loopback: true };
   }
   let host = '';
   try { host = new URL(endpoint).hostname; } catch { return { why: `"${endpoint}" is not a URL` }; }
@@ -196,7 +199,16 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
     return { why: `the seller's card names ${host} as its endpoint, which is not reachable from outside its own machine` };
   }
 
+  // THE SELLER'S OWN RESPONSE TIME, AND NOTHING ELSE.
+  // The session log already records how long a /hire call took end to end, but
+  // that number contains endpoint resolution, an RPC read and the caller's own
+  // connection — on a phone hotspot it is mostly the hotspot. What is measured
+  // here is the one span that belongs to the seller: the POST to its endpoint
+  // until its body is read, taken inside a Cloudflare worker. It is the only
+  // timing this project is willing to attest to a stranger's agent on a public
+  // registry, because it is the only one a third party can reproduce.
   let r, text;
+  const t0 = Date.now();
   try {
     r = await fetch(endpoint, {
       method: 'POST',
@@ -229,8 +241,9 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
     });
     text = await r.text();
   } catch (e) {
-    return { why: `the endpoint its card names did not answer (${e.name === 'TimeoutError' ? `no reply in ${timeoutMs / 1000}s` : e.name})` };
+    return { why: `the endpoint its card names did not answer (${e.name === 'TimeoutError' ? `no reply in ${timeoutMs / 1000}s` : e.name})`, ms: Date.now() - t0 };
   }
+  const ms = Date.now() - t0;
 
   // Same SSE tolerance as the MCP dispatcher: some A2A servers stream, and the
   // payload is the last data line.
@@ -240,14 +253,14 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
 
   if (!parsed) {
     const ct = (r.headers.get('content-type') || 'no content-type').split(';')[0];
-    return { why: `the endpoint its card names answered HTTP ${r.status} ${ct}, which is not an A2A reply` };
+    return { why: `the endpoint its card names answered HTTP ${r.status} ${ct}, which is not an A2A reply`, ms };
   }
   // Parseable, but not JSON-RPC: agent 33813 answers {"status":"OK"} to every
   // message, which a caller checking only for a parse error reads as success.
   if (!parsed.jsonrpc && !parsed.result && !parsed.error) {
-    return { why: `answered ${JSON.stringify(parsed).slice(0, 80)} rather than a JSON-RPC reply` };
+    return { why: `answered ${JSON.stringify(parsed).slice(0, 80)} rather than a JSON-RPC reply`, ms };
   }
-  return { rpc: parsed };
+  return { rpc: parsed, ms };
 };
 
 // Sellers answer in two different shapes, and both are in production on the
@@ -380,12 +393,17 @@ export async function negotiate(endpoint, task, terms, local = null, skill = 'ne
   // to the conventional /a2a path, the address is OUR guess and saying "the
   // endpoint its card names" would pin our invention on them — the same false
   // attribution this whole change exists to stop.
-  if (res.why) return { ok: false, error: res.why.replace(/\bthe endpoint its card names\b/, WHOSE[source] || WHOSE.card) };
+  // The timing belongs to the attempt that actually answered: after a text
+  // retry, the first attempt's duration is a fact about a message the seller
+  // rejected, not about the seller.
+  const seller_ms = typeof res.ms === 'number' ? res.ms : null;
+  const loopback = !!res.loopback;
+  if (res.why) return { ok: false, error: res.why.replace(/\bthe endpoint its card names\b/, WHOSE[source] || WHOSE.card), seller_ms, loopback };
   const rpc = res.rpc;
-  if (rpc.error) return { ok: false, error: rpc.error.message || 'seller rejected the negotiation' };
+  if (rpc.error) return { ok: false, error: rpc.error.message || 'seller rejected the negotiation', seller_ms, loopback };
   const quote = findQuote(rpc.result);
-  if (!quote) return { ok: false, error: 'seller answered, but its reply carries no price' };
-  return { ok: true, quote };
+  if (!quote) return { ok: false, error: 'seller answered, but its reply carries no price', seller_ms, loopback };
+  return { ok: true, quote, seller_ms, loopback };
 }
 
 // ---------------------------------------------------------------------------
@@ -613,7 +631,7 @@ export async function handleHire(url, body, env, opts = {}) {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
       outcome: neg.error, agent: target, ...(opts.probe ? { probe: true } : {}),
     });
-    return { status: 502, body: { error: neg.error, endpoint, negotiated: false } };
+    return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms } };
   }
 
   const q = neg.quote;
@@ -651,6 +669,7 @@ export async function handleHire(url, body, env, opts = {}) {
     return { status: 200, body: {
       negotiated: true, endpoint, hireable: false,
       quote: quoteView(q, budget),
+      seller_ms: neg.seller_ms,
       why_not: provider_problem,
     } };
   }
@@ -661,6 +680,11 @@ export async function handleHire(url, body, env, opts = {}) {
     negotiated: true,
     hireable: true,
     endpoint,
+    // Milliseconds the seller took to answer this negotiation, timed at the
+    // edge around its HTTP call alone. `loopback` marks our own agents, which
+    // answer in-process and are therefore not comparable.
+    seller_ms: neg.seller_ms,
+    ...(neg.loopback ? { seller_ms_loopback: true } : {}),
     provider,
     provider_source,
     quote: quoteView(q, budget),

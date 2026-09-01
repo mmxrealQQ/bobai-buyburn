@@ -517,6 +517,20 @@ const reputation = (() => {
   try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
 })();
 const ratingOf = (id) => (reputation?.agents || []).find((a) => String(a.id) === String(id) && a.latest) || null;
+// The address this marketplace rates other agents from. It is the same wallet
+// that owns our own registrations, so a reader can tie a rating to a party
+// rather than to an anonymous address — and so the page can say which numbers
+// are ours instead of quietly presenting them as somebody else's.
+const OUR_RATER = String((() => {
+  try {
+    const own = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'own-agents.json'), 'utf8'));
+    return Object.values(own.agents || {}).map((a) => a.owner).find(Boolean) || '';
+  } catch { return ''; }
+})()).toLowerCase();
+const isOurs = (client) => !!OUR_RATER && String(client).toLowerCase() === OUR_RATER;
+// One rendered measurement, with the rater attached. Two parties measuring the
+// same agent is the whole reason to read this registry, so both are printed.
+const metricBit = (tag, v) => `${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[tag] || tag)}${v.window ? ` over ${esc(v.window)}` : ''}${isOurs(v.client) ? ' <span class="rg-repby">(measured here)</span>' : ''}`;
 const METRIC_LABEL = { uptime: 'uptime', responseTime: 'response', liveness: 'liveness' };
 const OPERATIONAL_TAGS = new Set(['uptime', 'responsetime', 'latency', 'liveness']);
 
@@ -540,8 +554,8 @@ const ratingLine = (id) => {
   const entries = Object.entries(r.latest);
   const measured = entries.filter(([tag]) => OPERATIONAL_TAGS.has(tag.toLowerCase()));
   if (measured.length) {
-    const parts = measured.map(([tag, v]) => `${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[tag] || tag)}${v.window ? ` over ${esc(v.window)}` : ''}`);
-    return `<div class="rg-note rg-rep" title="Read live from the ERC-8004 ReputationRegistry at ${REPUTATION_ADDR}. A measurement somebody else took, and one you could take again.">${parts.join(' &middot; ')}${by}</div>`;
+    const parts = measured.flatMap(([tag, vs]) => vs.map((v) => metricBit(tag, v)));
+    return `<div class="rg-note rg-rep" title="Read live from the ERC-8004 ReputationRegistry at ${REPUTATION_ADDR}. Measurements, not opinions: each one is something a third party could take again — including ours, where it says so.">${parts.join(' &middot; ')}${by}</div>`;
   }
   const tags = entries.map(([t]) => t).slice(0, 3).join(', ');
   return `<div class="rg-note rg-repweak" title="Read live from the ERC-8004 ReputationRegistry at ${REPUTATION_ADDR}.">rated only on ${esc(tags)}${entries.length > 3 ? ' and more' : ''} &mdash; nothing measurable${by}</div>`;
@@ -630,9 +644,11 @@ if (reputation) {
     population: reputation.population,
     rated: reputation.rated,
     raters: reputation.raters,
-    how_to_read_it: 'tag1 is the metric and tag2 the window it covers. value carries its own decimals: 10000 at 2 decimals under "uptime" is 100.00 percent. Values under different tags are different units and are never combined.',
+    how_to_read_it: 'tag1 is the metric and tag2 the window it covers. value carries its own decimals: 10000 at 2 decimals under "uptime" is 100.00 percent. Values under different tags are different units and are never combined. `latest` holds one entry per rater per tag, because a feedback index is per client and index 2 from one rater is not newer than index 1 from another.',
+  our_rater: OUR_RATER || null,
     agents: (reputation.agents || []).filter((a) => a.latest).map((a) => ({
       id: a.id, name: a.name, raters: (a.clients || []).length, latest: a.latest,
+      rated_by_this_marketplace: (a.clients || []).some(isOurs),
     })),
   }, null, 2) + '\n');
 }
@@ -991,7 +1007,15 @@ const page = `<!doctype html>
     padding:22px 20px;margin:14px 0;background:rgba(255,255,255,.02)}
   .rg-box h2{font-size:.95rem;font-weight:600;margin:0 0 4px;letter-spacing:.2px}
   .rg-box > p.rg-sub{color:var(--muted);font-size:.76rem;margin:0 0 18px;line-height:1.55}
-  .rg-step{display:grid;gap:5px;margin-bottom:15px}
+  /* A grid item's default min-width is its content, so one unbreakable string
+     pushes the whole track wider than the phone. The strings here are not ours:
+     a peer agent's failure text reads "PermissionError: /secrets/wallets/0x…"
+     in one piece, and at 360px it hung 150px past the edge. We quote other
+     people's errors verbatim on purpose, so the layout has to survive them. */
+  .rg-step{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;margin-bottom:15px}
+  .rg-step > *{min-width:0;overflow-wrap:anywhere}
+  /* Same reason, one block up: a 42-character address in running text. */
+  .rg-box p.rg-sub code{overflow-wrap:anywhere}
   .rg-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .rg-top b{font-size:.79rem;font-weight:600}
   .rg-top span{font-size:.76rem;color:var(--acc,var(--gold));font-weight:600;
@@ -1339,13 +1363,17 @@ ${reputation.agents.filter((a) => a.latest && Object.keys(a.latest).some((t) => 
     .slice(0, 30).map((a) => `        <tr${OWN_AGENT_IDS.includes(Number(a.id)) ? ' class="rg-ours"' : ''}>
           <td><b>${esc(a.name || ('#' + a.id))}</b>${OWN_AGENT_IDS.includes(Number(a.id)) ? ' <span class="rg-t rg-x4">ours</span>' : ''}<div class="rg-note">#${a.id}</div></td>
           <td>${Object.entries(a.latest).filter(([t]) => OPERATIONAL_TAGS.has(t.toLowerCase()))
-    .map(([tag, v]) => `<span class="rg-rep">${esc(String(v.value))}${esc(v.unit || '')} ${esc(METRIC_LABEL[tag] || tag)}${v.window ? ` over ${esc(v.window)}` : ''}</span>`).join(' &middot; ')}</td>
+    .flatMap(([tag, vs]) => vs.map((v) => `<span class="rg-rep">${metricBit(tag, v)}</span>`)).join(' &middot; ')}</td>
           <td><div class="rg-note">${(a.clients || []).map((c) => esc(c.slice(0, 6) + '…' + c.slice(-4))).join(', ')}</div></td>
         </tr>`).join(NL)}
       </tbody></table></div></div>` : '<p class="rg-note">Not one rating in the whole registry states something a third party could check.</p>'}
 
       <p class="rg-note" style="margin-top:14px"><b>None of this is an accusation.</b> Writing a personality score is not misconduct, and an agent nobody has rated is not a worse agent &mdash; ours were unrated until somebody came along and measured them. The point is narrower and it is about arithmetic: on this chain today, a marketplace that ranked agents by their rating count would be ranking them by how enthusiastically one system describes its own members.</p>
-      <p class="rg-note">Read live from the contract, not from an indexer: <code>getClients(agentId)</code>, then <code>getLastIndex(agentId, client)</code>, then <code>readFeedback</code> for every index &mdash; ${fmt(reputation.rated.attestations)} calls. Measured ${esc((reputation.measured_at || '').slice(0, 16).replace('T', ' '))} UTC, machine-readable at <a href="/api-reputation.json">api-reputation.json</a>. The reader is <code>scripts/erc8004-reputation-scan.mjs</code>; its ABI was recovered by calling the contract until something answered, because the published interface names the functions without their types, so it carries a self-test that pins the decoder against a record on the chain right now.</p>
+      <p class="rg-note">Read live from the contract, not from an indexer: <code>getClients(agentId)</code>, then <code>getLastIndex(agentId, client)</code>, then <code>readFeedback</code> for every index &mdash; ${fmt(reputation.rated.attestations)} calls. Measured ${esc((reputation.measured_at || '').slice(0, 16).replace('T', ' '))} UTC, machine-readable at <a href="/api-reputation.json">api-reputation.json</a>. The reader is <code>scripts/erc8004-reputation-scan.mjs</code>. Its ABI was first recovered by calling the contract until something answered &mdash; the published interface names the functions without their types &mdash; and has since been checked against the verified implementation behind the proxy, which corrected one type: the value is <code>int128</code>, not <code>uint128</code>. Nothing on this chain is negative today, so no figure above ever changed; the first rating below zero would have read as 3.4&times;10<sup>38</sup>. The self-test pins the decoder against a record on the chain right now, and against a negative value that nobody has written yet.</p>
+
+      <p class="rg-note" style="margin-top:14px"><b>We write into it too, now.</b> Reading a registry we advertise support for is half of the claim. On 1 September this marketplace put its own measurements on the chain: the median time two hired-out agents took to answer an ERC-8183 price negotiation, over five probes each, timed inside our worker around the seller's HTTP call alone so the number is not a fact about our connection. Every probe behind it &mdash; including the ones that failed &mdash; is published as a file, and the keccak256 of that file's exact bytes is stored on-chain beside the number in the <code>feedbackURI</code> and <code>feedbackHash</code> fields that almost nothing else on this chain fills in. The writer is <code>scripts/erc8004-give-feedback.mjs</code>; it refuses to attest anything outside the measurable set above, refuses fewer than three probes, and refuses to send at all if the evidence URL does not serve exactly the bytes that were hashed.</p>
+
+      <p class="rg-note"><b>And we answer the ratings written about us.</b> <code>appendResponse</code> is the only reply the standard gives an agent's operator, and on this chain almost nobody uses it &mdash; so every rating in the registry stands unanswered, with no way for a reader to reach the other side of it. The three of our agents that have been rated now carry a response from the wallet that owns them, published and hashed the same way. It disputes nothing: it adds the part the rater could not see &mdash; each agent's own live status document as served, with its timestamp, and the escrow jobs it has actually delivered &mdash; and it says plainly which of the rater's numbers we cannot re-take from our own side, because our broker reaches our agents in-process and that is not a network measurement.</p>
     </details>` : ''}
 
 

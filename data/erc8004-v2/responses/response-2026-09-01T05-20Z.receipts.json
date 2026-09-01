@@ -1,0 +1,34 @@
+{
+ "document": "https://brainonbnb.com/evidence/response-2026-09-01T05-20Z.json",
+ "document_hash": "0xa8872438ad141a14c055eed20583fc9a29710a1582a587814f1fdd3fd6738ca4",
+ "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+ "chain": 56,
+ "responder": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+ "written": [
+  {
+   "id": 302257,
+   "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+   "index": 3,
+   "tx": "0xa5f3d672b1a156f2462c88446604a94b345cf5f97dbeb43301d1745e7f514985",
+   "block": 119286401,
+   "responses": 1,
+   "note": "Written by a run that crashed on a missing ABI entry immediately after the transaction was mined, before it could record itself. Recovered from the contract logs and confirmed with getResponseCount; the idempotence rail is what stopped the next run writing it twice."
+  },
+  {
+   "id": 302258,
+   "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+   "index": 3,
+   "tx": "0x415bdd955d3216d8b51f1b94fc979408821496f5a400991301fd428c9ca083e5",
+   "block": 119286685,
+   "responses": 1
+  },
+  {
+   "id": 304494,
+   "client": "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+   "index": 3,
+   "tx": "0x42906cb036e65c4eae776dd9db1a5a92a3882eb77546a624c75fcf475c91d73a",
+   "block": 119286688,
+   "responses": 1
+  }
+ ]
+}

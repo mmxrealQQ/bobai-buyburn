@@ -1,0 +1,149 @@
+{
+ "what_this_is": "Every probe behind the responseTime feedback this marketplace wrote into the ERC-8004 ReputationRegistry on BNB Smart Chain, including the ones that failed. The number on-chain is the median of the successful probes; this file is what it was taken from, and the keccak256 of these exact bytes is the feedbackHash stored beside it.",
+ "how_to_repeat": "POST {\"agent\":\"<id>\",\"task\":\"<the task for its category>\"} to https://agent.brainonbnb.com/hire and read seller_ms. That field times the seller's HTTP call alone, inside a Cloudflare worker, so it contains neither our connection nor yours. The prober is scripts/erc8004-give-feedback.mjs.",
+ "not_attested": "The share of probes that answered is recorded here and is NOT written on-chain: a few minutes of availability is not an uptime. Agents that did not answer at all are not rated here either — they are published on https://brainonbnb.com/registry with the reason they gave, verbatim.",
+ "chain": 56,
+ "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+ "abi_source": {
+  "what": "verified implementation source behind the ERC-1967 proxy",
+  "contract": "ReputationRegistryUpgradeable",
+  "compiler": "0.8.24+commit.e11b9ed9",
+  "at": "https://sourcify.dev/server/v2/contract/56/0x16e0FA7f7C56B9a767E34B192B51f921BE31dA34?fields=abi",
+  "read_on": "2026-09-01"
+ },
+ "written_by": "0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963",
+ "measured_from": "Cloudflare worker at agent.brainonbnb.com",
+ "window_started": "2026-09-01T05:02:18.497Z",
+ "window_ended": "2026-09-01T05:06:32.980Z",
+ "probes_per_agent": 5,
+ "agents": [
+  {
+   "id": 265375,
+   "label": "BNB LP Range Rebalancer",
+   "category": "rebalancing",
+   "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+   "loopback": false,
+   "tag1": "responseTime",
+   "tag2": "4m",
+   "value": 189,
+   "decimals": 0,
+   "unit": "ms",
+   "probes": 5,
+   "probes_ok": 5,
+   "min_ms": 174,
+   "max_ms": 195,
+   "answered_share": 1,
+   "runs": [
+    {
+     "at": "2026-09-01T05:02:19.712Z",
+     "ok": true,
+     "seller_ms": 184,
+     "loopback": false,
+     "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    },
+    {
+     "at": "2026-09-01T05:03:22.651Z",
+     "ok": true,
+     "seller_ms": 174,
+     "loopback": false,
+     "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    },
+    {
+     "at": "2026-09-01T05:04:25.148Z",
+     "ok": true,
+     "seller_ms": 189,
+     "loopback": false,
+     "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    },
+    {
+     "at": "2026-09-01T05:05:28.677Z",
+     "ok": true,
+     "seller_ms": 195,
+     "loopback": false,
+     "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    },
+    {
+     "at": "2026-09-01T05:06:31.119Z",
+     "ok": true,
+     "seller_ms": 191,
+     "loopback": false,
+     "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    }
+   ]
+  },
+  {
+   "id": 269233,
+   "label": "BNB Grid Trader (test)",
+   "category": "grid-trading",
+   "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+   "loopback": false,
+   "tag1": "responseTime",
+   "tag2": "4m",
+   "value": 176,
+   "decimals": 0,
+   "unit": "ms",
+   "probes": 5,
+   "probes_ok": 5,
+   "min_ms": 175,
+   "max_ms": 192,
+   "answered_share": 1,
+   "runs": [
+    {
+     "at": "2026-09-01T05:02:20.921Z",
+     "ok": true,
+     "seller_ms": 189,
+     "loopback": false,
+     "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    },
+    {
+     "at": "2026-09-01T05:03:23.828Z",
+     "ok": true,
+     "seller_ms": 176,
+     "loopback": false,
+     "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    },
+    {
+     "at": "2026-09-01T05:04:26.563Z",
+     "ok": true,
+     "seller_ms": 175,
+     "loopback": false,
+     "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    },
+    {
+     "at": "2026-09-01T05:05:29.792Z",
+     "ok": true,
+     "seller_ms": 175,
+     "loopback": false,
+     "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    },
+    {
+     "at": "2026-09-01T05:06:32.472Z",
+     "ok": true,
+     "seller_ms": 192,
+     "loopback": false,
+     "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+     "price": "0.1 $U",
+     "error": null
+    }
+   ]
+  }
+ ]
+}

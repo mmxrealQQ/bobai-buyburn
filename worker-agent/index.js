@@ -37,6 +37,7 @@ import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
+import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
 // from the incoming request: this exact string is in the registration of
@@ -79,11 +80,8 @@ const USD1_DECIMALS = 18n;
 const NETWORK = 'eip155:56';
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
-// 30 days of watching one pool. Priced against the catalogue, where calls run
-// 0.01-0.03 USD — this is a subscription, not a call, so it sits above that,
-// but low enough that trying it is not a decision.
-const WATCH_PRICE_USD1 = 500000000000000000n; // 0.50 USD1
-const WATCH_DAYS = 30;
+// The watch price, its window and the USD1 formatter now live in catalog.js,
+// beside the description of the thing being priced.
 
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj, null, 2), {
@@ -193,11 +191,6 @@ async function verifyPayment(env, txHash, payTo, min) {
   return { ok: true, paid, from: (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
 }
 
-const fmtUsd1 = (v) => {
-  const whole = v / 10n ** USD1_DECIMALS;
-  const frac = (v % 10n ** USD1_DECIMALS).toString().padStart(18, '0').slice(0, 2);
-  return `${whole}.${frac}`;
-};
 
 // ------------------------------------------------------------ pool reading
 
@@ -334,48 +327,7 @@ async function readEarnings(env) {
 
 // ---------------------------------------------------------------- handler
 
-const CAPABILITIES = {
-  free: [
-    { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades' },
-    { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
-    { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it, search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
-    { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
-  ],
-  record: [
-    {
-      name: 'session log',
-      where: 'https://agent.brainonbnb.com/sessions',
-      what: 'Every task routed to another agent, who answered, how long it took, and what failed. The track record is derived from this log — no operator sets its own score.',
-      free: true,
-    },
-  ],
-  hire: [
-    {
-      name: 'dispatch a task',
-      where: 'POST https://agent.brainonbnb.com/dispatch  {"task":"..."}',
-      what: 'Finds an agent that can answer, calls it, and returns the result naming who produced it. Add "dry_run": true to see which agent and tool would be used without calling anything.',
-      limit: 'Read-only tools only. Anything that signs, sends, swaps or orders is listed for you to call yourself — never invoked on your behalf.',
-      free: true,
-    },
-  ],
-  broker: [
-    {
-      name: 'agent search',
-      where: 'GET https://agent.brainonbnb.com/find?q=<what you need>',
-      what: 'Finds ERC-8004 agents on BNB Chain that expose something matching, using the tools they returned when asked and the descriptions they wrote on-chain. Optional &speaks=mcp,a2a,x402 to require a protocol.',
-      free: true,
-    },
-  ],
-  paid: [
-    {
-      name: 'pool watch',
-      where: 'POST https://agent.brainonbnb.com/watch',
-      what: `continuous monitoring of one pool for ${WATCH_DAYS} days; fires a callback when depth falls below your threshold`,
-      price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1`,
-      why_paid: 'it runs on our cron and storage around the clock, which the free scanner never does',
-    },
-  ],
-};
+// CAPABILITIES moved to catalog.js — see the header there for why.
 
 // The one paid tool. Its description says the price in the first sentence:
 // an agent deciding whether to call something should not have to call it to
@@ -567,7 +519,7 @@ export default {
       return json({
         service: 'Brain On BNB AI — agent service',
         what_this_is: 'Paid, continuous pool monitoring on BNB Smart Chain, plus the public counters behind brainonbnb.com. Measurement only — nothing here is financial advice.',
-        capabilities: CAPABILITIES,
+        capabilities: offering(),
         payment: { protocol: 'x402', network: NETWORK, asset: USD1, symbol: 'USD1', payTo },
         transparency: 'https://agent.brainonbnb.com/stats',
       });
@@ -959,7 +911,7 @@ export default {
           first_burn: '0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
           note: 'Step 3 is done by hand while the amounts are small. It is not automated yet, and this line will say so until it is. The burn log at logs.brainonbnb.com lists the bot\'s own automated runs only, so a burn done by hand is on chain but not in that log — the transaction above is the record.',
         },
-        capabilities: CAPABILITIES,
+        capabilities: offering(),
         generated_at: new Date().toISOString(),
       });
     }

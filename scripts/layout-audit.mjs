@@ -45,7 +45,7 @@ const NARROW = [360, 1440];
 
 // Every page gets the two extremes, because that is where breakage lives. The
 // pages people actually land on get the full sweep.
-const MAIN = new Set(['/', '/registry', '/scanner', '/whitepaper', '/nft/', '/game/', '/brainscreener/', '/worldcup/']);
+const MAIN = new Set(['/', '/services', '/registry', '/scanner', '/whitepaper', '/nft/', '/game/', '/brainscreener/', '/worldcup/']);
 
 const walk = (dir, out = []) => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

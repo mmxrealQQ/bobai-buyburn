@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3737 lines.
+# one fetch. 7 files, 3747 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1509,7 +1509,15 @@ const page = `<!doctype html>
     padding:22px 20px;margin:14px 0;background:rgba(255,255,255,.02)}
   .rg-box h2{font-size:.95rem;font-weight:600;margin:0 0 4px;letter-spacing:.2px}
   .rg-box > p.rg-sub{color:var(--muted);font-size:.76rem;margin:0 0 18px;line-height:1.55}
-  .rg-step{display:grid;gap:5px;margin-bottom:15px}
+  /* A grid item's default min-width is its content, so one unbreakable string
+     pushes the whole track wider than the phone. The strings here are not ours:
+     a peer agent's failure text reads "PermissionError: /secrets/wallets/0x…"
+     in one piece, and at 360px it hung 150px past the edge. We quote other
+     people's errors verbatim on purpose, so the layout has to survive them. */
+  .rg-step{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;margin-bottom:15px}
+  .rg-step > *{min-width:0;overflow-wrap:anywhere}
+  /* Same reason, one block up: a 42-character address in running text. */
+  .rg-box p.rg-sub code{overflow-wrap:anywhere}
   .rg-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .rg-top b{font-size:.79rem;font-weight:600}
   .rg-top span{font-size:.76rem;color:var(--acc,var(--gold));font-weight:600;
@@ -1866,6 +1874,8 @@ ${reputation.agents.filter((a) => a.latest && Object.keys(a.latest).some((t) => 
       <p class="rg-note">Read live from the contract, not from an indexer: <code>getClients(agentId)</code>, then <code>getLastIndex(agentId, client)</code>, then <code>readFeedback</code> for every index &mdash; ${fmt(reputation.rated.attestations)} calls. Measured ${esc((reputation.measured_at || '').slice(0, 16).replace('T', ' '))} UTC, machine-readable at <a href="/api-reputation.json">api-reputation.json</a>. The reader is <code>scripts/erc8004-reputation-scan.mjs</code>. Its ABI was first recovered by calling the contract until something answered &mdash; the published interface names the functions without their types &mdash; and has since been checked against the verified implementation behind the proxy, which corrected one type: the value is <code>int128</code>, not <code>uint128</code>. Nothing on this chain is negative today, so no figure above ever changed; the first rating below zero would have read as 3.4&times;10<sup>38</sup>. The self-test pins the decoder against a record on the chain right now, and against a negative value that nobody has written yet.</p>
 
       <p class="rg-note" style="margin-top:14px"><b>We write into it too, now.</b> Reading a registry we advertise support for is half of the claim. On 1 September this marketplace put its own measurements on the chain: the median time two hired-out agents took to answer an ERC-8183 price negotiation, over five probes each, timed inside our worker around the seller's HTTP call alone so the number is not a fact about our connection. Every probe behind it &mdash; including the ones that failed &mdash; is published as a file, and the keccak256 of that file's exact bytes is stored on-chain beside the number in the <code>feedbackURI</code> and <code>feedbackHash</code> fields that almost nothing else on this chain fills in. The writer is <code>scripts/erc8004-give-feedback.mjs</code>; it refuses to attest anything outside the measurable set above, refuses fewer than three probes, and refuses to send at all if the evidence URL does not serve exactly the bytes that were hashed.</p>
+
+      <p class="rg-note"><b>And we answer the ratings written about us.</b> <code>appendResponse</code> is the only reply the standard gives an agent's operator, and on this chain almost nobody uses it &mdash; so every rating in the registry stands unanswered, with no way for a reader to reach the other side of it. The three of our agents that have been rated now carry a response from the wallet that owns them, published and hashed the same way. It disputes nothing: it adds the part the rater could not see &mdash; each agent's own live status document as served, with its timestamp, and the escrow jobs it has actually delivered &mdash; and it says plainly which of the rater's numbers we cannot re-take from our own side, because our broker reaches our agents in-process and that is not a network measurement.</p>
     </details>` : ''}
 
 

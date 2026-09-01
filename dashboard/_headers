@@ -38,6 +38,9 @@
 /scanner
   Cache-Control: public, max-age=0, must-revalidate
 
+/services
+  Cache-Control: public, max-age=0, must-revalidate
+
 /registry
   Cache-Control: public, max-age=0, must-revalidate
 

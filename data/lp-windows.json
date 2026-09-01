@@ -1,0 +1,73 @@
+{
+  "pool": "0xafb2da14056725e3ba3a30dd846b6bbbd7886c56",
+  "usd": 50,
+  "windows": [
+    {
+      "at": "2026-09-01T13:44:46.746Z",
+      "from_block": 119348560,
+      "to_block": 119353559,
+      "minutes": 37.5,
+      "swaps": 453,
+      "pool_fees_usd": 108.828385,
+      "rebalance_cost_usd": 0.479775,
+      "rows": [
+        {
+          "width": 0.25,
+          "held": false,
+          "in_range_pct": 81.6,
+          "crossings": 6,
+          "fees": 0.134183,
+          "net": -2.744465
+        },
+        {
+          "width": 0.5,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.09168,
+          "net": 0.09168
+        },
+        {
+          "width": 1,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.04603,
+          "net": 0.04603
+        },
+        {
+          "width": 2,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.023191,
+          "net": 0.023191
+        },
+        {
+          "width": 5,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.009482,
+          "net": 0.009482
+        },
+        {
+          "width": 10,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.004911,
+          "net": 0.004911
+        },
+        {
+          "width": "full",
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.000229,
+          "net": 0.000229
+        }
+      ]
+    }
+  ]
+}

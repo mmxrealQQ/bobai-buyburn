@@ -63,6 +63,53 @@ export const V2_ROUTER = '0x10ed43c718714eb63d5aa57b78b54704e256024e';
 const TICK_BASE = 1.0001;
 const sqrtAtTick = (t) => Math.pow(TICK_BASE, t / 2);
 
+// WHAT THE RECORD SAYS, when there is one.
+//
+// A single replay covers about thirty-seven minutes, which is as much live
+// chain as the log endpoint serves near the head. That is enough to compare
+// widths and nowhere near enough to choose one for a position nobody watches:
+// measured on the same pool two hours apart, +/-0.25% went from best in the
+// list to SIX crossings and minus $2.74 on fifty dollars. The narrow width had
+// simply not been tested by a move yet.
+//
+// So if scripts/lp-windows.mjs has recorded windows for this pool, they decide,
+// and the single fresh replay is demoted to what it actually is — the latest
+// observation. Overlapping runs count once: two replays a minute apart cover
+// the same chain and are one observation wearing two hats.
+function recordedVerdict(pool, root) {
+  try {
+    const log = JSON.parse(fs.readFileSync(path.join(root, 'data', 'lp-windows.json'), 'utf8'));
+    if (!log.windows?.length || log.pool?.toLowerCase() !== String(pool).toLowerCase()) return null;
+    const sorted = log.windows.slice().sort((a, b) => a.from_block - b.from_block);
+    const used = [];
+    for (const w of sorted) {
+      const last = used[used.length - 1];
+      if (!last || w.from_block > last.to_block) used.push(w);
+    }
+    if (used.length < 2) return { windows: used.length, thin: true };
+    const widths = [...new Set(used.flatMap((w) => w.rows.map((r) => r.width)))]
+      .filter((w) => w !== 'full');
+    const rows = widths.map((w) => {
+      const rs = used.map((x) => x.rows.find((r) => r.width === w)).filter(Boolean);
+      return {
+        width: w,
+        heldEvery: rs.every((r) => r.held),
+        everNegative: rs.some((r) => r.net < 0),
+        crossings: rs.reduce((s, r) => s + r.crossings, 0),
+        net: rs.reduce((s, r) => s + r.net, 0),
+        of: rs.length,
+      };
+    });
+    // A width that has ever gone negative is not a candidate. Not because the
+    // average is bad — it may still be positive — but because a position that
+    // has to be nursed is one somebody has to be awake for, and nothing here
+    // does that automatically yet.
+    const safe = rows.filter((r) => r.heldEvery && !r.everNegative && r.net > 0);
+    safe.sort((a, b) => b.net - a.net);
+    return { windows: used.length, thin: false, rows, pick: safe[0] || null };
+  } catch { return null; }
+}
+
 export async function decide({ usd = 50, tools = null, onProgress = () => {} } = {}) {
   const T = tools || (await loadTools());
   const { C, feeTiers, rangePlan } = T;
@@ -127,7 +174,25 @@ export async function decide({ usd = 50, tools = null, onProgress = () => {} } =
     return Number(v >= (1n << 255n) ? v - (1n << 256n) : v);
   })();
   const sqrtP = Number(BigInt('0x' + st[0].slice(2, 66))) / Number(2n ** 96n);
-  const span = Math.log(1 + win.heldRow.width_pct / 100) / Math.log(TICK_BASE);
+  // The recorded history overrides the single fresh window when it exists.
+  const record = recordedVerdict(win.plan.pool, ROOT);
+  let chosenWidth = win.heldRow.width_pct, widthBasis = 'one fresh window';
+  if (record && !record.thin) {
+    if (record.pick) {
+      chosenWidth = record.pick.width;
+      widthBasis = `${record.windows} recorded windows — held in every one, never negative`;
+    } else {
+      chosenWidth = null;
+      widthBasis = `${record.windows} recorded windows, and no width held in all of them without going negative`;
+    }
+  } else if (record && record.thin) {
+    widthBasis = `one fresh window (only ${record.windows} recorded so far — two are needed before the record decides)`;
+  }
+  if (chosenWidth == null) {
+    return { usd, candidates, tools: T, winner: null, record, widthBasis };
+  }
+  const chosenRow = win.plan.ranges.find((r) => r.width_pct === chosenWidth) || win.heldRow;
+  const span = Math.log(1 + chosenWidth / 100) / Math.log(TICK_BASE);
   const tickLower = Math.ceil((tickNow - span) / spacing) * spacing;
   const tickUpper = Math.floor((tickNow + span) / spacing) * spacing;
 
@@ -162,14 +227,15 @@ export async function decide({ usd = 50, tools = null, onProgress = () => {} } =
     usd, candidates, tools: T,
     winner: {
       symbol: win.sym, why: win.why, pool: win.plan.pool, tier: win.row.tier,
-      fee_pct: win.plan.fee_pct, width_pct: win.heldRow.width_pct,
-      price_range: win.heldRow.price_range, price_now: win.plan.price_now,
+      fee_pct: win.plan.fee_pct, width_pct: chosenWidth,
+      width_basis: widthBasis, record,
+      price_range: chosenRow.price_range, price_now: win.plan.price_now,
       tickNow, tickLower, tickUpper, spacing, sqrtP,
       token0, token1, dec0, dec1, tokenIsZero,
       amount0Raw: BigInt(Math.floor(amount0)), amount1Raw: BigInt(Math.floor(amount1)),
       amount0: amount0 / 10 ** dec0, amount1: amount1 / 10 ** dec1,
       usdPerUnit0, usdPerUnit1, bnbUsd,
-      measured: win.heldRow, window: win.plan.measured_window,
+      measured: chosenRow, window: win.plan.measured_window,
       rebalanceUsd: win.plan.rebalance_cost_usd_assumed,
       bestNet: win.plan.best_range_after_paying_to_put_it_back,
       full: win.full,

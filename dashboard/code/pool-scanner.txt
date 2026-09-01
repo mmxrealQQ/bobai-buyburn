@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 4725 lines.
+# one fetch. 6 files, 4736 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -667,6 +667,31 @@ export async function multicall(calls,url,block='latest'){
     // difference in cost between two runs of the same scan.
     return rpcBatch(calls,url,block);
   }
+}
+
+// HOW LONG THE WINDOW REALLY WAS, in minutes, asked of the chain.
+//
+// BSC's block time is not a constant — it was 3s, then 1.5s, then 0.45 — so a
+// window derived from an assumed block time is wrong the moment the chain
+// changes and nothing says so. It is asked instead.
+//
+// Both endpoints, and a retry, because the first version used one and had no
+// second chance: on 2026-09-01 a single refused read made the whole answer come
+// back with `minutes: null`, and the rule this project actually cares about is
+// that the window travels with the figure. Losing the window to one flaky read
+// turns a good measurement into one that must not be quoted.
+export async function windowMinutes(from, to) {
+  for (const url of LOGS_RPCS) {
+    try {
+      const [a, b] = await Promise.all([
+        rpc('eth_getBlockByNumber', ['0x' + from.toString(16), false], url),
+        rpc('eth_getBlockByNumber', ['0x' + to.toString(16), false], url),
+      ]);
+      const s = parseInt(b.timestamp, 16) - parseInt(a.timestamp, 16);
+      if (s > 0) return s / 60;
+    } catch { /* try the other one */ }
+  }
+  return null;
 }
 
 // === WHERE THE CAPITAL ACTUALLY SITS ===
@@ -1849,7 +1874,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=38" type="module"></script>
+<script src="scanner.js?v=39" type="module"></script>
 </body>
 </html>
 
@@ -1871,7 +1896,7 @@ export async function scan(input, env) {
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
-  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=14';
+  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=15';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -4356,7 +4381,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3,
+  bandDepthV2, bandDepthV3, windowMinutes,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -4378,20 +4403,6 @@ export class TierError extends Error {
 const PANCAKE_V2 = '0xca143ce32fe78f1f7019d7d551a6402fc5350c73';
 const abs = (v) => (v < 0n ? -v : v);
 const label = (c) => (c.kind === 'v2' ? 'V2 0.25%' : 'V3 ' + (c.fee * 100).toFixed(2) + '%');
-
-// How long the readable window actually is, asked of the chain rather than
-// derived from a block time. BSC's has changed three times, and the build that
-// assumed one printed "2 hours" over a 38-minute window for months.
-const windowMinutes = async (from, to) => {
-  try {
-    const [a, b] = await Promise.all([
-      rpc('eth_getBlockByNumber', ['0x' + from.toString(16), false], LOGS_RPC),
-      rpc('eth_getBlockByNumber', ['0x' + to.toString(16), false], LOGS_RPC),
-    ]);
-    const s = parseInt(b.timestamp, 16) - parseInt(a.timestamp, 16);
-    return s > 0 ? s / 60 : null;
-  } catch { return null; }
-};
 
 // The quote-side turnover this pool handled in the window. V3 states the two
 // amounts as signed integers from the pool's point of view; V2 states four

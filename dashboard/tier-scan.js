@@ -27,7 +27,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3,
+  bandDepthV2, bandDepthV3, windowMinutes,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -49,20 +49,6 @@ export class TierError extends Error {
 const PANCAKE_V2 = '0xca143ce32fe78f1f7019d7d551a6402fc5350c73';
 const abs = (v) => (v < 0n ? -v : v);
 const label = (c) => (c.kind === 'v2' ? 'V2 0.25%' : 'V3 ' + (c.fee * 100).toFixed(2) + '%');
-
-// How long the readable window actually is, asked of the chain rather than
-// derived from a block time. BSC's has changed three times, and the build that
-// assumed one printed "2 hours" over a 38-minute window for months.
-const windowMinutes = async (from, to) => {
-  try {
-    const [a, b] = await Promise.all([
-      rpc('eth_getBlockByNumber', ['0x' + from.toString(16), false], LOGS_RPC),
-      rpc('eth_getBlockByNumber', ['0x' + to.toString(16), false], LOGS_RPC),
-    ]);
-    const s = parseInt(b.timestamp, 16) - parseInt(a.timestamp, 16);
-    return s > 0 ? s / 60 : null;
-  } catch { return null; }
-};
 
 // The quote-side turnover this pool handled in the window. V3 states the two
 // amounts as signed integers from the pool's point of view; V2 states four

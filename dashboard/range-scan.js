@@ -29,7 +29,7 @@
 import {
   QUOTES, BNB_PAIR, WBNB, LOGS_RPC, LOGS_RPCS, SEL as S,
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover, bandDepthV3,
+  classify, priceToken, discover, bandDepthV3, windowMinutes,
   SWAP_V3_T, SWAP_V3_UNI, int256,
 } from './scanner-chain.js';
 
@@ -65,20 +65,6 @@ const REBALANCE_GAS = 700000n;
 const REBALANCE_GAS_PRICE = 1000000000n; // 1 gwei
 
 const sqrtAt = (pct) => Math.sqrt(1 + pct / 100);
-
-// How long the window really was, asked of the chain rather than derived from a
-// block time. BSC's has changed three times, and a build that assumed one
-// printed "2 hours" over a 38-minute window for months.
-const windowMinutes = async (from, to) => {
-  try {
-    const [a, b] = await Promise.all([
-      rpc('eth_getBlockByNumber', ['0x' + from.toString(16), false], LOGS_RPC),
-      rpc('eth_getBlockByNumber', ['0x' + to.toString(16), false], LOGS_RPC),
-    ]);
-    const s = parseInt(b.timestamp, 16) - parseInt(a.timestamp, 16);
-    return s > 0 ? s / 60 : null;
-  } catch { return null; }
-};
 
 // The liquidity constant L for a position of `usd` placed between two roots at
 // the current price. Inverted from the standard amounts, so the position is

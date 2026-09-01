@@ -653,6 +653,31 @@ export async function multicall(calls,url,block='latest'){
   }
 }
 
+// HOW LONG THE WINDOW REALLY WAS, in minutes, asked of the chain.
+//
+// BSC's block time is not a constant — it was 3s, then 1.5s, then 0.45 — so a
+// window derived from an assumed block time is wrong the moment the chain
+// changes and nothing says so. It is asked instead.
+//
+// Both endpoints, and a retry, because the first version used one and had no
+// second chance: on 2026-09-01 a single refused read made the whole answer come
+// back with `minutes: null`, and the rule this project actually cares about is
+// that the window travels with the figure. Losing the window to one flaky read
+// turns a good measurement into one that must not be quoted.
+export async function windowMinutes(from, to) {
+  for (const url of LOGS_RPCS) {
+    try {
+      const [a, b] = await Promise.all([
+        rpc('eth_getBlockByNumber', ['0x' + from.toString(16), false], url),
+        rpc('eth_getBlockByNumber', ['0x' + to.toString(16), false], url),
+      ]);
+      const s = parseInt(b.timestamp, 16) - parseInt(a.timestamp, 16);
+      if (s > 0) return s / 60;
+    } catch { /* try the other one */ }
+  }
+  return null;
+}
+
 // === WHERE THE CAPITAL ACTUALLY SITS ===
 //
 // Every figure this project publishes about a V3 pool has so far divided by

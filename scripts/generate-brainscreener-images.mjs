@@ -1,4 +1,4 @@
-// Generiert alle brainScreener-Bilder im BOBAI-Look via OpenAI gpt-image-2.
+// Generates every brainScreener image in the BOBAI look via OpenAI gpt-image-2.
 // Gleiche Motive wie adhsiq.ch, aber BOBAI-Palette (deep navy + gold).
 // Hero + OG nutzen den BOBAI-Mascot mit Character-Refs (edits-Endpoint).
 // Ausfuehren: node scripts/generate-brainscreener-images.mjs [--force] [--only=a,b]

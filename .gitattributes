@@ -1,0 +1,6 @@
+# Line endings. The index has held LF for every text file all along; the
+# working copy on Windows drifted to CRLF in about a hundred of them, and
+# every commit printed a warning per file. LF everywhere, on every platform,
+# so a checkout on the operator's machine and the public mirror agree byte
+# for byte. Binary files are detected by git itself (text=auto).
+* text=auto eol=lf

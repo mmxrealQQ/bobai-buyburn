@@ -9,7 +9,7 @@
 // the one prerequisite for it.
 //
 // WHY THE NFT RELAYER WALLET
-// Same reason as scripts/x402-test-payment.mjs: it is the only project wallet
+// Same reason as scripts/x402-buy-usd1.mjs: it is the only project wallet
 // with BNB to spare (~0.047). The creator, buyback and prize wallets hold two
 // or three thousandths each, and that is the gas the burns and the liquidity
 // runs run on — spending it here would stop the flywheel.

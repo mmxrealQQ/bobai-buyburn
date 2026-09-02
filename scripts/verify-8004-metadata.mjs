@@ -1,3 +1,8 @@
+// Reads agent #49467's on-chain metadata URI back from the ERC-8004 identity
+// registry and prints what it resolves to — the check to run after
+// update-8004-metadata.mjs, so a republish is verified rather than assumed.
+//
+//   node scripts/verify-8004-metadata.mjs
 import 'dotenv/config';
 import { createPublicClient, http } from 'viem';
 import { bsc } from 'viem/chains';

@@ -83,6 +83,17 @@
     .links a span{font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .links a:hover{border-color:rgba(240,185,11,.5)}
 
+    /* the contract, to copy — the one thing a buyer must not get wrong */
+    .ca{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 30px;font-size:.8rem;color:var(--muted)}
+    .ca code{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--text);background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:8px 12px;word-break:break-all}
+    .ca button{font:inherit;font-size:.72rem;font-weight:600;color:var(--gold);background:transparent;border:1px solid rgba(240,185,11,.35);border-radius:999px;padding:7px 14px;cursor:pointer}
+    .ca button:hover{background:rgba(240,185,11,.1)}
+    .ca button.done{color:var(--green);border-color:rgba(75,227,138,.4)}
+    /* one line for a running campaign, one for the agent that runs itself */
+    .line{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:26px 0 0;padding:14px 0 0;border-top:1px solid var(--border);font-size:.86rem;color:var(--muted);line-height:1.6}
+    .line b{color:var(--text);font-weight:600;white-space:nowrap}
+    .line .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;box-shadow:0 0 8px var(--green);vertical-align:1px}
+    .line a{color:var(--gold);text-decoration:none}
     /* moved off the page */
     .more{display:flex;flex-wrap:wrap;gap:8px 22px;margin:0 0 34px;font-size:.82rem}
     .more a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border)}
@@ -130,12 +141,14 @@
       <img src="logo.webp" width="256" height="256" alt="BOBAI" loading="lazy" decoding="async">
       <p><b>$BOBAI is a meme token on BNB Chain that eats its own supply.</b> Every trade pays 3%. A bot collects it, buys $BOBAI and $BOB back off the market every ten minutes, and sends them to the dead address. The liquidity is burned, the owner renounced, the contract verified. Nothing here is a promise; it is a machine that has been running since launch.</p>
     </div>
+    <div class="ca"><span>Contract</span><code id="n-ca">0x245c386dcfed896f5c346107596141e5edcbffff</code><button type="button" id="n-copy">Copy</button><span>BNB Chain &middot; paste it yourself, never trust a ticker search</span></div>
     <div class="steps">
       <div class="step"><div class="fs-wrap"><img src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax.</p></div>
       <div class="step"><div class="fs-wrap"><img src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>The tax lands in the buyback wallet.</p></div>
       <div class="step"><div class="fs-wrap"><img src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Buy back</h4><p>The bot buys $BOBAI and $BOB every 10 minutes.</p></div>
       <div class="step"><div class="fs-wrap"><img src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>Both go to the dead address. Forever.</p></div>
     </div>
+    <p class="line"><b><span class="dot"></span>Liquidity Boost II</b> <span>until Sep 16, 0.8% of every trade is added to the pool and the LP burned: <span id="n-bb2">reading the log&hellip;</span></span></p>
     <p class="more" style="margin-top:30px">
       <a href="/#tokenomics">Tokenomics and tax phases</a>
       <a href="/#tokenomics">How deep is the liquidity</a>
@@ -166,6 +179,7 @@
       </a>
     </div>
     <p class="forai">For your own assistant: <code>npx skills add https://brainonbnb.com</code> &middot; <span id="n-asked">&ndash;</span> requests answered for other people's agents so far.</p>
+    <p class="line"><b><span class="dot"></span>The liquidity agent</b> <span id="n-lp-line">reading its record&hellip;</span> <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">record &rarr;</a></p>
     <p class="more" style="margin-top:22px">
       <a href="/nft/">NFT Buy Drops</a>
       <a href="/brainscreener/">brainScreener</a>
@@ -250,6 +264,27 @@
     $('n-tx').innerHTML=rows.join('');
   }).catch(function(){});
   fetch('https://agent.brainonbnb.com/stats').then(function(r){return r.json()}).then(function(d){ if(d&&d.asked)$('n-asked').textContent=nf(d.asked.total); }).catch(function(){});
+  // Liquidity Boost II: every add since Aug 8, from the bot's own log.
+  fetch('https://logs.brainonbnb.com/logs/bobai-liq-log.json').then(function(r){return r.json()}).then(function(all){
+    var from=Date.parse('2026-08-08T00:00:00Z'), to=Date.parse('2026-09-16T23:59:59Z');
+    var e=(all||[]).filter(function(x){var t=Date.parse(x.time);return t>=from&&t<=to});
+    var bnb=0,lp=0; e.forEach(function(x){bnb+=parseFloat(x.bnb||0);lp+=parseFloat(x.lpBurned||0)});
+    $('n-bb2').textContent=e.length+' adds, '+bnb.toFixed(4)+' BNB, '+nf(lp,2)+' LP burned so far';
+  }).catch(function(){ $('n-bb2').textContent='log not reachable right now'; });
+  // The liquidity agent, in one line, from the record the bot writes.
+  fetch('https://agent.brainonbnb.com/lp/agent').then(function(r){return r.json()}).then(function(rec){
+    var last=rec&&rec.last; if(!last){$('n-lp-line').textContent='has not run yet.';return}
+    var st=last.steps||{}, c=st.collect||{}; var hist=rec.history||[];
+    var fwd=hist.reduce(function(a,x){return a+(Number(x.steps&&x.steps.collect&&x.steps.collect.forwarded_bnb)||0)},0);
+    var state=c.position?(c.in_range===false?'position out of range, waiting for a re-set':'position in range and earning'):'no position open';
+    $('n-lp-line').textContent=state+' · fees sent to the buyback bot so far '+fwd.toFixed(5)+' BNB · last check '+String(last.at||'').replace('T',' ').slice(0,16)+' UTC.';
+  }).catch(function(){ $('n-lp-line').textContent='record not reachable right now.'; });
+  // Copy the contract without a dialog.
+  var cp=$('n-copy'); if(cp){cp.addEventListener('click',function(){
+    var t=$('n-ca').textContent; var done=function(){cp.textContent='Copied';cp.classList.add('done');setTimeout(function(){cp.textContent='Copy';cp.classList.remove('done')},1800)};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){})}
+    else{var r=document.createRange();r.selectNodeContents($('n-ca'));var s=getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');done()}catch(e){}}
+  })}
 })();
 </script>
 </body>

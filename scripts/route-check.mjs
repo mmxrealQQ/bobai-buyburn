@@ -41,11 +41,19 @@ const SELF = process.argv.includes('--self-test');
 const CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
 const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
 
-let failed = 0, checks = 0;
+let failed = 0, checks = 0, skipped = 0;
 const ok = (name, pass, detail) => {
   checks += 1;
   if (!pass) failed += 1;
   console.log(`${pass ? 'ok  ' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
+};
+// A relation that needs a measured tax cannot be tested in an hour with no
+// trades. That is not a failure of the tool and must not read as one — four
+// red lines every quiet hour is how a red line stops meaning anything. It is
+// counted, named, and the tool's own admission is checked instead.
+const skip = (name, why) => {
+  skipped += 1;
+  console.log(`skip  ${name}  — ${why}`);
 };
 
 // --- an untaxed pair with five routes ---------------------------------------
@@ -86,30 +94,48 @@ const ok = (name, pass, detail) => {
   const r = await swapRoute(BOBAI, { usd: 100 });
   const t = r.transfer_tax;
   const measured = (t.buy_pct || 0) + (t.sell_pct || 0) > 0;
-  ok('BOBAI: the transfer tax is measured, not assumed',
-    measured && t.source.includes('measured'),
-    `buy ${t.buy_pct}%, sell ${t.sell_pct}%`);
+  const unmeasured = t.buy_pct == null && t.sell_pct == null;
+  const quiet = `no trade in the window to measure the tax from (${t.source})`;
 
-  // The relation nothing correct can avoid.
-  const expected = (1 - (t.buy_pct || 0) / 100) * (1 - (t.sell_pct || 0) / 100);
-  const actual = r.round_trip.you_keep_pct / r.round_trip.you_keep_pct_pools_only;
-  ok('BOBAI: the tax accounts for exactly the gap between the two figures',
-    Math.abs(actual - expected) < 0.002,
-    `after tax / pools only = ${actual.toFixed(4)}, the measured tax implies ${expected.toFixed(4)}`);
+  if (unmeasured) {
+    // The tool measures the tax from executed trades and refuses to assume
+    // one. In an hour with no trades the numeric relations below have no
+    // input; what CAN be checked is that the answer says so, on both the
+    // round trip and the slippage — an agent that read 120 bps for a taxed
+    // token would revert every swap.
+    skip('BOBAI: the transfer tax is measured, not assumed', quiet);
+    skip('BOBAI: the tax accounts for exactly the gap between the two figures', quiet);
+    skip('BOBAI: a taxed round trip returns less than the pools alone', quiet);
+    ok('BOBAI: an unmeasured tax is declared on the round trip',
+      /could be measured/i.test(r.round_trip_caveat || ''), r.round_trip_caveat || 'NO CAVEAT');
+    ok('BOBAI: an unmeasured tax is declared on the slippage, with the 1500 bps floor named',
+      /1500/.test(r.slippage_note || '') && /measur/i.test(r.slippage_note || ''), r.slippage_note || 'NO NOTE');
+  } else {
+    ok('BOBAI: the transfer tax is measured, not assumed',
+      measured && t.source.includes('measured'),
+      `buy ${t.buy_pct}%, sell ${t.sell_pct}%`);
 
-  ok('BOBAI: a taxed round trip returns less than the pools alone',
-    r.round_trip.you_keep_pct < r.round_trip.you_keep_pct_pools_only,
-    `${r.round_trip.you_keep_pct}% against ${r.round_trip.you_keep_pct_pools_only}%`);
+    // The relation nothing correct can avoid.
+    const expected = (1 - (t.buy_pct || 0) / 100) * (1 - (t.sell_pct || 0) / 100);
+    const actual = r.round_trip.you_keep_pct / r.round_trip.you_keep_pct_pools_only;
+    ok('BOBAI: the tax accounts for exactly the gap between the two figures',
+      Math.abs(actual - expected) < 0.002,
+      `after tax / pools only = ${actual.toFixed(4)}, the measured tax implies ${expected.toFixed(4)}`);
 
-  ok('BOBAI: fee-on-transfer gets the 1500 bps floor',
-    r.slippage_bps_needed === 1500, `${r.slippage_bps_needed} bps`);
+    ok('BOBAI: a taxed round trip returns less than the pools alone',
+      r.round_trip.you_keep_pct < r.round_trip.you_keep_pct_pools_only,
+      `${r.round_trip.you_keep_pct}% against ${r.round_trip.you_keep_pct_pools_only}%`);
 
-  // A tax measured on one side only makes the answer optimistic, and the reader
-  // has to be told which way the error runs.
-  const oneSided = t.buy_pct == null || t.sell_pct == null;
-  ok('BOBAI: a half-measured tax is declared as such',
-    !oneSided || !!r.round_trip_caveat,
-    oneSided ? (r.round_trip_caveat || 'NO CAVEAT') : 'both sides measured, no caveat needed');
+    ok('BOBAI: fee-on-transfer gets the 1500 bps floor',
+      r.slippage_bps_needed === 1500, `${r.slippage_bps_needed} bps`);
+
+    // A tax measured on one side only makes the answer optimistic, and the reader
+    // has to be told which way the error runs.
+    const oneSided = t.buy_pct == null || t.sell_pct == null;
+    ok('BOBAI: a half-measured tax is declared as such',
+      !oneSided || !!r.round_trip_caveat,
+      oneSided ? (r.round_trip_caveat || 'NO CAVEAT') : 'both sides measured, no caveat needed');
+  }
 }
 
 if (SELF) {
@@ -128,9 +154,13 @@ if (SELF) {
   const expected = (1 - (t.buy_pct || 0) / 100) * (1 - (t.sell_pct || 0) / 100);
   // If the tax were left out of the round trip — the bug this was built with
   // and then fixed — the ratio would be exactly 1. The gate has to reject that.
-  ok('SELF: a round trip that ignored the tax would be caught',
-    Math.abs(1 - expected) >= 0.002,
-    `ignoring it gives a ratio of 1.0000 against the required ${expected.toFixed(4)}`);
+  if (t.buy_pct == null && t.sell_pct == null) {
+    skip('SELF: a round trip that ignored the tax would be caught', 'no measured tax this hour, so the gate has nothing to reject');
+  } else {
+    ok('SELF: a round trip that ignored the tax would be caught',
+      Math.abs(1 - expected) >= 0.002,
+      `ignoring it gives a ratio of 1.0000 against the required ${expected.toFixed(4)}`);
+  }
 
   // And a size nothing can fill has to be an error rather than a small number.
   let threw = null;
@@ -140,5 +170,5 @@ if (SELF) {
 }
 
 fs.rmSync(stage, { recursive: true, force: true });
-console.log(`\n${checks - failed}/${checks} checks passed${SELF ? ' (with self-test)' : ''}`);
+console.log(`\n${checks - failed}/${checks} checks passed${SELF ? ' (with self-test)' : ''}${skipped ? `, ${skipped} not testable this hour (no trade to measure a tax from)` : ''}`);
 process.exitCode = failed ? 1 : 0;

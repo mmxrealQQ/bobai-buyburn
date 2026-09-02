@@ -241,7 +241,12 @@ export async function swapRoute(input, opts = {}) {
     slippage_bps_needed: slippageBps,
     slippage_note: fot
       ? 'This token takes a cut on transfer, so a router compares its pre-tax quote against a post-tax delivery. Anything under about 1500 bps reverts every time, and the tolerance is not the loss — the tax is taken either way.'
-      : 'Covers the pool fee, the price this size moves, and headroom. Setting it lower does not save money; it fails the trade.',
+      : (!tax.ok
+        // A quiet hour is not a clean token. The figure above is right for the
+        // pools; it is wrong for a taxed token, and this hour cannot tell the
+        // two apart. An agent that took 120 bps into a 3% tax would revert.
+        ? 'Covers the pool fee, the price this size moves, and headroom — for the pools alone. No transfer tax could be measured from recent trades in this window, so if this token takes a cut, anything under about 1500 bps reverts; the figure above cannot see that.'
+        : 'Covers the pool fee, the price this size moves, and headroom. Setting it lower does not save money; it fails the trade.'),
     refuse_to_trade: refusals,
     // A tax measured on one side only makes the round trip OPTIMISTIC, and the
     // reader has to be told which way the error runs. Silence here would be the

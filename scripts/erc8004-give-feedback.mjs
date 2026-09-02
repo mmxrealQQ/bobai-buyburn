@@ -187,16 +187,25 @@ if (SELFTEST) {
   }
 
   console.log('\nFeedback writer self-test');
-  if (problems.length) { for (const p of problems) console.log('  x ' + p); process.exit(1); }
-  console.log('  a measured response time is accepted');
-  console.log(`  refused: ${cases.map(([w]) => w).join(', ')}`);
-  console.log('  giveFeedback encodes against the verified ABI');
-  console.log('  the chain agrees about who we are allowed to rate');
-  console.log('  the registry is bound to the identity registry we census');
-  console.log('\nno problems.');
-  process.exit(0);
+  if (problems.length) {
+    for (const p of problems) console.log('  x ' + p);
+    process.exitCode = 1;
+  } else {
+    console.log('  a measured response time is accepted');
+    console.log(`  refused: ${cases.map(([w]) => w).join(', ')}`);
+    console.log('  giveFeedback encodes against the verified ABI');
+    console.log('  the chain agrees about who we are allowed to rate');
+    console.log('  the registry is bound to the identity registry we census');
+    console.log('\nno problems.');
+    process.exitCode = 0;
+  }
+  // NO process.exit HERE. After a viem read, process.exit() trips a libuv
+  // assertion on Windows (Node 24) and the run ends with code 127 — a
+  // self-test that passed and then reported failure, measured 2026-09-02.
+  // The live path below is skipped and the process closes its own sockets.
 }
 
+if (!SELFTEST) {
 // ── who gets probed ───────────────────────────────────────────────────────
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 const confirmFile = path.join(DIR, 'hire-confirm.json');
@@ -447,3 +456,4 @@ fs.writeFileSync(receipts, JSON.stringify({
   written: queue.map((r) => ({ id: r.id, tag1: r.tag1, tag2: r.tag2, value: r.value, unit: r.unit, ...r.written })),
 }, null, 1) + '\n');
 console.log(`\n${queue.length} attestation(s) written. Receipts: ${path.relative(ROOT, receipts)}`);
+}

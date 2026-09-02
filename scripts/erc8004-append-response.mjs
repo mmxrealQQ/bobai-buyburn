@@ -115,19 +115,24 @@ if (SELFTEST) {
     }
   }
   console.log('\nProvider response self-test');
-  if (problems.length) { for (const p of problems) console.log('  x ' + p); process.exit(1); }
-  console.log('  a response to a rating on our own agent is accepted');
-  console.log(`  refused: ${cases.map(([w]) => w).join(', ')}`);
-  console.log('  the chain agrees about which agents are ours');
-  console.log('\nno problems.');
-  // Let the RPC sockets settle before leaving. Calling process.exit() straight
-  // out of an await on Windows trips a libuv assertion in Node 24, and the run
-  // ends with exit code 127 — a self-test that passes and then reports failure
-  // is worse than one that simply fails.
-  await new Promise((r) => setTimeout(r, 150));
-  process.exit(0);
+  if (problems.length) {
+    for (const p of problems) console.log('  x ' + p);
+    process.exitCode = 1;
+  } else {
+    console.log('  a response to a rating on our own agent is accepted');
+    console.log(`  refused: ${cases.map(([w]) => w).join(', ')}`);
+    console.log('  the chain agrees about which agents are ours');
+    console.log('\nno problems.');
+    process.exitCode = 0;
+  }
+  // NO process.exit HERE. Waiting 150 ms before it was not enough: after a
+  // viem read, process.exit() trips a libuv assertion on Windows (Node 24)
+  // and the run ends with code 127 — a self-test that passed and then
+  // reported failure, measured 2026-09-02. The live path below is skipped
+  // and the process closes its own sockets.
 }
 
+if (!SELFTEST) {
 // ── what we are answering ─────────────────────────────────────────────────
 const own = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'own-agents.json'), 'utf8'));
 const OURS = Object.values(own.agents || {}).filter((a) => a.id);
@@ -333,3 +338,4 @@ fs.writeFileSync(receipts, JSON.stringify({
   document: uri, document_hash: hash, contract: REPUTATION, chain: 56, responder: account.address, written,
 }, null, 1) + '\n');
 console.log(`\n${written.length} response(s) attached. Receipts: ${path.relative(ROOT, receipts)}`);
+}

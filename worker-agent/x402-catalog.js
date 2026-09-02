@@ -93,8 +93,10 @@ is paid, because something has to still be running in an hour.
 ## Transparency
 
 \`https://agent.brainonbnb.com/stats\` reports what this service has been asked
-for and what happened to the money. Revenue is converted to $BOBAI and burned;
-the burn transactions are on-chain and linked from the dashboard.
+for and what happened to the money. Revenue is sold for BNB into the project's
+own PancakeSwap liquidity position; the fees that position earns are turned
+into BNB for the buyback bot, which buys $BOBAI and burns it. Every step is
+on-chain, and the daily record is at \`https://agent.brainonbnb.com/lp/agent\`.
 
 ## Identity
 

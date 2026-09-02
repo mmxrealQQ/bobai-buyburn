@@ -1216,3 +1216,9 @@ showClear();
   // to be told by hand — otherwise arriving via ?token= shows an address with
   // no way to clear it, which is the one arrival that matters most.
   if(t){$('sc-in').value=t;showClear();scan(t)}})();
+
+// Exported for scripts/dashboard-check/scanner-honeypot.mjs, which feeds this
+// card GoPlus answers we could not find in the wild (no analysed honeypot in
+// 370 tokens tried on 2 September) and pins what it draws for each. Nothing
+// else imports it; the page runs exactly as before.
+export { flagsCard };

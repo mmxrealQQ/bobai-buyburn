@@ -1020,9 +1020,14 @@
     .fi{transition:opacity .45s ease,transform .45s ease}
     .fi.pre{opacity:0;transform:translateY(14px)}
     /* Inside a closed fold nothing ever scrolls into view, so the fade-in
-       would keep the library blocks transparent even after the fold opens.
-       Blocks behind a fold are simply visible. */
-    .lib-fold .fi.pre{opacity:1;transform:none}
+       would keep folded blocks transparent even after the fold opens.
+       Blocks behind any fold are simply visible. */
+    details .fi.pre{opacity:1;transform:none}
+    /* A fold inside a card: same summary, less air around it. */
+    .lb-inner{margin-top:18px;border-top:1px solid var(--border)}
+    .lb-inner summary{padding:14px 4px}
+    .lb-inner .lb-arch-title{font-size:.92rem}
+    .lb-inner .lb-arch-meta{font-size:.76rem}
 
     /* === POLISH LAYER ===
        The ground rule for anything that runs continuously in here: it may

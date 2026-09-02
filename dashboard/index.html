@@ -93,6 +93,43 @@
     .line b{color:var(--text);font-weight:600;white-space:nowrap}
     .line .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;box-shadow:0 0 8px var(--green);vertical-align:1px}
     .line a{color:var(--gold);text-decoration:none}
+    /* live: what is moving, and what a buy does — two columns, one rhythm */
+    .live{display:grid;grid-template-columns:1.15fr 1fr;gap:40px}
+    @media(max-width:860px){.live{grid-template-columns:1fr;gap:30px}}
+    .feed{list-style:none;margin:0;padding:0;border-top:1px solid var(--border)}
+    .feed li{display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--border);font-size:.86rem;line-height:1.5}
+    .feed i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--muted);transform:translateY(-1px)}
+    .feed i.burn{background:var(--green);box-shadow:0 0 8px rgba(0,230,118,.5)}
+    .feed i.add{background:var(--gold);box-shadow:0 0 8px rgba(240,185,11,.5)}
+    .feed i.agent{background:#7d92ff;box-shadow:0 0 8px rgba(125,146,255,.5)}
+    .feed i.lp{background:#b98cff;box-shadow:0 0 8px rgba(185,140,255,.5)}
+    .feed b{color:var(--text);font-weight:600}
+    .feed span{color:var(--muted)}
+    .feed time{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--muted);white-space:nowrap}
+    .feed a{color:var(--gold);text-decoration:none}
+    .nextcycle{margin:14px 0 0;font-size:.82rem;color:var(--muted)}
+    .nextcycle b{color:var(--text)}
+    .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.06);margin-top:8px;overflow:hidden}
+    .bar i{display:block;height:100%;background:var(--gold);width:0;transition:width .6s ease}
+    .sizes{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+    .sizes button{font:inherit;font-size:.8rem;font-weight:600;padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer}
+    .sizes button.on{border-color:var(--gold);background:rgba(240,185,11,.12);color:var(--gold)}
+    .sizes button:hover{border-color:var(--gold)}
+    .impact{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .imp{border:1px solid var(--border);border-radius:16px;padding:16px 18px}
+    .imp .k{font-size:.62rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:600}
+    .imp .v{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+    .imp .v.up{color:var(--green)} .imp .v.dn{color:#ff6a60}
+    .imp .s{font-size:.78rem;color:var(--muted);line-height:1.5}
+    .one{margin:16px 0 0;font-size:.84rem;color:var(--muted);line-height:1.6}
+    .one b{color:var(--text)}
+    @media(max-width:480px){.impact{grid-template-columns:1fr}}
+    /* browse: everything, one line each */
+    .dir{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 28px;border-top:1px solid var(--border)}
+    .dir a{display:block;padding:14px 0;border-bottom:1px solid var(--border);text-decoration:none;color:inherit}
+    .dir a b{display:block;font-size:.92rem;font-weight:600;color:var(--text)}
+    .dir a span{font-size:.8rem;color:var(--muted);line-height:1.5}
+    .dir a:hover b{color:var(--gold)}
     /* moved off the page */
     .more{display:flex;flex-wrap:wrap;gap:8px 22px;margin:0 0 34px;font-size:.82rem}
     .more a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border)}
@@ -105,7 +142,7 @@
 <div class="page">
   <nav><div class="nav">
     <a class="brand-link" href="/">Brain On BNB AI</a>
-    <div class="nm"><a href="#token">Token</a><a href="#tools">Tools</a><a href="#burns">Burns</a><a href="#community">Community</a></div>
+    <div class="nm"><a href="#live">Live</a><a href="#token">Token</a><a href="#tools">Tools</a><a href="#burns">Burns</a><a href="#browse">Browse</a><a href="#community">Community</a></div>
     <div class="nb-group on"><a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a></div>
   </div></nav>
 
@@ -135,6 +172,28 @@
     <div class="nstat"><div class="l">$BOBAI burned</div><div class="v" id="n-burned">&ndash;</div><div class="s" id="n-burned-s">of 1 billion</div></div>
     <div class="nstat"><div class="l">Burns</div><div class="v" id="n-count">&ndash;</div><div class="s" id="n-last">by the bot, on-chain</div></div>
   </div>
+
+  <section class="ns" id="live">
+    <div class="live">
+      <div>
+        <h2 class="nh">What is moving <em>right now</em></h2>
+        <p class="nsub" style="margin-bottom:18px">Nine tenths of this project runs without anyone at a keyboard. This is what it did last, read from the chain and the bots' own records, refreshed every thirty seconds.</p>
+        <ul class="feed" id="n-feed"><li><i></i><span>Reading the records&hellip;</span><time></time></li></ul>
+        <p class="nextcycle"><b>Next buyback cycle:</b> the bot runs every 10 minutes and acts once the wallet holds enough tax. Waiting in the buyback wallet now: <b id="n-wallet">&ndash;</b>.</p>
+        <div class="bar" aria-hidden="true"><i id="n-bar"></i></div>
+      </div>
+      <div>
+        <h2 class="nh">What does a buy <em>do?</em></h2>
+        <p class="nsub" style="margin-bottom:18px">Tap a size. The figures come from the pool as it is at this moment: how far the trade moves the price, and what it really costs once the 3% tax and the pool fee are in.</p>
+        <div class="sizes" id="n-sizes"></div>
+        <div class="impact">
+          <div class="imp"><div class="k">Buying moves the price</div><div class="v up" id="n-buy-move">&ndash;</div><div class="s">and costs <b id="n-buy-cost">&ndash;</b> of what you put in, tax and fee included</div></div>
+          <div class="imp"><div class="k">Selling moves the price</div><div class="v dn" id="n-sell-move">&ndash;</div><div class="s">and costs <b id="n-sell-cost">&ndash;</b>, a little more, because 3% never reaches the pool</div></div>
+        </div>
+        <p class="one">A buy of <b id="n-up1">&ndash;</b> moves the price <b>+1%</b> right now; a sell of <b id="n-dn1">&ndash;</b> moves it <b>&minus;1%</b>. <a href="/scanner?token=0x245c386dcfed896f5c346107596141e5edcbffff" style="color:var(--gold);text-decoration:none">Full scan &rarr;</a></p>
+      </div>
+    </div>
+  </section>
 
   <section class="ns" id="token">
     <div class="tok">
@@ -220,6 +279,29 @@
     </div>
   </div>
 
+  <section class="ns" id="browse">
+    <h2 class="nh">Everything on <em>Brain On BNB</em></h2>
+    <p class="nsub">It is a big project. Nothing is hidden; it just is not all on one page any more.</p>
+    <div class="dir">
+      <a href="/classic#tokenomics"><b>Tokenomics and tax phases</b><span>Supply, burned share, and every tax phase since launch with its split.</span></a>
+      <a href="/classic#tokenomics"><b>How deep is the liquidity</b><span>Read from the pool contract: LP burned, hard BNB backing, what every trade size does.</span></a>
+      <a href="/classic#burns"><b>Proof and archives</b><span>Contracts, the full burn table, and the finished campaigns with every transaction.</span></a>
+      <a href="/scanner"><b>Pool Scanner</b><span>Any BNB Chain token: real cost, hidden tax, who can pull the liquidity. Free.</span></a>
+      <a href="/registry"><b>Brain Plaza</b><span>Every AI agent on BNB Chain that answers, hireable from the page.</span></a>
+      <a href="/services"><b>What we can do for you</b><span>The whole offer in plain words, for people and for their AI assistants.</span></a>
+      <a href="/advantage"><b>Agent Advantage Report</b><span>Three real tasks done with and without an agent, measured.</span></a>
+      <a href="/session"><b>What our agent may spend</b><span>Its allowance on-chain: allowlist, daily cap, expiry, revocation.</span></a>
+      <a href="/nft/"><b>NFT Buy Drops</b><span>Every buy of $100 or more mints an NFT to the buyer. Automatically.</span></a>
+      <a href="/brainscreener/"><b>brainScreener</b><span>Thirteen free self-tests. Anonymous, instant results.</span></a>
+      <a href="/game/"><b>Burn &amp; Add Liq, the game</b><span>Jump through BNB Chain, burn tokens, dodge the dumps.</span></a>
+      <a href="/worldcup/"><b>Worldcup '26</b><span>The tipping game that paid out 8.94M $BOBAI. Now an archive.</span></a>
+      <a href="/classic#roadmap"><b>Roadmap</b><span>What is done, what runs, what is next.</span></a>
+      <a href="/classic#faq"><b>Questions</b><span>Twelve answers, from the contract address to how hiring an agent works.</span></a>
+      <a href="/classic#library"><b>The code library</b><span>Every bot and app, packaged to be read and run by someone who is not us.</span></a>
+      <a href="/whitepaper"><b>Whitepaper</b><span>The lite paper, in one sitting.</span></a>
+    </div>
+  </section>
+
   <section class="ns" id="community">
     <h2 class="nh">Come for the burns, <em>stay for the brain</em></h2>
     <p class="nsub">The community lives on Telegram and X. $BOBAI is listed, tradable and tracked everywhere below.</p>
@@ -284,6 +366,34 @@
     var state=c.position?(c.in_range===false?'position out of range, waiting for a re-set':'position in range and earning'):'no position open';
     $('n-lp-line').textContent=state+' · fees sent to the buyback bot so far '+fwd.toFixed(5)+' BNB · last check '+String(last.at||'').replace('T',' ').slice(0,16)+' UTC.';
   }).catch(function(){ $('n-lp-line').textContent='record not reachable right now.'; });
+  // WHAT IS MOVING: one feed from four records, newest first, relative time.
+  var ago=function(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<90)return 'just now';if(s<3600)return Math.round(s/60)+' min ago';if(s<86400)return Math.round(s/3600)+' h ago';return Math.round(s/86400)+' d ago'};
+  var BURNS='https://logs.brainonbnb.com/logs/burns.json', ADDS='https://logs.brainonbnb.com/logs/bobai-liq-log.json', LP='https://agent.brainonbnb.com/lp/agent', STATS='https://agent.brainonbnb.com/stats';
+  var gjs=function(u){return fetch(u,{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})};
+  function feed(){
+    Promise.all([gjs(BURNS),gjs(ADDS),gjs(LP),gjs(STATS)]).then(function(x){
+      var ev=[]; var burns=Array.isArray(x[0])?x[0]:((x[0]&&x[0].burns)||[]);
+      burns.slice(-3).forEach(function(b){ev.push({t:b.time,k:'burn',h:'Burned '+nf(b.bobaiBurned)+' $BOBAI'+(b.bobBurned?' and '+nf(b.bobBurned)+' $BOB':''),s:'the buyback bot, from '+Number(b.totalBnb||0).toFixed(4)+' BNB of tax',u:b.bobaiBurnTx?'https://bscscan.com/tx/'+b.bobaiBurnTx:null})});
+      (Array.isArray(x[1])?x[1]:[]).slice(-2).forEach(function(a){ev.push({t:a.time,k:'add',h:'Added '+Number(a.bnb||0).toFixed(4)+' BNB to the pool, LP burned',s:'Liquidity Boost II, 0.8% of every trade',u:a.addLiqTx?'https://bscscan.com/tx/'+a.addLiqTx:null})});
+      if(x[2]&&x[2].last){var l=x[2].last,c=(l.steps||{}).collect||{};ev.push({t:l.at,k:'lp',h:l.acted?'The liquidity agent acted':'The liquidity agent checked its position',s:c.position?(c.in_range===false?'position #'+c.position+' out of range, waiting for a re-set':'position #'+c.position+' in range and earning'):'no position open',u:'https://agent.brainonbnb.com/lp/agent'})}
+      if(x[3]&&x[3].asked&&x[3].asked.by_day){var days=Object.keys(x[3].asked.by_day).sort();var d=days[days.length-1];var n=0;var bd=x[3].asked.by_day[d]||{};Object.keys(bd).forEach(function(k){if(k!=='watch_checks')n+=bd[k]});ev.push({t:d+'T23:59:59Z',k:'agent',h:nf(n)+' requests answered for other people\'s agents on '+d,s:'pool scans, registry look-ups, routed tasks',u:'https://agent.brainonbnb.com/stats'})}
+      ev.sort(function(a,b){return new Date(b.t)-new Date(a.t)});
+      $('n-feed').innerHTML=ev.slice(0,7).map(function(e){return '<li><i class="'+e.k+'"></i><div><b>'+e.h+'</b><br><span>'+e.s+(e.u?' · <a href="'+e.u+'" target="_blank" rel="noopener">see it</a>':'')+'</span></div><time>'+ago(e.t)+'</time></li>'}).join('')||'<li><i></i><span>Nothing readable right now.</span><time></time></li>';
+    });
+    // The buyback wallet, from the chain: BNB plus WBNB waiting for the next cycle.
+    var W='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce', WB='0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c';
+    fetch('https://bsc-dataseed.binance.org',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify([{jsonrpc:'2.0',id:1,method:'eth_getBalance',params:[W,'latest']},{jsonrpc:'2.0',id:2,method:'eth_call',params:[{to:WB,data:'0x70a08231000000000000000000000000'+W.slice(2)},'latest']}])})
+      .then(function(r){return r.json()}).then(function(j){var v=0;j.forEach(function(x){if(x.result)v+=parseInt(x.result,16)/1e18});$('n-wallet').textContent=v.toFixed(4)+' BNB';$('n-bar').style.width=Math.min(100,Math.round(v/0.004*100))+'%'}).catch(function(){});
+  }
+  feed(); setInterval(feed,30000);
+  // WHAT A BUY DOES: the scanner's own measurement of the $BOBAI pool.
+  fetch('/api/pool-scan?address=0x245c386dcfed896f5c346107596141e5edcbffff').then(function(r){return r.json()}).then(function(d){
+    var rows=(d&&d.tradeCost)||[]; if(!rows.length)return;
+    var box=$('n-sizes'); box.innerHTML='';
+    var show=function(t){$('n-buy-move').textContent='+'+Number(t.buyPriceMovePct).toFixed(2)+'%';$('n-buy-cost').textContent=Number(t.buyCostPct).toFixed(2)+'%';$('n-sell-move').textContent=Number(t.sellPriceMovePct).toFixed(2)+'%';$('n-sell-cost').textContent=Number(t.sellCostPct).toFixed(2)+'%'};
+    rows.forEach(function(t,i){var b=document.createElement('button');b.type='button';b.textContent='$'+nf(t.sizeUsd);if(t.sizeUsd===100||(i===0&&!rows.some(function(r){return r.sizeUsd===100}))){b.className='on';show(t)}b.addEventListener('click',function(){box.querySelectorAll('button').forEach(function(x){x.className=''});b.className='on';show(t)});box.appendChild(b)});
+    if(d.onePercentDepth){$('n-up1').textContent='$'+nf(d.onePercentDepth.buyUsd);$('n-dn1').textContent='$'+nf(d.onePercentDepth.sellUsd)}
+  }).catch(function(){});
   // Copy the contract without a dialog.
   var cp=$('n-copy'); if(cp){cp.addEventListener('click',function(){
     var t=$('n-ca').textContent; var done=function(){cp.textContent='Copied';cp.classList.add('done');setTimeout(function(){cp.textContent='Copy';cp.classList.remove('done')},1800)};

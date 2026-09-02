@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 26 files, 7330 lines.
+# one fetch. 35 files, 8633 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -154,6 +154,272 @@ away from advertising a price we do not charge.
   bare 402 for a client to read.
 
 ==============================================================================
+=== FILE: scripts/lp-agent.mjs
+==============================================================================
+
+#!/usr/bin/env node
+// The LP agent by hand: the same three steps the daily worker runs
+// (worker-lp/index.js), from a laptop, plan by default.
+//
+//   sweep     AI income (USD1 on the x402 wallet, $U on the provider wallet)
+//             -> BNB -> the liquidity wallet
+//   collect   the position's fees -> BNB -> the buyback wallet
+//   increase  BNB above the reserve -> more of the same position
+//
+// Every function here is imported from shared/lp-agent.js, the file the
+// worker runs. Nothing is reimplemented: a plan printed here is the plan the
+// cron would send tonight, on today's chain.
+//
+// SAFETY — a bare run changes nothing.
+//   Nothing happens without --confirm.
+//   --self-test drives synthetic states through the same guard functions the
+//   real run uses, in both directions, because a guard nobody has watched
+//   fire is a guess.
+//
+// Usage:
+//   node scripts/lp-agent.mjs                       plan all three steps
+//   node scripts/lp-agent.mjs --step collect        one step
+//   node scripts/lp-agent.mjs --self-test           prove the guards fire
+//   node scripts/lp-agent.mjs --confirm [--step x]  send it
+import 'dotenv/config';
+import { createPublicClient, createWalletClient, http, fallback } from 'viem';
+import { bsc } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
+import {
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, ticksAround, readBnbUsd,
+  planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
+  planRebalance, executeRebalance,
+} from '../shared/lp-agent.js';
+import {
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance,
+  GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
+} from '../shared/lp-guards.js';
+
+const CONFIRM = process.argv.includes('--confirm');
+const SELF = process.argv.includes('--self-test');
+const argOf = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null; };
+const stepArg = argOf('--step');
+const ALL = ['sweep', 'collect', 'rebalance', 'increase'];
+const STEPS = stepArg ? [stepArg] : ALL;
+// A width named by a person for the re-set. It is printed as a hand-made
+// choice and never remembered: the record's day test is the standing rule.
+const WIDTH = argOf('--width') != null ? Number(argOf('--width')) : null;
+if (stepArg && !ALL.includes(stepArg)) {
+  console.error(`--step must be one of ${ALL.join(', ')}, not "${stepArg}"`);
+  process.exitCode = 2;
+}
+if (WIDTH != null && !(WIDTH > 0 && WIDTH <= 50)) {
+  console.error(`--width is a percent between 0 and 50, not "${argOf('--width')}"`);
+  process.exitCode = 2;
+}
+const WINDOWS_URL = 'https://agent.brainonbnb.com/lp/windows';
+
+// --------------------------------------------------------------------------
+// --self-test: every refusal, and the one allow, for each of the three guards
+// --------------------------------------------------------------------------
+if (SELF) {
+  let bad = 0;
+  const check = (label, r, wantRefusal) => {
+    const ok = wantRefusal ? !!r : !r;
+    console.log(`${ok ? 'ok  ' : 'FAIL'}  ${wantRefusal ? 'refuses' : 'allows '}: ${label}${r ? ` — "${String(r).slice(0, 72)}"` : ''}`);
+    if (!ok) bad += 1;
+  };
+  console.log('collect');
+  const healthyCollect = { positions: 1, liquidity: 10n ** 18n, owedBnbEquivalent: 0.01, gasBnb: 0.01, quoteOffPct: 2 };
+  for (const [state, why] of [
+    [{ positions: 0 }, 'no position'],
+    [{ positions: 2 }, 'two positions'],
+    [{ positions: 1, liquidity: 0n }, 'position emptied'],
+    [{ ...healthyCollect, owedBnbEquivalent: 0 }, 'nothing owed'],
+    [{ ...healthyCollect, owedBnbEquivalent: 0.0001 }, 'dust below the gas it costs'],
+    [{ ...healthyCollect, gasBnb: 0.0001 }, 'no gas'],
+    [{ ...healthyCollect, quoteOffPct: 60 }, 'quote far off the pool'],
+    [{ ...healthyCollect, quoteOffPct: -60 }, 'quote far off the pool, the other way'],
+  ]) check(why, refuseCollect(state), true);
+  check('a healthy position with real fees owed', refuseCollect(healthyCollect), false);
+  check('a quote 10% off, within the 25% band', refuseCollect({ ...healthyCollect, quoteOffPct: 10 }), false);
+  // The reserve the collect leaves behind must be enough for the next collect.
+  check(`the reserve (${GAS_RESERVE_BNB}) covers the gas floor (${MIN_GAS_BNB})`, GAS_RESERVE_BNB >= MIN_GAS_BNB ? null : 'reserve below the floor', false);
+  // A wallet holding exactly the reserve after a run must be allowed to act.
+  check('a wallet holding exactly the reserve', refuseCollect({ ...healthyCollect, gasBnb: GAS_RESERVE_BNB }), false);
+
+  console.log('sweep');
+  const healthySweep = { symbol: 'USD1', balance: 5, bnbEquivalent: 0.007, gasBnb: 0.002, bnbUsd: 700, feedAgeS: 30, impliedUsd: 1.0 };
+  for (const [state, why] of [
+    [{ ...healthySweep, balance: 0, bnbEquivalent: 0 }, 'nothing arrived'],
+    [{ ...healthySweep, gasBnb: 0.0001 }, 'no gas on the income wallet'],
+    [{ ...healthySweep, feedAgeS: 7200 }, 'stale Chainlink feed'],
+    [{ ...healthySweep, bnbUsd: 12 }, 'implausible BNB price'],
+    [{ ...healthySweep, balance: 0.5, bnbEquivalent: 0.0007 }, 'income under the floor'],
+    [{ ...healthySweep, impliedUsd: 0.5 }, 'route pays half a dollar'],
+    [{ ...healthySweep, impliedUsd: 1.5 }, 'route pays a dollar and a half'],
+  ]) check(why, refuseSweep(state), true);
+  check('five dollars of USD1 on a wallet with gas', refuseSweep(healthySweep), false);
+  check('the same in $U', refuseSweep({ ...healthySweep, symbol: '$U' }), false);
+  check('a plan stage with no quote yet', refuseSweep({ ...healthySweep, impliedUsd: null }), false);
+
+  console.log('increase');
+  const healthyIncrease = { positions: 1, spendableBnb: 0.02, inRange: true };
+  for (const [state, why] of [
+    [{ ...healthyIncrease, positions: 0 }, 'no position'],
+    [{ ...healthyIncrease, positions: 2 }, 'two positions'],
+    [{ ...healthyIncrease, spendableBnb: 0.005 }, 'capital under the floor'],
+    [{ ...healthyIncrease, spendableBnb: 0 }, 'nothing above the reserve'],
+    [{ ...healthyIncrease, inRange: false }, 'price outside the range'],
+  ]) check(why, refuseIncrease(state), true);
+  check('capital above the floor and a price in range', refuseIncrease(healthyIncrease), false);
+  check(`exactly the floor (${MIN_INCREASE_BNB})`, refuseIncrease({ ...healthyIncrease, spendableBnb: MIN_INCREASE_BNB }), false);
+
+  console.log('rebalance');
+  const healthyRebalance = { positions: 1, inRange: false, width: 1, hoursOfPrices: 30, valueBnb: 0.07 };
+  for (const [state, why] of [
+    [{ ...healthyRebalance, positions: 0 }, 'no position'],
+    [{ ...healthyRebalance, positions: 2 }, 'two positions'],
+    [{ ...healthyRebalance, inRange: true }, 'price still inside the range'],
+    [{ ...healthyRebalance, width: null, hoursOfPrices: 6 }, 'no width has held a day yet'],
+    [{ ...healthyRebalance, valueBnb: 0.005 }, 'position too small to pay for a re-set'],
+  ]) check(why, refuseRebalance(state), true);
+  check('out of range, a day-tested width, enough capital', refuseRebalance(healthyRebalance), false);
+  check(`exactly the floor (${MIN_REBALANCE_BNB})`, refuseRebalance({ ...healthyRebalance, valueBnb: MIN_REBALANCE_BNB }), false);
+  const t = ticksAround(-59407, 1, 10);
+  check('a re-set range sits on the pool\'s grid around the tick', t.tickLower % 10 === 0 && t.tickUpper % 10 === 0 && t.tickLower < -59407 && t.tickUpper > -59407 ? null : `${t.tickLower}…${t.tickUpper}`, false);
+  check('and is never wider than the width asked for', (t.tickUpper - t.tickLower) <= 2 * Math.log(1.01) / Math.log(1.0001) ? null : 'wider', false);
+
+  console.log('split');
+  // Below the range a position is all token0, above it all token1, inside it both.
+  const lo = -59340, hi = -59250;
+  const mid = Math.pow(1.0001, (lo + hi) / 4), below = Math.pow(1.0001, (lo - 100) / 2), above = Math.pow(1.0001, (hi + 100) / 2);
+  const sMid = splitForRange(mid, lo, hi), sBelow = splitForRange(below, lo, hi), sAbove = splitForRange(above, lo, hi);
+  check('inside the range holds both tokens', sMid.perL0 > 0 && sMid.perL1 > 0 ? null : 'one side is zero', false);
+  check('below the range holds only token0', sBelow.perL0 > 0 && sBelow.perL1 === 0 ? null : 'token1 is not zero', false);
+  check('above the range holds only token1', sAbove.perL1 > 0 && sAbove.perL0 === 0 ? null : 'token0 is not zero', false);
+  // Ten times the capital is ten times the liquidity: the split is linear in L.
+  check('the split is linear in liquidity', Math.abs(splitForRange(mid, lo, hi).perL0 - sMid.perL0) < 1e-18 ? null : 'not linear', false);
+
+  const total = 8 + 4 + 7 + 3 + 5 + 2 + 5 + 4 + 4;
+  console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);
+  process.exitCode = bad ? 1 : 0;
+}
+
+// --------------------------------------------------------------------------
+// The live path
+// --------------------------------------------------------------------------
+const transport = () => process.env.BSC_RPC_URL
+  ? http(process.env.BSC_RPC_URL)
+  : fallback(RPCS.map((u) => http(u, { timeout: 15000 })));
+const acct = (key) => privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
+const f = (n, d = 6) => Number(n).toFixed(d);
+
+async function main() {
+  const pub = createPublicClient({ chain: bsc, transport: transport() });
+  const log = (s) => console.log(s);
+  let acted = 0;
+
+  if (STEPS.includes('sweep')) {
+    console.log('SWEEP — AI income -> BNB -> liquidity wallet');
+    const feed = await readBnbUsd(pub);
+    console.log(`  BNB ${f(feed.bnbUsd, 2)} $ (Chainlink, ${feed.feedAgeS} s old)`);
+    for (const src of INCOME_SOURCES) {
+      const key = process.env[src.keyEnv];
+      if (!key) { console.log(`  ${src.name}: no ${src.keyEnv} in .env — skipped`); continue; }
+      const a = acct(key);
+      if (a.address.toLowerCase() !== src.wallet.toLowerCase()) { console.log(`  ${src.name}: ${src.keyEnv} does not open ${src.wallet} — skipped`); continue; }
+      const plan = await planSweep(pub, src, feed);
+      const s = plan.summary;
+      console.log(`  ${src.name} ${src.wallet}: ${f(s.balance, 4)} ${src.symbol} (${src.earns}), worth ${f(s.bnb_equivalent)} BNB${s.implied_usd != null ? `, route pays $${s.implied_usd}` : ''}, gas ${f(s.gas_bnb)} BNB`);
+      if (plan.no) { console.log(`    nothing to do: ${plan.no}`); continue; }
+      console.log(`    would sell ${f(s.sweeping, 4)} ${src.symbol}${s.capped ? ' (capped for this run)' : ''} for ~${f(s.bnb_equivalent)} BNB, paid straight to ${ADDR.LP_WALLET}`);
+      if (!CONFIRM) continue;
+      const wallet = createWalletClient({ account: a, chain: bsc, transport: transport() });
+      const out = await executeSweep(pub, wallet, a, plan, log);
+      console.log(`    sold ${out.sold} ${src.symbol}, the liquidity wallet received ${out.received_bnb} BNB`);
+      acted += 1;
+    }
+  }
+
+  const lpKey = process.env.LP_PRIVATE_KEY;
+  if (!lpKey) {
+    console.error('No LP_PRIVATE_KEY in .env. Create the wallet first: node scripts/create-lp-wallet.mjs');
+    process.exitCode = 2;
+    return;
+  }
+  const lp = acct(lpKey);
+  const lpWallet = () => createWalletClient({ account: lp, chain: bsc, transport: transport() });
+
+  if (STEPS.includes('collect')) {
+    console.log(`\nCOLLECT — fees of the position held by ${lp.address} -> BNB -> buyback wallet`);
+    const plan = await planCollect(pub, lp.address);
+    const s = plan.summary;
+    if (plan.pos) {
+      console.log(`  position #${s.position}  ticks ${s.ticks[0]} … ${s.ticks[1]}  ${s.in_range ? 'in range' : 'OUT OF RANGE'}  liquidity ${s.liquidity}`);
+      console.log(`  owed      ${s.owed.wbnb} WBNB and ${s.owed.other} of ${s.owed.other_token}`);
+      if (s.leftovers) console.log(`  leftovers ${s.leftovers.wbnb} WBNB and ${s.leftovers.other} of the other token, from an interrupted run`);
+      console.log(`  worth     ${f(s.owed.bnb_equivalent)} BNB together${s.quote_off_pct != null ? `, V2 quote ${s.quote_off_pct}% off the pool's price` : ''}`);
+    }
+    console.log(`  gas       ${f(s.gas_bnb)} BNB (reserve kept: ${GAS_RESERVE_BNB})`);
+    if (plan.no) console.log(`  nothing to do: ${plan.no}`);
+    else {
+      console.log(`  would collect, sell the other side, unwrap, and forward what this run produced to ${ADDR.BUYBACK_WALLET}`);
+      if (CONFIRM) {
+        const out = await executeCollect(pub, lpWallet(), lp, plan, log);
+        console.log(`  forwarded ${out.forwarded_bnb} BNB${out.why ? ` — ${out.why}` : ''}`);
+        acted += 1;
+      }
+    }
+  }
+
+  if (STEPS.includes('rebalance')) {
+    console.log('\nREBALANCE — a range the price has left is re-set around today\'s price');
+    // The window record as the cron built it, with the verdict computed by
+    // the same function the worker uses — one record, one rule.
+    let record = null;
+    try {
+      const w = await fetch(WINDOWS_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
+      record = w.verdict || null;
+      if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
+    } catch (e) { console.log(`  record unreadable (${e.message}) — only a --width named by hand can re-set today`); }
+    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH });
+    const s = plan.summary;
+    if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
+    if (plan.no) console.log(`  nothing to do: ${plan.no}`);
+    else {
+      console.log(`  width ±${s.width_pct}% (${s.width_basis}) -> new ticks ${s.new_ticks[0]} … ${s.new_ticks[1]}`);
+      console.log(`  would withdraw and burn #${s.position}, ${s.trade}, and mint the new range from what the wallet then holds`);
+      if (CONFIRM) {
+        const out = await executeRebalance(pub, lpWallet(), lp, plan, log);
+        console.log(`  new position #${out.new_position} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}`);
+        acted += 1;
+      }
+    }
+  }
+
+  if (STEPS.includes('increase')) {
+    console.log('\nINCREASE — BNB above the reserve -> the same position');
+    const plan = await planIncrease(pub, lp.address);
+    const s = plan.summary;
+    console.log(`  wallet holds ${f(s.wallet_bnb)} BNB, ${f(s.spendable_bnb)} above the reserve and gas budget${s.tick != null ? `, tick ${s.tick} ${s.in_range ? 'in range' : 'OUT OF RANGE'}` : ''}`);
+    if (plan.no) console.log(`  nothing to do: ${plan.no}`);
+    else {
+      console.log(`  would wrap ${s.would_add.wbnb} BNB, buy ${s.would_add.other} of ${s.would_add.other_token} for ~${s.would_add.buying_other_costs_bnb} BNB, and add both to #${plan.tokenId}`);
+      if (CONFIRM) {
+        const out = await executeIncrease(pub, lpWallet(), lp, plan, log);
+        console.log(`  added ${out.other_used} of the other token and ${out.wbnb_used} WBNB; liquidity now ${out.liquidity_after}`);
+        acted += 1;
+      }
+    }
+  }
+
+  if (!CONFIRM) console.log('\nPLAN ONLY — nothing was sent. Add --confirm to send it.');
+  else console.log(`\nDone: ${acted} step(s) acted.`);
+}
+
+// NO process.exit HERE. Calling it immediately after a viem HTTP read trips a
+// libuv assertion on Windows and the process ends with code 127 after a run
+// that did what it was asked. Every path returns, failures set
+// process.exitCode, and the process closes its own sockets.
+if (!SELF && process.exitCode !== 2) await main().catch((e) => { console.error(`\nFailed: ${e.shortMessage || e.message}`); process.exitCode = 1; });
+
+==============================================================================
 === FILE: scripts/x402-catalog-proof.mjs
 ==============================================================================
 
@@ -296,6 +562,798 @@ async function verifyLive() {
 
 if (process.argv.includes('--verify')) await verifyLive();
 else await generate();
+
+==============================================================================
+=== FILE: shared/agent-registrations.js
+==============================================================================
+
+// The agent ids we own, and the domain proof built from them — one copy.
+//
+// An ERC-8004 registration is only half a claim. The other half is this file:
+// the origin an agent names has to answer /.well-known/agent-registration.json
+// listing that id, or the agent is anonymous whatever its on-chain document
+// says. Two origins serve that proof — brainonbnb.com and agent.brainonbnb.com,
+// because a verifier fetches whichever host the agent named — and until now
+// each one carried its own literal copy of the list, with a comment in both
+// asking the next person to remember the other. A list kept in step by a
+// comment is a list that drifts, and the failure is silent: the id verifies on
+// one host and reads as unattributable on the other.
+//
+// data/own-agents.json remains the receipt — written by the registration
+// script, one entry per on-chain tx. This file is what the workers serve, and
+// scripts/dispatch-safety.mjs checks the two against each other on both
+// origins, so a divergence fails a test instead of going unnoticed.
+
+// The registry the ids live in. CAIP-10 style, as ERC-8004 wants it.
+export const AGENT_REGISTRY = 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
+
+// The agents we run ourselves. These ids appear in the domain proof on two
+// origins, in the telemetry document, in the registry page's live-line mapping
+// and in two check scripts.
+export const OWN_AGENT_IDS = [302257, 302258, 304493, 304494, 310460];
+
+// The parent identity — the operator itself, registered long before the
+// hireable four. It belongs in the domain proof but not in the per-agent
+// telemetry, which is why the two lists are not the same length.
+export const PARENT_AGENT_ID = 49467;
+
+// Everything this operator claims on-chain, in the shape the proof document
+// wants. Parent first: it is the id a reader recognises.
+export const PROOF_IDS = [PARENT_AGENT_ID, ...OWN_AGENT_IDS];
+
+export const registrations = () =>
+  PROOF_IDS.map((agentId) => ({ agentId, agentRegistry: AGENT_REGISTRY }));
+
+==============================================================================
+=== FILE: shared/lp-agent.js
+==============================================================================
+
+// The LP agent's three steps, written once.
+//
+// worker-lp/index.js runs them daily with the keys as Worker secrets;
+// scripts/lp-agent.mjs runs the same functions from a laptop, plan by default.
+// The first build had the collect in two files that had already drifted apart
+// — the worker forwarded BNB to the buyback bot while the hand script still
+// bought and burned $BOBAI itself — so the logic now lives here and the two
+// callers only differ in where the record goes.
+//
+// THE MONEY, in the order the daily tick runs it:
+//   sweep     what the AI side earned (USD1 for watches, $U for delivered
+//             jobs) is sold for BNB and sent to the liquidity wallet
+//   collect   the position's fees are collected, sold for BNB and sent to the
+//             buyback wallet — only the fees, never the capital
+//   increase  BNB above the reserve is put into the same position
+//
+// Every plan* function only reads. Every execute* function signs, and takes
+// the plan it was given rather than reading again, so what was printed is
+// what gets sent. A chain read that fails throws — an RPC that did not answer
+// must never look like a wallet that holds nothing.
+import { parseAbi, formatEther, formatUnits, parseEther } from 'viem';
+import {
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance,
+  GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB,
+} from './lp-guards.js';
+
+export const ADDR = {
+  V3_POSITION_MANAGER: '0x46a15b0b27311cedf172ab29e4f4766fbe7f4364',
+  V2_ROUTER: '0x10ed43c718714eb63d5aa57b78b54704e256024e',
+  WBNB: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
+  // Where collected fees go: the buyback bot's wallet, which buys and burns
+  // $BOBAI as it always has. One burn path, one record.
+  BUYBACK_WALLET: '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
+  // Where AI income goes: the wallet that holds the position.
+  LP_WALLET: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+  // BSC mainnet BNB/USD, 8 decimals. On-chain, so the worker needs no outside API.
+  CHAINLINK_BNB_USD: '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE',
+};
+export const RPCS = [
+  'https://bsc-dataseed.binance.org',
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-rpc.publicnode.com',
+];
+export const GAS_PRICE = 1_000_000_000n;
+export const GAS_RESERVE = parseEther(String(GAS_RESERVE_BNB));
+const MAX128 = (1n << 128n) - 1n;
+const ZERO = '0x0000000000000000000000000000000000000000';
+
+// The wallets the AI side is paid into, and what each one earns. Each is used
+// for nothing else, which is what makes its history the earnings record.
+export const INCOME_SOURCES = [
+  {
+    key: 'x402', name: 'x402 service', keyEnv: 'X402_PRIVATE_KEY',
+    wallet: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
+    token: '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d', symbol: 'USD1', decimals: 18,
+    earns: 'USD1 paid by agents for pool watches',
+  },
+  {
+    key: 'provider', name: 'agent provider', keyEnv: 'AGENT_PROVIDER_PRIVATE_KEY',
+    wallet: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',
+    token: '0xcE24439F2D9C6a2289F741120FE202248B666666', symbol: '$U', decimals: 18,
+    earns: '$U released from ERC-8183 job escrows',
+  },
+];
+
+export const ABI = {
+  ERC20: parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+    'function approve(address,uint256) returns (bool)',
+    'function withdraw(uint256)',
+    'function deposit() payable',
+  ]),
+  NPM: parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+    'function tokenOfOwnerByIndex(address,uint256) view returns (uint256)',
+    'function positions(uint256) view returns (uint96 nonce,address operator,address token0,address token1,uint24 fee,int24 tickLower,int24 tickUpper,uint128 liquidity,uint256 feeGrowthInside0LastX128,uint256 feeGrowthInside1LastX128,uint128 tokensOwed0,uint128 tokensOwed1)',
+    'function collect((uint256 tokenId,address recipient,uint128 amount0Max,uint128 amount1Max)) payable returns (uint256 amount0,uint256 amount1)',
+    'function increaseLiquidity((uint256 tokenId,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint128 liquidity,uint256 amount0,uint256 amount1)',
+    'function decreaseLiquidity((uint256 tokenId,uint128 liquidity,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint256 amount0,uint256 amount1)',
+    'function burn(uint256 tokenId) payable',
+    'function mint((address token0,address token1,uint24 fee,int24 tickLower,int24 tickUpper,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,address recipient,uint256 deadline)) payable returns (uint256 tokenId,uint128 liquidity,uint256 amount0,uint256 amount1)',
+    'function factory() view returns (address)',
+  ]),
+  FACTORY: parseAbi(['function getPool(address,address,uint24) view returns (address)']),
+  POOL: parseAbi([
+    'function slot0() view returns (uint160 sqrtPriceX96,int24 tick,uint16 observationIndex,uint16 observationCardinality,uint16 observationCardinalityNext,uint32 feeProtocol,bool unlocked)',
+    'function tickSpacing() view returns (int24)',
+  ]),
+  ROUTER: parseAbi([
+    'function getAmountsOut(uint256,address[]) view returns (uint256[])',
+    'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline)',
+    'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) returns (uint256[])',
+  ]),
+  FEED: parseAbi(['function latestRoundData() view returns (uint80 roundId,int256 answer,uint256 startedAt,uint256 updatedAt,uint80 answeredInRound)']),
+};
+
+const bn = (v) => Number(formatEther(v));
+const deadline = () => BigInt(Math.floor(Date.now() / 1000) + 600);
+const read = (pub, address, abi, functionName, args = []) => pub.readContract({ address, abi, functionName, args });
+
+// What a transaction pays per gas: the chain's own answer with headroom,
+// floored at BSC's 0.05 gwei minimum and capped at 3 gwei. The floors and
+// reserves in lp-guards.js are still priced at 1 gwei — that is the safety
+// margin — but paying 1 gwei on a chain that clears at 0.05 was paying
+// twenty times the fare, measured 2026-09-02.
+export async function gasPriceNow(pub) {
+  const g = await pub.getGasPrice().catch(() => null);
+  if (g == null) return GAS_PRICE;
+  const floor = 50_000_000n, cap = 3_000_000_000n;
+  const bumped = (g * 15n) / 10n;
+  return bumped < floor ? floor : bumped > cap ? cap : bumped;
+}
+
+// One transaction, waited for, refused to continue past a revert. `txs` is
+// the caller's list so a failure mid-sequence still reports what was sent.
+export function sender(pub, wallet, txs, log = () => {}) {
+  let price = null;
+  return async (label, req) => {
+    if (price == null) price = await gasPriceNow(pub);
+    const hash = req.to
+      ? await wallet.sendTransaction({ ...req, gasPrice: price })
+      : await wallet.writeContract({ ...req, gasPrice: price });
+    txs.push({ label, hash });
+    log(`  ${label}: ${hash}`);
+    const r = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
+    if (r.status !== 'success') throw new Error(`${label} reverted — stopped before the next step`);
+    return r;
+  };
+}
+
+// --------------------------------------------------------------------------
+// The position
+// --------------------------------------------------------------------------
+
+// The position this wallet holds, and what a collect would return right now.
+// Asked by simulation, not read off the struct: tokensOwed only updates when
+// the position is touched, so an untouched position reads zero there. A
+// simulation that fails throws — it is not "nothing owed".
+export async function readPosition(pub, address) {
+  const positions = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address]));
+  if (positions !== 1) return { positions, tokenId: null, pos: null, owed0: 0n, owed1: 0n };
+  const tokenId = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 0n]);
+  const pos = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [tokenId]);
+  let owed0 = 0n, owed1 = 0n;
+  if (pos[7] > 0n) {
+    const sim = await pub.simulateContract({
+      address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
+      args: [{ tokenId, recipient: address, amount0Max: MAX128, amount1Max: MAX128 }], account: address,
+    }).catch((e) => { throw new Error(`collect simulation failed: ${e.shortMessage || e.message}`); });
+    owed0 = sim.result[0]; owed1 = sim.result[1];
+  }
+  return { positions, tokenId, pos, owed0, owed1 };
+}
+
+// The pool behind a position, from the manager's own factory rather than a
+// constant, and where its price stands.
+export async function readPool(pub, pos) {
+  const factory = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'factory');
+  const pool = await read(pub, factory, ABI.FACTORY, 'getPool', [pos[2], pos[3], pos[4]]);
+  if (!pool || pool === ZERO) throw new Error('the position names a pool the factory does not know');
+  const s = await read(pub, pool, ABI.POOL, 'slot0');
+  const sqrtP = Number(s[0]) / 2 ** 96;
+  const tick = Number(s[1]);
+  return { pool, sqrtP, tick, inRange: tick >= Number(pos[5]) && tick < Number(pos[6]) };
+}
+
+// How much of each token one unit of liquidity holds inside a range at a
+// price. Standard V3 identities, and not a preference: inside a range the
+// split is fixed by where the price sits in it. Pure, exported for the
+// self-test.
+const sqrtAtTick = (t) => Math.pow(1.0001, t / 2);
+export function splitForRange(sqrtP, tickLower, tickUpper) {
+  const sLo = sqrtAtTick(tickLower), sHi = sqrtAtTick(tickUpper);
+  const perL0 = sqrtP >= sHi ? 0 : (1 / Math.max(sqrtP, sLo) - 1 / sHi);
+  const perL1 = sqrtP <= sLo ? 0 : (Math.min(sqrtP, sHi) - sLo);
+  return { perL0, perL1 };
+}
+
+// --------------------------------------------------------------------------
+// collect: fees -> BNB -> buyback wallet
+// --------------------------------------------------------------------------
+
+export async function planCollect(pub, address) {
+  const { positions, tokenId, pos, owed0, owed1 } = await readPosition(pub, address);
+  const gasBal = await pub.getBalance({ address });
+  const token0 = pos ? pos[2].toLowerCase() : null, token1 = pos ? pos[3].toLowerCase() : null;
+  const wbnbIs0 = token0 === ADDR.WBNB;
+  const other = pos ? (wbnbIs0 ? token1 : token0) : null;
+  if (pos && !wbnbIs0 && token1 !== ADDR.WBNB) throw new Error('the position is not against WBNB; this agent only knows how to turn a WBNB pair into BNB');
+  const owedWbnb = wbnbIs0 ? owed0 : owed1;
+  const owedOther = wbnbIs0 ? owed1 : owed0;
+
+  // Tokens the wallet holds OUTSIDE the position — the headroom the mint left
+  // over, or what an interrupted run did not finish — are capital, not fees.
+  // They are reported here and re-used by the increase and the re-set; the
+  // collect sells only what the collect itself returns.
+  let heldOther = 0n, heldWbnb = 0n;
+  if (pos) {
+    heldOther = await read(pub, other, ABI.ERC20, 'balanceOf', [address]);
+    heldWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]);
+  }
+  let otherInBnb = 0n, quoteOffPct = null, poolInfo = null;
+  if (pos) poolInfo = await readPool(pub, pos);
+  if (pos && owedOther > 0n) {
+    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [owedOther, [other, ADDR.WBNB]]);
+    otherInBnb = q[1];
+    // The V2 quote against the V3 pool's own price. A thin or manipulated V2
+    // pair would show here as a price far from the one the position lives at.
+    const poolWbnbPerOther = wbnbIs0 ? 1 / (poolInfo.sqrtP ** 2) : poolInfo.sqrtP ** 2;
+    const v2WbnbPerOther = Number(otherInBnb) / Number(owedOther);
+    quoteOffPct = poolWbnbPerOther > 0 ? ((v2WbnbPerOther - poolWbnbPerOther) / poolWbnbPerOther) * 100 : null;
+  }
+  const proceeds = bn(owedWbnb + otherInBnb);
+  const state = { positions, liquidity: pos ? pos[7] : 0n, owedBnbEquivalent: proceeds, gasBnb: bn(gasBal), quoteOffPct };
+  return {
+    step: 'collect', state, no: refuseCollect(state),
+    tokenId, pos, other, wbnbIs0, owedWbnb, owedOther, heldOther, heldWbnb, otherInBnb, quoteOffPct,
+    summary: {
+      position: tokenId == null ? null : String(tokenId),
+      ticks: pos ? [Number(pos[5]), Number(pos[6])] : null,
+      liquidity: pos ? String(pos[7]) : null,
+      in_range: poolInfo ? poolInfo.inRange : null,
+      owed: { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), other_token: other, bnb_equivalent: proceeds },
+      held_outside_position: heldOther > 0n || heldWbnb > 0n ? { wbnb: formatEther(heldWbnb), other: formatUnits(heldOther, 18), note: 'capital, re-used by increase and re-set, not sold here' } : null,
+      quote_off_pct: quoteOffPct == null ? null : Number(quoteOffPct.toFixed(2)),
+      gas_bnb: state.gasBnb,
+    },
+  };
+}
+
+// Collect, sell, unwrap, forward — and forward ONLY what this run produced.
+// The wallet also holds the capital the sweep delivers for the next increase;
+// "everything above the reserve" would have sent that to the buyback bot.
+export async function executeCollect(pub, wallet, account, plan, log = () => {}) {
+  const txs = [];
+  const send = sender(pub, wallet, txs, log);
+  const before = await pub.getBalance({ address: account.address });
+  const otherBefore = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+  await send('collect', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
+    args: [{ tokenId: plan.tokenId, recipient: account.address, amount0Max: MAX128, amount1Max: MAX128 }] });
+  // Only what the collect returned is sold; what the wallet held before it is
+  // capital and stays.
+  const otherAfter = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+  const sell = otherAfter > otherBefore ? otherAfter - otherBefore : 0n;
+  if (sell > 0n) {
+    await send('approve for sale', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, sell] });
+    // 15% floor, the same this project uses for fee-on-transfer tokens; the
+    // guard already refused anything that moved more than that.
+    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
+    await send('sell the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
+      args: [sell, (q[1] * 8500n) / 10000n, [plan.other, ADDR.WBNB], account.address, deadline()] });
+  }
+  // WBNB is never capital-in-waiting (that waits as BNB), so all of it is
+  // fees: this collect's, or an earlier one's that never got unwrapped.
+  const wbnbHave = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  if (wbnbHave > 0n) await send('unwrap', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbHave] });
+
+  const after = await pub.getBalance({ address: account.address });
+  const produced = after - before;           // net of the gas this run spent
+  const aboveReserve = after - GAS_RESERVE;   // never dip into the reserve
+  const forward = produced < aboveReserve ? produced : aboveReserve;
+  if (forward <= 0n) return { txs, forwarded_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
+  await send('forward to buyback wallet', { to: ADDR.BUYBACK_WALLET, value: forward, gas: 21000n });
+  return { txs, forwarded_bnb: formatEther(forward), to: ADDR.BUYBACK_WALLET };
+}
+
+// --------------------------------------------------------------------------
+// sweep: AI income -> BNB -> liquidity wallet
+// --------------------------------------------------------------------------
+
+export async function readBnbUsd(pub) {
+  const r = await read(pub, ADDR.CHAINLINK_BNB_USD, ABI.FEED, 'latestRoundData');
+  return { bnbUsd: Number(r[1]) / 1e8, feedAgeS: Math.floor(Date.now() / 1000) - Number(r[3]) };
+}
+
+export async function planSweep(pub, source, feed = null) {
+  const balance = await read(pub, source.token, ABI.ERC20, 'balanceOf', [source.wallet]);
+  const gasBal = await pub.getBalance({ address: source.wallet });
+  const { bnbUsd, feedAgeS } = feed || (await readBnbUsd(pub));
+  // Bounded per run: a balance above the cap is swept in daily slices.
+  const capRaw = parseEther(String(MAX_SWEEP_USD));
+  const amount = balance > capRaw ? capRaw : balance;
+  let bnbOut = 0n, impliedUsd = null;
+  if (amount > 0n) {
+    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [amount, [source.token, ADDR.WBNB]]);
+    bnbOut = q[1];
+    impliedUsd = (bn(bnbOut) * bnbUsd) / Number(formatUnits(amount, source.decimals));
+  }
+  const state = { symbol: source.symbol, balance: Number(formatUnits(balance, source.decimals)), bnbEquivalent: bn(bnbOut), gasBnb: bn(gasBal), bnbUsd, feedAgeS, impliedUsd };
+  return {
+    step: 'sweep', source, state, no: refuseSweep(state), amount, bnbOut,
+    summary: {
+      source: source.key, wallet: source.wallet, token: source.symbol,
+      balance: state.balance, sweeping: Number(formatUnits(amount, source.decimals)),
+      bnb_equivalent: state.bnbEquivalent, implied_usd: impliedUsd == null ? null : Number(impliedUsd.toFixed(4)),
+      capped: balance > capRaw, gas_bnb: state.gasBnb,
+    },
+  };
+}
+
+// Approve exactly the amount, sell it, and have the router pay the BNB
+// straight to the liquidity wallet — one transaction fewer, and the income
+// wallet never holds BNB it could be tempted to keep.
+export async function executeSweep(pub, wallet, account, plan, log = () => {}) {
+  const txs = [];
+  const send = sender(pub, wallet, txs, log);
+  const before = await pub.getBalance({ address: ADDR.LP_WALLET });
+  await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
+  // 3% floor: both pairs are deep and both tokens are dollars; the guard has
+  // already refused a route that prices them off a dollar.
+  await send(`sell ${plan.source.symbol} for BNB to the liquidity wallet`, {
+    address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
+    args: [plan.amount, (plan.bnbOut * 9700n) / 10000n, [plan.source.token, ADDR.WBNB], ADDR.LP_WALLET, deadline()],
+  });
+  const after = await pub.getBalance({ address: ADDR.LP_WALLET });
+  return { txs, sold: formatUnits(plan.amount, plan.source.decimals), received_bnb: formatEther(after - before), to: ADDR.LP_WALLET };
+}
+
+// --------------------------------------------------------------------------
+// rebalance: a position the price has left is re-set around today's price
+// --------------------------------------------------------------------------
+
+// What a range of this width around the current tick looks like on this
+// pool's grid. Rounded INWARD, so the range is never wider than the one the
+// record tested.
+export function ticksAround(tick, widthPct, spacing) {
+  const span = Math.log(1 + widthPct / 100) / Math.log(1.0001);
+  const tickLower = Math.ceil((tick - span) / spacing) * spacing;
+  const tickUpper = Math.floor((tick + span) / spacing) * spacing;
+  return { tickLower, tickUpper };
+}
+
+// `record` is the verdict of the window record (agent.brainonbnb.com/lp/windows
+// or the same function over KV); its day_pick names the width. `widthOverride`
+// is a person's explicit choice from the hand script, and is reported as one.
+export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null } = {}) {
+  const p = position || (await readPosition(pub, address));
+  let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
+  const width = widthOverride ?? record?.day_pick?.width ?? null;
+  const widthBasis = widthOverride != null ? 'named by hand' : (width != null ? `held every tested day over ${record?.hours_of_prices} h of recorded prices` : null);
+  if (p.positions === 1) {
+    poolInfo = await readPool(pub, p.pos);
+    spacing = Number(await read(pub, poolInfo.pool, ABI.POOL, 'tickSpacing')) || 1;
+    const token0 = p.pos[2].toLowerCase(), token1 = p.pos[3].toLowerCase();
+    wbnbIs0 = token0 === ADDR.WBNB;
+    if (!wbnbIs0 && token1 !== ADDR.WBNB) throw new Error('the position is not against WBNB; this agent only knows how to re-set a WBNB pair');
+    other = wbnbIs0 ? token1 : token0;
+    // What the position holds at today's price, plus what sits in the wallet
+    // outside it — all of it goes into the new range.
+    const L = Number(p.pos[7]);
+    const s = splitForRange(poolInfo.sqrtP, Number(p.pos[5]), Number(p.pos[6]));
+    const in0 = L * s.perL0, in1 = L * s.perL1;
+    const heldOther = Number(await read(pub, other, ABI.ERC20, 'balanceOf', [address]));
+    const heldWbnb = Number(await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]));
+    const price = poolInfo.sqrtP ** 2;
+    const otherInWbnb = wbnbIs0 ? 1 / price : price;
+    have = { other: (wbnbIs0 ? in1 : in0) + heldOther, wbnb: (wbnbIs0 ? in0 : in1) + heldWbnb };
+    valueBnb = (have.wbnb + have.other * otherInWbnb) / 1e18;
+    if (width != null) {
+      ticks = ticksAround(poolInfo.tick, width, spacing);
+      if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
+      const n = splitForRange(poolInfo.sqrtP, ticks.tickLower, ticks.tickUpper);
+      const perLOther = wbnbIs0 ? n.perL1 : n.perL0, perLWbnb = wbnbIs0 ? n.perL0 : n.perL1;
+      const perLValue = perLWbnb + perLOther * otherInWbnb;
+      const Ln = perLValue > 0 ? (valueBnb * 1e18 * 0.99) / perLValue : 0;
+      target = { other: Ln * perLOther, wbnb: Ln * perLWbnb, perLOther, perLWbnb, otherInWbnb };
+      // The trade that turns what is held into what the new range needs.
+      trade = have.other > target.other
+        ? { sell: 'other', amount: have.other - target.other }
+        : { sell: 'wbnb', amount: (target.other - have.other) * otherInWbnb * 1.02 };
+    }
+  }
+  const state = { positions: p.positions, inRange: poolInfo ? poolInfo.inRange : false, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
+  return {
+    step: 'rebalance', state, no: refuseRebalance(state),
+    tokenId: p.tokenId, pos: p.pos, poolInfo, spacing, other, wbnbIs0, width, ticks, target, trade,
+    summary: {
+      position: p.tokenId == null ? null : String(p.tokenId),
+      ticks: p.pos ? [Number(p.pos[5]), Number(p.pos[6])] : null,
+      tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange,
+      value_bnb: Number(valueBnb.toFixed(6)),
+      width_pct: width, width_basis: widthBasis,
+      new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
+      trade: trade ? (trade.sell === 'other' ? `sell ${(trade.amount / 1e18).toFixed(6)} of ${other} for WBNB` : `buy the other side with ${(trade.amount / 1e18).toFixed(6)} WBNB`) : null,
+    },
+  };
+}
+
+// Empty the old position, burn its NFT, trade to the new ratio, mint the new
+// range from what the wallet then holds. Native BNB is not touched: the
+// reserve and any capital waiting for the increase stay where they are.
+export async function executeRebalance(pub, wallet, account, plan, log = () => {}) {
+  const txs = [];
+  const send = sender(pub, wallet, txs, log);
+  const liquidity = plan.pos[7];
+  const sim = await pub.simulateContract({
+    address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
+    args: [{ tokenId: plan.tokenId, liquidity, amount0Min: 0n, amount1Min: 0n, deadline: deadline() }], account,
+  });
+  await send('withdraw the old range', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
+    args: [{ tokenId: plan.tokenId, liquidity, amount0Min: (sim.result[0] * 99n) / 100n, amount1Min: (sim.result[1] * 99n) / 100n, deadline: deadline() }] });
+  await send('collect everything it held', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
+    args: [{ tokenId: plan.tokenId, recipient: account.address, amount0Max: MAX128, amount1Max: MAX128 }] });
+  await send('burn the empty position', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'burn', args: [plan.tokenId] });
+
+  // Sized from what the wallet really holds now, not from the plan's estimate.
+  const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+  const haveWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  const t = plan.target;
+  const value = Number(haveWbnb) + Number(haveOther) * t.otherInWbnb;
+  const perLValue = t.perLWbnb + t.perLOther * t.otherInWbnb;
+  const Ln = (value * 0.99) / perLValue;
+  const targetOther = BigInt(Math.floor(Ln * t.perLOther));
+  if (haveOther > targetOther) {
+    const sell = haveOther - targetOther;
+    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
+    await send('approve the excess for sale', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, sell] });
+    await send('sell the excess of the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
+      args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
+  } else if (targetOther > haveOther) {
+    const need = targetOther - haveOther;
+    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, plan.other]]);
+    const spend = q[1] > 0n ? (need * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
+    const cap = haveWbnb;
+    const wbnbIn = spend > cap ? cap : spend;
+    if (wbnbIn > 0n) {
+      await send('approve WBNB to the router', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, wbnbIn] });
+      await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
+        args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+    }
+  }
+  const mintOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+  const mintWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  await send('approve the other side to the position manager', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, mintOther] });
+  await send('approve WBNB to the position manager', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, mintWbnb] });
+  const amount0Desired = plan.wbnbIs0 ? mintWbnb : mintOther;
+  const amount1Desired = plan.wbnbIs0 ? mintOther : mintWbnb;
+  await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
+    args: [{
+      token0: plan.pos[2], token1: plan.pos[3], fee: Number(plan.pos[4]),
+      tickLower: plan.ticks.tickLower, tickUpper: plan.ticks.tickUpper,
+      amount0Desired, amount1Desired,
+      amount0Min: (amount0Desired * 90n) / 100n, amount1Min: (amount1Desired * 90n) / 100n,
+      recipient: account.address, deadline: deadline(),
+    }] });
+  const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
+  const np = await readPosition(pub, account.address);
+  return { txs, new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null };
+}
+
+// --------------------------------------------------------------------------
+// increase: BNB above the reserve -> more of the same position
+// --------------------------------------------------------------------------
+
+export async function planIncrease(pub, address, position = null) {
+  const p = position || (await readPosition(pub, address));
+  const bal = await pub.getBalance({ address });
+  const spendRaw = bal - GAS_RESERVE - parseEther(String(INCREASE_GAS_BUDGET_BNB));
+  const spendableBnb = spendRaw > 0n ? bn(spendRaw) : 0;
+  let poolInfo = null, split = null, buyOtherRaw = 0n, wbnbRaw = 0n, buyCostRaw = 0n, other = null, wbnbIs0 = false;
+  if (p.positions === 1) {
+    poolInfo = await readPool(pub, p.pos);
+    const token0 = p.pos[2].toLowerCase(), token1 = p.pos[3].toLowerCase();
+    wbnbIs0 = token0 === ADDR.WBNB;
+    if (!wbnbIs0 && token1 !== ADDR.WBNB) throw new Error('the position is not against WBNB; this agent only knows how to grow it out of BNB');
+    other = wbnbIs0 ? token1 : token0;
+    if (spendRaw > 0n) {
+      const { perL0, perL1 } = splitForRange(poolInfo.sqrtP, Number(p.pos[5]), Number(p.pos[6]));
+      const price = poolInfo.sqrtP ** 2;                  // token1 per token0
+      const perLOther = wbnbIs0 ? perL1 : perL0;
+      const perLWbnb = wbnbIs0 ? perL0 : perL1;
+      const otherInWbnb = wbnbIs0 ? 1 / price : price;    // WBNB per unit of the other token
+      // Value of one unit of liquidity in WBNB, and the L this much BNB buys,
+      // with 2% kept back for the acquisition's headroom.
+      const perLValue = perLWbnb + perLOther * otherInWbnb;
+      const L = perLValue > 0 ? (Number(spendRaw) * 0.98) / perLValue : 0;
+      buyOtherRaw = BigInt(Math.floor(L * perLOther));
+      wbnbRaw = BigInt(Math.floor(L * perLWbnb));
+      if (buyOtherRaw > 0n) {
+        // Priced by the router that will do the swap, not by the pool.
+        const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, other]]);
+        buyCostRaw = q[1] > 0n ? (buyOtherRaw * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
+      }
+      split = { perLOther, perLWbnb, L };
+    }
+  }
+  const state = { positions: p.positions, spendableBnb, inRange: poolInfo ? poolInfo.inRange : false };
+  return {
+    step: 'increase', state, no: refuseIncrease(state),
+    tokenId: p.tokenId, pos: p.pos, other, wbnbIs0, buyOtherRaw, wbnbRaw, buyCostRaw, split,
+    summary: {
+      wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null,
+      would_add: spendRaw > 0n && poolInfo ? { other: formatUnits(buyOtherRaw, 18), other_token: other, wbnb: formatEther(wbnbRaw), buying_other_costs_bnb: formatEther(buyCostRaw) } : null,
+    },
+  };
+}
+
+export async function executeIncrease(pub, wallet, account, plan, log = () => {}) {
+  const txs = [];
+  const send = sender(pub, wallet, txs, log);
+  const wrapRaw = plan.wbnbRaw + plan.buyCostRaw;
+  await send('wrap', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: wrapRaw });
+  if (plan.buyCostRaw > 0n) {
+    await send('approve WBNB to the router', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.buyCostRaw] });
+    await send('buy the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
+      args: [plan.buyCostRaw, (plan.buyOtherRaw * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+  }
+  // Sized from what the wallet really holds, not from what was expected.
+  const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+  const haveWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  await send('approve the other side to the position manager', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, haveOther] });
+  await send('approve WBNB to the position manager', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, haveWbnb] });
+  const amount0Desired = plan.wbnbIs0 ? haveWbnb : haveOther;
+  const amount1Desired = plan.wbnbIs0 ? haveOther : haveWbnb;
+  // The manager takes only the ratio the range needs. Minimums at 90% are a
+  // floor against the price moving between the plan and the mint, not a target.
+  await send('increase the position', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'increaseLiquidity',
+    args: [{ tokenId: plan.tokenId, amount0Desired, amount1Desired, amount0Min: (amount0Desired * 90n) / 100n, amount1Min: (amount1Desired * 90n) / 100n, deadline: deadline() }] });
+  // What the manager did not take goes back to being capital. The other
+  // token's dust is left; tomorrow's collect sells it with the fees.
+  const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
+  const pos = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [plan.tokenId]);
+  return { txs, liquidity_after: String(pos[7]), other_used: formatUnits(haveOther - (await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address])), 18), wbnb_used: formatEther(haveWbnb - wbnbLeft) };
+}
+
+==============================================================================
+=== FILE: shared/lp-guards.js
+==============================================================================
+
+// Every reason the LP agent refuses to act, in one file.
+//
+// Shared by scripts/lp-agent.mjs (a person, plan by default) and
+// worker-lp/index.js (the daily cron with the keys). Two copies of a refusal
+// list is how one of them stops refusing. Pure: no chain, no I/O.
+//
+// Three steps, three guard functions, and the floors they share:
+//   sweep     AI income (USD1, $U) -> BNB -> the liquidity wallet
+//   collect   position fees -> BNB -> the buyback wallet
+//   increase  BNB above the reserve -> more of the same position
+//
+// Every floor is a gas argument: below it, moving the money costs more than
+// the money. A day under a floor is a decision, not an error, and is recorded
+// as one.
+
+// What the liquidity wallet keeps back after every run. Above MIN_GAS_BNB on
+// purpose: the first build kept 0.001 and demanded 0.0015 to act, so the first
+// real collect would have left the wallet unable to do the second.
+export const GAS_RESERVE_BNB = 0.002;
+// Below this the collect's five transactions cannot be paid for at 1 gwei.
+export const MIN_GAS_BNB = 0.0015;
+// Fees worth less than this stay in the position: at 1 gwei the collect,
+// sale, unwrap and transfer cost about 0.0004 BNB, and a run should clearly
+// beat its gas rather than marginally.
+export const MIN_COLLECT_BNB = 0.002;
+// Income worth less than this stays where it landed: approve + swap is about
+// 0.0002 BNB at 1 gwei, so anything under 0.004 would lose more than 5% to gas.
+export const MIN_SWEEP_BNB = 0.004;
+// An income wallet needs this much to pay for its own approve + swap.
+export const MIN_SWEEP_GAS_BNB = 0.0005;
+// The most a single sweep moves from one wallet. Not a refusal: a larger
+// balance is swept in daily slices. A bug that produced a huge balance would
+// then move a bounded amount a day rather than everything at once.
+export const MAX_SWEEP_USD = 50;
+// Capital under this stays as BNB in the wallet: growing the position is six
+// transactions (wrap, two approvals for the router and the manager, swap,
+// approve, increase), and 0.01 BNB is where that gas falls under 1%.
+export const MIN_INCREASE_BNB = 0.01;
+// Kept out of the amount that goes into the position, so the increase itself
+// never spends the reserve.
+export const INCREASE_GAS_BUDGET_BNB = 0.001;
+// A re-set of the range is eight transactions, about 0.0008 BNB at 1 gwei;
+// under this much capital that is over 4% of the position for one move.
+export const MIN_REBALANCE_BNB = 0.02;
+
+// state: { positions, liquidity (bigint), owedBnbEquivalent, gasBnb, quoteOffPct }
+// owedBnbEquivalent is what this run would turn into BNB: fees owed by the
+// position plus anything an interrupted earlier run left in the wallet.
+export function refuseCollect(state) {
+  if (state.positions === 0) return 'this wallet holds no position — open one first with lp-open.mjs';
+  if (state.positions > 1) return `this wallet holds ${state.positions} positions. Collecting from one of several silently is a decision a person should make, not a script.`;
+  if (state.liquidity === 0n) return 'the position has no liquidity left in it';
+  if (state.owedBnbEquivalent <= 0) return 'nothing is owed yet';
+  if (state.owedBnbEquivalent < MIN_COLLECT_BNB)
+    return `only ${state.owedBnbEquivalent.toFixed(6)} BNB of fees are owed, below the ${MIN_COLLECT_BNB} BNB floor — collecting it would cost more gas than it recovers`;
+  if (state.gasBnb < MIN_GAS_BNB) return `the wallet holds ${state.gasBnb.toFixed(6)} BNB, not enough gas for collect + swap + transfer`;
+  if (state.quoteOffPct != null && Math.abs(state.quoteOffPct) > 25)
+    return `the quote implies a price ${state.quoteOffPct.toFixed(1)}% away from the pool's own — refusing rather than trading into something that moved`;
+  return null;
+}
+// The old name, kept for anything that still imports it.
+export const refuse = refuseCollect;
+
+// state: { symbol, balance, bnbEquivalent, gasBnb, bnbUsd, feedAgeS, impliedUsd }
+// impliedUsd is what the route pays per token in dollars; a stablecoin that
+// routes far from a dollar is a thin or manipulated pool, not a bargain.
+export function refuseSweep(state) {
+  const sym = state.symbol || 'the token';
+  if (!(state.balance > 0)) return `nothing has arrived since the last sweep — the wallet holds no ${sym}`;
+  if (state.gasBnb < MIN_SWEEP_GAS_BNB) return `the wallet holds ${Number(state.gasBnb).toFixed(6)} BNB, not enough gas for approve + swap`;
+  if (state.feedAgeS > 3600) return `Chainlink BNB/USD is ${Math.round(state.feedAgeS / 60)} min old — not a live price, so the route cannot be checked`;
+  if (!(state.bnbUsd >= 100 && state.bnbUsd <= 5000)) return `Chainlink reports BNB at $${state.bnbUsd} — outside the plausible range, not trusting it`;
+  if (state.bnbEquivalent < MIN_SWEEP_BNB)
+    return `${Number(state.balance).toFixed(4)} ${sym} is worth ${Number(state.bnbEquivalent).toFixed(6)} BNB, below the ${MIN_SWEEP_BNB} BNB floor — gas would eat it. It stays until more arrives.`;
+  if (state.impliedUsd != null && (state.impliedUsd < 0.9 || state.impliedUsd > 1.1))
+    return `the route prices ${sym} at $${state.impliedUsd.toFixed(4)} — outside 0.90–1.10, refusing to sell into that`;
+  return null;
+}
+
+// state: { positions, inRange, width, hoursOfPrices, valueBnb }
+// width is what the day test in the window record picked, or what a person
+// named by hand; null means the record cannot yet say which width holds a day.
+export function refuseRebalance(state) {
+  if (state.positions !== 1) return state.positions === 0
+    ? 'this wallet holds no position to re-set'
+    : `this wallet holds ${state.positions} positions — which one to re-set is a decision for a person`;
+  if (state.inRange) return 'the price is inside the range — nothing to re-set';
+  if (state.width == null)
+    return `no width has yet held through every tested day (${state.hoursOfPrices || 0} h of prices recorded, a day is needed). A re-set into a width that only held 37 minutes is how a position pays for a re-set every day. Holding.`;
+  if (!(state.valueBnb >= MIN_REBALANCE_BNB))
+    return `the position is worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a re-set would cost more than it is likely to earn back`;
+  return null;
+}
+
+// state: { positions, spendableBnb, inRange }
+// spendableBnb is what the wallet holds above the reserve and the gas budget.
+export function refuseIncrease(state) {
+  if (state.positions !== 1) return state.positions === 0
+    ? 'this wallet holds no position to grow'
+    : `this wallet holds ${state.positions} positions — which one to grow is a decision for a person`;
+  if (!(state.spendableBnb >= MIN_INCREASE_BNB))
+    return `only ${Number(state.spendableBnb || 0).toFixed(6)} BNB above the reserve, below the ${MIN_INCREASE_BNB} BNB floor — it stays as BNB until more arrives`;
+  if (!state.inRange) return 'the price is outside the position\'s range. Adding to a range that earns nothing is not growth; the BNB is held until the range is re-set.';
+  return null;
+}
+
+==============================================================================
+=== FILE: shared/own-jobs.js
+==============================================================================
+
+// Where one of our ERC-8183 jobs stands, decided once.
+//
+// Shared by scripts/erc8183-job-watch.mjs (a person at a keyboard) and
+// worker-agent/own-jobs.js (the daily cron). The rule that decides whether a
+// job is "waiting" or "settleable" is the rule a judge will read our own
+// completion rate by; two copies of it is how the page and the record drift.
+// Pure functions only: no chain, no clock of their own, no I/O.
+
+// The kernel's enum, order-locked (see worker-agent/hire.js JOB_STATUS).
+//   waiting     SUBMITTED, dispute window still running
+//   settleable  SUBMITTED, window over, nobody has called settle
+//   completed   COMPLETED — the escrow released
+//   undelivered FUNDED with no submission; refundable after expiry
+//   open        OPEN, never funded; expires on its own
+//   closed      REJECTED / EXPIRED
+//   unreadable  the kernel returned nothing for this id
+export function classify(job, { now, windowSec }) {
+  if (!job) return { state: 'unreadable', note: 'the kernel returned nothing for this id' };
+  const s = job.status;
+  if (s === 'COMPLETED') return { state: 'completed', note: 'the escrow released' };
+  if (s === 'SUBMITTED') {
+    const ends = job.submitted_at + windowSec;
+    if (now < ends) return { state: 'waiting', ends_at: ends, note: `dispute window ends in ${hours(ends - now)}` };
+    return { state: 'settleable', ends_at: ends, note: `window ended ${hours(now - ends)} ago and nobody has called settle` };
+  }
+  if (s === 'FUNDED') {
+    return now >= job.expired_at
+      ? { state: 'undelivered', note: 'funded, never delivered, past expiry — the buyer can claimRefund' }
+      : { state: 'undelivered', note: `funded, not yet delivered, expires in ${hours(job.expired_at - now)}` };
+  }
+  if (s === 'OPEN') return { state: 'open', note: now >= job.expired_at ? 'never funded, past expiry' : 'never funded' };
+  return { state: 'closed', note: String(s).toLowerCase() };
+}
+
+export const hours = (sec) => {
+  const h = sec / 3600;
+  return h >= 48 ? `${(h / 24).toFixed(1)} d` : `${h.toFixed(1)} h`;
+};
+
+// The record: one entry per job, a history of every state it has been seen
+// in. A state seen twice is not written twice — the history is of transitions,
+// so the first COMPLETED carries the timestamp it was first observed.
+export function recordTransition(record, id, snapshot, at) {
+  const entry = record[id] || { history: [] };
+  const last = entry.history[entry.history.length - 1];
+  const changed = !last || last.status !== snapshot.status || last.state !== snapshot.state;
+  if (changed) entry.history = entry.history.concat({ at, ...snapshot });
+  return { record: { ...record, [id]: entry }, changed };
+}
+
+// Two records of the same jobs — the worker's and a person's — into one.
+// Union of histories by (at, status, state), sorted by time, so a transition
+// the cron saw at 21:00 and a person saw at 23:00 is one transition with the
+// earlier timestamp first, and neither side loses what only it observed.
+export function mergeRecords(a, b) {
+  const out = {};
+  for (const id of new Set([...Object.keys(a || {}), ...Object.keys(b || {})])) {
+    const seen = new Set();
+    const hist = [];
+    for (const h of [...(a?.[id]?.history || []), ...(b?.[id]?.history || [])]) {
+      const k = `${h.at}|${h.status}|${h.state}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      hist.push(h);
+    }
+    hist.sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0));
+    // Collapse consecutive duplicates of the same status+state that came from
+    // two observers: only the first sighting of a state is a transition.
+    const collapsed = [];
+    for (const h of hist) {
+      const last = collapsed[collapsed.length - 1];
+      if (last && last.status === h.status && last.state === h.state) continue;
+      collapsed.push(h);
+    }
+    out[id] = { history: collapsed };
+  }
+  return out;
+}
+
+// What the record says in one line each, for a page or a log.
+export function summarise(record, now) {
+  const ids = Object.keys(record || {});
+  const latest = (id) => record[id].history[record[id].history.length - 1];
+  const completed = ids.filter((id) => latest(id)?.state === 'completed');
+  const settleable = ids.filter((id) => latest(id)?.state === 'settleable');
+  const waiting = ids.filter((id) => latest(id)?.state === 'waiting');
+  return {
+    jobs: ids.length,
+    completed, settleable, waiting,
+    first_completed_seen: completed.map((id) => record[id].history.find((h) => h.state === 'completed')?.at).filter(Boolean).sort()[0] || null,
+    checked_at: now,
+  };
+}
+
+==============================================================================
+=== FILE: shared/package.json
+==============================================================================
+
+{
+  "name": "bobai-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "//": "Marker only, no dependencies. The repo root is CommonJS while worker-agent declares type:module, so a .js file here would be CommonJS to Node and its named exports invisible to the ESM workers and scripts that import it — the bundlers accept the file either way, which is why that breaks in Node long after a deploy has succeeded. This file is what makes one shared module readable from both sides."
+}
 
 ==============================================================================
 === FILE: worker-agent/canary.js
@@ -2936,7 +3994,7 @@ import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
-import { recordLpWindow, readLpWindows, verdict as lpVerdict } from './lp-windows.js';
+import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict } from './lp-windows.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
@@ -3737,11 +4795,12 @@ export default {
     // Our own ERC-8183 jobs and the date each one was first seen to complete.
     // The figure this marketplace argues with is 287 SUBMITTED against 8
     // COMPLETED; this is where our own jobs stand against it, checked daily.
-    // What the LP agent's daily collect did (worker-lp writes it, this serves
-    // it — that worker holds a key and no public face on purpose).
-    if (path === '/lp/collect') {
-      const raw = await env.AGENT.get('lp:collect');
-      if (!raw) return json({ error: 'the LP collect has not run yet', cadence: 'daily' }, 503);
+    // What the LP agent's daily tick did — sweep, collect, rebalance,
+    // increase (worker-lp writes it, this serves it; that worker holds the
+    // keys and no public face on purpose). /lp/collect is the old name.
+    if (path === '/lp/agent' || path === '/lp/collect') {
+      const raw = await env.AGENT.get('lp:agent');
+      if (!raw) return json({ error: 'the LP agent has not run yet', cadence: 'daily' }, 503);
       return json({ ...JSON.parse(raw), cadence: 'daily' });
     }
 
@@ -3834,12 +4893,14 @@ export default {
         earned: earnings,
         active_watches: watches.keys.length,
         money_flow: {
-          '1': 'an agent pays USD1 for a watch',
-          '2': `it lands at ${payTo || '(not configured)'} — a wallet used for nothing else`,
-          '3': 'from there it buys $BOBAI and burns it, the same thing the buyback bot does with the trade tax',
-          '4': 'every step is a public transaction, verifiable on BscScan',
-          first_burn: '0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
-          note: 'Step 3 is done by hand while the amounts are small. It is not automated yet, and this line will say so until it is. The burn log at logs.brainonbnb.com lists the bot\'s own automated runs only, so a burn done by hand is on chain but not in that log — the transaction above is the record.',
+          '1': 'an agent pays USD1 for a watch, or $U for a job delivered on the ERC-8183 kernel',
+          '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
+          '3': 'once a day it is sold for BNB and sent to the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
+          '4': 'the fees that position earns are collected daily, sold for BNB and sent to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce, which buys and burns $BOBAI as it always has — one burn path, one log',
+          '5': 'every step is a public transaction, verifiable on BscScan; the daily record is at /lp/agent',
+          floors: 'nothing is sold below 0.004 BNB of value, no fees are collected below 0.002 BNB and nothing is added to the position below 0.01 BNB — under a floor, gas would eat the amount, and a day under one is recorded as a decision, not an error',
+          before: 'until 2026-09-02 the earnings were burned directly from the service wallet, by hand. The first: 0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
+          note: 'Automated since 2026-09-02 by the LP agent (worker-lp): sweep, collect, increase, and a re-set of the range once the record holds a day of prices. The burn log at logs.brainonbnb.com lists the buyback bot\'s own runs, and the LP fees reach it through that bot, so nothing here needs a second log.',
         },
         capabilities: offering(),
         generated_at: new Date().toISOString(),
@@ -4194,7 +5255,7 @@ export default {
     // and hourly because a 37-minute window every 15 minutes would be the same
     // chain counted four times. 24 KV writes a day.
     if (t.getUTCMinutes() >= 30 && t.getUTCMinutes() < 45) {
-      ctx.waitUntil(recordLpWindow(env).catch(() => {}));
+      ctx.waitUntil(recordLpWindow(env).catch((e) => noteLpWindowError(env, e).catch(() => {})));
     }
 
     // 21:0x UTC — where our own jobs stand on the kernel, once a day, so the
@@ -4481,6 +5542,11 @@ export function windowFromPlan(plan, usd, at = new Date().toISOString()) {
     to_block: w.to_block,
     minutes: w.minutes,
     swaps: w.swaps,
+    // The price at the window's head, kept so the record can answer the
+    // question a 37-minute replay cannot: would this width have held for a
+    // DAY. The position went out of a +/-0.5% range within five hours of a
+    // record in which that width had held every window.
+    price: typeof plan.price_now === 'number' ? plan.price_now : null,
     pool_fees_usd: w.fees_the_pool_paid_usd,
     rebalance_cost_usd: plan.rebalance_cost_usd_assumed,
     rows: plan.ranges.map((r) => ({
@@ -4561,6 +5627,16 @@ export function verdict(log) {
   const thin = used.length < 2;
   const safe = rows.filter((r) => r.width !== 'full' && r.heldEvery && !r.everNegative && r.net > 0);
   safe.sort((a, b) => b.net - a.net);
+  // THE DAY TEST. A width that held every 37-minute window is the narrowest
+  // width that held for 37 minutes; a position nobody watches is left alone
+  // for a day. So each priced window is treated as a hypothetical mint and
+  // asked whether the price stayed inside +/-width for the 24 hours after it.
+  // Only windows with at least twenty hours of later record count as tested;
+  // a width is a day-pick when it held through EVERY tested day. Until the
+  // record holds a day of prices this decides nothing, and says so.
+  for (const r of rows) r.day = r.width === 'full' ? null : dayHold(used, r.width);
+  const dayHolders = safe.filter((r) => r.day && r.day.tested > 0 && r.day.held === r.day.tested);
+  const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0);
   const first = used[0], last = used[used.length - 1];
   return {
     windows: used.length,
@@ -4572,7 +5648,37 @@ export function verdict(log) {
     to_block: last?.to_block ?? null,
     rows,
     pick: thin ? null : (safe[0] || null),
+    priced_windows: priced.length,
+    hours_of_prices: priced.length >= 2 ? Math.round((Date.parse(priced[priced.length - 1].at) - Date.parse(priced[0].at)) / 36e5) : 0,
+    // The width a re-set uses: best net among those that held every tested day.
+    day_pick: thin ? null : (dayHolders[0] || null),
   };
+}
+
+const DAY_MS = 24 * 3600 * 1000;
+const MIN_LATER_MS = 20 * 3600 * 1000;
+function dayHold(used, widthPct) {
+  const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0);
+  const up = 1 + widthPct / 100, down = 1 / up;
+  let tested = 0, held = 0;
+  for (let i = 0; i < priced.length; i++) {
+    const t0 = Date.parse(priced[i].at), p0 = priced[i].price;
+    const later = priced.slice(i + 1).filter((w) => Date.parse(w.at) - t0 <= DAY_MS);
+    if (!later.length || Date.parse(later[later.length - 1].at) - t0 < MIN_LATER_MS) continue;
+    tested += 1;
+    if (later.every((w) => w.price / p0 <= up && w.price / p0 >= down)) held += 1;
+  }
+  return { tested, held };
+}
+
+// A failed hour is written down. The cron swallowed its errors, and between
+// 06:30 and 14:00 UTC on 2026-09-02 four of eight hourly windows were simply
+// missing, with nothing anywhere to say why.
+export async function noteLpWindowError(env, e) {
+  const prev = (await readLpWindows(env)) || { pool: String(env.LP_WATCH_POOL || '').toLowerCase(), usd: POSITION_USD, windows: [] };
+  prev.last_error = { at: new Date().toISOString(), error: String(e?.message || e).slice(0, 200) };
+  prev.errors = (prev.errors || 0) + 1;
+  await env.AGENT.put(KV_KEY, JSON.stringify(prev));
 }
 
 async function measure(address, usd) {
@@ -7469,3 +8575,245 @@ export async function yieldPlan(input = {}) {
 
   return result;
 }
+
+==============================================================================
+=== FILE: worker-lp/index.js
+==============================================================================
+
+// The LP agent's daily tick: AI income into the position, the position's
+// fees into the buyback bot.
+//
+// THE FLOW, as the user set it on 2026-09-02
+//   1. everything the AI side earns (USD1 for watches, $U for delivered jobs)
+//      goes to the liquidity wallet, in BNB                      -> sweep
+//   2. the liquidity wallet's profit — the fees the position earns — goes to
+//      the buyback wallet, which buys and burns $BOBAI as it always has; the
+//      capital stays in the position, always                     -> collect
+//   3. capital that arrived grows the same position                -> increase
+// The buyback bot and the dev sweep are not touched by any of this. This
+// worker hands BNB to one of them and reads nothing from either.
+//
+// WHY THE BUYBACK WALLET AND NOT A BURN FROM HERE
+// The buyback bot already buys $BOBAI and burns it, unattended, and its burns
+// are the only ones the public burn log carries. A second buyer with its own
+// burn path would be a second set of numbers to reconcile. One burn path,
+// one record.
+//
+// The three steps live in shared/lp-agent.js, shared with the hand script
+// scripts/lp-agent.mjs — the same functions, so what a person can plan on a
+// laptop is what this cron sends. The keys are Worker secrets, the same class
+// of thing the buyback bot has held since July. This worker has no public
+// face beyond a secret-gated /run: everything readable about it is served by
+// the agent worker from the KV record it writes (agent.brainonbnb.com/lp/agent).
+import { createPublicClient, createWalletClient, http, fallback } from 'viem';
+import { bsc } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
+import {
+  RPCS, INCOME_SOURCES,
+  planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
+  planRebalance, executeRebalance, readBnbUsd,
+} from '../shared/lp-agent.js';
+import { readLpWindows, verdict } from '../worker-agent/lp-windows.js';
+
+export const KV_KEY = 'lp:agent';
+const STEPS = ['sweep', 'collect', 'rebalance', 'increase'];
+
+const json = (obj, status = 200) => new Response(JSON.stringify(obj, null, 2), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+const account = (key) => privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
+// Three public endpoints in turn. The first build used one and a throttled
+// node would have read as "the position holds nothing".
+const transport = () => fallback(RPCS.map((u) => http(u, { timeout: 15000 })));
+
+async function readState(env) {
+  const raw = await env.AGENT.get(KV_KEY);
+  return raw ? JSON.parse(raw) : { history: [], last: null };
+}
+
+// One run. `dry` reads and decides but signs nothing — the same code path up
+// to the first transaction, which is the part worth being able to test after
+// a deploy without moving money. `steps` narrows a hand-triggered run.
+export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
+  const at = new Date().toISOString();
+  const pub = createPublicClient({ chain: bsc, transport: transport() });
+  const entry = { at, dry, ok: true, acted: false, steps: {} };
+  const reasons = [];
+
+  const run = async (name, fn) => {
+    if (!steps.includes(name)) return;
+    try {
+      const out = await fn();
+      entry.steps[name] = out;
+      const parts = Array.isArray(out) ? out : [out];
+      for (const p of parts) {
+        if (p.acted) entry.acted = true;
+        if (p.error) entry.ok = false;
+        if (p.why) reasons.push(`${name}${p.source ? ` ${p.source}` : ''}: ${p.why}`);
+      }
+    } catch (e) {
+      entry.ok = false;
+      entry.steps[name] = { acted: false, error: String(e.shortMessage || e.message).slice(0, 300) };
+    }
+  };
+
+  // 1. sweep, one income wallet at a time. A missing key is a red line, not a
+  //    quiet day: the flow the site describes would silently not be running.
+  await run('sweep', async () => {
+    const feed = await readBnbUsd(pub);
+    const out = [];
+    for (const src of INCOME_SOURCES) {
+      const key = env[src.keyEnv];
+      if (!key) { out.push({ source: src.key, acted: false, error: `${src.keyEnv} is not set on this worker` }); continue; }
+      const acct = account(key);
+      if (acct.address.toLowerCase() !== src.wallet.toLowerCase()) { out.push({ source: src.key, acted: false, error: `${src.keyEnv} does not open ${src.wallet}` }); continue; }
+      try {
+        const plan = await planSweep(pub, src, feed);
+        if (plan.no) { out.push({ ...plan.summary, acted: false, why: plan.no }); continue; }
+        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the liquidity wallet' }); continue; }
+        const wallet = createWalletClient({ account: acct, chain: bsc, transport: transport() });
+        out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan)) });
+      } catch (e) {
+        out.push({ source: src.key, acted: false, error: String(e.shortMessage || e.message).slice(0, 300) });
+      }
+    }
+    return out;
+  });
+
+  const lpKey = env.LP_PRIVATE_KEY;
+  if (!lpKey) {
+    entry.ok = false;
+    for (const s of ['collect', 'rebalance', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: 'LP_PRIVATE_KEY is not set on this worker' };
+    entry.why = reasons.join(' · ') || null;
+    return record(env, entry);
+  }
+  const lp = account(lpKey);
+  entry.wallet = lp.address;
+  const lpWallet = () => createWalletClient({ account: lp, chain: bsc, transport: transport() });
+
+  // 2. collect: fees -> BNB -> buyback wallet. Only what this run produced.
+  await run('collect', async () => {
+    const plan = await planCollect(pub, lp.address);
+    if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
+    if (dry) return { ...plan.summary, acted: false, why: 'dry run — would have collected and forwarded', would_forward_bnb_about: plan.state.owedBnbEquivalent };
+    try {
+      return { ...plan.summary, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan)) };
+    } catch (e) {
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+    }
+  });
+
+  // 3. rebalance: a position the price has left is re-set around today's
+  //    price, in the width the window record's day test picked. Gated by
+  //    LP_REBALANCE in wrangler.toml: the first re-set is run by hand and
+  //    watched (scripts/lp-agent.mjs --step rebalance --confirm), and only
+  //    then is the cron allowed to do it on its own.
+  await run('rebalance', async () => {
+    const log = await readLpWindows(env);
+    const record = log ? verdict(log) : null;
+    const plan = await planRebalance(pub, lp.address, { record });
+    if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
+    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
+    if (dry) return { ...plan.summary, acted: false, why: 'dry run — would have re-set the range' };
+    try {
+      return { ...plan.summary, acted: true, ...(await executeRebalance(pub, lpWallet(), lp, plan)) };
+    } catch (e) {
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+    }
+  });
+
+  // 4. increase: whatever is above the reserve, into the same position.
+  await run('increase', async () => {
+    const plan = await planIncrease(pub, lp.address);
+    if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
+    if (dry) return { ...plan.summary, acted: false, why: 'dry run — would have grown the position' };
+    try {
+      return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan)) };
+    } catch (e) {
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+    }
+  });
+
+  entry.why = reasons.join(' · ') || null;
+  return record(env, entry);
+}
+
+async function record(env, entry) {
+  const st = await readState(env);
+  // Every real action and every error is kept; quiet days are summarised as
+  // the last check so the history is a history of what happened, not of the
+  // cron firing.
+  if (entry.acted || !entry.ok) st.history = st.history.concat(entry).slice(-200);
+  st.last = entry;
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB and sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); a position the price has left is re-set around today\'s price in the width that held through every tested day of the window record (rebalance); BNB above the reserve grows the same position (increase). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a day under a floor is recorded as a decision, not an error.';
+  await env.AGENT.put(KV_KEY, JSON.stringify(st));
+  return entry;
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname === '/run' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      // Dry unless asked otherwise: a hand-triggered run is for checking the
+      // deploy, and checking must not be the thing that moves money.
+      const dry = url.searchParams.get('dry') !== '0';
+      const step = url.searchParams.get('step');
+      const steps = step && STEPS.includes(step) ? [step] : STEPS;
+      return json(await agentTick(env, { dry, steps }));
+    }
+    if (url.pathname === '/') return json(await readState(env));
+    return json({ error: 'not found' }, 404);
+  },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(agentTick(env).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
+  },
+};
+
+==============================================================================
+=== FILE: worker-lp/package.json
+==============================================================================
+
+{
+  "name": "bobai-lp-agent",
+  "private": true,
+  "type": "module",
+  "//": "Marker only, no dependencies: viem resolves from the repo root. type:module is what lets Node load index.js for a check; wrangler bundles it either way."
+}
+
+==============================================================================
+=== FILE: worker-lp/wrangler.toml
+==============================================================================
+
+name = "bobai-lp-agent"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+# Once a day is the cadence the floors were built for: the collect floor is
+# 0.002 BNB of fees, the sweep floor 0.004 BNB of income, and a fifty-dollar
+# position in a 0.05% pool earns the first over days, not hours. Checking
+# hourly would spend RPC on a "nothing to do" answer twenty-three times out of
+# twenty-four. 05:23 UTC is a quiet hour on the chain and shares no minute
+# with the agent worker's own jobs.
+[triggers]
+crons = ["23 5 * * *"]
+
+# The same KV namespace the agent worker reads, so agent.brainonbnb.com can
+# serve /lp/agent from the record this worker writes. This worker itself has
+# no custom domain and no public face beyond the secret-gated /run.
+[[kv_namespaces]]
+binding = "AGENT"
+id = "<your-kv-namespace-id>"
+
+# Whether the cron may re-set the range on its own when the price has left
+# it. "0" until the first re-set has been run by hand and watched
+# (node scripts/lp-agent.mjs --step rebalance --confirm); the tick still plans
+# it and records that it is due. Flip to "1" and deploy to hand it over.
+[vars]
+LP_REBALANCE = "0"
+
+# Secrets, set with `wrangler secret put`, never in this file:
+#   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A
+#   X402_PRIVATE_KEY            the x402 income wallet 0x690E950214980BC329823A2DB2fD90C06Bd54dE4 (sweep)
+#   AGENT_PROVIDER_PRIVATE_KEY  the job-provider income wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 (sweep)
+#   HIT_SECRET                  the same shared secret the agent worker's /run-* routes use
+# The two income keys sign one thing here: the sale of what arrived, paid to
+# the liquidity wallet. Without them the sweep records a red line, not a quiet day.

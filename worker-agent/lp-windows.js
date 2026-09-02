@@ -43,6 +43,11 @@ export function windowFromPlan(plan, usd, at = new Date().toISOString()) {
     to_block: w.to_block,
     minutes: w.minutes,
     swaps: w.swaps,
+    // The price at the window's head, kept so the record can answer the
+    // question a 37-minute replay cannot: would this width have held for a
+    // DAY. The position went out of a +/-0.5% range within five hours of a
+    // record in which that width had held every window.
+    price: typeof plan.price_now === 'number' ? plan.price_now : null,
     pool_fees_usd: w.fees_the_pool_paid_usd,
     rebalance_cost_usd: plan.rebalance_cost_usd_assumed,
     rows: plan.ranges.map((r) => ({
@@ -123,6 +128,16 @@ export function verdict(log) {
   const thin = used.length < 2;
   const safe = rows.filter((r) => r.width !== 'full' && r.heldEvery && !r.everNegative && r.net > 0);
   safe.sort((a, b) => b.net - a.net);
+  // THE DAY TEST. A width that held every 37-minute window is the narrowest
+  // width that held for 37 minutes; a position nobody watches is left alone
+  // for a day. So each priced window is treated as a hypothetical mint and
+  // asked whether the price stayed inside +/-width for the 24 hours after it.
+  // Only windows with at least twenty hours of later record count as tested;
+  // a width is a day-pick when it held through EVERY tested day. Until the
+  // record holds a day of prices this decides nothing, and says so.
+  for (const r of rows) r.day = r.width === 'full' ? null : dayHold(used, r.width);
+  const dayHolders = safe.filter((r) => r.day && r.day.tested > 0 && r.day.held === r.day.tested);
+  const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0);
   const first = used[0], last = used[used.length - 1];
   return {
     windows: used.length,
@@ -134,7 +149,37 @@ export function verdict(log) {
     to_block: last?.to_block ?? null,
     rows,
     pick: thin ? null : (safe[0] || null),
+    priced_windows: priced.length,
+    hours_of_prices: priced.length >= 2 ? Math.round((Date.parse(priced[priced.length - 1].at) - Date.parse(priced[0].at)) / 36e5) : 0,
+    // The width a re-set uses: best net among those that held every tested day.
+    day_pick: thin ? null : (dayHolders[0] || null),
   };
+}
+
+const DAY_MS = 24 * 3600 * 1000;
+const MIN_LATER_MS = 20 * 3600 * 1000;
+function dayHold(used, widthPct) {
+  const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0);
+  const up = 1 + widthPct / 100, down = 1 / up;
+  let tested = 0, held = 0;
+  for (let i = 0; i < priced.length; i++) {
+    const t0 = Date.parse(priced[i].at), p0 = priced[i].price;
+    const later = priced.slice(i + 1).filter((w) => Date.parse(w.at) - t0 <= DAY_MS);
+    if (!later.length || Date.parse(later[later.length - 1].at) - t0 < MIN_LATER_MS) continue;
+    tested += 1;
+    if (later.every((w) => w.price / p0 <= up && w.price / p0 >= down)) held += 1;
+  }
+  return { tested, held };
+}
+
+// A failed hour is written down. The cron swallowed its errors, and between
+// 06:30 and 14:00 UTC on 2026-09-02 four of eight hourly windows were simply
+// missing, with nothing anywhere to say why.
+export async function noteLpWindowError(env, e) {
+  const prev = (await readLpWindows(env)) || { pool: String(env.LP_WATCH_POOL || '').toLowerCase(), usd: POSITION_USD, windows: [] };
+  prev.last_error = { at: new Date().toISOString(), error: String(e?.message || e).slice(0, 200) };
+  prev.errors = (prev.errors || 0) + 1;
+  await env.AGENT.put(KV_KEY, JSON.stringify(prev));
 }
 
 async function measure(address, usd) {

@@ -348,7 +348,7 @@ swaps is handed back for the caller to do themselves, never executed on their be
        alt: 'the ownership proofs in the catalogue are signed offline and pasted in as constants — the private key never reaches the worker'},
     ],
     run: ['npx wrangler deploy', 'node scripts/x402-catalog-proof.mjs --verify  # check the catalogue signs what it claims'],
-    entries: ['worker-agent', 'scripts/x402-catalog-proof.mjs', 'docs/x402-catalog.md'],
+    entries: ['worker-agent', 'worker-lp', 'shared', 'scripts/lp-agent.mjs', 'scripts/x402-catalog-proof.mjs', 'docs/x402-catalog.md'],
   },
   {
     group: 'apps',

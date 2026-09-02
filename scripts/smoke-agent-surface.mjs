@@ -691,19 +691,30 @@ section('Transparency');
   ok('/stats answers', !!j);
   ok('counts requests by others separately from our own sweeps',
     j?.asked?.by_kind && !('watch_checks' in j.asked.by_kind));
-  ok('states the money flow', Object.keys(j?.money_flow || {}).length >= 4);
-  ok('flow admits the manual step', /by hand/i.test(j?.money_flow?.note || ''));
+  ok('states the money flow', Object.keys(j?.money_flow || {}).length >= 5);
+  // The flow is automated now, and the page has to say what stops it acting
+  // — the floors — and where the daily record is, or "automated" is a claim.
+  ok('flow names its floors', /floor/i.test(j?.money_flow?.floors || '') && /0\.004 BNB/.test(j?.money_flow?.floors || ''));
+  ok('flow points at the daily record', /\/lp\/agent/.test(JSON.stringify(j?.money_flow || {})));
+  ok('flow ends at the buyback wallet, not a second burn', /0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce/.test(j?.money_flow?.['4'] || '') && !/burns it/.test(j?.money_flow?.['3'] || ''));
   ok('lists free and paid capabilities', (j?.capabilities?.free || []).length >= 4 && (j?.capabilities?.paid || []).length >= 1);
 }
 {
-  // The LP agent's daily collect (worker-lp), served by the agent worker from
+  // The LP agent's daily tick (worker-lp), served by the agent worker from
   // the KV record. 503 "not run yet" is a valid answer before the first run.
-  const { body, isHtml } = await getText(`${AGENT}/lp/collect`);
-  ok('/lp/collect is routed', !isHtml && /"cadence":\s*"daily"/.test(body), body.slice(0, 120));
+  const { body, isHtml } = await getText(`${AGENT}/lp/agent`);
+  ok('/lp/agent is routed', !isHtml && /"cadence":\s*"daily"/.test(body), body.slice(0, 120));
   const j = (() => { try { return JSON.parse(body); } catch { return null; } })();
   if (j && !j.error && j.last) {
-    ok('the last collect names the wallet and whether it acted', /^0x[0-9a-f]{40}$/i.test(j.last.wallet || '') && typeof j.last.acted === 'boolean');
+    ok('the last tick names the wallet and whether it acted', /^0x[0-9a-f]{40}$/i.test(j.last.wallet || '') && typeof j.last.acted === 'boolean');
     ok('a quiet day says why', j.last.acted || !!j.last.why);
+    const steps = j.last.steps || {};
+    ok('the tick ran all four steps', ['sweep', 'collect', 'rebalance', 'increase'].every((s) => s in steps), Object.keys(steps).join(','));
+    // A missing key is a red line, not a quiet day: the flow the site
+    // describes would silently not be running.
+    const sweepErrors = (Array.isArray(steps.sweep) ? steps.sweep : []).filter((s) => s.error).map((s) => `${s.source}: ${s.error}`);
+    ok('the sweep holds the keys for both income wallets', sweepErrors.length === 0, sweepErrors.join(' · '));
+    ok('a step that did nothing says why', Object.values(steps).flat().every((s) => s.acted || s.why || s.error));
   }
 }
 {

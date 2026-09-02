@@ -2,21 +2,33 @@ name = "bobai-lp-agent"
 main = "index.js"
 compatibility_date = "2025-01-01"
 
-# Once a day is the cadence the guards were built for: the collect floor is
-# 0.002 BNB of fees, and a fifty-dollar position in a 0.05% pool earns that
-# over days, not hours. Checking hourly would spend RPC on a "nothing owed"
-# answer twenty-three times out of twenty-four. 05:23 UTC is a quiet hour on
-# the chain and shares no minute with the agent worker's own jobs.
+# Once a day is the cadence the floors were built for: the collect floor is
+# 0.002 BNB of fees, the sweep floor 0.004 BNB of income, and a fifty-dollar
+# position in a 0.05% pool earns the first over days, not hours. Checking
+# hourly would spend RPC on a "nothing to do" answer twenty-three times out of
+# twenty-four. 05:23 UTC is a quiet hour on the chain and shares no minute
+# with the agent worker's own jobs.
 [triggers]
 crons = ["23 5 * * *"]
 
 # The same KV namespace the agent worker reads, so agent.brainonbnb.com can
-# serve /lp/collect from the record this worker writes. This worker itself has
+# serve /lp/agent from the record this worker writes. This worker itself has
 # no custom domain and no public face beyond the secret-gated /run.
 [[kv_namespaces]]
 binding = "AGENT"
 id = "ebebebbecec1485aa74ef1f14417c120"
 
+# Whether the cron may re-set the range on its own when the price has left
+# it. "0" until the first re-set has been run by hand and watched
+# (node scripts/lp-agent.mjs --step rebalance --confirm); the tick still plans
+# it and records that it is due. Flip to "1" and deploy to hand it over.
+[vars]
+LP_REBALANCE = "0"
+
 # Secrets, set with `wrangler secret put`, never in this file:
-#   LP_PRIVATE_KEY  the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A
-#   HIT_SECRET      the same shared secret the agent worker's /run-* routes use
+#   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A
+#   X402_PRIVATE_KEY            the x402 income wallet 0x690E950214980BC329823A2DB2fD90C06Bd54dE4 (sweep)
+#   AGENT_PROVIDER_PRIVATE_KEY  the job-provider income wallet 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 (sweep)
+#   HIT_SECRET                  the same shared secret the agent worker's /run-* routes use
+# The two income keys sign one thing here: the sale of what arrived, paid to
+# the liquidity wallet. Without them the sweep records a red line, not a quiet day.

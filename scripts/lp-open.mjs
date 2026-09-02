@@ -208,5 +208,5 @@ const receipt = await send('mint', {
 
 console.log(`\nOpen. Block ${receipt.blockNumber}.`);
 console.log('The position is an NFT held by this wallet. Its whole history is this wallet\'s history.');
-console.log('Next: node scripts/lp-collect.mjs   (plan only, as always)');
+console.log('Next: node scripts/lp-agent.mjs   (plan only, as always — the daily worker runs the same steps)');
 out.tools.cleanup();

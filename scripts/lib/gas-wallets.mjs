@@ -101,13 +101,14 @@ export const WALLETS = [
     name: 'liquidity position',
     env: 'LP_PRIVATE_KEY',
     address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
-    // Holds the project's own PancakeSwap V3 position. One cycle is a collect
-    // plus the sale, buy and burn that follow it — five transactions, of which
-    // the mint-shaped ones are the expensive ones.
+    // Holds the project's own PancakeSwap V3 position. One cycle is the daily
+    // tick at its busiest: a collect with sale, unwrap and transfer, and a
+    // re-set of the range (eight transactions, mint-shaped). The collect
+    // itself keeps a reserve above the floor in shared/lp-guards.js.
     cycleGas: 1_200_000,
     floorCycles: 1,
     targetCycles: 3,
-    does: 'collecting position fees and turning them into a $BOBAI burn',
+    does: 'collecting position fees for the buyback bot and re-setting the range',
     // DORMANT UNTIL FUNDED, and this flag is the difference between a roster
     // that gets read and one that gets ignored. This wallet is deliberately
     // empty until somebody decides to open the position; reporting that as
@@ -122,12 +123,13 @@ export const WALLETS = [
     name: 'x402 service',
     env: 'X402_PRIVATE_KEY',
     address: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
-    // Settles paid agent requests. Same shape as the provider: rare, small, and
-    // a failure that a paying caller sees.
+    // Settles paid agent requests, and once a day sells what arrived for BNB
+    // to the liquidity wallet (approve + swap). Same shape as the provider:
+    // rare, small, and a failure that a paying caller sees.
     cycleGas: 250_000,
     floorCycles: 4,
     targetCycles: 16,
-    does: 'settling paid agent requests',
+    does: 'settling paid agent requests and sweeping the USD1 they paid to the liquidity wallet',
   },
 ];
 

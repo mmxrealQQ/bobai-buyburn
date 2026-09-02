@@ -37,7 +37,7 @@ import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
-import { recordLpWindow, readLpWindows, verdict as lpVerdict } from './lp-windows.js';
+import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict } from './lp-windows.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
@@ -838,11 +838,12 @@ export default {
     // Our own ERC-8183 jobs and the date each one was first seen to complete.
     // The figure this marketplace argues with is 287 SUBMITTED against 8
     // COMPLETED; this is where our own jobs stand against it, checked daily.
-    // What the LP agent's daily collect did (worker-lp writes it, this serves
-    // it — that worker holds a key and no public face on purpose).
-    if (path === '/lp/collect') {
-      const raw = await env.AGENT.get('lp:collect');
-      if (!raw) return json({ error: 'the LP collect has not run yet', cadence: 'daily' }, 503);
+    // What the LP agent's daily tick did — sweep, collect, rebalance,
+    // increase (worker-lp writes it, this serves it; that worker holds the
+    // keys and no public face on purpose). /lp/collect is the old name.
+    if (path === '/lp/agent' || path === '/lp/collect') {
+      const raw = await env.AGENT.get('lp:agent');
+      if (!raw) return json({ error: 'the LP agent has not run yet', cadence: 'daily' }, 503);
       return json({ ...JSON.parse(raw), cadence: 'daily' });
     }
 
@@ -935,12 +936,14 @@ export default {
         earned: earnings,
         active_watches: watches.keys.length,
         money_flow: {
-          '1': 'an agent pays USD1 for a watch',
-          '2': `it lands at ${payTo || '(not configured)'} — a wallet used for nothing else`,
-          '3': 'from there it buys $BOBAI and burns it, the same thing the buyback bot does with the trade tax',
-          '4': 'every step is a public transaction, verifiable on BscScan',
-          first_burn: '0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
-          note: 'Step 3 is done by hand while the amounts are small. It is not automated yet, and this line will say so until it is. The burn log at logs.brainonbnb.com lists the bot\'s own automated runs only, so a burn done by hand is on chain but not in that log — the transaction above is the record.',
+          '1': 'an agent pays USD1 for a watch, or $U for a job delivered on the ERC-8183 kernel',
+          '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
+          '3': 'once a day it is sold for BNB and sent to the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
+          '4': 'the fees that position earns are collected daily, sold for BNB and sent to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce, which buys and burns $BOBAI as it always has — one burn path, one log',
+          '5': 'every step is a public transaction, verifiable on BscScan; the daily record is at /lp/agent',
+          floors: 'nothing is sold below 0.004 BNB of value, no fees are collected below 0.002 BNB and nothing is added to the position below 0.01 BNB — under a floor, gas would eat the amount, and a day under one is recorded as a decision, not an error',
+          before: 'until 2026-09-02 the earnings were burned directly from the service wallet, by hand. The first: 0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
+          note: 'Automated since 2026-09-02 by the LP agent (worker-lp): sweep, collect, increase, and a re-set of the range once the record holds a day of prices. The burn log at logs.brainonbnb.com lists the buyback bot\'s own runs, and the LP fees reach it through that bot, so nothing here needs a second log.',
         },
         capabilities: offering(),
         generated_at: new Date().toISOString(),
@@ -1295,7 +1298,7 @@ export default {
     // and hourly because a 37-minute window every 15 minutes would be the same
     // chain counted four times. 24 KV writes a day.
     if (t.getUTCMinutes() >= 30 && t.getUTCMinutes() < 45) {
-      ctx.waitUntil(recordLpWindow(env).catch(() => {}));
+      ctx.waitUntil(recordLpWindow(env).catch((e) => noteLpWindowError(env, e).catch(() => {})));
     }
 
     // 21:0x UTC — where our own jobs stand on the kernel, once a day, so the

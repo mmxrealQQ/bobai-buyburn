@@ -207,6 +207,11 @@ export async function swapRoute(input, opts = {}) {
     token: { address: token, symbol: sym, decimals: dec },
     quote: { address: quote, symbol: quoteSym },
     size_usd: usd,
+    // What that size is in the quote token, and the exact raw amount the
+    // quoter was asked about. Without it nobody can put the same question to
+    // a second venue: a cross-check that re-derives the input from its own
+    // price feed is comparing two questions, not two answers.
+    you_pay: { amount: +amountIn.toFixed(8), symbol: quoteSym, raw: amountInRaw.toString() },
     routes: legs.map((l) => ({
       route: l.route, pool: l.pool,
       quoted: l.quoted,

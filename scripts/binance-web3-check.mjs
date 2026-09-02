@@ -33,35 +33,10 @@
 //   node scripts/binance-web3-check.mjs              prove the signing, no key needed
 //   node scripts/binance-web3-check.mjs --probe PATH call PATH with the key in .env
 import 'dotenv/config';
-import { createHmac } from 'node:crypto';
-
-const HOST = 'https://web3.binance.com';
-// The docs are explicit about this and call it the number one cause of
-// "40102 Invalid signature": the SIGNED path includes the /build prefix. So the
-// prefix lives in one place and both the signature and the URL are built from
-// it, rather than being written out twice and drifting.
-const PREFIX = '/build';
-
-export function sign({ secret, timestamp, method, requestPath, body = '' }) {
-  const preHash = `${timestamp}${method.toUpperCase()}${requestPath}${body}`;
-  return { preHash, signature: createHmac('sha256', secret).update(preHash, 'utf8').digest('base64') };
-}
-
-export function headersFor({ apiKey, secret, method, path, body = '' }) {
-  const requestPath = path.startsWith(PREFIX) ? path : PREFIX + path;
-  const timestamp = new Date().toISOString();
-  const { signature } = sign({ secret, timestamp, method, requestPath, body });
-  return {
-    url: HOST + requestPath,
-    headers: {
-      'X-OC-APIKEY': apiKey,
-      'X-OC-TIMESTAMP': timestamp,
-      'X-OC-SIGN': signature,
-      'Content-Type': 'application/json',
-    },
-  };
-}
-
+// The signing lives once, in scripts/lib/binance-web3.mjs, shared with the
+// route cross-check. Two copies of a pre-hash rule is how one of them drifts.
+import { sign, headersFor, HOST, PREFIX } from './lib/binance-web3.mjs';
+export { sign, headersFor };
 let failed = 0, checks = 0;
 const ok = (name, pass, detail) => {
   checks += 1;

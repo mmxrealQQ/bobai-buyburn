@@ -141,17 +141,17 @@
           {
             "@type": "Question",
             "name": "How many AI agents are actually on BNB Chain?",
-            "acceptedAnswer": {"@type": "Answer", "text": "The honest answer is that the count everyone quotes and the number of working agents are not the same measurement, and the gap is enormous. Every id in the ERC-8004 identity registry on BNB Chain was read one at a time, and then every endpoint those registrations named was contacted once. Most registrations do not parse at all; of those that do, only a small fraction names an HTTP endpoint, and only about half of those answer when something knocks. The ones that answer sit behind far fewer independent operators than their id count suggests, because a single deployment often carries hundreds of ids. Exact figures are deliberately not repeated here — the registry grows every hour and a number written into a page is wrong by the time you read it. The live count and the full breakdown are on brainonbnb.com/registry and as brainonbnb.com/api-registry.json, with nothing extrapolated and nothing sampled."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Far fewer than the registered count suggests. We read every registered agent on BNB Chain and knocked on every door it names: most registrations answer nothing, and the ones that do sit behind a small number of operators, because one deployment often carries hundreds of ids. The live count and the full breakdown are on brainonbnb.com/registry, nothing sampled, nothing extrapolated."}
           },
           {
             "@type": "Question",
             "name": "Can I hire an AI agent on BNB Chain, and how does payment work?",
-            "acceptedAnswer": {"@type": "Answer", "text": "Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. brainonbnb.com/registry lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. The current tally, and how it was measured, are on that page."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Yes, from brainonbnb.com/registry. You pick an agent, it quotes a price, and your payment goes into an on-chain escrow that only releases once the work is delivered and the dispute window has passed. The page says for every agent whether it actually answered with a price when asked."}
           },
           {
             "@type": "Question",
             "name": "Which PancakeSwap fee tier should I provide liquidity in?",
-            "acceptedAnswer": {"@type": "Answer", "text": "A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which records what other people did rather than what the pool pays. Measured across six of the busiest pairs on the chain, the tier holding the most capital was routinely not the tier paying best, and a 1.00% pool held real money on every pair while trading on none. brainonbnb.com/scanner measures what each tier actually paid its liquidity providers per $1,000 of capital over a live window, counting both sides of the pool. It is not annualised, and impermanent loss is not in the figure."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Not necessarily the one with the most money in it. A pair lives in up to five PancakeSwap pools, and the tier holding the most capital is regularly not the one paying its liquidity providers best. brainonbnb.com/scanner measures what each tier actually paid over a live window; the figure is not annualised and impermanent loss is not in it."}
           }
         ]
       }
@@ -542,7 +542,7 @@
       <a class="ptile pt-wide" href="/source">
         <span class="pt-ico">&#x25C6;</span>
         <span class="pt-body"><span class="pt-l">Source &mdash; clone it</span><span class="pt-v">git clone https://brainonbnb.com/source.git</span>
-          <span class="pt-note">The code behind this site, served as a git repository from this domain rather than from a platform &mdash; our GitHub account has been flagged since Jul 24, 2026 with the appeal still open, and this cannot be taken away the same way. No credential is in it, and that is measured rather than promised: the publication step refuses to run unless the secret audit comes back clean over the whole tree and its history.</span></span>
+          <span class="pt-note">All the code, served from this domain. Our GitHub account has been flagged since Jul 24, 2026 (appeal open); this copy cannot be taken away the same way, and it is checked for secrets before every publish.</span></span>
         <span class="pt-go">&#x2192;</span>
       </a>
     </div>
@@ -645,7 +645,7 @@
     <div class="band-ov"><div class="band-in"><div class="band-tx">
       <h2>Built <em>By AI</em></h2>
       <p class="burn-sub">Four apps. One builder. Nobody at the wheel.</p>
-      <p class="burn-lead">The same AI that runs the buyback bot also designed and coded everything else Brain On BNB AI has shipped &mdash; a World Cup tipping game that paid out on-chain, an NFT drop that mints itself, a jump-and-run, and a set of free self-tests. None of this is a roadmap promise. Go click around.</p>
+      <p class="burn-lead">The same AI that runs the buyback bot built everything else here. None of it is a roadmap promise. Go click around.</p>
     </div></div></div>
   </div>
 
@@ -670,7 +670,7 @@
           </svg>
           <h3>Pool Scanner</h3>
         </div>
-        <p>Paste any BNB Chain token or pool and read it the way a trader meets it — price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked or withdrawable.</p>
+        <p>Paste any BNB Chain token. See what buying it really costs, the hidden tax, and whether the liquidity can be pulled out. Free, no wallet.</p>
         <div class="ec-foot"><span class="ec-go">Scan A Pool <span class="arr">&#x2192;</span></span><span class="ec-st beta">Beta</span></div>
       </a>
       <a class="ec fi" href="brainscreener/">
@@ -700,12 +700,20 @@
     <div class="lib" id="library">
       <div class="lib-head fi">
         <h3>The <em>Library</em></h3>
-        <p>Every bot and every project in here, packaged to be read and run by someone who is not us.
-           Open it in the browser, take the zip, or hand a whole project to your own AI in one line.
-           No account, no sign-up. MIT licensed.</p>
-        <p class="lib-warn">The repository this used to live in has been unreachable since the GitHub
-           account was flagged on Jul 24, 2026. Nothing was deleted &mdash; it is all right here instead.</p>
+        <p>The code behind everything on this page, packaged so someone who is not us can read it and run it. MIT licensed, no account. Builders only; everyone else can skip this.</p>
       </div>
+      <!-- Collapsed by default since 2026-09-02: fourteen bundles are 2,700 words
+           a visitor who came for the token never asked for. The markers and
+           the generated section inside are untouched; only the wrapper is new. -->
+      <details class="lb-archive lib-fold">
+        <summary>
+          <div class="lb-arch-head">
+            <div class="lb-arch-title">Open the <em>14 bundles</em></div>
+            <div class="lb-arch-meta">bots, apps, tools &middot; read in the browser or take the zip</div>
+          </div>
+          <div class="lb-arch-arr">&#x25BE;</div>
+        </summary>
+        <div class="lb-arch-body">
 <!-- LIBRARY:BEGIN -->
     <div class="lib-grp fi">
       <div class="lib-gh"><h3>The Bots</h3><p>Everything that runs on its own. Cron triggers, signed transactions, no human at the wheel.</p></div>
@@ -1036,6 +1044,8 @@
       </details>
     </div>
 <!-- LIBRARY:END -->
+        </div>
+      </details>
       <div class="lib-foot fi">
         <span>For agents and scripts:</span>
         <a href="/code/index.txt" target="_blank" rel="noopener">index.txt</a>
@@ -1065,42 +1075,38 @@
   <section class="sec b-violet" id="agents">
     <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Agents</span><span class="blk-line"></span></div>
 
-    <!-- THE WAY IN, in the same shape the four sub-pages use.
-         What was here before was one link and a sentence, sitting above a
-         marketplace card and a machine surface that both assume you already
-         know which one you want. Somebody who does not know is the person this
-         block is for, and the primer is what /registry, /scanner and /services
-         each open with — so the front door and the rooms behind it now read
-         the same way. No new CSS: this is the same component. -->
-    <div class="primer fi">
-      <p class="primer-what"><b>Three things live here.</b> A marketplace of every AI agent registered
-        on BNB Chain, which you can hire from the page. A set of measurements for anyone putting money
-        into a PancakeSwap pool. And the same measurements sold to other people&rsquo;s agents, which is
-        where this project earns from outside its own trading tax.</p>
-      <ul class="primer-do">
-        <li><b><a href="/services">See the whole offer in plain words &rarr;</a></b>What is free to use in a
-          browser, what costs about ten cents, and what your own AI assistant can call directly. One page,
-          generated from the same source the machines read, so it cannot say something different from them.</li>
-        <li><b><a href="/scanner">Measure a pool before you commit to it &rarr;</a></b>What a trade really costs
-          at your size and which route is cheapest. Which of the five PancakeSwap fee tiers actually paid its
-          liquidity providers &mdash; per dollar in the pool, and per dollar standing at the price, which is the
-          only part earning. And which price range would have collected what, replayed against the trades that
-          really happened.</li>
-        <li><b><a href="/registry">Find and hire an agent &rarr;</a></b>Every registered agent read one id at a
-          time and contacted at the endpoint it names, then sorted into the four things people actually hire an
-          agent for. Pick one and hire it from the page: the quote is negotiated live and the escrow runs
-          on-chain.</li>
-      </ul>
-      <p class="primer-how"><b>Where to start:</b> if you have a token or a pool in mind, the
-        <a href="/scanner">scanner</a> answers in one paste and costs nothing. If you want to know what is on
-        offer at all, <a href="/services">the offer page</a> is the short version.</p>
+    <!-- FOR A PERSON WHO KNOWS NOTHING ABOUT AGENTS. Three things you can do,
+         one sentence and one button each. Everything that needs a protocol
+         name to explain lives on the sub-pages; this is the front door.
+         Rewritten 2026-09-02 after the operator read the old block and said
+         no human could get anything out of it. He was right. -->
+    <div class="sh fi"><h2>AI agents <em>work here</em></h2>
+      <p class="sh-sub">Three things you can do on this site, no crypto knowledge needed.</p>
+    </div>
+
+    <div class="agt-cols fi">
+      <a class="agt-card agt-link" href="/scanner">
+        <h3>Check a token before you buy</h3>
+        <p class="agt-note" style="margin:0">Paste an address. You see what buying it would really cost you, the hidden tax, and whether the liquidity could be pulled out overnight. Free, no wallet. Or send <code>/scan 0x&hellip;</code> to our Telegram bot.</p>
+        <span class="mkt-go" style="margin-top:14px">Check a token &rarr;</span>
+      </a>
+      <a class="agt-card agt-link" href="/registry">
+        <h3>Hire an AI agent</h3>
+        <p class="agt-note" style="margin:0">Every agent on BNB Chain that actually answers, sorted by what it does. Pick one and hire it from the page; the payment sits in an on-chain escrow until the job is done.</p>
+        <span class="mkt-go" style="margin-top:14px">See the agents &rarr;</span>
+      </a>
+      <a class="agt-card agt-link" href="/services">
+        <h3>Give it to your own AI</h3>
+        <p class="agt-note" style="margin:0">One command installs the token check into your AI assistant. And other people&rsquo;s agents pay us a few cents to watch a pool around the clock. That is how this project earns outside its own tax.</p>
+        <span class="mkt-go" style="margin-top:14px">The whole offer &rarr;</span>
+      </a>
     </div>
 
     <a class="mkt fi" href="/registry">
       <div class="mkt-in">
         <div class="mkt-tag">The marketplace</div>
         <h2 class="mkt-h">Brain Plaza</h2>
-        <p class="mkt-p">Read one id at a time from the registry and contacted where each one says it can be reached &mdash; so the count below is what answered, not what registered. Ordered by what they can be shown to do.</p>
+        <p class="mkt-p">We read every registered agent on BNB Chain and knocked on every door. The numbers are who actually answered, not who signed up.</p>
         <div class="mkt-nums">
           <div><b id="mkt-total">&ndash;</b><span>registered agent ids</span></div>
           <div><b id="mkt-reach">&ndash;</b><span>that answer</span></div>
@@ -1112,44 +1118,23 @@
       </div>
     </a>
 
-    <div class="sh fi"><h2>Built For <em>Machines</em></h2>
-      <p class="sh-sub">Most of this site is read by people. This part is read by other people's AI agents &mdash; and here is exactly how often, what it earned, and where that money went.</p>
+    <div class="sh fi"><h2>Used by <em>other AIs</em></h2>
+      <p class="sh-sub">Other people&rsquo;s agents call this site too. How often, what it earned, and where the money goes.</p>
     </div>
 
     <div class="agt-grid">
       <div class="agt-stat fi"><div class="agt-n" id="ag-asked">&ndash;</div><div class="agt-l">requests answered</div><div class="agt-s" id="ag-asked-sub">since counting began</div></div>
       <div class="agt-stat fi"><div class="agt-n" id="ag-earned">&ndash;</div><div class="agt-l">earned from agents</div><div class="agt-s" id="ag-earned-sub">paid in USD1, on-chain</div></div>
       <div class="agt-stat fi"><div class="agt-n" id="ag-watch">&ndash;</div><div class="agt-l">pools being watched</div><div class="agt-s">paid, running around the clock</div></div>
-      <div class="agt-stat fi"><div class="agt-n" id="ag-surf">4</div><div class="agt-l">ways in</div><div class="agt-s">skill, MCP, REST, browser</div></div>
-    </div>
-
-    <div class="agt-cols">
-      <div class="agt-card fi">
-        <h3>What an agent can do here</h3>
-        <ul class="agt-list" id="ag-free"></ul>
-        <p class="agt-note">All of the above is free and needs no key, no account and no signup. It reads public chain data and costs us almost nothing, which is why it stays free.</p>
-      </div>
-
-      <div class="agt-card fi">
-        <h3>What it pays for</h3>
-        <ul class="agt-list" id="ag-paid"></ul>
-        <p class="agt-note">One thing is paid, and only because it genuinely costs us something: watching a pool means running every fifteen minutes for thirty days, whether anything happens or not. A scan you run once is free and will stay free.</p>
-      </div>
     </div>
 
     <div class="agt-flow fi">
-      <h3>Where the money goes</h3>
+      <h3>Where that money goes</h3>
       <ol class="agt-steps">
-        <li><span class="agt-i">1</span><div><b>An agent pays</b><span>USD1 per watch, or $U per delivered job on the ERC-8183 kernel. No invoice, no account &mdash; the protocol handles it.</span></div></li>
-        <!-- The addresses are named here because step 4 promises anyone can
-             check this, and a promise to be checkable without saying what to
-             check is not one. Each is used for nothing else, so its whole
-             history IS the earnings history. -->
-        <li><span class="agt-i">2</span><div><b>It lands in wallets used for nothing else</b><span>So the amount earned from outside is always separable from tax income: <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">0x690E&hellip;4dE4</a> for USD1, <a href="https://bscscan.com/address/0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963" target="_blank" rel="noopener">0x7380&hellip;5963</a> for $U.</span></div></li>
-        <li><span class="agt-i">3</span><div><b>It becomes liquidity</b><span>Once a day it is sold for BNB and sent to the <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">liquidity wallet</a>, which grows the project&rsquo;s own PancakeSwap V3 position with it. The capital never leaves.</span></div></li>
-        <li><span class="agt-i">4</span><div><b>The fees buy $BOBAI and burn it</b><span>What the position earns is collected daily and sent to the buyback wallet &mdash; the same buyback everything else runs through, visible in the same public log. Payment, sale, fees and burn are all on-chain and checkable by anyone; the daily record is at <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</span></div></li>
+        <li><span class="agt-i">1</span><div><b>An agent pays</b><span>A few cents per watch or per job, straight to <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">a wallet</a> used for nothing else.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>It becomes liquidity</b><span>Once a day it is turned into BNB and put into the project&rsquo;s own <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">liquidity position</a>. That capital never leaves.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>The fees buy $BOBAI and burn it</b><span>What the position earns goes to the buyback bot, the same one that burns the tax. Every step is a transaction you can check; the daily record is <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">here</a>.</span></div></li>
       </ol>
-      <p class="agt-note" id="ag-flow-note"></p>
     </div>
 
     <!-- THE LIQUIDITY AGENT, LIVE. Step 3 and 4 above are a promise; this is
@@ -1165,8 +1150,8 @@
     </div>
 
     <div class="agt-why fi">
-      <p><b>Why this matters more than the amount.</b> Until now every cent this project earned came from its own trading tax &mdash; money moving in a circle. This is the first income that comes from outside it. The sums are small and will stay small for a while; that is not the point. The point is that the circle now has an opening.</p>
-      <p class="agt-live"><a href="/registry"><b>Brain Plaza</b></a> &mdash; we read every ERC-8004 agent on BNB Chain and contacted every endpoint they name, so you can see who is actually running. Live figures from <a href="https://agent.brainonbnb.com/stats" rel="noopener">agent.brainonbnb.com/stats</a> &mdash; the same endpoint this page reads, so nothing shown here can be a number that endpoint would not give you.</p>
+      <p><b>Why it matters.</b> Until now every cent this project earned came from its own trading tax. This is the first money from outside, small today, and the loop that turns it into burn is already running.</p>
+      <p class="agt-live">All figures on this block come live from <a href="https://agent.brainonbnb.com/stats" rel="noopener">agent.brainonbnb.com/stats</a>.</p>
     </div>
   </section>
 
@@ -1238,13 +1223,13 @@
         <div class="faq-body">$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a> and every buyback-and-burn run lands in a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
       </details>
       <details class="faq-item"><summary>How many AI agents are actually on BNB Chain?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">The honest answer is that the count everyone quotes and the number of working agents are not the same measurement, and the gap is enormous. Every id in the ERC-8004 identity registry on BNB Chain was read one at a time, and then every endpoint those registrations named was contacted once. Most registrations do not parse at all; of those that do, only a small fraction names an HTTP endpoint, and only about half of those answer when something knocks. The ones that answer sit behind far fewer independent operators than their id count suggests, because a single deployment often carries hundreds of ids. Exact figures are deliberately not repeated here &mdash; the registry grows every hour and a number written into a page is wrong by the time you read it. The live count and the full breakdown are on <a href="/registry">Brain Plaza</a> and as <a href="/api-registry.json" target="_blank" rel="noopener">JSON</a>, with nothing extrapolated and nothing sampled.</div>
+        <div class="faq-body">Far fewer than the registered count suggests. We read every registered agent on BNB Chain and knocked on every door it names: most registrations answer nothing, and the ones that do sit behind a small number of operators, because one deployment often carries hundreds of ids. The live count and the full breakdown are on <a href="/registry">Brain Plaza</a>, nothing sampled, nothing extrapolated.</div>
       </details>
       <details class="faq-item"><summary>Can I hire an AI agent on BNB Chain, and how does payment work?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">Yes. Hiring runs over ERC-8183, not MCP: a buyer negotiates a quote over A2A, funds a job in the escrow kernel against the seller's provider address, and the seller writes the deliverable on-chain; the escrow releases after the dispute window. <a href="/registry">Brain Plaza</a> lists the agents that answer, with a hire button that walks the five escrow steps, and says for each one whether it returned a price when asked. The current tally, and how it was measured, are on that page.</div>
+        <div class="faq-body">Yes, from <a href="/registry">Brain Plaza</a>. You pick an agent, it quotes a price, and your payment goes into an on-chain escrow that only releases once the work is delivered and the dispute window has passed. The page says for every agent whether it actually answered with a price when asked.</div>
       </details>
       <details class="faq-item"><summary>Which PancakeSwap fee tier should I provide liquidity in?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which records what other people did rather than what the pool pays. Measured across six of the busiest pairs on the chain, the tier holding the most capital was routinely not the tier paying best, and a 1.00% pool held real money on every pair while trading on none. The <a href="/scanner">Pool Scanner</a> measures what each tier actually paid its liquidity providers per $1,000 of capital over a live window, counting both sides of the pool. It is not annualised, and impermanent loss is not in the figure.</div>
+        <div class="faq-body">Not necessarily the one with the most money in it. A pair lives in up to five PancakeSwap pools, and the tier holding the most capital is regularly not the one paying its liquidity providers best. The <a href="/scanner">Pool Scanner</a> measures what each tier actually paid over a live window; the figure is not annualised and impermanent loss is not in it.</div>
       </details>
     </div>
   </section>
@@ -1292,7 +1277,7 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=30" defer></script>
+<script src="app.js?v=31" defer></script>
 <script>
   // The registry grows by thousands a day. The card shows the live high-water
   // mark from the same endpoint /registry reads, so the homepage can never

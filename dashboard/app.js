@@ -949,16 +949,19 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
 
       el('ag-watch').textContent = nf(d.active_watches || 0);
 
+      // The capability lists and the machine-facing note left the homepage on
+      // 2026-09-02 (they live on /services); guarded, so a page without the
+      // elements does not throw here and lose the block below.
       const cap = d.capabilities || {};
       const free = (cap.free||[]).map(c => li(c.name, c.what, c.where)).join('');
       const paid = (cap.paid||[]).map(c =>
         li(c.name + ' — ' + (c.price||''), c.what + ' ' + (c.why_paid||''), c.where)).join('');
-      el('ag-surf').textContent = (cap.free||[]).length || 4;
-      if(free) el('ag-free').innerHTML = free;
-      if(paid) el('ag-paid').innerHTML = paid;
+      if(el('ag-surf')) el('ag-surf').textContent = (cap.free||[]).length || 4;
+      if(free && el('ag-free')) el('ag-free').innerHTML = free;
+      if(paid && el('ag-paid')) el('ag-paid').innerHTML = paid;
 
       const note = d.money_flow && d.money_flow.note;
-      if(note) el('ag-flow-note').textContent = note;
+      if(note && el('ag-flow-note')) el('ag-flow-note').textContent = note;
     })
     .then(() => fetch('https://agent.brainonbnb.com/lp/agent', {cache:'no-store'})
       .then(r => r.ok ? r.json() : null).catch(() => null)
@@ -973,23 +976,30 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
           list.innerHTML = item('&middot;', 'No record yet', 'The agent has not run its first tick.');
           return;
         }
-        const last = rec.last, st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
+        // Plain words. The record's own reasons are written for an operator
+        // ("below the 0.002 BNB floor"); a visitor gets the state, not the rule.
+        const last = rec.last, st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {};
         const hist = rec.history || [];
         const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
         const swept = sum(e => (Array.isArray(e.steps && e.steps.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0));
         const forwarded = sum(e => e.steps && e.steps.collect && e.steps.collect.forwarded_bnb);
         const f = (v, d) => Number(v || 0).toFixed(d);
+        const when = String(last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
+        const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
+        const waiting = sweeps.filter(s => s.balance > 0).map(s => f(s.balance, 2) + ' ' + (s.token || s.source)).join(' + ');
+        const anyError = last.ok === false;
         const rows = [];
-        rows.push(item('&#9679;', c.position ? 'Position #' + c.position + (c.in_range === false ? ' — out of range' : c.in_range ? ' — in range, earning' : '') : 'No position',
-          c.position ? 'PancakeSwap V3, ticks ' + (c.ticks || []).join(' … ') + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : ''));
-        rows.push(item('&#9679;', 'Fees forwarded to the buyback bot so far: ' + f(forwarded, 5) + ' BNB',
-          c.owed ? 'Owed right now: ' + f(c.owed.bnb_equivalent, 6) + ' BNB' + (c.why ? ' — ' + c.why : '') : ''));
-        rows.push(item('&#9679;', 'AI income swept into the position so far: ' + f(swept, 5) + ' BNB',
-          (Array.isArray(st.sweep) ? st.sweep : []).map(s => s.token + ': ' + (s.balance != null ? f(s.balance, 2) + ' waiting' : (s.error || '')) + (s.why ? ' — ' + s.why.split(' — ')[0] : '')).join(' · ')));
-        rows.push(item('&#9679;', last.acted ? 'Last tick acted' : 'Last tick: nothing to do',
-          'Checked ' + String(last.at || '').replace('T', ' ').slice(0, 16) + ' UTC' + (last.ok === false ? ' — a step reported an error' : '')));
+        rows.push(item('&#9679;',
+          c.position ? (c.in_range === false ? 'The position is out of range — waiting for a re-set' : 'The position is in range and earning') : 'No position open',
+          c.position ? 'PancakeSwap V3 position #' + c.position + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : ''));
+        rows.push(item('&#9679;', 'Fees already sent to the buyback bot: ' + f(forwarded, 5) + ' BNB',
+          c.owed ? 'Earned since the last collect: ' + f(c.owed.bnb_equivalent, 6) + ' BNB. Small amounts are left to grow until collecting them beats the gas.' : ''));
+        rows.push(item('&#9679;', 'Income already put into the position: ' + f(swept, 5) + ' BNB',
+          waiting ? 'Waiting to be moved: ' + waiting + '. It moves once it is worth more than the gas.' : 'Nothing waiting right now.'));
+        rows.push(item('&#9679;', last.acted ? 'Last check: it acted' : 'Last check: nothing to do',
+          when + (anyError ? '. One step could not finish; the operator has been told.' : '.')));
         list.innerHTML = rows.join('');
-        if(noteEl) noteEl.textContent = 'Once a day, unattended. The capital never leaves the position; only the fees do. Floors keep it from paying more gas than it moves, and a day under a floor is written down as a decision, not an error.';
+        if(noteEl) noteEl.textContent = 'Runs once a day on its own. The capital stays in the position; only the fees leave it.';
       }))
     .then(() => Promise.all([
       // Two sources on purpose, and the same two the Plaza page itself uses.

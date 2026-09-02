@@ -568,15 +568,21 @@ section('The marketplace, from the front door');
 {
   // A judge, or anybody else, arriving at brainonbnb.com should not have to
   // work out that the marketplace lives behind a heading called "Agents".
-  const { body } = await getText(`${SITE}/`);
-  ok('homepage carries the marketplace card', /class="mkt fi"/.test(body));
+  // Since 2026-09-02 the homepage is the short page: the marketplace is one
+  // of three tool panels on it, and the full block with the counted card
+  // lives on /classic. Both doors are checked for what each promises.
+  const { body: home0 } = await getText(`${SITE}/`);
+  ok('homepage offers the marketplace as one of its three tools', /href="\/registry"[^>]*>\s*<h3>Hire an AI agent<\/h3>/.test(home0));
+  ok('the homepage nav names the tools', /<a href="#tools">Tools<\/a>/.test(home0));
+  const { body } = await getText(`${SITE}/classic`);
+  ok('the classic page carries the marketplace card', /class="mkt fi"/.test(body));
   ok('the card links to the marketplace', /<a class="mkt fi" href="\/registry">/.test(body));
   // The nav deliberately does NOT carry a separate Marketplace entry: the
   // marketplace lives inside the Agents block, which is where it belongs, and
   // a second top-level word for the same thing reads as two destinations.
   ok('the nav is not split between Agents and Marketplace',
-    !/<a href="\/registry">Marketplace<\/a>/.test(body));
-  ok('the Agents block is still linked from the nav', /<a href="#agents">Agents<\/a>/.test(body));
+    !/<a href="\/registry">Marketplace<\/a>/.test(body) && !/<a href="\/registry">Marketplace<\/a>/.test(home0));
+  ok('the Agents block is still linked from the classic nav', /<a href="#agents">Agents<\/a>/.test(body));
   // The counts are placeholders in the markup on purpose. A number typed into
   // the homepage is a number that drifts away from the page it describes.
   ok('the card does not hard-code its counts',
@@ -629,8 +635,8 @@ section('The marketplace, from the front door');
   ok('the hire block counts quotes over its own buttons, not over the quote run',
     new RegExp(`${reg?.hireable_here} carry a Hire button, and <b>${reg?.quoted_of_hireable} of them returned a price`).test(body),
     'the block prints a numerator from the quote run under a count of buttons');
-  const home = (await getText(SITE)).body;
-  ok('the homepage card promises the measured number, not the button count',
+  const home = (await getText(`${SITE}/classic`)).body;
+  ok('the classic card promises the measured number, not the button count',
     /id="mkt-hire"[^<]*<\/b><span>quote back when asked/.test(home),
     'the card still advertises hireable buttons rather than sellers that quote');
   // Same reasoning as the census counts above: the quote tally is measured
@@ -746,9 +752,9 @@ section('Transparency');
   }
 }
 {
-  const { body } = await getText(`${SITE}/`);
-  ok('page carries the Agents block', /Block 05 &middot; Agents/.test(body));
-  ok('nav links to it', /href="#agents"/.test(body));
+  const { body } = await getText(`${SITE}/classic`);
+  ok('the classic page carries the Agents block', /Block 05 &middot; Agents/.test(body));
+  ok('its nav links to it', /href="#agents"/.test(body));
   const csp = (await fetch(`${SITE}/`)).headers.get('content-security-policy') || '';
   ok('CSP allows the stats endpoint', csp.includes('https://agent.brainonbnb.com'));
 }

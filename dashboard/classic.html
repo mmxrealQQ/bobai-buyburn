@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<!-- Background as an attribute straight on <html>: it applies before any
+     stylesheet has been parsed. Without it the browser paints its own default
+     for the first moments — white — which is exactly what showed up on mobile
+     as a bright flash or a white screen. Value = --bg from the stylesheet. -->
+<html lang="en" style="background:#0a0814">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Load the fonts WITHOUT blocking rendering. A plain <link rel=stylesheet>
+       holds up the FIRST PAINT until the file arrives, and for googleapis that
+       means DNS + TLS + response to a foreign host over a mobile connection —
+       if that connection sulks, the page stays white for as long as it takes,
+       because there is no timeout for it. Exactly the reported picture: white
+       first, then reload to get anywhere.
+       media="print" strips the link of its blocking power (it does not apply to
+       the screen), onload switches it to "all". All layout and all colours live
+       in styles.css below anyway — that is a file from our own server,
+       versioned and cached on the device, so it is allowed to block; the
+       typeface swaps in a fraction of a second later (the URL carries
+       display=swap, so there is no flash of unstyled text).
+       As an @import it blocked too, just later in the sequence.
+       preconnect stays: that way the handshake still starts early. -->
+  <!-- The typefaces are served from this origin (see fonts.css for why, and for
+       the fact that both are variable fonts — one file each, every weight).
+       Preloaded because both are used above the fold: Inter for the body, Space
+       Grotesk for the headline and every figure. crossorigin is required on a
+       font preload even same-origin, or the browser fetches the file twice. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+
+  <title>Classic — Brain On BNB AI ($BOBAI) — Where Memes Meet Intelligence</title>
+  <meta name="description" content="Brain On BNB AI ($BOBAI) — AI-built deflationary meme token on BNB Chain. 3% tax fuels autonomous 24/7 buyback & burn. LP locked, ownership renounced.">
+  <meta name="keywords" content="brainonbnb, brainonbnbai, brainonbnb.com, brainonbnb.ai, Brain On BNB AI, BOBAI, BOBAI token, BOBAI coin, Brain On BNB, Brain On BNB token, Brain On BNB coin, BNB Chain meme token, AI meme token, deflationary token BNB, buyback burn token, BSC meme coin">
+  <link rel="canonical" href="https://brainonbnb.com/">
+  <!-- Agent discovery: $BOBAI is a callable ERC-8004 agent (MCP + A2A) -->
+  <link rel="alternate" type="text/markdown" title="$BOBAI agent skill doc" href="https://brainonbnb.com/skill.md">
+  <link rel="alternate" type="application/json" title="$BOBAI A2A agent card" href="https://brainonbnb.com/.well-known/agent-card.json">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="shortcut icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Brain On BNB AI ($BOBAI) — Where Memes Meet Intelligence">
+  <meta property="og:description" content="Brain On BNB AI ($BOBAI) is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous buyback & burn cycle - 24/7, no human intervention. LP locked. Owner renounced.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Brain On BNB AI">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Brain On BNB AI ($BOBAI) — Where Memes Meet Intelligence">
+  <meta name="twitter:description" content="Brain On BNB AI ($BOBAI) is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous buyback & burn cycle - 24/7, no human intervention. LP locked. Owner renounced.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://brainonbnb.com/#organization",
+        "name": "Brain On BNB AI",
+        "alternateName": ["BOBAI", "Brain On BNB", "$BOBAI", "Brain On BNB AI Token", "Brain On BNB AI Coin", "brainonbnb", "brainonbnbai", "brainonbnb.com", "brainonbnb.ai", "BOB AI"],
+        "url": "https://brainonbnb.com/",
+        "logo": "https://brainonbnb.com/logo-200x200.png",
+        "image": "https://brainonbnb.com/og-banner.png",
+        "description": "Brain On BNB AI ($BOBAI) is an AI-built deflationary meme token on BNB Chain. A 3% tax on every trade fuels an autonomous 24/7 buyback & burn cycle. LP locked. Ownership renounced.",
+        "email": "bobai@brainonbnb.ai",
+        "sameAs": [
+          "https://x.com/BrainOnBNB",
+          "https://t.me/bobai_official",
+          "https://www.coingecko.com/en/coins/brain-on-bnb-ai",
+          "https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff",
+          "https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff",
+          "https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc",
+          "https://blockspot.io/coin/brain-on-bnb-ai/",
+          "https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc",
+          "https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff",
+          "https://www.dextools.io/token/bobai",
+          "https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6",
+          "https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff",
+          "https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://brainonbnb.com/#website",
+        "url": "https://brainonbnb.com/",
+        "name": "Brain On BNB AI",
+        "alternateName": ["BOBAI", "brainonbnb", "brainonbnbai"],
+        "publisher": {"@id": "https://brainonbnb.com/#organization"},
+        "inLanguage": "en"
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://brainonbnb.com/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Brain On BNB AI ($BOBAI)?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Brain On BNB AI ($BOBAI, also referenced as brainonbnb / brainonbnbai) is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous 24/7 buyback and burn cycle. LP is locked, ownership is renounced, and the contract source is verified and published on BscScan."}
+          },
+          {
+            "@type": "Question",
+            "name": "Where can I buy $BOBAI?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Directly on PancakeSwap V2, or through Binance Web3 Wallet, OKX Wallet, and Bitget Wallet. Always paste the contract address yourself — don't trust ticker search."}
+          },
+          {
+            "@type": "Question",
+            "name": "What is the official $BOBAI contract address?",
+            "acceptedAnswer": {"@type": "Answer", "text": "The official BEP-20 contract is 0x245c386dcfed896f5c346107596141e5edcbffff on BNB Chain. It is verified on BscScan, ownership is renounced, and there is no mint function or admin pause."}
+          },
+          {
+            "@type": "Question",
+            "name": "How does the buyback & burn work?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Every trade pays a 3% tax that accumulates in the buyback wallet on-chain. A Cloudflare-Workers bot triggers every 10 minutes 24/7: it unwraps WBNB, buys $BOBAI on PancakeSwap, and sends it to the dead address. Every burn is verifiable on BscScan — no human intervention, no off-chain logic."}
+          },
+          {
+            "@type": "Question",
+            "name": "Is $BOBAI safe? Is the contract verified?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Yes — contract verified on BscScan, no proxy, no upgrade path, no admin keys, no mint, no pause function. LP tokens are sent to the dead address (perma-locked). $BOBAI is independently listed on CoinGecko, DEXTools, DexScreener, and Binance Web3 Wallet."}
+          },
+          {
+            "@type": "Question",
+            "name": "Does $BOBAI have a team allocation? Is it a fair launch?",
+            "acceptedAnswer": {"@type": "Answer", "text": "It is a fair launch. $BOBAI launched on Four.Meme with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so anyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes only from the transparent 1% creator slice of the trade tax, not from a reserved token bag."}
+          },
+          {
+            "@type": "Question",
+            "name": "What is the trading tax on $BOBAI?",
+            "acceptedAnswer": {"@type": "Answer", "text": "The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard."}
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between brainonbnb.com and brainonbnb.ai?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Same official site, two domains. brainonbnb.com is the primary user-facing domain; brainonbnb.ai is the original brand domain. Both serve identical content from the same Cloudflare Pages deployment."}
+          },
+          {
+            "@type": "Question",
+            "name": "Who built $BOBAI?",
+            "acceptedAnswer": {"@type": "Answer", "text": "$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on BscScan and every buyback-and-burn run is written to a public audit log."}
+          },
+          {
+            "@type": "Question",
+            "name": "How many AI agents are actually on BNB Chain?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Far fewer than the registered count suggests. We read every registered agent on BNB Chain and knocked on every door it names: most registrations answer nothing, and the ones that do sit behind a small number of operators, because one deployment often carries hundreds of ids. The live count and the full breakdown are on brainonbnb.com/registry, nothing sampled, nothing extrapolated."}
+          },
+          {
+            "@type": "Question",
+            "name": "Can I hire an AI agent on BNB Chain, and how does payment work?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Yes, from brainonbnb.com/registry. You pick an agent, it quotes a price, and your payment goes into an on-chain escrow that only releases once the work is delivered and the dispute window has passed. The page says for every agent whether it actually answered with a price when asked."}
+          },
+          {
+            "@type": "Question",
+            "name": "Which PancakeSwap fee tier should I provide liquidity in?",
+            "acceptedAnswer": {"@type": "Answer", "text": "Not necessarily the one with the most money in it. A pair lives in up to five PancakeSwap pools, and the tier holding the most capital is regularly not the one paying its liquidity providers best. brainonbnb.com/scanner measures what each tier actually paid over a live window; the figure is not annualised and impermanent loss is not in it."}
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <!-- Stylesheet moved to styles.css; the reasoning is in the file header.
+       Short version: 57 KB that used to be re-downloaded on every refresh now
+       sit versioned in the device cache. Bump ?v= when editing the CSS.
+       The preload in front of it is what pays for splitting the file out: as an
+       inline block the CSS arrived with the first bytes of the document, while
+       a <link> is only discovered once the parser has worked through this head.
+       rel=preload lets Cloudflare announce the file in an Early Hint, so the
+       browser starts fetching it while the HTML is still on its way. Same URL
+       as the stylesheet below, so it is one request, not two. -->
+  <link rel="preload" href="styles.css?v=34" as="style">
+  <link rel="stylesheet" href="styles.css?v=34">
+  <!-- Safari remembers the scroll position and puts it back when the page is
+       reopened - the homepage used to come up in the middle of the hero. A
+       landing page should always start at the top; #hash deep links stay intact.
+
+       IMPORTANT: the 'load' event only fires once the last image has arrived.
+       Without the guard below, the jump to the top yanked back a visitor who
+       had long since started reading - it looked like the page was reloading.
+       So once somebody scrolls or taps themselves, we leave the position alone. -->
+  <script>
+  /* Marks the document as "JS is running". The fade-in effect (.fi) sets content
+     to opacity:0 and depends on an observer releasing it again. Without this
+     guard, half the page stayed permanently invisible - black - whenever JS was
+     switched off or failed to load. */
+  document.documentElement.classList.add('js');
+  if('scrollRestoration' in history)history.scrollRestoration='manual';
+  /* A reload is not a deep link. Click a nav anchor once and the #hash stays in
+     the address bar, so every later refresh jumps back to that section - on a
+     phone, reliably into The Library. Clearing the hash on a reload, here in the
+     head before anything paints, means the browser never jumps at all. A shared
+     link still works: that is a navigation, not a reload. */
+  var reloaded=(function(){try{
+    var e=performance.getEntriesByType('navigation')[0];
+    if(e&&e.type)return e.type==='reload';
+    return performance.navigation&&performance.navigation.type===1; /* older Safari */
+  }catch(x){return false}})();
+  if(reloaded&&location.hash)history.replaceState(null,'',location.pathname+location.search);
+  (function(){var touched=false;
+    var mark=function(){touched=true};
+    /* Only a real gesture counts as the visitor taking over. A scroll event does
+       not: Safari restores the old position by itself after load, and letting
+       that count as a touch is what left a refresh sitting mid-page with no
+       correction coming. */
+    ['wheel','touchstart','keydown','pointerdown'].forEach(function(t){
+      addEventListener(t,mark,{passive:true,once:true})});
+    var top=function(){if(!touched&&!location.hash)scrollTo(0,0)};
+    /* Early (DOM is up), after the last image, and a few times after that:
+       Safari puts its remembered position back in its own time, so a single
+       correction loses the race. Any real gesture stops the retries at once. */
+    document.addEventListener('DOMContentLoaded',top);
+    addEventListener('load',function(){[0,80,250,600,1200].forEach(function(d){setTimeout(top,d)})});
+    /* Coming back from the bfcache fires neither DOMContentLoaded nor load. */
+    addEventListener('pageshow',function(e){if(e.persisted)top()});
+  })();</script>
+</head>
+<body>
+<h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Brain On BNB AI ($BOBAI) — AI-Built Deflationary Meme Token on BNB Chain · brainonbnb · brainonbnbai · brainonbnb.com</h1>
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+<svg class="wrapnet" aria-hidden="true" preserveAspectRatio="none"></svg>
+
+
+  <nav><div class="nav">
+    <a href="/" class="nl"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"> <span>BOBAI</span></a>
+    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#agents">Agents</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
+    <div class="nb-group">
+      <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+    </div>
+  </div></nav>
+
+  <section class="hero">
+    <picture>
+      <!-- Handy quer: eigener 2:1-Zuschnitt aus dem Original, ohne die
+           kuenstlich verbreiterten Raender des Desktop-Bildes. -->
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="hero-v3l.webp" type="image/webp">
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="hero-v3l.jpg" type="image/jpeg">
+      <source media="(max-width:640px)" srcset="hero-v3m.webp?v=5" type="image/webp">
+      <source media="(max-width:640px)" srcset="hero-v3m.jpg?v=5" type="image/jpeg">
+      <source srcset="hero-v3.webp?v=4" type="image/webp">
+      <img src="hero-v3.jpg?v=4" alt="BOBAI — Where Memes Meet Intelligence" fetchpriority="high">
+    </picture>
+    <div class="hero-ov"><div class="hero-in"><div class="hero-tx">
+      <div class="hero-eb"><span class="dot"></span>Bot live &middot; runs every 10 minutes</div>
+      <h2 class="hero-h">Every trade burns.<br><em>The bot never sleeps.</em></h2>
+      <div class="hero-tag">Where Memes Meet Intelligence</div>
+      <div class="hero-cta">
+        <a class="hb1" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+        <a class="hb2" href="#burns">See The Burns</a>
+      </div>
+    </div></div></div>
+  </section>
+
+  <section class="sbar" id="stats"><div class="sg">
+    <div class="sc fi"><div class="l">Market Cap</div><div class="v ld" id="mcap">--</div></div>
+    <div class="sc fi"><div class="l">Liquidity</div><div class="v ld" id="volume">--</div></div>
+    <div class="sc fi"><div class="l">Buyback</div><div class="v ld" id="wallet-bnb">--</div><div class="vsub" id="tax-pending"></div></div>
+    <div class="sc fi"><div class="l">$BOB <span class="bob-sub">(Build On BNB)</span> Burned</div><div class="v ld" id="total-burned">--</div></div>
+    <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v ld" id="total-bobai-burned">--</div></div>
+    <div class="sc fi"><div class="l">Burns</div><div class="v ld" id="burn-count">--</div></div>
+  </div></section>
+
+  <!-- BOBAI Permalocked Liquidity Boost II — LIVE Aug 8 to Sep 16, 2026.
+       Own IDs (bb2-*) so the finished round-one archive card further down keeps its
+       final numbers; both read the same log, split by campaign start. -->
+  <section class="liq-boost fi" id="liq-boost-bobai">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost II</em></div>
+      <div class="lb-sub">0.8% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)">running until Sep 16</span></div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb2-count">0</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb2-bnb">0.0000</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb2-lp">0</div></div>
+      </div>
+      <!-- The three figures above are the campaign; the per-add list is the
+           receipt. Folded (2026-09-02) so the first screen after the hero is
+           one card, not a table. -->
+      <details class="lb-archive lb-inner">
+        <summary>
+          <div class="lb-arch-head"><div class="lb-arch-title">Every add, with its transaction</div></div>
+          <div class="lb-arch-arr">&#x25BE;</div>
+        </summary>
+        <div class="lb-table" style="margin-top:6px">
+          <div class="txw">
+            <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+            <tbody id="bb2-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <section class="sec" id="about">
+    <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
+    <div class="about-hero fi">
+      <div class="about-logo"><img src="logo.webp" width="256" height="256" alt="BOBAI" loading="lazy" decoding="async"></div>
+      <div class="about-text">
+        <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
+        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens, no human hand on the switch, nothing hidden.</p>
+        <div class="about-tags">
+          <span>AI-Built</span>
+          <span>Deflationary</span>
+          <span>24/7 Autonomous</span>
+          <span>Verified Contract</span>
+          <span>Owner Renounced</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sh fi"><h2>How <em>It Works</em></h2><p>Every trade burns supply. Automatically.</p></div>
+    <div class="fl">
+      <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax accumulates in buyback wallet.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits <span id="step-split">~1/1/1</span>.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
+    </div>
+    <div class="tax fi">
+      <h3>3% Tax Split</h3>
+      <div class="tax-flow">
+        <div class="tf"><div class="p" id="tax-pct-creator" style="color:var(--blue)">~1%</div><div class="d">Creator<br><span class="ts-inline" id="ts-inline-creator"></span></div></div>
+        <div class="ta">&#x2192;</div>
+        <div class="tf"><div class="p" id="tax-pct-bob" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span><br><span class="ts-inline" id="ts-inline-bob"></span></div></div>
+        <div class="ta">&#x2192;</div>
+        <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI</div></div>
+      </div>
+      <div class="tax-schedule">
+        <div class="ts-head">
+          <span>Tax Allocation Schedule</span>
+          <span class="ts-right">3% rate hardcoded &middot; distribution transparent &amp; published</span>
+        </div>
+        <div class="ts-rows">
+          <div class="ts-row" data-phase="liq-boost">
+            <div class="ts-when">until Jun 4, 2026</div>
+            <div class="ts-name">$BOB Liq Boost + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 0.5% Creator &middot; <b>0.5% &rarr; BOB liq add + LP burn</b> &middot; <b>0.5% &rarr; BOBAI liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-pre">
+            <div class="ts-when">Jun 5 &ndash; Jun 10, 2026</div>
+            <div class="ts-name">Standard + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 1% Creator &middot; <b>0.5% &rarr; BOBAI liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="wc26">
+            <div class="ts-when">Jun 11, 00:01 UTC &rarr; Jul 19, 23:59 UTC, 2026</div>
+            <div class="ts-name">WC26 Prize Pool + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.24% BOB burn &middot; 0.49% Creator &middot; <b>0.75% &rarr; BOBAI liq add + LP burn</b> &middot; <b>0.52% &rarr; <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">WC26 Prize Pool</a></b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-bb">
+            <div class="ts-when">Jul 20 &ndash; Aug 1, 2026</div>
+            <div class="ts-name">Standard + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 0.75% Creator &middot; <b>0.75% &rarr; BOBAI liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-post">
+            <div class="ts-when">Aug 2 &ndash; Aug 7, 2026</div>
+            <div class="ts-name">Standard</div>
+            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-2">
+            <div class="ts-when">Aug 8 &ndash; Sep 16, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost II</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.2% BOB burn &middot; 1% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="sunshine">
+            <div class="ts-when">Sep 17 &ndash; Nov 20, 2026</div>
+            <div class="ts-name">☀️ Something good ahead</div>
+            <div class="ts-split">stay tuned 😉</div>
+          </div>
+          <div class="ts-row" data-phase="standard-final">
+            <div class="ts-when">from Nov 20, 2026</div>
+            <div class="ts-name">Standard</div>
+            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <section class="sec b-blue" id="tokenomics">
+    <div class="blk-head fi"><span class="blk-tag">Block 02 &middot; Tokenomics</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2><em>Token</em>omics</h2></div>
+    <div class="tg4">
+      <div class="tc fi"><div class="b">1B</div><h4>Total Supply</h4><p>Fixed. No mint function.</p></div>
+      <div class="tc fi"><div class="b">0%</div><h4>Dev Tokens</h4><p>All burned. Fully community.</p></div>
+      <div class="tc fi"><div class="b">24/7</div><h4>Buyback Bot</h4><p>Cloudflare Workers. Autonomous.</p></div>
+      <div class="tc fi"><div class="b" id="supply-burned-pct">--</div><h4>Supply Burned</h4><p>$BOBAI sent to dead address.</p></div>
+    </div>
+
+    <div class="lqd fi">
+      <div class="lqd-h">
+        <h3>How deep is the liquidity? <span class="live-badge"><span class="live-dot"></span>Live</span></h3>
+        <p>Read straight from the <a class="lqa" href="https://bscscan.com/token/0x6eaDD4CB786898B34929444988380ed0CC6fD9A6" target="_blank" rel="noopener">BOBAI/BNB pool contract <span class="lqa-ad">0x6eaD&hellip;D9A6</span></a> on every refresh &mdash; not a snapshot, not a claim.</p>
+      </div>
+      <div class="lqd-g">
+        <div class="lqm">
+          <div class="lqv ld" id="lq-lp">--</div>
+          <div class="lql">LP Burned</div>
+          <div class="lqs">Every add goes to the dead address. Nobody can pull it &mdash; not the team, not anyone.
+            <a class="lqa" href="https://bscscan.com/token/0x6eaDD4CB786898B34929444988380ed0CC6fD9A6?a=0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">See the LP burns &#x2197;</a></div>
+        </div>
+        <div class="lqm">
+          <div class="lqv ld" id="lq-ratio">--</div>
+          <div class="lql">Liquidity vs Market Cap</div>
+          <div class="lqs"><span class="lqn ld" id="lq-tvl">--</span> in the pool, both sides. Half of that is $BOBAI valued at its own price, so read the next figure too.</div>
+        </div>
+        <div class="lqm">
+          <div class="lqv ld" id="lq-hard">--</div>
+          <div class="lql">Hard BNB Backing</div>
+          <div class="lqs">The BNB side alone <span class="lqn ld" id="lq-bnb">--</span> &middot; <span class="lqn ld" id="lq-bnb-usd">--</span> &mdash; this half keeps its value if the price falls.</div>
+        </div>
+      </div>
+      <details class="lb-archive lb-inner">
+        <summary>
+          <div class="lb-arch-head"><div class="lb-arch-title">Where the locked liquidity comes from</div><div class="lb-arch-meta">three origins, read off the chain, adding up to the decimal</div></div>
+          <div class="lb-arch-arr">&#x25BE;</div>
+        </summary>
+      <div class="lqi" style="margin-top:0">
+        <div class="lqi-h">Where the locked liquidity comes from
+          <span>Every LP transfer into the dead address was read off the chain. There are exactly three origins and they add up to the locked total to the decimal &mdash; no fourth party has ever put liquidity in here.</span></div>
+        <div class="lqsrc">
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-auto">Automatic</span> Buyback bot
+              <a class="lqsr-a" href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC…01ce</a></div>
+            <div class="lqsr-v"><span class="ld" id="lq-bot">--</span><span class="lqsr-p" id="lq-bot-pct"></span></div>
+            <div class="lqsr-s ld" id="lq-bot-sub">--</div>
+          </div>
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-man">Manual</span> Dev runs
+              <a class="lqsr-a" href="https://bscscan.com/address/0x15Ba17075ef5E0736292b030e3715d9100fe3d38" target="_blank" rel="noopener">0x15Ba…3d38</a></div>
+            <div class="lqsr-v"><span class="ld" id="lq-man">--</span><span class="lqsr-p" id="lq-man-pct"></span></div>
+            <div class="lqsr-s ld" id="lq-man-sub">--</div>
+          </div>
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-launch">Launch</span> Initial pool</div>
+            <div class="lqsr-v"><span class="ld" id="lq-init">--</span><span class="lqsr-p" id="lq-init-pct"></span></div>
+            <div class="lqsr-s">Minted straight into the dead address at block 88,990,359, when the pool was created. One event, never repeated.</div>
+          </div>
+        </div>
+        <div class="lqunb ld" id="lq-unb">--</div>
+      </div>
+      </details>
+
+      <div class="lqi">
+        <div class="lqi-h">What a trade does to the price &mdash; and what it costs
+          <span>Two different things, often confused. <b>Impact</b> is how far this trade alone moves the price. <b>Cost</b> is what the trader gives up against the spot price, including the 3% tax and the 0.25% LP fee &mdash; about 3.2% of that applies at any size.</span></div>
+        <div class="lqsim" role="group" aria-label="Simulated pool depth">
+          <span class="lqsim-l">If the pool were</span>
+          <button class="lqsim-b on" type="button" data-mul="1" aria-pressed="true">as it is</button>
+          <button class="lqsim-b" type="button" data-mul="2" aria-pressed="false">2&times; deeper</button>
+          <button class="lqsim-b" type="button" data-mul="5" aria-pressed="false">5&times; deeper</button>
+          <button class="lqsim-b" type="button" data-mul="10" aria-pressed="false">10&times; deeper</button>
+          <span class="lqsim-n" id="lq-simn"></span>
+        </div>
+        <div class="lqone">
+          <div class="lqo">
+            <div class="lqo-v lqo-up ld" id="lq-up1">--</div>
+            <div class="lqo-l">Moves the price +1%</div>
+            <div class="lqo-s" id="lq-up1s">a buy this size, right now</div>
+          </div>
+          <div class="lqo">
+            <div class="lqo-v lqo-dn ld" id="lq-dn1">--</div>
+            <div class="lqo-l">Moves the price &minus;1%</div>
+            <div class="lqo-s" id="lq-dn1s">a sell this size, right now &mdash; above the buy figure, mostly because 3% of the tokens never reach the pool</div>
+          </div>
+        </div>
+        <div class="lqbl">And what the sizes people actually trade do &mdash; bars show impact, drawn to one scale so both sides compare.</div>
+        <div class="lqbs">
+          <div class="lqbc">
+            <div class="lqbc-h lqbc-buy">Buying &mdash; price up</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-bw1"></i></span><span class="lqb-p ld" id="lq-bm1">--</span><span class="lqb-c" id="lq-bc1"></span></div>
+            <div class="lqb"><span class="lqb-l">$150</span><span class="lqb-t"><i id="lq-bw2"></i></span><span class="lqb-p ld" id="lq-bm2">--</span><span class="lqb-c" id="lq-bc2"></span></div>
+            <div class="lqb"><span class="lqb-l">$250</span><span class="lqb-t"><i id="lq-bw3"></i></span><span class="lqb-p ld" id="lq-bm3">--</span><span class="lqb-c" id="lq-bc3"></span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-bw4"></i></span><span class="lqb-p ld" id="lq-bm4">--</span><span class="lqb-c" id="lq-bc4"></span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-bw5"></i></span><span class="lqb-p ld" id="lq-bm5">--</span><span class="lqb-c" id="lq-bc5"></span></div>
+            <div class="lqb"><span class="lqb-l">$2,500</span><span class="lqb-t"><i id="lq-bw6"></i></span><span class="lqb-p ld" id="lq-bm6">--</span><span class="lqb-c" id="lq-bc6"></span></div>
+          </div>
+          <div class="lqbc">
+            <div class="lqbc-h lqbc-sell">Selling &mdash; price down</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-sw1" class="sell"></i></span><span class="lqb-p ld" id="lq-sm1">--</span><span class="lqb-c" id="lq-sc1"></span></div>
+            <div class="lqb"><span class="lqb-l">$150</span><span class="lqb-t"><i id="lq-sw2" class="sell"></i></span><span class="lqb-p ld" id="lq-sm2">--</span><span class="lqb-c" id="lq-sc2"></span></div>
+            <div class="lqb"><span class="lqb-l">$250</span><span class="lqb-t"><i id="lq-sw3" class="sell"></i></span><span class="lqb-p ld" id="lq-sm3">--</span><span class="lqb-c" id="lq-sc3"></span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-sw4" class="sell"></i></span><span class="lqb-p ld" id="lq-sm4">--</span><span class="lqb-c" id="lq-sc4"></span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-sw5" class="sell"></i></span><span class="lqb-p ld" id="lq-sm5">--</span><span class="lqb-c" id="lq-sc5"></span></div>
+            <div class="lqb"><span class="lqb-l">$2,500</span><span class="lqb-t"><i id="lq-sw6" class="sell"></i></span><span class="lqb-p ld" id="lq-sm6">--</span><span class="lqb-c" id="lq-sc6"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <div class="band" id="burns">
+    <picture>
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-forge-l.webp" type="image/webp">
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-forge-l.jpg" type="image/jpeg">
+      <source media="(max-width:640px)" srcset="band-forge-m.webp" type="image/webp">
+      <source media="(max-width:640px)" srcset="band-forge-m.jpg" type="image/jpeg">
+      <source srcset="band-forge.webp" type="image/webp">
+      <img src="band-forge.jpg" alt="BOBAI feeding glowing coins into a furnace" loading="lazy" decoding="async">
+    </picture>
+    <div class="band-ov"><div class="band-in"><div class="band-tx">
+      <h2>On-Chain <em>Verification</em></h2>
+      <p class="burn-sub">Don't trust, verify. <span class="live-badge"><span class="live-dot"></span>Live</span></p>
+      <p class="burn-lead">Every buyback and every burn lands on BNB Chain with its own transaction hash. Nothing here is summarised or rounded &mdash; the table below is the chain itself, refreshed every 30 seconds.</p>
+    </div></div></div>
+  </div>
+
+  <section class="sec sec-after-band b-violet">
+    <div class="blk-head fi"><span class="blk-tag">Block 03 &middot; Proof</span><span class="blk-line"></span></div>
+    <div class="pgrid fi">
+      <a class="ptile" href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">
+        <span class="pt-ico t-gold">&#x25C6;</span>
+        <span class="pt-body"><span class="pt-l">$BOBAI Contract</span><span class="pt-v">0x245c386d&hellip;5edcbffff</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <a class="ptile" href="https://bscscan.com/token/0x51363f073b1e4920fda7aa9e9d84ba97ede1560e" target="_blank" rel="noopener">
+        <span class="pt-ico t-violet">&#x25C6;</span>
+        <span class="pt-body"><span class="pt-l">$BOB <span class="bob-sub">(Build On BNB)</span></span><span class="pt-v">0x51363f07&hellip;ede1560e</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <a class="ptile" href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">
+        <span class="pt-ico t-blue">&#x25CF;</span>
+        <span class="pt-body"><span class="pt-l">Buyback Wallet</span><span class="pt-v">0xdeFC0e90&hellip;f94c01ce</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <!-- Filtered to $BOBAI with ?a= — the bare dead address lists the burns of
+           every token on the chain, which buries ours in noise. -->
+      <a class="ptile" href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">
+        <span class="pt-ico t-red">&#x25CF;</span>
+        <span class="pt-body"><span class="pt-l">Burn Address &mdash; $BOBAI only</span><span class="pt-v">0x000000&hellip;0000dEaD</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <div class="ptile is-ok">
+        <span class="pt-ico t-green">&#x2713;</span>
+        <span class="pt-body"><span class="pt-l">Liquidity</span><span class="pt-v ok">Locked &mdash; LP sent to dead address</span></span>
+      </div>
+      <div class="ptile is-ok">
+        <span class="pt-ico t-green">&#x2713;</span>
+        <span class="pt-body"><span class="pt-l">Ownership</span><span class="pt-v ok">Renounced &mdash; no admin keys</span></span>
+      </div>
+      <a class="ptile pt-wide" href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">
+        <span class="pt-ico t-gold">&#x25C6;</span>
+        <span class="pt-body"><span class="pt-l">Contract Source</span><span class="pt-v">Verified &amp; published on BscScan &mdash; read every line yourself</span></span>
+        <span class="pt-go">&#x2197;</span>
+      </a>
+      <!-- This tile used to be a GitHub link that returned 404, with a paragraph
+           apologising for it. It now points at a repository that works, served
+           from this domain: no account, no platform, nothing that can be
+           flagged. /source explains why it is hosted here. -->
+      <a class="ptile pt-wide" href="/source">
+        <span class="pt-ico">&#x25C6;</span>
+        <span class="pt-body"><span class="pt-l">Source &mdash; clone it</span><span class="pt-v">git clone https://brainonbnb.com/source.git</span>
+          <span class="pt-note">All the code, served from this domain. Our GitHub account has been flagged since Jul 24, 2026 (appeal open); this copy cannot be taken away the same way, and it is checked for secrets before every publish.</span></span>
+        <span class="pt-go">&#x2192;</span>
+      </a>
+    </div>
+    <div class="burns-wrap fi" style="margin-top:40px">
+      <div class="bw-card">
+        <div class="bw-title"><em>Live Burns</em></div>
+        <div class="bw-sub">Every buyback &amp; burn since launch — refreshed every 30 seconds</div>
+        <div class="bw-table" style="margin-top:20px">
+          <div class="txw">
+            <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">Type</th><th style="width:24%">Amount</th><th style="width:20%">TX</th></tr></thead>
+            <tbody id="tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading burns...</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOBAI Permalocked Liquidity Boost — ARCHIVED (campaign ended 2026-08-01 23:59 UTC,
+         tax back to standard 1/1/1). Same collapsible shape as the $BOB liq boost archive below. -->
+    <div class="burns-wrap fi" style="margin-top:24px">
+      <div class="bw-card" style="padding:0">
+        <details class="lb-archive">
+          <summary>
+            <div class="lb-arch-head">
+              <div class="lb-arch-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost I</em></div>
+              <div class="lb-arch-meta">Jun 1 &ndash; Aug 1, 2026 &middot; <span style="color:var(--green)">&#x2713; Campaign Complete</span></div>
+            </div>
+            <div class="lb-arch-arr">&#x25BE;</div>
+          </summary>
+          <div class="lb-arch-body">
+            <div class="lb-stats">
+              <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb-count">0</div></div>
+              <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb-bnb">0.0000</div></div>
+              <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb-lp">0</div></div>
+            </div>
+            <div class="lb-table" style="margin-top:20px">
+              <div class="txw">
+                <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+                <tbody id="bb-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- BOBAI Worldcup '26 Tipgame — ARCHIVED (tournament complete, all pots paid 2026-07-20).
+         Moved down from the teaser slot; the page stays live forever as the archive. -->
+    <div class="burns-wrap fi" style="margin-top:24px">
+      <a class="tg-card" href="worldcup/" aria-label="Open the BOBAI Worldcup '26 archive">
+        <div class="tg-body">
+          <div class="tg-eyebrow"><span style="color:var(--green);font-weight:700">&#x2713; Complete</span> &middot; BOBAI Worldcup '26 &middot; Jun 11 &ndash; Jul 19, 2026</div>
+          <div class="tg-pool">
+            <div class="pv" id="tg-pool-bobai">--</div>
+            <div class="pu" id="tg-pool-usd">--</div>
+          </div>
+          <div class="tg-cta">Final prize pool &middot; all pots paid out on-chain &middot; view archive &amp; payout receipts <span class="arr">&rarr;</span></div>
+        </div>
+      </a>
+    </div>
+
+    <div class="burns-wrap fi" style="margin-top:24px">
+      <div class="bw-card" style="padding:0">
+        <details class="lb-archive">
+          <summary>
+            <div class="lb-arch-head">
+              <div class="lb-arch-title"><em>$BOB</em> <span class="bob-sub">(Build On BNB)</span> <em>Permalocked Liquidity Boost</em></div>
+              <div class="lb-arch-meta">Apr 21 &ndash; Jun 4, 2026 &middot; <span style="color:var(--green)">&#x2713; Campaign Complete</span></div>
+            </div>
+            <div class="lb-arch-arr">&#x25BE;</div>
+          </summary>
+          <div class="lb-arch-body">
+            <div class="lb-stats">
+              <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="lb-count">0</div></div>
+              <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="lb-bnb">0.0000</div></div>
+              <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="lb-lp">0</div></div>
+            </div>
+            <div class="lb-table" style="margin-top:20px">
+              <div class="txw">
+                <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+                <tbody id="lb-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <div class="band" id="ecosystem">
+    <picture>
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-command-l.webp" type="image/webp">
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-command-l.jpg" type="image/jpeg">
+      <source media="(max-width:640px)" srcset="band-command-m.webp" type="image/webp">
+      <source media="(max-width:640px)" srcset="band-command-m.jpg" type="image/jpeg">
+      <source srcset="band-command.webp" type="image/webp">
+      <img src="band-command.jpg" alt="BOBAI at the controls of the burn machine" loading="lazy" decoding="async">
+    </picture>
+    <div class="band-ov"><div class="band-in"><div class="band-tx">
+      <h2>Built <em>By AI</em></h2>
+      <p class="burn-sub">Four apps. One builder. Nobody at the wheel.</p>
+      <p class="burn-lead">The same AI that runs the buyback bot built everything else here. None of it is a roadmap promise. Go click around.</p>
+    </div></div></div>
+  </div>
+
+  <section class="sec sec-after-band b-green">
+    <div class="blk-head fi"><span class="blk-tag">Block 04 &middot; Ecosystem</span><span class="blk-line"></span></div>
+    <div class="ecg">
+      <a class="ec fi" href="nft/">
+        <div class="ec-top"><img src="nft/logo-96.webp" width="96" height="96" alt="BOBAI Buy Drops logo" loading="lazy" decoding="async"><h3>NFT Buy Drops</h3></div>
+        <p>Every buy of $100 or more auto-mints an NFT straight to the buyer's wallet. 1,925 in the collection — no claim step, no gas for the holder.</p>
+        <div class="ec-foot"><span class="ec-go">Open Collection <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+      </a>
+      <!-- Built like the rest of this block, and labelled Beta rather than Live:
+           the tool itself opens with a notice saying it is still being built, so
+           the card must not promise more than the page behind it does. -->
+      <a class="ec fi" href="scanner">
+        <div class="ec-top">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8"
+               stroke-linecap="round" aria-hidden="true">
+            <path d="M4 19V13M8.5 19V9M13 19v-3"/>
+            <circle cx="16" cy="8.5" r="4.5"/>
+            <path d="M19.4 11.9 22 14.5"/>
+          </svg>
+          <h3>Pool Scanner</h3>
+        </div>
+        <p>Paste any BNB Chain token. See what buying it really costs, the hidden tax, and whether the liquidity can be pulled out. Free, no wallet.</p>
+        <div class="ec-foot"><span class="ec-go">Scan A Pool <span class="arr">&#x2192;</span></span><span class="ec-st beta">Beta</span></div>
+      </a>
+      <a class="ec fi" href="brainscreener/">
+        <div class="ec-top"><img src="ico-brainscreener.png" alt="brainScreener logo" loading="lazy" decoding="async"><h3>brainScreener</h3></div>
+        <p>13 scientifically grounded self-tests — ADHD, IQ, depression, anxiety, trauma, personality. Anonymous, free, no registration, instant results.</p>
+        <div class="ec-foot"><span class="ec-go">Take A Test <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+      </a>
+      <a class="ec fi" href="game/">
+        <div class="ec-top"><img src="game/score-96.webp" width="82" height="96" alt="Brain On BNB AI game icon" loading="lazy" decoding="async"><h3>Burn &amp; Add Liq</h3></div>
+        <p>A browser game — jump through BNB Chain, burn tokens, add liquidity, dodge the dumps. Free to play with a public highscore board.</p>
+        <div class="ec-foot"><span class="ec-go">Play Game <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
+      </a>
+      <a class="ec fi" href="worldcup/">
+        <div class="ec-top"><img src="worldcup/wclogo-96.webp" width="57" height="96" alt="BOBAI Worldcup '26 logo" loading="lazy" decoding="async"><h3>Worldcup '26</h3></div>
+        <p>A full tipping game for the 2026 World Cup — live brackets, leaderboard, prize pool. Ran Jun 11 to Jul 19, paid out 8.94M $BOBAI, now a frozen archive.</p>
+        <div class="ec-foot"><span class="ec-go">View Archive <span class="arr">&#x2192;</span></span><span class="ec-st done">Complete</span></div>
+      </a>
+    </div>
+
+    <!-- THE LIBRARY.
+         The cards above are the things you can use. This is the code behind
+         them. It sat on GitHub until that account was flagged, and a link that
+         404s is not transparency — so the code lives on the site now, where
+         nothing but us can take it down.
+         Everything between the markers is written by scripts/build-library.mjs
+         from the real files. Do not edit it by hand; run the script. -->
+    <div class="lib" id="library">
+      <div class="lib-head fi">
+        <h3>The <em>Library</em></h3>
+        <p>The code behind everything on this page, packaged so someone who is not us can read it and run it. MIT licensed, no account. Builders only; everyone else can skip this.</p>
+      </div>
+      <!-- Collapsed by default since 2026-09-02: fourteen bundles are 2,700 words
+           a visitor who came for the token never asked for. The markers and
+           the generated section inside are untouched; only the wrapper is new. -->
+      <details class="lb-archive lib-fold">
+        <summary>
+          <div class="lb-arch-head">
+            <div class="lb-arch-title">Open the <em>14 bundles</em></div>
+            <div class="lb-arch-meta">bots, apps, tools &middot; read in the browser or take the zip</div>
+          </div>
+          <div class="lb-arch-arr">&#x25BE;</div>
+        </summary>
+        <div class="lb-arch-body">
+<!-- LIBRARY:BEGIN -->
+    <div class="lib-grp fi">
+      <div class="lib-gh"><h3>The Bots</h3><p>Everything that runs on its own. Cron triggers, signed transactions, no human at the wheel.</p></div>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Buyback &amp; Burn Bot</span>
+            <span class="lib-s">The bot that has run every ten minutes since launch.</span>
+          </span>
+          <span class="lib-m">3 files &middot; 1,311 lines &middot; 16 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A wallet with a little gas in it</span><span class="lib-o"><em>ours</em> one BSC wallet, topped up from the tax itself</span><span class="lib-o"><em>also</em> the token was launched on four.meme and trades on PancakeSwap V2; the swap calls are the only PancakeSwap-specific part</span></li><li><span class="lib-q">Somewhere that runs code on a schedule</span><span class="lib-o"><em>ours</em> a Cloudflare Worker on a 10-minute cron</span><span class="lib-o"><em>also</em> a VPS with crontab, GitHub Actions, Fly.io, Railway, a Raspberry Pi, or node on your own machine</span></li><li><span class="lib-q">Somewhere to keep a small run log</span><span class="lib-o"><em>ours</em> one Cloudflare KV namespace</span><span class="lib-o"><em>also</em> Redis, SQLite, Postgres, or a JSON file on disk — it writes one entry per cycle</span></li><li><span class="lib-q">A BSC RPC endpoint</span><span class="lib-o"><em>ours</em> the public endpoints, with failover</span><span class="lib-o"><em>also</em> NodeReal, Ankr, QuickNode or your own node if you want the headroom</span></li><li><span class="lib-q">One secret at runtime: PRIVATE_KEY</span><span class="lib-o"><em>ours</em> wrangler secret put</span><span class="lib-o"><em>also</em> a .env file, your host's secret store — anything but the source code</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="buyback-bot" data-title="Buyback &amp; Burn Bot">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/buyback-bot.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/buyback-bot.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/buyback-bot.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/buyback-bot.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Dev Sweep Bot</span>
+            <span class="lib-s">The hourly one that empties the tax wallet.</span>
+          </span>
+          <span class="lib-m">3 files &middot; 337 lines &middot; 7 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A wallet that receives the tax</span><span class="lib-o"><em>ours</em> the same wallet the buyback bot spends from</span><span class="lib-o"><em>also</em> any wallet — it only needs to be the one your token routes its fee to</span></li><li><span class="lib-q">Somewhere that runs code hourly</span><span class="lib-o"><em>ours</em> a Cloudflare Worker on a cron trigger</span><span class="lib-o"><em>also</em> crontab, systemd timer, GitHub Actions, or any scheduler you already run</span></li><li><span class="lib-q">Somewhere to keep a cursor</span><span class="lib-o"><em>ours</em> one KV namespace, shared with the buyback bot</span><span class="lib-o"><em>also</em> a file, a Redis key, a single database row — it stores very little</span></li><li><span class="lib-q">One secret at runtime: PRIVATE_KEY</span><span class="lib-o"><em>ours</em> wrangler secret put</span><span class="lib-o"><em>also</em> a .env file or your host's secret store</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="dev-sweep-bot" data-title="Dev Sweep Bot">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/dev-sweep-bot.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/dev-sweep-bot.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/dev-sweep-bot.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/dev-sweep-bot.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Liquidity Add &amp; LP Burn</span>
+            <span class="lib-s">Adds liquidity, then burns the LP token it just received.</span>
+          </span>
+          <span class="lib-m">2 files &middot; 388 lines &middot; 7 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A wallet holding both sides of the pair</span><span class="lib-o"><em>ours</em> BNB and the token, in one wallet</span><span class="lib-o"><em>also</em> any PancakeSwap V2 pair, and any BSC DEX sharing that router interface — the router is one constant</span></li><li><span class="lib-q">A machine that can run Node 18+</span><span class="lib-o"><em>ours</em> run by hand, when we decide to add</span><span class="lib-o"><em>also</em> put it on a cron if you want it automatic; nothing in it needs a human</span></li><li><span class="lib-q">Slippage set for a fee-on-transfer token</span><span class="lib-o"><em>ours</em> ≥1500 bps</span><span class="lib-o"><em>also</em> none — a normal 1% simply reverts. This is the single thing that breaks naive add-liquidity scripts</span></li><li><span class="lib-q">One secret at runtime: PRIVATE_KEY</span><span class="lib-o"><em>ours</em> a local .env file</span><span class="lib-o"><em>also</em> your shell environment, a secret manager, a hardware signer</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="liquidity-bot" data-title="Liquidity Add &amp; LP Burn">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/liquidity-bot.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/liquidity-bot.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/liquidity-bot.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/liquidity-bot.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Telegram Bot</span>
+            <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
+          </span>
+          <span class="lib-m">12 files &middot; 4,151 lines &middot; 59 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A bot token</span><span class="lib-o"><em>ours</em> one from @BotFather, two minutes of work</span><span class="lib-o"><em>also</em> none — this is Telegram's only door</span></li><li><span class="lib-q">Somewhere to receive a webhook and run a cron</span><span class="lib-o"><em>ours</em> a single Cloudflare Worker doing both</span><span class="lib-o"><em>also</em> any HTTPS endpoint: a small VPS, Deno Deploy, Vercel, Fly.io. Long-polling works too, at the cost of a process that never sleeps</span></li><li><span class="lib-q">Somewhere to keep state</span><span class="lib-o"><em>ours</em> one Cloudflare KV namespace</span><span class="lib-o"><em>also</em> Redis, SQLite, Postgres — it stores the block cursor, the watchlist and the captcha queue</span></li><li><span class="lib-q">A BSC RPC endpoint that allows eth_getLogs</span><span class="lib-o"><em>ours</em> a keyed endpoint, with free ones as fallback</span><span class="lib-o"><em>also</em> NodeReal, Ankr, QuickNode. Note that bsc-dataseed refuses log queries outright</span></li><li><span class="lib-q">One secret at runtime: BOT_TOKEN</span><span class="lib-o"><em>ours</em> wrangler secret put</span><span class="lib-o"><em>also</em> any secret store your host offers</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="telegram-bot" data-title="Telegram Bot">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/telegram-bot.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/telegram-bot.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/telegram-bot.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/telegram-bot.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">NFT Auto-Mint Bot</span>
+            <span class="lib-s">Watches the pair and mints to the buyer, unasked.</span>
+          </span>
+          <span class="lib-m">2 files &middot; 579 lines &middot; 11 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A deployed ERC-721 it is allowed to mint from</span><span class="lib-o"><em>ours</em> the contract in the NFT Buy Drops bundle</span><span class="lib-o"><em>also</em> any ERC-721 with a mint function and a minter role</span></li><li><span class="lib-q">A wallet with gas</span><span class="lib-o"><em>ours</em> the bot pays the mint, so the buyer pays nothing</span><span class="lib-o"><em>also</em> you could make the buyer claim and pay — but then it is a claim page, not a drop</span></li><li><span class="lib-q">Somewhere that runs code on a schedule</span><span class="lib-o"><em>ours</em> a Cloudflare Worker cron</span><span class="lib-o"><em>also</em> crontab, GitHub Actions, any always-on process</span></li><li><span class="lib-q">Somewhere to keep the block cursor</span><span class="lib-o"><em>ours</em> one KV namespace</span><span class="lib-o"><em>also</em> a file or a database row. Whatever it is, it must be durable: this is what stops a restart double-minting</span></li><li><span class="lib-q">One secret at runtime: PRIVATE_KEY</span><span class="lib-o"><em>ours</em> wrangler secret put</span><span class="lib-o"><em>also</em> a .env file or your host's secret store</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="nft-mint-bot" data-title="NFT Auto-Mint Bot">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/nft-mint-bot.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/nft-mint-bot.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/nft-mint-bot.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/nft-mint-bot.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Prize Pool &amp; Payout Bot</span>
+            <span class="lib-s">Filled a prize pool from trading tax, then paid 39 wallets out.</span>
+          </span>
+          <span class="lib-m">5 files &middot; 1,399 lines &middot; 25 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A wallet holding the pool</span><span class="lib-o"><em>ours</em> a dedicated wallet, funded by a slice of the tax</span><span class="lib-o"><em>also</em> a multisig if the pool is large enough to be worth arguing about</span></li><li><span class="lib-q">Somewhere the entries and scores live</span><span class="lib-o"><em>ours</em> the Supabase project from the Worldcup bundle</span><span class="lib-o"><em>also</em> any Postgres, or any store you can read a winners list out of</span></li><li><span class="lib-q">A machine that can run Node 18+</span><span class="lib-o"><em>ours</em> run by hand, watched, one round at a time</span><span class="lib-o"><em>also</em> none worth having. This one sends money to strangers — do not put it on a cron</span></li><li><span class="lib-q">Secrets at runtime: PRIVATE_KEY, database URL and key</span><span class="lib-o"><em>ours</em> a local .env file</span><span class="lib-o"><em>also</em> a secret manager. Never the source</span></li><li><span class="lib-q">A dry run first</span><span class="lib-o"><em>ours</em> --dry-run, every single time</span><span class="lib-o"><em>also</em> there is no alternative. Read the script before you copy it</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="prize-pool-bot" data-title="Prize Pool &amp; Payout Bot">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/prize-pool-bot.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/prize-pool-bot.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/prize-pool-bot.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/prize-pool-bot.txt">copy</button>
+          </div>
+        </div>
+      </details>
+    </div>
+    <div class="lib-grp fi">
+      <div class="lib-gh"><h3>The Projects</h3><p>The things people click. Each one shipped, each one still live or archived on this domain.</p></div>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Pool Scanner</span>
+            <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
+          </span>
+          <span class="lib-m">6 files &middot; 4,796 lines &middot; 96 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A static host</span><span class="lib-o"><em>ours</em> Cloudflare Pages</span><span class="lib-o"><em>also</em> GitHub Pages, Netlify, Vercel, S3, nginx, or python -m http.server on your laptop</span></li><li><span class="lib-q">Public RPC endpoints</span><span class="lib-o"><em>ours</em> six, with failover, all free</span><span class="lib-o"><em>also</em> your own node if you expect traffic. Note the requests leave from the visitor's browser, not your server — which is why this costs nothing to run</span></li><li><span class="lib-q">Nothing else</span><span class="lib-o"><em>ours</em> no backend, no database, no API key, no build step</span><span class="lib-o"><em>also</em> that is the whole point of it</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="pool-scanner" data-title="Pool Scanner">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/pool-scanner.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/pool-scanner.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/pool-scanner.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/pool-scanner.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">NFT Buy Drops</span>
+            <span class="lib-s">The contract, the metadata server and the collection page.</span>
+          </span>
+          <span class="lib-m">10 files &middot; 1,283 lines &middot; 26 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A wallet with gas for the deployment</span><span class="lib-o"><em>ours</em> one transaction on BSC, a few cents</span><span class="lib-o"><em>also</em> any EVM chain — the contract is plain Solidity with no chain-specific parts</span></li><li><span class="lib-q">Somewhere to serve the metadata</span><span class="lib-o"><em>ours</em> a small Cloudflare Worker</span><span class="lib-o"><em>also</em> static JSON files on any host. It is one file per token id and nothing else</span></li><li><span class="lib-q">Somewhere to host the images</span><span class="lib-o"><em>ours</em> our own domain, over plain HTTPS</span><span class="lib-o"><em>also</em> IPFS or Arweave — but link them by https gateway. Several marketplaces will not resolve an ipfs:// URL</span></li><li><span class="lib-q">Your marketplace metadata set BEFORE you renounce</span><span class="lib-o"><em>ours</em> set, checked, then renounced</span><span class="lib-o"><em>also</em> none. After renouncing it is permanent, and no marketplace can help you</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="nft-drop" data-title="NFT Buy Drops">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/nft-drop.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/nft-drop.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/nft-drop.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/nft-drop.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Worldcup Tipping Game</span>
+            <span class="lib-s">A full tournament game that paid out on-chain.</span>
+          </span>
+          <span class="lib-m">45 files &middot; 11,234 lines &middot; 0.2 MB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A Postgres with row-level security and auth</span><span class="lib-o"><em>ours</em> Supabase, free tier, all the way through</span><span class="lib-o"><em>also</em> any Postgres plus an auth layer. The schema is plain SQL; the RLS policies are the part worth reading</span></li><li><span class="lib-q">Somewhere that pulls fixtures on a schedule</span><span class="lib-o"><em>ours</em> a Cloudflare Worker cron</span><span class="lib-o"><em>also</em> any scheduler. It fetches, compares and writes — nothing exotic</span></li><li><span class="lib-q">A fixtures and results feed</span><span class="lib-o"><em>ours</em> football-data.org, free tier</span><span class="lib-o"><em>also</em> any sports API, or type the results in by hand for a small tournament</span></li><li><span class="lib-q">A wallet, only if you pay out on-chain</span><span class="lib-o"><em>ours</em> one wallet, one payout script, 39 transactions</span><span class="lib-o"><em>also</em> skip it entirely and the game still works — the prize pool is optional scaffolding</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="worldcup-tipgame" data-title="Worldcup Tipping Game">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/worldcup-tipgame.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/worldcup-tipgame.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/worldcup-tipgame.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/worldcup-tipgame.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Burn &amp; Add Liq — Browser Game</span>
+            <span class="lib-s">One HTML file. Jump, burn, dodge the dumps.</span>
+          </span>
+          <span class="lib-m">2 files &middot; 1,198 lines &middot; 20 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A static host</span><span class="lib-o"><em>ours</em> Cloudflare Pages</span><span class="lib-o"><em>also</em> anything that can serve one HTML file. Open it from disk and it plays</span></li><li><span class="lib-q">A score table, only if you want the board</span><span class="lib-o"><em>ours</em> one Supabase table; the SQL is in the bundle</span><span class="lib-o"><em>also</em> any database with an HTTP API, or leave it out — the game runs fine and keeps scores locally</span></li><li><span class="lib-q">To know what a public score table means</span><span class="lib-o"><em>ours</em> anyone holding the browser key can post a score</span><span class="lib-o"><em>also</em> put the insert behind your own endpoint, or add an upper bound, if the board is meant to be competitive</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="browser-game" data-title="Burn &amp; Add Liq — Browser Game">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/browser-game.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/browser-game.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/browser-game.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/browser-game.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">brainScreener</span>
+            <span class="lib-s">Thirteen self-tests. No accounts, no tracking, no backend.</span>
+          </span>
+          <span class="lib-m">52 files &middot; 9,595 lines &middot; 0.2 MB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A static host</span><span class="lib-o"><em>ours</em> Cloudflare Pages</span><span class="lib-o"><em>also</em> any of them. There is no build step and no framework</span></li><li><span class="lib-q">Nothing else</span><span class="lib-o"><em>ours</em> no database, no accounts, no analytics, no cookies</span><span class="lib-o"><em>also</em> the answers never leave the browser, which is a design decision rather than a shortcut</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="brainscreener" data-title="brainScreener">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/brainscreener.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/brainscreener.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/brainscreener.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/brainscreener.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
+            <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
+          </span>
+          <span class="lib-m">4 files &middot; 1,800 lines &middot; 43 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A machine that can run Node 18+</span><span class="lib-o"><em>ours</em> the MCP server over stdio, locally</span><span class="lib-o"><em>also</em> point any MCP client at it — Claude Desktop, Claude Code, Cursor, or your own</span></li><li><span class="lib-q">Somewhere to serve the HTTP tools</span><span class="lib-o"><em>ours</em> the Pages worker already serving the site</span><span class="lib-o"><em>also</em> any HTTPS endpoint, or skip it and run the MCP server only</span></li><li><span class="lib-q">No keys at all</span><span class="lib-o"><em>ours</em> every tool reads public chain data</span><span class="lib-o"><em>also</em> there is nothing to secure here, which is why it can be pointed at an agent without a second thought</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="agent-tools" data-title="Agent Tools — MCP &amp; llms.txt">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/agent-tools.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/agent-tools.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/agent-tools.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/agent-tools.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
+            <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
+          </span>
+          <span class="lib-m">35 files &middot; 8,657 lines &middot; 0.2 MB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A wallet to be paid into</span><span class="lib-o"><em>ours</em> one BSC wallet, separate from the bots</span><span class="lib-o"><em>also</em> any address — it is only ever a recipient, and the worker never holds its key</span></li><li><span class="lib-q">Somewhere that runs code on a schedule</span><span class="lib-o"><em>ours</em> a Cloudflare Worker, 15-minute cron</span><span class="lib-o"><em>also</em> anything with a timer — the cron drives the watch sweep, the daily census and the canary</span></li><li><span class="lib-q">Somewhere to keep watches and the census</span><span class="lib-o"><em>ours</em> one KV namespace</span><span class="lib-o"><em>also</em> Redis, SQLite, Postgres — it stores one record per watch and one blob per census tick</span></li><li><span class="lib-q">A payment facilitator, or none</span><span class="lib-o"><em>ours</em> the public Dexter facilitator for the standard route</span><span class="lib-o"><em>also</em> the direct-transfer route needs no facilitator at all, which is why both are offered</span></li><li><span class="lib-q">A BSC RPC endpoint</span><span class="lib-o"><em>ours</em> the public endpoints, with failover</span><span class="lib-o"><em>also</em> any node — note that some public RPCs cannot serve eth_getTransactionReceipt, which payment verification needs</span></li><li><span class="lib-q">Two secrets at runtime: X402_WALLET and the admin trigger secret</span><span class="lib-o"><em>ours</em> wrangler secret put</span><span class="lib-o"><em>also</em> the ownership proofs in the catalogue are signed offline and pasted in as constants — the private key never reaches the worker</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="agent-service" data-title="The Agent Service — x402, Broker &amp; Census">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/agent-service.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/agent-service.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/agent-service.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/agent-service.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">The Census — reading a whole registry</span>
+            <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
+          </span>
+          <span class="lib-m">7 files &middot; 3,866 lines &middot; 79 KB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">Node 18+ and time</span><span class="lib-o"><em>ours</em> about three hours for the registry, twenty minutes for the jobs</span><span class="lib-o"><em>also</em> both resume, so it can be run in pieces — the state file is the progress</span></li><li><span class="lib-q">RPC endpoints</span><span class="lib-o"><em>ours</em> eleven public BSC nodes in rotation, 25 calls per batch</span><span class="lib-o"><em>also</em> any node list. Breadth matters more than speed: each one rate-limits separately, and 40 per batch is refused where 25 goes through</span></li><li><span class="lib-q">No keys</span><span class="lib-o"><em>ours</em> every call is a read</span><span class="lib-o"><em>also</em> nothing here can move anything, which is why it can be pointed at a stranger’s contract without a second thought</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="chain-census" data-title="The Census — reading a whole registry">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/chain-census.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/chain-census.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/chain-census.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/chain-census.txt">copy</button>
+          </div>
+        </div>
+      </details>
+    </div>
+<!-- LIBRARY:END -->
+        </div>
+      </details>
+      <div class="lib-foot fi">
+        <span>For agents and scripts:</span>
+        <a href="/code/index.txt" target="_blank" rel="noopener">index.txt</a>
+        <a href="/code/manifest.json" target="_blank" rel="noopener">manifest.json</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <div class="band">
+    <picture>
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-brainchain-l.webp" type="image/webp">
+      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-brainchain-l.jpg" type="image/jpeg">
+      <source media="(max-width:640px)" srcset="band-brainchain-m.webp" type="image/webp">
+      <source media="(max-width:640px)" srcset="band-brainchain-m.jpg" type="image/jpeg">
+      <source srcset="band-brainchain.webp" type="image/webp">
+      <img src="band-brainchain.jpg" alt="BOBAI's brain wired into a chain of glowing blocks" loading="lazy" decoding="async">
+    </picture>
+    <div class="band-ov"><div class="band-in"><div class="band-tx">
+      <h2>A Brain On <em>The Chain</em></h2>
+      <p class="burn-sub">One idea, wired block by block.</p>
+      <p class="burn-lead">Everything below is what that wiring has produced so far &mdash; and the one thing it still needs.</p>
+    </div></div></div>
+  </div>
+
+  <section class="sec b-violet" id="agents">
+    <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Agents</span><span class="blk-line"></span></div>
+
+    <!-- FOR A PERSON WHO KNOWS NOTHING ABOUT AGENTS. Three things you can do,
+         one sentence and one button each. Everything that needs a protocol
+         name to explain lives on the sub-pages; this is the front door.
+         Rewritten 2026-09-02 after the operator read the old block and said
+         no human could get anything out of it. He was right. -->
+    <div class="sh fi"><h2>AI agents <em>work here</em></h2>
+      <p class="sh-sub">Three things you can do on this site, no crypto knowledge needed.</p>
+    </div>
+
+    <div class="agt-cols fi">
+      <a class="agt-card agt-link" href="/scanner">
+        <h3>Check a token before you buy</h3>
+        <p class="agt-note" style="margin:0">Paste an address. You see what buying it would really cost you, the hidden tax, and whether the liquidity could be pulled out overnight. Free, no wallet. Or send <code>/scan 0x&hellip;</code> to our Telegram bot.</p>
+        <span class="mkt-go" style="margin-top:14px">Check a token &rarr;</span>
+      </a>
+      <a class="agt-card agt-link" href="/registry">
+        <h3>Hire an AI agent</h3>
+        <p class="agt-note" style="margin:0">Every agent on BNB Chain that actually answers, sorted by what it does. Pick one and hire it from the page; the payment sits in an on-chain escrow until the job is done.</p>
+        <span class="mkt-go" style="margin-top:14px">See the agents &rarr;</span>
+      </a>
+      <a class="agt-card agt-link" href="/services">
+        <h3>Give it to your own AI</h3>
+        <p class="agt-note" style="margin:0">One command installs the token check into your AI assistant. And other people&rsquo;s agents pay us a few cents to watch a pool around the clock. That is how this project earns outside its own tax.</p>
+        <span class="mkt-go" style="margin-top:14px">The whole offer &rarr;</span>
+      </a>
+    </div>
+
+    <a class="mkt fi" href="/registry">
+      <div class="mkt-in">
+        <div class="mkt-tag">The marketplace</div>
+        <h2 class="mkt-h">Brain Plaza</h2>
+        <p class="mkt-p">We read every registered agent on BNB Chain and knocked on every door. The numbers are who actually answered, not who signed up.</p>
+        <div class="mkt-nums">
+          <div><b id="mkt-total">&ndash;</b><span>registered agent ids</span></div>
+          <div><b id="mkt-reach">&ndash;</b><span>that answer</span></div>
+          <div><b id="mkt-ops">&ndash;</b><span>independent operators</span></div>
+          <div><b id="mkt-hire">&ndash;</b><span>quote back when asked</span></div>
+          <div><b>4</b><span>categories, equally deep</span></div>
+        </div>
+        <span class="mkt-go">Find and hire an agent &rarr;</span>
+      </div>
+    </a>
+
+    <div class="sh fi"><h2>Used by <em>other AIs</em></h2>
+      <p class="sh-sub">Other people&rsquo;s agents call this site too. How often, what it earned, and where the money goes.</p>
+    </div>
+
+    <div class="agt-grid">
+      <div class="agt-stat fi"><div class="agt-n" id="ag-asked">&ndash;</div><div class="agt-l">requests answered</div><div class="agt-s" id="ag-asked-sub">since counting began</div></div>
+      <div class="agt-stat fi"><div class="agt-n" id="ag-earned">&ndash;</div><div class="agt-l">earned from agents</div><div class="agt-s" id="ag-earned-sub">paid in USD1, on-chain</div></div>
+      <div class="agt-stat fi"><div class="agt-n" id="ag-watch">&ndash;</div><div class="agt-l">pools being watched</div><div class="agt-s">paid, running around the clock</div></div>
+    </div>
+
+    <div class="agt-two">
+    <div class="agt-flow fi">
+      <h3>Where that money goes</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>An agent pays</b><span>A few cents per watch or per job, straight to <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">a wallet</a> used for nothing else.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>It becomes liquidity</b><span>Once a day it is turned into BNB and put into the project&rsquo;s own <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">liquidity position</a>. That capital never leaves.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>The fees buy $BOBAI and burn it</b><span>What the position earns goes to the buyback bot, the same one that burns the tax. Every step is a transaction you can check; the daily record is <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">here</a>.</span></div></li>
+      </ol>
+    </div>
+
+    <!-- THE LIQUIDITY AGENT, LIVE. Step 3 and 4 above are a promise; this is
+         the record the promise is checked against, read from the same
+         endpoint the bot writes to. A quiet day says so; an action shows its
+         figures. Filled by app.js from agent.brainonbnb.com/lp/agent. -->
+    <div class="agt-flow fi" id="ag-lp-wrap">
+      <h3>The liquidity agent, live</h3>
+      <ol class="agt-steps" id="ag-lp">
+        <li><span class="agt-i">&middot;</span><div><b>Reading the record&hellip;</b><span>agent.brainonbnb.com/lp/agent</span></div></li>
+      </ol>
+      <p class="agt-note" id="ag-lp-note"></p>
+    </div>
+    </div>
+
+    <div class="agt-why fi">
+      <p><b>Why it matters.</b> Until now every cent this project earned came from its own trading tax. This is the first money from outside, small today, and the loop that turns it into burn is already running.</p>
+      <p class="agt-live">All figures on this block come live from <a href="https://agent.brainonbnb.com/stats" rel="noopener">agent.brainonbnb.com/stats</a>.</p>
+    </div>
+  </section>
+
+  <section class="sec sec-after-band" id="roadmap">
+    <div class="blk-head fi"><span class="blk-tag">Block 06 &middot; Roadmap</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2><em>Road</em>map</h2></div>
+    <div class="rmg">
+      <div class="rm rmd fi"><div class="rp">Phase 1 — Done</div><h3>Genesis</h3><ul>
+        <li><span class="ck">&#x2713;</span><span>Built entirely by AI</span></li>
+        <li><span class="ck">&#x2713;</span><span>Fair launch on Four.Meme</span></li>
+        <li><span class="ck">&#x2713;</span><span>Migrated to PancakeSwap</span></li>
+        <li><span class="ck">&#x2713;</span><span>LP locked, owner renounced</span></li>
+        <li><span class="ck">&#x2713;</span><span>Massive initial $BOB <span class="bob-sub">(Build On BNB)</span> burns</span></li>
+      </ul></div>
+      <div class="rm rma fi"><div class="rp">Phase 2 — Active</div><h3>Burn Machine</h3><ul>
+        <li><span class="ck">&#x2713;</span><span>Buyback bot live 24/7</span></li>
+        <li><span class="ck">&#x2713;</span><span>3% tax split running &mdash; published per phase</span></li>
+        <li><span class="ck">&#x2713;</span><span>On-chain transparency</span></li>
+        <li><span class="ck">&#x2713;</span><span>Public burn audit log</span></li>
+        <li><span class="ck">&#x2713;</span><span>Telegram community</span></li>
+      </ul></div>
+      <div class="rm rma fi"><div class="rp">Phase 3 — Shipped</div><h3>Ecosystem</h3><ul>
+        <li><span class="ck">&#x2713;</span><span>Worldcup '26 tip game — 8.94M $BOBAI paid out</span></li>
+        <li><span class="ck">&#x2713;</span><span>NFT auto-mint on every qualifying buy</span></li>
+        <li><span class="ck">&#x2713;</span><span>Liquidity Boost campaign — LP burned, not locked</span></li>
+        <li><span class="ck">&#x2713;</span><span>Bots migrated to native Cloudflare Workers</span></li>
+        <li><span class="ck">&#x2713;</span><span>Whale tracker watching 29 wallets</span></li>
+      </ul></div>
+      <div class="rm rmn fi"><div class="rp">Phase 4 — Next</div><h3>Depth</h3><ul>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Trading volume — the honest bottleneck</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>Wider exchange visibility</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>More AI-built apps on Brain On BNB AI</span></li>
+        <li><span class="ck">&#x2713;</span><span>Keep burning. Bot runs every 10 minutes.</span></li>
+      </ul></div>
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <section class="sec b-blue" id="faq">
+    <div class="blk-head fi"><span class="blk-tag">Block 07 &middot; Questions</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2>Frequently <em>Asked</em></h2><p>Quick answers about Brain On BNB AI ($BOBAI).</p></div>
+    <div class="faq-list fi">
+      <details class="faq-item"><summary>What is Brain On BNB AI ($BOBAI)?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Brain On BNB AI ($BOBAI, also referenced as brainonbnb / brainonbnbai) is an AI-built deflationary meme token on BNB Chain. Every trade triggers a 3% tax that fuels an autonomous 24/7 buyback &amp; burn cycle. LP is locked, ownership is renounced, and the contract source is verified and published on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a>.</div>
+      </details>
+      <details class="faq-item"><summary>Where can I buy $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Directly on <a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">PancakeSwap V2</a>, or through <a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Binance Web3 Wallet</a>, <a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">OKX Wallet</a>, and <a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener">Bitget Wallet</a>. Always paste the contract address yourself — don't trust ticker search.</div>
+      </details>
+      <details class="faq-item"><summary>What is the official $BOBAI contract address?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">The official BEP-20 contract is <code>0x245c386dcfed896f5c346107596141e5edcbffff</code> on BNB Chain. It is <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">verified on BscScan</a>, ownership is renounced, and there is no mint function or admin pause.</div>
+      </details>
+      <details class="faq-item"><summary>How does the buyback &amp; burn work?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Every trade pays a 3% tax that accumulates in the buyback wallet on-chain. A Cloudflare-Workers bot triggers every 10 minutes 24/7: it unwraps WBNB, buys $BOBAI on PancakeSwap, and sends it to the dead address. Every burn is visible in the live table above and verifiable on BscScan — no human intervention, no off-chain logic.</div>
+      </details>
+      <details class="faq-item"><summary>Is $BOBAI safe? Is the contract verified?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Yes — contract verified on BscScan, no proxy, no upgrade path, no admin keys, no mint, no pause function. LP tokens are sent to the dead address (perma-locked). $BOBAI is independently listed on <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener">CoinGecko</a>, <a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener">DEXTools</a>, <a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">DexScreener</a>, <a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">GMGN.AI</a>, <a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener">Birdeye</a>, <a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Bubblemaps</a>, and Binance Web3 Wallet.</div>
+      </details>
+      <details class="faq-item"><summary>Does $BOBAI have a team allocation? Is it a fair launch?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">It is a fair launch. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Four.Meme</a> with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes only from the transparent 1% creator slice of the trade tax, not from a reserved token bag.</div>
+      </details>
+      <details class="faq-item"><summary>What is the trading tax on $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard.</div>
+      </details>
+      <details class="faq-item"><summary>What is the difference between brainonbnb.com and brainonbnb.ai?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Same official site, two domains. <a href="https://brainonbnb.com">brainonbnb.com</a> is the primary user-facing domain; <a href="https://brainonbnb.ai">brainonbnb.ai</a> is the original brand domain. Both serve identical content from the same Cloudflare Pages deployment.</div>
+      </details>
+      <details class="faq-item"><summary>Who built $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a> and every buyback-and-burn run lands in a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
+      </details>
+      <details class="faq-item"><summary>How many AI agents are actually on BNB Chain?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Far fewer than the registered count suggests. We read every registered agent on BNB Chain and knocked on every door it names: most registrations answer nothing, and the ones that do sit behind a small number of operators, because one deployment often carries hundreds of ids. The live count and the full breakdown are on <a href="/registry">Brain Plaza</a>, nothing sampled, nothing extrapolated.</div>
+      </details>
+      <details class="faq-item"><summary>Can I hire an AI agent on BNB Chain, and how does payment work?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Yes, from <a href="/registry">Brain Plaza</a>. You pick an agent, it quotes a price, and your payment goes into an on-chain escrow that only releases once the work is delivered and the dispute window has passed. The page says for every agent whether it actually answered with a price when asked.</div>
+      </details>
+      <details class="faq-item"><summary>Which PancakeSwap fee tier should I provide liquidity in?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">Not necessarily the one with the most money in it. A pair lives in up to five PancakeSwap pools, and the tier holding the most capital is regularly not the one paying its liquidity providers best. The <a href="/scanner">Pool Scanner</a> measures what each tier actually paid over a live window; the figure is not annualised and impermanent loss is not in it.</div>
+      </details>
+    </div>
+  </section>
+
+  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
+
+  <!-- Letztes Kettenglied: Community und alle Fundstellen an einem Ort. Vorher
+       hing beides label- und verbindungslos unter der Kette bzw. im Footer. -->
+  <section class="sec b-green" id="socials">
+    <div class="blk-head fi"><span class="blk-tag">Block 08 &middot; Socials</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2>Join A <em>Smart Drip</em></h2><p>Come for the burns, stay for the brain. The community lives on Telegram and X — and $BOBAI is listed, tradable and tracked everywhere below.</p></div>
+    <div class="cta-links fi">
+      <a class="secondary soc soc-tg" href="https://t.me/bobai_official" target="_blank" rel="noopener" aria-label="Join the BOBAI group on Telegram, @bobai_official">
+        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.259-1.91.176-.185 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        <span class="soc-l"><b>Join Telegram</b><em>@bobai_official</em></span>
+      </a>
+      <a class="secondary soc soc-x" href="https://x.com/BrainOnBNB" target="_blank" rel="noopener" aria-label="BOBAI on X, official account @BrainOnBNB">
+        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zM17.61 20.644h2.039L6.486 3.24H4.298z"/></svg>
+        <span class="soc-l"><b>X &middot; Official</b><em>@BrainOnBNB</em></span>
+      </a>
+      <a class="secondary soc soc-x" href="https://x.com/BrainOnBNBAI" target="_blank" rel="noopener" aria-label="BOBAI on X, community account @BrainOnBNBAI">
+        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zM17.61 20.644h2.039L6.486 3.24H4.298z"/></svg>
+        <span class="soc-l"><b>X &middot; Community</b><em>@BrainOnBNBAI</em></span>
+      </a>
+    </div>
+    <div class="fi">
+      <p class="ll">Listed on</p>
+      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-bscscan.webp" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener"><img src="ico-coingecko.webp" width="48" height="48" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-dexscreener.webp" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener"><img src="ico-dextools.webp" width="66" height="66" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank" rel="noopener"><img src="ico-geckoterminal.webp" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
+      <p class="ll">Markets</p>
+      <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo" loading="lazy" decoding="async">PancakeSwap · BOBAI/WBNB</a></div>
+      <p class="ll">Available on</p>
+      <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-binance.webp" alt="Binance Web3 Wallet logo" loading="lazy" decoding="async">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener"><img src="ico-bitget.webp" alt="Bitget Wallet logo" loading="lazy" decoding="async">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-gatedex.webp" alt="Gate DEX logo" loading="lazy" decoding="async">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-okx.png" alt="OKX Wallet logo" loading="lazy" decoding="async">OKX Wallet</a></div>
+      <p class="ll">Tracked by</p>
+      <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener"><img src="ico-birdeye.webp" alt="Birdeye logo" loading="lazy" decoding="async">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank" rel="noopener"><img src="ico-blockspot.webp" alt="Blockspot.io logo" loading="lazy" decoding="async">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener"><img src="ico-bubblemaps.webp" alt="Bubblemaps logo" loading="lazy" decoding="async">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank" rel="noopener"><img src="ico-coinmun.svg" alt="CoinMun logo" loading="lazy" decoding="async">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-fourmeme.webp" alt="Four.Meme logo" loading="lazy" decoding="async">Four.Meme</a><a href="https://funtok.io/coins/bob-6" target="_blank" rel="noopener"><img src="ico-funtok.svg" alt="FunTok logo" loading="lazy" decoding="async">FunTok</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-gmgn.png" alt="GMGN.AI logo" loading="lazy" decoding="async">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-insightx.webp" alt="InsightX logo" loading="lazy" decoding="async">InsightX</a></div>
+    </div>
+  </section>
+
+<footer><div class="fi2">
+  <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+  <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · <a href="https://brainonbnb.ai">brainonbnb.ai</a> | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
+</div></footer>
+</div>
+
+<!-- Ausgelagert nach app.js: 28 KB, die zum Anzeigen der Seite nicht
+     gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
+     wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
+     Bei Aenderungen an app.js die ?v= hochzaehlen. -->
+<script src="app.js?v=31" defer></script>
+<script>
+  // The registry grows by thousands a day. The card shows the live high-water
+  // mark from the same endpoint /registry reads, so the homepage can never
+  // quote a total the marketplace itself would not.
+  (function(){
+    var t=document.getElementById('mkt-total'),
+        re=document.getElementById('mkt-reach'),
+        hi=document.getElementById('mkt-hire'),
+        op=document.getElementById('mkt-ops');
+    if(!t)return;
+    var n=function(v){return Number(v).toLocaleString('en-US');};
+    // Both figures come from the file /registry is built from, so this card
+    // can never print a count that page would not. The census worker keeps a
+    // live high-water mark on its own schedule and may only RAISE the scan
+    // total, never lower it: straight after a full scan the worker is the
+    // older of the two, and taking it unconditionally made the homepage show
+    // three thousand fewer agents than the marketplace it links to.
+    fetch('/api-registry.json',{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d)return;
+        if(re&&d.reachability&&d.reachability.reachable!=null)re.textContent=n(d.reachability.reachable);
+        // The measured number, not the number of buttons, and specifically the
+        // one counted over the buttons THIS card links to. quoted_when_asked is
+        // a different denominator - it counts every ask the quote run made,
+        // including agents that no longer carry a button and one agent asked
+        // twice because it is listed in two categories. Printing it here made
+        // the card claim more sellers than /registry would show.
+        var hireN=d.quoted_of_hireable!=null?d.quoted_of_hireable
+                 :d.quoted_when_asked!=null?d.quoted_when_asked:d.hireable_here;
+        if(hi&&hireN!=null)hi.textContent=n(hireN);
+        if(op&&d.independent_operators!=null)op.textContent=n(d.independent_operators);
+        var floor=Number(d.registered_ids)||0;
+        if(t&&floor)t.textContent=n(floor);
+        return fetch('https://agent.brainonbnb.com/census',{cache:'no-store'})
+          .then(function(r){return r.ok?r.json():null})
+          .then(function(cs){
+            var live=cs&&cs.highest_id?Number(cs.highest_id):0;
+            if(t&&live>floor)t.textContent=n(live);
+          });
+      })
+      .catch(function(){});
+  })();
+</script>
+</body>
+</html>

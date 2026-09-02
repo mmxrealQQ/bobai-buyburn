@@ -1721,6 +1721,7 @@ const BOT_COMMANDS = [
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
   { command: 'price',    description: 'Live price, volume & market stats' },
+  { command: 'scan',     description: 'Measure any BSC pool: tax, depth, trade cost, LP' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
   { command: 'worldcup', description: 'Tipgame pool, top 10 & latest credits' },
@@ -1738,7 +1739,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v9-liq';
+const COMMANDS_VERSION = 'v10-scan';
 
 async function ensureCommandsRegistered(env) {
   const current = await env.KV.get('commands_version');
@@ -1761,7 +1762,47 @@ async function ensureCommandsRegistered(env) {
 
 // ==================== CHAT COMMANDS ====================
 
-async function handleCommand(msg) {
+// The /scan answer, as a pure function of the API's JSON so it can be
+// checked against a real answer without a Telegram round trip. Every figure
+// here is one the API measured; nothing is computed a second time in the bot.
+export function formatScan(d, address) {
+  const link = `https://brainonbnb.com/scanner?token=${address}`;
+  if (!d || d.error) return `⚠️ Could not measure that address right now${d && d.error ? ` — ${String(d.error).slice(0, 120)}` : ''}.\n🔍 <a href="${link}">Try the scanner page</a>`;
+  if (d.quotable === false || !d.pool) return `🔍 <b>${d.symbol || 'This token'}</b> has no PancakeSwap pool against BNB or a stablecoin that I can measure. Nothing here is a verdict on the token — only that there is no pool to read.\n🔍 <a href="${link}">Scanner page</a>`;
+  const usd0 = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('en-US');
+  const pct = (n) => (n == null ? '?' : Number(n).toFixed(2) + '%');
+  const price = d.price && d.price.usd != null ? Number(d.price.usd) : null;
+  const priceStr = price == null ? '?' : price >= 1 ? '$' + price.toLocaleString('en-US', { maximumFractionDigits: 4 }) : '$' + price.toPrecision(4);
+  const tax = d.tax || {};
+  const taxLine = tax.buyPct == null && tax.sellPct == null
+    ? 'not measured — no trade in the window and no label'
+    : `buy ${pct(tax.buyPct)} / sell ${pct(tax.sellPct)} <i>(${tax.measured ? 'measured from executed trades' : (tax.source || 'labelled, unverified')})</i>`;
+  const lp = d.lp || {};
+  const lpLine = lp.burnedPct == null ? 'LP: could not read' : `LP burned: <b>${Number(lp.burnedPct).toFixed(2)}%</b>${lp.burnedPct >= 95 ? ' — cannot be pulled' : lp.burnedPct < 50 ? ' — most of it can be withdrawn' : ''}`;
+  const c = d.contract || {};
+  const flags = [];
+  if (c.openSource === false) flags.push('closed source');
+  if (c.proxy) flags.push('proxy');
+  if (c.mintable) flags.push('mintable');
+  const contractLine = flags.length ? `⚠️ Contract: ${flags.join(', ')}` : (c.openSource === true ? '✅ Contract: open source, not mintable, no proxy' : 'Contract: properties not read');
+  const costs = Array.isArray(d.tradeCost) ? d.tradeCost.filter((t) => [100, 1000, 10000].includes(t.sizeUsd)) : [];
+  const costLines = costs.map((t) => `${usd0(t.sizeUsd)} buy costs <b>${pct(t.buyCostPct)}</b> · sell ${pct(t.sellCostPct)}`).join('\n');
+  const depth = d.onePercentDepth || {};
+  return `🔍 <b>${d.symbol || '?'}</b> ${d.name && d.name !== d.symbol ? `(${d.name}) ` : ''}— ${d.pool.venue || 'PancakeSwap'}
+💰 Price ${priceStr} · Pool <b>${usd0(d.pool.liquidityUsd)}</b> <i>(${d.price && d.price.quoteSymbol ? d.price.quoteSymbol : 'quote'} side, the hard asset)</i>
+🧾 Tax: ${taxLine}
+🔒 ${lpLine}
+${contractLine}
+
+<b>What a trade really costs</b> <i>(tax + pool fee + price move)</i>
+${costLines || 'no sizes quotable at this depth'}
+🟢 A buy of <b>${usd0(depth.buyUsd)}</b> moves the price +1% · 🔴 a sell of <b>${usd0(depth.sellUsd)}</b> −1%
+
+📊 <a href="${link}">Full scan, incl. sellability check</a>
+<i>Measured on BNB Smart Chain just now. Measurement, not advice.</i>`;
+}
+
+async function handleCommand(msg, env) {
   const rawText = (msg.text || '').trim();
   const text = rawText.toLowerCase().split('@')[0].split(' ')[0];
   const chatId = msg.chat.id;
@@ -1907,7 +1948,7 @@ This project is readable by machines, not just people. Any agent can measure BNB
 • Earned from agents: <b>${earned && earned !== '0.00' ? earned + ' USD1' : 'nothing yet'}</b>
 • Pools being watched: <b>${watches}</b>
 
-Every cent earned here buys $BOBAI and burns it — the first income this project has that does not come from its own trading tax.
+Every cent earned here is sold for BNB and put into the project's own PancakeSwap liquidity position; the fees that position earns go to the buyback bot, which buys $BOBAI and burns it. The first income this project has that does not come from its own trading tax. Try it yourself: <code>/scan 0x…</code>
 
 🔗 <a href="https://brainonbnb.com/#agents">Full breakdown &amp; live figures</a>`;
       break;
@@ -1959,6 +2000,38 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 💡 <i>Every LP add is burned to the dead address. Nobody can pull it.</i>
 
 📊 <a href="https://brainonbnb.com/#tokenomics">Full depth panel</a> · 🔍 <a href="https://bscscan.com/address/${BOBAI_PAIR}">Pool contract</a>`;
+      break;
+    }
+
+    // /scan <address> — the pool scanner, where the people already are. The
+    // same measurement brainonbnb.com/scanner and the bsc_pool_scan MCP tool
+    // give, read from our own REST endpoint so the bot can never disagree
+    // with the page. What it shows is what WE measure; the GoPlus sellability
+    // chip lives on the page only, so the link is part of the answer.
+    case '/scan':
+    case 'scan': {
+      const arg = rawText.split(/\s+/)[1] || '';
+      const address = /^0x[0-9a-fA-F]{40}$/.test(arg) ? arg.toLowerCase() : null;
+      if (!address) {
+        reply = `🔍 <b>Pool Scanner</b>
+Send a BSC token address and I measure its pool on-chain: transfer tax, liquidity, what a trade really costs, and whether the LP is burned.
+
+<code>/scan 0x…</code>
+
+Free, any token on BNB Chain. Same numbers as <a href="https://brainonbnb.com/scanner">brainonbnb.com/scanner</a>.`;
+        break;
+      }
+      // One scan per chat every 20 s: a scan reads the chain a dozen times,
+      // and the public RPCs it uses are the same ones the free page needs.
+      const gate = `scan_gate:${chatId}`;
+      if (await env.KV.get(gate)) { reply = '⏳ One scan at a time — try again in a few seconds.'; break; }
+      await env.KV.put(gate, '1', { expirationTtl: 20 });
+      let d = null;
+      try {
+        const r = await fetch(`https://brainonbnb.com/api/pool-scan?address=${address}`, { signal: AbortSignal.timeout(25000) });
+        d = await r.json();
+      } catch (e) { d = null; }
+      reply = formatScan(d, address);
       break;
     }
 
@@ -2079,6 +2152,7 @@ Here's what I can do:
 💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
 📊 /price — Live price, volume & market stats
+🔍 /scan 0x… — Measure any BSC pool: tax, depth, trade cost, LP burned
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
 🏆 /worldcup — Tipgame pool, top 10 & latest credits
@@ -2847,7 +2921,7 @@ export default {
         }
 
         if (update.message?.text) {
-          await handleCommand(update.message);
+          await handleCommand(update.message, env);
         }
 
         if (update.callback_query) {

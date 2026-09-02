@@ -1,0 +1,6 @@
+{
+  "name": "bobai-tg-bot",
+  "private": true,
+  "type": "module",
+  "//": "Marker only, no dependencies. index.js has always been an ES module (export default) that wrangler bundles either way; without this marker Node reads it as CommonJS, so `node --check` and any import of formatScan for a test fail on the first export. Added 2026-09-02 with the /scan command."
+}

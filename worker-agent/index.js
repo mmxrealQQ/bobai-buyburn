@@ -838,6 +838,14 @@ export default {
     // Our own ERC-8183 jobs and the date each one was first seen to complete.
     // The figure this marketplace argues with is 287 SUBMITTED against 8
     // COMPLETED; this is where our own jobs stand against it, checked daily.
+    // What the LP agent's daily collect did (worker-lp writes it, this serves
+    // it — that worker holds a key and no public face on purpose).
+    if (path === '/lp/collect') {
+      const raw = await env.AGENT.get('lp:collect');
+      if (!raw) return json({ error: 'the LP collect has not run yet', cadence: 'daily' }, 503);
+      return json({ ...JSON.parse(raw), cadence: 'daily' });
+    }
+
     if (path === '/jobs/own') {
       const rec = await readOwnJobs(env);
       if (!rec) return json({ error: 'no own-jobs tick has run yet', cadence: 'daily' }, 503);

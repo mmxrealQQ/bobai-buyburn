@@ -1,0 +1,22 @@
+name = "bobai-lp-agent"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+# Once a day is the cadence the guards were built for: the collect floor is
+# 0.002 BNB of fees, and a fifty-dollar position in a 0.05% pool earns that
+# over days, not hours. Checking hourly would spend RPC on a "nothing owed"
+# answer twenty-three times out of twenty-four. 05:23 UTC is a quiet hour on
+# the chain and shares no minute with the agent worker's own jobs.
+[triggers]
+crons = ["23 5 * * *"]
+
+# The same KV namespace the agent worker reads, so agent.brainonbnb.com can
+# serve /lp/collect from the record this worker writes. This worker itself has
+# no custom domain and no public face beyond the secret-gated /run.
+[[kv_namespaces]]
+binding = "AGENT"
+id = "ebebebbecec1485aa74ef1f14417c120"
+
+# Secrets, set with `wrangler secret put`, never in this file:
+#   LP_PRIVATE_KEY  the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A
+#   HIT_SECRET      the same shared secret the agent worker's /run-* routes use

@@ -41,6 +41,7 @@ import { createPublicClient, createWalletClient, http, parseAbi, formatEther, fo
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { V3_POSITION_MANAGER, V2_ROUTER } from './lib/lp-decision.mjs';
+import { refuse, MIN_COLLECT_BNB } from '../shared/lp-guards.js';
 
 const RPC = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org';
 const WBNB = '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c';
@@ -53,7 +54,7 @@ const SELF = process.argv.includes('--self-test');
 // Below this the collect costs more than it recovers. Two transactions at 1
 // gwei is about 0.0004 BNB; the floor is five times that, so a run only happens
 // when it is clearly worth the gas rather than marginally.
-const MIN_COLLECT_BNB = 0.002;
+// MIN_COLLECT_BNB lives in shared/lp-guards.js beside the guard that uses it.
 // $BOBAI is a fee-on-transfer token: the swap has to use the supporting method
 // and the amount that arrives is always less than the amount quoted.
 const SLIPPAGE_BPS = 1500n; // 15%, the floor this project already uses for FoT
@@ -78,20 +79,10 @@ const ROUTER = parseAbi([
 
 const MAX128 = (1n << 128n) - 1n;
 
-// EVERY REFUSAL IN ONE FUNCTION, so that --self-test exercises the same code
-// the real run does rather than a copy of its reasoning.
-export function refuse(state) {
-  if (state.positions === 0) return 'this wallet holds no position — open one first with lp-open.mjs';
-  if (state.positions > 1) return `this wallet holds ${state.positions} positions. Collecting from one of several silently is a decision a person should make, not a script.`;
-  if (state.liquidity === 0n) return 'the position has no liquidity left in it';
-  if (state.owedBnbEquivalent <= 0) return 'nothing is owed yet';
-  if (state.owedBnbEquivalent < MIN_COLLECT_BNB)
-    return `only ${state.owedBnbEquivalent.toFixed(6)} BNB of fees are owed, below the ${MIN_COLLECT_BNB} BNB floor — collecting it would cost more gas than it recovers`;
-  if (state.gasBnb < 0.0015) return `the wallet holds ${state.gasBnb.toFixed(6)} BNB, not enough gas for collect + swap + burn`;
-  if (state.quoteOffPct != null && Math.abs(state.quoteOffPct) > 25)
-    return `the $BOBAI quote implies a price ${state.quoteOffPct.toFixed(1)}% away from the pool's own — refusing rather than trading into something that moved`;
-  return null;
-}
+// EVERY REFUSAL IN ONE FUNCTION — shared/lp-guards.js — so that --self-test,
+// this script and the daily worker (worker-lp/index.js) all run the same code
+// rather than a copy of its reasoning.
+export { refuse };
 
 if (SELF) {
   const cases = [

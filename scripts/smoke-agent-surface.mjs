@@ -696,6 +696,17 @@ section('Transparency');
   ok('lists free and paid capabilities', (j?.capabilities?.free || []).length >= 4 && (j?.capabilities?.paid || []).length >= 1);
 }
 {
+  // The LP agent's daily collect (worker-lp), served by the agent worker from
+  // the KV record. 503 "not run yet" is a valid answer before the first run.
+  const { body, isHtml } = await getText(`${AGENT}/lp/collect`);
+  ok('/lp/collect is routed', !isHtml && /"cadence":\s*"daily"/.test(body), body.slice(0, 120));
+  const j = (() => { try { return JSON.parse(body); } catch { return null; } })();
+  if (j && !j.error && j.last) {
+    ok('the last collect names the wallet and whether it acted', /^0x[0-9a-f]{40}$/i.test(j.last.wallet || '') && typeof j.last.acted === 'boolean');
+    ok('a quiet day says why', j.last.acted || !!j.last.why);
+  }
+}
+{
   // Our own jobs on the ERC-8183 kernel, checked daily (worker-agent/own-jobs.js).
   // The page argues with 287 SUBMITTED against 8 COMPLETED; this is where our
   // own jobs stand against that, with the date the first completion was seen.

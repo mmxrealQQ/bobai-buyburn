@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 35 files, 8659 lines.
+# one fetch. 35 files, 8696 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2223,6 +2223,35 @@ const segments = (name) => String(name)
   .filter(Boolean)
   .map((x) => x.toLowerCase());
 
+// Fills a tool's required arguments from the task text — and only from it.
+// An address-shaped parameter takes an address the visitor typed; a chain
+// parameter takes the chain this router serves. Any required argument that
+// the task does not literally contain leaves the whole call unfilled (null),
+// and the caller falls back to "call it yourself". Exported for the safety
+// check, which pins both directions.
+export function argsFromTask(schema, task) {
+  const req = Array.isArray(schema?.required) ? schema.required : [];
+  if (!req.length) return null;
+  const props = schema?.properties || {};
+  const addrs = (String(task || '').match(/0x[0-9a-fA-F]{40}/g) || []);
+  let ai = 0;
+  const out = {};
+  for (const name of req) {
+    const p = props[name] || {};
+    const type = String(p.type || 'string');
+    const n = name.toLowerCase();
+    if (/address|token|pool|pair|contract|wallet|account|holder/.test(n) && type === 'string') {
+      if (ai >= addrs.length) return null;
+      out[name] = addrs[ai++];
+    } else if (/chain|network/.test(n)) {
+      out[name] = type === 'number' || type === 'integer' ? 56 : 'bsc';
+    } else {
+      return null;
+    }
+  }
+  return out;
+}
+
 export function isReadOnly(tool) {
   const name = String(tool?.name || '');
   const desc = String(tool?.description || '');
@@ -2611,8 +2640,15 @@ export async function handleDispatch(url, body, env, opts = {}) {
     }
 
     // Called with no arguments: we do not invent inputs on a stranger's
-    // endpoint. A tool needing arguments is returned as a pointer instead.
-    const needsArgs = Array.isArray(pick.inputSchema?.required) && pick.inputSchema.required.length > 0;
+    // endpoint. A tool needing arguments is returned as a pointer instead —
+    // UNLESS every required argument is sitting in the task as the visitor
+    // typed it. "Measure the pool of token 0x0e09…" carries the address; a
+    // router that answers "this tool needs an address" to that sentence is
+    // refusing to read. Only what the task literally contains is passed on
+    // (addresses, and the chain this router serves); nothing is guessed, and
+    // the answer says which arguments were taken from the task.
+    const taken = argsFromTask(pick.inputSchema, task);
+    const needsArgs = Array.isArray(pick.inputSchema?.required) && pick.inputSchema.required.length > 0 && !taken;
     if (needsArgs) {
       return { status: 200, body: {
         task, dispatched: false, protocol: 'mcp',
@@ -2628,7 +2664,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
     }
 
     const started = Date.now();
-    const res = await rpcCall(endpoint, 'tools/call', { name: pick.name, arguments: {} }, 15000).catch(() => null);
+    const res = await rpcCall(endpoint, 'tools/call', { name: pick.name, arguments: taken || {} }, 15000).catch(() => null);
     const took = Date.now() - started;
     const content = res?.result?.content?.[0]?.text;
     if (res?.error || !content) {
@@ -2660,6 +2696,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
       dispatched: true,
       took_ms: took,
       protocol: 'mcp',
+      ...(taken ? { arguments_taken_from_task: taken } : {}),
       answered_by: {
         agent: agent.name,
         operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(),

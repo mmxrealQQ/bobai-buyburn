@@ -1023,6 +1023,11 @@
        would keep folded blocks transparent even after the fold opens.
        Blocks behind any fold are simply visible. */
     details .fi.pre{opacity:1;transform:none}
+    /* The money flow and the live liquidity agent side by side on a desktop:
+       the same two cards, half the height. Stacked on a phone. */
+    .agt-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+    .agt-two .agt-flow{margin:0}
+    @media(max-width:900px){.agt-two{grid-template-columns:1fr}}
     /* A fold inside a card: same summary, less air around it. */
     .lb-inner{margin-top:18px;border-top:1px solid var(--border)}
     .lb-inner summary{padding:14px 4px}

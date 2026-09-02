@@ -1183,7 +1183,8 @@ export default {
     // The hourly LP window on demand. Same reason as the four above.
     if (path === '/run-lp-window' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
-      const r = await recordLpWindow(env);
+      // By hand there is no cron burst to wait out.
+      const r = await recordLpWindow(env, { settle: false });
       return json(r, r.ok ? 200 : 500);
     }
 

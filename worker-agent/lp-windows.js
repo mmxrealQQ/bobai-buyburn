@@ -208,10 +208,30 @@ export async function readLpWindows(env) {
 }
 
 // The hourly tick. One measurement, one KV read, one KV write.
-export async function recordLpWindow(env) {
+// WHY THE TICK WAITS BEFORE IT MEASURES, AND ASKS TWICE.
+// On 2026-09-02 four of eight hourly windows were missing and the record
+// said why: "every BSC endpoint refused eth_blockNumber". The window tick
+// rides the same cron invocation as the telemetry refresh and the watch
+// checks, so all three hit the same public nodes from the same egress in the
+// same second — we throttled ourselves, the lesson the census already taught.
+// So the replay starts after the burst has passed, and a refusal gets one
+// more try a little later. The entry says how many asks it took.
+const CHAIN_REFUSED = /every BSC endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
+const SETTLE_MS = 25000, RETRY_MS = 20000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function recordLpWindow(env, { settle = true } = {}) {
   const pool = String(env.LP_WATCH_POOL || '').toLowerCase();
   if (!/^0x[0-9a-f]{40}$/.test(pool)) return { ok: false, error: 'LP_WATCH_POOL is not set' };
-  const plan = await measure(pool, POSITION_USD);
+  if (settle) await sleep(SETTLE_MS);
+  let plan, attempts = 1;
+  try { plan = await measure(pool, POSITION_USD); }
+  catch (e) {
+    if (!CHAIN_REFUSED.test(String(e.message))) throw e;
+    attempts = 2;
+    await sleep(RETRY_MS);
+    plan = await measure(pool, POSITION_USD);
+  }
   const prev = (await readLpWindows(env)) || { pool, usd: POSITION_USD, windows: [] };
   if (prev.pool && prev.pool.toLowerCase() !== plan.pool.toLowerCase()) {
     // The var changed pools. Start over rather than mix — the old record is
@@ -219,7 +239,8 @@ export async function recordLpWindow(env) {
     prev.pool = plan.pool; prev.windows = [];
   }
   const entry = windowFromPlan(plan, POSITION_USD);
+  if (attempts > 1) entry.attempts = attempts;
   const { log, added } = appendWindow({ ...prev, pool: plan.pool, usd: POSITION_USD }, entry);
   if (added) await env.AGENT.put(KV_KEY, JSON.stringify(log));
-  return { ok: true, added, windows: log.windows.length, from_block: entry.from_block, to_block: entry.to_block };
+  return { ok: true, added, attempts, windows: log.windows.length, from_block: entry.from_block, to_block: entry.to_block };
 }

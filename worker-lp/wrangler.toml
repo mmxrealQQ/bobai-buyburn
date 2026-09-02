@@ -19,11 +19,13 @@ binding = "AGENT"
 id = "ebebebbecec1485aa74ef1f14417c120"
 
 # Whether the cron may re-set the range on its own when the price has left
-# it. "0" until the first re-set has been run by hand and watched
+# it. Was "0" until the first re-set had been run by hand and watched on
+# 2026-09-02 (it worked, nine transactions); "1" since that night, on the
+# operator's word. Still gated by the day test and the size floor. Was:
 # (node scripts/lp-agent.mjs --step rebalance --confirm); the tick still plans
 # it and records that it is due. Flip to "1" and deploy to hand it over.
 [vars]
-LP_REBALANCE = "0"
+LP_REBALANCE = "1"
 
 # Secrets, set with `wrangler secret put`, never in this file:
 #   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A

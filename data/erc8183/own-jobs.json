@@ -1,0 +1,92 @@
+{
+  "jobs": {
+    "56656": {
+      "history": [
+        {
+          "at": "2026-09-02T07:21:32.176Z",
+          "status": "FUNDED",
+          "state": "undelivered",
+          "budget_u": 0.1,
+          "submitted_at": 0,
+          "ends_at": null
+        }
+      ]
+    },
+    "56657": {
+      "history": [
+        {
+          "at": "2026-09-02T07:21:32.176Z",
+          "status": "COMPLETED",
+          "state": "completed",
+          "budget_u": 0.1,
+          "submitted_at": 1787657327,
+          "ends_at": null
+        }
+      ]
+    },
+    "56669": {
+      "history": [
+        {
+          "at": "2026-09-02T07:21:32.176Z",
+          "status": "OPEN",
+          "state": "open",
+          "budget_u": 0,
+          "submitted_at": 0,
+          "ends_at": null
+        }
+      ]
+    },
+    "56670": {
+      "history": [
+        {
+          "at": "2026-09-02T07:21:32.176Z",
+          "status": "SUBMITTED",
+          "state": "waiting",
+          "budget_u": 0.1,
+          "submitted_at": 1788074319,
+          "ends_at": 1788679119
+        }
+      ]
+    },
+    "56671": {
+      "history": [
+        {
+          "at": "2026-09-02T07:21:32.176Z",
+          "status": "SUBMITTED",
+          "state": "waiting",
+          "budget_u": 0.1,
+          "submitted_at": 1788075127,
+          "ends_at": 1788679927
+        }
+      ]
+    },
+    "56672": {
+      "history": [
+        {
+          "at": "2026-09-02T07:21:32.176Z",
+          "status": "SUBMITTED",
+          "state": "waiting",
+          "budget_u": 0.1,
+          "submitted_at": 1788075365,
+          "ends_at": 1788680165
+        }
+      ]
+    }
+  },
+  "note": "Every ERC-8183 job this project has made or delivered, watched until it completes. history holds one entry per observed transition, first sighting first. The escrow does not release itself: after the dispute window somebody has to call settle(jobId) on the EvaluatorRouter.",
+  "checked_at": "2026-09-02T07:29:35.089Z",
+  "summary": {
+    "jobs": 6,
+    "completed": [
+      "56657"
+    ],
+    "settleable": [],
+    "waiting": [
+      "56670",
+      "56671",
+      "56672"
+    ],
+    "first_completed_seen": "2026-09-02T07:21:32.176Z",
+    "checked_at": "2026-09-02T07:29:35.089Z"
+  }
+}

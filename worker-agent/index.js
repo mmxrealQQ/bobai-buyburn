@@ -38,6 +38,7 @@ import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { recordLpWindow, readLpWindows, verdict as lpVerdict } from './lp-windows.js';
+import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
@@ -834,6 +835,16 @@ export default {
         note: 'Every entry is one replay of pancakeswap_range_plan over ~37 minutes of live chain, recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
     }
 
+    // Our own ERC-8183 jobs and the date each one was first seen to complete.
+    // The figure this marketplace argues with is 287 SUBMITTED against 8
+    // COMPLETED; this is where our own jobs stand against it, checked daily.
+    if (path === '/jobs/own') {
+      const rec = await readOwnJobs(env);
+      if (!rec) return json({ error: 'no own-jobs tick has run yet', cadence: 'daily' }, 503);
+      return json({ ...rec, cadence: 'daily',
+        note: 'Every job this project has made or delivered on the ERC-8183 kernel, classified with the same rule as scripts/erc8183-job-watch.mjs. The escrow does not release itself: after the dispute window somebody has to call settle(jobId) on the EvaluatorRouter. history holds one entry per observed transition.' });
+    }
+
     if (path === '/census') {
       const latest = await env.AGENT.get('census:latest');
       if (!latest) return json({ error: 'no census tick has run yet' }, 503);
@@ -1147,6 +1158,17 @@ export default {
       return json({ ok: true, ...r });
     }
 
+    // The daily own-jobs tick on demand, optionally with ids to add to the
+    // list. Same reason as the others: a daily job is untestable after a
+    // deploy unless it can be triggered by hand.
+    if (path === '/own-jobs' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      let ids = [];
+      try { ids = (await request.json())?.ids || []; } catch { ids = []; }
+      const r = await tickOwnJobs(env, rpc, Array.isArray(ids) ? ids : []);
+      return json(r, r.ok ? 200 : 500);
+    }
+
     // The hourly LP window on demand. Same reason as the four above.
     if (path === '/run-lp-window' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
@@ -1266,6 +1288,12 @@ export default {
     // chain counted four times. 24 KV writes a day.
     if (t.getUTCMinutes() >= 30 && t.getUTCMinutes() < 45) {
       ctx.waitUntil(recordLpWindow(env).catch(() => {}));
+    }
+
+    // 21:0x UTC — where our own jobs stand on the kernel, once a day, so the
+    // first COMPLETED we ever see carries a date nobody had to be awake for.
+    if (t.getUTCHours() === 21 && firstTickOfHour) {
+      ctx.waitUntil(tickOwnJobs(env, rpc).catch(() => {}));
     }
   },
 };

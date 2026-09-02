@@ -696,6 +696,19 @@ section('Transparency');
   ok('lists free and paid capabilities', (j?.capabilities?.free || []).length >= 4 && (j?.capabilities?.paid || []).length >= 1);
 }
 {
+  // Our own jobs on the ERC-8183 kernel, checked daily (worker-agent/own-jobs.js).
+  // The page argues with 287 SUBMITTED against 8 COMPLETED; this is where our
+  // own jobs stand against that, with the date the first completion was seen.
+  const { body, isHtml } = await getText(`${AGENT}/jobs/own`);
+  ok('/jobs/own is routed', !isHtml && /"cadence":\s*"daily"/.test(body), body.slice(0, 120));
+  const j = (() => { try { return JSON.parse(body); } catch { return null; } })();
+  if (j && !j.error) {
+    ok('every watched job carries a history', Object.values(j.jobs || {}).every((x) => Array.isArray(x.history) && x.history.length > 0));
+    ok('the summary counts match the record', j.summary && j.summary.jobs === Object.keys(j.jobs || {}).length);
+    ok('a completed job names the date it was first seen', !(j.summary?.completed?.length) || !!j.summary.first_completed_seen);
+  }
+}
+{
   // The LP width record the cron builds hourly (worker-agent/lp-windows.js).
   // A 503 "not recorded yet" is a valid answer for a fresh deploy; a page or a
   // 404 is not. Once it holds windows, the verdict must be the same function's

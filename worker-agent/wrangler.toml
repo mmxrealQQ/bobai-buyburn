@@ -21,3 +21,11 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # grant or revoke against it is not on this worker and must never be.
 [vars]
 ALTANA_AGENT_WALLET = "0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3"
+# The pool whose width record the hourly cron builds (lp-windows.js). This is
+# NOT the choice of where the money goes — that is made by lp-decision.mjs from
+# the two measurement tools, with no constant allowed. It is the pool that
+# decision picked on 2026-09-01 (CAKE/BNB, V3 0.05%), written here so the
+# record it needs can grow while nobody is at a keyboard. If the decision ever
+# picks a different pool, the record stops applying (it is keyed by pool) and
+# this var is what gets changed.
+LP_WATCH_POOL = "0xafb2da14056725e3ba3a30dd846b6bbbd7886c56"

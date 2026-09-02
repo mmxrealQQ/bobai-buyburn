@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { verdict } from '../../worker-agent/lp-windows.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', '..');
 
@@ -72,41 +73,18 @@ const sqrtAtTick = (t) => Math.pow(TICK_BASE, t / 2);
 // list to SIX crossings and minus $2.74 on fifty dollars. The narrow width had
 // simply not been tested by a move yet.
 //
-// So if scripts/lp-windows.mjs has recorded windows for this pool, they decide,
-// and the single fresh replay is demoted to what it actually is — the latest
-// observation. Overlapping runs count once: two replays a minute apart cover
-// the same chain and are one observation wearing two hats.
+// So if data/lp-windows.json holds windows for this pool, they decide, and the
+// single fresh replay is demoted to what it actually is — the latest
+// observation. The rules (overlaps count once, ever-negative is out, fewer than
+// two windows decide nothing) live in worker-agent/lp-windows.js, the same
+// function the hourly cron and `lp-windows.mjs --report` use, so the width a
+// person reads in the report is the width this sizes the mint on.
 function recordedVerdict(pool, root) {
   try {
     const log = JSON.parse(fs.readFileSync(path.join(root, 'data', 'lp-windows.json'), 'utf8'));
     if (!log.windows?.length || log.pool?.toLowerCase() !== String(pool).toLowerCase()) return null;
-    const sorted = log.windows.slice().sort((a, b) => a.from_block - b.from_block);
-    const used = [];
-    for (const w of sorted) {
-      const last = used[used.length - 1];
-      if (!last || w.from_block > last.to_block) used.push(w);
-    }
-    if (used.length < 2) return { windows: used.length, thin: true };
-    const widths = [...new Set(used.flatMap((w) => w.rows.map((r) => r.width)))]
-      .filter((w) => w !== 'full');
-    const rows = widths.map((w) => {
-      const rs = used.map((x) => x.rows.find((r) => r.width === w)).filter(Boolean);
-      return {
-        width: w,
-        heldEvery: rs.every((r) => r.held),
-        everNegative: rs.some((r) => r.net < 0),
-        crossings: rs.reduce((s, r) => s + r.crossings, 0),
-        net: rs.reduce((s, r) => s + r.net, 0),
-        of: rs.length,
-      };
-    });
-    // A width that has ever gone negative is not a candidate. Not because the
-    // average is bad — it may still be positive — but because a position that
-    // has to be nursed is one somebody has to be awake for, and nothing here
-    // does that automatically yet.
-    const safe = rows.filter((r) => r.heldEvery && !r.everNegative && r.net > 0);
-    safe.sort((a, b) => b.net - a.net);
-    return { windows: used.length, thin: false, rows, pick: safe[0] || null };
+    const v = verdict(log);
+    return { windows: v.windows, thin: v.thin, rows: v.rows, pick: v.pick };
   } catch { return null; }
 }
 

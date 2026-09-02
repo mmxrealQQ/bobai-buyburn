@@ -37,6 +37,7 @@ import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
+import { recordLpWindow, readLpWindows, verdict as lpVerdict } from './lp-windows.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
@@ -822,6 +823,17 @@ export default {
       return json({ ok: true, recorded: point, points: hist.length });
     }
 
+    // The LP width record, as the cron has built it. Same shape as
+    // data/lp-windows.json so `lp-windows.mjs --sync` can merge it straight
+    // in, plus the verdict the decision module would draw from it — computed
+    // by the same function, so the two cannot disagree.
+    if (path === '/lp/windows') {
+      const log = await readLpWindows(env);
+      if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
+      return json({ ...log, verdict: lpVerdict(log), cadence: 'hourly',
+        note: 'Every entry is one replay of pancakeswap_range_plan over ~37 minutes of live chain, recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
+    }
+
     if (path === '/census') {
       const latest = await env.AGENT.get('census:latest');
       if (!latest) return json({ error: 'no census tick has run yet' }, 503);
@@ -1135,6 +1147,13 @@ export default {
       return json({ ok: true, ...r });
     }
 
+    // The hourly LP window on demand. Same reason as the four above.
+    if (path === '/run-lp-window' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      const r = await recordLpWindow(env);
+      return json(r, r.ok ? 200 : 500);
+    }
+
     // Accepts the endpoint list produced by the offline publish step. Written
     // once per full scan, not per run — this is the input the rotating
     // reachability check walks through.
@@ -1238,6 +1257,15 @@ export default {
     // outbound-call budget.
     if (t.getUTCHours() === 15 && firstTickOfHour) {
       ctx.waitUntil(runCanary(env).catch(() => {}));
+    }
+
+    // xx:3x every hour — one replay of the LP pool's last ~37 minutes into the
+    // width record (lp-windows.js). Pinned to the half-hour tick so it never
+    // shares an invocation with the census, the frontier probe or the canary,
+    // and hourly because a 37-minute window every 15 minutes would be the same
+    // chain counted four times. 24 KV writes a day.
+    if (t.getUTCMinutes() >= 30 && t.getUTCMinutes() < 45) {
+      ctx.waitUntil(recordLpWindow(env).catch(() => {}));
     }
   },
 };

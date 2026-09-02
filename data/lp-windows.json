@@ -68,6 +68,140 @@
           "net": 0.000229
         }
       ]
+    },
+    {
+      "at": "2026-09-02T06:15:32.003Z",
+      "from_block": 119480603,
+      "to_block": 119485602,
+      "minutes": null,
+      "swaps": 182,
+      "pool_fees_usd": 28.236461,
+      "rebalance_cost_usd": 0.481168,
+      "rows": [
+        {
+          "width": 0.25,
+          "held": false,
+          "in_range_pct": 68.7,
+          "crossings": 2,
+          "fees": 0.035046,
+          "net": -0.92729
+        },
+        {
+          "width": 0.5,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.024891,
+          "net": 0.024891
+        },
+        {
+          "width": 1,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.012497,
+          "net": 0.012497
+        },
+        {
+          "width": 2,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.006297,
+          "net": 0.006297
+        },
+        {
+          "width": 5,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.002574,
+          "net": 0.002574
+        },
+        {
+          "width": 10,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.001333,
+          "net": 0.001333
+        },
+        {
+          "width": "full",
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.000062,
+          "net": 0.000062
+        }
+      ]
+    },
+    {
+      "at": "2026-09-02T06:15:42.641Z",
+      "from_block": 119480627,
+      "to_block": 119485626,
+      "minutes": 37.5,
+      "swaps": 184,
+      "pool_fees_usd": 28.418668,
+      "rebalance_cost_usd": 0.481168,
+      "rows": [
+        {
+          "width": 0.25,
+          "held": false,
+          "in_range_pct": 68.9,
+          "crossings": 2,
+          "fees": 0.036399,
+          "net": -0.925938
+        },
+        {
+          "width": 0.5,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.025052,
+          "net": 0.025052
+        },
+        {
+          "width": 1,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.012578,
+          "net": 0.012578
+        },
+        {
+          "width": 2,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.006337,
+          "net": 0.006337
+        },
+        {
+          "width": 5,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.002591,
+          "net": 0.002591
+        },
+        {
+          "width": 10,
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.001342,
+          "net": 0.001342
+        },
+        {
+          "width": "full",
+          "held": true,
+          "in_range_pct": 100,
+          "crossings": 0,
+          "fees": 0.000062,
+          "net": 0.000062
+        }
+      ]
     }
   ]
 }

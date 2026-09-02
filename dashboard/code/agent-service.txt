@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 24 files, 6917 lines.
+# one fetch. 25 files, 7240 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2936,6 +2936,7 @@ import { handleA2A, handleJobResult, SERVICES } from './sell.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
+import { recordLpWindow, readLpWindows, verdict as lpVerdict } from './lp-windows.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
@@ -3721,6 +3722,17 @@ export default {
       return json({ ok: true, recorded: point, points: hist.length });
     }
 
+    // The LP width record, as the cron has built it. Same shape as
+    // data/lp-windows.json so `lp-windows.mjs --sync` can merge it straight
+    // in, plus the verdict the decision module would draw from it — computed
+    // by the same function, so the two cannot disagree.
+    if (path === '/lp/windows') {
+      const log = await readLpWindows(env);
+      if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
+      return json({ ...log, verdict: lpVerdict(log), cadence: 'hourly',
+        note: 'Every entry is one replay of pancakeswap_range_plan over ~37 minutes of live chain, recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
+    }
+
     if (path === '/census') {
       const latest = await env.AGENT.get('census:latest');
       if (!latest) return json({ error: 'no census tick has run yet' }, 503);
@@ -4034,6 +4046,13 @@ export default {
       return json({ ok: true, ...r });
     }
 
+    // The hourly LP window on demand. Same reason as the four above.
+    if (path === '/run-lp-window' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      const r = await recordLpWindow(env);
+      return json(r, r.ok ? 200 : 500);
+    }
+
     // Accepts the endpoint list produced by the offline publish step. Written
     // once per full scan, not per run — this is the input the rotating
     // reachability check walks through.
@@ -4137,6 +4156,15 @@ export default {
     // outbound-call budget.
     if (t.getUTCHours() === 15 && firstTickOfHour) {
       ctx.waitUntil(runCanary(env).catch(() => {}));
+    }
+
+    // xx:3x every hour — one replay of the LP pool's last ~37 minutes into the
+    // width record (lp-windows.js). Pinned to the half-hour tick so it never
+    // shares an invocation with the census, the frontier probe or the canary,
+    // and hourly because a 37-minute window every 15 minutes would be the same
+    // chain counted four times. 24 KV writes a day.
+    if (t.getUTCMinutes() >= 30 && t.getUTCMinutes() < 45) {
+      ctx.waitUntil(recordLpWindow(env).catch(() => {}));
     }
   },
 };
@@ -4366,6 +4394,191 @@ export async function lpTierPlan(input = {}) {
     },
     limits: m.caveats,
   };
+}
+
+==============================================================================
+=== FILE: worker-agent/lp-windows.js
+==============================================================================
+
+// THE RECORD THAT DECIDES THE LP POSITION'S WIDTH, kept around the clock.
+//
+// scripts/lp-windows.mjs records one window each time somebody runs it, and
+// scripts/lib/lp-decision.mjs lets that record overrule the single fresh replay
+// once it holds two non-overlapping windows. That is the right rule — measured
+// on the same pool two hours apart, +/-0.25% went from best in the list to six
+// crossings and minus $2.74 on fifty dollars — but a record that only grows
+// while a person is at a keyboard is a record of that person's working hours.
+// The price moves at 4 a.m. too.
+//
+// So the agent worker records a window every hour on its own cron. It reads
+// the same measurement the script reads, over our own MCP endpoint rather
+// than by copying the arithmetic (a second copy of a replay is how two answers
+// drift apart), and it appends to a log in KV that has exactly the shape of
+// data/lp-windows.json. `lp-windows.mjs --sync` pulls that log into the local
+// file, and the decision keeps reading ONE file.
+//
+// It reads. It holds no key, signs nothing and moves nothing. Phase B — the
+// collect-and-burn leg with a key on the worker — is deliberately not here:
+// there is no position yet to test it against.
+//
+// The aggregation lives in this file and nowhere else. The script's --report
+// and the decision module both import verdict() from here, so the number a
+// person reads and the number the mint is sized on come from one function.
+
+const MEASURE = 'https://brainonbnb.com/mcp';
+export const KV_KEY = 'lp:windows';
+// Hourly windows of ~37 minutes never overlap, so the count is honest by
+// construction; the cap only keeps the KV value from growing without bound.
+// 400 hourly windows is over two weeks, which is more than the decision needs.
+export const MAX_WINDOWS = 400;
+export const POSITION_USD = 50;
+
+// One replay -> one log entry. Same field names, same "held" rule as the
+// script: in range for the WHOLE window and never across the edge. A range is
+// centred on today's price and replayed backwards, so it can just as easily be
+// arrived in as left, and "never seen leaving" would call that a hold.
+export function windowFromPlan(plan, usd, at = new Date().toISOString()) {
+  const w = plan.measured_window;
+  return {
+    at,
+    from_block: w.from_block,
+    to_block: w.to_block,
+    minutes: w.minutes,
+    swaps: w.swaps,
+    pool_fees_usd: w.fees_the_pool_paid_usd,
+    rebalance_cost_usd: plan.rebalance_cost_usd_assumed,
+    rows: plan.ranges.map((r) => ({
+      width: r.full_range ? 'full' : r.width_pct,
+      held: r.share_of_window_in_range_pct === 100 && r.times_it_crossed_the_edge === 0,
+      in_range_pct: r.share_of_window_in_range_pct,
+      crossings: r.times_it_crossed_the_edge,
+      fees: r.fees_usd_in_window,
+      net: r.net_after_rebalancing_usd_in_window,
+    })),
+  };
+}
+
+// Appends, unless this exact chain slice is already in the log. Two runs that
+// read the same blocks are one observation, and the report already refuses to
+// count overlaps twice — but an identical entry is not even a second reading,
+// it is the same reading written down again.
+export function appendWindow(log, entry) {
+  const dup = log.windows.some((x) => x.from_block === entry.from_block && x.to_block === entry.to_block);
+  if (dup) return { log, added: false };
+  const windows = log.windows.concat(entry);
+  if (windows.length > MAX_WINDOWS) windows.splice(0, windows.length - MAX_WINDOWS);
+  return { log: { ...log, windows }, added: true };
+}
+
+// Merges two logs of the SAME pool by chain slice. Used by --sync: the local
+// file may hold windows the worker never saw (recorded by hand before the cron
+// existed) and the worker holds windows nobody was awake for. Refuses across
+// pools — averaging two pools into one history would average away the thing
+// being measured.
+export function mergeLogs(a, b) {
+  if (a.pool && b.pool && a.pool.toLowerCase() !== b.pool.toLowerCase()) {
+    throw new Error(`records are about different pools: ${a.pool} and ${b.pool}`);
+  }
+  const seen = new Set();
+  const windows = [];
+  for (const w of a.windows.concat(b.windows)) {
+    const k = `${w.from_block}-${w.to_block}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    windows.push(w);
+  }
+  windows.sort((x, y) => x.from_block - y.from_block);
+  return { pool: a.pool || b.pool, usd: a.usd || b.usd, windows };
+}
+
+// WHAT THE RECORD SAYS. This is the decision's input, so its rules are
+// spelled out here and pinned by scripts/lp-windows.mjs --self-test:
+//   - overlapping windows count once (the earliest survives),
+//   - fewer than two non-overlapping windows is "thin" and decides nothing,
+//   - a width that ever went negative is not a candidate, whatever its average,
+//   - a width that ever failed to hold is not a candidate,
+//   - among the rest, the one with the most net collected wins,
+//   - full range is reported but never picked; it is the floor, not a choice.
+export function verdict(log) {
+  const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block);
+  const used = [];
+  for (const w of sorted) {
+    const last = used[used.length - 1];
+    if (!last || w.from_block > last.to_block) used.push(w);
+  }
+  const skipped = sorted.length - used.length;
+  const widths = [...new Set(used.flatMap((w) => w.rows.map((r) => r.width)))]
+    .sort((a, b) => (a === 'full' ? 1e9 : a) - (b === 'full' ? 1e9 : b));
+  const rows = widths.map((w) => {
+    const rs = used.map((x) => x.rows.find((r) => r.width === w)).filter(Boolean);
+    return {
+      width: w,
+      of: rs.length,
+      held: rs.filter((r) => r.held).length,
+      heldEvery: rs.length > 0 && rs.every((r) => r.held),
+      everNegative: rs.some((r) => r.net < 0),
+      crossings: rs.reduce((s, r) => s + r.crossings, 0),
+      fees: rs.reduce((s, r) => s + r.fees, 0),
+      net: rs.reduce((s, r) => s + r.net, 0),
+    };
+  });
+  const thin = used.length < 2;
+  const safe = rows.filter((r) => r.width !== 'full' && r.heldEvery && !r.everNegative && r.net > 0);
+  safe.sort((a, b) => b.net - a.net);
+  const first = used[0], last = used[used.length - 1];
+  return {
+    windows: used.length,
+    overlapping_runs_not_counted: skipped,
+    thin,
+    from: first?.at || null,
+    to: last?.at || null,
+    from_block: first?.from_block ?? null,
+    to_block: last?.to_block ?? null,
+    rows,
+    pick: thin ? null : (safe[0] || null),
+  };
+}
+
+async function measure(address, usd) {
+  const r = await fetch(MEASURE, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0', id: 1, method: 'tools/call',
+      params: { name: 'pancakeswap_range_plan', arguments: { address, capitalUsd: usd } },
+    }),
+    signal: AbortSignal.timeout(45000),
+  });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || 'the range could not be replayed');
+  const text = j.result?.content?.[0]?.text;
+  if (!text) throw new Error('the replay returned nothing readable');
+  const plan = JSON.parse(text);
+  if (plan.error) throw new Error(plan.error);
+  if (!plan.measured_window || !Array.isArray(plan.ranges)) throw new Error('the replay came back without a window');
+  return plan;
+}
+
+export async function readLpWindows(env) {
+  const raw = await env.AGENT.get(KV_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
+// The hourly tick. One measurement, one KV read, one KV write.
+export async function recordLpWindow(env) {
+  const pool = String(env.LP_WATCH_POOL || '').toLowerCase();
+  if (!/^0x[0-9a-f]{40}$/.test(pool)) return { ok: false, error: 'LP_WATCH_POOL is not set' };
+  const plan = await measure(pool, POSITION_USD);
+  const prev = (await readLpWindows(env)) || { pool, usd: POSITION_USD, windows: [] };
+  if (prev.pool && prev.pool.toLowerCase() !== plan.pool.toLowerCase()) {
+    // The var changed pools. Start over rather than mix — the old record is
+    // in the local file of whoever synced it, and a mixed one is worth nothing.
+    prev.pool = plan.pool; prev.windows = [];
+  }
+  const entry = windowFromPlan(plan, POSITION_USD);
+  const { log, added } = appendWindow({ ...prev, pool: plan.pool, usd: POSITION_USD }, entry);
+  if (added) await env.AGENT.put(KV_KEY, JSON.stringify(log));
+  return { ok: true, added, windows: log.windows.length, from_block: entry.from_block, to_block: entry.to_block };
 }
 
 ==============================================================================
@@ -5676,11 +5889,104 @@ const REFERENCE_POOL = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 // money and sees none — which is the whole point being demonstrated.
 const CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';
 
+// WHY A FAILED PROBE HAS TO SAY WHICH KIND OF FAILURE IT WAS
+//
+// Each of the five probes below used to answer every failure with the same
+// sentence — ready:false, "not answering right now" — although three quite
+// different things hide behind it:
+//
+//   1. the agent's own code broke        — ours, and the only urgent one
+//   2. every BSC endpoint refused a read — upstream, and usually over in
+//                                          seconds; the agent is fine
+//   3. neither; the snapshot is just old — nothing is wrong at all
+//
+// Measured 2026-09-01: the surface check went red with
+// "302258: every BSC endpoint refused this request". That reads as a dead grid
+// planner and was a throttled node — the agent had not been asked a question it
+// failed to answer, it had not been able to ask the chain one. Telling the
+// three apart cost an evening, and would have cost it again on the next tick,
+// because the sentence carried nothing to tell them apart WITH.
+//
+// So the cause is classified here, where the error still exists, and published
+// as a field. The page and the checks read the field instead of guessing from
+// prose. Same rule the fee-tier headline already follows further down: an
+// unmeasured tick and an empty result must never print the same words.
+
+// Phrases that mean the chain would not answer, not that we asked it wrongly.
+// Deliberately narrow. A revert IS an answer and never matches here, and an
+// agent bug — a TypeError, a bad field — matches nothing in this list, so it
+// keeps its own classification and stays red where it belongs.
+const CHAIN_REFUSED = /every BSC endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
+
+const isChainRefusal = (e) => {
+  const m = String(e?.message || e);
+  if (/revert|execution/i.test(m)) return false;
+  return CHAIN_REFUSED.test(m);
+};
+
+/**
+ * The failure half of a probe, with the cause named.
+ *
+ * `not_ready_because` is 'chain_unreachable' or 'agent_error'. Anything that is
+ * not demonstrably the chain is called ours: a classifier in doubt has to
+ * accuse itself, or every unknown fault quietly becomes somebody else's.
+ */
+function notReady(e, at, attempt = {}, extra = {}) {
+  const last_error = String(e?.message || e).slice(0, 140);
+  const upstream = isChainRefusal(e);
+  return {
+    ready: false,
+    not_ready_because: upstream ? 'chain_unreachable' : 'agent_error',
+    chain_needed_a_second_attempt: attempt.retried === true,
+    checked_at: at,
+    live: null,
+    headline: upstream
+      ? 'the chain refused every endpoint this tick — not measured, which is not the same as not working'
+      : 'not answering right now',
+    last_error,
+    ...extra,
+  };
+}
+
+/**
+ * Run a probe, and give it a second chance if — and only if — the chain was
+ * what refused.
+ *
+ * A probe that threw a TypeError will throw the same TypeError a second later,
+ * so retrying that only delays an honest red. A throttled endpoint is often
+ * free again within a second or two, and the five probes run together against
+ * one pool of nodes, so some of this contention is our own
+ * (the census learned the same lesson and serialised its per-host probes).
+ * Serialising all five here would fix that outright, and it is still the right
+ * answer if this ever stops being enough. It is not free: five refreshes timed
+ * 2026-09-01 ran 15s, 16s, 19s, 20s and 74s, and one exceeded three minutes, so
+ * the parallel version is already slow enough to matter on the cold-key path,
+ * where a waiting request pays for it. One retry, only on the upstream class,
+ * costs nothing on a healthy tick and is paid only after something has already
+ * gone wrong.
+ */
+async function withSecondChance(run, attempt = {}) {
+  try {
+    return await run();
+  } catch (e) {
+    if (!isChainRefusal(e)) throw e;
+    // Recorded, not swallowed. A retry that leaves no trace turns a degrading
+    // chain into a page that looks perfectly healthy right up to the tick where
+    // it stops working — the same mistake as printing "none traded"
+    // for a pair that trades every block. A tick that only came back on the
+    // second ask is a different fact from a tick that came back.
+    attempt.retried = true;
+    await new Promise((r) => setTimeout(r, 1500));
+    return await run();
+  }
+}
+
 async function probeHealthFactor(lastJob) {
   const at = new Date().toISOString();
   const started = Date.now();
+  const attempt = {};
   try {
-    const hf = await healthFactor(SELF_ACCOUNT);
+    const hf = await withSecondChance(() => healthFactor(SELF_ACCOUNT), attempt);
     return {
       ready: true,
       checked_at: at,
@@ -5707,17 +6013,20 @@ async function probeHealthFactor(lastJob) {
         ? { job_id: lastJob.job_id, agreed_with_protocol: lastJob.agrees, at: lastJob.at }
         : null,
       note: 'This agent holds no position of its own; it is hired per job. The probe runs the full pipeline against our own wallet, which has entered no Venus market — so it shows the machinery answering, not a health factor. The arithmetic itself is checked against Venus\'s own getAccountLiquidity on every real job.',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, proven_by: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt, { proven_by: null });
   }
 }
 
 async function probeGrid() {
   const at = new Date().toISOString();
+  const attempt = {};
   try {
-    const plan = await gridPlan({ token: REFERENCE_POOL, levels: 10, bandPct: 15, capitalUsd: 1000 });
+    const plan = await withSecondChance(() => gridPlan({ token: REFERENCE_POOL, levels: 10, bandPct: 15, capitalUsd: 1000 }), attempt);
     return {
       ready: true,
       checked_at: at,
@@ -5733,10 +6042,12 @@ async function probeGrid() {
         : 'pool measured, spacing not derivable',
       measures: 'grid levels for any BNB Chain pool with the round-trip cost of a cycle measured from the pool itself',
       note: 'Measured on the deepest pair on the chain, so this is the floor: no grid on BNB Chain costs less per cycle than this. A thinner pool costs more.',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt);
   }
 }
 
@@ -5746,8 +6057,9 @@ async function probeGrid() {
 // compute it from a stale block constant is not.
 async function probeYield() {
   const at = new Date().toISOString();
+  const attempt = {};
   try {
-    const plan = await yieldPlan({});
+    const plan = await withSecondChance(() => yieldPlan({}), attempt);
     const best = plan.best_available || null;
     return {
       ready: true,
@@ -5766,10 +6078,12 @@ async function probeYield() {
         : 'markets read, block time not measurable',
       measures: 'every Venus core-pool market ranked by what it actually pays, and the days until a move pays for its own gas',
       note: 'The APY depends entirely on the block time, which is measured here from two blocks a hundred thousand apart rather than assumed. Cross-checked against Venus’s own published figures.',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt);
   }
 }
 
@@ -5778,13 +6092,14 @@ async function probeYield() {
 // corrections has not been tested on anything that matters.
 async function probeRebalance() {
   const at = new Date().toISOString();
+  const attempt = {};
   try {
-    const plan = await rebalancePlan({
+    const plan = await withSecondChance(() => rebalancePlan({
       holdings: [
         { token: REFERENCE_POOL, usd: 600 },
         { token: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', usd: 400 },
       ],
-    });
+    }), attempt);
     const e = plan.economics || {};
     const top = (plan.where_the_cost_sits || [])[0] || null;
     return {
@@ -5802,10 +6117,12 @@ async function probeRebalance() {
         : 'pools measured, cost not derivable',
       measures: 'the swaps to reach target weights, priced against the pools that would execute them',
       note: 'It does not claim whether rebalancing is worth doing. A correction does not earn the dollars it moves, and what it is worth is a judgement about risk rather than a quantity in any pool.',
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt);
   }
 }
 
@@ -5817,8 +6134,9 @@ async function probeRebalance() {
 // the run where it is, this says so.
 async function probeLpTiers() {
   const at = new Date().toISOString();
+  const attempt = {};
   try {
-    const plan = await lpTierPlan({ token: CAKE, capitalUsd: 1000 });
+    const plan = await withSecondChance(() => lpTierPlan({ token: CAKE, capitalUsd: 1000 }), attempt);
     const aligned = plan.capital_is_in_the_best_paying_tier;
     const idle = (plan.idle_capital || []).reduce((s, x) => s + (x.capital_usd || 0), 0);
     return {
@@ -5850,10 +6168,12 @@ async function probeLpTiers() {
       // Said here rather than only in the deliverable, because a number on a
       // status page is the one most likely to be quoted without its window.
       note: `Measured over ${plan.measured_window?.minutes ?? '~38'} minutes of chain and deliberately not annualised. Capital is both sides of the pool, and in V3 includes liquidity parked outside the current range, which earns nothing.`,
+      not_ready_because: null,
+      chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
     };
   } catch (e) {
-    return { ready: false, checked_at: at, live: null, headline: 'not answering right now', last_error: String(e?.message || e).slice(0, 140) };
+    return notReady(e, at, attempt);
   }
 }
 
@@ -6393,6 +6713,14 @@ id = "<your-kv-namespace-id>"
 # grant or revoke against it is not on this worker and must never be.
 [vars]
 ALTANA_AGENT_WALLET = "0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3"
+# The pool whose width record the hourly cron builds (lp-windows.js). This is
+# NOT the choice of where the money goes — that is made by lp-decision.mjs from
+# the two measurement tools, with no constant allowed. It is the pool that
+# decision picked on 2026-09-01 (CAKE/BNB, V3 0.05%), written here so the
+# record it needs can grow while nobody is at a keyboard. If the decision ever
+# picks a different pool, the record stops applying (it is keyed by pool) and
+# this var is what gets changed.
+LP_WATCH_POOL = "0xafb2da14056725e3ba3a30dd846b6bbbd7886c56"
 
 ==============================================================================
 === FILE: worker-agent/x402-catalog.js

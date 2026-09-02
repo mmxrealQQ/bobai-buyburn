@@ -696,6 +696,21 @@ section('Transparency');
   ok('lists free and paid capabilities', (j?.capabilities?.free || []).length >= 4 && (j?.capabilities?.paid || []).length >= 1);
 }
 {
+  // The LP width record the cron builds hourly (worker-agent/lp-windows.js).
+  // A 503 "not recorded yet" is a valid answer for a fresh deploy; a page or a
+  // 404 is not. Once it holds windows, the verdict must be the same function's
+  // output: overlaps counted once means the counted number can never exceed
+  // the raw one.
+  const { body, isHtml } = await getText(`${AGENT}/lp/windows`);
+  ok('/lp/windows is routed', !isHtml && /"cadence":\s*"hourly"/.test(body), body.slice(0, 120));
+  const j = (() => { try { return JSON.parse(body); } catch { return null; } })();
+  if (j && !j.error) {
+    ok('the record names its pool and carries windows', /^0x[0-9a-f]{40}$/i.test(j.pool || '') && Array.isArray(j.windows));
+    ok('the verdict never counts more windows than were recorded', j.verdict && j.verdict.windows <= j.windows.length);
+    ok('a thin record picks nothing', !(j.verdict?.thin && j.verdict?.pick));
+  }
+}
+{
   const { body } = await getText(`${SITE}/`);
   ok('page carries the Agents block', /Block 05 &middot; Agents/.test(body));
   ok('nav links to it', /href="#agents"/.test(body));

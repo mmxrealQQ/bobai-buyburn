@@ -889,7 +889,7 @@ ${manifest.filter(m => m.group === g.key).map(m => `      <details class="lib-i"
 // The library section lives on /classic since 2026-09-02: the homepage was
 // cut down to the token, the tools, the burns and the community, and links
 // here for the code. The markers moved with the page.
-const INDEX = join(ROOT, 'dashboard', 'classic.html');
+const INDEX = join(ROOT, 'dashboard', 'library.html');
 const page = readFileSync(INDEX, 'utf8');
 const B = '<!-- LIBRARY:BEGIN -->', E = '<!-- LIBRARY:END -->';
 const i = page.indexOf(B), k = page.indexOf(E);
@@ -897,4 +897,4 @@ if (i < 0 || k < 0) throw new Error('classic.html is missing the LIBRARY markers
 writeFileSync(INDEX, page.slice(0, i + B.length) + '\n' + BLOCK + '\n' + page.slice(k));
 
 console.log(`\nwrote ${manifest.length} bundles to dashboard/code/`);
-console.log('spliced the section into dashboard/classic.html');
+console.log('spliced the section into dashboard/library.html');

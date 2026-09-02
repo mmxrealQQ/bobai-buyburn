@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- One of the pages the homepage was cut down to on 2026-09-02. The block
+       markup is the same the classic page carries (styles.css owns it);
+       home.css removes the block labels and the gradient text. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>$BOBAI — the token, its tax and its liquidity</title>
+  <meta name="description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
+  <link rel="canonical" href="https://brainonbnb.com/token">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="$BOBAI — the token, its tax and its liquidity">
+  <meta property="og:description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/token">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="$BOBAI — the token, its tax and its liquidity">
+  <meta name="twitter:description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <link rel="preload" href="styles.css?v=34" as="style">
+  <link rel="stylesheet" href="styles.css?v=34">
+  <link rel="stylesheet" href="home.css?v=1">
+</head>
+<body class="np">
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the homepage"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/token">The Token</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+  </div></nav>
+  <main>
+  <div class="intro"><h1>The <em>token</em></h1><p>How the 3% tax becomes burned supply, which phase is running, and how deep the pool is right now.</p></div>
+  <section class="liq-boost fi" id="liq-boost-bobai">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost II</em></div>
+      <div class="lb-sub">0.8% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)">running until Sep 16</span></div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb2-count">0</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb2-bnb">0.0000</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb2-lp">0</div></div>
+      </div>
+      <!-- The three figures above are the campaign; the per-add list is the
+           receipt. Folded (2026-09-02) so the first screen after the hero is
+           one card, not a table. -->
+      <details class="lb-archive lb-inner">
+        <summary>
+          <div class="lb-arch-head"><div class="lb-arch-title">Every add, with its transaction</div></div>
+          <div class="lb-arch-arr">&#x25BE;</div>
+        </summary>
+        <div class="lb-table" style="margin-top:6px">
+          <div class="txw">
+            <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+            <tbody id="bb2-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+  <section class="sec" id="about">
+    <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
+    <div class="about-hero fi">
+      <div class="about-logo"><img src="logo.webp" width="256" height="256" alt="BOBAI" loading="lazy" decoding="async"></div>
+      <div class="about-text">
+        <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
+        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens, no human hand on the switch, nothing hidden.</p>
+        <div class="about-tags">
+          <span>AI-Built</span>
+          <span>Deflationary</span>
+          <span>24/7 Autonomous</span>
+          <span>Verified Contract</span>
+          <span>Owner Renounced</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sh fi"><h2>How <em>It Works</em></h2><p>Every trade burns supply. Automatically.</p></div>
+    <div class="fl">
+      <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap. 3% tax applies.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax accumulates in buyback wallet.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits <span id="step-split">~1/1/1</span>.</p><span class="fa">&#x2192;</span></div>
+      <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
+    </div>
+    <div class="tax fi">
+      <h3>3% Tax Split</h3>
+      <div class="tax-flow">
+        <div class="tf"><div class="p" id="tax-pct-creator" style="color:var(--blue)">~1%</div><div class="d">Creator<br><span class="ts-inline" id="ts-inline-creator"></span></div></div>
+        <div class="ta">&#x2192;</div>
+        <div class="tf"><div class="p" id="tax-pct-bob" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span><br><span class="ts-inline" id="ts-inline-bob"></span></div></div>
+        <div class="ta">&#x2192;</div>
+        <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI</div></div>
+      </div>
+      <div class="tax-schedule">
+        <div class="ts-head">
+          <span>Tax Allocation Schedule</span>
+          <span class="ts-right">3% rate hardcoded &middot; distribution transparent &amp; published</span>
+        </div>
+        <div class="ts-rows">
+          <div class="ts-row" data-phase="liq-boost">
+            <div class="ts-when">until Jun 4, 2026</div>
+            <div class="ts-name">$BOB Liq Boost + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 0.5% Creator &middot; <b>0.5% &rarr; BOB liq add + LP burn</b> &middot; <b>0.5% &rarr; BOBAI liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-pre">
+            <div class="ts-when">Jun 5 &ndash; Jun 10, 2026</div>
+            <div class="ts-name">Standard + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 1% Creator &middot; <b>0.5% &rarr; BOBAI liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="wc26">
+            <div class="ts-when">Jun 11, 00:01 UTC &rarr; Jul 19, 23:59 UTC, 2026</div>
+            <div class="ts-name">WC26 Prize Pool + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.24% BOB burn &middot; 0.49% Creator &middot; <b>0.75% &rarr; BOBAI liq add + LP burn</b> &middot; <b>0.52% &rarr; <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">WC26 Prize Pool</a></b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-bb">
+            <div class="ts-when">Jul 20 &ndash; Aug 1, 2026</div>
+            <div class="ts-name">Standard + $BOBAI Liq Boost</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.5% BOB burn &middot; 0.75% Creator &middot; <b>0.75% &rarr; BOBAI liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="standard-post">
+            <div class="ts-when">Aug 2 &ndash; Aug 7, 2026</div>
+            <div class="ts-name">Standard</div>
+            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-2">
+            <div class="ts-when">Aug 8 &ndash; Sep 16, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost II</div>
+            <div class="ts-split">1% BOBAI burn &middot; 0.2% BOB burn &middot; 1% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b></div>
+          </div>
+          <div class="ts-row" data-phase="sunshine">
+            <div class="ts-when">Sep 17 &ndash; Nov 20, 2026</div>
+            <div class="ts-name">☀️ Something good ahead</div>
+            <div class="ts-split">stay tuned 😉</div>
+          </div>
+          <div class="ts-row" data-phase="standard-final">
+            <div class="ts-when">from Nov 20, 2026</div>
+            <div class="ts-name">Standard</div>
+            <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="sec b-blue" id="tokenomics">
+    <div class="blk-head fi"><span class="blk-tag">Block 02 &middot; Tokenomics</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2><em>Token</em>omics</h2></div>
+    <div class="tg4">
+      <div class="tc fi"><div class="b">1B</div><h4>Total Supply</h4><p>Fixed. No mint function.</p></div>
+      <div class="tc fi"><div class="b">0%</div><h4>Dev Tokens</h4><p>All burned. Fully community.</p></div>
+      <div class="tc fi"><div class="b">24/7</div><h4>Buyback Bot</h4><p>Cloudflare Workers. Autonomous.</p></div>
+      <div class="tc fi"><div class="b" id="supply-burned-pct">--</div><h4>Supply Burned</h4><p>$BOBAI sent to dead address.</p></div>
+    </div>
+
+    <div class="lqd fi">
+      <div class="lqd-h">
+        <h3>How deep is the liquidity? <span class="live-badge"><span class="live-dot"></span>Live</span></h3>
+        <p>Read straight from the <a class="lqa" href="https://bscscan.com/token/0x6eaDD4CB786898B34929444988380ed0CC6fD9A6" target="_blank" rel="noopener">BOBAI/BNB pool contract <span class="lqa-ad">0x6eaD&hellip;D9A6</span></a> on every refresh &mdash; not a snapshot, not a claim.</p>
+      </div>
+      <div class="lqd-g">
+        <div class="lqm">
+          <div class="lqv ld" id="lq-lp">--</div>
+          <div class="lql">LP Burned</div>
+          <div class="lqs">Every add goes to the dead address. Nobody can pull it &mdash; not the team, not anyone.
+            <a class="lqa" href="https://bscscan.com/token/0x6eaDD4CB786898B34929444988380ed0CC6fD9A6?a=0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">See the LP burns &#x2197;</a></div>
+        </div>
+        <div class="lqm">
+          <div class="lqv ld" id="lq-ratio">--</div>
+          <div class="lql">Liquidity vs Market Cap</div>
+          <div class="lqs"><span class="lqn ld" id="lq-tvl">--</span> in the pool, both sides. Half of that is $BOBAI valued at its own price, so read the next figure too.</div>
+        </div>
+        <div class="lqm">
+          <div class="lqv ld" id="lq-hard">--</div>
+          <div class="lql">Hard BNB Backing</div>
+          <div class="lqs">The BNB side alone <span class="lqn ld" id="lq-bnb">--</span> &middot; <span class="lqn ld" id="lq-bnb-usd">--</span> &mdash; this half keeps its value if the price falls.</div>
+        </div>
+      </div>
+      <details class="lb-archive lb-inner">
+        <summary>
+          <div class="lb-arch-head"><div class="lb-arch-title">Where the locked liquidity comes from</div><div class="lb-arch-meta">three origins, read off the chain, adding up to the decimal</div></div>
+          <div class="lb-arch-arr">&#x25BE;</div>
+        </summary>
+      <div class="lqi" style="margin-top:0">
+        <div class="lqi-h">Where the locked liquidity comes from
+          <span>Every LP transfer into the dead address was read off the chain. There are exactly three origins and they add up to the locked total to the decimal &mdash; no fourth party has ever put liquidity in here.</span></div>
+        <div class="lqsrc">
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-auto">Automatic</span> Buyback bot
+              <a class="lqsr-a" href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC…01ce</a></div>
+            <div class="lqsr-v"><span class="ld" id="lq-bot">--</span><span class="lqsr-p" id="lq-bot-pct"></span></div>
+            <div class="lqsr-s ld" id="lq-bot-sub">--</div>
+          </div>
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-man">Manual</span> Dev runs
+              <a class="lqsr-a" href="https://bscscan.com/address/0x15Ba17075ef5E0736292b030e3715d9100fe3d38" target="_blank" rel="noopener">0x15Ba…3d38</a></div>
+            <div class="lqsr-v"><span class="ld" id="lq-man">--</span><span class="lqsr-p" id="lq-man-pct"></span></div>
+            <div class="lqsr-s ld" id="lq-man-sub">--</div>
+          </div>
+          <div class="lqsr">
+            <div class="lqsr-t"><span class="lqsr-k lqsr-launch">Launch</span> Initial pool</div>
+            <div class="lqsr-v"><span class="ld" id="lq-init">--</span><span class="lqsr-p" id="lq-init-pct"></span></div>
+            <div class="lqsr-s">Minted straight into the dead address at block 88,990,359, when the pool was created. One event, never repeated.</div>
+          </div>
+        </div>
+        <div class="lqunb ld" id="lq-unb">--</div>
+      </div>
+      </details>
+
+      <div class="lqi">
+        <div class="lqi-h">What a trade does to the price &mdash; and what it costs
+          <span>Two different things, often confused. <b>Impact</b> is how far this trade alone moves the price. <b>Cost</b> is what the trader gives up against the spot price, including the 3% tax and the 0.25% LP fee &mdash; about 3.2% of that applies at any size.</span></div>
+        <div class="lqsim" role="group" aria-label="Simulated pool depth">
+          <span class="lqsim-l">If the pool were</span>
+          <button class="lqsim-b on" type="button" data-mul="1" aria-pressed="true">as it is</button>
+          <button class="lqsim-b" type="button" data-mul="2" aria-pressed="false">2&times; deeper</button>
+          <button class="lqsim-b" type="button" data-mul="5" aria-pressed="false">5&times; deeper</button>
+          <button class="lqsim-b" type="button" data-mul="10" aria-pressed="false">10&times; deeper</button>
+          <span class="lqsim-n" id="lq-simn"></span>
+        </div>
+        <div class="lqone">
+          <div class="lqo">
+            <div class="lqo-v lqo-up ld" id="lq-up1">--</div>
+            <div class="lqo-l">Moves the price +1%</div>
+            <div class="lqo-s" id="lq-up1s">a buy this size, right now</div>
+          </div>
+          <div class="lqo">
+            <div class="lqo-v lqo-dn ld" id="lq-dn1">--</div>
+            <div class="lqo-l">Moves the price &minus;1%</div>
+            <div class="lqo-s" id="lq-dn1s">a sell this size, right now &mdash; above the buy figure, mostly because 3% of the tokens never reach the pool</div>
+          </div>
+        </div>
+        <div class="lqbl">And what the sizes people actually trade do &mdash; bars show impact, drawn to one scale so both sides compare.</div>
+        <div class="lqbs">
+          <div class="lqbc">
+            <div class="lqbc-h lqbc-buy">Buying &mdash; price up</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-bw1"></i></span><span class="lqb-p ld" id="lq-bm1">--</span><span class="lqb-c" id="lq-bc1"></span></div>
+            <div class="lqb"><span class="lqb-l">$150</span><span class="lqb-t"><i id="lq-bw2"></i></span><span class="lqb-p ld" id="lq-bm2">--</span><span class="lqb-c" id="lq-bc2"></span></div>
+            <div class="lqb"><span class="lqb-l">$250</span><span class="lqb-t"><i id="lq-bw3"></i></span><span class="lqb-p ld" id="lq-bm3">--</span><span class="lqb-c" id="lq-bc3"></span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-bw4"></i></span><span class="lqb-p ld" id="lq-bm4">--</span><span class="lqb-c" id="lq-bc4"></span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-bw5"></i></span><span class="lqb-p ld" id="lq-bm5">--</span><span class="lqb-c" id="lq-bc5"></span></div>
+            <div class="lqb"><span class="lqb-l">$2,500</span><span class="lqb-t"><i id="lq-bw6"></i></span><span class="lqb-p ld" id="lq-bm6">--</span><span class="lqb-c" id="lq-bc6"></span></div>
+          </div>
+          <div class="lqbc">
+            <div class="lqbc-h lqbc-sell">Selling &mdash; price down</div>
+            <div class="lqb"><span class="lqb-l">$100</span><span class="lqb-t"><i id="lq-sw1" class="sell"></i></span><span class="lqb-p ld" id="lq-sm1">--</span><span class="lqb-c" id="lq-sc1"></span></div>
+            <div class="lqb"><span class="lqb-l">$150</span><span class="lqb-t"><i id="lq-sw2" class="sell"></i></span><span class="lqb-p ld" id="lq-sm2">--</span><span class="lqb-c" id="lq-sc2"></span></div>
+            <div class="lqb"><span class="lqb-l">$250</span><span class="lqb-t"><i id="lq-sw3" class="sell"></i></span><span class="lqb-p ld" id="lq-sm3">--</span><span class="lqb-c" id="lq-sc3"></span></div>
+            <div class="lqb"><span class="lqb-l">$500</span><span class="lqb-t"><i id="lq-sw4" class="sell"></i></span><span class="lqb-p ld" id="lq-sm4">--</span><span class="lqb-c" id="lq-sc4"></span></div>
+            <div class="lqb"><span class="lqb-l">$1,000</span><span class="lqb-t"><i id="lq-sw5" class="sell"></i></span><span class="lqb-p ld" id="lq-sm5">--</span><span class="lqb-c" id="lq-sc5"></span></div>
+            <div class="lqb"><span class="lqb-l">$2,500</span><span class="lqb-t"><i id="lq-sw6" class="sell"></i></span><span class="lqb-p ld" id="lq-sm6">--</span><span class="lqb-c" id="lq-sc6"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  </main>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
+  </div></footer>
+</div>
+<script src="app.js?v=31" defer></script>
+</body>
+</html>

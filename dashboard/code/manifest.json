@@ -652,9 +652,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 3866,
-   "zipBytes": 80779,
-   "txtBytes": 225474,
-   "sha256": "0de74f67c31d4cad",
+   "zipBytes": 80774,
+   "txtBytes": 225466,
+   "sha256": "4cc716051a27f21e",
    "reqs": [
     {
      "what": "Node 18+ and time",

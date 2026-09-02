@@ -73,6 +73,16 @@
       border-radius:999px;padding:15px 34px;font-weight:700;font-size:.8rem;cursor:pointer;
       font-family:inherit;white-space:nowrap;letter-spacing:.3px}
     .sc-form>button:disabled{opacity:.5;cursor:default}
+    /* The zero-knowledge way in: one tap on a known token, or on something
+       this visitor scanned before. Nobody arrives with an address in hand. */
+    .sc-try{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;
+      margin:12px auto 0;max-width:640px;font-size:.78rem}
+    .sc-try .sc-try-l{color:var(--muted)}
+    .sc-try button{background:transparent;color:var(--text);border:1px solid var(--border);
+      border-radius:999px;padding:6px 12px;font:inherit;font-size:.78rem;cursor:pointer;
+      transition:border-color .2s,background .2s}
+    .sc-try button:hover,.sc-try button:focus-visible{border-color:var(--gold);background:rgba(240,185,11,.08);outline:none}
+    .sc-try button.sc-try-recent{color:var(--muted)}
     .sc-hint{font-size:.69rem;color:var(--muted);opacity:.8;margin-top:11px}
     .sc-status{font-size:.73rem;color:var(--gold);margin-top:10px;min-height:1.2em}
     /* Scanning a second token. The address that was just read stays in the
@@ -378,6 +388,7 @@
         <button id="sc-go" type="button">Scan</button>
       </div>
       <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
+      <div class="sc-try" id="sc-try"></div>
     </div>
 
     <!-- The empty state. Without it the page is a headline and a blank box, and
@@ -440,6 +451,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=40" type="module"></script>
+<script src="scanner.js?v=41" type="module"></script>
 </body>
 </html>

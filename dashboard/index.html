@@ -784,7 +784,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 4,092 lines &middot; 58 KB</span>
+          <span class="lib-m">12 files &middot; 4,151 lines &middot; 59 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -856,7 +856,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 4,742 lines &middot; 95 KB</span>
+          <span class="lib-m">6 files &middot; 4,781 lines &middot; 96 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1152,6 +1152,18 @@
       <p class="agt-note" id="ag-flow-note"></p>
     </div>
 
+    <!-- THE LIQUIDITY AGENT, LIVE. Step 3 and 4 above are a promise; this is
+         the record the promise is checked against, read from the same
+         endpoint the bot writes to. A quiet day says so; an action shows its
+         figures. Filled by app.js from agent.brainonbnb.com/lp/agent. -->
+    <div class="agt-flow fi" id="ag-lp-wrap">
+      <h3>The liquidity agent, live</h3>
+      <ol class="agt-steps" id="ag-lp">
+        <li><span class="agt-i">&middot;</span><div><b>Reading the record&hellip;</b><span>agent.brainonbnb.com/lp/agent</span></div></li>
+      </ol>
+      <p class="agt-note" id="ag-lp-note"></p>
+    </div>
+
     <div class="agt-why fi">
       <p><b>Why this matters more than the amount.</b> Until now every cent this project earned came from its own trading tax &mdash; money moving in a circle. This is the first income that comes from outside it. The sums are small and will stay small for a while; that is not the point. The point is that the circle now has an opening.</p>
       <p class="agt-live"><a href="/registry"><b>Brain Plaza</b></a> &mdash; we read every ERC-8004 agent on BNB Chain and contacted every endpoint they name, so you can see who is actually running. Live figures from <a href="https://agent.brainonbnb.com/stats" rel="noopener">agent.brainonbnb.com/stats</a> &mdash; the same endpoint this page reads, so nothing shown here can be a number that endpoint would not give you.</p>
@@ -1280,7 +1292,7 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=29" defer></script>
+<script src="app.js?v=30" defer></script>
 <script>
   // The registry grows by thousands a day. The card shows the live high-water
   // mark from the same endpoint /registry reads, so the homepage can never

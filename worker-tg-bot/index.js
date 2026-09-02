@@ -1760,6 +1760,53 @@ async function ensureCommandsRegistered(env) {
   }
 }
 
+// ==================== LP AGENT ALERT ====================
+
+// The text for one LP agent record that acted. Pure, so it can be rendered
+// against a real record without posting. Returns null when nothing moved.
+export function formatLpAgentAlert(rec) {
+  const last = rec && rec.last;
+  if (!last || !last.acted) return null;
+  const st = last.steps || {};
+  const f = (v, d = 4) => Number(v || 0).toFixed(d);
+  const lines = [];
+  for (const s of Array.isArray(st.sweep) ? st.sweep : []) {
+    if (s.acted && !s.error) lines.push(`💵 Sold <b>${f(s.sold, 2)} ${s.token}</b> earned by the AI side → <b>${f(s.received_bnb)} BNB</b> into the liquidity wallet`);
+  }
+  if (st.collect && st.collect.acted && !st.collect.error && Number(st.collect.forwarded_bnb) > 0) {
+    lines.push(`💧 Collected the position's fees → <b>${f(st.collect.forwarded_bnb)} BNB</b> sent to the buyback bot, which buys $BOBAI and burns it`);
+  }
+  if (st.rebalance && st.rebalance.acted && !st.rebalance.error) {
+    lines.push(`🎯 Range re-set around today's price: ±${st.rebalance.width_pct}%${st.rebalance.new_position ? `, position #${st.rebalance.new_position}` : ''}`);
+  }
+  if (st.increase && st.increase.acted && !st.increase.error) {
+    lines.push(`📈 Added <b>${f(st.increase.wbnb_used)} BNB</b> and ${f(st.increase.other_used, 3)} of the other side to the position`);
+  }
+  if (!lines.length) return null;
+  return `🤖 <b>LP Agent — ${String(last.at || '').slice(0, 10)}</b>
+The project's own liquidity position, run by a bot: AI income goes in as capital, the fees come out as $BOBAI burn. Today it moved:
+
+${lines.join('\n')}
+
+Every step is a transaction on BNB Chain. Record: <a href="https://agent.brainonbnb.com/lp/agent">agent.brainonbnb.com/lp/agent</a>`;
+}
+
+async function postLpAgentAlert(env) {
+  const r = await fetch('https://agent.brainonbnb.com/lp/agent', { cf: { cacheTtl: 60 } });
+  if (!r.ok) return false;
+  const rec = await r.json();
+  const at = rec && rec.last && rec.last.at;
+  if (!at) return false;
+  const seen = await env.KV.get('lp_alert_at');
+  if (seen === at) return false;
+  const text = formatLpAgentAlert(rec);
+  // Remember quiet records too, or every tenth minute re-reads the same one.
+  await env.KV.put('lp_alert_at', at);
+  if (!text) return false;
+  await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true });
+  return true;
+}
+
 // ==================== CHAT COMMANDS ====================
 
 // The /scan answer, as a pure function of the API's JSON so it can be
@@ -2959,6 +3006,18 @@ export default {
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===
     await ensureCommandsRegistered(env);
+
+    // === LP AGENT — when it acts, the channel hears it ===
+    // The daily tick (worker-lp, 05:23 UTC) writes one record; the agent
+    // worker serves it at /lp/agent. Read it a few minutes past each tenth
+    // minute — cheap, one fetch — and post ONCE per record that actually moved
+    // money: income swept into the liquidity wallet, fees forwarded to the
+    // buyback bot, the range re-set, capital added. A quiet day posts nothing;
+    // a channel that hears "nothing happened" every morning stops listening.
+    if (new Date().getMinutes() % 10 === 5) {
+      try { await postLpAgentAlert(env); }
+      catch (e) { console.error('[LP ALERT ERROR]', e.message || e); }
+    }
 
     // === DAILY WHALE RECAP (06:00 UTC = 08:00 CEST, idempotent via KV flag) ===
     if (TG_INTERNAL_CHAT_ID) {

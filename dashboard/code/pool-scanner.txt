@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 4742 lines.
+# one fetch. 6 files, 4781 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1507,6 +1507,16 @@ export async function scan(input, env) {
       border-radius:999px;padding:15px 34px;font-weight:700;font-size:.8rem;cursor:pointer;
       font-family:inherit;white-space:nowrap;letter-spacing:.3px}
     .sc-form>button:disabled{opacity:.5;cursor:default}
+    /* The zero-knowledge way in: one tap on a known token, or on something
+       this visitor scanned before. Nobody arrives with an address in hand. */
+    .sc-try{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;
+      margin:12px auto 0;max-width:640px;font-size:.78rem}
+    .sc-try .sc-try-l{color:var(--muted)}
+    .sc-try button{background:transparent;color:var(--text);border:1px solid var(--border);
+      border-radius:999px;padding:6px 12px;font:inherit;font-size:.78rem;cursor:pointer;
+      transition:border-color .2s,background .2s}
+    .sc-try button:hover,.sc-try button:focus-visible{border-color:var(--gold);background:rgba(240,185,11,.08);outline:none}
+    .sc-try button.sc-try-recent{color:var(--muted)}
     .sc-hint{font-size:.69rem;color:var(--muted);opacity:.8;margin-top:11px}
     .sc-status{font-size:.73rem;color:var(--gold);margin-top:10px;min-height:1.2em}
     /* Scanning a second token. The address that was just read stays in the
@@ -1812,6 +1822,7 @@ export async function scan(input, env) {
         <button id="sc-go" type="button">Scan</button>
       </div>
       <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
+      <div class="sc-try" id="sc-try"></div>
     </div>
 
     <!-- The empty state. Without it the page is a headline and a blank box, and
@@ -1874,7 +1885,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=40" type="module"></script>
+<script src="scanner.js?v=41" type="module"></script>
 </body>
 </html>
 
@@ -3043,6 +3054,7 @@ async function scan(input){
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
       supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,partial,mineUsd,otherLiq});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
+    remember(token,symb);
   }catch(e){
     fail('Something went wrong reading this token.',
       (e&&e.message?e.message+'. ':'')+'Nothing here is cached, so trying again often works. If it keeps failing, the address may not be a BSC token or pool.');
@@ -3095,6 +3107,33 @@ $('sc-again-btn').addEventListener('click',()=>startOver(true));
 $('sc-in').addEventListener('input',showClear);
 $('sc-in').addEventListener('focus',()=>{if(!again.hidden)$('sc-in').select()});
 showClear();
+// THE WAY IN FOR SOMEBODY WITH NO ADDRESS. Three tokens anyone on BNB Chain
+// has heard of, plus whatever this visitor scanned before (kept in this
+// browser only, never sent anywhere). Without this the page is a headline
+// and an empty box, and the second visit starts from nothing again.
+const TRY=[['CAKE','0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82'],['USD1','0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d'],['BOBAI','0x245c386dcfed896f5c346107596141e5edcbffff']];
+const RECENT_KEY='sc-recent';
+function recent(){try{const r=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]');return Array.isArray(r)?r.filter(x=>x&&/^0x[0-9a-f]{40}$/i.test(x.a)):[]}catch(e){return[]}}
+function remember(addr,symb){
+  try{
+    const a=String(addr).toLowerCase();
+    const list=[{a,s:String(symb||'').slice(0,12),t:Date.now()}].concat(recent().filter(x=>x.a!==a)).slice(0,5);
+    localStorage.setItem(RECENT_KEY,JSON.stringify(list));
+  }catch(e){}
+  drawTry();
+}
+function drawTry(){
+  const row=$('sc-try');if(!row)return;
+  row.textContent='';
+  const add=(label,addr,cls)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.title=addr;if(cls)b.className=cls;
+    b.addEventListener('click',()=>{$('sc-in').value=addr;showClear();scan(addr)});row.appendChild(b)};
+  const l=document.createElement('span');l.className='sc-try-l';l.textContent='Try one:';row.appendChild(l);
+  for(const [s,a] of TRY)add(s,a);
+  const rec=recent().filter(x=>!TRY.some(([,a])=>a===x.a));
+  if(rec.length){const l2=document.createElement('span');l2.className='sc-try-l';l2.textContent='· you scanned:';row.appendChild(l2);
+    for(const x of rec)add(x.s||x.a.slice(0,6)+'…'+x.a.slice(-4),x.a,'sc-try-recent')}
+}
+drawTry();
 (function(){const t=parseInput(new URLSearchParams(location.search).get('token'));
   // Setting .value from script fires no input event, so the clear cross has
   // to be told by hand — otherwise arriving via ?token= shows an address with

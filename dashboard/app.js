@@ -960,6 +960,37 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
       const note = d.money_flow && d.money_flow.note;
       if(note) el('ag-flow-note').textContent = note;
     })
+    .then(() => fetch('https://agent.brainonbnb.com/lp/agent', {cache:'no-store'})
+      .then(r => r.ok ? r.json() : null).catch(() => null)
+      .then(rec => {
+        // The liquidity agent's own record: what it holds, whether it is
+        // earning right now, and what it has already moved. Sums come from
+        // the history of actions, not from a counter anyone could edit.
+        const list = el('ag-lp'), noteEl = el('ag-lp-note');
+        if(!list) return;
+        const item = (i, b, s) => '<li><span class="agt-i">' + i + '</span><div><b>' + b + '</b><span>' + s + '</span></div></li>';
+        if(!rec || !rec.last){
+          list.innerHTML = item('&middot;', 'No record yet', 'The agent has not run its first tick.');
+          return;
+        }
+        const last = rec.last, st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
+        const hist = rec.history || [];
+        const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
+        const swept = sum(e => (Array.isArray(e.steps && e.steps.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0));
+        const forwarded = sum(e => e.steps && e.steps.collect && e.steps.collect.forwarded_bnb);
+        const f = (v, d) => Number(v || 0).toFixed(d);
+        const rows = [];
+        rows.push(item('&#9679;', c.position ? 'Position #' + c.position + (c.in_range === false ? ' — out of range' : c.in_range ? ' — in range, earning' : '') : 'No position',
+          c.position ? 'PancakeSwap V3, ticks ' + (c.ticks || []).join(' … ') + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : ''));
+        rows.push(item('&#9679;', 'Fees forwarded to the buyback bot so far: ' + f(forwarded, 5) + ' BNB',
+          c.owed ? 'Owed right now: ' + f(c.owed.bnb_equivalent, 6) + ' BNB' + (c.why ? ' — ' + c.why : '') : ''));
+        rows.push(item('&#9679;', 'AI income swept into the position so far: ' + f(swept, 5) + ' BNB',
+          (Array.isArray(st.sweep) ? st.sweep : []).map(s => s.token + ': ' + (s.balance != null ? f(s.balance, 2) + ' waiting' : (s.error || '')) + (s.why ? ' — ' + s.why.split(' — ')[0] : '')).join(' · ')));
+        rows.push(item('&#9679;', last.acted ? 'Last tick acted' : 'Last tick: nothing to do',
+          'Checked ' + String(last.at || '').replace('T', ' ').slice(0, 16) + ' UTC' + (last.ok === false ? ' — a step reported an error' : '')));
+        list.innerHTML = rows.join('');
+        if(noteEl) noteEl.textContent = 'Once a day, unattended. The capital never leaves the position; only the fees do. Floors keep it from paying more gas than it moves, and a day under a floor is written down as a decision, not an error.';
+      }))
     .then(() => Promise.all([
       // Two sources on purpose, and the same two the Plaza page itself uses.
       // The full scan is the only thing that knows how many endpoints answer

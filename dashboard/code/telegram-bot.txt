@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4151 lines.
+# one fetch. 12 files, 4157 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2518,6 +2518,12 @@ export function formatScan(d, address) {
   if (c.proxy) flags.push('proxy');
   if (c.mintable) flags.push('mintable');
   const contractLine = flags.length ? `⚠️ Contract: ${flags.join(', ')}` : (c.openSource === true ? '✅ Contract: open source, not mintable, no proxy' : 'Contract: properties not read');
+  // The sell test: the scanner's own simulation on the chain, this block.
+  const sim = d.sellability || null;
+  const sellLine = !sim ? null
+    : !sim.ok ? `🧪 Sell test: not run — ${String(sim.reason || '').slice(0, 90)}`
+    : sim.sellable ? '✅ Sell test: a sell goes through right now (simulated on-chain, fresh address)'
+    : `🚫 <b>Sell test: the sell REVERTED</b> — ${String(sim.sell_error || 'no reason given').slice(0, 90)}. Do not buy what you cannot sell.`;
   const costs = Array.isArray(d.tradeCost) ? d.tradeCost.filter((t) => [100, 1000, 10000].includes(t.sizeUsd)) : [];
   const costLines = costs.map((t) => `${usd0(t.sizeUsd)} buy costs <b>${pct(t.buyCostPct)}</b> · sell ${pct(t.sellCostPct)}`).join('\n');
   const depth = d.onePercentDepth || {};
@@ -2525,7 +2531,7 @@ export function formatScan(d, address) {
 💰 Price ${priceStr} · Pool <b>${usd0(d.pool.liquidityUsd)}</b> <i>(${d.price && d.price.quoteSymbol ? d.price.quoteSymbol : 'quote'} side, the hard asset)</i>
 🧾 Tax: ${taxLine}
 🔒 ${lpLine}
-${contractLine}
+${contractLine}${sellLine ? '\n' + sellLine : ''}
 
 <b>What a trade really costs</b> <i>(tax + pool fee + price move)</i>
 ${costLines || 'no sizes quotable at this depth'}

@@ -21,6 +21,12 @@ const C = await import('file://' + path.join(stage, 'scanner-chain.mjs').split(p
 let failed = 0;
 const ok = (name, pass, detail) => { if (!pass) failed += 1; console.log(`${pass ? 'ok  ' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); };
 
+// The error classifier, both ways: a revert is a verdict, a refusal is not.
+ok('a router revert counts as a revert', C.isRevert({ code: 3, message: 'execution reverted: TransferHelper: TRANSFER_FROM_FAILED' }));
+ok('a revert carrying only data counts as a revert', C.isRevert({ message: 'x', data: '0x08c379a0' + '0'.repeat(64) }));
+ok('a rate limit is NOT a revert', !C.isRevert({ code: -32005, message: 'rate limit exceeded' }));
+ok('a timeout is NOT a revert', !C.isRevert({ message: 'request timed out' }));
+ok('an unsupported override is NOT a revert', !C.isRevert({ code: -32602, message: 'invalid argument 2: json: cannot unmarshal' }));
 ok('keccak256 of the empty string matches the known vector',
   C.keccakHex('') === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470');
 

@@ -954,6 +954,45 @@ async function postRaw(url,body){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
   if(!r.ok)throw new Error('http '+r.status);return r.json();
 }
+// The batched slot search is forty calls in one request, and a public node
+// under load answers that with 429 (seen from the worker on the first live
+// run). Every endpoint in the pool is tried before the simulation gives up,
+// and a node that answered once is kept for the rest of this simulation.
+async function postAny(body,pref){
+  const order=[pref,...RPCS.filter(u=>u!==pref)].filter(Boolean);
+  let last=null;
+  for(const u of order){try{const j=await postRaw(u,body);if(Array.isArray(j)||(j&&!j.error))return {url:u,j}}catch(e){last=e}}
+  throw last||new Error('no endpoint answered');
+}
+// A slot search is only conclusive when the node answered EVERY candidate
+// without an error. A throttled node answers a batch with some entries as
+// "rate limit" — and a search that read that as "no slot matched" reported
+// a perfectly ordinary token as "non-standard storage" on the second call
+// of the first live run. Errors inside the batch mean: ask the next node.
+async function searchSlot(calls,amount,pref){
+  const order=[pref,...RPCS.filter(u=>u!==pref)].filter(Boolean);
+  let last=null;
+  for(const u of order){
+    let j=null;try{j=await postRaw(u,calls)}catch(e){last=e;continue}
+    if(!Array.isArray(j)){last=new Error('not a batch');continue}
+    const hit=j.find(x=>x.result&&x.result!=='0x'&&BigInt(x.result)===amount);
+    if(hit)return {url:u,hit};
+    if(j.some(x=>x.error)||j.length<calls.length){last=new Error('throttled batch');continue}
+    return {url:u,hit:null};
+  }
+  throw last||new Error('no endpoint answered');
+}
+// Only a REVERT is a verdict about the token. A node that answers "rate
+// limit", "timeout" or "method not supported" has said nothing about the
+// sell, and on the first live run four answers in a row read such a refusal
+// as "the sell reverted" — a false honeypot on our own token. Exported so the
+// checker can pin both directions without a node in the loop.
+export function isRevert(err){
+  if(!err)return false;
+  const m=String(err.message||'').toLowerCase();
+  const d=typeof err.data==='string'?err.data:'';
+  return /revert|invalid opcode|out of gas/.test(m)||d.startsWith('0x08c379a0')||d.startsWith('0x4e487b71')||err.code===3;
+}
 function revertText(err){
   const m=String(err&&(err.message||err)).slice(0,120);
   const d=err&&err.data&&typeof err.data==='string'?err.data:null;
@@ -975,29 +1014,41 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     const balCalls=[],balKeys=[];
     for(let slot=0;slot<40;slot++){const k=keccakHex(probeKey+pad32(BigInt(slot)));balKeys.push(k);
       balCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_BAL+probeKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
-    const balRes=await postRaw(url,balCalls);
-    if(!Array.isArray(balRes))return {ok:false,reason:'the node did not answer the batched call'};
-    const balHit=balRes.find(x=>x.result&&x.result!=='0x'&&BigInt(x.result)===amount);
+    // Twelve candidates first: nearly every ERC-20 keeps balances in one of
+    // the first slots, and a batch a third the size is a batch a public node
+    // answers under load. The long tail is only asked when the short one misses.
+    let b1=await searchSlot(balCalls.slice(0,12),amount,url);
+    if(!b1.hit)b1=await searchSlot(balCalls.slice(12),amount,b1.url);
+    let node=b1.url;const balHit=b1.hit;
     if(!balHit)return {ok:false,reason:'could not place a test balance in this contract (non-standard storage) — not checked, not cleared'};
     const balKey=balKeys[balHit.id];
     const alCalls=[],alKeys=[];
     for(let slot=0;slot<40;slot++){const inner=keccakHex(probeKey+pad32(BigInt(slot)));const k=keccakHex(routerKey+inner.slice(2));alKeys.push(k);
       alCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_ALLOW+probeKey+routerKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
-    const alRes=await postRaw(url,alCalls);
-    const alHit=Array.isArray(alRes)?alRes.find(x=>x.result&&x.result!=='0x'&&BigInt(x.result)===amount):null;
+    let a1=await searchSlot(alCalls.slice(0,12),amount,node);
+    if(!a1.hit)a1=await searchSlot(alCalls.slice(12),amount,a1.url);
+    node=a1.url;const alHit=a1.hit;
     if(!alHit)return {ok:false,reason:'could not place a test allowance in this contract — not checked, not cleared'};
     const alKey=alKeys[alHit.id];
     const deadline=pad32(BigInt(Math.floor(Date.now()/1000)+600));
     const override={[token]:{stateDiff:{[balKey]:amtHex,[alKey]:amtHex}},[PROBE]:{balance:'0x'+pad32(10n**18n)}};
     const sellData=SEL_SELL_FOT+pad32(amount)+pad32(0n)+pad32(0xa0n)+probeKey+deadline+pad32(2n)+pad32(token)+pad32(WBNB);
     const buyData=SEL_BUY_FOT+pad32(0n)+pad32(0x80n)+probeKey+deadline+pad32(2n)+pad32(WBNB)+pad32(token);
-    const out=await postRaw(url,[
+    const calls=[
       {jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:PROBE,to:V2_ROUTER,data:sellData,gas:'0x1e8480'},'latest',override]},
       {jsonrpc:'2.0',id:2,method:'eth_call',params:[{from:PROBE,to:V2_ROUTER,data:buyData,value:'0x'+pad32(10n**16n),gas:'0x1e8480'},'latest',override]},
-    ]);
-    if(!Array.isArray(out))return {ok:false,reason:'the node did not answer the simulation'};
-    const sell=out.find(x=>x.id===1),buy=out.find(x=>x.id===2);
-    const sellOk=!!(sell&&!sell.error),buyOk=!!(buy&&!buy.error);
+    ];
+    // Every node in turn until both answers are either a result or a revert.
+    let sell=null,buy=null;
+    for(const u of [node,...RPCS.filter(x=>x!==node)]){
+      let out=null;try{out=await postRaw(u,calls)}catch(e){continue}
+      if(!Array.isArray(out))continue;
+      const s1=out.find(x=>x.id===1),b1=out.find(x=>x.id===2);
+      const settled=x=>x&&(!x.error||isRevert(x.error));
+      if(settled(s1)&&settled(b1)){sell=s1;buy=b1;break}
+    }
+    if(!sell||!buy)return {ok:false,reason:'every node refused the simulation call (rate limit or unsupported) — not checked, not cleared'};
+    const sellOk=!sell.error,buyOk=!buy.error;
     return {ok:true,sellable:sellOk,buyable:buyOk,
       sell_error:sellOk?null:revertText(sell&&sell.error),buy_error:buyOk?null:revertText(buy&&buy.error),
       amount:amount.toString(),

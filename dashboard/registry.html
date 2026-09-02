@@ -257,6 +257,13 @@
     transition:background .2s,border-color .2s}
   .rg-try button:hover{background:rgba(240,185,11,.18);border-color:rgba(240,185,11,.5)}
   .rg-try button[disabled]{opacity:.55;cursor:default}
+  .rg-try-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:.76rem;color:var(--muted)}
+  .rg-try-chips button{font:inherit;font-size:.76rem;color:var(--text);background:transparent;border:1px solid var(--border);border-radius:999px;padding:5px 11px;cursor:pointer;transition:border-color .2s,background .2s}
+  .rg-try-chips button:hover,.rg-try-chips button:focus-visible{border-color:var(--gold);background:rgba(240,185,11,.08);outline:none}
+  .rg-recent{margin-top:12px;font-size:.76rem;color:var(--muted)}
+  .rg-recent b{color:var(--text);font-weight:600}
+  .rg-recent button{font:inherit;font-size:.76rem;color:var(--gold);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+  .rg-recent ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
   .rg-out{margin-top:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);
     background:rgba(255,255,255,.02);font-size:.8rem;line-height:1.6}
   .rg-out .rg-who{color:var(--gold);font-weight:600;margin-bottom:8px}
@@ -341,8 +348,20 @@
             <input id="rg-task" type="text" placeholder="protocol stats and pool statistics" aria-label="Task">
             <button id="rg-go" type="button">Dispatch</button>
           </div>
+          <!-- Three questions the router is known to answer, so the first try
+               is a tap and not a blank box. Each one was dispatched for real
+               before it was written here; a chip that led nowhere would teach
+               the visitor that the box is decoration. -->
+          <div class="rg-try-chips" id="rg-try-chips">
+            <span>Try:</span>
+            <button type="button" data-q="protocol stats and pool statistics">protocol stats</button>
+            <button type="button" data-q="check the health factor of a Venus position">a Venus health factor</button>
+            <button type="button" data-q="list the active trading agents and their strategies">active trading agents</button>
+            <button type="button" data-q="measure the PancakeSwap pool of token 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82">measure the CAKE pool</button>
+          </div>
           <div id="rg-out" class="rg-out" hidden></div>
-          <p class="rg-note">We find an agent that can answer, call it, and name the one that did. <b>Read-only</b>: anything that would sign, send or swap is handed back for you to do yourself.</p>
+          <div id="rg-recent" class="rg-recent" hidden></div>
+          <p class="rg-note">We find an agent that can answer, call it, and name the one that did. <b>Read-only</b>: anything that would sign, send or swap is handed back for you to do yourself. An address in your question is passed on as it is; nothing else is filled in for you.</p>
         </div>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">2</span>Pick a category and hire</div>
@@ -2215,6 +2234,19 @@ At its core, the game is built on a structured probability engine inspired b&hel
     var i=document.getElementById('rg-task'),b=document.getElementById('rg-go'),o=document.getElementById('rg-out');
     if(!i||!b||!o)return;
     function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]});}
+    // What this visitor asked before, kept in this browser only, so the
+    // second visit starts from an answer and not from an empty box.
+    var rec=document.getElementById('rg-recent');
+    function recent(){try{var r=JSON.parse(localStorage.getItem('rg-recent')||'[]');return Array.isArray(r)?r:[]}catch(e){return[]}}
+    function remember(t,who){try{var l=[{t:t,who:who,at:Date.now()}].concat(recent().filter(function(x){return x.t!==t})).slice(0,5);localStorage.setItem('rg-recent',JSON.stringify(l))}catch(e){} drawRecent();}
+    function drawRecent(){
+      if(!rec)return; var l=recent(); if(!l.length){rec.hidden=true;return}
+      rec.hidden=false; rec.innerHTML='<b>You asked before:</b><ul>'+l.map(function(x){return '<li><button type="button" data-q="'+esc(x.t).replace(/"/g,'&quot;')+'">'+esc(x.t)+'</button> <span>&middot; answered by '+esc(x.who)+'</span></li>'}).join('')+'</ul>';
+      rec.querySelectorAll('button').forEach(function(x){x.addEventListener('click',function(){i.value=x.getAttribute('data-q');run()})});
+    }
+    drawRecent();
+    var chips=document.getElementById('rg-try-chips');
+    if(chips)chips.querySelectorAll('button').forEach(function(x){x.addEventListener('click',function(){i.value=x.getAttribute('data-q');run()})});
     function run(){
       var t=(i.value||i.placeholder).trim(); if(!t)return;
       b.disabled=true; b.textContent='Asking…'; o.hidden=false;
@@ -2226,6 +2258,7 @@ At its core, the game is built on a structured probability engine inspired b&hel
           if(d.dispatched && d.answered_by){
             o.innerHTML='<div class="rg-who">'+esc(d.answered_by.agent)+' &middot; '+esc(d.answered_by.tool)+'</div>'+
               '<pre>'+esc(typeof d.result==='string'?d.result:JSON.stringify(d.result,null,1)).slice(0,3000)+'</pre>';
+            remember(t,d.answered_by.agent);
           } else {
             o.innerHTML='<div class="rg-who">Not dispatched</div><pre>'+esc(d.reason||'No agent answered.')+
               (d.why? String.fromCharCode(10,10)+esc(d.why) : '')+'</pre>';

@@ -22,7 +22,7 @@
 // Usage:
 //   node scripts/dispatch-safety.mjs --self-test   fixtures, no network
 //   node scripts/dispatch-safety.mjs               and measure the live server
-import { isReadOnly } from '../worker-agent/dispatch.js';
+import { isReadOnly, argsFromTask } from '../worker-agent/dispatch.js';
 
 const SITE = process.env.SITE || 'https://brainonbnb.com';
 const args = process.argv.slice(2);
@@ -76,6 +76,19 @@ if (args.includes('--self-test')) {
     for (const f of fails) console.error(`  x ${f}`);
     process.exit(1);
   }
+  // The argument filler, both ways: it passes on what the task literally
+  // contains and nothing else. A filler that guessed would call strangers'
+  // tools with invented inputs, which is the thing the router promises not to do.
+  const addrSchema = { required: ['address'], properties: { address: { type: 'string' } } };
+  const a1 = argsFromTask(addrSchema, 'measure the pool of token 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82');
+  if (!a1 || a1.address !== '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82') fails.push('an address in the task was not passed to an address parameter');
+  if (argsFromTask(addrSchema, 'measure the CAKE pool') !== null) fails.push('a task with no address filled an address parameter anyway — that is guessing');
+  if (argsFromTask({ required: ['symbol'], properties: { symbol: { type: 'string' } } }, 'price of CAKE 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82') !== null) fails.push('a parameter the task cannot name was filled anyway');
+  const a2 = argsFromTask({ required: ['token', 'chainId'], properties: { token: { type: 'string' }, chainId: { type: 'number' } } }, 'scan 0x245c386dcfed896f5c346107596141e5edcbffff');
+  if (!a2 || a2.token !== '0x245c386dcfed896f5c346107596141e5edcbffff' || a2.chainId !== 56) fails.push('the chain this router serves was not filled in beside the address');
+  if (argsFromTask({ required: [] }, 'anything') !== null) fails.push('a tool with no required arguments was given some');
+  if (fails.length) { for (const f of fails) console.log('  x ' + f); process.exitCode = 1; }
+  else console.log('argument filler: an address in the task is passed on, nothing is guessed, a tool with no arguments gets none');
   console.log(`self-test passed: ${MUST_ACCEPT.length} readers reachable, ${MUST_REFUSE.length} writers refused, declarations honoured in both directions`);
   if (!args.includes('--live')) process.exit(0);
 }

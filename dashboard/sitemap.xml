@@ -32,11 +32,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://brainonbnb.com/classic</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
     <loc>https://brainonbnb.com/skill.md</loc>
     <lastmod>2026-07-02</lastmod>
     <changefreq>weekly</changefreq>

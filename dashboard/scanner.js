@@ -12,7 +12,7 @@
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
-  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES} from './scanner-chain.js?v=15';
+  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip} from './scanner-chain.js?v=16';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -666,14 +666,19 @@ function taxCard(tax,gp,gpOk){
 }
 
 // ---- flags -----------------------------------------------------------------
-function flagsCard(gp,gpOk){
-  const c=card('What the contract can do',
-    gpOk?'Contract properties as read from the verified source by GoPlus. These are properties, not a rating — a token can carry several of them and be perfectly ordinary, or carry none and still go to zero.'
-        :'GoPlus did not answer for this token, so none of these properties could be checked. Every figure above is unaffected: it comes off the chain directly.');
-  if(!gpOk)return c;
+function flagsCard(gp,gpOk,sim){
+  const c=card('Can you sell it, and what the contract can do',
+    gpOk?'The sell test is ours: a sell is simulated on the chain at this block, from a fresh address with no history. The properties below are read from the verified source by GoPlus. Properties, not a rating — a token can carry several of them and be perfectly ordinary, or carry none and still go to zero.'
+        :'GoPlus did not answer for this token, so the contract properties could not be checked. The sell test below is ours and does not depend on it; every figure above comes off the chain directly.');
   const g=el('div','fg');
   const chip=(state,label,note)=>{const x=el('div','f f-'+state);
     x.appendChild(el('b',null,label));x.appendChild(el('span',null,note));return x};
+  // THE SELL TEST FIRST. It is the one line a buyer will act on. A simulation
+  // that could not run says so and is never drawn as a pass.
+  if(sim&&sim.ok&&sim.sellable)g.appendChild(chip('ok','Sell test: goes through','A sell of '+'one part in a thousand of the pool'+' went through on the chain just now, from an address with no history. It says nothing about tomorrow: an owner with a switch can still flip it.'));
+  else if(sim&&sim.ok&&!sim.sellable)g.appendChild(chip('bad','Sell test: REVERTED','The router refused the sell'+(sim.sell_error?': '+sim.sell_error:'')+'. That is what a honeypot looks like from outside — and also what a trading pause or a max-wallet rule looks like. Do not buy what you cannot sell.'));
+  else g.appendChild(chip('unk','Sell test: not run',(sim&&sim.reason)||'The simulation could not run for this token.'));
+  if(!gpOk){c.appendChild(g);return c;}
   const owner=(gp.owner_address||'').toLowerCase();
   if(gp.owner_address==null)g.appendChild(chip('unk','Ownership not checked','GoPlus returned no owner field for this contract.'));
   else if(owner===NULLA||owner==='')g.appendChild(chip('ok','Ownership renounced','No owner address left on the contract.'));
@@ -681,8 +686,10 @@ function flagsCard(gp,gpOk){
   if(gp.is_open_source==null)g.appendChild(chip('unk','Verification not checked','GoPlus did not report whether the source is verified.'));
   else if(gp.is_open_source==='1')g.appendChild(chip('ok','Source verified','The published code matches the deployed bytecode.'));
   else g.appendChild(chip('on','Source not verified','Nothing here can be checked against source code — including every other line in this list.'));
+  // GoPlus's own verdict stays beside ours: two independent sell tests that
+  // disagree are worth more than one that says nothing.
   if(gp.is_honeypot==='1')g.appendChild(chip('bad','Honeypot','GoPlus could not sell this token in a simulation.'));
-  else if(gp.is_honeypot==null)g.appendChild(chip('unk','Sellability not checked','GoPlus ran no sell simulation for this token.'));
+  else if(gp.is_honeypot==null)g.appendChild(chip('unk','Sellability not checked by GoPlus','GoPlus ran no sell simulation for this token; the sell test above is ours.'));
   // The missing ones are listed by name. Silence about a property is not the
   // same as the property being absent, and only one of those two is safe to
   // let a reader assume.
@@ -904,7 +911,7 @@ function render(d){
 
   o.appendChild(tierCard(addr));
   o.appendChild(rangeCard(addr));
-  o.appendChild(flagsCard(gp,gpOk));
+  o.appendChild(flagsCard(gp,gpOk,d.sim));
   o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties come from GoPlus and are attributed as such. This page describes a pool — it does not check the deployer’s history, the holder distribution, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
 }
 
@@ -1116,6 +1123,8 @@ async function scan(input){
       ? (await rpcBatch([call(pool.pair,S.token0)]).then(r=>addrAt(r[0])===token))
       : pool.tokenIs0;
     const tax=await measureTax(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
+    at('simulating a sell…');
+    const sim=await simulateRoundTrip(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
     const gB=Number(gp.buy_tax),gS=Number(gp.sell_tax);
     const taxB=tax.ok&&tax.buy!=null?tax.buy:(isFinite(gB)?gB:0),
           taxS=tax.ok&&tax.sell!=null?tax.sell:(isFinite(gS)?gS:0),
@@ -1155,7 +1164,7 @@ async function scan(input){
       }
     }
 
-    render({gp,gpOk,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
+    render({gp,gpOk,sim,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
       supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,partial,mineUsd,otherLiq});
     try{history.replaceState(null,'','?token='+token)}catch(e){}

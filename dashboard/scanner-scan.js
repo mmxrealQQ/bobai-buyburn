@@ -18,7 +18,7 @@ import {
   WBNB, BNB_PAIR, DEAD, NULLA, QUOTES, SEL as S, GOPLUS, GOPLUS_TOKEN,
   balOf, call, hx, addrAt, res2, decStr, rpcBatch,
   classify, priceToken, discover,
-  ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues,
+  ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
 } from './scanner-chain.js';
 
 const parseInput = (s) => {
@@ -396,6 +396,9 @@ export async function scan(input, env) {
       ? await rpcBatch([call(pool.pair, S.token0)]).then((r) => addrAt(r[0]) === token)
       : pool.tokenIs0;
   const tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  // Can it be sold at all? Asked of the chain, not of a label (see the
+  // function's header). V2 pairs only; anything else says so.
+  const sim = await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   const gB = Number(gp.buy_tax);
   const gS = Number(gp.sell_tax);
   const taxB = tax.ok && tax.buy != null ? tax.buy : isFinite(gB) ? gB : 0;
@@ -467,6 +470,9 @@ export async function scan(input, env) {
       note: 'USD size that moves the price by 1% in each direction',
       ...(upMin != null ? { buyUsdLowerBound: Math.round(upMin), sellUsdLowerBound: Math.round(downMin) } : {}),
     },
+    // The sell test. `ok:false` with a reason is "not checked" and must never
+    // be read as "safe"; `sellable:false` carries the router's own reason.
+    sellability: sim,
     tax: {
       // null, not 0, when nothing could be established. Zero is a claim — it
       // says this token takes no cut on transfer — and printing it because a

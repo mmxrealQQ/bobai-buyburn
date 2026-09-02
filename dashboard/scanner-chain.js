@@ -895,3 +895,113 @@ export async function bandDepthV3(pools,bandPct,maxTicks=400){
       to_upper_in1:inUp,to_lower_in0:inDown};
   });
 }
+
+// === CAN THIS TOKEN BE SOLD? ===
+// The question every buyer has and no label answers. GoPlus does not analyse a
+// fresh token at all (measured 2026-09-02: none of 370 tokens tried came back
+// analysed), so the page answered "sellability not checked" exactly where it
+// mattered most. This asks the chain directly.
+//
+// HOW, WITHOUT SPENDING ANYTHING
+// eth_call accepts a state override: for the length of one call, a probe
+// address is given a token balance, an allowance to the PancakeSwap V2 router
+// and some BNB, and the router is asked to sell. The public BSC nodes honour
+// the override (all three tested on 2026-09-02). The balance and allowance
+// live in mappings whose storage slot differs per contract, so the slot is
+// found first by writing a value into candidate slots and reading balanceOf
+// and allowance back, one batched request each. A contract that stores
+// balances somewhere no candidate reaches (a proxy with a detached store, a
+// packed struct) reports "could not place a test balance", which is an honest
+// "not checked", never a "safe".
+//
+// WHAT A REVERT MEANS AND DOES NOT MEAN
+// A sell that reverts for a fresh address with a normal balance is what a
+// honeypot looks like from the outside. It is also what a token with a
+// max-wallet rule or a trading pause looks like, so the revert reason is
+// passed through and the chip says "reverted", not "scam". A sell that
+// succeeds is proof for THIS size at THIS block from an address with no
+// history; an owner can still flip a switch tomorrow, and the page says so.
+const V2_ROUTER='0x10ed43c718714eb63d5aa57b78b54704e256024e';
+const SEL_SELL_FOT='0x791ac947', SEL_BUY_FOT='0xb6f9de95', SEL_BAL='0x70a08231', SEL_ALLOW='0xdd62ed3e';
+const PROBE='0x0000000000000000000000000000000000c0ffee';
+const pad32=v=>(typeof v==='bigint'?v.toString(16):String(v).replace(/^0x/,'')).padStart(64,'0');
+const hexToBytes=h=>{const s=h.replace(/^0x/,'');const a=new Uint8Array(s.length/2);for(let i=0;i<a.length;i++)a[i]=parseInt(s.substr(i*2,2),16);return a};
+// keccak256 over raw bytes. The page and the worker both have crypto.subtle
+// for SHA and nothing for keccak, so a compact Keccak-f[1600] lives here.
+function keccak256(bytes){
+  const RC=[0x1n,0x8082n,0x800000000000808an,0x8000000080008000n,0x808bn,0x80000001n,0x8000000080008081n,0x8000000000008009n,0x8an,0x88n,0x80008009n,0x8000000an,0x8000808bn,0x800000000000008bn,0x8000000000008089n,0x8000000000008003n,0x8000000000008002n,0x8000000000000080n,0x800an,0x800000008000000an,0x8000000080008081n,0x8000000000008080n,0x80000001n,0x8000000080008008n];
+  const ROT=[[0,36,3,41,18],[1,44,10,45,2],[62,6,43,15,61],[28,55,25,21,56],[27,20,39,8,14]];
+  const M=(1n<<64n)-1n, rot=(x,n)=>n?(((x<<BigInt(n))|(x>>BigInt(64-n)))&M):x;
+  const st=new Array(25).fill(0n); const rate=136;
+  const msg=new Uint8Array(Math.ceil((bytes.length+1)/rate)*rate); msg.set(bytes); msg[bytes.length]^=0x01; msg[msg.length-1]^=0x80;
+  for(let off=0;off<msg.length;off+=rate){
+    for(let i=0;i<rate/8;i++){let w=0n;for(let b=7;b>=0;b--)w=(w<<8n)|BigInt(msg[off+i*8+b]);st[i]^=w}
+    for(let r=0;r<24;r++){
+      const C=[0,1,2,3,4].map(x=>st[x]^st[x+5]^st[x+10]^st[x+15]^st[x+20]);
+      const D=[0,1,2,3,4].map(x=>C[(x+4)%5]^rot(C[(x+1)%5],1));
+      for(let i=0;i<25;i++)st[i]^=D[i%5];
+      const B=new Array(25);
+      for(let x=0;x<5;x++)for(let y=0;y<5;y++)B[y+5*((2*x+3*y)%5)]=rot(st[x+5*y],ROT[x][y]);
+      for(let x=0;x<5;x++)for(let y=0;y<5;y++)st[x+5*y]=B[x+5*y]^((~B[(x+1)%5+5*y])&B[(x+2)%5+5*y]);
+      st[0]^=RC[r];
+    }
+  }
+  let out='';for(let i=0;i<4;i++){let w=st[i];for(let b=0;b<8;b++){out+=Number(w&0xffn).toString(16).padStart(2,'0');w>>=8n}}
+  return out;
+}
+export const keccakHex=hex=>'0x'+keccak256(hexToBytes(hex));
+async function postRaw(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+  if(!r.ok)throw new Error('http '+r.status);return r.json();
+}
+function revertText(err){
+  const m=String(err&&(err.message||err)).slice(0,120);
+  const d=err&&err.data&&typeof err.data==='string'?err.data:null;
+  if(d&&d.startsWith('0x08c379a0')){try{const len=parseInt(d.slice(74,138),16);const hex=d.slice(138,138+len*2);let s='';for(let i=0;i<hex.length;i+=2)s+=String.fromCharCode(parseInt(hex.substr(i,2),16));return s}catch(e){}}
+  return m;
+}
+export async function simulateRoundTrip(token,pair,tokenIs0,kind){
+  try{
+    if(kind!=='v2')return {ok:false,reason:'the simulation covers PancakeSwap V2 pairs; this token trades on V3'};
+    token=token.toLowerCase();
+    const url=RPCS[0];
+    // A realistic size: one part in a thousand of what the pair holds.
+    const res=await rpcBatch([call(pair,SEL.reserves)],url);
+    const rr=res2(res[0]);if(!rr)return {ok:false,reason:'the pair reserves could not be read'};
+    const reserveTok=BigInt(Math.floor(tokenIs0?rr[0]:rr[1]));
+    const amount=reserveTok/1000n>0n?reserveTok/1000n:1n;
+    const amtHex='0x'+pad32(amount);
+    const probeKey=pad32(PROBE), routerKey=pad32(V2_ROUTER);
+    const balCalls=[],balKeys=[];
+    for(let slot=0;slot<40;slot++){const k=keccakHex(probeKey+pad32(BigInt(slot)));balKeys.push(k);
+      balCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_BAL+probeKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
+    const balRes=await postRaw(url,balCalls);
+    if(!Array.isArray(balRes))return {ok:false,reason:'the node did not answer the batched call'};
+    const balHit=balRes.find(x=>x.result&&x.result!=='0x'&&BigInt(x.result)===amount);
+    if(!balHit)return {ok:false,reason:'could not place a test balance in this contract (non-standard storage) — not checked, not cleared'};
+    const balKey=balKeys[balHit.id];
+    const alCalls=[],alKeys=[];
+    for(let slot=0;slot<40;slot++){const inner=keccakHex(probeKey+pad32(BigInt(slot)));const k=keccakHex(routerKey+inner.slice(2));alKeys.push(k);
+      alCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_ALLOW+probeKey+routerKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
+    const alRes=await postRaw(url,alCalls);
+    const alHit=Array.isArray(alRes)?alRes.find(x=>x.result&&x.result!=='0x'&&BigInt(x.result)===amount):null;
+    if(!alHit)return {ok:false,reason:'could not place a test allowance in this contract — not checked, not cleared'};
+    const alKey=alKeys[alHit.id];
+    const deadline=pad32(BigInt(Math.floor(Date.now()/1000)+600));
+    const override={[token]:{stateDiff:{[balKey]:amtHex,[alKey]:amtHex}},[PROBE]:{balance:'0x'+pad32(10n**18n)}};
+    const sellData=SEL_SELL_FOT+pad32(amount)+pad32(0n)+pad32(0xa0n)+probeKey+deadline+pad32(2n)+pad32(token)+pad32(WBNB);
+    const buyData=SEL_BUY_FOT+pad32(0n)+pad32(0x80n)+probeKey+deadline+pad32(2n)+pad32(WBNB)+pad32(token);
+    const out=await postRaw(url,[
+      {jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:PROBE,to:V2_ROUTER,data:sellData,gas:'0x1e8480'},'latest',override]},
+      {jsonrpc:'2.0',id:2,method:'eth_call',params:[{from:PROBE,to:V2_ROUTER,data:buyData,value:'0x'+pad32(10n**16n),gas:'0x1e8480'},'latest',override]},
+    ]);
+    if(!Array.isArray(out))return {ok:false,reason:'the node did not answer the simulation'};
+    const sell=out.find(x=>x.id===1),buy=out.find(x=>x.id===2);
+    const sellOk=!!(sell&&!sell.error),buyOk=!!(buy&&!buy.error);
+    return {ok:true,sellable:sellOk,buyable:buyOk,
+      sell_error:sellOk?null:revertText(sell&&sell.error),buy_error:buyOk?null:revertText(buy&&buy.error),
+      amount:amount.toString(),
+      size_note:'one part in a thousand of the pair\'s token reserve, sold from a fresh address with no history',
+      source:'eth_call with a state override on the PancakeSwap V2 router, at this block'};
+  }catch(e){return {ok:false,reason:'the simulation could not run: '+String(e.message||e).slice(0,80)}}
+}

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 25 files, 7240 lines.
+# one fetch. 26 files, 7322 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2937,6 +2937,7 @@ import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { recordLpWindow, readLpWindows, verdict as lpVerdict } from './lp-windows.js';
+import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
 // The host our hireable agents name on-chain. Written out rather than derived
@@ -3733,6 +3734,16 @@ export default {
         note: 'Every entry is one replay of pancakeswap_range_plan over ~37 minutes of live chain, recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
     }
 
+    // Our own ERC-8183 jobs and the date each one was first seen to complete.
+    // The figure this marketplace argues with is 287 SUBMITTED against 8
+    // COMPLETED; this is where our own jobs stand against it, checked daily.
+    if (path === '/jobs/own') {
+      const rec = await readOwnJobs(env);
+      if (!rec) return json({ error: 'no own-jobs tick has run yet', cadence: 'daily' }, 503);
+      return json({ ...rec, cadence: 'daily',
+        note: 'Every job this project has made or delivered on the ERC-8183 kernel, classified with the same rule as scripts/erc8183-job-watch.mjs. The escrow does not release itself: after the dispute window somebody has to call settle(jobId) on the EvaluatorRouter. history holds one entry per observed transition.' });
+    }
+
     if (path === '/census') {
       const latest = await env.AGENT.get('census:latest');
       if (!latest) return json({ error: 'no census tick has run yet' }, 503);
@@ -4046,6 +4057,17 @@ export default {
       return json({ ok: true, ...r });
     }
 
+    // The daily own-jobs tick on demand, optionally with ids to add to the
+    // list. Same reason as the others: a daily job is untestable after a
+    // deploy unless it can be triggered by hand.
+    if (path === '/own-jobs' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      let ids = [];
+      try { ids = (await request.json())?.ids || []; } catch { ids = []; }
+      const r = await tickOwnJobs(env, rpc, Array.isArray(ids) ? ids : []);
+      return json(r, r.ok ? 200 : 500);
+    }
+
     // The hourly LP window on demand. Same reason as the four above.
     if (path === '/run-lp-window' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
@@ -4165,6 +4187,12 @@ export default {
     // chain counted four times. 24 KV writes a day.
     if (t.getUTCMinutes() >= 30 && t.getUTCMinutes() < 45) {
       ctx.waitUntil(recordLpWindow(env).catch(() => {}));
+    }
+
+    // 21:0x UTC — where our own jobs stand on the kernel, once a day, so the
+    // first COMPLETED we ever see carries a date nobody had to be awake for.
+    if (t.getUTCHours() === 21 && firstTickOfHour) {
+      ctx.waitUntil(tickOwnJobs(env, rpc).catch(() => {}));
     }
   },
 };
@@ -4579,6 +4607,65 @@ export async function recordLpWindow(env) {
   const { log, added } = appendWindow({ ...prev, pool: plan.pool, usd: POSITION_USD }, entry);
   if (added) await env.AGENT.put(KV_KEY, JSON.stringify(log));
   return { ok: true, added, windows: log.windows.length, from_block: entry.from_block, to_block: entry.to_block };
+}
+
+==============================================================================
+=== FILE: worker-agent/own-jobs.js
+==============================================================================
+
+// Our own ERC-8183 jobs, read once a day and written down when they change.
+//
+// The escrow on this kernel does not release itself: after the dispute
+// window somebody has to call settle(jobId) on the EvaluatorRouter, and
+// almost nobody does — 287 SUBMITTED against 8 COMPLETED in the last four
+// hundred jobs. Our jobs sit in that 287, and a marketplace that argues the
+// number is inflated had better be able to show the date its own jobs left it.
+//
+// So the cron reads every job we have made or delivered, classifies it with
+// the same rule the script and the page use (shared/own-jobs.js), and appends
+// a transition to KV when one happens. GET /jobs/own serves the record; the
+// script's --sync merges it into data/erc8183/own-jobs.json. One KV read and
+// at most one write per day. It reads. It signs nothing — settling is a
+// person's call, and the script prints it for them.
+import { decodeJob, readDisputeWindow, ERC8183 } from './hire.js';
+import { classify, recordTransition, summarise } from '../shared/own-jobs.js';
+
+export const KV_KEY = 'jobs:own';
+const JOB_CALL = (id) => '0xbf22c457' + BigInt(id).toString(16).padStart(64, '0');
+
+export async function readOwnJobs(env) {
+  const raw = await env.AGENT.get(KV_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
+// `ids` may extend the list (from /own-jobs with the shared secret); the tick
+// on its own reads whatever is already recorded.
+export async function tickOwnJobs(env, rpc, ids = []) {
+  const call = (to, data) => rpc('eth_call', [{ to, data }, 'latest']);
+  const prev = (await readOwnJobs(env)) || { jobs: {}, checked_at: null };
+  const all = [...new Set([...Object.keys(prev.jobs), ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
+  if (!all.length) return { ok: false, error: 'no job ids recorded yet — POST /own-jobs with the secret and {"ids":[…]}' };
+
+  const windowSec = await readDisputeWindow(call);
+  const now = Math.floor(Date.now() / 1000);
+  const at = new Date().toISOString();
+  let record = prev.jobs;
+  let changes = 0;
+  const rows = [];
+  for (const id of all) {
+    let job = null;
+    try { job = decodeJob(await call(ERC8183.commerce, JOB_CALL(id))); } catch { job = null; }
+    const c = classify(job, { now, windowSec });
+    const snap = { status: job?.status || null, state: c.state, budget_u: job?.budget_u ?? null, submitted_at: job?.submitted_at ?? null, ends_at: c.ends_at ?? null };
+    const out = recordTransition(record, id, snap, at);
+    record = out.record;
+    if (out.changed) changes++;
+    rows.push({ id, status: snap.status, state: c.state, note: c.note });
+  }
+  const next = { jobs: record, checked_at: at, dispute_window_sec: windowSec, summary: summarise(record, at) };
+  if (changes || !prev.checked_at) await env.AGENT.put(KV_KEY, JSON.stringify(next));
+  else await env.AGENT.put(KV_KEY, JSON.stringify({ ...prev, checked_at: at, summary: summarise(record, at) }));
+  return { ok: true, jobs: all.length, transitions: changes, rows };
 }
 
 ==============================================================================

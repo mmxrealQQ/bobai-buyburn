@@ -302,15 +302,23 @@ if (SELFTEST) {
     // Both classes, because the rule reads either one: hiding only .rg-what
     // left .rg-caps behind and the sabotage silently did nothing — which is
     // precisely the failure a one-directional self-test never notices.
+    //
+    // Reads cards (.rgc / .rgc-what) as well as the table rows they replaced
+    // on 1 September. The depth check above was moved to cards that day; this
+    // sabotage was not, so it quietly sabotaged nothing and reported that the
+    // detector was blind — the second time a checker here measured the old
+    // markup instead of the page.
     ['a row that never says what the agent does',
-      `(()=>{const r=document.querySelector('#cat-health-factor tbody tr');
+      `(()=>{const r=document.querySelector('#cat-health-factor .rgc, #cat-health-factor tbody tr');
+         [...r.querySelectorAll('.rgc-what-HIDDEN')].forEach(x=>x.className='rgc-what');
          [...r.querySelectorAll('.rg-what-HIDDEN')].forEach(x=>x.className='rg-what');
          [...r.querySelectorAll('.rg-caps-HIDDEN')].forEach(x=>x.className='rg-caps');return 1})()`,
-      `(()=>{const r=document.querySelector('#cat-health-factor tbody tr');
+      `(()=>{const r=document.querySelector('#cat-health-factor .rgc, #cat-health-factor tbody tr');
+         [...r.querySelectorAll('.rgc-what')].forEach(x=>x.className='rgc-what-HIDDEN');
          [...r.querySelectorAll('.rg-what')].forEach(x=>x.className='rg-what-HIDDEN');
          [...r.querySelectorAll('.rg-caps')].forEach(x=>x.className='rg-caps-HIDDEN');return 1})()`,
-      `(()=>{const rows=[...document.querySelectorAll('#cat-health-factor tbody tr')];
-         return rows.some(r=>{const t=(r.querySelector('.rg-what')||r.querySelector('.rg-caps')||{}).textContent||'';
+      `(()=>{const rows=[...document.querySelectorAll('#cat-health-factor .rgc, #cat-health-factor tbody tr')];
+         return rows.some(r=>{const t=(r.querySelector('.rgc-what')||r.querySelector('.rg-what')||r.querySelector('.rg-caps')||{}).textContent||'';
          return t.trim().length<=25;})})()`],
     ['a task box that opens with a placeholder in it',
       `(()=>{const t=document.getElementById('rg-hire-task');t.value='rebalance holdings for 0x2450';return 1})()`,

@@ -63,6 +63,15 @@ const DEFAULT_TASKS = {
   lp_position_plan: 'what would the liquidity agent do with PancakeSwap V3 position 7309536',
 };
 const task = arg('--task', DEFAULT_TASKS[service]);
+// --proof <tx>: a payment already made whose answer was refused (bad input)
+// or never asked for. Skips the swap and the transfer and asks with that
+// hash; the service releases an unconsumed proof for exactly this retry.
+const proofGiven = arg('--proof', null);
+// What the sentence names, sent as fields too, so the answer does not hang
+// on the seller's reading of the sentence.
+const params = {};
+{ const m = task && task.match(/position\s*(?:id\s*)?#?\s*(\d{3,})/i); if (m) params.position = m[1]; }
+{ const m = task && task.match(/0x[a-fA-F0-9]{40}/); if (m && service === 'lp_position_plan' && !params.position) params.address = m[0]; }
 const stop = (why) => { console.error(`\n  refused: ${why}`); process.exitCode = 1; };
 
 // 1. The terms, from the 402 itself — never from a number typed here.
@@ -119,6 +128,21 @@ else {
           console.log(`  ${needSwap ? '3' : '2'}. ask    POST /answer?service=${service} with PAYMENT-SIGNATURE: <tx>`);
           if (!confirm) {
             console.log('\n  plan only. Nothing was sent. Re-run with --confirm to do it.');
+          } else if (proofGiven) {
+            console.log(`\n  asking with the payment already made: ${proofGiven}`);
+            let ans = null, res = null;
+            res = await fetch(`${AGENT}/answer?service=${service}`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': proofGiven }, body: JSON.stringify({ task, params }) });
+            ans = await res.json().catch(() => ({}));
+            console.log(`\n  HTTP ${res.status}`);
+            if (ans.summary) {
+              console.log(`  ${ans.summary.headline}`);
+              for (const [k, v] of ans.summary.facts || []) console.log(`    ${k}: ${v}`);
+              if (ans.result && ans.result.plan && ans.result.plan.verdict) console.log(`\n  ${ans.result.plan.verdict}`);
+              console.log(`\n  paid ${ans.paid}, tx ${ans.tx}`);
+            } else {
+              console.log(`  ${JSON.stringify(ans).slice(0, 600)}`);
+              if (res.status !== 200) process.exitCode = 1;
+            }
           } else {
             if (needSwap) {
               const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
@@ -141,7 +165,7 @@ else {
                 // The service reads receipts from public nodes; give them a moment.
                 let ans = null, res = null;
                 for (let i = 0; i < 6; i++) {
-                  res = await fetch(`${AGENT}/answer?service=${service}`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': payTx }, body: JSON.stringify({ task }) });
+                  res = await fetch(`${AGENT}/answer?service=${service}`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': payTx }, body: JSON.stringify({ task, params }) });
                   ans = await res.json().catch(() => ({}));
                   if (res.status !== 402 || !/not found/.test(ans.reason || '')) break;
                   await new Promise((r) => setTimeout(r, 4000));

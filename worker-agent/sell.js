@@ -222,6 +222,13 @@ export const extractParams = (text = '', given = {}) => {
   const addr = String(text).match(/0x[a-fA-F0-9]{40}/)?.[0];
   const out = { ...given };
   if (addr && !out.address && !out.token) { out.address = addr; out.token = addr; }
+  // A PancakeSwap V3 position is named by a number, not an address. "position
+  // 7309536" in the sentence is the id; the first paid $BOBAI answer (2026-09-03)
+  // was refused for want of exactly this line.
+  if (out.position == null) {
+    const m = String(text).match(/position\s*(?:id\s*)?#?\s*(\d{3,})/i);
+    if (m) out.position = m[1];
+  }
 
   // rebalance_plan is the one service that needs a list rather than a single
   // address, and free text could never produce one. A job hired through the

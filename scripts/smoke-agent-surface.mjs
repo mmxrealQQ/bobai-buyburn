@@ -601,6 +601,27 @@ section('The marketplace, from the front door');
   ok('/agents is in the sitemap', /brainonbnb\.com\/agents</.test((await getText(`${SITE}/sitemap.xml`)).body));
 }
 {
+  // Point 3 of the Block-05 list (2026-09-03): every own card carries an
+  // example answer, and a job page reads as a page. Pinned both ways: the
+  // block must be on OUR cards and on none of the others, and the job page
+  // must say the digest matched, not merely mention a digest.
+  const reg = (await getText(`${SITE}/registry`)).body;
+  const ours = reg.match(/<article class="rgc rg-ours"[\s\S]*?<\/article>/g) || [];
+  ok('every own card on /registry carries an example answer', ours.length >= 5 && ours.every((a) => /class="rgc-ex"/.test(a)), `${ours.filter((a) => /class="rgc-ex"/.test(a)).length} of ${ours.length}`);
+  ok('an example answer names where it came from', ours.every((a) => /From job <a|An example run/.test(a)));
+  ok('no foreign card carries an example block', (reg.match(/class="rgc-ex"/g) || []).length === ours.filter((a) => /class="rgc-ex"/.test(a)).length);
+  const jobHtml = await fetch('https://agent.brainonbnb.com/job?id=56657', { headers: { accept: 'text/html' } });
+  const jh = await jobHtml.text();
+  ok('/job?id= is a page for a browser', /text\/html/.test(jobHtml.headers.get('content-type') || '') && /<h1>Job #56657/.test(jh));
+  ok('the job page shows what was delivered and that the digest matched', /What was delivered/.test(jh) && /matches the digest written on the kernel/.test(jh) && /Health factor/.test(jh));
+  const jobJson = await fetch('https://agent.brainonbnb.com/job?id=56657&format=json', { headers: { accept: 'text/html' } }).then((r) => r.json()).catch(() => null);
+  ok('?format=json overrides the browser and carries the delivery', !!jobJson && jobJson.delivery && jobJson.delivery.digest_matches === true && jobJson.delivery.summary && /Health factor/.test(jobJson.delivery.summary.headline));
+  const ex = await fetch('https://agent.brainonbnb.com/example?service=grid_plan').then((r) => r.json()).catch(() => null);
+  ok('/example runs a service on its seed sentence', !!ex && ex.result && ex.result.plan && /0x[0-9a-f]{40}/.test(ex.task || ''), ex && ex.task);
+  const bad = await fetch('https://agent.brainonbnb.com/example?service=nope');
+  ok('/example refuses an unknown service', bad.status === 400);
+}
+{
   const j = await fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null);
   ok('api-registry publishes the hireable count', Number.isInteger(j?.hireable_here));
   ok('and it is not zero', (j?.hireable_here || 0) > 0, 'nothing on the page can be hired');

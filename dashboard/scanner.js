@@ -13,7 +13,7 @@
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder} from './scanner-chain.js?v=21';
+  curveInfo,curveLadder,curveFeed} from './scanner-chain.js?v=22';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -1344,6 +1344,52 @@ function drawTry(){
     for(const x of rec)add(x.s||x.a.slice(0,6)+'…'+x.a.slice(-4),x.a,'sc-try-recent')}
 }
 drawTry();
+
+// ---- what is on four.meme's curve right now -------------------------------
+// The list a person wants before pressing buy on a launch: the tokens traded
+// on the curve in the last few minutes, with the raise, the price and what a
+// $100 trade costs each way — read from four.meme's own contract, before any
+// pool exists. Behind a button, not on load: it is a few dozen reads against
+// the public log nodes, and a visitor who came with an address in hand should
+// not pay for it. One tap on a row fills the field and scans it.
+function drawFeed(){
+  const box=$('sc-feed');if(!box)return;
+  const btn=$('sc-feed-go');
+  const body=$('sc-feed-body');
+  btn.addEventListener('click',async()=>{
+    btn.disabled=true;btn.textContent='Reading four.meme…';
+    body.textContent='';
+    try{
+      const base=await rpcBatch([call(BNB_PAIR,S.reserves),call(BNB_PAIR,S.token0)]);
+      const br=res2(base[0]),bIs0=addrAt(base[1])===WBNB;
+      const bnbUsd=br?(bIs0?br[1]/br[0]:br[0]/br[1]):0;
+      const f=await curveFeed({quoteUsd:{bnb:bnbUsd}});
+      if(!f.list.length){body.appendChild(el('p','sc-feed-note','Nothing traded on the curve in the last '+f.blocks+' blocks. Try again in a minute.'));return}
+      const t=el('table','sc-feed-t');
+      const hd=el('tr');['Token','Raised','Price','$100 buy','$100 sell','Last trade'].forEach(h=>hd.appendChild(el('th',null,h)));
+      t.appendChild(hd);
+      for(const x of f.list){
+        const r=el('tr');r.tabIndex=0;r.title='Scan '+x.token;
+        const name=el('td');const b=el('b',null,x.symbol||short(x.token));name.appendChild(b);
+        name.appendChild(el('span','sc-feed-a',short(x.token)));r.appendChild(name);
+        const q=x.quoteSym||'?';
+        r.appendChild(el('td',null,x.progressPct==null?'—':pc(x.progressPct,1)+' · '+(x.raised>=100?nf(x.raised):nf(x.raised,2))+' / '+nf(x.maxRaising)+' '+q));
+        r.appendChild(el('td',null,x.priceUsd!=null?usd(x.priceUsd):'raising in '+q));
+        r.appendChild(el('td','sc-feed-c'+(x.buyCost==null?'':costBand(x.buyCost,x.feePct)),x.buyCost==null?(x.buyNote?'more than is left':'—'):pc(x.buyCost)));
+        r.appendChild(el('td','sc-feed-c'+(x.sellCost==null?'':costBand(x.sellCost,x.feePct)),x.sellCost==null?'—':pc(x.sellCost)));
+        r.appendChild(el('td','sc-feed-m',x.blocksAgo<=2?'just now':'~'+Math.round(x.blocksAgo*0.45)+' s ago'));
+        const go=()=>{$('sc-in').value=x.token;showClear();scan(x.token);window.scrollTo({top:0,behavior:'smooth'})};
+        r.addEventListener('click',go);r.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}});
+        t.appendChild(r);
+      }
+      body.appendChild(t);
+      body.appendChild(el('p','sc-feed-note','Read from four.meme’s contract at block '+nf(f.head)+': the last '+f.blocks+' blocks, newest first, tokens that have not graduated. Cost is four.meme’s own quote for that size, its fee included. Tap a row to scan it. Not a recommendation of anything.'));
+    }catch(e){
+      body.appendChild(el('p','sc-feed-note','The log nodes did not answer just now. Try again in a few seconds.'));
+    }finally{btn.disabled=false;btn.textContent='Refresh'}
+  });
+}
+drawFeed();
 (function(){const t=parseInput(new URLSearchParams(location.search).get('token'));
   // Setting .value from script fires no input event, so the clear cross has
   // to be told by hand — otherwise arriving via ?token= shows an address with

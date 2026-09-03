@@ -83,6 +83,27 @@
       transition:border-color .2s,background .2s}
     .sc-try button:hover,.sc-try button:focus-visible{border-color:var(--gold);background:rgba(240,185,11,.08);outline:none}
     .sc-try button.sc-try-recent{color:var(--muted)}
+    /* What is on four.meme's curve right now. A table, because six figures
+       per row want columns; behind a button, because it costs reads. */
+    .sc-feed{max-width:820px;margin:22px auto 0;text-align:left;border:1px solid var(--border);border-radius:16px;padding:14px 16px;background:rgba(255,255,255,.02)}
+    .sc-feed-h{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+    .sc-feed-h b{font-family:'Space Grotesk',sans-serif;font-size:.92rem}
+    .sc-feed-h span{flex:1;min-width:220px;font-size:.76rem;color:var(--muted);line-height:1.5}
+    .sc-feed-h button{background:transparent;color:var(--gold);border:1px solid rgba(240,185,11,.4);border-radius:999px;padding:6px 14px;font:inherit;font-size:.76rem;cursor:pointer}
+    .sc-feed-h button:hover,.sc-feed-h button:focus-visible{background:rgba(240,185,11,.1);outline:none}
+    .sc-feed-h button:disabled{opacity:.5;cursor:default}
+    .sc-feed-t{width:100%;border-collapse:collapse;margin-top:12px;font-size:.78rem}
+    .sc-feed-t th{text-align:left;font-weight:600;color:var(--muted);font-size:.68rem;letter-spacing:.4px;text-transform:uppercase;padding:4px 8px 6px;border-bottom:1px solid var(--border)}
+    .sc-feed-t td{padding:8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;white-space:nowrap}
+    .sc-feed-t tr[tabindex]{cursor:pointer}
+    .sc-feed-t tr[tabindex]:hover td,.sc-feed-t tr[tabindex]:focus-visible td{background:rgba(240,185,11,.06)}
+    .sc-feed-t tr:focus-visible{outline:none}
+    .sc-feed-t td b{display:block;font-size:.82rem}
+    .sc-feed-a{color:var(--muted);font-size:.68rem}
+    .sc-feed-m{color:var(--muted)}
+    .sc-feed-c.good{color:#3fe09a}.sc-feed-c.mid{color:#ffc46b}.sc-feed-c.bad{color:#ff8f6b}
+    .sc-feed-note{font-size:.7rem;color:var(--muted);line-height:1.55;margin:10px 0 0}
+    @media(max-width:640px){.sc-feed{padding:12px}.sc-feed-t{display:block;overflow-x:auto}}
     .sc-hint{font-size:.69rem;color:var(--muted);opacity:.8;margin-top:11px}
     .sc-status{font-size:.73rem;color:var(--gold);margin-top:10px;min-height:1.2em}
     /* Scanning a second token. The address that was just read stays in the
@@ -380,6 +401,14 @@
       </div>
       <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
       <div class="sc-try" id="sc-try"></div>
+      <!-- The launch curve, live. Read from four.meme's own contract on
+           demand: which tokens traded in the last few minutes, how far the
+           raise is, and what $100 costs to buy and to sell — before any pool
+           exists, which is exactly when nobody else can tell you. -->
+      <div class="sc-feed" id="sc-feed">
+        <div class="sc-feed-h"><b>On four.meme right now</b><span>The tokens traded on the launch curve in the last few minutes, and what $100 costs to buy and to sell there &mdash; before any pool exists. Read from four.meme&rsquo;s contract when you ask.</span><button id="sc-feed-go" type="button">Show me</button></div>
+        <div id="sc-feed-body"></div>
+      </div>
     </div>
 
     <section class="primer" style="max-width:820px;margin:22px auto 0">
@@ -452,6 +481,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=47" type="module"></script>
+<script src="scanner.js?v=48" type="module"></script>
 </body>
 </html>

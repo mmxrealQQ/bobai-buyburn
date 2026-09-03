@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 5200 lines.
+# one fetch. 6 files, 5319 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1165,6 +1165,50 @@ export async function curveLadder(token,info,quoteUsd,sizesUsd,url){
   return rows;
 }
 
+// What is trading on four.meme's curve right now, straight from the manager's
+// own logs: the most recently traded tokens that have not graduated, each with
+// its raise, price and what a $100 buy and sell would cost. Nobody shows the
+// cost of a curve trade before there is a pool; this is the list a person
+// wants before pressing buy on a launch. Runs in the browser, on demand — a
+// few dozen small reads against the public log nodes, which cap eth_getLogs
+// at a handful of blocks per call, hence the windows. No event signature is
+// assumed: every log the manager writes about a token carries that token's
+// address in its first data word, and that is all this reads.
+export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
+  const url=LOGS_RPCS[0];
+  const head=Number(await rpc('eth_blockNumber',[],url));
+  const windows=[];
+  for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
+  const logs=(await Promise.all(windows.map(([from,to])=>
+    rpc('eth_getLogs',[{address:FOURMEME_MANAGER,fromBlock:'0x'+from.toString(16),toBlock:'0x'+to.toString(16)}],url).catch(()=>[])
+  ))).flat().filter(l=>Array.isArray(l.topics)&&l.data&&l.data.length>=130);
+  // Newest first; one entry per token, the block it was last seen in.
+  logs.sort((a,b)=>Number(b.blockNumber)-Number(a.blockNumber)||Number(b.logIndex)-Number(a.logIndex));
+  const seen=new Map();
+  for(const l of logs){
+    const t=addrAt('0x'+l.data.slice(2,66));
+    if(!t||t===NULLA||seen.has(t))continue;
+    seen.set(t,{token:t,lastBlock:Number(l.blockNumber),trades:1});
+    if(seen.size>=max*3)break;
+  }
+  for(const l of logs){const t=addrAt('0x'+l.data.slice(2,66));const e=t&&seen.get(t);if(e&&e.lastBlock!==Number(l.blockNumber))e.trades++;}
+  const out=[];
+  for(const e of seen.values()){
+    if(out.length>=max)break;
+    const cv=await curveInfo(e.token);
+    if(!cv||cv.liquidityAdded)continue;
+    const q=cv.quoteSym==='BNB'?quoteUsd.bnb:cv.quoteIsStable?1:0;
+    let symbol=null;
+    try{const s=await rpcBatch([call(e.token,S.symbol)]);symbol=decStr(s[0])||null}catch(err){}
+    const rows=q>0?await curveLadder(e.token,cv,q,[sizeUsd]).catch(()=>[]):[];
+    const r=rows[0]||{};
+    out.push({token:e.token,symbol,lastBlock:e.lastBlock,blocksAgo:head-e.lastBlock,quoteSym:cv.quoteSym,
+      raised:cv.raised,maxRaising:cv.maxRaising,progressPct:cv.progressPct,priceUsd:q>0?cv.price*q:null,
+      buyCost:r.buyCost??null,sellCost:r.sellCost??null,buyNote:r.buyNote||null,feePct:cv.feePct});
+  }
+  return {head,blocks,tokensSeen:seen.size,list:out};
+}
+
 ==============================================================================
 === FILE: dashboard/scanner-scan.js
 ==============================================================================
@@ -1816,6 +1860,27 @@ export async function scan(input, env) {
       transition:border-color .2s,background .2s}
     .sc-try button:hover,.sc-try button:focus-visible{border-color:var(--gold);background:rgba(240,185,11,.08);outline:none}
     .sc-try button.sc-try-recent{color:var(--muted)}
+    /* What is on four.meme's curve right now. A table, because six figures
+       per row want columns; behind a button, because it costs reads. */
+    .sc-feed{max-width:820px;margin:22px auto 0;text-align:left;border:1px solid var(--border);border-radius:16px;padding:14px 16px;background:rgba(255,255,255,.02)}
+    .sc-feed-h{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+    .sc-feed-h b{font-family:'Space Grotesk',sans-serif;font-size:.92rem}
+    .sc-feed-h span{flex:1;min-width:220px;font-size:.76rem;color:var(--muted);line-height:1.5}
+    .sc-feed-h button{background:transparent;color:var(--gold);border:1px solid rgba(240,185,11,.4);border-radius:999px;padding:6px 14px;font:inherit;font-size:.76rem;cursor:pointer}
+    .sc-feed-h button:hover,.sc-feed-h button:focus-visible{background:rgba(240,185,11,.1);outline:none}
+    .sc-feed-h button:disabled{opacity:.5;cursor:default}
+    .sc-feed-t{width:100%;border-collapse:collapse;margin-top:12px;font-size:.78rem}
+    .sc-feed-t th{text-align:left;font-weight:600;color:var(--muted);font-size:.68rem;letter-spacing:.4px;text-transform:uppercase;padding:4px 8px 6px;border-bottom:1px solid var(--border)}
+    .sc-feed-t td{padding:8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;white-space:nowrap}
+    .sc-feed-t tr[tabindex]{cursor:pointer}
+    .sc-feed-t tr[tabindex]:hover td,.sc-feed-t tr[tabindex]:focus-visible td{background:rgba(240,185,11,.06)}
+    .sc-feed-t tr:focus-visible{outline:none}
+    .sc-feed-t td b{display:block;font-size:.82rem}
+    .sc-feed-a{color:var(--muted);font-size:.68rem}
+    .sc-feed-m{color:var(--muted)}
+    .sc-feed-c.good{color:#3fe09a}.sc-feed-c.mid{color:#ffc46b}.sc-feed-c.bad{color:#ff8f6b}
+    .sc-feed-note{font-size:.7rem;color:var(--muted);line-height:1.55;margin:10px 0 0}
+    @media(max-width:640px){.sc-feed{padding:12px}.sc-feed-t{display:block;overflow-x:auto}}
     .sc-hint{font-size:.69rem;color:var(--muted);opacity:.8;margin-top:11px}
     .sc-status{font-size:.73rem;color:var(--gold);margin-top:10px;min-height:1.2em}
     /* Scanning a second token. The address that was just read stays in the
@@ -2113,6 +2178,14 @@ export async function scan(input, env) {
       </div>
       <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
       <div class="sc-try" id="sc-try"></div>
+      <!-- The launch curve, live. Read from four.meme's own contract on
+           demand: which tokens traded in the last few minutes, how far the
+           raise is, and what $100 costs to buy and to sell — before any pool
+           exists, which is exactly when nobody else can tell you. -->
+      <div class="sc-feed" id="sc-feed">
+        <div class="sc-feed-h"><b>On four.meme right now</b><span>The tokens traded on the launch curve in the last few minutes, and what $100 costs to buy and to sell there &mdash; before any pool exists. Read from four.meme&rsquo;s contract when you ask.</span><button id="sc-feed-go" type="button">Show me</button></div>
+        <div id="sc-feed-body"></div>
+      </div>
     </div>
 
     <section class="primer" style="max-width:820px;margin:22px auto 0">
@@ -2185,7 +2258,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=47" type="module"></script>
+<script src="scanner.js?v=48" type="module"></script>
 </body>
 </html>
 
@@ -2208,7 +2281,7 @@ export async function scan(input, env) {
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder} from './scanner-chain.js?v=21';
+  curveInfo,curveLadder,curveFeed} from './scanner-chain.js?v=22';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -3539,6 +3612,52 @@ function drawTry(){
     for(const x of rec)add(x.s||x.a.slice(0,6)+'…'+x.a.slice(-4),x.a,'sc-try-recent')}
 }
 drawTry();
+
+// ---- what is on four.meme's curve right now -------------------------------
+// The list a person wants before pressing buy on a launch: the tokens traded
+// on the curve in the last few minutes, with the raise, the price and what a
+// $100 trade costs each way — read from four.meme's own contract, before any
+// pool exists. Behind a button, not on load: it is a few dozen reads against
+// the public log nodes, and a visitor who came with an address in hand should
+// not pay for it. One tap on a row fills the field and scans it.
+function drawFeed(){
+  const box=$('sc-feed');if(!box)return;
+  const btn=$('sc-feed-go');
+  const body=$('sc-feed-body');
+  btn.addEventListener('click',async()=>{
+    btn.disabled=true;btn.textContent='Reading four.meme…';
+    body.textContent='';
+    try{
+      const base=await rpcBatch([call(BNB_PAIR,S.reserves),call(BNB_PAIR,S.token0)]);
+      const br=res2(base[0]),bIs0=addrAt(base[1])===WBNB;
+      const bnbUsd=br?(bIs0?br[1]/br[0]:br[0]/br[1]):0;
+      const f=await curveFeed({quoteUsd:{bnb:bnbUsd}});
+      if(!f.list.length){body.appendChild(el('p','sc-feed-note','Nothing traded on the curve in the last '+f.blocks+' blocks. Try again in a minute.'));return}
+      const t=el('table','sc-feed-t');
+      const hd=el('tr');['Token','Raised','Price','$100 buy','$100 sell','Last trade'].forEach(h=>hd.appendChild(el('th',null,h)));
+      t.appendChild(hd);
+      for(const x of f.list){
+        const r=el('tr');r.tabIndex=0;r.title='Scan '+x.token;
+        const name=el('td');const b=el('b',null,x.symbol||short(x.token));name.appendChild(b);
+        name.appendChild(el('span','sc-feed-a',short(x.token)));r.appendChild(name);
+        const q=x.quoteSym||'?';
+        r.appendChild(el('td',null,x.progressPct==null?'—':pc(x.progressPct,1)+' · '+(x.raised>=100?nf(x.raised):nf(x.raised,2))+' / '+nf(x.maxRaising)+' '+q));
+        r.appendChild(el('td',null,x.priceUsd!=null?usd(x.priceUsd):'raising in '+q));
+        r.appendChild(el('td','sc-feed-c'+(x.buyCost==null?'':costBand(x.buyCost,x.feePct)),x.buyCost==null?(x.buyNote?'more than is left':'—'):pc(x.buyCost)));
+        r.appendChild(el('td','sc-feed-c'+(x.sellCost==null?'':costBand(x.sellCost,x.feePct)),x.sellCost==null?'—':pc(x.sellCost)));
+        r.appendChild(el('td','sc-feed-m',x.blocksAgo<=2?'just now':'~'+Math.round(x.blocksAgo*0.45)+' s ago'));
+        const go=()=>{$('sc-in').value=x.token;showClear();scan(x.token);window.scrollTo({top:0,behavior:'smooth'})};
+        r.addEventListener('click',go);r.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}});
+        t.appendChild(r);
+      }
+      body.appendChild(t);
+      body.appendChild(el('p','sc-feed-note','Read from four.meme’s contract at block '+nf(f.head)+': the last '+f.blocks+' blocks, newest first, tokens that have not graduated. Cost is four.meme’s own quote for that size, its fee included. Tap a row to scan it. Not a recommendation of anything.'));
+    }catch(e){
+      body.appendChild(el('p','sc-feed-note','The log nodes did not answer just now. Try again in a few seconds.'));
+    }finally{btn.disabled=false;btn.textContent='Refresh'}
+  });
+}
+drawFeed();
 (function(){const t=parseInput(new URLSearchParams(location.search).get('token'));
   // Setting .value from script fires no input event, so the clear cross has
   // to be told by hand — otherwise arriving via ?token= shows an address with

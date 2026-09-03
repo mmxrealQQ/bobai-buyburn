@@ -1148,3 +1148,47 @@ export async function curveLadder(token,info,quoteUsd,sizesUsd,url){
   });
   return rows;
 }
+
+// What is trading on four.meme's curve right now, straight from the manager's
+// own logs: the most recently traded tokens that have not graduated, each with
+// its raise, price and what a $100 buy and sell would cost. Nobody shows the
+// cost of a curve trade before there is a pool; this is the list a person
+// wants before pressing buy on a launch. Runs in the browser, on demand — a
+// few dozen small reads against the public log nodes, which cap eth_getLogs
+// at a handful of blocks per call, hence the windows. No event signature is
+// assumed: every log the manager writes about a token carries that token's
+// address in its first data word, and that is all this reads.
+export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
+  const url=LOGS_RPCS[0];
+  const head=Number(await rpc('eth_blockNumber',[],url));
+  const windows=[];
+  for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
+  const logs=(await Promise.all(windows.map(([from,to])=>
+    rpc('eth_getLogs',[{address:FOURMEME_MANAGER,fromBlock:'0x'+from.toString(16),toBlock:'0x'+to.toString(16)}],url).catch(()=>[])
+  ))).flat().filter(l=>Array.isArray(l.topics)&&l.data&&l.data.length>=130);
+  // Newest first; one entry per token, the block it was last seen in.
+  logs.sort((a,b)=>Number(b.blockNumber)-Number(a.blockNumber)||Number(b.logIndex)-Number(a.logIndex));
+  const seen=new Map();
+  for(const l of logs){
+    const t=addrAt('0x'+l.data.slice(2,66));
+    if(!t||t===NULLA||seen.has(t))continue;
+    seen.set(t,{token:t,lastBlock:Number(l.blockNumber),trades:1});
+    if(seen.size>=max*3)break;
+  }
+  for(const l of logs){const t=addrAt('0x'+l.data.slice(2,66));const e=t&&seen.get(t);if(e&&e.lastBlock!==Number(l.blockNumber))e.trades++;}
+  const out=[];
+  for(const e of seen.values()){
+    if(out.length>=max)break;
+    const cv=await curveInfo(e.token);
+    if(!cv||cv.liquidityAdded)continue;
+    const q=cv.quoteSym==='BNB'?quoteUsd.bnb:cv.quoteIsStable?1:0;
+    let symbol=null;
+    try{const s=await rpcBatch([call(e.token,S.symbol)]);symbol=decStr(s[0])||null}catch(err){}
+    const rows=q>0?await curveLadder(e.token,cv,q,[sizeUsd]).catch(()=>[]):[];
+    const r=rows[0]||{};
+    out.push({token:e.token,symbol,lastBlock:e.lastBlock,blocksAgo:head-e.lastBlock,quoteSym:cv.quoteSym,
+      raised:cv.raised,maxRaising:cv.maxRaising,progressPct:cv.progressPct,priceUsd:q>0?cv.price*q:null,
+      buyCost:r.buyCost??null,sellCost:r.sellCost??null,buyNote:r.buyNote||null,feePct:cv.feePct});
+  }
+  return {head,blocks,tokensSeen:seen.size,list:out};
+}

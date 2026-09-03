@@ -268,9 +268,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 5343,
-   "zipBytes": 110672,
-   "txtBytes": 330747,
-   "sha256": "73afbccd078934d0",
+   "zipBytes": 110710,
+   "txtBytes": 330819,
+   "sha256": "fd0a92c916667c91",
    "reqs": [
     {
      "what": "A static host",
@@ -654,9 +654,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4092,
-   "zipBytes": 86050,
-   "txtBytes": 243947,
-   "sha256": "33322921dfc1b559",
+   "zipBytes": 86061,
+   "txtBytes": 244010,
+   "sha256": "8bef03795fd919fc",
    "reqs": [
     {
      "what": "Node 18+ and time",

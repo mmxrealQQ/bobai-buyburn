@@ -1378,7 +1378,7 @@ function drawFeed(){
         r.appendChild(el('td',null,x.priceUsd!=null?usd(x.priceUsd):'raising in '+q));
         r.appendChild(el('td','sc-feed-c'+(x.buyCost==null?'':costBand(x.buyCost,x.feePct)),x.buyCost==null?(x.buyNote?'more than is left':'—'):pc(x.buyCost)));
         r.appendChild(el('td','sc-feed-c'+(x.sellCost==null?'':costBand(x.sellCost,x.feePct)),x.sellCost==null?'—':pc(x.sellCost)));
-        r.appendChild(el('td','sc-feed-m',x.blocksAgo<=2?'just now':'~'+Math.round(x.blocksAgo*0.45)+' s ago'));
+        r.appendChild(el('td','sc-feed-m',(()=>{const sec=Math.round(x.blocksAgo*0.45);return x.blocksAgo<=2?'just now':sec<90?'~'+sec+' s ago':'~'+Math.round(sec/60)+' min ago'})()));
         const go=()=>{$('sc-in').value=x.token;showClear();scan(x.token);window.scrollTo({top:0,behavior:'smooth'})};
         r.addEventListener('click',go);r.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}});
         t.appendChild(r);

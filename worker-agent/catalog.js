@@ -75,6 +75,13 @@ export const CAPABILITIES = {
       price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1`,
       why_paid: 'it runs on our cron and storage around the clock, which the free scanner never does',
     },
+    {
+      name: 'paid answer',
+      where: 'POST https://agent.brainonbnb.com/answer?service=<id>',
+      what: 'any of the five deliveries below, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
+      price: '0.10 USD1 per answer',
+      why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',
+    },
   ],
 };
 
@@ -107,7 +114,8 @@ export const DELIVERIES = Object.values(SERVICES).map((s) => ({
   price: s.price_display,
   agent: SOLD_BY[s.id]?.agent ?? null,
   where: SOLD_BY[s.id] ? `https://brainonbnb.com/registry#cat-${s.category === 'health-factor-monitoring' ? 'health-factor' : s.category}` : null,
-  how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget.',
+  how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=<id> once without payment for the terms, send 0.10 USD1, repeat with the transaction hash, and the same document comes straight back.',
+  x402: `POST https://agent.brainonbnb.com/answer?service=${s.id}`,
 }));
 
 // One document, so that /stats and the page cannot disagree.

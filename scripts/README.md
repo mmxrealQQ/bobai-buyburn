@@ -60,6 +60,7 @@ Run in the order the header of `erc8004-publish.mjs` gives.
 |---|---|
 | `x402-catalog-proof.mjs` | the ownership proofs in the catalogue, signed offline |
 | `x402-buy-usd1.mjs` · `fund-service-wallet.mjs` · `create-x402-wallet.mjs` | one-time: the service wallet, its gas, a real paid request |
+| `x402-buy-answer.mjs` | buy one of the five answers over x402 the way a stranger would: read the 402, pay 0.10 USD1, get the document; plan by default, `--confirm` spends |
 | `x402-bazaar-scan.mjs` | what is inside the Coinbase Bazaar (measured, then declined) |
 | `b402-register.mjs` | the Binance Bazaar listing — waits on the permission |
 | `mcp-registry-publish.mjs` | the server entry in the official MCP registry |

@@ -205,7 +205,7 @@ function pickService(text = '', explicit) {
   return null;
 }
 
-const extractParams = (text = '', given = {}) => {
+export const extractParams = (text = '', given = {}) => {
   const addr = String(text).match(/0x[a-fA-F0-9]{40}/)?.[0];
   const out = { ...given };
   if (addr && !out.address && !out.token) { out.address = addr; out.token = addr; }

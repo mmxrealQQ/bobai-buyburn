@@ -33,7 +33,7 @@ import { readSessions, trackRecord } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
-import { handleA2A, handleJobResult, SERVICES, exampleFor } from './sell.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
@@ -374,6 +374,94 @@ const WATCH_TOOL = {
 // the same thing without a second copy of the payment logic living beside it.
 // Returns what the caller should be told rather than a Response: the two front
 // doors format it differently, and only one of them can carry a header.
+// One payment check for everything sold over x402 here. Two ways to pay the
+// same price into the same wallet: standard x402 through the facilitator (a
+// stock client can do it unattended), or our own direct USD1 transfer with the
+// transaction hash as proof, which needs no facilitator and no signature
+// support. Either way the proof is marked spent BEFORE the goods are produced:
+// if production fails the caller has lost nothing they cannot retry with
+// support, whereas the reverse order lets a retry storm mint goods off one
+// payment. Returns { ok, tx, paid, from } or { ok:false, status, body }.
+async function chargeX402(env, { payTo, price, description, resource, proof, sold }) {
+  const parsed = parsePaymentHeader(proof);
+  let check, tx;
+  if (parsed.kind === 'x402') {
+    const accepts = dexterAccepts({ payTo, amountAtomic: price.toString(), description, resource });
+    const r = await verifyAndSettle(parsed.value, accepts);
+    if (!r.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', stage: r.stage, reason: r.reason } };
+    tx = (r.tx || `x402:${Date.now()}`).toLowerCase();
+    if (await env.AGENT.get(`paid:${tx}`)) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: 'this settlement has already been used' } };
+    check = { ok: true, paid: price, from: r.payer };
+  } else {
+    check = await verifyPayment(env, String(proof).trim(), payTo, price);
+    if (!check.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: check.reason } };
+    tx = String(proof).trim().toLowerCase();
+  }
+  await env.AGENT.put(`paid:${tx}`, '1', { expirationTtl: 60 * 60 * 24 * 400 });
+  await env.AGENT.put(`earn:${tx}`, JSON.stringify({ at: Date.now(), amount: check.paid.toString(), tx, for: sold }), { expirationTtl: 60 * 60 * 24 * 400 });
+  return { ok: true, tx, paid: check.paid, from: check.from };
+}
+
+// The five deliveries, sold per answer. The same doWork() the escrow path
+// runs, the same price the agents quote on Brain Plaza, one payment and the
+// document comes straight back — no job, no dispute window, no settle call.
+// The escrow stays for buyers who want a kernel between them and the seller;
+// this is for an agent that wants the answer now and has a wallet.
+const ANSWER_PRICE = 100000000000000000n; // 0.10 USD1, the price every service quotes
+async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
+  const service = SERVICES[serviceId];
+  if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES) } };
+  const resource = `https://agent.brainonbnb.com/answer?service=${serviceId}`;
+  const description = `${service.name} — one answer`;
+  if (!proof) {
+    const requirements = {
+      x402Version: 2,
+      accepts: [
+        dexterAccepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource }),
+        {
+          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: ANSWER_PRICE.toString(), payTo, resource,
+          description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+        },
+      ],
+    };
+    return {
+      status: 402,
+      headers: { 'PAYMENT-REQUIRED': b64(requirements) },
+      body: {
+        error: 'payment required',
+        service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
+        how: `Send ${fmtUsd1(ANSWER_PRICE)} USD1 to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
+        or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
+        accepts: requirements.accepts,
+      },
+    };
+  }
+  const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}` });
+  if (!pay.ok) return { status: pay.status, body: pay.body };
+  const params = extractParams(String(body?.task || ''), { ...(body?.params || {}), service: serviceId });
+  let result;
+  try {
+    result = await doWork(serviceId, params);
+  } catch (e) {
+    // Paid and not deliverable — the one case that must never be silent.
+    // The payment is recorded as unspent again so the caller can retry with
+    // the input fixed, and the reason is the service's own.
+    await env.AGENT.delete(`paid:${pay.tx}`).catch(() => {});
+    await env.AGENT.delete(`earn:${pay.tx}`).catch(() => {});
+    return { status: 422, body: { error: `could not produce the answer: ${String(e.message || e).slice(0, 200)}`, needs: service.needs, payment: 'not consumed — repeat with the same PAYMENT-SIGNATURE once the input is fixed' } };
+  }
+  ctx.waitUntil(bump(env, 'answer_sold'));
+  return { status: 200, body: {
+    ok: true, service: serviceId, name: service.name, paid: `${fmtUsd1(pay.paid)} USD1`, tx: pay.tx,
+    produced_at: new Date().toISOString(),
+    result,
+    summary: summarize(serviceId, result),
+    method: 'Every figure here is read from the chain at the time above. Nothing is cached and nothing is self-reported.',
+  } };
+}
+
 async function purchaseWatch(env, ctx, payTo, spec, proof) {
   if (!proof) {
     // The 402 itself. accepts[] is an array because a second scheme
@@ -417,41 +505,14 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     };
   }
 
-  const parsed = parsePaymentHeader(proof);
-  let check;
-  let tx;
-
-  if (parsed.kind === 'x402') {
-    // Standard x402: the facilitator verifies the signature and moves the
-    // money. We never see a key and never submit a transaction.
-    const reqs = {
-      x402Version: 2,
-      accepts: [dexterAccepts({
-        payTo, amountAtomic: WATCH_PRICE_USD1.toString(),
-        description: `Pool watch for ${WATCH_DAYS} days`,
-        resource: 'https://agent.brainonbnb.com/watch',
-      })],
-    };
-    const r = await verifyAndSettle(parsed.value, reqs.accepts[0]);
-    if (!r.ok) return { status: 402, body: { error: 'payment not accepted', stage: r.stage, reason: r.reason } };
-    tx = (r.tx || `x402:${Date.now()}`).toLowerCase();
-    const already = await env.AGENT.get(`paid:${tx}`);
-    if (already) return { status: 402, body: { error: 'payment not accepted', reason: 'this settlement has already been used' } };
-    check = { ok: true, paid: WATCH_PRICE_USD1, from: r.payer };
-  } else {
-    check = await verifyPayment(env, proof.trim(), payTo, WATCH_PRICE_USD1);
-    if (!check.ok) return { status: 402, body: { error: 'payment not accepted', reason: check.reason } };
-    tx = proof.trim().toLowerCase();
-  }
-  // Marked spent BEFORE the watch is created: if creation fails the caller
-  // has lost nothing they cannot retry with support, whereas the reverse
-  // order lets a retry storm mint watches off one payment.
-  await env.AGENT.put(`paid:${tx}`, '1', { expirationTtl: 60 * 60 * 24 * 400 });
-  await env.AGENT.put(
-    `earn:${tx}`,
-    JSON.stringify({ at: Date.now(), amount: check.paid.toString(), tx, for: 'watch' }),
-    { expirationTtl: 60 * 60 * 24 * 400 },
-  );
+  // The payment half is shared with the per-answer sale above; the proof is
+  // marked spent before the watch exists, for the reason given there.
+  const pay = await chargeX402(env, {
+    payTo, price: WATCH_PRICE_USD1, description: `Pool watch for ${WATCH_DAYS} days`,
+    resource: 'https://agent.brainonbnb.com/watch', proof, sold: 'watch',
+  });
+  if (!pay.ok) return { status: pay.status, body: pay.body };
+  const tx = pay.tx, check = { paid: pay.paid, from: pay.from };
 
   const watch = await createWatch(env, spec, { tx, from: check.from });
   ctx.waitUntil(bump(env, 'watch_created'));
@@ -1234,6 +1295,31 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
     // pasting the URL all send GET — and answering "not found" tells every one
     // of them the service does not exist. It does; this says so, and quotes the
     // price from the same builder the 402 uses so the two cannot drift apart.
+    // The five deliveries, per answer over x402. GET describes; POST without
+    // payment answers 402 with the terms; POST with PAYMENT-SIGNATURE delivers.
+    if (path === '/answer') {
+      if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
+      const id = url.searchParams.get('service') || '';
+      if (request.method === 'GET') {
+        if (!id) return json({
+          what: 'Any of the five answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
+          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer, by direct transfer or through the x402 facilitator`,
+          services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
+          how: 'POST /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then POST again with PAYMENT-SIGNATURE and a body naming the task.',
+          or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',
+          catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
+        });
+        const out = await sellAnswer(env, ctx, payTo, id, {}, null);
+        return json(out.body, out.status, out.headers || {});
+      }
+      if (request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const proof = request.headers.get('PAYMENT-SIGNATURE');
+        const out = await sellAnswer(env, ctx, payTo, id, body || {}, proof);
+        return json(out.body, out.status, out.headers || {});
+      }
+    }
+
     if (path === '/watch' && request.method === 'GET') {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const terms = await purchaseWatch(env, ctx, payTo, {}, null);

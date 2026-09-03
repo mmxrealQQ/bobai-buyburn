@@ -618,6 +618,22 @@ section('The marketplace, from the front door');
   ok('the job page shows what was delivered and that the digest matched', /What was delivered/.test(jh) && /matches the digest written on the kernel/.test(jh) && /Health factor/.test(jh));
   const jobJson = await fetch('https://agent.brainonbnb.com/job?id=56657&format=json', { headers: { accept: 'text/html' } }).then((r) => r.json()).catch(() => null);
   ok('?format=json overrides the browser and carries the delivery', !!jobJson && jobJson.delivery && jobJson.delivery.digest_matches === true && jobJson.delivery.summary && /Health factor/.test(jobJson.delivery.summary.headline));
+  // The five answers sold per payment over x402 (2026-09-03). Pinned both
+  // ways: the unpaid call must name the price, both payment schemes and the
+  // inputs; a fabricated proof must be refused with a reason; an unknown
+  // service must not produce a 402 at all; and the catalogue must list all six
+  // paid resources, since a client reads terms from there.
+  const ansList = await fetch(`${AGENT}/answer`).then((r) => r.json()).catch(() => null);
+  ok('/answer lists the five services', !!ansList && Array.isArray(ansList.services) && ansList.services.length === 5 && ansList.services.every((s) => s.needs && /\/answer\?service=/.test(s.terms)));
+  const ansTerms = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  const ansBody = await ansTerms.json().catch(() => ({}));
+  ok('an unpaid answer request is a 402 with both payment schemes and the inputs', ansTerms.status === 402 && !!ansTerms.headers.get('payment-required') && (ansBody.accepts || []).length === 2 && !!ansBody.needs && /0\.10 USD1/.test(ansBody.how || ''));
+  const ansBogus = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: '{"task":"x"}' });
+  const bogusBody = await ansBogus.json().catch(() => ({}));
+  ok('a fabricated proof is refused with a reason, and nothing is produced', ansBogus.status === 402 && /not accepted/.test(bogusBody.error || '') && !!bogusBody.reason && !bogusBody.result);
+  ok('an unknown service does not ask for money', (await fetch(`${AGENT}/answer?service=nope`, { method: 'POST' })).status === 400);
+  const x402cat = await fetch(`${AGENT}/.well-known/x402`).then((r) => r.json()).catch(() => null);
+  ok('the x402 catalogue lists the watch and the five answers', !!x402cat && Array.isArray(x402cat.resources) && x402cat.resources.length === 6 && x402cat.resources.filter((u) => /\/answer\?service=/.test(u)).length === 5);
   const ex = await fetch('https://agent.brainonbnb.com/example?service=grid_plan').then((r) => r.json()).catch(() => null);
   ok('/example runs a service on its seed sentence', !!ex && ex.result && ex.result.plan && /0x[0-9a-f]{40}/.test(ex.task || ''), ex && ex.task);
   const bad = await fetch('https://agent.brainonbnb.com/example?service=nope');

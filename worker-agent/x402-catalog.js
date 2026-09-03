@@ -36,7 +36,21 @@ export const OWNERSHIP_PROOFS = {
 // tell a client to prepare a payment for something that never asks for one.
 // The free tools are named in the instructions instead, where an agent reading
 // the catalogue will still find them.
-const PAID_RESOURCES = ['https://agent.brainonbnb.com/watch'];
+// Since 2026-09-03 the five deliveries are sold per answer here too — the
+// same doWork() the ERC-8183 escrow path runs, one payment, the document
+// straight back. Each is its own resource because each has its own inputs.
+const ANSWER_IDS = ['health_factor', 'grid_plan', 'yield_plan', 'rebalance_plan', 'lp_tier_plan'];
+const ANSWER_NAMES = {
+  health_factor: 'Venus health factor & liquidation distance for an address',
+  grid_plan: 'Grid trading plan for a BNB Chain pool, costed against the real pool',
+  yield_plan: 'Venus yield ranking, and whether moving pays for itself',
+  rebalance_plan: 'Portfolio rebalance, priced against the pools that would execute it',
+  lp_tier_plan: 'Which PancakeSwap fee tier is actually paying its liquidity providers',
+};
+const PAID_RESOURCES = [
+  'https://agent.brainonbnb.com/watch',
+  ...ANSWER_IDS.map((id) => `https://agent.brainonbnb.com/answer?service=${id}`),
+];
 
 function instructions({ payTo, price, days, asset, network }) {
   return `# Brain On BNB AI — agent service
@@ -65,10 +79,16 @@ every 402. A client takes whichever it can execute:
 | Endpoint | Description | Price |
 |----------|-------------|-------|
 | \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price} |
+${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1 |`).join('\n')}
 
-Call \`POST /watch\` once **without** payment and it answers 402 with the price
-and the payment options. That call is free and is the intended way to discover
-terms.
+Call any of them once **without** payment and it answers 402 with the price,
+the payment options and the inputs it needs. That call is free and is the
+intended way to discover terms. \`GET /answer\` lists the five in one document.
+
+The five answers are also sold through the ERC-8183 escrow on
+\`https://brainonbnb.com/registry\`, at the same price, for a buyer who wants
+a kernel between them and the seller. Here there is no job and no dispute
+window: the money moves, the document comes back.
 
 The same watch is sold over MCP as the tool \`bsc_pool_watch\` at
 \`https://agent.brainonbnb.com/mcp\`. It is the same product and the same price;

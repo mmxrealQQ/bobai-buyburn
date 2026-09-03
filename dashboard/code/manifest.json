@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4186,
-   "zipBytes": 60873,
-   "txtBytes": 182873,
-   "sha256": "f74f090831e832b5",
+   "lines": 4077,
+   "zipBytes": 58243,
+   "txtBytes": 175151,
+   "sha256": "6c4bd3eae1da9699",
    "reqs": [
     {
      "what": "A bot token",
@@ -652,10 +652,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 3971,
-   "zipBytes": 83170,
-   "txtBytes": 233439,
-   "sha256": "73b3f6e838f28a38",
+   "lines": 3974,
+   "zipBytes": 83268,
+   "txtBytes": 233718,
+   "sha256": "00665028849f3099",
    "reqs": [
     {
      "what": "Node 18+ and time",

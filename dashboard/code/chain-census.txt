@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3971 lines.
+# one fetch. 7 files, 3974 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -884,7 +884,10 @@ fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-agents.json'), JSON.stringify
   independent_operators: operators.length,
   operator_view: 'https://brainonbnb.com/api-operators.json',
   note: 'Presence here means the address responded and, where stated, the protocol answered. It is not an endorsement, a rating, or a claim that the agent does anything useful.',
-  agents: directory,
+  // The example answers are for the page; here they would add a few hundred
+  // lines of one operator's own results to a directory every hire request
+  // downloads. A pointer to where the example lives is enough.
+  agents: directory.map((d) => (d.example ? { ...d, example: d.example.url } : d)),
 }, null, 2) + '\n');
 
 // ---- the page ------------------------------------------------------------

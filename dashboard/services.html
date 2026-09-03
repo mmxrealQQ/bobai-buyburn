@@ -11,7 +11,7 @@
 <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts.css?v=1">
 <title>What we can do for you — Brain on BNB</title>
-<meta name="description" content="Everything Brain on BNB offers in one place: free pool measurement and an agent marketplace in the browser, five things you can hire us to deliver on-chain for 0.10 $U, and the tools your own agent can call.">
+<meta name="description" content="Everything Brain on BNB offers in one place: free pool measurement and an agent marketplace in the browser, six things you can hire us to deliver on-chain for 0.10 $U, and the tools your own agent can call.">
 <link rel="canonical" href="https://brainonbnb.com/services">
 <link rel="icon" type="image/png" href="/favicon.png?v=4">
 <meta property="og:title" content="What we can do for you — Brain on BNB">
@@ -43,7 +43,11 @@
   .sv-cost{color:var(--muted);font-size:.75rem;line-height:1.5;margin:10px 0 0;opacity:.85}
   .sv-buy-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .sv-price{color:var(--gold);font-weight:600;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .sv-price-s{font-size:.72rem}
+  /* A price is one short figure and stays on one line. The x402 line carries a
+     sentence ("0.10 USD1 per answer, or the same in $BOBAI…") and at 390px that
+     sentence, kept on one line, pushed the whole page 37px wider than the phone
+     (2026-09-03). Long ones wrap; the number is still the first thing read. */
+  .sv-price-s{font-size:.72rem;white-space:normal;overflow-wrap:anywhere}
   .sv-needs-h{color:var(--text);font-size:.74rem;margin:12px 0 4px;font-weight:600;letter-spacing:.2px}
   .sv-needs{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:.74rem;color:var(--muted);margin:0}
   .sv-needs dt{color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-width:0;overflow-wrap:anywhere}
@@ -92,7 +96,7 @@
       <p class="primer-what"><b>Three ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">
         <li><b>Open a page and look</b>Free, no account. Paste a token address, or browse the agent marketplace. This is where most people start.</li>
-        <li><b>Pay ten cents for an answer</b>Five specific questions we answer on request, delivered on-chain. You need a wallet and about $0.10 for this one.</li>
+        <li><b>Pay ten cents for an answer</b>Six specific questions we answer on request, delivered on-chain. You need a wallet and about $0.10 for this one.</li>
         <li><b>Let your own AI call us</b>If you use an AI assistant that can call tools, it can use ours directly. One command to install.</li>
       </ul>
       <p class="primer-how"><b>Not sure where to start?</b> Open <a href="/scanner">the Pool Scanner</a> and paste any BNB Chain token address. It shows you what a trade would really cost &mdash; the shortest way to see what kind of answers this whole site produces.</p>
@@ -144,7 +148,7 @@
 
   <section class="sv-sec">
     <h2>Hire us to deliver it</h2>
-    <p class="sv-sub">Five answers we produce on request, each priced the same and each one a measurement rather than an opinion. They exist because a page you have to read is not the same as an answer delivered to your agent while you are asleep.</p>
+    <p class="sv-sub">Six answers we produce on request, each priced the same and each one a measurement rather than an opinion. They exist because a page you have to read is not the same as an answer delivered to your agent while you are asleep.</p>
     <div class="sv-grid">
       <article class="sv-buy">
         <div class="sv-buy-h">
@@ -204,13 +208,13 @@
       <article class="sv-buy">
         <div class="sv-buy-h">
           <h3>The liquidity agent, on your position</h3>
-          <span class="sv-price">0.10 $U</span>
+          <span class="sv-price">0.10 USD1</span>
         </div>
-        
+        <p class="sv-ask">What would the liquidity agent decide about my position?</p>
         <p class="sv-what">What the agent that runs this project's own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that held through every tested day of the recorded price windows — and what the wallet's spare BNB would add. It reads and plans; it signs nothing on your position.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>position</dt><dd>the PancakeSwap V3 position id (tokenId)</dd><dt>address</dt><dd>or the wallet that holds exactly one position (0x…)</dd></dl>
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/null" rel="noopener">#null</a> &middot; <a href="">hire it on Brain Plaza &rarr;</a></p>
+        <p class="sv-cost">Sold per answer only, no escrow: <code>POST https://agent.brainonbnb.com/answer?service=lp_position_plan</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/liquidity">what the agent does on our own position &rarr;</a></p>
       </article>
     </div>
     <p class="sv-how"><b>How paying works, and what protects you.</b> ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=&lt;id&gt; once without payment for the terms, send 0.10 USD1, repeat with the transaction hash, and the same document comes straight back. We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p>
@@ -261,7 +265,7 @@
         <li><b><a href="https://agent.brainonbnb.com/watch" rel="noopener">pool watch</a></b> <span class="sv-price sv-price-s">0.50 USD1</span>
           <span>continuous monitoring of one pool for 30 days; fires a callback when depth falls below your threshold</span><code>POST https://agent.brainonbnb.com/watch</code><span class="sv-limit">Paid because it runs on our cron and storage around the clock, which the free scanner never does.</span></li>
         <li><b><a href="https://agent.brainonbnb.com/answer?service=&lt;id&gt;" rel="noopener">paid answer</a></b> <span class="sv-price sv-price-s">0.10 USD1 per answer, or the same in $BOBAI at the 402’s quote</span>
-          <span>any of the six deliveries below, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms</span><code>POST https://agent.brainonbnb.com/answer?service=&lt;id&gt;</code><span class="sv-limit">Paid because it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now.</span></li>
+          <span>any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms</span><code>POST https://agent.brainonbnb.com/answer?service=&lt;id&gt;</code><span class="sv-limit">Paid because it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now.</span></li>
     </ul>
   </section>
 

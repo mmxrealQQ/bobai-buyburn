@@ -77,7 +77,14 @@ const ASKS = {
   yield_plan: 'Where should this sit to earn most — and is moving it worth the gas?',
   rebalance_plan: 'What would it cost me to get back to my target weights?',
   lp_tier_plan: 'Which fee tier should I put liquidity in?',
+  lp_position_plan: 'What would the liquidity agent decide about my position?',
 };
+
+// The count in words, so the copy cannot say "five" over a list of six
+// (which it did from 3 September, the day the sixth was added).
+const WORDS = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const N_DELIVERIES = WORDS[DELIVERIES.length] || String(DELIVERIES.length);
+const N_DELIVERIES_CAP = N_DELIVERIES.charAt(0).toUpperCase() + N_DELIVERIES.slice(1);
 
 // The free surfaces a person uses with a browser. Not in the catalog because
 // the catalog describes what a machine can call; these are pages.
@@ -142,7 +149,8 @@ const delivery = (d) => `      <article class="sv-buy">
         <p class="sv-what">${esc(d.what)}</p>
         <p class="sv-needs-h">What it needs from you</p>
 ${needsList(d.needs)}
-        <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}">hire it on Brain Plaza &rarr;</a></p>
+        ${d.agent ? `<p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}">hire it on Brain Plaza &rarr;</a></p>`
+          : `<p class="sv-cost">Sold per answer only, no escrow: <code>${esc(d.x402)}</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/liquidity">what the agent does on our own position &rarr;</a></p>`}
       </article>`;
 
 const capRow = (c) => {
@@ -180,7 +188,7 @@ function page() {
 <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts.css?v=1">
 <title>What we can do for you — Brain on BNB</title>
-<meta name="description" content="Everything Brain on BNB offers in one place: free pool measurement and an agent marketplace in the browser, five things you can hire us to deliver on-chain for 0.10 $U, and the tools your own agent can call.">
+<meta name="description" content="Everything Brain on BNB offers in one place: free pool measurement and an agent marketplace in the browser, ${N_DELIVERIES} things you can hire us to deliver on-chain for 0.10 $U, and the tools your own agent can call.">
 <link rel="canonical" href="https://brainonbnb.com/services">
 <link rel="icon" type="image/png" href="/favicon.png?v=4">
 <meta property="og:title" content="What we can do for you — Brain on BNB">
@@ -212,7 +220,11 @@ function page() {
   .sv-cost{color:var(--muted);font-size:.75rem;line-height:1.5;margin:10px 0 0;opacity:.85}
   .sv-buy-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .sv-price{color:var(--gold);font-weight:600;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .sv-price-s{font-size:.72rem}
+  /* A price is one short figure and stays on one line. The x402 line carries a
+     sentence ("0.10 USD1 per answer, or the same in $BOBAI…") and at 390px that
+     sentence, kept on one line, pushed the whole page 37px wider than the phone
+     (2026-09-03). Long ones wrap; the number is still the first thing read. */
+  .sv-price-s{font-size:.72rem;white-space:normal;overflow-wrap:anywhere}
   .sv-needs-h{color:var(--text);font-size:.74rem;margin:12px 0 4px;font-weight:600;letter-spacing:.2px}
   .sv-needs{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:.74rem;color:var(--muted);margin:0}
   .sv-needs dt{color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-width:0;overflow-wrap:anywhere}
@@ -261,7 +273,7 @@ function page() {
       <p class="primer-what"><b>Three ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">
         <li><b>Open a page and look</b>Free, no account. Paste a token address, or browse the agent marketplace. This is where most people start.</li>
-        <li><b>Pay ten cents for an answer</b>Five specific questions we answer on request, delivered on-chain. You need a wallet and about $0.10 for this one.</li>
+        <li><b>Pay ten cents for an answer</b>${N_DELIVERIES_CAP} specific questions we answer on request, delivered on-chain. You need a wallet and about $0.10 for this one.</li>
         <li><b>Let your own AI call us</b>If you use an AI assistant that can call tools, it can use ours directly. One command to install.</li>
       </ul>
       <p class="primer-how"><b>Not sure where to start?</b> Open <a href="/scanner">the Pool Scanner</a> and paste any BNB Chain token address. It shows you what a trade would really cost &mdash; the shortest way to see what kind of answers this whole site produces.</p>
@@ -284,7 +296,7 @@ ${PAGES.map(card).join('\n')}
 
   <section class="sv-sec">
     <h2>Hire us to deliver it</h2>
-    <p class="sv-sub">Five answers we produce on request, each priced the same and each one a measurement rather than an opinion. They exist because a page you have to read is not the same as an answer delivered to your agent while you are asleep.</p>
+    <p class="sv-sub">${N_DELIVERIES_CAP} answers we produce on request, each priced the same and each one a measurement rather than an opinion. They exist because a page you have to read is not the same as an answer delivered to your agent while you are asleep.</p>
     <div class="sv-grid">
 ${DELIVERIES.map(delivery).join('\n')}
     </div>
@@ -372,7 +384,9 @@ if (SELFTEST) {
 
   const html = page();
   for (const d of DELIVERIES) {
-    if (!html.includes(String(d.agent))) problems.push(`agent ${d.agent} is missing from the page`);
+    if (d.agent && !html.includes(String(d.agent))) problems.push(`agent ${d.agent} is missing from the page`);
+    if (!d.agent && !html.includes(esc(d.x402))) problems.push(`${d.id} has no escrow agent and the page does not show its x402 door`);
+    if (html.includes('#null')) problems.push('a delivery is credited to agent #null');
     // The service description must be the catalog's, not a retyped one.
     if (!html.includes(esc(d.what).slice(0, 60))) problems.push(`${d.id} does not carry the catalog's own description`);
   }

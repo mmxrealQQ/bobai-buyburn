@@ -596,14 +596,14 @@ addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'
 addEventListener('pageshow',e=>{if(e.persisted)wake()});
 
 // === LIQ BOOST DATA ===
-function lbdata(entries){try{if(!entries||entries.length===0)return;document.getElementById('lb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=nf(totalLp,2);paintRows('lb-tx-body',rows)}catch(e){console.error('lbdata error:',e)}}
+function lbdata(entries){try{if(!entries||entries.length===0)return;const lbC=document.getElementById('lb-count');if(!lbC)return;lbC.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('lb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('lb-lp').textContent=nf(totalLp,2);paintRows('lb-tx-body',rows)}catch(e){console.error('lbdata error:',e)}}
 
 // === BOBAI LIQ BOOST DATA ===
 // One log file, two campaigns: everything before BB2_START belongs to round one (the
 // archive card, frozen at its final numbers), everything after to the live boost II card.
 const BB2_START=new Date('2026-08-08T00:00:00Z').getTime();
 const BB2_END=new Date('2026-09-16T23:59:59Z').getTime();
-function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;document.getElementById('bb-count').textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=nf(totalLp,2);paintRows('bb-tx-body',rows)}catch(e){console.error('bbdata error:',e)}}
+function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;const bbC=document.getElementById('bb-count');if(!bbC)return;bbC.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=nf(totalLp,2);paintRows('bb-tx-body',rows)}catch(e){console.error('bbdata error:',e)}}
 
 // === BOBAI LIQ BOOST II DATA (live campaign) ===
 function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,10)+'...'+tx.slice(-6)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
@@ -995,6 +995,25 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
 
 // The liquidity agent's block, on its own so /liquidity can carry it without
 // the rest of the agents block. Same rows, same source, same sums.
+// The record says what the agent saw at 05:23; the chain says what is true
+// now. Between the two a price can leave the range, and it did: on 2026-09-03
+// the page said "in range and earning" for nine hours after the position had
+// stopped earning. Three reads from the visitor's own browser — the position's
+// ticks, its pool, the pool's current tick — and the first line is corrected.
+function lpLiveRange(pos){
+  const rpc = (to, data) => fetch('https://bsc.publicnode.com', {method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0', id:1, method:'eth_call', params:[{to, data}, 'latest']})})
+    .then(r => r.json()).then(j => { if(!j || !j.result || j.result.length < 66) throw new Error('no answer'); return j.result; });
+  const NPM = '0x46a15b0b27311cedf172ab29e4f4766fbe7f4364', FACTORY = '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865';
+  const s24 = h => { let n = BigInt('0x' + h); if(n >= (1n << 255n)) n -= (1n << 256n); return Number(n); };
+  return rpc(NPM, '0x99fbab88' + BigInt(pos).toString(16).padStart(64, '0')).then(p => {
+    const w = i => p.slice(2 + 64 * i, 2 + 64 * (i + 1));
+    const lo = s24(w(5)), hi = s24(w(6));
+    return rpc(FACTORY, '0x1698ee82' + w(2) + w(3) + w(4))
+      .then(pool => rpc('0x' + pool.slice(26), '0x3850c7bd'))
+      .then(slot => { const tick = s24(slot.slice(66, 130)); return {lo, hi, tick, inRange: tick >= lo && tick < hi}; });
+  });
+}
 function fillLpBlock(){
   const el = id => document.getElementById(id);
   return fetch('https://agent.brainonbnb.com/lp/agent', {cache:'no-store'})
@@ -1040,6 +1059,13 @@ function fillLpBlock(){
           when + (anyError ? '. One step could not finish; the operator has been told.' : '.')));
         list.innerHTML = rows.join('');
         if(noteEl) noteEl.textContent = 'Runs once a day on its own. The capital stays in the position; only the fees leave it.';
+        if(pos) lpLiveRange(pos).then(l => {
+          const first = list.querySelector('li b'), sub = list.querySelector('li div span');
+          if(!first) return;
+          first.textContent = l.inRange ? 'The position is in range and earning'
+            : 'The position is out of range right now — it earns nothing until the agent re-sets it at a 05:23 UTC run';
+          if(sub) sub.textContent = (sub.textContent || '') + ' · checked on the chain just now: price tick ' + l.tick + ', range ' + l.lo + ' to ' + l.hi + (l.inRange ? '' : '; the record above is from ' + when);
+        }).catch(() => {});
       });
 }
 if(!document.getElementById('ag-asked') && document.getElementById('ag-lp')) fillLpBlock();

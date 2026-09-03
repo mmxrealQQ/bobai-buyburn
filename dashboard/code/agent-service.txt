@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 9474 lines.
+# one fetch. 37 files, 9530 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1635,7 +1635,7 @@ export const CAPABILITIES = {
     {
       name: 'paid answer',
       where: 'POST https://agent.brainonbnb.com/answer?service=<id>',
-      what: 'any of the six deliveries below, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
+      what: 'any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
       price: '0.10 USD1 per answer, or the same in $BOBAI at the 402’s quote',
       why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',
     },
@@ -2991,7 +2991,7 @@ export async function handleFind(url) {
       returned: scored.length,
       // Said plainly, because a broker that implies a ranking it cannot support
       // is worse than no broker.
-      note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. There is no task history behind these results yet.',
+      note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. Task history is kept separately at /sessions (every task this broker has routed, failures included) and is not folded into this ordering.',
       measured_at: list.measured_at || null,
       results: scored.map(({ a, s }) => ({
         id: a.id,
@@ -4145,7 +4145,7 @@ import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
 import { handleDispatch } from './dispatch.js';
-import { readSessions, trackRecord } from './sessions.js';
+import { readSessions, MAX_SESSIONS, trackRecord } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
@@ -4825,6 +4825,13 @@ export default {
       }), 200, { 'Cache-Control': 'public, max-age=300' });
     }
 
+    // Browsers ask for this on every HTML page this worker serves (/job,
+    // /sessions, /lp/agent) and got a 404 in the console each time. One icon,
+    // the site's own.
+    if (path === '/favicon.ico') {
+      return Response.redirect('https://brainonbnb.com/favicon.png', 301);
+    }
+
     if (path === '/') {
       return json({
         service: 'Brain On BNB AI — agent service',
@@ -5203,6 +5210,40 @@ ${delivery.digest_matches === true ? 'The SHA-256 of that document matches the d
     if (path === '/sessions') {
       const sessions = await readSessions(env);
       const record = trackRecord(sessions);
+      // A browser gets the same record as a page. /registry links here with
+      // "Full log", and until 2026-09-03 a person following that link landed on
+      // raw JSON. Agents keep getting JSON: no Accept: text/html, or ?format=json.
+      const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
+      if (wantsHtml) {
+        const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
+        const probes = sessions.filter((s) => s.probe).length;
+        const recent = sessions.slice(-40).reverse();
+        const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>What has actually been asked — Brain Plaza</title><link rel="icon" href="https://brainonbnb.com/favicon.png">
+<style>
+:root{color-scheme:dark}body{margin:0;background:#0c0b0c;color:#f3efe6;font:15px/1.6 Inter,system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:28px 18px 60px}h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1rem;margin:26px 0 8px;color:#f0b90b}
+p.means{color:#cfc9bd;margin:6px 0 0}a{color:#f0b90b}code{font-size:.85em}.note{color:#a9a49a;font-size:.82rem;margin-top:10px}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.84rem}th{text-align:left;color:#a9a49a;font-weight:600;font-size:.72rem;letter-spacing:.4px;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.12)}
+td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ok{color:#3fe09a}.bad{color:#ff8f6b}.dim{color:#a9a49a}.task{font-style:italic;color:#cfc9bd}.ex{color:#a9a49a;font-size:.78rem}
+</style></head><body><main>
+<h1>What has actually been asked</h1>
+<p class="means">Every task Brain Plaza has routed to another agent, and how each one went. Failures included: a record that only showed successes would be marketing. Nobody reports their own score here; an operator appears because it was asked something, and its reliability is the count of times it answered.</p>
+<p class="note">${h(sessions.length)} tasks recorded (the last ${MAX_SESSIONS} are kept) · ${h(record.length)} operators seen · ${h(probes)} of the tasks were our own daily checks, marked below and counted separately. What was asked is stored with a short excerpt of the answer, never the full response.</p>
+<h2>Track record, by operator</h2>
+<div class="wrap"><table><thead><tr><th>Operator</th><th>Answered</th><th>Median</th><th>Tools it answered with</th><th>Last seen</th><th>Recent failures</th></tr></thead><tbody>
+${record.map((r) => `<tr><td>${h(r.operator)}${r.agent && String(r.agent) !== String(r.operator) ? `<br><span class="dim">${h(r.agent)}</span>` : ''}</td><td class="n ${r.answered === r.tasks_routed ? 'ok' : r.answered ? '' : 'bad'}">${h(r.reliability)}${r.of_which_our_scheduled_checks ? `<br><span class="dim">${h(r.of_which_our_scheduled_checks)} our checks</span>` : ''}</td><td class="n">${r.median_ms == null ? '—' : h(r.median_ms) + ' ms'}</td><td>${r.tools_used.length ? h(r.tools_used.join(' · ')) : '<span class="dim">—</span>'}</td><td class="n">${h(when(r.last_seen))}</td><td class="ex">${r.recent_failures ? h(r.recent_failures.join(' · ')) : ''}</td></tr>`).join('')}
+</tbody></table></div>
+<h2>The last ${h(recent.length)} tasks, newest first</h2>
+<div class="wrap"><table><thead><tr><th>When</th><th>Asked</th><th>Routed to</th><th>Outcome</th><th>Took</th></tr></thead><tbody>
+${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span class="dim">our check</span>' : ''}</td><td><span class="task">&ldquo;${h(s.task)}&rdquo;</span>${s.excerpt ? `<br><span class="ex">${h(s.excerpt)}</span>` : ''}</td><td>${h(s.operator || s.agent || '—')}${s.tool ? `<br><code class="dim">${h(s.tool)}</code>` : ''}</td><td class="${s.ok ? 'ok' : 'bad'}">${h(s.outcome)}</td><td class="n">${typeof s.ms === 'number' ? h(s.ms) + ' ms' : '—'}</td></tr>`).join('')}
+</tbody></table></div>
+<p class="note">Same record as JSON: <a href="/sessions?format=json">/sessions?format=json</a> · <a href="https://brainonbnb.com/registry">Brain Plaza</a></p>
+</main></body></html>`;
+        return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
+      }
       return json({
         what_this_is: 'Every task Brain Plaza has routed to another agent, and how each one went. Failures included — a record that only showed successes would be marketing.',
         how_to_read_it: 'Nobody reports their own score here. An operator appears because it was asked something, and its reliability is the count of times it answered. We store what was asked and a short excerpt of the answer, never the full response.',
@@ -5767,9 +5808,17 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
         // since, and the page would state a growth figure that double-counts.
         // Zero here, and the frontier moved up to the same mark so tomorrow's
         // tick starts reading where the scan stopped instead of redoing it.
+        // ...but never DOWN. The sync is meant to run the minute a scan ends;
+        // run five days later (2026-09-03, to record the scan in the series)
+        // it dragged a live counter of 332,143 back to the scan's 316,472 and
+        // the page walked its own headline backwards until the next frontier
+        // tick. The baseline moves to the scan; the high-water mark keeps
+        // whatever the chain has shown since, and "new since" is the gap.
+        const cur = Number(st.highestId) || 0;
         st.baselineId = seed;
-        st.newSinceBaseline = 0;
-        st.lastScannedNew = seed;
+        st.highestId = Math.max(cur, seed);
+        st.newSinceBaseline = Math.max(0, st.highestId - seed);
+        st.lastScannedNew = Math.max(Number(st.lastScannedNew) || 0, seed);
         await env.AGENT.put('census:state', JSON.stringify(st));
 
         // /census serves the snapshot, not the state — so seeding the state
@@ -5780,10 +5829,13 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
         // wrote it, because a seed measures no endpoints.
         const snap = JSON.parse((await env.AGENT.get('census:latest')) || 'null');
         if (snap) {
-          snap.highest_id = seed;
-          snap.registered_since_baseline = 0;
+          snap.highest_id = Math.max(Number(snap.highest_id) || 0, seed);
+          snap.registered_since_baseline = Math.max(0, snap.highest_id - seed);
           snap.high_water_checked_at = new Date().toISOString();
-          if (snap.frontier) { snap.frontier.read_up_to = seed; snap.frontier.behind_by = 0; }
+          if (snap.frontier) {
+            snap.frontier.read_up_to = Math.max(Number(snap.frontier.read_up_to) || 0, seed);
+            snap.frontier.behind_by = Math.max(0, snap.highest_id - snap.frontier.read_up_to);
+          }
           await env.AGENT.put('census:latest', JSON.stringify(snap));
         }
         seeded = seed;
@@ -6953,7 +7005,7 @@ export const SERVICES = {
     name: 'The liquidity agent, on your position',
     category: 'rebalancing',
     price: '100000000000000000',
-    price_display: '0.10 $U',
+    price_display: '0.10 USD1',
     deliverables: 'What the agent that runs this project\'s own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that held through every tested day of the recorded price windows — and what the wallet\'s spare BNB would add. It reads and plans; it signs nothing on your position.',
     needs: { position: 'the PancakeSwap V3 position id (tokenId)', address: 'or the wallet that holds exactly one position (0x…)' },
   },
@@ -7505,7 +7557,7 @@ export async function handleSession(url, env) {
 // which is the difference between two operations a day and two thousand.
 
 const KEY = 'plaza:sessions';
-const MAX_SESSIONS = 400;
+export const MAX_SESSIONS = 400;
 const EXCERPT = 220;
 
 export async function recordSession(env, entry) {
@@ -7547,15 +7599,16 @@ export function trackRecord(sessions) {
   for (const s of sessions) {
     const k = s.operator || s.agent;
     if (!k) continue;
-    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, totalMs: 0, timed: 0, tools: new Set(), last: null, failures: [] });
+    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, times: [], tools: new Set(), last: null, failures: [] });
     const r = by.get(k);
     r.asked++;
     if (s.probe) r.probes++;
     if (s.ok) {
       r.answered++;
       if (s.tool) r.tools.add(s.tool);
-      if (typeof s.ms === 'number') { r.totalMs += s.ms; r.timed++; }
-    } else if (r.failures.length < 3) {
+      if (typeof s.ms === 'number') r.times.push(s.ms);
+    } else if (r.failures.length < 3 && !r.failures.includes(s.outcome)) {
+      // Distinct reasons, not the same one three times over.
       r.failures.push(s.outcome);
     }
     if (!r.last || s.at > r.last) r.last = s.at;
@@ -7574,7 +7627,10 @@ export function trackRecord(sessions) {
       // our own scheduled checks means something different from one built from
       // strangers' questions, and the reader is entitled to tell them apart.
       ...(r.probes ? { of_which_our_scheduled_checks: r.probes } : {}),
-      median_ms: r.timed ? Math.round(r.totalMs / r.timed) : null,
+      // A real median. The field carried this name from the start but was a
+      // mean until 2026-09-03 — one 9-second answer among twenty 150 ms ones
+      // read as "600 ms", which is a number no single request ever took.
+      median_ms: r.times.length ? (() => { const t = [...r.times].sort((a, b) => a - b); const m = t.length >> 1; return Math.round(t.length % 2 ? t[m] : (t[m - 1] + t[m]) / 2); })() : null,
       tools_used: [...r.tools].slice(0, 8),
       last_seen: r.last,
       ...(r.failures.length ? { recent_failures: r.failures } : {}),

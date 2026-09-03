@@ -262,7 +262,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-37 files, 9474 lines
+37 files, 9530 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

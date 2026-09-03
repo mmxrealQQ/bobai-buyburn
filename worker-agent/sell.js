@@ -129,7 +129,7 @@ export const SERVICES = {
     name: 'The liquidity agent, on your position',
     category: 'rebalancing',
     price: '100000000000000000',
-    price_display: '0.10 $U',
+    price_display: '0.10 USD1',
     deliverables: 'What the agent that runs this project\'s own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that held through every tested day of the recorded price windows — and what the wallet\'s spare BNB would add. It reads and plans; it signs nothing on your position.',
     needs: { position: 'the PancakeSwap V3 position id (tokenId)', address: 'or the wallet that holds exactly one position (0x…)' },
   },

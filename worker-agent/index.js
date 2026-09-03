@@ -35,6 +35,9 @@ import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
+import { encodeFunctionData, keccak256, toBytes } from 'viem';
+import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
+import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
@@ -741,6 +744,57 @@ export default {
     {
       const m = path.match(/^\/job\/(\d+)\/result$/);
       if (m) return await handleJobResult(m[1], env);
+    }
+
+    // ATTEST A DELIVERY ON-CHAIN, as the buyer. After a job this worker
+    // delivered is SUBMITTED, the buyer can write one measurement into the
+    // ERC-8004 ReputationRegistry: responsetime, the milliseconds between the
+    // block that funded the escrow and the block that carried the deliverable
+    // — two on-chain timestamps anyone can read again and disagree with. Not
+    // a star rating: this project's rule is that a measurement and a taste
+    // claim never share a column, and the writer enforces what the reader
+    // separates. The evidence travels with it: feedbackURI is the delivered
+    // document, feedbackHash its keccak256, so "delivered in 41 s" points at
+    // exactly what was delivered. Returns the unsigned call; the buyer's own
+    // wallet sends it. The contract refuses the agent's owner, so we could
+    // not write this about ourselves even if we wanted to.
+    if (path === '/attest') {
+      const id = url.searchParams.get('job') || '';
+      const fundTx = String(url.searchParams.get('fundTx') || '').toLowerCase();
+      if (!/^\d+$/.test(id)) return json({ error: 'job is required — the numeric jobId' }, 400);
+      if (!/^0x[a-f0-9]{64}$/.test(fundTx)) return json({ error: 'fundTx is required — the hash of the transaction that funded the escrow' }, 400);
+      const raw = await call(ERC8183.commerce, JOB_CALL(id)).catch(() => null);
+      const job = raw ? decodeJob(raw) : null;
+      if (!job) return json({ error: 'job not found or unreadable', id }, 404);
+      if (job.status !== 'SUBMITTED' && job.status !== 'COMPLETED') return json({ error: `job ${id} is ${job.status} — nothing has been delivered to attest`, status: job.status }, 409);
+      const stored = await env.AGENT.get(`job:${id}`, 'json').catch(() => null);
+      if (!stored || !stored.document) return json({ error: 'this worker holds no document for that job — it was not the provider' }, 404);
+      let service = null; try { service = JSON.parse(stored.document).service || null; } catch { /* no service */ }
+      const agentId = service && SOLD_BY[service] ? SOLD_BY[service].agent : null;
+      if (!agentId) return json({ error: 'the delivering agent could not be identified from the document', service }, 500);
+      const receipt = await rpc('eth_getTransactionReceipt', [fundTx], RECEIPT_RPCS).catch(() => null);
+      if (!receipt || receipt.status !== '0x1') return json({ error: 'the funding transaction was not found or failed' }, 404);
+      if (String(receipt.to || '').toLowerCase() !== ERC8183.commerce.toLowerCase()) return json({ error: 'that transaction did not go to the kernel' }, 400);
+      const block = await rpc('eth_getBlockByNumber', [receipt.blockNumber, false], RECEIPT_RPCS).catch(() => null);
+      const fundedAt = block ? Number(BigInt(block.timestamp)) : null;
+      if (!fundedAt) return json({ error: 'could not read the funding block' }, 503);
+      const submittedAt = Number(job.submitted_at || 0);
+      if (!(submittedAt > fundedAt)) return json({ error: 'the deliverable predates the funding transaction — wrong fundTx?', funded_at: fundedAt, submitted_at: submittedAt }, 400);
+      const ms = (submittedAt - fundedAt) * 1000;
+      const feedbackURI = `https://agent.brainonbnb.com/job/${id}/result`;
+      const feedbackHash = keccak256(toBytes(stored.document));
+      const data = encodeFunctionData({ abi: REPUTATION_ABI, functionName: 'giveFeedback', args: [BigInt(agentId), BigInt(ms), 0, 'responsetime', '', 'https://agent.brainonbnb.com/a2a', feedbackURI, feedbackHash] });
+      ctx.waitUntil(bump(env, 'attest_prepared'));
+      return json({
+        job: id, agent_id: agentId, service, status: job.status,
+        tag1: 'responsetime', value: ms, unit: 'ms',
+        means: `The deliverable was on-chain ${submittedAt - fundedAt} seconds after the escrow was funded.`,
+        measured_from: { funded_block: Number(BigInt(receipt.blockNumber)), funded_at: fundedAt, submitted_at: submittedAt },
+        evidence: { feedbackURI, feedbackHash, note: 'keccak256 of the exact document served at feedbackURI' },
+        call: { to: REPUTATION, data, value: '0x0' },
+        rule: 'One measurement, two on-chain timestamps, the document hashed. No star rating: this registry already holds twenty thousand of those and they mean nothing.',
+        who_may_send: 'Any wallet except the agent\'s owner. The buyer is the natural one.',
+      });
     }
 
     // A worked example of what each service delivers, run by the same code a

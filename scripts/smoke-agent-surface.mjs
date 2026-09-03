@@ -634,6 +634,21 @@ section('The marketplace, from the front door');
   ok('an unknown service does not ask for money', (await fetch(`${AGENT}/answer?service=nope`, { method: 'POST' })).status === 400);
   const x402cat = await fetch(`${AGENT}/.well-known/x402`).then((r) => r.json()).catch(() => null);
   ok('the x402 catalogue lists the watch and the five answers', !!x402cat && Array.isArray(x402cat.resources) && x402cat.resources.length === 6 && x402cat.resources.filter((u) => /\/answer\?service=/.test(u)).length === 5);
+  // The funnel and the attestation (2026-09-03, point 3). The router names
+  // the agent by id so the page can offer its paid version; the attest route
+  // prepares one measurement and refuses everything that is not a delivered
+  // job with its real funding transaction.
+  const dsp = await fetch(`${AGENT}/dispatch`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'health factor for 0xd319e1F8e987cf78333cEA853F455366640929cF' }) }).then((r) => r.json()).catch(() => null);
+  ok('a dispatched answer names the agent by id', !!dsp && (!dsp.dispatched || (dsp.answered_by && Number.isInteger(dsp.answered_by.id))), dsp && JSON.stringify(dsp.answered_by || dsp.reason).slice(0, 120));
+  const regPage = (await getText(`${SITE}/registry`)).body;
+  ok('/registry offers the paid version under a routed answer', /data-ask-hire/.test(regPage) && /rg-ask-hire/.test(regPage));
+  ok('/registry carries the attest step after a delivery', /rg-attest-go/.test(regPage) && /\/attest\?job=/.test(regPage));
+  const at1 = await fetch(`${AGENT}/attest`);
+  ok('/attest without a job is a 400, not a call', at1.status === 400);
+  const at2 = await fetch(`${AGENT}/attest?job=56669&fundTx=0x${'11'.repeat(32)}`).then((r) => r.json()).catch(() => null);
+  ok('/attest refuses a job nothing was delivered on', !!at2 && /nothing has been delivered/.test(at2.error || '') && !at2.call);
+  const at3 = await fetch(`${AGENT}/attest?job=56657&fundTx=0xaffed1d797cddcd52243b4fdfcb19143fb01358b35ceeaeba0ad55ff05de86c4`).then((r) => r.json()).catch(() => null);
+  ok('/attest refuses a funding transaction that did not go to the kernel', !!at3 && /did not go to the kernel/.test(at3.error || '') && !at3.call);
   const ex = await fetch('https://agent.brainonbnb.com/example?service=grid_plan').then((r) => r.json()).catch(() => null);
   ok('/example runs a service on its seed sentence', !!ex && ex.result && ex.result.plan && /0x[0-9a-f]{40}/.test(ex.task || ''), ex && ex.task);
   const bad = await fetch('https://agent.brainonbnb.com/example?service=nope');

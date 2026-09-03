@@ -458,7 +458,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
       return { status: 200, body: {
         task, dispatched: true, took_ms: tookA, protocol: 'a2a',
         answered_by: {
-          agent: agent.name, operator: operatorOf(agent), endpoint: url, skill: pick.id || pick.name,
+          id: agent.id, agent: agent.name, operator: operatorOf(agent), endpoint: url, skill: pick.id || pick.name,
           registry_note: 'This agent was found by reading the ERC-8004 registry and contacting it — it is not affiliated with us.',
         },
         result: overA ? bodyA : payload,
@@ -566,6 +566,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
       protocol: 'mcp',
       ...(taken ? { arguments_taken_from_task: taken } : {}),
       answered_by: {
+        id: agent.id,
         agent: agent.name,
         operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(),
         endpoint,

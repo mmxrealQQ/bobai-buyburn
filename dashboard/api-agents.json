@@ -220,6 +220,7 @@
         }
       ],
       "seed": "health factor and liquidation distance for the Venus position at <ADDR>",
+      "example": "https://agent.brainonbnb.com/job?id=56657",
       "attributes": [
         {
           "trait_type": "Category",
@@ -270,6 +271,7 @@
       ],
       "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json",
       "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital",
+      "example": "https://agent.brainonbnb.com/example?service=grid_plan",
       "attributes": [
         {
           "trait_type": "Category",
@@ -319,6 +321,7 @@
         }
       ],
       "seed": "where is the best yield on BNB Chain for USDT right now",
+      "example": "https://agent.brainonbnb.com/example?service=yield_plan",
       "attributes": [
         {
           "trait_type": "Category",
@@ -369,6 +372,7 @@
       ],
       "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json",
       "seed": "rebalance holdings [{\"token\":\"0x245c386dcfed896f5c346107596141e5edcbffff\",\"usd\":1000}] — what should the range be",
+      "example": "https://agent.brainonbnb.com/example?service=rebalance_plan",
       "attributes": [
         {
           "trait_type": "Category",
@@ -419,6 +423,7 @@
       ],
       "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json",
       "seed": "which PancakeSwap fee tier is actually paying for 0x245c386dcfed896f5c346107596141e5edcbffff, placing $1000 of liquidity",
+      "example": "https://agent.brainonbnb.com/example?service=lp_tier_plan",
       "attributes": [
         {
           "trait_type": "Category",

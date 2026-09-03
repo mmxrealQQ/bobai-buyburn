@@ -382,7 +382,10 @@ fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-agents.json'), JSON.stringify
   independent_operators: operators.length,
   operator_view: 'https://brainonbnb.com/api-operators.json',
   note: 'Presence here means the address responded and, where stated, the protocol answered. It is not an endorsement, a rating, or a claim that the agent does anything useful.',
-  agents: directory,
+  // The example answers are for the page; here they would add a few hundred
+  // lines of one operator's own results to a directory every hire request
+  // downloads. A pointer to where the example lives is enough.
+  agents: directory.map((d) => (d.example ? { ...d, example: d.example.url } : d)),
 }, null, 2) + '\n');
 
 // ---- the page ------------------------------------------------------------

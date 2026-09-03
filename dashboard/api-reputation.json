@@ -10,8 +10,8 @@
   },
   "rated": {
     "agents": 344,
-    "attestations": 20734,
-    "distinct_raters": 61,
+    "attestations": 20735,
+    "distinct_raters": 62,
     "unreadable": 0
   },
   "raters": [
@@ -636,6 +636,14 @@
       "agents": 1,
       "tags": [
         "starred"
+      ]
+    },
+    {
+      "address": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
+      "attestations": 1,
+      "agents": 1,
+      "tags": [
+        "responsetime"
       ]
     },
     {
@@ -107005,7 +107013,7 @@
     {
       "id": 302258,
       "name": "Brain on BNB — BSC Grid Planner",
-      "raters": 1,
+      "raters": 2,
       "latest": {
         "uptime": [
           {
@@ -107023,6 +107031,15 @@
             "unit": "ms",
             "window": "4d",
             "index": 3
+          }
+        ],
+        "responsetime": [
+          {
+            "client": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
+            "value": 6000,
+            "unit": "ms",
+            "window": null,
+            "index": 1
           }
         ]
       },

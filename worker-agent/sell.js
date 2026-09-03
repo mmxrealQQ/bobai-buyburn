@@ -162,7 +162,7 @@ async function readJob(jobId) {
 // ---------------------------------------------------------------------------
 // The work itself.
 // ---------------------------------------------------------------------------
-async function doWork(serviceId, params) {
+export async function doWork(serviceId, params) {
   if (serviceId === 'health_factor') {
     const account = String(params?.address || params?.account || '').match(/0x[a-fA-F0-9]{40}/)?.[0];
     if (!account) throw new Error('health_factor needs an address to look at');
@@ -269,6 +269,63 @@ const dataParts = (message) => {
   }
   return { data: out, text: text.trim() };
 };
+
+// ---------------------------------------------------------------------------
+// One worked example per service, for the marketplace card.
+//
+// A card that describes a service in prose leaves the buyer guessing what the
+// 0.10 $U actually buys. So each card carries a real answer. Where a paid job
+// exists its stored deliverable is the example (that is done by the publisher,
+// which knows the job ids); where none does yet, this runs the very same
+// doWork() a funded job would run, on the seed task the hire box opens with,
+// so the example cannot describe an answer the service would not give. Cached
+// a day: the point is the shape of the answer, not the freshest figure.
+// ---------------------------------------------------------------------------
+const SEED_ACCOUNT = '0xd319e1F8e987cf78333cEA853F455366640929cF'; // a real Venus position, the one job 56657 was paid for
+const SEED_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const SEED_CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
+export const SEED_TASKS = {
+  health_factor: `health factor and liquidation distance for the Venus position at ${SEED_ACCOUNT}`,
+  grid_plan: `grid plan for ${SEED_TOKEN}, 10 levels across a 15% band, $1000 capital`,
+  yield_plan: 'where is the best yield on BNB Chain for USDT right now',
+  // Two holdings, so the example has a trade to price; and a pair that lives
+  // in several fee tiers, so the tier comparison has something to compare.
+  rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":700},{"token":"${SEED_CAKE}","usd":300}] to equal weight`,
+  lp_tier_plan: `which PancakeSwap fee tier is actually paying for ${SEED_CAKE}, placing $1000 of liquidity`,
+};
+// The seed sentences carry the numbers a service needs in words; the same
+// extractor a funded job goes through turns them into parameters, plus the
+// two the sentences state but the extractor does not read.
+const SEED_PARAMS = {
+  grid_plan: { levels: 10, bandPct: 15, capitalUsd: 1000 },
+  yield_plan: { amountUsd: 1000 },
+  lp_tier_plan: { capitalUsd: 1000 },
+};
+export async function exampleFor(serviceId, env, { fresh = false } = {}) {
+  const service = SERVICES[serviceId];
+  if (!service) return null;
+  const key = `example:${serviceId}`;
+  if (!fresh && env?.AGENT) {
+    const cached = await env.AGENT.get(key, 'json').catch(() => null);
+    if (cached) return { ...cached, cached: true };
+  }
+  const task = SEED_TASKS[serviceId];
+  const params = extractParams(task, { ...(SEED_PARAMS[serviceId] || {}), service: serviceId });
+  const t0 = Date.now();
+  const result = await doWork(serviceId, params);
+  const out = {
+    service: serviceId,
+    name: service.name,
+    price_display: service.price_display,
+    task,
+    produced_at: new Date().toISOString(),
+    took_ms: Date.now() - t0,
+    result,
+    note: 'Run by the same code a funded job runs, on the sentence the hire box opens with. Not a paid job; the figures are from the moment above.',
+  };
+  if (env?.AGENT) await env.AGENT.put(key, JSON.stringify(out), { expirationTtl: 60 * 60 * 24 }).catch(() => {});
+  return out;
+}
 
 export async function handleA2A(request, env) {
   let body;

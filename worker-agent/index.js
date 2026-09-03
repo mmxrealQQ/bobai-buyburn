@@ -33,7 +33,8 @@ import { readSessions, trackRecord } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
-import { handleA2A, handleJobResult, SERVICES } from './sell.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor } from './sell.js';
+import { summarize } from '../shared/job-summary.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
@@ -681,6 +682,20 @@ export default {
       if (m) return await handleJobResult(m[1], env);
     }
 
+    // A worked example of what each service delivers, run by the same code a
+    // funded job runs and cached a day. The marketplace card carries it so a
+    // buyer sees the shape of the answer before paying for one.
+    if (path === '/example') {
+      const id = url.searchParams.get('service') || '';
+      if (!SERVICES[id]) return json({ error: 'service is required', services: Object.keys(SERVICES) }, 400);
+      try {
+        const ex = await exampleFor(id, env, { fresh: url.searchParams.get('fresh') === '1' && request.headers.get('x-hit-secret') === env.HIT_SECRET });
+        return json(ex, 200, { 'Cache-Control': 'public, max-age=3600' });
+      } catch (e) {
+        return json({ error: `the example could not be produced right now: ${String(e.message || e).slice(0, 200)}`, service: id }, 503);
+      }
+    }
+
     // Public transparency surface. Everything the dashboard block shows comes
     // from here, so the page cannot present a number this endpoint would not.
     // What the self-updating half of the census knows. The headline figures
@@ -736,22 +751,88 @@ export default {
       const job = raw ? decodeJob(raw) : null;
       if (!job) return json({ error: 'job not found or unreadable', id }, 404);
       ctx.waitUntil(bump(env, 'job'));
-      return json({
-        ...job,
-        chain_id: ERC8183.chainId,
-        kernel: ERC8183.commerce,
-        explorer: `https://bscscan.com/address/${ERC8183.commerce}`,
-        // SUBMITTED is not COMPLETED, and the difference is money: a
-        // deliverable exists, the escrow has not released. Saying so here keeps
-        // anyone reading this endpoint from counting one as the other.
-        means: job.status === 'SUBMITTED'
-          ? 'A deliverable is on-chain and the dispute window is running. The escrow has not released yet.'
-          : job.status === 'COMPLETED' ? 'Delivered and the escrow released to the provider.'
-          : job.status === 'OPEN' ? 'Created but not funded. Nothing is at stake yet.'
-          : job.status === 'FUNDED' ? 'Escrow holds the budget. Waiting on the provider to deliver.'
-          : job.status === 'EXPIRED' ? 'Expired undelivered — the client can call claimRefund(jobId) for the full budget.'
-          : 'Rejected.',
-      });
+      // SUBMITTED is not COMPLETED, and the difference is money: a
+      // deliverable exists, the escrow has not released. Saying so here keeps
+      // anyone reading this endpoint from counting one as the other.
+      const means = job.status === 'SUBMITTED'
+        ? 'A deliverable is on-chain and the dispute window is running. The escrow has not released yet.'
+        : job.status === 'COMPLETED' ? 'Delivered and the escrow released to the provider.'
+        : job.status === 'OPEN' ? 'Created but not funded. Nothing is at stake yet.'
+        : job.status === 'FUNDED' ? 'Escrow holds the budget. Waiting on the provider to deliver.'
+        : job.status === 'EXPIRED' ? 'Expired undelivered — the client can call claimRefund(jobId) for the full budget.'
+        : 'Rejected.';
+      // THE DELIVERY, READABLE. A job page that showed a bytes32 and nothing
+      // else told the buyer their money had gone somewhere; it did not show
+      // them what they got. When this worker was the provider the document is
+      // in KV, its SHA-256 is checked against the digest on the kernel right
+      // here, and the answer is summarised by the same module the marketplace
+      // card uses for its example — so before and after are read by one rule.
+      let delivery = null;
+      const stored = await env.AGENT.get(`job:${id}`, 'json').catch(() => null);
+      if (stored && stored.document) {
+        let digest = null;
+        try {
+          const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stored.document));
+          digest = '0x' + [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+        } catch { /* no digest, no claim */ }
+        let doc = null; try { doc = JSON.parse(stored.document); } catch { /* served raw below */ }
+        const service = doc?.service || stored.result?.service || null;
+        delivery = {
+          service,
+          produced_at: doc?.produced_at || null,
+          summary: summarize(service, doc?.result || stored.result || null),
+          document_url: `https://agent.brainonbnb.com/job/${id}/result`,
+          digest_of_document: digest,
+          digest_on_chain: job.deliverable || null,
+          digest_matches: digest && job.deliverable ? digest.toLowerCase() === String(job.deliverable).toLowerCase() : null,
+          tx: stored.delivery?.tx || null,
+        };
+      }
+      const out = { ...job, chain_id: ERC8183.chainId, kernel: ERC8183.commerce, explorer: `https://bscscan.com/address/${ERC8183.commerce}`, means, delivery };
+      const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
+      if (!wantsHtml) return json(out);
+
+      // The same facts as a page. Plain markup, no script: it has to read on a
+      // phone from a Telegram link and inside a judge's screenshot alike.
+      const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const short = (a) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—');
+      const addr = (a) => (a ? `<a href="https://bscscan.com/address/${h(a)}" target="_blank" rel="noopener"><code>${h(short(a))}</code></a>` : '—');
+      const when = (t) => (t ? new Date(Number(t) * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '—');
+      let task = null, svcName = null;
+      try { const d = JSON.parse(job.description || ''); task = d.task || null; svcName = d.service || null; } catch { task = job.description || null; }
+      const sum = delivery?.summary;
+      const tone = job.status === 'COMPLETED' ? 'ok' : job.status === 'SUBMITTED' || job.status === 'FUNDED' ? 'wait' : job.status === 'OPEN' ? 'dim' : 'bad';
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Job #${h(id)} — ${h(job.status)}</title>
+<style>
+:root{color-scheme:dark}body{margin:0;background:#0c0b0c;color:#f3efe6;font:15px/1.6 Inter,system-ui,sans-serif}
+main{max-width:720px;margin:0 auto;padding:28px 18px 60px}h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1rem;margin:26px 0 8px;color:#f0b90b}
+.st{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700;letter-spacing:.3px;margin-left:8px;vertical-align:middle}
+.ok{background:rgba(63,224,154,.15);color:#3fe09a}.wait{background:rgba(255,196,107,.15);color:#ffc46b}.dim{background:rgba(255,255,255,.08);color:#a9a49a}.bad{background:rgba(255,143,107,.15);color:#ff8f6b}
+p.means{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:.9rem}dt{color:#a9a49a}dd{margin:0;overflow-wrap:anywhere}
+a{color:#f0b90b}code{font-size:.85em}.task{font-style:italic;color:#cfc9bd;margin:0 0 10px}.head{font-size:1.05rem;font-weight:700;margin:0 0 8px}
+.card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04)}
+.note{color:#a9a49a;font-size:.82rem;margin-top:10px}.none{color:#a9a49a}
+</style></head><body><main>
+<h1>Job #${h(id)}<span class="st ${tone}">${h(job.status)}</span></h1>
+<p class="means">${h(means)}</p>
+<h2>What was asked</h2>
+${task ? `<p class="task">&ldquo;${h(task)}&rdquo;</p>` : '<p class="none">No description on the job.</p>'}
+<dl><dt>Service</dt><dd>${h(svcName || delivery?.service || '—')}</dd><dt>Budget</dt><dd>${h(job.budget_u ?? '—')} $U in escrow</dd>
+<dt>Client</dt><dd>${addr(job.client)}</dd><dt>Provider</dt><dd>${addr(job.provider)}</dd>
+<dt>Submitted</dt><dd>${when(job.submitted_at)}</dd><dt>Expires</dt><dd>${when(job.expired_at)}</dd>
+<dt>Kernel</dt><dd>${addr(ERC8183.commerce)} on BNB Chain</dd></dl>
+<h2>What was delivered</h2>
+${delivery ? `<div class="card">${sum?.headline ? `<p class="head">${h(sum.headline)}</p>` : ''}
+${sum?.facts?.length ? `<dl>${sum.facts.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
+<p class="note">Produced ${h(delivery.produced_at ? String(delivery.produced_at).replace('T', ' ').slice(0, 16) + ' UTC' : '—')}. <a href="${h(delivery.document_url)}">Full document</a>${delivery.tx ? ` · <a href="https://bscscan.com/tx/${h(delivery.tx)}" target="_blank" rel="noopener">delivery transaction</a>` : ''}.<br>
+${delivery.digest_matches === true ? 'The SHA-256 of that document matches the digest written on the kernel: what you read is what was committed.'
+    : delivery.digest_matches === false ? 'The SHA-256 of the stored document does NOT match the digest on the kernel — read the document, not this page.'
+    : 'No digest on the kernel to check against yet.'}</p></div>`
+    : `<p class="none">${job.status === 'COMPLETED' || job.status === 'SUBMITTED' ? 'A deliverable is on the kernel, but this worker was not the provider, so the document itself is not held here.' : 'Nothing delivered yet.'}</p>`}
+<p class="note">Same facts as JSON: <a href="/job?id=${h(id)}&amp;format=json">/job?id=${h(id)}&amp;format=json</a> · <a href="https://brainonbnb.com/registry">Brain Plaza</a></p>
+</main></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
     }
 
     // The series. Daily points and full-scan points are returned separately,

@@ -42,6 +42,7 @@ import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
 import { PEERS, SURFACE, OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
 import { SERVICE_BY_SLUG } from './lib/own-agents.mjs';
+import { summarize } from '../shared/job-summary.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 // Same flag the scanner takes, so all halves of the census can be pointed at
@@ -209,6 +210,46 @@ const SEED_TASKS = {
 };
 const seedTask = (svc) => SEED_TASKS[svc.id] || null;
 
+// AN EXAMPLE ANSWER PER SERVICE, on the card. A description says what a
+// service measures; an answer shows it. Where a job has actually been paid and
+// delivered, its stored deliverable is the example — the document whose
+// SHA-256 sits on the kernel, so the card shows what a buyer really got. Where
+// none exists yet, the worker's /example route runs the same doWork() a funded
+// job runs, on the seed sentence, and says so. Both are summarised by the one
+// module the job page also uses (shared/job-summary.js), so the card and the
+// delivery cannot be read by two different rules. A worker that does not
+// answer costs the card its example, never the build.
+// Only jobs whose delivery answers the sentence that was asked. 56670-56672
+// (grid_plan) were hired with the old seed "grid plan for WBNB", a symbol and
+// no address, and the plan came back on $BOBAI — a real delivery, but not an
+// example anyone should be shown next to that question. The seed carries an
+// address now; the next paid grid job can take this slot.
+const REAL_JOBS = { health_factor: '56657' };
+const AGENT_ORIGIN = 'https://agent.brainonbnb.com';
+const fetchJson = async (u) => {
+  try {
+    const r = await fetch(u, { signal: AbortSignal.timeout(90000) });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+};
+const EXAMPLES = {};
+for (const id of Object.keys(SERVICES)) {
+  let ex = null;
+  if (REAL_JOBS[id]) {
+    const [doc, job] = await Promise.all([fetchJson(`${AGENT_ORIGIN}/job/${REAL_JOBS[id]}/result`), fetchJson(`${AGENT_ORIGIN}/job?id=${REAL_JOBS[id]}`)]);
+    if (doc && doc.result) {
+      ex = { kind: 'job', job_id: REAL_JOBS[id], status: job?.status || null, task: (() => { try { return JSON.parse(job?.description || '{}').task || null; } catch { return null; } })(),
+        produced_at: doc.produced_at || null, result: doc.result, url: `${AGENT_ORIGIN}/job?id=${REAL_JOBS[id]}` };
+    }
+  }
+  if (!ex) {
+    const e = await fetchJson(`${AGENT_ORIGIN}/example?service=${id}`);
+    if (e && e.result) ex = { kind: 'example', task: e.task, produced_at: e.produced_at, result: e.result, url: `${AGENT_ORIGIN}/example?service=${id}` };
+  }
+  if (ex) { ex.summary = summarize(id, ex.result); EXAMPLES[id] = ex; }
+  else console.warn(`no example for ${id} — the card goes out without one`);
+}
+
 let ownAgents = [];
 try {
   const own = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'own-agents.json'), 'utf8'));
@@ -238,6 +279,7 @@ try {
       skills: svc ? [{ name: svc.id, description: svc.name }] : [],
       tools: [],
       seed: svc ? seedTask(svc) : null,
+      example: svc ? EXAMPLES[svc.id] || null : null,
       attributes: [{ trait_type: 'Category', value: a.category }],
       ours: true,
       provider: a.owner,
@@ -491,6 +533,24 @@ const describes = (r) => {
 // is how a front page ends up quoting a number the marketplace would not.
 const canHire = (r) => !!(r.ours || (r.speaks || []).includes('a2a') || (r.employment && r.employment.funded > 0));
 
+// The example answer on one of our own cards: a headline, the figures behind
+// it, and where it came from — a paid job by number, or the worker's example
+// run — so a reader can tell a delivery from a demonstration at a glance.
+const exampleBlock = (ex) => {
+  const s = ex.summary || { headline: '', facts: [] };
+  const when = ex.produced_at ? String(ex.produced_at).slice(0, 10) : '';
+  const from = ex.kind === 'job'
+    ? `From job <a href="${esc(ex.url)}" target="_blank" rel="noopener">#${esc(ex.job_id)}</a>${ex.status ? `, ${esc(ex.status.toLowerCase())}` : ''}${when ? `, delivered ${when}` : ''} &mdash; the document whose hash is on the kernel.`
+    : `An example run${when ? ` on ${when}` : ''} by the same code a paid job runs, on the sentence the hire box opens with. <a href="${esc(ex.url)}" target="_blank" rel="noopener">Full answer</a>.`;
+  return `          <details class="rgc-ex">
+            <summary>Example answer${ex.kind === 'job' ? ' <span class="rg-t rg-x4">real job</span>' : ''}</summary>
+            ${ex.task ? `<div class="rg-note rgc-ex-task">Asked: &ldquo;${esc(ex.task)}&rdquo;</div>` : ''}
+            <b class="rgc-ex-h">${esc(s.headline)}</b>
+            ${s.facts && s.facts.length ? `<ul class="rgc-facts">${s.facts.map(([k, v]) => `<li><span>${esc(k)}</span> ${esc(v)}</li>`).join('')}</ul>` : ''}
+            <div class="rg-note">${from}</div>
+          </details>`;
+};
+
 // What happened the last time each hireable agent was actually asked for a
 // price. A "Hire" button on a seller that cannot quote is a button that wastes
 // the visitor's time, and this page is in no position to complain about other
@@ -602,6 +662,7 @@ const categorised = CATEGORIES.map((cat) => {
       description: a.description || null,
       capabilities: capsOf(a),
       seed: a.seed || null,
+      example: a.example || null,
     });
   }
   const claimed = new Set(rows.map((r) => r.label));
@@ -747,6 +808,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
           <p class="rgc-what${d.weak ? ' rg-weak' : ''}">${d.text ? esc(d.text) : esc(d.why)}</p>
           ${chips.length ? `<ul class="rgc-strip">${chips.join('')}</ul>` : ''}
           ${r.tele ? '<div class="rg-live" hidden></div>' : ''}
+          ${r.example ? exampleBlock(r.example) : ''}
           <details class="rgc-ev">
             <summary>Track record, and how we know this <span class="rg-t rg-${r.hit.source}" title="${esc(why)}">${badge}</span></summary>
             ${facts.length ? `<ul class="rgc-facts">${facts.join('')}</ul>` : ''}
@@ -1141,6 +1203,16 @@ const page = `<!doctype html>
     border-radius:999px;padding:4px 10px;white-space:nowrap}
   /* The evidence keeps every word it had; it stops being in front of the
      button. Closed by default is a choice about order, not about candour. */
+  .rgc-ex{border:1px solid rgba(var(--accs,240,185,11),.22);border-radius:10px;padding:7px 10px;margin:2px 0 8px;background:rgba(var(--accs,240,185,11),.04)}
+  .rgc-ex summary{cursor:pointer;font-size:.72rem;color:var(--muted);list-style:none;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .rgc-ex summary::-webkit-details-marker{display:none}
+  .rgc-ex summary::before{content:'\\25B8';display:inline-block;transition:transform .2s;color:var(--muted)}
+  .rgc-ex[open] summary::before{transform:rotate(90deg)}
+  .rgc-ex summary:hover{color:var(--acc,var(--gold))}
+  .rgc-ex-task{margin:7px 0 5px;font-style:italic}
+  .rgc-ex-h{display:block;font-size:.8rem;line-height:1.45;margin:4px 0 6px;color:var(--text,#f3efe6)}
+  .rgc-ex .rgc-facts li span{color:var(--muted)}
+  .rgc-ex .rgc-facts li span::after{content:':'}
   .rgc-ev{margin-top:auto;border-top:1px solid var(--line);padding-top:8px}
   .rgc-ev summary{cursor:pointer;font-size:.72rem;color:var(--muted);list-style:none;
     display:flex;align-items:center;gap:7px;flex-wrap:wrap}

@@ -45,12 +45,22 @@ const ERC20_ABI = [
 const arg = (name, fallback) => { const i = process.argv.indexOf(name); return i > 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback; };
 const confirm = process.argv.includes('--confirm');
 const service = arg('--service', 'health_factor');
+// --in bobai: pay the same price in $BOBAI, as the 402 quotes it. The relayer
+// holds no $BOBAI, so a small swap buys it first (fee-on-transfer aware: the
+// token takes 3 % on every transfer, and the 402's tenth of slack covers the
+// 3 % the recipient loses). Everything else is the USD1 path.
+const IN = String(arg('--in', 'usd1')).toLowerCase();
+const BOBAI = A('0x245c386dcfed896f5c346107596141e5edcbffff');
+const FOT_ROUTER_ABI = [
+  { name: 'swapExactETHForTokensSupportingFeeOnTransferTokens', type: 'function', stateMutability: 'payable', inputs: [{ type: 'uint256' }, { type: 'address[]' }, { type: 'address' }, { type: 'uint256' }], outputs: [] },
+];
 const DEFAULT_TASKS = {
   health_factor: 'health factor and liquidation distance for the Venus position at 0xd319e1F8e987cf78333cEA853F455366640929cF',
   grid_plan: 'grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital',
   yield_plan: 'where is the best yield on BNB Chain for USDT right now',
   rebalance_plan: 'rebalance holdings [{"token":"0x245c386dcfed896f5c346107596141e5edcbffff","usd":700},{"token":"0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82","usd":300}] to equal weight',
   lp_tier_plan: 'which PancakeSwap fee tier is actually paying for 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82, placing $1000 of liquidity',
+  lp_position_plan: 'what would the liquidity agent do with PancakeSwap V3 position 7309536',
 };
 const task = arg('--task', DEFAULT_TASKS[service]);
 const stop = (why) => { console.error(`\n  refused: ${why}`); process.exitCode = 1; };
@@ -60,18 +70,25 @@ const termsRes = await fetch(`${AGENT}/answer?service=${service}`, { method: 'PO
 const terms = await termsRes.json().catch(() => ({}));
 if (termsRes.status !== 402) { stop(`expected a 402 with terms, got ${termsRes.status}: ${JSON.stringify(terms).slice(0, 200)}`); }
 else {
-  const direct = (terms.accepts || []).find((a) => a.extra && a.extra.assetTransferMethod === 'direct-transfer');
-  if (!direct) stop('the 402 offers no direct-transfer scheme');
+  const wantBobai = IN === 'bobai';
+  const direct = (terms.accepts || []).find((a) => a.extra && a.extra.assetTransferMethod === 'direct-transfer' && (wantBobai ? a.extra.symbol === 'BOBAI' : a.extra.symbol !== 'BOBAI'));
+  if (!direct) stop(wantBobai ? 'the 402 offers no $BOBAI option right now (the pair could not be priced)' : 'the 402 offers no direct-transfer scheme');
   else {
     const payTo = A(direct.payTo);
-    const price = BigInt(direct.maxAmountRequired);
-    if (A(direct.asset) !== USD1) stop(`the 402 asks for ${direct.asset}, not USD1`);
-    else if (price > 200000000000000000n) stop(`the 402 asks ${formatUnits(price, 18)} USD1, more than this script will pay`);
+    const asset = A(direct.asset);
+    const label = wantBobai ? 'BOBAI' : 'USD1';
+    // The 402's amount already carries a tenth of slack; in $BOBAI the token
+    // itself takes 3 % on the way, so the full quoted count is what to send.
+    const price = wantBobai ? BigInt(Math.floor(Number(terms.in_bobai.tokens) * 1e18)) : BigInt(direct.maxAmountRequired);
+    if (!wantBobai && asset !== USD1) stop(`the 402 asks for ${direct.asset}, not USD1`);
+    else if (wantBobai && asset !== BOBAI) stop(`the 402 names ${direct.asset} as $BOBAI, which it is not`);
+    else if (!wantBobai && price > 200000000000000000n) stop(`the 402 asks ${formatUnits(price, 18)} USD1, more than this script will pay`);
+    else if (wantBobai && Number(terms.in_bobai.tokens) * Number(terms.in_bobai.usd_per_bobai) > 0.2) stop('the $BOBAI quote is worth more than 0.20 $, which this script will not pay');
     else {
       console.log(`Buy one answer: ${terms.name}\n`);
       console.log(`  service   ${service}`);
       console.log(`  task      "${task}"`);
-      console.log(`  price     ${formatUnits(price, 18)} USD1  ->  ${payTo}`);
+      console.log(`  price     ${formatUnits(price, 18)} ${label}${wantBobai ? ` (≈ $${(Number(terms.in_bobai.tokens) * Number(terms.in_bobai.usd_per_bobai)).toFixed(3)} at the 402's quote; the 402 accepts ${formatUnits(BigInt(direct.maxAmountRequired), 18)} after the token's 3 % tax)` : ''}  ->  ${payTo}`);
       console.log(`  needs     ${JSON.stringify(terms.needs)}`);
 
       const key = process.env.NFT_RELAYER_PRIVATE_KEY;
@@ -80,23 +97,25 @@ else {
         const account = privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
         const pub = createPublicClient({ chain: bsc, transport: http(RPC) });
         const wallet = createWalletClient({ account, chain: bsc, transport: http(RPC) });
-        const [bnb, usd1] = await Promise.all([
+        const [bnb, held] = await Promise.all([
           pub.getBalance({ address: account.address }),
-          pub.readContract({ address: USD1, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address] }),
+          pub.readContract({ address: asset, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address] }),
         ]);
-        console.log(`\n  from      ${account.address}  (NFT relayer): ${formatEther(bnb)} BNB, ${formatUnits(usd1, 18)} USD1`);
-        const needSwap = usd1 < price;
+        console.log(`\n  from      ${account.address}  (NFT relayer): ${formatEther(bnb)} BNB, ${formatUnits(held, 18)} ${label}`);
+        const needSwap = held < price;
         let spend = 0n;
+        // Buying $BOBAI: the pool sends 3 % less than it quotes (tax on the
+        // way out), so aim a little higher than the transfer needs.
+        const target = wantBobai ? (price * 106n) / 100n : price + 20000000000000000n;
         if (needSwap) {
-          const target = price + 20000000000000000n; // a little over, so rounding cannot leave us short
-          const amountsIn = await pub.readContract({ address: ROUTER, abi: ROUTER_ABI, functionName: 'getAmountsIn', args: [target, [WBNB, USD1]] });
+          const amountsIn = await pub.readContract({ address: ROUTER, abi: ROUTER_ABI, functionName: 'getAmountsIn', args: [target, [WBNB, asset]] });
           spend = (amountsIn[0] * 103n) / 100n;
           if (spend > MAX_SPEND_BNB) stop(`the top-up swap would need ${formatEther(spend)} BNB, over the ${formatEther(MAX_SPEND_BNB)} ceiling`);
           else if (bnb - spend < MIN_REMAINING) stop(`that would leave the relayer under ${formatEther(MIN_REMAINING)} BNB, and it mints NFTs`);
-          else console.log(`  1. swap   ${formatEther(spend)} BNB -> ~${formatUnits(target, 18)} USD1 (the wallet is short)`);
+          else console.log(`  1. swap   ${formatEther(spend)} BNB -> ~${formatUnits(target, 18)} ${label} (the wallet is short)`);
         }
         if (!process.exitCode) {
-          console.log(`  ${needSwap ? '2' : '1'}. pay    ${formatUnits(price, 18)} USD1 -> ${payTo}`);
+          console.log(`  ${needSwap ? '2' : '1'}. pay    ${formatUnits(price, 18)} ${label} -> ${payTo}`);
           console.log(`  ${needSwap ? '3' : '2'}. ask    POST /answer?service=${service} with PAYMENT-SIGNATURE: <tx>`);
           if (!confirm) {
             console.log('\n  plan only. Nothing was sent. Re-run with --confirm to do it.');
@@ -104,14 +123,16 @@ else {
             if (needSwap) {
               const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
               console.log('\n  swapping...');
-              const swapTx = await wallet.writeContract({ address: ROUTER, abi: ROUTER_ABI, functionName: 'swapExactETHForTokens', args: [price, [WBNB, USD1], account.address, deadline], value: spend, gas: 500000n });
+              const swapTx = wantBobai
+                ? await wallet.writeContract({ address: ROUTER, abi: FOT_ROUTER_ABI, functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens', args: [price, [WBNB, asset], account.address, deadline], value: spend, gas: 500000n })
+                : await wallet.writeContract({ address: ROUTER, abi: ROUTER_ABI, functionName: 'swapExactETHForTokens', args: [price, [WBNB, asset], account.address, deadline], value: spend, gas: 500000n });
               const sr = await pub.waitForTransactionReceipt({ hash: swapTx });
               if (sr.status !== 'success') stop(`the swap failed: ${swapTx}`);
               else console.log(`  swap ok   ${swapTx}`);
             }
             if (!process.exitCode) {
               console.log('\n  paying...');
-              const payTx = await wallet.writeContract({ address: USD1, abi: ERC20_ABI, functionName: 'transfer', args: [payTo, price], gas: 100000n });
+              const payTx = await wallet.writeContract({ address: asset, abi: ERC20_ABI, functionName: 'transfer', args: [payTo, price], gas: 150000n });
               const pr = await pub.waitForTransactionReceipt({ hash: payTx });
               if (pr.status !== 'success') stop(`the payment failed: ${payTx}`);
               else {

@@ -218,8 +218,13 @@ async function bobaiForUsd(usd) {
   const bnbPerBobai = bobaiIs0 ? r1 / r0 : r0 / r1;
   const usdPerBobai = bnbPerBobai * price;
   if (!(usdPerBobai > 0)) throw new Error('could not price $BOBAI');
-  const tokens = usd / usdPerBobai;
-  return { atomic: BigInt(Math.floor(tokens * 0.9 * 1e18)), tokens: Math.floor(tokens * 0.9), usd_per_bobai: usdPerBobai };
+  // `tokens` is what to SEND (the full price, rounded up); `atomic` is the
+  // least that must ARRIVE — a tenth less, which covers the token's own 3 %
+  // transfer tax and a price that moved between the quote and the block.
+  // The first draft slacked both and told the payer to send the slacked
+  // amount, which after the tax would have arrived short and been refused.
+  const tokens = Math.ceil(usd / usdPerBobai);
+  return { atomic: BigInt(Math.floor(tokens * 0.9 * 1e18)), tokens, usd_per_bobai: usdPerBobai };
 }
 
 

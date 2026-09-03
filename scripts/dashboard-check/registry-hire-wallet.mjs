@@ -270,6 +270,39 @@ if (!SEND) {
     problems.push('the escrow was funded and the seller then declined the work — the task the panel seeds is one its own seller cannot fulfil');
   } else if (!/delivery is requested/i.test(ending)) {
     problems.push(`the run ended without a delivery verdict: ${ending.slice(0, 160)}`);
+  } else {
+    // Funded and requested is still not the end (2026-09-03): the panel now
+    // waits for the deliverable to land on the kernel and offers to attest it
+    // - one measurement, responsetime between the funding block and the
+    // deliverable's block, written into the ERC-8004 reputation registry from
+    // the buyer's wallet. This wallet is the buyer, so it presses the button
+    // and signs the sixth transaction the same way it signed the five.
+    console.log('\n  waiting for the deliverable to land on the kernel…');
+    let attestBtn = false;
+    for (let i = 0; i < 90; i++) {
+      await wait(2000);
+      attestBtn = await evaluate(`!!document.getElementById('rg-attest-go')`);
+      if (attestBtn) break;
+      const gaveUp = await evaluate(`/Still not delivered/.test((document.querySelector('.rg-attest')||{}).textContent||'')`);
+      if (gaveUp) break;
+    }
+    if (!attestBtn) problems.push('the panel never offered to attest — the deliverable did not land within three minutes');
+    else {
+      const head = await evaluate(`((document.querySelector('.rg-attest-h')||{}).textContent||'').trim()`);
+      console.log(`  ${head.replace(/\s+/g, ' ').slice(0, 160)}`);
+      await evaluate(`document.getElementById('rg-attest-go').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}))`);
+      let attested = '';
+      for (let i = 0; i < 60; i++) {
+        await wait(2000);
+        attested = await evaluate(`((document.querySelector('.rg-attest')||{}).textContent||'').trim()`);
+        if (/Attested on-chain|Not attested/.test(attested) || /Not attested/.test(await evaluate(`document.getElementById('rg-hire-msg').textContent`))) break;
+      }
+      const msg = await evaluate(`document.getElementById('rg-hire-msg').textContent.trim()`);
+      console.log(`  ${attested.replace(/\s+/g, ' ').slice(0, 260)}`);
+      if (/Not attested/.test(msg)) problems.push(`the attestation was refused: ${msg.slice(0, 160)}`);
+      else if (!/Attested on-chain/.test(attested)) problems.push('the attestation was sent but the panel never confirmed it');
+      else console.log(`  attest transaction: ${sent.length >= 6 ? 'sent as step 6' : 'not seen by the bridge'}`);
+    }
   }
 }
 

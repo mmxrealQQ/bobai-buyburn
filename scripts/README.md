@@ -26,6 +26,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `range-replay-check.mjs` | the range replay's identities |
 | `route-check.mjs` | best route, round trip, transfer tax (a quiet hour is skipped, not red) |
 | `sell-sim-check.mjs` | the sell simulation: sellable tokens sell, a withheld allowance is refused, keccak vector |
+| `curve-check.mjs` | the four.meme launch curve: read only for a curve, graduated tokens fall through, a size the curve cannot fill is flagged |
 | `binance-route-crosscheck.mjs` · `binance-web3-check.mjs` | a second opinion from Binance's API; the signing, proven |
 | `goplus-check.mjs` | the GoPlus key and signature |
 

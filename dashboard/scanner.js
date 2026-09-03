@@ -12,7 +12,8 @@
 //      could do.
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
-  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip} from './scanner-chain.js?v=20';
+  ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
+  curveInfo,curveLadder} from './scanner-chain.js?v=21';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -950,6 +951,87 @@ function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool){
   o.appendChild(el('p','dis','Contract properties come from GoPlus. Not advice.'));
 }
 
+// ---- the four.meme launch curve --------------------------------------------
+// A token that is still raising on four.meme has no pool anywhere, and this
+// page used to answer it with the "trades elsewhere" card and "$0 of liquidity"
+// — a sentence about a market that does not exist, for a token that trades all
+// day inside four.meme's contract. The three questions are the same as for a
+// pool and are answered from four.meme's own helper contract: what a trade
+// costs (its own quote for a buy and a sell of each size, fee included), where
+// the money is (in the platform's contract until the raise completes — a
+// readable balance, not a promise), and whether a sell would be paid out.
+function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
+  const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
+  const teaser=$('sc-what');if(teaser)teaser.hidden=true;
+  const head=el('header','hd');
+  const ttl=el('div','hd-t');ttl.appendChild(el('h2',null,symb));ttl.appendChild(el('span','hd-n',name));
+  head.appendChild(ttl);
+  head.appendChild(frag(el('div','hd-l'),link(short(addr),'https://bscscan.com/token/'+addr),
+    link('four.meme ↗','https://four.meme/token/'+addr)));
+  o.appendChild(head);
+
+  const q=cv.quoteSym||'the quote token';
+  const priceUsd=quoteUsd>0?cv.price*quoteUsd:null;
+  const qAmt=v=>v==null?'—':(v>=100?nf(v):v>=1?nf(v,2):v>=0.01?nf(v,4):tiny(v))+' '+q;
+
+  // The answer first, in the same three lines a pool gets.
+  const c=el('section','cd vd-card');
+  const h=el('div','cd-h');
+  h.appendChild(el('h3',null,'The short answer'));
+  h.appendChild(el('p',null,'This token is still on its four.meme launch curve. There is no PancakeSwap pool yet; every trade goes through four.meme’s contract, and that is what was asked.'));
+  c.appendChild(h);
+  const list=el('div','vd');
+  const line=(tone,hd,body)=>{const r=el('div','vd-r vd-'+tone);r.appendChild(el('b',null,hd));r.appendChild(el('span',null,body));list.appendChild(r)};
+
+  const ref=rows.slice().sort((a,b)=>Math.abs(a.usd-500)-Math.abs(b.usd-500))[0];
+  if(ref&&(ref.buyCost!=null||ref.sellCost!=null)){
+    const worst=Math.max(ref.buyCost==null?0:ref.buyCost,ref.sellCost==null?0:ref.sellCost);
+    const toll=cv.feePct;
+    const tone=toll>0?(worst<=toll*1.5?'good':worst<=toll*3?'mid':'bad'):'mid';
+    line(tone,'A $'+nf(ref.usd)+' trade costs you '+(ref.buyCost==null?'—':pc(ref.buyCost))+' to buy and '+(ref.sellCost==null?'—':pc(ref.sellCost))+' to sell.',
+      'four.meme’s own quote for that size right now, its '+pc(toll)+' fee included. The rest is the curve moving under the trade'+(ref.buyNote?'; the buy side: '+ref.buyNote:'')+'.');
+  }else{
+    line('unknown','What a trade costs could not be quoted.',
+      rows.length?'The curve answered no size this page asks about.':(quoteUsd>0?'The helper contract did not answer.':'The curve is raising in '+q+', which this page cannot express in dollars.'));
+  }
+  line('mid',(cv.progressPct==null?'The raise is in progress':pc(cv.progressPct,1)+' of the raise is done')+' — '+qAmt(cv.raised)+' of '+qAmt(cv.maxRaising)+'.',
+    'The money raised sits in four.meme’s contract until the raise completes, not in the creator’s wallet. When it completes, four.meme lists the token on PancakeSwap; until then there is no liquidity to pull, because there is no pool.');
+  const sellRow=rows.find(r=>r.sellCost!=null);
+  if(sellRow)line('good','A sell would be paid out right now.',
+    'four.meme quoted '+q+' for a sell of the size above at this block. That is the curve’s answer, not a simulation of your wallet; the token contract itself is a four.meme template.');
+  else line('unknown','Whether a sell would be paid out could not be checked.','The helper contract quoted no sell at any size this page asks about.');
+  c.appendChild(list);o.appendChild(c);
+
+  // The ladder, in the pool ladder’s own columns. "Impact" here is the cost
+  // beyond the fee, which on a curve is the price moving under the trade.
+  if(rows.length){
+    const lad=card('What a trade really costs on the curve','four.meme’s quote for each size, fee included, against its last price.');
+    const shaped=rows.map(r=>({usd:r.usd,buyCost:r.buyCost,sellCost:r.sellCost,
+      buyMove:r.buyCost==null?null:Math.max(0,r.buyCost-cv.feePct),
+      sellMove:r.sellCost==null?null:-Math.max(0,r.sellCost-cv.feePct)}));
+    const capped=rows.filter(r=>r.buyNote).map(r=>'$'+nf(r.usd));
+    lad.appendChild(renderLadder(shaped,capped.length?'A dash on the buy side ('+capped.join(', ')+') means the curve has less left to sell than that size would take.':null,{buy:cv.feePct,sell:cv.feePct}));
+    o.appendChild(lad);
+  }
+
+  // The facts the lines above were made from.
+  const f=card('The curve, as four.meme’s contract reports it','Read from TokenManagerHelper3 at this block; nothing is cached.');
+  f.appendChild(statRow([
+    {v:priceUsd!=null?usd(priceUsd):qAmt(cv.price),l:'Price',s:priceUsd!=null?qAmt(cv.price)+' per token':'per token'},
+    {v:qAmt(cv.raised),l:'Raised',s:'of '+qAmt(cv.maxRaising)},
+    {v:nf(cv.offersLeft),l:'Tokens left to sell',s:'of '+nf(cv.maxOffers)},
+    {v:pc(cv.feePct),l:'Platform fee',s:'on every buy and sell'},
+    {v:cv.launchTime?new Date(cv.launchTime*1000).toISOString().slice(0,10):'not stated',l:'Launched',s:'on four.meme',dim:!cv.launchTime},
+  ]));
+  o.appendChild(f);
+
+  // The router sell test has nothing to sell into here; the chip says so and
+  // points at the curve's own answer above rather than reading as a failure.
+  o.appendChild(flagsCard(gp,!!(gp.token_name||gp.dex||gp.is_open_source!=null),
+    {ok:false,reason:'Not applicable on the launch curve: there is no pool and no router to sell into. Whether a sell would be paid out is answered above, from four.meme’s own contract.'}));
+  o.appendChild(el('p','dis','Curve figures come from four.meme’s helper contract on BNB Smart Chain; contract properties from GoPlus. Measurement, not advice.'));
+}
+
 // ---- orchestration ---------------------------------------------------------
 // Every stage sets this. It exists for one reason: a scan that ends with an
 // empty page and no message is the worst thing this tool can do — the reader
@@ -1101,6 +1183,20 @@ async function scan(input){
     if(!pool&&!others.length&&!gpOk&&!(supply>0)&&!decStr(nameInfo[0]))
       return fail('That address is not a BSC token.',
         'It answers nothing to symbol() or totalSupply(), has no pool at any venue this page can read, and GoPlus does not list it. A wallet address, or a contract that is not a token, looks exactly like this.');
+    // No pool at all: ask four.meme before concluding "trades elsewhere". A
+    // token still raising there has no pool by design, and its market lives in
+    // the platform's contract. A graduated token falls through to the pool path.
+    if(!pool&&!others.length){
+      at('asking four.meme whether it is still on the curve…');
+      const cv=await curveInfo(token);
+      if(cv&&!cv.liquidityAdded){
+        const quoteUsd=cv.quoteSym==='BNB'?bnbUsd:cv.quoteIsStable?1:0;
+        const rows=await curveLadder(token,cv,quoteUsd,STEPS);
+        renderCurve(gp,token,name,symb,cv,rows,quoteUsd);
+        remember(token,symb);
+        return;
+      }
+    }
     if(!pool||(share<0.25&&!deepEnough))
       return renderElsewhere(gp,token,name,symb,hard,others,otherLiq,share,!!pool);
     const partial=share<0.25?share:null;

@@ -1056,3 +1056,95 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
       source:'eth_call with a state override on the PancakeSwap V2 router, at this block'};
   }catch(e){return {ok:false,reason:'the simulation could not run: '+String(e.message||e).slice(0,80)}}
 }
+
+// ---- four.meme: a token still on its launch curve ---------------------------
+// A four.meme token has no PancakeSwap pool until its raise completes; until
+// then every trade goes through four.meme's TokenManager, and a scanner that
+// only knows pools said "no pool" about a token that trades all day. The
+// platform's own helper contract answers the three questions this page asks of
+// a pool — what is it worth, what does a trade cost, can you sell it — with one
+// view call each: getTokenInfo(address), tryBuy(address,uint256,uint256),
+// trySell(address,uint256). Prices come back as quote-wei per whole token; the
+// fee rate is in basis points of 1e4 (100 = 1 %). tryBuy's estimatedCost plus
+// estimatedFee is the money in; trySell's funds is the money out AFTER its fee
+// (checked on a live curve: fee was 1 % of funds+fee, not of funds).
+export const FOURMEME_HELPER='0xf251f83e40a78868fcfa3fa4599dad6494e46034';
+export const FOURMEME_MANAGER='0x5c952063c7fc8610ffdb798152d69f0b9550762b';
+const CURVE_SEL={info:'0x1f69565f',tryBuy:'0xe21b103a',trySell:'0xc6f43e8c'};
+const wordAt=(h,i)=>h&&h.length>=66+64*i?hx('0x'+h.slice(2+64*i,66+64*i)):null;
+const addrWord=(h,i)=>h&&h.length>=66+64*i?addrAt('0x'+h.slice(2+64*i,66+64*i)):null;
+
+// null when the address is not a four.meme token at all (the helper returns a
+// zero version), an object otherwise — including for tokens that have long
+// since graduated, where `liquidityAdded` is true and the pool path applies.
+export async function curveInfo(token,url){
+  let r;
+  try{r=(await rpcBatch([call(FOURMEME_HELPER,CURVE_SEL.info+pad(token))],url))[0]}
+  catch(e){return null}
+  const version=Number(wordAt(r,0)||0n);
+  if(!version)return null;
+  const quoteAddr=addrWord(r,2);
+  const known=QUOTES.find(([a])=>a===quoteAddr);
+  const isBnb=!quoteAddr||quoteAddr===NULLA||quoteAddr===WBNB;
+  const offers=Number(wordAt(r,7))/1e18, maxOffers=Number(wordAt(r,8))/1e18;
+  const funds=Number(wordAt(r,9))/1e18, maxRaising=Number(wordAt(r,10))/1e18;
+  const launch=Number(wordAt(r,6)||0n);
+  return {
+    version, manager:addrWord(r,1),
+    quoteAddr:isBnb?null:quoteAddr,
+    quoteSym:isBnb?'BNB':known?known[1]:null,
+    quoteIsStable:!isBnb&&!!known&&known[2]===1,
+    // quote per whole token, as a plain number
+    price:Number(wordAt(r,3))/1e18,
+    feePct:Number(wordAt(r,4)||0n)/100,
+    launchTime:launch>0?launch:null,
+    offersLeft:offers, maxOffers,
+    raised:funds, maxRaising,
+    progressPct:maxRaising>0?Math.min(100,funds/maxRaising*100):null,
+    liquidityAdded:(wordAt(r,11)||0n)!==0n,
+  };
+}
+
+// What a buy and a sell of each USD size would cost on the curve right now,
+// against the curve's own last price, fee included — the same definition the
+// pool ladder uses, so the two are comparable. A size the curve cannot fill
+// (more than is left to raise) comes back with null costs rather than a
+// number that describes a trade nobody could place.
+export async function curveLadder(token,info,quoteUsd,sizesUsd,url){
+  if(!(quoteUsd>0)||!(info.price>0))return [];
+  const sizes=sizesUsd.filter(s=>s>0);
+  const calls=[];
+  for(const usd of sizes){
+    const fundsWei=BigInt(Math.floor(usd/quoteUsd*1e18));
+    const tokensWei=BigInt(Math.floor(usd/quoteUsd/info.price*1e18));
+    calls.push(call(FOURMEME_HELPER,CURVE_SEL.tryBuy+pad(token)+num(0)+num(fundsWei)));
+    calls.push(call(FOURMEME_HELPER,CURVE_SEL.trySell+pad(token)+num(tokensWei)));
+  }
+  let res;
+  try{res=await rpcBatch(calls,url)}catch(e){return []}
+  const rows=[];
+  sizes.forEach((usd,i)=>{
+    const b=res[2*i],s=res[2*i+1];
+    const row={usd,buyCost:null,sellCost:null,buyNote:null,sellNote:null};
+    const paid=usd/quoteUsd;
+    const got=b?Number(wordAt(b,2))/1e18:0;
+    const cost=b?Number(wordAt(b,3))/1e18:0, fee=b?Number(wordAt(b,4))/1e18:0;
+    // The helper fills what it can: a buy that would overshoot the raise is
+    // capped at what is left, and the money it would actually take (cost plus
+    // fee) is then less than the money offered. Checked live: a $2,500 buy
+    // against $1,300 left came back "cheaper" than a $1,000 one, because the
+    // cost was measured on the capped part only. Such a row says so instead.
+    const inPaid=cost+fee;
+    if(b&&got>0&&inPaid>=paid*0.999){
+      row.buyCost=(inPaid/(got*info.price)-1)*100;
+    }else if(b&&got>0){
+      row.buyNote='more than the curve has left to sell';
+    }else row.buyNote='the curve did not quote this size';
+    const tokens=paid/info.price;
+    const out=s?Number(wordAt(s,2))/1e18:0;
+    if(s&&out>0)row.sellCost=(1-out/(tokens*info.price))*100;
+    else row.sellNote='the curve did not quote this size';
+    rows.push(row);
+  });
+  return rows;
+}

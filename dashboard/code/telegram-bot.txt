@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4157 lines.
+# one fetch. 12 files, 4178 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2501,6 +2501,27 @@ async function postLpAgentAlert(env) {
 export function formatScan(d, address) {
   const link = `https://brainonbnb.com/scanner?token=${address}`;
   if (!d || d.error) return `⚠️ Could not measure that address right now${d && d.error ? ` — ${String(d.error).slice(0, 120)}` : ''}.\n🔍 <a href="${link}">Try the scanner page</a>`;
+  // A token still raising on four.meme has no pool by design; the API answers
+  // from the platform's own contract instead, and so does this.
+  if (d.curve && d.curve.platform === 'four.meme') {
+    const cv = d.curve;
+    const pct = (n) => (n == null ? '?' : Number(n).toFixed(2) + '%');
+    const q = cv.quoteSymbol || 'quote';
+    const amt = (n) => (n == null ? '?' : Number(n) >= 100 ? Math.round(Number(n)).toLocaleString('en-US') : Number(n).toFixed(2)) + ' ' + q;
+    const costs = Array.isArray(cv.tradeCost) ? cv.tradeCost.filter((t) => [100, 500, 1000].includes(t.sizeUsd)) : [];
+    const costLines = costs.map((t) => `$${t.sizeUsd} buy costs <b>${t.buyCostPct == null ? (t.note || 'not quoted') : pct(t.buyCostPct)}</b> · sell ${t.sellCostPct == null ? 'not quoted' : pct(t.sellCostPct)}`).join('\n');
+    const priceStr = cv.priceUsd == null ? amt(cv.priceQuote) : '$' + Number(cv.priceUsd).toPrecision(4);
+    return `🔍 <b>${d.symbol || '?'}</b> ${d.name && d.name !== d.symbol ? `(${d.name}) ` : ''}— still on the <b>four.meme launch curve</b>, no PancakeSwap pool yet
+💰 Price ${priceStr} · Raised <b>${amt(cv.raised)}</b> of ${amt(cv.maxRaising)} (${pct(cv.progressPct)})
+🏦 The money raised sits in four.meme's contract until the raise completes — no pool, so no liquidity to pull
+${cv.sellQuoted ? '✅ Sell quote: four.meme would pay out a sell right now' : '❔ Sell quote: the curve quoted no sell just now'}
+
+<b>What a trade really costs on the curve</b> <i>(${pct(cv.feePct)} platform fee + the curve moving)</i>
+${costLines || 'no size quotable right now'}
+
+📊 <a href="${link}">Full scan</a>
+<i>Read from four.meme's helper contract on BNB Smart Chain just now. Measurement, not advice.</i>`;
+  }
   if (d.quotable === false || !d.pool) return `🔍 <b>${d.symbol || 'This token'}</b> has no PancakeSwap pool against BNB or a stablecoin that I can measure. Nothing here is a verdict on the token — only that there is no pool to read.\n🔍 <a href="${link}">Scanner page</a>`;
   const usd0 = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('en-US');
   const pct = (n) => (n == null ? '?' : Number(n).toFixed(2) + '%');

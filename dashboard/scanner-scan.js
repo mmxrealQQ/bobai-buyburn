@@ -19,6 +19,7 @@ import {
   balOf, call, hx, addrAt, res2, decStr, rpcBatch,
   classify, priceToken, discover,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
+  STEPS, curveInfo, curveLadder,
 } from './scanner-chain.js';
 
 const parseInput = (s) => {
@@ -364,6 +365,45 @@ export async function scan(input, env) {
   // pocket, and a ladder off it would describe a market nobody trades in. But
   // share alone refuses genuinely deep pools that are merely one of several, so
   // a pool also qualifies on its own absolute depth.
+  // No pool at all: ask four.meme before concluding "no pool". A token still
+  // raising there has no pool by design; its market is the platform's own
+  // contract, which quotes a buy and a sell of each size on request. A
+  // graduated token (liquidityAdded) falls through to the pool path.
+  if (!pool && !others.length) {
+    const cv = await curveInfo(token);
+    if (cv && !cv.liquidityAdded) {
+      const quoteUsd = cv.quoteSym === 'BNB' ? bnbUsd : cv.quoteIsStable ? 1 : 0;
+      const rows = await curveLadder(token, cv, quoteUsd, STEPS);
+      const sellRow = rows.find((r) => r.sellCost != null);
+      return {
+        address: token, name, symbol: symb, quotable: false,
+        reason: 'Still on its four.meme launch curve — there is no PancakeSwap pool yet; trades go through four.meme’s contract.',
+        curve: {
+          platform: 'four.meme',
+          stage: 'bonding curve',
+          quoteSymbol: cv.quoteSym,
+          priceQuote: cv.price,
+          priceUsd: quoteUsd > 0 ? cv.price * quoteUsd : null,
+          feePct: cv.feePct,
+          raised: cv.raised, maxRaising: cv.maxRaising, progressPct: cv.progressPct == null ? null : +cv.progressPct.toFixed(2),
+          tokensLeft: cv.offersLeft, maxOffers: cv.maxOffers,
+          launchTime: cv.launchTime ? new Date(cv.launchTime * 1000).toISOString() : null,
+          tradeCost: rows.map((r) => ({
+            sizeUsd: r.usd,
+            buyCostPct: r.buyCost == null ? null : +r.buyCost.toFixed(3),
+            sellCostPct: r.sellCost == null ? null : +r.sellCost.toFixed(3),
+            note: r.buyNote || r.sellNote || undefined,
+          })),
+          sellQuoted: !!sellRow,
+          custody: 'The money raised sits in four.meme’s TokenManager contract until the raise completes, not in the creator’s wallet; there is no pool and therefore no liquidity to withdraw.',
+          onCompletion: 'When the raise completes, four.meme lists the token on PancakeSwap; the pool path of this tool applies from then on.',
+          source: 'four.meme TokenManagerHelper3 (getTokenInfo, tryBuy, trySell) on BNB Smart Chain, at this block',
+        },
+        venues: [],
+        source: 'measured on BNB Smart Chain via public RPC',
+      };
+    }
+  }
   if (!pool || (share < 0.25 && !deepEnough))
     return {
       address: token, name, symbol: symb, quotable: false,

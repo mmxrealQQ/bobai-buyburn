@@ -1356,6 +1356,10 @@ const page = `<!doctype html>
   .rg-out{margin-top:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);
     background:rgba(255,255,255,.02);font-size:.8rem;line-height:1.6}
   .rg-out .rg-who{color:var(--gold);font-weight:600;margin-bottom:8px}
+  .rg-ans{border-collapse:collapse;width:100%;font-size:.8rem}
+  .rg-ans th{text-align:left;color:var(--muted);font-weight:500;text-transform:none;letter-spacing:0;font-size:.8rem;padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top}
+  .rg-ans td{padding:3px 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+  .rg-raw{margin-top:8px;font-size:.75rem;color:var(--muted)}.rg-raw summary{cursor:pointer}
   .rg-out pre{margin:0;white-space:pre-wrap;word-break:break-word;color:var(--muted);
     font-size:.74rem;max-height:260px;overflow:auto}
   .rg-ask code{display:block;font-size:.84rem;padding:11px 14px;border-radius:11px;
@@ -1843,10 +1847,17 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
             return '<div class="rg-ask-hire"><button type="button" class="rg-hirebtn" data-ask-hire="'+esc(String(id))+'">Hire '+esc(name)+' for a paid delivery &rarr;</button>'+
               '<span class="rg-note">Same agent, same question, delivered on-chain through the ERC-8183 escrow. Your wallet, your call.</span></div>';
           };
+          // A flat answer reads as a table, not as JSON: "1191079.176186902700000000"
+          // is a number one machine wrote for another. Nested answers stay JSON;
+          // the raw form is one tap away either way.
+          var fmtNum=function(n){var a=Math.abs(n);if(a===0)return '0';if(a>=1000)return n.toLocaleString('en-US',{maximumFractionDigits:0});if(a>=1)return n.toLocaleString('en-US',{maximumFractionDigits:2});return n.toLocaleString('en-US',{maximumSignificantDigits:4})};
+          var fmtVal=function(v){if(typeof v==='number')return fmtNum(v);if(typeof v==='string'&&/^-?[0-9]+([.][0-9]+)?$/.test(v)&&v.length<40)return fmtNum(Number(v));if(v==null)return '—';if(typeof v==='boolean')return v?'yes':'no';return String(v)};
+          var flat=function(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&Object.keys(r).length&&Object.keys(r).length<=40&&Object.keys(r).every(function(k){return r[k]==null||typeof r[k]!=='object'}))};
+          var renderResult=function(r){var raw=esc(typeof r==='string'?r:JSON.stringify(r,null,1)).slice(0,3000);if(!flat(r))return '<pre>'+raw+'</pre>';return '<table class="rg-ans">'+Object.keys(r).map(function(k){return '<tr><th>'+esc(k)+'</th><td>'+esc(fmtVal(r[k]))+'</td></tr>'}).join('')+'</table><details class="rg-raw"><summary>as the agent sent it</summary><pre>'+raw+'</pre></details>'};
           if(d.dispatched && d.answered_by){
             var ab=d.answered_by;
             o.innerHTML='<div class="rg-who">'+esc(ab.agent)+' &middot; '+esc(ab.tool||ab.skill||'')+(ab.operator?' &middot; <span class="rg-note">'+esc(ab.operator)+(ab.id?' &middot; #'+esc(String(ab.id)):'')+'</span>':'')+'</div>'+
-              '<pre>'+esc(typeof d.result==='string'?d.result:JSON.stringify(d.result,null,1)).slice(0,3000)+'</pre>'+
+              renderResult(d.result)+
               hireLine(ab.id,ab.agent,t)+oursLine(d._ours,t);
             remember(t,ab.agent);
           } else if(Array.isArray(d.hireable) && d.hireable.length){

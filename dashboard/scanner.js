@@ -501,7 +501,7 @@ function verdictCard(d,pool,gp,gpOk,tax){
     const tone=toll>0?(worst<=toll*1.5?'good':worst<=toll*3?'mid':'bad'):'mid';
     line(tone,'A $'+nf(ref.usd)+' trade costs you '+ref.buyCost.toFixed(1)+'% to buy and '+ref.sellCost.toFixed(1)+'% to sell.',
       'That is the whole cost: the pool fee, any transfer tax, and how far your own trade moves the price. '
-      +(toll>0?'About '+toll.toFixed(1)+'% of it is unavoidable at any size in this pool; the rest is depth.'
+      +(toll>0?'About '+toll.toFixed(toll<0.1?2:1)+'% of it is unavoidable at any size in this pool; the rest is depth.'
              :'Round trip, that is about '+(ref.buyCost+ref.sellCost).toFixed(1)+'% before the price moves at all.'));
   }else{
     line('unknown','A trade of this size could not be priced.',
@@ -1391,7 +1391,10 @@ function drawFeed(){
   });
 }
 drawFeed();
-(function(){const t=parseInput(new URLSearchParams(location.search).get('token'));
+(function(){const raw=new URLSearchParams(location.search).get('token'),t=parseInput(raw);
+  // A link that carries something that is not an address gets the same answer
+  // a typed one does, instead of a page that silently shows nothing.
+  if(raw&&!t){$('sc-in').value=raw;showClear();fail('That is not a contract address.','Paste a BSC token address, a pool address, or a BscScan / DexScreener link that contains one.');return}
   // Setting .value from script fires no input event, so the clear cross has
   // to be told by hand — otherwise arriving via ?token= shows an address with
   // no way to clear it, which is the one arrival that matters most.

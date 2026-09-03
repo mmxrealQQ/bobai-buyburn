@@ -2097,9 +2097,17 @@ Free, any token on BNB Chain. Same numbers as <a href="https://brainonbnb.com/sc
       }
       // One scan per chat every 20 s: a scan reads the chain a dozen times,
       // and the public RPCs it uses are the same ones the free page needs.
+      // KV refuses a TTL under 60 s ("Invalid expiration_ttl of 20"), and the
+      // first live /scan died on exactly that: the put threw, the webhook's
+      // catch swallowed it, and the bot said nothing. So the key lives 60 s
+      // and carries the time it was set; the 20 s window is checked here.
+      // And a KV hiccup must never silence a scan — the gate is a courtesy.
       const gate = `scan_gate:${chatId}`;
-      if (await env.KV.get(gate)) { reply = '⏳ One scan at a time — try again in a few seconds.'; break; }
-      await env.KV.put(gate, '1', { expirationTtl: 20 });
+      try {
+        const since = Number(await env.KV.get(gate)) || 0;
+        if (Date.now() - since < 20000) { reply = '⏳ One scan at a time — try again in a few seconds.'; break; }
+        await env.KV.put(gate, String(Date.now()), { expirationTtl: 60 });
+      } catch (e) { console.error('[SCAN GATE]', e.message || e); }
       let d = null;
       try {
         const r = await fetch(`https://brainonbnb.com/api/pool-scan?address=${address}`, { signal: AbortSignal.timeout(25000) });

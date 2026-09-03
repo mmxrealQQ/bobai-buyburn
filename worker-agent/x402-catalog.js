@@ -39,13 +39,14 @@ export const OWNERSHIP_PROOFS = {
 // Since 2026-09-03 the five deliveries are sold per answer here too — the
 // same doWork() the ERC-8183 escrow path runs, one payment, the document
 // straight back. Each is its own resource because each has its own inputs.
-const ANSWER_IDS = ['health_factor', 'grid_plan', 'yield_plan', 'rebalance_plan', 'lp_tier_plan'];
+const ANSWER_IDS = ['health_factor', 'grid_plan', 'yield_plan', 'rebalance_plan', 'lp_tier_plan', 'lp_position_plan'];
 const ANSWER_NAMES = {
   health_factor: 'Venus health factor & liquidation distance for an address',
   grid_plan: 'Grid trading plan for a BNB Chain pool, costed against the real pool',
   yield_plan: 'Venus yield ranking, and whether moving pays for itself',
   rebalance_plan: 'Portfolio rebalance, priced against the pools that would execute it',
   lp_tier_plan: 'Which PancakeSwap fee tier is actually paying its liquidity providers',
+  lp_position_plan: 'The liquidity agent on YOUR PancakeSwap V3 position: in range, worth, fees owed, whether a re-set is due and in which width — the same code that runs ours. Reads and plans, signs nothing',
 };
 const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/watch',

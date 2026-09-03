@@ -1080,3 +1080,57 @@ function fillLpSeries(){
     });
 }
 fillLpSeries();
+
+// The agent on somebody else's position: terms first, then the payment the
+// visitor makes from their own wallet, then the plan. The page never holds a
+// key and never sends a transaction; it reads a hash the visitor pastes.
+function fillLpYours(){
+  const el = id => document.getElementById(id);
+  const inp = el('lp-yours-in'), go = el('lp-yours-go'), out = el('lp-yours-out');
+  if(!inp || !go || !out) return;
+  const A = 'https://agent.brainonbnb.com';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const paramsFor = v => /^\d+$/.test(v) ? {position: v} : {address: v};
+  const taskFor = v => /^\d+$/.test(v) ? 'what would the liquidity agent do with PancakeSwap V3 position ' + v : 'what would the liquidity agent do with the PancakeSwap V3 position held by ' + v;
+  const render = ans => {
+    const s = ans.summary || {};
+    out.innerHTML = '<div class="lp-terms"><div class="lp-head">' + esc(s.headline || 'Delivered.') + '</div>' +
+      (s.facts && s.facts.length ? '<dl>' + s.facts.map(([k,v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl>' : '') +
+      (ans.result && ans.result.plan && ans.result.plan.verdict ? '<p style="margin:6px 0 0">' + esc(ans.result.plan.verdict) + '</p>' : '') +
+      '<span class="agt-note">Paid ' + esc(ans.paid || '') + ' · read from the position manager and the pool at ' + esc(String(ans.produced_at || '').replace('T',' ').slice(0,16)) + ' UTC · measurement, not advice, and nothing was signed on your position.</span></div>';
+  };
+  go.addEventListener('click', () => {
+    const v = inp.value.trim();
+    if(!/^\d+$/.test(v) && !/^0x[0-9a-fA-F]{40}$/.test(v)){ out.hidden = false; out.innerHTML = '<span class="lp-err">A position id (digits) or a wallet address (0x…), please.</span>'; return; }
+    go.disabled = true; out.hidden = false; out.innerHTML = '<span class="agt-note">Reading the terms…</span>';
+    fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'})
+      .then(r => r.json())
+      .then(t => {
+        const direct = (t.accepts || []).find(a => a.extra && a.extra.assetTransferMethod === 'direct-transfer' && !(a.extra.symbol === 'BOBAI'));
+        const bobai = (t.accepts || []).find(a => a.extra && a.extra.symbol === 'BOBAI');
+        if(!direct) throw new Error(t.error || 'no terms');
+        out.innerHTML = '<div class="lp-terms"><div class="lp-head">Send the fee, then paste the transaction hash</div>' +
+          '<div>To <code>' + esc(direct.payTo) + '</code> on BNB Smart Chain:</div>' +
+          '<div><b>0.10 USD1</b>' + (bobai && t.in_bobai ? ' &mdash; or <b>' + esc(Number(t.in_bobai.tokens).toLocaleString('en-US')) + ' $BOBAI</b> at this quote (' + esc(Number(t.in_bobai.usd_per_bobai).toPrecision(3)) + ' $ each, a tenth of slack included)' : '') + '</div>' +
+          '<div class="lp-ask"><input id="lp-yours-tx" type="text" autocomplete="off" spellcheck="false" placeholder="0x… transaction hash" aria-label="Transaction hash"><button id="lp-yours-pay" type="button" class="mkt-go" style="border:0;cursor:pointer">Get the plan &rarr;</button></div>' +
+          '<span class="agt-note">From your own wallet, in one transfer. The hash is checked on-chain: the amount, the recipient, and that it has not been used before. ' + (bobai ? '$BOBAI paid stays $BOBAI in the income wallet, off the market. ' : '') + 'Free preview of the shape: <a href="' + A + '/example?service=lp_position_plan" rel="noopener">our own position, through the same door</a>.</span></div>';
+        const pay = el('lp-yours-pay'), txIn = el('lp-yours-tx');
+        pay.addEventListener('click', () => {
+          const tx = txIn.value.trim();
+          if(!/^0x[0-9a-fA-F]{64}$/.test(tx)){ txIn.focus(); return; }
+          pay.disabled = true; pay.textContent = 'Checking the payment…';
+          fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json', 'PAYMENT-SIGNATURE': tx}, body: JSON.stringify({task: taskFor(v), params: paramsFor(v)})})
+            .then(r => r.json().then(j => ({status: r.status, j})))
+            .then(({status, j}) => {
+              if(status === 200 && j.ok) render(j);
+              else { pay.disabled = false; pay.textContent = 'Get the plan →'; const e = document.createElement('div'); e.className = 'lp-err'; e.textContent = (j.error || 'not accepted') + (j.reason ? ' — ' + j.reason : '') + (j.payment ? ' (' + j.payment + ')' : ''); out.querySelector('.lp-terms').appendChild(e); }
+            })
+            .catch(() => { pay.disabled = false; pay.textContent = 'Get the plan →'; });
+        });
+      })
+      .catch(e => { out.innerHTML = '<span class="lp-err">The agent did not answer just now: ' + esc(e.message || e) + '</span>'; })
+      .then(() => { go.disabled = false; });
+  });
+  inp.addEventListener('keydown', e => { if(e.key === 'Enter') go.click(); });
+}
+fillLpYours();

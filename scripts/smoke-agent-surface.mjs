@@ -631,16 +631,24 @@ section('The marketplace, from the front door');
   // service must not produce a 402 at all; and the catalogue must list all six
   // paid resources, since a client reads terms from there.
   const ansList = await fetch(`${AGENT}/answer`).then((r) => r.json()).catch(() => null);
-  ok('/answer lists the five services', !!ansList && Array.isArray(ansList.services) && ansList.services.length === 5 && ansList.services.every((s) => s.needs && /\/answer\?service=/.test(s.terms)));
+  ok('/answer lists the six services', !!ansList && Array.isArray(ansList.services) && ansList.services.length === 6 && ansList.services.every((s) => s.needs && /\/answer\?service=/.test(s.terms)));
   const ansTerms = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   const ansBody = await ansTerms.json().catch(() => ({}));
-  ok('an unpaid answer request is a 402 with both payment schemes and the inputs', ansTerms.status === 402 && !!ansTerms.headers.get('payment-required') && (ansBody.accepts || []).length === 2 && !!ansBody.needs && /0\.10 USD1/.test(ansBody.how || ''));
+  ok('an unpaid answer request is a 402 with the payment schemes and the inputs', ansTerms.status === 402 && !!ansTerms.headers.get('payment-required') && (ansBody.accepts || []).length >= 2 && !!ansBody.needs && /0\.10 USD1/.test(ansBody.how || ''));
+  // $BOBAI as the second coin (point 5, 2026-09-03): quoted on the 402 from
+  // the pair, never typed; a quote that cannot be read leaves USD1 alone.
+  const bobaiAccept = (ansBody.accepts || []).find((a) => a.extra && a.extra.symbol === 'BOBAI');
+  ok('the 402 quotes the same price in $BOBAI from the pair', !!bobaiAccept && /^0x245c386d/i.test(bobaiAccept.asset) && BigInt(bobaiAccept.maxAmountRequired) > 0n && ansBody.in_bobai && ansBody.in_bobai.usd_per_bobai > 0 && ansBody.in_bobai.tokens > 100, JSON.stringify(ansBody.in_bobai));
+  // The sixth answer: the liquidity agent on a position that is not ours.
+  const lpEx = await fetch(`${AGENT}/example?service=lp_position_plan`).then((r) => r.json()).catch(() => null);
+  ok('lp_position_plan reads a position and states what the agent would do', !!lpEx && lpEx.result && lpEx.result.plan && lpEx.result.plan.position && typeof lpEx.result.plan.in_range === 'boolean' && /Re-set:|Out of range|In range/.test(lpEx.result.plan.verdict || ''), lpEx && (lpEx.error || lpEx.result?.plan?.verdict || '').slice(0, 120));
+  ok('lp_position_plan signs nothing and says so', !!lpEx && /signs nothing/.test(lpEx.result?.plan?.what_this_is_not || ''));
   const ansBogus = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: '{"task":"x"}' });
   const bogusBody = await ansBogus.json().catch(() => ({}));
   ok('a fabricated proof is refused with a reason, and nothing is produced', ansBogus.status === 402 && /not accepted/.test(bogusBody.error || '') && !!bogusBody.reason && !bogusBody.result);
   ok('an unknown service does not ask for money', (await fetch(`${AGENT}/answer?service=nope`, { method: 'POST' })).status === 400);
   const x402cat = await fetch(`${AGENT}/.well-known/x402`).then((r) => r.json()).catch(() => null);
-  ok('the x402 catalogue lists the watch and the five answers', !!x402cat && Array.isArray(x402cat.resources) && x402cat.resources.length === 6 && x402cat.resources.filter((u) => /\/answer\?service=/.test(u)).length === 5);
+  ok('the x402 catalogue lists the watch and the six answers', !!x402cat && Array.isArray(x402cat.resources) && x402cat.resources.length === 7 && x402cat.resources.filter((u) => /\/answer\?service=/.test(u)).length === 6);
   // The funnel and the attestation (2026-09-03, point 3). The router names
   // the agent by id so the page can offer its paid version; the attest route
   // prepares one measurement and refuses everything that is not a delivered

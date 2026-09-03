@@ -78,8 +78,8 @@ export const CAPABILITIES = {
     {
       name: 'paid answer',
       where: 'POST https://agent.brainonbnb.com/answer?service=<id>',
-      what: 'any of the five deliveries below, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
-      price: '0.10 USD1 per answer',
+      what: 'any of the six deliveries below, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
+      price: '0.10 USD1 per answer, or the same in $BOBAI at the 402’s quote',
       why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',
     },
   ],

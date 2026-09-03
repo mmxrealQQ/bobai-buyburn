@@ -171,7 +171,10 @@ async function readCounters(env) {
 // token sent to the same address counts. Without the recipient check somebody
 // pastes a transfer between two strangers. Without the KV guard one payment
 // buys unlimited watches.
-async function verifyPayment(env, txHash, payTo, min) {
+// `asset` is the token whose transfer counts (USD1 by default); `label` is how
+// its amount is written back to the payer. Since 2026-09-03 an answer can
+// also be paid in $BOBAI — the token this whole loop exists to burn.
+async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD1') {
   if (!/^0x[a-fA-F0-9]{64}$/.test(txHash || '')) return { ok: false, reason: 'malformed transaction hash' };
 
   const spent = await env.AGENT.get(`paid:${txHash.toLowerCase()}`);
@@ -183,7 +186,7 @@ async function verifyPayment(env, txHash, payTo, min) {
 
   let paid = 0n;
   for (const log of receipt.logs || []) {
-    if ((log.address || '').toLowerCase() !== USD1) continue;
+    if ((log.address || '').toLowerCase() !== asset.toLowerCase()) continue;
     if ((log.topics || [])[0] !== TRANSFER_TOPIC) continue;
     if (addrFromTopic(log.topics[2]) !== payTo.toLowerCase()) continue;
     paid += hexToBig(log.data);
@@ -191,10 +194,32 @@ async function verifyPayment(env, txHash, payTo, min) {
   if (paid < min)
     return {
       ok: false,
-      reason: `paid ${fmtUsd1(paid)} USD1, need ${fmtUsd1(min)} USD1`,
+      reason: `paid ${fmtUsd1(paid)} ${label}, need ${fmtUsd1(min)} ${label}`,
+      paid,
     };
 
-  return { ok: true, paid, from: (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
+  return { ok: true, paid, asset: asset.toLowerCase(), from: (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
+}
+
+// $BOBAI as a second coin for the per-answer sale. The amount is the answer's
+// dollar price in $BOBAI at the moment of the 402, read from the pair's own
+// reserves and the BNB reference pair — the same on-chain arithmetic every
+// page of this project prices $BOBAI with — with a tenth of slack so a price
+// that moved between the quote and the block still clears. $BOBAI paid here
+// sits in the income wallet as $BOBAI: off the market, until the liquidity
+// agent's sweep learns the token. Said on the 402, not implied.
+const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+async function bobaiForUsd(usd) {
+  const [res, t0, price] = await Promise.all([call(BOBAI_PAIR, SEL.getReserves), call(BOBAI_PAIR, SEL.token0), bnbUsd()]);
+  const b = res.slice(2);
+  const r0 = Number(BigInt('0x' + b.slice(0, 64))) / 1e18, r1 = Number(BigInt('0x' + b.slice(64, 128))) / 1e18;
+  const bobaiIs0 = ('0x' + t0.slice(26)).toLowerCase() === BOBAI;
+  const bnbPerBobai = bobaiIs0 ? r1 / r0 : r0 / r1;
+  const usdPerBobai = bnbPerBobai * price;
+  if (!(usdPerBobai > 0)) throw new Error('could not price $BOBAI');
+  const tokens = usd / usdPerBobai;
+  return { atomic: BigInt(Math.floor(tokens * 0.9 * 1e18)), tokens: Math.floor(tokens * 0.9), usd_per_bobai: usdPerBobai };
 }
 
 
@@ -459,9 +484,9 @@ const WATCH_TOOL = {
 // if production fails the caller has lost nothing they cannot retry with
 // support, whereas the reverse order lets a retry storm mint goods off one
 // payment. Returns { ok, tx, paid, from } or { ok:false, status, body }.
-async function chargeX402(env, { payTo, price, description, resource, proof, sold }) {
+async function chargeX402(env, { payTo, price, description, resource, proof, sold, alt = null }) {
   const parsed = parsePaymentHeader(proof);
-  let check, tx;
+  let check, tx, asset = 'USD1';
   if (parsed.kind === 'x402') {
     const accepts = dexterAccepts({ payTo, amountAtomic: price.toString(), description, resource });
     const r = await verifyAndSettle(parsed.value, accepts);
@@ -471,12 +496,25 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
     check = { ok: true, paid: price, from: r.payer };
   } else {
     check = await verifyPayment(env, String(proof).trim(), payTo, price);
+    // Not a USD1 payment at all? If a second coin is accepted for this
+    // resource, the same receipt is read again for that one.
+    if (!check.ok && alt && check.paid === 0n) {
+      const c2 = await verifyPayment(env, String(proof).trim(), payTo, alt.min, alt.asset, alt.label);
+      if (c2.ok) { check = c2; asset = alt.label; }
+      else if (c2.paid > 0n) check = c2;
+    }
     if (!check.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: check.reason } };
     tx = String(proof).trim().toLowerCase();
   }
   await env.AGENT.put(`paid:${tx}`, '1', { expirationTtl: 60 * 60 * 24 * 400 });
-  await env.AGENT.put(`earn:${tx}`, JSON.stringify({ at: Date.now(), amount: check.paid.toString(), tx, for: sold }), { expirationTtl: 60 * 60 * 24 * 400 });
-  return { ok: true, tx, paid: check.paid, from: check.from };
+  // earn: records USD1 amounts only — /stats sums them as dollars. A payment
+  // in another coin is recorded with its coin and its dollar price at the
+  // quote, so the total stays a dollar figure and the coin stays visible.
+  const earn = asset === 'USD1'
+    ? { at: Date.now(), amount: check.paid.toString(), tx, for: sold }
+    : { at: Date.now(), amount: price.toString(), tx, for: sold, paid_in: asset, paid_atomic: check.paid.toString() };
+  await env.AGENT.put(`earn:${tx}`, JSON.stringify(earn), { expirationTtl: 60 * 60 * 24 * 400 });
+  return { ok: true, tx, paid: check.paid, from: check.from, asset };
 }
 
 // The five deliveries, sold per answer. The same doWork() the escrow path
@@ -490,6 +528,9 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES) } };
   const resource = `https://agent.brainonbnb.com/answer?service=${serviceId}`;
   const description = `${service.name} — one answer`;
+  // The same price in $BOBAI, quoted now. If the pair cannot be read the
+  // answer is still for sale in USD1; the $BOBAI door just stays shut.
+  const bobai = await bobaiForUsd(Number(ANSWER_PRICE) / 1e18).catch(() => null);
   if (!proof) {
     const requirements = {
       x402Version: 2,
@@ -500,6 +541,11 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
           description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
           extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
         },
+        ...(bobai ? [{
+          scheme: 'exact', network: NETWORK, asset: BOBAI, maxAmountRequired: bobai.atomic.toString(), payTo, resource,
+          description: `${description} — the same price in $BOBAI (${bobai.tokens.toLocaleString('en-US')} BOBAI at this quote, a tenth of slack included): direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+        }] : []),
       ],
     };
     return {
@@ -508,19 +554,21 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Send ${fmtUsd1(ANSWER_PRICE)} USD1 to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `Send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the liquidity agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
         accepts: requirements.accepts,
       },
     };
   }
-  const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}` });
+  const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
+    alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
   const params = extractParams(String(body?.task || ''), { ...(body?.params || {}), service: serviceId });
   let result;
   try {
-    result = await doWork(serviceId, params);
+    result = await doWork(serviceId, params, env);
   } catch (e) {
     // Paid and not deliverable — the one case that must never be silent.
     // The payment is recorded as unspent again so the caller can retry with
@@ -531,7 +579,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   }
   ctx.waitUntil(bump(env, 'answer_sold'));
   return { status: 200, body: {
-    ok: true, service: serviceId, name: service.name, paid: `${fmtUsd1(pay.paid)} USD1`, tx: pay.tx,
+    ok: true, service: serviceId, name: service.name, paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx,
     produced_at: new Date().toISOString(),
     result,
     summary: summarize(serviceId, result),
@@ -1430,8 +1478,8 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
       const id = url.searchParams.get('service') || '';
       if (request.method === 'GET') {
         if (!id) return json({
-          what: 'Any of the five answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
-          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer, by direct transfer or through the x402 facilitator`,
+          what: 'Any of the six answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
+          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer, by direct transfer or through the x402 facilitator — or the same price in $BOBAI, quoted on each 402`,
           services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
           how: 'POST /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then POST again with PAYMENT-SIGNATURE and a body naming the task.',
           or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',

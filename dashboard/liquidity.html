@@ -37,6 +37,17 @@
     .lp-series td{text-align:right;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-variant-numeric:tabular-nums}
     .lp-series td.up{color:#3fe09a}.lp-series td.down{color:#ff8f6b}
     #ag-lp-series-sum b{color:var(--text,#f3efe6)}
+    /* Ask it: one field, one button, the answer below in the same box. */
+    .lp-ask{display:flex;gap:8px;margin:10px 0 0;flex-wrap:wrap}
+    .lp-ask input{flex:1;min-width:200px;background:rgba(255,255,255,.04);color:var(--text,#f3efe6);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font:inherit;font-size:.85rem}
+    .lp-ask input:focus{outline:none;border-color:var(--gold)}
+    .lp-yours-out{margin-top:12px;font-size:.82rem;line-height:1.55}
+    .lp-yours-out .lp-terms{border:1px solid rgba(var(--accs,240,185,11),.28);border-radius:10px;padding:10px 12px;background:rgba(var(--accs,240,185,11),.05);display:flex;flex-direction:column;gap:8px}
+    .lp-yours-out code{font-size:.78rem;overflow-wrap:anywhere}
+    .lp-yours-out .lp-head{font-weight:700;font-size:.92rem}
+    .lp-yours-out dl{display:grid;grid-template-columns:max-content 1fr;gap:5px 12px;margin:6px 0 0}
+    .lp-yours-out dt{color:var(--muted)}.lp-yours-out dd{margin:0;overflow-wrap:anywhere}
+    .lp-yours-out .lp-err{color:#ff8f6b}
   </style>
 </head>
 <body class="np">
@@ -88,6 +99,31 @@
     </div>
   </section>
 
+  <section class="sec b-violet" id="yours">
+    <div class="sh fi"><h2>The agent, on <em>your</em> position</h2>
+      <p class="sh-sub">The same code that decides about our position every morning, pointed at yours: in range or not and how much room is left, what it is worth, what it is owed and whether collecting pays for its gas, whether a re-set is due and in which width, what your spare BNB would add. It reads and plans. It signs nothing on your position.</p>
+    </div>
+    <div class="agt-two">
+    <div class="agt-flow fi" id="lp-yours">
+      <h3>Ask it</h3>
+      <p class="agt-note">Paste a PancakeSwap V3 position id, or the address of a wallet that holds exactly one position.</p>
+      <div class="lp-ask">
+        <input id="lp-yours-in" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="7309536  or  0x…" aria-label="Position id or wallet address">
+        <button id="lp-yours-go" type="button" class="mkt-go" style="border:0;cursor:pointer">See the terms &rarr;</button>
+      </div>
+      <div id="lp-yours-out" class="lp-yours-out" hidden></div>
+    </div>
+    <div class="agt-flow fi">
+      <h3>What it costs, and what comes next</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>One answer, one payment</b><span>0.10 USD1, or the same in $BOBAI at the quote you are shown. Send it to the income wallet, paste the transaction hash, get the plan. Agents do the same over x402 without a page. The same answer is sold through the escrow on <a href="/registry">Brain Plaza</a>.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>Where the fee goes</b><span>The same loop as every AI income here: USD1 is swept into the project&rsquo;s own position and its fees go to the buyback bot. $BOBAI paid here stays $BOBAI in the income wallet, off the market, until the sweep learns the token.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Not yet: acting on your position</b><span>That needs a session key on your own account with an allowlist and a cap, the way this project already spends from its escrow. It is designed, not built, and the design is public: <a href="/source">docs/lp-service-stage2.md</a> in the source. Nothing here holds a key to your liquidity.</span></div></li>
+      </ol>
+    </div>
+    </div>
+  </section>
+
   <section class="sec b-violet" id="steps">
     <div class="sh fi"><h2>What it does <em>every day</em></h2>
       <p class="sh-sub">At 05:23 UTC, four steps in a fixed order. Each has a floor under which moving the money would cost more than the money, and a day under a floor is recorded as a decision, not an error.</p>
@@ -119,6 +155,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=34" defer></script>
+<script src="app.js?v=35" defer></script>
 </body>
 </html>

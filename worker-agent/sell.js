@@ -54,6 +54,7 @@ import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
 import { rebalancePlan } from './rebalance.js';
 import { lpTierPlan } from './lp-tiers.js';
+import { lpPositionPlan } from './lp-service.js';
 import { decodeJob, ERC8183 } from './hire.js';
 import { submitDeliverable, providerAccount } from './submit.js';
 
@@ -123,6 +124,15 @@ export const SERVICES = {
     deliverables: 'A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. And it does the sum the way the money actually works: fees go to the liquidity standing where the trade happens, so each tier is also read at the price - the tick book of the pool itself is walked to find what is parked within a couple of percent of it - with your own size in the denominator, because arriving is what dilutes it. On a constant-product pool that is under one percent of the balance, so the tier holding the most money is regularly not the tier you would be competing with least. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.',
     needs: { token: 'the token or PancakeSwap pool to compare tiers for (0x…)', capitalUsd: 'how much liquidity you are placing, optional — defaults to 1000' },
   },
+  lp_position_plan: {
+    id: 'lp_position_plan',
+    name: 'The liquidity agent, on your position',
+    category: 'rebalancing',
+    price: '100000000000000000',
+    price_display: '0.10 $U',
+    deliverables: 'What the agent that runs this project\'s own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that held through every tested day of the recorded price windows — and what the wallet\'s spare BNB would add. It reads and plans; it signs nothing on your position.',
+    needs: { position: 'the PancakeSwap V3 position id (tokenId)', address: 'or the wallet that holds exactly one position (0x…)' },
+  },
 };
 
 // Quoted in atomic units, because that is what every seller on this chain
@@ -162,7 +172,10 @@ async function readJob(jobId) {
 // ---------------------------------------------------------------------------
 // The work itself.
 // ---------------------------------------------------------------------------
-export async function doWork(serviceId, params) {
+export async function doWork(serviceId, params, env = null) {
+  if (serviceId === 'lp_position_plan') {
+    return { service: 'lp_position_plan', plan: await lpPositionPlan(params || {}, env) };
+  }
   if (serviceId === 'health_factor') {
     const account = String(params?.address || params?.account || '').match(/0x[a-fA-F0-9]{40}/)?.[0];
     if (!account) throw new Error('health_factor needs an address to look at');
@@ -292,6 +305,9 @@ export const SEED_TASKS = {
   // in several fee tiers, so the tier comparison has something to compare.
   rebalance_plan: `rebalance holdings [{"token":"${SEED_TOKEN}","usd":700},{"token":"${SEED_CAKE}","usd":300}] to equal weight`,
   lp_tier_plan: `which PancakeSwap fee tier is actually paying for ${SEED_CAKE}, placing $1000 of liquidity`,
+  // Our own position, read the way a stranger's would be: the example IS the
+  // agent looking at itself through the paid door.
+  lp_position_plan: 'what would the liquidity agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
 };
 // The seed sentences carry the numbers a service needs in words; the same
 // extractor a funded job goes through turns them into parameters, plus the
@@ -312,7 +328,7 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   const task = SEED_TASKS[serviceId];
   const params = extractParams(task, { ...(SEED_PARAMS[serviceId] || {}), service: serviceId });
   const t0 = Date.now();
-  const result = await doWork(serviceId, params);
+  const result = await doWork(serviceId, params, env);
   const out = {
     service: serviceId,
     name: service.name,
@@ -413,7 +429,7 @@ export async function handleA2A(request, env) {
     const params = extractParams(`${job.description} ${text}`, data.params || data);
     let result;
     try {
-      result = await doWork(service.id, params);
+      result = await doWork(service.id, params, env);
     } catch (e) {
       // A job we cannot do is not delivered and not charged for. The buyer's
       // budget stays in escrow and comes back to them at expiry, which is the

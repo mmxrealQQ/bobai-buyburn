@@ -88,6 +88,21 @@ export function summarize(service, result) {
         ],
       };
     }
+    if (service === 'lp_position_plan' && r.plan) {
+      const p = r.plan;
+      if (!p.position) return { headline: p.verdict || 'No position to plan.', facts: [['Address', p.address || '—'], ['Positions', String(p.positions ?? '—')]] };
+      const owed = p.fees_owed && p.fees_owed.bnb_equivalent;
+      return {
+        headline: (p.in_range ? 'In range' : 'Out of range') + ` — position #${p.position} worth ${n(p.value_bnb, 4)} BNB`,
+        facts: [
+          ['Pool', p.pool ? `${pct(p.pool.fee_tier_pct)} tier, ticks ${p.pool.ticks.join(' … ')}, price at ${p.pool.tick}` : '—'],
+          ['Room to the edges', p.room ? `${pct(p.room.to_lower_pct)} below, ${pct(p.room.to_upper_pct)} above` : '—'],
+          ['Fees owed', owed == null ? '—' : `${n(owed, 6)} BNB — ${p.collect && p.collect.pays_for_gas ? 'collecting pays for its gas' : 'under the gas floor, left to grow'}`],
+          ['Re-set', p.rebalance ? (p.rebalance.why || (p.rebalance.new_ticks ? `due: ticks ${p.rebalance.new_ticks.join(' … ')}, ±${p.rebalance.width_pct}%` : '—')) : '—'],
+          ['Grow', p.increase ? (p.increase.why || (p.increase.wbnb ? `${p.increase.wbnb} WBNB from spare BNB` : '—')) : '—'],
+        ],
+      };
+    }
   } catch { /* fall through to the honest default */ }
   return { headline: 'Delivered. The document below is the deliverable.', facts: [] };
 }

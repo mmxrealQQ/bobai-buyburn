@@ -675,7 +675,10 @@ section('The marketplace, from the front door');
   // A Hire button is a promise. Eleven of them shipped once on the strength
   // of a capability flag nobody had tested, and three sellers could actually
   // quote. Every button now carries what happened when that seller was asked.
-  const hireBtns = (body.match(/class="rg-hirebtn"/g) || []).length;
+  // Real buttons only: since 2026-09-03 the inline script also carries the
+  // class name in three templates (the funnel and the attest step), and a
+  // template is not a promise to anyone.
+  const hireBtns = (body.match(/<button class="rg-hirebtn" data-hire=/g) || []).length;
   // The wording changed when the tables became cards ("Answers with a price
   // when asked" / "Did not answer when we asked it"). The invariant did not:
   // every button says what happened when that seller was asked.

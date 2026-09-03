@@ -130,8 +130,8 @@
    "files": 12,
    "lines": 4157,
    "zipBytes": 60186,
-   "txtBytes": 180583,
-   "sha256": "03a83e5ac24110a5",
+   "txtBytes": 180582,
+   "sha256": "74c348b3f69440fc",
    "reqs": [
     {
      "what": "A bot token",

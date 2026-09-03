@@ -572,20 +572,33 @@ section('The marketplace, from the front door');
   // (the short page of 2026-09-02 was rolled back the same night and parks at
   // /neu, unlinked). Both the card and the three tool panels are checked.
   const { body } = await getText(`${SITE}/`);
-  ok('homepage carries the marketplace card', /class="mkt fi"/.test(body));
-  ok('the card links to the marketplace', /<a class="mkt fi" href="\/registry">/.test(body));
-  ok('homepage offers the marketplace as one of its three tools', /href="\/registry"[^>]*>\s*<h3>Hire an AI agent<\/h3>/.test(body));
-  // The nav deliberately does NOT carry a separate Marketplace entry: the
-  // marketplace lives inside the Agents block, which is where it belongs, and
-  // a second top-level word for the same thing reads as two destinations.
-  ok('the nav is not split between Agents and Marketplace',
-    !/<a href="\/registry">Marketplace<\/a>/.test(body));
-  ok('the Agents block is still linked from the nav', /<a href="#agents">Agents<\/a>/.test(body));
-  // The counts are placeholders in the markup on purpose. A number typed into
-  // the homepage is a number that drifts away from the page it describes.
-  ok('the card does not hard-code its counts',
-    !/<b id="mkt-(reach|hire)">\d/.test(body),
-    'a count is baked into the markup instead of fetched');
+  // Since 2026-09-03 the agent sector is four cards in the Ecosystem grid -
+  // the scanner, the marketplace, the services page, the liquidity agent -
+  // and no section of its own. The old banner and the old three-panel row
+  // must stay gone: two doors to the same page read as two destinations.
+  const card = (href, title) => new RegExp('<a class="ec fi" href="' + href + '">[\\s\\S]{0,900}?<h3>' + title + '</h3>').test(body);
+  ok('the marketplace is an Ecosystem card', card('/registry', 'Brain Plaza'));
+  ok('the services page is an Ecosystem card', card('/services', 'Agent Services'));
+  ok('the liquidity agent is an Ecosystem card that opens the agents page', card('/agents#liquidity', 'Liquidity Agent'));
+  ok('the old marketplace banner is off the homepage', !/class="mkt fi"/.test(body));
+  ok('the old three-panel agent row is off the homepage', !/class="agt-cols/.test(body));
+  ok('the nav carries neither Agents nor Marketplace as a second word for Ecosystem',
+    !body.includes('<a href="#agents">Agents</a>') && !body.includes('<a href="/registry">Marketplace</a>'));
+  ok('no tile on the homepage points at a homepage anchor that no longer exists', !/href="#agents"/.test(body));
+}
+{
+  // The block itself moved to /agents: the three panels, the counted
+  // marketplace card, the live figures and the liquidity agent's record.
+  // The counts are placeholders in the markup on purpose — a number typed
+  // into a page is a number that drifts away from the endpoint it describes.
+  const { body, isHtml } = await getText(`${SITE}/agents`);
+  ok('/agents is a page', isHtml);
+  ok('/agents carries the marketplace card', /<a class="mkt fi" href="\/registry"/.test(body));
+  ok('/agents offers the marketplace as one of its three tools', /href="\/registry"[^>]*>\s*<h3>Hire an AI agent<\/h3>/.test(body));
+  ok('/agents carries the live figures', /id="ag-asked">&ndash;</.test(body) && /id="ag-lp"/.test(body));
+  ok('/agents has the anchor the liquidity tile opens', /id="liquidity"/.test(body));
+  ok('/agents does not hard-code its counts', !/<b id="mkt-(reach|hire)">\d/.test(body), 'a count is baked into the markup instead of fetched');
+  ok('/agents is in the sitemap', /brainonbnb\.com\/agents</.test((await getText(`${SITE}/sitemap.xml`)).body));
 }
 {
   const j = await fetch(`${SITE}/api-registry.json`).then((r) => r.json()).catch(() => null);
@@ -633,8 +646,9 @@ section('The marketplace, from the front door');
   ok('the hire block counts quotes over its own buttons, not over the quote run',
     new RegExp(`${reg?.hireable_here} carry a Hire button, and <b>${reg?.quoted_of_hireable} of them returned a price`).test(body),
     'the block prints a numerator from the quote run under a count of buttons');
-  const home = (await getText(`${SITE}/`)).body;
-  ok('the homepage card promises the measured number, not the button count',
+  // The counted card lives on /agents since 2026-09-03.
+  const home = (await getText(`${SITE}/agents`)).body;
+  ok('the agents-page card promises the measured number, not the button count',
     /id="mkt-hire"[^<]*<\/b><span>quote back when asked/.test(home),
     'the card still advertises hireable buttons rather than sellers that quote');
   // Same reasoning as the census counts above: the quote tally is measured
@@ -751,8 +765,8 @@ section('Transparency');
 }
 {
   const { body } = await getText(`${SITE}/`);
-  ok('page carries the Agents block', /Block 05 &middot; Agents/.test(body));
-  ok('nav links to it', /href="#agents"/.test(body));
+  ok('the agents live in the Ecosystem block, not a block of their own', /Block 04 &middot; Ecosystem/.test(body) && !/Block 05 &middot; Agents/.test(body));
+  ok('the liquidity-agent card links to the live figures on /agents', /href="\/agents#liquidity"/.test(body));
   const csp = (await fetch(`${SITE}/`)).headers.get('content-security-policy') || '';
   ok('CSP allows the stats endpoint', csp.includes('https://agent.brainonbnb.com'));
 }

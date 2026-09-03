@@ -989,9 +989,15 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
         const waiting = sweeps.filter(s => s.balance > 0).map(s => f(s.balance, 2) + ' ' + (s.token || s.source)).join(' + ');
         const anyError = last.ok === false;
         const rows = [];
+        // A hand-triggered run can be narrowed to one step, and a record whose
+        // only step is the rebalance still knows the position. Reading it from
+        // collect alone showed "No position open" the evening the range was
+        // re-set by hand, with the position in range and holding money.
+        const pos = c.position || rb.position;
+        const inRange = c.in_range != null ? c.in_range : rb.in_range;
         rows.push(item('&#9679;',
-          c.position ? (c.in_range === false ? 'The position is out of range — waiting for a re-set' : 'The position is in range and earning') : 'No position open',
-          c.position ? 'PancakeSwap V3 position #' + c.position + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : ''));
+          pos ? (inRange === false ? 'The position is out of range — waiting for a re-set' : 'The position is in range and earning') : 'No position open',
+          pos ? 'PancakeSwap V3 position #' + pos + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : ''));
         rows.push(item('&#9679;', 'Fees already sent to the buyback bot: ' + f(forwarded, 5) + ' BNB',
           c.owed ? 'Earned since the last collect: ' + f(c.owed.bnb_equivalent, 6) + ' BNB. Small amounts are left to grow until collecting them beats the gas.' : ''));
         rows.push(item('&#9679;', 'Income already put into the position: ' + f(swept, 5) + ' BNB',

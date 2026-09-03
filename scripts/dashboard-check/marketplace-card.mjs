@@ -12,8 +12,8 @@ import { join } from 'node:path';
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = 9930 + (process.pid % 60);
-// The counted marketplace card lives on /classic since 2026-09-02; the homepage offers the marketplace as one of three tool panels.
-const URL = 'https://brainonbnb.com/?p=' + Math.floor(Math.random() * 1e9);
+// Since 2026-09-03 the counted marketplace card lives on /agents, the agent sector's own page; the homepage carries one tile per agent tool.
+const URL = 'https://brainonbnb.com/agents?p=' + Math.floor(Math.random() * 1e9);
 const profile = mkdtempSync(join(tmpdir(), `cdp-card-${process.pid}-`));
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--window-size=1280,1400', '--no-first-run'], { stdio: 'ignore' });

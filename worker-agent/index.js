@@ -1228,6 +1228,22 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
       const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
       const pos = c.position || rb.position || null;
       const inRange = c.in_range != null ? c.in_range : rb.in_range;
+      // The record is the run's view; the chain's is the present. Read live,
+      // so "in range and earning" is never nine hours old — it was, on
+      // 2026-09-03, for the whole morning after the price had left the range.
+      let live = null;
+      if (pos) {
+        try {
+          const NPM = '0x46a15b0b27311cedf172ab29e4f4766fbe7f4364', FACTORY = '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865';
+          const s24 = (x) => { let n = BigInt('0x' + x); if (n >= (1n << 255n)) n -= (1n << 256n); return Number(n); };
+          const pr = await rpc('eth_call', [{ to: NPM, data: '0x99fbab88' + BigInt(pos).toString(16).padStart(64, '0') }, 'latest']);
+          const w = (i) => pr.slice(2 + 64 * i, 2 + 64 * (i + 1));
+          const poolAddr = '0x' + (await rpc('eth_call', [{ to: FACTORY, data: '0x1698ee82' + w(2) + w(3) + w(4) }, 'latest'])).slice(26);
+          const slot = await rpc('eth_call', [{ to: poolAddr, data: '0x3850c7bd' }, 'latest']);
+          const tick = s24(slot.slice(66, 130)), lo = s24(w(5)), hi = s24(w(6));
+          live = { tick, lo, hi, inRange: tick >= lo && tick < hi };
+        } catch { live = null; }
+      }
       const hist = Array.isArray(rec.history) ? rec.history : [];
       const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
       const swept = sum((e) => (Array.isArray(e.steps?.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0));
@@ -1264,7 +1280,7 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
 <p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; the fees that position earns go to the buyback bot, which buys $BOBAI and burns it. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}.</p>
 <h2>What it holds</h2>
 <div class="card"><dl>
-<dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${inRange === false ? 'out of range — waiting for a re-set' : 'in range and earning'}${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB${usd(rb.value_bnb)}` : ''}` : 'none open'}</dd>
+<dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until the agent re-sets it at a 05:23 UTC run`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB${usd(rb.value_bnb)}` : ''}` : 'none open'}</dd>
 <dt>Fees owed now</dt><dd>${c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
 <dt>Income waiting</dt><dd>${sweeps.filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${h(s.token || s.source)}`).join(' + ') || 'nothing'} — moves once it is worth more than the gas</dd>
 <dt>Wallet</dt><dd><a href="https://bscscan.com/address/${h(rec.last?.wallet || '')}" target="_blank" rel="noopener"><code>${h(rec.last?.wallet || '—')}</code></a>${inc.wallet_bnb != null ? `, ${f(inc.wallet_bnb, 5)} BNB` : ''}</dd>
@@ -1274,8 +1290,9 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
 <div class="card">${stepRows.map((r) => `<div class="step" style="margin:0 0 10px"><b>${h(r.name)}<span class="st ${r.err ? 'bad' : r.acted ? 'ok' : 'quiet'}">${r.err ? 'failed' : r.acted ? 'acted' : 'nothing to do'}</span></b><span>${h(r.err || r.why || '')}</span>${r.detail ? `<i>${h(r.detail)}</i>` : ''}</div>`).join('')}
 <p class="note">Each step has a floor under which moving the money would cost more than the money. A day under a floor is a decision, recorded as one, not an error.</p></div>
 <h2>Days it moved money</h2>
-<div class="card">${histRows.length ? `<ul class="hist">${histRows.map((r) => `<li><time>${h(when(r.at))}</time>${r.parts.length ? r.parts.map(h).join(' · ') : (r.errs.length ? '' : 'recorded')}${r.errs.length ? `<span class="st bad">error</span> ${h(r.errs.join(' · '))}` : ''}</li>`).join('')}</ul>` : '<p class="note">None yet. The position was opened by hand; the agent has had only quiet days since.</p>'}
-<p class="note">Quiet days are not listed; the last one is always above. Same facts as JSON: <a href="/lp/agent?format=json">/lp/agent?format=json</a> · width record: <a href="/lp/windows">/lp/windows</a> · <a href="https://brainonbnb.com/agents#liquidity">Back to the agents page</a></p></div>
+<div class="card">${histRows.filter((r) => r.parts.length).length ? `<ul class="hist">${histRows.filter((r) => r.parts.length).map((r) => `<li><time>${h(when(r.at))}</time>${r.parts.length ? r.parts.map(h).join(' · ') : (r.errs.length ? '' : 'recorded')}${r.errs.length ? `<span class="st bad">error</span> ${h(r.errs.join(' · '))}` : ''}</li>`).join('')}</ul>` : '<p class="note">None yet. The position was opened by hand; the agent has had only quiet days since.</p>'}
+${histRows.some((r) => !r.parts.length && r.errs.length) ? `<h2>Runs that failed</h2><div class="card"><ul class="hist">${histRows.filter((r) => !r.parts.length && r.errs.length).map((r) => `<li><time>${h(when(r.at))}</time><span class="st bad">error</span> ${h(r.errs.join(' · '))}</li>`).join('')}</ul><p class="note">A failed run moved nothing; it is listed so the record cannot hide it.</p></div>` : ''}
+<p class="note">Quiet days are not listed; the last one is always above. Same facts as JSON: <a href="/lp/agent?format=json">/lp/agent?format=json</a> · width record: <a href="/lp/windows">/lp/windows</a> · <a href="https://brainonbnb.com/liquidity">Back to the liquidity page</a></p></div>
 </main></body></html>`;
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
     }

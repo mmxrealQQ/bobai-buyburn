@@ -23,3 +23,13 @@ the edge, tap targets stay usable, and no bar collapses to a sub-pixel sliver. A
 The figures themselves are checked separately, against an independent swap simulation —
 the closed forms in `dashboard/app.js` must agree with a real constant-product swap at
 every multiplier, and the two "moves the price 1%" sizes must reproduce exactly ±1%.
+
+## page-text.mjs and text-overflow.mjs (2026-09-03)
+
+    node scripts/dashboard-check/page-text.mjs https://brainonbnb.com/scanner "#sc-out" 6000 390
+    node scripts/dashboard-check/text-overflow.mjs https://brainonbnb.com/services 390
+
+The first prints a page as a visitor reads it — text in order, console errors, failed
+requests, sideways scroll — so the page can be *read* rather than asserted about. Use it
+first on every page you change; it finds what no checker was written to look for. The
+second names the exact text run that makes a page wider than the phone.

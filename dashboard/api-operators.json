@@ -1,9 +1,9 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-08-29T09:33:43.611Z",
-  "registered_ids": 316472,
-  "reachable_ids": 796,
-  "independent_operators": 72,
+  "measured_at": "2026-09-03T16:45:48.247Z",
+  "registered_ids": 332331,
+  "reachable_ids": 814,
+  "independent_operators": 74,
   "operators_speaking_a_protocol": 26,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
@@ -55,6 +55,14 @@
         {
           "name": "pancakeswap_fee_tiers",
           "description": "For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% an"
+        },
+        {
+          "name": "pancakeswap_range_plan",
+          "description": "For a liquidity provider who has picked a PancakeSwap V3 pool and now has to pick a PRICE RANGE - the decision concentrated liquidity actually forces, and the o"
+        },
+        {
+          "name": "pancakeswap_best_route",
+          "description": "For an agent about to swap on PancakeSwap, and for the two questions it has to answer before signing. FIRST: which of the up-to-five pools the pair lives in act"
         },
         {
           "name": "bobai_token_info",
@@ -524,110 +532,6 @@
       ]
     },
     {
-      "operator": "singularry.org",
-      "instances": 239,
-      "distinct_capabilities": 3,
-      "ids": [
-        116170,
-        116171,
-        116172,
-        116173,
-        116174,
-        116175,
-        116176,
-        116177,
-        116179,
-        116180,
-        116182,
-        116216,
-        116231,
-        116972,
-        117439,
-        117472,
-        117823,
-        118305,
-        118416,
-        118457,
-        118501,
-        119713,
-        119976,
-        120028,
-        120090,
-        120154,
-        120184,
-        120189,
-        120305,
-        121885,
-        123759,
-        123764,
-        123767,
-        123941,
-        124183,
-        124208,
-        124242,
-        124482,
-        124595,
-        124647,
-        124859,
-        125033,
-        125497,
-        125675,
-        126061,
-        126101,
-        126288,
-        126392,
-        126473,
-        126708
-      ],
-      "name": "Moments",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://app.singularry.org/api/a2a",
-        "https://app.singularry.org/agents/11/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "Hierarchical Risk Parity",
-        "Venus Fixed Vault"
-      ],
-      "trust_models": [
-        "reputation"
-      ]
-    },
-    {
       "operator": "bnb-guardian.172-104-171-139.nip.io",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -638,7 +542,8 @@
       "description": "Monitors Venus lending positions and protects against liquidation via automatic repayment.",
       "image": null,
       "speaks": [
-        "mcp"
+        "mcp",
+        "a2a"
       ],
       "endpoints": [
         "https://bnb-guardian.172-104-171-139.nip.io/erc8183",
@@ -720,7 +625,8 @@
       "description": "Scans BSC lending and liquidity protocols, calculates risk-adjusted yield, and migrates capital when the improvement is economically meaningful.",
       "image": null,
       "speaks": [
-        "mcp"
+        "mcp",
+        "a2a"
       ],
       "endpoints": [
         "https://bnb-yield.172-104-171-139.nip.io/erc8183",
@@ -778,6 +684,110 @@
         "notify_funded"
       ],
       "agent_card": "https://bnb-yield.172-104-171-139.nip.io/.well-known/agent-card.json",
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
+      "operator": "singularry.org",
+      "instances": 240,
+      "distinct_capabilities": 3,
+      "ids": [
+        116170,
+        116171,
+        116172,
+        116173,
+        116174,
+        116175,
+        116176,
+        116177,
+        116179,
+        116180,
+        116182,
+        116216,
+        116231,
+        116972,
+        117439,
+        117472,
+        117823,
+        118305,
+        118416,
+        118457,
+        118501,
+        119713,
+        119976,
+        120028,
+        120090,
+        120154,
+        120184,
+        120189,
+        120305,
+        121885,
+        123759,
+        123764,
+        123765,
+        124183,
+        124482,
+        124595,
+        124647,
+        124859,
+        125033,
+        125497,
+        125675,
+        126061,
+        126101,
+        126288,
+        126392,
+        126473,
+        126708,
+        126745,
+        126886,
+        127144
+      ],
+      "name": "Moments",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://app.singularry.org/api/a2a",
+        "https://app.singularry.org/agents/11/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "Hierarchical Risk Parity",
+        "Venus Fixed Vault"
+      ],
       "trust_models": [
         "reputation"
       ]
@@ -984,11 +994,20 @@
     },
     {
       "operator": "amazonaws.com",
-      "instances": 2,
-      "distinct_capabilities": 2,
+      "instances": 11,
+      "distinct_capabilities": 4,
       "ids": [
         33813,
-        293902
+        293902,
+        324818,
+        331131,
+        324936,
+        325413,
+        326106,
+        327090,
+        330536,
+        330663,
+        330831
       ],
       "name": "mandaterebalance-agent",
       "description": "MandateX PancakeSwap V3 rebalancing reference agent (mandaterebalance-agent) - deterministic quote policy plus simulation/refusal receipts over ERC-8183.",
@@ -1048,12 +1067,11 @@
     },
     {
       "operator": "bubbleupdappos.workers.dev",
-      "instances": 23,
+      "instances": 21,
       "distinct_capabilities": 1,
       "ids": [
         198999,
         204789,
-        211183,
         211586,
         212769,
         212840,
@@ -1061,7 +1079,6 @@
         212989,
         213036,
         213053,
-        213084,
         213332,
         213378,
         213432,
@@ -1100,7 +1117,7 @@
         269228
       ],
       "name": "Portfolio Rebalancer",
-      "description": "ERC-8183 seller agent (rebalancer-agent) — negotiate + notify_funded over A2A.",
+      "description": "ERC-8183 seller agent (rebalancer-agent): negotiate + notify_funded over A2A.",
       "image": null,
       "speaks": [
         "a2a"
@@ -1394,6 +1411,21 @@
       "endpoints": [
         "https://www.8004scan.io/create",
         "https://github.com/agntcy/oasf/"
+      ]
+    },
+    {
+      "operator": "agensea-health-factor.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        322885
+      ],
+      "name": "Venus Health Factor Monitor",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://agensea-health-factor.vercel.app/x402"
       ]
     },
     {
@@ -1692,22 +1724,6 @@
       ]
     },
     {
-      "operator": "fengshuibnb.com",
-      "instances": 2,
-      "distinct_capabilities": 0,
-      "ids": [
-        99381,
-        99382
-      ],
-      "name": "Master Xuan (玄) — Mian Xiang & Bazi",
-      "description": "Chinese metaphysics agent: Bazi (Four Pillars) and Mian Xiang (face reading). Reads NFT-bound souls or free-text birth data. Paid in the FENGSHUI token on BNB Chain.",
-      "image": "https://fengshuibnb.com/og-square.png",
-      "speaks": [],
-      "endpoints": [
-        "https://api.fengshuibnb.com/master-xuan/reading/by-nft"
-      ]
-    },
-    {
       "operator": "forge-mint.vercel.app",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -1871,6 +1887,26 @@
       "speaks": [],
       "endpoints": [
         "https://lobkill.com"
+      ]
+    },
+    {
+      "operator": "misquote-api.onrender.com",
+      "instances": 6,
+      "distinct_capabilities": 0,
+      "ids": [
+        323262,
+        323332,
+        323333,
+        323334,
+        331590,
+        331592
+      ],
+      "name": "Warden",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://misquote-api.onrender.com/journal/warden"
       ]
     },
     {
@@ -2078,11 +2114,12 @@
     },
     {
       "operator": "smartsentinels.net",
-      "instances": 2,
+      "instances": 3,
       "distinct_capabilities": 0,
       "ids": [
         258641,
-        258642
+        258642,
+        320743
       ],
       "name": "Sentinels Audit",
       "description": "SmartSentinels AI Audit is an autonomous smart-contract security agent for BNB Chain and EVM (Solana where available). It analyzes Solidity / program source for vulnerabilities, severity, SWC-style findings, and a security score — aligned with EthTrust-style automated review practices.\n\nHow it works: submit contract source in Sentinels Labs; the agent runs deterministic + AI-assisted analysis and ",
@@ -2091,6 +2128,23 @@
       "endpoints": [
         "https://smartsentinels.net/api/audit-mcp",
         "https://github.com/agntcy/oasf/"
+      ]
+    },
+    {
+      "operator": "smeai-dev.vercel.app",
+      "instances": 3,
+      "distinct_capabilities": 0,
+      "ids": [
+        331625,
+        331698,
+        331794
+      ],
+      "name": "SMEAI Reference Health Factor Monitor",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://smeai-dev.vercel.app/api/a2a"
       ]
     },
     {

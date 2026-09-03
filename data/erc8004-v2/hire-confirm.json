@@ -1,9 +1,19 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-08-31T05:08:57.546Z",
-  "asked": 13,
-  "quoted": 7,
+  "measured_at": "2026-09-03T16:46:49.401Z",
+  "asked": 16,
+  "quoted": 11,
   "agents": [
+    {
+      "id": 265375,
+      "label": "BNB LP Range Rebalancer",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+      "reason": null
+    },
     {
       "id": 304494,
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
@@ -19,10 +29,10 @@
       "label": "Portfolio Rebalancer",
       "category": "rebalancing",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "http://127.0.0.1:9101/",
-      "reason": "the seller's card names 127.0.0.1 as its endpoint, which is not reachable from outside its own machine"
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agents.chainhelix.io/rebalancer/",
+      "reason": null
     },
     {
       "id": 33813,
@@ -35,13 +45,23 @@
       "reason": "answered {\"status\":\"OK\"} rather than a JSON-RPC reply"
     },
     {
-      "id": 265375,
-      "label": "BNB LP Range Rebalancer",
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
       "category": "rebalancing",
       "ours": false,
       "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
+      "reason": null
+    },
+    {
+      "id": 269233,
+      "label": "BNB Grid Trader (test)",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": true,
       "price": "0.1 $U",
-      "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
+      "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
       "reason": null
     },
     {
@@ -63,16 +83,6 @@
       "price": null,
       "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/grid/a2a",
       "reason": "The seller request failed."
-    },
-    {
-      "id": 269233,
-      "label": "BNB Grid Trader (test)",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
-      "reason": null
     },
     {
       "id": 304493,
@@ -105,6 +115,16 @@
       "reason": "seller answered, but its reply carries no price"
     },
     {
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
+      "reason": null
+    },
+    {
       "id": 302257,
       "label": "Brain on BNB — Venus Health Factor Monitor",
       "category": "health-factor",
@@ -113,6 +133,16 @@
       "price": "0.1 $U",
       "endpoint": "https://agent.brainonbnb.com/a2a",
       "reason": null
+    },
+    {
+      "id": 270183,
+      "label": "AgentCensus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://agentcensus.xyz/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
       "id": 259573,
@@ -125,14 +155,14 @@
       "reason": "the endpoint its card names answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
-      "id": 270183,
-      "label": "AgentCensus Health Factor Monitor",
+      "id": 266933,
+      "label": "BNB Lending Guardian",
       "category": "health-factor",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://agentcensus.xyz/a2a",
-      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
+      "quotes": true,
+      "price": "5 $U",
+      "endpoint": "https://bnb-guardian.172-104-171-139.nip.io/a2a",
+      "reason": null
     }
   ]
 }

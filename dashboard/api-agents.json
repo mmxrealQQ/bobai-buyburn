@@ -271,7 +271,7 @@
       ],
       "agent_card": "https://agent.brainonbnb.com/.well-known/agent-card.json",
       "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital",
-      "example": "https://agent.brainonbnb.com/example?service=grid_plan",
+      "example": "https://agent.brainonbnb.com/job?id=56694",
       "attributes": [
         {
           "trait_type": "Category",

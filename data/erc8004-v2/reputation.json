@@ -10,8 +10,8 @@
  },
  "rated": {
   "agents": 344,
-  "attestations": 20734,
-  "distinct_raters": 61,
+  "attestations": 20735,
+  "distinct_raters": 62,
   "unreadable": 0
  },
  "raters": [
@@ -636,6 +636,14 @@
    "agents": 1,
    "tags": [
     "starred"
+   ]
+  },
+  {
+   "address": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
+   "attestations": 1,
+   "agents": 1,
+   "tags": [
+    "responsetime"
    ]
   },
   {
@@ -338136,7 +338144,8 @@
    "id": 302258,
    "name": "Brain on BNB — BSC Grid Planner",
    "clients": [
-    "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92"
+    "0xc7F5cdC8dd028E0b9aF2cA9d3891F135b23f4B92",
+    "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2"
    ],
    "feedback": [
     {
@@ -338171,6 +338180,17 @@
      "revoked": false,
      "number": 223,
      "unit": "ms"
+    },
+    {
+     "client": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
+     "index": 1,
+     "value": 6000,
+     "decimals": 0,
+     "tag1": "responsetime",
+     "tag2": "",
+     "revoked": false,
+     "number": 6000,
+     "unit": "ms"
     }
    ],
    "latest": {
@@ -338190,6 +338210,15 @@
       "unit": "ms",
       "window": "4d",
       "index": 3
+     }
+    ],
+    "responsetime": [
+     {
+      "client": "0xBFB4b49787CE948C1Ee304f6C197a0E8b038ddb2",
+      "value": 6000,
+      "unit": "ms",
+      "window": null,
+      "index": 1
      }
     ]
    }
@@ -340330,6 +340359,18 @@
    "most_common_share": 1
   },
   {
+   "tag": "responsetime",
+   "operational": true,
+   "unit": "ms",
+   "attestations": 1,
+   "agents": 1,
+   "min": 6000,
+   "median": 6000,
+   "max": 6000,
+   "most_common": 6000,
+   "most_common_share": 1
+  },
+  {
    "tag": "audited",
    "operational": false,
    "unit": "",
@@ -340344,21 +340385,21 @@
  ],
  "checkable": {
   "what": "Attestations a third party could go and take again: uptime, response time, liveness. Everything else in this registry is a claim about an agent that cannot be falsified.",
-  "attestations": 38,
+  "attestations": 39,
   "agents": 20,
   "tags": [
    "uptime",
    "responseTime",
-   "liveness"
+   "liveness",
+   "responsetime"
   ],
-  "share_of_all": 0.001833
+  "share_of_all": 0.001881
  },
- "multi_rated": 277,
- "single_rated": 67,
+ "multi_rated": 278,
+ "single_rated": 66,
  "reaggregated_at": "2026-09-01T05:14:17.484Z",
- "refreshed_at": "2026-09-01T05:13:07.697Z",
+ "refreshed_at": "2026-09-03T08:31:50.318Z",
  "refreshed": [
-  265375,
-  269233
+  302258
  ]
 }

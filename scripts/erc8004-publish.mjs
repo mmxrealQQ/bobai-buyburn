@@ -225,7 +225,9 @@ const seedTask = (svc) => SEED_TASKS[svc.id] || null;
 // no address, and the plan came back on $BOBAI — a real delivery, but not an
 // example anyone should be shown next to that question. The seed carries an
 // address now; the next paid grid job can take this slot.
-const REAL_JOBS = { health_factor: '56657' };
+// 56694 (2026-09-03): hired from the panel with the address-bearing seed,
+// delivered six seconds after funding, attested on-chain by the buyer.
+const REAL_JOBS = { health_factor: '56657', grid_plan: '56694' };
 const AGENT_ORIGIN = 'https://agent.brainonbnb.com';
 const fetchJson = async (u) => {
   try {

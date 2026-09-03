@@ -315,6 +315,80 @@ async function checkWatches(env) {
   return { checked: list.keys.length, fired };
 }
 
+// ---------------------------------------------------------------- the liquidity series
+//
+// One point per run of the liquidity agent, taken from the record it writes
+// (worker-lp, 05:23 UTC) and never from a counter: what the position was
+// worth, whether it was in range, what it was owed, what had already been
+// sent on. Kept here, by the worker with no keys, so the series exists
+// without touching the worker that moves money. The first point is the
+// baseline every later "since it started" figure is measured against.
+const LP_SERIES_KEY = 'lp:series';
+async function readLpSeries(env) {
+  const raw = await env.AGENT.get(LP_SERIES_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+async function recordLpSeries(env) {
+  const raw = await env.AGENT.get('lp:agent');
+  if (!raw) return { recorded: false, why: 'no record yet' };
+  const rec = JSON.parse(raw);
+  const last = rec.last;
+  if (!last || !last.at || last.dry) return { recorded: false, why: 'no live run in the record' };
+  const series = await readLpSeries(env);
+  if (series.length && series[series.length - 1].at === last.at) return { recorded: false, why: 'already recorded', points: series.length };
+  const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
+  const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
+  const hist = Array.isArray(rec.history) ? rec.history : [];
+  const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
+  const price = await bnbUsd().catch(() => null);
+  const point = {
+    at: last.at,
+    position: c.position || rb.position || null,
+    in_range: c.in_range != null ? c.in_range : (rb.in_range ?? null),
+    tick: rb.tick ?? null,
+    ticks: rb.ticks || null,
+    value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : null,
+    owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
+    wallet_bnb: inc.wallet_bnb != null ? Number(inc.wallet_bnb) : null,
+    waiting: sweeps.filter((s) => s.balance > 0).map((s) => ({ token: s.token || s.source, amount: Number(s.balance) })),
+    forwarded_total_bnb: sum((e) => e.steps?.collect?.forwarded_bnb),
+    swept_total_bnb: sum((e) => (Array.isArray(e.steps?.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0)),
+    acted: !!last.acted,
+    ok: last.ok !== false,
+    bnb_usd: price,
+  };
+  series.push(point);
+  const kept = series.slice(-400);
+  await env.AGENT.put(LP_SERIES_KEY, JSON.stringify(kept));
+  return { recorded: true, points: kept.length, point };
+}
+// What the series says so far, in the terms a person asks: is the capital
+// still there, what did it earn, did the price leave the range. Value is in
+// BNB because the position is quoted in BNB; a dollar figure would move with
+// BNB and say nothing about the position.
+function lpSeriesSummary(series) {
+  if (!series.length) return null;
+  const first = series[0], last = series[series.length - 1];
+  const withValue = series.filter((p) => p.value_bnb != null);
+  const f0 = withValue[0], f1 = withValue[withValue.length - 1];
+  const days = Math.max(0, Math.round((Date.parse(last.at) - Date.parse(first.at)) / 86400000));
+  const tickMove = first.tick != null && last.tick != null ? last.tick - first.tick : null;
+  return {
+    points: series.length,
+    since: first.at,
+    days_covered: days,
+    value_bnb: f0 && f1 ? { start: f0.value_bnb, now: f1.value_bnb, change_pct: f0.value_bnb ? +(((f1.value_bnb - f0.value_bnb) / f0.value_bnb) * 100).toFixed(2) : null } : null,
+    fees_sent_to_buyback_bnb: last.forwarded_total_bnb,
+    income_put_in_bnb: last.swept_total_bnb,
+    fees_owed_now_bnb: last.owed_bnb,
+    // 1 tick = 0.01 % of price; the sign says which way the pair moved.
+    price_move_pct_since_start: tickMove != null ? +((Math.pow(1.0001, tickMove) - 1) * 100).toFixed(2) : null,
+    days_in_range: series.filter((p) => p.in_range === true).length,
+    days_out_of_range: series.filter((p) => p.in_range === false).length,
+    days_it_acted: series.filter((p) => p.acted).length,
+  };
+}
+
 // ---------------------------------------------------------------- earnings
 
 async function readEarnings(env) {
@@ -1428,6 +1502,23 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
     // waiting for it or trusting that it works — and "the paid part is
     // presumably fine" is not a state this service should ever be shipped in.
     // Same shared secret as /hit; nothing here is reachable without it.
+    // The liquidity series: every run of the liquidity agent as one point,
+    // and what the points say so far. Read by /liquidity.
+    if (path === '/lp/series') {
+      const series = await readLpSeries(env);
+      return json({
+        what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot, income already put in. Not a counter; every figure is in the record it came from.',
+        summary: lpSeriesSummary(series),
+        points: series,
+        record: 'https://agent.brainonbnb.com/lp/agent',
+        cadence: 'daily, after the 05:23 UTC run',
+      }, 200, { 'Cache-Control': 'public, max-age=300' });
+    }
+    if (path === '/run-lp-series' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      return json({ ok: true, ...(await recordLpSeries(env)) });
+    }
+
     if (path === '/run-checks' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       const result = await checkWatches(env);
@@ -1544,6 +1635,9 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(checkWatches(env).catch(() => {}));
+    // One point per liquidity-agent run; a tick that finds the same record
+    // again records nothing.
+    ctx.waitUntil(recordLpSeries(env).catch(() => {}));
 
     // Live state, every tick. Six outbound calls — four peers, one Comptroller
     // read, one pool measurement — which is why it rides the fifteen-minute

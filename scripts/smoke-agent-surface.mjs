@@ -601,6 +601,13 @@ section('The marketplace, from the front door');
   ok('/lp/agent is a page for a browser', /text\/html/.test(lpHtml.headers.get('content-type') || '') && /The last run, step by step/.test(await lpHtml.text()));
   const lpJson = await fetch('https://agent.brainonbnb.com/lp/agent').then((r) => r.json()).catch(() => null);
   ok('/lp/agent stays JSON for a fetch', !!lpJson && lpJson.cadence === 'daily' && !!lpJson.last);
+  // The series (point 4, 2026-09-03): one point per run, the summary derived
+  // from the points and from nothing else, and the page carries the table.
+  const ser = await fetch('https://agent.brainonbnb.com/lp/series').then((r) => r.json()).catch(() => null);
+  ok('/lp/series carries points and a summary derived from them', !!ser && Array.isArray(ser.points) && ser.points.length > 0 && ser.summary && ser.summary.points === ser.points.length && ser.points.every((p) => p.at && 'value_bnb' in p && 'in_range' in p));
+  ok('the last series point is the last run in the record', !!ser && !!lpJson && ser.points[ser.points.length - 1].at === lpJson.last.at, ser && lpJson && `${ser.points[ser.points.length - 1].at} vs ${lpJson.last.at}`);
+  ok('/liquidity carries the day-by-day table', /id="ag-lp-series"/.test(lq.body) && /lp\/series/.test(lq.body));
+  ok('/run-lp-series is not open', (await fetch('https://agent.brainonbnb.com/run-lp-series', { method: 'POST' })).status === 403);
 }
 {
   // Point 3 of the Block-05 list (2026-09-03): every own card carries an

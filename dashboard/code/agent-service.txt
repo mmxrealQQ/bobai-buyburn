@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 36 files, 9110 lines.
+# one fetch. 36 files, 9259 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2696,7 +2696,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
       return { status: 200, body: {
         task, dispatched: true, took_ms: tookA, protocol: 'a2a',
         answered_by: {
-          agent: agent.name, operator: operatorOf(agent), endpoint: url, skill: pick.id || pick.name,
+          id: agent.id, agent: agent.name, operator: operatorOf(agent), endpoint: url, skill: pick.id || pick.name,
           registry_note: 'This agent was found by reading the ERC-8004 registry and contacting it — it is not affiliated with us.',
         },
         result: overA ? bodyA : payload,
@@ -2804,6 +2804,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
       protocol: 'mcp',
       ...(taken ? { arguments_taken_from_task: taken } : {}),
       answered_by: {
+        id: agent.id,
         agent: agent.name,
         operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(),
         endpoint,
@@ -4135,6 +4136,9 @@ import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
+import { encodeFunctionData, keccak256, toBytes } from 'viem';
+import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
+import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
@@ -4410,6 +4414,80 @@ async function checkWatches(env) {
   }
   await bump(env, 'watch_checks', list.keys.length);
   return { checked: list.keys.length, fired };
+}
+
+// ---------------------------------------------------------------- the liquidity series
+//
+// One point per run of the liquidity agent, taken from the record it writes
+// (worker-lp, 05:23 UTC) and never from a counter: what the position was
+// worth, whether it was in range, what it was owed, what had already been
+// sent on. Kept here, by the worker with no keys, so the series exists
+// without touching the worker that moves money. The first point is the
+// baseline every later "since it started" figure is measured against.
+const LP_SERIES_KEY = 'lp:series';
+async function readLpSeries(env) {
+  const raw = await env.AGENT.get(LP_SERIES_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+async function recordLpSeries(env) {
+  const raw = await env.AGENT.get('lp:agent');
+  if (!raw) return { recorded: false, why: 'no record yet' };
+  const rec = JSON.parse(raw);
+  const last = rec.last;
+  if (!last || !last.at || last.dry) return { recorded: false, why: 'no live run in the record' };
+  const series = await readLpSeries(env);
+  if (series.length && series[series.length - 1].at === last.at) return { recorded: false, why: 'already recorded', points: series.length };
+  const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
+  const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
+  const hist = Array.isArray(rec.history) ? rec.history : [];
+  const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
+  const price = await bnbUsd().catch(() => null);
+  const point = {
+    at: last.at,
+    position: c.position || rb.position || null,
+    in_range: c.in_range != null ? c.in_range : (rb.in_range ?? null),
+    tick: rb.tick ?? null,
+    ticks: rb.ticks || null,
+    value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : null,
+    owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
+    wallet_bnb: inc.wallet_bnb != null ? Number(inc.wallet_bnb) : null,
+    waiting: sweeps.filter((s) => s.balance > 0).map((s) => ({ token: s.token || s.source, amount: Number(s.balance) })),
+    forwarded_total_bnb: sum((e) => e.steps?.collect?.forwarded_bnb),
+    swept_total_bnb: sum((e) => (Array.isArray(e.steps?.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0)),
+    acted: !!last.acted,
+    ok: last.ok !== false,
+    bnb_usd: price,
+  };
+  series.push(point);
+  const kept = series.slice(-400);
+  await env.AGENT.put(LP_SERIES_KEY, JSON.stringify(kept));
+  return { recorded: true, points: kept.length, point };
+}
+// What the series says so far, in the terms a person asks: is the capital
+// still there, what did it earn, did the price leave the range. Value is in
+// BNB because the position is quoted in BNB; a dollar figure would move with
+// BNB and say nothing about the position.
+function lpSeriesSummary(series) {
+  if (!series.length) return null;
+  const first = series[0], last = series[series.length - 1];
+  const withValue = series.filter((p) => p.value_bnb != null);
+  const f0 = withValue[0], f1 = withValue[withValue.length - 1];
+  const days = Math.max(0, Math.round((Date.parse(last.at) - Date.parse(first.at)) / 86400000));
+  const tickMove = first.tick != null && last.tick != null ? last.tick - first.tick : null;
+  return {
+    points: series.length,
+    since: first.at,
+    days_covered: days,
+    value_bnb: f0 && f1 ? { start: f0.value_bnb, now: f1.value_bnb, change_pct: f0.value_bnb ? +(((f1.value_bnb - f0.value_bnb) / f0.value_bnb) * 100).toFixed(2) : null } : null,
+    fees_sent_to_buyback_bnb: last.forwarded_total_bnb,
+    income_put_in_bnb: last.swept_total_bnb,
+    fees_owed_now_bnb: last.owed_bnb,
+    // 1 tick = 0.01 % of price; the sign says which way the pair moved.
+    price_move_pct_since_start: tickMove != null ? +((Math.pow(1.0001, tickMove) - 1) * 100).toFixed(2) : null,
+    days_in_range: series.filter((p) => p.in_range === true).length,
+    days_out_of_range: series.filter((p) => p.in_range === false).length,
+    days_it_acted: series.filter((p) => p.acted).length,
+  };
 }
 
 // ---------------------------------------------------------------- earnings
@@ -4841,6 +4919,57 @@ export default {
     {
       const m = path.match(/^\/job\/(\d+)\/result$/);
       if (m) return await handleJobResult(m[1], env);
+    }
+
+    // ATTEST A DELIVERY ON-CHAIN, as the buyer. After a job this worker
+    // delivered is SUBMITTED, the buyer can write one measurement into the
+    // ERC-8004 ReputationRegistry: responsetime, the milliseconds between the
+    // block that funded the escrow and the block that carried the deliverable
+    // — two on-chain timestamps anyone can read again and disagree with. Not
+    // a star rating: this project's rule is that a measurement and a taste
+    // claim never share a column, and the writer enforces what the reader
+    // separates. The evidence travels with it: feedbackURI is the delivered
+    // document, feedbackHash its keccak256, so "delivered in 41 s" points at
+    // exactly what was delivered. Returns the unsigned call; the buyer's own
+    // wallet sends it. The contract refuses the agent's owner, so we could
+    // not write this about ourselves even if we wanted to.
+    if (path === '/attest') {
+      const id = url.searchParams.get('job') || '';
+      const fundTx = String(url.searchParams.get('fundTx') || '').toLowerCase();
+      if (!/^\d+$/.test(id)) return json({ error: 'job is required — the numeric jobId' }, 400);
+      if (!/^0x[a-f0-9]{64}$/.test(fundTx)) return json({ error: 'fundTx is required — the hash of the transaction that funded the escrow' }, 400);
+      const raw = await call(ERC8183.commerce, JOB_CALL(id)).catch(() => null);
+      const job = raw ? decodeJob(raw) : null;
+      if (!job) return json({ error: 'job not found or unreadable', id }, 404);
+      if (job.status !== 'SUBMITTED' && job.status !== 'COMPLETED') return json({ error: `job ${id} is ${job.status} — nothing has been delivered to attest`, status: job.status }, 409);
+      const stored = await env.AGENT.get(`job:${id}`, 'json').catch(() => null);
+      if (!stored || !stored.document) return json({ error: 'this worker holds no document for that job — it was not the provider' }, 404);
+      let service = null; try { service = JSON.parse(stored.document).service || null; } catch { /* no service */ }
+      const agentId = service && SOLD_BY[service] ? SOLD_BY[service].agent : null;
+      if (!agentId) return json({ error: 'the delivering agent could not be identified from the document', service }, 500);
+      const receipt = await rpc('eth_getTransactionReceipt', [fundTx], RECEIPT_RPCS).catch(() => null);
+      if (!receipt || receipt.status !== '0x1') return json({ error: 'the funding transaction was not found or failed' }, 404);
+      if (String(receipt.to || '').toLowerCase() !== ERC8183.commerce.toLowerCase()) return json({ error: 'that transaction did not go to the kernel' }, 400);
+      const block = await rpc('eth_getBlockByNumber', [receipt.blockNumber, false], RECEIPT_RPCS).catch(() => null);
+      const fundedAt = block ? Number(BigInt(block.timestamp)) : null;
+      if (!fundedAt) return json({ error: 'could not read the funding block' }, 503);
+      const submittedAt = Number(job.submitted_at || 0);
+      if (!(submittedAt > fundedAt)) return json({ error: 'the deliverable predates the funding transaction — wrong fundTx?', funded_at: fundedAt, submitted_at: submittedAt }, 400);
+      const ms = (submittedAt - fundedAt) * 1000;
+      const feedbackURI = `https://agent.brainonbnb.com/job/${id}/result`;
+      const feedbackHash = keccak256(toBytes(stored.document));
+      const data = encodeFunctionData({ abi: REPUTATION_ABI, functionName: 'giveFeedback', args: [BigInt(agentId), BigInt(ms), 0, 'responsetime', '', 'https://agent.brainonbnb.com/a2a', feedbackURI, feedbackHash] });
+      ctx.waitUntil(bump(env, 'attest_prepared'));
+      return json({
+        job: id, agent_id: agentId, service, status: job.status,
+        tag1: 'responsetime', value: ms, unit: 'ms',
+        means: `The deliverable was on-chain ${submittedAt - fundedAt} seconds after the escrow was funded.`,
+        measured_from: { funded_block: Number(BigInt(receipt.blockNumber)), funded_at: fundedAt, submitted_at: submittedAt },
+        evidence: { feedbackURI, feedbackHash, note: 'keccak256 of the exact document served at feedbackURI' },
+        call: { to: REPUTATION, data, value: '0x0' },
+        rule: 'One measurement, two on-chain timestamps, the document hashed. No star rating: this registry already holds twenty thousand of those and they mean nothing.',
+        who_may_send: 'Any wallet except the agent\'s owner. The buyer is the natural one.',
+      });
     }
 
     // A worked example of what each service delivers, run by the same code a
@@ -5474,6 +5603,23 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
     // waiting for it or trusting that it works — and "the paid part is
     // presumably fine" is not a state this service should ever be shipped in.
     // Same shared secret as /hit; nothing here is reachable without it.
+    // The liquidity series: every run of the liquidity agent as one point,
+    // and what the points say so far. Read by /liquidity.
+    if (path === '/lp/series') {
+      const series = await readLpSeries(env);
+      return json({
+        what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot, income already put in. Not a counter; every figure is in the record it came from.',
+        summary: lpSeriesSummary(series),
+        points: series,
+        record: 'https://agent.brainonbnb.com/lp/agent',
+        cadence: 'daily, after the 05:23 UTC run',
+      }, 200, { 'Cache-Control': 'public, max-age=300' });
+    }
+    if (path === '/run-lp-series' && request.method === 'POST') {
+      if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
+      return json({ ok: true, ...(await recordLpSeries(env)) });
+    }
+
     if (path === '/run-checks' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       const result = await checkWatches(env);
@@ -5590,6 +5736,9 @@ a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22)
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(checkWatches(env).catch(() => {}));
+    // One point per liquidity-agent run; a tick that finds the same record
+    // again records nothing.
+    ctx.waitUntil(recordLpSeries(env).catch(() => {}));
 
     // Live state, every tick. Six outbound calls — four peers, one Comptroller
     // read, one pool measurement — which is why it rides the fifteen-minute

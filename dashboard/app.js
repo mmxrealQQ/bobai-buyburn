@@ -1043,3 +1043,40 @@ function fillLpBlock(){
       });
 }
 if(!document.getElementById('ag-asked') && document.getElementById('ag-lp')) fillLpBlock();
+
+// The series: one row per run of the liquidity agent, from /lp/series. The
+// summary line answers the question first; the table is the evidence.
+function fillLpSeries(){
+  const el = id => document.getElementById(id);
+  const table = el('ag-lp-series'), sum = el('ag-lp-series-sum');
+  if(!table) return;
+  const f = (v, d) => (v == null || !isFinite(Number(v))) ? '—' : Number(v).toFixed(d);
+  const pct = v => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  fetch('https://agent.brainonbnb.com/lp/series', {cache:'no-store'})
+    .then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(d => {
+      const pts = d && Array.isArray(d.points) ? d.points : [];
+      const s = d && d.summary;
+      if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 05:23 UTC run.'; return; }
+      const v = s && s.value_bnb;
+      sum.innerHTML = 'Since <b>' + esc(String(s.since).slice(0,10)) + '</b>: ' + s.points + ' run' + (s.points === 1 ? '' : 's') +
+        (v && v.start != null ? ', position worth <b>' + f(v.start,4) + ' → ' + f(v.now,4) + ' BNB</b> (' + pct(v.change_pct) + ')' : '') +
+        (s.price_move_pct_since_start != null ? ', the pair moved <b>' + pct(s.price_move_pct_since_start) + '</b>' : '') +
+        ', in range on <b>' + s.days_in_range + '</b> of ' + s.points + ', fees sent to the buyback bot <b>' + f(s.fees_sent_to_buyback_bnb,5) + ' BNB</b>, income put in <b>' + f(s.income_put_in_bnb,5) + ' BNB</b>.';
+      const base = pts.find(p => p.value_bnb != null);
+      const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>Since start</th><th>Range</th><th>Fees owed (BNB)</th><th>Sent to buyback (BNB)</th><th>Income put in (BNB)</th><th>Did</th></tr>';
+      const rows = pts.slice().reverse().map(p => {
+        const chg = base && p.value_bnb != null && base.value_bnb ? ((p.value_bnb - base.value_bnb) / base.value_bnb) * 100 : null;
+        return '<tr><td>' + esc(String(p.at).replace('T',' ').slice(0,16)) + '</td>' +
+          '<td>' + (p.position ? '#' + esc(p.position) : '—') + '</td>' +
+          '<td>' + f(p.value_bnb,4) + '</td>' +
+          '<td class="' + (chg == null ? '' : chg >= 0 ? 'up' : 'down') + '">' + pct(chg) + '</td>' +
+          '<td class="' + (p.in_range ? 'up' : p.in_range === false ? 'down' : '') + '">' + (p.in_range ? 'in' : p.in_range === false ? 'out' : '—') + '</td>' +
+          '<td>' + f(p.owed_bnb,6) + '</td><td>' + f(p.forwarded_total_bnb,5) + '</td><td>' + f(p.swept_total_bnb,5) + '</td>' +
+          '<td>' + (p.ok === false ? 'one step failed' : p.acted ? 'moved money' : 'nothing to do') + '</td></tr>';
+      });
+      table.innerHTML = head + rows.join('');
+    });
+}
+fillLpSeries();

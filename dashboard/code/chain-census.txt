@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 3974 lines.
+# one fetch. 7 files, 4079 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -543,6 +543,7 @@ import { loadJobs, aggregate } from './lib/job-aggregate.mjs';
 import { CATEGORIES, classifyAgent } from '../worker-agent/categories.js';
 import { PEERS, SURFACE, OWN_AGENT_IDS } from '../worker-agent/telemetry.js';
 import { SERVICES } from '../worker-agent/sell.js';
+import { SOLD_BY } from '../worker-agent/catalog.js';
 import { SERVICE_BY_SLUG } from './lib/own-agents.mjs';
 import { summarize } from '../shared/job-summary.js';
 
@@ -1664,6 +1665,11 @@ const page = `<!doctype html>
   .rg-what{margin-top:7px;font-size:.76rem;line-height:1.55;max-width:52ch}
   .rg-what.rg-weak{color:var(--muted);font-style:italic}
   .rg-paynote{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+  .rg-ask-hire{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .rg-ask-hire .rg-note{flex:1;min-width:200px}
+  .rg-attest{margin-top:12px;padding:10px 12px;border:1px solid rgba(var(--accs,240,185,11),.28);border-radius:10px;background:rgba(var(--accs,240,185,11),.05);display:flex;flex-direction:column;gap:8px;font-size:.8rem}
+  .rg-attest-h{font-weight:600}
+  .rg-attest .rg-hirebtn{align-self:flex-start;margin-top:0}
   .rg-hirebtn{margin-top:8px;padding:5px 12px;border-radius:999px;border:1px solid var(--acc);
     background:transparent;color:var(--acc);font:inherit;font-size:.72rem;cursor:pointer;white-space:nowrap}
   .rg-hirebtn:hover{background:var(--acc);color:#0b0b0f}
@@ -2293,22 +2299,69 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     drawRecent();
     var chips=document.getElementById('rg-try-chips');
     if(chips)chips.querySelectorAll('button').forEach(function(x){x.addEventListener('click',function(){i.value=x.getAttribute('data-q');run()})});
+    // Which of our own agents sells exactly this question, asked of the same
+    // A2A seller a buyer would negotiate with - so the line below can never
+    // offer a service the seller would then decline after the escrow is
+    // funded (the failure job 56670 paid for). The router skips our own
+    // sellers on purpose; this is the one place they are allowed to answer.
+    var OWN_SELLERS=${JSON.stringify(Object.fromEntries(Object.entries(SOLD_BY).map(([k, v]) => [k, v.agent])))};
+    function oursFor(t){
+      return fetch('https://agent.brainonbnb.com/a2a',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({jsonrpc:'2.0',id:1,method:'message/send',params:{message:{role:'user',kind:'message',messageId:'ask-'+Date.now(),parts:[{kind:'data',data:{skill:'negotiate',task_description:t}}]}}})})
+        .then(function(r){return r.json()}).then(function(j){
+          var q=j&&j.result&&(j.result.data||j.result);
+          if(!q||!q.accepted||!q.service||!OWN_SELLERS[q.service])return null;
+          return {id:OWN_SELLERS[q.service],service:q.service,price:q.price_display||'0.10 $U',needs:q.needs||null};
+        }).catch(function(){return null});
+    }
+    function oursLine(m,t){
+      if(!m)return '';
+      var hb=document.querySelector('.rg-hirebtn[data-hire="'+String(m.id)+'"]');
+      if(!hb)return '';
+      return '<div class="rg-ask-hire rg-ours-line"><button type="button" class="rg-hirebtn" data-ask-hire="'+esc(String(m.id))+'">Hire '+esc(hb.getAttribute('data-name')||'our agent')+' for '+esc(m.price)+' &rarr;</button>'+
+        '<span class="rg-note">One of ours sells exactly this, delivered on-chain through the escrow, with the document hashed on the kernel. The seller was asked with your sentence and accepted it.</span></div>';
+    }
     function run(){
       var t=(i.value||i.placeholder).trim(); if(!t)return;
       b.disabled=true; b.textContent='Asking…'; o.hidden=false;
       o.innerHTML='<span style="color:var(--muted)">Finding an agent that can answer that…</span>';
+      var oursP=oursFor(t);
       fetch('https://agent.brainonbnb.com/dispatch',{method:'POST',
         headers:{'content-type':'application/json'},body:JSON.stringify({task:t})})
         .then(function(r){return r.json()})
+        .then(function(d){return oursP.then(function(m){d._ours=m;return d;})})
         .then(function(d){
+          // The funnel (2026-09-03): every answer names who gave it, and the
+          // paid version of the same agent is one tap away when it sells one.
+          // The hire button already on this page carries that agent's seed
+          // sentence; here the visitor's own question becomes the seed, so
+          // the job they fund asks what they just asked.
+          var hireBtnFor=function(id){return id?document.querySelector('.rg-hirebtn[data-hire="'+String(id).replace(/[^0-9]/g,'')+'"]'):null};
+          var hireLine=function(id,name,task){
+            var hb=hireBtnFor(id);
+            if(!hb)return '<div class="rg-ask-hire rg-note">Answered for free, read-only. This agent does not sell through the escrow.</div>';
+            return '<div class="rg-ask-hire"><button type="button" class="rg-hirebtn" data-ask-hire="'+esc(String(id))+'">Hire '+esc(name)+' for a paid delivery &rarr;</button>'+
+              '<span class="rg-note">Same agent, same question, delivered on-chain through the ERC-8183 escrow. Your wallet, your call.</span></div>';
+          };
           if(d.dispatched && d.answered_by){
-            o.innerHTML='<div class="rg-who">'+esc(d.answered_by.agent)+' &middot; '+esc(d.answered_by.tool)+'</div>'+
-              '<pre>'+esc(typeof d.result==='string'?d.result:JSON.stringify(d.result,null,1)).slice(0,3000)+'</pre>';
-            remember(t,d.answered_by.agent);
+            var ab=d.answered_by;
+            o.innerHTML='<div class="rg-who">'+esc(ab.agent)+' &middot; '+esc(ab.tool||ab.skill||'')+(ab.operator?' &middot; <span class="rg-note">'+esc(ab.operator)+(ab.id?' &middot; #'+esc(String(ab.id)):'')+'</span>':'')+'</div>'+
+              '<pre>'+esc(typeof d.result==='string'?d.result:JSON.stringify(d.result,null,1)).slice(0,3000)+'</pre>'+
+              hireLine(ab.id,ab.agent,t)+oursLine(d._ours,t);
+            remember(t,ab.agent);
+          } else if(Array.isArray(d.hireable) && d.hireable.length){
+            o.innerHTML='<div class="rg-who">Nobody answered this for free &mdash; these agents sell it</div>'+
+              d.hireable.slice(0,4).map(function(h){return hireLine(h.id,h.agent,t)}).join('')+oursLine(d._ours,t)+
+              '<pre>'+esc(d.reason||'')+'</pre>';
           } else {
-            o.innerHTML='<div class="rg-who">Not dispatched</div><pre>'+esc(d.reason||'No agent answered.')+
-              (d.why? String.fromCharCode(10,10)+esc(d.why) : '')+'</pre>';
+            o.innerHTML='<div class="rg-who">'+(d._ours?'No free answer &mdash; but one of ours sells this':'Not dispatched')+'</div><pre>'+esc(d.reason||'No agent answered.')+
+              (d.why? String.fromCharCode(10,10)+esc(d.why) : '')+'</pre>'+oursLine(d._ours,t);
           }
+          o.querySelectorAll('[data-ask-hire]').forEach(function(x){x.addEventListener('click',function(){
+            var hb=hireBtnFor(x.getAttribute('data-ask-hire'));if(!hb)return;
+            hb.setAttribute('data-seed',t);hb.click();
+            hb.closest('article,tr,.rg-box')&&hb.closest('article,tr,.rg-box').scrollIntoView({behavior:'smooth',block:'center'});
+          })});
         })
         .catch(function(){ o.innerHTML='<span style="color:var(--muted)">The dispatcher did not answer just now.</span>'; })
         .then(function(){ b.disabled=false; b.textContent='Dispatch'; });
@@ -2716,6 +2769,57 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       });
     }
 
+    // After the delivery: one measurement, written on-chain by the buyer.
+    // The page polls the job until the deliverable is on the kernel, then
+    // asks the worker for the unsigned giveFeedback call - responsetime in
+    // milliseconds between the funding block and the deliverable's block,
+    // the delivered document as evidence, its keccak256 as the hash - and the
+    // buyer sends it from the same wallet that funded the job. Not a rating:
+    // a measurement anybody can take again. The seller's owner cannot send
+    // this; the contract refuses it, which is the point.
+    function watchDelivery(){
+      var fund=plan.calls[plan.calls.length-1]&&plan.calls[plan.calls.length-1]._tx;
+      if(!fund||!jobId)return;
+      var tries=0;
+      d.querySelectorAll('.rg-attest').forEach(function(x){x.remove();});
+      var box=document.createElement('div');box.className='rg-attest';box.innerHTML='<span class="rg-note">Waiting for the deliverable to land on the kernel…</span>';
+      elMsg.insertAdjacentElement('afterend',box);
+      (function poll(){
+        tries++;
+        fetch(AGENT+'/job?id='+jobId,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+          if(j&&(j.status==='SUBMITTED'||j.status==='COMPLETED')){
+            var head=j.delivery&&j.delivery.summary&&j.delivery.summary.headline;
+            box.innerHTML='<div class="rg-attest-h">Delivered.'+(head?' <span class="rg-note">'+esc(head)+'</span>':'')+'</div>'+
+              '<button type="button" class="rg-hirebtn" id="rg-attest-go">Attest this delivery on-chain &rarr;</button>'+
+              '<span class="rg-note">Writes one measurement into the ERC-8004 reputation registry from your wallet: how many milliseconds passed between your funding block and the deliverable, with the delivered document as evidence. No stars, no opinion.</span>';
+            var go=document.getElementById('rg-attest-go');
+            go.addEventListener('click',function(){
+              go.disabled=true;go.textContent='Preparing…';
+              fetch(AGENT+'/attest?job='+jobId+'&fundTx='+fund,{cache:'no-store'}).then(function(r){return r.json();}).then(function(a){
+                if(!a||!a.call)throw new Error((a&&a.error)||'the worker did not prepare the call');
+                go.textContent='Confirm in your wallet…';
+                return window.ethereum.request({method:'eth_sendTransaction',params:[{from:account,to:a.call.to,data:a.call.data,value:'0x0'}]}).then(function(tx){
+                  go.textContent='Waiting for confirmation…';
+                  return receipt(tx).then(function(){
+                    box.innerHTML='<div class="rg-attest-h">Attested on-chain: '+esc(a.means||'')+'</div>'+
+                      '<span class="rg-note">responsetime '+esc(String(a.value))+' ms on agent #'+esc(String(a.agent_id))+', evidence '+
+                      '<a href="'+esc(a.evidence.feedbackURI)+'" target="_blank" rel="noopener">the delivered document</a> · '+
+                      '<a href="https://bscscan.com/tx/'+esc(tx)+'" target="_blank" rel="noopener">transaction ↗</a>. It shows on this page after the next reputation refresh.</span>';
+                  });
+                });
+              }).catch(function(e){
+                go.disabled=false;go.textContent='Attest this delivery on-chain →';
+                say('Not attested: '+esc(e.message||e),'rg-err');
+              });
+            });
+            return;
+          }
+          if(tries<40)setTimeout(poll,5000);
+          else box.innerHTML='<span class="rg-note">Still not delivered after a few minutes. Track it at <a href="'+AGENT+'/job?id='+jobId+'" target="_blank" rel="noopener">/job?id='+jobId+' ↗</a>.</span>';
+        }).catch(function(){ if(tries<40)setTimeout(poll,5000); });
+      })();
+    }
+
     // Funded is not delivered. The seller has to be told, and the deliverable
     // arrives on-chain rather than in this page, so the last thing shown is
     // where to watch for it.
@@ -2740,6 +2844,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           say('Job <b>#'+esc(jobId)+'</b> is funded and delivery is requested. '+
               'Track it at <a href="'+AGENT+'/job?id='+esc(jobId)+'" target="_blank" rel="noopener">/job?id='+esc(jobId)+' ↗</a>. '+
               'The deliverable is written on-chain, not returned here — SUBMITTED means it exists, COMPLETED means the escrow released.','rg-ok');
+          watchDelivery();
         })
         .catch(function(){
           say('Escrow is funded, but the delivery request did not go through. Send it yourself: POST '+AGENT+'/a2a with skill notify_funded and job_id '+esc(jobId)+'.','rg-err');

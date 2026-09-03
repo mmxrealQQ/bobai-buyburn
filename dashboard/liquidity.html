@@ -28,6 +28,16 @@
   <link rel="preload" href="styles.css?v=34" as="style">
   <link rel="stylesheet" href="styles.css?v=34">
   <link rel="stylesheet" href="home.css?v=1">
+  <style>
+    /* The series table. Numbers right-aligned so a column reads as one figure;
+       a wide table scrolls inside its own box, never the page. */
+    .lp-series{width:100%;border-collapse:collapse;font-size:.78rem;margin:10px 0 12px;white-space:nowrap}
+    .lp-series th{text-align:right;font-weight:600;color:var(--muted);font-size:.66rem;letter-spacing:.4px;text-transform:uppercase;padding:4px 8px 6px;border-bottom:1px solid var(--border)}
+    .lp-series th:first-child,.lp-series td:first-child,.lp-series th:nth-child(2),.lp-series td:nth-child(2),.lp-series th:last-child,.lp-series td:last-child{text-align:left}
+    .lp-series td{text-align:right;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-variant-numeric:tabular-nums}
+    .lp-series td.up{color:#3fe09a}.lp-series td.down{color:#ff8f6b}
+    #ag-lp-series-sum b{color:var(--text,#f3efe6)}
+  </style>
 </head>
 <body class="np">
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
@@ -67,6 +77,17 @@
     </div>
   </section>
 
+  <section class="sec b-violet" id="series">
+    <div class="sh fi"><h2>Day by <em>day</em></h2>
+      <p class="sh-sub">One line per run of the agent, from its own record: what the position was worth, whether the price stayed in the range, what it was owed and what it had already sent on. The first line is the baseline everything after it is measured against.</p>
+    </div>
+    <div class="agt-flow fi" id="ag-lp-series-wrap">
+      <p class="agt-note" id="ag-lp-series-sum">Reading the series&hellip;</p>
+      <div style="overflow-x:auto"><table class="lp-series" id="ag-lp-series"></table></div>
+      <p class="agt-note">Value is in BNB because the position is quoted in BNB; a dollar figure would move with BNB and say nothing about the position. Fees are not annualised. Same facts as JSON: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.</p>
+    </div>
+  </section>
+
   <section class="sec b-violet" id="steps">
     <div class="sh fi"><h2>What it does <em>every day</em></h2>
       <p class="sh-sub">At 05:23 UTC, four steps in a fixed order. Each has a floor under which moving the money would cost more than the money, and a day under a floor is recorded as a decision, not an error.</p>
@@ -98,6 +119,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=33" defer></script>
+<script src="app.js?v=34" defer></script>
 </body>
 </html>

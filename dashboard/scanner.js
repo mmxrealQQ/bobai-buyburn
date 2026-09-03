@@ -13,7 +13,7 @@
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder,curveFeed} from './scanner-chain.js?v=22';
+  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=23';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -683,6 +683,7 @@ function flagsCard(gp,gpOk,sim){
   const owner=(gp.owner_address||'').toLowerCase();
   if(gp.owner_address==null)g.appendChild(chip('unk','Ownership not checked','GoPlus returned no owner field for this contract.'));
   else if(owner===NULLA||owner==='')g.appendChild(chip('ok','Ownership renounced','No owner address left on the contract.'));
+  else if(owner===FOURMEME_MANAGER)g.appendChild(chip('on','Owned by four.meme','The owner is four.meme’s token manager ('+short(owner)+'), the contract that runs the launch curve — not a person’s wallet.'));
   else g.appendChild(chip('on','Owner active','Owner is '+short(owner)+'.'));
   if(gp.is_open_source==null)g.appendChild(chip('unk','Verification not checked','GoPlus did not report whether the source is verified.'));
   else if(gp.is_open_source==='1')g.appendChild(chip('ok','Source verified','The published code matches the deployed bytecode.'));

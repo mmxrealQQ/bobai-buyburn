@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4079 lines.
+# one fetch. 7 files, 4081 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -727,7 +727,9 @@ const seedTask = (svc) => SEED_TASKS[svc.id] || null;
 // no address, and the plan came back on $BOBAI — a real delivery, but not an
 // example anyone should be shown next to that question. The seed carries an
 // address now; the next paid grid job can take this slot.
-const REAL_JOBS = { health_factor: '56657' };
+// 56694 (2026-09-03): hired from the panel with the address-bearing seed,
+// delivered six seconds after funding, attested on-chain by the buyer.
+const REAL_JOBS = { health_factor: '56657', grid_plan: '56694' };
 const AGENT_ORIGIN = 'https://agent.brainonbnb.com';
 const fetchJson = async (u) => {
   try {
@@ -1593,7 +1595,7 @@ const page = `<!doctype html>
 <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
 <link rel="apple-touch-icon" href="/logo.png?v=4">
 <link rel="stylesheet" href="/fonts.css?v=1">
-<link rel="stylesheet" href="/styles.css?v=31">
+<link rel="stylesheet" href="/styles.css?v=34">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
   /* nav/.nav/.nb live in styles.css, but .back-btn and .brand-link do not —

@@ -99,8 +99,14 @@ export function decStr(h){
     if(b.length>=128){
       const len=parseInt(b.slice(64,128),16);
       if(len>0&&len<=128){
-        let s='';for(let i=0;i<len;i++)s+=String.fromCharCode(parseInt(b.substr(128+i*2,2),16));
-        if(/^[\x20-\x7e]+$/.test(s))return s;
+        // ABI string: decode the bytes as UTF-8, not as one char per byte. The
+        // byte-per-char reading only accepted ASCII, so every token with a
+        // Chinese, Cyrillic or emoji symbol came back as '' and was shown by
+        // its address (seen on the four.meme feed, 2026-09-03). Control
+        // characters are dropped; everything printable is kept.
+        const bytes=new Uint8Array(len);for(let i=0;i<len;i++)bytes[i]=parseInt(b.substr(128+i*2,2),16);
+        const s=new TextDecoder('utf-8',{fatal:false}).decode(bytes).replace(/[\x00-\x1f\x7f\ufffd]/g,'').trim();
+        if(s)return s;
       }
     }
     let s='';for(let i=0;i<b.length;i+=2){const c=parseInt(b.substr(i,2),16);if(c>=32&&c<127)s+=String.fromCharCode(c)}
@@ -478,8 +484,19 @@ export async function measureTax(token,pair,tokenIs0,kind){
     const from=head-4999;
     let logs=null;
     const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
-    try{logs=await rpc('eth_getLogs',[{address:pair,topics:topic,
-      fromBlock:'0x'+from.toString(16),toBlock:'0x'+head.toString(16)}],LOGS_RPC)}catch(e){logs=null}
+    // Both log hosts, and a second pass after a beat. The two publicnode names
+    // throttle together (one operator, one budget), and a page that has just
+    // fired a thirty-call batch at them gets a 403 for a second or two. With a
+    // single host and no retry that second was reported to the visitor as
+    // "could not be measured" — seen live on 2026-09-03 on a pool that had
+    // traded minutes earlier. A retry is cheap; a false "unmeasured" is not.
+    const filter={address:pair,topics:topic,fromBlock:'0x'+from.toString(16),toBlock:'0x'+head.toString(16)};
+    for(let pass=0;pass<2&&!logs;pass++){
+      if(pass)await new Promise(r=>setTimeout(r,900));
+      for(const url of LOGS_RPCS){
+        try{logs=await rpc('eth_getLogs',[filter],url);if(logs)break}catch(e){logs=null}
+      }
+    }
     // A refused range and a quiet pool arrive as the same emptiness and mean
     // opposite things. Only one of them may be stated as a fact about somebody
     // else's pool.

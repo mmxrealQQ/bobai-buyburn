@@ -579,7 +579,7 @@ section('The marketplace, from the front door');
   const card = (href, title) => new RegExp('<a class="ec fi" href="' + href + '">[\\s\\S]{0,900}?<h3>' + title + '</h3>').test(body);
   ok('the marketplace is an Ecosystem card', card('/registry', 'Brain Plaza'));
   ok('the services page is an Ecosystem card', card('/services', 'Agent Services'));
-  ok('the liquidity agent is an Ecosystem card that opens the agents page', card('/agents#liquidity', 'Liquidity Agent'));
+  ok('the liquidity agent is an Ecosystem card that opens its own page', card('/liquidity', 'Liquidity Agent'));
   ok('the old marketplace banner is off the homepage', !/class="mkt fi"/.test(body));
   ok('the old three-panel agent row is off the homepage', !/class="agt-cols/.test(body));
   ok('the nav carries neither Agents nor Marketplace as a second word for Ecosystem',
@@ -587,18 +587,20 @@ section('The marketplace, from the front door');
   ok('no tile on the homepage points at a homepage anchor that no longer exists', !/href="#agents"/.test(body));
 }
 {
-  // The block itself moved to /agents: the three panels, the counted
-  // marketplace card, the live figures and the liquidity agent's record.
-  // The counts are placeholders in the markup on purpose — a number typed
-  // into a page is a number that drifts away from the endpoint it describes.
-  const { body, isHtml } = await getText(`${SITE}/agents`);
-  ok('/agents is a page', isHtml);
-  ok('/agents carries the marketplace card', /<a class="mkt fi" href="\/registry"/.test(body));
-  ok('/agents offers the marketplace as one of its three tools', /href="\/registry"[^>]*>\s*<h3>Hire an AI agent<\/h3>/.test(body));
-  ok('/agents carries the live figures', /id="ag-asked">&ndash;</.test(body) && /id="ag-lp"/.test(body));
-  ok('/agents has the anchor the liquidity tile opens', /id="liquidity"/.test(body));
-  ok('/agents does not hard-code its counts', !/<b id="mkt-(reach|hire)">\d/.test(body), 'a count is baked into the markup instead of fetched');
-  ok('/agents is in the sitemap', /brainonbnb\.com\/agents</.test((await getText(`${SITE}/sitemap.xml`)).body));
+  // Four tiles, four pages, nothing twice (the operator's rule, 2026-09-03).
+  // /agents, which repeated the tiles, is gone and redirects; the liquidity
+  // agent has its own page carrying the live block, and the record behind it
+  // is a page for a browser and JSON for everything else.
+  const lq = await getText(`${SITE}/liquidity`);
+  ok('/liquidity is a page that carries the live block', lq.isHtml && /id="ag-lp"/.test(lq.body) && /agent\.brainonbnb\.com\/lp\/agent/.test(lq.body));
+  ok('/liquidity names all three wallets of the loop', /0x690E950214980BC329823A2DB2fD90C06Bd54dE4/.test(lq.body) && /0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A/.test(lq.body) && /0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce/.test(lq.body));
+  ok('/liquidity is in the sitemap and /agents is not', /brainonbnb\.com\/liquidity</.test((await getText(`${SITE}/sitemap.xml`)).body) && !/brainonbnb\.com\/agents</.test((await getText(`${SITE}/sitemap.xml`)).body));
+  const gone = await fetch(`${SITE}/agents`, { redirect: 'manual' });
+  ok('/agents redirects instead of repeating the tiles', gone.status === 301 || gone.status === 308, String(gone.status));
+  const lpHtml = await fetch('https://agent.brainonbnb.com/lp/agent', { headers: { accept: 'text/html' } });
+  ok('/lp/agent is a page for a browser', /text\/html/.test(lpHtml.headers.get('content-type') || '') && /The last run, step by step/.test(await lpHtml.text()));
+  const lpJson = await fetch('https://agent.brainonbnb.com/lp/agent').then((r) => r.json()).catch(() => null);
+  ok('/lp/agent stays JSON for a fetch', !!lpJson && lpJson.cadence === 'daily' && !!lpJson.last);
 }
 {
   // Point 3 of the Block-05 list (2026-09-03): every own card carries an
@@ -667,11 +669,6 @@ section('The marketplace, from the front door');
   ok('the hire block counts quotes over its own buttons, not over the quote run',
     new RegExp(`${reg?.hireable_here} carry a Hire button, and <b>${reg?.quoted_of_hireable} of them returned a price`).test(body),
     'the block prints a numerator from the quote run under a count of buttons');
-  // The counted card lives on /agents since 2026-09-03.
-  const home = (await getText(`${SITE}/agents`)).body;
-  ok('the agents-page card promises the measured number, not the button count',
-    /id="mkt-hire"[^<]*<\/b><span>quote back when asked/.test(home),
-    'the card still advertises hireable buttons rather than sellers that quote');
   // Same reasoning as the census counts above: the quote tally is measured
   // afresh every time hire-confirm runs, so llms.txt must not carry a copy of
   // it. What it owes an agent is the route to the live figure.
@@ -787,7 +784,7 @@ section('Transparency');
 {
   const { body } = await getText(`${SITE}/`);
   ok('the agents live in the Ecosystem block, not a block of their own', /Block 04 &middot; Ecosystem/.test(body) && !/Block 05 &middot; Agents/.test(body));
-  ok('the liquidity-agent card links to the live figures on /agents', /href="\/agents#liquidity"/.test(body));
+  ok('the liquidity-agent card links to /liquidity', /href="\/liquidity"/.test(body));
   const csp = (await fetch(`${SITE}/`)).headers.get('content-security-policy') || '';
   ok('CSP allows the stats endpoint', csp.includes('https://agent.brainonbnb.com'));
 }

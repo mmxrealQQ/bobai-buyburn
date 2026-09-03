@@ -963,9 +963,43 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
       const note = d.money_flow && d.money_flow.note;
       if(note && el('ag-flow-note')) el('ag-flow-note').textContent = note;
     })
-    .then(() => fetch('https://agent.brainonbnb.com/lp/agent', {cache:'no-store'})
-      .then(r => r.ok ? r.json() : null).catch(() => null)
-      .then(rec => {
+    .then(() => fillLpBlock())
+    .then(() => Promise.all([
+      // Two sources on purpose, and the same two the Plaza page itself uses.
+      // The full scan is the only thing that knows how many endpoints answer
+      // and how many operators there are — but it is a photograph, taken by
+      // hand every few weeks. The daily tick knows nothing about operators and
+      // everything about how far the registry has grown since.
+      //
+      // Showing the scan's total here while /registry showed the live one made
+      // the same figure differ by five thousand between two pages of the same
+      // site. One number, one source: the headline is the live high-water mark
+      // in both places, and the sub-line says which half came from where.
+      fetch('https://agent.brainonbnb.com/census', {cache:'no-store'})
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api-registry.json', {cache:'no-store'})
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]))
+    .then(([live, reg]) => {
+      // The Brain Plaza tile that used to live here is gone: the marketplace
+      // card at the top of this block carries the same number and the same
+      // link, and two of each in one block reads as two destinations. The card
+      // fills itself from these same two sources, so the figures still agree.
+      void live; void reg;
+    })
+    .catch(() => {
+      ['ag-asked','ag-earned','ag-watch'].forEach(i => { el(i).textContent = '–'; });
+      el('ag-asked-sub').textContent = 'the counter did not answer just now';
+    });
+}();
+
+// The liquidity agent's block, on its own so /liquidity can carry it without
+// the rest of the agents block. Same rows, same source, same sums.
+function fillLpBlock(){
+  const el = id => document.getElementById(id);
+  return fetch('https://agent.brainonbnb.com/lp/agent', {cache:'no-store'})
+    .then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(rec => {
         // The liquidity agent's own record: what it holds, whether it is
         // earning right now, and what it has already moved. Sums come from
         // the history of actions, not from a counter anyone could edit.
@@ -1006,32 +1040,6 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
           when + (anyError ? '. One step could not finish; the operator has been told.' : '.')));
         list.innerHTML = rows.join('');
         if(noteEl) noteEl.textContent = 'Runs once a day on its own. The capital stays in the position; only the fees leave it.';
-      }))
-    .then(() => Promise.all([
-      // Two sources on purpose, and the same two the Plaza page itself uses.
-      // The full scan is the only thing that knows how many endpoints answer
-      // and how many operators there are — but it is a photograph, taken by
-      // hand every few weeks. The daily tick knows nothing about operators and
-      // everything about how far the registry has grown since.
-      //
-      // Showing the scan's total here while /registry showed the live one made
-      // the same figure differ by five thousand between two pages of the same
-      // site. One number, one source: the headline is the live high-water mark
-      // in both places, and the sub-line says which half came from where.
-      fetch('https://agent.brainonbnb.com/census', {cache:'no-store'})
-        .then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api-registry.json', {cache:'no-store'})
-        .then(r => r.ok ? r.json() : null).catch(() => null),
-    ]))
-    .then(([live, reg]) => {
-      // The Brain Plaza tile that used to live here is gone: the marketplace
-      // card at the top of this block carries the same number and the same
-      // link, and two of each in one block reads as two destinations. The card
-      // fills itself from these same two sources, so the figures still agree.
-      void live; void reg;
-    })
-    .catch(() => {
-      ['ag-asked','ag-earned','ag-watch'].forEach(i => { el(i).textContent = '–'; });
-      el('ag-asked-sub').textContent = 'the counter did not answer just now';
-    });
-}();
+      });
+}
+if(!document.getElementById('ag-asked') && document.getElementById('ag-lp')) fillLpBlock();

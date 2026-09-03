@@ -1956,7 +1956,7 @@ This project is readable by machines, not just people. Any agent can measure BNB
 
 Every cent earned here is sold for BNB and put into the project's own PancakeSwap liquidity position; the fees that position earns go to the buyback bot, which buys $BOBAI and burns it. The first income this project has that does not come from its own trading tax.
 
-🔗 <a href="https://brainonbnb.com/agents">Full breakdown &amp; live figures</a>`;
+🔗 <a href="https://brainonbnb.com/services">Full breakdown &amp; live figures</a>`;
       break;
     }
 

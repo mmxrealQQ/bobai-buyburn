@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- The liquidity agent's own page, behind its Ecosystem tile. One part, on
+       its own, nothing repeated from the other three tiles: where the money
+       comes from and goes, what the agent holds right now, what it decides
+       every day and why, and where the full daily record is. The live block
+       is filled by app.js (fillLpBlock) from agent.brainonbnb.com/lp/agent. -->
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+  <title>The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI</title>
+  <meta name="description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, and sends the fees to the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
+  <link rel="canonical" href="https://brainonbnb.com/liquidity">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI">
+  <meta property="og:description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, and sends the fees to the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta property="og:url" content="https://brainonbnb.com/liquidity">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI">
+  <meta name="twitter:description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, and sends the fees to the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <link rel="preload" href="styles.css?v=34" as="style">
+  <link rel="stylesheet" href="styles.css?v=34">
+  <link rel="stylesheet" href="home.css?v=1">
+</head>
+<body class="np">
+<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+<div class="page">
+  <nav><div class="nav">
+    <a class="back-btn" href="/" title="Back to the homepage"><span>&larr;</span> Home</a>
+    <a class="brand-link" href="/liquidity">The Liquidity Agent</a>
+    <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+  </div></nav>
+  <main>
+  <div class="intro"><h1>The liquidity <em>agent</em></h1><p>What other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent turns it into liquidity, and what that liquidity earns buys $BOBAI and burns it. Every step is a transaction on BNB Chain, and the record below is read from the agent itself.</p></div>
+
+  <section class="sec b-violet" id="flow">
+    <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Liquidity</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2>Where the money <em>goes</em></h2>
+      <p class="sh-sub">Three wallets, one direction. The capital never leaves the position; only the fees do.</p>
+    </div>
+
+    <div class="agt-two">
+    <div class="agt-flow fi">
+      <h3>The loop</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>An agent pays</b><span>A few cents per pool watch or per job, straight to <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">the income wallet</a>, used for nothing else. The hired agents deliver to <a href="https://bscscan.com/address/0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963" target="_blank" rel="noopener">a second one</a>.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>It becomes liquidity</b><span>Once a day the income is sold for BNB and put into the project&rsquo;s own <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">liquidity wallet</a>, which holds a PancakeSwap V3 position. That capital stays.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>The fees buy $BOBAI and burn it</b><span>What the position earns is collected and sent to <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">the buyback bot</a>, the same wallet that buys and burns from the trading tax. From there it is a burn like any other, listed on the homepage.</span></div></li>
+      </ol>
+    </div>
+
+    <div class="agt-flow fi" id="ag-lp-wrap">
+      <h3>Right now</h3>
+      <ol class="agt-steps" id="ag-lp">
+        <li><span class="agt-i">&middot;</span><div><b>Reading the record&hellip;</b><span>agent.brainonbnb.com/lp/agent</span></div></li>
+      </ol>
+      <p class="agt-note" id="ag-lp-note"></p>
+      <a class="mkt-go" style="display:inline-flex;margin-top:12px" href="https://agent.brainonbnb.com/lp/agent" rel="noopener">Today&rsquo;s full record, step by step &rarr;</a>
+    </div>
+    </div>
+  </section>
+
+  <section class="sec b-violet" id="steps">
+    <div class="sh fi"><h2>What it does <em>every day</em></h2>
+      <p class="sh-sub">At 05:23 UTC, four steps in a fixed order. Each has a floor under which moving the money would cost more than the money, and a day under a floor is recorded as a decision, not an error.</p>
+    </div>
+    <div class="agt-two">
+    <div class="agt-flow fi">
+      <h3>The four steps</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>Sweep</b><span>Sells the income (USD1 and $U) for BNB and sends it to the liquidity wallet. Waits until a sweep is worth more than the gas it costs, and never moves more than about fifty dollars in one run.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>Collect</b><span>Collects the fees the position has earned, sells the token side for BNB and forwards it to the buyback bot. Small amounts are left to grow.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Rebalance</b><span>If the price has left the range, the position is re-set around today&rsquo;s price, in the width that held through every tested day of the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a>. Inside the range it does nothing.</span></div></li>
+        <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the same position. The capital only ever grows; it is never withdrawn.</span></div></li>
+      </ol>
+    </div>
+    <div class="agt-flow fi">
+      <h3>How to check it</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">&#9679;</span><div><b>The position</b><span>PancakeSwap V3, CAKE/BNB. The position id is in the record; the wallet above shows it as an NFT on BscScan.</span></div></li>
+        <li><span class="agt-i">&#9679;</span><div><b>The record</b><span>Every run writes what it did and why, in the agent&rsquo;s own words. Days that moved money are listed with their figures; quiet days say so. <a href="https://agent.brainonbnb.com/lp/agent?format=json" rel="noopener">JSON</a> for machines, a page for people.</span></div></li>
+        <li><span class="agt-i">&#9679;</span><div><b>The code</b><span>One core, <code>shared/lp-agent.js</code>, run by the worker and by hand alike, in <a href="/source">the published source</a>. It never touches the buyback bot&rsquo;s own code.</span></div></li>
+      </ol>
+      <p class="agt-note">Why it matters: until this loop existed, every cent this project earned came from its own trading tax. This is the first money from outside, small today, and it already ends as burn.</p>
+    </div>
+    </div>
+  </section>
+  </main>
+  <footer><div class="fi2">
+    <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
+  </div></footer>
+</div>
+<script src="app.js?v=33" defer></script>
+</body>
+</html>

@@ -123,7 +123,7 @@ export async function handleFind(url) {
       returned: scored.length,
       // Said plainly, because a broker that implies a ranking it cannot support
       // is worse than no broker.
-      note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. There is no task history behind these results yet.',
+      note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. Task history is kept separately at /sessions (every task this broker has routed, failures included) and is not folded into this ordering.',
       measured_at: list.measured_at || null,
       results: scored.map(({ a, s }) => ({
         id: a.id,

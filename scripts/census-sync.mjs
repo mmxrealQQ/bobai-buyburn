@@ -90,3 +90,36 @@ if (live.highest_id < highestId) {
   process.exit(1);
 }
 console.log('\nLive counter is level with the scan.');
+
+// The scan as a fixed point in the series. /census-full existed from the
+// start and nothing ever called it: the 29 August scan (316,472 ids, 796
+// answering, 72 operators) synced its baseline but never its record, so the
+// "How it is moving" block on /registry kept quoting the 21 August scan as
+// "the last full scan" while the growth figure beside it was measured against
+// the newer one — two numbers on one line that could not both be true.
+const censusFile = path.join(DIR, 'census.json');
+const operatorsFile = path.join(ROOT, 'dashboard', 'api-operators.json');
+if (fs.existsSync(censusFile)) {
+  const c = JSON.parse(fs.readFileSync(censusFile, 'utf8'));
+  const ops = fs.existsSync(operatorsFile) ? JSON.parse(fs.readFileSync(operatorsFile, 'utf8')) : {};
+  const point = {
+    date: String(c.measured_at || '').slice(0, 10) || undefined,
+    registered_ids: c.registered_ids,
+    parse: c.registrations?.valid ?? null,
+    with_endpoint: c.endpoints?.claim_an_endpoint ?? null,
+    reachable: c.endpoints?.reachable ?? null,
+    operators: ops.independent_operators ?? null,
+    mcp: c.endpoints?.answering_mcp ?? null,
+  };
+  const rec = await post(`${ORIGIN}/census-full`, point);
+  console.log(`  full scan recorded: ${rec.recorded.date} — ${rec.recorded.registered_ids.toLocaleString('en-US')} ids, ${rec.recorded.reachable} answering, ${rec.recorded.operators} operators (${rec.points} points in the series)`);
+  const hist = await fetch(`${ORIGIN}/census-history`, { cache: 'no-store' }).then((r) => r.json());
+  const lastFull = (hist.full_scans || []).slice(-1)[0];
+  if (!lastFull || lastFull.registered_ids !== c.registered_ids) {
+    console.error(`\nThe series did not take: last full scan reads ${lastFull?.registered_ids} not ${c.registered_ids}.`);
+    process.exit(1);
+  }
+  console.log('The series carries this scan as its last full point.');
+} else {
+  console.log('  (no census.json in this directory — the series keeps its last full point)');
+}

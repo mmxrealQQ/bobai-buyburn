@@ -25,7 +25,7 @@
 // which is the difference between two operations a day and two thousand.
 
 const KEY = 'plaza:sessions';
-const MAX_SESSIONS = 400;
+export const MAX_SESSIONS = 400;
 const EXCERPT = 220;
 
 export async function recordSession(env, entry) {
@@ -67,15 +67,16 @@ export function trackRecord(sessions) {
   for (const s of sessions) {
     const k = s.operator || s.agent;
     if (!k) continue;
-    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, totalMs: 0, timed: 0, tools: new Set(), last: null, failures: [] });
+    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, times: [], tools: new Set(), last: null, failures: [] });
     const r = by.get(k);
     r.asked++;
     if (s.probe) r.probes++;
     if (s.ok) {
       r.answered++;
       if (s.tool) r.tools.add(s.tool);
-      if (typeof s.ms === 'number') { r.totalMs += s.ms; r.timed++; }
-    } else if (r.failures.length < 3) {
+      if (typeof s.ms === 'number') r.times.push(s.ms);
+    } else if (r.failures.length < 3 && !r.failures.includes(s.outcome)) {
+      // Distinct reasons, not the same one three times over.
       r.failures.push(s.outcome);
     }
     if (!r.last || s.at > r.last) r.last = s.at;
@@ -94,7 +95,10 @@ export function trackRecord(sessions) {
       // our own scheduled checks means something different from one built from
       // strangers' questions, and the reader is entitled to tell them apart.
       ...(r.probes ? { of_which_our_scheduled_checks: r.probes } : {}),
-      median_ms: r.timed ? Math.round(r.totalMs / r.timed) : null,
+      // A real median. The field carried this name from the start but was a
+      // mean until 2026-09-03 — one 9-second answer among twenty 150 ms ones
+      // read as "600 ms", which is a number no single request ever took.
+      median_ms: r.times.length ? (() => { const t = [...r.times].sort((a, b) => a - b); const m = t.length >> 1; return Math.round(t.length % 2 ? t[m] : (t[m - 1] + t[m]) / 2); })() : null,
       tools_used: [...r.tools].slice(0, 8),
       last_seen: r.last,
       ...(r.failures.length ? { recent_failures: r.failures } : {}),

@@ -538,9 +538,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
    "lines": 1800,
-   "zipBytes": 44410,
-   "txtBytes": 126463,
-   "sha256": "b803eeda25e44024",
+   "zipBytes": 44599,
+   "txtBytes": 126925,
+   "sha256": "e33370b1c388c4e5",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -572,9 +572,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 36,
    "lines": 8927,
-   "zipBytes": 180124,
-   "txtBytes": 469879,
-   "sha256": "83461aebfb8abf81",
+   "zipBytes": 180198,
+   "txtBytes": 470035,
+   "sha256": "0b3d27d75df7121f",
    "reqs": [
     {
      "what": "A wallet to be paid into",

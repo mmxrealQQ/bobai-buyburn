@@ -1573,9 +1573,9 @@ export const fmtUsd1 = (v) => {
 
 export const CAPABILITIES = {
   free: [
-    { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades' },
+    { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme launch curve, read from four.meme\'s own contract' },
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
-    { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it, search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
+    { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it (or the four.meme curve a new token is still on), search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
     { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
     // The three PancakeSwap answers, named rather than left inside "read-only
     // tools over MCP". Somebody arriving with a decision to make is looking for

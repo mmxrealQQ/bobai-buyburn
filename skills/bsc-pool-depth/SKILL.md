@@ -63,8 +63,17 @@ JSON on stdout. The fields that carry the answer:
 | `pool.shareOfLiquidity` | What fraction of the token's liquidity this pool holds. A low number means you are looking at a side pocket |
 | `lp.burnedPct` | Share of LP tokens sent to a burn address and therefore unwithdrawable (V2 pools only) |
 | `quotable` | `false` when no pool is deep or representative enough to quote honestly — read `reason` |
+| `sellability` | Our own sell test: a sell of one part in a thousand of the reserve, simulated on the router from a fresh address at this block. `ok:false` means not checked, never "safe" |
+| `curve` | Present when the token is still raising on four.meme and has no pool yet: `raised`/`maxRaising`/`progressPct`, `priceUsd`, the platform `feePct`, and `tradeCost[]` quoted by four.meme's own contract for the same sizes as a pool ladder. `quotable` stays `false` because there is no pool |
 
 ## Reading the result
+
+**A token still on its four.meme launch curve has no pool, by design.** It comes
+back `quotable: false` with a `curve` object instead: how much of the raise is
+done, the price, what a buy and a sell of each size would cost through four.meme's
+contract (fee included), and where the money sits (in that contract until the
+raise completes). A `tradeCost[]` row with `note` "more than the curve has left to
+sell" is a size the curve cannot fill — report it as such, not as cheap.
 
 **`quotable: false` is an answer, not a failure.** It means no pool held enough
 of this token's liquidity to describe its market. Quoting a ladder off a $338

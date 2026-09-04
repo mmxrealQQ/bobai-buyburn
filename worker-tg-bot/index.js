@@ -319,28 +319,25 @@ async function getBnbUsd() {
 }
 
 // Indexer figures (24h change, volume, trade counts) plus the indexer's own
-// price. GeckoTerminal first, DexScreener second, mapped into Gecko's attribute
-// shape. Null when neither answers — the caller must never depend on it for
-// the price itself, that comes from the chain.
-async function fetchIndexerStats() {
-  try {
-    const res = await fetch(`${GECKO_POOL_URL}?_=${Date.now()}`, { headers: { 'Accept': 'application/json' } });
-    if (res.ok) {
-      const data = await res.json();
-      const attrs = data?.data?.attributes;
-      if (attrs && isSanePrice(parseFloat(attrs.base_token_price_usd))) return attrs;
-      console.log('[price] gecko unusable:', JSON.stringify(attrs?.base_token_price_usd));
-    } else {
-      console.log('[price] gecko status', res.status, (await res.text()).slice(0, 200));
-    }
-  } catch (e) { console.log('[price] gecko error:', e.message || e); }
+// price, mapped into GeckoTerminal's attribute shape. DexScreener first:
+// GeckoTerminal answers this Worker's shared Cloudflare egress with 429 for
+// most of the day, DexScreener does not. Null when neither answers — the
+// caller must never depend on it for the price itself, that comes from the
+// chain. The last good answer is kept in KV for half an hour, so one refused
+// minute prints "as of 05:40 UTC" rather than n/a; older than that is n/a,
+// because a stale figure without a time on it is a wrong figure.
+const INDEXER_CACHE_KEY = 'price_24h';
+const INDEXER_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
+async function fetchIndexerStats(env = null) {
+  let attrs = null;
   try {
     const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI_TOKEN}`);
     if (res.ok) {
       const data = await res.json();
       const p = (data?.pairs || []).find(x => x.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase()) || (data?.pairs || [])[0];
       if (p && isSanePrice(parseFloat(p.priceUsd))) {
-        return {
+        attrs = {
+          source: 'DexScreener',
           base_token_price_usd: p.priceUsd,
           base_token_price_native_currency: p.priceNative,
           fdv_usd: p.fdv,
@@ -349,13 +346,137 @@ async function fetchIndexerStats() {
           price_change_percentage: p.priceChange || {},
           transactions: { h24: p.txns?.h24 || {} },
         };
+      } else {
+        console.log('[price] dexscreener unusable:', JSON.stringify(p?.priceUsd), (data?.pairs || []).length, 'pairs');
       }
-      console.log('[price] dexscreener unusable:', JSON.stringify(p?.priceUsd), (data?.pairs || []).length, 'pairs');
     } else {
       console.log('[price] dexscreener status', res.status, (await res.text()).slice(0, 200));
     }
   } catch (e) { console.log('[price] dexscreener error:', e.message || e); }
+  if (!attrs) {
+    try {
+      const res = await fetch(`${GECKO_POOL_URL}?_=${Date.now()}`, { headers: { 'Accept': 'application/json' } });
+      if (res.ok) {
+        const data = await res.json();
+        const a = data?.data?.attributes;
+        if (a && isSanePrice(parseFloat(a.base_token_price_usd))) attrs = { source: 'GeckoTerminal', ...a };
+        else console.log('[price] gecko unusable:', JSON.stringify(a?.base_token_price_usd));
+      } else {
+        console.log('[price] gecko status', res.status, (await res.text()).slice(0, 200));
+      }
+    } catch (e) { console.log('[price] gecko error:', e.message || e); }
+  }
+  if (attrs) {
+    if (env?.KV) {
+      try { await env.KV.put(INDEXER_CACHE_KEY, JSON.stringify({ at: Date.now(), attrs }), { expirationTtl: 3600 }); }
+      catch (e) { console.log('[price] cache write failed:', e.message || e); }
+    }
+    return attrs;
+  }
+  if (env?.KV) {
+    try {
+      const raw = await env.KV.get(INDEXER_CACHE_KEY);
+      const c = raw ? JSON.parse(raw) : null;
+      if (c && Date.now() - c.at < INDEXER_CACHE_MAX_AGE_MS) {
+        console.log('[price] indexers refused, using figures from', new Date(c.at).toISOString());
+        return { ...c.attrs, as_of: c.at };
+      }
+    } catch (e) { console.log('[price] cache read failed:', e.message || e); }
+  }
   return null;
+}
+
+// ==================== THE BOT'S OWN 24-HOUR LEDGER ====================
+// /price used to take its 24h volume, trade counts and price change from
+// GeckoTerminal or DexScreener. GeckoTerminal answers this Worker with 429
+// for most of the day and DexScreener has its minutes too, and on those
+// minutes the command printed n/a — to the person who had just typed it.
+// A figure that depends on somebody else's rate limiter is not a figure.
+//
+// So the bot keeps its own record. Every tenth minute the cron reads the
+// pair's Swap events since the last bucket (the same keyed endpoints the
+// buy alerts already use), counts buys and sells, sums the BNB that moved,
+// reads the pool price from the reserves, and appends one bucket. Buckets
+// older than a day are dropped. /price then reads one KV key and computes
+// everything from it: 24h volume and trades from the buckets, price change
+// from the bucket price nearest to an hour, six hours and a day ago. The
+// first day it says how many hours it has. Nothing here can be rate-limited
+// by a third party; a missed tick shows as a gap, not as a wrong number.
+const SWAP_LEDGER_KEY = 'swap_buckets';
+const LEDGER_HOURS = 24;
+const BUCKET_MINUTES = 10;
+// BSC clears a block every ~0.45 s in 2026: ten minutes is ~1,330 blocks.
+// 1,600 leaves headroom so a late tick never opens a hole; a bucket carries
+// its block range, so overlaps are cut on read, never counted twice.
+const BUCKET_BLOCKS = 1600;
+
+async function readSwapLedger(env) {
+  try { const raw = await env.KV.get(SWAP_LEDGER_KEY); return raw ? JSON.parse(raw) : []; }
+  catch { return []; }
+}
+
+// One tick of the ledger. Reads the Swap events from the block after the last
+// bucket (or the last ten minutes, if there is no bucket or the gap is too
+// wide to read in one call), and appends what it found.
+async function recordSwapBucket(env) {
+  const latestHex = await rpcCall('eth_blockNumber', []);
+  if (!latestHex) throw new Error('no block number');
+  const latest = parseInt(latestHex, 16);
+  const ledger = await readSwapLedger(env);
+  const last = ledger[ledger.length - 1];
+  let from = last && latest - last.to <= BUCKET_BLOCKS * 2 ? last.to + 1 : latest - BUCKET_BLOCKS;
+  if (from > latest) return { added: false, why: 'no new blocks' };
+  const logs = await getSwapLogs('0x' + from.toString(16), env);
+  if (!Array.isArray(logs)) throw new Error('swap logs unavailable');
+  let buys = 0, sells = 0, volWei = 0n;
+  for (const log of logs) {
+    const b = parseInt(log.blockNumber, 16);
+    if (b < from || b > latest) continue;
+    const d = log.data.slice(2);
+    if (d.length < 256) continue;
+    const amount0In = BigInt('0x' + d.slice(0, 64)), amount1In = BigInt('0x' + d.slice(64, 128));
+    const amount0Out = BigInt('0x' + d.slice(128, 192)), amount1Out = BigInt('0x' + d.slice(192, 256));
+    if (amount1In > 0n && amount0Out > 0n) buys++;
+    else if (amount0In > 0n && amount1Out > 0n) sells++;
+    else continue;
+    volWei += amount1In + amount1Out;
+  }
+  const pair = await readPairOnchain();
+  const bucket = { t: Date.now(), from, to: latest, buys, sells, vol_bnb: Number(volWei) / 1e18, price_bnb: pair ? pair.priceInBnb : null, price_usd: pair ? pair.price : null, bnb_usd: pair ? pair.bnbUsd : null };
+  const cutoff = Date.now() - LEDGER_HOURS * 3600 * 1000;
+  const kept = ledger.filter((x) => x.t >= cutoff).concat(bucket);
+  await env.KV.put(SWAP_LEDGER_KEY, JSON.stringify(kept));
+  console.log('[LEDGER] bucket', from, '-', latest, buys, 'buys', sells, 'sells', bucket.vol_bnb.toFixed(4), 'BNB');
+  return { added: true, buys, sells, buckets: kept.length };
+}
+
+// What the ledger says right now. `priceNow` is today's pool price in BNB;
+// the change over a window is against the bucket whose age is nearest to
+// that window, and only if one exists within half the window — a "24h
+// change" measured against a nine-hour-old price would be a lie with a
+// label on it.
+function ledgerStats(ledger, priceNowBnb) {
+  const now = Date.now();
+  const cutoff = now - LEDGER_HOURS * 3600 * 1000;
+  const rows = (ledger || []).filter((x) => x.t >= cutoff).sort((a, b) => a.t - b.t);
+  if (!rows.length) return null;
+  let buys = 0, sells = 0, volBnb = 0, lastTo = 0;
+  for (const r of rows) {
+    if (r.to <= lastTo) continue;       // an overlapping re-read is one observation
+    buys += r.buys; sells += r.sells; volBnb += r.vol_bnb; lastTo = r.to;
+  }
+  const hours = Math.min(LEDGER_HOURS, (now - rows[0].t) / 36e5 + BUCKET_MINUTES / 60);
+  const change = (h) => {
+    const target = now - h * 36e5;
+    let best = null;
+    for (const r of rows) {
+      if (!(r.price_bnb > 0)) continue;
+      if (!best || Math.abs(r.t - target) < Math.abs(best.t - target)) best = r;
+    }
+    if (!best || Math.abs(best.t - target) > (h * 36e5) / 2 || !(priceNowBnb > 0)) return null;
+    return (priceNowBnb / best.price_bnb - 1) * 100;
+  };
+  return { hours, buys, sells, trades: buys + sells, vol_bnb: volBnb, h1: change(1), h6: change(6), h24: change(24), first_at: rows[0].t, last_at: rows[rows.length - 1].t };
 }
 
 // BOBAI/USD for alerts that only need a number. The chain is the source: pair
@@ -368,34 +489,6 @@ async function fetchBobaiPriceUsd() {
   const p = ix ? parseFloat(ix.base_token_price_usd) : NaN;
   if (isSanePrice(p)) { console.log('[price] chain unreadable, using indexer price'); return p; }
   return null;
-}
-
-// Full pool stats for /price. Price, FDV and pool depth from the chain (exact,
-// live); the indexer-only figures (24h change, volume, trade counts) from
-// GeckoTerminal or DexScreener when one of them answers. `indexed` says whether
-// they did, so the command can print n/a instead of a fake zero.
-async function fetchPoolData() {
-  const [pair, ix] = await Promise.all([readPairOnchain(), fetchIndexerStats()]);
-  if (!pair && !ix) {
-    console.log('[price] fetchPoolData: no source answered');
-    return null;
-  }
-  if (!pair) {
-    console.log('[price] fetchPoolData: chain unreadable, indexer figures only');
-    return { ...ix, indexed: true };
-  }
-  let supply = 0;
-  try { supply = await getTotalSupply(); } catch {}
-  return {
-    indexed: Boolean(ix),
-    base_token_price_usd: String(pair.price),
-    base_token_price_native_currency: String(pair.priceInBnb),
-    fdv_usd: supply > 0 ? String(pair.price * supply) : (ix ? ix.fdv_usd : null),
-    reserve_in_usd: String(2 * pair.wbnbReserve * pair.bnbUsd),
-    volume_usd: ix ? ix.volume_usd : {},
-    price_change_percentage: ix ? ix.price_change_percentage : {},
-    transactions: ix ? ix.transactions : {},
-  };
 }
 
 // ==================== WORLDCUP TIPGAME ====================
@@ -1900,23 +1993,24 @@ async function handleCommand(msg, env) {
 
     case '/price':
     case 'price': {
-      const [pool, burn] = await Promise.all([fetchPoolData(), getBurnStats()]);
-      if (!pool) {
-        reply = '⚠️ Could not fetch price data. Try again in a moment!';
+      // Everything from the chain and from the bot's own ledger. No indexer
+      // is asked: a third party's rate limiter must never decide whether the
+      // person who typed /price gets a number.
+      const [pair, burn, ledger] = await Promise.all([readPairOnchain(), getBurnStats(), readSwapLedger(env)]);
+      if (!pair) {
+        reply = '⚠️ Could not read the pool from the chain right now. Try again in a moment!';
         break;
       }
-
-      const price = parseFloat(pool.base_token_price_usd);
-      const priceInBnb = parseFloat(pool.base_token_price_native_currency);
-      const fdv = parseFloat(pool.fdv_usd);
-      const liq = parseFloat(pool.reserve_in_usd);
-      const vol24 = parseFloat(pool.volume_usd?.h24 || 0);
-      const pct = pool.price_change_percentage || {};
-      const txns = pool.transactions?.h24 || {};
-      // Indexer-only figures are unknown when no indexer answered — say so, never show 0.
-      const na = !pool.indexed;
+      let supply = 0;
+      try { supply = await getTotalSupply(); } catch {}
+      const price = pair.price, priceInBnb = pair.priceInBnb;
+      const fdv = supply > 0 ? price * supply : null;
+      const liq = 2 * pair.wbnbReserve * pair.bnbUsd;
+      const st = ledgerStats(ledger, priceInBnb);
       const usdOrNa = (v) => Number.isFinite(v) ? formatUsd(v) : 'n/a';
-      const change = (v) => na ? 'n/a' : priceChangeArrow(v);
+      const change = (v) => v == null ? 'n/a' : priceChangeArrow(v);
+      const hoursTxt = st ? (st.hours >= LEDGER_HOURS - 0.5 ? '24h' : `${st.hours < 1 ? Math.max(1, Math.round(st.hours * 60)) + ' min' : st.hours.toFixed(1).replace(/\.0$/, '') + 'h'}`) : '24h';
+      const volumeUsd = st ? st.vol_bnb * pair.bnbUsd : null;
 
       reply = `📊 <b>BOBAI Live Price</b>
 
@@ -1924,16 +2018,18 @@ async function handleCommand(msg, env) {
 💎 ${priceInBnb.toFixed(10)} BNB
 
 📈 <b>Price Change</b>
-1h: ${change(pct.h1)}  ·  6h: ${change(pct.h6)}  ·  24h: ${change(pct.h24)}
+1h: ${change(st && st.h1)}  ·  6h: ${change(st && st.h6)}  ·  24h: ${change(st && st.h24)}
 
 📊 <b>Market Stats</b>
 🏷 FDV: ${usdOrNa(fdv)}
 💧 Liquidity: ${usdOrNa(liq)}
-📦 24h Volume: ${na ? 'n/a' : usdOrNa(vol24)}
-🔄 24h Trades: ${na ? 'n/a' : `${txns.buys || 0} buys / ${txns.sells || 0} sells`}
+📦 ${hoursTxt} Volume: ${st ? usdOrNa(volumeUsd) : 'n/a'}
+🔄 ${hoursTxt} Trades: ${st ? `${st.buys} buys / ${st.sells} sells` : 'n/a'}
 
 🔥 Burned: ${burn.percent}% (${formatNumber(burn.burnedTokens)} BOBAI)
-${na ? '\n⛓ <i>Price, FDV and liquidity are read from the chain. The 24h figures come from GeckoTerminal or DexScreener, and neither answered just now.</i>\n' : ''}
+
+⛓ <i>Read from the chain by this bot: price and liquidity from the pool's reserves and the Chainlink BNB feed, volume and trades from the pool's own swap events${st ? (st.hours >= LEDGER_HOURS - 0.5 ? ' over the last 24 hours' : ` over the last ${hoursTxt} (the record is still filling)`) : ' (the record starts with the next tick)'}. Nothing here comes from a price site.</i>
+
 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>`;
       break;
     }
@@ -2343,6 +2439,7 @@ export default {
         ok: true,
         chain: pair ? { price_usd: pair.price, bnb_usd: pair.bnbUsd } : null,
         indexers: [gecko, dex],
+        ledger: await (async () => { const l = await readSwapLedger(env); const st = ledgerStats(l, pair ? pair.priceInBnb : 0); return st ? { buckets: l.length, hours: Number(st.hours.toFixed(2)), trades: st.trades, vol_bnb: Number(st.vol_bnb.toFixed(4)), h1: st.h1, h6: st.h6, h24: st.h24 } : { buckets: 0 }; })(),
       }, null, 2), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
     }
 
@@ -2963,6 +3060,10 @@ export default {
     if (new Date().getMinutes() % 10 === 0) {
       try { await env.KV.put('last_cron', new Date().toISOString()); }
       catch (e) { console.error('[HEARTBEAT ERROR]', e.message || e); }
+      // The bot's own 24-hour ledger, one bucket per tenth minute. Its
+      // failure is logged, never fatal: the alerts below do not depend on it.
+      try { await recordSwapBucket(env); }
+      catch (e) { console.error('[LEDGER ERROR]', e.message || e); }
     }
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===

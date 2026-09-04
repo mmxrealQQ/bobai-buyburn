@@ -126,7 +126,7 @@
 
   <section class="sec b-violet" id="steps">
     <div class="sh fi"><h2>What it does <em>every day</em></h2>
-      <p class="sh-sub">At 05:23 UTC, four steps in a fixed order. Each has a floor under which moving the money would cost more than the money, and a day under a floor is recorded as a decision, not an error.</p>
+      <p class="sh-sub">At 05:23 UTC, four steps in a fixed order; every hour at :50, the range check alone. Each has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.</p>
     </div>
     <div class="agt-two">
     <div class="agt-flow fi">
@@ -134,7 +134,7 @@
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>Sweep</b><span>Sells the income (USD1 and $U) for BNB and sends it to the liquidity wallet. Waits until a sweep is worth more than the gas it costs, and never moves more than about fifty dollars in one run.</span></div></li>
         <li><span class="agt-i">2</span><div><b>Collect</b><span>Collects the fees the position has earned, sells the token side for BNB and forwards it to the buyback bot. Small amounts are left to grow.</span></div></li>
-        <li><span class="agt-i">3</span><div><b>Rebalance</b><span>If the price has left the range, the position is re-set around today&rsquo;s price, in the width that held through every tested day of the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a>. Inside the range it does nothing.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour, not once a day. If the price has been outside the range for two hours, the position is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices of the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a> &mdash; re-sets and their cost included. Inside the range it does nothing.</span></div></li>
         <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the same position. The capital only ever grows; it is never withdrawn.</span></div></li>
       </ol>
     </div>
@@ -155,6 +155,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=36" defer></script>
+<script src="app.js?v=37" defer></script>
 </body>
 </html>

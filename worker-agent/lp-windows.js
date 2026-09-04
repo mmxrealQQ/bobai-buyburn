@@ -23,6 +23,8 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS } from '../shared/lp-guards.js';
+
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
 // Hourly windows of ~37 minutes never overlap, so the count is honest by
@@ -102,7 +104,10 @@ export function mergeLogs(a, b) {
 //   - a width that ever failed to hold is not a candidate,
 //   - among the rest, the one with the most net collected wins,
 //   - full range is reported but never picked; it is the floor, not a choice.
-export function verdict(log) {
+//   - the width a re-set USES is the earnings pick: the most net per day when
+//     every width is replayed over the recorded prices with the agent's own
+//     re-set delay and cost (see earningsTest); nothing until a day of prices.
+export function verdict(log, opts = {}) {
   const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block);
   const used = [];
   for (const w of sorted) {
@@ -138,6 +143,15 @@ export function verdict(log) {
   for (const r of rows) r.day = r.width === 'full' ? null : dayHold(used, r.width);
   const dayHolders = safe.filter((r) => r.day && r.day.tested > 0 && r.day.held === r.day.tested);
   const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0);
+  const hoursOfPrices = priced.length >= 2 ? Math.round((Date.parse(priced[priced.length - 1].at) - Date.parse(priced[0].at)) / 36e5) : 0;
+  // THE EARNINGS TEST. The day test names the width that would not have
+  // needed a re-set; it says nothing about what a width earns. A width that
+  // holds every day earns a tenth of one that needs a re-set a week, and a
+  // position exists to earn. So each width is replayed the way the agent
+  // lives it, and the one with the most left after its re-sets is the pick.
+  for (const r of rows) r.earnings = r.width === 'full' ? null : earningsTest(used, r.width, opts);
+  const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
+    .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
   const first = used[0], last = used[used.length - 1];
   return {
     windows: used.length,
@@ -150,9 +164,50 @@ export function verdict(log) {
     rows,
     pick: thin ? null : (safe[0] || null),
     priced_windows: priced.length,
-    hours_of_prices: priced.length >= 2 ? Math.round((Date.parse(priced[priced.length - 1].at) - Date.parse(priced[0].at)) / 36e5) : 0,
-    // The width a re-set uses: best net among those that held every tested day.
+    hours_of_prices: hoursOfPrices,
+    // Best net among the widths that held every tested day — reported, no
+    // longer the width a re-set uses (it was, until 2026-09-04).
     day_pick: thin ? null : (dayHolders[0] || null),
+    // The width a re-set uses: the most net per day over the recorded prices.
+    earnings_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] || null),
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred, at the replay's re-set cost) once the price has been outside for ${RESET_AFTER_HOURS} h — the agent's own delay. Net per day is what is left after the re-sets; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
+  };
+}
+
+// One width, lived through the record. `used` is the non-overlapping window
+// list in block order; only windows that carry a price take part. A window
+// earns for the hour it stands for (its fee row scaled from its own minutes
+// to the time until the next window), never for a gap in the record. The
+// re-set cost is the replay's own assumed cost, median over the windows,
+// unless the caller passes a measured one.
+const MAX_GAP_HOURS = 3;
+const r2 = (x) => Math.round(x * 100) / 100, r4 = (x) => Math.round(x * 10000) / 10000;
+export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null } = {}) {
+  const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0 && (w.rows || []).some((r) => r.width === widthPct));
+  if (priced.length < 2) return null;
+  const costs = priced.map((w) => w.rebalance_cost_usd).filter((c) => typeof c === 'number' && c > 0).sort((a, b) => a - b);
+  const cost = resetCostUsd ?? (costs.length ? costs[Math.floor(costs.length / 2)] : 0.5);
+  const up = 1 + widthPct / 100, down = 1 / up;
+  let centre = priced[0].price, outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0;
+  for (let i = 1; i < priced.length; i++) {
+    const w = priced[i], prev = priced[i - 1];
+    const dtH = Math.min(MAX_GAP_HOURS, (Date.parse(w.at) - Date.parse(prev.at)) / 36e5);
+    if (!(dtH > 0)) continue;
+    const ratio = w.price / centre;
+    if (ratio <= up && ratio >= down) {
+      const row = w.rows.find((r) => r.width === widthPct);
+      fees += (row.fees / ((w.minutes || 37.5) / 60)) * dtH;
+      hoursIn += dtH; outRun = 0;
+    } else {
+      hoursOut += dtH; outRun += dtH;
+      if (outRun >= resetAfterHours) { resets += 1; centre = w.price; outRun = 0; }
+    }
+  }
+  const hours = hoursIn + hoursOut, net = fees - resets * cost;
+  return {
+    hours: r2(hours), hours_in_range: r2(hoursIn), fees_usd: r4(fees),
+    resets, reset_cost_usd: r2(cost), net_usd: r4(net),
+    net_usd_per_day: hours > 0 ? r4(net / (hours / 24)) : null,
   };
 }
 

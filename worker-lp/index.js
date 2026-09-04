@@ -32,9 +32,15 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict } from '../worker-agent/lp-windows.js';
+import { rebalanceWait } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
+// When the agent first saw the price outside the range, so an hourly check
+// can tell "just left" from "gone for two hours". Cleared the moment the
+// price is back inside or the range has been re-set.
+export const OUT_SINCE_KEY = 'lp:out_since';
 const STEPS = ['sweep', 'collect', 'rebalance', 'increase'];
+const DAILY_CRON = '23 5 * * *';
 
 const json = (obj, status = 200) => new Response(JSON.stringify(obj, null, 2), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const account = (key) => privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
@@ -120,21 +126,40 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   });
 
   // 3. rebalance: a position the price has left is re-set around today's
-  //    price, in the width the window record's day test picked. Gated by
-  //    LP_REBALANCE in wrangler.toml: the first re-set is run by hand and
-  //    watched (scripts/lp-agent.mjs --step rebalance --confirm), and only
-  //    then is the cron allowed to do it on its own.
+  //    price, in the width the window record's earnings test picked — the
+  //    width that netted the most per day over the recorded prices, re-sets
+  //    included. Checked every hour, not once a day: a position outside its
+  //    range earns nothing, and the daily tick left it there for up to a day.
+  //    But not on the first hour outside — a price that just left is often
+  //    back on its own, so the agent waits RESET_AFTER_HOURS (the same delay
+  //    the earnings test replays) before paying for a re-set. Gated by
+  //    LP_REBALANCE in wrangler.toml: the first re-set was run by hand and
+  //    watched (2026-09-02), then the cron took over.
   await run('rebalance', async () => {
     const log = await readLpWindows(env);
     const record = log ? verdict(log) : null;
     const plan = await planRebalance(pub, lp.address, { record });
-    if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
-    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, why: 'dry run — would have re-set the range' };
+    const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
+    const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
+    if (plan.summary.in_range) {
+      if (outSince != null) await env.AGENT.delete(OUT_SINCE_KEY);
+      return { ...plan.summary, acted: false, why: plan.no };
+    }
+    if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
+    if (outSince == null) {
+      if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
+      return { ...plan.summary, acted: false, outside_since: at, why: rebalanceWait(null, Date.parse(at)) };
+    }
+    const wait = rebalanceWait(outSince, Date.parse(at));
+    if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
+    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
+    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'dry run — would have re-set the range' };
     try {
-      return { ...plan.summary, acted: true, ...(await executeRebalance(pub, lpWallet(), lp, plan)) };
+      const done = await executeRebalance(pub, lpWallet(), lp, plan);
+      await env.AGENT.delete(OUT_SINCE_KEY);
+      return { ...plan.summary, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+      return { ...plan.summary, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300) };
     }
   });
 
@@ -151,17 +176,28 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   });
 
   entry.why = reasons.join(' · ') || null;
-  return record(env, entry);
+  return record(env, entry, steps.length < STEPS.length);
 }
 
-async function record(env, entry) {
+// `partial` is an hourly range check (or a hand-narrowed run): it becomes
+// `last_check`, and its rebalance step is folded into the daily record so
+// the page and the series see the range as it is now — but the daily
+// record's sweep, collect and increase are not wiped by a run that never
+// looked at them. A full run replaces the daily record as before.
+async function record(env, entry, partial = false) {
   const st = await readState(env);
   // Every real action and every error is kept; quiet days are summarised as
   // the last check so the history is a history of what happened, not of the
   // cron firing.
   if (entry.acted || !entry.ok) st.history = st.history.concat(entry).slice(-200);
-  st.last = entry;
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB and sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); a position the price has left is re-set around today\'s price in the width that held through every tested day of the window record (rebalance); BNB above the reserve grows the same position (increase). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a day under a floor is recorded as a decision, not an error.';
+  st.last_check = entry;
+  if (partial && st.last && st.last.steps) {
+    st.last = { ...st.last, steps: { ...st.last.steps, ...entry.steps }, range_checked_at: entry.at };
+  } else {
+    st.last = entry;
+  }
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB and sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); BNB above the reserve grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.cadence = { daily_utc: '05:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance only' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }
@@ -182,6 +218,9 @@ export default {
     return json({ error: 'not found' }, 404);
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(agentTick(env).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
+    // The daily tick runs all four steps; every other firing is the hourly
+    // range check and runs the rebalance step alone.
+    const steps = event.cron === DAILY_CRON ? STEPS : ['rebalance'];
+    ctx.waitUntil(agentTick(env, { steps }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
   },
 };

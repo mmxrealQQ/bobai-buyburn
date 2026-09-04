@@ -120,9 +120,13 @@ export function sender(pub, wallet, txs, log = () => {}) {
     const hash = req.to
       ? await wallet.sendTransaction({ ...req, gasPrice: price })
       : await wallet.writeContract({ ...req, gasPrice: price });
-    txs.push({ label, hash });
+    const entry = { label, hash };
+    txs.push(entry);
     log(`  ${label}: ${hash}`);
     const r = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
+    // What the transaction really cost, so the record can say what a re-set
+    // costs in measured BNB rather than in the replay's assumption.
+    if (r.gasUsed != null && r.effectiveGasPrice != null) entry.gas_bnb = Number(formatEther(r.gasUsed * r.effectiveGasPrice));
     if (r.status !== 'success') throw new Error(`${label} reverted — stopped before the next step`);
     return r;
   };
@@ -331,13 +335,17 @@ export function ticksAround(tick, widthPct, spacing) {
 }
 
 // `record` is the verdict of the window record (agent.brainonbnb.com/lp/windows
-// or the same function over KV); its day_pick names the width. `widthOverride`
-// is a person's explicit choice from the hand script, and is reported as one.
+// or the same function over KV); its earnings_pick names the width — the one
+// that netted the most per day when every width was replayed over the recorded
+// prices with the agent's own re-set delay and cost. `widthOverride` is a
+// person's explicit choice from the hand script, and is reported as one.
 export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null } = {}) {
   const p = position || (await readPosition(pub, address));
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
-  const width = widthOverride ?? record?.day_pick?.width ?? null;
-  const widthBasis = widthOverride != null ? 'named by hand' : (width != null ? `held every tested day over ${record?.hours_of_prices} h of recorded prices` : null);
+  const pick = record?.earnings_pick || null;
+  const width = widthOverride ?? pick?.width ?? null;
+  const widthBasis = widthOverride != null ? 'named by hand'
+    : (pick ? `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings.net_usd_per_day} a day on $50 after ${pick.earnings.resets} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${pick.earnings.reset_cost_usd} each` : null);
   if (p.positions === 1) {
     poolInfo = await readPool(pub, p.pos);
     spacing = Number(await read(pub, poolInfo.pool, ABI.POOL, 'tickSpacing')) || 1;
@@ -380,6 +388,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange,
       value_bnb: Number(valueBnb.toFixed(6)),
       width_pct: width, width_basis: widthBasis,
+      expected_net_usd_per_day: pick ? pick.earnings.net_usd_per_day : null,
       new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
       trade: trade ? (trade.sell === 'other' ? `sell ${(trade.amount / 1e18).toFixed(6)} of ${other} for WBNB` : `buy the other side with ${(trade.amount / 1e18).toFixed(6)} WBNB`) : null,
     },
@@ -446,7 +455,8 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
   const np = await readPosition(pub, account.address);
-  return { txs, new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null };
+  const gasBnb = txs.reduce((s, t) => s + (t.gas_bnb || 0), 0);
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null };
 }
 
 // --------------------------------------------------------------------------

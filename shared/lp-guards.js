@@ -42,6 +42,16 @@ export const INCREASE_GAS_BUDGET_BNB = 0.001;
 // A re-set of the range is eight transactions, about 0.0008 BNB at 1 gwei;
 // under this much capital that is over 4% of the position for one move.
 export const MIN_REBALANCE_BNB = 0.02;
+// How long the price has to stay outside the range before a re-set is paid
+// for. A price that left a minute ago is often back within the hour, and a
+// re-set then pays for a move the market undid on its own. The agent checks
+// hourly; two checks outside in a row is the trigger. The earnings test in
+// the window record replays every width with this same delay, so the width
+// it picks was picked for the way the agent actually behaves.
+export const RESET_AFTER_HOURS = 2;
+// The earnings test needs this much recorded price before it may pick; a
+// width chosen on six hours of a quiet afternoon is a guess with a number on it.
+export const MIN_HOURS_FOR_EARNINGS = 24;
 
 // state: { positions, liquidity (bigint), owedBnbEquivalent, gasBnb, quoteOffPct }
 // owedBnbEquivalent is what this run would turn into BNB: fees owed by the
@@ -78,17 +88,27 @@ export function refuseSweep(state) {
 }
 
 // state: { positions, inRange, width, hoursOfPrices, valueBnb }
-// width is what the day test in the window record picked, or what a person
-// named by hand; null means the record cannot yet say which width holds a day.
+// width is what the earnings test in the window record picked, or what a
+// person named by hand; null means the record cannot yet say which width earns.
 export function refuseRebalance(state) {
   if (state.positions !== 1) return state.positions === 0
     ? 'this wallet holds no position to re-set'
     : `this wallet holds ${state.positions} positions — which one to re-set is a decision for a person`;
   if (state.inRange) return 'the price is inside the range — nothing to re-set';
   if (state.width == null)
-    return `no width has yet held through every tested day (${state.hoursOfPrices || 0} h of prices recorded, a day is needed). A re-set into a width that only held 37 minutes is how a position pays for a re-set every day. Holding.`;
+    return `no width has yet earned more than its re-sets over the recorded prices (${state.hoursOfPrices || 0} h recorded, ${MIN_HOURS_FOR_EARNINGS} h needed). A re-set into a width that only held 37 minutes is how a position pays for a re-set every day. Holding.`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
     return `the position is worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a re-set would cost more than it is likely to earn back`;
+  return null;
+}
+
+// The wait after the price leaves the range, before a re-set is paid for.
+// outSinceMs is when the agent first saw the price outside (null: this is the
+// first time), nowMs is now. Null means the wait is over and a re-set is due.
+export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
+  if (outSinceMs == null) return `the price has just left the range — waiting ${hours} h in case it comes back on its own`;
+  const h = (nowMs - outSinceMs) / 36e5;
+  if (!(h >= hours)) return `the price has been outside for ${Math.max(0, h).toFixed(1)} h — waiting until ${hours} h before paying for a re-set`;
   return null;
 }
 

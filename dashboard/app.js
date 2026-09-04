@@ -1057,13 +1057,21 @@ function fillLpBlock(){
           waiting ? 'Waiting to be moved: ' + waiting + '. It moves once it is worth more than the gas.' : 'Nothing waiting right now.'));
         rows.push(item('&#9679;', last.acted ? 'Last check: it acted' : 'Last check: nothing to do',
           when + (anyError ? '. One step could not finish; the operator has been told.' : '.')));
+        // The hourly range check, when the record has one: a visitor should
+        // see that the range was looked at an hour ago, not only at 05:23.
+        const chk = rec.last_check, chkRb = chk && chk.steps && chk.steps.rebalance;
+        if(chk && chk.at !== last.at && chkRb){
+          const when2 = String(chk.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
+          rows.push(item('&#9679;', chkRb.acted ? 'Range check: it re-set the range' : 'Range check: nothing to do',
+            when2 + (chkRb.why ? ' — ' + chkRb.why : '') + '.'));
+        }
         list.innerHTML = rows.join('');
-        if(noteEl) noteEl.textContent = 'Runs once a day on its own. The capital stays in the position; only the fees leave it.';
+        if(noteEl) noteEl.textContent = 'The four steps run once a day on their own; the range is checked every hour. The capital stays in the position; only the fees leave it.';
         if(pos) lpLiveRange(pos).then(l => {
           const first = list.querySelector('li b'), sub = list.querySelector('li div span');
           if(!first) return;
           first.textContent = l.inRange ? 'The position is in range and earning'
-            : 'The position is out of range right now — it earns nothing until the agent re-sets it at a 05:23 UTC run';
+            : 'The position is out of range right now — it earns nothing; the hourly check re-sets it once the price has been outside for two hours';
           if(sub) sub.textContent = (sub.textContent || '') + ' · checked on the chain just now: price tick ' + l.tick + ', range ' + l.lo + ' to ' + l.hi + (l.inRange ? '' : '; the record above is from ' + when);
         }).catch(() => {});
       });

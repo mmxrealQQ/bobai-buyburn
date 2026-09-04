@@ -2,14 +2,17 @@ name = "bobai-lp-agent"
 main = "index.js"
 compatibility_date = "2025-01-01"
 
-# Once a day is the cadence the floors were built for: the collect floor is
-# 0.002 BNB of fees, the sweep floor 0.004 BNB of income, and a fifty-dollar
-# position in a 0.05% pool earns the first over days, not hours. Checking
-# hourly would spend RPC on a "nothing to do" answer twenty-three times out of
-# twenty-four. 05:23 UTC is a quiet hour on the chain and shares no minute
-# with the agent worker's own jobs.
+# Once a day for the money steps: the collect floor is 0.002 BNB of fees, the
+# sweep floor 0.004 BNB of income, and a fifty-dollar position in a 0.05% pool
+# earns the first over days, not hours. 05:23 UTC is a quiet hour on the chain
+# and shares no minute with the agent worker's own jobs.
+# Every hour at :50 for the range alone: a position outside its range earns
+# nothing, and the daily tick left it there for up to a day (2026-09-03: out
+# from about 08:30 to the next 05:23). The check reads the position and the
+# pool, and re-sets only once the price has been outside for two hours. :50
+# is after the agent worker's window tick at :30, which the check reads.
 [triggers]
-crons = ["23 5 * * *"]
+crons = ["23 5 * * *", "50 * * * *"]
 
 # The same KV namespace the agent worker reads, so agent.brainonbnb.com can
 # serve /lp/agent from the record this worker writes. This worker itself has

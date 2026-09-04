@@ -32,7 +32,7 @@ import {
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, rebalanceWait, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
 } from '../shared/lp-guards.js';
 
@@ -43,7 +43,7 @@ const stepArg = argOf('--step');
 const ALL = ['sweep', 'collect', 'rebalance', 'increase'];
 const STEPS = stepArg ? [stepArg] : ALL;
 // A width named by a person for the re-set. It is printed as a hand-made
-// choice and never remembered: the record's day test is the standing rule.
+// choice and never remembered: the record's earnings test is the standing rule.
 const WIDTH = argOf('--width') != null ? Number(argOf('--width')) : null;
 if (stepArg && !ALL.includes(stepArg)) {
   console.error(`--step must be one of ${ALL.join(', ')}, not "${stepArg}"`);
@@ -117,11 +117,18 @@ if (SELF) {
     [{ ...healthyRebalance, positions: 0 }, 'no position'],
     [{ ...healthyRebalance, positions: 2 }, 'two positions'],
     [{ ...healthyRebalance, inRange: true }, 'price still inside the range'],
-    [{ ...healthyRebalance, width: null, hoursOfPrices: 6 }, 'no width has held a day yet'],
+    [{ ...healthyRebalance, width: null, hoursOfPrices: 6 }, 'no width has earned its re-sets yet'],
     [{ ...healthyRebalance, valueBnb: 0.005 }, 'position too small to pay for a re-set'],
   ]) check(why, refuseRebalance(state), true);
   check('out of range, a day-tested width, enough capital', refuseRebalance(healthyRebalance), false);
   check(`exactly the floor (${MIN_REBALANCE_BNB})`, refuseRebalance({ ...healthyRebalance, valueBnb: MIN_REBALANCE_BNB }), false);
+  console.log('rebalance wait');
+  const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
+  check('first hour outside: waits', rebalanceWait(null, now), true);
+  check('one hour outside: still waits', rebalanceWait(now - 1 * H, now), true);
+  check('just under the delay: still waits', rebalanceWait(now - (RESET_AFTER_HOURS * H - 60e3), now), true);
+  check(`exactly ${RESET_AFTER_HOURS} h outside: due`, rebalanceWait(now - RESET_AFTER_HOURS * H, now), false);
+  check('a day outside: due', rebalanceWait(now - 24 * H, now), false);
   const t = ticksAround(-59407, 1, 10);
   check('a re-set range sits on the pool\'s grid around the tick', t.tickLower % 10 === 0 && t.tickUpper % 10 === 0 && t.tickLower < -59407 && t.tickUpper > -59407 ? null : `${t.tickLower}…${t.tickUpper}`, false);
   check('and is never wider than the width asked for', (t.tickUpper - t.tickLower) <= 2 * Math.log(1.01) / Math.log(1.0001) ? null : 'wider', false);
@@ -217,7 +224,7 @@ async function main() {
     try {
       const w = await fetch(WINDOWS_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
       record = w.verdict || null;
-      if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
+      if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, earnings pick ${record.earnings_pick ? `±${record.earnings_pick.width}% ($${record.earnings_pick.earnings.net_usd_per_day}/day on $50)` : 'none yet'}, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
     } catch (e) { console.log(`  record unreadable (${e.message}) — only a --width named by hand can re-set today`); }
     const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH });
     const s = plan.summary;

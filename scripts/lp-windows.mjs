@@ -34,7 +34,8 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, MAX_WINDOWS } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, MAX_WINDOWS } from '../worker-agent/lp-windows.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const LOG = path.join(ROOT, 'data', 'lp-windows.json');
@@ -127,6 +128,48 @@ if (SELF_TEST) {
   t('100% in range with 0 crossings is held', windowFromPlan(plan(100, 0), 50).rows[0].held === true);
   t('100% in range but one crossing is NOT held', windowFromPlan(plan(100, 1), 50).rows[0].held === false);
   t('99% in range is NOT held', windowFromPlan(plan(99, 0), 50).rows[0].held === false);
+
+  // earningsTest: each width lived through a price path, hour by hour.
+  // Fee rows are what a centred range of that width earns in a 37.5-min
+  // window: narrow earns more per hour, wide earns less.
+  const H = 3600;
+  const feeRows = [row(1, true, 0.10), row(5, true, 0.03), row(10, true, 0.015)];
+  const pwin = (hourIdx, price, rows = feeRows) => ({ ...win(hourIdx * 1000, hourIdx * 1000 + 500, rows), at: new Date(1_700_000_000_000 + hourIdx * H * 1000).toISOString(), minutes: 37.5, price, rebalance_cost_usd: 0.5 });
+  const flat = Array.from({ length: 30 }, (_, i) => pwin(i, 100));
+  let e1 = earningsTest(flat, 1), e5 = earningsTest(flat, 5);
+  t('a flat price never needs a re-set', e1.resets === 0 && e5.resets === 0);
+  t('… and the narrow width earns the most per day', e1.net_usd_per_day > e5.net_usd_per_day && e1.net_usd_per_day > 0);
+  t('an hour of window fees is scaled from its minutes (0.10 per 37.5 min → 0.16 per hour)', Math.abs(e1.fees_usd / e1.hours - 0.16) < 0.001);
+  // A price that drifts 0.4% every hour leaves a ±1% range every few hours
+  // and a ±5% range twice a day; the narrow width pays for re-sets it cannot
+  // earn back, the wide one keeps most of what it earns.
+  const drift = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.004, i)));
+  e1 = earningsTest(drift, 1); e5 = earningsTest(drift, 5); const e10 = earningsTest(drift, 10);
+  t('a drifting price makes the narrow width re-set again and again', e1.resets > e5.resets && e5.resets >= e10.resets);
+  t('… so the narrow width nets less than a wider one', e1.net_usd_per_day < e5.net_usd_per_day);
+  t('a re-set is only counted after the price has been outside for the delay', (() => {
+    // outside for one hour, then back: no re-set with a 2 h delay
+    const blip = [pwin(0, 100), pwin(1, 103), pwin(2, 100), pwin(3, 100), pwin(4, 100)];
+    return earningsTest(blip, 1, { resetAfterHours: 2 }).resets === 0 && earningsTest(blip, 1, { resetAfterHours: 1 }).resets >= 1;
+  })());
+  t('a measured re-set cost overrides the replay\'s assumption', earningsTest(drift, 1, { resetCostUsd: 5 }).net_usd < earningsTest(drift, 1).net_usd);
+  t('a gap in the record earns nothing for the gap', (() => {
+    const gap = [pwin(0, 100), pwin(1, 100), pwin(20, 100), pwin(21, 100)];
+    return earningsTest(gap, 1).hours <= 1 + 3 + 1 + 0.01;
+  })());
+  t('fewer than two priced windows decide nothing', earningsTest([pwin(0, 100)], 1) === null);
+  // verdict: the earnings pick needs a day of prices and a positive net.
+  const short = { windows: Array.from({ length: 10 }, (_, i) => pwin(i, 100)) };
+  t(`under ${MIN_HOURS_FOR_EARNINGS} h of prices there is no earnings pick`, verdict(short).earnings_pick === null && verdict(short).rows[0].earnings !== null);
+  const dayFlat = { windows: flat };
+  t('a day of flat prices picks the narrowest width', verdict(dayFlat).earnings_pick?.width === 1);
+  const dayDrift = { windows: drift };
+  t('a day of drifting prices picks a wider width than the narrowest', verdict(dayDrift).earnings_pick && verdict(dayDrift).earnings_pick.width > 1);
+  t('a width that nets nothing after its re-sets is never the pick', (() => {
+    const v = verdict({ windows: Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.02, i), [row(1, true, 0.01)])) });
+    return v.earnings_pick === null;
+  })());
+  t(`the earnings rule names the ${RESET_AFTER_HOURS} h delay it replays`, /2 h/.test(verdict(dayFlat).earnings_rule));
 
   console.log(`\n${n - bad.length} of ${n} checks passed`);
   if (bad.length) { bad.forEach((b) => console.log(`  - ${b}`)); process.exitCode = 1; }

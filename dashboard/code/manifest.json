@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4077,
-   "zipBytes": 58247,
-   "txtBytes": 175153,
-   "sha256": "f5df544ee2ae83d7",
+   "lines": 4114,
+   "zipBytes": 59304,
+   "txtBytes": 178446,
+   "sha256": "67bad84381c6e9a5",
    "reqs": [
     {
      "what": "A bot token",
@@ -268,9 +268,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 5343,
-   "zipBytes": 110710,
-   "txtBytes": 330819,
-   "sha256": "fd0a92c916667c91",
+   "zipBytes": 110750,
+   "txtBytes": 330854,
+   "sha256": "2c81c9af95e0a67b",
    "reqs": [
     {
      "what": "A static host",
@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 37,
-   "lines": 9547,
-   "zipBytes": 196497,
-   "txtBytes": 521416,
-   "sha256": "0678c996f237d936",
+   "lines": 9681,
+   "zipBytes": 199870,
+   "txtBytes": 531561,
+   "sha256": "488efc94de21c2c9",
    "reqs": [
     {
      "what": "A wallet to be paid into",

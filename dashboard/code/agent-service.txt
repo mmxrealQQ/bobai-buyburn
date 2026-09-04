@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 9547 lines.
+# one fetch. 37 files, 9681 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -191,7 +191,7 @@ import {
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, rebalanceWait, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
 } from '../shared/lp-guards.js';
 
@@ -202,7 +202,7 @@ const stepArg = argOf('--step');
 const ALL = ['sweep', 'collect', 'rebalance', 'increase'];
 const STEPS = stepArg ? [stepArg] : ALL;
 // A width named by a person for the re-set. It is printed as a hand-made
-// choice and never remembered: the record's day test is the standing rule.
+// choice and never remembered: the record's earnings test is the standing rule.
 const WIDTH = argOf('--width') != null ? Number(argOf('--width')) : null;
 if (stepArg && !ALL.includes(stepArg)) {
   console.error(`--step must be one of ${ALL.join(', ')}, not "${stepArg}"`);
@@ -276,11 +276,18 @@ if (SELF) {
     [{ ...healthyRebalance, positions: 0 }, 'no position'],
     [{ ...healthyRebalance, positions: 2 }, 'two positions'],
     [{ ...healthyRebalance, inRange: true }, 'price still inside the range'],
-    [{ ...healthyRebalance, width: null, hoursOfPrices: 6 }, 'no width has held a day yet'],
+    [{ ...healthyRebalance, width: null, hoursOfPrices: 6 }, 'no width has earned its re-sets yet'],
     [{ ...healthyRebalance, valueBnb: 0.005 }, 'position too small to pay for a re-set'],
   ]) check(why, refuseRebalance(state), true);
   check('out of range, a day-tested width, enough capital', refuseRebalance(healthyRebalance), false);
   check(`exactly the floor (${MIN_REBALANCE_BNB})`, refuseRebalance({ ...healthyRebalance, valueBnb: MIN_REBALANCE_BNB }), false);
+  console.log('rebalance wait');
+  const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
+  check('first hour outside: waits', rebalanceWait(null, now), true);
+  check('one hour outside: still waits', rebalanceWait(now - 1 * H, now), true);
+  check('just under the delay: still waits', rebalanceWait(now - (RESET_AFTER_HOURS * H - 60e3), now), true);
+  check(`exactly ${RESET_AFTER_HOURS} h outside: due`, rebalanceWait(now - RESET_AFTER_HOURS * H, now), false);
+  check('a day outside: due', rebalanceWait(now - 24 * H, now), false);
   const t = ticksAround(-59407, 1, 10);
   check('a re-set range sits on the pool\'s grid around the tick', t.tickLower % 10 === 0 && t.tickUpper % 10 === 0 && t.tickLower < -59407 && t.tickUpper > -59407 ? null : `${t.tickLower}…${t.tickUpper}`, false);
   check('and is never wider than the width asked for', (t.tickUpper - t.tickLower) <= 2 * Math.log(1.01) / Math.log(1.0001) ? null : 'wider', false);
@@ -376,7 +383,7 @@ async function main() {
     try {
       const w = await fetch(WINDOWS_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
       record = w.verdict || null;
-      if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
+      if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, earnings pick ${record.earnings_pick ? `±${record.earnings_pick.width}% ($${record.earnings_pick.earnings.net_usd_per_day}/day on $50)` : 'none yet'}, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
     } catch (e) { console.log(`  record unreadable (${e.message}) — only a --width named by hand can re-set today`); }
     const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH });
     const s = plan.summary;
@@ -843,9 +850,13 @@ export function sender(pub, wallet, txs, log = () => {}) {
     const hash = req.to
       ? await wallet.sendTransaction({ ...req, gasPrice: price })
       : await wallet.writeContract({ ...req, gasPrice: price });
-    txs.push({ label, hash });
+    const entry = { label, hash };
+    txs.push(entry);
     log(`  ${label}: ${hash}`);
     const r = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
+    // What the transaction really cost, so the record can say what a re-set
+    // costs in measured BNB rather than in the replay's assumption.
+    if (r.gasUsed != null && r.effectiveGasPrice != null) entry.gas_bnb = Number(formatEther(r.gasUsed * r.effectiveGasPrice));
     if (r.status !== 'success') throw new Error(`${label} reverted — stopped before the next step`);
     return r;
   };
@@ -1054,13 +1065,17 @@ export function ticksAround(tick, widthPct, spacing) {
 }
 
 // `record` is the verdict of the window record (agent.brainonbnb.com/lp/windows
-// or the same function over KV); its day_pick names the width. `widthOverride`
-// is a person's explicit choice from the hand script, and is reported as one.
+// or the same function over KV); its earnings_pick names the width — the one
+// that netted the most per day when every width was replayed over the recorded
+// prices with the agent's own re-set delay and cost. `widthOverride` is a
+// person's explicit choice from the hand script, and is reported as one.
 export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null } = {}) {
   const p = position || (await readPosition(pub, address));
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
-  const width = widthOverride ?? record?.day_pick?.width ?? null;
-  const widthBasis = widthOverride != null ? 'named by hand' : (width != null ? `held every tested day over ${record?.hours_of_prices} h of recorded prices` : null);
+  const pick = record?.earnings_pick || null;
+  const width = widthOverride ?? pick?.width ?? null;
+  const widthBasis = widthOverride != null ? 'named by hand'
+    : (pick ? `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings.net_usd_per_day} a day on $50 after ${pick.earnings.resets} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${pick.earnings.reset_cost_usd} each` : null);
   if (p.positions === 1) {
     poolInfo = await readPool(pub, p.pos);
     spacing = Number(await read(pub, poolInfo.pool, ABI.POOL, 'tickSpacing')) || 1;
@@ -1103,6 +1118,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange,
       value_bnb: Number(valueBnb.toFixed(6)),
       width_pct: width, width_basis: widthBasis,
+      expected_net_usd_per_day: pick ? pick.earnings.net_usd_per_day : null,
       new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
       trade: trade ? (trade.sell === 'other' ? `sell ${(trade.amount / 1e18).toFixed(6)} of ${other} for WBNB` : `buy the other side with ${(trade.amount / 1e18).toFixed(6)} WBNB`) : null,
     },
@@ -1169,7 +1185,8 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
   const np = await readPosition(pub, account.address);
-  return { txs, new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null };
+  const gasBnb = txs.reduce((s, t) => s + (t.gas_bnb || 0), 0);
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null };
 }
 
 // --------------------------------------------------------------------------
@@ -1296,6 +1313,16 @@ export const INCREASE_GAS_BUDGET_BNB = 0.001;
 // A re-set of the range is eight transactions, about 0.0008 BNB at 1 gwei;
 // under this much capital that is over 4% of the position for one move.
 export const MIN_REBALANCE_BNB = 0.02;
+// How long the price has to stay outside the range before a re-set is paid
+// for. A price that left a minute ago is often back within the hour, and a
+// re-set then pays for a move the market undid on its own. The agent checks
+// hourly; two checks outside in a row is the trigger. The earnings test in
+// the window record replays every width with this same delay, so the width
+// it picks was picked for the way the agent actually behaves.
+export const RESET_AFTER_HOURS = 2;
+// The earnings test needs this much recorded price before it may pick; a
+// width chosen on six hours of a quiet afternoon is a guess with a number on it.
+export const MIN_HOURS_FOR_EARNINGS = 24;
 
 // state: { positions, liquidity (bigint), owedBnbEquivalent, gasBnb, quoteOffPct }
 // owedBnbEquivalent is what this run would turn into BNB: fees owed by the
@@ -1332,17 +1359,27 @@ export function refuseSweep(state) {
 }
 
 // state: { positions, inRange, width, hoursOfPrices, valueBnb }
-// width is what the day test in the window record picked, or what a person
-// named by hand; null means the record cannot yet say which width holds a day.
+// width is what the earnings test in the window record picked, or what a
+// person named by hand; null means the record cannot yet say which width earns.
 export function refuseRebalance(state) {
   if (state.positions !== 1) return state.positions === 0
     ? 'this wallet holds no position to re-set'
     : `this wallet holds ${state.positions} positions — which one to re-set is a decision for a person`;
   if (state.inRange) return 'the price is inside the range — nothing to re-set';
   if (state.width == null)
-    return `no width has yet held through every tested day (${state.hoursOfPrices || 0} h of prices recorded, a day is needed). A re-set into a width that only held 37 minutes is how a position pays for a re-set every day. Holding.`;
+    return `no width has yet earned more than its re-sets over the recorded prices (${state.hoursOfPrices || 0} h recorded, ${MIN_HOURS_FOR_EARNINGS} h needed). A re-set into a width that only held 37 minutes is how a position pays for a re-set every day. Holding.`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
     return `the position is worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a re-set would cost more than it is likely to earn back`;
+  return null;
+}
+
+// The wait after the price leaves the range, before a re-set is paid for.
+// outSinceMs is when the agent first saw the price outside (null: this is the
+// first time), nowMs is now. Null means the wait is over and a re-set is due.
+export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
+  if (outSinceMs == null) return `the price has just left the range — waiting ${hours} h in case it comes back on its own`;
+  const h = (nowMs - outSinceMs) / 36e5;
+  if (!(h >= hours)) return `the price has been outside for ${Math.max(0, h).toFixed(1)} h — waiting until ${hours} h before paying for a re-set`;
   return null;
 }
 
@@ -5367,7 +5404,7 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
       const stepRows = [
         ...sweeps.map((s) => ({ name: `Sweep — ${s.source || 'income'} wallet`, acted: !!s.acted, err: s.error, why: s.why, detail: s.balance != null ? `${f(s.balance, 4)} ${s.token || ''} waiting${s.bnb_equivalent != null ? `, worth ${f(s.bnb_equivalent, 6)} BNB` : ''}` : '' })),
         { name: 'Collect — the position\'s fees', acted: !!c.acted, err: c.error, why: c.why, detail: c.owed ? `owed right now: ${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)}` : '' },
-        { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '' },
+        { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `, width ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : '') + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
         { name: 'Increase — grow the position', acted: !!inc.acted, err: inc.error, why: inc.why, detail: inc.wallet_bnb != null ? `${f(inc.wallet_bnb, 5)} BNB in the wallet, ${f(inc.spendable_bnb, 5)} above the reserve` : '' },
       ].filter((r) => r.why || r.err || r.detail);
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
@@ -5738,7 +5775,7 @@ ${histRows.some((r) => !r.parts.length && r.errs.length) ? `<h2>Runs that failed
         summary: lpSeriesSummary(series),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',
-        cadence: 'daily, after the 05:23 UTC run',
+        cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour and a re-set shows in the record as it happens',
       }, 200, { 'Cache-Control': 'public, max-age=300' });
     }
     if (path === '/run-lp-series' && request.method === 'POST') {
@@ -6052,7 +6089,7 @@ export async function lpPositionPlan(params = {}, env = null) {
     ...facts,
     collect: { pays_for_gas: collectPays, floor_bnb: 0.002 },
     rebalance: rb, increase: ic,
-    width_record: record ? { width_pct: record.day_pick?.width ?? null, hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,
+    width_record: record ? { width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,
     verdict: lines.join(' '),
     what_this_is_not: 'An execution. This agent signs nothing on your position; it tells you what it would do, from the same code that runs its own. Measurement, not advice.',
     measured_at: new Date().toISOString(),
@@ -6316,6 +6353,8 @@ export async function lpTierPlan(input = {}) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS } from '../shared/lp-guards.js';
+
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
 // Hourly windows of ~37 minutes never overlap, so the count is honest by
@@ -6395,7 +6434,10 @@ export function mergeLogs(a, b) {
 //   - a width that ever failed to hold is not a candidate,
 //   - among the rest, the one with the most net collected wins,
 //   - full range is reported but never picked; it is the floor, not a choice.
-export function verdict(log) {
+//   - the width a re-set USES is the earnings pick: the most net per day when
+//     every width is replayed over the recorded prices with the agent's own
+//     re-set delay and cost (see earningsTest); nothing until a day of prices.
+export function verdict(log, opts = {}) {
   const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block);
   const used = [];
   for (const w of sorted) {
@@ -6431,6 +6473,15 @@ export function verdict(log) {
   for (const r of rows) r.day = r.width === 'full' ? null : dayHold(used, r.width);
   const dayHolders = safe.filter((r) => r.day && r.day.tested > 0 && r.day.held === r.day.tested);
   const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0);
+  const hoursOfPrices = priced.length >= 2 ? Math.round((Date.parse(priced[priced.length - 1].at) - Date.parse(priced[0].at)) / 36e5) : 0;
+  // THE EARNINGS TEST. The day test names the width that would not have
+  // needed a re-set; it says nothing about what a width earns. A width that
+  // holds every day earns a tenth of one that needs a re-set a week, and a
+  // position exists to earn. So each width is replayed the way the agent
+  // lives it, and the one with the most left after its re-sets is the pick.
+  for (const r of rows) r.earnings = r.width === 'full' ? null : earningsTest(used, r.width, opts);
+  const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
+    .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
   const first = used[0], last = used[used.length - 1];
   return {
     windows: used.length,
@@ -6443,9 +6494,50 @@ export function verdict(log) {
     rows,
     pick: thin ? null : (safe[0] || null),
     priced_windows: priced.length,
-    hours_of_prices: priced.length >= 2 ? Math.round((Date.parse(priced[priced.length - 1].at) - Date.parse(priced[0].at)) / 36e5) : 0,
-    // The width a re-set uses: best net among those that held every tested day.
+    hours_of_prices: hoursOfPrices,
+    // Best net among the widths that held every tested day — reported, no
+    // longer the width a re-set uses (it was, until 2026-09-04).
     day_pick: thin ? null : (dayHolders[0] || null),
+    // The width a re-set uses: the most net per day over the recorded prices.
+    earnings_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] || null),
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred, at the replay's re-set cost) once the price has been outside for ${RESET_AFTER_HOURS} h — the agent's own delay. Net per day is what is left after the re-sets; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
+  };
+}
+
+// One width, lived through the record. `used` is the non-overlapping window
+// list in block order; only windows that carry a price take part. A window
+// earns for the hour it stands for (its fee row scaled from its own minutes
+// to the time until the next window), never for a gap in the record. The
+// re-set cost is the replay's own assumed cost, median over the windows,
+// unless the caller passes a measured one.
+const MAX_GAP_HOURS = 3;
+const r2 = (x) => Math.round(x * 100) / 100, r4 = (x) => Math.round(x * 10000) / 10000;
+export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null } = {}) {
+  const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0 && (w.rows || []).some((r) => r.width === widthPct));
+  if (priced.length < 2) return null;
+  const costs = priced.map((w) => w.rebalance_cost_usd).filter((c) => typeof c === 'number' && c > 0).sort((a, b) => a - b);
+  const cost = resetCostUsd ?? (costs.length ? costs[Math.floor(costs.length / 2)] : 0.5);
+  const up = 1 + widthPct / 100, down = 1 / up;
+  let centre = priced[0].price, outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0;
+  for (let i = 1; i < priced.length; i++) {
+    const w = priced[i], prev = priced[i - 1];
+    const dtH = Math.min(MAX_GAP_HOURS, (Date.parse(w.at) - Date.parse(prev.at)) / 36e5);
+    if (!(dtH > 0)) continue;
+    const ratio = w.price / centre;
+    if (ratio <= up && ratio >= down) {
+      const row = w.rows.find((r) => r.width === widthPct);
+      fees += (row.fees / ((w.minutes || 37.5) / 60)) * dtH;
+      hoursIn += dtH; outRun = 0;
+    } else {
+      hoursOut += dtH; outRun += dtH;
+      if (outRun >= resetAfterHours) { resets += 1; centre = w.price; outRun = 0; }
+    }
+  }
+  const hours = hoursIn + hoursOut, net = fees - resets * cost;
+  return {
+    hours: r2(hours), hours_in_range: r2(hoursIn), fees_usd: r4(fees),
+    resets, reset_cost_usd: r2(cost), net_usd: r4(net),
+    net_usd_per_day: hours > 0 ? r4(net / (hours / 24)) : null,
   };
 }
 
@@ -9536,9 +9628,15 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict } from '../worker-agent/lp-windows.js';
+import { rebalanceWait } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
+// When the agent first saw the price outside the range, so an hourly check
+// can tell "just left" from "gone for two hours". Cleared the moment the
+// price is back inside or the range has been re-set.
+export const OUT_SINCE_KEY = 'lp:out_since';
 const STEPS = ['sweep', 'collect', 'rebalance', 'increase'];
+const DAILY_CRON = '23 5 * * *';
 
 const json = (obj, status = 200) => new Response(JSON.stringify(obj, null, 2), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const account = (key) => privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
@@ -9624,21 +9722,40 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   });
 
   // 3. rebalance: a position the price has left is re-set around today's
-  //    price, in the width the window record's day test picked. Gated by
-  //    LP_REBALANCE in wrangler.toml: the first re-set is run by hand and
-  //    watched (scripts/lp-agent.mjs --step rebalance --confirm), and only
-  //    then is the cron allowed to do it on its own.
+  //    price, in the width the window record's earnings test picked — the
+  //    width that netted the most per day over the recorded prices, re-sets
+  //    included. Checked every hour, not once a day: a position outside its
+  //    range earns nothing, and the daily tick left it there for up to a day.
+  //    But not on the first hour outside — a price that just left is often
+  //    back on its own, so the agent waits RESET_AFTER_HOURS (the same delay
+  //    the earnings test replays) before paying for a re-set. Gated by
+  //    LP_REBALANCE in wrangler.toml: the first re-set was run by hand and
+  //    watched (2026-09-02), then the cron took over.
   await run('rebalance', async () => {
     const log = await readLpWindows(env);
     const record = log ? verdict(log) : null;
     const plan = await planRebalance(pub, lp.address, { record });
-    if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
-    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, why: 'dry run — would have re-set the range' };
+    const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
+    const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
+    if (plan.summary.in_range) {
+      if (outSince != null) await env.AGENT.delete(OUT_SINCE_KEY);
+      return { ...plan.summary, acted: false, why: plan.no };
+    }
+    if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
+    if (outSince == null) {
+      if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
+      return { ...plan.summary, acted: false, outside_since: at, why: rebalanceWait(null, Date.parse(at)) };
+    }
+    const wait = rebalanceWait(outSince, Date.parse(at));
+    if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
+    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
+    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'dry run — would have re-set the range' };
     try {
-      return { ...plan.summary, acted: true, ...(await executeRebalance(pub, lpWallet(), lp, plan)) };
+      const done = await executeRebalance(pub, lpWallet(), lp, plan);
+      await env.AGENT.delete(OUT_SINCE_KEY);
+      return { ...plan.summary, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+      return { ...plan.summary, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300) };
     }
   });
 
@@ -9655,17 +9772,28 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   });
 
   entry.why = reasons.join(' · ') || null;
-  return record(env, entry);
+  return record(env, entry, steps.length < STEPS.length);
 }
 
-async function record(env, entry) {
+// `partial` is an hourly range check (or a hand-narrowed run): it becomes
+// `last_check`, and its rebalance step is folded into the daily record so
+// the page and the series see the range as it is now — but the daily
+// record's sweep, collect and increase are not wiped by a run that never
+// looked at them. A full run replaces the daily record as before.
+async function record(env, entry, partial = false) {
   const st = await readState(env);
   // Every real action and every error is kept; quiet days are summarised as
   // the last check so the history is a history of what happened, not of the
   // cron firing.
   if (entry.acted || !entry.ok) st.history = st.history.concat(entry).slice(-200);
-  st.last = entry;
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB and sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); a position the price has left is re-set around today\'s price in the width that held through every tested day of the window record (rebalance); BNB above the reserve grows the same position (increase). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a day under a floor is recorded as a decision, not an error.';
+  st.last_check = entry;
+  if (partial && st.last && st.last.steps) {
+    st.last = { ...st.last, steps: { ...st.last.steps, ...entry.steps }, range_checked_at: entry.at };
+  } else {
+    st.last = entry;
+  }
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB and sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); BNB above the reserve grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.cadence = { daily_utc: '05:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance only' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }
@@ -9686,7 +9814,10 @@ export default {
     return json({ error: 'not found' }, 404);
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(agentTick(env).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
+    // The daily tick runs all four steps; every other firing is the hourly
+    // range check and runs the rebalance step alone.
+    const steps = event.cron === DAILY_CRON ? STEPS : ['rebalance'];
+    ctx.waitUntil(agentTick(env, { steps }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
   },
 };
 
@@ -9709,14 +9840,17 @@ name = "bobai-lp-agent"
 main = "index.js"
 compatibility_date = "2025-01-01"
 
-# Once a day is the cadence the floors were built for: the collect floor is
-# 0.002 BNB of fees, the sweep floor 0.004 BNB of income, and a fifty-dollar
-# position in a 0.05% pool earns the first over days, not hours. Checking
-# hourly would spend RPC on a "nothing to do" answer twenty-three times out of
-# twenty-four. 05:23 UTC is a quiet hour on the chain and shares no minute
-# with the agent worker's own jobs.
+# Once a day for the money steps: the collect floor is 0.002 BNB of fees, the
+# sweep floor 0.004 BNB of income, and a fifty-dollar position in a 0.05% pool
+# earns the first over days, not hours. 05:23 UTC is a quiet hour on the chain
+# and shares no minute with the agent worker's own jobs.
+# Every hour at :50 for the range alone: a position outside its range earns
+# nothing, and the daily tick left it there for up to a day (2026-09-03: out
+# from about 08:30 to the next 05:23). The check reads the position and the
+# pool, and re-sets only once the price has been outside for two hours. :50
+# is after the agent worker's window tick at :30, which the check reads.
 [triggers]
-crons = ["23 5 * * *"]
+crons = ["23 5 * * *", "50 * * * *"]
 
 # The same KV namespace the agent worker reads, so agent.brainonbnb.com can
 # serve /lp/agent from the record this worker writes. This worker itself has

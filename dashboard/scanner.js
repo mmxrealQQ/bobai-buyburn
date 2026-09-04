@@ -51,7 +51,7 @@ const costInWindows=(cost,fees)=>{
 // Two decimals lie at both ends: 99.998% burned rounds to a flat "100.00%",
 // claiming more than the chain says, and a real 0.002% rounds to "0.00%",
 // claiming it is not there. A sell tax of 4.45% must never print as "4.5%".
-const pc=(v,d=2)=>v==null?'—':v>0&&v<0.01?'<0.01%':(v>=99.995&&v<100)?v.toFixed(3)+'%':v.toFixed(d)+'%';
+const pc=(v,d=2)=>v==null?'—':v>0&&v<0.01?'<0.01%':(v>=99.995&&v<100)?'>99.99%':v.toFixed(d)+'%';
 const signed=v=>v==null?'—':(v<0?'':'+')+(Math.abs(v)<0.005?'0.00':v.toFixed(2))+'%';
 function el(tag,cls,text){const e=document.createElement(tag);
   if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
@@ -501,7 +501,7 @@ function verdictCard(d,pool,gp,gpOk,tax){
     const tone=toll>0?(worst<=toll*1.5?'good':worst<=toll*3?'mid':'bad'):'mid';
     line(tone,'A $'+nf(ref.usd)+' trade costs you '+ref.buyCost.toFixed(1)+'% to buy and '+ref.sellCost.toFixed(1)+'% to sell.',
       'That is the whole cost: the pool fee, any transfer tax, and how far your own trade moves the price. '
-      +(toll>0?'About '+toll.toFixed(toll<0.1?2:1)+'% of it is unavoidable at any size in this pool; the rest is depth.'
+      +(toll>0?'About '+toll.toFixed(toll<1?2:1)+'% of it is unavoidable at any size in this pool; the rest is depth.'
              :'Round trip, that is about '+(ref.buyCost+ref.sellCost).toFixed(1)+'% before the price moves at all.'));
   }else{
     line('unknown','A trade of this size could not be priced.',
@@ -561,7 +561,7 @@ function verdictCard(d,pool,gp,gpOk,tax){
         // thousand, and those are very different risks. Saying "somebody can
         // pull this" here would be a claim built on the half we could not read.
         line('unknown','The liquidity is not burned, and we could not see who holds it.',
-          pc(free)+' of the LP is withdrawable in principle — that part is read from the chain. The holder list comes from GoPlus, which did not answer for this pool, so whether that is one wallet or thousands is unknown rather than fine.');
+          pc(free)+' of the LP is withdrawable in principle — that part is read from the chain. The holder list comes from GoPlus, which '+(gpOk?'lists no holders for this pool':'did not answer')+', so whether that is one wallet or thousands is unknown rather than fine.');
       }
     }else{
       line('mid','Part of the liquidity can still be withdrawn.',
@@ -903,7 +903,7 @@ function render(d){
     // under $606 states a number that is not the one used.
     if(hidden>0)ov.appendChild(el('p','cd-foot',hidden+' further pool'+(hidden===1?'':'s')+
       ' hold'+(hidden===1?'s':'')+' less than '+usd(dustLine)+' and '+(hidden===1?'is':'are')+
-      ' not listed — under a thousandth of the pool above, which is not a place anyone trades.'));
+      ' not listed — under a thousandth of the hard BNB backing above, which is not a place anyone trades.'));
     o.appendChild(ov);
   }else if((d.others||[]).length){
     o.appendChild(card('No other venue worth naming',

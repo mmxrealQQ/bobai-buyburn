@@ -34,9 +34,12 @@ export const MIN_SWEEP_GAS_BNB = 0.0005;
 export const MAX_SWEEP_USD = 50;
 // Capital under this stays as BNB in the wallet: growing the position is
 // three to four transactions (wrap, swap, increase, unwrap; approvals only
-// when the allowance is short), and 0.01 BNB is where that gas, priced at
-// 1 gwei, falls well under 1%.
-export const MIN_INCREASE_BNB = 0.01;
+// when the allowance is short). Was 0.01 while the gas was assumed at 1 gwei;
+// measured on 2026-09-04 the eight-transaction re-set cost 0.000075 BNB, so
+// four transactions are about 0.00004 BNB and 0.005 BNB is where that stays
+// under 1%. Capital idling in the wallet earns nothing; since the collect
+// keeps half of the fees as capital, the floor decides how soon they earn.
+export const MIN_INCREASE_BNB = 0.005;
 // Kept out of the amount that goes into the position, so the increase itself
 // never spends the reserve.
 export const INCREASE_GAS_BUDGET_BNB = 0.001;

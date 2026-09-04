@@ -183,7 +183,7 @@ if (SELF) {
   for (const [state, why] of [
     [{ ...healthyIncrease, positions: 0 }, 'no position'],
     [{ ...healthyIncrease, positions: 2 }, 'two positions'],
-    [{ ...healthyIncrease, spendableBnb: 0.005 }, 'capital under the floor'],
+    [{ ...healthyIncrease, spendableBnb: MIN_INCREASE_BNB / 2 }, 'capital under the floor'],
     [{ ...healthyIncrease, spendableBnb: 0 }, 'nothing above the reserve'],
     [{ ...healthyIncrease, inRange: false }, 'price outside the range'],
   ]) check(why, refuseIncrease(state), true);

@@ -1058,12 +1058,12 @@ function fillLpBlock(){
         rows.push(item('&#9679;',
           pos ? (inRange === false ? 'The position is out of range — waiting for a re-set' : 'The position is in range and earning') : 'No position open',
           pos ? 'PancakeSwap V3 position #' + pos + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : ''));
-        rows.push(item('&#9679;', 'Fees collected so far: ' + f(fees, 5) + ' BNB — ' + f(forwarded, 5) + ' to the buyback bot, ' + f(kept, 5) + ' kept as capital',
+        rows.push(item('&#9679;', fees > 0 ? 'Fees collected so far: ' + f(fees, 5) + ' BNB — ' + f(forwarded, 5) + ' to the buyback bot, ' + f(kept, 5) + ' kept as capital' : 'No fees collected yet',
           (c.owed ? 'Owed right now: ' + f(c.owed.bnb_equivalent, 6) + ' BNB. Small amounts are left to grow until collecting them beats the gas. ' : '')
           + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : '')));
-        rows.push(item('&#9679;', 'Income already swept in as capital: ' + f(swept, 5) + ' BNB' + (fout.into_position_bnb ? ' — ' + f(fout.into_position_bnb, 5) + ' BNB put into the position so far' : ''),
+        rows.push(item('&#9679;', swept > 0 ? 'Income swept in as capital: ' + f(swept, 5) + ' BNB' + (fout.into_position_bnb ? ' — ' + f(fout.into_position_bnb, 5) + ' BNB put into the position so far' : '') : 'No income swept in yet',
           (waiting ? 'Waiting to be moved: ' + waiting + '. It moves once it is worth more than the gas.' : 'Nothing waiting right now.')
-          + (flow.gas && flow.gas.transactions ? ' All of it cost ' + f(flow.gas.bnb, 5) + ' BNB of gas over ' + flow.gas.transactions + ' transactions.' : '')));
+          + (flow.gas && flow.gas.transactions ? ' The agent has sent ' + flow.gas.transactions + ' transactions so far, for ' + f(flow.gas.bnb, 6) + ' BNB of gas.' : '')));
         rows.push(item('&#9679;', last.acted ? 'Last check: it acted' : 'Last check: nothing to do',
           when + (anyError ? '. One step could not finish; the operator has been told.' : '.')));
         // The hourly range check, when the record has one: a visitor should

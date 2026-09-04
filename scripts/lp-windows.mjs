@@ -34,7 +34,7 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, MAX_WINDOWS } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, measuredResetCost, MAX_WINDOWS } from '../worker-agent/lp-windows.js';
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
@@ -170,6 +170,21 @@ if (SELF_TEST) {
     return v.earnings_pick === null;
   })());
   t(`the earnings rule names the ${RESET_AFTER_HOURS} h delay it replays`, /2 h/.test(verdict(dayFlat).earnings_rule));
+  // The measured re-set cost, both ways: only a re-set that acted, did not
+  // error and recorded gas counts, the newest one wins, and without one the
+  // verdict says the cost is assumed.
+  const rec = { history: [
+    { at: '2026-09-02T17:30:00Z', steps: { rebalance: { acted: true, gas_bnb: 0.0004, txs: new Array(9) } } },
+    { at: '2026-09-04T07:50:00Z', steps: { rebalance: { acted: true, gas_bnb: 0.0002, txs: new Array(5) } } },
+    { at: '2026-09-05T07:50:00Z', steps: { rebalance: { acted: true, error: 'reverted', gas_bnb: 0.0001, txs: new Array(1) } } },
+  ] };
+  const mc = measuredResetCost(rec, 700);
+  t('the newest clean re-set is the measured cost', mc && mc.gas_bnb === 0.0002 && mc.usd === 0.14 && mc.transactions === 5);
+  t('a re-set that errored is not a cost measurement', mc.at === '2026-09-04T07:50:00Z');
+  t('no re-set on record means no measured cost', measuredResetCost({ history: [] }, 700) === null && measuredResetCost(null, 700) === null);
+  t('no BNB price means no measured cost', measuredResetCost(rec, null) === null);
+  t('the verdict charges the measured cost when given one', verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.usd === 0.14 && /measured/.test(verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.basis));
+  t('… and says the cost is assumed when not', /assumed/.test(verdict(dayFlat).reset_cost.basis));
 
   console.log(`\n${n - bad.length} of ${n} checks passed`);
   if (bad.length) { bad.forEach((b) => console.log(`  - ${b}`)); process.exitCode = 1; }

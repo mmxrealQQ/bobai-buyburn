@@ -31,7 +31,7 @@ import {
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
-import { readLpWindows, verdict } from '../worker-agent/lp-windows.js';
+import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
 import { rebalanceWait } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
@@ -135,7 +135,14 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   //    watched (2026-09-02), then the cron took over.
   await run('rebalance', async () => {
     const log = await readLpWindows(env);
-    const record = log ? verdict(log) : null;
+    // The width is picked with the cost the agent really pays, once it has
+    // paid one: the last re-set's gas from its own record, in today's dollars.
+    let costOpts = {};
+    try {
+      const m = measuredResetCost(await readState(env), (await readBnbUsd(pub)).bnbUsd);
+      if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB` };
+    } catch { /* the replay's assumption stands */ }
+    const record = log ? verdict(log, costOpts) : null;
     const plan = await planRebalance(pub, lp.address, { record });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;

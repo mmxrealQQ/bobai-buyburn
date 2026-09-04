@@ -41,7 +41,7 @@ import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
-import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict } from './lp-windows.js';
+import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost } from './lp-windows.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
@@ -1195,7 +1195,15 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
     if (path === '/lp/windows') {
       const log = await readLpWindows(env);
       if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
-      return json({ ...log, verdict: lpVerdict(log), cadence: 'hourly',
+      // The re-set cost the verdict charges is the agent's own last one when
+      // there is one — the same figure worker-lp uses, from the same record.
+      let costOpts = {};
+      try {
+        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+        const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
+        if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB in ${m.transactions ?? '?'} transactions` };
+      } catch { /* the replay's assumption stands */ }
+      return json({ ...log, verdict: lpVerdict(log, costOpts), cadence: 'hourly',
         note: 'Every entry is one replay of pancakeswap_range_plan over ~37 minutes of live chain, recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
     }
 

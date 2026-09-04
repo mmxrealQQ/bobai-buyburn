@@ -170,8 +170,26 @@ export function verdict(log, opts = {}) {
     day_pick: thin ? null : (dayHolders[0] || null),
     // The width a re-set uses: the most net per day over the recorded prices.
     earnings_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] || null),
+    reset_cost: opts.resetCostUsd != null
+      ? { usd: opts.resetCostUsd, basis: opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars' }
+      : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet' },
     earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred, at the replay's re-set cost) once the price has been outside for ${RESET_AFTER_HOURS} h — the agent's own delay. Net per day is what is left after the re-sets; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
   };
+}
+
+// The re-set cost the earnings test charges: what the agent's last real
+// re-set cost in gas, in today's dollars, once the record has one; the
+// replay's assumption until then. `agentRecord` is the lp:agent record the
+// worker writes (history entries carry the rebalance step with gas_bnb).
+export function measuredResetCost(agentRecord, bnbUsd) {
+  const hist = Array.isArray(agentRecord?.history) ? agentRecord.history : [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    const rb = hist[i]?.steps?.rebalance;
+    if (rb && rb.acted && !rb.error && Number(rb.gas_bnb) > 0 && Number(bnbUsd) > 0) {
+      return { usd: Math.round(Number(rb.gas_bnb) * Number(bnbUsd) * 100) / 100, gas_bnb: Number(rb.gas_bnb), at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null };
+    }
+  }
+  return null;
 }
 
 // One width, lived through the record. `used` is the non-overlapping window

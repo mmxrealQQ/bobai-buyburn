@@ -18,7 +18,7 @@
 // the plan it was given rather than reading again, so what was printed is
 // what gets sent. A chain read that fails throws — an RPC that did not answer
 // must never look like a wallet that holds nothing.
-import { parseAbi, formatEther, formatUnits, parseEther } from 'viem';
+import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB,
@@ -67,6 +67,7 @@ export const ABI = {
   ERC20: parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function approve(address,uint256) returns (bool)',
+    'function allowance(address,address) view returns (uint256)',
     'function withdraw(uint256)',
     'function deposit() payable',
   ]),
@@ -78,6 +79,7 @@ export const ABI = {
     'function increaseLiquidity((uint256 tokenId,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint128 liquidity,uint256 amount0,uint256 amount1)',
     'function decreaseLiquidity((uint256 tokenId,uint128 liquidity,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint256 amount0,uint256 amount1)',
     'function burn(uint256 tokenId) payable',
+    'function multicall(bytes[] data) payable returns (bytes[] results)',
     'function mint((address token0,address token1,uint24 fee,int24 tickLower,int24 tickUpper,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,address recipient,uint256 deadline)) payable returns (uint256 tokenId,uint128 liquidity,uint256 amount0,uint256 amount1)',
     'function factory() view returns (address)',
   ]),
@@ -395,22 +397,49 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   };
 }
 
+// The three calls that empty the old position, as one transaction: withdraw
+// its liquidity, collect what it held, burn the NFT. The position manager's
+// multicall runs them in order inside one transaction and reverts as a whole
+// if any of them does. Pure, so the self-test can pin what is encoded.
+export function unwindCalls(tokenId, liquidity, amount0Min, amount1Min, recipient, dl) {
+  return [
+    encodeFunctionData({ abi: ABI.NPM, functionName: 'decreaseLiquidity', args: [{ tokenId, liquidity, amount0Min, amount1Min, deadline: dl }] }),
+    encodeFunctionData({ abi: ABI.NPM, functionName: 'collect', args: [{ tokenId, recipient, amount0Max: MAX128, amount1Max: MAX128 }] }),
+    encodeFunctionData({ abi: ABI.NPM, functionName: 'burn', args: [tokenId] }),
+  ];
+}
+
+// An approval that is only sent when the allowance is short. The first
+// build approved the exact amount before every trade and every mint — four
+// approvals in a nine-transaction re-set, each one paid for. An allowance of
+// the full amount range to PancakeSwap's own router and position manager is
+// what every PancakeSwap user grants in the interface, and it means the next
+// re-set skips these four transactions entirely.
+const MAX_ALLOWANCE = (1n << 256n) - 1n;
+async function ensureAllowance(pub, send, token, spender, amount, label) {
+  const have = await read(pub, token, ABI.ERC20, 'allowance', [send.owner, spender]);
+  if (have >= amount) return false;
+  await send(label, { address: token, abi: ABI.ERC20, functionName: 'approve', args: [spender, MAX_ALLOWANCE] });
+  return true;
+}
+
 // Empty the old position, burn its NFT, trade to the new ratio, mint the new
 // range from what the wallet then holds. Native BNB is not touched: the
 // reserve and any capital waiting for the increase stay where they are.
+// Nine transactions on 2026-09-02; four to five since 2026-09-04 (one
+// multicall for the unwind, approvals only when the allowance is short).
 export async function executeRebalance(pub, wallet, account, plan, log = () => {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
+  send.owner = account.address;
   const liquidity = plan.pos[7];
   const sim = await pub.simulateContract({
     address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
     args: [{ tokenId: plan.tokenId, liquidity, amount0Min: 0n, amount1Min: 0n, deadline: deadline() }], account,
   });
-  await send('withdraw the old range', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
-    args: [{ tokenId: plan.tokenId, liquidity, amount0Min: (sim.result[0] * 99n) / 100n, amount1Min: (sim.result[1] * 99n) / 100n, deadline: deadline() }] });
-  await send('collect everything it held', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
-    args: [{ tokenId: plan.tokenId, recipient: account.address, amount0Max: MAX128, amount1Max: MAX128 }] });
-  await send('burn the empty position', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'burn', args: [plan.tokenId] });
+  const calls = unwindCalls(plan.tokenId, liquidity, (sim.result[0] * 99n) / 100n, (sim.result[1] * 99n) / 100n, account.address, deadline());
+  await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
+  await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
 
   // Sized from what the wallet really holds now, not from the plan's estimate.
   const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -423,7 +452,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   if (haveOther > targetOther) {
     const sell = haveOther - targetOther;
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
-    await send('approve the excess for sale', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, sell] });
+    await ensureAllowance(pub, send, plan.other, ADDR.V2_ROUTER, sell, 'allow the router to sell the other side (once)');
     await send('sell the excess of the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
       args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
   } else if (targetOther > haveOther) {
@@ -433,15 +462,15 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     const cap = haveWbnb;
     const wbnbIn = spend > cap ? cap : spend;
     if (wbnbIn > 0n) {
-      await send('approve WBNB to the router', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, wbnbIn] });
+      await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
       await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
         args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
     }
   }
   const mintOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   const mintWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
-  await send('approve the other side to the position manager', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, mintOther] });
-  await send('approve WBNB to the position manager', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, mintWbnb] });
+  await ensureAllowance(pub, send, plan.other, ADDR.V3_POSITION_MANAGER, mintOther, 'allow the position manager to take the other side (once)');
+  await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, mintWbnb, 'allow the position manager to take WBNB (once)');
   const amount0Desired = plan.wbnbIs0 ? mintWbnb : mintOther;
   const amount1Desired = plan.wbnbIs0 ? mintOther : mintWbnb;
   await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',

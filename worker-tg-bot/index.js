@@ -1916,50 +1916,6 @@ async function handleCommand(msg, env) {
       break;
     }
 
-    // What this project offers other people's AI agents, and what that has
-    // earned so far. Figures come from agent.brainonbnb.com/stats — the same
-    // endpoint the website block reads, so the bot and the page can never
-    // quote different numbers for the same thing.
-    case '/agent':
-    case 'agent':
-    case '/agents':
-    case 'agents': {
-      let st = null;
-      try {
-        const r = await fetch('https://agent.brainonbnb.com/stats', { cf: { cacheTtl: 30 } });
-        if (r.ok) st = await r.json();
-      } catch (e) { /* fall through — the text below still works without figures */ }
-
-      const n = (v) => Number(v || 0).toLocaleString('en-US');
-      const asked = st ? n(st.asked && st.asked.total) : '?';
-      const earned = st && st.earned ? st.earned.totalUsd1 : null;
-      const watches = st ? n(st.active_watches) : '?';
-
-      reply = `🤖 <b>BOBAI for AI Agents</b>
-
-This project is readable by machines, not just people. Any agent can measure BNB Chain pools through it — no key, no account.
-
-<b>Free</b>
-• <code>npx skills add https://brainonbnb.com</code>
-   Installs the pool scanner into Claude Code, Codex, Cursor and 70+ other agents.
-• <a href="https://brainonbnb.com/mcp">MCP server</a> — 14 read-only $BOBAI tools
-• <a href="https://brainonbnb.com/api/price">REST endpoints</a> — same data, plain GET
-• <a href="https://brainonbnb.com/scanner">Pool Scanner</a> — in your browser
-
-<b>Paid</b>
-• Pool watch — 0.50 USD1 for 30 days. We watch one pool around the clock and ping you when its depth drops. Paid over x402, on BNB Chain.
-
-<b>So far</b>
-• Requests answered: <b>${asked}</b>
-• Earned from agents: <b>${earned && earned !== '0.00' ? earned + ' USD1' : 'nothing yet'}</b>
-• Pools being watched: <b>${watches}</b>
-
-Every cent earned here is sold for BNB and put into the project's own PancakeSwap liquidity position; the fees that position earns go to the buyback bot, which buys $BOBAI and burns it. The first income this project has that does not come from its own trading tax.
-
-🔗 <a href="https://brainonbnb.com/services">Full breakdown &amp; live figures</a>`;
-      break;
-    }
-
     case '/liq':
     case 'liq':
     case '/liquidity':
@@ -2118,7 +2074,6 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 
 Here's what I can do:
 
-🤖 /agents — What AI agents can do here, and what it earns
 🔔 /alerts — Buy & burn alert tiers
 🔥 /burn — Burn stats & progress
 🛒 /buy — How to buy BOBAI

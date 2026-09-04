@@ -1448,7 +1448,7 @@ const page = `<!doctype html>
           <div class="rg-try-chips" id="rg-try-chips">
             <span>Try:</span>
             <button type="button" data-q="protocol stats and pool statistics">protocol stats</button>
-            <button type="button" data-q="check the health factor of a Venus position">a Venus health factor</button>
+            <button type="button" data-q="check the health factor of the Venus position at 0xd319e1F8e987cf78333cEA853F455366640929cF">a Venus health factor</button>
             <button type="button" data-q="list the active trading agents and their strategies">active trading agents</button>
             <button type="button" data-q="measure the PancakeSwap pool of token 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82">measure the CAKE pool</button>
           </div>

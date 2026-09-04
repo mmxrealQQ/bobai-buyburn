@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 37,
-   "lines": 9681,
-   "zipBytes": 199870,
-   "txtBytes": 531561,
-   "sha256": "488efc94de21c2c9",
+   "lines": 9759,
+   "zipBytes": 201357,
+   "txtBytes": 535443,
+   "sha256": "778ee879c380594a",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -654,9 +654,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4102,
-   "zipBytes": 86359,
-   "txtBytes": 244810,
-   "sha256": "ac7e8d6a81bbdc96",
+   "zipBytes": 86402,
+   "txtBytes": 244858,
+   "sha256": "ab75724c8bea3a00",
    "reqs": [
     {
      "what": "Node 18+ and time",

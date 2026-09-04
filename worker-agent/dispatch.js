@@ -47,6 +47,25 @@ const MUTATING_VERBS = new Set([
   'register', 'authorize', 'confirm', 'calldata', 'tx', 'transaction',
 ]);
 
+// Does the task ask for an action, or ask about one? "Swap 1 BNB to CAKE"
+// and "I want to sell my CAKE" ask for one; "what would a trade cost" and
+// "the swap fee of the CAKE pool" ask about one, and the first version
+// refused those too, on the word alone — a router that cannot be asked what
+// a trade costs is refusing the question this site exists to answer. A
+// mutating word counts as a request when it stands where an order stands:
+// first in the sentence, or right after the words that introduce one.
+const ORDER_LEADS = new Set(['please', 'can', 'could', 'you', 'go', 'now', 'and', 'then', 'to', 'just', 'me', 'help', 'kindly']);
+export function askedAction(task) {
+  const words = String(task || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const out = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (!MUTATING_VERBS.has(w)) continue;
+    if (i === 0 || ORDER_LEADS.has(words[i - 1])) out.push(w);
+  }
+  return [...new Set(out)];
+}
+
 // Words that mean a description is describing a reader. Wider than READ_VERBS
 // on purpose: prose says "measures", "returns" and "ranks" where a tool name
 // says "get". Inflections are listed rather than stemmed, because a stemmer
@@ -97,18 +116,61 @@ const segments = (name) => String(name)
 // the task does not literally contain leaves the whole call unfilled (null),
 // and the caller falls back to "call it yourself". Exported for the safety
 // check, which pins both directions.
+// The handful of BNB Chain tokens a person names by symbol and means one
+// contract by. "Measure the CAKE pool" is not a guess to resolve — CAKE on BSC
+// is one address — and refusing that sentence while accepting the same
+// sentence with forty hex characters pasted in was refusing to read. Every
+// address here was checked against symbol() on the chain on 2026-09-04.
+export const KNOWN_TOKENS = {
+  CAKE: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82',
+  BOBAI: '0x245c386dcfed896f5c346107596141e5edcbffff',
+  WBNB: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
+  BNB: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
+  USDT: '0x55d398326f99059ff775485246999027b3197955',
+  USD1: '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d',
+  USDC: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+  BTCB: '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c',
+  ETH: '0x2170ed0880ac9a755fd29b2688956bd959f933f8',
+};
+
+// What the task names: pasted addresses first; failing those, the known
+// symbols it uses as words ("$CAKE", "cake", "the USD1 pool"). The answer
+// carries `symbols_read_as` whenever a symbol stood in for an address, so
+// the reader sees what the router read into the sentence.
+export function addressesInTask(task) {
+  const text = String(task || '');
+  const addrs = (text.match(/0x[0-9a-fA-F]{40}/g) || []);
+  if (addrs.length) return { addrs, symbols_read_as: null };
+  const seen = new Set();
+  const read = {};
+  for (const m of text.matchAll(/\$?\b([A-Za-z][A-Za-z0-9]{1,5})\b/g)) {
+    const sym = m[1].toUpperCase();
+    const a = KNOWN_TOKENS[sym];
+    if (!a || seen.has(a)) continue;
+    seen.add(a); read[sym] = a; addrs.push(a);
+  }
+  return { addrs, symbols_read_as: addrs.length ? read : null };
+}
+
+const ADDRESS_LIKE = /address|token|pool|pair|contract|wallet|account|holder/;
+
+// The arguments a tool gets: only what the task literally contains. Every
+// required parameter must be fillable from the task or the tool is not
+// called; an optional address-like parameter is filled too when the task
+// carries an address — a visitor who names an account and is answered about
+// somebody else's has been ignored, which is what happened with a lending
+// monitor whose `account` was optional and defaulted to its own wallet.
 export function argsFromTask(schema, task) {
   const req = Array.isArray(schema?.required) ? schema.required : [];
-  if (!req.length) return null;
   const props = schema?.properties || {};
-  const addrs = (String(task || '').match(/0x[0-9a-fA-F]{40}/g) || []);
+  const { addrs } = addressesInTask(task);
   let ai = 0;
   const out = {};
   for (const name of req) {
     const p = props[name] || {};
     const type = String(p.type || 'string');
     const n = name.toLowerCase();
-    if (/address|token|pool|pair|contract|wallet|account|holder/.test(n) && type === 'string') {
+    if (ADDRESS_LIKE.test(n) && type === 'string') {
       if (ai >= addrs.length) return null;
       out[name] = addrs[ai++];
     } else if (/chain|network/.test(n)) {
@@ -117,7 +179,27 @@ export function argsFromTask(schema, task) {
       return null;
     }
   }
-  return out;
+  if (addrs.length) {
+    for (const name of Object.keys(props)) {
+      if (name in out || req.includes(name)) continue;
+      const p = props[name] || {};
+      if (ADDRESS_LIKE.test(name.toLowerCase()) && String(p.type || 'string') === 'string') out[name] = addrs[Math.min(ai, addrs.length - 1)];
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// Did the answer concern what was asked? A tool that takes no account and
+// answers about its own is a fact about that tool; passing its answer on as
+// the answer to the visitor's address would be a lie by omission. When the
+// task named an address and the answer names addresses but none of the
+// asked ones, it is not the answer.
+export function answersAsked(content, addrs) {
+  if (!addrs || !addrs.length) return true;
+  const text = String(content || '');
+  const found = (text.match(/0x[0-9a-fA-F]{40}/g) || []).map((a) => a.toLowerCase());
+  if (!found.length) return true;
+  return addrs.some((a) => found.includes(a.toLowerCase()));
 }
 
 export function isReadOnly(tool) {
@@ -366,7 +448,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
   // sign it", this router previously returned protocol statistics and reported
   // success — technically safe, and misleading in exactly the way that matters:
   // the caller had every reason to believe their swap had been handled.
-  const wanted = terms.filter((t) => MUTATING_VERBS.has(t));
+  const wanted = askedAction(task);
   if (wanted.length) {
     return { status: 200, body: {
       task,
@@ -535,8 +617,10 @@ export async function handleDispatch(url, body, env, opts = {}) {
     const res = await rpcCall(endpoint, 'tools/call', { name: pick.name, arguments: taken || {} }, 15000).catch(() => null);
     const took = Date.now() - started;
     const content = res?.result?.content?.[0]?.text;
-    if (res?.error || !content) {
-      const why = res?.error?.message || 'no usable result';
+    const asked = addressesInTask(task);
+    const offTarget = !!content && !res?.error && !answersAsked(content, asked.addrs);
+    if (res?.error || !content || offTarget) {
+      const why = offTarget ? 'answered about a different address than the one asked' : (res?.error?.message || 'no usable result');
       attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: why });
       // A failure is a fact about this operator and belongs in the record just
       // as much as a success does.
@@ -565,6 +649,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
       took_ms: took,
       protocol: 'mcp',
       ...(taken ? { arguments_taken_from_task: taken } : {}),
+      ...(asked.symbols_read_as ? { symbols_read_as: asked.symbols_read_as } : {}),
       answered_by: {
         id: agent.id,
         agent: agent.name,

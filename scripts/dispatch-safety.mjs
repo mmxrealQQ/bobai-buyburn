@@ -22,7 +22,7 @@
 // Usage:
 //   node scripts/dispatch-safety.mjs --self-test   fixtures, no network
 //   node scripts/dispatch-safety.mjs               and measure the live server
-import { isReadOnly, argsFromTask } from '../worker-agent/dispatch.js';
+import { isReadOnly, argsFromTask, addressesInTask, answersAsked, askedAction, KNOWN_TOKENS } from '../worker-agent/dispatch.js';
 
 const SITE = process.env.SITE || 'https://brainonbnb.com';
 const args = process.argv.slice(2);
@@ -82,7 +82,31 @@ if (args.includes('--self-test')) {
   const addrSchema = { required: ['address'], properties: { address: { type: 'string' } } };
   const a1 = argsFromTask(addrSchema, 'measure the pool of token 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82');
   if (!a1 || a1.address !== '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82') fails.push('an address in the task was not passed to an address parameter');
-  if (argsFromTask(addrSchema, 'measure the CAKE pool') !== null) fails.push('a task with no address filled an address parameter anyway — that is guessing');
+  if (argsFromTask(addrSchema, 'measure the FOO pool') !== null) fails.push('a task with no address and no known symbol filled an address parameter anyway — that is guessing');
+  const a3 = argsFromTask(addrSchema, 'measure the CAKE pool');
+  if (!a3 || a3.address !== KNOWN_TOKENS.CAKE) fails.push('CAKE, a symbol that means one contract on this chain, was not read as its address');
+  if (addressesInTask('measure the CAKE pool').symbols_read_as?.CAKE !== KNOWN_TOKENS.CAKE) fails.push('the answer would not say that CAKE was read as an address');
+  if (addressesInTask('measure the pool 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82 for CAKE').symbols_read_as !== null) fails.push('a pasted address was second to a symbol');
+  if (addressesInTask('what does a cake cost').addrs[0] !== KNOWN_TOKENS.CAKE) fails.push('a symbol in lower case was not read');
+  if (addressesInTask('the ethereal question').addrs.length) fails.push('a word that merely starts with a symbol was read as one');
+  // An optional address-like parameter is filled from the task, so a tool
+  // that would otherwise default to its own account is asked about the
+  // visitor's.
+  const optSchema = { required: [], properties: { account: { type: 'string' }, depth: { type: 'number' } } };
+  const a4 = argsFromTask(optSchema, 'health factor of 0xd319e1F8e987cf78333cEA853F455366640929cF');
+  if (!a4 || a4.account !== '0xd319e1F8e987cf78333cEA853F455366640929cF' || 'depth' in a4) fails.push('an optional account parameter was not filled from the address in the task');
+  if (argsFromTask(optSchema, 'health factor of my position') !== null) fails.push('an optional account parameter was filled with nothing to fill it from');
+  // The answer must be about what was asked.
+  const asked = ['0xd319e1F8e987cf78333cEA853F455366640929cF'];
+  if (answersAsked('{"account":"0xa09991fc5D8637bb4245737C3ebF26E24D653962","debt":0}', asked)) fails.push('an answer about a different account passed as the answer');
+  if (!answersAsked('{"account":"0xd319e1f8e987cf78333cea853f455366640929cf","hf":2.3}', asked)) fails.push('an answer about the asked account (lower case) was rejected');
+  if (!answersAsked('{"tvl": 12}', asked)) fails.push('an answer that names no address at all was rejected');
+  if (!answersAsked('anything', [])) fails.push('a task with no address had its answer rejected');
+  // A request for an action is refused; a question about one is not.
+  for (const t of ['swap 1 BNB to CAKE', 'please sell my CAKE', 'I want to buy BOBAI', 'build swap calldata and sign it', 'can you transfer 5 USDT to 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82'])
+    if (!askedAction(t).length) fails.push(`an order was not recognised as one: "${t}"`);
+  for (const t of ['what would a $BOBAI trade cost', 'the swap fee of the CAKE pool', 'how much does a transaction cost on BSC', 'price impact of a $500 buy', 'is the sell tax measured'])
+    if (askedAction(t).length) fails.push(`a question about an action was refused as an order: "${t}"`);
   if (argsFromTask({ required: ['symbol'], properties: { symbol: { type: 'string' } } }, 'price of CAKE 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82') !== null) fails.push('a parameter the task cannot name was filled anyway');
   const a2 = argsFromTask({ required: ['token', 'chainId'], properties: { token: { type: 'string' }, chainId: { type: 'number' } } }, 'scan 0x245c386dcfed896f5c346107596141e5edcbffff');
   if (!a2 || a2.token !== '0x245c386dcfed896f5c346107596141e5edcbffff' || a2.chainId !== 56) fails.push('the chain this router serves was not filled in beside the address');

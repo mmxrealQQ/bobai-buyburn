@@ -121,6 +121,22 @@ flagged and 404 since 2026-07-24. Options, decision with the operator:
 1. Ask the organisers whether `git clone https://brainonbnb.com/source.git`
    (500 files, secret-audited, verified) or the Library
    (https://brainonbnb.com/#library) satisfies the field. Honest, costs time.
+   Draft, to send from the operator's own account (English, short):
+
+   > Subject: Build the Era — repository link for a project whose GitHub account is suspended
+   >
+   > Hello — we are submitting Brain Plaza (https://brainonbnb.com/registry).
+   > The form requires a GitHub repository link. Our GitHub account has been
+   > flagged since 24 July and is under appeal; we have deliberately not opened
+   > a second account, as that could be read as circumventing the flag.
+   >
+   > The full source is public and clonable from our own domain:
+   > `git clone https://brainonbnb.com/source.git` (MIT, ~500 files, every
+   > measurement on the site is produced by a script in it), and the same code
+   > is packaged bundle by bundle at https://brainonbnb.com/#library.
+   >
+   > May we put that clone URL in the repository field? If you need GitHub
+   > specifically, we will follow whatever you advise. Thank you.
 2. Wait for the GitHub appeal.
 3. ~~A second GitHub account~~ — advised against; circumventing a flag can
    sink the submission itself.
@@ -141,3 +157,8 @@ curl -s https://agent.brainonbnb.com/lp/agent | head -60   # the re-sets, with g
 ```
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.
+
+Refresh run 2026-09-04 ~07:10 UTC: health 49/49 · smoke 177/177 · cold-start
+"no problems" · dispatch-safety live "every tool not named after an action
+can be reached" · screens captured (7 pages at 1440). Figures above are
+current as of that run.

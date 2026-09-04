@@ -43,7 +43,6 @@ const SWAP_TOPIC = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d1308401
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
 // GeckoTerminal API
-const GECKO_TRADES_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}/trades`;
 const GECKO_POOL_URL = `https://api.geckoterminal.com/api/v2/networks/bsc/pools/${BOBAI_PAIR}`;
 
 // Worldcup tipgame (Supabase — public anon key, RLS-protected)
@@ -280,7 +279,9 @@ function isSanePrice(p) { return Number.isFinite(p) && p >= PRICE_MIN_USD && p <
 
 // On-chain BOBAI/USD: pair reserves × Chainlink BNB/USD. Last-resort fallback when
 // both Gecko and DexScreener are down. BOBAI is token0 in this pair (verified on-chain).
-async function fetchBobaiPriceOnchain() {
+// Reads the pair reserves and the Chainlink feed in one go. Returns the USD price,
+// the BNB price and the BNB side of the pool, or null when either read fails.
+async function readPairOnchain() {
   try {
     // getReserves() selector = 0x0902f1ac → packed (uint112 r0, uint112 r1, uint32 ts)
     const rHex = await rpcCall('eth_call', [{ to: BOBAI_PAIR, data: '0x0902f1ac' }, 'latest']);
@@ -295,9 +296,10 @@ async function fetchBobaiPriceOnchain() {
     const bnbUsd = Number(BigInt(aHex)) / 1e8;
     if (!(bnbUsd > 0)) return null;
 
-    const bobaiPerBnb = Number(rBOBAI) / Number(rWBNB);
-    const price = bnbUsd / bobaiPerBnb;
-    return isSanePrice(price) ? price : null;
+    const priceInBnb = Number(rWBNB) / Number(rBOBAI);
+    const price = priceInBnb * bnbUsd;
+    if (!isSanePrice(price)) return null;
+    return { price, priceInBnb, bnbUsd, wbnbReserve: Number(rWBNB) / 1e18 };
   } catch (e) {
     console.log('[price] onchain error:', e.message || e);
     return null;
@@ -316,43 +318,22 @@ async function getBnbUsd() {
   }
 }
 
-// Resilient price-only fetch (used by burn/donation alerts that only need a number).
-async function fetchBobaiPriceUsd() {
-  try {
-    const res = await fetch(`${GECKO_POOL_URL}?_=${Date.now()}`, { headers: { 'Accept': 'application/json' } });
-    if (res.ok) {
-      const d = await res.json();
-      const p = parseFloat(d?.data?.attributes?.base_token_price_usd);
-      if (isSanePrice(p)) return p;
-    }
-  } catch {}
-  try {
-    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI_TOKEN}`);
-    if (res.ok) {
-      const d = await res.json();
-      const pair = (d?.pairs || []).find(p => p.pairAddress?.toLowerCase() === BOBAI_PAIR.toLowerCase()) || (d?.pairs || [])[0];
-      const p = parseFloat(pair?.priceUsd);
-      if (isSanePrice(p)) return p;
-    }
-  } catch {}
-  const p = await fetchBobaiPriceOnchain();
-  if (p) { console.log('[price] using on-chain fallback'); return p; }
-  return null;
-}
-
-// Full pool stats (used by /price command). Gecko primary; DexScreener fallback
-// is mapped into Gecko's attribute shape so the rest of the command code is unchanged.
-async function fetchPoolData() {
-  // 1) GeckoTerminal — richest data
+// Indexer figures (24h change, volume, trade counts) plus the indexer's own
+// price. GeckoTerminal first, DexScreener second, mapped into Gecko's attribute
+// shape. Null when neither answers — the caller must never depend on it for
+// the price itself, that comes from the chain.
+async function fetchIndexerStats() {
   try {
     const res = await fetch(`${GECKO_POOL_URL}?_=${Date.now()}`, { headers: { 'Accept': 'application/json' } });
     if (res.ok) {
       const data = await res.json();
       const attrs = data?.data?.attributes;
       if (attrs && isSanePrice(parseFloat(attrs.base_token_price_usd))) return attrs;
+      console.log('[price] gecko unusable:', JSON.stringify(attrs?.base_token_price_usd));
+    } else {
+      console.log('[price] gecko status', res.status, (await res.text()).slice(0, 200));
     }
-  } catch {}
-  // 2) DexScreener — same fields, different shape
+  } catch (e) { console.log('[price] gecko error:', e.message || e); }
   try {
     const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${BOBAI_TOKEN}`);
     if (res.ok) {
@@ -369,23 +350,52 @@ async function fetchPoolData() {
           transactions: { h24: p.txns?.h24 || {} },
         };
       }
+      console.log('[price] dexscreener unusable:', JSON.stringify(p?.priceUsd), (data?.pairs || []).length, 'pairs');
+    } else {
+      console.log('[price] dexscreener status', res.status, (await res.text()).slice(0, 200));
     }
-  } catch {}
+  } catch (e) { console.log('[price] dexscreener error:', e.message || e); }
   return null;
 }
 
-async function fetchRecentTrades() {
-  try {
-    const res = await fetch(`${GECKO_TRADES_URL}?_=${Date.now()}`, {
-      headers: { 'Accept': 'application/json' },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data || [];
-  } catch (err) {
-    console.error('[GECKO API ERROR]', err.message || err);
-    return [];
+// BOBAI/USD for alerts that only need a number. The chain is the source: pair
+// reserves times the Chainlink BNB feed, the same maths as the dashboard. An
+// indexer price is only a stand-in when the RPC endpoints are all down.
+async function fetchBobaiPriceUsd() {
+  const pair = await readPairOnchain();
+  if (pair) return pair.price;
+  const ix = await fetchIndexerStats();
+  const p = ix ? parseFloat(ix.base_token_price_usd) : NaN;
+  if (isSanePrice(p)) { console.log('[price] chain unreadable, using indexer price'); return p; }
+  return null;
+}
+
+// Full pool stats for /price. Price, FDV and pool depth from the chain (exact,
+// live); the indexer-only figures (24h change, volume, trade counts) from
+// GeckoTerminal or DexScreener when one of them answers. `indexed` says whether
+// they did, so the command can print n/a instead of a fake zero.
+async function fetchPoolData() {
+  const [pair, ix] = await Promise.all([readPairOnchain(), fetchIndexerStats()]);
+  if (!pair && !ix) {
+    console.log('[price] fetchPoolData: no source answered');
+    return null;
   }
+  if (!pair) {
+    console.log('[price] fetchPoolData: chain unreadable, indexer figures only');
+    return { ...ix, indexed: true };
+  }
+  let supply = 0;
+  try { supply = await getTotalSupply(); } catch {}
+  return {
+    indexed: Boolean(ix),
+    base_token_price_usd: String(pair.price),
+    base_token_price_native_currency: String(pair.priceInBnb),
+    fdv_usd: supply > 0 ? String(pair.price * supply) : (ix ? ix.fdv_usd : null),
+    reserve_in_usd: String(2 * pair.wbnbReserve * pair.bnbUsd),
+    volume_usd: ix ? ix.volume_usd : {},
+    price_change_percentage: ix ? ix.price_change_percentage : {},
+    transactions: ix ? ix.transactions : {},
+  };
 }
 
 // ==================== WORLDCUP TIPGAME ====================
@@ -1810,7 +1820,12 @@ async function postLpAgentAlert(env) {
 
 async function handleCommand(msg, env) {
   const rawText = (msg.text || '').trim();
-  const text = rawText.toLowerCase().split('@')[0].split(' ')[0];
+  const firstWord = rawText.toLowerCase().split('@')[0].split(' ')[0];
+  // A slash command is a command wherever it stands. A bare word ("price",
+  // "buy", "help") only counts when it is the whole message — "buy the dip"
+  // or "help me out" in the group is conversation, not a request to the bot.
+  const singleWord = !/\s/.test(rawText);
+  const text = (firstWord.startsWith('/') || singleWord) ? firstWord : '';
   const chatId = msg.chat.id;
   let reply = null;
 
@@ -1827,8 +1842,8 @@ async function handleCommand(msg, env) {
   // Bare-word triggers inside the internal chat only — typing `whales`, `whales24h`,
   // `whaleadd 0x...`, `whalerm 0x...`, `whalehelp` works without the leading slash.
   const WHALE_BARE = ['whales', 'whales24h', 'whaleadd', 'whalerm', 'whalecleanup', 'whalehelp'];
-  if (isInternal && WHALE_BARE.includes(text)) {
-    return handleWhaleAdmin(rawText, '/' + text, chatId);
+  if (isInternal && WHALE_BARE.includes(firstWord)) {
+    return handleWhaleAdmin(rawText, '/' + firstWord, chatId);
   }
 
   // Inside the internal chat: route /help and /start to whale help instead of public help.
@@ -1853,7 +1868,7 @@ async function handleCommand(msg, env) {
 🥞 <a href="https://pancakeswap.finance/swap?outputCurrency=${BOBAI_TOKEN}">PancakeSwap</a>
 
 <b>Step 3:</b> Set slippage to 4-5%
-<i>(3% tax: 1% creator, 2% burn)</i>
+<i>(3% on-chain tax on every trade)</i>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
       break;
@@ -1874,6 +1889,10 @@ async function handleCommand(msg, env) {
       const vol24 = parseFloat(pool.volume_usd?.h24 || 0);
       const pct = pool.price_change_percentage || {};
       const txns = pool.transactions?.h24 || {};
+      // Indexer-only figures are unknown when no indexer answered — say so, never show 0.
+      const na = !pool.indexed;
+      const usdOrNa = (v) => Number.isFinite(v) ? formatUsd(v) : 'n/a';
+      const change = (v) => na ? 'n/a' : priceChangeArrow(v);
 
       reply = `📊 <b>BOBAI Live Price</b>
 
@@ -1881,16 +1900,16 @@ async function handleCommand(msg, env) {
 💎 ${priceInBnb.toFixed(10)} BNB
 
 📈 <b>Price Change</b>
-1h: ${priceChangeArrow(pct.h1)}  ·  6h: ${priceChangeArrow(pct.h6)}  ·  24h: ${priceChangeArrow(pct.h24)}
+1h: ${change(pct.h1)}  ·  6h: ${change(pct.h6)}  ·  24h: ${change(pct.h24)}
 
 📊 <b>Market Stats</b>
-🏷 FDV: ${formatUsd(fdv)}
-💧 Liquidity: ${formatUsd(liq)}
-📦 24h Volume: ${formatUsd(vol24)}
-🔄 24h Trades: ${txns.buys || 0} buys / ${txns.sells || 0} sells
+🏷 FDV: ${usdOrNa(fdv)}
+💧 Liquidity: ${usdOrNa(liq)}
+📦 24h Volume: ${na ? 'n/a' : usdOrNa(vol24)}
+🔄 24h Trades: ${na ? 'n/a' : `${txns.buys || 0} buys / ${txns.sells || 0} sells`}
 
 🔥 Burned: ${burn.percent}% (${formatNumber(burn.burnedTokens)} BOBAI)
-
+${na ? '\n⛓ <i>Price, FDV and liquidity are read from the chain. The 24h figures come from GeckoTerminal or DexScreener, and neither answered just now.</i>\n' : ''}
 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>`;
       break;
     }
@@ -1905,14 +1924,14 @@ async function handleCommand(msg, env) {
 📊 That's <b>${burn.percent}%</b> of total supply!
 
 ⚙️ <b>How it works:</b>
-♻️ 3% tax on every buy & sell
-🔥 1% BOB burn + 1% BOBAI burn
-💰 1% to creator (funds the bot)
+♻️ 3% tax on every buy & sell, fixed in the contract
+🔥 The buyback bot burns BOBAI from it around the clock
+🔥 The rest burns BOB, funds liquidity and the creator — the split changes by phase
 👤 Contract ownership renounced
 
 💡 <i>Every trade makes BOBAI more scarce!</i>
 
-🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns on BscScan</a>`;
+🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns on BscScan</a> · <a href="https://brainonbnb.com/#tokenomics">Current split</a>`;
       break;
     }
 
@@ -2278,6 +2297,31 @@ export default {
     // its age, and whether the bot is configured to post at all. A check that
     // only proved the worker answers HTTP would be worthless: a worker whose
     // cron has stopped still answers HTTP perfectly.
+    // /health?sources=1 additionally probes every price source from inside
+    // the Worker: the chain read and the two indexers, with the HTTP status
+    // each one returns to Cloudflare. That is the view the bot has, not the
+    // view a laptop has — the two differ whenever an indexer blocks Workers.
+    if (url.pathname === '/health' && request.method === 'GET' && url.searchParams.get('sources')) {
+      const probe = async (name, u) => {
+        const t0 = Date.now();
+        try {
+          const r = await fetch(u, { headers: { 'Accept': 'application/json' } });
+          const body = (await r.text()).slice(0, 160);
+          return { name, status: r.status, ms: Date.now() - t0, body: r.ok ? undefined : body };
+        } catch (e) { return { name, status: null, ms: Date.now() - t0, error: e.message || String(e) }; }
+      };
+      const [pair, gecko, dex] = await Promise.all([
+        readPairOnchain(),
+        probe('geckoterminal', `${GECKO_POOL_URL}?_=${Date.now()}`),
+        probe('dexscreener', `https://api.dexscreener.com/latest/dex/tokens/${BOBAI_TOKEN}`),
+      ]);
+      return new Response(JSON.stringify({
+        ok: true,
+        chain: pair ? { price_usd: pair.price, bnb_usd: pair.bnbUsd } : null,
+        indexers: [gecko, dex],
+      }, null, 2), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+
     if (url.pathname === '/health' && request.method === 'GET') {
       const last = await env.KV.get('last_cron');
       const ageSeconds = last ? Math.round((Date.now() - new Date(last).getTime()) / 1000) : null;

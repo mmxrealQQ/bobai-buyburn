@@ -32,9 +32,10 @@ export const MIN_SWEEP_GAS_BNB = 0.0005;
 // balance is swept in daily slices. A bug that produced a huge balance would
 // then move a bounded amount a day rather than everything at once.
 export const MAX_SWEEP_USD = 50;
-// Capital under this stays as BNB in the wallet: growing the position is six
-// transactions (wrap, two approvals for the router and the manager, swap,
-// approve, increase), and 0.01 BNB is where that gas falls under 1%.
+// Capital under this stays as BNB in the wallet: growing the position is
+// three to four transactions (wrap, swap, increase, unwrap; approvals only
+// when the allowance is short), and 0.01 BNB is where that gas, priced at
+// 1 gwei, falls well under 1%.
 export const MIN_INCREASE_BNB = 0.01;
 // Kept out of the amount that goes into the position, so the increase itself
 // never spends the reserve.

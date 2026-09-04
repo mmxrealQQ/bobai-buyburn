@@ -547,19 +547,22 @@ export async function planIncrease(pub, address, position = null) {
 export async function executeIncrease(pub, wallet, account, plan, log = () => {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
+  send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   const wrapRaw = plan.wbnbRaw + plan.buyCostRaw;
   await send('wrap', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: wrapRaw });
   if (plan.buyCostRaw > 0n) {
-    await send('approve WBNB to the router', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.buyCostRaw] });
+    await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, plan.buyCostRaw, 'allow the router to spend WBNB (once)');
     await send('buy the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
       args: [plan.buyCostRaw, (plan.buyOtherRaw * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
   }
   // Sized from what the wallet really holds, not from what was expected.
+  // Approvals only when the allowance is short (see ensureAllowance): six
+  // transactions until 2026-09-04, three to four since.
   const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   const haveWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
-  await send('approve the other side to the position manager', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, haveOther] });
-  await send('approve WBNB to the position manager', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, haveWbnb] });
+  await ensureAllowance(pub, send, plan.other, ADDR.V3_POSITION_MANAGER, haveOther, 'allow the position manager to take the other side (once)');
+  await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, haveWbnb, 'allow the position manager to take WBNB (once)');
   const amount0Desired = plan.wbnbIs0 ? haveWbnb : haveOther;
   const amount1Desired = plan.wbnbIs0 ? haveOther : haveWbnb;
   // The manager takes only the ratio the range needs. Minimums at 90% are a

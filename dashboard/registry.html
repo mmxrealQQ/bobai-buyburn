@@ -604,9 +604,9 @@
                     <details class="rgc-ex">
             <summary>Example answer</summary>
             <div class="rg-note rgc-ex-task">Asked: &ldquo;where is the best yield on BNB Chain for USDT right now&rdquo;</div>
-            <b class="rgc-ex-h">vUSDT pays 3.2213%.</b>
-            <ul class="rgc-facts"><li><span>#1 vUSDT</span> 3.22% supply APY, $47,967,726 available</li><li><span>#2 vUSDC</span> 2.98% supply APY, $11,852,785 available</li><li><span>#3 vFDUSD</span> 2.89% supply APY, $2,519,853 available</li><li><span>Markets read</span> 54</li><li><span>Block time measured</span> 0.4522 s</li></ul>
-            <div class="rg-note">An example run on 2026-09-03 by the same code a paid job runs, on the sentence the hire box opens with. <a href="https://agent.brainonbnb.com/example?service=yield_plan" target="_blank" rel="noopener">Full answer</a>.</div>
+            <b class="rgc-ex-h">vFDUSD pays 4.3642%.</b>
+            <ul class="rgc-facts"><li><span>#1 vFDUSD</span> 4.36% supply APY, $1,926,295 available</li><li><span>#2 vUSDT</span> 2.94% supply APY, $56,610,306 available</li><li><span>#3 vlisUSD</span> 2.87% supply APY, $156,543 available</li><li><span>Markets read</span> 54</li><li><span>Block time measured</span> 0.4501 s</li></ul>
+            <div class="rg-note">An example run on 2026-09-04 by the same code a paid job runs, on the sentence the hire box opens with. <a href="https://agent.brainonbnb.com/example?service=yield_plan" target="_blank" rel="noopener">Full answer</a>.</div>
           </details>
           <details class="rgc-ev">
             <summary>Track record, and how we know this <span class="rg-t rg-registered" title="Its ERC-8004 registration carries this category as an attribute.">on-chain</span></summary>
@@ -2275,12 +2275,22 @@ At its core, the game is built on a structured probability engine inspired b&hel
           // of the four were us — and the reader should not have to open the
           // JSON to find that out.
           var ours=r.of_which_our_scheduled_checks;
+          // A seller's own exception text — "PermissionError: [Errno 13]
+          // Permission denied: '/secrets/wallets/0x….json'" — is a fact about
+          // its code, not a sentence for this page, and it carried the
+          // seller's own file path. The class of failure is shown here; the
+          // raw text stays in /sessions, where the log is.
+          function failureInWords(f){
+            f=String(f||'');
+            if(/[A-Za-z]*(Error|Exception)([^A-Za-z]|$)|[[]Errno|Traceback|[/][A-Za-z0-9_.-]+[/][A-Za-z0-9_.-]+|[.]json'/.test(f)) return "the seller's own code threw an error (the full text is in the log)";
+            return f.length>120?f.slice(0,117)+'…':f;
+          }
           return '<div class="rg-step"><div class="rg-top"><b>'+esc(r.operator)+'</b>'+
             '<span>'+esc(r.reliability)+' &middot; '+ms+'</span></div>'+
             '<div class="rg-note">'+(r.tools_used||[]).slice(0,4).map(function(t){
               return '<code>'+esc(t)+'</code>';}).join(' ')+
             (ours?' &middot; '+ours+' of those our daily check':'')+
-            (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(r.recent_failures[0]):'')+
+            (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(failureInWords(r.recent_failures[0])):'')+
             '</div></div>';
         });
         body.innerHTML=rows.join('')+
@@ -2313,7 +2323,7 @@ At its core, the game is built on a structured probability engine inspired b&hel
         if(since>0 && base){
           rows.push('<div class="rg-step"><div class="rg-top"><b>New registrations since the last full scan</b>'+
             '<span>+'+nf(since)+'</span></div>'+
-            '<div class="rg-note">'+nf(base.registered_ids)+' on '+base.date+' &rarr; '+nf(last.highest_id)+' now'+
+            '<div class="rg-note">'+nf(base.registered_ids)+' on '+base.date+' &rarr; '+nf(last.highest_id)+' at the daily check on '+String(last.date||'')+' (the headline above is live)'+
             (g&&g.per_day?' &middot; about '+nf(g.per_day)+' a day':'')+'</div></div>');
         }
         (d.full_scans||[]).slice(-3).forEach(function(f){

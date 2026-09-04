@@ -1725,12 +1725,22 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           // of the four were us — and the reader should not have to open the
           // JSON to find that out.
           var ours=r.of_which_our_scheduled_checks;
+          // A seller's own exception text — "PermissionError: [Errno 13]
+          // Permission denied: '/secrets/wallets/0x….json'" — is a fact about
+          // its code, not a sentence for this page, and it carried the
+          // seller's own file path. The class of failure is shown here; the
+          // raw text stays in /sessions, where the log is.
+          function failureInWords(f){
+            f=String(f||'');
+            if(/[A-Za-z]*(Error|Exception)([^A-Za-z]|$)|[[]Errno|Traceback|[/][A-Za-z0-9_.-]+[/][A-Za-z0-9_.-]+|[.]json'/.test(f)) return "the seller's own code threw an error (the full text is in the log)";
+            return f.length>120?f.slice(0,117)+'…':f;
+          }
           return '<div class="rg-step"><div class="rg-top"><b>'+esc(r.operator)+'</b>'+
             '<span>'+esc(r.reliability)+' &middot; '+ms+'</span></div>'+
             '<div class="rg-note">'+(r.tools_used||[]).slice(0,4).map(function(t){
               return '<code>'+esc(t)+'</code>';}).join(' ')+
             (ours?' &middot; '+ours+' of those our daily check':'')+
-            (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(r.recent_failures[0]):'')+
+            (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(failureInWords(r.recent_failures[0])):'')+
             '</div></div>';
         });
         body.innerHTML=rows.join('')+
@@ -1763,7 +1773,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         if(since>0 && base){
           rows.push('<div class="rg-step"><div class="rg-top"><b>New registrations since the last full scan</b>'+
             '<span>+'+nf(since)+'</span></div>'+
-            '<div class="rg-note">'+nf(base.registered_ids)+' on '+base.date+' &rarr; '+nf(last.highest_id)+' now'+
+            '<div class="rg-note">'+nf(base.registered_ids)+' on '+base.date+' &rarr; '+nf(last.highest_id)+' at the daily check on '+String(last.date||'')+' (the headline above is live)'+
             (g&&g.per_day?' &middot; about '+nf(g.per_day)+' a day':'')+'</div></div>');
         }
         (d.full_scans||[]).slice(-3).forEach(function(f){

@@ -60,7 +60,6 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   const at = new Date().toISOString();
   const pub = createPublicClient({ chain: bsc, transport: transport() });
   const entry = { at, dry, ok: true, acted: false, steps: {} };
-  const reasons = [];
 
   const run = async (name, fn) => {
     if (!steps.includes(name)) return;
@@ -71,7 +70,6 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       for (const p of parts) {
         if (p.acted) entry.acted = true;
         if (p.error) entry.ok = false;
-        if (p.why) reasons.push(`${name}${p.source ? ` ${p.source}` : ''}: ${p.why}`);
       }
     } catch (e) {
       entry.ok = false;
@@ -106,8 +104,8 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   if (!lpKey) {
     entry.ok = false;
     for (const s of ['collect', 'rebalance', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: 'LP_PRIVATE_KEY is not set on this worker' };
-    entry.why = reasons.join(' · ') || null;
-    return record(env, entry);
+    entry.why = whyOf(entry.steps);
+    return record(env, entry, steps.length < STEPS.length);
   }
   const lp = account(lpKey);
   entry.wallet = lp.address;
@@ -175,8 +173,21 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     }
   });
 
-  entry.why = reasons.join(' · ') || null;
+  entry.why = whyOf(entry.steps);
   return record(env, entry, steps.length < STEPS.length);
+}
+
+// The one-line summary of a record, rebuilt from its steps — so a daily
+// record whose rebalance step was replaced by an hourly check does not keep
+// saying "inside the range" from the morning while the step says "outside".
+function whyOf(steps) {
+  const out = [];
+  for (const name of STEPS) {
+    const v = steps[name];
+    if (!v) continue;
+    for (const p of Array.isArray(v) ? v : [v]) if (p.why) out.push(`${name}${p.source ? ` ${p.source}` : ''}: ${p.why}`);
+  }
+  return out.join(' · ') || null;
 }
 
 // `partial` is an hourly range check (or a hand-narrowed run): it becomes
@@ -192,7 +203,8 @@ async function record(env, entry, partial = false) {
   if (entry.acted || !entry.ok) st.history = st.history.concat(entry).slice(-200);
   st.last_check = entry;
   if (partial && st.last && st.last.steps) {
-    st.last = { ...st.last, steps: { ...st.last.steps, ...entry.steps }, range_checked_at: entry.at };
+    const steps = { ...st.last.steps, ...entry.steps };
+    st.last = { ...st.last, steps, why: whyOf(steps), range_checked_at: entry.at };
   } else {
     st.last = entry;
   }

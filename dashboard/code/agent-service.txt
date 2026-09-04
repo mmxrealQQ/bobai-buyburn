@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 38 files, 10176 lines.
+# one fetch. 38 files, 10226 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1907,13 +1907,13 @@ export const CAPABILITIES = {
     { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme launch curve, read from four.meme\'s own contract' },
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it (or the four.meme curve a new token is still on), search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
-    { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
+    { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', example: 'https://brainonbnb.com/api/pool-scan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', what: 'the same tools as plain GET, for agents that do not speak MCP' },
     // The three PancakeSwap answers, named rather than left inside "read-only
     // tools over MCP". Somebody arriving with a decision to make is looking for
     // the decision, not for the protocol it is delivered over.
-    { name: 'which fee tier pays', where: 'https://brainonbnb.com/api/fee-tiers?address=0x...', what: 'a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.' },
-    { name: 'which price range', where: 'https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000', what: 'a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.' },
-    { name: 'which route, and can you get out', where: 'https://brainonbnb.com/api/best-route?address=0x...&usd=250', what: 'which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.' },
+    { name: 'which fee tier pays', where: 'https://brainonbnb.com/api/fee-tiers?address=0x...', example: 'https://brainonbnb.com/api/fee-tiers?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', what: 'a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.' },
+    { name: 'which price range', where: 'https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000', example: 'https://brainonbnb.com/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&capitalUsd=1000', what: 'a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.' },
+    { name: 'which route, and can you get out', where: 'https://brainonbnb.com/api/best-route?address=0x...&usd=250', example: 'https://brainonbnb.com/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&usd=250', what: 'which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.' },
   ],
   record: [
     {
@@ -1936,6 +1936,7 @@ export const CAPABILITIES = {
     {
       name: 'agent search',
       where: 'GET https://agent.brainonbnb.com/find?q=<what you need>',
+      example: 'https://agent.brainonbnb.com/find?q=venus+health+factor',
       what: 'Finds ERC-8004 agents on BNB Chain that expose something matching, using the tools they returned when asked and the descriptions they wrote on-chain. Optional &speaks=mcp,a2a,x402 to require a protocol.',
       free: true,
     },
@@ -1951,6 +1952,7 @@ export const CAPABILITIES = {
     {
       name: 'paid answer',
       where: 'POST https://agent.brainonbnb.com/answer?service=<id>',
+      example: 'https://agent.brainonbnb.com/example?service=health_factor',
       what: 'any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
       price: '0.10 USD1 per answer, or the same in $BOBAI at the 402’s quote',
       why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',
@@ -5740,7 +5742,55 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
         const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
         if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB in ${m.transactions ?? '?'} transactions` };
       } catch { /* the replay's assumption stands */ }
-      return json({ ...log, verdict: lpVerdict(log, costOpts), cadence: 'hourly',
+      const v = lpVerdict(log, costOpts);
+      // THE WIDTH RECORD, READABLE. The record page and /liquidity link here
+      // as "the width record", and a person arrived at raw JSON (pressed
+      // 2026-09-04). The same verdict as a page: which width the agent would
+      // use and why, every width replayed side by side, and what the record
+      // is made of. Nothing is computed here that the verdict does not carry.
+      const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
+      if (wantsHtml && v) {
+        const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
+        const f = (x, d = 2) => (x == null || !isFinite(Number(x)) ? '—' : Number(x).toFixed(d));
+        const pick = v.earnings_pick || null;
+        const rows = (v.rows || []).slice().sort((a, b) => a.width - b.width);
+        const usd = log.usd || 50;
+        const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The width record — the liquidity agent</title>
+<style>
+:root{color-scheme:dark}body{margin:0;background:#0c0b0c;color:#f3efe6;font:15px/1.6 Inter,system-ui,sans-serif}
+main{max-width:820px;margin:0 auto;padding:28px 18px 60px}h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1rem;margin:26px 0 8px;color:#f0b90b}
+p.lead{color:#cfc9bd;margin:6px 0 0}a{color:#f0b90b}code{font-size:.85em}
+.card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
+nav.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 22px;padding:0 0 14px;border-bottom:1px solid rgba(255,255,255,.08);font-size:.88rem}nav.top a{text-decoration:none;color:#f0b90b;border:1px solid rgba(240,185,11,.35);border-radius:999px;padding:5px 12px}nav.top a:hover{background:rgba(240,185,11,.1)}nav.top .site{margin-left:auto;color:#cfc9bd;border-color:rgba(255,255,255,.14)}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:.9rem}dt{color:#a9a49a}dd{margin:0;overflow-wrap:anywhere}
+.note{color:#a9a49a;font-size:.82rem;margin-top:10px}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;text-transform:none;border-top:0}td:first-child,th:first-child{text-align:left}tr.pick td{color:#f0b90b;font-weight:700}
+</style></head><body><main>
+<nav class="top"><a href="/lp/agent">&larr; The agent's record</a><a href="https://brainonbnb.com/liquidity">The liquidity page</a><a class="site" href="https://brainonbnb.com/">Dashboard</a></nav>
+<h1>The width record</h1>
+<p class="lead">How wide the liquidity agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last ~37 minutes of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price with the agent's own re-set delay and its measured re-set cost. The width that nets the most per day is the one the next re-set uses. Nothing here is a forecast.</p>
+<h2>The pick</h2>
+<div class="card"><dl>
+<dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — about $${h(f(pick.earnings.net_usd_per_day, 2))} a day on $${h(usd)} after ${h(pick.earnings.resets)} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${h(f(pick.earnings.reset_cost_usd, 2))} each, over ${h(f(pick.earnings.hours, 0))} h of recorded prices (${h(f(pick.earnings.hours_in_range, 0))} h of them inside the range)` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
+<dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, 2))} — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
+<dt>Held a full day</dt><dd>${v.day_pick ? `±${h(v.day_pick.width)}% is the narrowest width that stayed in range through every tested 24-hour window (${h(v.day_pick.day.held)} of ${h(v.day_pick.day.tested)}). It earns less than the pick; holding is not the goal, netting is.` : 'no width has held through every tested day yet'}</dd>
+<dt>Record</dt><dd>${h(v.windows)} windows, ${h(when(v.from))} to ${h(when(v.to))}, blocks ${h(v.from_block)} to ${h(v.to_block)}${v.overlapping_runs_not_counted ? `; ${h(v.overlapping_runs_not_counted)} overlapping run${v.overlapping_runs_not_counted === 1 ? '' : 's'} counted once` : ''}${v.thin ? ' — thin: too few windows to lean on yet' : ''}</dd>
+</dl></div>
+<h2>Every width, replayed</h2>
+<div class="card"><div class="wrap"><table>
+<tr><th>Width</th><th>Net per day</th><th>Fees earned</th><th>Re-sets</th><th>Hours in range</th><th>Windows held</th><th>Days held</th></tr>
+${rows.map((r) => { const e = r.earnings; const money = (x, d) => (x == null ? '—' : '$' + f(x, d)); return `<tr${pick && r.width === pick.width ? ' class="pick"' : ''}><td>${isFinite(Number(r.width)) ? `±${h(r.width)}%` : 'full range (V2-like)'}</td><td>${h(money(e && e.net_usd_per_day, 3))}</td><td>${h(money(e && e.fees_usd, 3))}</td><td>${h(e ? e.resets : 'never')}</td><td>${e ? `${h(f(e.hours_in_range, 0))} of ${h(f(e.hours, 0))}` : 'always'}</td><td>${h(r.held)} of ${h(r.of)}</td><td>${r.day ? `${h(r.day.held)} of ${h(r.day.tested)}` : 'all'}</td></tr>`; }).join('')}
+</table></div>
+<p class="note">Net per day is fees earned inside the range minus the re-sets paid, on $${h(usd)}, over the recorded prices. A narrow width earns more per hour inside the range and leaves it more often; a wide one rarely leaves and earns little. The pick is where those two meet on this pool's recent prices, and it moves as the prices do.</p>
+<p class="note">${h(v.earnings_rule || '')}</p></div>
+${log.last_error ? `<p class="note">Last cron error ${h(when(log.last_error.at))}: ${h(log.last_error.error)} — a window that could not be measured is skipped, not guessed.</p>` : ''}
+<p class="note">Same facts as JSON: <a href="/lp/windows?format=json">/lp/windows?format=json</a> · the agent's record: <a href="/lp/agent">/lp/agent</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
+</main></body></html>`;
+        return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
+      }
+      return json({ ...log, verdict: v, cadence: 'hourly',
         note: 'Every entry is one replay of pancakeswap_range_plan over ~37 minutes of live chain, recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
     }
 

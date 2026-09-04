@@ -362,21 +362,27 @@ async function recordLpSeries(env) {
   const raw = await env.AGENT.get('lp:agent');
   if (!raw) return { recorded: false, why: 'no record yet' };
   const rec = JSON.parse(raw);
-  const last = rec.last;
+  // The newest run on record: the daily one, or an hourly check that acted
+  // (those land in history). A re-set at 07:50 is a run the series must show.
+  const hist0 = Array.isArray(rec.history) ? rec.history : [];
+  const newestHist = hist0.length ? hist0[hist0.length - 1] : null;
+  const last = newestHist && rec.last && Date.parse(newestHist.at) > Date.parse(rec.last.at) ? newestHist : rec.last;
   if (!last || !last.at || last.dry) return { recorded: false, why: 'no live run in the record' };
   const series = await readLpSeries(env);
-  if (series.length && series[series.length - 1].at === last.at) return { recorded: false, why: 'already recorded', points: series.length };
+  if (series.length && Date.parse(series[series.length - 1].at) >= Date.parse(last.at)) return { recorded: false, why: 'already recorded', points: series.length };
   const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
+  const reset = rb.acted && !rb.error && rb.new_position;
   const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
   const hist = Array.isArray(rec.history) ? rec.history : [];
   const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
   const price = await bnbUsd().catch(() => null);
   const point = {
     at: last.at,
-    position: c.position || rb.position || null,
-    in_range: c.in_range != null ? c.in_range : (rb.in_range ?? null),
+    position: reset ? String(rb.new_position) : (c.position || rb.position || null),
+    in_range: reset ? true : (c.in_range != null ? c.in_range : (rb.in_range ?? null)),
     tick: rb.tick ?? null,
-    ticks: rb.ticks || null,
+    ticks: reset ? (rb.new_ticks || rb.ticks || null) : (rb.ticks || null),
+    reset: reset ? { from: rb.position, to: String(rb.new_position), width_pct: rb.width_pct ?? null, gas_bnb: rb.gas_bnb ?? null } : null,
     value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : null,
     owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
     wallet_bnb: inc.wallet_bnb != null ? Number(inc.wallet_bnb) : null,
@@ -1234,8 +1240,9 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
       const last = rec.last || {}, st = last.steps || {};
       const c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
       const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
-      const pos = c.position || rb.position || null;
-      const inRange = c.in_range != null ? c.in_range : rb.in_range;
+      const reset = rb.acted && !rb.error && rb.new_position;
+      const pos = reset ? rb.new_position : (c.position || rb.position || null);
+      const inRange = reset ? true : (c.in_range != null ? c.in_range : rb.in_range);
       // The record is the run's view; the chain's is the present. Read live,
       // so "in range and earning" is never nine hours old — it was, on
       // 2026-09-03, for the whole morning after the price had left the range.

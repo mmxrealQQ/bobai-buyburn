@@ -1927,6 +1927,50 @@ ${lines.join('\n')}
 Every step is a transaction on BNB Chain. Record: <a href="https://agent.brainonbnb.com/lp/agent">agent.brainonbnb.com/lp/agent</a>`;
 }
 
+// Once a day, after the 05:23 run, the state of the position in five lines —
+// whether anything moved or not. The action alert above fires only when
+// money moved; this is the report the operator asked for on 2026-09-04:
+// "nur wenn etwas geaendert wurde, und taeglich ein rapport".
+export function formatLpDailyReport(rec) {
+  const last = rec && rec.last;
+  if (!last || !last.at) return null;
+  const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
+  const hist = Array.isArray(rec.history) ? rec.history : [];
+  const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
+  const forwarded = sum((e) => e.steps && e.steps.collect && e.steps.collect.forwarded_bnb);
+  const swept = sum((e) => (Array.isArray(e.steps && e.steps.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0));
+  const f = (v, d = 5) => Number(v || 0).toFixed(d);
+  const reset = rb.acted && !rb.error && rb.new_position;
+  const pos = reset ? rb.new_position : (c.position || rb.position);
+  const inRange = reset ? true : (c.in_range != null ? c.in_range : rb.in_range);
+  const waiting = (Array.isArray(st.sweep) ? st.sweep : []).filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${s.token || s.source}`).join(' + ');
+  return `📋 <b>LP Agent — daily report ${String(last.at || '').slice(0, 10)}</b>
+
+🎯 Position <b>#${pos || '—'}</b>${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB` : ''} · ${inRange === false ? 'out of range (the hourly check re-sets it after 2 h outside)' : 'in range and earning'}
+💧 Fees owed now: <b>${f(c.owed && c.owed.bnb_equivalent, 6)} BNB</b> · sent to the buyback bot so far: <b>${f(forwarded)} BNB</b>
+💵 AI income waiting: ${waiting || 'none'} · put into the position so far: <b>${f(swept)} BNB</b>
+🤖 Today's run: ${last.acted ? 'it acted' : 'nothing to move — every step was under its floor'}${last.ok === false ? ' · one step failed, the operator has been told' : ''}
+
+Record: <a href="https://agent.brainonbnb.com/lp/agent">agent.brainonbnb.com/lp/agent</a> · <a href="https://brainonbnb.com/liquidity">how it works</a>`;
+}
+
+async function postLpDailyReport(env) {
+  const today = new Date().toISOString().slice(0, 10);
+  const done = await env.KV.get('lp_report_date');
+  if (done === today) return false;
+  const r = await fetch('https://agent.brainonbnb.com/lp/agent', { cf: { cacheTtl: 60 } });
+  if (!r.ok) return false;
+  const rec = await r.json();
+  // The report is about today's daily run; if it has not landed yet, wait for
+  // the next tick rather than reporting yesterday twice.
+  if (!rec.last || String(rec.last.at || '').slice(0, 10) !== today) return false;
+  const text = formatLpDailyReport(rec);
+  if (!text) return false;
+  await env.KV.put('lp_report_date', today);
+  await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true });
+  return true;
+}
+
 async function postLpAgentAlert(env) {
   const r = await fetch('https://agent.brainonbnb.com/lp/agent', { cf: { cacheTtl: 60 } });
   if (!r.ok) return false;
@@ -3092,6 +3136,11 @@ export default {
     if (new Date().getMinutes() % 10 === 5) {
       try { await postLpAgentAlert(env); }
       catch (e) { console.error('[LP ALERT ERROR]', e.message || e); }
+      // The daily report, once, in the hour after the 05:23 run.
+      if (new Date().getUTCHours() === 5 || new Date().getUTCHours() === 6) {
+        try { await postLpDailyReport(env); }
+        catch (e) { console.error('[LP REPORT ERROR]', e.message || e); }
+      }
     }
 
     // === DAILY WHALE RECAP (06:00 UTC = 08:00 CEST, idempotent via KV flag) ===

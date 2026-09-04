@@ -1046,8 +1046,12 @@ function fillLpBlock(){
         // only step is the rebalance still knows the position. Reading it from
         // collect alone showed "No position open" the evening the range was
         // re-set by hand, with the position in range and holding money.
-        const pos = c.position || rb.position;
-        const inRange = c.in_range != null ? c.in_range : rb.in_range;
+        // After a re-set the record's rebalance step still names the position it
+        // emptied; the one that exists now is new_position, minted around the
+        // price, so it is in range by construction until the chain says otherwise.
+        const reset = rb.acted && !rb.error && rb.new_position;
+        const pos = reset ? rb.new_position : (c.position || rb.position);
+        const inRange = reset ? true : (c.in_range != null ? c.in_range : rb.in_range);
         rows.push(item('&#9679;',
           pos ? (inRange === false ? 'The position is out of range — waiting for a re-set' : 'The position is in range and earning') : 'No position open',
           pos ? 'PancakeSwap V3 position #' + pos + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : ''));

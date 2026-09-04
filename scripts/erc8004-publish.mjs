@@ -1093,7 +1093,7 @@ const page = `<!doctype html>
 <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
 <link rel="apple-touch-icon" href="/logo.png?v=4">
 <link rel="stylesheet" href="/fonts.css?v=1">
-<link rel="stylesheet" href="/styles.css?v=34">
+<link rel="stylesheet" href="/styles.css?v=37">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
   /* nav/.nav/.nb live in styles.css, but .back-btn and .brand-link do not —

@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 5349,
-   "zipBytes": 110851,
-   "txtBytes": 331296,
-   "sha256": "6d7bc9c3dae399b6",
+   "lines": 5358,
+   "zipBytes": 111127,
+   "txtBytes": 332226,
+   "sha256": "f78636e0e3e35975",
    "reqs": [
     {
      "what": "A static host",
@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 37,
-   "lines": 9779,
-   "zipBytes": 201788,
-   "txtBytes": 536549,
-   "sha256": "119cc45a77deb073",
+   "lines": 9845,
+   "zipBytes": 203519,
+   "txtBytes": 541086,
+   "sha256": "8c39a40a9a0d80c9",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -654,9 +654,9 @@
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
    "lines": 4102,
-   "zipBytes": 86402,
+   "zipBytes": 86403,
    "txtBytes": 244858,
-   "sha256": "ab75724c8bea3a00",
+   "sha256": "db081b5f8fb0910f",
    "reqs": [
     {
      "what": "Node 18+ and time",

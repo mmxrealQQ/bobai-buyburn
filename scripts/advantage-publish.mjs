@@ -106,7 +106,7 @@ const html = `<!DOCTYPE html>
 <meta property="og:url" content="https://brainonbnb.com/advantage">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=34">
+<link rel="stylesheet" href="/styles.css?v=37">
 <style>
   .adv{max-width:960px;margin:0 auto}
   .hero h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(28px,5vw,44px);line-height:1.08;margin:0 0 14px}

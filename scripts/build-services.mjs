@@ -197,7 +197,7 @@ function page() {
 <meta property="og:url" content="https://brainonbnb.com/services">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=34">
+<link rel="stylesheet" href="/styles.css?v=37">
 <style>
   .sv{max-width:1000px;margin:0 auto;padding:0 20px 60px}
   .sv-hero{padding:106px 0 8px}

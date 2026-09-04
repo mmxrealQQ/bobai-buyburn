@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 9779 lines.
+# one fetch. 37 files, 9845 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -186,7 +186,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, ticksAround, readBnbUsd,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, unwindCalls, ticksAround, readBnbUsd,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
@@ -288,6 +288,10 @@ if (SELF) {
   check('just under the delay: still waits', rebalanceWait(now - (RESET_AFTER_HOURS * H - 60e3), now), true);
   check(`exactly ${RESET_AFTER_HOURS} h outside: due`, rebalanceWait(now - RESET_AFTER_HOURS * H, now), false);
   check('a day outside: due', rebalanceWait(now - 24 * H, now), false);
+  console.log('unwind in one transaction');
+  const calls = unwindCalls(7309536n, 72166992217730319120n, 1n, 2n, '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', 1800000000n);
+  check('three calls: decreaseLiquidity, collect, burn — in that order', calls.length === 3 && calls[0].startsWith('0x0c49ccbe') && calls[1].startsWith('0xfc6f7865') && calls[2].startsWith('0x42966c68') ? null : calls.map((c) => c.slice(0, 10)).join(','), false);
+  check('the token id is in every call', calls.every((c) => c.includes(BigInt(7309536).toString(16).padStart(64, '0'))) ? null : 'a call lacks the token id', false);
   const t = ticksAround(-59407, 1, 10);
   check('a re-set range sits on the pool\'s grid around the tick', t.tickLower % 10 === 0 && t.tickUpper % 10 === 0 && t.tickLower < -59407 && t.tickUpper > -59407 ? null : `${t.tickLower}…${t.tickUpper}`, false);
   check('and is never wider than the width asked for', (t.tickUpper - t.tickLower) <= 2 * Math.log(1.01) / Math.log(1.0001) ? null : 'wider', false);
@@ -748,7 +752,7 @@ export function summarize(service, result) {
 // the plan it was given rather than reading again, so what was printed is
 // what gets sent. A chain read that fails throws — an RPC that did not answer
 // must never look like a wallet that holds nothing.
-import { parseAbi, formatEther, formatUnits, parseEther } from 'viem';
+import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB,
@@ -797,6 +801,7 @@ export const ABI = {
   ERC20: parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function approve(address,uint256) returns (bool)',
+    'function allowance(address,address) view returns (uint256)',
     'function withdraw(uint256)',
     'function deposit() payable',
   ]),
@@ -808,6 +813,7 @@ export const ABI = {
     'function increaseLiquidity((uint256 tokenId,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint128 liquidity,uint256 amount0,uint256 amount1)',
     'function decreaseLiquidity((uint256 tokenId,uint128 liquidity,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint256 amount0,uint256 amount1)',
     'function burn(uint256 tokenId) payable',
+    'function multicall(bytes[] data) payable returns (bytes[] results)',
     'function mint((address token0,address token1,uint24 fee,int24 tickLower,int24 tickUpper,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,address recipient,uint256 deadline)) payable returns (uint256 tokenId,uint128 liquidity,uint256 amount0,uint256 amount1)',
     'function factory() view returns (address)',
   ]),
@@ -1125,22 +1131,49 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   };
 }
 
+// The three calls that empty the old position, as one transaction: withdraw
+// its liquidity, collect what it held, burn the NFT. The position manager's
+// multicall runs them in order inside one transaction and reverts as a whole
+// if any of them does. Pure, so the self-test can pin what is encoded.
+export function unwindCalls(tokenId, liquidity, amount0Min, amount1Min, recipient, dl) {
+  return [
+    encodeFunctionData({ abi: ABI.NPM, functionName: 'decreaseLiquidity', args: [{ tokenId, liquidity, amount0Min, amount1Min, deadline: dl }] }),
+    encodeFunctionData({ abi: ABI.NPM, functionName: 'collect', args: [{ tokenId, recipient, amount0Max: MAX128, amount1Max: MAX128 }] }),
+    encodeFunctionData({ abi: ABI.NPM, functionName: 'burn', args: [tokenId] }),
+  ];
+}
+
+// An approval that is only sent when the allowance is short. The first
+// build approved the exact amount before every trade and every mint — four
+// approvals in a nine-transaction re-set, each one paid for. An allowance of
+// the full amount range to PancakeSwap's own router and position manager is
+// what every PancakeSwap user grants in the interface, and it means the next
+// re-set skips these four transactions entirely.
+const MAX_ALLOWANCE = (1n << 256n) - 1n;
+async function ensureAllowance(pub, send, token, spender, amount, label) {
+  const have = await read(pub, token, ABI.ERC20, 'allowance', [send.owner, spender]);
+  if (have >= amount) return false;
+  await send(label, { address: token, abi: ABI.ERC20, functionName: 'approve', args: [spender, MAX_ALLOWANCE] });
+  return true;
+}
+
 // Empty the old position, burn its NFT, trade to the new ratio, mint the new
 // range from what the wallet then holds. Native BNB is not touched: the
 // reserve and any capital waiting for the increase stay where they are.
+// Nine transactions on 2026-09-02; four to five since 2026-09-04 (one
+// multicall for the unwind, approvals only when the allowance is short).
 export async function executeRebalance(pub, wallet, account, plan, log = () => {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
+  send.owner = account.address;
   const liquidity = plan.pos[7];
   const sim = await pub.simulateContract({
     address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
     args: [{ tokenId: plan.tokenId, liquidity, amount0Min: 0n, amount1Min: 0n, deadline: deadline() }], account,
   });
-  await send('withdraw the old range', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
-    args: [{ tokenId: plan.tokenId, liquidity, amount0Min: (sim.result[0] * 99n) / 100n, amount1Min: (sim.result[1] * 99n) / 100n, deadline: deadline() }] });
-  await send('collect everything it held', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
-    args: [{ tokenId: plan.tokenId, recipient: account.address, amount0Max: MAX128, amount1Max: MAX128 }] });
-  await send('burn the empty position', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'burn', args: [plan.tokenId] });
+  const calls = unwindCalls(plan.tokenId, liquidity, (sim.result[0] * 99n) / 100n, (sim.result[1] * 99n) / 100n, account.address, deadline());
+  await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
+  await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
 
   // Sized from what the wallet really holds now, not from the plan's estimate.
   const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -1153,7 +1186,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   if (haveOther > targetOther) {
     const sell = haveOther - targetOther;
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
-    await send('approve the excess for sale', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, sell] });
+    await ensureAllowance(pub, send, plan.other, ADDR.V2_ROUTER, sell, 'allow the router to sell the other side (once)');
     await send('sell the excess of the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
       args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
   } else if (targetOther > haveOther) {
@@ -1163,15 +1196,15 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     const cap = haveWbnb;
     const wbnbIn = spend > cap ? cap : spend;
     if (wbnbIn > 0n) {
-      await send('approve WBNB to the router', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, wbnbIn] });
+      await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
       await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
         args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
     }
   }
   const mintOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   const mintWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
-  await send('approve the other side to the position manager', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, mintOther] });
-  await send('approve WBNB to the position manager', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V3_POSITION_MANAGER, mintWbnb] });
+  await ensureAllowance(pub, send, plan.other, ADDR.V3_POSITION_MANAGER, mintOther, 'allow the position manager to take the other side (once)');
+  await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, mintWbnb, 'allow the position manager to take WBNB (once)');
   const amount0Desired = plan.wbnbIs0 ? mintWbnb : mintOther;
   const amount1Desired = plan.wbnbIs0 ? mintOther : mintWbnb;
   await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
@@ -4279,7 +4312,7 @@ import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
-import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict } from './lp-windows.js';
+import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost } from './lp-windows.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
@@ -5433,7 +5466,15 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
     if (path === '/lp/windows') {
       const log = await readLpWindows(env);
       if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
-      return json({ ...log, verdict: lpVerdict(log), cadence: 'hourly',
+      // The re-set cost the verdict charges is the agent's own last one when
+      // there is one — the same figure worker-lp uses, from the same record.
+      let costOpts = {};
+      try {
+        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+        const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
+        if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB in ${m.transactions ?? '?'} transactions` };
+      } catch { /* the replay's assumption stands */ }
+      return json({ ...log, verdict: lpVerdict(log, costOpts), cadence: 'hourly',
         note: 'Every entry is one replay of pancakeswap_range_plan over ~37 minutes of live chain, recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
     }
 
@@ -6586,8 +6627,26 @@ export function verdict(log, opts = {}) {
     day_pick: thin ? null : (dayHolders[0] || null),
     // The width a re-set uses: the most net per day over the recorded prices.
     earnings_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] || null),
+    reset_cost: opts.resetCostUsd != null
+      ? { usd: opts.resetCostUsd, basis: opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars' }
+      : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet' },
     earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred, at the replay's re-set cost) once the price has been outside for ${RESET_AFTER_HOURS} h — the agent's own delay. Net per day is what is left after the re-sets; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
   };
+}
+
+// The re-set cost the earnings test charges: what the agent's last real
+// re-set cost in gas, in today's dollars, once the record has one; the
+// replay's assumption until then. `agentRecord` is the lp:agent record the
+// worker writes (history entries carry the rebalance step with gas_bnb).
+export function measuredResetCost(agentRecord, bnbUsd) {
+  const hist = Array.isArray(agentRecord?.history) ? agentRecord.history : [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    const rb = hist[i]?.steps?.rebalance;
+    if (rb && rb.acted && !rb.error && Number(rb.gas_bnb) > 0 && Number(bnbUsd) > 0) {
+      return { usd: Math.round(Number(rb.gas_bnb) * Number(bnbUsd) * 100) / 100, gas_bnb: Number(rb.gas_bnb), at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null };
+    }
+  }
+  return null;
 }
 
 // One width, lived through the record. `used` is the non-overlapping window
@@ -9713,7 +9772,7 @@ import {
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
-import { readLpWindows, verdict } from '../worker-agent/lp-windows.js';
+import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
 import { rebalanceWait } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
@@ -9817,7 +9876,14 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   //    watched (2026-09-02), then the cron took over.
   await run('rebalance', async () => {
     const log = await readLpWindows(env);
-    const record = log ? verdict(log) : null;
+    // The width is picked with the cost the agent really pays, once it has
+    // paid one: the last re-set's gas from its own record, in today's dollars.
+    let costOpts = {};
+    try {
+      const m = measuredResetCost(await readState(env), (await readBnbUsd(pub)).bnbUsd);
+      if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB` };
+    } catch { /* the replay's assumption stands */ }
+    const record = log ? verdict(log, costOpts) : null;
     const plan = await planRebalance(pub, lp.address, { record });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;

@@ -1750,6 +1750,30 @@ const WHALE_COMMANDS = [
 
 const COMMANDS_VERSION = 'v11-no-scan';
 
+// Telegram can sign every webhook call with a secret it sends back in the
+// X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
+// Worker URL can post a fake update and make the bot answer into any chat it
+// sits in. The secret is a Worker secret (TG_WEBHOOK_SECRET); this registers
+// it with Telegram once per value, keeping the webhook URL Telegram already
+// has, so the token never leaves Cloudflare and no script needs it.
+async function ensureWebhookSecret(env) {
+  const secret = env.TG_WEBHOOK_SECRET || '';
+  if (!secret) return;
+  const want = 'v1:' + secret.slice(0, 8);
+  const have = await env.KV.get('webhook_secret_version');
+  if (have === want) return;
+  const info = await tg('getWebhookInfo', {});
+  const url = info?.result?.url;
+  if (!url) { console.error('[WEBHOOK] no webhook url registered, cannot attach secret'); return; }
+  const res = await tg('setWebhook', { url, secret_token: secret, allowed_updates: info.result.allowed_updates || [] });
+  if (res?.ok) {
+    await env.KV.put('webhook_secret_version', want);
+    console.log('[WEBHOOK] secret attached to', url);
+  } else {
+    console.error('[WEBHOOK] setWebhook failed:', JSON.stringify(res));
+  }
+}
+
 async function ensureCommandsRegistered(env) {
   const current = await env.KV.get('commands_version');
   if (current === COMMANDS_VERSION) return;
@@ -2335,6 +2359,7 @@ export default {
         cron_alive: ageSeconds !== null && ageSeconds < 900,
         channel_configured: Boolean(env.BOT_TOKEN && TG_CHAT_ID),
         alerts: ['buys', 'burns'],
+        webhook_secured: Boolean(env.TG_WEBHOOK_SECRET) && Boolean(await env.KV.get('webhook_secret_version')),
       }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
     }
 
@@ -2865,6 +2890,17 @@ export default {
 
     // === Telegram webhook (default POST route — unchanged behaviour) ===
     if (request.method === 'POST') {
+      // Once the secret is registered with Telegram, every genuine update
+      // carries it. Before that (first deploy, secret not yet attached) the
+      // check must stay open, or the bot would go silent between the two.
+      if (env.TG_WEBHOOK_SECRET) {
+        const armed = await env.KV.get('webhook_secret_version');
+        const got = request.headers.get('x-telegram-bot-api-secret-token') || '';
+        if (armed && got !== env.TG_WEBHOOK_SECRET) {
+          console.error('[WEBHOOK] rejected update without valid secret');
+          return new Response('unauthorized', { status: 401 });
+        }
+      }
       try {
         const update = await request.json();
 
@@ -2931,6 +2967,8 @@ export default {
 
     // === ENSURE BOT COMMANDS REGISTERED (idempotent, KV-flagged) ===
     await ensureCommandsRegistered(env);
+    try { await ensureWebhookSecret(env); }
+    catch (e) { console.error('[WEBHOOK SECRET ERROR]', e.message || e); }
 
     // === LP AGENT — when it acts, the channel hears it ===
     // The daily tick (worker-lp, 05:23 UTC) writes one record; the agent

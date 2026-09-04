@@ -1890,8 +1890,18 @@ async function ensureCommandsRegistered(env) {
 
 // The text for one LP agent record that acted. Pure, so it can be rendered
 // against a real record without posting. Returns null when nothing moved.
+// The entry to announce is the newest one that acted or failed — the record
+// keeps those in `history` — not `last`: since the range is checked hourly,
+// an hourly re-set is folded into the daily record without changing its
+// timestamp, and keying on that timestamp is how the first automatic re-set
+// (2026-09-04 07:50 UTC) went unannounced.
+export function lpAlertEntry(rec) {
+  const hist = rec && Array.isArray(rec.history) ? rec.history : [];
+  return hist.length ? hist[hist.length - 1] : (rec && rec.last) || null;
+}
+
 export function formatLpAgentAlert(rec) {
-  const last = rec && rec.last;
+  const last = lpAlertEntry(rec);
   if (!last || !last.acted) return null;
   const st = last.steps || {};
   const f = (v, d = 4) => Number(v || 0).toFixed(d);
@@ -1909,7 +1919,7 @@ export function formatLpAgentAlert(rec) {
     lines.push(`📈 Added <b>${f(st.increase.wbnb_used)} BNB</b> and ${f(st.increase.other_used, 3)} of the other side to the position`);
   }
   if (!lines.length) return null;
-  return `🤖 <b>LP Agent — ${String(last.at || '').slice(0, 10)}</b>
+  return `🤖 <b>LP Agent — ${String(last.at || '').slice(0, 16).replace('T', ' ')} UTC</b>
 The project's own liquidity position, run by a bot: AI income goes in as capital, the fees come out as $BOBAI burn. Today it moved:
 
 ${lines.join('\n')}
@@ -1921,7 +1931,8 @@ async function postLpAgentAlert(env) {
   const r = await fetch('https://agent.brainonbnb.com/lp/agent', { cf: { cacheTtl: 60 } });
   if (!r.ok) return false;
   const rec = await r.json();
-  const at = rec && rec.last && rec.last.at;
+  const ev = lpAlertEntry(rec);
+  const at = ev && ev.at;
   if (!at) return false;
   const seen = await env.KV.get('lp_alert_at');
   if (seen === at) return false;

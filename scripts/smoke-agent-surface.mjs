@@ -601,6 +601,12 @@ section('The marketplace, from the front door');
   ok('/lp/agent is a page for a browser', /text\/html/.test(lpHtml.headers.get('content-type') || '') && /The last run, step by step/.test(await lpHtml.text()));
   const lpJson = await fetch('https://agent.brainonbnb.com/lp/agent').then((r) => r.json()).catch(() => null);
   ok('/lp/agent stays JSON for a fetch', !!lpJson && lpJson.cadence === 'daily' && !!lpJson.last);
+  // The width record as a page (2026-09-04): the pick, every width replayed.
+  const winHtml = await fetch('https://agent.brainonbnb.com/lp/windows', { headers: { accept: 'text/html' } });
+  const winText = await winHtml.text();
+  ok('/lp/windows is a page for a browser: the pick and every width replayed', /text\/html/.test(winHtml.headers.get('content-type') || '') && /The pick/.test(winText) && /Every width, replayed/.test(winText) && /±0\.25%/.test(winText));
+  const winJson = await fetch('https://agent.brainonbnb.com/lp/windows').then((r) => r.json()).catch(() => null);
+  ok('/lp/windows stays JSON for a fetch, verdict included', !!winJson && !!winJson.verdict && Array.isArray(winJson.verdict.rows));
   // The series (point 4, 2026-09-03): one point per run, the summary derived
   // from the points and from nothing else, and the page carries the table.
   const ser = await fetch('https://agent.brainonbnb.com/lp/series').then((r) => r.json()).catch(() => null);

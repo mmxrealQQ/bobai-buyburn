@@ -1149,12 +1149,16 @@ function fillLpYours(){
     // The look is free and comes first: the facts of the position, read live.
     // The terms for the plan follow underneath.
     const lookQ = /^\d+$/.test(v) ? 'position=' + v : 'address=' + v;
-    let lookHtml = '';
+    let lookHtml = '', noPlan = false;
     fetch(A + '/lp/look?' + lookQ, {cache:'no-store'})
       .then(r => r.json())
       .then(l => {
-        if(l.error){ lookHtml = '<div class="lp-terms"><span class="lp-err">' + esc(l.error) + '</span></div>'; return; }
-        if(l.positions !== 1){ lookHtml = '<div class="lp-terms"><div class="lp-head">' + esc(l.verdict) + '</div></div>'; return; }
+        // No position to plan: say so and stop. Offering the terms for a plan
+        // on a position that does not exist sold nothing and confused the
+        // visitor (pressed 2026-09-04 with an id that was never minted).
+        if(l.error){ lookHtml = '<div class="lp-terms"><span class="lp-err">' + esc(l.error) + '</span></div>'; noPlan = true; return; }
+        if(l.positions !== 1){ lookHtml = '<div class="lp-terms"><div class="lp-head">' + esc(l.verdict) + '</div></div>'; noPlan = true; return; }
+        if(!l.against_wbnb) noPlan = true;
         const facts = [
           ['Position', '#' + l.position + (l.pool ? ' · ' + l.pool.fee_tier_pct + '% pool' : '')],
           ['Range', l.in_range ? 'in range — ' + l.room.to_lower_pct + '% of room below the price, ' + l.room.to_upper_pct + '% above' : 'out of range — earning nothing until the price returns or the range is re-set'],
@@ -1165,9 +1169,9 @@ function fillLpYours(){
           '<span class="agt-note">Read from the position manager and the pool at ' + esc(String(l.measured_at || '').replace('T',' ').slice(0,16)) + ' UTC. ' + (l.against_wbnb ? 'The plan below adds what the agent would do about it: whether a re-set is due and in which width, and what your spare BNB would add.' : 'The agent plans only WBNB pairs, so there is no plan to buy for this one.') + '</span></div>';
       })
       .catch(() => { lookHtml = ''; })
-      .then(() => fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'}))
-      .then(r => r.json())
+      .then(() => { if(noPlan){ out.innerHTML = lookHtml; go.disabled = false; return null; } return fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'}).then(r => r.json()); })
       .then(t => {
+        if(!t) return;
         const direct = (t.accepts || []).find(a => a.extra && a.extra.assetTransferMethod === 'direct-transfer' && !(a.extra.symbol === 'BOBAI'));
         const bobai = (t.accepts || []).find(a => a.extra && a.extra.symbol === 'BOBAI');
         if(!direct) throw new Error(t.error || 'no terms');

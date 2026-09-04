@@ -34,13 +34,13 @@ export const CAPABILITIES = {
     { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme launch curve, read from four.meme\'s own contract' },
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it (or the four.meme curve a new token is still on), search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },
-    { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', what: 'the same tools as plain GET, for agents that do not speak MCP' },
+    { name: 'REST endpoints', where: 'https://brainonbnb.com/api/*', example: 'https://brainonbnb.com/api/pool-scan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', what: 'the same tools as plain GET, for agents that do not speak MCP' },
     // The three PancakeSwap answers, named rather than left inside "read-only
     // tools over MCP". Somebody arriving with a decision to make is looking for
     // the decision, not for the protocol it is delivered over.
-    { name: 'which fee tier pays', where: 'https://brainonbnb.com/api/fee-tiers?address=0x...', what: 'a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.' },
-    { name: 'which price range', where: 'https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000', what: 'a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.' },
-    { name: 'which route, and can you get out', where: 'https://brainonbnb.com/api/best-route?address=0x...&usd=250', what: 'which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.' },
+    { name: 'which fee tier pays', where: 'https://brainonbnb.com/api/fee-tiers?address=0x...', example: 'https://brainonbnb.com/api/fee-tiers?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', what: 'a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.' },
+    { name: 'which price range', where: 'https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000', example: 'https://brainonbnb.com/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&capitalUsd=1000', what: 'a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.' },
+    { name: 'which route, and can you get out', where: 'https://brainonbnb.com/api/best-route?address=0x...&usd=250', example: 'https://brainonbnb.com/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&usd=250', what: 'which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.' },
   ],
   record: [
     {
@@ -63,6 +63,7 @@ export const CAPABILITIES = {
     {
       name: 'agent search',
       where: 'GET https://agent.brainonbnb.com/find?q=<what you need>',
+      example: 'https://agent.brainonbnb.com/find?q=venus+health+factor',
       what: 'Finds ERC-8004 agents on BNB Chain that expose something matching, using the tools they returned when asked and the descriptions they wrote on-chain. Optional &speaks=mcp,a2a,x402 to require a protocol.',
       free: true,
     },
@@ -78,6 +79,7 @@ export const CAPABILITIES = {
     {
       name: 'paid answer',
       where: 'POST https://agent.brainonbnb.com/answer?service=<id>',
+      example: 'https://agent.brainonbnb.com/example?service=health_factor',
       what: 'any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
       price: '0.10 USD1 per answer, or the same in $BOBAI at the 402’s quote',
       why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',

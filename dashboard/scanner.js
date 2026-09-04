@@ -828,7 +828,9 @@ function render(d){
     ? 'Costs include a '+pc(d.taxB*100)+' buy tax ('+src(tax.ok&&tax.buy!=null)+
       ') and a '+pc(d.taxS*100)+' sell tax ('+src(tax.ok&&tax.sell!=null)+
       '), plus the '+(pool.fee*100).toFixed(2)+'% pool fee.'
-    : 'Costs include the '+(pool.fee*100).toFixed(2)+'% pool fee only — no transfer tax could be established for this token, measured or reported, so treat this column as a floor.';
+    : (tax.ok&&(tax.buy!=null||tax.sell!=null))
+      ? 'Costs include the '+(pool.fee*100).toFixed(2)+'% pool fee only — the transfer tax measured 0% on the executed trades above, so nothing is added for it.'
+      : 'Costs include the '+(pool.fee*100).toFixed(2)+'% pool fee only — no transfer tax could be established for this token, measured or reported, so treat this column as a floor.';
   // The toll: what a trade of ANY size costs before depth enters the picture.
   const floors={buy:(1-(1-d.taxB)*(1-pool.fee))*100, sell:(1-(1-d.taxS)*(1-pool.fee))*100};
   lad.appendChild(renderLadder(d.rows,taxNote,floors));

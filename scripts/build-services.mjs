@@ -156,12 +156,17 @@ ${needsList(d.needs)}
 const capRow = (c) => {
   const isCmd = c.where && !/^(https?:\/\/|POST |GET )/i.test(c.where);
   const url = c.where && /^(POST|GET)\s+/i.test(c.where) ? c.where.replace(/^\w+\s+/, '').split(/\s+/)[0] : c.where;
-  const head = url && !isCmd
+  // A URL with a placeholder in it (<id>, 0x..., /api/*) is the shape of a
+  // call, not a page: linking it sent a visitor to a 400 (found 2026-09-04).
+  // The shape is shown as code; the catalogue's working example is the link.
+  const isShape = !!url && /[<>*]|0x\.\.\./.test(url);
+  const head = url && !isCmd && !isShape
     ? `<a href="${esc(url)}" rel="noopener">${esc(c.name)}</a>`
-    : esc(c.name);
+    : (c.example ? `<a href="${esc(c.example)}" rel="noopener">${esc(c.name)}</a>` : esc(c.name));
   return `        <li><b>${head}</b>${c.price ? ` <span class="sv-price sv-price-s">${esc(c.price)}</span>` : ''}
-          <span>${esc(c.what)}</span>${isCmd ? `<code>${esc(c.where)}</code>` : ''}${
+          <span>${esc(c.what)}</span>${isCmd || (isShape && !/^(POST|GET)\s/i.test(c.where || '')) ? `<code>${esc(c.where)}</code>` : ''}${
   /^(POST|GET)\s/i.test(c.where || '') ? `<code>${esc(c.where)}</code>` : ''}${
+  c.example && isShape ? `<span class="sv-limit">Try it: <a href="${esc(c.example)}" rel="noopener">${esc(c.example.replace(/^https?:\/\//, ''))}</a></span>` : ''}${
   c.limit ? `<span class="sv-limit">${esc(c.limit)}</span>` : ''}${
   c.why_paid ? `<span class="sv-limit">Paid because ${esc(c.why_paid)}.</span>` : ''}</li>`;
 };

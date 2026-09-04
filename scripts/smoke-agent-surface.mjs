@@ -605,7 +605,10 @@ section('The marketplace, from the front door');
   // from the points and from nothing else, and the page carries the table.
   const ser = await fetch('https://agent.brainonbnb.com/lp/series').then((r) => r.json()).catch(() => null);
   ok('/lp/series carries points and a summary derived from them', !!ser && Array.isArray(ser.points) && ser.points.length > 0 && ser.summary && ser.summary.points === ser.points.length && ser.points.every((p) => p.at && 'value_bnb' in p && 'in_range' in p));
-  ok('the last series point is the last run in the record', !!ser && !!lpJson && ser.points[ser.points.length - 1].at === lpJson.last.at, ser && lpJson && `${ser.points[ser.points.length - 1].at} vs ${lpJson.last.at}`);
+  // The newest run is the daily one or an hourly check that acted (those
+  // land in history) — a 07:50 re-set is a run the series must show.
+  const newestRun = lpJson && [lpJson.last, ...(lpJson.history || [])].filter((e) => e && e.at && !e.dry).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+  ok('the last series point is the newest run in the record', !!ser && !!newestRun && ser.points[ser.points.length - 1].at === newestRun.at, ser && newestRun && `${ser.points[ser.points.length - 1].at} vs ${newestRun.at}`);
   ok('/liquidity carries the day-by-day table', /id="ag-lp-series"/.test(lq.body) && /lp\/series/.test(lq.body));
   ok('/run-lp-series is not open', (await fetch('https://agent.brainonbnb.com/run-lp-series', { method: 'POST' })).status === 403);
 }
@@ -641,6 +644,14 @@ section('The marketplace, from the front door');
   ok('the 402 quotes the same price in $BOBAI from the pair', !!bobaiAccept && /^0x245c386d/i.test(bobaiAccept.asset) && BigInt(bobaiAccept.maxAmountRequired) > 0n && ansBody.in_bobai && ansBody.in_bobai.usd_per_bobai > 0 && ansBody.in_bobai.tokens > 100, JSON.stringify(ansBody.in_bobai));
   // The sixth answer: the liquidity agent on a position that is not ours.
   const lpEx = await fetch(`${AGENT}/example?service=lp_position_plan`).then((r) => r.json()).catch(() => null);
+  // The free look (2026-09-04): the facts without the plan, open, no key.
+  const ownPos = lpJson && lpJson.last && lpJson.last.steps && (lpJson.last.steps.collect || {}).position;
+  const look = ownPos ? await fetch(`${AGENT}/lp/look?position=${ownPos}`).then((r) => r.json()).catch(() => null) : null;
+  ok('/lp/look reads a position for free: range, room, value, fees — and no plan', !!look && look.position === String(ownPos) && typeof look.in_range === 'boolean' && look.room && look.value_bnb != null && !('rebalance' in look) && /the paid answer/.test(look.the_plan || ''), look && (look.error || look.verdict || '').slice(0, 120));
+  ok('/lp/look without a position says what it needs', (await fetch(`${AGENT}/lp/look`)).status === 400);
+  // The dead address holds tens of thousands of burned LP NFTs, so this is
+  // the "name one by id" branch; a wallet with none gets the other sentence.
+  ok('/lp/look on a wallet that does not hold exactly one position says so', await fetch(`${AGENT}/lp/look?address=0x000000000000000000000000000000000000dEaD`).then((r) => r.json()).then((j) => j.positions !== 1 && /PancakeSwap V3 position/.test(j.verdict || '')).catch(() => false));
   ok('lp_position_plan reads a position and states what the agent would do', !!lpEx && lpEx.result && lpEx.result.plan && lpEx.result.plan.position && typeof lpEx.result.plan.in_range === 'boolean' && /Re-set:|Out of range|In range/.test(lpEx.result.plan.verdict || ''), lpEx && (lpEx.error || lpEx.result?.plan?.verdict || '').slice(0, 120));
   ok('lp_position_plan signs nothing and says so', !!lpEx && /signs nothing/.test(lpEx.result?.plan?.what_this_is_not || ''));
   const ansBogus = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: '{"task":"x"}' });

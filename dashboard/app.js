@@ -1145,14 +1145,33 @@ function fillLpYours(){
   go.addEventListener('click', () => {
     const v = inp.value.trim();
     if(!/^\d+$/.test(v) && !/^0x[0-9a-fA-F]{40}$/.test(v)){ out.hidden = false; out.innerHTML = '<span class="lp-err">A position id (digits) or a wallet address (0x…), please.</span>'; return; }
-    go.disabled = true; out.hidden = false; out.innerHTML = '<span class="agt-note">Reading the terms…</span>';
-    fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'})
+    go.disabled = true; out.hidden = false; out.innerHTML = '<span class="agt-note">Reading the position…</span>';
+    // The look is free and comes first: the facts of the position, read live.
+    // The terms for the plan follow underneath.
+    const lookQ = /^\d+$/.test(v) ? 'position=' + v : 'address=' + v;
+    let lookHtml = '';
+    fetch(A + '/lp/look?' + lookQ, {cache:'no-store'})
+      .then(r => r.json())
+      .then(l => {
+        if(l.error){ lookHtml = '<div class="lp-terms"><span class="lp-err">' + esc(l.error) + '</span></div>'; return; }
+        if(l.positions !== 1){ lookHtml = '<div class="lp-terms"><div class="lp-head">' + esc(l.verdict) + '</div></div>'; return; }
+        const facts = [
+          ['Position', '#' + l.position + (l.pool ? ' · ' + l.pool.fee_tier_pct + '% pool' : '')],
+          ['Range', l.in_range ? 'in range — ' + l.room.to_lower_pct + '% of room below the price, ' + l.room.to_upper_pct + '% above' : 'out of range — earning nothing until the price returns or the range is re-set'],
+          ['Worth', l.value_bnb != null ? Number(l.value_bnb).toFixed(4) + ' BNB' : 'not priced (not against WBNB)'],
+          ['Fees owed', l.fees_owed && l.fees_owed.bnb_equivalent != null ? Number(l.fees_owed.bnb_equivalent).toFixed(6) + ' BNB' + (l.fees_owed.bnb_equivalent >= 0.002 ? ' — collecting pays for its gas' : ' — under the floor, collecting would cost more than it recovers') : 'not priced'],
+        ];
+        lookHtml = '<div class="lp-terms"><div class="lp-head">The look, free</div><dl>' + facts.map(([k,x]) => '<dt>' + esc(k) + '</dt><dd>' + esc(x) + '</dd>').join('') + '</dl>' +
+          '<span class="agt-note">Read from the position manager and the pool at ' + esc(String(l.measured_at || '').replace('T',' ').slice(0,16)) + ' UTC. ' + (l.against_wbnb ? 'The plan below adds what the agent would do about it: whether a re-set is due and in which width, and what your spare BNB would add.' : 'The agent plans only WBNB pairs, so there is no plan to buy for this one.') + '</span></div>';
+      })
+      .catch(() => { lookHtml = ''; })
+      .then(() => fetch(A + '/answer?service=lp_position_plan', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'}))
       .then(r => r.json())
       .then(t => {
         const direct = (t.accepts || []).find(a => a.extra && a.extra.assetTransferMethod === 'direct-transfer' && !(a.extra.symbol === 'BOBAI'));
         const bobai = (t.accepts || []).find(a => a.extra && a.extra.symbol === 'BOBAI');
         if(!direct) throw new Error(t.error || 'no terms');
-        out.innerHTML = '<div class="lp-terms"><div class="lp-head">Send the fee, then paste the transaction hash</div>' +
+        out.innerHTML = lookHtml + '<div class="lp-terms" style="margin-top:10px"><div class="lp-head">For the plan: send the fee, then paste the transaction hash</div>' +
           '<div>To <code>' + esc(direct.payTo) + '</code> on BNB Smart Chain:</div>' +
           '<div><b>0.10 USD1</b>' + (bobai && t.in_bobai ? ' &mdash; or <b>' + esc(Number(t.in_bobai.tokens).toLocaleString('en-US')) + ' $BOBAI</b> at this quote (' + esc(Number(t.in_bobai.usd_per_bobai).toPrecision(3)) + ' $ each, a tenth of slack included)' : '') + '</div>' +
           '<div class="lp-ask"><input id="lp-yours-tx" type="text" autocomplete="off" spellcheck="false" placeholder="0x… transaction hash" aria-label="Transaction hash"><button id="lp-yours-pay" type="button" class="mkt-go" style="border:0;cursor:pointer">Get the plan &rarr;</button></div>' +
@@ -1171,7 +1190,7 @@ function fillLpYours(){
             .catch(() => { pay.disabled = false; pay.textContent = 'Get the plan →'; });
         });
       })
-      .catch(e => { out.innerHTML = '<span class="lp-err">The agent did not answer just now: ' + esc(e.message || e) + '</span>'; })
+      .catch(e => { out.innerHTML = lookHtml + '<span class="lp-err">The agent did not answer just now: ' + esc(e.message || e) + '</span>'; })
       .then(() => { go.disabled = false; });
   });
   inp.addEventListener('keydown', e => { if(e.key === 'Enter') go.click(); });

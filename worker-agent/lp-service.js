@@ -49,7 +49,11 @@ async function readById(pub, tokenId) {
   return { positions: 1, tokenId, pos, owed0, owed1, owner };
 }
 
-export async function lpPositionPlan(params = {}, env = null) {
+// The facts of a position, read from the chain: what it holds, whether it is
+// in range and how much room is left, what it is worth, what it is owed.
+// Shared by the free look (/lp/look) and the paid plan — the plan is these
+// facts plus the agent's decisions about them.
+export async function lpPositionFacts(params = {}) {
   const pub = client();
   let tokenId = null;
   const idIn = params.position ?? params.tokenId ?? params.id;
@@ -58,8 +62,8 @@ export async function lpPositionPlan(params = {}, env = null) {
   if (tokenId == null) {
     if (!address) throw new Error('lp_position_plan needs a PancakeSwap V3 position id, or the address of a wallet that holds exactly one');
     const n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address]));
-    if (n === 0) return { service: 'lp_position_plan', address, positions: 0, verdict: 'This wallet holds no PancakeSwap V3 position. Nothing to plan.' };
-    if (n > 1) return { service: 'lp_position_plan', address, positions: n, verdict: `This wallet holds ${n} PancakeSwap V3 positions. Name one by its id (position: <tokenId>) and the plan is for that one.` };
+    if (n === 0) return { facts: { service: 'lp_position_plan', address, positions: 0, verdict: 'This wallet holds no PancakeSwap V3 position. Nothing to plan.' } };
+    if (n > 1) return { facts: { service: 'lp_position_plan', address, positions: n, verdict: `This wallet holds ${n} PancakeSwap V3 positions. Name one by its id (position: <tokenId>) and the plan is for that one.` } };
     tokenId = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 0n]);
   }
   const p = await readById(pub, tokenId);
@@ -79,6 +83,7 @@ export async function lpPositionPlan(params = {}, env = null) {
   const owedBnbEquiv = owedBnb == null ? null : owedBnb + owedOther * priceOtherInBnb;
   const facts = {
     service: 'lp_position_plan',
+    positions: 1,
     position: String(tokenId), owner,
     pool: { address: poolInfo.pool, token0: p.pos[2], token1: p.pos[3], fee_tier_pct: Number(p.pos[4]) / 10000, tick: poolInfo.tick, ticks: [Number(p.pos[5]), Number(p.pos[6])] },
     in_range: poolInfo.inRange,
@@ -90,6 +95,38 @@ export async function lpPositionPlan(params = {}, env = null) {
     fees_owed: { token0: bn(p.owed0), token1: bn(p.owed1), bnb_equivalent: owedBnbEquiv == null ? null : +owedBnbEquiv.toFixed(6) },
     against_wbnb: wbnbIs0 || wbnbIs1,
   };
+  return { facts, pub, p, owner, poolInfo, owedBnbEquiv };
+}
+
+// The free look: the facts, and the one sentence a holder wants first — in
+// range or not, room left, fees owed and whether collecting them pays. No
+// plan: the width, the re-set and what spare BNB would add are the paid
+// answer. A holder who has seen the look knows what the plan is about.
+export async function lpPositionLook(params = {}) {
+  const r = await lpPositionFacts(params);
+  if (r.facts.positions !== 1) return { ...r.facts, service: 'lp_position_look' };
+  const { facts, poolInfo, owedBnbEquiv } = r;
+  const lines = [];
+  lines.push(poolInfo.inRange
+    ? `In range: ${facts.room.to_lower_pct}% of room below the price, ${facts.room.to_upper_pct}% above.`
+    : 'Out of range: the position is all one token and earns nothing until the price returns or the range is re-set.');
+  if (owedBnbEquiv != null) lines.push(owedBnbEquiv >= 0.002 ? `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — collecting pays for its gas.` : `Fees owed: ${owedBnbEquiv.toFixed(6)} BNB — under the 0.002 BNB floor, collecting would cost more gas than it recovers.`);
+  return {
+    ...facts,
+    service: 'lp_position_look',
+    verdict: lines.join(' '),
+    the_plan: facts.against_wbnb
+      ? 'What the agent would do about it — whether a re-set is due and in which width, what the wallet\'s spare BNB would add — is the paid answer: lp_position_plan, 0.10 USD1, POST /answer?service=lp_position_plan.'
+      : 'The position is not against WBNB. The agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.',
+    measured_at: new Date().toISOString(),
+    source: 'PancakeSwap V3 NonfungiblePositionManager and the pool itself, read live',
+  };
+}
+
+export async function lpPositionPlan(params = {}, env = null) {
+  const r = await lpPositionFacts(params);
+  if (r.facts.positions !== 1) return r.facts;
+  const { facts, pub, p, owner, poolInfo, owedBnbEquiv } = r;
   if (!facts.against_wbnb) {
     return { ...facts, verdict: 'The position is not against WBNB. This agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.', measured_at: new Date().toISOString() };
   }

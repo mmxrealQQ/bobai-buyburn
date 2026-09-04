@@ -36,6 +36,7 @@ import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines } from '../shared/lp-flow.js';
+import { lpPositionLook } from './lp-service.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
@@ -964,6 +965,15 @@ export default {
     if (path === '/find') {
       const r = await handleFind(url);
       return json(r.body, r.status);
+    }
+    // The liquidity agent's free look at anybody's PancakeSwap V3 position:
+    // in range or not, room left, value, fees owed. Open, no key, read live.
+    // The plan (re-set, width, what spare BNB adds) is the paid answer.
+    if (path === '/lp/look') {
+      const params = { position: url.searchParams.get('position') || undefined, address: url.searchParams.get('address') || undefined };
+      if (!params.position && !params.address) return json({ error: 'give ?position=<PancakeSwap V3 token id> or ?address=<wallet that holds exactly one>', example: '/lp/look?position=7324788' }, 400);
+      try { return json(await lpPositionLook(params), 200, { 'Cache-Control': 'no-store' }); }
+      catch (e) { return json({ error: String(e.shortMessage || e.message).slice(0, 200) }, 400); }
     }
 
     // Dispatch: a task in, an answer back, with the agent that produced it

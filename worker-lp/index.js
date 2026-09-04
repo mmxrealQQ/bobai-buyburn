@@ -219,7 +219,9 @@ async function record(env, entry, partial = false) {
   st.last_check = entry;
   if (partial && st.last && st.last.steps) {
     const steps = { ...st.last.steps, ...entry.steps };
-    st.last = { ...st.last, steps, why: whyOf(steps), range_checked_at: entry.at };
+    // "Range checked" only when the range was: a hand-narrowed collect run
+    // must not read as an hourly check on the record page.
+    st.last = { ...st.last, steps, why: whyOf(steps), ...(entry.steps.rebalance ? { range_checked_at: entry.at } : {}) };
   } else {
     st.last = entry;
   }

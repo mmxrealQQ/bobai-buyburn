@@ -36,6 +36,7 @@ import {
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT,
 } from '../shared/lp-guards.js';
+import { moneyFlow, flowLines } from '../shared/lp-flow.js';
 
 const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
@@ -114,6 +115,53 @@ if (SELF) {
   eq('undefined (var not set) falls back to the default', splitFees(one, undefined).pct, FEE_SHARE_KEPT_PCT);
   eq('nothing produced splits to nothing', splitFees(0n).keep + splitFees(0n).buyback, 0n);
   eq('a negative amount is treated as nothing', splitFees(-1n).buyback, 0n);
+
+  console.log('money flow');
+  // The record as the worker writes it, with one run of each kind, a dry run
+  // that must not count, and a collect from before the split (forwarded only).
+  const rec = {
+    history: [
+      { at: '2026-09-02T14:20:00Z', dry: true, ok: false, acted: false, steps: { collect: { acted: true, forwarded_bnb: '9', txs: [{ gas_bnb: 1 }] } } },
+      { at: '2026-09-03T05:23:00Z', ok: true, acted: true, steps: {
+        sweep: [{ source: 'x402', token: 'USD1', acted: true, sold: '5', received_bnb: '0.007', txs: [{ gas_bnb: 0.00001 }, { gas_bnb: 0.00002 }] }, { source: 'provider', acted: false, why: 'nothing' }],
+        collect: { acted: true, forwarded_bnb: '0.003', txs: [{ gas_bnb: 0.00001 }] },
+      } },
+      { at: '2026-09-04T05:23:00Z', ok: true, acted: true, steps: {
+        collect: { acted: true, produced_bnb: '0.004', kept_bnb: '0.002', forwarded_bnb: '0.002', kept_pct: 50, txs: [{ gas_bnb: 0.00001 }] },
+        increase: { acted: true, wbnb_used: '0.005', bnb_spent: '0.0101', txs: [{ gas_bnb: 0.00003 }] },
+        rebalance: { acted: true, new_position: '7', txs: [{ gas_bnb: 0.00002 }] },
+      } },
+      { at: '2026-09-04T09:00:00Z', ok: false, acted: true, steps: { collect: { acted: true, error: 'reverted', txs: [{ gas_bnb: 0.00001 }] } } },
+    ],
+    last: { at: '2026-09-04T05:23:00Z', steps: {
+      sweep: [{ source: 'x402', token: 'USD1', balance: 0.6, bnb_equivalent: 0.0008 }, { source: 'provider', token: '$U', balance: 0 }],
+      collect: { kept_pct: 50, owed: { bnb_equivalent: 0.000016 } },
+      increase: { spendable_bnb: 0.0075 },
+    } },
+  };
+  const fl = moneyFlow(rec, { earned: { count: 3, totalUsd1: '0.70' } });
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  const is = (label, ok) => check(label, ok ? null : 'wrong', false);
+  is('a dry run counts for nothing', fl.in.fees.bnb < 9 && fl.gas.bnb < 1);
+  is('income is summed per source', fl.in.income.length === 1 && fl.in.income[0].source === 'x402' && near(fl.in.income[0].bnb, 0.007) && fl.in.income[0].runs === 1);
+  is('a sweep that did not act is not a source', !fl.in.income.some((s) => s.source === 'provider'));
+  is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.bnb, 0.007) && fl.in.fees.collects === 2);
+  is('the buyback got 0.003 + 0.002', near(fl.out.buyback_bnb, 0.005));
+  is('0.002 was kept as capital', near(fl.out.kept_as_capital_bnb, 0.002));
+  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.009));
+  is('the increase counts the BNB it spent, gas included', near(fl.out.into_position_bnb, 0.0101) && fl.out.increases === 1);
+  is('one re-set', fl.out.resets === 1);
+  is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 7 && near(fl.gas.bnb, 0.00011));
+  is('a failed collect adds no fees', near(fl.in.fees.bnb, 0.007));
+  is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-04T09:00:00Z');
+  is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
+  is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
+  is('the rule is what the last collect named', fl.rule.fee_share_kept_pct === 50 && fl.rule.fee_share_buyback_pct === 50);
+  is('paid_for carries the service earnings', fl.paid_for.x402_answers === 3 && near(fl.paid_for.usd1, 0.7));
+  is('an empty record flows nothing', moneyFlow({}).in.total_bnb === 0 && moneyFlow({}).rule === null && moneyFlow(null).gas.transactions === 0);
+  const lines = flowLines(fl);
+  is('the lines name the source, the fees and the split', /USD1/.test(lines.came_in) && /0\.00700 BNB of fees/.test(lines.came_in) && /0\.00500 BNB to the buyback/.test(lines.went_out) && /0\.00200 BNB kept/.test(lines.went_out));
+  is('an empty record reads as nothing yet', /no income swept yet/.test(flowLines(moneyFlow({})).came_in) && /nothing has left/.test(flowLines(moneyFlow({})).went_out));
 
   console.log('sweep');
   const healthySweep = { symbol: 'USD1', balance: 5, bnbEquivalent: 0.007, gasBnb: 0.002, bnbUsd: 700, feedAgeS: 30, impliedUsd: 1.0 };

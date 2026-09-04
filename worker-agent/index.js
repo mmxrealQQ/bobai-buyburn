@@ -35,6 +35,7 @@ import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
+import { moneyFlow, flowLines } from '../shared/lp-flow.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
@@ -373,8 +374,7 @@ async function recordLpSeries(env) {
   const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
   const reset = rb.acted && !rb.error && rb.new_position;
   const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
-  const hist = Array.isArray(rec.history) ? rec.history : [];
-  const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
+  const flow = moneyFlow(rec);
   const price = await bnbUsd().catch(() => null);
   const point = {
     at: last.at,
@@ -387,8 +387,10 @@ async function recordLpSeries(env) {
     owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
     wallet_bnb: inc.wallet_bnb != null ? Number(inc.wallet_bnb) : null,
     waiting: sweeps.filter((s) => s.balance > 0).map((s) => ({ token: s.token || s.source, amount: Number(s.balance) })),
-    forwarded_total_bnb: sum((e) => e.steps?.collect?.forwarded_bnb),
-    swept_total_bnb: sum((e) => (Array.isArray(e.steps?.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0)),
+    forwarded_total_bnb: flow.out.buyback_bnb,
+    kept_total_bnb: flow.out.kept_as_capital_bnb,
+    fees_total_bnb: flow.in.fees.bnb,
+    swept_total_bnb: flow.in.income_bnb,
     acted: !!last.acted,
     ok: last.ok !== false,
     bnb_usd: price,
@@ -415,6 +417,8 @@ function lpSeriesSummary(series) {
     days_covered: days,
     value_bnb: f0 && f1 ? { start: f0.value_bnb, now: f1.value_bnb, change_pct: f0.value_bnb ? +(((f1.value_bnb - f0.value_bnb) / f0.value_bnb) * 100).toFixed(2) : null } : null,
     fees_sent_to_buyback_bnb: last.forwarded_total_bnb,
+    fees_kept_as_capital_bnb: last.kept_total_bnb ?? 0,
+    fees_produced_bnb: last.fees_total_bnb ?? last.forwarded_total_bnb,
     income_put_in_bnb: last.swept_total_bnb,
     fees_owed_now_bnb: last.owed_bnb,
     // 1 tick = 0.01 % of price; the sign says which way the pair moved.
@@ -1223,8 +1227,13 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
       const raw = await env.AGENT.get('lp:agent');
       if (!raw) return json({ error: 'the LP agent has not run yet', cadence: 'daily' }, 503);
       const rec = JSON.parse(raw);
+      // Where the money came from and where it went: computed once, here,
+      // from the record and the service's own earnings — the page below, the
+      // liquidity page and the Telegram report all read this one figure set.
+      const earned = await readEarnings(env).catch(() => null);
+      const flow = moneyFlow(rec, { earned });
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
-      if (!wantsHtml) return json({ ...rec, cadence: 'daily' });
+      if (!wantsHtml) return json({ ...rec, flow, cadence: 'daily' });
       // THE RECORD, READABLE. The homepage, /agents and the Telegram alert all
       // say "the daily record is here" and pointed a person at raw JSON. The
       // same facts as a page: what the agent holds, what it decided on its
@@ -1259,20 +1268,21 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
           live = { tick, lo, hi, inRange: tick >= lo && tick < hi };
         } catch { live = null; }
       }
-      const hist = Array.isArray(rec.history) ? rec.history : [];
-      const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
-      const swept = sum((e) => (Array.isArray(e.steps?.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0));
-      const forwarded = sum((e) => e.steps?.collect?.forwarded_bnb);
+      // Dry runs are the operator checking a deploy; they sign nothing and
+      // moved nothing, and the first one (2026-09-02, before the income keys
+      // were set) stood under "Runs that failed" for two days.
+      const hist = (Array.isArray(rec.history) ? rec.history : []).filter((e) => e && !e.dry);
+      const fl = flowLines(flow);
       const stepRows = [
         ...sweeps.map((s) => ({ name: `Sweep — ${s.source || 'income'} wallet`, acted: !!s.acted, err: s.error, why: s.why, detail: s.balance != null ? `${f(s.balance, 4)} ${s.token || ''} waiting${s.bnb_equivalent != null ? `, worth ${f(s.bnb_equivalent, 6)} BNB` : ''}` : '' })),
         { name: 'Collect — the position\'s fees', acted: !!c.acted, err: c.error, why: c.why, detail: c.owed ? `owed right now: ${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)}` : '' },
-        { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `, width ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : '') + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
+        { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `; the next re-set would use ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : '') + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
         { name: 'Increase — grow the position', acted: !!inc.acted, err: inc.error, why: inc.why, detail: inc.wallet_bnb != null ? `${f(inc.wallet_bnb, 5)} BNB in the wallet, ${f(inc.spendable_bnb, 5)} above the reserve` : '' },
       ].filter((r) => r.why || r.err || r.detail);
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
         const s = e.steps || {}; const parts = [];
         for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(`swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the liquidity wallet`);
-        if (s.collect?.acted && !s.collect.error && Number(s.collect.forwarded_bnb) > 0) parts.push(`collected fees → ${f(s.collect.forwarded_bnb, 5)} BNB to the buyback bot`);
+        if (s.collect?.acted && !s.collect.error && (Number(s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.forwarded_bnb, 5)} BNB to the buyback bot${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
         if (s.increase?.acted && !s.increase.error) parts.push(`added ${f(s.increase.wbnb_used, 5)} BNB to the position`);
         const errs = [...(Array.isArray(s.sweep) ? s.sweep : []), s.collect, s.rebalance, s.increase].filter((x) => x && x.error).map((x) => x.error);
@@ -1286,21 +1296,30 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
 main{max-width:760px;margin:0 auto;padding:28px 18px 60px}h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1rem;margin:26px 0 8px;color:#f0b90b}
 p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:.9rem}dt{color:#a9a49a}dd{margin:0;overflow-wrap:anywhere}
 a{color:#f0b90b}code{font-size:.85em}.card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
+nav.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 22px;padding:0 0 14px;border-bottom:1px solid rgba(255,255,255,.08);font-size:.88rem}nav.top a{text-decoration:none;color:#f0b90b;border:1px solid rgba(240,185,11,.35);border-radius:999px;padding:5px 12px}nav.top a:hover{background:rgba(240,185,11,.1)}nav.top .site{margin-left:auto;color:#cfc9bd;border-color:rgba(255,255,255,.14)}
+.flow{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.flow{grid-template-columns:1fr}}.flow div{border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px}.flow b{display:block;color:#f0b90b;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}.flow span{display:block;font-size:.9rem;color:#f3efe6}.flow i{display:block;font-style:normal;color:#a9a49a;font-size:.8rem;margin-top:4px}
 .st{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.74rem;font-weight:700;margin-left:8px;vertical-align:middle}
 .ok{background:rgba(63,224,154,.15);color:#3fe09a}.quiet{background:rgba(255,255,255,.08);color:#a9a49a}.bad{background:rgba(255,143,107,.15);color:#ff8f6b}
 .step b{display:block}.step span{display:block;color:#cfc9bd;font-size:.88rem}.step i{display:block;color:#a9a49a;font-size:.8rem;font-style:normal;margin-top:2px}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}ul.hist{list-style:none;padding:0;margin:0}ul.hist li{padding:8px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.9rem}ul.hist li:first-child{border-top:0}ul.hist time{color:#a9a49a;font-size:.8rem;display:block}
 </style></head><body><main>
+<nav class="top"><a href="https://brainonbnb.com/liquidity">&larr; The liquidity page</a><a href="https://brainonbnb.com/">Dashboard</a><a class="site" href="https://brainonbnb.com/registry">Brain Plaza</a></nav>
 <h1>The liquidity agent<span class="st ${last.ok === false ? 'bad' : last.acted ? 'ok' : 'quiet'}">${last.ok === false ? 'one step failed' : last.acted ? 'acted' : 'quiet day'}</span></h1>
-<p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; the fees that position earns go to the buyback bot, which buys $BOBAI and burns it. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}.</p>
+<p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_buyback_pct)}% go to the buyback bot, which buys $BOBAI and burns it, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'part goes to the buyback bot, which buys $BOBAI and burns it, and part stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}.</p>
 <h2>What it holds</h2>
 <div class="card"><dl>
 <dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until the agent re-sets it at a 05:23 UTC run`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB${usd(rb.value_bnb)}` : ''}` : 'none open'}</dd>
 <dt>Fees owed now</dt><dd>${c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
 <dt>Income waiting</dt><dd>${sweeps.filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${h(s.token || s.source)}`).join(' + ') || 'nothing'} — moves once it is worth more than the gas</dd>
 <dt>Wallet</dt><dd><a href="https://bscscan.com/address/${h(rec.last?.wallet || '')}" target="_blank" rel="noopener"><code>${h(rec.last?.wallet || '—')}</code></a>${inc.wallet_bnb != null ? `, ${f(inc.wallet_bnb, 5)} BNB` : ''}</dd>
-<dt>Since it started</dt><dd>${f(swept, 5)} BNB of income put into the position · ${f(forwarded, 5)} BNB of fees sent to the buyback bot</dd>
 </dl></div>
+<h2>Where the money came from, where it went</h2>
+<div class="card"><div class="flow">
+<div><b>Came in</b><span>${h(fl.came_in)}</span>${flow.paid_for && flow.paid_for.x402_answers ? `<i>The x402 service was paid ${h(f(flow.paid_for.usd1, 2))} USD1 for ${h(flow.paid_for.x402_answers)} answer${flow.paid_for.x402_answers === 1 ? '' : 's'}; it is swept once it is worth more than the gas.</i>` : ''}</div>
+<div><b>Went out</b><span>${h(fl.went_out)}${flow.out.buyback_bnb > 0 && usd(flow.out.buyback_bnb) ? ` — the buyback share${usd(flow.out.buyback_bnb)}` : ''}</span><i>${flow.out.resets} re-set${flow.out.resets === 1 ? '' : 's'} of the range · ${h(fl.cost)}${usd(flow.gas.bnb)}</i></div>
+<div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the liquidity wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
+<div><b>The rule</b><span>${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% of every collect stays as capital, ${h(flow.rule.fee_share_buyback_pct)}% goes to the buyback wallet.` : 'The share of the fees kept as capital is named with the next collect.'} Income goes in as capital in full. The capital never leaves.</span><i>Set in the open: LP_FEE_KEEP_PCT in worker-lp/wrangler.toml, in <a href="https://brainonbnb.com/source">the published source</a>.</i></div>
+</div></div>
 <h2>The last run, step by step</h2>
 <div class="card">${stepRows.map((r) => `<div class="step" style="margin:0 0 10px"><b>${h(r.name)}<span class="st ${r.err ? 'bad' : r.acted ? 'ok' : 'quiet'}">${r.err ? 'failed' : r.acted ? 'acted' : 'nothing to do'}</span></b><span>${h(r.err || r.why || '')}</span>${r.detail ? `<i>${h(r.detail)}</i>` : ''}</div>`).join('')}
 <p class="note">Each step has a floor under which moving the money would cost more than the money. A day under a floor is a decision, recorded as one, not an error.</p></div>
@@ -1404,7 +1423,7 @@ ${histRows.some((r) => !r.parts.length && r.errs.length) ? `<h2>Runs that failed
           '1': 'an agent pays USD1 for a watch, or $U for a job delivered on the ERC-8183 kernel',
           '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
           '3': 'once a day it is sold for BNB and sent to the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
-          '4': 'the fees that position earns are collected daily, sold for BNB and sent to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce, which buys and burns $BOBAI as it always has — one burn path, one log',
+          '4': 'the fees that position earns are collected daily and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half is sent to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce, which buys and burns $BOBAI as it always has — one burn path, one log',
           '5': 'every step is a public transaction, verifiable on BscScan; the daily record is at /lp/agent',
           floors: 'nothing is sold below 0.004 BNB of value, no fees are collected below 0.002 BNB and nothing is added to the position below 0.01 BNB — under a floor, gas would eat the amount, and a day under one is recorded as a decision, not an error',
           before: 'until 2026-09-02 the earnings were burned directly from the service wallet, by hand. The first: 0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
@@ -1633,7 +1652,7 @@ ${histRows.some((r) => !r.parts.length && r.errs.length) ? `<h2>Runs that failed
     if (path === '/lp/series') {
       const series = await readLpSeries(env);
       return json({
-        what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot, income already put in. Not a counter; every figure is in the record it came from.',
+        what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in. Not a counter; every figure is in the record it came from.',
         summary: lpSeriesSummary(series),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',

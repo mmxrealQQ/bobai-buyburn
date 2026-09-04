@@ -547,6 +547,7 @@ export async function planIncrease(pub, address, position = null) {
 export async function executeIncrease(pub, wallet, account, plan, log = () => {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
+  const before = await pub.getBalance({ address: account.address });
   const wrapRaw = plan.wbnbRaw + plan.buyCostRaw;
   await send('wrap', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: wrapRaw });
   if (plan.buyCostRaw > 0n) {
@@ -570,5 +571,8 @@ export async function executeIncrease(pub, wallet, account, plan, log = () => {}
   const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
   const pos = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [plan.tokenId]);
-  return { txs, liquidity_after: String(pos[7]), other_used: formatUnits(haveOther - (await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address])), 18), wbnb_used: formatEther(haveWbnb - wbnbLeft) };
+  // What left the wallet as BNB for this increase, gas included — the figure
+  // the money-flow view adds up as "put into the position".
+  const after = await pub.getBalance({ address: account.address });
+  return { txs, liquidity_after: String(pos[7]), other_used: formatUnits(haveOther - (await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address])), 18), wbnb_used: formatEther(haveWbnb - wbnbLeft), bnb_spent: formatEther(before > after ? before - after : 0n) };
 }

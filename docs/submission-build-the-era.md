@@ -51,9 +51,9 @@ offered to agents free of charge as MCP, REST and an installable skill
 agents as of 2026-09-04 — and six answers are sold per x402 or through the
 escrow. What they pay runs, unattended, into the project's own PancakeSwap V3
 position: an agent that re-sets the range in the width that earned the most
-over the recorded prices, checks it every hour, and sends the fees to the
-buyback that burns $BOBAI. Every step is a transaction on BNB Chain and the
-record is public.
+over the recorded prices, checks it every hour, and splits the fees: half
+grows the position, half goes to the buyback that burns $BOBAI. Every step is
+a transaction on BNB Chain and the record is public.
 
 ## How the three criteria are met — with evidence
 

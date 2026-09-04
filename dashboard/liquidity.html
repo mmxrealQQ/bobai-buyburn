@@ -12,18 +12,18 @@
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/fonts.css?v=1">
   <title>The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI</title>
-  <meta name="description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, and sends the fees to the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
+  <meta name="description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, splits the fees between that position and the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
   <link rel="canonical" href="https://brainonbnb.com/liquidity">
   <link rel="icon" type="image/png" href="favicon.png?v=4">
   <link rel="apple-touch-icon" href="logo.png?v=4">
   <meta property="og:title" content="The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI">
-  <meta property="og:description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, and sends the fees to the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
+  <meta property="og:description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, splits the fees between that position and the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
   <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
   <meta property="og:url" content="https://brainonbnb.com/liquidity">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI">
-  <meta name="twitter:description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, and sends the fees to the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
+  <meta name="twitter:description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, splits the fees between that position and the buyback bot that burns $BOBAI. Every step is a transaction; the daily record is public.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
   <link rel="preload" href="styles.css?v=37" as="style">
   <link rel="stylesheet" href="styles.css?v=37">
@@ -64,7 +64,7 @@
   <section class="sec b-violet" id="flow">
     <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Liquidity</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2>Where the money <em>goes</em></h2>
-      <p class="sh-sub">Three wallets, one direction. The capital never leaves the position; only the fees do.</p>
+      <p class="sh-sub">Three wallets, one direction. The capital never leaves the position; of the fees, half goes on and half stays.</p>
     </div>
 
     <div class="agt-two">
@@ -73,7 +73,7 @@
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>An agent pays</b><span>A few cents per pool watch or per job, straight to <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">the income wallet</a>, used for nothing else. The hired agents deliver to <a href="https://bscscan.com/address/0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963" target="_blank" rel="noopener">a second one</a>.</span></div></li>
         <li><span class="agt-i">2</span><div><b>It becomes liquidity</b><span>Once a day the income is sold for BNB and put into the project&rsquo;s own <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">liquidity wallet</a>, which holds a PancakeSwap V3 position. That capital stays.</span></div></li>
-        <li><span class="agt-i">3</span><div><b>The fees buy $BOBAI and burn it</b><span>What the position earns is collected and sent to <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">the buyback bot</a>, the same wallet that buys and burns from the trading tax. From there it is a burn like any other, listed on the homepage.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>The fees: half buys $BOBAI and burns it, half grows the position</b><span>What the position earns is collected; half of it stays as capital, so the position grows out of its own earnings and the burn grows with it. The other half is sent to <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">the buyback bot</a>, the same wallet that buys and burns from the trading tax. From there it is a burn like any other, listed on the homepage.</span></div></li>
       </ol>
     </div>
 
@@ -133,7 +133,7 @@
       <h3>The four steps</h3>
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>Sweep</b><span>Sells the income (USD1 and $U) for BNB and sends it to the liquidity wallet. Waits until a sweep is worth more than the gas it costs, and never moves more than about fifty dollars in one run.</span></div></li>
-        <li><span class="agt-i">2</span><div><b>Collect</b><span>Collects the fees the position has earned, sells the token side for BNB and forwards it to the buyback bot. Small amounts are left to grow.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>Collect</b><span>Collects the fees the position has earned and sells the token side for BNB. Half stays as capital for the next increase; half is forwarded to the buyback bot. The share is a public setting in the source. Small amounts are left to grow.</span></div></li>
         <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour, not once a day. If the price has been outside the range for two hours, the position is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices of the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a> &mdash; re-sets and their cost included. Inside the range it does nothing.</span></div></li>
         <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the same position. The capital only ever grows; it is never withdrawn.</span></div></li>
       </ol>
@@ -155,6 +155,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=38" defer></script>
+<script src="app.js?v=39" defer></script>
 </body>
 </html>

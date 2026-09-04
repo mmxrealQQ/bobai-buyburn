@@ -1909,8 +1909,8 @@ export function formatLpAgentAlert(rec) {
   for (const s of Array.isArray(st.sweep) ? st.sweep : []) {
     if (s.acted && !s.error) lines.push(`💵 Sold <b>${f(s.sold, 2)} ${s.token}</b> earned by the AI side → <b>${f(s.received_bnb)} BNB</b> into the liquidity wallet`);
   }
-  if (st.collect && st.collect.acted && !st.collect.error && Number(st.collect.forwarded_bnb) > 0) {
-    lines.push(`💧 Collected the position's fees → <b>${f(st.collect.forwarded_bnb)} BNB</b> sent to the buyback bot, which buys $BOBAI and burns it`);
+  if (st.collect && st.collect.acted && !st.collect.error && (Number(st.collect.forwarded_bnb) > 0 || Number(st.collect.kept_bnb) > 0)) {
+    lines.push(`💧 Collected the position's fees → <b>${f(st.collect.forwarded_bnb)} BNB</b> sent to the buyback bot, which buys $BOBAI and burns it${Number(st.collect.kept_bnb) > 0 ? `, <b>${f(st.collect.kept_bnb)} BNB</b> kept as capital` : ''}`);
   }
   if (st.rebalance && st.rebalance.acted && !st.rebalance.error) {
     lines.push(`🎯 Range re-set around today's price: ±${st.rebalance.width_pct}%${st.rebalance.new_position ? `, position #${st.rebalance.new_position}` : ''}`);
@@ -1920,7 +1920,7 @@ export function formatLpAgentAlert(rec) {
   }
   if (!lines.length) return null;
   return `🤖 <b>LP Agent — ${String(last.at || '').slice(0, 16).replace('T', ' ')} UTC</b>
-The project's own liquidity position, run by a bot: AI income goes in as capital, the fees come out as $BOBAI burn. Today it moved:
+The project's own liquidity position, run by a bot: AI income goes in as capital; of the fees, half comes out as $BOBAI burn and half stays to grow the position. Today it moved:
 
 ${lines.join('\n')}
 
@@ -1935,10 +1935,12 @@ export function formatLpDailyReport(rec) {
   const last = rec && rec.last;
   if (!last || !last.at) return null;
   const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
-  const hist = Array.isArray(rec.history) ? rec.history : [];
-  const sum = (pick) => hist.reduce((a, e) => a + (Number(pick(e)) || 0), 0);
-  const forwarded = sum((e) => e.steps && e.steps.collect && e.steps.collect.forwarded_bnb);
-  const swept = sum((e) => (Array.isArray(e.steps && e.steps.sweep) ? e.steps.sweep : []).reduce((a, s) => a + (Number(s.received_bnb) || 0), 0));
+  // The totals are the record's own money-flow figures (rec.flow, computed
+  // once on the agent worker and shared with the liquidity page).
+  const flow = rec.flow || {}, fin = flow['in'] || {}, fout = flow.out || {};
+  const forwarded = fout.buyback_bnb || 0, kept = fout.kept_as_capital_bnb || 0, fees = (fin.fees && fin.fees.bnb) || 0;
+  const swept = fin.income_bnb || 0, inPos = fout.into_position_bnb || 0;
+  const gas = flow.gas || {};
   const f = (v, d = 5) => Number(v || 0).toFixed(d);
   const reset = rb.acted && !rb.error && rb.new_position;
   const pos = reset ? rb.new_position : (c.position || rb.position);
@@ -1947,8 +1949,9 @@ export function formatLpDailyReport(rec) {
   return `📋 <b>LP Agent — daily report ${String(last.at || '').slice(0, 10)}</b>
 
 🎯 Position <b>#${pos || '—'}</b>${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB` : ''} · ${inRange === false ? 'out of range (the hourly check re-sets it after 2 h outside)' : 'in range and earning'}
-💧 Fees owed now: <b>${f(c.owed && c.owed.bnb_equivalent, 6)} BNB</b> · sent to the buyback bot so far: <b>${f(forwarded)} BNB</b>
-💵 AI income waiting: ${waiting || 'none'} · put into the position so far: <b>${f(swept)} BNB</b>
+💧 Fees owed now: <b>${f(c.owed && c.owed.bnb_equivalent, 6)} BNB</b> · ${fees > 0 ? `collected so far <b>${f(fees)} BNB</b>: ${f(forwarded)} to the buyback bot, ${f(kept)} kept as capital` : 'nothing collected yet — fees are left to grow until collecting beats the gas'}
+💵 AI income waiting: ${waiting || 'none'} · ${swept > 0 ? `swept in so far: <b>${f(swept)} BNB</b>` : 'nothing swept yet'}${inPos ? ` · put into the position: <b>${f(inPos)} BNB</b>` : ''}
+⛽ Cost so far: ${gas.transactions || 0} transaction${gas.transactions === 1 ? '' : 's'}, ${f(gas.bnb, 6)} BNB of gas
 🤖 Today's run: ${last.acted ? 'it acted' : 'nothing to move — every step was under its floor'}${last.ok === false ? ' · one step failed, the operator has been told' : ''}
 
 Record: <a href="https://agent.brainonbnb.com/lp/agent">agent.brainonbnb.com/lp/agent</a> · <a href="https://brainonbnb.com/liquidity">how it works</a>`;

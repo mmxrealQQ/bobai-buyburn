@@ -645,7 +645,8 @@ section('The marketplace, from the front door');
   // The sixth answer: the liquidity agent on a position that is not ours.
   const lpEx = await fetch(`${AGENT}/example?service=lp_position_plan`).then((r) => r.json()).catch(() => null);
   // The free look (2026-09-04): the facts without the plan, open, no key.
-  const ownPos = lpJson && lpJson.last && lpJson.last.steps && (lpJson.last.steps.collect || {}).position;
+  const lpRec = await fetch(`${AGENT}/lp/agent`).then((r) => r.json()).catch(() => null);
+  const ownPos = lpRec && lpRec.last && lpRec.last.steps && (lpRec.last.steps.collect || {}).position;
   const look = ownPos ? await fetch(`${AGENT}/lp/look?position=${ownPos}`).then((r) => r.json()).catch(() => null) : null;
   ok('/lp/look reads a position for free: range, room, value, fees — and no plan', !!look && look.position === String(ownPos) && typeof look.in_range === 'boolean' && look.room && look.value_bnb != null && !('rebalance' in look) && /the paid answer/.test(look.the_plan || ''), look && (look.error || look.verdict || '').slice(0, 120));
   ok('/lp/look without a position says what it needs', (await fetch(`${AGENT}/lp/look`)).status === 400);

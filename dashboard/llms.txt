@@ -53,6 +53,7 @@ Figures above are from a full scan on the date named; the JSON files carry their
 
 ## Paid, and the only thing here that is
 
+- The liquidity agent, free: a look at any PancakeSwap V3 position — in range or not, room to each edge, value in BNB, fees owed and whether collecting pays: https://agent.brainonbnb.com/lp/look?position=<token id> (or ?address=<wallet holding exactly one>). Our own position's record, day by day: https://agent.brainonbnb.com/lp/agent · https://agent.brainonbnb.com/lp/series · the width record https://agent.brainonbnb.com/lp/windows. The plan for your position (re-set due, width, what spare BNB adds) is the paid lp_position_plan below.
 - Pool watch, 0.50 USD1 for 30 days: POST https://agent.brainonbnb.com/watch — continuous monitoring of one pool with a callback when depth falls below a threshold you set. Paid over x402. Everything else on this page is free.
 - What has been asked and earned, with the receiving wallet named: https://agent.brainonbnb.com/stats
 

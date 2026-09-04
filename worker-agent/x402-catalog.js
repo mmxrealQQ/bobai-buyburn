@@ -108,6 +108,7 @@ is paid, because something has to still be running in an hour.
 | \`https://brainonbnb.com/scanner\` | The measurement in a browser |
 | \`npx skills add https://brainonbnb.com\` | The same measurement as an installable agent skill |
 | \`GET https://agent.brainonbnb.com/find?q=…\` | Broker: ERC-8004 agents on BNB Chain that expose something matching |
+| \`GET https://agent.brainonbnb.com/lp/look?position=…\` | The liquidity agent's look at any PancakeSwap V3 position: in range, room, value, fees owed. The plan is the paid \`lp_position_plan\` |
 | \`POST https://agent.brainonbnb.com/dispatch\` | Routes a task to an agent that can answer it and names who produced the result. Read-only tools only — anything that signs, sends or swaps is listed for you to call yourself, never invoked on your behalf. |
 | \`GET https://agent.brainonbnb.com/sessions\` | Every task routed, who answered, how long it took, what failed |
 

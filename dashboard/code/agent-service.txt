@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 9759 lines.
+# one fetch. 37 files, 9779 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2337,6 +2337,25 @@ const MUTATING_VERBS = new Set([
   'register', 'authorize', 'confirm', 'calldata', 'tx', 'transaction',
 ]);
 
+// Does the task ask for an action, or ask about one? "Swap 1 BNB to CAKE"
+// and "I want to sell my CAKE" ask for one; "what would a trade cost" and
+// "the swap fee of the CAKE pool" ask about one, and the first version
+// refused those too, on the word alone — a router that cannot be asked what
+// a trade costs is refusing the question this site exists to answer. A
+// mutating word counts as a request when it stands where an order stands:
+// first in the sentence, or right after the words that introduce one.
+const ORDER_LEADS = new Set(['please', 'can', 'could', 'you', 'go', 'now', 'and', 'then', 'to', 'just', 'me', 'help', 'kindly']);
+export function askedAction(task) {
+  const words = String(task || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const out = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (!MUTATING_VERBS.has(w)) continue;
+    if (i === 0 || ORDER_LEADS.has(words[i - 1])) out.push(w);
+  }
+  return [...new Set(out)];
+}
+
 // Words that mean a description is describing a reader. Wider than READ_VERBS
 // on purpose: prose says "measures", "returns" and "ranks" where a tool name
 // says "get". Inflections are listed rather than stemmed, because a stemmer
@@ -2719,7 +2738,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
   // sign it", this router previously returned protocol statistics and reported
   // success — technically safe, and misleading in exactly the way that matters:
   // the caller had every reason to believe their swap had been handled.
-  const wanted = terms.filter((t) => MUTATING_VERBS.has(t));
+  const wanted = askedAction(task);
   if (wanted.length) {
     return { status: 200, body: {
       task,
@@ -5484,7 +5503,7 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
         return { at: e.at, parts, errs, ok: e.ok !== false };
       });
       const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>The liquidity agent — daily record</title>
+<title>The liquidity agent — its record</title>
 <style>
 :root{color-scheme:dark}body{margin:0;background:#0c0b0c;color:#f3efe6;font:15px/1.6 Inter,system-ui,sans-serif}
 main{max-width:760px;margin:0 auto;padding:28px 18px 60px}h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1rem;margin:26px 0 8px;color:#f0b90b}
@@ -6047,9 +6066,10 @@ ${histRows.some((r) => !r.parts.length && r.errs.length) ? `<h2>Runs that failed
 // planning at any position on the chain — by token id, or by the wallet that
 // holds exactly one — and returns what the agent would decide about it: is it
 // in range, what it is worth, what it is owed, whether collecting pays for its
-// own gas, whether a re-set is due and in which width (the width that held
-// through every tested day of the window record, the same record our own
-// position uses), and what the wallet's spare BNB would add.
+// own gas, whether a re-set is due and in which width (the width that netted
+// the most per day when every width was replayed over the window record's
+// prices with the agent's own re-set delay and cost — the same record and
+// rule our own position uses), and what the wallet's spare BNB would add.
 //
 // STAGE 1, DELIBERATELY: it reads and advises. It signs nothing and it holds
 // nothing. Executing on a stranger's position needs a session key on THEIR
@@ -7181,7 +7201,7 @@ export const SERVICES = {
     category: 'rebalancing',
     price: '100000000000000000',
     price_display: '0.10 USD1',
-    deliverables: 'What the agent that runs this project\'s own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that held through every tested day of the recorded price windows — and what the wallet\'s spare BNB would add. It reads and plans; it signs nothing on your position.',
+    deliverables: 'What the agent that runs this project\'s own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that netted the most per day when every width was replayed over the recorded price windows, re-sets included — and what the wallet\'s spare BNB would add. It reads and plans; it signs nothing on your position.',
     needs: { position: 'the PancakeSwap V3 position id (tokenId)', address: 'or the wallet that holds exactly one position (0x…)' },
   },
 };

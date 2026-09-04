@@ -211,7 +211,7 @@
           <span class="sv-price">0.10 USD1</span>
         </div>
         <p class="sv-ask">What would the liquidity agent decide about my position?</p>
-        <p class="sv-what">What the agent that runs this project's own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that held through every tested day of the recorded price windows — and what the wallet's spare BNB would add. It reads and plans; it signs nothing on your position.</p>
+        <p class="sv-what">What the agent that runs this project's own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that netted the most per day when every width was replayed over the recorded price windows, re-sets included — and what the wallet's spare BNB would add. It reads and plans; it signs nothing on your position.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>position</dt><dd>the PancakeSwap V3 position id (tokenId)</dd><dt>address</dt><dd>or the wallet that holds exactly one position (0x…)</dd></dl>
         <p class="sv-cost">Sold per answer only, no escrow: <code>POST https://agent.brainonbnb.com/answer?service=lp_position_plan</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/liquidity">what the agent does on our own position &rarr;</a></p>

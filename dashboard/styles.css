@@ -776,6 +776,12 @@
        off on every other card for WebKit compositing reasons, and a component
        that never asks for it cannot be forgotten when the list is next edited. */
     .lib{margin-top:64px;padding-top:44px;border-top:1px solid var(--border)}
+    /* The Library folds shut: fourteen bundles of code are for builders, and
+       everyone else scrolls past one card instead of a screen of them. */
+    .lib-fold{border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.02)}
+    .lib-fold .lb-arch-title{font-size:1.35rem;letter-spacing:-.5px}
+    .lib-fold .lb-arch-meta{font-size:.8rem;line-height:1.6;max-width:720px}
+    .lib-fold .lb-arch-body{padding-top:8px}
     .lib-head{max-width:720px;margin-bottom:30px}
     .lib-head h3{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:-.6px;margin-bottom:10px}
     .lib-head h3 em{font-style:normal;color:var(--acc)}

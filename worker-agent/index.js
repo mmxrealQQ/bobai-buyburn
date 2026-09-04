@@ -1265,7 +1265,7 @@ ${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span cl
         return { at: e.at, parts, errs, ok: e.ok !== false };
       });
       const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>The liquidity agent — daily record</title>
+<title>The liquidity agent — its record</title>
 <style>
 :root{color-scheme:dark}body{margin:0;background:#0c0b0c;color:#f3efe6;font:15px/1.6 Inter,system-ui,sans-serif}
 main{max-width:760px;margin:0 auto;padding:28px 18px 60px}h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1rem;margin:26px 0 8px;color:#f0b90b}

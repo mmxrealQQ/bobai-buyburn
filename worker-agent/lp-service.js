@@ -6,9 +6,10 @@
 // planning at any position on the chain — by token id, or by the wallet that
 // holds exactly one — and returns what the agent would decide about it: is it
 // in range, what it is worth, what it is owed, whether collecting pays for its
-// own gas, whether a re-set is due and in which width (the width that held
-// through every tested day of the window record, the same record our own
-// position uses), and what the wallet's spare BNB would add.
+// own gas, whether a re-set is due and in which width (the width that netted
+// the most per day when every width was replayed over the window record's
+// prices with the agent's own re-set delay and cost — the same record and
+// rule our own position uses), and what the wallet's spare BNB would add.
 //
 // STAGE 1, DELIBERATELY: it reads and advises. It signs nothing and it holds
 // nothing. Executing on a stranger's position needs a session key on THEIR

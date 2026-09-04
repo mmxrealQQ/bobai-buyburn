@@ -167,8 +167,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=34" as="style">
-  <link rel="stylesheet" href="styles.css?v=34">
+  <link rel="preload" href="styles.css?v=35" as="style">
+  <link rel="stylesheet" href="styles.css?v=35">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -743,10 +743,15 @@
          Everything between the markers is written by scripts/build-library.mjs
          from the real files. Do not edit it by hand; run the script. -->
     <div class="lib" id="library">
-      <div class="lib-head fi">
-        <h3>The <em>Library</em></h3>
-        <p>The code behind everything on this page, packaged so someone who is not us can read it and run it. MIT licensed, no account. Builders only; everyone else can skip this.</p>
-      </div>
+      <details class="lb-archive lib-fold fi">
+        <summary>
+          <div class="lb-arch-head">
+            <div class="lb-arch-title">The <em>Library</em></div>
+            <div class="lb-arch-meta">The code behind everything on this page, packaged so someone who is not us can read it and run it. MIT licensed, no account. Builders only &mdash; open it if that is you.</div>
+          </div>
+          <div class="lb-arch-arr">&#x25BE;</div>
+        </summary>
+        <div class="lb-arch-body">
 <!-- LIBRARY:BEGIN -->
     <div class="lib-grp fi">
       <div class="lib-gh"><h3>The Bots</h3><p>Everything that runs on its own. Cron triggers, signed transactions, no human at the wheel.</p></div>
@@ -825,7 +830,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 4,114 lines &middot; 58 KB</span>
+          <span class="lib-m">12 files &middot; 4,215 lines &middot; 60 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -897,7 +902,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 5,343 lines &middot; 0.1 MB</span>
+          <span class="lib-m">6 files &middot; 5,349 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1035,7 +1040,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">37 files &middot; 9,759 lines &middot; 0.2 MB</span>
+          <span class="lib-m">37 files &middot; 9,779 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1082,6 +1087,8 @@
         <a href="/code/index.txt" target="_blank" rel="noopener">index.txt</a>
         <a href="/code/manifest.json" target="_blank" rel="noopener">manifest.json</a>
       </div>
+        </div>
+      </details>
     </div>
   </section>
 

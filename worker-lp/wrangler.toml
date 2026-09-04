@@ -27,8 +27,14 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # operator's word. Still gated by the day test and the size floor. Was:
 # (node scripts/lp-agent.mjs --step rebalance --confirm); the tick still plans
 # it and records that it is due. Flip to "1" and deploy to hand it over.
+# How much of each collect stays as capital, in percent; the rest goes to
+# the buyback wallet. "0" was the rule until 2026-09-04 (every fee to the
+# buyback); "50" since, on the operator's word: the position grows out of
+# its own fees, so the buyback's share grows with it. A value that is not
+# 0–100 falls back to the default in shared/lp-guards.js (50), never to 0 or 100.
 [vars]
 LP_REBALANCE = "1"
+LP_FEE_KEEP_PCT = "50"
 
 # Secrets, set with `wrangler secret put`, never in this file:
 #   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A

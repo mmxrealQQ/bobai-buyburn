@@ -34,6 +34,7 @@ import {
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, rebalanceWait, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
+  splitFees, FEE_SHARE_KEPT_PCT,
 } from '../shared/lp-guards.js';
 
 const CONFIRM = process.argv.includes('--confirm');
@@ -45,8 +46,15 @@ const STEPS = stepArg ? [stepArg] : ALL;
 // A width named by a person for the re-set. It is printed as a hand-made
 // choice and never remembered: the record's earnings test is the standing rule.
 const WIDTH = argOf('--width') != null ? Number(argOf('--width')) : null;
+// The share of a collect kept as capital. Default is the standing rule in
+// lp-guards.js (the worker reads the same figure from LP_FEE_KEEP_PCT).
+const KEEP = argOf('--keep') != null ? Number(argOf('--keep')) : FEE_SHARE_KEPT_PCT;
 if (stepArg && !ALL.includes(stepArg)) {
   console.error(`--step must be one of ${ALL.join(', ')}, not "${stepArg}"`);
+  process.exitCode = 2;
+}
+if (argOf('--keep') != null && !(KEEP >= 0 && KEEP <= 100)) {
+  console.error(`--keep is a percent between 0 and 100, not "${argOf('--keep')}"`);
   process.exitCode = 2;
 }
 if (WIDTH != null && !(WIDTH > 0 && WIDTH <= 50)) {
@@ -59,8 +67,9 @@ const WINDOWS_URL = 'https://agent.brainonbnb.com/lp/windows';
 // --self-test: every refusal, and the one allow, for each of the three guards
 // --------------------------------------------------------------------------
 if (SELF) {
-  let bad = 0;
+  let bad = 0, total = 0;
   const check = (label, r, wantRefusal) => {
+    total += 1;
     const ok = wantRefusal ? !!r : !r;
     console.log(`${ok ? 'ok  ' : 'FAIL'}  ${wantRefusal ? 'refuses' : 'allows '}: ${label}${r ? ` — "${String(r).slice(0, 72)}"` : ''}`);
     if (!ok) bad += 1;
@@ -83,6 +92,28 @@ if (SELF) {
   check(`the reserve (${GAS_RESERVE_BNB}) covers the gas floor (${MIN_GAS_BNB})`, GAS_RESERVE_BNB >= MIN_GAS_BNB ? null : 'reserve below the floor', false);
   // A wallet holding exactly the reserve after a run must be allowed to act.
   check('a wallet holding exactly the reserve', refuseCollect({ ...healthyCollect, gasBnb: GAS_RESERVE_BNB }), false);
+
+  console.log('fee split');
+  // Both directions: the default keeps half, an explicit 0 sends it all to the
+  // buyback, an explicit 100 keeps it all, and a bad value falls back to the
+  // default rather than to either extreme.
+  const eq = (label, got, want) => check(label, got === want ? null : `got ${got}, wanted ${want}`, false);
+  const one = 10n ** 18n;
+  eq(`default keeps ${FEE_SHARE_KEPT_PCT}% of 1 BNB`, splitFees(one).keep, (one * BigInt(FEE_SHARE_KEPT_PCT)) / 100n);
+  eq('default sends the rest to the buyback', splitFees(one).keep + splitFees(one).buyback, one);
+  eq('0% keeps nothing', splitFees(one, 0).keep, 0n);
+  eq('0% forwards everything', splitFees(one, 0).buyback, one);
+  eq('100% keeps everything', splitFees(one, 100).keep, one);
+  eq('100% forwards nothing', splitFees(one, 100).buyback, 0n);
+  eq('25% of 1 BNB is 0.25', splitFees(one, 25).keep, one / 4n);
+  eq('12.5% is honoured to the hundredth', splitFees(one, 12.5).keep, (one * 125n) / 1000n);
+  eq('"50" as a string works (a wrangler var is a string)', splitFees(one, '50').pct, 50);
+  eq('a typo falls back to the default, not to 0', splitFees(one, 'fifty').pct, FEE_SHARE_KEPT_PCT);
+  eq('150 falls back to the default, not to 100', splitFees(one, 150).pct, FEE_SHARE_KEPT_PCT);
+  eq('a negative share falls back to the default', splitFees(one, -5).pct, FEE_SHARE_KEPT_PCT);
+  eq('undefined (var not set) falls back to the default', splitFees(one, undefined).pct, FEE_SHARE_KEPT_PCT);
+  eq('nothing produced splits to nothing', splitFees(0n).keep + splitFees(0n).buyback, 0n);
+  eq('a negative amount is treated as nothing', splitFees(-1n).buyback, 0n);
 
   console.log('sweep');
   const healthySweep = { symbol: 'USD1', balance: 5, bnbEquivalent: 0.007, gasBnb: 0.002, bnbUsd: 700, feedAgeS: 30, impliedUsd: 1.0 };
@@ -148,7 +179,6 @@ if (SELF) {
   // Ten times the capital is ten times the liquidity: the split is linear in L.
   check('the split is linear in liquidity', Math.abs(splitForRange(mid, lo, hi).perL0 - sMid.perL0) < 1e-18 ? null : 'not linear', false);
 
-  const total = 8 + 4 + 7 + 3 + 5 + 2 + 5 + 4 + 4;
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);
   process.exitCode = bad ? 1 : 0;
 }
@@ -211,10 +241,10 @@ async function main() {
     console.log(`  gas       ${f(s.gas_bnb)} BNB (reserve kept: ${GAS_RESERVE_BNB})`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);
     else {
-      console.log(`  would collect, sell the other side, unwrap, and forward what this run produced to ${ADDR.BUYBACK_WALLET}`);
+      console.log(`  would collect, sell the other side, unwrap, keep ${KEEP}% of what this run produced as capital and forward the rest to ${ADDR.BUYBACK_WALLET}`);
       if (CONFIRM) {
-        const out = await executeCollect(pub, lpWallet(), lp, plan, log);
-        console.log(`  forwarded ${out.forwarded_bnb} BNB${out.why ? ` — ${out.why}` : ''}`);
+        const out = await executeCollect(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
+        console.log(`  produced ${out.produced_bnb || '0'} BNB: kept ${out.kept_bnb} BNB as capital, forwarded ${out.forwarded_bnb} BNB${out.why ? ` — ${out.why}` : ''}`);
         acted += 1;
       }
     }

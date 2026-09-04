@@ -4,10 +4,14 @@
 // THE FLOW, as the user set it on 2026-09-02
 //   1. everything the AI side earns (USD1 for watches, $U for delivered jobs)
 //      goes to the liquidity wallet, in BNB                      -> sweep
-//   2. the liquidity wallet's profit — the fees the position earns — goes to
-//      the buyback wallet, which buys and burns $BOBAI as it always has; the
-//      capital stays in the position, always                     -> collect
-//   3. capital that arrived grows the same position                -> increase
+//   2. the liquidity wallet's profit — the fees the position earns — is
+//      split: part stays as capital so the position grows out of its own
+//      earnings (LP_FEE_KEEP_PCT, half since 2026-09-04: "er soll auch davon
+//      wachsen"), the rest goes to the buyback wallet, which buys and burns
+//      $BOBAI as it always has; the capital stays in the position, always
+//                                                                  -> collect
+//   3. capital that arrived — swept income and the kept fee share — grows
+//      the same position                                           -> increase
 // The buyback bot and the dev sweep are not touched by any of this. This
 // worker hands BNB to one of them and reads nothing from either.
 //
@@ -32,7 +36,7 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
-import { rebalanceWait } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -111,13 +115,17 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   entry.wallet = lp.address;
   const lpWallet = () => createWalletClient({ account: lp, chain: bsc, transport: transport() });
 
-  // 2. collect: fees -> BNB -> buyback wallet. Only what this run produced.
+  // 2. collect: fees -> BNB -> part kept as capital, the rest to the buyback
+  //    wallet. Only what this run produced. The share is a var, not a secret:
+  //    it is public policy, and the record names it with every collect.
+  const keptPct = splitFees(0n, env.LP_FEE_KEEP_PCT).pct;
   await run('collect', async () => {
     const plan = await planCollect(pub, lp.address);
-    if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
-    if (dry) return { ...plan.summary, acted: false, why: 'dry run — would have collected and forwarded', would_forward_bnb_about: plan.state.owedBnbEquivalent };
+    const split = { kept_pct: keptPct, buyback_pct: 100 - keptPct };
+    if (plan.no) return { ...plan.summary, ...split, acted: false, why: plan.no };
+    if (dry) return { ...plan.summary, ...split, acted: false, why: `dry run — would have collected, kept ${keptPct}% as capital and forwarded the rest`, would_forward_bnb_about: plan.state.owedBnbEquivalent };
     try {
-      return { ...plan.summary, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan)) };
+      return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct })) };
     } catch (e) {
       return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
     }
@@ -215,7 +223,7 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB and sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); BNB above the reserve grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest is sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
   st.cadence = { daily_utc: '05:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance only' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;

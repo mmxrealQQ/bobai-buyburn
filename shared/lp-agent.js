@@ -10,9 +10,12 @@
 // THE MONEY, in the order the daily tick runs it:
 //   sweep     what the AI side earned (USD1 for watches, $U for delivered
 //             jobs) is sold for BNB and sent to the liquidity wallet
-//   collect   the position's fees are collected, sold for BNB and sent to the
-//             buyback wallet — only the fees, never the capital
-//   increase  BNB above the reserve is put into the same position
+//   collect   the position's fees are collected and sold for BNB; part of it
+//             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
+//             the rest goes to the buyback wallet — only the fees, never the
+//             capital
+//   increase  BNB above the reserve is put into the same position — the
+//             income the sweep brought and the fee share the collect kept
 //
 // Every plan* function only reads. Every execute* function signs, and takes
 // the plan it was given rather than reading again, so what was printed is
@@ -20,8 +23,8 @@
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance,
-  GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees,
+  GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
 } from './lp-guards.js';
 
 export const ADDR = {
@@ -183,7 +186,7 @@ export function splitForRange(sqrtP, tickLower, tickUpper) {
 }
 
 // --------------------------------------------------------------------------
-// collect: fees -> BNB -> buyback wallet
+// collect: fees -> BNB -> part kept as capital, the rest to the buyback wallet
 // --------------------------------------------------------------------------
 
 export async function planCollect(pub, address) {
@@ -234,10 +237,13 @@ export async function planCollect(pub, address) {
   };
 }
 
-// Collect, sell, unwrap, forward — and forward ONLY what this run produced.
-// The wallet also holds the capital the sweep delivers for the next increase;
-// "everything above the reserve" would have sent that to the buyback bot.
-export async function executeCollect(pub, wallet, account, plan, log = () => {}) {
+// Collect, sell, unwrap, split, forward — and forward ONLY what this run
+// produced. The wallet also holds the capital the sweep delivers for the next
+// increase; "everything above the reserve" would have sent that to the
+// buyback bot. `keptPct` of what was produced stays in the wallet as BNB —
+// capital for the next increase, so the position grows out of its own fees —
+// and the rest goes to the buyback wallet. The record carries both figures.
+export async function executeCollect(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
   const before = await pub.getBalance({ address: account.address });
@@ -265,9 +271,12 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {})
   const produced = after - before;           // net of the gas this run spent
   const aboveReserve = after - GAS_RESERVE;   // never dip into the reserve
   const forward = produced < aboveReserve ? produced : aboveReserve;
-  if (forward <= 0n) return { txs, forwarded_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
-  await send('forward to buyback wallet', { to: ADDR.BUYBACK_WALLET, value: forward, gas: 21000n });
-  return { txs, forwarded_bnb: formatEther(forward), to: ADDR.BUYBACK_WALLET };
+  if (forward <= 0n) return { txs, forwarded_bnb: '0', kept_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
+  const split = splitFees(forward, keptPct);
+  const out = { txs, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct, forwarded_bnb: formatEther(split.buyback), to: ADDR.BUYBACK_WALLET };
+  if (split.buyback <= 0n) return { ...out, to: null, why: `collected ${formatEther(forward)} BNB of fees; all of it stays as capital (kept share ${split.pct}%)` };
+  await send(`forward ${100 - split.pct}% to the buyback wallet`, { to: ADDR.BUYBACK_WALLET, value: split.buyback, gas: 21000n });
+  return out;
 }
 
 // --------------------------------------------------------------------------

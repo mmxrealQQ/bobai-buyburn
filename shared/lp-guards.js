@@ -52,6 +52,28 @@ export const RESET_AFTER_HOURS = 2;
 // The earnings test needs this much recorded price before it may pick; a
 // width chosen on six hours of a quiet afternoon is a guess with a number on it.
 export const MIN_HOURS_FOR_EARNINGS = 24;
+// How much of the fees a collect keeps as capital, in percent. The rest goes
+// to the buyback wallet. Until 2026-09-04 every collected fee went to the
+// buyback; since then the position keeps half, so it grows out of its own
+// earnings and the buyback's share grows with it ("er soll auch davon
+// wachsen"). The kept share waits as BNB in the liquidity wallet and goes
+// into the position with the next increase. worker-lp reads the live value
+// from LP_FEE_KEEP_PCT in wrangler.toml; this is the default and the one the
+// hand script uses.
+export const FEE_SHARE_KEPT_PCT = 50;
+
+// Split what a collect produced (bigint wei) into the part kept as capital
+// and the part sent to the buyback wallet. A percentage that is not a number
+// between 0 and 100 falls back to the default rather than to "send it all"
+// or "keep it all": a typo in a config must not change where the money goes
+// by more than the default does. Pure, pinned by the self-test.
+export function splitFees(producedRaw, keptPct = FEE_SHARE_KEPT_PCT) {
+  const raw = Number(keptPct);
+  const pct = Number.isFinite(raw) && raw >= 0 && raw <= 100 ? raw : FEE_SHARE_KEPT_PCT;
+  const total = producedRaw > 0n ? producedRaw : 0n;
+  const keep = (total * BigInt(Math.round(pct * 100))) / 10000n;
+  return { keep, buyback: total - keep, pct };
+}
 
 // state: { positions, liquidity (bigint), owedBnbEquivalent, gasBnb, quoteOffPct }
 // owedBnbEquivalent is what this run would turn into BNB: fees owed by the

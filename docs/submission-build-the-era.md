@@ -1,6 +1,6 @@
 # Build the Era — submission draft
 
-Prepared 2026-09-02. **Not submitted.** Deadline 2026-09-09, form
+Prepared 2026-09-02, refreshed 2026-09-04. **Not submitted.** Deadline 2026-09-09, form
 `forms.gle/9g9XPNFwnYaHAz9L8`, judging 2026-09-09 to 09-23.
 
 Every figure below carries the date it was measured. On submission day, run
@@ -23,18 +23,21 @@ this file is a claim that should outlive its date.
 ## Project description (for the form, ~1,500 characters)
 
 Brain Plaza is a marketplace built on what the chain actually says. We read
-every id in the ERC-8004 identity registry on BNB Smart Chain (285,447 as of
-2026-08-25), contacted every endpoint they name, and published who answers,
+every id in the ERC-8004 identity registry on BNB Smart Chain (332,331 as of
+2026-09-03), contacted every endpoint they name, and published who answers,
 what they do, and what they have been paid — from the ERC-8183 escrow, all
-56,655 jobs, not a sample. The result is a marketplace where a stranger lands,
+56,665 jobs, not a sample. The result is a marketplace where a stranger lands,
 picks one of the four categories (rebalancing, grid trading, yield, health
 factor), reads what each agent does in one sentence, sees its live status,
-and hires it through the ERC-8183 escrow with a wallet — eleven hire buttons,
-five escrow steps, every one verified end to end.
+and hires it through the ERC-8183 escrow with a wallet — sixteen hire
+buttons, eleven of which returned a price when actually asked, five escrow
+steps, every one verified end to end. Or types the task in plain words:
+"measure the CAKE pool", "the health factor of the Venus position at 0x…" —
+the broker finds an agent that can answer, calls it read-only, and names it.
 
-The numbers are the point. Of 285,447 registered agents, 796 answer; those are
-100 hosts run by 72 operators. 123 ids share one identical tool list. Of the
-escrow's 56,655 jobs, 99.1% of the money comes from one address, and the
+The numbers are the point. Of 332,331 registered agents, 814 answer; those are
+103 hosts run by 74 operators. 123 ids share one identical tool list. Of the
+escrow's 56,665 jobs, 99.1% of the money comes from one address, and the
 Studio's four reference agents have 16 funded jobs and 0 completed. We show
 this on the page, with the method, because a marketplace that hides it is
 selling the inflation.
@@ -44,14 +47,23 @@ our worker, timestamped, and a probe that fails says whether the fault is the
 agent's, the chain's, or ours. Our own five agents are hireable the same way
 as everyone else's and answer in every category. The same measurement is
 offered to agents free of charge as MCP, REST and an installable skill
-(`npx skills add https://brainonbnb.com`), and the paid pool watch is, as far
-as we can measure, the first MCP tool ever listed for x402 payment.
+(`npx skills add https://brainonbnb.com`) — 87,830 requests answered for other
+agents as of 2026-09-04 — and six answers are sold per x402 or through the
+escrow. What they pay runs, unattended, into the project's own PancakeSwap V3
+position: an agent that re-sets the range in the width that earned the most
+over the recorded prices, checks it every hour, and sends the fees to the
+buyback that burns $BOBAI. Every step is a transaction on BNB Chain and the
+record is public.
 
 ## How the three criteria are met — with evidence
 
 ### Functionality: land, find by category, understand, activate
-- https://brainonbnb.com/registry — categories first, hire panel with 11
-  buttons across all four categories (built 2026-08-25, [project_hire_panel]).
+- https://brainonbnb.com/registry — categories first, hire panel with 16
+  buttons across all four categories, 11 quoting when asked (2026-09-03).
+- Dispatch in plain words (2026-09-04): known symbols read as addresses, an
+  account in the question is passed to the tool even when optional, and an
+  answer about a different address than the one asked is refused and the
+  next agent tried — pinned both ways in `scripts/dispatch-safety.mjs`.
 - Wallet flow through the five escrow steps; job 56657 hired and COMPLETED
   (first seen 2026-09-02 07:21 UTC).
 - Every row carries a one-sentence "what it does" (2026-08-25; the smoke
@@ -63,19 +75,21 @@ as we can measure, the first MCP tool ever listed for x402 payment.
 - Live telemetry every 15 minutes, `agent.brainonbnb.com/status` and
   `/telemetry.json`, with `checked_at` and a cause on every failure
   (`not_ready_because`: chain_unreachable | agent_error), since 2026-09-01.
-- Job census: 56,655 jobs read, 591.56 $U ever escrowed, 28,191 released,
-  one address at 99.1% (2026-08-25). `/api-jobs.json`, MCP
+- Job census: 56,665 jobs read, one address at 99.1% of the money
+  (2026-09-03); our own jobs 56657 (completed), 56670–72 and 56694 open in
+  their dispute windows. `/api-jobs.json`, MCP
   `bnb_agent_employment`.
 - Reputation: 20,734 ratings read, 38 checkable; we write `responseTime`
   attestations with hashed evidence and answer ratings on our own agents
   (2026-09-01).
-- Fleet unmasking: 796 responders = 100 hosts = 72 operators; top-5 hosts
-  hold 81% (2026-08-25).
+- Fleet unmasking: 814 responders = 103 hosts = 74 operators (2026-09-03).
+- Every figure on the page is dated, and the growth section names the daily
+  check's number beside the live headline rather than printing two "nows".
 
 ### Agent diversity: all four categories, equal depth
-- Category depth measured 2026-08-25: rebalancing 3 · grid trading 2 ·
-  yield 3 · health factor 4 (independent operators; nip.io wildcard
-  corrected). **Refresh on submission day.**
+- Category depth measured 2026-09-03: rebalancing 5 entries (18 ids once
+  fleets collapse) · grid trading 3 · yield 5 (247 ids) · health factor 6
+  (11 ids). **Refresh on submission day.**
 - Our own agents cover every category: #302257 Venus Health Factor Monitor,
   #302258 BSC Grid Planner, plus yield, rebalancing and the PancakeSwap
   fee-tier agent #310460.
@@ -87,7 +101,12 @@ as we can measure, the first MCP tool ever listed for x402 payment.
   which of the five fee tiers actually pays an LP, by working capital in
   ±2% of price; agent #310460 delivers it for hire. Range replay and best
   route tools proven against the pool's own quoter (0.0000% deviation,
-  2026-09-01). The project runs its own money through it: position #7306392.
+  2026-09-01). The project runs its own money through it: position #7309536,
+  CAKE/BNB 0.05%, managed by the liquidity agent (https://brainonbnb.com/liquidity):
+  the width is the one that netted the most per day when every width was
+  replayed over the recorded hourly prices with the agent's own re-set delay
+  and cost; the range is checked every hour; the record with every
+  transaction is at agent.brainonbnb.com/lp/agent (since 2026-09-04).
 - **TermiX**: Agent Advantage Report at https://brainonbnb.com/advantage —
   three real tasks, each done with and without an agent; the hand-done path
   answered 0 of 3.
@@ -118,6 +137,7 @@ node scripts/smoke-agent-surface.mjs
 node scripts/dashboard-check/registry-coldstart.mjs
 node scripts/dispatch-safety.mjs
 curl -s https://agent.brainonbnb.com/stats | head -40
+curl -s https://agent.brainonbnb.com/lp/agent | head -60   # the re-sets, with gas per transaction
 ```
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.

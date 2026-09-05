@@ -1,6 +1,6 @@
 # Build the Era — submission draft
 
-Prepared 2026-09-02, refreshed 2026-09-04. **Not submitted.** Deadline 2026-09-09, form
+Prepared 2026-09-02, refreshed 2026-09-05. **Not submitted.** Deadline 2026-09-09, form
 `forms.gle/9g9XPNFwnYaHAz9L8`, judging 2026-09-09 to 09-23.
 
 Every figure below carries the date it was measured. On submission day, run
@@ -101,12 +101,23 @@ a transaction on BNB Chain and the record is public.
   which of the five fee tiers actually pays an LP, by working capital in
   ±2% of price; agent #310460 delivers it for hire. Range replay and best
   route tools proven against the pool's own quoter (0.0000% deviation,
-  2026-09-01). The project runs its own money through it: position #7309536,
+  2026-09-01). The project runs its own money through it: position #7324788,
   CAKE/BNB 0.05%, managed by the liquidity agent (https://brainonbnb.com/liquidity):
   the width is the one that netted the most per day when every width was
   replayed over the recorded hourly prices with the agent's own re-set delay
-  and cost; the range is checked every hour; the record with every
-  transaction is at agent.brainonbnb.com/lp/agent (since 2026-09-04).
+  and its measured re-set cost (the width record, readable, at
+  agent.brainonbnb.com/lp/windows); the range is checked every hour and was
+  re-set by the cron on its own on 2026-09-04 07:50 UTC (#7309536 to
+  #7324788, 8 transactions, 0.000075 BNB of gas, measured); the fees are
+  split 50/50 between the position and the buyback that burns $BOBAI, the
+  share a public variable (LP_FEE_KEEP_PCT, since 2026-09-04); the record
+  with every transaction and the money flow (came in, went out, waiting) is
+  at agent.brainonbnb.com/lp/agent. The same reading is free for anyone's
+  position at agent.brainonbnb.com/lp/look?position=<id> (since 2026-09-04),
+  the plan with decisions is sold per x402.
+  **TO FILL after the 2026-09-05 05:23 UTC run:** the first automatic
+  increase (BNB above the reserve into the position, 3-4 transactions,
+  the field `bnb_spent` in the record).
 - **TermiX**: Agent Advantage Report at https://brainonbnb.com/advantage —
   three real tasks, each done with and without an agent; the hand-done path
   answered 0 of 3.
@@ -144,7 +155,8 @@ flagged and 404 since 2026-07-24. Options, decision with the operator:
 ## Screens to attach
 Captured to `temp/submission-screens/` by `node scripts/dashboard-check/submission-screens.mjs` (the folder is gitignored):
 home, registry (categories + hire panel), scanner, advantage, session,
-services, status. Re-capture on submission day.
+services, status, liquidity, lp-agent (the record), lp-windows (the width
+record). Re-capture on submission day.
 
 ## Refresh on submission day
 ```

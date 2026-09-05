@@ -17,6 +17,9 @@ const PAGES = [
   ['session', 'https://brainonbnb.com/session'],
   ['services', 'https://brainonbnb.com/services'],
   ['status', 'https://agent.brainonbnb.com/status'],
+  ['liquidity', 'https://brainonbnb.com/liquidity'],
+  ['lp-agent', 'https://agent.brainonbnb.com/lp/agent'],
+  ['lp-windows', 'https://agent.brainonbnb.com/lp/windows'],
 ];
 const port = 9400 + (process.pid % 100);
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shots-'));

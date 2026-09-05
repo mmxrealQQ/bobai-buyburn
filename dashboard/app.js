@@ -4,6 +4,9 @@
 // parallel zum Parsen, blockiert nichts und liegt beim naechsten Aufruf im
 // Cache — davon profitiert vor allem das Aktualisieren auf dem Handy.
 // Versionierung ueber ?v= im <script>-Tag, siehe index.html.
+// A share printed at three decimals lies at both ends: 99.9996% shows as a flat
+// 100.000% and 0.0004% as 0.000%. Same rule as pc() in scanner.js, one decimal deeper.
+function pcEdge(v){return v==null?'—':v>0&&v<0.001?'<0.001%':(v>=99.9995&&v<100)?'>99.999%':v.toFixed(3)+'%'}
 // The nav's Buy button used to appear only once the hero's own CTA had
 // scrolled away; since 2026-09-05 it is simply there (styles.css .nb-group).
 
@@ -312,7 +315,9 @@ async function chain(){
   // a hiccup there must not blank the depth figures decoded above.
   try{
     const tot=Number(BigInt(q[9])),dead=Number(BigInt(q[10]));
-    if(tot>0)put('lq-lp',(dead/tot*100).toFixed(3)+'%');
+    // 99.9996% is not 100.000%: the same 0.31 LP is named below, so the share
+    // says '>99.999%' instead of rounding the remainder out of existence.
+    if(tot>0)put('lq-lp',pcEdge(dead/tot*100));
     window.__lpDead=dead/1e18;sources();
     // THE OTHER SIDE OF THE BURN FIGURE.
     // "99.998% burned" says what is locked; it says nothing about the rest, and
@@ -323,7 +328,7 @@ async function chain(){
     const un=(tot-dead)/1e18,botLeft=u18(q[11]),devLeft=u18(q[12]),fee=u18(q[13]),
       el=document.getElementById('lq-unb');
     if(el&&tot>0){
-      const held=botLeft+devLeft,pct=((tot-dead)/tot*100).toFixed(3);
+      const held=botLeft+devLeft,pct=pcEdge((tot-dead)/tot*100).replace('%','');
       // Naming where it sits beats saying only where it does not. The whole
       // remainder is PancakeSwap's protocol fee: the pair mints it to the
       // exchange whenever liquidity moves, so the figure creeps up as the pool

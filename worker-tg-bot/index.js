@@ -2140,7 +2140,8 @@ async function handleCommand(msg, env) {
       const ratios = [];
       if (lq.mcap) ratios.push(`💧 Liq / Mcap: <b>${(lq.tvl / lq.mcap * 100).toFixed(1)}%</b>`);
       if (lq.mcap) ratios.push(`🔒 Hard BNB backing: <b>${(lq.bnbSide / lq.mcap * 100).toFixed(1)}%</b> of mcap`);
-      if (lq.lpBurnedPct !== null) ratios.push(`🔥 LP burned: <b>${lq.lpBurnedPct.toFixed(3)}%</b>`);
+      // 99.9996% is not 100.000% (the dashboard says the same, pcEdge in app.js).
+      if (lq.lpBurnedPct !== null) ratios.push(`🔥 LP burned: <b>${lq.lpBurnedPct >= 99.9995 && lq.lpBurnedPct < 100 ? '>99.999' : lq.lpBurnedPct.toFixed(3)}%</b>`);
 
       reply = `💧 <b>BOBAI Liquidity Depth</b>
 <i>Read from the pool contract${lq.block ? ' at block ' + lq.block.toLocaleString('en-US') : ' just now'} — the pool moves with every trade, so run /liq again rather than trusting an older message.</i>

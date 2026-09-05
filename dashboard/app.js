@@ -4,12 +4,8 @@
 // parallel zum Parsen, blockiert nichts und liegt beim naechsten Aufruf im
 // Cache — davon profitiert vor allem das Aktualisieren auf dem Handy.
 // Versionierung ueber ?v= im <script>-Tag, siehe index.html.
-// === NAV BUY BUTTON: only once the hero's own Buy CTA has scrolled away ===
-!function(){const g=document.querySelector('.nb-group'),h=document.querySelector('.hero');
-if(!g||!h)return;
-if(!('IntersectionObserver'in window)){g.classList.add('on');return}
-new IntersectionObserver(([e])=>g.classList.toggle('on',!e.isIntersecting),
-  {rootMargin:'-120px 0px 0px 0px'}).observe(h)}();
+// The nav's Buy button used to appear only once the hero's own CTA had
+// scrolled away; since 2026-09-05 it is simply there (styles.css .nb-group).
 
 /* Background is now the CSS aurora (.aur) — no canvas work needed.
 // === BACKGROUND: the brain, wired into the chain ===
@@ -1200,3 +1196,30 @@ function fillLpYours(){
   inp.addEventListener('keydown', e => { if(e.key === 'Enter') go.click(); });
 }
 fillLpYours();
+
+// The home menu is a table of contents: the entry whose section is open is
+// shaded gold (.nm a.on in styles.css). Open = the last section whose top has
+// passed a line 40% down the viewport; above the first section, the first
+// entry. Read from the scroll position, not an observer: two of the seven
+// anchors (the bands) have no height of their own, and an observer never
+// sees a zero-height box.
+(function () {
+  const nm = document.querySelector('.nm');
+  if (!nm) return;
+  const links = [...nm.querySelectorAll('a[href^="#"]')];
+  const secs = links.map(a => document.getElementById(a.getAttribute('href').slice(1)));
+  if (!secs.length || secs.some(s => !s)) return;
+  let cur = null, tick = false;
+  const light = () => {
+    tick = false;
+    const line = innerHeight * 0.4;
+    let open = 0;
+    secs.forEach((s, i) => { if (s.getBoundingClientRect().top <= line) open = i; });
+    if (open === cur) return;
+    cur = open;
+    links.forEach((a, i) => a.classList.toggle('on', i === open));
+  };
+  addEventListener('scroll', () => { if (!tick) { tick = true; requestAnimationFrame(light); } }, { passive: true });
+  addEventListener('resize', light);
+  light();
+})();

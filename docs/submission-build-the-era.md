@@ -115,9 +115,15 @@ a transaction on BNB Chain and the record is public.
   at agent.brainonbnb.com/lp/agent. The same reading is free for anyone's
   position at agent.brainonbnb.com/lp/look?position=<id> (since 2026-09-04),
   the plan with decisions is sold per x402.
-  **TO FILL after the 2026-09-05 05:23 UTC run:** the first automatic
-  increase (BNB above the reserve into the position, 3-4 transactions,
-  the field `bnb_spent` in the record).
+  The first automatic increase, 2026-09-05 05:23 UTC, is on the record as a
+  failure, not hidden: the run bought the other side and then the position
+  manager reverted ("Price slippage check") because the minimums were a
+  share of the wallet's balances instead of what the range takes. The
+  record page says "one step failed", the daily Telegram report said so the
+  same morning, the fix (minimums from the range, held tokens counted as
+  capital, self-test 88/88) was deployed within the hour, and the next
+  05:23 run is the proof to cite here — **refresh this paragraph on
+  2026-09-06** with `bnb_spent` and the transaction count.
 - **TermiX**: Agent Advantage Report at https://brainonbnb.com/advantage —
   three real tasks, each done with and without an agent; the hand-done path
   answered 0 of 3.

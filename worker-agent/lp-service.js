@@ -147,7 +147,7 @@ export async function lpPositionPlan(params = {}, env = null) {
   else if (rb && rb.new_ticks) lines.push(`Re-set due: the agent would move the range to ticks ${rb.new_ticks.join(' … ')} (±${rb.width_pct}%, ${rb.width_basis || 'from the width record'}).`);
   const ic = strip(increase);
   if (ic && ic.why) lines.push(`Grow: ${ic.why}`);
-  else if (ic && ic.wbnb) lines.push(`Grow: the wallet's spare BNB would add ${ic.wbnb} WBNB and buy ${ic.other} of the other side.`);
+  else if (ic && ic.would_add) lines.push(`Grow: the capital beside the position would add ${ic.would_add.wbnb} WBNB and ${ic.would_add.other} of the other side${ic.would_add.buying_other ? `, buying ${ic.would_add.buying_other} of it first` : ic.would_add.selling_other ? `, selling ${ic.would_add.selling_other} of the other side first` : ''}.`);
   return {
     ...facts,
     collect: { pays_for_gas: collectPays, floor_bnb: 0.002 },

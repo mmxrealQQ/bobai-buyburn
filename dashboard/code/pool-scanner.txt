@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 5360 lines.
+# one fetch. 6 files, 5378 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1826,8 +1826,8 @@ export async function scan(input, env) {
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=37" as="style">
-  <link rel="stylesheet" href="styles.css?v=37">
+  <link rel="preload" href="styles.css?v=42" as="style">
+  <link rel="stylesheet" href="styles.css?v=42">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -3774,9 +3774,18 @@ export { flagsCard };
     .nl{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--gold);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.15rem}
     .nl img{width:30px;height:30px;border-radius:8px;box-shadow:0 0 12px rgba(240,185,11,.2)}
     .nl span{background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
-    .nm{display:flex;gap:24px}
-    .nm a{color:var(--muted);text-decoration:none;font-size:.78rem;font-weight:500;transition:color .2s;letter-spacing:.2px}
-    .nm a:hover{color:var(--gold)}
+    /* The menu names seven places on this page. It reads as a table of
+       contents, not as seven links: one pill group, the place on screen lit
+       (app.js lights it), the rest quiet. These are jumps within the page, so
+       they carry no arrow — see the link system at the end of this file. */
+    /* No frame around the group (2026-09-05, on the operator's word: grey words,
+       no frames; the only mark is the gold shading on the open entry). */
+    .nm{display:flex;gap:2px}
+    .nm a{color:var(--muted);text-decoration:none;font-size:.75rem;font-weight:500;letter-spacing:.2px;padding:6px 11px;border-radius:999px;white-space:nowrap;transition:color .2s,background .2s}
+    .nm a:hover{color:var(--text);background:rgba(240,185,11,.08)}
+    /* The open entry: gold shading only, the word stays grey like the others. */
+    .nm a.on{color:var(--muted);background:linear-gradient(135deg,rgba(240,185,11,.3),rgba(240,185,11,.16))}
+    @media (max-width:1080px){.nm a{padding:6px 8px;font-size:.72rem}}
     .nb{background:linear-gradient(135deg,var(--gold),#e0a800);color:#000;padding:9px 24px;border-radius:999px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:none;box-shadow:0 2px 20px rgba(240,185,11,.2);letter-spacing:.3px}
     .nb:hover{transform:translateY(-1px);box-shadow:0 4px 32px rgba(240,185,11,.35)}
 
@@ -3837,11 +3846,10 @@ export { flagsCard };
       .nav{gap:8px}
       .brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     }
-    /* Hidden while the hero (which has its own big Buy CTA) is on screen, so the
-       two identical gold buttons are never visible at the same time. */
-    .nb-group{display:flex;gap:8px;align-items:center;opacity:0;visibility:hidden;
-      transform:translateY(-6px);transition:opacity .3s ease,transform .3s ease,visibility .3s}
-    .nb-group.on{opacity:1;visibility:visible;transform:none}
+    /* Was hidden until the hero's own Buy CTA had scrolled away (2026-08); since
+       2026-09-05 it is there from the first pixel, on the operator's word: the
+       header should look the same on arrival as after a scroll. */
+    .nb-group{display:flex;gap:8px;align-items:center}
     .nb2{position:relative;background:transparent;color:var(--gold);padding:8px 18px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:1px solid rgba(240,185,11,.45);letter-spacing:.3px;overflow:hidden}
     /* A static ring animated via transform/opacity instead of a growing
        box-shadow — see the ground rule in the POLISH LAYER. .nb2 is not used
@@ -4484,15 +4492,6 @@ export { flagsCard };
     .lib-fold .lb-arch-title{font-size:1.35rem;letter-spacing:-.5px}
     .lib-fold .lb-arch-meta{font-size:.8rem;line-height:1.6;max-width:720px}
     .lib-fold .lb-arch-body{padding-top:8px}
-    /* LINKS IN TEXT. One look on every page: gold, with a light frame, so no
-       page is left with the browser's own blue where a component forgot to
-       say otherwise (2026-09-04: ten on /liquidity, one on /scanner, and the
-       Plaza's hundred-odd in its own violet). Links that are buttons, nav
-       items, cards or logos carry a class or wrap an image and keep their
-       own styling; this is for the links that sit inside sentences. */
-    body a:not([class]):not(:has(img,svg,picture)){color:var(--gold);text-decoration:none;border:1px solid rgba(240,185,11,.3);border-radius:6px;padding:0 5px;transition:border-color .15s,background .15s}
-    body a:not([class]):not(:has(img,svg,picture)):hover{border-color:rgba(240,185,11,.75);background:rgba(240,185,11,.07)}
-    body a:not([class]) code{color:inherit;background:none;padding:0}
     .lib-head{max-width:720px;margin-bottom:30px}
     .lib-head h3{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:-.6px;margin-bottom:10px}
     .lib-head h3 em{font-style:normal;color:var(--acc)}
@@ -4971,6 +4970,25 @@ export { flagsCard };
     .mkt-nums span{display:block;font-size:.7rem;color:var(--muted);margin-top:3px}
     .mkt-go{display:inline-block;padding:9px 20px;border-radius:999px;font-size:.85rem;
       background:rgb(var(--accs));color:#0b0b0f;font-weight:600}
+
+    /* THE LINK SYSTEM — the same on every page that loads this file.
+       Links in text carry no class (buttons, nav items, cards and logos carry
+       one, or wrap an image, and keep their own styling; the home menu is
+       excluded by its parent). Three kinds, told apart by one mark after the
+       text, drawn as an SVG mask in currentColor so it looks the same in
+       every font and on every page:
+         a jump within the page   href="#…"          no mark
+         a change of page         another page here  a right arrow
+         a way out of the site    target="_blank"    an up-right arrow
+       Gold, a thin underline, no frame (2026-09-05, on the operator's word:
+       "no frames"; until then these links sat in gold boxes, and so did six
+       of the seven menu words). */
+    body :not(.nm) > a:not([class]):not(:has(img,svg,picture)){color:var(--gold);text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);text-underline-offset:3px;text-decoration-thickness:1px;transition:text-decoration-color .2s}
+    body :not(.nm) > a:not([class]):not(:has(img,svg,picture)):hover{text-decoration-color:var(--gold)}
+    body a:not([class]) code{color:inherit;background:none;padding:0}
+    body :not(.nm) > a:not([class]):not(:has(img,svg,picture)):not([href^="#"]):not([href^="mailto:"])::after{content:'';display:inline-block;width:.62em;height:.62em;margin-left:.3em;vertical-align:-.02em;background:currentColor;opacity:.75;
+      -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='https://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.5 6h8.2M6.3 2.6 9.7 6l-3.4 3.4' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='https://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.5 6h8.2M6.3 2.6 9.7 6l-3.4 3.4' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
+    body :not(.nm) > a:not([class]):not(:has(img,svg,picture))[target="_blank"]::after{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='https://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 9l6-6M4.2 3H9v4.8' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='https://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 9l6-6M4.2 3H9v4.8' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
 
 ==============================================================================
 === FILE: dashboard/tier-scan.js

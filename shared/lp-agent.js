@@ -185,6 +185,32 @@ export function splitForRange(sqrtP, tickLower, tickUpper) {
   return { perL0, perL1 };
 }
 
+// What the position manager will actually take from two balances at a price
+// inside a range: the liquidity the shorter side allows, and the two amounts
+// that liquidity needs. Minimums for a mint or an increase are a share of
+// THESE amounts — never of the balances. 2026-09-05: an increase asked for
+// 90% of every token the wallet held, the manager took the range's ratio,
+// the other side fell short of its own minimum and the call reverted
+// ("Price slippage check") after the tokens had already been bought.
+// Pure, exported for the self-test.
+export function amountsForRange(sqrtP, tickLower, tickUpper, have0, have1) {
+  const { perL0, perL1 } = splitForRange(sqrtP, tickLower, tickUpper);
+  const l0 = perL0 > 0 ? Number(have0) / perL0 : Infinity;
+  const l1 = perL1 > 0 ? Number(have1) / perL1 : Infinity;
+  const L = Math.min(l0, l1);
+  if (!isFinite(L) || L <= 0) return { amount0: 0n, amount1: 0n, L: 0 };
+  return { amount0: BigInt(Math.floor(L * perL0)), amount1: BigInt(Math.floor(L * perL1)), L };
+}
+
+// Minimums at 97% of what the range takes: room for the price to move
+// between the read and the mint, not a target. Any lower and a stale quote
+// could be filled badly; any higher and a normal block's drift reverts it.
+export const MIN_SHARE = 97n;
+export function minsForRange(sqrtP, tickLower, tickUpper, have0, have1) {
+  const { amount0, amount1 } = amountsForRange(sqrtP, tickLower, tickUpper, have0, have1);
+  return { amount0Min: (amount0 * MIN_SHARE) / 100n, amount1Min: (amount1 * MIN_SHARE) / 100n };
+}
+
 // --------------------------------------------------------------------------
 // collect: fees -> BNB -> part kept as capital, the rest to the buyback wallet
 // --------------------------------------------------------------------------
@@ -482,12 +508,15 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, mintWbnb, 'allow the position manager to take WBNB (once)');
   const amount0Desired = plan.wbnbIs0 ? mintWbnb : mintOther;
   const amount1Desired = plan.wbnbIs0 ? mintOther : mintWbnb;
+  // The minimums come from what the new range takes at the price now, not
+  // from the balances (see amountsForRange).
+  const mintMins = minsForRange((await readPool(pub, plan.pos)).sqrtP, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
   await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
     args: [{
       token0: plan.pos[2], token1: plan.pos[3], fee: Number(plan.pos[4]),
       tickLower: plan.ticks.tickLower, tickUpper: plan.ticks.tickUpper,
       amount0Desired, amount1Desired,
-      amount0Min: (amount0Desired * 90n) / 100n, amount1Min: (amount1Desired * 90n) / 100n,
+      ...mintMins,
       recipient: account.address, deadline: deadline(),
     }] });
   const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
@@ -505,41 +534,55 @@ export async function planIncrease(pub, address, position = null) {
   const p = position || (await readPosition(pub, address));
   const bal = await pub.getBalance({ address });
   const spendRaw = bal - GAS_RESERVE - parseEther(String(INCREASE_GAS_BUDGET_BNB));
-  const spendableBnb = spendRaw > 0n ? bn(spendRaw) : 0;
-  let poolInfo = null, split = null, buyOtherRaw = 0n, wbnbRaw = 0n, buyCostRaw = 0n, other = null, wbnbIs0 = false;
+  const nativeRaw = spendRaw > 0n ? spendRaw : 0n;
+  let poolInfo = null, target = null, other = null, wbnbIs0 = false, heldWbnb = 0n, heldOther = 0n, heldOtherInWbnb = 0, buyOtherRaw = 0n, sellOtherRaw = 0n, buyCostRaw = 0n;
   if (p.positions === 1) {
     poolInfo = await readPool(pub, p.pos);
     const token0 = p.pos[2].toLowerCase(), token1 = p.pos[3].toLowerCase();
     wbnbIs0 = token0 === ADDR.WBNB;
     if (!wbnbIs0 && token1 !== ADDR.WBNB) throw new Error('the position is not against WBNB; this agent only knows how to grow it out of BNB');
     other = wbnbIs0 ? token1 : token0;
-    if (spendRaw > 0n) {
-      const { perL0, perL1 } = splitForRange(poolInfo.sqrtP, Number(p.pos[5]), Number(p.pos[6]));
-      const price = poolInfo.sqrtP ** 2;                  // token1 per token0
-      const perLOther = wbnbIs0 ? perL1 : perL0;
-      const perLWbnb = wbnbIs0 ? perL0 : perL1;
-      const otherInWbnb = wbnbIs0 ? 1 / price : price;    // WBNB per unit of the other token
-      // Value of one unit of liquidity in WBNB, and the L this much BNB buys,
-      // with 2% kept back for the acquisition's headroom.
-      const perLValue = perLWbnb + perLOther * otherInWbnb;
-      const L = perLValue > 0 ? (Number(spendRaw) * 0.98) / perLValue : 0;
-      buyOtherRaw = BigInt(Math.floor(L * perLOther));
-      wbnbRaw = BigInt(Math.floor(L * perLWbnb));
-      if (buyOtherRaw > 0n) {
-        // Priced by the router that will do the swap, not by the pool.
-        const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, other]]);
-        buyCostRaw = q[1] > 0n ? (buyOtherRaw * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
-      }
-      split = { perLOther, perLWbnb, L };
+    // Capital is everything the wallet holds beside the position: BNB above
+    // the reserve, WBNB, and the other side. The re-set's headroom and an
+    // interrupted run both leave tokens here; until 2026-09-05 the increase
+    // saw only the BNB and then tripped over the tokens it had not counted.
+    heldWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]);
+    heldOther = await read(pub, other, ABI.ERC20, 'balanceOf', [address]);
+    const { perL0, perL1 } = splitForRange(poolInfo.sqrtP, Number(p.pos[5]), Number(p.pos[6]));
+    const price = poolInfo.sqrtP ** 2;                  // token1 per token0
+    const perLOther = wbnbIs0 ? perL1 : perL0;
+    const perLWbnb = wbnbIs0 ? perL0 : perL1;
+    const otherInWbnb = wbnbIs0 ? 1 / price : price;    // WBNB per unit of the other token
+    heldOtherInWbnb = Number(heldOther) * otherInWbnb;
+    const capital = Number(nativeRaw) + Number(heldWbnb) + heldOtherInWbnb;
+    // The L this much capital buys, with 2% kept back for the trade's
+    // headroom, and the other side that L needs — bought or sold to match.
+    const perLValue = perLWbnb + perLOther * otherInWbnb;
+    const L = perLValue > 0 ? (capital * 0.98) / perLValue : 0;
+    const targetOther = BigInt(Math.floor(L * perLOther));
+    if (targetOther > heldOther) {
+      buyOtherRaw = targetOther - heldOther;
+      // Priced by the router that will do the swap, not by the pool.
+      const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, other]]);
+      buyCostRaw = q[1] > 0n ? (buyOtherRaw * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
+    } else {
+      sellOtherRaw = heldOther - targetOther;
     }
+    target = { perLOther, perLWbnb, otherInWbnb, L };
   }
+  const spendableBnb = poolInfo ? bn(nativeRaw + heldWbnb) + heldOtherInWbnb / 1e18 : bn(nativeRaw);
   const state = { positions: p.positions, spendableBnb, inRange: poolInfo ? poolInfo.inRange : false };
   return {
     step: 'increase', state, no: refuseIncrease(state),
-    tokenId: p.tokenId, pos: p.pos, other, wbnbIs0, buyOtherRaw, wbnbRaw, buyCostRaw, split,
+    tokenId: p.tokenId, pos: p.pos, other, wbnbIs0, nativeRaw, heldWbnb, heldOther, buyOtherRaw, sellOtherRaw, buyCostRaw, target,
     summary: {
       wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null,
-      would_add: spendRaw > 0n && poolInfo ? { other: formatUnits(buyOtherRaw, 18), other_token: other, wbnb: formatEther(wbnbRaw), buying_other_costs_bnb: formatEther(buyCostRaw) } : null,
+      capital: poolInfo ? { bnb_above_reserve: bn(nativeRaw), wbnb_held: bn(heldWbnb), other_held: formatUnits(heldOther, 18), other_held_in_bnb: Number((heldOtherInWbnb / 1e18).toFixed(6)) } : null,
+      would_add: poolInfo && target && target.L > 0 ? {
+        other: formatUnits(BigInt(Math.floor(target.L * target.perLOther)), 18), other_token: other, wbnb: formatEther(BigInt(Math.floor(target.L * target.perLWbnb))),
+        ...(buyOtherRaw > 0n ? { buying_other: formatUnits(buyOtherRaw, 18), buying_other_costs_bnb: formatEther(buyCostRaw) } : {}),
+        ...(sellOtherRaw > 0n ? { selling_other: formatUnits(sellOtherRaw, 18) } : {}),
+      } : null,
     },
   };
 }
@@ -549,26 +592,50 @@ export async function executeIncrease(pub, wallet, account, plan, log = () => {}
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
-  const wrapRaw = plan.wbnbRaw + plan.buyCostRaw;
-  await send('wrap', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: wrapRaw });
-  if (plan.buyCostRaw > 0n) {
-    await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, plan.buyCostRaw, 'allow the router to spend WBNB (once)');
-    await send('buy the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
-      args: [plan.buyCostRaw, (plan.buyOtherRaw * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+  // 1. BNB above the reserve becomes WBNB. Nothing to wrap when the capital
+  //    is only what was already held beside the position.
+  if (plan.nativeRaw > 0n) await send('wrap', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: plan.nativeRaw });
+  // 2. Trade to the range's ratio, the way the re-set does: buy the other
+  //    side that is missing, or sell what exceeds it. Sized from what the
+  //    wallet really holds now, at the price now.
+  const t = plan.target;
+  const haveOther0 = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+  const haveWbnb0 = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  const value = Number(haveWbnb0) + Number(haveOther0) * t.otherInWbnb;
+  const perLValue = t.perLWbnb + t.perLOther * t.otherInWbnb;
+  const Ln = (value * 0.98) / perLValue;
+  const targetOther = BigInt(Math.floor(Ln * t.perLOther));
+  if (haveOther0 > targetOther) {
+    const sell = haveOther0 - targetOther;
+    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
+    await ensureAllowance(pub, send, plan.other, ADDR.V2_ROUTER, sell, 'allow the router to sell the other side (once)');
+    await send('sell the excess of the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
+      args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
+  } else if (targetOther > haveOther0) {
+    const need = targetOther - haveOther0;
+    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, plan.other]]);
+    const spend = q[1] > 0n ? (need * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
+    const wbnbIn = spend > haveWbnb0 ? haveWbnb0 : spend;
+    if (wbnbIn > 0n) {
+      await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
+      await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
+        args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+    }
   }
-  // Sized from what the wallet really holds, not from what was expected.
-  // Approvals only when the allowance is short (see ensureAllowance): six
-  // transactions until 2026-09-04, three to four since.
+  // 3. Add what the wallet holds. Approvals only when the allowance is short
+  //    (see ensureAllowance). The manager takes only the ratio the range
+  //    needs; the minimums are 97% of that ratio's amounts at the price now
+  //    (amountsForRange) — never a share of the balances, which is what
+  //    reverted the run of 2026-09-05.
   const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   const haveWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   await ensureAllowance(pub, send, plan.other, ADDR.V3_POSITION_MANAGER, haveOther, 'allow the position manager to take the other side (once)');
   await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, haveWbnb, 'allow the position manager to take WBNB (once)');
   const amount0Desired = plan.wbnbIs0 ? haveWbnb : haveOther;
   const amount1Desired = plan.wbnbIs0 ? haveOther : haveWbnb;
-  // The manager takes only the ratio the range needs. Minimums at 90% are a
-  // floor against the price moving between the plan and the mint, not a target.
+  const mins = minsForRange((await readPool(pub, plan.pos)).sqrtP, Number(plan.pos[5]), Number(plan.pos[6]), amount0Desired, amount1Desired);
   await send('increase the position', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'increaseLiquidity',
-    args: [{ tokenId: plan.tokenId, amount0Desired, amount1Desired, amount0Min: (amount0Desired * 90n) / 100n, amount1Min: (amount1Desired * 90n) / 100n, deadline: deadline() }] });
+    args: [{ tokenId: plan.tokenId, amount0Desired, amount1Desired, ...mins, deadline: deadline() }] });
   // What the manager did not take goes back to being capital. The other
   // token's dust is left; tomorrow's collect sells it with the fees.
   const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);

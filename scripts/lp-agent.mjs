@@ -27,7 +27,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, unwindCalls, ticksAround, readBnbUsd,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, unwindCalls, ticksAround, readBnbUsd,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
@@ -227,6 +227,20 @@ if (SELF) {
   // Ten times the capital is ten times the liquidity: the split is linear in L.
   check('the split is linear in liquidity', Math.abs(splitForRange(mid, lo, hi).perL0 - sMid.perL0) < 1e-18 ? null : 'not linear', false);
 
+  console.log('what the range takes (the 2026-09-05 revert)');
+  // Balances in the range's own ratio are taken whole; an excess on one side
+  // is left, and the minimum follows what is taken, not what is held. The
+  // failed run held 2.038 CAKE beside 0.0025 WBNB and asked for 90% of both.
+  const L0 = 1e15, have0 = BigInt(Math.floor(L0 * sMid.perL0)), have1 = BigInt(Math.floor(L0 * sMid.perL1));
+  const whole = amountsForRange(mid, lo, hi, have0, have1);
+  check('balances in the ratio are taken whole', whole.amount0 <= have0 && whole.amount1 <= have1 && whole.amount0 > (have0 * 999n) / 1000n && whole.amount1 > (have1 * 999n) / 1000n ? null : 'amount0 ' + whole.amount0 + ' of ' + have0 + ', amount1 ' + whole.amount1 + ' of ' + have1, false);
+  const excess = amountsForRange(mid, lo, hi, have0 * 8n, have1);
+  check('an excess of token0 is left, token1 is the short side', excess.amount1 === whole.amount1 && excess.amount0 <= whole.amount0 + 1n ? null : 'amount0 ' + excess.amount0 + ' amount1 ' + excess.amount1, false);
+  const mins = minsForRange(mid, lo, hi, have0 * 8n, have1);
+  check('the minimum for token0 follows what is taken, not the balance', mins.amount0Min < (have0 * 8n * 90n) / 100n && mins.amount0Min > (excess.amount0 * 96n) / 100n && mins.amount0Min <= excess.amount0 ? null : String(mins.amount0Min), false);
+  check('below the range only token0 is taken, token1 not at all', amountsForRange(below, lo, hi, have0, have1).amount1 === 0n && amountsForRange(below, lo, hi, have0, have1).amount0 > 0n ? null : 'token1 taken', false);
+  check('nothing held means nothing taken and a zero minimum', minsForRange(mid, lo, hi, 0n, have1).amount0Min === 0n && minsForRange(mid, lo, hi, 0n, have1).amount1Min === 0n ? null : 'not zero', false);
+
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);
   process.exitCode = bad ? 1 : 0;
 }
@@ -330,7 +344,8 @@ async function main() {
     console.log(`  wallet holds ${f(s.wallet_bnb)} BNB, ${f(s.spendable_bnb)} above the reserve and gas budget${s.tick != null ? `, tick ${s.tick} ${s.in_range ? 'in range' : 'OUT OF RANGE'}` : ''}`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);
     else {
-      console.log(`  would wrap ${s.would_add.wbnb} BNB, buy ${s.would_add.other} of ${s.would_add.other_token} for ~${s.would_add.buying_other_costs_bnb} BNB, and add both to #${plan.tokenId}`);
+      if (s.capital) console.log(`  capital beside the position: ${f(s.capital.bnb_above_reserve)} BNB above the reserve, ${f(s.capital.wbnb_held)} WBNB held, ${s.capital.other_held} of the other side held (~${f(s.capital.other_held_in_bnb)} BNB)`);
+      console.log(`  would ${plan.nativeRaw > 0n ? `wrap ${f(Number(plan.nativeRaw) / 1e18)} BNB, ` : ''}${s.would_add.buying_other ? `buy ${s.would_add.buying_other} of ${s.would_add.other_token} for ~${s.would_add.buying_other_costs_bnb} BNB` : s.would_add.selling_other ? `sell ${s.would_add.selling_other} of ${s.would_add.other_token} for WBNB` : 'trade nothing'}, and add ${s.would_add.wbnb} WBNB + ${s.would_add.other} of the other side to #${plan.tokenId}`);
       if (CONFIRM) {
         const out = await executeIncrease(pub, lpWallet(), lp, plan, log);
         console.log(`  added ${out.other_used} of the other token and ${out.wbnb_used} WBNB; liquidity now ${out.liquidity_after}`);

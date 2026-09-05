@@ -2063,6 +2063,10 @@ async function handleCommand(msg, env) {
       try { supply = await getTotalSupply(); } catch {}
       const price = pair.price, priceInBnb = pair.priceInBnb;
       const fdv = supply > 0 ? price * supply : null;
+      // Market cap the way BscScan shows it under "Circulating Supply Market Cap":
+      // total minus what sits in the dead address, times the price. FDV counts the
+      // burned tokens too, so the two drift apart with every burn.
+      const mcap = supply > 0 && burn.percent !== '?' ? price * (supply - burn.burnedTokens) : null;
       const liq = 2 * pair.wbnbReserve * pair.bnbUsd;
       const st = ledgerStats(ledger, priceInBnb);
       const usdOrNa = (v) => Number.isFinite(v) ? formatUsd(v) : 'n/a';
@@ -2079,6 +2083,7 @@ async function handleCommand(msg, env) {
 1h: ${change(st && st.h1)}  ·  6h: ${change(st && st.h6)}  ·  24h: ${change(st && st.h24)}
 
 📊 <b>Market Stats</b>
+🏷 Market Cap: ${usdOrNa(mcap)}
 🏷 FDV: ${usdOrNa(fdv)}
 💧 Liquidity: ${usdOrNa(liq)}
 📦 ${hoursTxt} Volume: ${st ? usdOrNa(volumeUsd) : 'n/a'}
@@ -2086,7 +2091,7 @@ async function handleCommand(msg, env) {
 
 🔥 Burned: ${burn.percent}% (${formatNumber(burn.burnedTokens)} BOBAI)
 
-⛓ <i>Read from the chain by this bot: price and liquidity from the pool's reserves and the Chainlink BNB feed, volume and trades from the pool's own swap events${st ? (st.hours >= LEDGER_HOURS - 0.5 ? ' over the last 24 hours' : ` over the last ${hoursTxt} (the record is still filling)`) : ' (the record starts with the next tick)'}. Nothing here comes from a price site.</i>
+⛓ <i>Read from the chain by this bot: price and liquidity from the pool's reserves and the Chainlink BNB feed, market cap from the supply minus the dead address, volume and trades from the pool's own swap events${st ? (st.hours >= LEDGER_HOURS - 0.5 ? ' over the last 24 hours' : ` over the last ${hoursTxt} (the record is still filling)`) : ' (the record starts with the next tick)'}. Nothing here comes from a price site.</i>
 
 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>`;
       break;

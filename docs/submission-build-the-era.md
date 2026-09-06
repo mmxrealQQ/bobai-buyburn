@@ -1,6 +1,6 @@
 # Build the Era — submission draft
 
-Prepared 2026-09-02, refreshed 2026-09-05. **Not submitted.** Deadline 2026-09-09, form
+Prepared 2026-09-02, refreshed 2026-09-06. **Not submitted.** Deadline 2026-09-09, form
 `forms.gle/9g9XPNFwnYaHAz9L8`, judging 2026-09-09 to 09-23.
 
 Every figure below carries the date it was measured. On submission day, run
@@ -23,8 +23,9 @@ this file is a claim that should outlive its date.
 ## Project description (for the form, ~1,500 characters)
 
 Brain Plaza is a marketplace built on what the chain actually says. We read
-every id in the ERC-8004 identity registry on BNB Smart Chain (332,331 as of
-2026-09-03), contacted every endpoint they name, and published who answers,
+every id in the ERC-8004 identity registry on BNB Smart Chain (332,331 in the
+full scan of 2026-09-03; the live counter stood at 336,537 on 2026-09-06),
+contacted every endpoint they name, and published who answers,
 what they do, and what they have been paid — from the ERC-8183 escrow, all
 56,665 jobs, not a sample. The result is a marketplace where a stranger lands,
 picks one of the four categories (rebalancing, grid trading, yield, health
@@ -47,13 +48,15 @@ our worker, timestamped, and a probe that fails says whether the fault is the
 agent's, the chain's, or ours. Our own five agents are hireable the same way
 as everyone else's and answer in every category. The same measurement is
 offered to agents free of charge as MCP, REST and an installable skill
-(`npx skills add https://brainonbnb.com`) — 87,830 requests answered for other
-agents as of 2026-09-04 — and six answers are sold per x402 or through the
-escrow. What they pay runs, unattended, into the project's own PancakeSwap V3
-position: an agent that re-sets the range in the width that earned the most
+(`npx skills add https://brainonbnb.com`) — 100,959 requests answered for
+other agents as of 2026-09-06 — and six answers are sold per x402 or through
+the escrow. What they pay runs, unattended, into the project's own PancakeSwap
+V3 position: an agent that re-sets the range in the width that earned the most
 over the recorded prices, checks it every hour, and splits the fees: half
 grows the position, half goes to the buyback that burns $BOBAI. Every step is
-a transaction on BNB Chain and the record is public.
+a transaction on BNB Chain, the record is public, and it keeps the failures:
+a re-set that reverted halfway is on the record with its cause, and the run
+that finished it from the wallet the next morning is on it too.
 
 ## How the three criteria are met — with evidence
 
@@ -87,9 +90,9 @@ a transaction on BNB Chain and the record is public.
   check's number beside the live headline rather than printing two "nows".
 
 ### Agent diversity: all four categories, equal depth
-- Category depth measured 2026-09-03: rebalancing 5 entries (18 ids once
-  fleets collapse) · grid trading 3 · yield 5 (247 ids) · health factor 6
-  (11 ids). **Refresh on submission day.**
+- Category depth measured 2026-09-03, unchanged on 2026-09-06: rebalancing 5
+  entries (18 ids once fleets collapse) · grid trading 3 · yield 5 (247 ids)
+  · health factor 6 (11 ids). **Refresh on submission day.**
 - Our own agents cover every category: #302257 Venus Health Factor Monitor,
   #302258 BSC Grid Planner, plus yield, rebalancing and the PancakeSwap
   fee-tier agent #310460.
@@ -101,13 +104,13 @@ a transaction on BNB Chain and the record is public.
   which of the five fee tiers actually pays an LP, by working capital in
   ±2% of price; agent #310460 delivers it for hire. Range replay and best
   route tools proven against the pool's own quoter (0.0000% deviation,
-  2026-09-01). The project runs its own money through it: position #7324788,
+  2026-09-01). The project runs its own money through it: position #7348261,
   CAKE/BNB 0.05%, managed by the liquidity agent (https://brainonbnb.com/liquidity):
   the width is the one that netted the most per day when every width was
   replayed over the recorded hourly prices with the agent's own re-set delay
   and its measured re-set cost (the width record, readable, at
   agent.brainonbnb.com/lp/windows); the range is checked every hour and was
-  re-set by the cron on its own on 2026-09-04 07:50 UTC (#7309536 to
+  first re-set by the cron on its own on 2026-09-04 07:50 UTC (#7309536 to
   #7324788, 8 transactions, 0.000075 BNB of gas, measured); the fees are
   split 50/50 between the position and the buyback that burns $BOBAI, the
   share a public variable (LP_FEE_KEEP_PCT, since 2026-09-04); the record
@@ -115,15 +118,26 @@ a transaction on BNB Chain and the record is public.
   at agent.brainonbnb.com/lp/agent. The same reading is free for anyone's
   position at agent.brainonbnb.com/lp/look?position=<id> (since 2026-09-04),
   the plan with decisions is sold per x402.
-  The first automatic increase, 2026-09-05 05:23 UTC, is on the record as a
-  failure, not hidden: the run bought the other side and then the position
-  manager reverted ("Price slippage check") because the minimums were a
-  share of the wallet's balances instead of what the range takes. The
-  record page says "one step failed", the daily Telegram report said so the
-  same morning, the fix (minimums from the range, held tokens counted as
-  capital, self-test 88/88) was deployed within the hour, and the next
-  05:23 run is the proof to cite here — **refresh this paragraph on
-  2026-09-06** with `bnb_spent` and the transaction count.
+  The record keeps its failures, and there were two in two days. 2026-09-05
+  05:23 UTC the first automatic increase bought the other side and the
+  position manager reverted ("Price slippage check"): the minimums were a
+  share of the wallet's balances instead of what the range takes. Fixed the
+  same morning. 2026-09-05 12:50 UTC the hourly re-set unwound #7324788 in
+  one multicall, bought the other side, and its mint of a ±1% range reverted
+  on the same check: minimums at 97% of the amounts read seconds earlier, in
+  a range 190 ticks wide where a few ticks of drift move the ratio by a
+  percent each. The capital (13.42 CAKE + 0.042 WBNB, nothing lost) sat in
+  the wallet for seventeen hours and every run said "no position". The fix
+  (2026-09-06, commit b9e38bd): minimums that tolerate 20 ticks of drift,
+  measured in ticks rather than percent because a percentage does not know
+  the width; and a resume path — no position, the pool's two tokens in the
+  wallet — that finishes the mint without waiting the two hours, sized by
+  the same width and the same floor. The self-test replays the revert (6
+  ticks at zero drift fails, 20 pass, 40 fail; 99/99). The resume ran from
+  the hand script at 2026-09-06 06:06 UTC: 3 transactions, 0.000046 BNB of
+  gas, position #7348261 at -58320 … -58140, in range, 0.0809 BNB — read on
+  the chain, not from the record. **Refresh on submission day:** the
+  position id, and whether the hourly cron has re-set it since.
 - **TermiX**: Agent Advantage Report at https://brainonbnb.com/advantage —
   three real tasks, each done with and without an agent; the hand-done path
   answered 0 of 3.
@@ -176,7 +190,13 @@ curl -s https://agent.brainonbnb.com/lp/agent | head -60   # the re-sets, with g
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.
 
+Refresh run 2026-09-06 ~06:15 UTC: health 49/49 · smoke 182/182 (the
+`/lp/look` check now asks by the wallet's address, so it does not depend on
+the daily record naming a position) · cold-start "no problems", depth
+5/3/5/6, 16 hire buttons, 11 quote · dispatch-safety live "every tool not
+named after an action can be reached" · stats 100,959 asked · census live
+counter 336,537 · screens re-captured after the 06:50 cron wrote the new
+position to the record. Figures above are current as of that run.
+
 Refresh run 2026-09-04 ~07:10 UTC: health 49/49 · smoke 177/177 · cold-start
-"no problems" · dispatch-safety live "every tool not named after an action
-can be reached" · screens captured (7 pages at 1440). Figures above are
-current as of that run.
+"no problems" · dispatch-safety live · screens captured (7 pages at 1440).

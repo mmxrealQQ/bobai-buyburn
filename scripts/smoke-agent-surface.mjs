@@ -651,10 +651,15 @@ section('The marketplace, from the front door');
   // The sixth answer: the liquidity agent on a position that is not ours.
   const lpEx = await fetch(`${AGENT}/example?service=lp_position_plan`).then((r) => r.json()).catch(() => null);
   // The free look (2026-09-04): the facts without the plan, open, no key.
+  // Asked by the liquidity wallet's address, not by the id on the daily
+  // record: 2026-09-06 the record's collect step had no position (the re-set
+  // of the day before had stopped before its mint) and this read nothing.
+  // The wallet holds exactly one position whenever the agent is whole, and
+  // the look names it by id — that id is what the check reads back.
   const lpRec = await fetch(`${AGENT}/lp/agent`).then((r) => r.json()).catch(() => null);
-  const ownPos = lpRec && lpRec.last && lpRec.last.steps && (lpRec.last.steps.collect || {}).position;
-  const look = ownPos ? await fetch(`${AGENT}/lp/look?position=${ownPos}`).then((r) => r.json()).catch(() => null) : null;
-  ok('/lp/look reads a position for free: range, room, value, fees — and no plan', !!look && look.position === String(ownPos) && typeof look.in_range === 'boolean' && look.room && look.value_bnb != null && !('rebalance' in look) && /the paid answer/.test(look.the_plan || ''), look && (look.error || look.verdict || '').slice(0, 120));
+  const lpWallet = (lpRec && lpRec.last && lpRec.last.wallet) || '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
+  const look = await fetch(`${AGENT}/lp/look?address=${lpWallet}`).then((r) => r.json()).catch(() => null);
+  ok('/lp/look reads a position for free: range, room, value, fees — and no plan', !!look && /^\d+$/.test(String(look.position || '')) && typeof look.in_range === 'boolean' && look.room && look.value_bnb != null && !('rebalance' in look) && /the paid answer/.test(look.the_plan || ''), look && (look.error || look.verdict || '').slice(0, 120));
   ok('/lp/look without a position says what it needs', (await fetch(`${AGENT}/lp/look`)).status === 400);
   // The dead address holds tens of thousands of burned LP NFTs, so this is
   // the "name one by id" branch; a wallet with none gets the other sentence.

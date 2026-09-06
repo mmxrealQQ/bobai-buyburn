@@ -27,6 +27,9 @@
 // SENDING IS A SEPARATE, DELIBERATE STEP
 //   --settle <id>          simulate settle(id) from the buyer wallet, print the call
 //   --settle <id> --send   sign it with the buyer key in .env and broadcast
+//   --refund <id>          simulate claimRefund(id) on the kernel — a job that was
+//                          funded, never delivered and is past expiry gives the
+//                          budget back to the buyer; --send as above
 // The buyer on our jobs is the NFT relayer wallet, the seller our agent
 // provider wallet; both are ours, so settling is us paying ourselves the
 // ten cents we escrowed — the point is the transition, not the money.
@@ -53,7 +56,7 @@ const RPC = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org';
 const WORKER = 'https://agent.brainonbnb.com';
 
 const KERNEL = ERC8183.commerce, ROUTER = ERC8183.router, POLICY = ERC8183.policy;
-const SEL = { getJob: '0xbf22c457', settle: '0x39c2ebb9', disputeWindow: '0x117f5f92' };
+const SEL = { getJob: '0xbf22c457', settle: '0x39c2ebb9', disputeWindow: '0x117f5f92', claimRefund: '0x5b7baf64' };
 const word = (n) => BigInt(n).toString(16).padStart(64, '0');
 
 // Our side of every job we have made: the buyer wallet the hire panel was
@@ -171,34 +174,48 @@ if (process.argv.includes('--self-test')) {
       }
     }
 
-    // --- settle: simulate first, send only on --send ---------------------------
-    const target = arg('settle', null);
-    if (target) {
-      const row = rows.find((r) => r.id === String(target));
-      if (!row || !row.job) { console.log(`\n${target}: not one of the jobs read above`); process.exitCode = 1; }
-      else if (row.c.state !== 'settleable') { console.log(`\n${target}: not settleable — ${row.c.note}`); process.exitCode = 1; }
+    // --- settle / refund: simulate first, send only on --send ------------------
+    // Two calls, one shape: settle(jobId, "") on the EvaluatorRouter releases
+    // the escrow of a delivered job after its dispute window; claimRefund(jobId)
+    // on the kernel returns the budget of a job that was funded, never
+    // delivered and is past its expiry (56656, 2026-09-06). Both are the
+    // buyer's call, both are simulated first, neither is sent by the assistant.
+    const target = arg('settle', null), refund = arg('refund', null);
+    const action = target ? { id: target, name: 'settle', want: 'settleable', to: ROUTER, where: `the EvaluatorRouter ${ROUTER}`, data: SEL.settle + word(target) + word(64) + word(0), show: `settle(${target}, "")` } // settle(jobId, bytes "") — offset 0x40, length 0
+      : refund ? { id: refund, name: 'refund', want: 'undelivered', to: KERNEL, where: `the kernel ${KERNEL}`, data: SEL.claimRefund + word(refund), show: `claimRefund(${refund})` }
+      : null;
+    if (action) {
+      const row = rows.find((r) => r.id === String(action.id));
+      if (!row || !row.job) { console.log(`
+${action.id}: not one of the jobs read above`); process.exitCode = 1; }
+      else if (row.c.state !== action.want) { console.log(`
+${action.id}: not ${action.want} — ${row.c.note}`); process.exitCode = 1; }
       else {
-        const data = SEL.settle + word(target) + word(64) + word(0); // settle(jobId, bytes "") — offset 0x40, length 0
-        console.log(`\nsettle(${target}, "") on the EvaluatorRouter ${ROUTER}`);
+        const { data } = action;
+        console.log(`
+${action.show} on ${action.where}`);
         console.log(`  from   ${BUYER} (the buyer on this job)`);
         console.log(`  data   ${data}`);
+        if (action.name === 'refund') console.log(`  budget ${row.job.budget_u ?? "?"} $U back to the buyer`);
         let ok = false;
         try {
-          await pub.call({ to: ROUTER, data, account: BUYER });
+          await pub.call({ to: action.to, data, account: BUYER });
           ok = true;
           console.log('  simulation from the buyer: would go through');
         } catch (e) {
           console.log(`  simulation from the buyer: REVERTS — ${(e.shortMessage || e.message).split('\n')[0]}`);
           // Is it the caller? Ask the same question from the seller and from a
-          // stranger, so the answer is "who may settle" and not just "no".
+          // stranger, so the answer is "who may call this" and not just "no".
           for (const [who, from] of [['seller', SELLER], ['stranger', '0x000000000000000000000000000000000000dEaD']]) {
-            try { await pub.call({ to: ROUTER, data, account: from }); console.log(`  simulation from the ${who}: would go through`); }
+            try { await pub.call({ to: action.to, data, account: from }); console.log(`  simulation from the ${who}: would go through`); }
             catch (e2) { console.log(`  simulation from the ${who}: reverts — ${(e2.shortMessage || e2.message).split('\n')[0]}`); }
           }
         }
         if (!ok) process.exitCode = 1;
         else if (!process.argv.includes('--send')) {
-          console.log('\nNot sent. To send it, a person runs:\n  ! node scripts/erc8183-job-watch.mjs --settle ' + target + ' --send');
+          console.log(`
+Not sent. To send it, a person runs:
+  ! node scripts/erc8183-job-watch.mjs --${action.name} ${action.id} --send`);
         } else {
           const key = process.env.NFT_RELAYER_PRIVATE_KEY;
           if (!key) { console.log('NFT_RELAYER_PRIVATE_KEY missing in .env'); process.exitCode = 1; }
@@ -209,7 +226,7 @@ if (process.argv.includes('--self-test')) {
               const bal = await pub.getBalance({ address: account.address });
               console.log(`  buyer gas: ${formatEther(bal)} BNB`);
               const wallet = createWalletClient({ account, chain: bsc, transport: http(RPC) });
-              const hash = await wallet.sendTransaction({ to: ROUTER, data, gas: 300000n });
+              const hash = await wallet.sendTransaction({ to: action.to, data, gas: 300000n });
               console.log(`  sent ${hash}`);
               const rcpt = await pub.waitForTransactionReceipt({ hash });
               console.log(`  ${rcpt.status} in block ${rcpt.blockNumber} — run the watch again to record the transition`);

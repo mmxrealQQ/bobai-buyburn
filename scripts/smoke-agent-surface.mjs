@@ -613,8 +613,13 @@ section('The marketplace, from the front door');
   ok('/lp/series carries points and a summary derived from them', !!ser && Array.isArray(ser.points) && ser.points.length > 0 && ser.summary && ser.summary.points === ser.points.length && ser.points.every((p) => p.at && 'value_bnb' in p && 'in_range' in p));
   // The newest run is the daily one or an hourly check that acted (those
   // land in history) — a 07:50 re-set is a run the series must show.
+  // An hourly check that found a position the series did not know (a resume
+  // minted by hand) is a point too, dated by the check.
   const newestRun = lpJson && [lpJson.last, ...(lpJson.history || [])].filter((e) => e && e.at && !e.dry).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
-  ok('the last series point is the newest run in the record', !!ser && !!newestRun && ser.points[ser.points.length - 1].at === newestRun.at, ser && newestRun && `${ser.points[ser.points.length - 1].at} vs ${newestRun.at}`);
+  const lastPt = ser && ser.points[ser.points.length - 1];
+  const chk = lpJson && lpJson.last_check, chkPos = chk && chk.steps && chk.steps.rebalance && chk.steps.rebalance.position;
+  const chkIsNewer = !!chk && !!newestRun && Date.parse(chk.at) > Date.parse(newestRun.at) && !!chkPos;
+  ok('the last series point is the newest run in the record, or the hourly check that found a new position', !!lastPt && !!newestRun && (lastPt.at === newestRun.at || (chkIsNewer && lastPt.at === chk.at && String(lastPt.position) === String(chkPos))), lastPt && newestRun && `${lastPt.at} vs run ${newestRun.at}${chk ? ` / check ${chk.at}` : ''}`);
   ok('/liquidity carries the day-by-day table', /id="ag-lp-series"/.test(lq.body) && /lp\/series/.test(lq.body));
   ok('/run-lp-series is not open', (await fetch('https://agent.brainonbnb.com/run-lp-series', { method: 'POST' })).status === 403);
 }

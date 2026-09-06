@@ -1082,7 +1082,9 @@ function fillLpBlock(){
           if(!first) return;
           first.textContent = l.inRange ? 'The position is in range and earning'
             : 'The position is out of range right now — it earns nothing; the hourly check re-sets it once the price has been outside for two hours';
-          if(sub) sub.textContent = (sub.textContent || '') + ' · checked on the chain just now: price tick ' + l.tick + ', range ' + l.lo + ' to ' + l.hi + (l.inRange ? '' : '; the record above is from ' + when);
+          // The range was last looked at by the hourly check, not the 05:23 run.
+          const whenRange = String(last.range_checked_at || last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
+          if(sub) sub.textContent = (sub.textContent || '') + ' · checked on the chain just now: price tick ' + l.tick + ', range ' + l.lo + ' to ' + l.hi + (l.inRange ? '' : '; the record above is from ' + whenRange);
         }).catch(() => {});
       });
 }
@@ -1107,7 +1109,7 @@ function fillLpSeries(){
       sum.innerHTML = 'Since <b>' + esc(String(s.since).slice(0,10)) + '</b>: ' + s.points + ' run' + (s.points === 1 ? '' : 's') +
         (v && v.start != null ? ', position worth <b>' + f(v.start,4) + ' → ' + f(v.now,4) + ' BNB</b> (' + pct(v.change_pct) + ')' : '') +
         (s.price_move_pct_since_start != null ? ', the pair moved <b>' + pct(s.price_move_pct_since_start) + '</b>' : '') +
-        ', in range on <b>' + s.days_in_range + '</b> of ' + s.points + ', fees sent to the buyback bot <b>' + f(s.fees_sent_to_buyback_bnb,5) + ' BNB</b>' + (s.fees_kept_as_capital_bnb ? ', kept as capital <b>' + f(s.fees_kept_as_capital_bnb,5) + ' BNB</b>' : '') + ', income put in <b>' + f(s.income_put_in_bnb,5) + ' BNB</b>.';
+        ', in range on <b>' + s.days_in_range + '</b> of ' + (s.runs_with_a_position != null ? s.runs_with_a_position : s.points) + ', fees sent to the buyback bot <b>' + f(s.fees_sent_to_buyback_bnb,5) + ' BNB</b>' + (s.fees_kept_as_capital_bnb ? ', kept as capital <b>' + f(s.fees_kept_as_capital_bnb,5) + ' BNB</b>' : '') + ', income put in <b>' + f(s.income_put_in_bnb,5) + ' BNB</b>.';
       const base = pts.find(p => p.value_bnb != null);
       const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>Since start</th><th>Range</th><th>Fees owed (BNB)</th><th>Sent to buyback (BNB)</th><th>Income put in (BNB)</th><th>Did</th></tr>';
       const rows = pts.slice().reverse().map(p => {
@@ -1118,7 +1120,7 @@ function fillLpSeries(){
           '<td class="' + (chg == null ? '' : chg >= 0 ? 'up' : 'down') + '">' + pct(chg) + '</td>' +
           '<td class="' + (p.in_range ? 'up' : p.in_range === false ? 'down' : '') + '">' + (p.in_range ? 'in' : p.in_range === false ? 'out' : '—') + '</td>' +
           '<td>' + f(p.owed_bnb,6) + '</td><td>' + f(p.forwarded_total_bnb,5) + '</td><td>' + f(p.swept_total_bnb,5) + '</td>' +
-          '<td>' + (p.ok === false ? 'one step failed' : p.acted ? 'moved money' : 'nothing to do') + '</td></tr>';
+          '<td>' + (p.ok === false ? 'one step failed' : p.acted ? 'moved money' : p.seen ? 'hourly check found a new position' : !p.position ? 'found no position' : 'nothing to do') + '</td></tr>';
       });
       table.innerHTML = head + rows.join('');
     });

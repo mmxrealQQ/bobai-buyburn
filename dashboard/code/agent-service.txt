@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 38 files, 10428 lines.
+# one fetch. 38 files, 10464 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5108,31 +5108,64 @@ async function recordLpSeries(env) {
   const last = newestHist && rec.last && Date.parse(newestHist.at) > Date.parse(rec.last.at) ? newestHist : rec.last;
   if (!last || !last.at || last.dry) return { recorded: false, why: 'no live run in the record' };
   const series = await readLpSeries(env);
-  if (series.length && Date.parse(series[series.length - 1].at) >= Date.parse(last.at)) return { recorded: false, why: 'already recorded', points: series.length };
-  const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
-  const reset = rb.acted && !rb.error && rb.new_position;
-  const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
+  const prev = series.length ? series[series.length - 1] : null;
   const flow = moneyFlow(rec);
-  const price = await bnbUsd().catch(() => null);
-  const point = {
-    at: last.at,
-    position: reset ? String(rb.new_position) : (c.position || rb.position || null),
-    in_range: reset ? true : (c.in_range != null ? c.in_range : (rb.in_range ?? null)),
-    tick: rb.tick ?? null,
-    ticks: reset ? (rb.new_ticks || rb.ticks || null) : (rb.ticks || null),
-    reset: reset ? { from: rb.position, to: String(rb.new_position), width_pct: rb.width_pct ?? null, gas_bnb: rb.gas_bnb ?? null } : null,
-    value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : null,
-    owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
-    wallet_bnb: inc.wallet_bnb != null ? Number(inc.wallet_bnb) : null,
-    waiting: sweeps.filter((s) => s.balance > 0).map((s) => ({ token: s.token || s.source, amount: Number(s.balance) })),
+  const totals = {
     forwarded_total_bnb: flow.out.buyback_bnb,
     kept_total_bnb: flow.out.kept_as_capital_bnb,
     fees_total_bnb: flow.in.fees.bnb,
     swept_total_bnb: flow.in.income_bnb,
-    acted: !!last.acted,
-    ok: last.ok !== false,
-    bnb_usd: price,
   };
+  let point = null;
+  if (!prev || Date.parse(prev.at) < Date.parse(last.at)) {
+    const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
+    const reset = rb.acted && !rb.error && rb.new_position;
+    const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
+    point = {
+      at: last.at,
+      position: reset ? String(rb.new_position) : (c.position || rb.position || null),
+      in_range: reset ? true : (c.in_range != null ? c.in_range : (rb.in_range ?? null)),
+      tick: rb.tick ?? null,
+      ticks: reset ? (rb.new_ticks || rb.ticks || null) : (rb.ticks || null),
+      reset: reset ? { from: rb.position, to: String(rb.new_position), width_pct: rb.width_pct ?? null, gas_bnb: rb.gas_bnb ?? null } : null,
+      value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : null,
+      owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
+      wallet_bnb: inc.wallet_bnb != null ? Number(inc.wallet_bnb) : null,
+      waiting: sweeps.filter((s) => s.balance > 0).map((s) => ({ token: s.token || s.source, amount: Number(s.balance) })),
+      ...totals,
+      acted: !!last.acted,
+      ok: last.ok !== false,
+    };
+  } else {
+    // An hourly check that found a position the series does not know — one
+    // minted by hand after a stopped re-set (2026-09-06 06:06, seen at the
+    // 06:50 check) — is a point too, else the series says "no position" all
+    // day while there is one. A check that sees the position the series
+    // already has is not a point: the hours are not a history.
+    const chk = rec.last_check, cr = chk && chk.steps && chk.steps.rebalance;
+    if (chk && !chk.dry && cr && cr.position && Date.parse(chk.at) > Date.parse(prev.at) && String(cr.position) !== String(prev.position || '')) {
+      point = {
+        at: chk.at,
+        position: String(cr.position),
+        in_range: cr.in_range ?? null,
+        tick: cr.tick ?? null,
+        ticks: cr.ticks || null,
+        reset: null,
+        value_bnb: cr.value_bnb != null ? Number(cr.value_bnb) : null,
+        // The check only looked at the range: fees owed and the wallet were
+        // not read, so they are unknown here, not zero.
+        owed_bnb: null,
+        wallet_bnb: null,
+        waiting: prev.waiting || [],
+        ...totals,
+        acted: false,
+        ok: chk.ok !== false,
+        seen: 'hourly check found a position the series did not know',
+      };
+    }
+  }
+  if (!point) return { recorded: false, why: 'already recorded', points: series.length };
+  point.bnb_usd = await bnbUsd().catch(() => null);
   series.push(lpSeriesPoint(point));
   const kept = series.slice(-400);
   await env.AGENT.put(LP_SERIES_KEY, JSON.stringify(kept));
@@ -5161,6 +5194,9 @@ function lpSeriesSummary(series) {
     fees_owed_now_bnb: last.owed_bnb,
     // 1 tick = 0.01 % of price; the sign says which way the pair moved.
     price_move_pct_since_start: tickMove != null ? +((Math.pow(1.0001, tickMove) - 1) * 100).toFixed(2) : null,
+    // Only a run that saw a position was in or out of a range; "in range on
+    // 3 of 6" must not count a run that found none.
+    runs_with_a_position: series.filter((p) => p.in_range === true || p.in_range === false).length,
     days_in_range: series.filter((p) => p.in_range === true).length,
     days_out_of_range: series.filter((p) => p.in_range === false).length,
     days_it_acted: series.filter((p) => p.acted).length,
@@ -6429,7 +6465,7 @@ ${pageTail}`;
         summary: lpSeriesSummary(series),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',
-        cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour and a re-set shows in the record as it happens',
+        cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know',
       }, 200, { 'Cache-Control': 'public, max-age=300' });
     }
     if (path === '/run-lp-series' && request.method === 'POST') {

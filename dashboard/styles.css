@@ -95,11 +95,11 @@
        three unstyled links, because the styling lived on the pages that
        happened to be written first. A shared shell that is not in the shared
        stylesheet is not a shell. */
-    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
-      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
-      font-size:12px;font-weight:600;text-decoration:none;letter-spacing:.3px;
-      transition:transform .2s ease,background .2s,border-color .2s;white-space:nowrap}
-    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.15);border-color:rgba(240,185,11,.4)}
+    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 0;color:var(--gold);
+      font-size:12px;font-weight:600;letter-spacing:.3px;white-space:nowrap;
+      text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);text-underline-offset:3px;text-decoration-thickness:1px;
+      transition:transform .2s ease,text-decoration-color .2s}
+    .back-btn:hover{transform:translateX(-2px);text-decoration-color:var(--gold)}
     .back-btn span{font-size:14px;line-height:1}
     .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
       color:var(--gold);white-space:nowrap;text-decoration:none}
@@ -450,9 +450,9 @@
     .lql{font-size:.79rem;font-weight:600;margin-top:4px}
     .lqs{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:7px}
     .lqn{color:var(--acc);font-weight:600;white-space:nowrap}
-    .lqa{color:var(--gold);text-decoration:none;border:1px solid rgba(240,185,11,.3);border-radius:6px;padding:0 5px;
-      white-space:nowrap}
-    .lqa:hover{border-color:rgba(240,185,11,.75);background:rgba(240,185,11,.07)}
+    .lqa{color:var(--gold);white-space:nowrap;text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);
+      text-underline-offset:3px;text-decoration-thickness:1px;transition:text-decoration-color .2s}
+    .lqa:hover{text-decoration-color:var(--gold)}
     .lqa-ad{font-family:'Space Grotesk',sans-serif;font-size:.95em;opacity:.8}
     .lqi{margin-top:18px;border-top:1px solid rgba(var(--accs),.14);padding-top:16px}
     .lqi-h{font-size:.79rem;font-weight:600}
@@ -463,9 +463,9 @@
     .lqsr-k{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:999px;
       border:1px solid currentColor;font-weight:700}
     .lqsr-auto{color:#3fe09a}.lqsr-man{color:#7d92ff}.lqsr-launch{color:var(--muted)}
-    .lqsr-a{font-family:'Space Grotesk',sans-serif;font-size:.68rem;color:var(--muted);
-      text-decoration:none;border-bottom:1px dotted rgba(255,255,255,.22)}
-    .lqsr-a:hover{color:var(--acc)}
+    .lqsr-a{font-family:'Space Grotesk',sans-serif;font-size:.68rem;color:var(--gold);
+      text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);text-underline-offset:3px;text-decoration-thickness:1px}
+    .lqsr-a:hover{text-decoration-color:var(--gold)}
     .lqsr-v{font-family:'Space Grotesk',sans-serif;font-size:1.15rem;font-weight:700;margin-top:9px;
       display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
     .lqsr-p{font-size:.78rem;font-weight:600;color:var(--muted);
@@ -593,8 +593,9 @@
     table th{background:rgba(240,185,11,.03);color:var(--gold);font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;padding:12px 14px;text-align:left;font-weight:600}
     table td{padding:10px 14px;border-top:1px solid rgba(240,185,11,.03);font-size:.76rem}
     table tr:hover{background:rgba(240,185,11,.015)}
-    .txl{color:var(--gold);text-decoration:none;font-family:'Space Grotesk',monospace;font-size:.72rem}
-    .txl:hover{text-decoration:underline}
+    .txl{color:var(--gold);font-family:'Space Grotesk',monospace;font-size:.72rem;
+      text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);text-underline-offset:3px;text-decoration-thickness:1px}
+    .txl:hover{text-decoration-color:var(--gold)}
     .tb{background:rgba(255,48,40,.07);color:var(--red);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tba{background:rgba(0,230,118,.07);color:var(--green);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
@@ -1266,8 +1267,13 @@
     .mkt-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;margin:20px 0 18px}
     .mkt-nums b{display:block;font-size:1.35rem;line-height:1.2;font-variant-numeric:tabular-nums}
     .mkt-nums span{display:block;font-size:.7rem;color:var(--muted);margin-top:3px}
-    .mkt-go{display:inline-block;padding:9px 20px;border-radius:999px;font-size:.85rem;
-      background:rgb(var(--accs));color:#0b0b0f;font-weight:600}
+    /* 2026-09-06, the operator: every link gold with the underline, no frame,
+       no pill — the back button, the record link, the addresses in the
+       liquidity block included. Only the Buy button, the hero buttons, cards
+       and chips keep their shape. */
+    .mkt-go{display:inline-block;padding:9px 0;font-size:.85rem;color:var(--gold);font-weight:600;
+      text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);text-underline-offset:3px;text-decoration-thickness:1px;transition:text-decoration-color .2s}
+    .mkt-go:hover{text-decoration-color:var(--gold)}
 
     /* THE LINK SYSTEM — the same on every page that loads this file.
        Links in text carry no class (buttons, nav items, cards and logos carry

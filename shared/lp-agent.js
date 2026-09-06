@@ -124,19 +124,30 @@ export async function gasPriceNow(pub) {
 export function sender(pub, wallet, txs, log = () => {}) {
   let price = null;
   return async (label, req) => {
-    if (price == null) price = await gasPriceNow(pub);
-    const hash = req.to
-      ? await wallet.sendTransaction({ ...req, gasPrice: price })
-      : await wallet.writeContract({ ...req, gasPrice: price });
-    const entry = { label, hash };
-    txs.push(entry);
-    log(`  ${label}: ${hash}`);
-    const r = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
-    // What the transaction really cost, so the record can say what a re-set
-    // costs in measured BNB rather than in the replay's assumption.
-    if (r.gasUsed != null && r.effectiveGasPrice != null) entry.gas_bnb = Number(formatEther(r.gasUsed * r.effectiveGasPrice));
-    if (r.status !== 'success') throw new Error(`${label} reverted — stopped before the next step`);
-    return r;
+    // Whatever throws — a simulation that reverts before sending, a sent
+    // transaction that reverts — carries the list of what was sent so far,
+    // so a failed run's record still names its transactions and their gas.
+    // Without it the two failed runs of 2026-09-05 (7 transactions) counted
+    // as none, and the page said "8 transactions so far" against a wallet
+    // nonce of 34.
+    try {
+      if (price == null) price = await gasPriceNow(pub);
+      const hash = req.to
+        ? await wallet.sendTransaction({ ...req, gasPrice: price })
+        : await wallet.writeContract({ ...req, gasPrice: price });
+      const entry = { label, hash };
+      txs.push(entry);
+      log(`  ${label}: ${hash}`);
+      const r = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
+      // What the transaction really cost, so the record can say what a re-set
+      // costs in measured BNB rather than in the replay's assumption.
+      if (r.gasUsed != null && r.effectiveGasPrice != null) entry.gas_bnb = Number(formatEther(r.gasUsed * r.effectiveGasPrice));
+      if (r.status !== 'success') throw new Error(`${label} reverted — stopped before the next step`);
+      return r;
+    } catch (e) {
+      if (e && typeof e === 'object' && !e.txs) e.txs = txs;
+      throw e;
+    }
   };
 }
 

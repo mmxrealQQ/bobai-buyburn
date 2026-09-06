@@ -127,7 +127,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     try {
       return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
 
@@ -178,7 +178,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       await env.AGENT.delete(OUT_SINCE_KEY);
       return { ...plan.summary, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {
-      return { ...plan.summary, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300) };
+      return { ...plan.summary, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
 
@@ -190,7 +190,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     try {
       return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan)) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
 

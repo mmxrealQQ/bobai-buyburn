@@ -116,6 +116,9 @@ export function flowLines(flow) {
   return {
     came_in: `${income}; ${fees}`,
     went_out: out,
-    cost: `${flow.gas.transactions} transaction${flow.gas.transactions === 1 ? '' : 's'}, ${n(flow.gas.bnb).toFixed(6)} BNB of gas`,
+    // "on record": runs by hand and, before 2026-09-06, the transactions a
+    // failed run sent before its revert are not in the record — the wallet's
+    // nonce on the chain is the full count.
+    cost: `${flow.gas.transactions} transaction${flow.gas.transactions === 1 ? '' : 's'} on record, ${n(flow.gas.bnb).toFixed(6)} BNB of gas`,
   };
 }

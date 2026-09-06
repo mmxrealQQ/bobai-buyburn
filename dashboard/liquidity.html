@@ -59,7 +59,7 @@
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
   <main>
-  <div class="intro"><h1>The liquidity <em>agent</em></h1><p>What other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent turns it into liquidity, and what that liquidity earns buys $BOBAI and burns it. Every step is a transaction on BNB Chain, and the record below is read from the agent itself.</p></div>
+  <div class="intro"><h1>The liquidity <em>agent</em></h1><p>What other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent turns it into liquidity; of what that liquidity earns, half buys $BOBAI and burns it and half grows the position. Every step is a transaction on BNB Chain, and the record below is read from the agent itself.</p></div>
 
   <section class="sec b-violet" id="flow">
     <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Liquidity</span><span class="blk-line"></span></div>
@@ -117,7 +117,7 @@
       <h3>What it costs, and what comes next</h3>
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>One answer, one payment</b><span>0.10 USD1, or the same in $BOBAI at the quote you are shown. Send it to the income wallet, paste the transaction hash, get the plan. Agents do the same over x402 without a page. The same answer is sold through the escrow on <a href="/registry">Brain Plaza</a>.</span></div></li>
-        <li><span class="agt-i">2</span><div><b>Where the fee goes</b><span>The same loop as every AI income here: USD1 is swept into the project&rsquo;s own position and its fees go to the buyback bot. $BOBAI paid here stays $BOBAI in the income wallet, off the market, until the sweep learns the token.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>Where the fee goes</b><span>The same loop as every AI income here: USD1 is swept into the project&rsquo;s own position; half of its fees go to the buyback bot, half stay as capital. $BOBAI paid here stays $BOBAI in the income wallet, off the market, until the sweep learns the token.</span></div></li>
         <li><span class="agt-i">3</span><div><b>Not yet: acting on your position</b><span>That needs a session key on your own account with an allowlist and a cap, the way this project already spends from its escrow. It is designed, not built, and the design is public: <a href="/source">docs/lp-service-stage2.md</a> in the source. Nothing here holds a key to your liquidity.</span></div></li>
       </ol>
     </div>
@@ -145,7 +145,7 @@
         <li><span class="agt-i">&#9679;</span><div><b>The record</b><span>Every run writes what it did and why, in the agent&rsquo;s own words. Days that moved money are listed with their figures; quiet days say so. <a href="https://agent.brainonbnb.com/lp/agent?format=json" rel="noopener">JSON</a> for machines, a page for people.</span></div></li>
         <li><span class="agt-i">&#9679;</span><div><b>The code</b><span>One core, <code>shared/lp-agent.js</code>, run by the worker and by hand alike, in <a href="/source">the published source</a>. It never touches the buyback bot&rsquo;s own code.</span></div></li>
       </ol>
-      <p class="agt-note">Why it matters: until this loop existed, every cent this project earned came from its own trading tax. This is the first money from outside, small today, and it already ends as burn.</p>
+      <p class="agt-note">Why it matters: until this loop existed, every cent this project earned came from its own trading tax. This is the first money from outside, small today, and the loop that turns it into burn is running; the record above says how far it has got.</p>
     </div>
     </div>
   </section>
@@ -155,6 +155,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=47" defer></script>
+<script src="app.js?v=49" defer></script>
 </body>
 </html>

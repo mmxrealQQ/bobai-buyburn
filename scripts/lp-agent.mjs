@@ -27,7 +27,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd, sender,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
@@ -267,6 +267,28 @@ if (SELF) {
   check(`${MINT_DRIFT_TICKS * 2} ticks up is outside the tolerance and fails`, passes(tol, -58441 + MINT_DRIFT_TICKS * 2) ? 'passes' : null, false);
   check('with zero drift a move of 6 ticks fails — the 12:50 revert', passes(none, -58441 + 6) ? 'passes' : null, false);
   check('the drift lowers the minimums, it never raises them', tol.amount0Min <= none.amount0Min && tol.amount1Min <= none.amount1Min && (tol.amount0Min < none.amount0Min || tol.amount1Min < none.amount1Min) ? null : 'not lower', false);
+
+  console.log('sender: a failed run still names what it sent');
+  // Two transactions go through, the third reverts on the chain; the error
+  // must carry all three (the reverted one paid gas too). A simulation that
+  // refuses before sending carries only what went before it.
+  await (async () => {
+    const fakePub = { getGasPrice: async () => 100000000n, waitForTransactionReceipt: async ({ hash }) => ({ status: hash === '0x3' ? 'reverted' : 'success', gasUsed: 21000n, effectiveGasPrice: 100000000n }) };
+    let nth = 0;
+    const fakeWallet = { writeContract: async () => `0x${++nth}`, sendTransaction: async () => `0x${++nth}` };
+    const txs = [];
+    const send = sender(fakePub, fakeWallet, txs);
+    let err = null;
+    try { await send('one', {}); await send('two', {}); await send('three', {}); } catch (e) { err = e; }
+    check('a reverted third transaction throws', err ? null : 'no error', false);
+    check('the error carries the three transactions sent', err && Array.isArray(err.txs) && err.txs.length === 3 && err.txs === txs ? null : `carried ${err && err.txs ? err.txs.length : 'none'}`, false);
+    check('the reverted transaction has its gas measured', err && err.txs && err.txs[2].gas_bnb > 0 ? null : 'no gas on the reverted tx', false);
+    const txs2 = [];
+    const refusing = { writeContract: async () => { throw new Error('simulation reverted'); } };
+    let err2 = null;
+    try { await sender(fakePub, refusing, txs2)('mint', {}); } catch (e) { err2 = e; }
+    check('a simulation that refuses before sending carries an empty list, not none', err2 && Array.isArray(err2.txs) && err2.txs.length === 0 ? null : 'not carried', false);
+  })();
 
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);
   process.exitCode = bad ? 1 : 0;

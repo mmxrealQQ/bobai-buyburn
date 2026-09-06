@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 38 files, 10464 lines.
+# one fetch. 38 files, 10512 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -186,7 +186,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd, sender,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
@@ -426,6 +426,28 @@ if (SELF) {
   check(`${MINT_DRIFT_TICKS * 2} ticks up is outside the tolerance and fails`, passes(tol, -58441 + MINT_DRIFT_TICKS * 2) ? 'passes' : null, false);
   check('with zero drift a move of 6 ticks fails — the 12:50 revert', passes(none, -58441 + 6) ? 'passes' : null, false);
   check('the drift lowers the minimums, it never raises them', tol.amount0Min <= none.amount0Min && tol.amount1Min <= none.amount1Min && (tol.amount0Min < none.amount0Min || tol.amount1Min < none.amount1Min) ? null : 'not lower', false);
+
+  console.log('sender: a failed run still names what it sent');
+  // Two transactions go through, the third reverts on the chain; the error
+  // must carry all three (the reverted one paid gas too). A simulation that
+  // refuses before sending carries only what went before it.
+  await (async () => {
+    const fakePub = { getGasPrice: async () => 100000000n, waitForTransactionReceipt: async ({ hash }) => ({ status: hash === '0x3' ? 'reverted' : 'success', gasUsed: 21000n, effectiveGasPrice: 100000000n }) };
+    let nth = 0;
+    const fakeWallet = { writeContract: async () => `0x${++nth}`, sendTransaction: async () => `0x${++nth}` };
+    const txs = [];
+    const send = sender(fakePub, fakeWallet, txs);
+    let err = null;
+    try { await send('one', {}); await send('two', {}); await send('three', {}); } catch (e) { err = e; }
+    check('a reverted third transaction throws', err ? null : 'no error', false);
+    check('the error carries the three transactions sent', err && Array.isArray(err.txs) && err.txs.length === 3 && err.txs === txs ? null : `carried ${err && err.txs ? err.txs.length : 'none'}`, false);
+    check('the reverted transaction has its gas measured', err && err.txs && err.txs[2].gas_bnb > 0 ? null : 'no gas on the reverted tx', false);
+    const txs2 = [];
+    const refusing = { writeContract: async () => { throw new Error('simulation reverted'); } };
+    let err2 = null;
+    try { await sender(fakePub, refusing, txs2)('mint', {}); } catch (e) { err2 = e; }
+    check('a simulation that refuses before sending carries an empty list, not none', err2 && Array.isArray(err2.txs) && err2.txs.length === 0 ? null : 'not carried', false);
+  })();
 
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);
   process.exitCode = bad ? 1 : 0;
@@ -980,19 +1002,30 @@ export async function gasPriceNow(pub) {
 export function sender(pub, wallet, txs, log = () => {}) {
   let price = null;
   return async (label, req) => {
-    if (price == null) price = await gasPriceNow(pub);
-    const hash = req.to
-      ? await wallet.sendTransaction({ ...req, gasPrice: price })
-      : await wallet.writeContract({ ...req, gasPrice: price });
-    const entry = { label, hash };
-    txs.push(entry);
-    log(`  ${label}: ${hash}`);
-    const r = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
-    // What the transaction really cost, so the record can say what a re-set
-    // costs in measured BNB rather than in the replay's assumption.
-    if (r.gasUsed != null && r.effectiveGasPrice != null) entry.gas_bnb = Number(formatEther(r.gasUsed * r.effectiveGasPrice));
-    if (r.status !== 'success') throw new Error(`${label} reverted — stopped before the next step`);
-    return r;
+    // Whatever throws — a simulation that reverts before sending, a sent
+    // transaction that reverts — carries the list of what was sent so far,
+    // so a failed run's record still names its transactions and their gas.
+    // Without it the two failed runs of 2026-09-05 (7 transactions) counted
+    // as none, and the page said "8 transactions so far" against a wallet
+    // nonce of 34.
+    try {
+      if (price == null) price = await gasPriceNow(pub);
+      const hash = req.to
+        ? await wallet.sendTransaction({ ...req, gasPrice: price })
+        : await wallet.writeContract({ ...req, gasPrice: price });
+      const entry = { label, hash };
+      txs.push(entry);
+      log(`  ${label}: ${hash}`);
+      const r = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
+      // What the transaction really cost, so the record can say what a re-set
+      // costs in measured BNB rather than in the replay's assumption.
+      if (r.gasUsed != null && r.effectiveGasPrice != null) entry.gas_bnb = Number(formatEther(r.gasUsed * r.effectiveGasPrice));
+      if (r.status !== 'success') throw new Error(`${label} reverted — stopped before the next step`);
+      return r;
+    } catch (e) {
+      if (e && typeof e === 'object' && !e.txs) e.txs = txs;
+      throw e;
+    }
   };
 }
 
@@ -1663,7 +1696,10 @@ export function flowLines(flow) {
   return {
     came_in: `${income}; ${fees}`,
     went_out: out,
-    cost: `${flow.gas.transactions} transaction${flow.gas.transactions === 1 ? '' : 's'}, ${n(flow.gas.bnb).toFixed(6)} BNB of gas`,
+    // "on record": runs by hand and, before 2026-09-06, the transactions a
+    // failed run sent before its revert are not in the record — the wallet's
+    // nonce on the chain is the full count.
+    cost: `${flow.gas.transactions} transaction${flow.gas.transactions === 1 ? '' : 's'} on record, ${n(flow.gas.bnb).toFixed(6)} BNB of gas`,
   };
 }
 
@@ -6083,6 +6119,18 @@ ${pageTail}`;
           live = { tick, lo, hi, inRange: tick >= lo && tick < hi };
         } catch { live = null; }
       }
+      // The collect step's "fees owed" is about the position that step read.
+      // When that is not the one open now (none, after the stopped re-set of
+      // 2026-09-05; the new one minted by hand the next morning), the fees
+      // owed are read from the chain, the same reading /lp/look gives.
+      let liveOwed = null;
+      if (pos && String(c.position || '') !== String(pos)) {
+        try {
+          const lk = await lpPositionLook({ position: String(pos) });
+          if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) liveOwed = Number(lk.fees_owed.bnb_equivalent);
+        } catch { liveOwed = null; }
+      }
+      if (liveOwed != null) flow.waiting.fees_owed_bnb = liveOwed;
       // Dry runs are the operator checking a deploy; they sign nothing and
       // moved nothing, and the first one (2026-09-02, before the income keys
       // were set) stood under "Runs that failed" for two days.
@@ -6117,8 +6165,8 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 <p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_buyback_pct)}% go to the buyback bot, which buys $BOBAI and burns it, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'part goes to the buyback bot, which buys $BOBAI and burns it, and part stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}.</p>
 <h2>What it holds</h2>
 <div class="card"><dl>
-<dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until the agent re-sets it at a 05:23 UTC run`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB${usd(rb.value_bnb)}` : ''}` : 'none open'}</dd>
-<dt>Fees owed now</dt><dd>${c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
+<dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until an hourly check re-sets it, two hours after the price left`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB${usd(rb.value_bnb)}` : ''}` : 'none open'}</dd>
+<dt>Fees owed now</dt><dd>${liveOwed != null ? `${f(liveOwed, 6)} BNB${usd(liveOwed)} — read from the chain just now; the run at ${h(when(last.at))} ${c.position ? `read position #${h(c.position)}` : 'saw no position'}. Left to grow until collecting beats the gas` : c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
 <dt>Income waiting</dt><dd>${sweeps.filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${h(s.token || s.source)}`).join(' + ') || 'nothing'} — moves once it is worth more than the gas</dd>
 <dt>Wallet</dt><dd><a href="https://bscscan.com/address/${h(rec.last?.wallet || '')}" target="_blank" rel="noopener"><code>${h(rec.last?.wallet || '—')}</code></a>${inc.wallet_bnb != null ? `, ${f(inc.wallet_bnb, 5)} BNB` : ''}</dd>
 </dl></div>
@@ -10470,7 +10518,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     try {
       return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
 
@@ -10521,7 +10569,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       await env.AGENT.delete(OUT_SINCE_KEY);
       return { ...plan.summary, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {
-      return { ...plan.summary, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300) };
+      return { ...plan.summary, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
 
@@ -10533,7 +10581,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     try {
       return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan)) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300) };
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
 

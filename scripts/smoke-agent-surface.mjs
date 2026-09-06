@@ -619,7 +619,9 @@ section('The marketplace, from the front door');
   const lastPt = ser && ser.points[ser.points.length - 1];
   const chk = lpJson && lpJson.last_check, chkPos = chk && chk.steps && chk.steps.rebalance && chk.steps.rebalance.position;
   const chkIsNewer = !!chk && !!newestRun && Date.parse(chk.at) > Date.parse(newestRun.at) && !!chkPos;
-  ok('the last series point is the newest run in the record, or the hourly check that found a new position', !!lastPt && !!newestRun && (lastPt.at === newestRun.at || (chkIsNewer && lastPt.at === chk.at && String(lastPt.position) === String(chkPos))), lastPt && newestRun && `${lastPt.at} vs run ${newestRun.at}${chk ? ` / check ${chk.at}` : ''}`);
+  // A later check that still sees the same position adds no point, so the
+  // point may be older than the check as long as it names the check's position.
+  ok('the last series point is the newest run in the record, or the hourly check that found a new position', !!lastPt && !!newestRun && (lastPt.at === newestRun.at || (chkIsNewer && Date.parse(lastPt.at) <= Date.parse(chk.at) && Date.parse(lastPt.at) > Date.parse(newestRun.at) && String(lastPt.position) === String(chkPos))), lastPt && newestRun && `${lastPt.at} vs run ${newestRun.at}${chk ? ` / check ${chk.at}` : ''}`);
   ok('/liquidity carries the day-by-day table', /id="ag-lp-series"/.test(lq.body) && /lp\/series/.test(lq.body));
   ok('/run-lp-series is not open', (await fetch('https://agent.brainonbnb.com/run-lp-series', { method: 'POST' })).status === 403);
 }

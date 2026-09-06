@@ -1064,7 +1064,7 @@ function fillLpBlock(){
           + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : '')));
         rows.push(item('&#9679;', swept > 0 ? 'Income swept in as capital: ' + f(swept, 5) + ' BNB' + (fout.into_position_bnb ? ' — ' + f(fout.into_position_bnb, 5) + ' BNB put into the position so far' : '') : 'No income swept in yet',
           (waiting ? 'Waiting to be moved: ' + waiting + '. It moves once it is worth more than the gas.' : 'Nothing waiting right now.')
-          + (flow.gas && flow.gas.transactions ? ' The agent has sent ' + flow.gas.transactions + ' transactions so far, for ' + f(flow.gas.bnb, 6) + ' BNB of gas.' : '')));
+          + (flow.gas && flow.gas.transactions ? ' The runs on record hold ' + flow.gas.transactions + ' transactions, ' + f(flow.gas.bnb, 6) + ' BNB of gas; runs by hand are on the chain, not in the record.' : '')));
         rows.push(item('&#9679;', last.acted ? 'Last check: it acted' : 'Last check: nothing to do',
           when + (anyError ? '. One step could not finish; the operator has been told.' : '.')));
         // The hourly range check, when the record has one: a visitor should
@@ -1086,6 +1086,17 @@ function fillLpBlock(){
           const whenRange = String(last.range_checked_at || last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
           if(sub) sub.textContent = (sub.textContent || '') + ' · checked on the chain just now: price tick ' + l.tick + ', range ' + l.lo + ' to ' + l.hi + (l.inRange ? '' : '; the record above is from ' + whenRange);
         }).catch(() => {});
+        // "Owed right now" is the collect step's figure; when the position it
+        // read is not the one open now (none, after a stopped re-set; the new
+        // one minted by hand), the fees owed are read from the chain instead.
+        if(pos && String(c.position || '') !== String(pos)) fetch('https://agent.brainonbnb.com/lp/look?position=' + encodeURIComponent(pos), {cache:'no-store'})
+          .then(r => r.ok ? r.json() : null).then(lk => {
+            // 'div > span': the bullet span's parent is the li, the text span's is the div.
+            const li = list.querySelectorAll('li')[1], sub = li && li.querySelector('div > span');
+            if(!lk || !lk.fees_owed || !sub) return;
+            sub.textContent = 'Owed right now: ' + f(lk.fees_owed.bnb_equivalent, 6) + ' BNB, read from the chain just now — the run at ' + when + (c.position ? ' read position #' + c.position : ' saw no position') + '. Small amounts are left to grow until collecting them beats the gas. '
+              + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : '');
+          }).catch(() => {});
       });
 }
 if(!document.getElementById('ag-asked') && document.getElementById('ag-lp')) fillLpBlock();

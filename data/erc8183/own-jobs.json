@@ -9,6 +9,14 @@
           "budget_u": 0.1,
           "submitted_at": 0,
           "ends_at": null
+        },
+        {
+          "at": "2026-09-06T08:26:45.789Z",
+          "status": "EXPIRED",
+          "state": "closed",
+          "budget_u": 0.1,
+          "submitted_at": 0,
+          "ends_at": null
         }
       ]
     },
@@ -122,7 +130,7 @@
     }
   },
   "note": "Every ERC-8183 job this project has made or delivered, watched until it completes. history holds one entry per observed transition, first sighting first. The escrow does not release itself: after the dispute window somebody has to call settle(jobId) on the EvaluatorRouter.",
-  "checked_at": "2026-09-06T08:24:58.862Z",
+  "checked_at": "2026-09-06T08:26:45.789Z",
   "summary": {
     "jobs": 6,
     "completed": [
@@ -134,6 +142,6 @@
     "settleable": [],
     "waiting": [],
     "first_completed_seen": "2026-09-02T07:21:32.176Z",
-    "checked_at": "2026-09-06T08:24:58.862Z"
+    "checked_at": "2026-09-06T08:26:45.789Z"
   }
 }

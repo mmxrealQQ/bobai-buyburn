@@ -411,9 +411,19 @@ async function checkWatches(env) {
 // without touching the worker that moves money. The first point is the
 // baseline every later "since it started" figure is measured against.
 const LP_SERIES_KEY = 'lp:series';
+// A run that found no position has no position value, and is neither in
+// nor out of a range. 2026-09-06 05:23 the record found none (the re-set of
+// the day before had stopped between its unwind and its mint, the capital
+// sat in the wallet) and the point carried value 0 and "out" — which read
+// as the capital gone, -100%. Such a point says "no position", nothing
+// more; the rule is applied on read so the point already written obeys it.
+function lpSeriesPoint(p) {
+  if (p.position) return p;
+  return { ...p, value_bnb: null, in_range: null };
+}
 async function readLpSeries(env) {
   const raw = await env.AGENT.get(LP_SERIES_KEY);
-  return raw ? JSON.parse(raw) : [];
+  return raw ? JSON.parse(raw).map(lpSeriesPoint) : [];
 }
 async function recordLpSeries(env) {
   const raw = await env.AGENT.get('lp:agent');
@@ -451,7 +461,7 @@ async function recordLpSeries(env) {
     ok: last.ok !== false,
     bnb_usd: price,
   };
-  series.push(point);
+  series.push(lpSeriesPoint(point));
   const kept = series.slice(-400);
   await env.AGENT.put(LP_SERIES_KEY, JSON.stringify(kept));
   return { recorded: true, points: kept.length, point };

@@ -27,7 +27,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, unwindCalls, ticksAround, readBnbUsd,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
@@ -201,6 +201,15 @@ if (SELF) {
   ]) check(why, refuseRebalance(state), true);
   check('out of range, a day-tested width, enough capital', refuseRebalance(healthyRebalance), false);
   check(`exactly the floor (${MIN_REBALANCE_BNB})`, refuseRebalance({ ...healthyRebalance, valueBnb: MIN_REBALANCE_BNB }), false);
+  console.log('rebalance resumed from the wallet (the 2026-09-05 12:50 stop before the mint)');
+  const resume = { positions: 0, resume: true, inRange: false, width: 1, hoursOfPrices: 30, valueBnb: 0.08 };
+  check('no position, the two sides in the wallet, a width, enough capital: mints', refuseRebalance(resume), false);
+  for (const [state, why] of [
+    [{ ...resume, resume: false }, 'no position and no pool named: nothing to resume'],
+    [{ ...resume, valueBnb: 0.005 }, 'the two sides are worth less than the floor'],
+    [{ ...resume, width: null, hoursOfPrices: 6 }, 'no width has earned its re-sets yet'],
+    [{ ...resume, positions: 1 }, 'a position exists — that is a re-set, and its in-range check applies'],
+  ]) check(why, refuseRebalance(state), state.positions === 1 ? false : true);
   console.log('rebalance wait');
   const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
   check('first hour outside: waits', rebalanceWait(null, now), true);
@@ -236,10 +245,28 @@ if (SELF) {
   check('balances in the ratio are taken whole', whole.amount0 <= have0 && whole.amount1 <= have1 && whole.amount0 > (have0 * 999n) / 1000n && whole.amount1 > (have1 * 999n) / 1000n ? null : 'amount0 ' + whole.amount0 + ' of ' + have0 + ', amount1 ' + whole.amount1 + ' of ' + have1, false);
   const excess = amountsForRange(mid, lo, hi, have0 * 8n, have1);
   check('an excess of token0 is left, token1 is the short side', excess.amount1 === whole.amount1 && excess.amount0 <= whole.amount0 + 1n ? null : 'amount0 ' + excess.amount0 + ' amount1 ' + excess.amount1, false);
-  const mins = minsForRange(mid, lo, hi, have0 * 8n, have1);
+  const mins = minsForRange(mid, lo, hi, have0 * 8n, have1, 0);   // no drift here: this pins the ratio rule alone
   check('the minimum for token0 follows what is taken, not the balance', mins.amount0Min < (have0 * 8n * 90n) / 100n && mins.amount0Min > (excess.amount0 * 96n) / 100n && mins.amount0Min <= excess.amount0 ? null : String(mins.amount0Min), false);
   check('below the range only token0 is taken, token1 not at all', amountsForRange(below, lo, hi, have0, have1).amount1 === 0n && amountsForRange(below, lo, hi, have0, have1).amount0 > 0n ? null : 'token1 taken', false);
   check('nothing held means nothing taken and a zero minimum', minsForRange(mid, lo, hi, 0n, have1).amount0Min === 0n && minsForRange(mid, lo, hi, 0n, have1).amount1Min === 0n ? null : 'not zero', false);
+
+  console.log(`minimums with ${MINT_DRIFT_TICKS} ticks of drift (the 2026-09-05 12:50 revert)`);
+  // The failed mint: ±1% (190 ticks), balances in the ratio at the tick, the
+  // pool a few ticks away by the time the block came. With the drift in the
+  // minimums a mint at any price inside the tolerance passes; at zero drift
+  // the old behaviour is back, and a move of a handful of ticks fails it.
+  const sqrtAt = (t) => Math.pow(1.0001, t / 2);
+  const n1 = ticksAround(-58441, 1, 10);
+  const s1 = sqrtAt(-58441), r0 = BigInt(Math.floor(1e15 * splitForRange(s1, n1.tickLower, n1.tickUpper).perL0)), r1 = BigInt(Math.floor(1e15 * splitForRange(s1, n1.tickLower, n1.tickUpper).perL1));
+  const tol = minsForRange(s1, n1.tickLower, n1.tickUpper, r0, r1);
+  const none = minsForRange(s1, n1.tickLower, n1.tickUpper, r0, r1, 0);
+  const passes = (m, t) => { const a = amountsForRange(sqrtAt(t), n1.tickLower, n1.tickUpper, r0, r1); return a.amount0 >= m.amount0Min && a.amount1 >= m.amount1Min; };
+  check('at the read price both minimums pass', passes(tol, -58441) ? null : 'fails at the read price', false);
+  check(`${MINT_DRIFT_TICKS} ticks up still passes`, passes(tol, -58441 + MINT_DRIFT_TICKS) ? null : 'fails', false);
+  check(`${MINT_DRIFT_TICKS} ticks down still passes`, passes(tol, -58441 - MINT_DRIFT_TICKS) ? null : 'fails', false);
+  check(`${MINT_DRIFT_TICKS * 2} ticks up is outside the tolerance and fails`, passes(tol, -58441 + MINT_DRIFT_TICKS * 2) ? 'passes' : null, false);
+  check('with zero drift a move of 6 ticks fails — the 12:50 revert', passes(none, -58441 + 6) ? 'passes' : null, false);
+  check('the drift lowers the minimums, it never raises them', tol.amount0Min <= none.amount0Min && tol.amount1Min <= none.amount1Min && (tol.amount0Min < none.amount0Min || tol.amount1Min < none.amount1Min) ? null : 'not lower', false);
 
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);
   process.exitCode = bad ? 1 : 0;
@@ -316,19 +343,21 @@ async function main() {
     console.log('\nREBALANCE — a range the price has left is re-set around today\'s price');
     // The window record as the cron built it, with the verdict computed by
     // the same function the worker uses — one record, one rule.
-    let record = null;
+    let record = null, pool = null;
     try {
       const w = await fetch(WINDOWS_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
       record = w.verdict || null;
+      pool = w.pool || null;
       if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, earnings pick ${record.earnings_pick ? `±${record.earnings_pick.width}% ($${record.earnings_pick.earnings.net_usd_per_day}/day on $50)` : 'none yet'}, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
     } catch (e) { console.log(`  record unreadable (${e.message}) — only a --width named by hand can re-set today`); }
-    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH });
+    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH, pool });
     const s = plan.summary;
-    if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
+    if (plan.resume) console.log(`  no position — the wallet holds ${s.held?.other} of the other side and ${s.held?.wbnb} WBNB (worth ${f(s.value_bnb)} BNB), tick now ${s.tick}: a re-set that stopped before its mint`);
+    else if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);
     else {
       console.log(`  width ±${s.width_pct}% (${s.width_basis}) -> new ticks ${s.new_ticks[0]} … ${s.new_ticks[1]}`);
-      console.log(`  would withdraw and burn #${s.position}, ${s.trade}, and mint the new range from what the wallet then holds`);
+      console.log(plan.resume ? `  would ${s.trade}, and mint the range from what the wallet then holds` : `  would withdraw and burn #${s.position}, ${s.trade}, and mint the new range from what the wallet then holds`);
       if (CONFIRM) {
         const out = await executeRebalance(pub, lpWallet(), lp, plan, log);
         console.log(`  new position #${out.new_position} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}`);

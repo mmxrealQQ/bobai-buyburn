@@ -151,7 +151,11 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB` };
     } catch { /* the replay's assumption stands */ }
     const record = log ? verdict(log, costOpts) : null;
-    const plan = await planRebalance(pub, lp.address, { record });
+    // The pool the record watches lets the plan finish a re-set that stopped
+    // between its unwind and its mint: no position, the two tokens in the
+    // wallet (2026-09-05 12:50). Such a resume does not wait the two hours —
+    // the capital is already out of the pool and earning nothing.
+    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     if (plan.summary.in_range) {
@@ -159,14 +163,16 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       return { ...plan.summary, acted: false, why: plan.no };
     }
     if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
-    if (outSince == null) {
-      if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
-      return { ...plan.summary, acted: false, outside_since: at, why: rebalanceWait(null, Date.parse(at)) };
+    if (!plan.resume) {
+      if (outSince == null) {
+        if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
+        return { ...plan.summary, acted: false, outside_since: at, why: rebalanceWait(null, Date.parse(at)) };
+      }
+      const wait = rebalanceWait(outSince, Date.parse(at));
+      if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
     }
-    const wait = rebalanceWait(outSince, Date.parse(at));
-    if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'dry run — would have re-set the range' };
+    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : 'dry run — would have re-set the range' };
     try {
       const done = await executeRebalance(pub, lpWallet(), lp, plan);
       await env.AGENT.delete(OUT_SINCE_KEY);

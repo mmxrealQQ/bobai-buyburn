@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 38 files, 10341 lines.
+# one fetch. 38 files, 10418 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -186,7 +186,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, unwindCalls, ticksAround, readBnbUsd,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
@@ -360,6 +360,15 @@ if (SELF) {
   ]) check(why, refuseRebalance(state), true);
   check('out of range, a day-tested width, enough capital', refuseRebalance(healthyRebalance), false);
   check(`exactly the floor (${MIN_REBALANCE_BNB})`, refuseRebalance({ ...healthyRebalance, valueBnb: MIN_REBALANCE_BNB }), false);
+  console.log('rebalance resumed from the wallet (the 2026-09-05 12:50 stop before the mint)');
+  const resume = { positions: 0, resume: true, inRange: false, width: 1, hoursOfPrices: 30, valueBnb: 0.08 };
+  check('no position, the two sides in the wallet, a width, enough capital: mints', refuseRebalance(resume), false);
+  for (const [state, why] of [
+    [{ ...resume, resume: false }, 'no position and no pool named: nothing to resume'],
+    [{ ...resume, valueBnb: 0.005 }, 'the two sides are worth less than the floor'],
+    [{ ...resume, width: null, hoursOfPrices: 6 }, 'no width has earned its re-sets yet'],
+    [{ ...resume, positions: 1 }, 'a position exists — that is a re-set, and its in-range check applies'],
+  ]) check(why, refuseRebalance(state), state.positions === 1 ? false : true);
   console.log('rebalance wait');
   const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
   check('first hour outside: waits', rebalanceWait(null, now), true);
@@ -395,10 +404,28 @@ if (SELF) {
   check('balances in the ratio are taken whole', whole.amount0 <= have0 && whole.amount1 <= have1 && whole.amount0 > (have0 * 999n) / 1000n && whole.amount1 > (have1 * 999n) / 1000n ? null : 'amount0 ' + whole.amount0 + ' of ' + have0 + ', amount1 ' + whole.amount1 + ' of ' + have1, false);
   const excess = amountsForRange(mid, lo, hi, have0 * 8n, have1);
   check('an excess of token0 is left, token1 is the short side', excess.amount1 === whole.amount1 && excess.amount0 <= whole.amount0 + 1n ? null : 'amount0 ' + excess.amount0 + ' amount1 ' + excess.amount1, false);
-  const mins = minsForRange(mid, lo, hi, have0 * 8n, have1);
+  const mins = minsForRange(mid, lo, hi, have0 * 8n, have1, 0);   // no drift here: this pins the ratio rule alone
   check('the minimum for token0 follows what is taken, not the balance', mins.amount0Min < (have0 * 8n * 90n) / 100n && mins.amount0Min > (excess.amount0 * 96n) / 100n && mins.amount0Min <= excess.amount0 ? null : String(mins.amount0Min), false);
   check('below the range only token0 is taken, token1 not at all', amountsForRange(below, lo, hi, have0, have1).amount1 === 0n && amountsForRange(below, lo, hi, have0, have1).amount0 > 0n ? null : 'token1 taken', false);
   check('nothing held means nothing taken and a zero minimum', minsForRange(mid, lo, hi, 0n, have1).amount0Min === 0n && minsForRange(mid, lo, hi, 0n, have1).amount1Min === 0n ? null : 'not zero', false);
+
+  console.log(`minimums with ${MINT_DRIFT_TICKS} ticks of drift (the 2026-09-05 12:50 revert)`);
+  // The failed mint: ±1% (190 ticks), balances in the ratio at the tick, the
+  // pool a few ticks away by the time the block came. With the drift in the
+  // minimums a mint at any price inside the tolerance passes; at zero drift
+  // the old behaviour is back, and a move of a handful of ticks fails it.
+  const sqrtAt = (t) => Math.pow(1.0001, t / 2);
+  const n1 = ticksAround(-58441, 1, 10);
+  const s1 = sqrtAt(-58441), r0 = BigInt(Math.floor(1e15 * splitForRange(s1, n1.tickLower, n1.tickUpper).perL0)), r1 = BigInt(Math.floor(1e15 * splitForRange(s1, n1.tickLower, n1.tickUpper).perL1));
+  const tol = minsForRange(s1, n1.tickLower, n1.tickUpper, r0, r1);
+  const none = minsForRange(s1, n1.tickLower, n1.tickUpper, r0, r1, 0);
+  const passes = (m, t) => { const a = amountsForRange(sqrtAt(t), n1.tickLower, n1.tickUpper, r0, r1); return a.amount0 >= m.amount0Min && a.amount1 >= m.amount1Min; };
+  check('at the read price both minimums pass', passes(tol, -58441) ? null : 'fails at the read price', false);
+  check(`${MINT_DRIFT_TICKS} ticks up still passes`, passes(tol, -58441 + MINT_DRIFT_TICKS) ? null : 'fails', false);
+  check(`${MINT_DRIFT_TICKS} ticks down still passes`, passes(tol, -58441 - MINT_DRIFT_TICKS) ? null : 'fails', false);
+  check(`${MINT_DRIFT_TICKS * 2} ticks up is outside the tolerance and fails`, passes(tol, -58441 + MINT_DRIFT_TICKS * 2) ? 'passes' : null, false);
+  check('with zero drift a move of 6 ticks fails — the 12:50 revert', passes(none, -58441 + 6) ? 'passes' : null, false);
+  check('the drift lowers the minimums, it never raises them', tol.amount0Min <= none.amount0Min && tol.amount1Min <= none.amount1Min && (tol.amount0Min < none.amount0Min || tol.amount1Min < none.amount1Min) ? null : 'not lower', false);
 
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);
   process.exitCode = bad ? 1 : 0;
@@ -475,19 +502,21 @@ async function main() {
     console.log('\nREBALANCE — a range the price has left is re-set around today\'s price');
     // The window record as the cron built it, with the verdict computed by
     // the same function the worker uses — one record, one rule.
-    let record = null;
+    let record = null, pool = null;
     try {
       const w = await fetch(WINDOWS_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
       record = w.verdict || null;
+      pool = w.pool || null;
       if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, earnings pick ${record.earnings_pick ? `±${record.earnings_pick.width}% ($${record.earnings_pick.earnings.net_usd_per_day}/day on $50)` : 'none yet'}, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
     } catch (e) { console.log(`  record unreadable (${e.message}) — only a --width named by hand can re-set today`); }
-    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH });
+    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH, pool });
     const s = plan.summary;
-    if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
+    if (plan.resume) console.log(`  no position — the wallet holds ${s.held?.other} of the other side and ${s.held?.wbnb} WBNB (worth ${f(s.value_bnb)} BNB), tick now ${s.tick}: a re-set that stopped before its mint`);
+    else if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);
     else {
       console.log(`  width ±${s.width_pct}% (${s.width_basis}) -> new ticks ${s.new_ticks[0]} … ${s.new_ticks[1]}`);
-      console.log(`  would withdraw and burn #${s.position}, ${s.trade}, and mint the new range from what the wallet then holds`);
+      console.log(plan.resume ? `  would ${s.trade}, and mint the range from what the wallet then holds` : `  would withdraw and burn #${s.position}, ${s.trade}, and mint the new range from what the wallet then holds`);
       if (CONFIRM) {
         const out = await executeRebalance(pub, lpWallet(), lp, plan, log);
         console.log(`  new position #${out.new_position} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}`);
@@ -917,6 +946,9 @@ export const ABI = {
   POOL: parseAbi([
     'function slot0() view returns (uint160 sqrtPriceX96,int24 tick,uint16 observationIndex,uint16 observationCardinality,uint16 observationCardinalityNext,uint32 feeProtocol,bool unlocked)',
     'function tickSpacing() view returns (int24)',
+    'function token0() view returns (address)',
+    'function token1() view returns (address)',
+    'function fee() view returns (uint24)',
   ]),
   ROUTER: parseAbi([
     'function getAmountsOut(uint256,address[]) view returns (uint256[])',
@@ -1000,6 +1032,17 @@ export async function readPool(pub, pos) {
   return { pool, sqrtP, tick, inRange: tick >= Number(pos[5]) && tick < Number(pos[6]) };
 }
 
+// The pair behind a pool address, in the shape the position manager's
+// positions() returns (token0 at [2], token1 at [3], fee at [4], no ticks, no
+// liquidity), so a wallet that holds the two tokens but no position can be
+// planned with the same code as one that holds a position.
+export async function readPoolPair(pub, pool) {
+  const [token0, token1, fee] = await Promise.all([
+    read(pub, pool, ABI.POOL, 'token0'), read(pub, pool, ABI.POOL, 'token1'), read(pub, pool, ABI.POOL, 'fee'),
+  ]);
+  return [0n, ZERO, token0, token1, fee, 0, 0, 0n];
+}
+
 // How much of each token one unit of liquidity holds inside a range at a
 // price. Standard V3 identities, and not a preference: inside a range the
 // split is fixed by where the price sits in it. Pure, exported for the
@@ -1029,12 +1072,23 @@ export function amountsForRange(sqrtP, tickLower, tickUpper, have0, have1) {
   return { amount0: BigInt(Math.floor(L * perL0)), amount1: BigInt(Math.floor(L * perL1)), L };
 }
 
-// Minimums at 97% of what the range takes: room for the price to move
-// between the read and the mint, not a target. Any lower and a stale quote
-// could be filled badly; any higher and a normal block's drift reverts it.
+// Minimums for a mint or an increase: what the range takes at the price now,
+// AND at that price moved by MINT_DRIFT_TICKS either way — per token the
+// smallest of the three, at 97%. The tolerance is in ticks, not in percent
+// of the amounts, because a percentage does not know how wide the range is.
+// 2026-09-05 12:50: a ±1% range (190 ticks) was minted with minimums at 97%
+// of the amounts read seconds before; the pool moved a few ticks before the
+// block, which in a range that narrow shifts the ratio by a percent per tick,
+// and the mint reverted ("Price slippage check") after the old position was
+// already unwound. 20 ticks is 0.2% of price: a normal few seconds on
+// CAKE/BNB pass, a sandwich that far costs less than a cent on this size.
 export const MIN_SHARE = 97n;
-export function minsForRange(sqrtP, tickLower, tickUpper, have0, have1) {
-  const { amount0, amount1 } = amountsForRange(sqrtP, tickLower, tickUpper, have0, have1);
+export const MINT_DRIFT_TICKS = 20;
+export function minsForRange(sqrtP, tickLower, tickUpper, have0, have1, driftTicks = MINT_DRIFT_TICKS) {
+  const shift = (t) => sqrtP * Math.pow(1.0001, t / 2);
+  const at = [0, -driftTicks, driftTicks, -driftTicks / 2, driftTicks / 2].map((t) => amountsForRange(shift(t), tickLower, tickUpper, have0, have1));
+  const amount0 = at.reduce((m, x) => (x.amount0 < m ? x.amount0 : m), at[0].amount0);
+  const amount1 = at.reduce((m, x) => (x.amount1 < m ? x.amount1 : m), at[0].amount1);
   return { amount0Min: (amount0 * MIN_SHARE) / 100n, amount1Min: (amount1 * MIN_SHARE) / 100n };
 }
 
@@ -1203,14 +1257,20 @@ export function ticksAround(tick, widthPct, spacing) {
 // that netted the most per day when every width was replayed over the recorded
 // prices with the agent's own re-set delay and cost. `widthOverride` is a
 // person's explicit choice from the hand script, and is reported as one.
-export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null } = {}) {
-  const p = position || (await readPosition(pub, address));
+// `pool` is the pool the window record watches: when the wallet holds no
+// position but does hold that pool's two tokens, the plan is a mint from the
+// wallet — a re-set that stopped between its unwind and its mint (2026-09-05
+// 12:50) is finished on the next run instead of leaving the capital idle.
+export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null } = {}) {
+  let p = position || (await readPosition(pub, address));
+  let resume = false;
+  if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
   const pick = record?.earnings_pick || null;
   const width = widthOverride ?? pick?.width ?? null;
   const widthBasis = widthOverride != null ? 'named by hand'
     : (pick ? `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings.net_usd_per_day} a day on $50 after ${pick.earnings.resets} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${pick.earnings.reset_cost_usd} each` : null);
-  if (p.positions === 1) {
+  if (p.positions === 1 || resume) {
     poolInfo = await readPool(pub, p.pos);
     spacing = Number(await read(pub, poolInfo.pool, ABI.POOL, 'tickSpacing')) || 1;
     const token0 = p.pos[2].toLowerCase(), token1 = p.pos[3].toLowerCase();
@@ -1242,13 +1302,16 @@ export async function planRebalance(pub, address, { record = null, widthOverride
         : { sell: 'wbnb', amount: (target.other - have.other) * otherInWbnb * 1.02 };
     }
   }
-  const state = { positions: p.positions, inRange: poolInfo ? poolInfo.inRange : false, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
+  // A wallet without a position is never "in range"; resume says the plan is
+  // a mint from what the wallet holds, and the guard sizes it like a re-set.
+  const state = { positions: p.positions, resume, inRange: poolInfo && !resume ? poolInfo.inRange : false, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
   return {
-    step: 'rebalance', state, no: refuseRebalance(state),
+    step: 'rebalance', state, no: refuseRebalance(state), resume,
     tokenId: p.tokenId, pos: p.pos, poolInfo, spacing, other, wbnbIs0, width, ticks, target, trade,
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
-      ticks: p.pos ? [Number(p.pos[5]), Number(p.pos[6])] : null,
+      ...(resume ? { resumed_from_wallet: true, held: have ? { other: (have.other / 1e18).toFixed(6), wbnb: (have.wbnb / 1e18).toFixed(6) } : null } : {}),
+      ticks: p.tokenId != null ? [Number(p.pos[5]), Number(p.pos[6])] : null,
       tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange,
       value_bnb: Number(valueBnb.toFixed(6)),
       width_pct: width, width_basis: widthBasis,
@@ -1294,14 +1357,18 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
-  const liquidity = plan.pos[7];
-  const sim = await pub.simulateContract({
-    address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
-    args: [{ tokenId: plan.tokenId, liquidity, amount0Min: 0n, amount1Min: 0n, deadline: deadline() }], account,
-  });
-  const calls = unwindCalls(plan.tokenId, liquidity, (sim.result[0] * 99n) / 100n, (sim.result[1] * 99n) / 100n, account.address, deadline());
-  await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
-  await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
+  // A resumed re-set (plan.resume) has no position to unwind: the earlier run
+  // already did that and stopped before its mint.
+  if (plan.tokenId != null) {
+    const liquidity = plan.pos[7];
+    const sim = await pub.simulateContract({
+      address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
+      args: [{ tokenId: plan.tokenId, liquidity, amount0Min: 0n, amount1Min: 0n, deadline: deadline() }], account,
+    });
+    const calls = unwindCalls(plan.tokenId, liquidity, (sim.result[0] * 99n) / 100n, (sim.result[1] * 99n) / 100n, account.address, deadline());
+    await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
+    await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
+  }
 
   // Sized from what the wallet really holds now, not from the plan's estimate.
   const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -1722,15 +1789,19 @@ export function refuseSweep(state) {
 // state: { positions, inRange, width, hoursOfPrices, valueBnb }
 // width is what the earnings test in the window record picked, or what a
 // person named by hand; null means the record cannot yet say which width earns.
+// state.resume: no position, but the wallet holds the pool's two tokens — a
+// re-set that stopped between its unwind and its mint. Then the plan is the
+// mint alone, sized like a re-set (the same width, the same floor), and the
+// "in range" question does not arise: there is no range yet.
 export function refuseRebalance(state) {
-  if (state.positions !== 1) return state.positions === 0
+  if (state.positions !== 1 && !(state.positions === 0 && state.resume)) return state.positions === 0
     ? 'this wallet holds no position to re-set'
     : `this wallet holds ${state.positions} positions — which one to re-set is a decision for a person`;
   if (state.inRange) return 'the price is inside the range — nothing to re-set';
   if (state.width == null)
     return `no width has yet earned more than its re-sets over the recorded prices (${state.hoursOfPrices || 0} h recorded, ${MIN_HOURS_FOR_EARNINGS} h needed). A re-set into a width that only held 37 minutes is how a position pays for a re-set every day. Holding.`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
-    return `the position is worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a re-set would cost more than it is likely to earn back`;
+    return `${state.resume ? "the wallet's two sides are" : 'the position is'} worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a ${state.resume ? 'mint' : 're-set'} would cost more than it is likely to earn back`;
   return null;
 }
 
@@ -10377,7 +10448,11 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB` };
     } catch { /* the replay's assumption stands */ }
     const record = log ? verdict(log, costOpts) : null;
-    const plan = await planRebalance(pub, lp.address, { record });
+    // The pool the record watches lets the plan finish a re-set that stopped
+    // between its unwind and its mint: no position, the two tokens in the
+    // wallet (2026-09-05 12:50). Such a resume does not wait the two hours —
+    // the capital is already out of the pool and earning nothing.
+    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     if (plan.summary.in_range) {
@@ -10385,14 +10460,16 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       return { ...plan.summary, acted: false, why: plan.no };
     }
     if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
-    if (outSince == null) {
-      if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
-      return { ...plan.summary, acted: false, outside_since: at, why: rebalanceWait(null, Date.parse(at)) };
+    if (!plan.resume) {
+      if (outSince == null) {
+        if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
+        return { ...plan.summary, acted: false, outside_since: at, why: rebalanceWait(null, Date.parse(at)) };
+      }
+      const wait = rebalanceWait(outSince, Date.parse(at));
+      if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
     }
-    const wait = rebalanceWait(outSince, Date.parse(at));
-    if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'dry run — would have re-set the range' };
+    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : 'dry run — would have re-set the range' };
     try {
       const done = await executeRebalance(pub, lpWallet(), lp, plan);
       await env.AGENT.delete(OUT_SINCE_KEY);

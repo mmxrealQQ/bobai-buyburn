@@ -116,15 +116,19 @@ export function refuseSweep(state) {
 // state: { positions, inRange, width, hoursOfPrices, valueBnb }
 // width is what the earnings test in the window record picked, or what a
 // person named by hand; null means the record cannot yet say which width earns.
+// state.resume: no position, but the wallet holds the pool's two tokens — a
+// re-set that stopped between its unwind and its mint. Then the plan is the
+// mint alone, sized like a re-set (the same width, the same floor), and the
+// "in range" question does not arise: there is no range yet.
 export function refuseRebalance(state) {
-  if (state.positions !== 1) return state.positions === 0
+  if (state.positions !== 1 && !(state.positions === 0 && state.resume)) return state.positions === 0
     ? 'this wallet holds no position to re-set'
     : `this wallet holds ${state.positions} positions — which one to re-set is a decision for a person`;
   if (state.inRange) return 'the price is inside the range — nothing to re-set';
   if (state.width == null)
     return `no width has yet earned more than its re-sets over the recorded prices (${state.hoursOfPrices || 0} h recorded, ${MIN_HOURS_FOR_EARNINGS} h needed). A re-set into a width that only held 37 minutes is how a position pays for a re-set every day. Holding.`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
-    return `the position is worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a re-set would cost more than it is likely to earn back`;
+    return `${state.resume ? "the wallet's two sides are" : 'the position is'} worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a ${state.resume ? 'mint' : 're-set'} would cost more than it is likely to earn back`;
   return null;
 }
 

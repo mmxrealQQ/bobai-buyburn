@@ -49,7 +49,7 @@ Run in the order the header of `erc8004-publish.mjs` gives.
 | `erc8004-publish.mjs` | write `/registry` and the JSON from all of the above |
 | `census-sync.mjs` | hand the scan to the live worker |
 | `erc8004-reputation-scan.mjs` · `erc8004-give-feedback.mjs` · `erc8004-append-response.mjs` | read the reputation registry; write measured feedback; answer ratings on our agents |
-| `erc8183-job-watch.mjs` | our own jobs until each completes; `--settle` when the window has passed |
+| `erc8183-job-watch.mjs` | our own jobs until each completes; `--settle` when the window has passed, `--refund` for a funded job nobody delivered |
 | `register-own-agents.mjs` · `update-own-agents.mjs` · `hire-own-agent.mjs` | our five agents: register, republish, hire one for real |
 | `update-8004-metadata.mjs` · `verify-8004-metadata.mjs` | agent #49467's document: write it, read it back |
 | `a2a-card-audit.mjs` · `erc8183-encoding-check.mjs` | how many A2A cards really speak A2A; the hand-rolled calldata |

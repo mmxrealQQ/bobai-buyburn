@@ -72,7 +72,7 @@ bundles at https://brainonbnb.com/#library.
 
 Brain Plaza is a marketplace built on what the chain actually says. We read
 every id in the ERC-8004 identity registry on BNB Smart Chain (332,331 in the
-full scan of 2026-09-03; the live counter stood at 337,866 on 2026-09-07),
+full scan of 2026-09-03; the live counter stood at 338,507 on 2026-09-07 evening),
 contacted every endpoint they name, and published who answers,
 what they do, and what they have been paid — from the ERC-8183 escrow, all
 56,719 jobs, not a sample (read on 2026-09-07; every job still open at the
@@ -97,8 +97,8 @@ our worker, timestamped, and a probe that fails says whether the fault is the
 agent's, the chain's, or ours. Our own five agents are hireable the same way
 as everyone else's and answer in every category. The same measurement is
 offered to agents free of charge as MCP, REST and an installable skill
-(`npx skills add https://brainonbnb.com`) — 111,203 requests answered for
-other agents as of 2026-09-07 — and six answers are sold per x402 or through
+(`npx skills add https://brainonbnb.com`) — 119,305 requests answered for
+other agents as of 2026-09-07 evening — and six answers are sold per x402 or through
 the escrow. What they pay runs, unattended, into the project's own PancakeSwap
 V3 position: an agent that re-sets the range in the width that earned the most
 over the recorded prices, checks it every hour, and splits the fees: half
@@ -158,7 +158,14 @@ nearly all the pair's price and saying otherwise would be spin.
   shows what is there rather than padding it.
 
 ## Sub-prize evidence
-- **PancakeSwap**: `pancakeswap_fee_tiers` (MCP, `/api/fee-tiers`, skill) —
+- **PancakeSwap**: for traders, the Pool Scanner (https://brainonbnb.com/scanner,
+  `/api/pool-scan`, MCP, skill): the real cost of a trade at six sizes, the
+  transfer tax measured from executed trades — and since 2026-09-07, where
+  the window holds no trade, from a sell and a buy simulated on the chain at
+  that block from a fresh address (a contract placed by state override reads
+  what arrived; BOBAI reads 3%, CAKE 0%, pinned in `scripts/sell-sim-check.mjs`)
+  — who can pull the LP, and a token still on four.meme's curve read from
+  four.meme's own contract. For LPs, `pancakeswap_fee_tiers` (MCP, `/api/fee-tiers`, skill) —
   which of the five fee tiers actually pays an LP, by working capital in
   ±2% of price; agent #310460 delivers it for hire. Range replay and best
   route tools proven against the pool's own quoter (0.0000% deviation,
@@ -270,6 +277,21 @@ node scripts/advantage-report.mjs && node scripts/advantage-publish.mjs   # Term
 ```
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.
+
+Refresh run 2026-09-07 ~19:30 UTC: health 49/49 · smoke 182/182 (before the
+scanner build; re-run after it below) · cold-start "no problems", depth
+5/3/5/6, 16 hire buttons, 11 quote, first click quotes in every category ·
+dispatch-safety "every tool not named after an action can be reached" ·
+stats 119,305 asked · census live counter 338,507 · Agent Advantage Report
+re-measured 2026-09-07 evening (outputs attached, the price the found agent
+charges, the marketplace half per task) · Pool Scanner measures the tax by
+simulation where the window holds no trade (sell-sim-check green both ways)
+· the four tools read as a stranger at 1280 and 390 (scanner: BOBAI, CAKE,
+a four.meme curve token, the feed, the fee-tier measurement; Plaza; Services)
+· screens re-captured. Position #7359173 still in range, no re-set since
+02:50 (the price left the range at 12:50 and came back before the two-hour
+hysteresis ran out — no transactions spent). Figures above are current as of
+this run.
 
 Refresh run 2026-09-07 ~06:20 UTC: health 49/49 · smoke 182/182 · cold-start
 "no problems", depth 5/3/5/6, 16 hire buttons, 11 quote, first click quotes

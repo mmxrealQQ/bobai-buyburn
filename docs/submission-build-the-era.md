@@ -52,16 +52,7 @@ Live: https://brainonbnb.com/registry (marketplace), https://brainonbnb.com/adva
 (TermiX Agent Advantage Report), https://brainonbnb.com/session (Altana).
 Everything is public and on BSC mainnet; nothing needs a login.
 
-Altana (not selectable above): the agent runs on its own Altana wallet
-0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3 on BNB Smart Chain (chain 56);
-session key 0xc11b9dc3a76225954ff040294daae83c7b902af060da656d9c72c9eb9939a6e8
-registered in the KeyStore 0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a with a
-call allowlist, a per-day spend cap and an expiry; one earlier session
-(0x123b8810…ac2e) was revoked before its expiry and stopped validating within a
-block. Real transactions through the session key, a refused call
-(UnauthorizedCall) and the revocation are listed with their hashes on
-https://brainonbnb.com/session, read live from the KeyStore; raw JSON at
-https://agent.brainonbnb.com/session. On "revoke it inside the product": the page shows what the agent may do, live from the KeyStore, and states openly that there is no public revoke button — a revocation is an admin-signed Altana intent, and a web endpoint that could fire it would be an off-switch any stranger could press. Revocation runs from the operator's machine with the admin key, in one command, and takes effect within a block; the page documents it and links the transaction that did it.
+Altana (not selectable above): the agent runs on its own Altana wallet 0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3 on BNB Smart Chain (chain 56), KeyStore 0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a. The admin (root) key 0xc11b9dc3a76225954ff040294daae83c7b902af060da656d9c72c9eb9939a6e8 grants and revokes; the current session key 0x86fabbfa5b59af42a0d025bd77a6c826cad52389447f012422c918f58f017e99 (granted 2026-09-07 18:28 UTC, tx 0x627a0368a2ae03eb70efe515ccf7f3aa13306211aa48abe8116a8b964d314be7) carries a call allowlist (the ERC-8183 kernel and approve() on $U), a spend cap of 1 $U and 0.002 BNB per day, and expires 2026-09-14. Proven both ways on mainnet: an allowed call through the session key succeeded (0x55128a7f373a9dc4fd0787d97489d5601a3663666e0ee5f155fd88b2589df588), a call outside the allowlist reverted with UnauthorizedCall, and revocation works from the operator's machine (0x363aaffdc70faa1cae5ffc65c2411dc9c0492ad1f6c7903345e0e6fbd58e9e38) and from inside the product: /session shows what the agent may do, live from the KeyStore, and has a Revoke button. The admin key is a Cloudflare secret on the worker, never in the page or the source; the route signs only with the operator's token (401 without it, so a stranger cannot switch the agent off). The session granted at 18:12 UTC was revoked with that button at 18:13 UTC, tx 0x054ea9a00dee6f2126f266e859242d23dbca6d276455800c7957e094725c5939, and every revocation fired from the page is recorded there. Raw JSON: https://agent.brainonbnb.com/session.
 
 Repository: the GitHub account is suspended since 2026-07-24 (under appeal, no
 second account opened). The full source is public at
@@ -239,7 +230,13 @@ nearly all the pair's price and saying otherwise would be spin.
   time ratio is published where one side did not answer. Raw JSON at
   /api-advantage.json, script `scripts/advantage-report.mjs` in the source.
 - **Altana**: session keys with allowlist, spend cap and expiry, registered in
-  the KeyStore on mainnet, revocable — https://brainonbnb.com/session.
+  the KeyStore on mainnet, revocable — https://brainonbnb.com/session. Since
+  2026-09-07 evening revocable from inside the product: a Revoke button on
+  /session, the admin key a Cloudflare secret on the worker, the route locked
+  by the operator's token (401 without it); the session granted 18:12 UTC was
+  revoked with it at 18:13 UTC (tx 0x054ea9a0…), recorded on the page; the
+  admin (root) key 0xc11b… is named as such and cannot be revoked (KeyStore
+  rule); current session 0x86fa… granted 18:28 UTC, expires 2026-09-14.
 
 ## The repo link
 

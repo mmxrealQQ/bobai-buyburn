@@ -112,7 +112,8 @@ const bnb = (v) => `${Number(formatEther(v)).toFixed(6)} BNB`;
   const gasCost = gasPrice * 21000n;
   const remaining = fromBalance - value - gasCost;
 
-  console.log('\nFund the x402 service wallet');
+  console.log(`
+Fund the ${TARGET.label} wallet`);
   console.log('-'.repeat(`Fund the ${TARGET.label} wallet`.length));
   console.log(`  BNB/USD (Chainlink)  $${bnbUsd.toFixed(2)}   (${ageS}s old)`);
   console.log(`  from   NFT relayer   ${account.address}   ${bnb(fromBalance)}`);

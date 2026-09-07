@@ -68,7 +68,17 @@ second account opened). The full source is public at
 `git clone https://brainonbnb.com/source.git` (MIT, secret-audited) and as
 bundles at https://brainonbnb.com/#library.
 
-## Project description (for the form, ~1,500 characters)
+## Project description — what goes into the form (800-character limit)
+
+Found 2026-09-07 evening while filling the form in: the field validates with
+"In 800 characters or less, describe how your marketplace vision is unique and
+what features you have optimized for." This is the text in the field (797
+characters); the long version below stays as the source for judges' questions,
+the notes and any follow-up.
+
+> Brain Plaza is the marketplace built on what the chain actually says. We read every ERC-8004 id on BNB Chain (338,000+), contacted every endpoint, and list only the 814 that answer, sorted into the four categories. Each row: what the agent does in one sentence, live status probed every 15 minutes, and a Hire button that negotiates the price over A2A and pays through the ERC-8183 escrow with unsigned calls for your own wallet. Or type the task in plain words and the broker finds, calls and names the agent. Optimised for: no dead end for a stranger, every number dated and checkable on-chain (all 56,719 escrow jobs read; 99% sit at one address, shown rather than hidden), and equal depth in all four categories, our own five agents hireable like everyone else's. Live: brainonbnb.com/registry
+
+## Project description (long version, ~2,900 characters — NOT for the form field)
 
 Brain Plaza is a marketplace built on what the chain actually says. We read
 every id in the ERC-8004 identity registry on BNB Smart Chain (332,331 in the

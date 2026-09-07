@@ -18,7 +18,9 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # spending authority in the on-chain KeyStore. A plain var and not a secret:
 # it is an address, it is meant to be looked up, and the whole point of the
 # endpoint is that a stranger can make the same call. The admin key that can
-# grant or revoke against it is not on this worker and must never be.
+# grant or revoke against it is a SECRET on this worker (ALTANA_ADMIN_PRIVATE_KEY,
+# since 2026-09-07) so the session can be revoked from the product; the route
+# that uses it fires only with SESSION_REVOKE_TOKEN, the other secret.
 [vars]
 ALTANA_AGENT_WALLET = "0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3"
 # The pool whose width record the hourly cron builds (lp-windows.js). This is

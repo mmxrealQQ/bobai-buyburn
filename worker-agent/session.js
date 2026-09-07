@@ -14,8 +14,9 @@
 //   GET /session            both chains
 //   GET /session?chain=97   one of them
 //
-// Reads only. Revocation needs the wallet's admin key and is deliberately not
-// reachable from a public endpoint — see the note at the bottom.
+// Reads only. Revocation lives next door in session-revoke.js: the admin key
+// is a secret on this worker and the route fires only with the operator's
+// token — the two locks that make a revoke button publishable at all.
 
 // KeyStore, from the Altana deployment manifests the SDK ships
 // (@altananetwork/sdk/dist/config.js). Kept here as literals because this
@@ -150,8 +151,8 @@ export async function handleSession(url, env) {
     chains: states,
     revocation: {
       how: 'The wallet\'s admin key revokes; the effect is immediate and the KeyStore entry stops validating.',
-      why_not_here: 'The admin key is not on this worker and no public endpoint can trigger a revoke. An endpoint that could would be a way for a stranger to disable the agent, which is a denial-of-service dressed as a safety feature.',
-      command: 'node scripts/altana-session.mjs --revoke --confirm',
+      from_the_product: 'POST /session/revoke with the operator token (see GET /session/revoke). The admin key is a secret on this worker; without the token nothing is signed, so a stranger cannot switch the agent off.',
+      command: 'node scripts/altana-session.mjs --mainnet --revoke --confirm (the same call from the operator machine)',
     },
     measured_at: new Date().toISOString(),
   };

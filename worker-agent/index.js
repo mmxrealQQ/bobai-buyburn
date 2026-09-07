@@ -43,6 +43,7 @@ import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
+import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost } from './lp-windows.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -868,7 +869,10 @@ export default {
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE',
+          // x-operator-token: the revoke route's lock (session-revoke.js). A
+          // header the preflight does not name is a fetch the browser refuses
+          // before it leaves the page — "Failed to fetch", no status, no body.
+          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,x-operator-token',
         },
       });
 
@@ -1606,7 +1610,17 @@ ${pageTail}`;
     // answer is one a stranger can reproduce with two view calls. See
     // session.js for why revocation is deliberately not reachable from here.
     if (path === '/session') {
-      return json(await handleSession(url, env));
+      const out = annotateRoles(await handleSession(url, env), env);
+      // The revocations fired from the product, beside the live state, so the
+      // page can show the control and its record together.
+      out.revocations = await readRevocations(env);
+      out.revoke = { how: 'POST /session/revoke with the operator token — see GET /session/revoke', public: false };
+      return json(out);
+    }
+    // Revocation from the product: two locks (admin key as a worker secret,
+    // operator token on the request), see session-revoke.js.
+    if (path === '/session/revoke') {
+      return handleSessionRevoke(request, env);
     }
 
     if (path === '/status') {

@@ -65,7 +65,9 @@
         <a href="https://bscscan.com/tx/0x55128a7f373a9dc4fd0787d97489d5601a3663666e0ee5f155fd88b2589df588" target="_blank" rel="noopener">0x55128a7f&hellip;89df588</a> &mdash; succeeded.<br><br>
         &bull; A <strong>refused</strong> call &mdash; the same key attempting <code>transfer()</code> of $U to an address of our own choosing, which is the exact move a stolen session key would make. The account rejected it with <code>UnauthorizedCall</code>. There is no transaction to link, because it never became one.<br><br>
         &bull; A <strong>revocation</strong> &mdash; an earlier session, ended before its expiry:<br>
-        <a href="https://bscscan.com/tx/0x363aaffdc70faa1cae5ffc65c2411dc9c0492ad1f6c7903345e0e6fbd58e9e38" target="_blank" rel="noopener">0x363aaff&hellip;8e9e38</a>. Its key disappeared from the list above within one block.
+        <a href="https://bscscan.com/tx/0x363aaffdc70faa1cae5ffc65c2411dc9c0492ad1f6c7903345e0e6fbd58e9e38" target="_blank" rel="noopener">0x363aaff&hellip;8e9e38</a>. Its key disappeared from the list above within one block.<br><br>
+        &bull; <strong>A revocation from this page</strong> &mdash; 2026-09-07 18:13 UTC, the session granted twenty minutes earlier, ended with the button below and the operator's token:<br>
+        <a href="https://bscscan.com/tx/0x054ea9a00dee6f2126f266e859242d23dbca6d276455800c7957e094725c5939" target="_blank" rel="noopener">0x054ea9a0&hellip;25c5939</a>. The admin key never left the worker's secret store; the page sent one token, once.
       </div>
       <div class="rule muted">
         One thing the allowed call taught us that is worth writing down: the account set the allowance and then reset it to zero <em>in the same transaction</em>. A session key cannot leave a standing allowance behind it. That is a property of the account, not of our code, and we only found it by decoding the receipt.
@@ -74,9 +76,20 @@
 
     <div class="card">
       <h2>Revoking it</h2>
-      <p class="muted">Revocation is one transaction from the wallet's admin key, and it takes effect immediately &mdash; the entry above stops validating and the key vanishes from the list.</p>
-      <p class="muted">There is deliberately <strong>no revoke button on this page</strong>. A public endpoint that could end the session would be an off-switch for our agent that any stranger could press: a denial-of-service wearing the costume of a safety feature. The admin key is not on any worker, and the revocation runs from the operator's own machine:</p>
-      <p><code>node scripts/altana-session.mjs --mainnet --revoke --confirm</code></p>
+      <p class="muted">Revocation is one admin-signed Altana intent, and it takes effect within a block &mdash; the entry above stops validating and the account contract refuses the session's next call.</p>
+      <p class="muted"><strong>Revoke it here.</strong> The button below ends a session from this page. Two locks make that safe to publish: the admin key that signs is a secret on the worker (never in this page, never in the source), and the worker signs only when the request carries the operator's token. A public endpoint that could end the session without one would be an off-switch any stranger could press &mdash; a denial-of-service wearing the costume of a safety feature &mdash; so without the token the answer is 401 and nothing is signed. Every revocation fired from here is recorded with its transaction, below the live state, so the control is a fact you can check on the chain.</p>
+      <div id="revoke" class="rule">
+        <div class="kv" style="grid-template-columns:minmax(0,1fr)">
+          <label class="muted" for="rv-key">Session key to revoke</label>
+          <select id="rv-key" style="width:100%;min-width:0;max-width:100%;font:inherit;padding:6px 8px;background:var(--card);color:inherit;border:1px solid var(--border);border-radius:8px"><option value="">reading the KeyStore&hellip;</option></select>
+          <label class="muted" for="rv-token">Operator token</label>
+          <input id="rv-token" type="password" autocomplete="off" placeholder="only the operator has it" style="width:100%;min-width:0;max-width:100%;box-sizing:border-box;font:inherit;padding:6px 8px;background:var(--card);color:inherit;border:1px solid var(--border);border-radius:8px">
+          <div><button id="rv-go" type="button" style="font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:rgba(226,160,63,.14);color:#e2a03f;cursor:pointer">Revoke this session</button></div>
+          <div id="rv-out" class="muted" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="muted">The same revocation from the operator's machine, without the page: <code>node scripts/altana-session.mjs --mainnet --revoke --confirm</code>. Both paths sign with the same admin key and land the same on-chain call.</p>
+      <div id="rv-record" class="muted"></div>
       <p class="muted">The visibility is the part that has to be public, and it is: anyone can call <code>getKeys()</code> and <code>isValidKey()</code> on the KeyStore and get the same answer this page shows, without asking us.</p>
     </div>
 
@@ -115,12 +128,32 @@
         const pill = k.valid === true ? '<span class="pill ok">valid</span>'
           : k.valid === false ? '<span class="pill no">revoked or expired</span>'
           : '<span class="pill no">validity unreadable</span>';
-        return '<div style="margin-bottom:6px"><code>' + esc(k.keyId) + '</code> ' + pill + '</div>';
+        // The KeyStore lists the admin key beside the sessions. Which is
+        // which matters: the admin grants and revokes and cannot be revoked;
+        // a session is the leash. The worker tells them apart and says so.
+        const role = k.role === 'admin' ? ' <span class="muted">admin key &mdash; grants and revokes, cannot itself be revoked</span>'
+          : k.role === 'session' ? ' <span class="muted">session key</span>' : '';
+        return '<div style="margin-bottom:6px"><code>' + esc(k.keyId) + '</code> ' + pill + role + '</div>';
       }).join('');
       rows.push([esc(c.chain), (keys || '<span class="muted">no session key registered</span>')
         + '<div class="muted" style="margin-top:6px">KeyStore <code>' + esc(c.keystore) + '</code></div>']);
     }
     el.innerHTML = '<dl class="kv">' + rows.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('') + '</dl>';
+    // The revoke control: one option per key that is valid right now. A key
+    // that is already revoked is not offered — revoking it again would only
+    // burn a fee and print a success.
+    const sel = document.getElementById('rv-key');
+    const live = (j.chains || []).filter((c) => c.chainId === 56).flatMap((c) => c.keys || []).filter((k) => k.valid === true && k.role === 'session');
+    sel.innerHTML = live.length
+      ? live.map((k) => '<option value="' + esc(k.keyId) + '">' + esc(k.keyId.slice(0, 14)) + '&hellip;' + esc(k.keyId.slice(-6)) + ' &mdash; valid</option>').join('')
+      : '<option value="">no valid session key right now (the admin key is not a session and cannot be revoked)</option>';
+    document.getElementById('rv-go').disabled = !live.length;
+    const rec = document.getElementById('rv-record');
+    const revs = j.revocations || [];
+    rec.innerHTML = revs.length
+      ? '<div style="margin-top:14px"><b style="color:#e9e6e3">Revoked from this page</b></div>' + revs.map((r) => '<div style="margin-top:6px"><code>' + esc(r.keyId) + '</code> &middot; ' + esc(String(r.at).replace('T', ' ').slice(0, 16)) + ' UTC &middot; '
+          + (r.explorer ? '<a href="' + esc(r.explorer) + '" target="_blank" rel="noopener">' + esc((r.transactionHash || '').slice(0, 10)) + '&hellip;</a>' : '<span class="pill no">' + esc(r.status || 'failed') + '</span>' + (r.error ? ' <span class="muted">' + esc(r.error) + '</span>' : '')) + '</div>').join('')
+      : '<div style="margin-top:14px">No revocation has been fired from this page yet.</div>';
   } catch (e) {
     // A failed read says so. It does not quietly render an empty list, which
     // would read as "this agent has no spending authority at all".
@@ -128,6 +161,29 @@
       + esc(e.message || e) + ' &mdash; this is a failure to read the chain, not a statement that no session exists.</span>';
   }
 })();
+// Pressing the button sends the operator's token once, over TLS, to the
+// worker that holds the admin key. The token is never stored here. A wrong
+// token is a 401 and is shown as such; a right one shows the transaction.
+document.getElementById('rv-go').addEventListener('click', async () => {
+  const out = document.getElementById('rv-out');
+  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const keyId = document.getElementById('rv-key').value;
+  const token = document.getElementById('rv-token').value.trim();
+  if (!keyId) { out.textContent = 'There is no valid session key to revoke.'; return; }
+  if (!token) { out.textContent = 'The operator token is required. Without it nothing is signed — that is the lock that makes this button safe to publish.'; return; }
+  const btn = document.getElementById('rv-go');
+  btn.disabled = true; out.textContent = 'Signing the revocation on the worker and sending it through the Altana relay…';
+  try {
+    const r = await fetch('https://agent.brainonbnb.com/session/revoke', { method: 'POST', headers: { 'content-type': 'application/json', 'x-operator-token': token }, body: JSON.stringify({ keyId }) });
+    const j = await r.json().catch(() => ({}));
+    document.getElementById('rv-token').value = '';
+    if (r.status === 401) { out.innerHTML = '<span class="pill no">refused</span> ' + esc(j.error || 'operator token required') + ' — nothing was signed.'; btn.disabled = false; return; }
+    const d = (j.revoked || [])[0];
+    if (!r.ok || !d || d.status === 'failed') { out.innerHTML = '<span class="pill no">failed</span> ' + esc((d && d.error) || j.error || ('worker answered ' + r.status)); btn.disabled = false; return; }
+    out.innerHTML = '<span class="pill ok">revoked</span> ' + (d.explorer ? '<a href="' + esc(d.explorer) + '" target="_blank" rel="noopener">' + esc(d.transactionHash) + '</a>' : esc(d.status)) + ' — reloading the KeyStore…';
+    setTimeout(() => location.reload(), 4000);
+  } catch (e) { out.innerHTML = '<span class="pill no">no answer</span> ' + esc(e.message || e); btn.disabled = false; }
+});
 </script>
 </body>
 </html>

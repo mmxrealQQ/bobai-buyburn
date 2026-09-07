@@ -1065,7 +1065,7 @@ function fillLpBlock(){
         if(pr){
           const sg = v => (v > 0 ? '+' : '') + f(v, 5);
           rows.push(item('&#9679;', 'Profit so far: ' + sg(pr.bnb) + ' BNB' + (pr.usd != null ? ' (about $' + Number(pr.usd).toFixed(2) + ')' : ''),
-            'Since ' + String(sm.since).slice(0, 10) + ' on ' + f(sm.value_bnb && sm.value_bnb.start, 4) + ' BNB of capital: ' + sg(pr.from_price_bnb) + ' BNB from the pair’s price, ' + sg(pr.from_fees_bnb) + ' BNB of fees' + (pr.gas_bnb != null ? ', −' + f(pr.gas_bnb, 5) + ' BNB of gas' : '') + '. Dollars at the BNB price of the last run.', 'lp-profit'));
+            'Since ' + String(sm.since).slice(0, 10) + ' on ' + f(sm.value_bnb && sm.value_bnb.start, 4) + ' BNB of capital: ' + sg(pr.from_price_bnb) + ' BNB from CAKE moving against BNB, ' + sg(pr.from_fees_bnb) + ' BNB of fees earned and not yet collected' + (pr.gas_bnb != null ? ', −' + f(pr.gas_bnb, 5) + ' BNB of gas' : '') + '. Dollars at the BNB price of the last run.', 'lp-profit'));
         }
         // A hand-triggered run can be narrowed to one step, and a record whose
         // only step is the rebalance still knows the position. Reading it from
@@ -1112,11 +1112,18 @@ function fillLpBlock(){
         // "Owed right now" is the collect step's figure; when the position it
         // read is not the one open now (none, after a stopped re-set; the new
         // one minted by hand), the fees owed are read from the chain instead.
-        if(pos && String(c.position || '') !== String(pos)) fetch('https://agent.brainonbnb.com/lp/look?position=' + encodeURIComponent(pos), {cache:'no-store'})
+        // The value too: the record's "worth" is from the run, the look is
+        // the chain now, and the record page and the look showed three
+        // figures within minutes with no date on any of them.
+        if(pos) fetch('https://agent.brainonbnb.com/lp/look?position=' + encodeURIComponent(pos), {cache:'no-store'})
           .then(r => r.ok ? r.json() : null).then(lk => {
+            if(!lk) return;
+            const posSub = list.querySelector('li.lp-pos div > span');
+            if(posSub && lk.value_bnb != null) posSub.textContent = posSub.textContent.replace(/, worth [\d.]+ BNB/, ', worth ' + f(lk.value_bnb, 4) + ' BNB on the chain just now (' + f(rb.value_bnb, 4) + ' at the run)');
+            if(String(c.position || '') === String(pos)) return;
             // 'div > span': the bullet span's parent is the li, the text span's is the div.
             const li = list.querySelector('li.lp-fees'), sub = li && li.querySelector('div > span');
-            if(!lk || !lk.fees_owed || !sub) return;
+            if(!lk.fees_owed || !sub) return;
             sub.textContent = 'Owed right now: ' + f(lk.fees_owed.bnb_equivalent, 6) + ' BNB, read from the chain just now — the run at ' + when + (reset ? ' re-set the range, so its own figure starts at zero' : c.position ? ' read position #' + c.position : ' saw no position') + '. Small amounts are left to grow until collecting them beats the gas. '
               + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : '');
           }).catch(() => {});

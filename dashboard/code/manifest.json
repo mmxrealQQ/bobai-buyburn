@@ -130,8 +130,8 @@
    "files": 12,
    "lines": 4261,
    "zipBytes": 62821,
-   "txtBytes": 187865,
-   "sha256": "42ffeca8fcc7ec23",
+   "txtBytes": 187871,
+   "sha256": "ccb0af747df32923",
    "reqs": [
     {
      "what": "A bot token",
@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 38,
-   "lines": 10554,
-   "zipBytes": 222208,
-   "txtBytes": 600809,
-   "sha256": "79a77dccb9f2ef6d",
+   "lines": 10594,
+   "zipBytes": 223585,
+   "txtBytes": 605075,
+   "sha256": "bce74907ef76cd18",
    "reqs": [
     {
      "what": "A wallet to be paid into",

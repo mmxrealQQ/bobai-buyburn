@@ -1920,7 +1920,7 @@ export function formatLpAgentAlert(rec) {
   }
   if (!lines.length) return null;
   return `🤖 <b>LP Agent — ${String(last.at || '').slice(0, 16).replace('T', ' ')} UTC</b>
-The project's own liquidity position, run by a bot: AI income goes in as capital; of the fees, half comes out as $BOBAI burn and half stays to grow the position. Today it moved:
+The project's own liquidity position, run by a bot: AI income goes in as capital; of the fees, half comes out as $BOBAI burn and half stays to grow the position. At that run it moved:
 
 ${lines.join('\n')}
 

@@ -60,7 +60,7 @@ export async function lpPositionFacts(params = {}) {
   if (idIn != null && /^\d+$/.test(String(idIn))) tokenId = BigInt(String(idIn));
   const address = String(params.address || params.wallet || params.owner || '').match(/0x[a-fA-F0-9]{40}/)?.[0] || null;
   if (tokenId == null) {
-    if (!address) throw new Error('lp_position_plan needs a PancakeSwap V3 position id, or the address of a wallet that holds exactly one');
+    if (!address) throw new Error('give a PancakeSwap V3 position id, or the address of a wallet that holds exactly one');
     const n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address]));
     if (n === 0) return { facts: { service: 'lp_position_plan', address, positions: 0, verdict: 'This wallet holds no PancakeSwap V3 position. Nothing to plan.' } };
     if (n > 1) return { facts: { service: 'lp_position_plan', address, positions: n, verdict: `This wallet holds ${n} PancakeSwap V3 positions. Name one by its id (position: <tokenId>) and the plan is for that one.` } };

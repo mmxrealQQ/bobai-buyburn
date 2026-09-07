@@ -129,7 +129,7 @@ if (SELF) {
       { at: '2026-09-04T05:23:00Z', ok: true, acted: true, steps: {
         collect: { acted: true, produced_bnb: '0.004', kept_bnb: '0.002', forwarded_bnb: '0.002', kept_pct: 50, txs: [{ gas_bnb: 0.00001 }] },
         increase: { acted: true, wbnb_used: '0.005', bnb_spent: '0.0101', txs: [{ gas_bnb: 0.00003 }] },
-        rebalance: { acted: true, new_position: '7', txs: [{ gas_bnb: 0.00002 }] },
+        rebalance: { acted: true, new_position: '7', fees_folded_bnb: 0.0006, txs: [{ gas_bnb: 0.00002 }] },
       } },
       { at: '2026-09-04T09:00:00Z', ok: false, acted: true, steps: { collect: { acted: true, error: 'reverted', txs: [{ gas_bnb: 0.00001 }] } } },
     ],
@@ -145,14 +145,15 @@ if (SELF) {
   is('a dry run counts for nothing', fl.in.fees.bnb < 9 && fl.gas.bnb < 1);
   is('income is summed per source', fl.in.income.length === 1 && fl.in.income[0].source === 'x402' && near(fl.in.income[0].bnb, 0.007) && fl.in.income[0].runs === 1);
   is('a sweep that did not act is not a source', !fl.in.income.some((s) => s.source === 'provider'));
-  is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.bnb, 0.007) && fl.in.fees.collects === 2);
+  is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.collected_bnb, 0.007) && fl.in.fees.collects === 2);
+  is('a re-set\'s folded fees are fees produced, all of them kept as capital', near(fl.in.fees.folded_bnb, 0.0006) && fl.in.fees.resets_with_fees === 1 && near(fl.in.fees.bnb, 0.0076));
   is('the buyback got 0.003 + 0.002', near(fl.out.buyback_bnb, 0.005));
-  is('0.002 was kept as capital', near(fl.out.kept_as_capital_bnb, 0.002));
-  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.009));
+  is('0.002 kept by the collect + 0.0006 folded by the re-set was kept as capital', near(fl.out.kept_as_capital_bnb, 0.0026));
+  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0096));
   is('the increase counts the BNB it spent, gas included', near(fl.out.into_position_bnb, 0.0101) && fl.out.increases === 1);
   is('one re-set', fl.out.resets === 1);
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 7 && near(fl.gas.bnb, 0.00011));
-  is('a failed collect adds no fees', near(fl.in.fees.bnb, 0.007));
+  is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.007));
   is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-04T09:00:00Z');
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
@@ -160,7 +161,7 @@ if (SELF) {
   is('paid_for carries the service earnings', fl.paid_for.x402_answers === 3 && near(fl.paid_for.usd1, 0.7));
   is('an empty record flows nothing', moneyFlow({}).in.total_bnb === 0 && moneyFlow({}).rule === null && moneyFlow(null).gas.transactions === 0);
   const lines = flowLines(fl);
-  is('the lines name the source, the fees and the split', /USD1/.test(lines.came_in) && /0\.00700 BNB of fees/.test(lines.came_in) && /0\.00500 BNB to the buyback/.test(lines.went_out) && /0\.00200 BNB kept/.test(lines.went_out));
+  is('the lines name the source, the fees, the folded fees and the split', /USD1/.test(lines.came_in) && /0\.00700 BNB of fees over 2 collects, 0\.00060 BNB of fees folded into the capital by 1 re-set/.test(lines.came_in) && /0\.00500 BNB to the buyback/.test(lines.went_out) && /0\.00260 BNB kept/.test(lines.went_out));
   is('an empty record reads as nothing yet', /no income swept yet/.test(flowLines(moneyFlow({})).came_in) && /nothing has left/.test(flowLines(moneyFlow({})).went_out));
 
   console.log('sweep');

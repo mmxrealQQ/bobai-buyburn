@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 38 files, 10633 lines.
+# one fetch. 38 files, 10695 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -288,7 +288,7 @@ if (SELF) {
       { at: '2026-09-04T05:23:00Z', ok: true, acted: true, steps: {
         collect: { acted: true, produced_bnb: '0.004', kept_bnb: '0.002', forwarded_bnb: '0.002', kept_pct: 50, txs: [{ gas_bnb: 0.00001 }] },
         increase: { acted: true, wbnb_used: '0.005', bnb_spent: '0.0101', txs: [{ gas_bnb: 0.00003 }] },
-        rebalance: { acted: true, new_position: '7', txs: [{ gas_bnb: 0.00002 }] },
+        rebalance: { acted: true, new_position: '7', fees_folded_bnb: 0.0006, txs: [{ gas_bnb: 0.00002 }] },
       } },
       { at: '2026-09-04T09:00:00Z', ok: false, acted: true, steps: { collect: { acted: true, error: 'reverted', txs: [{ gas_bnb: 0.00001 }] } } },
     ],
@@ -304,14 +304,15 @@ if (SELF) {
   is('a dry run counts for nothing', fl.in.fees.bnb < 9 && fl.gas.bnb < 1);
   is('income is summed per source', fl.in.income.length === 1 && fl.in.income[0].source === 'x402' && near(fl.in.income[0].bnb, 0.007) && fl.in.income[0].runs === 1);
   is('a sweep that did not act is not a source', !fl.in.income.some((s) => s.source === 'provider'));
-  is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.bnb, 0.007) && fl.in.fees.collects === 2);
+  is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.collected_bnb, 0.007) && fl.in.fees.collects === 2);
+  is('a re-set\'s folded fees are fees produced, all of them kept as capital', near(fl.in.fees.folded_bnb, 0.0006) && fl.in.fees.resets_with_fees === 1 && near(fl.in.fees.bnb, 0.0076));
   is('the buyback got 0.003 + 0.002', near(fl.out.buyback_bnb, 0.005));
-  is('0.002 was kept as capital', near(fl.out.kept_as_capital_bnb, 0.002));
-  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.009));
+  is('0.002 kept by the collect + 0.0006 folded by the re-set was kept as capital', near(fl.out.kept_as_capital_bnb, 0.0026));
+  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0096));
   is('the increase counts the BNB it spent, gas included', near(fl.out.into_position_bnb, 0.0101) && fl.out.increases === 1);
   is('one re-set', fl.out.resets === 1);
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 7 && near(fl.gas.bnb, 0.00011));
-  is('a failed collect adds no fees', near(fl.in.fees.bnb, 0.007));
+  is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.007));
   is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-04T09:00:00Z');
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
@@ -319,7 +320,7 @@ if (SELF) {
   is('paid_for carries the service earnings', fl.paid_for.x402_answers === 3 && near(fl.paid_for.usd1, 0.7));
   is('an empty record flows nothing', moneyFlow({}).in.total_bnb === 0 && moneyFlow({}).rule === null && moneyFlow(null).gas.transactions === 0);
   const lines = flowLines(fl);
-  is('the lines name the source, the fees and the split', /USD1/.test(lines.came_in) && /0\.00700 BNB of fees/.test(lines.came_in) && /0\.00500 BNB to the buyback/.test(lines.went_out) && /0\.00200 BNB kept/.test(lines.went_out));
+  is('the lines name the source, the fees, the folded fees and the split', /USD1/.test(lines.came_in) && /0\.00700 BNB of fees over 2 collects, 0\.00060 BNB of fees folded into the capital by 1 re-set/.test(lines.came_in) && /0\.00500 BNB to the buyback/.test(lines.went_out) && /0\.00260 BNB kept/.test(lines.went_out));
   is('an empty record reads as nothing yet', /no income swept yet/.test(flowLines(moneyFlow({})).came_in) && /nothing has left/.test(flowLines(moneyFlow({})).went_out));
 
   console.log('sweep');
@@ -1398,6 +1399,20 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   send.owner = account.address;
   // A resumed re-set (plan.resume) has no position to unwind: the earlier run
   // already did that and stopped before its mint.
+  // The fees the old range still owes are not collected as fees here: the
+  // unwind pays them out with the principal and the mint folds them into the
+  // new capital. Read them first, so the record can count them as fees — on
+  // 2026-09-07 the three re-sets had folded in 0.000998 BNB that every fees
+  // figure said was zero.
+  let folded = null;
+  if (plan.tokenId != null) {
+    const old = await readPosition(pub, account.address);
+    if (old.tokenId != null && String(old.tokenId) === String(plan.tokenId)) {
+      const owedWbnb = plan.wbnbIs0 ? old.owed0 : old.owed1, owedOther = plan.wbnbIs0 ? old.owed1 : old.owed0;
+      const otherInWbnb = plan.target && plan.target.otherInWbnb ? plan.target.otherInWbnb : 0;
+      folded = { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), bnb_equivalent: Number(((Number(owedWbnb) + Number(owedOther) * otherInWbnb) / 1e18).toFixed(6)) };
+    }
+  }
   if (plan.tokenId != null) {
     const liquidity = plan.pos[7];
     const sim = await pub.simulateContract({
@@ -1456,7 +1471,8 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
   const np = await readPosition(pub, account.address);
   const gasBnb = txs.reduce((s, t) => s + (t.gas_bnb || 0), 0);
-  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null };
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
+    ...(folded ? { fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent } : {}) };
 }
 
 // --------------------------------------------------------------------------
@@ -1614,6 +1630,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const bySource = {};
   let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
+  let feesFolded = 0, resetsWithFees = 0;
   let first = null, lastMoved = null;
   for (const e of hist) {
     const st = e.steps || {};
@@ -1643,7 +1660,14 @@ export function moneyFlow(rec, { earned = null } = {}) {
       intoPosition += inc.bnb_spent != null ? n(inc.bnb_spent) : n(inc.wbnb_used);
     }
     const rb = st.rebalance;
-    if (rb && rb.acted && !rb.error && rb.new_position) resets += 1;
+    if (rb && rb.acted && !rb.error && rb.new_position) {
+      resets += 1;
+      // A re-set does not collect the old range's fees as fees: the unwind
+      // pays them out with the principal and the mint folds them into the
+      // new capital. They are fees the position produced all the same, and
+      // all of them stayed as capital.
+      if (n(rb.fees_folded_bnb) > 0) { feesFolded += n(rb.fees_folded_bnb); resetsWithFees += 1; }
+    }
     for (const step of [...sweeps, c, inc, rb]) {
       for (const t of (step && Array.isArray(step.txs) ? step.txs : [])) { txs += 1; gas += n(t.gas_bnb); }
     }
@@ -1667,13 +1691,15 @@ export function moneyFlow(rec, { earned = null } = {}) {
     in: {
       income,
       income_bnb: r6(incomeBnb),
-      fees: { bnb: r6(feesProduced), collects },
-      total_bnb: r6(incomeBnb + feesProduced),
+      // bnb = collected by the collect step + folded into the capital by
+      // re-sets; folded_bnb says how much of it was the latter.
+      fees: { bnb: r6(feesProduced + feesFolded), collects, collected_bnb: r6(feesProduced), folded_bnb: r6(feesFolded), resets_with_fees: resetsWithFees },
+      total_bnb: r6(incomeBnb + feesProduced + feesFolded),
     },
     out: {
       buyback_bnb: r6(feesForwarded),
-      kept_as_capital_bnb: r6(feesKept),
-      capital_arrived_bnb: r6(incomeBnb + feesKept),
+      kept_as_capital_bnb: r6(feesKept + feesFolded),
+      capital_arrived_bnb: r6(incomeBnb + feesKept + feesFolded),
       into_position_bnb: r6(intoPosition),
       increases,
       resets,
@@ -1693,10 +1719,12 @@ export function flowLines(flow) {
   const income = flow.in.income.length
     ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
+  const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0;
+  const folded = fd > 0 ? `${f(fd)} BNB of fees folded into the capital by ${rw} re-set${rw === 1 ? '' : 's'}` : '';
   const fees = flow.in.fees.collects
-    ? `${f(flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}`
-    : 'no fees collected yet';
-  const out = flow.in.fees.collects || flow.in.income.length
+    ? `${f(flow.in.fees.collected_bnb != null ? flow.in.fees.collected_bnb : flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}${folded ? `, ${folded}` : ''}`
+    : (folded || 'no fees collected yet');
+  const out = flow.in.fees.collects || flow.in.income.length || fd > 0
     ? `${f(flow.out.buyback_bnb)} BNB to the buyback wallet, ${f(flow.out.kept_as_capital_bnb)} BNB kept as capital, ${f(flow.out.into_position_bnb)} BNB already put into the position`
     : 'nothing has left the wallet yet';
   return {
@@ -5176,6 +5204,8 @@ async function recordLpSeries(env) {
     forwarded_total_bnb: flow.out.buyback_bnb,
     kept_total_bnb: flow.out.kept_as_capital_bnb,
     fees_total_bnb: flow.in.fees.bnb,
+    folded_total_bnb: flow.in.fees.folded_bnb || 0,
+    into_position_total_bnb: flow.out.into_position_bnb || 0,
     swept_total_bnb: flow.in.income_bnb,
   };
   let point = null;
@@ -5246,9 +5276,26 @@ function lpSeriesShown(series) {
 }
 // `gas_bnb` is the record's own gas total (moneyFlow), so the profit line can
 // net it: the series points carry no gas.
-function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null } = {}) {
+// Where the fees in the profit line are: collected by the collect step,
+// folded into the capital by re-sets, still owed by the position. Shared
+// with the liquidity page (app.js, same words) so the two never differ.
+function lpFeesWhere(p) {
+  const f5 = (v) => Number(v || 0).toFixed(5);
+  const parts = [];
+  if (p.fees_collected_bnb > 0) parts.push(`${f5(p.fees_collected_bnb)} collected`);
+  if (p.fees_folded_bnb > 0) parts.push(`${f5(p.fees_folded_bnb)} folded into the capital by re-sets`);
+  parts.push(`${f5(p.fees_owed_bnb)} still owed by the position`);
+  return parts.join(', ');
+}
+function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals = null } = {}) {
   if (!series.length) return null;
-  const first = series[0], last = series[series.length - 1];
+  const first = series[0], last0 = series[series.length - 1];
+  // The totals (fees, buyback share, kept, swept) are the record's own
+  // money-flow figures when the caller has them: a point carries the totals
+  // as they were when it was written, and a record corrected afterwards
+  // (the re-sets' folded fees, 2026-09-07) would otherwise stay wrong until
+  // the next point.
+  const last = totals ? { ...last0, ...totals } : last0;
   const withValue = series.filter((p) => p.value_bnb != null);
   const f0 = withValue[0], f1 = withValue[withValue.length - 1];
   const days = Math.max(0, Math.round((Date.parse(last.at) - Date.parse(first.at)) / 86400000));
@@ -5278,13 +5325,19 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null } = {}) {
   // mostly the pair's price moving; the sentence says so, because on $55 in
   // a 0.05 % pool the fees are the small part and hiding that would be spin.
   if (out.value_bnb && out.value_bnb.start != null && out.value_bnb.now != null) {
-    const price = +(out.value_bnb.now - out.value_bnb.start).toFixed(6);
+    // Capital that was added to the position is in its value now but is not
+    // a gain of the price: the fees a re-set folded in and the income the
+    // increase put in. Take them out of the price part, else the folded fees
+    // count twice — once in the value, once as fees (2026-09-07, +0.001 BNB).
+    const folded = Number(last.folded_total_bnb) || 0, putIn = Number(last.into_position_total_bnb) || 0;
+    const price = +(out.value_bnb.now - out.value_bnb.start - folded - putIn).toFixed(6);
+    const collected = Math.max(0, (out.fees_produced_bnb || 0) - folded);
     const fees = +((out.fees_produced_bnb || 0) + (out.fees_owed_now_bnb || 0)).toFixed(6);
     // The pool is CAKE/BNB: "the pair's price" is CAKE moving against BNB.
     const gas = gas_bnb != null ? +Number(gas_bnb).toFixed(6) : null;
     const bnb = +(price + fees - (gas || 0)).toFixed(6);
     const usd = last.bnb_usd ? +(bnb * last.bnb_usd).toFixed(2) : null;
-    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, gas_bnb: gas, bnb_usd: last.bnb_usd || null };
+    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +folded.toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
   }
   // The same figures as one sentence — the line /liquidity opens with and the
   // whole of the Telegram daily report, so the two never say different things.
@@ -5301,7 +5354,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null } = {}) {
   const sign = (x) => (x > 0 ? '+' : '') + f(x, 5);
   if (out.profit) {
     const p = out.profit;
-    out.sentence += ` Profit so far ${sign(p.bnb)} BNB${p.usd != null ? ` (about $${p.usd.toFixed(2)})` : ''}: ${sign(p.from_price_bnb)} BNB from CAKE moving against BNB, ${sign(p.from_fees_bnb)} BNB of fees earned and not yet collected${p.gas_bnb != null ? `, −${f(p.gas_bnb, 5)} BNB of gas` : ''}.`;
+    out.sentence += ` Profit so far ${sign(p.bnb)} BNB${p.usd != null ? ` (about $${p.usd.toFixed(2)})` : ''}: ${sign(p.from_price_bnb)} BNB from CAKE moving against BNB, ${sign(p.from_fees_bnb)} BNB of fees earned (${lpFeesWhere(p)})${p.gas_bnb != null ? `, −${f(p.gas_bnb, 5)} BNB of gas` : ''}.`;
   }
   return out;
 }
@@ -6609,7 +6662,16 @@ ${pageTail}`;
     if (path === '/lp/series') {
       const series = lpSeriesShown(await readLpSeries(env));
       const recRaw = await env.AGENT.get('lp:agent');
-      const gas_bnb = recRaw ? moneyFlow(JSON.parse(recRaw)).gas.bnb : null;
+      const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
+      const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
+      const totals = liveFlow ? {
+        forwarded_total_bnb: liveFlow.out.buyback_bnb,
+        kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
+        fees_total_bnb: liveFlow.in.fees.bnb,
+        folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,
+        into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
+        swept_total_bnb: liveFlow.in.income_bnb,
+      } : null;
       // Fees owed now, from the chain: the last point is often a re-set, whose
       // own figure is zero by construction, while the liquidity page shows the
       // live figure two lines below the profit — the two must agree.
@@ -6620,7 +6682,7 @@ ${pageTail}`;
       }
       return json({
         what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
-        summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb }),
+        summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',
         cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',

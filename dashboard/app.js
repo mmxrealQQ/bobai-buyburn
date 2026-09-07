@@ -1064,8 +1064,17 @@ function fillLpBlock(){
         const sm = ser && ser.summary, pr = sm && sm.profit;
         if(pr){
           const sg = v => (v > 0 ? '+' : '') + f(v, 5);
+          // Same words as the agent worker's lpFeesWhere: collected, folded
+          // into the capital by re-sets, still owed.
+          const lpFeesWhere = p => {
+            const parts = [];
+            if(p.fees_collected_bnb > 0) parts.push(f(p.fees_collected_bnb, 5) + ' collected');
+            if(p.fees_folded_bnb > 0) parts.push(f(p.fees_folded_bnb, 5) + ' folded into the capital by re-sets');
+            parts.push(f(p.fees_owed_bnb, 5) + ' still owed by the position');
+            return parts.join(', ');
+          };
           rows.push(item('&#9679;', 'Profit so far: ' + sg(pr.bnb) + ' BNB' + (pr.usd != null ? ' (about $' + Number(pr.usd).toFixed(2) + ')' : ''),
-            'Since ' + String(sm.since).slice(0, 10) + ' on ' + f(sm.value_bnb && sm.value_bnb.start, 4) + ' BNB of capital: ' + sg(pr.from_price_bnb) + ' BNB from CAKE moving against BNB, ' + sg(pr.from_fees_bnb) + ' BNB of fees earned and not yet collected' + (pr.gas_bnb != null ? ', −' + f(pr.gas_bnb, 5) + ' BNB of gas' : '') + '. Dollars at the BNB price of the last run.', 'lp-profit'));
+            'Since ' + String(sm.since).slice(0, 10) + ' on ' + f(sm.value_bnb && sm.value_bnb.start, 4) + ' BNB of capital: ' + sg(pr.from_price_bnb) + ' BNB from CAKE moving against BNB, ' + sg(pr.from_fees_bnb) + ' BNB of fees earned (' + lpFeesWhere(pr) + ')' + (pr.gas_bnb != null ? ', −' + f(pr.gas_bnb, 5) + ' BNB of gas' : '') + '. Dollars at the BNB price of the last run.', 'lp-profit'));
         }
         // A hand-triggered run can be narrowed to one step, and a record whose
         // only step is the rebalance still knows the position. Reading it from
@@ -1080,8 +1089,12 @@ function fillLpBlock(){
         rows.push(item('&#9679;',
           pos ? (inRange === false ? 'The position is out of range — waiting for a re-set' : 'The position is in range and earning') : 'No position open',
           pos ? 'PancakeSwap V3 position #' + pos + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : '', 'lp-pos'));
-        rows.push(item('&#9679;', fees > 0 ? 'Fees collected so far: ' + f(fees, 5) + ' BNB — ' + f(forwarded, 5) + ' to the buyback bot, ' + f(kept, 5) + ' kept as capital' : 'No fees collected yet',
-          (c.owed ? 'Owed right now: ' + f(c.owed.bnb_equivalent, 6) + ' BNB. Small amounts are left to grow until collecting them beats the gas. ' : '')
+        const folded = (fin.fees && fin.fees.folded_bnb) || 0, resetsWithFees = (fin.fees && fin.fees.resets_with_fees) || 0;
+        rows.push(item('&#9679;', fees > 0 ? 'Fees produced so far: ' + f(fees, 5) + ' BNB — ' + f(forwarded, 5) + ' to the buyback bot, ' + f(kept, 5) + ' kept as capital' + (folded > 0 ? ' (' + f(folded, 5) + ' of it folded in by ' + resetsWithFees + ' re-set' + (resetsWithFees === 1 ? '' : 's') + ')' : '') : 'No fees collected yet',
+          // Dated from the first paint: the chain's own figure replaces it
+          // below, but that read can take seconds, and an undated figure
+          // from 05:23 read as "right now" meanwhile.
+          (c.owed ? 'Owed at the run at ' + when + ': ' + f(c.owed.bnb_equivalent, 6) + ' BNB. Small amounts are left to grow until collecting them beats the gas. ' : '')
           + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : ''), 'lp-fees'));
         rows.push(item('&#9679;', swept > 0 ? 'Income swept in as capital: ' + f(swept, 5) + ' BNB' + (fout.into_position_bnb ? ' — ' + f(fout.into_position_bnb, 5) + ' BNB put into the position so far' : '') : 'No income swept in yet',
           (waiting ? 'Waiting to be moved: ' + waiting + '. It moves once it is worth more than the gas.' : 'Nothing waiting right now.')

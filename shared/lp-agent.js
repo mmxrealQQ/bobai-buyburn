@@ -514,6 +514,20 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   send.owner = account.address;
   // A resumed re-set (plan.resume) has no position to unwind: the earlier run
   // already did that and stopped before its mint.
+  // The fees the old range still owes are not collected as fees here: the
+  // unwind pays them out with the principal and the mint folds them into the
+  // new capital. Read them first, so the record can count them as fees — on
+  // 2026-09-07 the three re-sets had folded in 0.000998 BNB that every fees
+  // figure said was zero.
+  let folded = null;
+  if (plan.tokenId != null) {
+    const old = await readPosition(pub, account.address);
+    if (old.tokenId != null && String(old.tokenId) === String(plan.tokenId)) {
+      const owedWbnb = plan.wbnbIs0 ? old.owed0 : old.owed1, owedOther = plan.wbnbIs0 ? old.owed1 : old.owed0;
+      const otherInWbnb = plan.target && plan.target.otherInWbnb ? plan.target.otherInWbnb : 0;
+      folded = { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), bnb_equivalent: Number(((Number(owedWbnb) + Number(owedOther) * otherInWbnb) / 1e18).toFixed(6)) };
+    }
+  }
   if (plan.tokenId != null) {
     const liquidity = plan.pos[7];
     const sim = await pub.simulateContract({
@@ -572,7 +586,8 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
   const np = await readPosition(pub, account.address);
   const gasBnb = txs.reduce((s, t) => s + (t.gas_bnb || 0), 0);
-  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null };
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
+    ...(folded ? { fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent } : {}) };
 }
 
 // --------------------------------------------------------------------------

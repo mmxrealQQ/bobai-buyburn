@@ -442,6 +442,8 @@ async function recordLpSeries(env) {
     forwarded_total_bnb: flow.out.buyback_bnb,
     kept_total_bnb: flow.out.kept_as_capital_bnb,
     fees_total_bnb: flow.in.fees.bnb,
+    folded_total_bnb: flow.in.fees.folded_bnb || 0,
+    into_position_total_bnb: flow.out.into_position_bnb || 0,
     swept_total_bnb: flow.in.income_bnb,
   };
   let point = null;
@@ -512,9 +514,26 @@ function lpSeriesShown(series) {
 }
 // `gas_bnb` is the record's own gas total (moneyFlow), so the profit line can
 // net it: the series points carry no gas.
-function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null } = {}) {
+// Where the fees in the profit line are: collected by the collect step,
+// folded into the capital by re-sets, still owed by the position. Shared
+// with the liquidity page (app.js, same words) so the two never differ.
+function lpFeesWhere(p) {
+  const f5 = (v) => Number(v || 0).toFixed(5);
+  const parts = [];
+  if (p.fees_collected_bnb > 0) parts.push(`${f5(p.fees_collected_bnb)} collected`);
+  if (p.fees_folded_bnb > 0) parts.push(`${f5(p.fees_folded_bnb)} folded into the capital by re-sets`);
+  parts.push(`${f5(p.fees_owed_bnb)} still owed by the position`);
+  return parts.join(', ');
+}
+function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals = null } = {}) {
   if (!series.length) return null;
-  const first = series[0], last = series[series.length - 1];
+  const first = series[0], last0 = series[series.length - 1];
+  // The totals (fees, buyback share, kept, swept) are the record's own
+  // money-flow figures when the caller has them: a point carries the totals
+  // as they were when it was written, and a record corrected afterwards
+  // (the re-sets' folded fees, 2026-09-07) would otherwise stay wrong until
+  // the next point.
+  const last = totals ? { ...last0, ...totals } : last0;
   const withValue = series.filter((p) => p.value_bnb != null);
   const f0 = withValue[0], f1 = withValue[withValue.length - 1];
   const days = Math.max(0, Math.round((Date.parse(last.at) - Date.parse(first.at)) / 86400000));
@@ -544,13 +563,19 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null } = {}) {
   // mostly the pair's price moving; the sentence says so, because on $55 in
   // a 0.05 % pool the fees are the small part and hiding that would be spin.
   if (out.value_bnb && out.value_bnb.start != null && out.value_bnb.now != null) {
-    const price = +(out.value_bnb.now - out.value_bnb.start).toFixed(6);
+    // Capital that was added to the position is in its value now but is not
+    // a gain of the price: the fees a re-set folded in and the income the
+    // increase put in. Take them out of the price part, else the folded fees
+    // count twice — once in the value, once as fees (2026-09-07, +0.001 BNB).
+    const folded = Number(last.folded_total_bnb) || 0, putIn = Number(last.into_position_total_bnb) || 0;
+    const price = +(out.value_bnb.now - out.value_bnb.start - folded - putIn).toFixed(6);
+    const collected = Math.max(0, (out.fees_produced_bnb || 0) - folded);
     const fees = +((out.fees_produced_bnb || 0) + (out.fees_owed_now_bnb || 0)).toFixed(6);
     // The pool is CAKE/BNB: "the pair's price" is CAKE moving against BNB.
     const gas = gas_bnb != null ? +Number(gas_bnb).toFixed(6) : null;
     const bnb = +(price + fees - (gas || 0)).toFixed(6);
     const usd = last.bnb_usd ? +(bnb * last.bnb_usd).toFixed(2) : null;
-    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, gas_bnb: gas, bnb_usd: last.bnb_usd || null };
+    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +folded.toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
   }
   // The same figures as one sentence — the line /liquidity opens with and the
   // whole of the Telegram daily report, so the two never say different things.
@@ -567,7 +592,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null } = {}) {
   const sign = (x) => (x > 0 ? '+' : '') + f(x, 5);
   if (out.profit) {
     const p = out.profit;
-    out.sentence += ` Profit so far ${sign(p.bnb)} BNB${p.usd != null ? ` (about $${p.usd.toFixed(2)})` : ''}: ${sign(p.from_price_bnb)} BNB from CAKE moving against BNB, ${sign(p.from_fees_bnb)} BNB of fees earned and not yet collected${p.gas_bnb != null ? `, −${f(p.gas_bnb, 5)} BNB of gas` : ''}.`;
+    out.sentence += ` Profit so far ${sign(p.bnb)} BNB${p.usd != null ? ` (about $${p.usd.toFixed(2)})` : ''}: ${sign(p.from_price_bnb)} BNB from CAKE moving against BNB, ${sign(p.from_fees_bnb)} BNB of fees earned (${lpFeesWhere(p)})${p.gas_bnb != null ? `, −${f(p.gas_bnb, 5)} BNB of gas` : ''}.`;
   }
   return out;
 }
@@ -1875,7 +1900,16 @@ ${pageTail}`;
     if (path === '/lp/series') {
       const series = lpSeriesShown(await readLpSeries(env));
       const recRaw = await env.AGENT.get('lp:agent');
-      const gas_bnb = recRaw ? moneyFlow(JSON.parse(recRaw)).gas.bnb : null;
+      const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
+      const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
+      const totals = liveFlow ? {
+        forwarded_total_bnb: liveFlow.out.buyback_bnb,
+        kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
+        fees_total_bnb: liveFlow.in.fees.bnb,
+        folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,
+        into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
+        swept_total_bnb: liveFlow.in.income_bnb,
+      } : null;
       // Fees owed now, from the chain: the last point is often a re-set, whose
       // own figure is zero by construction, while the liquidity page shows the
       // live figure two lines below the profit — the two must agree.
@@ -1886,7 +1920,7 @@ ${pageTail}`;
       }
       return json({
         what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
-        summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb }),
+        summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',
         cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',

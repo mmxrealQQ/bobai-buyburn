@@ -28,6 +28,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const bySource = {};
   let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
+  let feesFolded = 0, resetsWithFees = 0;
   let first = null, lastMoved = null;
   for (const e of hist) {
     const st = e.steps || {};
@@ -57,7 +58,14 @@ export function moneyFlow(rec, { earned = null } = {}) {
       intoPosition += inc.bnb_spent != null ? n(inc.bnb_spent) : n(inc.wbnb_used);
     }
     const rb = st.rebalance;
-    if (rb && rb.acted && !rb.error && rb.new_position) resets += 1;
+    if (rb && rb.acted && !rb.error && rb.new_position) {
+      resets += 1;
+      // A re-set does not collect the old range's fees as fees: the unwind
+      // pays them out with the principal and the mint folds them into the
+      // new capital. They are fees the position produced all the same, and
+      // all of them stayed as capital.
+      if (n(rb.fees_folded_bnb) > 0) { feesFolded += n(rb.fees_folded_bnb); resetsWithFees += 1; }
+    }
     for (const step of [...sweeps, c, inc, rb]) {
       for (const t of (step && Array.isArray(step.txs) ? step.txs : [])) { txs += 1; gas += n(t.gas_bnb); }
     }
@@ -81,13 +89,15 @@ export function moneyFlow(rec, { earned = null } = {}) {
     in: {
       income,
       income_bnb: r6(incomeBnb),
-      fees: { bnb: r6(feesProduced), collects },
-      total_bnb: r6(incomeBnb + feesProduced),
+      // bnb = collected by the collect step + folded into the capital by
+      // re-sets; folded_bnb says how much of it was the latter.
+      fees: { bnb: r6(feesProduced + feesFolded), collects, collected_bnb: r6(feesProduced), folded_bnb: r6(feesFolded), resets_with_fees: resetsWithFees },
+      total_bnb: r6(incomeBnb + feesProduced + feesFolded),
     },
     out: {
       buyback_bnb: r6(feesForwarded),
-      kept_as_capital_bnb: r6(feesKept),
-      capital_arrived_bnb: r6(incomeBnb + feesKept),
+      kept_as_capital_bnb: r6(feesKept + feesFolded),
+      capital_arrived_bnb: r6(incomeBnb + feesKept + feesFolded),
       into_position_bnb: r6(intoPosition),
       increases,
       resets,
@@ -107,10 +117,12 @@ export function flowLines(flow) {
   const income = flow.in.income.length
     ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
+  const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0;
+  const folded = fd > 0 ? `${f(fd)} BNB of fees folded into the capital by ${rw} re-set${rw === 1 ? '' : 's'}` : '';
   const fees = flow.in.fees.collects
-    ? `${f(flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}`
-    : 'no fees collected yet';
-  const out = flow.in.fees.collects || flow.in.income.length
+    ? `${f(flow.in.fees.collected_bnb != null ? flow.in.fees.collected_bnb : flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}${folded ? `, ${folded}` : ''}`
+    : (folded || 'no fees collected yet');
+  const out = flow.in.fees.collects || flow.in.income.length || fd > 0
     ? `${f(flow.out.buyback_bnb)} BNB to the buyback wallet, ${f(flow.out.kept_as_capital_bnb)} BNB kept as capital, ${f(flow.out.into_position_bnb)} BNB already put into the position`
     : 'nothing has left the wallet yet';
   return {

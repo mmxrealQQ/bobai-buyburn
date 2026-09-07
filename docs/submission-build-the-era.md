@@ -61,7 +61,7 @@ call allowlist, a per-day spend cap and an expiry; one earlier session
 block. Real transactions through the session key, a refused call
 (UnauthorizedCall) and the revocation are listed with their hashes on
 https://brainonbnb.com/session, read live from the KeyStore; raw JSON at
-https://agent.brainonbnb.com/session.
+https://agent.brainonbnb.com/session. On "revoke it inside the product": the page shows what the agent may do, live from the KeyStore, and states openly that there is no public revoke button — a revocation is an admin-signed Altana intent, and a web endpoint that could fire it would be an off-switch any stranger could press. Revocation runs from the operator's machine with the admin key, in one command, and takes effect within a block; the page documents it and links the transaction that did it.
 
 Repository: the GitHub account is suspended since 2026-07-24 (under appeal, no
 second account opened). The full source is public at

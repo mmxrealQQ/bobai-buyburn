@@ -113,7 +113,7 @@ const bnb = (v) => `${Number(formatEther(v)).toFixed(6)} BNB`;
   const remaining = fromBalance - value - gasCost;
 
   console.log('\nFund the x402 service wallet');
-  console.log('----------------------------');
+  console.log('-'.repeat(`Fund the ${TARGET.label} wallet`.length));
   console.log(`  BNB/USD (Chainlink)  $${bnbUsd.toFixed(2)}   (${ageS}s old)`);
   console.log(`  from   NFT relayer   ${account.address}   ${bnb(fromBalance)}`);
   console.log(`  to     ${TARGET.label.padEnd(13)} ${TARGET.address}   ${bnb(toBalance)}`);
@@ -145,7 +145,7 @@ const bnb = (v) => `${Number(formatEther(v)).toFixed(6)} BNB`;
   ]);
   console.log(`\n  confirmed in block ${receipt.blockNumber}`);
   console.log(`  NFT relayer    ${bnb(afterFrom)}`);
-  console.log(`  x402 service   ${bnb(afterTo)}   <- can pay its own gas now`);
+  console.log(`  ${TARGET.label.padEnd(13)}  ${bnb(afterTo)}   <- can pay its own gas now`);
 })().catch((e) => {
   console.log(e instanceof Refused ? `
 [REFUSED] ${e.message}` : `

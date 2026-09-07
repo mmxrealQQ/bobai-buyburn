@@ -28,6 +28,15 @@ const ms = (n) => (n == null ? '—' : `${Number(n).toLocaleString('en-US')} ms`
 const answeredManually = report.tasks.filter((t) => t.manual?.answer?.answered).length;
 const answeredByAgent = report.tasks.filter((t) => t.agent?.answer?.answered).length;
 
+// The window's length in words. Minutes come from block timestamps when the
+// tool could date the window, and from the block count otherwise — the source
+// travels with the number so the page never prints an estimate as a reading.
+const windowText = (w) => {
+  if (!w) return 'a live window';
+  const min = w.minutes != null ? `${w.minutes} minutes` : `${(w.blocks || 0).toLocaleString('en-US')} blocks`;
+  return w.minutes_source ? `about ${min} (${w.minutes_source})` : min;
+};
+
 const taskCard = (t) => {
   const a = t.agent?.answer || {};
   const mn = t.manual?.answer || {};
@@ -52,7 +61,57 @@ const taskCard = (t) => {
           <thead><tr><th>Tier</th><th class="n">Capital parked</th><th class="n">Swaps</th><th class="n">Fees paid</th><th class="n">Fees per $1,000 parked</th></tr></thead>
           <tbody>${tierRows}</tbody>
         </table></div>
-        <p class="ev-n">The tier holding the most capital is <strong>${esc(a.most_capital_tier)}</strong>. The tier that paid best is <strong>${esc(a.best_paying_tier)}</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single ${esc(a.window?.minutes ?? '')}-minute window and deliberately not annualised — forty minutes of flow says what happened in forty minutes.</p>
+        <p class="ev-n">The tier holding the most capital is <strong>${esc(a.most_capital_tier)}</strong>. The tier that paid best is <strong>${esc(a.best_paying_tier)}</strong>. Every public interface ranks this pair by the first column; an LP is paid on the last one. Measured over a single window of ${esc(windowText(a.window))} and deliberately not annualised — forty minutes of flow says what happened in forty minutes.</p>
+      </div>` : '';
+
+  // Tasks 2 and 3 carry their outputs too. TermiX asks for "the actual outputs
+  // attached", and a verdict without the answer beside it is a claim.
+  const kv = (rows) => `
+        <div class="tw"><table class="kv">
+          <thead><tr><th>What was asked</th><th>Asking the agent</th><th>Doing it by hand</th></tr></thead>
+          <tbody>${rows.map(([k, x, y]) => `
+          <tr><td>${esc(k)}</td><td>${x}</td><td>${y}</td></tr>`).join('')}</tbody>
+        </table></div>`;
+  const miss = (why) => `<span class="unm">${esc(why || 'not produced')}</span>`;
+  const pctOf = (v) => (v == null ? miss() : `${Number(v).toFixed(2)}%`);
+  const task2 = t.task === 2 && (a.price_usd != null || mn.price_usd != null) ? `
+      <div class="ev">
+        <div class="ev-h">The answers, side by side</div>
+        ${kv([
+          ['Price', a.price_usd != null ? usd(a.price_usd, 4) : miss(), mn.price_usd != null ? usd(mn.price_usd, 4) : miss()],
+          ['Pool measured', esc(a.pool || '—'), esc(mn.pool || '—')],
+          ['Hard backing in that pool (the BNB side, the half that holds)', a.hard_backing_usd != null ? usd(Math.round(a.hard_backing_usd)) : miss(), mn.hard_backing_usd != null ? usd(Math.round(mn.hard_backing_usd)) : miss()],
+          ['Share of the token\'s liquidity this pool is', a.share_of_liquidity_readable != null ? `${(a.share_of_liquidity_readable * 100).toFixed(1)}%` : miss(), mn.share_of_liquidity_readable != null ? `${(mn.share_of_liquidity_readable * 100).toFixed(1)}%` : miss('needs every other pool on every venue found first')],
+          [`Cost of a $${(a.sell_cost_pct_at_size?.sizeUsd ?? mn.sell_cost_pct_at_size?.sizeUsd ?? 2500).toLocaleString('en-US')} sell`, pctOf(a.sell_cost_pct_at_size?.sellCostPct), pctOf(mn.sell_cost_pct_at_size?.sellCostPct)],
+          ['Transfer tax', a.transfer_tax && a.transfer_tax.buyPct != null ? `buy ${Number(a.transfer_tax.buyPct).toFixed(2)}% · sell ${Number(a.transfer_tax.sellPct ?? a.transfer_tax.buyPct).toFixed(2)}% (${esc(a.transfer_tax.measured ? 'measured from executed trades' : (a.transfer_tax.source || 'reported'))})` : miss(a.transfer_tax?.warning ? 'not established this run — the log endpoint refused, and the tool says so instead of printing 0%' : undefined), mn.transfer_tax ? esc(JSON.stringify(mn.transfer_tax)) : miss('not a field on the contract')],
+          ['LP burned', pctOf(a.lp_burned_pct), pctOf(mn.lp_burned_pct)],
+        ])}
+        <p class="ev-n">Both columns come from the same run. The hand-done column is what a person gets from the pair contract and the price feed alone; the two rows it cannot fill are the two the question was about.</p>
+      </div>` : '';
+  const task3 = t.task === 3 && (a.candidates != null || mn.sampled_ids != null) ? `
+      <div class="ev">
+        <div class="ev-h">The answers, side by side</div>
+        ${kv([
+          ['Candidates found', a.candidates != null ? `${a.candidates} that match, of ${(mn.registry_ids_at_measurement || 0).toLocaleString('en-US')} ids in the registry` : miss(), mn.sampled_ids != null ? `none — ${mn.sampled_ids} ids read to measure the rate` : miss()],
+          ['Top three', (a.top || []).length ? (a.top || []).map((c) => `#${esc(String(c.id))} ${esc(c.name || '')}`).join('<br>') : miss(), miss('no index to rank by')],
+          ['What it charges', a.charges ? `${esc(a.charges.price)} — #${esc(String(a.charges.id))} ${esc(a.charges.name || '')}, quoted over A2A through the hire path` : miss(a.could_not_answer), miss('there is nobody to ask until somebody is found')],
+          ['Time to read the whole registry at the measured rate', '—', mn.extrapolated_hours_to_read_the_registry != null ? `${mn.extrapolated_hours_to_read_the_registry} h at ${mn.ms_per_id_measured} ms an id — an extrapolation from ${mn.sampled_ids} ids, labelled as one` : miss()],
+        ])}
+        ${(a.asked_for_a_price || []).length ? `<p class="ev-n">Asked for a price, in the broker's order: ${(a.asked_for_a_price || []).map((x) => `#${esc(String(x.id))} ${x.quoted ? `quoted ${esc(x.price)}` : `did not quote (${esc(x.reason || '')})`}`).join(' · ')}.</p>` : ''}
+      </div>` : '';
+
+  // The marketplace half: the agent on Brain Plaza that sells this answer,
+  // what it quoted through the marketplace's own hire path during this run,
+  // and the completed job where one exists.
+  const mk = t.marketplace;
+  const market = mk && !mk.error ? `
+      <div class="ev mk">
+        <div class="ev-h">Hired through the marketplace</div>
+        <p class="ev-n"><strong><a href="${esc(mk.hire)}">#${esc(String(mk.agent_id))} ${esc(mk.name)}</a></strong> — ${esc(mk.what_it_delivers)}.
+        ${mk.quote?.quoted
+          ? `Asked through the hire path during this run, it quoted <strong>${esc(mk.quote.price)}</strong>${mk.quote.escrow ? ` (escrow ${esc(mk.quote.escrow)}` + (mk.quote.provider ? `, provider ${esc(mk.quote.provider.slice(0, 6))}…${esc(mk.quote.provider.slice(-4))}` : '') + ')' : mk.quote.status === 402 ? ' (a 402 with the price, paid per x402)' : ''}.`
+          : `It did not quote during this run${mk.quote?.reason ? ` (${esc(mk.quote.reason)})` : ''}; the page says so rather than printing an older price.`}
+        ${mk.completed_job ? ` A job hired this way is on the chain: <a href="${esc(mk.completed_job.page)}">job ${esc(String(mk.completed_job.id))}</a>, ${esc(mk.completed_job.status)}, the delivered answer readable at <a href="${esc(mk.completed_job.result)}">${esc(mk.completed_job.result.replace('https://', ''))}</a>.` : ''}</p>
       </div>` : '';
 
   return `
@@ -81,7 +140,7 @@ const taskCard = (t) => {
       <p class="ratio">${t.ratio_lower_bound
         ? `${t.ratio_lower_bound}&times; longer by hand — and that is a floor, not an estimate: the hand-done path here is a script, with no page loads, no reading and no typing.`
         : 'No time ratio is published for this task. One of the two paths never produced the answer, and dividing a time by a non-answer would turn a failure into a benchmark.'}</p>
-      ${evidence}
+      ${evidence}${task2}${task3}${market}
     </article>`;
 };
 

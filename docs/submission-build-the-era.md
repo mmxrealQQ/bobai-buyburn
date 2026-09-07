@@ -1,24 +1,72 @@
 # Build the Era — submission draft
 
-Prepared 2026-09-02, refreshed 2026-09-07. **Not submitted.** Deadline 2026-09-09, form
-`forms.gle/9g9XPNFwnYaHAz9L8`, judging 2026-09-09 to 09-23.
+Prepared 2026-09-02, refreshed 2026-09-07 (evening). **Not submitted.** The
+form is titled "Build the Era Hackathon Registration" and is the only
+submission channel the hackathon page names ("Submit Project" →
+`forms.gle/9g9XPNFwnYaHAz9L8`). **Build period ends 2026-09-09 12:00 UTC —
+noon, not midnight** (from the form's own header: "Build period 12:00pm UTC+0,
+Aug 5 2026 – 12:00pm UTC+0, Sep 9 2026"). Judging 2026-09-09 to 09-23.
+Support group named on the page: https://t.me/BNBchaincommunity.
 
 Every figure below carries the date it was measured. On submission day, run
 the refresh list at the bottom and replace any figure that moved; nothing in
 this file is a claim that should outlive its date.
 
-## Form fields
+## Form fields — every field the form has, in its order (read 2026-09-07)
+
+Required fields are marked *. Personal fields are filled in by the operator on
+the day and never stored in this repo.
 
 | Field | Answer |
 |---|---|
-| Project name | Brain Plaza — the measured agent marketplace for BNB Chain |
-| One-line pitch | Every agent on BNB Chain, read from the registry, contacted, measured, and hireable in four clicks — with every number checkable on-chain. |
-| Project GitHub Repo Link (required) | **OPEN — see "The repo link" below** |
-| Sub-prize tracks | PancakeSwap (fee-tier measurement, hireable agent #310460) · TermiX (Agent Advantage Report, live at /advantage) · Altana (session keys on mainnet, live at /session) |
-| Prototype stage | Live on BSC mainnet, public, in daily use by our own automation |
-| Live URL | https://brainonbnb.com/registry |
-| Name, e-mail, Telegram, X, country, wallet | filled in by the operator on the day — never stored in this repo |
-| Availability 09-09 to 09-23 | yes |
+| Full Name * | operator |
+| Email Address * | operator |
+| Telegram Handle * | operator |
+| X (Twitter) Handle * | @BrainOnBNB |
+| Discord Handle | leave empty |
+| How did you hear about this hackathon? * | BNB Chain Website |
+| Country and Timezone * | operator (Switzerland, UTC+2 in September) |
+| Solo builder or team? * | Solo |
+| Number of Teammates * | 1 (Solo) |
+| Teammate Names, Emails, Roles | leave empty |
+| Project Name * | Brain Plaza — the measured agent marketplace for BNB Chain |
+| One-Line Pitch * | Every agent on BNB Chain, read from the registry, contacted, measured, and hireable in four clicks — with every number checkable on-chain. |
+| Project Description * | the text under "Project description" below |
+| Sub-prize tracks * (options: PancakeSwap, AltLayer, TermiX, Not sure) | PancakeSwap, TermiX. **Altana is not an option in this field** — its evidence goes into Additional Notes (below). AltLayer: not selected, nothing built for it. |
+| Project GitHub Repo Link * | **OPEN — see "The repo link" below** |
+| Prototype Stage * (Fresh idea / Early prototype / Working MVP) | Working MVP |
+| BSC/EVM Experience Level | Advanced |
+| Areas you are comfortable with | Solidity, AI agent frameworks, Onchain data/APIs, Frontend development |
+| Mentorship during the build period? * | No, I am confident building solo/as a team |
+| Availability 09-09 to 09-23 * | Yes, I confirm availability |
+| Wallet address in case you win * (ERC-20/BEP-20) | operator's choice on the day — a wallet the operator controls, not a worker wallet |
+| Additional Notes | the text under "Additional Notes" below (live URL, Altana evidence, the repo situation) |
+| Co-marketing / Prizes / Third-party risk / Terms * | I have read and agree to the Terms of Participation |
+
+There is no field for a live URL, a demo video or a deck. The live URL
+therefore goes into the first line of the description and into the notes.
+
+## Additional Notes (for the form field, ~900 characters)
+
+Live: https://brainonbnb.com/registry (marketplace), https://brainonbnb.com/advantage
+(TermiX Agent Advantage Report), https://brainonbnb.com/session (Altana).
+Everything is public and on BSC mainnet; nothing needs a login.
+
+Altana (not selectable above): the agent runs on its own Altana wallet
+0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3 on BNB Smart Chain (chain 56);
+session key 0xc11b9dc3a76225954ff040294daae83c7b902af060da656d9c72c9eb9939a6e8
+registered in the KeyStore 0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a with a
+call allowlist, a per-day spend cap and an expiry; one earlier session
+(0x123b8810…ac2e) was revoked before its expiry and stopped validating within a
+block. Real transactions through the session key, a refused call
+(UnauthorizedCall) and the revocation are listed with their hashes on
+https://brainonbnb.com/session, read live from the KeyStore; raw JSON at
+https://agent.brainonbnb.com/session.
+
+Repository: the GitHub account is suspended since 2026-07-24 (under appeal, no
+second account opened). The full source is public at
+`git clone https://brainonbnb.com/source.git` (MIT, secret-audited) and as
+bundles at https://brainonbnb.com/#library.
 
 ## Project description (for the form, ~1,500 characters)
 
@@ -157,9 +205,22 @@ nearly all the pair's price and saying otherwise would be spin.
   (9 runs since 2026-09-03) and the profit line are on /liquidity.
   **Refresh on submission day:** the position id, and whether the hourly
   cron has re-set it since.
-- **TermiX**: Agent Advantage Report at https://brainonbnb.com/advantage —
-  three real tasks, each done with and without an agent; the hand-done path
-  answered 0 of 3.
+- **TermiX**: Agent Advantage Report at https://brainonbnb.com/advantage,
+  re-measured 2026-09-07 evening against the track's wording. Three real
+  tasks, each run both ways in one run: trading / liquidity provision (which
+  fee tier pays), security / risk (the real cost of a $2,500 trade and
+  whether the LP can be pulled), agent discovery / hiring (find a Venus
+  health-factor agent and what it charges). For every task: wall-clock,
+  request count, and the actual outputs side by side (task 1 the five-tier
+  table, task 2 price / liquidity / share / sell cost / transfer tax / LP
+  burned, task 3 the candidates and the price quoted over A2A through the
+  hire path). The hand-done path answered 0 of 3; the agent 3 of 3. Each task
+  names the agent on Brain Plaza that sells the same answer and what it
+  quoted through the marketplace's own hire path during the run (#310460
+  0.1 $U, the x402 watch 0.50 USD1, #302257 0.1 $U), and task 3 links the
+  completed job 56657 hired that way with its delivered answer on-chain. No
+  time ratio is published where one side did not answer. Raw JSON at
+  /api-advantage.json, script `scripts/advantage-report.mjs` in the source.
 - **Altana**: session keys with allowlist, spend cap and expiry, registered in
   the KeyStore on mainnet, revocable — https://brainonbnb.com/session.
 
@@ -205,6 +266,7 @@ node scripts/dashboard-check/registry-coldstart.mjs
 node scripts/dispatch-safety.mjs
 curl -s https://agent.brainonbnb.com/stats | head -40
 curl -s https://agent.brainonbnb.com/lp/agent | head -60   # the re-sets, with gas per transaction
+node scripts/advantage-report.mjs && node scripts/advantage-publish.mjs   # TermiX report, then deploy the dashboard
 ```
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.

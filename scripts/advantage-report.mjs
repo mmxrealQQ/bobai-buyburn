@@ -144,7 +144,13 @@ async function task1Agent() {
       best_paying_tier: j.best_paying_tier,
       most_capital_tier: j.most_capital_tier,
       capital_is_in_the_best_paying_tier: j.capital_is_in_the_best_paying_tier,
-      window: j.measured_window,
+      // The tool dates the window from block timestamps and leaves minutes
+      // null when a tier could not be read in time. The page once printed
+      // "a single -minute window" from that null. Estimated from the block
+      // count instead, at BSC's 0.45 s a block, and labelled as an estimate.
+      window: j.measured_window && j.measured_window.minutes == null && j.measured_window.blocks
+        ? { ...j.measured_window, minutes: Number(((j.measured_window.blocks * 0.45) / 60).toFixed(1)), minutes_source: 'estimated from the block count at 0.45 s a block — the tool could not date every tier' }
+        : j.measured_window,
       tiers: (j.tiers || []).map((t) => ({
         tier: t.tier, capital_usd: t.capital_usd, swaps: t.swaps,
         fees_paid_usd: t.fees_paid_usd, fees_per_1000_usd_parked: t.fees_per_1000_usd_parked,
@@ -253,7 +259,7 @@ async function task1Manual() {
 
 // The size both paths price. Set from what the agent actually returns, so the
 // two are answering the same question.
-let TRADE_SIZE_USD = 5000;
+let TRADE_SIZE_USD = 2500;
 
 // ---- task 2: what does this trade cost, and can the pool be pulled? --------
 // The security task. Two questions that a token's own page never answers: the
@@ -261,24 +267,40 @@ let TRADE_SIZE_USD = 5000;
 // it can be withdrawn tomorrow.
 async function task2Agent() {
   const m = meter();
-  const j = await getJson(m, `${SITE}/api/pool-scan?address=${CAKE}`);
+  // The question is the real cost, and the transfer tax is part of it. When
+  // the log endpoint refuses the trade window, the tool says the tax could not
+  // be established rather than printing 0% — and this asks again, up to twice,
+  // every attempt counted, exactly as task 1 does. If the tax is still not
+  // established, the agent did NOT answer the question, and the report says so.
+  let j = await getJson(m, `${SITE}/api/pool-scan?address=${CAKE}`);
+  const taxKnown = (x) => (x.tax ?? x.transferTax)?.buyPct != null;
+  for (let attempt = 0; attempt < 2 && !taxKnown(j); attempt++) {
+    j = await getJson(m, `${SITE}/api/pool-scan?address=${CAKE}`);
+  }
   // Whatever the largest size the agent priced is, the hand-done path is asked
   // for the same one below. Comparing 0.28% at $2,500 against 0.31% at $5,000
   // would be comparing two different questions and calling it a difference.
   const at5k = (j.tradeCost || []).slice(-1)[0];
   TRADE_SIZE_USD = at5k?.sizeUsd || TRADE_SIZE_USD;
+  if (at5k?.sizeUsd && at5k.sizeUsd !== 2500) console.warn(`  note: the agent's largest priced size is $${at5k.sizeUsd}, the question says $2,500 — update the question text`);
   return {
     ...m.done(),
     answer: {
       price_usd: j.price?.usd,
       pool: j.pool?.venue,
-      liquidity_usd: j.pool?.liquidityUsd,
+      // The tool's liquidityUsd is the QUOTE SIDE ONLY (its liquidityBasis says
+      // so) — the BNB in the pool, the half that holds when the token falls.
+      // Named that way here so the hand-done column below measures the same
+      // thing; the first version compared it against a both-sides figure and
+      // printed a 2x "difference" that was two definitions.
+      hard_backing_usd: j.pool?.liquidityUsd,
+      liquidity_basis: j.pool?.liquidityBasis ?? 'quote side only',
       share_of_liquidity_readable: j.pool?.shareOfLiquidity,
       sell_cost_pct_at_size: at5k ? { sizeUsd: at5k.sizeUsd, sellCostPct: at5k.sellCostPct } : null,
       transfer_tax: j.tax ?? j.transferTax ?? null,
       lp_burned_pct: j.lp?.burnedPct ?? j.lpBurnedPct ?? null,
-      answered: true,
-      could_not_answer: null,
+      answered: taxKnown(j) && j.price?.usd != null,
+      could_not_answer: taxKnown(j) ? null : 'the transfer tax could not be established in this run (the log endpoint refused the trade window three times), and a cost without the tax is not the cost',
     },
   };
 }
@@ -296,7 +318,8 @@ async function task2Manual() {
   const bnbRound = await call(m, CHAINLINK_BNB_USD, SEL.latestRoundData);
   const bnbUsd = num(slice(bnbRound, 1), 8);
   const priceUsd = (quoteReserve / tokenReserve) * bnbUsd;
-  const liquidityUsd = quoteReserve * bnbUsd * 2;
+  // The BNB side of the pool, the same figure the agent reports.
+  const hardBackingUsd = quoteReserve * bnbUsd;
 
   // LP safety: how much of the LP token is at the dead address.
   const lpSupply = num(await call(m, pair, SEL.totalSupply));
@@ -317,7 +340,8 @@ async function task2Manual() {
     answer: {
       price_usd: priceUsd,
       pool: 'PancakeSwap V2',
-      liquidity_usd: liquidityUsd,
+      hard_backing_usd: hardBackingUsd,
+      liquidity_basis: 'quote side only — the WBNB reserve at the price feed',
       // The number this path cannot produce: what share of the token's total
       // liquidity this one readable pool is. Answering it means finding every
       // other pool on every other venue first — a second search, not a step.
@@ -366,13 +390,33 @@ async function task3Agent() {
   const m = meter();
   const found = await getJson(m, `${AGENT}/find?q=${encodeURIComponent('monitor a Venus health factor and warn me before liquidation')}&limit=5`);
   const candidates = found.candidates || found.results || found.agents || [];
+  // "Tell me what it charges" is half the question. The broker's hire path
+  // asks the candidate for a price over A2A; the first of the top three that
+  // quotes is the answer, and every candidate asked is counted as a request.
+  let charges = null;
+  const asked = [];
+  for (const c of candidates.slice(0, 3)) {
+    const id = c.id ?? c.agentId;
+    try {
+      const h = await getJson(m, `${AGENT}/hire?agent=${id}&task=${encodeURIComponent('health factor and liquidation distance for the Venus position at 0xd319e1F8e987cf78333cEA853F455366640929cF')}`, 45000);
+      asked.push({ id, name: c.name, quoted: Boolean(h.quote?.price), price: h.quote?.price ?? null, reason: h.quote?.price ? null : (h.reason || h.error || 'no quote') });
+      if (h.quote?.price) {
+        charges = { id, name: c.name, price: h.quote.price, currency: h.escrow?.payment_token_symbol ?? null, provider: h.provider ?? null, service: h.quote.service ?? null, how: 'quoted over A2A through the marketplace hire path, escrow ERC-8183' };
+        break;
+      }
+    } catch (e) {
+      asked.push({ id, name: c.name, quoted: false, price: null, reason: String(e.message || e).slice(0, 120) });
+    }
+  }
   return {
     ...m.done(),
     answer: {
-      answered: candidates.length > 0,
-      could_not_answer: null,
+      answered: candidates.length > 0 && Boolean(charges),
+      could_not_answer: candidates.length === 0 ? 'no candidate was found' : charges ? null : 'candidates were found but none of the top three quoted a price when asked',
       candidates: candidates.length,
-      top: candidates.slice(0, 3).map((c) => ({ id: c.id ?? c.agentId, name: c.name, hireable: c.hireable ?? null })),
+      top: candidates.slice(0, 3).map((c) => ({ id: c.id ?? c.agentId, name: c.name })),
+      asked_for_a_price: asked,
+      charges,
     },
   };
 }
@@ -417,6 +461,63 @@ async function task3Manual() {
     },
   };
 }
+
+// ---- the marketplace half --------------------------------------------------
+// TermiX asks for tasks run "with an agent hired through your marketplace".
+// The timed agent path above is the free endpoint; this records, per task, the
+// agent on Brain Plaza that sells the same answer, what it quotes right now
+// through the marketplace's own hire path, and the completed job where one
+// exists. Quoted outside the timed paths so the quote never inflates either
+// side's clock.
+async function quoteThroughMarketplace(agentId, task) {
+  const m = meter();
+  try {
+    const h = await getJson(m, `${AGENT}/hire?agent=${agentId}&task=${encodeURIComponent(task)}`, 45000);
+    return { ...m.done(), quoted: Boolean(h.quote?.price), price: h.quote?.price ?? null, currency: h.escrow?.payment_token_symbol ?? null, provider: h.provider ?? null, service: h.quote?.service ?? null, escrow: h.escrow?.standard ?? null, reason: h.quote?.price ? null : (h.reason || h.error || 'no quote') };
+  } catch (e) {
+    return { ...m.done(), quoted: false, price: null, reason: String(e.message || e).slice(0, 120) };
+  }
+}
+async function priceOfTheX402Watch() {
+  // The one-off pool measurement is free by design; the continuous watch of
+  // the same pool is the paid product, and its price is whatever the 402 says.
+  const m = meter();
+  try {
+    m.count();
+    const r = await fetch(`${AGENT}/watch`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(30000) });
+    const j = await r.json().catch(() => ({}));
+    const acc = Array.isArray(j.accepts) ? j.accepts[0] : null;
+    // The 402 says it in words ("Send 0.50 USD1 to 0x…"); the accepts[] entry
+    // carries the token's EIP-712 domain name, which for USD1 reads "USD Coin"
+    // and would mislabel the price. The sentence is the source, the atomic
+    // amount the fallback.
+    const said = /Send ([0-9.]+ [A-Za-z0-9$]+)/.exec(j.how || '');
+    const price = said ? said[1] : (acc?.maxAmountRequired ? `${Number(acc.maxAmountRequired) / 1e18} (atomic ${acc.maxAmountRequired}, asset ${acc.asset})` : null);
+    return { ...m.done(), status: r.status, quoted: r.status === 402 && Boolean(price), price: price ?? null, reason: r.status === 402 ? null : `expected 402, got ${r.status}` };
+  } catch (e) {
+    return { ...m.done(), quoted: false, price: null, reason: String(e.message || e).slice(0, 120) };
+  }
+}
+const MARKETPLACE = {
+  1: async () => ({
+    agent_id: 310460, name: 'Brain on BNB — PancakeSwap Fee Tier Placement', category: 'yield-optimization',
+    hire: `${SITE}/registry#cat-yield-optimization`, what_it_delivers: 'the same fee-tier measurement, delivered on-chain through the ERC-8183 escrow',
+    quote: await quoteThroughMarketplace(310460, 'which PancakeSwap fee tier is actually paying for 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82, placing $10000 of liquidity'),
+    completed_job: null,
+  }),
+  2: async () => ({
+    agent_id: 49467, name: 'Brain On BNB AI ($BOBAI)', category: 'pool measurement',
+    hire: `${SITE}/services`, what_it_delivers: 'the one-off measurement is free by design; the continuous watch of the same pool is sold per x402 and over MCP as bsc_pool_watch',
+    quote: await priceOfTheX402Watch(),
+    completed_job: null,
+  }),
+  3: async () => ({
+    agent_id: 302257, name: 'Brain on BNB — Venus Health Factor Monitor', category: 'health-factor',
+    hire: `${SITE}/registry#cat-health-factor`, what_it_delivers: 'the health factor of a Venus position, delivered on-chain through the ERC-8183 escrow',
+    quote: await quoteThroughMarketplace(302257, 'health factor and liquidation distance for the Venus position at 0xd319e1F8e987cf78333cEA853F455366640929cF'),
+    completed_job: { id: 56657, status: 'COMPLETED', result: `${AGENT}/job/56657/result`, page: `${SITE}/job?id=56657`, note: 'hired through the marketplace, delivered on-chain, escrow released' },
+  }),
+};
 
 // ---- self-test -------------------------------------------------------------
 // The harness decides what the report claims, so it is pinned in both
@@ -470,7 +571,7 @@ const TASKS = SELF_TEST ? [] : [
   {
     n: 2,
     category: 'security / risk',
-    question: 'Before I take a $5,000 position: what does that trade actually cost, and can the liquidity behind it be withdrawn tomorrow?',
+    question: 'Before I take a $2,500 position: what does that trade actually cost, and can the liquidity behind it be withdrawn tomorrow?',
     why_it_is_hard: 'The headline slippage a router shows is not the cost. Transfer tax, price impact and swap fee are three different numbers, and LP withdrawability is not on the token page at all.',
     agent: task2Agent, manual: task2Manual,
   },
@@ -509,10 +610,15 @@ for (const t of TASKS) {
   if (ratio) console.log(`  ratio  ${ratio}× — a lower bound: the manual path here is a script, not a person`);
   else if (agent && manual) console.log(`  ratio  withheld — ${manual.answer?.answered ? 'the agent' : 'the hand-done path'} did not produce the answer, and time against a non-answer is not a comparison`);
 
+  let marketplace = null;
+  try { marketplace = MARKETPLACE[t.n] ? await MARKETPLACE[t.n]() : null; } catch (e) { marketplace = { error: String(e.message || e) }; }
+  if (marketplace) console.log(`  market ${marketplace.quote?.quoted ? `${marketplace.name} quotes ${marketplace.quote.price}` : `${marketplace.name} — no quote (${marketplace.quote?.reason || marketplace.error})`}`);
+
   results.push({
     task: t.n, category: t.category, question: t.question, why_it_is_hard: t.why_it_is_hard,
     agent: agent ? { ...agent, error: null } : { error: agentError },
     manual: manual ? { ...manual, error: null } : { error: manualError },
+    marketplace,
     ratio_lower_bound: ratio,
     both_paths_answered: bothAnswered,
   });

@@ -201,6 +201,8 @@ const html = `<!DOCTYPE html>
   tr.win td{color:var(--gold)}
   .unm{color:#e2a03f}
   .ev-n{color:var(--muted);font-size:13.5px;line-height:1.6;margin:10px 0 0}
+  /* the marketplace block carries a result URL with no break point in it; at 360px it ran 17px past the card until this. */
+  .ev-n a{overflow-wrap:anywhere}
   .caveats li{color:var(--muted);font-size:14px;line-height:1.65;margin-bottom:6px}
   .foot{color:var(--muted);font-size:13.5px;line-height:1.7;margin-top:26px;border-top:1px solid var(--border);padding-top:16px}
   .foot code{background:rgba(255,255,255,.05);padding:2px 6px;border-radius:5px;font-size:12.5px}

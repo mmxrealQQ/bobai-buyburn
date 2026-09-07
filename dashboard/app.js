@@ -1017,22 +1017,30 @@ function lpLiveRange(pos){
 }
 function fillLpBlock(){
   const el = id => document.getElementById(id);
-  return fetch('https://agent.brainonbnb.com/lp/agent', {cache:'no-store'})
-    .then(r => r.ok ? r.json() : null).catch(() => null)
-    .then(rec => {
+  const get = u => fetch(u, {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
+  return Promise.all([get('https://agent.brainonbnb.com/lp/agent'), get('https://agent.brainonbnb.com/lp/series')])
+    .then(([rec, ser]) => {
         // The liquidity agent's own record: what it holds, whether it is
         // earning right now, and what it has already moved. Sums come from
         // the history of actions, not from a counter anyone could edit.
         const list = el('ag-lp'), noteEl = el('ag-lp-note');
         if(!list) return;
-        const item = (i, b, s) => '<li><span class="agt-i">' + i + '</span><div><b>' + b + '</b><span>' + s + '</span></div></li>';
+        const item = (i, b, s, cls) => '<li' + (cls ? ' class="' + cls + '"' : '') + '><span class="agt-i">' + i + '</span><div><b>' + b + '</b><span>' + s + '</span></div></li>';
         if(!rec || !rec.last){
           list.innerHTML = item('&middot;', 'No record yet', 'The agent has not run its first tick.');
           return;
         }
         // Plain words. The record's own reasons are written for an operator
         // ("below the 0.002 BNB floor"); a visitor gets the state, not the rule.
-        const last = rec.last, st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {};
+        // "Right now" is about the newest run on record: the daily one, or an
+        // hourly check that re-set the range after it — those land in history.
+        // Reading `last` alone showed "nothing to do, 2026-09-06 05:23" the
+        // morning after two automatic re-sets (7 Sep 02:50 was the newest).
+        const hist = Array.isArray(rec.history) ? rec.history : [];
+        const newest = hist.length ? hist[hist.length - 1] : null;
+        const daily = rec.last;
+        const last = newest && Date.parse(newest.at) > Date.parse(daily.at) ? newest : daily;
+        const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {};
         // The totals come from the record's own money-flow figures (one
         // function on the agent worker, shared with the Telegram report), so
         // this page and the bot never disagree about what went where.
@@ -1042,10 +1050,23 @@ function fillLpBlock(){
         const forwarded = fout.buyback_bnb || 0, kept = fout.kept_as_capital_bnb || 0;
         const f = (v, d) => Number(v || 0).toFixed(d);
         const when = String(last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
-        const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
-        const waiting = sweeps.filter(s => s.balance > 0).map(s => f(s.balance, 2) + ' ' + (s.token || s.source)).join(' + ');
+        // What waits to be swept is the flow's figure (from the daily run's
+        // sweep step); an hourly re-set has no sweep step and would say
+        // "nothing waiting" with 0.6 USD1 in the wallet.
+        const fw = flow.waiting && Array.isArray(flow.waiting.income) ? flow.waiting.income : [];
+        const waiting = fw.filter(s => s.amount > 0).map(s => f(s.amount, 2) + ' ' + (s.token || s.source)).join(' + ');
         const anyError = last.ok === false;
         const rows = [];
+        // Profit first — the question a visitor (and the operator) asks before
+        // any other. The figure is the series' own (summary.profit): value now
+        // against the first point, plus fees produced and owed, minus the gas
+        // on record. Nearly all of it is the pair's price, and the line says so.
+        const sm = ser && ser.summary, pr = sm && sm.profit;
+        if(pr){
+          const sg = v => (v > 0 ? '+' : '') + f(v, 5);
+          rows.push(item('&#9679;', 'Profit so far: ' + sg(pr.bnb) + ' BNB' + (pr.usd != null ? ' (about $' + Number(pr.usd).toFixed(2) + ')' : ''),
+            'Since ' + String(sm.since).slice(0, 10) + ' on ' + f(sm.value_bnb && sm.value_bnb.start, 4) + ' BNB of capital: ' + sg(pr.from_price_bnb) + ' BNB from the pair’s price, ' + sg(pr.from_fees_bnb) + ' BNB of fees' + (pr.gas_bnb != null ? ', −' + f(pr.gas_bnb, 5) + ' BNB of gas' : '') + '. Dollars at the BNB price of the last run.', 'lp-profit'));
+        }
         // A hand-triggered run can be narrowed to one step, and a record whose
         // only step is the rebalance still knows the position. Reading it from
         // collect alone showed "No position open" the evening the range was
@@ -1058,15 +1079,17 @@ function fillLpBlock(){
         const inRange = reset ? true : (c.in_range != null ? c.in_range : rb.in_range);
         rows.push(item('&#9679;',
           pos ? (inRange === false ? 'The position is out of range — waiting for a re-set' : 'The position is in range and earning') : 'No position open',
-          pos ? 'PancakeSwap V3 position #' + pos + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : ''));
+          pos ? 'PancakeSwap V3 position #' + pos + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : '', 'lp-pos'));
         rows.push(item('&#9679;', fees > 0 ? 'Fees collected so far: ' + f(fees, 5) + ' BNB — ' + f(forwarded, 5) + ' to the buyback bot, ' + f(kept, 5) + ' kept as capital' : 'No fees collected yet',
           (c.owed ? 'Owed right now: ' + f(c.owed.bnb_equivalent, 6) + ' BNB. Small amounts are left to grow until collecting them beats the gas. ' : '')
-          + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : '')));
+          + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : ''), 'lp-fees'));
         rows.push(item('&#9679;', swept > 0 ? 'Income swept in as capital: ' + f(swept, 5) + ' BNB' + (fout.into_position_bnb ? ' — ' + f(fout.into_position_bnb, 5) + ' BNB put into the position so far' : '') : 'No income swept in yet',
           (waiting ? 'Waiting to be moved: ' + waiting + '. It moves once it is worth more than the gas.' : 'Nothing waiting right now.')
           + (flow.gas && flow.gas.transactions ? ' The runs on record hold ' + flow.gas.transactions + ' transactions, ' + f(flow.gas.bnb, 6) + ' BNB of gas; runs by hand are on the chain, not in the record.' : '')));
-        rows.push(item('&#9679;', last.acted ? 'Last check: it acted' : 'Last check: nothing to do',
-          when + (anyError ? '. One step could not finish; the operator has been told.' : '.')));
+        const dailyWhen = String(daily.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
+        rows.push(item('&#9679;', reset ? 'Last run: it re-set the range around the price' : last.acted ? 'Last run: it acted' : 'Last run: nothing to do',
+          when + (anyError ? '. One step could not finish; the operator has been told.' : '.')
+          + (last !== daily ? ' The daily run before it, ' + dailyWhen + ', ' + (daily.acted ? 'acted' : 'had nothing to do') + (daily.ok === false ? ' and one step failed' : '') + '.' : '')));
         // The hourly range check, when the record has one: a visitor should
         // see that the range was looked at an hour ago, not only at 05:23.
         const chk = rec.last_check, chkRb = chk && chk.steps && chk.steps.rebalance;
@@ -1078,7 +1101,7 @@ function fillLpBlock(){
         list.innerHTML = rows.join('');
         if(noteEl) noteEl.textContent = 'The four steps run once a day on their own; the range is checked every hour. The capital stays in the position; only the buyback share of the fees leaves it.';
         if(pos) lpLiveRange(pos).then(l => {
-          const first = list.querySelector('li b'), sub = list.querySelector('li div span');
+          const first = list.querySelector('li.lp-pos b'), sub = list.querySelector('li.lp-pos div > span');
           if(!first) return;
           first.textContent = l.inRange ? 'The position is in range and earning'
             : 'The position is out of range right now — it earns nothing; the hourly check re-sets it once the price has been outside for two hours';
@@ -1092,9 +1115,9 @@ function fillLpBlock(){
         if(pos && String(c.position || '') !== String(pos)) fetch('https://agent.brainonbnb.com/lp/look?position=' + encodeURIComponent(pos), {cache:'no-store'})
           .then(r => r.ok ? r.json() : null).then(lk => {
             // 'div > span': the bullet span's parent is the li, the text span's is the div.
-            const li = list.querySelectorAll('li')[1], sub = li && li.querySelector('div > span');
+            const li = list.querySelector('li.lp-fees'), sub = li && li.querySelector('div > span');
             if(!lk || !lk.fees_owed || !sub) return;
-            sub.textContent = 'Owed right now: ' + f(lk.fees_owed.bnb_equivalent, 6) + ' BNB, read from the chain just now — the run at ' + when + (c.position ? ' read position #' + c.position : ' saw no position') + '. Small amounts are left to grow until collecting them beats the gas. '
+            sub.textContent = 'Owed right now: ' + f(lk.fees_owed.bnb_equivalent, 6) + ' BNB, read from the chain just now — the run at ' + when + (reset ? ' re-set the range, so its own figure starts at zero' : c.position ? ' read position #' + c.position : ' saw no position') + '. Small amounts are left to grow until collecting them beats the gas. '
               + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : '');
           }).catch(() => {});
       });
@@ -1129,7 +1152,7 @@ function fillLpSeries(){
           '<td class="' + (chg == null ? '' : chg >= 0 ? 'up' : 'down') + '">' + pct(chg) + '</td>' +
           '<td class="' + (p.in_range ? 'up' : p.in_range === false ? 'down' : '') + '">' + (p.in_range ? 'in' : p.in_range === false ? 'out' : '—') + '</td>' +
           '<td>' + f(p.owed_bnb,6) + '</td><td>' + f(p.forwarded_total_bnb,5) + '</td><td>' + f(p.swept_total_bnb,5) + '</td>' +
-          '<td>' + (p.ok === false ? 'one step failed' : p.acted ? 'moved money' : p.seen ? 'hourly check found a new position' : !p.position ? 'found no position' : 'nothing to do') + '</td></tr>';
+          '<td>' + (p.ok === false ? 'one step failed' : p.reset ? 're-set the range' : p.acted ? 'moved money' : p.seen ? 'hourly check found a new position' : 'nothing to do') + '</td></tr>';
       });
       table.innerHTML = head + rows.join('');
     });

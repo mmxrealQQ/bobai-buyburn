@@ -20,7 +20,7 @@
 <meta property="og:url" content="https://brainonbnb.com/services">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=44">
+<link rel="stylesheet" href="/styles.css?v=37">
 <style>
   .sv{max-width:1000px;margin:0 auto;padding:0 20px 60px}
   .sv-hero{padding:106px 0 8px}
@@ -64,6 +64,7 @@
   .sv-caps code{display:block;margin-top:8px;padding:7px 9px;border-radius:8px;background:rgba(0,0,0,.35);
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem;color:var(--text);overflow-wrap:anywhere}
   .sv-limit{font-style:italic;opacity:.85}
+  .sv-limit a{overflow-wrap:anywhere;word-break:break-all}
   .sv-nums{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:18px 0 0}
   .sv-num{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:13px 15px;min-width:0}
   .sv-num b{display:block;font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.5rem;color:var(--gold);
@@ -200,7 +201,7 @@
           <span class="sv-price">0.10 $U</span>
         </div>
         <p class="sv-ask">Which fee tier should I put liquidity in?</p>
-        <p class="sv-what">A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. And it does the sum the way the money actually works: fees go to the liquidity standing where the trade happens, so each tier is also read at the price - the tick book of the pool itself is walked to find what is parked within a couple of percent of it - with your own size in the denominator, because arriving is what dilutes it. On a constant-product pool that is under one percent of the balance, so the tier holding the most money is regularly not the tier you would be competing with least. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.</p>
+        <p class="sv-what">A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. And it does the sum the way the money actually works: fees go to the liquidity standing where the trade happens, so each tier is also read at the price — the tick book of the pool itself is walked to find what is parked within a couple of percent of it — with your own size in the denominator, because arriving is what dilutes it. On a constant-product pool that is under one percent of the balance, so the tier holding the most money is regularly not the tier you would be competing with least. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>token</dt><dd>the token or PancakeSwap pool to compare tiers for (0x…)</dd><dt>capitalUsd</dt><dd>how much liquidity you are placing, optional — defaults to 1000</dd></dl>
         <p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/310460" rel="noopener">#310460</a> &middot; <a href="https://brainonbnb.com/registry#cat-yield-optimization">hire it on Brain Plaza &rarr;</a></p>
@@ -238,6 +239,8 @@
           <span>a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.</span><code>https://brainonbnb.com/api/fee-tiers?address=0x...</code><span class="sv-limit">Try it: <a href="https://brainonbnb.com/api/fee-tiers?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82" rel="noopener">brainonbnb.com/api/fee-tiers?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82</a></span></li>
         <li><b><a href="https://brainonbnb.com/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;capitalUsd=1000" rel="noopener">which price range</a></b>
           <span>a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.</span><code>https://brainonbnb.com/api/range-plan?address=0x...&amp;capitalUsd=1000</code><span class="sv-limit">Try it: <a href="https://brainonbnb.com/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;capitalUsd=1000" rel="noopener">brainonbnb.com/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;capitalUsd=1000</a></span></li>
+        <li><b><a href="https://agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" rel="noopener">look at a V3 position</a></b>
+          <span>any PancakeSwap V3 position, read from the chain: in range or not, room to the edges, value, fees owed and whether collecting pays for its gas. The plan — re-set, width, what spare BNB adds — is the paid lp_position_plan</span><code>https://agent.brainonbnb.com/lp/look?position=&lt;id&gt; or ?address=&lt;wallet&gt;</code><span class="sv-limit">Try it: <a href="https://agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" rel="noopener">agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A</a></span></li>
         <li><b><a href="https://brainonbnb.com/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250" rel="noopener">which route, and can you get out</a></b>
           <span>which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.</span><code>https://brainonbnb.com/api/best-route?address=0x...&amp;usd=250</code><span class="sv-limit">Try it: <a href="https://brainonbnb.com/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250" rel="noopener">brainonbnb.com/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&amp;usd=250</a></span></li>
     </ul>

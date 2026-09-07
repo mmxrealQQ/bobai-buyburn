@@ -246,6 +246,7 @@ function page() {
   .sv-caps code{display:block;margin-top:8px;padding:7px 9px;border-radius:8px;background:rgba(0,0,0,.35);
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem;color:var(--text);overflow-wrap:anywhere}
   .sv-limit{font-style:italic;opacity:.85}
+  .sv-limit a{overflow-wrap:anywhere;word-break:break-all}
   .sv-nums{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:18px 0 0}
   .sv-num{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:13px 15px;min-width:0}
   .sv-num b{display:block;font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.5rem;color:var(--gold);

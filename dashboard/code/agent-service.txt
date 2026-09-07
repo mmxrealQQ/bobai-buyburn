@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 38 files, 10629 lines.
+# one fetch. 38 files, 10633 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2108,6 +2108,10 @@ export const CAPABILITIES = {
     // the decision, not for the protocol it is delivered over.
     { name: 'which fee tier pays', where: 'https://brainonbnb.com/api/fee-tiers?address=0x...', example: 'https://brainonbnb.com/api/fee-tiers?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', what: 'a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.' },
     { name: 'which price range', where: 'https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000', example: 'https://brainonbnb.com/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&capitalUsd=1000', what: 'a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.' },
+    // The free half of the liquidity agent: anybody's PancakeSwap V3 position,
+    // read live. /liquidity sells it as "the look is free"; it was not listed
+    // here. The wallet form does not go stale when the position is re-set.
+    { name: 'look at a V3 position', where: 'https://agent.brainonbnb.com/lp/look?position=<id> or ?address=<wallet>', example: 'https://agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', what: 'any PancakeSwap V3 position, read from the chain: in range or not, room to the edges, value, fees owed and whether collecting pays for its gas. The plan — re-set, width, what spare BNB adds — is the paid lp_position_plan' },
     { name: 'which route, and can you get out', where: 'https://brainonbnb.com/api/best-route?address=0x...&usd=250', example: 'https://brainonbnb.com/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&usd=250', what: 'which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.' },
   ],
   record: [
@@ -8017,7 +8021,7 @@ export const SERVICES = {
     category: 'yield-optimization',
     price: '100000000000000000',
     price_display: '0.10 $U',
-    deliverables: 'A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. And it does the sum the way the money actually works: fees go to the liquidity standing where the trade happens, so each tier is also read at the price - the tick book of the pool itself is walked to find what is parked within a couple of percent of it - with your own size in the denominator, because arriving is what dilutes it. On a constant-product pool that is under one percent of the balance, so the tier holding the most money is regularly not the tier you would be competing with least. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.',
+    deliverables: 'A pair on PancakeSwap lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every interface ranks them by the money already parked in them, which is not what they pay. This measures each tier over a live window: turnover, the fees the pool actually paid out, and what your capital would have earned in each, both sides of the pool counted. And it does the sum the way the money actually works: fees go to the liquidity standing where the trade happens, so each tier is also read at the price — the tick book of the pool itself is walked to find what is parked within a couple of percent of it — with your own size in the denominator, because arriving is what dilutes it. On a constant-product pool that is under one percent of the balance, so the tier holding the most money is regularly not the tier you would be competing with least. It names the tiers holding real money that did not trade at all, and states how long the better tier would have to keep paying before a move pays for its own gas. Not annualised: the window travels with every figure.',
     needs: { token: 'the token or PancakeSwap pool to compare tiers for (0x…)', capitalUsd: 'how much liquidity you are placing, optional — defaults to 1000' },
   },
   lp_position_plan: {

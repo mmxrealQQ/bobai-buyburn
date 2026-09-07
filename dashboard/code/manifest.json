@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 5452,
-   "zipBytes": 113695,
-   "txtBytes": 340636,
-   "sha256": "84fcd9ac3496650d",
+   "lines": 5576,
+   "zipBytes": 117876,
+   "txtBytes": 355018,
+   "sha256": "6551b9b107253417",
    "reqs": [
     {
      "what": "A static host",

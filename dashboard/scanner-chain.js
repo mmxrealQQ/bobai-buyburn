@@ -985,6 +985,25 @@ export async function bandDepthV3(pools,bandPct,maxTicks=400){
 const V2_ROUTER='0x10ed43c718714eb63d5aa57b78b54704e256024e';
 const SEL_SELL_FOT='0x791ac947', SEL_BUY_FOT='0xb6f9de95', SEL_BAL='0x70a08231', SEL_ALLOW='0xdd62ed3e';
 const PROBE='0x0000000000000000000000000000000000c0ffee';
+// A contract as the seller. The router's fee-on-transfer swap returns nothing,
+// so a plain address can only learn that a sell went through; a contract placed
+// at PROBE by the same state override reads back what arrived, and the tax is
+// arithmetic on that. Source: scripts/probe/SellProbe.sol; the bytes are
+// reproduced by scripts/probe/build-probe.mjs (--check compares them).
+// solc 0.8.36 · optimizer 200 · evm paris · 2121 bytes
+const SELL_PROBE_CODE='0x60806040526004361061002d5760003560e01c80634279a6a8146100395780637b213b6c1461007257600080fd5b3661003457005b600080fd5b34801561004557600080fd5b506100596100543660046104ee565b610085565b6040805192835260208301919091520160405180910390f35b610059610080366004610548565b610250565b6000808383600081811061009b5761009b61059b565b90506020020160208101906100b091906105b1565b60405163095ea7b360e01b81526001600160a01b03888116600483015260248201889052919091169063095ea7b3906044016020604051808303816000875af1158015610101573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061012591906105d3565b5060405163d06ca61f60e01b81526001600160a01b0387169063d06ca61f906101569088908890889060040161063d565b600060405180830381865afa158015610173573d6000803e3d6000fd5b505050506040513d6000823e601f3d908101601f1916820160405261019b9190810190610676565b6101a6600185610759565b815181106101b6576101b661059b565b60209081029190910101519150476001600160a01b03871663791ac9478760008888306101e542610258610772565b6040518763ffffffff1660e01b815260040161020696959493929190610785565b600060405180830381600087803b15801561022057600080fd5b505af1158015610234573d6000803e3d6000fd5b5050505080476102449190610759565b91505094509492505050565b600080808484610261600182610759565b8181106102705761027061059b565b905060200201602081019061028591906105b1565b60405163d06ca61f60e01b81529091506001600160a01b0387169063d06ca61f906102b89034908990899060040161063d565b600060405180830381865afa1580156102d5573d6000803e3d6000fd5b505050506040513d6000823e601f3d908101601f191682016040526102fd9190810190610676565b610308600186610759565b815181106103185761031861059b565b60209081029190910101516040516370a0823160e01b81523060048201529093506000906001600160a01b038316906370a0823190602401602060405180830381865afa15801561036d573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061039191906107c3565b90506001600160a01b03871663b6f9de953460008989306103b442610258610772565b6040518763ffffffff1660e01b81526004016103d49594939291906107dc565b6000604051808303818588803b1580156103ed57600080fd5b505af1158015610401573d6000803e3d6000fd5b50506040516370a0823160e01b81523060048201528493506001600160a01b03861692506370a082319150602401602060405180830381865afa15801561044c573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061047091906107c3565b61047a9190610759565b92505050935093915050565b80356001600160a01b038116811461049d57600080fd5b919050565b60008083601f8401126104b457600080fd5b50813567ffffffffffffffff8111156104cc57600080fd5b6020830191508360208260051b85010111156104e757600080fd5b9250929050565b6000806000806060858703121561050457600080fd5b61050d85610486565b935060208501359250604085013567ffffffffffffffff81111561053057600080fd5b61053c878288016104a2565b95989497509550505050565b60008060006040848603121561055d57600080fd5b61056684610486565b9250602084013567ffffffffffffffff81111561058257600080fd5b61058e868287016104a2565b9497909650939450505050565b634e487b7160e01b600052603260045260246000fd5b6000602082840312156105c357600080fd5b6105cc82610486565b9392505050565b6000602082840312156105e557600080fd5b815180151581146105cc57600080fd5b81835260208301925060008160005b84811015610633576001600160a01b0361061d83610486565b1686526020958601959190910190600101610604565b5093949350505050565b8381526040602082015260006106576040830184866105f5565b95945050505050565b634e487b7160e01b600052604160045260246000fd5b60006020828403121561068857600080fd5b815167ffffffffffffffff81111561069f57600080fd5b8201601f810184136106b057600080fd5b805167ffffffffffffffff8111156106ca576106ca610660565b8060051b604051601f19603f830116810181811067ffffffffffffffff821117156106f7576106f7610660565b60405291825260208184018101929081018784111561071557600080fd5b6020850194505b838510156107385784518082526020958601959093500161071c565b509695505050505050565b634e487b7160e01b600052601160045260246000fd5b8181038181111561076c5761076c610743565b92915050565b8082018082111561076c5761076c610743565b86815285602082015260a0604082015260006107a560a0830186886105f5565b6001600160a01b039490941660608301525060800152949350505050565b6000602082840312156107d557600080fd5b5051919050565b8581526080602082015260006107f66080830186886105f5565b6001600160a01b039490941660408301525060600152939250505056fea26469706673582212207c8527339b57accc0677cb1e32c5eb3cebcdfa73637ae8a8847fd653e60ac77a64736f6c63430008240033';
+const SEL_PROBE_SELL='0x4279a6a8', SEL_PROBE_BUY='0x7b213b6c';
+const CALLER='0x000000000000000000000000000000000000beef';
+// The token amount that must have reached a PancakeSwap V2 pair for it to pay
+// `received` of the quote side, from the constant product with the 0.25% fee
+// (getAmountIn without its +1). What was sent minus what arrived is the tax.
+// Exported so the checker can pin the arithmetic without a node in the loop.
+export function sellTaxFromReceived(reserveTok,reserveQ,amount,received){
+  if(!(reserveQ>received)||!(amount>0n)||!(received>0n))return null;
+  const arrived=(reserveTok*received*10000n)/((reserveQ-received)*9975n);
+  const t=1-Number(arrived)/Number(amount);
+  return t<0?0:Math.min(t,1);
+}
 const pad32=v=>(typeof v==='bigint'?v.toString(16):String(v).replace(/^0x/,'')).padStart(64,'0');
 const hexToBytes=h=>{const s=h.replace(/^0x/,'');const a=new Uint8Array(s.length/2);for(let i=0;i<a.length;i++)a[i]=parseInt(s.substr(i*2,2),16);return a};
 // keccak256 over raw bytes. The page and the worker both have crypto.subtle
@@ -1069,9 +1088,10 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     const res=await rpcBatch([call(pair,SEL.reserves)],url);
     const rr=res2(res[0]);if(!rr)return {ok:false,reason:'the pair reserves could not be read'};
     const reserveTok=BigInt(Math.floor(tokenIs0?rr[0]:rr[1]));
+    const reserveQ=BigInt(Math.floor(tokenIs0?rr[1]:rr[0]));
     const amount=reserveTok/1000n>0n?reserveTok/1000n:1n;
     const amtHex='0x'+pad32(amount);
-    const probeKey=pad32(PROBE), routerKey=pad32(V2_ROUTER);
+    const probeKey=pad32(PROBE);
     const balCalls=[],balKeys=[];
     for(let slot=0;slot<40;slot++){const k=keccakHex(probeKey+pad32(BigInt(slot)));balKeys.push(k);
       balCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_BAL+probeKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
@@ -1080,9 +1100,72 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     // answers under load. The long tail is only asked when the short one misses.
     let b1=await searchSlot(balCalls.slice(0,12),amount,url);
     if(!b1.hit)b1=await searchSlot(balCalls.slice(12),amount,b1.url);
-    let node=b1.url;const balHit=b1.hit;
+    const node=b1.url;const balHit=b1.hit;
     if(!balHit)return {ok:false,reason:'could not place a test balance in this contract (non-standard storage) — not checked, not cleared'};
     const balKey=balKeys[balHit.id];
+    const size_note='one part in a thousand of the pair\'s token reserve, sold from a fresh address with no history';
+
+    // 1. The probe: a contract at PROBE sells and buys, and reports what
+    // arrived. That is the sell test AND the tax, in one call each.
+    const pr=await probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node);
+    if(pr.supported&&pr.sell.ok&&pr.buy.ok){
+      return {ok:true,sellable:true,buyable:true,sell_error:null,buy_error:null,amount:amount.toString(),size_note,
+        tax:{sell_pct:pr.sellTax==null?null:+(pr.sellTax*100).toFixed(2),buy_pct:pr.buyTax==null?null:+(pr.buyTax*100).toFixed(2),
+          method:'simulated at this block: what the pair would pay for the whole amount against what arrived after the transfer, from a fresh address with no history'},
+        source:'eth_call with a state override on the PancakeSwap V2 router, at this block; the seller is a contract placed at a fresh address so what came back could be read'};
+    }
+    // 2. A revert with a contract as the seller is not yet a verdict: a
+    // "no contracts may trade" rule refuses it and a plain wallet sails
+    // through. So the same sell is asked from a plain address before anything
+    // is called refused — and when the node does not support code overrides at
+    // all, the plain address is simply the only path.
+    const plain=await plainRoundTrip(token,amount,amtHex,balKey,node);
+    if(!plain.ok)return pr.supported
+      ? {ok:true,sellable:pr.sell.ok,buyable:pr.buy.ok,sell_error:pr.sell.error,buy_error:pr.buy.error,amount:amount.toString(),size_note,tax:null,
+         source:'eth_call with a state override on the PancakeSwap V2 router, at this block; the seller was a contract at a fresh address'}
+      : plain;
+    if(pr.supported&&plain.sellable&&!pr.sell.ok){
+      return {...plain,tax:null,contract_refused:pr.sell.error,
+        note:'A plain wallet sells; a contract as the seller was refused ('+pr.sell.error+'). That is what an anti-bot rule looks like, and it means the tax could not be measured by simulation.'};
+    }
+    return {...plain,tax:null};
+  }catch(e){return {ok:false,reason:'the simulation could not run: '+String(e.message||e).slice(0,80)}}
+}
+async function probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node){
+  const override={[token]:{stateDiff:{[balKey]:amtHex}},[PROBE]:{code:SELL_PROBE_CODE,balance:'0x'+pad32(10n**18n)},[CALLER]:{balance:'0x'+pad32(10n**18n)}};
+  const sellData=SEL_PROBE_SELL+pad32(V2_ROUTER)+pad32(amount)+pad32(0x60n)+pad32(2n)+pad32(token)+pad32(WBNB);
+  const buyData=SEL_PROBE_BUY+pad32(V2_ROUTER)+pad32(0x40n)+pad32(2n)+pad32(WBNB)+pad32(token);
+  const calls=[
+    {jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:CALLER,to:PROBE,data:sellData,gas:'0x1e8480'},'latest',override]},
+    {jsonrpc:'2.0',id:2,method:'eth_call',params:[{from:CALLER,to:PROBE,data:buyData,value:'0x'+pad32(10n**16n),gas:'0x1e8480'},'latest',override]},
+  ];
+  let sell=null,buy=null;
+  for(const u of [node,...RPCS.filter(x=>x!==node)]){
+    let out=null;try{out=await postRaw(u,calls)}catch(e){continue}
+    if(!Array.isArray(out))continue;
+    const s1=out.find(x=>x.id===1),b1=out.find(x=>x.id===2);
+    const settled=x=>x&&(!x.error||isRevert(x.error));
+    if(settled(s1)&&settled(b1)){sell=s1;buy=b1;break}
+  }
+  if(!sell||!buy)return {supported:false};
+  const two=h=>{const x=String(h||'').replace(/^0x/,'');return x.length>=128?[BigInt('0x'+x.slice(0,64)),BigInt('0x'+x.slice(64,128))]:null};
+  const sv=sell.error?null:two(sell.result),bv=buy.error?null:two(buy.result);
+  // A result that decodes to nothing is a node that ran the call without the
+  // code override and returned empty — that is "unsupported", not "sold".
+  if((!sell.error&&!sv)||(!buy.error&&!bv))return {supported:false};
+  const sellTax=sv?sellTaxFromReceived(reserveTok,reserveQ,amount,sv[1]):null;
+  const buyTax=bv&&bv[0]>0n?Math.max(0,Math.min(1,1-Number(bv[1])/Number(bv[0]))):null;
+  return {supported:true,
+    sell:{ok:!sell.error,error:sell.error?revertText(sell.error):null,quoted:sv?sv[0].toString():null,received:sv?sv[1].toString():null},
+    buy:{ok:!buy.error,error:buy.error?revertText(buy.error):null,quoted:bv?bv[0].toString():null,received:bv?bv[1].toString():null},
+    sellTax,buyTax};
+}
+// The plain-address path: the original simulation. It needs the allowance
+// placed by storage override too, since a wallet cannot approve inside an
+// eth_call, and it learns only whether the router accepted the sell.
+async function plainRoundTrip(token,amount,amtHex,balKey,node){
+  try{
+    const probeKey=pad32(PROBE), routerKey=pad32(V2_ROUTER);
     const alCalls=[],alKeys=[];
     for(let slot=0;slot<40;slot++){const inner=keccakHex(probeKey+pad32(BigInt(slot)));const k=keccakHex(routerKey+inner.slice(2));alKeys.push(k);
       alCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_ALLOW+probeKey+routerKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}

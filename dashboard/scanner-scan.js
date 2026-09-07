@@ -441,9 +441,14 @@ export async function scan(input, env) {
   const sim = await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   const gB = Number(gp.buy_tax);
   const gS = Number(gp.sell_tax);
-  const taxB = tax.ok && tax.buy != null ? tax.buy : isFinite(gB) ? gB : 0;
-  const taxS = tax.ok && tax.sell != null ? tax.sell : isFinite(gS) ? gS : 0;
-  const usedTax = tax.ok || isFinite(gB) || isFinite(gS);
+  // Per direction: an executed trade first, the simulated trade second (the
+  // probe read what arrived at this block), the label last.
+  const sB = sim && sim.tax && sim.tax.buy_pct != null ? sim.tax.buy_pct / 100 : null;
+  const sS = sim && sim.tax && sim.tax.sell_pct != null ? sim.tax.sell_pct / 100 : null;
+  const taxB = tax.ok && tax.buy != null ? tax.buy : sB != null ? sB : isFinite(gB) ? gB : 0;
+  const taxS = tax.ok && tax.sell != null ? tax.sell : sS != null ? sS : isFinite(gS) ? gS : 0;
+  const simulated = sB != null || sS != null;
+  const usedTax = tax.ok || simulated || isFinite(gB) || isFinite(gS);
 
   let rows, up, down, upMin = null, downMin = null;
   if (pool.kind === 'v2') {
@@ -527,9 +532,12 @@ export async function scan(input, env) {
       sellPct: usedTax ? +(taxS * 100).toFixed(3) : null,
       measured: !!tax.ok,
       // The distinction that matters: measured means real executed trades were
-      // read; labelled means a reputation service said so and nothing verified
-      // it. Those disagree in practice, sometimes by more than a point.
-      source: tax.ok ? 'measured from executed trades on-chain' : usedTax ? 'labelled by GoPlus, unverified' : 'unknown',
+      // read; simulated means the same trade was run on the chain at this block
+      // from a fresh address and its gap read; labelled means a reputation
+      // service said so and nothing verified it. Those disagree in practice,
+      // sometimes by more than a point.
+      source: tax.ok ? 'measured from executed trades on-chain' : simulated ? 'simulated on-chain at this block, from a fresh address' : usedTax ? 'labelled by GoPlus, unverified' : 'unknown',
+      ...(simulated ? { simulated: { buyPct: sB == null ? null : +(sB * 100).toFixed(2), sellPct: sS == null ? null : +(sS * 100).toFixed(2), method: sim.tax.method } } : {}),
       ...(usedTax ? {} : { warning: 'No transfer tax could be established — neither from executed trades nor from a label. The cost figures below therefore EXCLUDE any transfer tax. If this token takes a cut on transfer, a real trade costs more than shown.' }),
       ...(tax.ok && tax.trades ? { tradesSampled: tax.trades } : {}),
     },

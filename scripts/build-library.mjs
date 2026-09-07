@@ -521,6 +521,13 @@ function scan(path, body) {
 
     if (hex.length === 64 && ALLOWED_HEX64.has(m[0].toLowerCase())) continue;
 
+    // EVM runtime bytecode: the sell probe the scanner places by state
+    // override (scripts/probe/SellProbe.sol). Solidity's prologue — the free
+    // memory pointer, 6080604052 — and a length no key has (2,000+ hex). A key
+    // that happened to start with those bytes would still be 64 hex and is
+    // still refused; the self-test below holds both sides.
+    if (hex.length > 1000 && /^6080604052/i.test(hex)) continue;
+
     hits.push({path, what: `${hex.length}-hex — private key?`, at: body.slice(0, m.index).split('\n').length,
                sample: m[0].slice(0, 12) + '…'});
   }
@@ -574,6 +581,7 @@ function selftest() {
     ['burn: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e', 'a transaction link'],
     [`proof: "0x${'ab'.repeat(65)}"`, 'a 65-byte signature'],
   ];
+  clean.push([`const SELL_PROBE_CODE='0x6080604052${'60'.repeat(1100)}';`, 'the sell probe bytecode (Solidity prologue, 2,000+ hex)']);
   for (const [text, what] of clean) {
     if (scan('selftest', redact(text)).length) { console.error(`  FALSE POSITIVE on ${what}`); failed++; }
   }
@@ -583,10 +591,12 @@ function selftest() {
   for (const [text, what] of [
     [`const k = "0x${'7f'.repeat(64)}";`, 'a 64-byte hex blob'],
     [`0x${'d4'.repeat(32)} // near bscscan.com/tx/ but not inside the link`, 'a bare key beside a tx link'],
+    [`const k = "0x6080604052${'ab'.repeat(27)}";`, 'a key that starts like Solidity bytecode'],
+    [`const k = "0x${'ab'.repeat(600)}";`, 'a long hex run without the bytecode prologue'],
   ]) {
     if (!scan('selftest', redact(text)).length) { console.error(`  MISSED: ${what}`); failed++; }
   }
-  const total = cases.length + clean.length + 2;
+  const total = cases.length + clean.length + 4;
   if (failed) { console.error(`\nself-test failed (${failed}) — the redaction gate is not doing its job.`); process.exit(1); }
   // The personal-identifier count is stated, not implied. When the specimen
   // list grew from one to four, the old hook kept printing the same green line

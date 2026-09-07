@@ -7,7 +7,10 @@
 //   · two tokens everybody can sell come back sellable,
 //   · the same call with the allowance withheld comes back NOT sellable, with
 //     the router's own reason — proof that a revert is seen as a revert and
-//     never read as "fine".
+//     never read as "fine",
+//   · the tax the probe reads is pinned both ways: the arithmetic from what
+//     arrived returns 3% for a 3% token and 0% for a clean one, and live the
+//     probe reads BOBAI at 3% and CAKE at 0%.
 // Run: node scripts/sell-sim-check.mjs
 import fs from 'node:fs';
 import os from 'node:os';
@@ -30,6 +33,20 @@ ok('an unsupported override is NOT a revert', !C.isRevert({ code: -32602, messag
 ok('keccak256 of the empty string matches the known vector',
   C.keccakHex('') === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470');
 
+// The tax arithmetic, without a node: a pair holding 1e24 tokens and 1e21
+// WBNB is sold 1e21 tokens; when 97% of them arrive the inverse must say 3%,
+// and when all of them arrive it must say 0%. A function that returned 0% for
+// both would pass every "sellable" check above and be worthless.
+{
+  const rTok = 10n ** 24n, rQ = 10n ** 21n, amount = 10n ** 21n;
+  const out = (arrived) => (arrived * 9975n * rQ) / (rTok * 10000n + arrived * 9975n);
+  const t3 = C.sellTaxFromReceived(rTok, rQ, amount, out((amount * 97n) / 100n));
+  const t0 = C.sellTaxFromReceived(rTok, rQ, amount, out(amount));
+  ok('a 3% tax is read as 3% from what arrived', t3 != null && Math.abs(t3 - 0.03) < 0.0005, String(t3));
+  ok('a clean token is read as 0%', t0 != null && Math.abs(t0) < 0.0005, String(t0));
+  ok('a received amount the pool could not pay is not a tax', C.sellTaxFromReceived(rTok, rQ, amount, rQ) == null);
+}
+
 const PAIRS = [
   ['BOBAI', '0x245c386dcfed896f5c346107596141e5edcbffff', '0x6eadd4cb786898b34929444988380ed0cc6fd9a6'],
   ['CAKE', '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', '0x0ed7e52944161450477ee417de9cd3a859b14fd0'],
@@ -40,6 +57,11 @@ for (const [name, token, pair] of PAIRS) {
   ok(`${name}: the simulation ran`, r.ok, r.reason);
   ok(`${name}: a sell goes through`, r.ok && r.sellable === true, r.sell_error);
   ok(`${name}: a buy goes through`, r.ok && r.buyable === true, r.buy_error);
+  // The probe's reading of the tax, live. BOBAI charges 3% each way, CAKE
+  // nothing: two different answers from the same code, or it measured nothing.
+  const want = name === 'BOBAI' ? 3 : 0;
+  ok(`${name}: the simulated sell tax reads ${want}%`, r.tax && r.tax.sell_pct != null && Math.abs(r.tax.sell_pct - want) < 0.3, JSON.stringify(r.tax));
+  ok(`${name}: the simulated buy tax reads ${want}%`, r.tax && r.tax.buy_pct != null && Math.abs(r.tax.buy_pct - want) < 0.3, JSON.stringify(r.tax));
 }
 ok('a V3-only token is reported as not simulated, not as sellable',
   (await C.simulateRoundTrip(PAIRS[1][1], PAIRS[1][2], true, 'v3')).ok === false);

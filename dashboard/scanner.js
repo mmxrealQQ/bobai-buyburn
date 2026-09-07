@@ -13,7 +13,7 @@
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=24';
+  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=25';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -627,23 +627,34 @@ function renderLadder(rows,taxNote,floors,venue){
 // The centrepiece, because it is the figure most likely to be wrong elsewhere.
 // Measured values win; a label is shown as a label, with its disagreement
 // spelled out rather than quietly averaged away.
-function taxCard(tax,gp,gpOk){
+function taxCard(tax,gp,gpOk,sim){
   const c=card('The transfer tax, measured',
-    'Not taken from a label — read off trades that actually executed. The pool reports how many tokens it moved, the token’s own transfer events report how many arrived, and the gap is what the wallet was charged.');
+    'Not taken from a label — read off trades that actually executed. The pool reports how many tokens it moved, the token’s own transfer events report how many arrived, and the gap is what the wallet was charged. Where the window holds no trade in a direction, the same trade is simulated on the chain at this block and its gap read the same way.');
   const gB=gp.buy_tax!=null&&isFinite(Number(gp.buy_tax))?Number(gp.buy_tax)*100:null,
         gS=gp.sell_tax!=null&&isFinite(Number(gp.sell_tax))?Number(gp.sell_tax)*100:null;
+  // The simulated pair, when the probe could read what arrived. Second to a
+  // real executed trade, ahead of a label: it happened on the chain, at this
+  // block, just not with anyone's money.
+  const sB=sim&&sim.tax&&sim.tax.buy_pct!=null?sim.tax.buy_pct:null,
+        sS=sim&&sim.tax&&sim.tax.sell_pct!=null?sim.tax.sell_pct:null;
   if(tax.ok){
     const mB=tax.buy!=null?tax.buy*100:null,mS=tax.sell!=null?tax.sell*100:null;
     c.appendChild(statRow([
-      {v:mB!=null?pc(mB):(gB!=null?pc(gB):'—'),l:'Buy tax',dim:mB==null,
-        tone:mB!=null?band(mB,0.01,5):'',
+      {v:mB!=null?pc(mB):(sB!=null?pc(sB):(gB!=null?pc(gB):'—')),l:'Buy tax',dim:mB==null&&sB==null,
+        tone:mB!=null?band(mB,0.01,5):(sB!=null?band(sB,0.01,5):''),
         s:tax.nBuy?'median of '+tax.nBuy+' executed buy'+(tax.nBuy===1?'':'s')
-          :(gB!=null?'no buy in the window — GoPlus’s figure, unverified':'no buy in the window')},
-      {v:mS!=null?pc(mS):(gS!=null?pc(gS):'—'),l:'Sell tax',dim:mS==null,
-        tone:mS!=null?band(mS,0.01,5):'',
+          :(sB!=null?'no buy in the window — simulated buy at this block':(gB!=null?'no buy in the window — GoPlus’s figure, unverified':'no buy in the window'))},
+      {v:mS!=null?pc(mS):(sS!=null?pc(sS):(gS!=null?pc(gS):'—')),l:'Sell tax',dim:mS==null&&sS==null,
+        tone:mS!=null?band(mS,0.01,5):(sS!=null?band(sS,0.01,5):''),
         s:tax.nSell?'median of '+tax.nSell+' executed sell'+(tax.nSell===1?'':'s')
-          :(gS!=null?'no sell in the window — GoPlus’s figure, unverified':'no sell in the window')},
+          :(sS!=null?'no sell in the window — simulated sell at this block':(gS!=null?'no sell in the window — GoPlus’s figure, unverified':'no sell in the window'))},
     ]));
+    // Two readings of the same tax, when both exist: the executed trades and
+    // the simulation. They should agree; when they do not, both are shown.
+    const both=[];
+    if(mB!=null&&sB!=null&&Math.abs(mB-sB)>0.15)both.push('buy '+pc(mB)+' from executed trades vs '+pc(sB)+' simulated');
+    if(mS!=null&&sS!=null&&Math.abs(mS-sS)>0.15)both.push('sell '+pc(mS)+' from executed trades vs '+pc(sS)+' simulated');
+    if(both.length)c.appendChild(el('p','cd-foot','The simulation read a different gap than the executed trades: '+both.join('; ')+'. A tax that changes with the wallet, the size or the block does that; the executed trades are what real wallets paid.'));
     const parts=[];
     if(tax.spread.buy.length>1)parts.push('buys charged '+tax.spread.buy.map(x=>x+'%').join(', '));
     if(tax.spread.sell.length>1)parts.push('sells charged '+tax.spread.sell.map(x=>x+'%').join(', '));
@@ -656,6 +667,21 @@ function taxCard(tax,gp,gpOk){
       const w=el('div','warn warn-soft');
       w.appendChild(el('b',null,'GoPlus reports a different tax than the chain charged.'));
       w.appendChild(el('span',null,dis.join(' · ')+'. The figures on this page use the measured value. A label can be stale, can come from a partial simulation, or can include slippage from whatever size was simulated.'));
+      c.appendChild(w);
+    }
+  }else if(sB!=null||sS!=null){
+    c.appendChild(statRow([
+      {v:sB!=null?pc(sB):(gB!=null?pc(gB):'—'),l:'Buy tax',dim:sB==null,tone:sB!=null?band(sB,0.01,5):'',s:sB!=null?'simulated buy at this block':(gB!=null?'GoPlus label, unverified':'—')},
+      {v:sS!=null?pc(sS):(gS!=null?pc(gS):'—'),l:'Sell tax',dim:sS==null,tone:sS!=null?band(sS,0.01,5):'',s:sS!=null?'simulated sell at this block':(gS!=null?'GoPlus label, unverified':'—')},
+    ]));
+    c.appendChild(el('p','cd-foot','No executed trade to read ('+tax.reason+'), so the tax comes from a buy and a sell simulated on the chain at this block, from a fresh address: what the pair paid for the whole amount against what arrived. Real wallets may be treated differently — an exempt list, a size rule — which is why an executed trade outranks this when there is one.'));
+    const dis=[];
+    if(gB!=null&&sB!=null&&Math.abs(gB-sB)>0.15)dis.push('buy '+pc(gB)+' vs '+pc(sB)+' simulated');
+    if(gS!=null&&sS!=null&&Math.abs(gS-sS)>0.15)dis.push('sell '+pc(gS)+' vs '+pc(sS)+' simulated');
+    if(dis.length){
+      const w=el('div','warn warn-soft');
+      w.appendChild(el('b',null,'GoPlus reports a different tax than the simulation charged.'));
+      w.appendChild(el('span',null,dis.join(' · ')+'. The figures on this page use the simulated value.'));
       c.appendChild(w);
     }
   }else{
@@ -829,7 +855,7 @@ function render(d){
     o.appendChild(w);
   }
 
-  o.appendChild(taxCard(tax,gp,gpOk));
+  o.appendChild(taxCard(tax,gp,gpOk,d.sim));
 
   // ladder
   const lad=card('What a trade does to the price — and what it costs',
@@ -837,13 +863,15 @@ function render(d){
   // One direction can be measured while the other is not: a quiet pool may show
   // three sells and no buys inside the window. Saying "measured" for both would
   // then be false for half the column, so each side names its own source.
-  const src=m=>m?'measured':'reported by GoPlus, unverified';
+  const src=(m,sim)=>m?'measured':sim?'simulated at this block':'reported by GoPlus, unverified';
   const taxNote=(d.taxB||d.taxS)
-    ? 'Costs include a '+pc(d.taxB*100)+' buy tax ('+src(tax.ok&&tax.buy!=null)+
-      ') and a '+pc(d.taxS*100)+' sell tax ('+src(tax.ok&&tax.sell!=null)+
+    ? 'Costs include a '+pc(d.taxB*100)+' buy tax ('+src(tax.ok&&tax.buy!=null,d.simB)+
+      ') and a '+pc(d.taxS*100)+' sell tax ('+src(tax.ok&&tax.sell!=null,d.simS)+
       '), plus the '+(pool.fee*100).toFixed(2)+'% pool fee.'
     : (tax.ok&&(tax.buy!=null||tax.sell!=null))
       ? 'Costs include the '+(pool.fee*100).toFixed(2)+'% pool fee only — the transfer tax measured 0% on the executed trades above, so nothing is added for it.'
+    : (d.simB||d.simS)
+      ? 'Costs include the '+(pool.fee*100).toFixed(2)+'% pool fee only — the transfer tax came to 0% on the buy and sell simulated at this block, so nothing is added for it.'
       : 'Costs include the '+(pool.fee*100).toFixed(2)+'% pool fee only — no transfer tax could be established for this token, measured or reported, so treat this column as a floor.';
   // The toll: what a trade of ANY size costs before depth enters the picture.
   const floors={buy:(1-(1-d.taxB)*(1-pool.fee))*100, sell:(1-(1-d.taxS)*(1-pool.fee))*100};
@@ -1242,9 +1270,14 @@ async function scan(input){
     at('simulating a sell…');
     const sim=await simulateRoundTrip(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
     const gB=Number(gp.buy_tax),gS=Number(gp.sell_tax);
-    const taxB=tax.ok&&tax.buy!=null?tax.buy:(isFinite(gB)?gB:0),
-          taxS=tax.ok&&tax.sell!=null?tax.sell:(isFinite(gS)?gS:0),
-          usedTax=tax.ok||isFinite(gB)||isFinite(gS);
+    // Which tax the cost columns use, per direction: an executed trade first,
+    // the simulation second, the label last, zero (and said so) never quietly.
+    const sB=sim&&sim.tax&&sim.tax.buy_pct!=null?sim.tax.buy_pct/100:null,
+          sS=sim&&sim.tax&&sim.tax.sell_pct!=null?sim.tax.sell_pct/100:null;
+    const taxB=tax.ok&&tax.buy!=null?tax.buy:(sB!=null?sB:(isFinite(gB)?gB:0)),
+          taxS=tax.ok&&tax.sell!=null?tax.sell:(sS!=null?sS:(isFinite(gS)?gS:0)),
+          simB=!(tax.ok&&tax.buy!=null)&&sB!=null,simS=!(tax.ok&&tax.sell!=null)&&sS!=null,
+          usedTax=tax.ok||sB!=null||sS!=null||isFinite(gB)||isFinite(gS);
 
     at('quoting trade sizes…');
     let rows,up,down,upMin=null,downMin=null;
@@ -1282,7 +1315,7 @@ async function scan(input){
 
     render({gp,gpOk,sim,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
-      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,partial,mineUsd,otherLiq});
+      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
     remember(token,symb);
   }catch(e){

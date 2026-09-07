@@ -32,6 +32,7 @@
 //   node scripts/fund-service-wallet.mjs                 # show the plan
 //   node scripts/fund-service-wallet.mjs --usd 2         # same, different size
 //   node scripts/fund-service-wallet.mjs --confirm       # actually send
+//   node scripts/fund-service-wallet.mjs --to altana --usd 4 --confirm   # the Altana agent wallet instead
 import 'dotenv/config';
 import { createWalletClient, createPublicClient, http, formatEther, parseEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -42,6 +43,14 @@ import { bsc } from 'viem/chains';
 const RPC = process.env.BSC_RPC_URL || 'https://bsc-dataseed1.defibit.io';
 
 const SERVICE_WALLET = '0x690E950214980BC329823A2DB2fD90C06Bd54dE4';
+// --to altana: the agent's Altana smart account (worker-agent/wrangler.toml,
+// ALTANA_AGENT_WALLET). It pays the relay fee for every session grant and
+// revoke; two grants and one revoke on 2026-09-07 took it from 0.0024 to
+// 0.0009 BNB, under the health check's floor. Same relayer, same guards.
+const TARGETS = {
+  service: { address: SERVICE_WALLET, label: 'x402 service' },
+  altana: { address: '0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3', label: 'altana agent' },
+};
 const CHAINLINK_BNB_USD = '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE'; // BSC mainnet feed, 8 decimals
 
 const MIN_REMAINING = 0.02;   // BNB the relayer must keep for NFT mints
@@ -58,6 +67,9 @@ const args = process.argv.slice(2);
 const confirm = args.includes('--confirm');
 const usdArg = args.indexOf('--usd');
 const usd = usdArg === -1 ? 2 : Number(args[usdArg + 1]);
+const toArg = args.indexOf('--to');
+const TARGET = TARGETS[toArg === -1 ? 'service' : args[toArg + 1]];
+if (!TARGET) { console.error(`--to must be one of: ${Object.keys(TARGETS).join(', ')}`); process.exitCode = 1; }
 
 // A refusal throws rather than calling process.exit: an abrupt exit while an
 // RPC socket is still open trips a libuv assertion on Windows, which turns a
@@ -94,7 +106,7 @@ const bnb = (v) => `${Number(formatEther(v)).toFixed(6)} BNB`;
   // --- balances and cost -------------------------------------------------
   const [fromBalance, toBalance, gasPrice] = await Promise.all([
     publicClient.getBalance({ address: account.address }),
-    publicClient.getBalance({ address: SERVICE_WALLET }),
+    publicClient.getBalance({ address: TARGET.address }),
     publicClient.getGasPrice(),
   ]);
   const gasCost = gasPrice * 21000n;
@@ -104,7 +116,7 @@ const bnb = (v) => `${Number(formatEther(v)).toFixed(6)} BNB`;
   console.log('----------------------------');
   console.log(`  BNB/USD (Chainlink)  $${bnbUsd.toFixed(2)}   (${ageS}s old)`);
   console.log(`  from   NFT relayer   ${account.address}   ${bnb(fromBalance)}`);
-  console.log(`  to     x402 service  ${SERVICE_WALLET}   ${bnb(toBalance)}`);
+  console.log(`  to     ${TARGET.label.padEnd(13)} ${TARGET.address}   ${bnb(toBalance)}`);
   console.log(`  send                 ${bnb(value)}  (~$${usd})`);
   console.log(`  gas                  ${bnb(gasCost)}  at ${Number(gasPrice) / 1e9} gwei`);
   console.log(`  relayer left with    ${bnb(remaining)}`);
@@ -121,7 +133,7 @@ const bnb = (v) => `${Number(formatEther(v)).toFixed(6)} BNB`;
   // --- send --------------------------------------------------------------
   const walletClient = createWalletClient({ account, chain: bsc, transport: http(RPC) });
   console.log('\nSending…');
-  const hash = await walletClient.sendTransaction({ to: SERVICE_WALLET, value });
+  const hash = await walletClient.sendTransaction({ to: TARGET.address, value });
   console.log(`  tx  https://bscscan.com/tx/${hash}`);
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -129,7 +141,7 @@ const bnb = (v) => `${Number(formatEther(v)).toFixed(6)} BNB`;
 
   const [afterFrom, afterTo] = await Promise.all([
     publicClient.getBalance({ address: account.address }),
-    publicClient.getBalance({ address: SERVICE_WALLET }),
+    publicClient.getBalance({ address: TARGET.address }),
   ]);
   console.log(`\n  confirmed in block ${receipt.blockNumber}`);
   console.log(`  NFT relayer    ${bnb(afterFrom)}`);

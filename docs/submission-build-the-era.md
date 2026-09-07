@@ -1,6 +1,6 @@
 # Build the Era — submission draft
 
-Prepared 2026-09-02, refreshed 2026-09-07 (evening). **Not submitted.** The
+Prepared 2026-09-02, refreshed 2026-09-07 (evening). **SUBMITTED 2026-09-07 18:43 UTC through the form (Google: "Ihre Antwort wurde gesendet"), a copy of the answers sent to brainonbnb@gmail.com.** Judging 2026-09-09 to 09-23: the live pages are what the judges see, keep them up. The
 form is titled "Build the Era Hackathon Registration" and is the only
 submission channel the hackathon page names ("Submit Project" →
 `forms.gle/9g9XPNFwnYaHAz9L8`). **Build period ends 2026-09-09 12:00 UTC —

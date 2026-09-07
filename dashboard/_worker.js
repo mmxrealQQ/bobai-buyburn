@@ -1180,8 +1180,15 @@ export default {
           : await runTool(REST_TOOLS[url.pathname], {});
         return new Response(JSON.stringify(out, null, 2), { headers });
       } catch (e) {
-        const bad = /Invalid BSC address|Give a BSC token/.test(e.message || '');
-        return new Response(JSON.stringify({ error: e.message || String(e) }), { status: bad ? 400 : 502, headers });
+        // 400 for a malformed address, 503 when the chain or a log endpoint
+        // did not answer, 422 for every determinate answer ("that address is
+        // not a token", "no pool") — never 502: Cloudflare replaces a Worker's
+        // 502 body with its own "error code: 502" text, so the plain-words
+        // answer never reached an agent (MCP delivered it, REST did not).
+        const msg = e.message || String(e);
+        const bad = /Invalid BSC address|Give a BSC token/.test(msg);
+        const infra = /refused|unavailable|did not answer|every BSC endpoint|too many subrequests|multicall returned|empty aggregate|http \d{3}|failed\.?$/i.test(msg);
+        return new Response(JSON.stringify({ error: msg }), { status: bad ? 400 : infra ? 503 : 422, headers });
       }
     }
 

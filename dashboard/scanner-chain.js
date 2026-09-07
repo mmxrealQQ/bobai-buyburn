@@ -316,12 +316,25 @@ export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,t
   const before=(baseHex&&baseHex.length>=130)
     ? Number(BigInt('0x'+baseHex.slice(66,130)))   // same block state as the rungs
     : Number(sqrtBefore);
+  // A rung the pool cannot fill. When a size takes more than the pool holds
+  // in range, the quoter walks to the end of the liquidity and reports the
+  // price at the limit — sqrtPriceX96After lands on MIN/MAX_SQRT_RATIO and
+  // squaring that printed "+5.33e+41%" for KII (1% tier, $750 in range),
+  // with "you pay 47.76%" for a fill that never happened. Such a rung says
+  // "the pool runs out at this size", not a number.
+  const MIN_SQRT=4295128739,MAX_SQRT=1.4614467034852101e48;
+  const dry=h=>{
+    if(!h||h.length<130)return false;
+    const after=Number(BigInt('0x'+h.slice(66,130)));
+    return !(after>0)||after<=MIN_SQRT*1.0001||after>=MAX_SQRT*0.9999;
+  };
   const move=h=>{
-    if(!h||h.length<130)return null;
+    if(!h||h.length<130||dry(h))return null;
     const after=Number(BigInt('0x'+h.slice(66,130)));
     if(!(after>0)||!(before>0))return null;
     const ratio=Math.pow(after/before,2);      // price of token0 in token1
-    return ((tokenIs0?ratio:1/ratio)-1)*100;   // ...expressed for OUR token
+    const m=((tokenIs0?ratio:1/ratio)-1)*100;   // ...expressed for OUR token
+    return Math.abs(m)>1000?null:m;            // beyond ten-fold is the limit too
   };
   const out=h=>h&&h.length>=66?Number(BigInt('0x'+h.slice(2,66))):null;
   // SPOT, from the same block state as the rungs — for the same reason the
@@ -349,11 +362,16 @@ export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,t
     const gotQ=outQ!=null?outQ/1e18:null;
     const survS=(1-taxS)>0?(1-taxS):1;
     const sentTok=Number(amtsSell[i])/Math.pow(10,tokDec)/survS;
+    const RUNS_OUT='the pool runs out at this size';
+    const bDry=dry(b)||(b&&b.length>=130&&move(b)==null&&outTok!=null),
+          sDry=dry(s)||(s&&s.length>=130&&move(s)==null&&outQ!=null);
     return {usd:u,
-      buyMove:move(b),
-      buyCost:gotTok!=null?(1-(gotTok*spot)/(paidQ*quoteUsd))*100:null,
-      sellMove:move(s)!=null?-Math.abs(move(s)):null,
-      sellCost:(gotQ!=null&&sentTok>0)?(1-(gotQ*quoteUsd)/(sentTok*spot))*100:null};
+      buyMove:bDry?null:move(b),
+      buyCost:(!bDry&&gotTok!=null)?(1-(gotTok*spot)/(paidQ*quoteUsd))*100:null,
+      buyNote:bDry?RUNS_OUT:null,
+      sellMove:(!sDry&&move(s)!=null)?-Math.abs(move(s)):null,
+      sellCost:(!sDry&&gotQ!=null&&sentTok>0)?(1-(gotQ*quoteUsd)/(sentTok*spot))*100:null,
+      sellNote:sDry?RUNS_OUT:null};
   });
 }
 // The ladder's six fixed sizes cannot express depth for a pool that is far
@@ -682,7 +700,13 @@ export async function multicall(calls,url,block='latest'){
 // that the window travels with the figure. Losing the window to one flaky read
 // turns a good measurement into one that must not be quoted.
 export async function windowMinutes(from, to) {
-  for (const url of LOGS_RPCS) {
+  // Two rounds over the endpoints: the block reads share the log endpoint's
+  // quota, and one refusal in a busy minute left the window "null min" on the
+  // health check while the tiers themselves had been read.
+  const tries = [...LOGS_RPCS, ...LOGS_RPCS];
+  for (let i = 0; i < tries.length; i++) {
+    const url = tries[i];
+    if (i === LOGS_RPCS.length) await new Promise((r) => setTimeout(r, 200));
     try {
       const [a, b] = await Promise.all([
         rpc('eth_getBlockByNumber', ['0x' + from.toString(16), false], url),
@@ -693,6 +717,26 @@ export async function windowMinutes(from, to) {
     } catch { /* try the other one */ }
   }
   return null;
+}
+
+// eth_getLogs over a range, and when the endpoint refuses it, over its two
+// halves, then their halves (three levels: eight slices at most). The busiest
+// pools — CAKE/BNB at 0.05% and 0.25% — came back "refused" in 3 of 3 runs
+// over 5,000 blocks from the Worker's shared egress while the same range
+// answered from a laptop; smaller answers pass where the big one does not.
+// The sample stays the same window, just read in pieces. null = refused.
+export async function getLogsSplit(params, from, to, url, depth = 0) {
+  try {
+    return await rpc('eth_getLogs', [{ ...params, fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16) }], url);
+  } catch {
+    if (depth >= 3 || to - from < 64) return null;
+    const mid = from + Math.floor((to - from) / 2);
+    const a = await getLogsSplit(params, from, mid, url, depth + 1);
+    if (a === null) return null;
+    const b = await getLogsSplit(params, mid + 1, to, url, depth + 1);
+    if (b === null) return null;
+    return a.concat(b);
+  }
 }
 
 // === WHERE THE CAPITAL ACTUALLY SITS ===

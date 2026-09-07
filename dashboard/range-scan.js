@@ -29,7 +29,7 @@
 import {
   QUOTES, BNB_PAIR, WBNB, LOGS_RPC, LOGS_RPCS, SEL as S,
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover, bandDepthV3, windowMinutes,
+  classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit,
   SWAP_V3_T, SWAP_V3_UNI, int256,
 } from './scanner-chain.js';
 
@@ -164,12 +164,8 @@ export async function rangePlan(input, opts = {}) {
   let logs = null;
   for (let attempt = 0; attempt < 3 && logs === null; attempt++) {
     if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
-    try {
-      logs = await rpc('eth_getLogs', [{
-        address: pool, topics: [[SWAP_V3_T, SWAP_V3_UNI]],
-        fromBlock: '0x' + from.toString(16), toBlock: '0x' + head.toString(16),
-      }], LOGS_RPCS[attempt % LOGS_RPCS.length]);
-    } catch { logs = null; }
+    // In pieces when the whole range is refused (getLogsSplit in scanner-chain).
+    logs = await getLogsSplit({ address: pool, topics: [[SWAP_V3_T, SWAP_V3_UNI]] }, from, head, LOGS_RPCS[attempt % LOGS_RPCS.length]);
   }
   if (!logs)
     throw new RangeError('The log endpoint refused this range.',

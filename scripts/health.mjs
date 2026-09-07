@@ -199,7 +199,9 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
   ok('Agents', 'fee-tier comparison answers with measured tiers',
     priced.length >= 2 && !!tiers?.measured_window?.minutes,
     !tiers || tiers.error ? (tiers?.error || 'no answer')
-      : tiers.comparison_complete === false
+      : !tiers.measured_window?.minutes
+        ? `${priced.length} tiers priced but the window's minutes could not be read (block timestamps refused) — the comparison is unusable without them`
+        : tiers.comparison_complete === false
         ? `${priced.length} tiers priced over ${tiers.measured_window?.minutes} min; ${tiers.tiers_unreadable?.length} unreadable, so no winner declared — correct behaviour under a throttled log endpoint`
         : `${priced.length} tiers priced over ${tiers.measured_window?.minutes} min, best ${tiers.best_paying_tier}`);
   // The window has to travel with the figures. A tier yield without the window

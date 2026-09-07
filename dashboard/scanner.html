@@ -113,6 +113,7 @@
        the time you have read the result the field is far above the fold. */
     .sc-field{position:relative;flex:1;min-width:0;display:flex}
     .sc-field input{width:100%;padding-right:40px}
+    .sc-x[hidden]{display:none}
     .sc-x{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:26px;height:26px;
       padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:var(--muted);
       font-size:1.05rem;line-height:1;cursor:pointer;display:grid;place-items:center;
@@ -174,6 +175,7 @@
     .lad-b i{display:block;height:100%;border-radius:4px;transform:scaleX(0);transform-origin:0 50%;
       background:linear-gradient(90deg,#3fe09a,#8ff0c6);transition:transform .45s ease}
     .lad-b i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
+    .lad-p.lad-dry{color:#a9a49a;font-weight:500;font-style:italic}
     .lad-p{font-family:'Space Grotesk',sans-serif;font-size:.79rem;font-weight:700;
       width:64px;flex-shrink:0;text-align:right}
     .lad-x{font-family:'Space Grotesk',sans-serif;font-size:.74rem;color:var(--muted);
@@ -484,6 +486,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=53" type="module"></script>
+<script src="scanner.js?v=54" type="module"></script>
 </body>
 </html>

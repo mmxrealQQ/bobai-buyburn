@@ -13,7 +13,7 @@
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=23';
+  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=24';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -382,7 +382,7 @@ function renderRanges(out,d){
     const full=rows.find(r=>r.full_range);
     line('good',held+' is the narrowest range that held for the whole window.',
       (row&&full&&full.fees_usd_in_window>0)
-        ? 'On $'+nf(d.capital_considered_usd)+' it would have collected $'+row.fees_usd_in_window.toFixed(6)+
+        ? 'On $'+nf(d.capital_considered_usd)+' it would have collected '+usd(row.fees_usd_in_window)+
           ' — about '+Math.round(row.fees_usd_in_window/full.fees_usd_in_window)+
           ' times what the same money makes spread across every price. Narrow is where the fees are; it is also where the work is.'
         : 'Narrower ranges earn more per dollar and stop earning the moment the price leaves them.');
@@ -490,7 +490,9 @@ function verdictCard(d,pool,gp,gpOk,tax){
   //    rather than the smallest or the largest: the smallest flatters the pool
   //    and the largest scares people away from one that would have been fine.
   const rows=(d.rows||[]).slice().sort((a,b)=>Math.abs(a.usd-500)-Math.abs(b.usd-500));
-  const ref=rows[0];
+  // ...among the sizes the pool can fill: a rung that runs the pool dry has
+  // no cost, and the short answer must not quote a size that never fills.
+  const ref=rows.find(r=>r.buyCost!=null&&r.sellCost!=null)||rows[0];
   const floors={buy:(1-(1-d.taxB)*(1-pool.fee))*100, sell:(1-(1-d.taxS)*(1-pool.fee))*100};
   if(ref&&ref.buyCost!=null&&ref.sellCost!=null){
     const worst=Math.max(ref.buyCost,ref.sellCost);
@@ -499,10 +501,10 @@ function verdictCard(d,pool,gp,gpOk,tax){
     // percentage: 3% is cheap in a 1% fee tier with a 2% tax and dreadful in a
     // 0.05% pool with none.
     const tone=toll>0?(worst<=toll*1.5?'good':worst<=toll*3?'mid':'bad'):'mid';
-    line(tone,'A $'+nf(ref.usd)+' trade costs you '+ref.buyCost.toFixed(1)+'% to buy and '+ref.sellCost.toFixed(1)+'% to sell.',
+    line(tone,'A $'+nf(ref.usd)+' trade costs you '+pc(ref.buyCost)+' to buy and '+pc(ref.sellCost)+' to sell.',
       'That is the whole cost: the pool fee, any transfer tax, and how far your own trade moves the price. '
       +(toll>0?'About '+toll.toFixed(toll<1?2:1)+'% of it is unavoidable at any size in this pool; the rest is depth.'
-             :'Round trip, that is about '+(ref.buyCost+ref.sellCost).toFixed(1)+'% before the price moves at all.'));
+             :'Round trip, that is about '+pc(ref.buyCost+ref.sellCost)+' before the price moves at all.'));
   }else{
     line('unknown','A trade of this size could not be priced.',
       'The quoter did not return a price for every size, so no cost figure is shown at all rather than a partial one.');
@@ -578,7 +580,8 @@ function verdictCard(d,pool,gp,gpOk,tax){
   return c;
 }
 
-function renderLadder(rows,taxNote,floors){
+function renderLadder(rows,taxNote,floors,venue){
+  venue=venue||'pool';
   const wrap=el('div','lad');
   [['buy','Buying','up'],['sell','Selling','down']].forEach(([side,label,dir])=>{
     const floor=side==='buy'?floors.buy:floors.sell;
@@ -600,16 +603,20 @@ function renderLadder(rows,taxNote,floors){
       const t=el('span','lad-b'),bar=el('i',side==='sell'?'sell':null);
       bar.style.transform='scaleX('+(mv==null?0:Math.min(1,Math.abs(mv)/max)).toFixed(4)+')';
       t.appendChild(bar);row.appendChild(t);
-      row.appendChild(el('span','lad-p'+impactBand(mv),signed(mv)));
-      row.appendChild(el('span','lad-x'+costBand(cs,floor),cs==null?'—':cs.toFixed(2)+'%'));
+      const note=side==='buy'?r.buyNote:r.sellNote;
+      row.appendChild(el('span','lad-p'+(note?' lad-dry':impactBand(mv)),note?'runs out':signed(mv)));
+      row.appendChild(el('span','lad-x'+(note?'':costBand(cs,floor)),cs==null?'—':cs.toFixed(2)+'%'));
       col.appendChild(row);
     });
     wrap.appendChild(col);
   });
   const box=el('div');box.appendChild(wrap);
   if(taxNote)box.appendChild(el('p','cd-foot',taxNote));
+  const dryRows=rows.filter(r=>r.buyNote||r.sellNote);
+  if(venue==='pool'&&dryRows.length)box.appendChild(el('p','cd-foot',
+    '“Runs out” means the pool holds less in range than that size would take: the trade would not fill, so there is no price to quote.'));
   box.appendChild(el('p','cd-legend',
-    'Colour is about cost, not quality. Green means you pay close to the unavoidable toll for this pool ('+
+    'Colour is about cost, not quality. Green means you pay close to the unavoidable toll for this '+venue+' ('+
     (floors.buy>0?floors.buy.toFixed(2)+'% on a buy, '+floors.sell.toFixed(2)+'% on a sell':'fee plus tax')+
     ', payable at any size); amber is noticeably above it; red means the pool is moving under you. '+
     'It says nothing about whether the token is any good — a deep pool can still go to zero.'));
@@ -691,7 +698,7 @@ function flagsCard(gp,gpOk,sim){
   // GoPlus's own verdict stays beside ours: two independent sell tests that
   // disagree are worth more than one that says nothing.
   if(gp.is_honeypot==='1')g.appendChild(chip('bad','Honeypot','GoPlus could not sell this token in a simulation.'));
-  else if(gp.is_honeypot==null)g.appendChild(chip('unk','Sellability not checked by GoPlus','GoPlus ran no sell simulation for this token; the sell test above is ours.'));
+  else if(gp.is_honeypot==null)g.appendChild(chip('unk','Sellability not checked by GoPlus','GoPlus ran no sell simulation for this token'+(sim?'; the sell test above is ours.':', and none was run here either.')));
   // The missing ones are listed by name. Silence about a property is not the
   // same as the property being absent, and only one of those two is safe to
   // let a reader assume.
@@ -905,8 +912,11 @@ function render(d){
     // under $606 states a number that is not the one used.
     if(hidden>0)ov.appendChild(el('p','cd-foot',hidden+' further pool'+(hidden===1?'':'s')+
       ' hold'+(hidden===1?'s':'')+' less than '+usd(dustLine)+' and '+(hidden===1?'is':'are')+
-      ' not listed — under a thousandth of the hard BNB backing above, which is not a place anyone trades.'));
+      ' not listed — under a thousandth of the hard '+quoteSym+' backing above, which is not a place anyone trades.'));
     o.appendChild(ov);
+  }else if(Array.isArray(d.others)&&!d.others.length){
+    o.appendChild(card('One pool only',
+      'DexScreener indexes no other pool for this token. Everything tradable sits in the pool measured above.'));
   }else if((d.others||[]).length){
     o.appendChild(card('No other venue worth naming',
       'DexScreener indexes '+(d.others||[]).length+' further pool'+((d.others||[]).length===1?'':'s')+
@@ -1013,7 +1023,7 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
       buyMove:r.buyCost==null?null:Math.max(0,r.buyCost-cv.feePct),
       sellMove:r.sellCost==null?null:-Math.max(0,r.sellCost-cv.feePct)}));
     const capped=rows.filter(r=>r.buyNote).map(r=>'$'+nf(r.usd));
-    lad.appendChild(renderLadder(shaped,capped.length?'A dash on the buy side ('+capped.join(', ')+') means the curve has less left to sell than that size would take.':null,{buy:cv.feePct,sell:cv.feePct}));
+    lad.appendChild(renderLadder(shaped,capped.length?'A dash on the buy side ('+capped.join(', ')+') means the curve has less left to sell than that size would take.':null,{buy:cv.feePct,sell:cv.feePct},'curve'));
     o.appendChild(lad);
   }
 
@@ -1024,7 +1034,7 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
     {v:qAmt(cv.raised),l:'Raised',s:'of '+qAmt(cv.maxRaising)},
     {v:nf(cv.offersLeft),l:'Tokens left to sell',s:'of '+nf(cv.maxOffers)},
     {v:pc(cv.feePct),l:'Platform fee',s:'on every buy and sell'},
-    {v:cv.launchTime?new Date(cv.launchTime*1000).toISOString().slice(0,10):'not stated',l:'Launched',s:'on four.meme',dim:!cv.launchTime},
+    ...(cv.launchTime?[{v:new Date(cv.launchTime*1000).toISOString().slice(0,10),l:'Launched',s:'on four.meme'}]:[]),
   ]));
   o.appendChild(f);
 

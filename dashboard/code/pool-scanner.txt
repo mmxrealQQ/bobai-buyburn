@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 5384 lines.
+# one fetch. 6 files, 5445 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -332,12 +332,25 @@ export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,t
   const before=(baseHex&&baseHex.length>=130)
     ? Number(BigInt('0x'+baseHex.slice(66,130)))   // same block state as the rungs
     : Number(sqrtBefore);
+  // A rung the pool cannot fill. When a size takes more than the pool holds
+  // in range, the quoter walks to the end of the liquidity and reports the
+  // price at the limit — sqrtPriceX96After lands on MIN/MAX_SQRT_RATIO and
+  // squaring that printed "+5.33e+41%" for KII (1% tier, $750 in range),
+  // with "you pay 47.76%" for a fill that never happened. Such a rung says
+  // "the pool runs out at this size", not a number.
+  const MIN_SQRT=4295128739,MAX_SQRT=1.4614467034852101e48;
+  const dry=h=>{
+    if(!h||h.length<130)return false;
+    const after=Number(BigInt('0x'+h.slice(66,130)));
+    return !(after>0)||after<=MIN_SQRT*1.0001||after>=MAX_SQRT*0.9999;
+  };
   const move=h=>{
-    if(!h||h.length<130)return null;
+    if(!h||h.length<130||dry(h))return null;
     const after=Number(BigInt('0x'+h.slice(66,130)));
     if(!(after>0)||!(before>0))return null;
     const ratio=Math.pow(after/before,2);      // price of token0 in token1
-    return ((tokenIs0?ratio:1/ratio)-1)*100;   // ...expressed for OUR token
+    const m=((tokenIs0?ratio:1/ratio)-1)*100;   // ...expressed for OUR token
+    return Math.abs(m)>1000?null:m;            // beyond ten-fold is the limit too
   };
   const out=h=>h&&h.length>=66?Number(BigInt('0x'+h.slice(2,66))):null;
   // SPOT, from the same block state as the rungs — for the same reason the
@@ -365,11 +378,16 @@ export async function ladderV3(pool,token,quote,feeRaw,tokDec,px,quoteUsd,taxB,t
     const gotQ=outQ!=null?outQ/1e18:null;
     const survS=(1-taxS)>0?(1-taxS):1;
     const sentTok=Number(amtsSell[i])/Math.pow(10,tokDec)/survS;
+    const RUNS_OUT='the pool runs out at this size';
+    const bDry=dry(b)||(b&&b.length>=130&&move(b)==null&&outTok!=null),
+          sDry=dry(s)||(s&&s.length>=130&&move(s)==null&&outQ!=null);
     return {usd:u,
-      buyMove:move(b),
-      buyCost:gotTok!=null?(1-(gotTok*spot)/(paidQ*quoteUsd))*100:null,
-      sellMove:move(s)!=null?-Math.abs(move(s)):null,
-      sellCost:(gotQ!=null&&sentTok>0)?(1-(gotQ*quoteUsd)/(sentTok*spot))*100:null};
+      buyMove:bDry?null:move(b),
+      buyCost:(!bDry&&gotTok!=null)?(1-(gotTok*spot)/(paidQ*quoteUsd))*100:null,
+      buyNote:bDry?RUNS_OUT:null,
+      sellMove:(!sDry&&move(s)!=null)?-Math.abs(move(s)):null,
+      sellCost:(!sDry&&gotQ!=null&&sentTok>0)?(1-(gotQ*quoteUsd)/(sentTok*spot))*100:null,
+      sellNote:sDry?RUNS_OUT:null};
   });
 }
 // The ladder's six fixed sizes cannot express depth for a pool that is far
@@ -698,7 +716,13 @@ export async function multicall(calls,url,block='latest'){
 // that the window travels with the figure. Losing the window to one flaky read
 // turns a good measurement into one that must not be quoted.
 export async function windowMinutes(from, to) {
-  for (const url of LOGS_RPCS) {
+  // Two rounds over the endpoints: the block reads share the log endpoint's
+  // quota, and one refusal in a busy minute left the window "null min" on the
+  // health check while the tiers themselves had been read.
+  const tries = [...LOGS_RPCS, ...LOGS_RPCS];
+  for (let i = 0; i < tries.length; i++) {
+    const url = tries[i];
+    if (i === LOGS_RPCS.length) await new Promise((r) => setTimeout(r, 200));
     try {
       const [a, b] = await Promise.all([
         rpc('eth_getBlockByNumber', ['0x' + from.toString(16), false], url),
@@ -709,6 +733,26 @@ export async function windowMinutes(from, to) {
     } catch { /* try the other one */ }
   }
   return null;
+}
+
+// eth_getLogs over a range, and when the endpoint refuses it, over its two
+// halves, then their halves (three levels: eight slices at most). The busiest
+// pools — CAKE/BNB at 0.05% and 0.25% — came back "refused" in 3 of 3 runs
+// over 5,000 blocks from the Worker's shared egress while the same range
+// answered from a laptop; smaller answers pass where the big one does not.
+// The sample stays the same window, just read in pieces. null = refused.
+export async function getLogsSplit(params, from, to, url, depth = 0) {
+  try {
+    return await rpc('eth_getLogs', [{ ...params, fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16) }], url);
+  } catch {
+    if (depth >= 3 || to - from < 64) return null;
+    const mid = from + Math.floor((to - from) / 2);
+    const a = await getLogsSplit(params, from, mid, url, depth + 1);
+    if (a === null) return null;
+    const b = await getLogsSplit(params, mid + 1, to, url, depth + 1);
+    if (b === null) return null;
+    return a.concat(b);
+  }
 }
 
 // === WHERE THE CAPITAL ACTUALLY SITS ===
@@ -1732,10 +1776,13 @@ export async function scan(input, env) {
     },
     // What a trade of each size actually costs, tax and slippage and swap fee
     // together — not the headline slippage a router shows.
+    // A rung the pool cannot fill (V3, more than sits in range) carries null
+    // figures and a note; before, KII's ladder said "+5.33e+41%" there.
     tradeCost: rows.map((r) => ({
       sizeUsd: r.usd,
-      buyCostPct: +r.buyCost.toFixed(3), buyPriceMovePct: +r.buyMove.toFixed(3),
-      sellCostPct: +r.sellCost.toFixed(3), sellPriceMovePct: +r.sellMove.toFixed(3),
+      buyCostPct: r.buyCost == null ? null : +r.buyCost.toFixed(3), buyPriceMovePct: r.buyMove == null ? null : +r.buyMove.toFixed(3),
+      sellCostPct: r.sellCost == null ? null : +r.sellCost.toFixed(3), sellPriceMovePct: r.sellMove == null ? null : +r.sellMove.toFixed(3),
+      ...(r.buyNote ? { buyNote: r.buyNote } : {}), ...(r.sellNote ? { sellNote: r.sellNote } : {}),
     })),
     onePercentDepth: {
       buyUsd: Math.round(up), sellUsd: Math.round(down),
@@ -1907,6 +1954,7 @@ export async function scan(input, env) {
        the time you have read the result the field is far above the fold. */
     .sc-field{position:relative;flex:1;min-width:0;display:flex}
     .sc-field input{width:100%;padding-right:40px}
+    .sc-x[hidden]{display:none}
     .sc-x{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:26px;height:26px;
       padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:var(--muted);
       font-size:1.05rem;line-height:1;cursor:pointer;display:grid;place-items:center;
@@ -1968,6 +2016,7 @@ export async function scan(input, env) {
     .lad-b i{display:block;height:100%;border-radius:4px;transform:scaleX(0);transform-origin:0 50%;
       background:linear-gradient(90deg,#3fe09a,#8ff0c6);transition:transform .45s ease}
     .lad-b i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
+    .lad-p.lad-dry{color:#a9a49a;font-weight:500;font-style:italic}
     .lad-p{font-family:'Space Grotesk',sans-serif;font-size:.79rem;font-weight:700;
       width:64px;flex-shrink:0;text-align:right}
     .lad-x{font-family:'Space Grotesk',sans-serif;font-size:.74rem;color:var(--muted);
@@ -2278,7 +2327,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=53" type="module"></script>
+<script src="scanner.js?v=54" type="module"></script>
 </body>
 </html>
 
@@ -2301,7 +2350,7 @@ export async function scan(input, env) {
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=23';
+  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=24';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -2670,7 +2719,7 @@ function renderRanges(out,d){
     const full=rows.find(r=>r.full_range);
     line('good',held+' is the narrowest range that held for the whole window.',
       (row&&full&&full.fees_usd_in_window>0)
-        ? 'On $'+nf(d.capital_considered_usd)+' it would have collected $'+row.fees_usd_in_window.toFixed(6)+
+        ? 'On $'+nf(d.capital_considered_usd)+' it would have collected '+usd(row.fees_usd_in_window)+
           ' — about '+Math.round(row.fees_usd_in_window/full.fees_usd_in_window)+
           ' times what the same money makes spread across every price. Narrow is where the fees are; it is also where the work is.'
         : 'Narrower ranges earn more per dollar and stop earning the moment the price leaves them.');
@@ -2778,7 +2827,9 @@ function verdictCard(d,pool,gp,gpOk,tax){
   //    rather than the smallest or the largest: the smallest flatters the pool
   //    and the largest scares people away from one that would have been fine.
   const rows=(d.rows||[]).slice().sort((a,b)=>Math.abs(a.usd-500)-Math.abs(b.usd-500));
-  const ref=rows[0];
+  // ...among the sizes the pool can fill: a rung that runs the pool dry has
+  // no cost, and the short answer must not quote a size that never fills.
+  const ref=rows.find(r=>r.buyCost!=null&&r.sellCost!=null)||rows[0];
   const floors={buy:(1-(1-d.taxB)*(1-pool.fee))*100, sell:(1-(1-d.taxS)*(1-pool.fee))*100};
   if(ref&&ref.buyCost!=null&&ref.sellCost!=null){
     const worst=Math.max(ref.buyCost,ref.sellCost);
@@ -2787,10 +2838,10 @@ function verdictCard(d,pool,gp,gpOk,tax){
     // percentage: 3% is cheap in a 1% fee tier with a 2% tax and dreadful in a
     // 0.05% pool with none.
     const tone=toll>0?(worst<=toll*1.5?'good':worst<=toll*3?'mid':'bad'):'mid';
-    line(tone,'A $'+nf(ref.usd)+' trade costs you '+ref.buyCost.toFixed(1)+'% to buy and '+ref.sellCost.toFixed(1)+'% to sell.',
+    line(tone,'A $'+nf(ref.usd)+' trade costs you '+pc(ref.buyCost)+' to buy and '+pc(ref.sellCost)+' to sell.',
       'That is the whole cost: the pool fee, any transfer tax, and how far your own trade moves the price. '
       +(toll>0?'About '+toll.toFixed(toll<1?2:1)+'% of it is unavoidable at any size in this pool; the rest is depth.'
-             :'Round trip, that is about '+(ref.buyCost+ref.sellCost).toFixed(1)+'% before the price moves at all.'));
+             :'Round trip, that is about '+pc(ref.buyCost+ref.sellCost)+' before the price moves at all.'));
   }else{
     line('unknown','A trade of this size could not be priced.',
       'The quoter did not return a price for every size, so no cost figure is shown at all rather than a partial one.');
@@ -2866,7 +2917,8 @@ function verdictCard(d,pool,gp,gpOk,tax){
   return c;
 }
 
-function renderLadder(rows,taxNote,floors){
+function renderLadder(rows,taxNote,floors,venue){
+  venue=venue||'pool';
   const wrap=el('div','lad');
   [['buy','Buying','up'],['sell','Selling','down']].forEach(([side,label,dir])=>{
     const floor=side==='buy'?floors.buy:floors.sell;
@@ -2888,16 +2940,20 @@ function renderLadder(rows,taxNote,floors){
       const t=el('span','lad-b'),bar=el('i',side==='sell'?'sell':null);
       bar.style.transform='scaleX('+(mv==null?0:Math.min(1,Math.abs(mv)/max)).toFixed(4)+')';
       t.appendChild(bar);row.appendChild(t);
-      row.appendChild(el('span','lad-p'+impactBand(mv),signed(mv)));
-      row.appendChild(el('span','lad-x'+costBand(cs,floor),cs==null?'—':cs.toFixed(2)+'%'));
+      const note=side==='buy'?r.buyNote:r.sellNote;
+      row.appendChild(el('span','lad-p'+(note?' lad-dry':impactBand(mv)),note?'runs out':signed(mv)));
+      row.appendChild(el('span','lad-x'+(note?'':costBand(cs,floor)),cs==null?'—':cs.toFixed(2)+'%'));
       col.appendChild(row);
     });
     wrap.appendChild(col);
   });
   const box=el('div');box.appendChild(wrap);
   if(taxNote)box.appendChild(el('p','cd-foot',taxNote));
+  const dryRows=rows.filter(r=>r.buyNote||r.sellNote);
+  if(venue==='pool'&&dryRows.length)box.appendChild(el('p','cd-foot',
+    '“Runs out” means the pool holds less in range than that size would take: the trade would not fill, so there is no price to quote.'));
   box.appendChild(el('p','cd-legend',
-    'Colour is about cost, not quality. Green means you pay close to the unavoidable toll for this pool ('+
+    'Colour is about cost, not quality. Green means you pay close to the unavoidable toll for this '+venue+' ('+
     (floors.buy>0?floors.buy.toFixed(2)+'% on a buy, '+floors.sell.toFixed(2)+'% on a sell':'fee plus tax')+
     ', payable at any size); amber is noticeably above it; red means the pool is moving under you. '+
     'It says nothing about whether the token is any good — a deep pool can still go to zero.'));
@@ -2979,7 +3035,7 @@ function flagsCard(gp,gpOk,sim){
   // GoPlus's own verdict stays beside ours: two independent sell tests that
   // disagree are worth more than one that says nothing.
   if(gp.is_honeypot==='1')g.appendChild(chip('bad','Honeypot','GoPlus could not sell this token in a simulation.'));
-  else if(gp.is_honeypot==null)g.appendChild(chip('unk','Sellability not checked by GoPlus','GoPlus ran no sell simulation for this token; the sell test above is ours.'));
+  else if(gp.is_honeypot==null)g.appendChild(chip('unk','Sellability not checked by GoPlus','GoPlus ran no sell simulation for this token'+(sim?'; the sell test above is ours.':', and none was run here either.')));
   // The missing ones are listed by name. Silence about a property is not the
   // same as the property being absent, and only one of those two is safe to
   // let a reader assume.
@@ -3193,8 +3249,11 @@ function render(d){
     // under $606 states a number that is not the one used.
     if(hidden>0)ov.appendChild(el('p','cd-foot',hidden+' further pool'+(hidden===1?'':'s')+
       ' hold'+(hidden===1?'s':'')+' less than '+usd(dustLine)+' and '+(hidden===1?'is':'are')+
-      ' not listed — under a thousandth of the hard BNB backing above, which is not a place anyone trades.'));
+      ' not listed — under a thousandth of the hard '+quoteSym+' backing above, which is not a place anyone trades.'));
     o.appendChild(ov);
+  }else if(Array.isArray(d.others)&&!d.others.length){
+    o.appendChild(card('One pool only',
+      'DexScreener indexes no other pool for this token. Everything tradable sits in the pool measured above.'));
   }else if((d.others||[]).length){
     o.appendChild(card('No other venue worth naming',
       'DexScreener indexes '+(d.others||[]).length+' further pool'+((d.others||[]).length===1?'':'s')+
@@ -3301,7 +3360,7 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
       buyMove:r.buyCost==null?null:Math.max(0,r.buyCost-cv.feePct),
       sellMove:r.sellCost==null?null:-Math.max(0,r.sellCost-cv.feePct)}));
     const capped=rows.filter(r=>r.buyNote).map(r=>'$'+nf(r.usd));
-    lad.appendChild(renderLadder(shaped,capped.length?'A dash on the buy side ('+capped.join(', ')+') means the curve has less left to sell than that size would take.':null,{buy:cv.feePct,sell:cv.feePct}));
+    lad.appendChild(renderLadder(shaped,capped.length?'A dash on the buy side ('+capped.join(', ')+') means the curve has less left to sell than that size would take.':null,{buy:cv.feePct,sell:cv.feePct},'curve'));
     o.appendChild(lad);
   }
 
@@ -3312,7 +3371,7 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
     {v:qAmt(cv.raised),l:'Raised',s:'of '+qAmt(cv.maxRaising)},
     {v:nf(cv.offersLeft),l:'Tokens left to sell',s:'of '+nf(cv.maxOffers)},
     {v:pc(cv.feePct),l:'Platform fee',s:'on every buy and sell'},
-    {v:cv.launchTime?new Date(cv.launchTime*1000).toISOString().slice(0,10):'not stated',l:'Launched',s:'on four.meme',dim:!cv.launchTime},
+    ...(cv.launchTime?[{v:new Date(cv.launchTime*1000).toISOString().slice(0,10),l:'Launched',s:'on four.meme'}]:[]),
   ]));
   o.appendChild(f);
 
@@ -5029,7 +5088,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -5211,6 +5270,11 @@ export async function feeTiers(input) {
 
   const tiers = [];
   for (let i = 0; i < order.length; i++) {
+    // A breath between tiers: the log endpoints rate-limit by the second, and
+    // five ranges back to back from the Worker's shared egress is what left
+    // the busiest CAKE tiers unreadable. No keyed log endpoint exists here
+    // (measured 2026-09-07: blastapi, drpc, 1rpc, llamarpc all refuse or cap).
+    if (i) await new Promise((r) => setTimeout(r, 300));
     const c = order[i].c;
     const quoteIs0 = addrAt(order[i].zero) === quote;
     const topics = [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T];
@@ -5229,12 +5293,9 @@ export async function feeTiers(input) {
     for (let attempt = 0; attempt < 3 && logs === null; attempt++) {
       if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
       const endpoint = LOGS_RPCS[(i + attempt) % LOGS_RPCS.length];
-      try {
-        logs = await rpc('eth_getLogs', [{
-          address: c.pair, topics,
-          fromBlock: '0x' + from.toString(16), toBlock: '0x' + head.toString(16),
-        }], endpoint);
-      } catch { logs = null; }
+      // In pieces when the whole range is refused (getLogsSplit): the two
+      // busiest CAKE tiers were unreadable in 3 of 3 runs before.
+      logs = await getLogsSplit({ address: c.pair, topics }, from, head, endpoint);
     }
 
     const capitalUsd = tokenUsd == null ? null : c.q * c.usd + c.tok * tokenUsd;

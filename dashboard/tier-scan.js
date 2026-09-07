@@ -27,7 +27,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -209,6 +209,11 @@ export async function feeTiers(input) {
 
   const tiers = [];
   for (let i = 0; i < order.length; i++) {
+    // A breath between tiers: the log endpoints rate-limit by the second, and
+    // five ranges back to back from the Worker's shared egress is what left
+    // the busiest CAKE tiers unreadable. No keyed log endpoint exists here
+    // (measured 2026-09-07: blastapi, drpc, 1rpc, llamarpc all refuse or cap).
+    if (i) await new Promise((r) => setTimeout(r, 300));
     const c = order[i].c;
     const quoteIs0 = addrAt(order[i].zero) === quote;
     const topics = [c.kind === 'v3' ? [SWAP_V3_T, SWAP_V3_UNI] : SWAP_T];
@@ -227,12 +232,9 @@ export async function feeTiers(input) {
     for (let attempt = 0; attempt < 3 && logs === null; attempt++) {
       if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
       const endpoint = LOGS_RPCS[(i + attempt) % LOGS_RPCS.length];
-      try {
-        logs = await rpc('eth_getLogs', [{
-          address: c.pair, topics,
-          fromBlock: '0x' + from.toString(16), toBlock: '0x' + head.toString(16),
-        }], endpoint);
-      } catch { logs = null; }
+      // In pieces when the whole range is refused (getLogsSplit): the two
+      // busiest CAKE tiers were unreadable in 3 of 3 runs before.
+      logs = await getLogsSplit({ address: c.pair, topics }, from, head, endpoint);
     }
 
     const capitalUsd = tokenUsd == null ? null : c.q * c.usd + c.tok * tokenUsd;

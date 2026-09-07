@@ -500,10 +500,13 @@ export async function scan(input, env) {
     },
     // What a trade of each size actually costs, tax and slippage and swap fee
     // together — not the headline slippage a router shows.
+    // A rung the pool cannot fill (V3, more than sits in range) carries null
+    // figures and a note; before, KII's ladder said "+5.33e+41%" there.
     tradeCost: rows.map((r) => ({
       sizeUsd: r.usd,
-      buyCostPct: +r.buyCost.toFixed(3), buyPriceMovePct: +r.buyMove.toFixed(3),
-      sellCostPct: +r.sellCost.toFixed(3), sellPriceMovePct: +r.sellMove.toFixed(3),
+      buyCostPct: r.buyCost == null ? null : +r.buyCost.toFixed(3), buyPriceMovePct: r.buyMove == null ? null : +r.buyMove.toFixed(3),
+      sellCostPct: r.sellCost == null ? null : +r.sellCost.toFixed(3), sellPriceMovePct: r.sellMove == null ? null : +r.sellMove.toFixed(3),
+      ...(r.buyNote ? { buyNote: r.buyNote } : {}), ...(r.sellNote ? { sellNote: r.sellNote } : {}),
     })),
     onePercentDepth: {
       buyUsd: Math.round(up), sellUsd: Math.round(down),

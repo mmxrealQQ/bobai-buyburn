@@ -1,0 +1,40 @@
+BUILD THE ERA — ANSWERS IN FORM ORDER (paste)
+Form: https://forms.gle/9g9XPNFwnYaHAz9L8   Deadline: 2026-09-09 12:00 UTC (noon)
+
+Full Name: <you>
+Email Address: <you>
+Telegram Handle: <you>
+X (Twitter) Handle: @BrainOnBNB
+Discord Handle: (empty)
+How did you hear about this hackathon?: BNB Chain Website
+Country and Timezone: Switzerland, UTC+2
+Solo builder or team?: Solo
+Number of Teammates: 1 (Solo)
+Teammate Names, Emails, Roles: (empty)
+
+Project Name:
+Brain Plaza — the measured agent marketplace for BNB Chain
+
+One-Line Pitch:
+Every agent on BNB Chain, read from the registry, contacted, measured, and hireable in four clicks — with every number checkable on-chain.
+
+Project Description (2889 characters):
+Brain Plaza is a marketplace built on what the chain actually says. We read every id in the ERC-8004 identity registry on BNB Smart Chain (332,331 in the full scan of 2026-09-03; the live counter stood at 338,507 on 2026-09-07 evening), contacted every endpoint they name, and published who answers, what they do, and what they have been paid — from the ERC-8183 escrow, all 56,719 jobs, not a sample (read on 2026-09-07; every job still open at the last reading is read again on each run, so a settled escrow reaches the page). The result is a marketplace where a stranger lands, picks one of the four categories (rebalancing, grid trading, yield, health factor), reads what each agent does in one sentence, sees its live status, and hires it through the ERC-8183 escrow with a wallet — sixteen hire buttons, eleven of which returned a price when actually asked, five escrow steps, every one verified end to end. Or types the task in plain words: "measure the CAKE pool", "the health factor of the Venus position at 0x…" — the broker finds an agent that can answer, calls it read-only, and names it.
+ The numbers are the point. Of 332,331 registered agents, 814 answer; those are 103 hosts run by 74 operators. Of the escrow's 56,719 jobs, 99.0% go to one provider address, which holds 91.7% of the 602 $U ever escrowed; the Studio's reference agents have 17 funded jobs and 8 completed between them (2026-09-07). We show this on the page, with the method, because a marketplace that hides it is selling the inflation.
+ Data quality is live: each agent's status is probed every fifteen minutes by our worker, timestamped, and a probe that fails says whether the fault is the agent's, the chain's, or ours. Our own five agents are hireable the same way as everyone else's and answer in every category. The same measurement is offered to agents free of charge as MCP, REST and an installable skill (`npx skills add https://brainonbnb.com`) — 119,305 requests answered for other agents as of 2026-09-07 evening — and six answers are sold per x402 or through the escrow. What they pay runs, unattended, into the project's own PancakeSwap V3 position: an agent that re-sets the range in the width that earned the most over the recorded prices, checks it every hour, and splits the fees: half grows the position, half goes to the buyback that burns $BOBAI. Three re-sets have run on their own so far (2026-09-04, 09-06, 09-07; 3 to 8 transactions each, under 0.0001 BNB of gas apiece). Every step is a transaction on BNB Chain, the record is public, and it keeps the failures: a re-set that reverted halfway is on the record with its cause, and the run that finished it from the wallet the next morning is on it too. The profit so far is on the page in one sentence, price move, fees and gas apart, because on $55 of capital it is nearly all the pair's price and saying otherwise would be spin.
+
+Sub-prize tracks: PancakeSwap, TermiX
+Project GitHub Repo Link: https://brainonbnb.com/source.git
+Prototype Stage: Working MVP
+BSC/EVM Experience Level: Advanced
+Areas: Solidity, AI agent frameworks, Onchain data/APIs, Frontend development
+Mentorship: No, I am confident building solo/as a team
+Availability: Yes, I confirm availability
+Wallet address in case you win: <a wallet YOU control — not a worker wallet>
+
+Additional Notes (1470 characters):
+Live: https://brainonbnb.com/registry (marketplace), https://brainonbnb.com/advantage (TermiX Agent Advantage Report), https://brainonbnb.com/session (Altana). Everything is public and on BSC mainnet; nothing needs a login.
+ Altana (not selectable above): the agent runs on its own Altana wallet 0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3 on BNB Smart Chain (chain 56); session key 0xc11b9dc3a76225954ff040294daae83c7b902af060da656d9c72c9eb9939a6e8 registered in the KeyStore 0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a with a call allowlist, a per-day spend cap and an expiry; one earlier session (0x123b8810…ac2e) was revoked before its expiry and stopped validating within a block. Real transactions through the session key, a refused call (UnauthorizedCall) and the revocation are listed with their hashes on https://brainonbnb.com/session, read live from the KeyStore; raw JSON at https://agent.brainonbnb.com/session.
+ Repository: the GitHub account is suspended since 2026-07-24 (under appeal, no second account opened). The full source is public at `git clone https://brainonbnb.com/source.git` (MIT, secret-audited) and as bundles at https://brainonbnb.com/#library. Repository field: our GitHub account has been suspended since 2026-07-24 and is under appeal; we did not open a second account. The clone URL in the field is our own Git server with the full MIT source (secret-audited). If GitHub specifically is required, tell us and we will follow your advice.
+
+Terms: I have read and agree to the Terms of Participation

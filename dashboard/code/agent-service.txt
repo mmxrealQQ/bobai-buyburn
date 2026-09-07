@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 38 files, 10512 lines.
+# one fetch. 38 files, 10554 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5211,14 +5211,23 @@ async function recordLpSeries(env) {
 // still there, what did it earn, did the price leave the range. Value is in
 // BNB because the position is quoted in BNB; a dollar figure would move with
 // BNB and say nothing about the position.
-function lpSeriesSummary(series) {
+// The series a reader sees: only runs that had a position. A run that found
+// none (2026-09-06 05:23, between a stopped re-set and the mint by hand) is
+// kept in the store, so the record of that day exists, but it is not a row:
+// it has no value, no range, nothing to compare — the operator: "kann raus".
+function lpSeriesShown(series) {
+  return series.filter((p) => p.position);
+}
+// `gas_bnb` is the record's own gas total (moneyFlow), so the profit line can
+// net it: the series points carry no gas.
+function lpSeriesSummary(series, { gas_bnb = null } = {}) {
   if (!series.length) return null;
   const first = series[0], last = series[series.length - 1];
   const withValue = series.filter((p) => p.value_bnb != null);
   const f0 = withValue[0], f1 = withValue[withValue.length - 1];
   const days = Math.max(0, Math.round((Date.parse(last.at) - Date.parse(first.at)) / 86400000));
   const tickMove = first.tick != null && last.tick != null ? last.tick - first.tick : null;
-  return {
+  const out = {
     points: series.length,
     since: first.at,
     days_covered: days,
@@ -5237,6 +5246,37 @@ function lpSeriesSummary(series) {
     days_out_of_range: series.filter((p) => p.in_range === false).length,
     days_it_acted: series.filter((p) => p.acted).length,
   };
+  // Profit, the way the operator asks it ("was haben wir fuer profit?"): what
+  // the position is worth now against the first point, plus the fees it has
+  // produced and still owes, minus the gas on record. The value part is
+  // mostly the pair's price moving; the sentence says so, because on $55 in
+  // a 0.05 % pool the fees are the small part and hiding that would be spin.
+  if (out.value_bnb && out.value_bnb.start != null && out.value_bnb.now != null) {
+    const price = +(out.value_bnb.now - out.value_bnb.start).toFixed(6);
+    const fees = +((out.fees_produced_bnb || 0) + (out.fees_owed_now_bnb || 0)).toFixed(6);
+    const gas = gas_bnb != null ? +Number(gas_bnb).toFixed(6) : null;
+    const bnb = +(price + fees - (gas || 0)).toFixed(6);
+    const usd = last.bnb_usd ? +(bnb * last.bnb_usd).toFixed(2) : null;
+    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, gas_bnb: gas, bnb_usd: last.bnb_usd || null };
+  }
+  // The same figures as one sentence — the line /liquidity opens with and the
+  // whole of the Telegram daily report, so the two never say different things.
+  const f = (v, d) => (v == null || !isFinite(Number(v))) ? '—' : Number(v).toFixed(d);
+  const pct = (v) => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+  const v = out.value_bnb;
+  out.sentence = `Since ${String(out.since).slice(0, 10)}: ${out.points} run${out.points === 1 ? '' : 's'}`
+    + (v && v.start != null ? `, position worth ${f(v.start, 4)} → ${f(v.now, 4)} BNB (${pct(v.change_pct)})` : '')
+    + (out.price_move_pct_since_start != null ? `, the pair moved ${pct(out.price_move_pct_since_start)}` : '')
+    + `, in range on ${out.days_in_range} of ${out.runs_with_a_position}`
+    + `, fees sent to the buyback bot ${f(out.fees_sent_to_buyback_bnb, 5)} BNB`
+    + (out.fees_kept_as_capital_bnb ? `, kept as capital ${f(out.fees_kept_as_capital_bnb, 5)} BNB` : '')
+    + `, income put in ${f(out.income_put_in_bnb, 5)} BNB.`;
+  const sign = (x) => (x > 0 ? '+' : '') + f(x, 5);
+  if (out.profit) {
+    const p = out.profit;
+    out.sentence += ` Profit so far ${sign(p.bnb)} BNB${p.usd != null ? ` (about $${p.usd.toFixed(2)})` : ''}: ${sign(p.from_price_bnb)} BNB from the pair's price, ${sign(p.from_fees_bnb)} BNB of fees${p.gas_bnb != null ? `, −${f(p.gas_bnb, 5)} BNB of gas` : ''}.`;
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------- earnings
@@ -6507,13 +6547,15 @@ ${pageTail}`;
     // The liquidity series: every run of the liquidity agent as one point,
     // and what the points say so far. Read by /liquidity.
     if (path === '/lp/series') {
-      const series = await readLpSeries(env);
+      const series = lpSeriesShown(await readLpSeries(env));
+      const recRaw = await env.AGENT.get('lp:agent');
+      const gas_bnb = recRaw ? moneyFlow(JSON.parse(recRaw)).gas.bnb : null;
       return json({
-        what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in. Not a counter; every figure is in the record it came from.',
-        summary: lpSeriesSummary(series),
+        what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
+        summary: lpSeriesSummary(series, { gas_bnb }),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',
-        cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know',
+        cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
       }, 200, { 'Cache-Control': 'public, max-age=300' });
     }
     if (path === '/run-lp-series' && request.method === 'POST') {

@@ -1116,11 +1116,9 @@ function fillLpSeries(){
       const pts = d && Array.isArray(d.points) ? d.points : [];
       const s = d && d.summary;
       if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 05:23 UTC run.'; return; }
-      const v = s && s.value_bnb;
-      sum.innerHTML = 'Since <b>' + esc(String(s.since).slice(0,10)) + '</b>: ' + s.points + ' run' + (s.points === 1 ? '' : 's') +
-        (v && v.start != null ? ', position worth <b>' + f(v.start,4) + ' → ' + f(v.now,4) + ' BNB</b> (' + pct(v.change_pct) + ')' : '') +
-        (s.price_move_pct_since_start != null ? ', the pair moved <b>' + pct(s.price_move_pct_since_start) + '</b>' : '') +
-        ', in range on <b>' + s.days_in_range + '</b> of ' + (s.runs_with_a_position != null ? s.runs_with_a_position : s.points) + ', fees sent to the buyback bot <b>' + f(s.fees_sent_to_buyback_bnb,5) + ' BNB</b>' + (s.fees_kept_as_capital_bnb ? ', kept as capital <b>' + f(s.fees_kept_as_capital_bnb,5) + ' BNB</b>' : '') + ', income put in <b>' + f(s.income_put_in_bnb,5) + ' BNB</b>.';
+      // The sentence is the worker's (summary.sentence), the same one the
+      // Telegram daily report posts; the page only sets the numbers in bold.
+      sum.innerHTML = esc(s.sentence || '').replace(/(\d[\d.,]*%?|\d[\d.]* → \d[\d.]* BNB)/g, '<b>$1</b>');
       const base = pts.find(p => p.value_bnb != null);
       const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>Since start</th><th>Range</th><th>Fees owed (BNB)</th><th>Sent to buyback (BNB)</th><th>Income put in (BNB)</th><th>Did</th></tr>';
       const rows = pts.slice().reverse().map(p => {

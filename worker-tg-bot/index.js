@@ -1927,34 +1927,21 @@ ${lines.join('\n')}
 Every step is a transaction on BNB Chain. Record: <a href="https://agent.brainonbnb.com/lp/agent">agent.brainonbnb.com/lp/agent</a>`;
 }
 
-// Once a day, after the 05:23 run, the state of the position in five lines —
-// whether anything moved or not. The action alert above fires only when
-// money moved; this is the report the operator asked for on 2026-09-04:
-// "nur wenn etwas geaendert wurde, und taeglich ein rapport".
-export function formatLpDailyReport(rec) {
+// Once a day, after the 05:23 run: one sentence, the series' own summary
+// (agent.brainonbnb.com/lp/series, summary.sentence — the line /liquidity
+// opens with), so the channel and the page never say different things.
+// The five-line report before it was asked away on 2026-09-07: "im tg bot
+// nur so etwas ... weil die nachricht sonst im tg bot kapiert kein mensch".
+// Pure, so it can be rendered against a real series without posting.
+export function formatLpDailyReport(rec, series) {
   const last = rec && rec.last;
-  if (!last || !last.at) return null;
-  const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
-  // The totals are the record's own money-flow figures (rec.flow, computed
-  // once on the agent worker and shared with the liquidity page).
-  const flow = rec.flow || {}, fin = flow['in'] || {}, fout = flow.out || {};
-  const forwarded = fout.buyback_bnb || 0, kept = fout.kept_as_capital_bnb || 0, fees = (fin.fees && fin.fees.bnb) || 0;
-  const swept = fin.income_bnb || 0, inPos = fout.into_position_bnb || 0;
-  const gas = flow.gas || {};
-  const f = (v, d = 5) => Number(v || 0).toFixed(d);
-  const reset = rb.acted && !rb.error && rb.new_position;
-  const pos = reset ? rb.new_position : (c.position || rb.position);
-  const inRange = reset ? true : (c.in_range != null ? c.in_range : rb.in_range);
-  const waiting = (Array.isArray(st.sweep) ? st.sweep : []).filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${s.token || s.source}`).join(' + ');
-  return `📋 <b>LP Agent — daily report ${String(last.at || '').slice(0, 10)}</b>
+  const sentence = series && series.summary && series.summary.sentence;
+  if (!last || !last.at || !sentence) return null;
+  const failed = last.ok === false ? ' One step failed today; the operator has been told.' : '';
+  return `📋 <b>LP Agent — ${String(last.at || '').slice(0, 10)}</b>
+${sentence}${failed}
 
-🎯 Position <b>#${pos || '—'}</b>${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB` : ''} · ${inRange === false ? 'out of range (the hourly check re-sets it after 2 h outside)' : 'in range and earning'}
-💧 Fees owed now: <b>${f(c.owed && c.owed.bnb_equivalent, 6)} BNB</b> · ${fees > 0 ? `collected so far <b>${f(fees)} BNB</b>: ${f(forwarded)} to the buyback bot, ${f(kept)} kept as capital` : 'nothing collected yet — fees are left to grow until collecting beats the gas'}
-💵 AI income waiting: ${waiting || 'none'} · ${swept > 0 ? `swept in so far: <b>${f(swept)} BNB</b>` : 'nothing swept yet'}${inPos ? ` · put into the position: <b>${f(inPos)} BNB</b>` : ''}
-⛽ Cost so far: ${gas.transactions || 0} transaction${gas.transactions === 1 ? '' : 's'}, ${f(gas.bnb, 6)} BNB of gas
-🤖 Today's run: ${last.acted ? 'it acted' : 'nothing to move — every step was under its floor'}${last.ok === false ? ' · one step failed, the operator has been told' : ''}
-
-Record: <a href="https://agent.brainonbnb.com/lp/agent">agent.brainonbnb.com/lp/agent</a> · <a href="https://brainonbnb.com/liquidity">how it works</a>`;
+<a href="https://brainonbnb.com/liquidity">brainonbnb.com/liquidity</a> · <a href="https://agent.brainonbnb.com/lp/agent">record</a>`;
 }
 
 async function postLpDailyReport(env) {
@@ -1965,28 +1952,18 @@ async function postLpDailyReport(env) {
   if (!r.ok) return false;
   const rec = await r.json();
   // The report is about today's daily run; if it has not landed yet, wait for
-  // the next tick rather than reporting yesterday twice.
+  // the next tick rather than reporting yesterday twice. The series takes its
+  // point from that run on the agent worker's next scan, so the sentence
+  // must already count today's run, else the next tick.
   if (!rec.last || String(rec.last.at || '').slice(0, 10) !== today) return false;
-  const text = formatLpDailyReport(rec);
+  const rs = await fetch('https://agent.brainonbnb.com/lp/series', { cf: { cacheTtl: 60 } });
+  if (!rs.ok) return false;
+  const series = await rs.json();
+  const pts = Array.isArray(series.points) ? series.points : [];
+  if (!pts.length || Date.parse(pts[pts.length - 1].at) < Date.parse(rec.last.at)) return false;
+  const text = formatLpDailyReport(rec, series);
   if (!text) return false;
   await env.KV.put('lp_report_date', today);
-  await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true });
-  return true;
-}
-
-async function postLpAgentAlert(env) {
-  const r = await fetch('https://agent.brainonbnb.com/lp/agent', { cf: { cacheTtl: 60 } });
-  if (!r.ok) return false;
-  const rec = await r.json();
-  const ev = lpAlertEntry(rec);
-  const at = ev && ev.at;
-  if (!at) return false;
-  const seen = await env.KV.get('lp_alert_at');
-  if (seen === at) return false;
-  const text = formatLpAgentAlert(rec);
-  // Remember quiet records too, or every tenth minute re-reads the same one.
-  await env.KV.put('lp_alert_at', at);
-  if (!text) return false;
   await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true });
   return true;
 }

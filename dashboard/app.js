@@ -1120,11 +1120,17 @@ function fillLpBlock(){
             if(!lk) return;
             const posSub = list.querySelector('li.lp-pos div > span');
             if(posSub && lk.value_bnb != null) posSub.textContent = posSub.textContent.replace(/, worth [\d.]+ BNB/, ', worth ' + f(lk.value_bnb, 4) + ' BNB on the chain just now (' + f(rb.value_bnb, 4) + ' at the run)');
-            if(String(c.position || '') === String(pos)) return;
             // 'div > span': the bullet span's parent is the li, the text span's is the div.
             const li = list.querySelector('li.lp-fees'), sub = li && li.querySelector('div > span');
             if(!lk.fees_owed || !sub) return;
-            sub.textContent = 'Owed right now: ' + f(lk.fees_owed.bnb_equivalent, 6) + ' BNB, read from the chain just now — the run at ' + when + (reset ? ' re-set the range, so its own figure starts at zero' : c.position ? ' read position #' + c.position : ' saw no position') + '. Small amounts are left to grow until collecting them beats the gas. '
+            // Always the chain's figure: the profit line above is netted
+            // against it, and on 2026-09-07 the panel said 0.000111 (the
+            // 05:23 run) while the profit line said 0.00034 (the chain) —
+            // two numbers for one thing. The run's own figure stays, dated.
+            const samePos = String(c.position || '') === String(pos);
+            sub.textContent = 'Owed right now: ' + f(lk.fees_owed.bnb_equivalent, 6) + ' BNB on the chain just now'
+              + (samePos && c.owed ? ' (' + f(c.owed.bnb_equivalent, 6) + ' at the run at ' + when + ')' : ' — the run at ' + when + (reset ? ' re-set the range, so its own figure starts at zero' : c.position ? ' read position #' + c.position : ' saw no position'))
+              + '. Small amounts are left to grow until collecting them beats the gas. '
               + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : '');
           }).catch(() => {});
       });

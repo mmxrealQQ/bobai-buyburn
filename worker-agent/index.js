@@ -1200,6 +1200,12 @@ export default {
         };
       }
       const out = { ...job, chain_id: ERC8183.chainId, kernel: ERC8183.commerce, explorer: `https://bscscan.com/address/${ERC8183.commerce}`, means, delivery };
+      if (delivery && delivery.summary && delivery.summary.subject) {
+        let t = null; try { t = JSON.parse(job.description || '').task || null; } catch { t = job.description || null; }
+        const sj = String(delivery.summary.subject);
+        out.delivery_subject = sj;
+        out.task_names_subject = t ? new RegExp(`\\b${sj.replace(/[.*+?^${}()|[\]\\$]/g, '\\$&')}\\b`, 'i').test(t) : null;
+      }
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
       if (!wantsHtml) return json(out);
 
@@ -1212,6 +1218,13 @@ export default {
       let task = null, svcName = null;
       try { const d = JSON.parse(job.description || ''); task = d.task || null; svcName = d.service || null; } catch { task = job.description || null; }
       const sum = delivery?.summary;
+      // The delivery's subject against the task's words. Job 56670 asked
+      // "grid plan for WBNB" and was delivered for BOBAI; the page showed
+      // COMPLETED and "SHA-256 matches" and never said so. The page is the
+      // evidence, so it says it in one line.
+      const subject = sum && sum.subject ? String(sum.subject) : null;
+      const taskNamesSubject = subject && task ? new RegExp(`\\b${subject.replace(/[.*+?^${}()|[\]\\$]/g, '\\$&')}\\b`, 'i').test(task) : null;
+      const mismatch = subject && task && taskNamesSubject === false;
       const tone = job.status === 'COMPLETED' ? 'ok' : job.status === 'SUBMITTED' || job.status === 'FUNDED' ? 'wait' : job.status === 'OPEN' ? 'dim' : 'bad';
       const html = `${pageHead(`Job #${h(id)} — ${h(job.status)}`, `
 main{max-width:720px}
@@ -1226,10 +1239,10 @@ p.means{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-c
 ${task ? `<p class="task">&ldquo;${h(task)}&rdquo;</p>` : '<p class="none">No description on the job.</p>'}
 <dl><dt>Service</dt><dd>${h(svcName || delivery?.service || '—')}</dd><dt>Budget</dt><dd>${h(job.budget_u ?? '—')} $U in escrow</dd>
 <dt>Client</dt><dd>${addr(job.client)}</dd><dt>Provider</dt><dd>${addr(job.provider)}</dd>
-<dt>Submitted</dt><dd>${when(job.submitted_at)}</dd><dt>Expires</dt><dd>${when(job.expired_at)}</dd>
+<dt>Submitted</dt><dd>${when(job.submitted_at)}</dd><dt>${job.status === 'COMPLETED' || job.status === 'EXPIRED' || job.status === 'REJECTED' ? 'Was due' : 'Expires'}</dt><dd>${when(job.expired_at)}</dd>
 <dt>Kernel</dt><dd>${addr(ERC8183.commerce)} on BNB Chain</dd></dl>
 <h2>What was delivered</h2>
-${delivery ? `<div class="card">${sum?.headline ? `<p class="head">${h(sum.headline)}</p>` : ''}
+${delivery ? `<div class="card">${sum?.headline ? `<p class="head">${h(sum.headline)}</p>` : ''}${mismatch ? `<p class="note" style="margin:0 0 8px;color:#ffc46b">Delivered for ${h(subject)}, which the task text does not name — the seller read the task differently from how it was written. The digest check below says only that the document is the one committed, not that it answers the question.</p>` : ''}
 ${sum?.facts?.length ? `<dl>${sum.facts.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
 <p class="note">Produced ${h(delivery.produced_at ? String(delivery.produced_at).replace('T', ' ').slice(0, 16) + ' UTC' : '—')}. <a href="${h(delivery.document_url)}">Full document</a>${delivery.tx ? ` · <a href="https://bscscan.com/tx/${h(delivery.tx)}" target="_blank" rel="noopener">delivery transaction</a>` : ''}.<br>
 ${delivery.digest_matches === true ? 'The SHA-256 of that document matches the digest written on the kernel: what you read is what was committed.'

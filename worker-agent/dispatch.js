@@ -598,6 +598,22 @@ export async function handleDispatch(url, body, env, opts = {}) {
     // (addresses, and the chain this router serves); nothing is guessed, and
     // the answer says which arguments were taken from the task.
     const taken = argsFromTask(pick.inputSchema, task);
+    // A question about somebody's account, with no account in it, must not
+    // be routed to a tool whose optional `account` defaults to its own
+    // wallet: "a Venus health factor" came back as has_position:false for
+    // an address the visitor never asked about. Ask for the address instead.
+    {
+      const props = pick.inputSchema?.properties || {};
+      const reqd = Array.isArray(pick.inputSchema?.required) ? pick.inputSchema.required : [];
+      const optAddr = Object.keys(props).find((n) => ADDRESS_LIKE.test(n.toLowerCase()) && !reqd.includes(n) && String(props[n]?.type || 'string') === 'string');
+      if (optAddr && !addressesInTask(task).addrs.length && /health factor|position|balance|account|wallet|portfolio|holding/i.test(task)) {
+        return { status: 200, body: {
+          task, dispatched: false, protocol: 'mcp',
+          reason: `The task names no account. The best-matching tool, ${pick.name} on ${agent.name}, answers about its own default account when none is given, and that would not be an answer to you. Put the address in the sentence and it is passed on as ${optAddr}.`,
+          call_it_yourself: { endpoint, tool: pick.name, input_schema: pick.inputSchema, agent: agent.name },
+        } };
+      }
+    }
     const needsArgs = Array.isArray(pick.inputSchema?.required) && pick.inputSchema.required.length > 0 && !taken;
     if (needsArgs) {
       return { status: 200, body: {

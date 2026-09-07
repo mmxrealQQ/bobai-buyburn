@@ -1,7 +1,7 @@
 {
-  "resolvedAt": "2026-08-25T09:40:25.392Z",
+  "resolvedAt": "2026-09-07T05:46:54.884Z",
   "population": "ERC-8004 agents carrying an http endpoint",
-  "agents": 1844,
+  "agents": 1877,
   "unread": 0,
   "owners": {
     "0x89e9e1ab11dd1b138b1dce6d6a4a0926aafd5029": [
@@ -6829,13 +6829,13 @@
     "0xd79beadb142d87d6d625991a1f59f69890c447a5": [
       {
         "id": 124595,
-        "name": "FrostTalon"
+        "name": "SLY Agent #45"
       }
     ],
     "0xb19eeacebb9aa8e873eabc873c12a93cb1b2edf9": [
       {
         "id": 124647,
-        "name": "FrostSage"
+        "name": "SLY Agent #46"
       }
     ],
     "0x0f93bf04ac7920a1bc6dba17dcce4538d96d7677": [
@@ -8422,6 +8422,34 @@
       {
         "id": 258642,
         "name": "Sentinels Prediction"
+      },
+      {
+        "id": 320743,
+        "name": "Sentinels Trading Analyst"
+      },
+      {
+        "id": 324936,
+        "name": "Sentinels Grid Trader"
+      },
+      {
+        "id": 325413,
+        "name": "Sentinels LP Rebalancer"
+      },
+      {
+        "id": 326106,
+        "name": "Sentinels Yield Router"
+      },
+      {
+        "id": 330536,
+        "name": "Sentinels Grid Trader"
+      },
+      {
+        "id": 330663,
+        "name": "Sentinels Health Guard"
+      },
+      {
+        "id": 330831,
+        "name": "Sentinels Security Scout"
       }
     ],
     "0xfb19e30a2b29872cdb513ba77407ee5b4fd3c4c4": [
@@ -8516,6 +8544,138 @@
       {
         "id": 270213,
         "name": "TermiX Advantage Report Explainer"
+      }
+    ],
+    "0xa891e1743c5c8f00b7e216bc026c37914ddcd9c3": [
+      {
+        "id": 293902,
+        "name": "mandaterebalance-agent"
+      }
+    ],
+    "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963": [
+      {
+        "id": 302257,
+        "name": "Brain on BNB — Venus Health Factor Monitor"
+      },
+      {
+        "id": 302258,
+        "name": "Brain on BNB — BSC Grid Planner"
+      },
+      {
+        "id": 304493,
+        "name": "Brain on BNB — Venus Yield Ranking"
+      },
+      {
+        "id": 304494,
+        "name": "Brain on BNB — Portfolio Rebalance Pricer"
+      },
+      {
+        "id": 310460,
+        "name": "Brain on BNB — PancakeSwap Fee Tier Placement"
+      }
+    ],
+    "0xbbfd4c1e74bbc25047c9e6dfb9136f5a7055d1cc": [
+      {
+        "id": 302651,
+        "name": "OnyxOracle"
+      }
+    ],
+    "0xa4475225997cd5019f6640c67b5defef62e4fcd1": [
+      {
+        "id": 303527,
+        "name": "SolarVoyager"
+      }
+    ],
+    "0xa2a2012e52fd075c0f3146e37e833e7294ee52b5": [
+      {
+        "id": 303779,
+        "name": "marketplace-operated-grid-planner"
+      }
+    ],
+    "0x0936686cbaf6ff410afe042b297d299afb46bfb0": [
+      {
+        "id": 304169,
+        "name": "OptimAI Search Provider"
+      }
+    ],
+    "0x7ff3a7bd9157107c43b444b2506915ec0596eae7": [
+      {
+        "id": 305820,
+        "name": "Cortez"
+      }
+    ],
+    "0x85d32d525e1812fee7001f34dd6dd86154619090": [
+      {
+        "id": 322885,
+        "name": "Venus Health Factor Monitor"
+      }
+    ],
+    "0x0c501ee1924bfb91a028db4bcd68f4861b0ff6ee": [
+      {
+        "id": 323262,
+        "name": "Warden"
+      },
+      {
+        "id": 323332,
+        "name": "Grid"
+      },
+      {
+        "id": 323333,
+        "name": "Sentinel"
+      },
+      {
+        "id": 323334,
+        "name": "Router"
+      },
+      {
+        "id": 331590,
+        "name": "Warden"
+      },
+      {
+        "id": 331592,
+        "name": "Warden"
+      }
+    ],
+    "0x239b5ccc6ecffe6f3f7c939ab528d654e9570b5c": [
+      {
+        "id": 324818,
+        "name": "RangeReset"
+      },
+      {
+        "id": 331131,
+        "name": "LatticeLatch"
+      }
+    ],
+    "0x999561c6c239c9ef660dfbe38cc2ce6bd0c2ecba": [
+      {
+        "id": 326816,
+        "name": "lean-agente-aprendizaje"
+      }
+    ],
+    "0x4d09af0beac3f65c5bdbf1d19f31caca7924b7ec": [
+      {
+        "id": 327090,
+        "name": "Qwibi"
+      }
+    ],
+    "0xc58a0c1b25418382934cf06740292c87de6d66df": [
+      {
+        "id": 330902,
+        "name": "Agent"
+      }
+    ],
+    "0x4cda2a93054f2ab639b4a95c261874a77a0af6fa": [
+      {
+        "id": 331625,
+        "name": "SMEAI Reference Health Factor Monitor"
+      },
+      {
+        "id": 331698,
+        "name": "SMEAI Reference PancakeSwap LP Monitor"
+      },
+      {
+        "id": 331794,
+        "name": "SMEAI Reference Grid Viability Checker"
       }
     ]
   }

@@ -32,6 +32,8 @@
 //   node scripts/erc8183-job-scan.mjs --max 500  stop after this job id
 //   node scripts/erc8183-job-scan.mjs --owners   resolve provider addresses to agent ids
 //   node scripts/erc8183-job-scan.mjs --report   employment balance per provider
+//   A run also re-reads every job that was not final when first read and whose
+//   provider is a registered agent, so a settled escrow reaches the census.
 import fs from 'node:fs';
 import path from 'node:path';
 import { ERC8183, decodeJob, JOB_STATUS } from '../worker-agent/hire.js';
@@ -292,6 +294,7 @@ function report() {
 
 if (args.includes('--owners')) { await resolveOwners(); process.exit(0); }
 if (args.includes('--report')) { report(); process.exit(0); }
+// `--recheck` alone: only the re-read of open jobs (recheckOpen, below the scan).
 
 const state = loadState();
 if (!state.startedAt) state.startedAt = new Date().toISOString();
@@ -394,6 +397,45 @@ if (pendingRetry.length) {
   state.unread = still.length;
   console.log(`  ${fmt(pendingRetry.length - still.length)} recovered, ${fmt(still.length)} still unread`);
 }
+
+// A resumed scan reads only ids past the cursor, so a job read on 29 Aug as
+// SUBMITTED stayed SUBMITTED in the census after its escrow released on 6 Sep
+// (56657, and the three settled that morning): the cards said "none paid out"
+// under a COMPLETED job page. Jobs that were not final when read, and whose
+// provider maps to a registered agent (the only ones a card is built from),
+// are read again — 182 ids today, eight batches — and their lines replaced.
+async function recheckOpen() {
+  if (!fs.existsSync(OWNERS_FILE)) { console.log('  recheck skipped: no owners file (run --owners)'); return; }
+  const owners = new Set(Object.keys(JSON.parse(fs.readFileSync(OWNERS_FILE, 'utf8')).owners || {}).map((a) => a.toLowerCase()));
+  const lines = fs.readFileSync(JOBS_FILE, 'utf8').split('\n').filter(Boolean);
+  const idx = new Map();
+  const ids = [];
+  lines.forEach((l, i) => {
+    const j = JSON.parse(l);
+    idx.set(j.id, i);
+    if (!/COMPLETED|EXPIRED|REJECTED/.test(j.status) && owners.has(String(j.provider || '').toLowerCase())) ids.push(j.id);
+  });
+  if (!ids.length) { console.log('  recheck: nothing open under a registered provider'); return; }
+  let changed = 0, unread = 0;
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const slice = ids.slice(i, i + BATCH);
+    const res = await callBatch(ERC8183.commerce, SEL_GET_JOB, slice, { patient: true });
+    for (let k = 0; k < slice.length; k++) {
+      const j = res[k] ? decodeJob(res[k]) : null;
+      if (!j) { unread++; continue; }
+      if (!isRealJob(j, slice[k])) continue;
+      const line = jobLine(j);
+      const at = idx.get(slice[k]);
+      if (at != null && lines[at] !== line) { lines[at] = line; changed++; }
+    }
+  }
+  fs.writeFileSync(JOBS_FILE, lines.join('\n') + '\n');
+  state.recheckedAt = new Date().toISOString();
+  console.log(`  recheck: ${fmt(ids.length)} open jobs under registered providers read again, ${fmt(changed)} changed status, ${fmt(unread)} unread`);
+}
+out.end();
+await new Promise((r) => out.on('finish', r));
+await recheckOpen();
 
 state.finishedAt = new Date().toISOString();
 state.absent = absent;

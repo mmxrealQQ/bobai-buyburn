@@ -37,14 +37,19 @@ export function summarize(service, result) {
     if (service === 'grid_plan' && r.plan) {
       const p = r.plan, g = p.grid || {}, e = p.economics || {};
       const net = e.net_per_completed_cycle_pct;
+      const warns = (p.warnings || []).map((w) => String(typeof w === 'string' ? w : w?.text || w?.message || JSON.stringify(w)));
       return {
         headline: `${g.levels || '—'} levels across ±${n(g.band_pct, 1)}% on ${p.token?.symbol || 'the token'} — a completed cycle nets ${net == null ? '—' : (net >= 0 ? '+' : '') + pct(net)}`,
+        // What the delivery is about, so a page can hold it against what was
+        // asked: job 56670 asked for WBNB and was delivered for BOBAI.
+        subject: p.token?.symbol || null,
         facts: [
           ['Pool', `${p.pool?.venue || '—'}, ${usd(p.pool?.liquidity_usd)} deep`],
           ['Grid spacing', pct(g.spacing_pct)],
           ['Round-trip cost per cycle', pct(e.round_trip_cost_pct)],
           ['Transfer tax (measured)', p.transfer_tax ? `${pct(p.transfer_tax.buy_pct)} buy / ${pct(p.transfer_tax.sell_pct)} sell` : '—'],
-          ['Warnings', String((p.warnings || []).length)],
+          // "Warnings 2" said nothing; the warnings are in the document.
+          ['Warnings', warns.length ? warns.join(' · ').slice(0, 400) : 'none'],
         ],
       };
     }
@@ -79,6 +84,7 @@ export function summarize(service, result) {
         headline: p.no_move_because
           ? `${p.best_paying_tier || '—'} pays best — ${String(p.no_move_because).split('. ')[0]}.`
           : `${p.best_paying_tier || '—'} pays best of ${p.tiers_measured ?? '—'} tiers measured`,
+        subject: p.pair?.token?.symbol || null,
         facts: [
           ['Pair', `${p.pair?.token?.symbol || '—'} / ${p.pair?.quote?.symbol || '—'}`],
           ['Window', w.minutes != null ? `${n(w.minutes, 1)} min, ${n(w.blocks, 0)} blocks — not annualised` : '—'],

@@ -32,16 +32,16 @@
       "ours": false
     },
     {
-      "id": 269233,
-      "label": "BNB Grid Trader (test)",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
       "id": 302258,
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
       "ours": true
+    },
+    {
+      "id": 269233,
+      "label": "BNB Grid Trader (test)",
+      "category": "grid-trading",
+      "ours": false
     },
     {
       "id": 303779,

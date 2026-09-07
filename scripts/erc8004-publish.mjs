@@ -420,8 +420,16 @@ if (jobOwners?.owners) {
 }
 for (const a of ownAgents) if (a.provider) providerOfAgent.set(a.id, a.provider.toLowerCase());
 
+// How many agent ids on the page sell from one provider address (built once
+// providerOfAgent is filled; read by the card renderer).
+const providerAgentCount = new Map();
+const countProviderAgents = () => {
+  providerAgentCount.clear();
+  for (const addr of providerOfAgent.values()) providerAgentCount.set(addr, (providerAgentCount.get(addr) || 0) + 1);
+};
 const employmentOf = (ids) => {
   if (!jobCensus) return null;
+  if (!providerAgentCount.size) countProviderAgents();
   let best = null;
   for (const id of ids) {
     const addr = providerOfAgent.get(id);
@@ -521,7 +529,9 @@ const describes = (r) => {
   if (SELLER_BOILERPLATE.test(d)) {
     return { text: null, weak: true, why: 'Says nothing about what it does — only that it sells.' };
   }
-  return { text: d.length > 190 ? d.slice(0, 190).replace(/\s+\S*$/, '') + '…' : d, weak: false, why: null };
+  // The full text rides along: the card cuts at 190 characters and had no
+  // way to read the rest ("…measured from executed trades.…").
+  return { text: d.length > 190 ? d.slice(0, 190).replace(/\s+\S*$/, '') + '…' : d, full: d.length > 190 ? d : null, weak: false, why: null };
 };
 
 // CAN BE HIRED and HAS BEEN HIRED are different facts, and the first version
@@ -786,9 +796,15 @@ const categorySections = categorised.map(({ cat, rows }) => {
     }
     if (r.employment) {
       const e = r.employment;
+      // Employment is counted per provider address. Five of our agents sell
+      // from one address, and each card said "Hired 2×" as if each had been;
+      // when the address hosts more than one agent, the chip says whose count
+      // it is.
+      const shared = providerAgentCount.get(e.address) || 0;
+      const who = shared > 1 ? 'Its provider hired' : 'Hired';
       if (e.funded) {
-        chips.push(`<li title="Jobs funded through the ERC-8183 escrow, and how many of those paid out">Hired ${fmt(e.funded)}&times; &middot; ${e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet'}</li>`);
-        facts.push(`<li>Hired ${fmt(e.funded)} ${e.funded === 1 ? 'time' : 'times'} through the escrow${e.completed ? `, ${fmt(e.completed)} paid out` : ', none paid out yet'}${e.submitted_not_released ? ` (${fmt(e.submitted_not_released)} delivered, still in the dispute window)` : ''}</li>`);
+        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out">${who} ${fmt(e.funded)}&times; &middot; ${e.completed ? `${fmt(e.completed)} paid out` : 'none paid out yet'}</li>`);
+        facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded)} ${e.funded === 1 ? 'time' : 'times'} through the escrow${e.completed ? `, ${fmt(e.completed)} paid out` : ', none paid out yet'}${e.submitted_not_released ? ` (${fmt(e.submitted_not_released)} delivered, still in the dispute window)` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
         facts.push('<li>Never been hired through the escrow</li>');
@@ -808,10 +824,10 @@ const categorySections = categorised.map(({ cat, rows }) => {
               <div class="rg-note">${esc(r.sub)}${r.instances > 1 ? ` &middot; ${r.instances} registry ids, one deployment` : ''}</div>
             </div>
             ${hireable && r.agentId
-    ? `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''}>Hire${q && q.quotes && q.price ? ` &mdash; ${esc(q.price)}` : ''} &rarr;</button>`
+    ? `<button class="rg-hirebtn" data-hire="${r.agentId}" data-name="${esc(r.label)}" data-cat="${cat.id}"${r.seed ? ` data-seed="${esc(r.seed)}"` : ''} title="${q && q.quotes && q.price ? `Quoted ${esc(q.price)} when asked on ${esc(String(hireConfirm?.measured_at || '').slice(0, 10))}; the panel asks again for today's price` : 'The panel asks the agent for its price'}">Hire${q && q.quotes && q.price ? ` &mdash; last quote ${esc(q.price)}` : ''} &rarr;</button>`
     : '<span class="rgc-nohire">Not hireable</span>'}
           </div>
-          <p class="rgc-what${d.weak ? ' rg-weak' : ''}">${d.text ? esc(d.text) : esc(d.why)}</p>
+          <p class="rgc-what${d.weak ? ' rg-weak' : ''}"${d.full ? ` title="${esc(d.full)}"` : ''}>${d.text ? esc(d.text) : esc(d.why)}</p>
           ${chips.length ? `<ul class="rgc-strip">${chips.join('')}</ul>` : ''}
           ${r.tele ? '<div class="rg-live" hidden></div>' : ''}
           ${r.example ? exampleBlock(r.example) : ''}
@@ -1428,7 +1444,7 @@ const page = `<!doctype html>
       <div class="rg-card"><div class="rg-n" id="rg-tile-total">${fmt(total)}</div><div class="rg-l">registered ids</div><div class="rg-s" id="rg-tile-total-sub">what the headline counts</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.valid)}</div><div class="rg-l">readable registrations</div><div class="rg-s">${p1(c.valid)} parse at all</div></div>
       <div class="rg-card"><div class="rg-n">${fmt(c.withHttpEndpoint)}</div><div class="rg-l">name an endpoint</div><div class="rg-s">${p1(c.withHttpEndpoint)} &mdash; an address you could call</div></div>
-      <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of everything registered' : 'probe pending'}</div></div>
+      <div class="rg-card"><div class="rg-n">${reach ? fmt(reach.reachable) : '&mdash;'}</div><div class="rg-l">actually answer</div><div class="rg-s">${reach ? p1(reach.reachable, total) + ' of the ' + fmt(total) + ' ids at the last full scan' : 'probe pending'}</div></div>
     </div>
 
     <div class="rg-box rg-start">
@@ -1713,6 +1729,11 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     var box=document.getElementById('rg-log'), body=document.getElementById('rg-log-body');
     if(!box||!body)return;
     function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]});}
+    var names={};
+    document.querySelectorAll('[data-hire]').forEach(function(b){
+      var art=b.closest('article');
+      names[b.getAttribute('data-hire')]=b.getAttribute('data-name')+(art&&art.classList.contains('rg-ours')?' (ours)':'');
+    });
     fetch('https://agent.brainonbnb.com/sessions',{cache:'no-store'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(d){
@@ -1735,7 +1756,11 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
             if(/[A-Za-z]*(Error|Exception)([^A-Za-z]|$)|[[]Errno|Traceback|[/][A-Za-z0-9_.-]+[/][A-Za-z0-9_.-]+|[.]json'/.test(f)) return "the seller's own code threw an error (the full text is in the log)";
             return f.length>120?f.slice(0,117)+'…':f;
           }
-          return '<div class="rg-step"><div class="rg-top"><b>'+esc(r.operator)+'</b>'+
+          // An A2A seller's "operator" is its registry id; the page already
+          // holds every hireable id with its name on the Hire buttons, so
+          // "304493" reads "Venus Yield Ranking (ours) · #304493".
+          var nm=names[String(r.operator)];
+          return '<div class="rg-step"><div class="rg-top"><b>'+(nm?esc(nm)+' &middot; #'+esc(r.operator):esc(r.operator))+'</b>'+
             '<span>'+esc(r.reliability)+' &middot; '+ms+'</span></div>'+
             '<div class="rg-note">'+(r.tools_used||[]).slice(0,4).map(function(t){
               return '<code>'+esc(t)+'</code>';}).join(' ')+
@@ -1862,8 +1887,14 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           // the raw form is one tap away either way.
           var fmtNum=function(n){var a=Math.abs(n);if(a===0)return '0';if(a>=1000)return n.toLocaleString('en-US',{maximumFractionDigits:0});if(a>=1)return n.toLocaleString('en-US',{maximumFractionDigits:2});return n.toLocaleString('en-US',{maximumSignificantDigits:4})};
           var fmtVal=function(v){if(typeof v==='number')return fmtNum(v);if(typeof v==='string'&&/^-?[0-9]+([.][0-9]+)?$/.test(v)&&v.length<40)return fmtNum(Number(v));if(v==null)return '—';if(typeof v==='boolean')return v?'yes':'no';return String(v)};
+          // "tvlUsd" is a field name, not a label. Split the camel case,
+          // move the unit into brackets, keep the acronyms.
+          var label=function(k){var s=String(k).replace(/_/g,' ').replace(/([a-z0-9])([A-Z])/g,'$1 $2').toLowerCase();
+            s=s.replace(/\busd\b$/,'($)').replace(/\bpct\b$/,'(%)').replace(/\bbps\b$/,'(bps)');
+            s=s.replace(/\b(tvl|apy|apr|usd|bnb|lp|id|url|tx|dex|amm|v2|v3)\b/g,function(m){return m.toUpperCase()});
+            return s.charAt(0).toUpperCase()+s.slice(1)};
           var flat=function(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&Object.keys(r).length&&Object.keys(r).length<=40&&Object.keys(r).every(function(k){return r[k]==null||typeof r[k]!=='object'}))};
-          var renderResult=function(r){var raw=esc(typeof r==='string'?r:JSON.stringify(r,null,1)).slice(0,3000);if(!flat(r))return '<pre>'+raw+'</pre>';return '<table class="rg-ans">'+Object.keys(r).map(function(k){return '<tr><th>'+esc(k)+'</th><td>'+esc(fmtVal(r[k]))+'</td></tr>'}).join('')+'</table><details class="rg-raw"><summary>as the agent sent it</summary><pre>'+raw+'</pre></details>'};
+          var renderResult=function(r){var raw=esc(typeof r==='string'?r:JSON.stringify(r,null,1)).slice(0,3000);if(!flat(r))return '<pre>'+raw+'</pre>';return '<table class="rg-ans">'+Object.keys(r).map(function(k){return '<tr><th title="'+esc(k)+'">'+esc(label(k))+'</th><td>'+esc(fmtVal(r[k]))+'</td></tr>'}).join('')+'</table><details class="rg-raw"><summary>as the agent sent it</summary><pre>'+raw+'</pre></details>'};
           if(d.dispatched && d.answered_by){
             var ab=d.answered_by;
             o.innerHTML='<div class="rg-who">'+esc(ab.agent)+' &middot; '+esc(ab.tool||ab.skill||'')+(ab.operator?' &middot; <span class="rg-note">'+esc(ab.operator)+(ab.id?' &middot; #'+esc(String(ab.id)):'')+'</span>':'')+'</div>'+

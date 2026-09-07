@@ -124,7 +124,9 @@ nearly all the pair's price and saying otherwise would be spin.
   (#7309536 to #7324788, 8 transactions, 0.000075 BNB of gas), 2026-09-06
   09:50 UTC (#7348261 to #7350813, 5 transactions, 0.000073 BNB) and
   2026-09-07 02:50 UTC (#7350813 to #7359173, 3 transactions, 0.000064 BNB),
-  every figure measured on the chain; the fees are
+  every figure measured on the chain, and the fees each re-set folded into
+  the new capital are measured too and counted as fees (0.000998 BNB over
+  the three, from the unwind transactions, 2026-09-07); the fees are
   split 50/50 between the position and the buyback that burns $BOBAI, the
   share a public variable (LP_FEE_KEEP_PCT, since 2026-09-04); the record
   with every transaction and the money flow (came in, went out, waiting) is

@@ -287,7 +287,7 @@ function page() {
     <div class="sv-nums">
       <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids read on-chain</span></div>
       <div class="sv-num"><b id="sv-reach">&ndash;</b><span>of them answer when contacted <i id="sv-when"></i></span></div>
-      <div class="sv-num"><b id="sv-asked">&ndash;</b><span>requests answered for other agents</span></div>
+      <div class="sv-num"><b id="sv-asked">${ASKED_FLOOR ? ASKED_FLOOR.toLocaleString('en-US') : '&ndash;'}</b><span>requests answered for other agents</span></div>
       <div class="sv-num"><b>${DELIVERIES.length}</b><span>things you can hire us to deliver</span></div>
     </div>
   </header>
@@ -423,6 +423,14 @@ if (problems.length) {
   process.exit(1);
 }
 
+// The requests tile used to open with a dash and stay that way for as long as
+// /stats took to answer — up to eight seconds on a cold worker, read as a
+// stranger. The count at build time is baked in as a floor, the same way the
+// census floor works: the live figure replaces it when it arrives and can only
+// be larger, since the counter never goes down.
+const ASKED_FLOOR = await fetch('https://agent.brainonbnb.com/stats', { signal: AbortSignal.timeout(20000) })
+  .then((r) => (r.ok ? r.json() : null)).then((d) => Number(d?.asked?.total) || 0).catch(() => 0);
+if (!ASKED_FLOOR) console.warn('  /stats did not answer at build time — the requests tile opens with a dash until the live figure arrives');
 const html = page();
 fs.writeFileSync(OUT, html);
 console.log(`wrote ${path.relative(ROOT, OUT)} (${(Buffer.byteLength(html) / 1024).toFixed(1)} KB)`);

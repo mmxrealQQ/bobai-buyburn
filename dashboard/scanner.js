@@ -675,8 +675,15 @@ function taxCard(tax,gp,gpOk){
 
 // ---- flags -----------------------------------------------------------------
 function flagsCard(gp,gpOk,sim){
+  // Three openings, because the card is reached three ways: a pool with the
+  // simulation and GoPlus, a pool without GoPlus, and a token still on its
+  // launch curve — where there is no router to sell into and the intro used
+  // to promise a simulation the next line then called "not run".
   const c=card('Can you sell it, and what the contract can do',
-    gpOk?'The sell test is ours: a sell is simulated on the chain at this block, from a fresh address with no history. The properties below are read from the verified source by GoPlus. Properties, not a rating — a token can carry several of them and be perfectly ordinary, or carry none and still go to zero.'
+    sim&&sim.curve
+      ?(gpOk?'On the launch curve there is no pool and no router to sell into, so no sell is simulated here: whether a sell pays out is four.meme’s own answer above. The properties below are read from the verified source by GoPlus. Properties, not a rating — a token can carry several of them and be perfectly ordinary, or carry none and still go to zero.'
+             :'On the launch curve there is no pool and no router to sell into, so no sell is simulated here: whether a sell pays out is four.meme’s own answer above. GoPlus did not answer for this token, so the contract properties could not be checked.')
+    :gpOk?'The sell test is ours: a sell is simulated on the chain at this block, from a fresh address with no history. The properties below are read from the verified source by GoPlus. Properties, not a rating — a token can carry several of them and be perfectly ordinary, or carry none and still go to zero.'
         :'GoPlus did not answer for this token, so the contract properties could not be checked. The sell test below is ours and does not depend on it; every figure above comes off the chain directly.');
   const g=el('div','fg');
   const chip=(state,label,note)=>{const x=el('div','f f-'+state);
@@ -1041,7 +1048,7 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
   // The router sell test has nothing to sell into here; the chip says so and
   // points at the curve's own answer above rather than reading as a failure.
   o.appendChild(flagsCard(gp,!!(gp.token_name||gp.dex||gp.is_open_source!=null),
-    {ok:false,reason:'Not applicable on the launch curve: there is no pool and no router to sell into. Whether a sell would be paid out is answered above, from four.meme’s own contract.'}));
+    {ok:false,curve:true,reason:'Not applicable on the launch curve: there is no pool and no router to sell into. Whether a sell would be paid out is answered above, from four.meme’s own contract.'}));
   o.appendChild(el('p','dis','Curve figures come from four.meme’s helper contract on BNB Smart Chain; contract properties from GoPlus. Measurement, not advice.'));
 }
 

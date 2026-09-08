@@ -286,6 +286,16 @@ node scripts/advantage-report.mjs && node scripts/advantage-publish.mjs   # Term
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.
 
+Refresh run 2026-09-08 ~10:30 UTC: the liquidity agent re-set its range twice
+today on its own, both times after the two-hour hysteresis in a rising CAKE
+market — 06:50 UTC #7359173 → #7373886 (3 transactions, 0.000066 BNB of gas,
+0.000673 BNB of the old range's fees folded into the capital) and 09:50 UTC
+#7373886 → #7377133 (3 transactions, 0.000063 BNB); five automatic re-sets in
+all, 22 transactions, 0.00034 BNB of gas on record. The pool record
+(agent.brainonbnb.com/lp/pools, since 06:30 UTC today) replays the same $50 in
+CAKE/BNB 0.05%, CAKE/BNB 0.01% and BOB/BNB 0.05% every hour; no pick until each
+pool has a day of windows. Every checker in scripts/README.md ran green today.
+
 Refresh run 2026-09-08 ~06:50 UTC: reputation re-read in full (848 agents, 20,800
 attestations, 361 rated, 64 raters, 61 checkable), published, smoke green.
 

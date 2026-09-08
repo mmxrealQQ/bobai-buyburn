@@ -14,6 +14,10 @@
 //             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
 //             the rest goes to the buyback wallet — only the fees, never the
 //             capital
+//   rebalance a range the price has left is re-set around the price; the
+//             fees the old range owed are split the same way on the way
+//             (since 2026-09-08): the kept share is minted into the new
+//             capital, the rest goes to the buyback wallet before the mint
 //   increase  BNB above the reserve is put into the same position — the
 //             income the sweep brought and the fee share the collect kept
 //
@@ -23,7 +27,7 @@
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees, resetForward,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
 } from './lp-guards.js';
 
@@ -416,11 +420,12 @@ export function ticksAround(tick, widthPct, spacing) {
 // position but does hold that pool's two tokens, the plan is a mint from the
 // wallet — a re-set that stopped between its unwind and its mint (2026-09-05
 // 12:50) is finished on the next run instead of leaving the capital idle.
-export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null } = {}) {
+export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null, keptPct = FEE_SHARE_KEPT_PCT } = {}) {
   let p = position || (await readPosition(pub, address));
   let resume = false;
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
+  let owedWei = 0n, share = null;
   const pick = record?.earnings_pick || null;
   const width = widthOverride ?? pick?.width ?? null;
   const widthBasis = widthOverride != null ? 'named by hand'
@@ -443,6 +448,13 @@ export async function planRebalance(pub, address, { record = null, widthOverride
     const otherInWbnb = wbnbIs0 ? 1 / price : price;
     have = { other: (wbnbIs0 ? in1 : in0) + heldOther, wbnb: (wbnbIs0 ? in0 : in1) + heldWbnb };
     valueBnb = (have.wbnb + have.other * otherInWbnb) / 1e18;
+    // What the old range still owes in fees, in WBNB terms, and the part of
+    // it a re-set would send on to the buyback wallet.
+    if (!resume && p.owed0 != null) {
+      const owedWbnb = wbnbIs0 ? p.owed0 : p.owed1, owedOther = wbnbIs0 ? p.owed1 : p.owed0;
+      owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * otherInWbnb));
+      share = resetForward(owedWei, keptPct);
+    }
     if (width != null) {
       ticks = ticksAround(poolInfo.tick, width, spacing);
       if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
@@ -473,6 +485,9 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       expected_net_usd_per_day: pick ? pick.earnings.net_usd_per_day : null,
       new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
       trade: trade ? (trade.sell === 'other' ? `sell ${(trade.amount / 1e18).toFixed(6)} of ${other} for WBNB` : `buy the other side with ${(trade.amount / 1e18).toFixed(6)} WBNB`) : null,
+      fees_owed_bnb: Number((Number(owedWei) / 1e18).toFixed(6)),
+      fees_to_buyback_bnb: share ? Number((Number(share.forward) / 1e18).toFixed(6)) : 0,
+      fees_kept_pct: share ? share.pct : null,
     },
   };
 }
@@ -503,31 +518,37 @@ async function ensureAllowance(pub, send, token, spender, amount, label) {
   return true;
 }
 
-// Empty the old position, burn its NFT, trade to the new ratio, mint the new
-// range from what the wallet then holds. Native BNB is not touched: the
-// reserve and any capital waiting for the increase stay where they are.
+// Empty the old position, burn its NFT, trade to the new ratio, send the
+// buyback share of the old range's fees on, mint the new range from what the
+// wallet then holds. Native BNB is not touched: the reserve and any capital
+// waiting for the increase stay where they are (the forwarded share is
+// unwrapped and sent in the same breath, so it never sits there).
 // Nine transactions on 2026-09-02; four to five since 2026-09-04 (one
-// multicall for the unwind, approvals only when the allowance is short).
-export async function executeRebalance(pub, wallet, account, plan, log = () => {}) {
+// multicall for the unwind, approvals only when the allowance is short);
+// two more since 2026-09-08 when the fee share is worth sending.
+export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   // A resumed re-set (plan.resume) has no position to unwind: the earlier run
   // already did that and stopped before its mint.
   // The fees the old range still owes are not collected as fees here: the
-  // unwind pays them out with the principal and the mint folds them into the
-  // new capital. Read them first, so the record can count them as fees — on
-  // 2026-09-07 the three re-sets had folded in 0.000998 BNB that every fees
-  // figure said was zero.
-  let folded = null;
+  // unwind pays them out with the principal. Read them first, so the record
+  // can count them as fees — on 2026-09-07 the three re-sets had folded in
+  // 0.000998 BNB that every fees figure said was zero — and so the buyback
+  // share of them can be sent on before the mint folds the rest in.
+  let folded = null, share = null;
   if (plan.tokenId != null) {
     const old = await readPosition(pub, account.address);
     if (old.tokenId != null && String(old.tokenId) === String(plan.tokenId)) {
       const owedWbnb = plan.wbnbIs0 ? old.owed0 : old.owed1, owedOther = plan.wbnbIs0 ? old.owed1 : old.owed0;
       const otherInWbnb = plan.target && plan.target.otherInWbnb ? plan.target.otherInWbnb : 0;
-      folded = { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), bnb_equivalent: Number(((Number(owedWbnb) + Number(owedOther) * otherInWbnb) / 1e18).toFixed(6)) };
+      const owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * otherInWbnb));
+      folded = { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), bnb_equivalent: Number((Number(owedWei) / 1e18).toFixed(6)) };
+      share = resetForward(owedWei, keptPct);
     }
   }
+  const reserved = share && share.forward > 0n ? share.forward : 0n;
   if (plan.tokenId != null) {
     const liquidity = plan.pos[7];
     const sim = await pub.simulateContract({
@@ -543,7 +564,9 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   const haveWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   const t = plan.target;
-  const value = Number(haveWbnb) + Number(haveOther) * t.otherInWbnb;
+  // The buyback share is not capital: it is kept out of the sizing, so the
+  // trade below leaves it as WBNB for the transfer.
+  const value = Number(haveWbnb - reserved) + Number(haveOther) * t.otherInWbnb;
   const perLValue = t.perLWbnb + t.perLOther * t.otherInWbnb;
   const Ln = (value * 0.99) / perLValue;
   const targetOther = BigInt(Math.floor(Ln * t.perLOther));
@@ -557,12 +580,28 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     const need = targetOther - haveOther;
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, plan.other]]);
     const spend = q[1] > 0n ? (need * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
-    const cap = haveWbnb;
+    const cap = haveWbnb > reserved ? haveWbnb - reserved : 0n;
     const wbnbIn = spend > cap ? cap : spend;
     if (wbnbIn > 0n) {
       await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
       await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
         args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+    }
+  }
+  // The buyback share of the old range's fees leaves here, before the mint
+  // can fold it into the new capital: unwrapped and sent in the same breath.
+  // A wallet that holds less WBNB than the share after the trades (a range
+  // that ended all on the other side, with the buy capped) keeps it as
+  // capital and says so; the mint takes what is there.
+  let forwarded = 0n, forwardWhy = share ? share.why : null;
+  if (reserved > 0n) {
+    const wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+    if (wbnbNow >= reserved) {
+      await send("unwrap the buyback share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
+      await send(`send ${100 - share.pct}% of the old range's fees to the buyback wallet`, { to: ADDR.BUYBACK_WALLET, value: reserved, gas: 21000n });
+      forwarded = reserved;
+    } else {
+      forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
     }
   }
   const mintOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -586,8 +625,15 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
   const np = await readPosition(pub, account.address);
   const gasBnb = txs.reduce((s, t) => s + (t.gas_bnb || 0), 0);
+  // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
+  // it that went to the buyback wallet; the difference was minted into the
+  // new capital. Records before 2026-09-08 carry only the first.
   return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
-    ...(folded ? { fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent } : {}) };
+    ...(folded ? {
+      fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
+      fees_forwarded_bnb: Number(formatEther(forwarded)), fees_kept_pct: share ? share.pct : null,
+      ...(forwarded > 0n ? { forwarded_to: ADDR.BUYBACK_WALLET } : { fees_forward_why: forwardWhy }),
+    } : {}) };
 }
 
 // --------------------------------------------------------------------------

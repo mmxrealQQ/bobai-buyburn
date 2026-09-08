@@ -28,7 +28,8 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const bySource = {};
   let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
-  let feesFolded = 0, resetsWithFees = 0;
+  let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
+  let lastKeptPct = null;
   let first = null, lastMoved = null;
   for (const e of hist) {
     const st = e.steps || {};
@@ -61,11 +62,15 @@ export function moneyFlow(rec, { earned = null } = {}) {
     if (rb && rb.acted && !rb.error && rb.new_position) {
       resets += 1;
       // A re-set does not collect the old range's fees as fees: the unwind
-      // pays them out with the principal and the mint folds them into the
-      // new capital. They are fees the position produced all the same, and
-      // all of them stayed as capital.
+      // pays them out with the principal. They are fees the position
+      // produced all the same. Before 2026-09-08 the mint folded all of them
+      // into the new capital; since then the buyback share is sent on first
+      // (fees_forwarded_bnb) and only the rest is folded in.
       if (n(rb.fees_folded_bnb) > 0) { feesFolded += n(rb.fees_folded_bnb); resetsWithFees += 1; }
+      if (n(rb.fees_forwarded_bnb) > 0) resetForwarded += n(rb.fees_forwarded_bnb);
+      if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
     }
+    if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
     for (const step of [...sweeps, c, inc, rb]) {
       for (const t of (step && Array.isArray(step.txs) ? step.txs : [])) { txs += 1; gas += n(t.gas_bnb); }
     }
@@ -81,7 +86,10 @@ export function moneyFlow(rec, { earned = null } = {}) {
     fees_owed_bnb: ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
     wallet_spendable_bnb: ls.increase && ls.increase.spendable_bnb != null ? r6(n(ls.increase.spendable_bnb)) : null,
   };
-  const keptPct = ls.collect && ls.collect.kept_pct != null ? n(ls.collect.kept_pct) : null;
+  // The rule is what the last step that split fees named: the last collect,
+  // or the last re-set that forwarded (since 2026-09-08 re-sets split too).
+  const keptPct = ls.collect && ls.collect.kept_pct != null ? n(ls.collect.kept_pct) : lastKeptPct;
+  const foldedKept = feesFolded - resetForwarded;
 
   return {
     since: first,
@@ -89,15 +97,16 @@ export function moneyFlow(rec, { earned = null } = {}) {
     in: {
       income,
       income_bnb: r6(incomeBnb),
-      // bnb = collected by the collect step + folded into the capital by
-      // re-sets; folded_bnb says how much of it was the latter.
-      fees: { bnb: r6(feesProduced + feesFolded), collects, collected_bnb: r6(feesProduced), folded_bnb: r6(feesFolded), resets_with_fees: resetsWithFees },
+      // bnb = collected by the collect step + taken by re-sets; folded_bnb
+      // is all a re-set took, folded_kept_bnb the part it minted into the
+      // new capital, forwarded_at_resets_bnb the part it sent to the buyback.
+      fees: { bnb: r6(feesProduced + feesFolded), collects, collected_bnb: r6(feesProduced), folded_bnb: r6(feesFolded), folded_kept_bnb: r6(foldedKept), forwarded_at_resets_bnb: r6(resetForwarded), resets_with_fees: resetsWithFees },
       total_bnb: r6(incomeBnb + feesProduced + feesFolded),
     },
     out: {
-      buyback_bnb: r6(feesForwarded),
-      kept_as_capital_bnb: r6(feesKept + feesFolded),
-      capital_arrived_bnb: r6(incomeBnb + feesKept + feesFolded),
+      buyback_bnb: r6(feesForwarded + resetForwarded),
+      kept_as_capital_bnb: r6(feesKept + foldedKept),
+      capital_arrived_bnb: r6(incomeBnb + feesKept + foldedKept),
       into_position_bnb: r6(intoPosition),
       increases,
       resets,
@@ -117,8 +126,8 @@ export function flowLines(flow) {
   const income = flow.in.income.length
     ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
-  const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0;
-  const folded = fd > 0 ? `${f(fd)} BNB of fees folded into the capital by ${rw} re-set${rw === 1 ? '' : 's'}` : '';
+  const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
+  const folded = fd > 0 ? `${f(fd)} BNB of fees taken at ${rw} re-set${rw === 1 ? '' : 's'}${rf > 0 ? `, ${f(rf)} of it sent on to the buyback wallet` : ', all of it folded into the capital'}` : '';
   const fees = flow.in.fees.collects
     ? `${f(flow.in.fees.collected_bnb != null ? flow.in.fees.collected_bnb : flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}${folded ? `, ${folded}` : ''}`
     : (folded || 'no fees collected yet');

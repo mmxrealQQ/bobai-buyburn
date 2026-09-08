@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 11616 lines.
+# one fetch. 41 files, 11733 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -193,7 +193,7 @@ import {
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, rebalanceWait, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
-  splitFees, FEE_SHARE_KEPT_PCT,
+  splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines } from '../shared/lp-flow.js';
 
@@ -275,6 +275,28 @@ if (SELF) {
   eq('nothing produced splits to nothing', splitFees(0n).keep + splitFees(0n).buyback, 0n);
   eq('a negative amount is treated as nothing', splitFees(-1n).buyback, 0n);
 
+  console.log('re-set fee share');
+  // Both directions: a share worth sending is sent, a share under the floor
+  // stays as capital (and is counted as kept, so nothing goes missing), a
+  // kept share of 100% sends nothing, no fees owed sends nothing.
+  const mBnb = 10n ** 15n; // 0.001 BNB
+  eq('half of 0.001 BNB is sent on', resetForward(mBnb).forward, mBnb / 2n);
+  eq('… and the other half is kept', resetForward(mBnb).kept, mBnb / 2n);
+  eq('the share names the percentage it kept', resetForward(mBnb).pct, FEE_SHARE_KEPT_PCT);
+  check('a share worth sending has no reason not to', resetForward(mBnb).why, false);
+  const dust = BigInt(Math.round(MIN_RESET_FORWARD_BNB * 1e6)) * 10n ** 12n; // exactly the floor, doubled = 0.0002 folded
+  eq('a buyback share exactly at the floor is sent', resetForward(dust * 2n).forward, dust);
+  eq('a buyback share one wei under the floor stays', resetForward(dust * 2n - 2n).forward, 0n);
+  eq('… and all of it counts as kept', resetForward(dust * 2n - 2n).kept, dust * 2n - 2n);
+  check('the dust share says why it stayed', resetForward(dust * 2n - 2n).why, true);
+  eq('0% kept sends everything', resetForward(mBnb, 0).forward, mBnb);
+  eq('100% kept sends nothing', resetForward(mBnb, 100).forward, 0n);
+  check('100% kept says so', resetForward(mBnb, 100).why, true);
+  eq('no fees owed sends nothing', resetForward(0n).forward, 0n);
+  check('no fees owed says so', resetForward(0n).why, true);
+  eq('a typo in the share falls back to the default', resetForward(mBnb, 'half').pct, FEE_SHARE_KEPT_PCT);
+  check(`the floor (${MIN_RESET_FORWARD_BNB}) is above two transactions at 1 gwei (0.00005)`, MIN_RESET_FORWARD_BNB > 0.00005 ? null : 'floor too low', false);
+
   console.log('money flow');
   // The record as the worker writes it, with one run of each kind, a dry run
   // that must not count, and a collect from before the split (forwarded only).
@@ -291,6 +313,10 @@ if (SELF) {
         rebalance: { acted: true, new_position: '7', fees_folded_bnb: 0.0006, txs: [{ gas_bnb: 0.00002 }] },
       } },
       { at: '2026-09-04T09:00:00Z', ok: false, acted: true, steps: { collect: { acted: true, error: 'reverted', txs: [{ gas_bnb: 0.00001 }] } } },
+      // A re-set since 2026-09-08: it took 0.0004 of fees and sent half on.
+      { at: '2026-09-08T19:50:00Z', ok: true, acted: true, steps: {
+        rebalance: { acted: true, new_position: '8', fees_folded_bnb: 0.0004, fees_forwarded_bnb: 0.0002, fees_kept_pct: 50, forwarded_to: '0xdeFC', txs: [{ gas_bnb: 0.00002 }, { gas_bnb: 0.00001 }] },
+      } },
     ],
     last: { at: '2026-09-04T05:23:00Z', steps: {
       sweep: [{ source: 'x402', token: 'USD1', balance: 0.6, bnb_equivalent: 0.0008 }, { source: 'provider', token: '$U', balance: 0 }],
@@ -305,22 +331,26 @@ if (SELF) {
   is('income is summed per source', fl.in.income.length === 1 && fl.in.income[0].source === 'x402' && near(fl.in.income[0].bnb, 0.007) && fl.in.income[0].runs === 1);
   is('a sweep that did not act is not a source', !fl.in.income.some((s) => s.source === 'provider'));
   is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.collected_bnb, 0.007) && fl.in.fees.collects === 2);
-  is('a re-set\'s folded fees are fees produced, all of them kept as capital', near(fl.in.fees.folded_bnb, 0.0006) && fl.in.fees.resets_with_fees === 1 && near(fl.in.fees.bnb, 0.0076));
-  is('the buyback got 0.003 + 0.002', near(fl.out.buyback_bnb, 0.005));
-  is('0.002 kept by the collect + 0.0006 folded by the re-set was kept as capital', near(fl.out.kept_as_capital_bnb, 0.0026));
-  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0096));
+  is('the fees two re-sets took are fees produced', near(fl.in.fees.folded_bnb, 0.001) && fl.in.fees.resets_with_fees === 2 && near(fl.in.fees.bnb, 0.008));
+  is('a re-set before 2026-09-08 folded all of it in; the one after sent half on', near(fl.in.fees.folded_kept_bnb, 0.0008) && near(fl.in.fees.forwarded_at_resets_bnb, 0.0002));
+  is('the buyback got 0.003 + 0.002 from collects + 0.0002 from the re-set', near(fl.out.buyback_bnb, 0.0052));
+  is('0.002 kept by the collect + 0.0006 + 0.0002 folded by the re-sets was kept as capital', near(fl.out.kept_as_capital_bnb, 0.0028));
+  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0098));
+  is('produced = what went to the buyback + what was kept', near(fl.in.fees.bnb, fl.out.buyback_bnb + fl.out.kept_as_capital_bnb));
   is('the increase counts the BNB it spent, gas included', near(fl.out.into_position_bnb, 0.0101) && fl.out.increases === 1);
-  is('one re-set', fl.out.resets === 1);
-  is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 7 && near(fl.gas.bnb, 0.00011));
+  is('two re-sets', fl.out.resets === 2);
+  is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 9 && near(fl.gas.bnb, 0.00014));
   is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.007));
-  is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-04T09:00:00Z');
+  is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-08T19:50:00Z');
+  is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
   is('the rule is what the last collect named', fl.rule.fee_share_kept_pct === 50 && fl.rule.fee_share_buyback_pct === 50);
   is('paid_for carries the service earnings', fl.paid_for.x402_answers === 3 && near(fl.paid_for.usd1, 0.7));
   is('an empty record flows nothing', moneyFlow({}).in.total_bnb === 0 && moneyFlow({}).rule === null && moneyFlow(null).gas.transactions === 0);
   const lines = flowLines(fl);
-  is('the lines name the source, the fees, the folded fees and the split', /USD1/.test(lines.came_in) && /0\.00700 BNB of fees over 2 collects, 0\.00060 BNB of fees folded into the capital by 1 re-set/.test(lines.came_in) && /0\.00500 BNB to the buyback/.test(lines.went_out) && /0\.00260 BNB kept/.test(lines.went_out));
+  is('the lines name the source, the fees, the re-sets\' fees and the split', /USD1/.test(lines.came_in) && /0\.00700 BNB of fees over 2 collects, 0\.00100 BNB of fees taken at 2 re-sets, 0\.00020 of it sent on to the buyback wallet/.test(lines.came_in) && /0\.00520 BNB to the buyback/.test(lines.went_out) && /0\.00280 BNB kept/.test(lines.went_out));
+  is('re-sets that forwarded nothing read as all folded in', /0\.00060 BNB of fees taken at 1 re-set, all of it folded into the capital/.test(flowLines(moneyFlow({ history: rec.history.slice(0, 4) })).came_in));
   is('an empty record reads as nothing yet', /no income swept yet/.test(flowLines(moneyFlow({})).came_in) && /nothing has left/.test(flowLines(moneyFlow({})).went_out));
 
   console.log('sweep');
@@ -532,7 +562,7 @@ async function main() {
       pool = w.pool || null;
       if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, earnings pick ${record.earnings_pick ? `±${record.earnings_pick.width}% ($${record.earnings_pick.earnings.net_usd_per_day}/day on $50)` : 'none yet'}, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
     } catch (e) { console.log(`  record unreadable (${e.message}) — only a --width named by hand can re-set today`); }
-    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH, pool });
+    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH, pool, keptPct: KEEP });
     const s = plan.summary;
     if (plan.resume) console.log(`  no position — the wallet holds ${s.held?.other} of the other side and ${s.held?.wbnb} WBNB (worth ${f(s.value_bnb)} BNB), tick now ${s.tick}: a re-set that stopped before its mint`);
     else if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
@@ -540,9 +570,11 @@ async function main() {
     else {
       console.log(`  width ±${s.width_pct}% (${s.width_basis}) -> new ticks ${s.new_ticks[0]} … ${s.new_ticks[1]}`);
       console.log(plan.resume ? `  would ${s.trade}, and mint the range from what the wallet then holds` : `  would withdraw and burn #${s.position}, ${s.trade}, and mint the new range from what the wallet then holds`);
+      if (!plan.resume) console.log(`  the old range owes ${f(s.fees_owed_bnb)} BNB of fees: ${s.fees_to_buyback_bnb > 0 ? `${f(s.fees_to_buyback_bnb)} BNB would go to the buyback wallet before the mint, the rest into the new capital` : 'all of it would be minted into the new capital'} (kept share ${s.fees_kept_pct ?? KEEP}%)`);
       if (CONFIRM) {
-        const out = await executeRebalance(pub, lpWallet(), lp, plan, log);
+        const out = await executeRebalance(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
         console.log(`  new position #${out.new_position} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}`);
+        if (out.fees_folded_bnb != null) console.log(`  old range's fees ${f(out.fees_folded_bnb)} BNB: ${out.fees_forwarded_bnb > 0 ? `${f(out.fees_forwarded_bnb)} BNB sent to ${out.forwarded_to}` : out.fees_forward_why}`);
         acted += 1;
       }
     }
@@ -899,6 +931,10 @@ export function summarize(service, result) {
 //             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
 //             the rest goes to the buyback wallet — only the fees, never the
 //             capital
+//   rebalance a range the price has left is re-set around the price; the
+//             fees the old range owed are split the same way on the way
+//             (since 2026-09-08): the kept share is minted into the new
+//             capital, the rest goes to the buyback wallet before the mint
 //   increase  BNB above the reserve is put into the same position — the
 //             income the sweep brought and the fee share the collect kept
 //
@@ -908,7 +944,7 @@ export function summarize(service, result) {
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees, resetForward,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
 } from './lp-guards.js';
 
@@ -1301,11 +1337,12 @@ export function ticksAround(tick, widthPct, spacing) {
 // position but does hold that pool's two tokens, the plan is a mint from the
 // wallet — a re-set that stopped between its unwind and its mint (2026-09-05
 // 12:50) is finished on the next run instead of leaving the capital idle.
-export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null } = {}) {
+export async function planRebalance(pub, address, { record = null, widthOverride = null, position = null, pool = null, keptPct = FEE_SHARE_KEPT_PCT } = {}) {
   let p = position || (await readPosition(pub, address));
   let resume = false;
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
+  let owedWei = 0n, share = null;
   const pick = record?.earnings_pick || null;
   const width = widthOverride ?? pick?.width ?? null;
   const widthBasis = widthOverride != null ? 'named by hand'
@@ -1328,6 +1365,13 @@ export async function planRebalance(pub, address, { record = null, widthOverride
     const otherInWbnb = wbnbIs0 ? 1 / price : price;
     have = { other: (wbnbIs0 ? in1 : in0) + heldOther, wbnb: (wbnbIs0 ? in0 : in1) + heldWbnb };
     valueBnb = (have.wbnb + have.other * otherInWbnb) / 1e18;
+    // What the old range still owes in fees, in WBNB terms, and the part of
+    // it a re-set would send on to the buyback wallet.
+    if (!resume && p.owed0 != null) {
+      const owedWbnb = wbnbIs0 ? p.owed0 : p.owed1, owedOther = wbnbIs0 ? p.owed1 : p.owed0;
+      owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * otherInWbnb));
+      share = resetForward(owedWei, keptPct);
+    }
     if (width != null) {
       ticks = ticksAround(poolInfo.tick, width, spacing);
       if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
@@ -1358,6 +1402,9 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       expected_net_usd_per_day: pick ? pick.earnings.net_usd_per_day : null,
       new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
       trade: trade ? (trade.sell === 'other' ? `sell ${(trade.amount / 1e18).toFixed(6)} of ${other} for WBNB` : `buy the other side with ${(trade.amount / 1e18).toFixed(6)} WBNB`) : null,
+      fees_owed_bnb: Number((Number(owedWei) / 1e18).toFixed(6)),
+      fees_to_buyback_bnb: share ? Number((Number(share.forward) / 1e18).toFixed(6)) : 0,
+      fees_kept_pct: share ? share.pct : null,
     },
   };
 }
@@ -1388,31 +1435,37 @@ async function ensureAllowance(pub, send, token, spender, amount, label) {
   return true;
 }
 
-// Empty the old position, burn its NFT, trade to the new ratio, mint the new
-// range from what the wallet then holds. Native BNB is not touched: the
-// reserve and any capital waiting for the increase stay where they are.
+// Empty the old position, burn its NFT, trade to the new ratio, send the
+// buyback share of the old range's fees on, mint the new range from what the
+// wallet then holds. Native BNB is not touched: the reserve and any capital
+// waiting for the increase stay where they are (the forwarded share is
+// unwrapped and sent in the same breath, so it never sits there).
 // Nine transactions on 2026-09-02; four to five since 2026-09-04 (one
-// multicall for the unwind, approvals only when the allowance is short).
-export async function executeRebalance(pub, wallet, account, plan, log = () => {}) {
+// multicall for the unwind, approvals only when the allowance is short);
+// two more since 2026-09-08 when the fee share is worth sending.
+export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   // A resumed re-set (plan.resume) has no position to unwind: the earlier run
   // already did that and stopped before its mint.
   // The fees the old range still owes are not collected as fees here: the
-  // unwind pays them out with the principal and the mint folds them into the
-  // new capital. Read them first, so the record can count them as fees — on
-  // 2026-09-07 the three re-sets had folded in 0.000998 BNB that every fees
-  // figure said was zero.
-  let folded = null;
+  // unwind pays them out with the principal. Read them first, so the record
+  // can count them as fees — on 2026-09-07 the three re-sets had folded in
+  // 0.000998 BNB that every fees figure said was zero — and so the buyback
+  // share of them can be sent on before the mint folds the rest in.
+  let folded = null, share = null;
   if (plan.tokenId != null) {
     const old = await readPosition(pub, account.address);
     if (old.tokenId != null && String(old.tokenId) === String(plan.tokenId)) {
       const owedWbnb = plan.wbnbIs0 ? old.owed0 : old.owed1, owedOther = plan.wbnbIs0 ? old.owed1 : old.owed0;
       const otherInWbnb = plan.target && plan.target.otherInWbnb ? plan.target.otherInWbnb : 0;
-      folded = { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), bnb_equivalent: Number(((Number(owedWbnb) + Number(owedOther) * otherInWbnb) / 1e18).toFixed(6)) };
+      const owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * otherInWbnb));
+      folded = { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), bnb_equivalent: Number((Number(owedWei) / 1e18).toFixed(6)) };
+      share = resetForward(owedWei, keptPct);
     }
   }
+  const reserved = share && share.forward > 0n ? share.forward : 0n;
   if (plan.tokenId != null) {
     const liquidity = plan.pos[7];
     const sim = await pub.simulateContract({
@@ -1428,7 +1481,9 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   const haveWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   const t = plan.target;
-  const value = Number(haveWbnb) + Number(haveOther) * t.otherInWbnb;
+  // The buyback share is not capital: it is kept out of the sizing, so the
+  // trade below leaves it as WBNB for the transfer.
+  const value = Number(haveWbnb - reserved) + Number(haveOther) * t.otherInWbnb;
   const perLValue = t.perLWbnb + t.perLOther * t.otherInWbnb;
   const Ln = (value * 0.99) / perLValue;
   const targetOther = BigInt(Math.floor(Ln * t.perLOther));
@@ -1442,12 +1497,28 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     const need = targetOther - haveOther;
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, plan.other]]);
     const spend = q[1] > 0n ? (need * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
-    const cap = haveWbnb;
+    const cap = haveWbnb > reserved ? haveWbnb - reserved : 0n;
     const wbnbIn = spend > cap ? cap : spend;
     if (wbnbIn > 0n) {
       await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
       await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
         args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+    }
+  }
+  // The buyback share of the old range's fees leaves here, before the mint
+  // can fold it into the new capital: unwrapped and sent in the same breath.
+  // A wallet that holds less WBNB than the share after the trades (a range
+  // that ended all on the other side, with the buy capped) keeps it as
+  // capital and says so; the mint takes what is there.
+  let forwarded = 0n, forwardWhy = share ? share.why : null;
+  if (reserved > 0n) {
+    const wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+    if (wbnbNow >= reserved) {
+      await send("unwrap the buyback share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
+      await send(`send ${100 - share.pct}% of the old range's fees to the buyback wallet`, { to: ADDR.BUYBACK_WALLET, value: reserved, gas: 21000n });
+      forwarded = reserved;
+    } else {
+      forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
     }
   }
   const mintOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -1471,8 +1542,15 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
   const np = await readPosition(pub, account.address);
   const gasBnb = txs.reduce((s, t) => s + (t.gas_bnb || 0), 0);
+  // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
+  // it that went to the buyback wallet; the difference was minted into the
+  // new capital. Records before 2026-09-08 carry only the first.
   return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
-    ...(folded ? { fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent } : {}) };
+    ...(folded ? {
+      fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
+      fees_forwarded_bnb: Number(formatEther(forwarded)), fees_kept_pct: share ? share.pct : null,
+      ...(forwarded > 0n ? { forwarded_to: ADDR.BUYBACK_WALLET } : { fees_forward_why: forwardWhy }),
+    } : {}) };
 }
 
 // --------------------------------------------------------------------------
@@ -1630,7 +1708,8 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const bySource = {};
   let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
-  let feesFolded = 0, resetsWithFees = 0;
+  let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
+  let lastKeptPct = null;
   let first = null, lastMoved = null;
   for (const e of hist) {
     const st = e.steps || {};
@@ -1663,11 +1742,15 @@ export function moneyFlow(rec, { earned = null } = {}) {
     if (rb && rb.acted && !rb.error && rb.new_position) {
       resets += 1;
       // A re-set does not collect the old range's fees as fees: the unwind
-      // pays them out with the principal and the mint folds them into the
-      // new capital. They are fees the position produced all the same, and
-      // all of them stayed as capital.
+      // pays them out with the principal. They are fees the position
+      // produced all the same. Before 2026-09-08 the mint folded all of them
+      // into the new capital; since then the buyback share is sent on first
+      // (fees_forwarded_bnb) and only the rest is folded in.
       if (n(rb.fees_folded_bnb) > 0) { feesFolded += n(rb.fees_folded_bnb); resetsWithFees += 1; }
+      if (n(rb.fees_forwarded_bnb) > 0) resetForwarded += n(rb.fees_forwarded_bnb);
+      if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
     }
+    if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
     for (const step of [...sweeps, c, inc, rb]) {
       for (const t of (step && Array.isArray(step.txs) ? step.txs : [])) { txs += 1; gas += n(t.gas_bnb); }
     }
@@ -1683,7 +1766,10 @@ export function moneyFlow(rec, { earned = null } = {}) {
     fees_owed_bnb: ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
     wallet_spendable_bnb: ls.increase && ls.increase.spendable_bnb != null ? r6(n(ls.increase.spendable_bnb)) : null,
   };
-  const keptPct = ls.collect && ls.collect.kept_pct != null ? n(ls.collect.kept_pct) : null;
+  // The rule is what the last step that split fees named: the last collect,
+  // or the last re-set that forwarded (since 2026-09-08 re-sets split too).
+  const keptPct = ls.collect && ls.collect.kept_pct != null ? n(ls.collect.kept_pct) : lastKeptPct;
+  const foldedKept = feesFolded - resetForwarded;
 
   return {
     since: first,
@@ -1691,15 +1777,16 @@ export function moneyFlow(rec, { earned = null } = {}) {
     in: {
       income,
       income_bnb: r6(incomeBnb),
-      // bnb = collected by the collect step + folded into the capital by
-      // re-sets; folded_bnb says how much of it was the latter.
-      fees: { bnb: r6(feesProduced + feesFolded), collects, collected_bnb: r6(feesProduced), folded_bnb: r6(feesFolded), resets_with_fees: resetsWithFees },
+      // bnb = collected by the collect step + taken by re-sets; folded_bnb
+      // is all a re-set took, folded_kept_bnb the part it minted into the
+      // new capital, forwarded_at_resets_bnb the part it sent to the buyback.
+      fees: { bnb: r6(feesProduced + feesFolded), collects, collected_bnb: r6(feesProduced), folded_bnb: r6(feesFolded), folded_kept_bnb: r6(foldedKept), forwarded_at_resets_bnb: r6(resetForwarded), resets_with_fees: resetsWithFees },
       total_bnb: r6(incomeBnb + feesProduced + feesFolded),
     },
     out: {
-      buyback_bnb: r6(feesForwarded),
-      kept_as_capital_bnb: r6(feesKept + feesFolded),
-      capital_arrived_bnb: r6(incomeBnb + feesKept + feesFolded),
+      buyback_bnb: r6(feesForwarded + resetForwarded),
+      kept_as_capital_bnb: r6(feesKept + foldedKept),
+      capital_arrived_bnb: r6(incomeBnb + feesKept + foldedKept),
       into_position_bnb: r6(intoPosition),
       increases,
       resets,
@@ -1719,8 +1806,8 @@ export function flowLines(flow) {
   const income = flow.in.income.length
     ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
-  const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0;
-  const folded = fd > 0 ? `${f(fd)} BNB of fees folded into the capital by ${rw} re-set${rw === 1 ? '' : 's'}` : '';
+  const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
+  const folded = fd > 0 ? `${f(fd)} BNB of fees taken at ${rw} re-set${rw === 1 ? '' : 's'}${rf > 0 ? `, ${f(rf)} of it sent on to the buyback wallet` : ', all of it folded into the capital'}` : '';
   const fees = flow.in.fees.collects
     ? `${f(flow.in.fees.collected_bnb != null ? flow.in.fees.collected_bnb : flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}${folded ? `, ${folded}` : ''}`
     : (folded || 'no fees collected yet');
@@ -1820,6 +1907,25 @@ export function splitFees(producedRaw, keptPct = FEE_SHARE_KEPT_PCT) {
   const total = producedRaw > 0n ? producedRaw : 0n;
   const keep = (total * BigInt(Math.round(pct * 100))) / 10000n;
   return { keep, buyback: total - keep, pct };
+}
+
+// A re-set of the range pays the old range's fees out with the principal.
+// Until 2026-09-08 the mint then folded all of them into the new capital:
+// five re-sets, 0.00177 BNB of fees, and the buyback wallet saw none of it,
+// because the collect step never reached its own floor before the next
+// re-set took the fees away. So the re-set splits them the same way the
+// collect does — the kept share is minted into the new capital, the rest is
+// sent on before the mint. Under this much the buyback share stays as
+// capital too: the unwrap and the transfer are two transactions, about
+// 0.00005 BNB at 1 gwei, and a share that only pays for its own gas is not
+// a share. Pure, pinned by the self-test.
+export const MIN_RESET_FORWARD_BNB = 0.0001;
+export function resetForward(foldedWei, keptPct = FEE_SHARE_KEPT_PCT) {
+  const split = splitFees(foldedWei, keptPct);
+  const floor = BigInt(Math.round(MIN_RESET_FORWARD_BNB * 1e6)) * 10n ** 12n;
+  if (split.buyback <= 0n) return { forward: 0n, kept: split.keep, pct: split.pct, why: split.keep > 0n ? `all of it stays as capital (kept share ${split.pct}%)` : 'the old range owed no fees' };
+  if (split.buyback < floor) return { forward: 0n, kept: split.keep + split.buyback, pct: split.pct, why: `the buyback share ${(Number(split.buyback) / 1e18).toFixed(6)} BNB is under the ${MIN_RESET_FORWARD_BNB} BNB floor — it stays as capital` };
+  return { forward: split.buyback, kept: split.keep, pct: split.pct, why: null };
 }
 
 // state: { positions, liquidity (bigint), owedBnbEquivalent, gasBnb, quoteOffPct }
@@ -5613,6 +5719,7 @@ async function recordLpSeries(env) {
     kept_total_bnb: flow.out.kept_as_capital_bnb,
     fees_total_bnb: flow.in.fees.bnb,
     folded_total_bnb: flow.in.fees.folded_bnb || 0,
+    folded_kept_total_bnb: flow.in.fees.folded_kept_bnb ?? (flow.in.fees.folded_bnb || 0),
     into_position_total_bnb: flow.out.into_position_bnb || 0,
     swept_total_bnb: flow.in.income_bnb,
   };
@@ -5692,6 +5799,7 @@ function lpFeesWhere(p) {
   const parts = [];
   if (p.fees_collected_bnb > 0) parts.push(`${f5(p.fees_collected_bnb)} collected`);
   if (p.fees_folded_bnb > 0) parts.push(`${f5(p.fees_folded_bnb)} folded into the capital by re-sets`);
+  if (p.fees_forwarded_at_resets_bnb > 0) parts.push(`${f5(p.fees_forwarded_at_resets_bnb)} sent to the buyback bot by re-sets`);
   parts.push(`${f5(p.fees_owed_bnb)} still owed by the position`);
   return parts.join(', ');
 }
@@ -5738,17 +5846,20 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     // increase put in. Take them out of the price part, else the folded fees
     // count twice — once in the value, once as fees (2026-09-07, +0.001 BNB).
     const folded = Number(last.folded_total_bnb) || 0, putIn = Number(last.into_position_total_bnb) || 0;
+    // Since 2026-09-08 a re-set sends the buyback share of those fees on
+    // before the mint, so only the kept part is in the value now.
+    const foldedKept = last.folded_kept_total_bnb != null ? Number(last.folded_kept_total_bnb) || 0 : folded;
     // ... and the capital the operator added by hand (2026-09-08: 0.0399 BNB
     // put in at 11:00 UTC made the value jump +64%; that is his money, not a gain).
     const byHand = Number(out.value_bnb.added_by_hand_bnb) || 0;
-    const price = +(out.value_bnb.now - out.value_bnb.start - folded - putIn - byHand).toFixed(6);
+    const price = +(out.value_bnb.now - out.value_bnb.start - foldedKept - putIn - byHand).toFixed(6);
     const collected = Math.max(0, (out.fees_produced_bnb || 0) - folded);
     const fees = +((out.fees_produced_bnb || 0) + (out.fees_owed_now_bnb || 0)).toFixed(6);
     // The pool is CAKE/BNB: "the pair's price" is CAKE moving against BNB.
     const gas = gas_bnb != null ? +Number(gas_bnb).toFixed(6) : null;
     const bnb = +(price + fees - (gas || 0)).toFixed(6);
     const usd = last.bnb_usd ? +(bnb * last.bnb_usd).toFixed(2) : null;
-    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +folded.toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
+    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +foldedKept.toFixed(6), fees_forwarded_at_resets_bnb: +(folded - foldedKept).toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
   }
   // The same figures as one sentence — the line /liquidity opens with and the
   // whole of the Telegram daily report, so the two never say different things.
@@ -6767,7 +6878,7 @@ ${pageTail}`;
         // in — not the state it found the moment before (2026-09-08: the line
         // read "outside since 04:50" under a re-set that had already happened).
         { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: (rb.acted && !rb.error && rb.new_position
-          ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn, the missing side bought and #${rb.new_position} minted${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees folded into the capital` : ''}`
+          ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn, the missing side bought and #${rb.new_position} minted${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees ${Number(rb.fees_forwarded_bnb) > 0 ? `taken: ${f(rb.fees_forwarded_bnb, 6)} BNB sent to the buyback bot, the rest folded into the capital` : `folded into the capital${rb.fees_forward_why ? ` (${rb.fees_forward_why})` : ''}`}` : ''}`
           : (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `; the next re-set would use ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''))
           + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
         { name: 'Increase — grow the position', acted: !!inc.acted, err: inc.error, why: plain(inc.why), detail: (inc.wallet_bnb != null ? `${f(inc.wallet_bnb, 5)} BNB in the wallet, ${f(inc.spendable_bnb, 5)} above the reserve` : '') + (fromDaily ? `${inc.wallet_bnb != null ? '; ' : ''}from the daily run at ${dailyWhen}` : '') },
@@ -7168,6 +7279,7 @@ ${pageTail}`;
         kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
         fees_total_bnb: liveFlow.in.fees.bnb,
         folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,
+        folded_kept_total_bnb: liveFlow.in.fees.folded_kept_bnb ?? (liveFlow.in.fees.folded_bnb || 0),
         into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
         swept_total_bnb: liveFlow.in.income_bnb,
       } : null;
@@ -11521,6 +11633,11 @@ export async function yieldPlan(input = {}) {
 //                                                                  -> collect
 //   3. capital that arrived — swept income and the kept fee share — grows
 //      the same position                                           -> increase
+//   A re-set of the range (rebalance) pays the old range's fees out on the
+//   way and splits them the same: the kept share is minted into the new
+//   capital, the rest goes to the buyback wallet before the mint. Until
+//   2026-09-08 it folded all of them in, and since the collect step's floor
+//   was never reached between two re-sets, the buyback had seen nothing.
 // The buyback bot and the dev sweep are not touched by any of this. This
 // worker hands BNB to one of them and reads nothing from either.
 //
@@ -11664,7 +11781,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     // between its unwind and its mint: no position, the two tokens in the
     // wallet (2026-09-05 12:50). Such a resume does not wait the two hours —
     // the capital is already out of the pool and earning nothing.
-    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null });
+    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     if (plan.summary.in_range) {
@@ -11681,9 +11798,9 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : 'dry run — would have re-set the range' };
+    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_buyback_bnb > 0 ? ` and sent ${plan.summary.fees_to_buyback_bnb} BNB of the old range's fees to the buyback wallet` : ''}` };
     try {
-      const done = await executeRebalance(pub, lpWallet(), lp, plan);
+      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
       await env.AGENT.delete(OUT_SINCE_KEY);
       return { ...plan.summary, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {

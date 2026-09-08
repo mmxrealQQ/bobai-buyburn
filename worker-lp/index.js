@@ -12,6 +12,11 @@
 //                                                                  -> collect
 //   3. capital that arrived — swept income and the kept fee share — grows
 //      the same position                                           -> increase
+//   A re-set of the range (rebalance) pays the old range's fees out on the
+//   way and splits them the same: the kept share is minted into the new
+//   capital, the rest goes to the buyback wallet before the mint. Until
+//   2026-09-08 it folded all of them in, and since the collect step's floor
+//   was never reached between two re-sets, the buyback had seen nothing.
 // The buyback bot and the dev sweep are not touched by any of this. This
 // worker hands BNB to one of them and reads nothing from either.
 //
@@ -155,7 +160,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     // between its unwind and its mint: no position, the two tokens in the
     // wallet (2026-09-05 12:50). Such a resume does not wait the two hours —
     // the capital is already out of the pool and earning nothing.
-    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null });
+    const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     if (plan.summary.in_range) {
@@ -172,9 +177,9 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : 'dry run — would have re-set the range' };
+    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_buyback_bnb > 0 ? ` and sent ${plan.summary.fees_to_buyback_bnb} BNB of the old range's fees to the buyback wallet` : ''}` };
     try {
-      const done = await executeRebalance(pub, lpWallet(), lp, plan);
+      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
       await env.AGENT.delete(OUT_SINCE_KEY);
       return { ...plan.summary, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {

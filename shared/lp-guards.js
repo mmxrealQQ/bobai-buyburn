@@ -79,6 +79,25 @@ export function splitFees(producedRaw, keptPct = FEE_SHARE_KEPT_PCT) {
   return { keep, buyback: total - keep, pct };
 }
 
+// A re-set of the range pays the old range's fees out with the principal.
+// Until 2026-09-08 the mint then folded all of them into the new capital:
+// five re-sets, 0.00177 BNB of fees, and the buyback wallet saw none of it,
+// because the collect step never reached its own floor before the next
+// re-set took the fees away. So the re-set splits them the same way the
+// collect does — the kept share is minted into the new capital, the rest is
+// sent on before the mint. Under this much the buyback share stays as
+// capital too: the unwrap and the transfer are two transactions, about
+// 0.00005 BNB at 1 gwei, and a share that only pays for its own gas is not
+// a share. Pure, pinned by the self-test.
+export const MIN_RESET_FORWARD_BNB = 0.0001;
+export function resetForward(foldedWei, keptPct = FEE_SHARE_KEPT_PCT) {
+  const split = splitFees(foldedWei, keptPct);
+  const floor = BigInt(Math.round(MIN_RESET_FORWARD_BNB * 1e6)) * 10n ** 12n;
+  if (split.buyback <= 0n) return { forward: 0n, kept: split.keep, pct: split.pct, why: split.keep > 0n ? `all of it stays as capital (kept share ${split.pct}%)` : 'the old range owed no fees' };
+  if (split.buyback < floor) return { forward: 0n, kept: split.keep + split.buyback, pct: split.pct, why: `the buyback share ${(Number(split.buyback) / 1e18).toFixed(6)} BNB is under the ${MIN_RESET_FORWARD_BNB} BNB floor — it stays as capital` };
+  return { forward: split.buyback, kept: split.keep, pct: split.pct, why: null };
+}
+
 // state: { positions, liquidity (bigint), owedBnbEquivalent, gasBnb, quoteOffPct }
 // owedBnbEquivalent is what this run would turn into BNB: fees owed by the
 // position plus anything an interrupted earlier run left in the wallet.

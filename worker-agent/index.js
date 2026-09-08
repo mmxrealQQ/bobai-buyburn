@@ -451,6 +451,7 @@ async function recordLpSeries(env) {
     kept_total_bnb: flow.out.kept_as_capital_bnb,
     fees_total_bnb: flow.in.fees.bnb,
     folded_total_bnb: flow.in.fees.folded_bnb || 0,
+    folded_kept_total_bnb: flow.in.fees.folded_kept_bnb ?? (flow.in.fees.folded_bnb || 0),
     into_position_total_bnb: flow.out.into_position_bnb || 0,
     swept_total_bnb: flow.in.income_bnb,
   };
@@ -530,6 +531,7 @@ function lpFeesWhere(p) {
   const parts = [];
   if (p.fees_collected_bnb > 0) parts.push(`${f5(p.fees_collected_bnb)} collected`);
   if (p.fees_folded_bnb > 0) parts.push(`${f5(p.fees_folded_bnb)} folded into the capital by re-sets`);
+  if (p.fees_forwarded_at_resets_bnb > 0) parts.push(`${f5(p.fees_forwarded_at_resets_bnb)} sent to the buyback bot by re-sets`);
   parts.push(`${f5(p.fees_owed_bnb)} still owed by the position`);
   return parts.join(', ');
 }
@@ -576,17 +578,20 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     // increase put in. Take them out of the price part, else the folded fees
     // count twice — once in the value, once as fees (2026-09-07, +0.001 BNB).
     const folded = Number(last.folded_total_bnb) || 0, putIn = Number(last.into_position_total_bnb) || 0;
+    // Since 2026-09-08 a re-set sends the buyback share of those fees on
+    // before the mint, so only the kept part is in the value now.
+    const foldedKept = last.folded_kept_total_bnb != null ? Number(last.folded_kept_total_bnb) || 0 : folded;
     // ... and the capital the operator added by hand (2026-09-08: 0.0399 BNB
     // put in at 11:00 UTC made the value jump +64%; that is his money, not a gain).
     const byHand = Number(out.value_bnb.added_by_hand_bnb) || 0;
-    const price = +(out.value_bnb.now - out.value_bnb.start - folded - putIn - byHand).toFixed(6);
+    const price = +(out.value_bnb.now - out.value_bnb.start - foldedKept - putIn - byHand).toFixed(6);
     const collected = Math.max(0, (out.fees_produced_bnb || 0) - folded);
     const fees = +((out.fees_produced_bnb || 0) + (out.fees_owed_now_bnb || 0)).toFixed(6);
     // The pool is CAKE/BNB: "the pair's price" is CAKE moving against BNB.
     const gas = gas_bnb != null ? +Number(gas_bnb).toFixed(6) : null;
     const bnb = +(price + fees - (gas || 0)).toFixed(6);
     const usd = last.bnb_usd ? +(bnb * last.bnb_usd).toFixed(2) : null;
-    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +folded.toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
+    out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +foldedKept.toFixed(6), fees_forwarded_at_resets_bnb: +(folded - foldedKept).toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
   }
   // The same figures as one sentence — the line /liquidity opens with and the
   // whole of the Telegram daily report, so the two never say different things.
@@ -1605,7 +1610,7 @@ ${pageTail}`;
         // in — not the state it found the moment before (2026-09-08: the line
         // read "outside since 04:50" under a re-set that had already happened).
         { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: (rb.acted && !rb.error && rb.new_position
-          ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn, the missing side bought and #${rb.new_position} minted${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees folded into the capital` : ''}`
+          ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn, the missing side bought and #${rb.new_position} minted${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees ${Number(rb.fees_forwarded_bnb) > 0 ? `taken: ${f(rb.fees_forwarded_bnb, 6)} BNB sent to the buyback bot, the rest folded into the capital` : `folded into the capital${rb.fees_forward_why ? ` (${rb.fees_forward_why})` : ''}`}` : ''}`
           : (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `; the next re-set would use ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''))
           + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
         { name: 'Increase — grow the position', acted: !!inc.acted, err: inc.error, why: plain(inc.why), detail: (inc.wallet_bnb != null ? `${f(inc.wallet_bnb, 5)} BNB in the wallet, ${f(inc.spendable_bnb, 5)} above the reserve` : '') + (fromDaily ? `${inc.wallet_bnb != null ? '; ' : ''}from the daily run at ${dailyWhen}` : '') },
@@ -2006,6 +2011,7 @@ ${pageTail}`;
         kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
         fees_total_bnb: liveFlow.in.fees.bnb,
         folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,
+        folded_kept_total_bnb: liveFlow.in.fees.folded_kept_bnb ?? (liveFlow.in.fees.folded_bnb || 0),
         into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
         swept_total_bnb: liveFlow.in.income_bnb,
       } : null;

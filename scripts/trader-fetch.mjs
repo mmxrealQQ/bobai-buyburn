@@ -7,10 +7,12 @@
 // live, so a run is repeatable.
 //   node scripts/trader-fetch.mjs            last ~41 days (1000 hours)
 //   node scripts/trader-fetch.mjs --hours 4320   six months, paged (Binance: endTime; Gecko: before_timestamp)
+//   node scripts/trader-fetch.mjs --hours 400 --out data/trader/prices-live.json   the tick: enough for a 168 h window
 import fs from 'node:fs';
 import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
-const OUT = path.join(ROOT, 'data', 'trader', 'prices.json');
+const oi = process.argv.indexOf('--out');
+const OUT = oi > 0 ? path.resolve(process.argv[oi + 1]) : path.join(ROOT, 'data', 'trader', 'prices.json');
 const hi = process.argv.indexOf('--hours');
 const H = hi > 0 ? Number(process.argv[hi + 1]) : 1000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

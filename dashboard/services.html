@@ -22,11 +22,17 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/styles.css?v=37">
 <style>
-  .sv{max-width:1000px;margin:0 auto;padding:0 20px 60px}
-  .sv-hero{padding:106px 0 8px}
-  .sv-hero h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(28px,5vw,44px);line-height:1.08;margin:0 0 14px}
-  .sv-hero h1 em{color:var(--gold);font-style:normal}
-  .sv-lead{color:var(--muted);font-size:17px;line-height:1.6;max-width:68ch}
+  /* One frame, the headline centred inside it — the same shape as /registry,
+     /scanner and /liquidity (one .sec from 86px down). Until 2026-09-08 this
+     page had no frame at all and a left-aligned headline; next to the other
+     three tile pages it read as a page from somewhere else. Hero values are
+     scanner.html's .sc-hero, not an approximation of them. */
+  .sv{padding:0}
+  .sv-hero{padding:8px 0 8px;text-align:center}
+  .sv-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);font-weight:700;letter-spacing:-1px;line-height:1.14;margin:0}
+  .sv-hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
+  .sv-lead{color:var(--muted);font-size:.9rem;line-height:1.7;max-width:62ch;margin:14px auto 0}
+  .sv-hero .primer,.sv-hero .sv-nums{text-align:left}
   .sv-lead b{color:var(--text);font-weight:600}
   .sv-sec{margin-top:44px}
   .sv-sec > h2{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.35rem;margin:0 0 6px}
@@ -89,6 +95,8 @@
     <a class="nb" href="/registry">Brain Plaza</a>
   </div></nav>
 
+<section class="sec" style="margin-top:86px">
+  <div class="blk-head"><span class="blk-tag">Services &middot; What we sell</span><span class="blk-line"></span></div>
 <main class="sv">
   <header class="sv-hero">
     <h1>What we can do <em>for you</em></h1>
@@ -284,6 +292,7 @@
   </section>
 
 </main>
+</section>
 
 <footer><div class="fi2">
   <div class="fb"><img src="/logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>

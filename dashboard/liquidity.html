@@ -27,8 +27,21 @@
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
   <link rel="preload" href="styles.css?v=44" as="style">
   <link rel="stylesheet" href="styles.css?v=44">
-  <link rel="stylesheet" href="home.css?v=1">
   <style>
+    /* One frame, the headline inside it — the same shape as /registry and
+       /scanner (one .sec from 86px down, the hero centred at its top). Until
+       2026-09-08 the headline stood outside four separate frames in the
+       homepage's style, and next to the other three tile pages it read as a
+       page from somewhere else. Hero copied from scanner.html's .sc-hero. */
+    .lp-hero{padding:8px 0 6px;text-align:center}
+    .lp-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);
+      font-weight:700;letter-spacing:-1px;line-height:1.14;margin:0}
+    .lp-hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));
+      background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lp-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
+    /* The four parts of the page, inside the one frame. */
+    .lp-part{margin-top:44px}
+    .lp-part .sh{margin-bottom:18px}
     /* The series table. Numbers right-aligned so a column reads as one figure;
        a wide table scrolls inside its own box, never the page. */
     .lp-series{width:100%;border-collapse:collapse;font-size:.78rem;margin:10px 0 12px;white-space:nowrap}
@@ -50,7 +63,7 @@
     .lp-yours-out .lp-err{color:#ff8f6b}
   </style>
 </head>
-<body class="np">
+<body>
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
 <div class="page">
   <nav><div class="nav">
@@ -58,11 +71,15 @@
     <a class="brand-link" href="/liquidity">The Liquidity Agent</a>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
-  <main>
-  <div class="intro"><h1>The liquidity <em>agent</em></h1><p>What other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent turns it into liquidity; of what that liquidity earns, half buys $BOBAI and burns it and half grows the position. Every step is a transaction on BNB Chain, and the record below is read from the agent itself.</p></div>
+  <section class="sec b-violet" style="margin-top:86px">
+    <div class="blk-head"><span class="blk-tag">Agent &middot; Liquidity</span><span class="blk-line"></span></div>
 
-  <section class="sec b-violet" id="flow">
-    <div class="blk-head fi"><span class="blk-tag">Block 05 &middot; Liquidity</span><span class="blk-line"></span></div>
+    <div class="lp-hero">
+      <h1>The liquidity <em>agent</em></h1>
+      <p class="lp-lead">What other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent turns it into liquidity; of what that liquidity earns, half buys $BOBAI and burns it and half grows the position. Every step is a transaction on BNB Chain, and the record below is read from the agent itself.</p>
+    </div>
+
+  <div class="lp-part" id="flow">
     <div class="sh fi"><h2>Where the money <em>goes</em></h2>
       <p class="sh-sub">Three wallets, one direction. The capital never leaves the position; of the fees, half goes on and half stays.</p>
     </div>
@@ -86,9 +103,9 @@
       <a class="mkt-go" style="display:inline-flex;margin-top:12px" href="https://agent.brainonbnb.com/lp/agent" rel="noopener">Today&rsquo;s full record, step by step &rarr;</a>
     </div>
     </div>
-  </section>
+  </div>
 
-  <section class="sec b-violet" id="series">
+  <div class="lp-part" id="series">
     <div class="sh fi"><h2>Day by <em>day</em></h2>
       <p class="sh-sub">One line per run of the agent, from its own record: what the position was worth, whether the price stayed in the range, what it was owed and what it had already sent on. The first line is the baseline everything after it is measured against. An hourly range check gets a line only when it re-set the position or found one the series did not know yet.</p>
     </div>
@@ -97,9 +114,9 @@
       <div style="overflow-x:auto"><table class="lp-series" id="ag-lp-series"></table></div>
       <p class="agt-note">Value is in BNB because the position is quoted in BNB; a dollar figure would move with BNB and say nothing about the position. Fees are not annualised. After a re-set the fees column starts at zero: the re-set folds the old range&rsquo;s fees into the new capital. Those fees are counted all the same &mdash; as fees produced and as capital kept, and the profit line says how much of its fees came in that way. Same facts as JSON: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.</p>
     </div>
-  </section>
+  </div>
 
-  <section class="sec b-violet" id="yours">
+  <div class="lp-part" id="yours">
     <div class="sh fi"><h2>The agent, on <em>your</em> position</h2>
       <p class="sh-sub">The same code that decides about our position every morning, pointed at yours: in range or not and how much room is left, what it is worth, what it is owed and whether collecting pays for its gas, whether a re-set is due and in which width, what your spare BNB would add. It reads and plans. It signs nothing on your position.</p>
     </div>
@@ -122,9 +139,9 @@
       </ol>
     </div>
     </div>
-  </section>
+  </div>
 
-  <section class="sec b-violet" id="steps">
+  <div class="lp-part" id="steps">
     <div class="sh fi"><h2>What it does <em>every day</em></h2>
       <p class="sh-sub">At 04:23 UTC, four steps in a fixed order; every hour at :50, the range check alone. Each has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.</p>
     </div>
@@ -148,8 +165,8 @@
       <p class="agt-note">Why it matters: until this loop existed, every cent this project earned came from its own trading tax. This is the first money from outside, small today, and the loop that turns it into burn is running; the record above says how far it has got.</p>
     </div>
     </div>
+  </div>
   </section>
-  </main>
   <footer><div class="fi2">
     <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>

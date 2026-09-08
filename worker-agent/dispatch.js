@@ -464,6 +464,13 @@ export async function handleDispatch(url, body, env, opts = {}) {
   // returned immediately: a free answer beats a paid one, so every candidate
   // gets its chance first and these are offered only if nothing answered.
   const hireable = [];
+  // A tool that would need the visitor's account, or arguments this router
+  // will not invent, is a pointer rather than an answer — and until
+  // 2026-09-08 it ended the run: the first candidate was such a tool, the
+  // three behind it were sellers of the very job, and the reply said "fill in
+  // the arguments yourself" with nobody offered. The pointer is kept and the
+  // loop goes on; it is returned only once nothing answered and nothing sells.
+  let deferred = null;
 
   const operatorOf = (agent) => {
     try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./, ''); }
@@ -607,26 +614,24 @@ export async function handleDispatch(url, body, env, opts = {}) {
       const reqd = Array.isArray(pick.inputSchema?.required) ? pick.inputSchema.required : [];
       const optAddr = Object.keys(props).find((n) => ADDRESS_LIKE.test(n.toLowerCase()) && !reqd.includes(n) && String(props[n]?.type || 'string') === 'string');
       if (optAddr && !addressesInTask(task).addrs.length && /health factor|position|balance|account|wallet|portfolio|holding/i.test(task)) {
-        return { status: 200, body: {
+        deferred = deferred || {
           task, dispatched: false, protocol: 'mcp',
           reason: `The task names no account. The best-matching tool, ${pick.name} on ${agent.name}, answers about its own default account when none is given, and that would not be an answer to you. Put the address in the sentence and it is passed on as ${optAddr}.`,
           call_it_yourself: { endpoint, tool: pick.name, input_schema: pick.inputSchema, agent: agent.name },
-        } };
+        };
+        attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: 'needs the account in the question; not called about another account' });
+        continue;
       }
     }
     const needsArgs = Array.isArray(pick.inputSchema?.required) && pick.inputSchema.required.length > 0 && !taken;
     if (needsArgs) {
-      return { status: 200, body: {
+      deferred = deferred || {
         task, dispatched: false, protocol: 'mcp',
         reason: 'The best-matching tool needs arguments, and we do not invent inputs for a third-party agent.',
         call_it_yourself: { endpoint, tool: pick.name, input_schema: pick.inputSchema, agent: agent.name },
-        // Anything found selling this work on the way here is carried along.
-        // Returning only "fill in the arguments yourself" while several agents
-        // were offering to do the whole job is a narrower answer than the one
-        // this router actually has.
-        ...(hireable.length ? { hireable, or_hire_one: 'These sell the job outright through the ERC-8183 escrow.' } : {}),
-        attempts,
-      } };
+      };
+      attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: 'needs arguments this router does not invent' });
+      continue;
     }
 
     const started = Date.now();
@@ -689,6 +694,9 @@ export async function handleDispatch(url, body, env, opts = {}) {
     return { status: 200, body: {
       task,
       dispatched: false,
+      // The sellers were found by reading their A2A cards; that is the
+      // protocol this answer rests on, and every reply names the one it used.
+      protocol: 'a2a',
       // Not a failure, and the previous version reported it as one. An agent
       // that sells this work through the escrow is the answer to "who can do
       // this" — the router simply cannot get it for free, and saying "no agent
@@ -698,12 +706,20 @@ export async function handleDispatch(url, body, env, opts = {}) {
       hireable,
       how: 'Each entry carries a hire link. It negotiates a price over A2A and returns the unsigned ERC-8183 escrow calls; you submit them from your own wallet. Nothing is signed or sent on your behalf.',
       or_do_it_in_a_browser: 'https://brainonbnb.com/registry',
+      // The free tool that was skipped for want of an input, so a caller who
+      // has that input can still go there directly.
+      ...(deferred ? { or_call_it_yourself: deferred.call_it_yourself, because: deferred.reason } : {}),
       attempts,
     } };
   }
 
+  if (deferred) {
+    // Nothing answered and nothing sells: the pointer is the whole answer.
+    return { status: 200, body: { ...deferred, attempts } };
+  }
+
   return { status: 200, body: {
-    task, dispatched: false,
+    task, dispatched: false, protocol: 'mcp+a2a',
     reason: 'Candidates were found but none produced a usable answer.',
     attempts,
     note: 'Read-only tools and skills only. Anything that would sign, send or trade is listed rather than called.',

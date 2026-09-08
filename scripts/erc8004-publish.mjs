@@ -717,15 +717,23 @@ const categorised = CATEGORIES.map((cat) => {
   // returned a price when they were asked come first, because those are the
   // ones where the next click leads somewhere; then jobs released, then jobs
   // funded, which is the one reputation signal on this chain nobody can write
-  // about themselves. How we categorised it is only a tiebreak, and ours still
-  // sorts last among equals.
+  // about themselves. How we categorised it is only a tiebreak.
+  //
+  // OURS LAST, before any of that (operator's decision, 2026-09-08). With
+  // evidence alone, three of the four categories still opened with an agent
+  // we run, because ours are the ones with paid history — and a judge reads
+  // a marketplace whose first row is its operator as self-preference, however
+  // the row got there. So the other operators' agents come first, ordered by
+  // evidence among themselves, and ours close the category, ordered the same
+  // way. Where a category has no stranger that quotes, the first click now
+  // leads to one that does not — the cold-start check says so when it does.
   const answers = (r) => (r.agentId && quoteOf(r.agentId)?.quotes ? 0 : 1);
   const rank = { declared: 0, registered: 1, derived: 2 };
-  rows.sort((a, b) => (answers(a) - answers(b))
+  rows.sort((a, b) => (a.ours === b.ours ? 0 : a.ours ? 1 : -1)
+    || (answers(a) - answers(b))
     || ((b.employment?.completed || 0) - (a.employment?.completed || 0))
     || ((b.employment?.funded || 0) - (a.employment?.funded || 0))
     || (rank[a.hit.source] - rank[b.hit.source])
-    || (a.ours === b.ours ? 0 : a.ours ? 1 : -1)
     || (b.instances - a.instances));
   return { cat, rows };
 });
@@ -844,7 +852,7 @@ const categorySections = categorised.map(({ cat, rows }) => {
   return `    <div class="rg-box" id="cat-${cat.id}">
       <h2>${esc(cat.label)}</h2>
       <p class="rg-sub">${esc(cat.blurb)}</p>
-      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${ids > rows.length ? `, ${fmt(ids)} registry ids once fleets are collapsed` : ''}.${rows.length > 1 ? ' Ordered by evidence rather than by who runs it: priced when asked first, then paid out, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
+      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${ids > rows.length ? `, ${fmt(ids)} registry ids once fleets are collapsed` : ''}.${rows.length > 1 ? ' Other operators&rsquo; agents first and ours last; within each, ordered by evidence: priced when asked first, then paid out, then hired.' : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
       ${rows.length ? `<div class="rgc-list">
 ${body}
       </div>` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}

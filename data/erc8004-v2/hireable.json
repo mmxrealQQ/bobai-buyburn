@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-09-03T16:45:48.247Z",
+  "measured_at": "2026-09-08T04:54:03.554Z",
   "agents": [
     {
       "id": 269223,
@@ -14,14 +14,14 @@
       "ours": false
     },
     {
-      "id": 304494,
-      "label": "Brain on BNB — Portfolio Rebalance Pricer",
-      "category": "rebalancing",
-      "ours": true
-    },
-    {
       "id": 265876,
       "label": "BNB Yield Optimizer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 340471,
+      "label": "Hevo Rebalance",
       "category": "rebalancing",
       "ours": false
     },
@@ -32,9 +32,21 @@
       "ours": false
     },
     {
-      "id": 302258,
-      "label": "Brain on BNB — BSC Grid Planner",
-      "category": "grid-trading",
+      "id": 338475,
+      "label": "PancakeSwap v3 Range Keeper",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 336622,
+      "label": "RangeKeeper",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 304494,
+      "label": "Brain on BNB — Portfolio Rebalance Pricer",
+      "category": "rebalancing",
       "ours": true
     },
     {
@@ -50,15 +62,15 @@
       "ours": false
     },
     {
-      "id": 304493,
-      "label": "Brain on BNB — Venus Yield Ranking",
-      "category": "yield-optimization",
-      "ours": true
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
+      "category": "grid-trading",
+      "ours": false
     },
     {
-      "id": 310460,
-      "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
-      "category": "yield-optimization",
+      "id": 302258,
+      "label": "Brain on BNB — BSC Grid Planner",
+      "category": "grid-trading",
       "ours": true
     },
     {
@@ -74,9 +86,27 @@
       "ours": false
     },
     {
-      "id": 302257,
-      "label": "Brain on BNB — Venus Health Factor Monitor",
-      "category": "health-factor",
+      "id": 336622,
+      "label": "RangeKeeper",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 338253,
+      "label": "HyperliquidVault",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 304493,
+      "label": "Brain on BNB — Venus Yield Ranking",
+      "category": "yield-optimization",
+      "ours": true
+    },
+    {
+      "id": 310460,
+      "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
+      "category": "yield-optimization",
       "ours": true
     },
     {
@@ -96,6 +126,12 @@
       "label": "HealthGuard",
       "category": "health-factor",
       "ours": false
+    },
+    {
+      "id": 302257,
+      "label": "Brain on BNB — Venus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": true
     }
   ]
 }

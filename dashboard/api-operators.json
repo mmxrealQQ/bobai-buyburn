@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-09-03T16:45:48.247Z",
-  "registered_ids": 332331,
-  "reachable_ids": 814,
-  "independent_operators": 74,
-  "operators_speaking_a_protocol": 26,
+  "measured_at": "2026-09-08T04:54:03.554Z",
+  "registered_ids": 340473,
+  "reachable_ids": 848,
+  "independent_operators": 83,
+  "operators_speaking_a_protocol": 35,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -726,10 +726,10 @@
         123759,
         123764,
         123765,
+        123767,
+        123941,
         124183,
-        124482,
-        124595,
-        124647,
+        124242,
         124859,
         125033,
         125497,
@@ -793,6 +793,148 @@
       ]
     },
     {
+      "operator": "hallmark-agents.vercel.app",
+      "instances": 5,
+      "distinct_capabilities": 5,
+      "ids": [
+        338475,
+        338477,
+        338478,
+        338480,
+        338481
+      ],
+      "name": "PancakeSwap v3 Range Keeper",
+      "description": "Watches a PancakeSwap v3 liquidity position, decides whether its range still earns, and resets it when it does not. There is no atomic rebalance on v3: closing and reopening a position is decreaseLiquidity → collect → burn → mint, plus a sw",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://hallmark-agents.vercel.app/a2a/rebalancer",
+        "https://hallmark-agents.vercel.app/mcp/rebalancer",
+        "https://hallmark-agents.vercel.app/x402/rebalancer/report",
+        "https://hallmark-agents.vercel.app/rebalancer/.well-known/agent-card.json",
+        "https://hallmark-market.vercel.app"
+      ],
+      "tools": [
+        {
+          "name": "analyse",
+          "description": "Reads a PancakeSwap v3 position and its pool, decides whether the range still earns, and proposes a recentred range with the reasoning and the gas budget behind"
+        },
+        {
+          "name": "report",
+          "description": "Everything `analyse` returns, plus the parts that cost real work: a live QuoterV2 simulation of the exact ratio swap with its price impact, and the pool's trail"
+        },
+        {
+          "name": "act",
+          "description": "Executes decreaseLiquidity → collect → burn → [swap] → mint under an Altana session key scoped to the PancakeSwap v3 position manager and swap router. Re-runnin"
+        },
+        {
+          "name": "cycles",
+          "description": "Every rebalance cycle this agent has run for a position: what moved, when, the outcome, and the transaction. Repeated autonomous action is the point, so it is r"
+        }
+      ],
+      "skills": [
+        "Assess a v3 range",
+        "Priced rebalance report",
+        "Reset the range",
+        "Rebalance history"
+      ]
+    },
+    {
+      "operator": "hyperliquidvault.space",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        338253
+      ],
+      "name": "HyperliquidVault",
+      "description": "Hyperliquid Vault Strategy Intelligence: discover Hyperliquid vaults and review a vault's key strategy metrics (TVL, APR, leader, followers, capacity, withdrawal availability, commission terms, deposit status) from the public Hyperliquid AP",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://hyperliquidvault.space/mcp",
+        "https://hyperliquidvault.space/.well-known/agent-card.json",
+        "https://hyperliquidvault.space/x402"
+      ],
+      "tools": [
+        {
+          "name": "list_vaults",
+          "description": "Discover Hyperliquid vaults: filter by open/closed and relationship (normal / parent / child), sort by TVL, APR or creation time, and cap the count. Each row ha"
+        },
+        {
+          "name": "vault_overview",
+          "description": "Review one Hyperliquid vault by address: leader, strategy description, APR, TVL, follower count, distributable and withdrawable capacity, leader commission and "
+        }
+      ],
+      "skills": [
+        "List Hyperliquid vaults",
+        "Hyperliquid vault overview"
+      ]
+    },
+    {
+      "operator": "alphatrack.space",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        338165
+      ],
+      "name": "AlphaTrack",
+      "description": "AlphaTrack: Binance smart-money intelligence. Ranks the top Binance Futures copy-trading leaders by 3-day realised PnL, with ROI, assets under management and subscriber counts, straight from Binance's public smart-money leaderboard. Paid vi",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://alphatrack.space/mcp",
+        "https://alphatrack.space/.well-known/agent-card.json",
+        "https://alphatrack.space/x402"
+      ],
+      "tools": [
+        {
+          "name": "top_traders",
+          "description": "Top Binance Futures copy-trading leaders ranked by 3-day PnL (descending). Returns up to 10 traders with account name, subscribers, assets under management, 3-d"
+        }
+      ],
+      "skills": [
+        "Binance top traders (3D PnL)"
+      ]
+    },
+    {
+      "operator": "swapgod.space",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        338265
+      ],
+      "name": "SwapGod",
+      "description": "SwapGod: DEX swap quotes on BNB Smart Chain. Compares PancakeSwap v2 (direct and via WBNB) and PancakeSwap v3 (all fee tiers) for an exact-input swap and returns the best route, expected output, minimum output after slippage and the implied",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://swapgod.space/mcp",
+        "https://swapgod.space/.well-known/agent-card.json",
+        "https://swapgod.space/x402"
+      ],
+      "tools": [
+        {
+          "name": "swap_quote",
+          "description": "Best exact-input swap quote on BNB Smart Chain across PancakeSwap v2 (direct + via WBNB) and PancakeSwap v3 (100/500/2500/10000 fee tiers). Tokens are BEP-20 co"
+        }
+      ],
+      "skills": [
+        "PancakeSwap swap quote (BSC)"
+      ]
+    },
+    {
       "operator": "cryptocurrency.cv",
       "instances": 2,
       "distinct_capabilities": 1,
@@ -825,6 +967,74 @@
         "deep_research"
       ],
       "agent_card": "https://cryptocurrency.cv/.well-known/agent.json"
+    },
+    {
+      "operator": "4lpha.tech",
+      "instances": 33,
+      "distinct_capabilities": 1,
+      "ids": [
+        96179,
+        96188,
+        96314,
+        96333,
+        96366,
+        96460,
+        96488,
+        96759,
+        96848,
+        96849,
+        96850,
+        96851,
+        96852,
+        96909,
+        96910,
+        96911,
+        96912,
+        97076,
+        97077,
+        97078,
+        97079,
+        141495,
+        336505,
+        336749,
+        337153,
+        337272,
+        337848,
+        337849,
+        338492,
+        338550,
+        338672,
+        340032,
+        340232
+      ],
+      "name": "4lpha single agent",
+      "description": "AI-powered meme coin intelligence and autonomous trading agents.",
+      "image": "https://4lpha.tech/uploads/agent-profiles/1779262185779-15e76e59-4d4f-4cf4-8d86-ba98764963b6.png",
+      "speaks": [
+        "mcp"
+      ],
+      "endpoints": [
+        "https://4lpha.tech/agents/f782e775-a1d8-40c8-96bc-94ac6d6193df",
+        "https://4lpha.tech/"
+      ],
+      "tools": [
+        {
+          "name": "explain_strategy",
+          "description": "Explain how a 4lpha Grid, LP or Trading strategy works, its main settings, risks and custody boundary. Static product guidance, not live analysis or a private a"
+        },
+        {
+          "name": "list_agents",
+          "description": "List the 4lpha autonomous DeFi agents available to hire on BNB Chain, with their agent-marketplace category and deploy link."
+        },
+        {
+          "name": "get_hire_link",
+          "description": "Return the deploy link a human opens to hire one 4lpha agent, plus what the hire actually authorises on-chain."
+        }
+      ],
+      "trust_models": [
+        "4lpha-owner-signature",
+        "bnb-chain-onchain-identity"
+      ]
     },
     {
       "operator": "fly-mcp-deploy.vercel.app",
@@ -948,6 +1158,109 @@
       "agent_card": "https://www.synergix.lol/.well-known/agent.json"
     },
     {
+      "operator": "genesis-marketplace-one.vercel.app",
+      "instances": 4,
+      "distinct_capabilities": 4,
+      "ids": [
+        336622,
+        336623,
+        336624,
+        336625
+      ],
+      "name": "RangeKeeper",
+      "description": "Marketplace specialist for concentrated liquidity (built by Genesis). Monitors PancakeSwap V3 positions, flags out-of-range liquidity, and proposes rebalance bands with fee APR vs IL context. Does not custody user funds — delivers actionabl",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "PCS V3 range monitor",
+        "Rebalance band proposal",
+        "Fee APR vs IL snapshot",
+        "Gas-aware reset plan"
+      ]
+    },
+    {
+      "operator": "mandate-coral.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        336161
+      ],
+      "name": "MANDATE Assay Office",
+      "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks, identity, custody, activity, capability, reputation, performance, producing a millesimal fineness. Below 375 no hallmark is struck. Every finding carries ",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://mandate-coral.vercel.app",
+        "https://mandate-coral.vercel.app/.well-known/agent-card.json",
+        "https://mandate-coral.vercel.app/api/v1",
+        "https://github.com/agntcy/oasf/"
+      ],
+      "skills": [
+        "Assay an agent",
+        "Read the trust ladder",
+        "Browse the register",
+        "Serve the office over MCP"
+      ]
+    },
+    {
+      "operator": "lingoai.io",
+      "instances": 5,
+      "distinct_capabilities": 5,
+      "ids": [
+        340455,
+        340456,
+        340458,
+        340460,
+        340463
+      ],
+      "name": "LingoAI Grid Trading Agent",
+      "description": "Lay out a symmetric buy/sell grid inside a price range. Deterministic and hireable, settled through real ERC-8183 escrow.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://holon.lingoai.io/agents/grid-trading/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Grid plan",
+        "Live pancakeswap-v3 read",
+        "ERC-8183 quote"
+      ]
+    },
+    {
+      "operator": "chainhelix.io",
+      "instances": 4,
+      "distinct_capabilities": 4,
+      "ids": [
+        269223,
+        269224,
+        269226,
+        269228
+      ],
+      "name": "Portfolio Rebalancer",
+      "description": "rebalancer-agent: deterministic on-chain work, sold per job through ERC-8183 escrow (negotiate + notify_funded over A2A) and per call on the B402 rail (/x402). The work skill on this card states exactly what a job must contain.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Portfolio rebalancing plan",
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
       "operator": "airblock2026.workers.dev",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -994,13 +1307,14 @@
     },
     {
       "operator": "amazonaws.com",
-      "instances": 11,
-      "distinct_capabilities": 4,
+      "instances": 12,
+      "distinct_capabilities": 5,
       "ids": [
         33813,
         293902,
         324818,
         331131,
+        338110,
         324936,
         325413,
         326106,
@@ -1067,11 +1381,12 @@
     },
     {
       "operator": "bubbleupdappos.workers.dev",
-      "instances": 21,
+      "instances": 23,
       "distinct_capabilities": 1,
       "ids": [
         198999,
         204789,
+        211183,
         211586,
         212769,
         212840,
@@ -1079,6 +1394,7 @@
         212989,
         213036,
         213053,
+        213084,
         213332,
         213378,
         213432,
@@ -1107,30 +1423,6 @@
       ]
     },
     {
-      "operator": "chainhelix.io",
-      "instances": 4,
-      "distinct_capabilities": 1,
-      "ids": [
-        269223,
-        269224,
-        269226,
-        269228
-      ],
-      "name": "Portfolio Rebalancer",
-      "description": "ERC-8183 seller agent (rebalancer-agent): negotiate + notify_funded over A2A.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://agents.chainhelix.io/rebalancer/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
       "operator": "explainer-agent.onrender.com",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -1145,6 +1437,27 @@
       ],
       "endpoints": [
         "https://explainer-agent.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "hevo-rebalance.fly.dev",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        340471
+      ],
+      "name": "Hevo Rebalance",
+      "description": "ERC-8183 seller agent (hevorebalance-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://hevo-rebalance.fly.dev/.well-known/agent-card.json"
       ],
       "skills": [
         "Negotiate an ERC-8183 job",
@@ -1328,47 +1641,6 @@
       "speaks": [],
       "endpoints": [
         "http://43.160.214.54:8000/mcp"
-      ]
-    },
-    {
-      "operator": "4lpha.tech",
-      "instances": 22,
-      "distinct_capabilities": 0,
-      "ids": [
-        96179,
-        96188,
-        96314,
-        96333,
-        96366,
-        96460,
-        96488,
-        96759,
-        96848,
-        96849,
-        96850,
-        96851,
-        96852,
-        96909,
-        96910,
-        96911,
-        96912,
-        97076,
-        97077,
-        97078,
-        97079,
-        141495
-      ],
-      "name": "4lpha single agent",
-      "description": "AI-powered meme coin intelligence and autonomous trading agents.",
-      "image": "https://4lpha.tech/uploads/agent-profiles/1779262185779-15e76e59-4d4f-4cf4-8d86-ba98764963b6.png",
-      "speaks": [],
-      "endpoints": [
-        "https://4lpha.tech/agents/f782e775-a1d8-40c8-96bc-94ac6d6193df",
-        "https://4lpha.tech/"
-      ],
-      "trust_models": [
-        "4lpha-owner-signature",
-        "bnb-chain-onchain-identity"
       ]
     },
     {
@@ -2180,6 +2452,21 @@
       "trust_models": [
         "signature",
         "tee"
+      ]
+    },
+    {
+      "operator": "up.railway.app",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        338747
+      ],
+      "name": "Bercy BNB Pay Agent",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://bercy-bnb-chain-production.up.railway.app/"
       ]
     },
     {

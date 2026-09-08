@@ -1,9 +1,19 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-09-03T16:46:49.401Z",
-  "asked": 16,
-  "quoted": 11,
+  "measured_at": "2026-09-08T04:56:18.233Z",
+  "asked": 22,
+  "quoted": 12,
   "agents": [
+    {
+      "id": 269223,
+      "label": "Portfolio Rebalancer",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.5 $U",
+      "endpoint": "https://agents.chainhelix.io/rebalancer/",
+      "reason": null
+    },
     {
       "id": 265375,
       "label": "BNB LP Range Rebalancer",
@@ -15,23 +25,13 @@
       "reason": null
     },
     {
-      "id": 304494,
-      "label": "Brain on BNB — Portfolio Rebalance Pricer",
-      "category": "rebalancing",
-      "ours": true,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://agent.brainonbnb.com/a2a",
-      "reason": null
-    },
-    {
-      "id": 269223,
-      "label": "Portfolio Rebalancer",
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
       "category": "rebalancing",
       "ours": false,
       "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://agents.chainhelix.io/rebalancer/",
+      "price": "1 $U",
+      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
       "reason": null
     },
     {
@@ -45,13 +45,43 @@
       "reason": "answered {\"status\":\"OK\"} rather than a JSON-RPC reply"
     },
     {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
+      "id": 338475,
+      "label": "PancakeSwap v3 Range Keeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://hallmark-agents.vercel.app/a2a/rebalancer",
+      "reason": "rebalancer has no skill \"negotiate\""
+    },
+    {
+      "id": 336622,
+      "label": "RangeKeeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
+      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
+    },
+    {
+      "id": 340471,
+      "label": "Hevo Rebalance",
       "category": "rebalancing",
       "ours": false,
       "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
+      "price": "8 $U",
+      "endpoint": "https://hevo-rebalance.fly.dev/",
+      "reason": null
+    },
+    {
+      "id": 304494,
+      "label": "Brain on BNB — Portfolio Rebalance Pricer",
+      "category": "rebalancing",
+      "ours": true,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
       "reason": null
     },
     {
@@ -65,6 +95,26 @@
       "reason": null
     },
     {
+      "id": 303779,
+      "label": "marketplace-operated-grid-planner",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/grid/a2a",
+      "reason": "Grid requires GRID_PLAN_V1 with pair, lowerPrice, upperPrice, capital and gridCount."
+    },
+    {
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://holon.lingoai.io/agents/grid-trading/a2a",
+      "reason": "seller answered, but its reply carries no price"
+    },
+    {
       "id": 302258,
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
@@ -75,14 +125,44 @@
       "reason": null
     },
     {
-      "id": 303779,
-      "label": "marketplace-operated-grid-planner",
-      "category": "grid-trading",
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "1 $U",
+      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
+      "reason": null
+    },
+    {
+      "id": 116170,
+      "label": "Moments",
+      "category": "yield-optimization",
       "ours": false,
       "quotes": false,
       "price": null,
-      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/api/sellers/grid/a2a",
-      "reason": "The seller request failed."
+      "endpoint": "https://app.singularry.org/api/a2a",
+      "reason": "seller answered, but its reply carries no price"
+    },
+    {
+      "id": 336622,
+      "label": "RangeKeeper",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
+      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
+    },
+    {
+      "id": 338253,
+      "label": "HyperliquidVault",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://hyperliquidvault.space/a2a",
+      "reason": "unknown skill \"negotiate\""
     },
     {
       "id": 304493,
@@ -105,33 +185,13 @@
       "reason": null
     },
     {
-      "id": 116170,
-      "label": "Moments",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://app.singularry.org/api/a2a",
-      "reason": "seller answered, but its reply carries no price"
-    },
-    {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "1 $U",
-      "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
-      "reason": null
-    },
-    {
-      "id": 302257,
-      "label": "Brain on BNB — Venus Health Factor Monitor",
+      "id": 266933,
+      "label": "BNB Lending Guardian",
       "category": "health-factor",
-      "ours": true,
+      "ours": false,
       "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://agent.brainonbnb.com/a2a",
+      "price": "5 $U",
+      "endpoint": "https://bnb-guardian.172-104-171-139.nip.io/a2a",
       "reason": null
     },
     {
@@ -155,13 +215,13 @@
       "reason": "the endpoint its card names answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
-      "id": 266933,
-      "label": "BNB Lending Guardian",
+      "id": 302257,
+      "label": "Brain on BNB — Venus Health Factor Monitor",
       "category": "health-factor",
-      "ours": false,
+      "ours": true,
       "quotes": true,
-      "price": "5 $U",
-      "endpoint": "https://bnb-guardian.172-104-171-139.nip.io/a2a",
+      "price": "0.1 $U",
+      "endpoint": "https://agent.brainonbnb.com/a2a",
       "reason": null
     }
   ]

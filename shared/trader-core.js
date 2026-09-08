@@ -40,6 +40,15 @@ export const DEFAULT_COSTS_PCT = {
   BOBAI: { buy: 3.60, sell: 3.60 },   // 3% tax + V2 0.25% + impact + allowance (sell never used)
 };
 
+// Gas, in dollars per swap, on top of the percentage above. Measured on the
+// bootstrap swap of 2026-09-08: 0.00047 BNB at ~$750 = $0.35, and it does
+// not scale with the amount — on a $25 leg that is 1.4% a side, on the $110
+// pot 0.3%. The first backtest left it out, which flattered exactly the leg
+// that trades most (BOB: 16 trades at a 37.5% hit rate) and was the reason
+// the six-month figure could not be trusted. Every replay charges it per
+// side now; a caller that wants the old picture passes gasUsd: 0.
+export const DEFAULT_GAS_USD_PER_SWAP = 0.35;
+
 export const NEVER_SELL = new Set(['BOBAI']);
 
 export const DEFAULT_PARAMS = { window: 48, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 };
@@ -83,7 +92,7 @@ export function zScores(closes, window) {
 // close that triggers it and exited at the close that triggers the exit.
 // Costs are taken per side on the traded amount. Returns the trades, the
 // net result in USD, and the drawdown of the leg's equity curve.
-export function replayLeg(closes, times, params, { legUsd = 25, costsPct = { buy: 0.3, sell: 0.3 }, neverSell = false } = {}) {
+export function replayLeg(closes, times, params, { legUsd = 25, costsPct = { buy: 0.3, sell: 0.3 }, neverSell = false, gasUsd = DEFAULT_GAS_USD_PER_SWAP } = {}) {
   const { window, entryZ, exitZ, stopPct, maxHoldH } = params;
   const sign = params.mode === 'trend' ? -1 : 1;
   const z = zScores(closes, window).map((v) => (v == null ? null : sign * v));
@@ -102,7 +111,7 @@ export function replayLeg(closes, times, params, { legUsd = 25, costsPct = { buy
       else if (heldH >= maxHoldH) why = 'held too long';
       if (why) {
         const gross = pos.units * p;
-        const fee = gross * costsPct.sell / 100;
+        const fee = gross * costsPct.sell / 100 + gasUsd;
         cash += gross - fee;
         trades.push({ entry: times[pos.i], exit: times[i], entry_price: pos.price, exit_price: p, ret_pct: Math.round(ret * 100) / 100, net_usd: Math.round((gross - fee - pos.spent) * 10000) / 10000, hours: Math.round(heldH), why });
         pos = null;
@@ -110,8 +119,8 @@ export function replayLeg(closes, times, params, { legUsd = 25, costsPct = { buy
     }
     if (!pos && z[i] != null && z[i] <= -entryZ && cash >= 1) {
       const spend = neverSell ? Math.min(cash, legUsd / 4) : cash;   // BOBAI: four dips per leg budget
-      if (spend >= 1) {
-        const fee = spend * costsPct.buy / 100;
+      if (spend >= 1 && spend > gasUsd) {
+        const fee = spend * costsPct.buy / 100 + gasUsd;
         const units = (spend - fee) / p;
         if (neverSell) {
           // Accumulate: no exit, each dip is its own lot. Track as one growing position.
@@ -133,7 +142,7 @@ export function replayLeg(closes, times, params, { legUsd = 25, costsPct = { buy
   const endEquity = equityAt(last);
   const closed = trades.filter((t) => t.exit != null);
   const wins = closed.filter((t) => t.net_usd > 0).length;
-  const buyHold = legUsd * (closes[last] / closes[0]) * (1 - costsPct.buy / 100);
+  const buyHold = (legUsd - gasUsd) * (closes[last] / closes[0]) * (1 - costsPct.buy / 100);
   return {
     params, trades, closed: closed.length, open: pos ? 1 : 0,
     win_rate_pct: closed.length ? Math.round(wins / closed.length * 1000) / 10 : null,
@@ -149,7 +158,7 @@ export function replayLeg(closes, times, params, { legUsd = 25, costsPct = { buy
 // Parameter search on the first `trainShare` of the history, judged on the
 // rest. Picks the set with the best training net per day; reports both
 // halves so the reader sees whether the pick survived hours it never saw.
-export function walkForward(closes, times, { grid = PARAM_GRID, trainShare = 0.6, legUsd = 25, costsPct, neverSell = false, minTrades = 3 } = {}) {
+export function walkForward(closes, times, { grid = PARAM_GRID, trainShare = 0.6, legUsd = 25, costsPct, neverSell = false, minTrades = 3, gasUsd = DEFAULT_GAS_USD_PER_SWAP } = {}) {
   const split = Math.floor(closes.length * trainShare);
   const trainC = closes.slice(0, split), trainT = times.slice(0, split);
   const testC = closes.slice(split), testT = times.slice(split);
@@ -158,7 +167,7 @@ export function walkForward(closes, times, { grid = PARAM_GRID, trainShare = 0.6
     combos.push({ mode, window, entryZ, exitZ, stopPct, maxHoldH });
   }
   const scored = combos.map((params) => {
-    const r = replayLeg(trainC, trainT, params, { legUsd, costsPct, neverSell });
+    const r = replayLeg(trainC, trainT, params, { legUsd, costsPct, neverSell, gasUsd });
     const trades = neverSell ? r.trades.length : r.closed;
     return { params, train: r, score: trades >= minTrades ? r.net_usd / (trainC.length / 24) : -Infinity };
   }).sort((a, b) => b.score - a.score);
@@ -168,7 +177,7 @@ export function walkForward(closes, times, { grid = PARAM_GRID, trainShare = 0.6
   // closes are prepended so the z-score exists from the first test hour, and
   // the equity is measured from the split.
   const warm = best.params.window;
-  const testR = replayLeg(closes.slice(Math.max(0, split - warm)), times.slice(Math.max(0, split - warm)), best.params, { legUsd, costsPct, neverSell });
+  const testR = replayLeg(closes.slice(Math.max(0, split - warm)), times.slice(Math.max(0, split - warm)), best.params, { legUsd, costsPct, neverSell, gasUsd });
   return {
     pick: best.params,
     train: { hours: trainC.length, net_usd: best.train.net_usd, closed: best.train.closed, win_rate_pct: best.train.win_rate_pct, max_drawdown_pct: best.train.max_drawdown_pct, buy_hold_net_usd: best.train.buy_hold_net_usd },
@@ -305,7 +314,7 @@ export function replayPortfolio(legs, bobai, picks, { capitalUsd = 100, profitTo
 // — out of a top, into a dip. Every closed trade's net result goes to the
 // pool; at a BOBAI dip half the pool buys BOBAI (never sold) and half grows
 // the pot. Losses eat the pool first, then the pot.
-export function replayRotation(legs, bobai, picks, { capitalUsd = 100, profitToBobaiPct = 50, bobaiDipZ = 1, bobaiWindow = 168, costsPct = DEFAULT_COSTS_PCT, minDipZ = null } = {}) {
+export function replayRotation(legs, bobai, picks, { capitalUsd = 100, profitToBobaiPct = 50, bobaiDipZ = 1, bobaiWindow = 168, costsPct = DEFAULT_COSTS_PCT, minDipZ = null, gasUsd = DEFAULT_GAS_USD_PER_SWAP } = {}) {
   const names = TRADING_LEGS.filter((l) => picks[l]);
   const times = legs[names[0]].times, n = times.length;
   const z = Object.fromEntries(names.map((l) => [l, zScores(legs[l].closes, picks[l].window).map((v) => (v == null ? null : (picks[l].mode === 'trend' ? -v : v)))]));
@@ -331,7 +340,7 @@ export function replayRotation(legs, bobai, picks, { capitalUsd = 100, profitToB
       else if (ret <= -P.stopPct) why = 'stop';
       else if (heldH >= P.maxHoldH) why = 'held too long';
       if (why) {
-        const gross = pos.units * p, fee = gross * c.sell / 100, net = gross - fee - pos.spent;
+        const gross = pos.units * p, fee = gross * c.sell / 100 + gasUsd, net = gross - fee - pos.spent;
         pot += pos.spent;
         if (net >= 0) profitPool += net; else if (profitPool + net >= 0) profitPool += net; else { pot += profitPool + net; profitPool = 0; }
         trades.push({ leg: l, entry: times[pos.i], exit: times[i], ret_pct: Math.round(ret * 100) / 100, net_usd: Math.round(net * 10000) / 10000, hours: Math.round(heldH), why });
@@ -347,15 +356,17 @@ export function replayRotation(legs, bobai, picks, { capitalUsd = 100, profitToB
         if (minDipZ != null && zi > -minDipZ) continue;
         if (!best || zi < best.z) best = { leg: l, z: zi };
       }
-      if (best) {
-        const l = best.leg, p = legs[l].closes[i], fee = pot * costsPct[l].buy / 100;
+      if (best && pot > gasUsd) {
+        const l = best.leg, p = legs[l].closes[i], fee = pot * costsPct[l].buy / 100 + gasUsd;
         pos = { leg: l, i, price: p, units: (pot - fee) / p, spent: pot };
         pot = 0;
       }
     }
     if (zb && zb[i] != null && zb[i] <= -bobaiDipZ && profitPool >= 1 && bob[i]) {
       const toBobai = profitPool * profitToBobaiPct / 100, toGrow = profitPool - toBobai;
-      bobaiUnits += (toBobai - toBobai * costsPct.BOBAI.buy / 100) / bob[i]; bobaiSpent += toBobai; bobaiBuys += 1;
+      // One swap into BOBAI: its percentage cost plus the gas, never more
+      // than the amount itself.
+      bobaiUnits += Math.max(0, toBobai - toBobai * costsPct.BOBAI.buy / 100 - gasUsd) / bob[i]; bobaiSpent += toBobai; bobaiBuys += 1;
       pot += toGrow; grownBy += toGrow; profitPool = 0;
       trades.push({ leg: 'BOBAI', entry: times[i], exit: null, ret_pct: null, net_usd: null, hours: null, why: `dip: $${toBobai.toFixed(2)} of profit into BOBAI, $${toGrow.toFixed(2)} into the pot` });
     }

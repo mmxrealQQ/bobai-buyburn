@@ -29,8 +29,12 @@ evidence, plus the operator's profit rule:
   first, then the pot.
 - **Costs** per side per leg (pool fee + impact at size + wallet allowance) live
   in `DEFAULT_COSTS_PCT`; the wallet's own fee turned out to be inside its
-  quote (bootstrap 2026-09-08: received 0.01% above quote), and gas is
-  0.00047 BNB (~$0.35) per swap on top — hence the $10 minimum order.
+  quote (bootstrap 2026-09-08: received 0.01% above quote). Gas is
+  0.00047 BNB (~$0.35) per swap on top, `DEFAULT_GAS_USD_PER_SWAP`, and since
+  2026-09-09 every replay charges it per side (the first backtest left it out,
+  which flattered the leg that trades most). On a $25 leg that is 1.4% a side,
+  on the $110 pot 0.3% — hence the $10 minimum order, and hence the pot size
+  matters more than the rule.
 
 ## Where it lives
 
@@ -81,13 +85,23 @@ After a change to any file in the table above: `scp -i ~/.ssh/bobai-trader <file
 - a failed or refused order ends the tick and is reported; nothing is retried blind
 - the wallet's own rules, set in the Binance App: 365-day sign-in, high-risk transactions need app confirmation, developer mode off
 
-## Evidence (2026-09-08, six months 12.3.–8.9., $25 a leg, unseen last 40% = 72 days)
+## Evidence (2026-09-09, six months 12.3.–8.9., $25 a leg, unseen last 40% = 72 days, gas charged)
 
-Per leg: BNB reversion +2.25, CAKE reversion +3.72, BOB trend +4.62 (holding: +30.63 on 100).
-Rotation on a $75 pot: +62.20 realised in 21 trades (14 won), three BOBAI dips bought
-$22.97 of BOBAI, total $173.61, drawdown 8.5%. At four split points: +48 / +66 / +99 / +37;
-with costs × 1.5: +31 / +47 / +79 / +29. BOB carries most of it with a 37.5% hit rate — few large
-winners — and the first half of the period had a 33% drawdown. An expectation, not a promise.
+The 2026-09-08 figures below were computed without gas and are kept for the record;
+the ones that count are the second set.
+
+Without gas (2026-09-08): per leg BNB +2.25, CAKE +3.72, BOB +4.62; rotation on $75 +62.20
+realised, at four split points +48 / +66 / +99 / +37, with costs × 1.5 +31 / +47 / +79 / +29.
+
+**With gas ($0.35 a swap, 2026-09-09):** per leg on $25 every leg is negative on the unseen
+40% (BNB −0.71, CAKE −0.80, BOB −8.05; holding: +29.15 on 100). The rotation on a $75 pot
+still nets +67.98 on the unseen 40% at the 60% split (18 trades, 9 won, BOB 13 of them),
+but at the other split points only +4.89 / +6.79 / +18.08, and **with costs × 1.5 it loses at
+every split: −17.44 / −4.34 / −2.29 / −2.30, and buys no BOBAI at all.** The edge, if there
+is one, is thin, sits in BOB's few large breakouts, and is smaller than a bad month of costs.
+Gas is a fixed dollar amount, so the pot size decides: at $110 the two swaps of a round trip
+cost 0.64% before any fee; at $500 they cost 0.14%. An expectation, not a promise — and a
+thin one.
 
 ## Live since
 

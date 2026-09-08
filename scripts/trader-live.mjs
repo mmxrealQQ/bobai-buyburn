@@ -241,11 +241,30 @@ async function tick() {
 
 if (has('--tick')) { await tick().catch((e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); process.exitCode = 1; }); process.exit(); }
 
+// THE WEEKLY REFIT. Parameters chosen once go stale; every Monday 00:20 UTC
+// six months of prices are fetched again and the choice is redone by the
+// same walk-forward (scripts/trader.mjs --backtest writes picks.json). An
+// open position keeps its leg; only the thresholds it is judged by move.
+function refit() {
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'trader-fetch.mjs'), '--hours', '4320'], { stdio: 'ignore', timeout: 600000 });
+    const out = execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'trader.mjs'), '--backtest'], { encoding: 'utf8', timeout: 900000 });
+    log({ kind: 'refit', summary: out.split(/\r?\n/).filter((l) => /pick:|last 40%|ROTATION on/.test(l)).map((l) => l.trim()).slice(0, 12) });
+    say('refit done');
+  } catch (e) { log({ kind: 'refit_failed', error: String(e.message).slice(0, 200) }); say('refit failed: ' + e.message); }
+}
+
+if (has('--refit')) { refit(); process.exit(); }
+
 if (has('--loop')) {
-  say(`loop: a tick every hour at :05${CONFIRM ? ', sending orders' : ' (dry)'}; STOP file at ${STOP} halts it`);
+  say(`loop: a tick every hour at :05${CONFIRM ? ', sending orders' : ' (dry)'}; a refit every Monday 00:20 UTC; STOP file at ${STOP} halts it`);
   const run = () => tick().catch((e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); });
   await run();
-  setInterval(() => { const m = new Date().getUTCMinutes(); if (m === 5) run(); }, 60000);
+  setInterval(() => {
+    const d = new Date(), m = d.getUTCMinutes();
+    if (m === 5) run();
+    if (d.getUTCDay() === 1 && d.getUTCHours() === 0 && m === 20) refit();
+  }, 60000);
 } else {
   say('node scripts/trader-live.mjs --tick [--confirm] | --bootstrap --confirm | --loop --confirm | --state');
 }

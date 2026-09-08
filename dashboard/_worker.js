@@ -3,6 +3,7 @@
 // runs, so the cost of a trade is computed in exactly one place no matter
 // which of the three doors an agent came through.
 import { scan as poolScan } from './scanner-scan.js';
+import { useKeyedRpcs } from './scanner-chain.js';
 import { feeTiers } from './tier-scan.js';
 import { rangePlan } from './range-scan.js';
 import { swapRoute } from './swap-route.js';
@@ -1088,6 +1089,13 @@ function etagMatches(header, tag) {
 export default {
   async fetch(request, env, ctx) {
     WORKER_ENV = env;
+    // The chain layer asks a keyed BSC endpoint first when this project has
+    // one as a Pages secret (BSC_RPC_KEYED_URL_2 = Allnodes/PublicNode token,
+    // unmetered, then BSC_RPC_KEYED_URL = NodeReal, metered — the same two
+    // names the Telegram bot and the mint worker bind). Without them the free
+    // list is used exactly as before. The key never reaches the browser page
+    // or the skill bundle: it is read here, in the Worker, and nowhere else.
+    useKeyedRpcs([env.BSC_RPC_KEYED_URL_2, env.BSC_RPC_KEYED_URL]);
     const url = new URL(request.url);
 
     // Count what agents ask us for, so the public transparency block has real

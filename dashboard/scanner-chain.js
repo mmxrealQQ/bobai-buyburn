@@ -32,9 +32,10 @@ export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com'
 // probably share a budget — but two hostnames spread a burst of five tier
 // queries better than one does, and the caller cannot be asked to go slower.
 export const LOGS_RPCS=['https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
-export const RPC=RPCS[0],
-  LOGS_RPC=LOGS_RPCS[0],
-  GOPLUS='https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=',
+// Live bindings: useKeyedRpcs() below moves a keyed endpoint to the front.
+export let RPC=RPCS[0],
+  LOGS_RPC=LOGS_RPCS[0];
+export const GOPLUS='https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=',
   GOPLUS_TOKEN='https://api.gopluslabs.io/api/v1/token',
   V2FACTORY='0xca143ce32fe78f1f7019d7d551a6402fc5350c73',
   V3FACTORY='0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865',
@@ -127,6 +128,25 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 // Sticky index: once an endpoint answers it keeps being used, so a healthy scan
 // costs no extra round trips. It only moves on when one actually fails.
 let epi=0;
+// A keyed endpoint first, when the caller has one. The browser page and the
+// installable skill never do — a key in a downloadable file is a published
+// key — but the Worker behind /api/* and /mcp shares its egress address with
+// the whole of Cloudflare, and the free publicnode budget it competes for
+// there gave one answer in ten a throttled read in September 2026: the tax
+// silently "labelled by GoPlus" instead of measured, the sell test "refused".
+// A personal token has its own budget. The free list stays behind it as the
+// fallback, and everything else — batching, throttle detection, the sticky
+// index — is unchanged. Idempotent, so a Worker may call it per request.
+export function useKeyedRpcs(urls){
+  const add=(urls||[]).map(u=>String(u||'').trim()).filter(u=>/^https:\/\//.test(u));
+  if(!add.length)return false;
+  for(const list of [RPCS,LOGS_RPCS]){
+    const rest=list.filter(u=>!add.includes(u));
+    list.splice(0,list.length,...add,...rest);
+  }
+  RPC=RPCS[0];LOGS_RPC=LOGS_RPCS[0];epi=0;
+  return true;
+}
 // "method eth_call in batch triggered rate limit", "capacity exceeded", 429s.
 // Anything mentioning a revert is a real answer and must never match here.
 const throttled=e=>{

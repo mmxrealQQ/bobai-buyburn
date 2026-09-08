@@ -33,3 +33,14 @@ The first prints a page as a visitor reads it — text in order, console errors,
 requests, sideways scroll — so the page can be *read* rather than asserted about. Use it
 first on every page you change; it finds what no checker was written to look for. The
 second names the exact text run that makes a page wider than the phone.
+
+## scan-consistency.mjs (2026-09-08)
+
+    node scripts/dashboard-check/scan-consistency.mjs [address] [N]
+
+Asks `/api/pool-scan` the same question N times, one at a time, and counts how the tax
+was answered — measured from trades, simulated on-chain, or copied from a GoPlus label —
+with the sell test and the latency. The scan answers 200 either way; only `tax.source`
+tells them apart, and this is how a change to the RPC path is measured rather than
+believed (2026-09-08: one answer in ten was a label; after the retry, none of ten). A
+measurement, not a gate: exit code 0 always.

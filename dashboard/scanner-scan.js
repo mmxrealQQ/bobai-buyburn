@@ -435,10 +435,25 @@ export async function scan(input, env) {
     pool.kind === 'v2'
       ? await rpcBatch([call(pool.pair, S.token0)]).then((r) => addrAt(r[0]) === token)
       : pool.tokenIs0;
-  const tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  let tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   // Can it be sold at all? Asked of the chain, not of a label (see the
   // function's header). V2 pairs only; anything else says so.
-  const sim = await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  let sim = await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  // One patient retry before the label wins. Measured on 2026-09-08: one scan
+  // in ten came back with status 200 and the tax "labelled by GoPlus" and the
+  // sell test "every BSC endpoint refused" — the same question, answered by
+  // measurement nine times and by a label once, because the log endpoint was
+  // throttled for the second the scan needed it. A caller cannot tell that
+  // answer from a measured one by its status. A second try after a beat is
+  // three to five calls; a label sold as a measurement costs more than that.
+  const simMeasured = (s) => !!(s && s.tax && (s.tax.buy_pct != null || s.tax.sell_pct != null));
+  let secondTry = false;
+  if (!tax.ok && !simMeasured(sim)) {
+    await new Promise((r) => setTimeout(r, 1500));
+    secondTry = true;
+    tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+    if (!simMeasured(sim)) sim = await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  }
   const gB = Number(gp.buy_tax);
   const gS = Number(gp.sell_tax);
   // Per direction: an executed trade first, the simulated trade second (the
@@ -531,6 +546,9 @@ export async function scan(input, env) {
       buyPct: usedTax ? +(taxB * 100).toFixed(3) : null,
       sellPct: usedTax ? +(taxS * 100).toFixed(3) : null,
       measured: !!tax.ok,
+      // Named when the first read was throttled and the second answered: a
+      // caller measuring the path can count how often the retry earned its keep.
+      ...(secondTry ? { read_on_second_try: true } : {}),
       // The distinction that matters: measured means real executed trades were
       // read; simulated means the same trade was run on the chain at this block
       // from a fresh address and its gap read; labelled means a reputation

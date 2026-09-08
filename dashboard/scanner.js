@@ -13,7 +13,7 @@
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=25';
+  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=26';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});

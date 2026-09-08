@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4261 lines.
+# one fetch. 12 files, 4230 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2572,46 +2572,7 @@ async function ensureCommandsRegistered(env) {
   }
 }
 
-// ==================== LP AGENT ALERT ====================
-
-// The text for one LP agent record that acted. Pure, so it can be rendered
-// against a real record without posting. Returns null when nothing moved.
-// The entry to announce is the newest one that acted or failed — the record
-// keeps those in `history` — not `last`: since the range is checked hourly,
-// an hourly re-set is folded into the daily record without changing its
-// timestamp, and keying on that timestamp is how the first automatic re-set
-// (2026-09-04 07:50 UTC) went unannounced.
-export function lpAlertEntry(rec) {
-  const hist = rec && Array.isArray(rec.history) ? rec.history : [];
-  return hist.length ? hist[hist.length - 1] : (rec && rec.last) || null;
-}
-
-export function formatLpAgentAlert(rec) {
-  const last = lpAlertEntry(rec);
-  if (!last || !last.acted) return null;
-  const st = last.steps || {};
-  const f = (v, d = 4) => Number(v || 0).toFixed(d);
-  const lines = [];
-  for (const s of Array.isArray(st.sweep) ? st.sweep : []) {
-    if (s.acted && !s.error) lines.push(`💵 Sold <b>${f(s.sold, 2)} ${s.token}</b> earned by the AI side → <b>${f(s.received_bnb)} BNB</b> into the liquidity wallet`);
-  }
-  if (st.collect && st.collect.acted && !st.collect.error && (Number(st.collect.forwarded_bnb) > 0 || Number(st.collect.kept_bnb) > 0)) {
-    lines.push(`💧 Collected the position's fees → <b>${f(st.collect.forwarded_bnb)} BNB</b> sent to the buyback bot, which buys $BOBAI and burns it${Number(st.collect.kept_bnb) > 0 ? `, <b>${f(st.collect.kept_bnb)} BNB</b> kept as capital` : ''}`);
-  }
-  if (st.rebalance && st.rebalance.acted && !st.rebalance.error) {
-    lines.push(`🎯 Range re-set around today's price: ±${st.rebalance.width_pct}%${st.rebalance.new_position ? `, position #${st.rebalance.new_position}` : ''}`);
-  }
-  if (st.increase && st.increase.acted && !st.increase.error) {
-    lines.push(`📈 Added <b>${f(st.increase.wbnb_used)} BNB</b> and ${f(st.increase.other_used, 3)} of the other side to the position`);
-  }
-  if (!lines.length) return null;
-  return `🤖 <b>LP Agent — ${String(last.at || '').slice(0, 16).replace('T', ' ')} UTC</b>
-The project's own liquidity position, run by a bot: AI income goes in as capital; of the fees, half comes out as $BOBAI burn and half stays to grow the position. At that run it moved:
-
-${lines.join('\n')}
-
-Every step is a transaction on BNB Chain. Record: <a href="https://agent.brainonbnb.com/lp/agent">agent.brainonbnb.com/lp/agent</a>`;
-}
+// ==================== LP AGENT DAILY REPORT ====================
 
 // Once a day, after the 04:23 run: one sentence, the series' own summary
 // (agent.brainonbnb.com/lp/series, summary.sentence — the line /liquidity
@@ -2633,22 +2594,28 @@ ${sentence}${failed}
 async function postLpDailyReport(env) {
   const today = new Date().toISOString().slice(0, 10);
   const done = await env.KV.get('lp_report_date');
-  if (done === today) return false;
+  // Each way out says why. On 2026-09-08 the report stayed silent through
+  // four ticks after the first 04:23 run while every condition held when
+  // replayed from outside, and a function that returns false without a word
+  // cannot be told apart from one that never ran.
+  const skip = (why) => { console.log('[LP REPORT] skipped: ' + why); return false; };
+  if (done === today) return skip('already posted today');
   const r = await fetch('https://agent.brainonbnb.com/lp/agent', { cf: { cacheTtl: 60 } });
-  if (!r.ok) return false;
+  if (!r.ok) return skip('/lp/agent answered ' + r.status);
   const rec = await r.json();
   // The report is about today's daily run; if it has not landed yet, wait for
   // the next tick rather than reporting yesterday twice. The series takes its
   // point from that run on the agent worker's next scan, so the sentence
   // must already count today's run, else the next tick.
-  if (!rec.last || String(rec.last.at || '').slice(0, 10) !== today) return false;
+  if (!rec.last || String(rec.last.at || '').slice(0, 10) !== today) return skip('no run yet today; last ' + (rec.last && rec.last.at));
   const rs = await fetch('https://agent.brainonbnb.com/lp/series', { cf: { cacheTtl: 60 } });
-  if (!rs.ok) return false;
+  if (!rs.ok) return skip('/lp/series answered ' + rs.status);
   const series = await rs.json();
   const pts = Array.isArray(series.points) ? series.points : [];
-  if (!pts.length || Date.parse(pts[pts.length - 1].at) < Date.parse(rec.last.at)) return false;
+  if (!pts.length || Date.parse(pts[pts.length - 1].at) < Date.parse(rec.last.at)) return skip('series has no point for the run yet; last point ' + (pts.length ? pts[pts.length - 1].at : 'none'));
   const text = formatLpDailyReport(rec, series);
-  if (!text) return false;
+  if (!text) return skip('nothing to say: no sentence in the series');
+  console.log('[LP REPORT] posting for ' + today);
   await env.KV.put('lp_report_date', today);
   await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true });
   return true;
@@ -3798,18 +3765,20 @@ export default {
     try { await ensureWebhookSecret(env); }
     catch (e) { console.error('[WEBHOOK SECRET ERROR]', e.message || e); }
 
-    // === LP AGENT — when it acts, the channel hears it ===
+    // === LP AGENT — one sentence a day ===
     // The daily tick (worker-lp, 04:23 UTC) writes one record; the agent
-    // worker serves it at /lp/agent. Read it a few minutes past each tenth
-    // minute — cheap, one fetch — and post ONCE per record that actually moved
-    // money: income swept into the liquidity wallet, fees forwarded to the
-    // buyback bot, the range re-set, capital added. A quiet day posts nothing;
-    // a channel that hears "nothing happened" every morning stops listening.
-    if (new Date().getMinutes() % 10 === 5) {
-      try { await postLpAgentAlert(env); }
-      catch (e) { console.error('[LP ALERT ERROR]', e.message || e); }
-      // The daily report, once, in the hour after the 04:23 run.
-      if (new Date().getUTCHours() === 4 || new Date().getUTCHours() === 5) {
+    // worker serves it at /lp/agent and the series at /lp/series. A few
+    // minutes past each tenth minute in the hour after the run, once: the
+    // series' own sentence. The per-action alert that used to sit here was
+    // asked away on 2026-09-07; its call outlived its function until
+    // 2026-09-08 and threw on every tick (caught, logged, harmless, wrong).
+    // Gated on the tick's nominal time, not the clock: a tick that starts
+    // late, or reaches this line after the awaits above, reads minute 16 from
+    // the clock and 15 from the schedule. Every tick in the window says so.
+    {
+      const tick = new Date(event && event.scheduledTime ? event.scheduledTime : Date.now());
+      if (tick.getUTCMinutes() % 10 === 5 && (tick.getUTCHours() === 4 || tick.getUTCHours() === 5)) {
+        console.log('[LP REPORT] tick ' + tick.toISOString());
         try { await postLpDailyReport(env); }
         catch (e) { console.error('[LP REPORT ERROR]', e.message || e); }
       }

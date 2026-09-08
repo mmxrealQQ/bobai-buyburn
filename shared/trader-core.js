@@ -309,9 +309,17 @@ export function replayRotation(legs, bobai, picks, { capitalUsd = 100, profitToB
   const names = TRADING_LEGS.filter((l) => picks[l]);
   const times = legs[names[0]].times, n = times.length;
   const z = Object.fromEntries(names.map((l) => [l, zScores(legs[l].closes, picks[l].window).map((v) => (v == null ? null : (picks[l].mode === 'trend' ? -v : v)))]));
-  const bob = bobai ? bobai.closes.map((c, i, a) => c ?? (i ? a[i - 1] : null)) : null;
+  // BOBAI's history starts later than the others (July 2026): the aligned
+  // series is null before its first close. The z-score is computed on the
+  // part that exists and is null before it, so a BOBAI dip can be seen from
+  // the first full window onwards rather than never.
+  const bob = bobai ? bobai.closes.slice() : null;
   for (let i = 1; bob && i < bob.length; i++) if (bob[i] == null) bob[i] = bob[i - 1];
-  const zb = bob && bob.every((c) => c != null) ? zScores(bob, bobaiWindow) : null;
+  let zb = null;
+  if (bob) {
+    const first = bob.findIndex((c) => c != null);
+    if (first >= 0) { const zz = zScores(bob.slice(first), bobaiWindow); zb = new Array(bob.length).fill(null); for (let i = 0; i < zz.length; i++) zb[first + i] = zz[i]; }
+  }
   let pot = capitalUsd, pos = null, profitPool = 0, bobaiUnits = 0, bobaiSpent = 0, bobaiBuys = 0, grownBy = 0;
   const trades = []; let peak = capitalUsd, maxDD = 0;
   for (let i = 0; i < n; i++) {

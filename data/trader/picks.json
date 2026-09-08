@@ -1,5 +1,6 @@
 {
  "leg_usd": 25,
+ "capital_usd": 75,
  "costs_pct": {
   "BNB": {
    "buy": 0.3,
@@ -20,80 +21,94 @@
  },
  "picks": {
   "BNB": {
-   "window": 48,
+   "mode": "reversion",
+   "window": 168,
    "entryZ": 2,
    "exitZ": 1,
    "stopPct": 6,
    "maxHoldH": 72,
-   "chosen_at": "2026-09-08T11:44:51.655Z",
+   "chosen_at": "2026-09-08T11:56:32.378Z",
    "train": {
-    "hours": 600,
-    "net_usd": 0.5778,
-    "closed": 5,
-    "win_rate_pct": 100,
-    "max_drawdown_pct": 1.94,
-    "buy_hold_net_usd": 5.5013
+    "hours": 2592,
+    "net_usd": 0.4983,
+    "closed": 11,
+    "win_rate_pct": 45.5,
+    "max_drawdown_pct": 9.86,
+    "buy_hold_net_usd": -3.811
    },
    "test": {
-    "hours": 400,
-    "net_usd": -0.14,
-    "closed": 2,
-    "win_rate_pct": 0,
+    "hours": 1728,
+    "net_usd": 2.252,
+    "closed": 6,
+    "win_rate_pct": 66.7,
     "max_drawdown_pct": 2.09,
-    "buy_hold_net_usd": 3.6338,
+    "buy_hold_net_usd": 6.9608,
     "open_position": null
    }
   },
   "CAKE": {
-   "window": 48,
+   "mode": "reversion",
+   "window": 168,
    "entryZ": 2,
-   "exitZ": 0.5,
+   "exitZ": 1,
    "stopPct": 6,
    "maxHoldH": 72,
-   "chosen_at": "2026-09-08T11:44:51.671Z",
+   "chosen_at": "2026-09-08T11:56:32.475Z",
    "train": {
-    "hours": 600,
-    "net_usd": 0.9782,
-    "closed": 5,
-    "win_rate_pct": 100,
-    "max_drawdown_pct": 2.44,
-    "buy_hold_net_usd": 5.979
+    "hours": 2592,
+    "net_usd": 4.3369,
+    "closed": 10,
+    "win_rate_pct": 60,
+    "max_drawdown_pct": 10.35,
+    "buy_hold_net_usd": -0.8588
    },
    "test": {
-    "hours": 400,
-    "net_usd": 0.9101,
-    "closed": 3,
+    "hours": 1728,
+    "net_usd": 3.7228,
+    "closed": 6,
     "win_rate_pct": 100,
-    "max_drawdown_pct": 3.7,
-    "buy_hold_net_usd": 9.9476,
+    "max_drawdown_pct": 2.33,
+    "buy_hold_net_usd": 16.3658,
     "open_position": null
    }
   },
   "BOB": {
-   "window": 24,
-   "entryZ": 1.5,
+   "mode": "trend",
+   "window": 48,
+   "entryZ": 2,
    "exitZ": 1,
    "stopPct": 6,
    "maxHoldH": 72,
-   "chosen_at": "2026-09-08T11:44:51.719Z",
+   "chosen_at": "2026-09-08T11:56:32.524Z",
    "train": {
-    "hours": 600,
-    "net_usd": 0.0442,
-    "closed": 10,
-    "win_rate_pct": 80,
-    "max_drawdown_pct": 11.58,
-    "buy_hold_net_usd": 7.4566
+    "hours": 2592,
+    "net_usd": 20.1554,
+    "closed": 17,
+    "win_rate_pct": 47.1,
+    "max_drawdown_pct": 19.69,
+    "buy_hold_net_usd": 5.9001
    },
    "test": {
-    "hours": 400,
-    "net_usd": -1.4883,
-    "closed": 8,
-    "win_rate_pct": 50,
-    "max_drawdown_pct": 11.41,
-    "buy_hold_net_usd": 1.047,
+    "hours": 1728,
+    "net_usd": 4.6212,
+    "closed": 16,
+    "win_rate_pct": 37.5,
+    "max_drawdown_pct": 26.06,
+    "buy_hold_net_usd": 7.2995,
     "open_position": null
    }
   },
   "BOBAI": null
+ },
+ "rotation_unseen": {
+  "net_usd": 98.6089,
+  "closed_trades": 21,
+  "bobai": {
+   "buys": 3,
+   "spent_usd": 22.968,
+   "units": 414623.4015,
+   "mark_usd": 59.374
+  },
+  "max_drawdown_pct": 8.5
  }
 }

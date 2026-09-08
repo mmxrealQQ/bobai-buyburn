@@ -6,21 +6,47 @@
 // the source and the fetch time; the backtest reads that file and nothing
 // live, so a run is repeatable.
 //   node scripts/trader-fetch.mjs            last ~41 days (1000 hours)
+//   node scripts/trader-fetch.mjs --hours 4320   six months, paged (Binance: endTime; Gecko: before_timestamp)
 import fs from 'node:fs';
 import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'data', 'trader', 'prices.json');
-const H = 1000;
+const hi = process.argv.indexOf('--hours');
+const H = hi > 0 ? Number(process.argv[hi + 1]) : 1000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function binance(symbol) {
-  const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=${H}`);
-  if (!r.ok) throw new Error(`${symbol}: ${r.status}`);
-  return (await r.json()).map((k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[7] }));
+  const out = []; let endTime = Date.now();
+  while (out.length < H) {
+    const lim = Math.min(1000, H - out.length);
+    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=${lim}&endTime=${endTime}`);
+    if (!r.ok) throw new Error(`${symbol}: ${r.status}`);
+    const page = (await r.json()).map((k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[7] }));
+    if (!page.length) break;
+    out.unshift(...page); endTime = page[0].t - 1;
+    if (page.length < lim) break;
+    await sleep(250);
+  }
+  return out;
 }
 async function gecko(pool) {
-  const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/bsc/pools/${pool}/ohlcv/hour?limit=${H}&currency=usd`, { headers: { accept: 'application/json' } });
-  if (!r.ok) throw new Error(`${pool}: ${r.status}`);
-  const j = await r.json();
-  return j.data.attributes.ohlcv_list.map((k) => ({ t: k[0] * 1000, o: k[1], h: k[2], l: k[3], c: k[4], v: k[5] })).sort((a, b) => a.t - b.t);
+  const out = []; let before = Math.floor(Date.now() / 1000);
+  while (out.length < H) {
+    const lim = Math.min(1000, H - out.length);
+    let r = null;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      r = await fetch(`https://api.geckoterminal.com/api/v2/networks/bsc/pools/${pool}/ohlcv/hour?limit=${lim}&currency=usd&before_timestamp=${before}`, { headers: { accept: 'application/json' } });
+      if (r.status !== 429) break;
+      await sleep(20000 * (attempt + 1));   // the free tier throttles; wait it out rather than guess
+    }
+    if (!r.ok) throw new Error(`${pool}: ${r.status}`);
+    const j = await r.json();
+    const page = j.data.attributes.ohlcv_list.map((k) => ({ t: k[0] * 1000, o: k[1], h: k[2], l: k[3], c: k[4], v: k[5] })).sort((a, b) => a.t - b.t);
+    if (!page.length) break;
+    out.unshift(...page); before = Math.floor(page[0].t / 1000) - 1;
+    if (page.length < lim) break;
+    await sleep(1500);   // GeckoTerminal's free tier: ~30 calls a minute
+  }
+  return out;
 }
 const bnb = await binance('BNBUSDT');
 const cakeBnb = await binance('CAKEBNB');

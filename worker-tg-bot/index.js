@@ -4,6 +4,11 @@
 
 let TG_BOT_TOKEN = '';
 let TG_INTERNAL_CHAT_ID = '';
+// The operator's own private chat with this bot (a private chat's id is the
+// user's id). Target 'operator' on /broadcast goes here and nowhere else —
+// the trading agent's reports (2026-09-08: "nur hier für mich und niemand
+// anderem"). The same id guards the reference-media pickup below.
+const OPERATOR_CHAT_ID = '7334850816';
 const TG_CHAT_ID = '-1003791636543';
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -2490,13 +2495,13 @@ export default {
       }
       // target: 'internal' routes to TG_INTERNAL_CHAT_ID (BOBAI Intern).
       // Default = public group (TG_CHAT_ID). Brain prefix defaults off for internal.
-      const targetChat = body.target === 'internal' ? TG_INTERNAL_CHAT_ID : TG_CHAT_ID;
+      const targetChat = body.target === 'operator' ? OPERATOR_CHAT_ID : body.target === 'internal' ? TG_INTERNAL_CHAT_ID : TG_CHAT_ID;
       if (!targetChat) {
         return new Response(JSON.stringify({ ok: false, error: `target chat not configured` }), {
           status: 400, headers: { 'content-type': 'application/json' },
         });
       }
-      const wantBrain = body.target === 'internal' ? body.prefixBrain === true : body.prefixBrain !== false;
+      const wantBrain = (body.target === 'internal' || body.target === 'operator') ? body.prefixBrain === true : body.prefixBrain !== false;
       try {
         if (wantBrain) {
           await tg('sendMessage', {

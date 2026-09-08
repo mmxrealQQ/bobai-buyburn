@@ -63,6 +63,23 @@ const BOBAI_DIP_Z = 1, BOBAI_WINDOW = 168, PROFIT_TO_BOBAI_PCT = 50;
 const POLL_MS = 5000, POLL_MAX_MS = 120000;
 
 const now = () => new Date().toISOString();
+
+// TELEGRAM. The operator hears from the agent in a private chat with the
+// project's bot (target 'operator' on the bot worker's /broadcast route; the
+// bot learns that chat the first time the operator writes to it). The secret lives in this folder's .env,
+// readable by the trader user only. No secret, no message — never a crash.
+const ENV_FILE = path.join(ROOT, '.env');
+const localEnv = (() => { try { return Object.fromEntries(fs.readFileSync(ENV_FILE, 'utf8').split(/\r?\n/).filter((l) => /^[A-Z0-9_]+=/.test(l)).map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1).trim()]; })); } catch { return {}; } })();
+const TG_URL = localEnv.TG_BROADCAST_URL || 'https://bobai-tg-bot.bobbuildonbnb.workers.dev/broadcast';
+async function notify(text) {
+  const secret = localEnv.BROADCAST_SECRET;
+  if (!secret) return false;
+  try {
+    const r = await fetch(TG_URL, { method: 'POST', headers: { 'content-type': 'application/json', 'x-broadcast-secret': secret }, body: JSON.stringify({ text, target: 'operator', disablePreview: true }), signal: AbortSignal.timeout(15000) });
+    return r.ok;
+  } catch { return false; }
+}
+const money = (x, d = 2) => (x == null ? '—' : (x < 0 ? '−' : '') + '$' + Math.abs(Number(x)).toFixed(d));
 const log = (entry) => { fs.mkdirSync(DIR, { recursive: true }); fs.appendFileSync(LOG, JSON.stringify({ at: now(), ...entry }) + '\n'); };
 const say = (s) => console.log(s);
 
@@ -151,7 +168,7 @@ async function tick() {
   say(`tick ${now()}${CONFIRM ? '' : ' (dry)'}`);
   if (fs.existsSync(STOP)) { say('STOP file present — doing nothing'); log({ kind: 'stopped' }); return; }
   const w = baw(['wallet', 'status']);
-  if (!w.success || w.data.status !== 'CONNECTED') { say('wallet not connected — sign in again (baw auth signin)'); log({ kind: 'not_connected' }); return; }
+  if (!w.success || w.data.status !== 'CONNECTED') { say('wallet not connected — sign in again (baw auth signin)'); log({ kind: 'not_connected' }); await notify('⚠️ <b>Trader: wallet not connected</b> — the session on the server has ended; sign in again with a QR code.'); return; }
   const st = readState();
   if (!st) { say('no state — run --bootstrap --confirm first'); return; }
   // prices
@@ -185,6 +202,7 @@ async function tick() {
         st.realised_usd += net; st.day.realised_usd += net;
         if (net >= 0) st.profit_pool_usd += net; else if (st.profit_pool_usd + net >= 0) st.profit_pool_usd += net; else st.profit_pool_usd = 0;
         log({ kind: 'closed', leg, entry_price: st.position.entry_price, spent_usd: st.position.spent_usd, received_usd: r.received, net_usd: net, why: s.why, txHash: r.txHash });
+        await notify(`📉 <b>Trader: ${leg} sold</b> — ${money(st.position.spent_usd)} in, ${money(r.received)} out, net <b>${money(net)}</b> (${s.why}). Pool ${money(st.profit_pool_usd)}. <a href="https://bscscan.com/tx/${r.txHash}">tx</a>`);
         if (r.costPct != null) st.fees_measured.push({ at: now(), pair: `${leg}->USDT`, cost_vs_quote_pct: r.costPct });
         st.position = null; st.pot_usdt = bal(balances(), 'USDT');
       }
@@ -208,6 +226,7 @@ async function tick() {
         if (!r.dry) {
           st.position = { leg: best.leg, units: r.received, spent_usd: r.spent, entry_price: r.received > 0 ? r.spent / r.received : null, entry_at: now(), z: best.z };
           log({ kind: 'opened', ...st.position, txHash: r.txHash });
+          await notify(`📈 <b>Trader: bought ${best.leg}</b> for ${money(r.spent)} at ${st.position.entry_price ? '$' + st.position.entry_price.toPrecision(5) : '—'} — ${best.why}. <a href="https://bscscan.com/tx/${r.txHash}">tx</a>`);
           if (r.costPct != null) st.fees_measured.push({ at: now(), pair: `USDT->${best.leg}`, cost_vs_quote_pct: r.costPct });
           st.pot_usdt = bal(balances(), 'USDT');
         }
@@ -228,6 +247,7 @@ async function tick() {
           st.bobai.units += r.received; st.bobai.spent_usd += r.spent; st.bobai.buys += 1;
           st.capital_usd += toGrow; st.profit_pool_usd = 0;
           log({ kind: 'bobai_bought', received: r.received, spent_usd: r.spent, grew_pot_usd: toGrow, txHash: r.txHash });
+          await notify(`🧠 <b>Trader: profit into $BOBAI</b> — ${money(r.spent)} bought ${Math.round(r.received).toLocaleString('en-US')} BOBAI on a dip (z ${z.toFixed(2)}); ${money(toGrow)} grew the pot. Held, never sold. <a href="https://bscscan.com/tx/${r.txHash}">tx</a>`);
           st.pot_usdt = bal(balances(), 'USDT');
         }
       }
@@ -235,12 +255,30 @@ async function tick() {
   }
   st.last_tick = now();
   writeState(st);
+  // Once a day at the 06:05 tick: the last 24 h in one message — what was
+  // realised, what is held and what it is worth right now, and the whole.
+  if (new Date().getUTCHours() === 6 && CONFIRM) {
+    const since = Date.now() - 24 * 3600 * 1000;
+    let closed24 = [];
+    try { closed24 = fs.readFileSync(LOG, 'utf8').split(/\r?\n/).filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((e) => e && e.kind === 'closed' && Date.parse(e.at) >= since); } catch { /* no log yet */ }
+    const pnl24 = closed24.reduce((a, e) => a + Number(e.net_usd || 0), 0);
+    const byNow = balances();
+    const posMark = st.position ? (byNow[st.position.leg] ? byNow[st.position.leg].value : null) : null;
+    const posLine = st.position
+      ? `${st.position.leg} since ${st.position.entry_at.slice(0, 16).replace('T', ' ')} UTC — paid ${money(st.position.spent_usd)}, worth ${money(posMark)} now (${posMark != null ? (posMark - st.position.spent_usd >= 0 ? '+' : '') + money(posMark - st.position.spent_usd) : '—'} unrealised)`
+      : 'none — the pot sits in USDT';
+    const bobaiMark = byNow.BOBAI ? byNow.BOBAI.value : 0;
+    const equity = st.pot_usdt + (posMark || 0) + st.profit_pool_usd + bobaiMark;
+    await notify(`📋 <b>Trader — ${today}</b>\n24 h: ${closed24.length} trade${closed24.length === 1 ? '' : 's'} closed, realised <b>${money(pnl24)}</b>\nPosition: ${posLine}\nPot: ${money(st.pot_usdt)} USDT · profit pool waiting for a BOBAI dip: ${money(st.profit_pool_usd)}\nBOBAI held: ${Math.round(st.bobai.units).toLocaleString('en-US')} (${st.bobai.buys} buys, ${money(st.bobai.spent_usd)} paid, worth ${money(bobaiMark)})\nTotal: <b>${money(equity)}</b> against ${money(st.capital_usd)} put in · realised since start ${money(st.realised_usd)}\n${lines.map((l) => '· ' + l).join('\n')}`);
+  }
   for (const l of lines) say('  ' + l);
   say(`  pot ${st.pot_usdt.toFixed(2)} USDT · position ${st.position ? `${st.position.leg} (${st.position.units} since ${st.position.entry_at.slice(0, 16)})` : 'none'} · pool $${st.profit_pool_usd.toFixed(2)} · BOBAI ${st.bobai.units} (${st.bobai.buys} buys, $${st.bobai.spent_usd.toFixed(2)}) · realised $${st.realised_usd.toFixed(2)}`);
   log({ kind: 'tick', dry: !CONFIRM, pot_usdt: st.pot_usdt, position: st.position, profit_pool_usd: st.profit_pool_usd, bobai: st.bobai, lines });
 }
 
-if (has('--tick')) { await tick().catch((e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); process.exitCode = 1; }); process.exit(); }
+if (has('--notify-test')) { const ok = await notify('✅ Trader on the server can reach this chat. Reports: every order as it happens, a summary daily at 06:05 UTC.'); say(ok ? 'sent' : 'not sent (no secret, or the route refused)'); process.exit(ok ? 0 : 1); }
+
+if (has('--tick')) { await tick().catch(async (e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); await notify('⚠️ <b>Trader: tick failed</b> — ' + String(e.message).slice(0, 200)); process.exitCode = 1; }); process.exit(); }
 
 // THE WEEKLY REFIT. Parameters chosen once go stale; every Monday 00:20 UTC
 // six months of prices are fetched again and the choice is redone by the
@@ -259,7 +297,7 @@ if (has('--refit')) { refit(); process.exit(); }
 
 if (has('--loop')) {
   say(`loop: a tick every hour at :05${CONFIRM ? ', sending orders' : ' (dry)'}; a refit every Monday 00:20 UTC; STOP file at ${STOP} halts it`);
-  const run = () => tick().catch((e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); });
+  const run = () => tick().catch(async (e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); await notify('⚠️ <b>Trader: tick failed</b> — ' + String(e.message).slice(0, 200)); });
   await run();
   setInterval(() => {
     const d = new Date(), m = d.getUTCMinutes();

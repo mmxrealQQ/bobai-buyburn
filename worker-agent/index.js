@@ -1411,6 +1411,7 @@ ${pageTail}`;
         cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
         width_record: 'https://agent.brainonbnb.com/lp/windows',
         agent_record: 'https://agent.brainonbnb.com/lp/agent',
+        last_run: log.last_run || null,
         last_error: log.last_error || null,
       };
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
@@ -1432,6 +1433,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}
 ${v.pools.map((p) => `<tr${p.watched ? ' class="w"' : ''}><td>${h(p.label)}${p.watched ? ' · the agent is here' : ''}</td><td>${h(p.hours)}</td><td>${h(p.windows)}</td><td>${h(usd(p.fees_usd))}</td><td>${h(usd(p.fees_usd_per_day))}</td><td>${h(p.swaps)}</td><td>${h(p.quiet_windows)}</td><td>${p.held_pct == null ? '—' : h(p.held_pct) + '%'}</td><td>${h(when(p.last))}</td></tr>`).join('')}
 </tbody></table></div>
 <p class="note">Quiet = windows in which nobody swapped in that pool. Held = share of windows the range held through without crossing an edge. Fees are for this capital inside the width, diluted by the pool's own working capital, and are not annualised.</p></div>
+${log.last_run ? `<p class="note">Last run ${h(when(log.last_run.at))}: added ${h((log.last_run.added || []).join(', ') || 'nothing')}${(log.last_run.skipped || []).length ? ' · skipped ' + (log.last_run.skipped || []).map((x) => h((x.pool || '').slice(0, 10)) + ' (' + h(x.why) + ')').join(', ') : ''}</p>` : ''}
 ${log.last_error ? `<p class="note">Last hour that could not be measured: ${h(when(log.last_error.at))} — ${h(log.last_error.message)}</p>` : ''}
 <p class="note">Same facts as JSON: <a href="/lp/pools?format=json">/lp/pools?format=json</a> · another width: <a href="/lp/pools?width=2">?width=2</a> · the width record: <a href="/lp/windows">/lp/windows</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
 ${pageTail}`;

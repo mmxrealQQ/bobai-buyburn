@@ -173,7 +173,11 @@ export async function recordLpPools(env) {
     await sleep(3000);
   }
 
-  if (added.length) await env.AGENT.put(KV_KEY, JSON.stringify(log));
+  // Every run leaves a note, added or not: a pool missing from an hour
+  // is a gap the reader should be able to explain (2026-09-08 07:30 the
+  // BOB/BNB window was missing and the record could not say why).
+  log.last_run = { at: new Date().toISOString(), added, skipped };
+  await env.AGENT.put(KV_KEY, JSON.stringify(log));
   return { ok: true, added, skipped, pools: Object.keys(log.pools).length };
 }
 

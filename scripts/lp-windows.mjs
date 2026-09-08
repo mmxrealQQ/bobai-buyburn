@@ -170,6 +170,25 @@ if (SELF_TEST) {
     return v.earnings_pick === null;
   })());
   t(`the earnings rule names the ${RESET_AFTER_HOURS} h delay it replays`, /2 h/.test(verdict(dayFlat).earnings_rule));
+  // The delay test, both ways: reported for every wait, the wait in use
+  // marked, nothing under a day of prices, and it never touches the pick.
+  t('the delay test replays the waits 0, 1, 2 and 3 h', verdict(dayFlat).delay_test.delays.map((d) => d.hours).join(',') === '0,1,2,3');
+  t(`the wait in use (${RESET_AFTER_HOURS} h) is marked as such`, verdict(dayFlat).delay_test.delays.filter((d) => d.in_use).map((d) => d.hours).join() === String(RESET_AFTER_HOURS));
+  t('under a day of prices the delay test reports nothing', verdict(short).delay_test.delays.length === 0 && verdict(short).delay_test.pick === null);
+  t('flat prices: every wait nets the same, and none re-sets', (() => {
+    const d = verdict(dayFlat).delay_test.delays;
+    return d.every((x) => x.resets === 0) && new Set(d.map((x) => x.net_usd_per_day)).size === 1;
+  })());
+  t('a blip that returns within the hour: waiting beats re-setting at once', (() => {
+    const blipDay = Array.from({ length: 30 }, (_, i) => pwin(i, i === 10 ? 103 : 100, [row(1, true, 0.01)]));
+    const d = verdict({ windows: blipDay }).delay_test.delays;
+    const at0 = d.find((x) => x.hours === 0), at2 = d.find((x) => x.hours === 2);
+    // At once: two re-sets (out, then back) that can eat the whole net, in
+    // which case the wait reports "nothing" rather than a width.
+    const n0 = at0 && at0.net_usd_per_day != null ? at0.net_usd_per_day : -Infinity;
+    return at0 && at2 && at2.resets === 0 && (at0.resets == null || at0.resets > 0) && at2.net_usd_per_day > n0;
+  })());
+  t('the delay test never changes the earnings pick', verdict(dayDrift).earnings_pick.width === verdict(dayDrift).earnings_pick.width && verdict(dayDrift).earnings_rule.includes(`${RESET_AFTER_HOURS} h`));
   // The measured re-set cost, both ways: only a re-set that acted, did not
   // error and recorded gas counts, the newest one wins, and without one the
   // verdict says the cost is assumed.

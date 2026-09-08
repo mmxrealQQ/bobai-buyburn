@@ -56,7 +56,8 @@ const TOKEN = {
   BOBAI: '0x245c386dcfed896f5c346107596141e5edcbffff',
 };
 const GAS_RESERVE_BNB = 0.006;      // ~$4.50: dozens of swaps
-const MIN_ORDER_USD = 5;
+// Gas is paid in BNB on top of the quote: 0.00047 BNB (~$0.35) per swap on 2026-09-08. Under $10 that is over 3.5% of an order.
+const MIN_ORDER_USD = 10;
 const DAY_LOSS_CAP_PCT = 5;
 const BOBAI_DIP_Z = 1, BOBAI_WINDOW = 168, PROFIT_TO_BOBAI_PCT = 50;
 const POLL_MS = 5000, POLL_MAX_MS = 120000;

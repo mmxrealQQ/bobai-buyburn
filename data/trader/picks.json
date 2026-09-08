@@ -1,0 +1,99 @@
+{
+ "leg_usd": 25,
+ "costs_pct": {
+  "BNB": {
+   "buy": 0.3,
+   "sell": 0.3
+  },
+  "CAKE": {
+   "buy": 0.35,
+   "sell": 0.35
+  },
+  "BOB": {
+   "buy": 0.55,
+   "sell": 0.55
+  },
+  "BOBAI": {
+   "buy": 3.6,
+   "sell": 3.6
+  }
+ },
+ "picks": {
+  "BNB": {
+   "window": 48,
+   "entryZ": 2,
+   "exitZ": 1,
+   "stopPct": 6,
+   "maxHoldH": 72,
+   "chosen_at": "2026-09-08T11:44:51.655Z",
+   "train": {
+    "hours": 600,
+    "net_usd": 0.5778,
+    "closed": 5,
+    "win_rate_pct": 100,
+    "max_drawdown_pct": 1.94,
+    "buy_hold_net_usd": 5.5013
+   },
+   "test": {
+    "hours": 400,
+    "net_usd": -0.14,
+    "closed": 2,
+    "win_rate_pct": 0,
+    "max_drawdown_pct": 2.09,
+    "buy_hold_net_usd": 3.6338,
+    "open_position": null
+   }
+  },
+  "CAKE": {
+   "window": 48,
+   "entryZ": 2,
+   "exitZ": 0.5,
+   "stopPct": 6,
+   "maxHoldH": 72,
+   "chosen_at": "2026-09-08T11:44:51.671Z",
+   "train": {
+    "hours": 600,
+    "net_usd": 0.9782,
+    "closed": 5,
+    "win_rate_pct": 100,
+    "max_drawdown_pct": 2.44,
+    "buy_hold_net_usd": 5.979
+   },
+   "test": {
+    "hours": 400,
+    "net_usd": 0.9101,
+    "closed": 3,
+    "win_rate_pct": 100,
+    "max_drawdown_pct": 3.7,
+    "buy_hold_net_usd": 9.9476,
+    "open_position": null
+   }
+  },
+  "BOB": {
+   "window": 24,
+   "entryZ": 1.5,
+   "exitZ": 1,
+   "stopPct": 6,
+   "maxHoldH": 72,
+   "chosen_at": "2026-09-08T11:44:51.719Z",
+   "train": {
+    "hours": 600,
+    "net_usd": 0.0442,
+    "closed": 10,
+    "win_rate_pct": 80,
+    "max_drawdown_pct": 11.58,
+    "buy_hold_net_usd": 7.4566
+   },
+   "test": {
+    "hours": 400,
+    "net_usd": -1.4883,
+    "closed": 8,
+    "win_rate_pct": 50,
+    "max_drawdown_pct": 11.41,
+    "buy_hold_net_usd": 1.047,
+    "open_position": null
+   }
+  },
+  "BOBAI": null
+ }
+}

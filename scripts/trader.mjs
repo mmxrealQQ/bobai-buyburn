@@ -7,6 +7,7 @@
 //   node scripts/trader.mjs --backtest       replay the recorded hours, choose parameters, report
 //   node scripts/trader.mjs --plan           what the rule says right now, per leg (no order)
 //   node scripts/trader.mjs --status         wallet balances and open positions
+//   node scripts/trader.mjs --robust         the same choice at four split points and with costs +50%: does it survive?
 //
 // Nothing here places an order. The confirm path is deliberately not written
 // until the backtest has been read by the operator and the wallet's limits
@@ -191,4 +192,43 @@ if (has('--plan')) {
   process.exit(0);
 }
 
-console.log('node scripts/trader.mjs --self-test | --backtest | --plan | --status');
+// ---------------------------------------------------------------- robustness
+// One split is one sample. The choice is repeated with the training end at
+// 40, 50, 60 and 70% of the history and judged on what follows each time;
+// then once more with every cost multiplied by 1.5. A rule that only earns
+// at one split, or only at the assumed costs, has not earned an order.
+if (has('--robust')) {
+  const grid = legSeries('BNB').times;
+  const legsAll = Object.fromEntries(TRADING_LEGS.map((l) => [l, legSeries(l)]));
+  const bobaiAll = alignTo(grid, prices.series.BOBAI.usd);
+  const capital = LEG_USD * TRADING_LEGS.length;
+  const stress = Object.fromEntries(Object.entries(DEFAULT_COSTS_PCT).map(([k, v]) => [k, { buy: v.buy * 1.5, sell: v.sell * 1.5 }]));
+  for (const [label, costs] of [['assumed costs', DEFAULT_COSTS_PCT], ['costs x 1.5', stress]]) {
+    console.log('\n' + label);
+    console.log('  split   ' + TRADING_LEGS.map((l) => l.padEnd(18)).join('') + 'legs sum   rotation (pot $' + capital + ')          BOBAI bought   drawdown');
+    for (const share of [0.4, 0.5, 0.6, 0.7]) {
+      const picks = {};
+      const cells = [];
+      let sum = 0;
+      for (const l of TRADING_LEGS) {
+        const wf = walkForward(legsAll[l].closes, legsAll[l].times, { trainShare: share, legUsd: LEG_USD, costsPct: costs[l] });
+        picks[l] = wf.pick;
+        const net = wf.pick ? wf.test.net_usd : null;
+        if (net != null) sum += net;
+        cells.push((wf.pick ? (wf.pick.mode === 'trend' ? 'T' : 'R') + wf.pick.window + ' ' + fmt(net) : 'none').padEnd(18));
+      }
+      const split = Math.floor(grid.length * share);
+      const warm = Math.max(...TRADING_LEGS.map((l) => (picks[l] ? picks[l].window : 0)));
+      const from = Math.max(0, split - warm);
+      const legsTest = Object.fromEntries(TRADING_LEGS.map((l) => [l, { closes: legsAll[l].closes.slice(from), times: legsAll[l].times.slice(from) }]));
+      const pk = Object.fromEntries(TRADING_LEGS.filter((l) => picks[l]).map((l) => [l, picks[l]]));
+      const rot = Object.keys(pk).length ? replayRotation(legsTest, { closes: bobaiAll.slice(from) }, pk, { capitalUsd: capital, costsPct: costs }) : null;
+      const rotCell = rot ? (fmt(rot.net_usd) + ' (' + rot.closed_trades + ' trades, ' + rot.wins + ' won)').padEnd(34) + ('$' + rot.bobai.spent_usd.toFixed(2)).padEnd(15) + rot.max_drawdown_pct + '%' : '-';
+      console.log('  ' + String(Math.round(share * 100)).padStart(3) + '%    ' + cells.join('') + fmt(sum).padEnd(11) + rotCell);
+    }
+  }
+  console.log('\nR = reversion, T = trend, the number is the window in hours; every figure is the net on the hours AFTER the split, which the choice never saw.');
+  process.exit(0);
+}
+
+console.log('node scripts/trader.mjs --self-test | --backtest | --robust | --plan | --status');

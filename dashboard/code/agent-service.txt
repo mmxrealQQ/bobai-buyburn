@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 11595 lines.
+# one fetch. 41 files, 11616 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5266,6 +5266,12 @@ const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 // .nb) — change both together.
 const SHELL_CSS = ':root{color-scheme:dark;--gold:#f0b90b;--gold2:#ffd54a;--bg:#0c0b0c;--text:#eceaf5;--muted:#a0a2c0;--border:rgba(198,143,118,.16)}'
   + '*{box-sizing:border-box}'
+  // The frame every dashboard sub-page has (.sec in styles.css): from 86px
+  // down, one bordered panel — the operator, 2026-09-08: the record pages
+  // "must be framed like Brain Plaza". Pages that set main{max-width} keep
+  // their narrower width inside the same frame.
+  + 'main{position:relative;z-index:1;width:min(1100px,calc(100% - 34px));margin:86px auto 40px;padding:30px 26px 40px;border:1px solid rgba(240,185,11,.17);border-radius:28px;background:linear-gradient(180deg,rgba(240,185,11,.05),rgba(240,185,11,0) 42%);box-shadow:0 20px 60px -30px rgba(0,0,0,.7)}'
+  + '@media(max-width:700px){main{padding:24px 16px 32px}}'
   + 'body{margin:0;color:var(--text);font:15px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:radial-gradient(1200px 700px at 50% -6%,rgba(240,185,11,.13),transparent 66%),radial-gradient(900px 620px at 50% 40%,rgba(198,143,118,.06),transparent 70%),radial-gradient(700px 500px at 88% 78%,rgba(120,48,24,.07),transparent 72%),var(--bg);background-attachment:fixed}'
   + '.aur{position:fixed;inset:-25%;z-index:0;pointer-events:none;filter:blur(110px);opacity:.5}.aur i{position:absolute;display:block;border-radius:50%}'
   + '.aur .a1{width:48vw;height:48vw;left:-4%;top:-4%;background:rgba(240,185,11,.4);animation:drift1 34s ease-in-out infinite}'
@@ -5706,7 +5712,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     points: series.length,
     since: first.at,
     days_covered: days,
-    value_bnb: f0 && f1 ? { start: f0.value_bnb, now: f1.value_bnb, change_pct: f0.value_bnb ? +(((f1.value_bnb - f0.value_bnb) / f0.value_bnb) * 100).toFixed(2) : null } : null,
+    value_bnb: f0 && f1 ? { start: f0.value_bnb, now: f1.value_bnb, added_by_hand_bnb: +(Number(f1.capital_added_total_bnb) || 0).toFixed(6), change_pct: f0.value_bnb ? +(((f1.value_bnb - (Number(f1.capital_added_total_bnb) || 0) - f0.value_bnb) / f0.value_bnb) * 100).toFixed(2) : null } : null,
     fees_sent_to_buyback_bnb: last.forwarded_total_bnb,
     fees_kept_as_capital_bnb: last.kept_total_bnb ?? 0,
     fees_produced_bnb: last.fees_total_bnb ?? last.forwarded_total_bnb,
@@ -5732,7 +5738,10 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     // increase put in. Take them out of the price part, else the folded fees
     // count twice — once in the value, once as fees (2026-09-07, +0.001 BNB).
     const folded = Number(last.folded_total_bnb) || 0, putIn = Number(last.into_position_total_bnb) || 0;
-    const price = +(out.value_bnb.now - out.value_bnb.start - folded - putIn).toFixed(6);
+    // ... and the capital the operator added by hand (2026-09-08: 0.0399 BNB
+    // put in at 11:00 UTC made the value jump +64%; that is his money, not a gain).
+    const byHand = Number(out.value_bnb.added_by_hand_bnb) || 0;
+    const price = +(out.value_bnb.now - out.value_bnb.start - folded - putIn - byHand).toFixed(6);
     const collected = Math.max(0, (out.fees_produced_bnb || 0) - folded);
     const fees = +((out.fees_produced_bnb || 0) + (out.fees_owed_now_bnb || 0)).toFixed(6);
     // The pool is CAKE/BNB: "the pair's price" is CAKE moving against BNB.
@@ -5747,7 +5756,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
   const pct = (v) => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%';
   const v = out.value_bnb;
   out.sentence = `Since ${String(out.since).slice(0, 10)}: ${out.points} run${out.points === 1 ? '' : 's'}`
-    + (v && v.start != null ? `, position worth ${f(v.start, 4)} → ${f(v.now, 4)} BNB (${pct(v.change_pct)})` : '')
+    + (v && v.start != null ? `, position worth ${f(v.start, 4)} → ${f(v.now, 4)} BNB${v.added_by_hand_bnb ? ` of which ${f(v.added_by_hand_bnb, 4)} BNB was added by the operator` : ''} (${pct(v.change_pct)}${v.added_by_hand_bnb ? ' on the capital' : ''})` : '')
     + (out.price_move_pct_since_start != null ? `, the pair moved ${pct(out.price_move_pct_since_start)}` : '')
     + `, in range on ${out.days_in_range} of ${out.runs_with_a_position}`
     + `, fees sent to the buyback bot ${f(out.fees_sent_to_buyback_bnb, 5)} BNB`
@@ -7138,8 +7147,20 @@ ${pageTail}`;
     // The liquidity series: every run of the liquidity agent as one point,
     // and what the points say so far. Read by /liquidity.
     if (path === '/lp/series') {
-      const series = lpSeriesShown(await readLpSeries(env));
+      const series0 = lpSeriesShown(await readLpSeries(env));
       const recRaw = await env.AGENT.get('lp:agent');
+      // Capital the operator put in by hand (record.capital_added, written
+      // by hand too): it is in the position's value from that run on but is
+      // not a gain, so every point carries the total added up to it and the
+      // amount that arrived between the previous point and this one.
+      const added = recRaw ? (JSON.parse(recRaw).capital_added || []) : [];
+      const series = series0.map((p, i) => {
+        const upTo = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at));
+        const prevAt = i ? Date.parse(series0[i - 1].at) : -Infinity;
+        const here = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at) && Date.parse(a.at) > prevAt);
+        const tot = upTo.reduce((x, a) => x + Number(a.bnb || 0), 0);
+        return tot ? { ...p, capital_added_total_bnb: +tot.toFixed(6), ...(here.length ? { capital_added_here_bnb: +here.reduce((x, a) => x + Number(a.bnb || 0), 0).toFixed(6), capital_added_note: here.map((a) => a.note).filter(Boolean).join(' · ') } : {}) } : p;
+      });
       const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
       const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
       const totals = liveFlow ? {

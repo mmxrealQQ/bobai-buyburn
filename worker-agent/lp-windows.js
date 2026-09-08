@@ -289,7 +289,9 @@ export async function readLpWindows(env) {
 // same second — we throttled ourselves, the lesson the census already taught.
 // So the replay starts after the burst has passed, and a refusal gets one
 // more try a little later. The entry says how many asks it took.
-const CHAIN_REFUSED = /every BSC endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
+// "The log endpoint refused this range" (2026-09-08 08:31) is the same class
+// of refusal and used to fall through to the error note without a retry.
+const CHAIN_REFUSED = /every BSC endpoint refused|log endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
 const SETTLE_MS = 25000, RETRY_MS = 20000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

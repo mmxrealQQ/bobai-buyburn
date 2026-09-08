@@ -135,7 +135,7 @@ export async function readLpPools(env) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const CHAIN_REFUSED = /every BSC endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
+const CHAIN_REFUSED = /every BSC endpoint refused|log endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
 
 // The hourly tick, run after the width record's own so the watched pool's
 // window is already there to copy. One replay per other candidate, one KV
@@ -147,27 +147,45 @@ export async function recordLpPools(env) {
   let log = { ...prev, usd: POSITION_USD, pools: { ...(prev.pools || {}) } };
   const added = [], skipped = [];
 
-  // The watched pool: the width record measured it minutes ago.
+  // One replay with the width record's own patience: a refusal from the
+  // chain gets a second try, anything else is a reason in the skip list.
+  const replay = async (pool) => {
+    try { return await measure(pool, POSITION_USD); }
+    catch (e) {
+      if (!CHAIN_REFUSED.test(String(e.message))) { skipped.push({ pool, why: String(e.message).slice(0, 120) }); return null; }
+      await sleep(15000);
+      try { return await measure(pool, POSITION_USD); }
+      catch (e2) { skipped.push({ pool, why: String(e2.message).slice(0, 120) }); return null; }
+    }
+  };
+
+  // The watched pool: the width record measured it minutes ago — unless its
+  // own measurement failed this hour (2026-09-08 08:31: "the log endpoint
+  // refused this range" while the two other pools replayed fine seconds
+  // later). A window older than this tick is not copied; the pool is
+  // replayed here instead, so the hours stay comparable across pools.
   if (watched) {
     const w = JSON.parse((await env.AGENT.get(WINDOWS_KEY)) || 'null');
     const latest = w && w.pool && w.pool.toLowerCase() === watched ? (w.windows || []).slice(-1)[0] : null;
-    if (latest) {
+    const fresh = latest && Date.now() - Date.parse(latest.at) < 50 * 60 * 1000;
+    if (fresh) {
       const r = appendPoolWindow(log, watched, latest);
       log = r.log; if (r.added) added.push(labelOf(watched));
-    } else skipped.push({ pool: watched, why: 'the width record holds no window for it yet' });
+    } else {
+      const plan = await replay(watched);
+      if (plan) {
+        const r = appendPoolWindow(log, watched, windowFromPlan(plan, POSITION_USD));
+        log = r.log; if (r.added) added.push(labelOf(watched) + ' (replayed here; the width record had no window this hour)');
+      }
+      await sleep(3000);
+    }
   }
 
-  // The others: measured now, with the width record's own patience.
+  // The others: measured now.
   for (const c of CANDIDATES) {
     if (c.pool === watched) continue;
-    let plan = null;
-    try { plan = await measure(c.pool, POSITION_USD); }
-    catch (e) {
-      if (!CHAIN_REFUSED.test(String(e.message))) { skipped.push({ pool: c.pool, why: String(e.message).slice(0, 120) }); continue; }
-      await sleep(15000);
-      try { plan = await measure(c.pool, POSITION_USD); }
-      catch (e2) { skipped.push({ pool: c.pool, why: String(e2.message).slice(0, 120) }); continue; }
-    }
+    const plan = await replay(c.pool);
+    if (!plan) continue;
     const r = appendPoolWindow(log, c.pool, windowFromPlan(plan, POSITION_USD));
     log = r.log; if (r.added) added.push(c.label);
     await sleep(3000);

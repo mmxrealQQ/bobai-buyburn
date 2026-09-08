@@ -1171,14 +1171,15 @@ function fillLpSeries(){
       const base = pts.find(p => p.value_bnb != null);
       const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>Since start</th><th>Range</th><th>Fees owed (BNB)</th><th>Sent to buyback (BNB)</th><th>Income put in (BNB)</th><th>Did</th></tr>';
       const rows = pts.slice().reverse().map(p => {
-        const chg = base && p.value_bnb != null && base.value_bnb ? ((p.value_bnb - base.value_bnb) / base.value_bnb) * 100 : null;
+        // Capital added by hand is in the value but is not a gain: since-start is net of it.
+        const chg = base && p.value_bnb != null && base.value_bnb ? ((p.value_bnb - (p.capital_added_total_bnb || 0) - base.value_bnb) / base.value_bnb) * 100 : null;
         return '<tr><td>' + esc(String(p.at).replace('T',' ').slice(0,16)) + '</td>' +
           '<td>' + (p.position ? '#' + esc(p.position) : '—') + '</td>' +
           '<td>' + f(p.value_bnb,4) + '</td>' +
           '<td class="' + (chg == null ? '' : chg >= 0 ? 'up' : 'down') + '">' + pct(chg) + '</td>' +
           '<td class="' + (p.in_range ? 'up' : p.in_range === false ? 'down' : '') + '">' + (p.in_range ? 'in' : p.in_range === false ? 'out' : '—') + '</td>' +
           '<td>' + f(p.owed_bnb,6) + '</td><td>' + f(p.forwarded_total_bnb,5) + '</td><td>' + f(p.swept_total_bnb,5) + '</td>' +
-          '<td>' + (p.ok === false ? 'one step failed' : p.reset ? 're-set the range' : p.acted ? 'moved money' : p.seen ? 'hourly check found a new position' : 'nothing to do') + '</td></tr>';
+          '<td>' + (p.capital_added_here_bnb ? 'operator added ' + f(p.capital_added_here_bnb, 4) + ' BNB by hand; ' : '') + (p.ok === false ? 'one step failed' : p.reset ? 're-set the range' : p.acted ? 'moved money' : p.seen ? 'hourly check found a new position' : 'nothing to do') + '</td></tr>';
       });
       table.innerHTML = head + rows.join('');
     });

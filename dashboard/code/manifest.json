@@ -129,9 +129,9 @@
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
    "lines": 4261,
-   "zipBytes": 62821,
+   "zipBytes": 62824,
    "txtBytes": 187871,
-   "sha256": "ccb0af747df32923",
+   "sha256": "37746583984fe78f",
    "reqs": [
     {
      "what": "A bot token",
@@ -570,11 +570,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 38,
-   "lines": 10695,
-   "zipBytes": 226178,
-   "txtBytes": 613464,
-   "sha256": "b6aebacc7fe822b3",
+   "files": 39,
+   "lines": 10894,
+   "zipBytes": 230922,
+   "txtBytes": 625577,
+   "sha256": "e60bc108fd637ab7",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -634,6 +634,7 @@
     "worker-agent/package.json",
     "worker-agent/rebalance.js",
     "worker-agent/sell.js",
+    "worker-agent/session-revoke.js",
     "worker-agent/session.js",
     "worker-agent/sessions.js",
     "worker-agent/submit.js",

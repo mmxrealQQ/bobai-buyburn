@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 38 files, 10695 lines.
+# one fetch. 39 files, 10894 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4805,6 +4805,7 @@ import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
+import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost } from './lp-windows.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -5167,7 +5168,7 @@ async function checkWatches(env) {
 // ---------------------------------------------------------------- the liquidity series
 //
 // One point per run of the liquidity agent, taken from the record it writes
-// (worker-lp, 05:23 UTC) and never from a counter: what the position was
+// (worker-lp, 04:23 UTC) and never from a counter: what the position was
 // worth, whether it was in range, what it was owed, what had already been
 // sent on. Kept here, by the worker with no keys, so the series exists
 // without touching the worker that moves money. The first point is the
@@ -5630,7 +5631,10 @@ export default {
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE',
+          // x-operator-token: the revoke route's lock (session-revoke.js). A
+          // header the preflight does not name is a fetch the browser refuses
+          // before it leaves the page — "Failed to fetch", no status, no body.
+          'Access-Control-Allow-Headers': 'Content-Type,PAYMENT-SIGNATURE,x-operator-token',
         },
       });
 
@@ -6368,7 +6372,17 @@ ${pageTail}`;
     // answer is one a stranger can reproduce with two view calls. See
     // session.js for why revocation is deliberately not reachable from here.
     if (path === '/session') {
-      return json(await handleSession(url, env));
+      const out = annotateRoles(await handleSession(url, env), env);
+      // The revocations fired from the product, beside the live state, so the
+      // page can show the control and its record together.
+      out.revocations = await readRevocations(env);
+      out.revoke = { how: 'POST /session/revoke with the operator token — see GET /session/revoke', public: false };
+      return json(out);
+    }
+    // Revocation from the product: two locks (admin key as a worker secret,
+    // operator token on the request), see session-revoke.js.
+    if (path === '/session/revoke') {
+      return handleSessionRevoke(request, env);
     }
 
     if (path === '/status') {
@@ -6685,7 +6699,7 @@ ${pageTail}`;
         summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',
-        cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
+        cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
       }, 200, { 'Cache-Control': 'public, max-age=300' });
     }
     if (path === '/run-lp-series' && request.method === 'POST') {
@@ -8450,6 +8464,192 @@ export async function handleJobResult(jobId, env) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/session-revoke.js
+==============================================================================
+
+// Revoke the agent's Altana session from the product — the one control the
+// session page did not have.
+//
+// What Altana's track asks for, word for word: "a user can see what their agent
+// may do, and revoke it, inside the product". /session showed it; revocation
+// ran from the operator's laptop because the admin key lived only there. This
+// moves the signing to the worker, under two locks, and leaves the key where a
+// key belongs:
+//
+//   1. The admin key is a Cloudflare secret (ALTANA_ADMIN_PRIVATE_KEY). It is
+//      never in code, never in the public mirror, never returned by any route.
+//      The same arrangement holds the liquidity wallet's key and the provider
+//      wallet's key on the other workers of this project.
+//   2. The route fires only with the operator's token (SESSION_REVOKE_TOKEN,
+//      also a secret) in the request. Without it the answer is 401 and nothing
+//      is signed. A stranger who finds the button gets the same 401. This is
+//      what keeps the button from being an off-switch anyone could press —
+//      the reason the page used to have no button at all.
+//
+// The revocation itself is the SDK's own: an admin-signed Altana intent that
+// revokes the key on the account AND in the public KeyStore in one bundle, the
+// same call scripts/altana-session.mjs makes. After it, isValidKey() answers
+// false and the account contract refuses the session's next call.
+//
+//   POST /session/revoke            header x-operator-token: <token>
+//        body {"keyId":"0x…"}      one key; omitted = every currently valid key
+//   GET  /session/revoke            what this is, without doing anything
+//
+// The record of every revocation fired here is kept in KV and shown on the
+// page: when, which key, the transaction — so the control is a fact a reader
+// can check on the chain, not a button that claims to have worked.
+import { createClient, BNB, signerFromPrivateKey } from '@altananetwork/sdk';
+import { keccak256 } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { ALTANA_NETWORKS, readSessionState } from './session.js';
+
+// The KeyStore lists the admin key beside the session keys, and it refuses to
+// revoke the admin ("KeyStore: cannot revoke root key" — learned by pressing
+// the button on it). Its keyId is keccak256 of the admin's public key, which
+// this worker can derive from the secret without exposing anything; a page
+// that cannot tell the two apart offers the root key for revocation, which is
+// exactly what the first version did.
+export function adminKeyId(env) {
+  try { return env.ALTANA_ADMIN_PRIVATE_KEY ? keccak256(privateKeyToAccount(env.ALTANA_ADMIN_PRIVATE_KEY).publicKey).toLowerCase() : null; } catch { return null; }
+}
+export function annotateRoles(state, env) {
+  const admin = adminKeyId(env);
+  for (const c of state.chains || []) {
+    for (const k of c.keys || []) {
+      k.role = admin == null ? 'unknown' : k.keyId.toLowerCase() === admin ? 'admin' : 'session';
+      k.role_note = k.role === 'admin' ? 'the admin (root) key — it grants and revokes sessions and cannot itself be revoked'
+        : k.role === 'session' ? 'a session key — limited by allowlist, cap and expiry; revocable'
+        : 'role not determined on this worker';
+    }
+  }
+  return state;
+}
+// A revert reason as words. The relay hands back the raw Error(string) data,
+// and a record that says 0x08c379a0… says nothing to a reader.
+function revertReason(text) {
+  const m = /0x08c379a0[0-9a-fA-F]{128,}/.exec(String(text || ''));
+  if (!m) return String(text || '').slice(0, 300);
+  try {
+    const d = m[0].slice(10);
+    const len = parseInt(d.slice(64, 128), 16);
+    const hex = d.slice(128, 128 + len * 2);
+    let s = '';
+    for (let i = 0; i < hex.length; i += 2) s += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    return s;
+  } catch { return String(text || '').slice(0, 300); }
+}
+
+const SEL_GET_PUBKEY = '0x7cefdd5d';
+const pad = (hexOrAddr) => String(hexOrAddr).replace(/^0x/, '').toLowerCase().padStart(64, '0');
+const KV_KEY = 'session:revocations';
+
+async function ethCall(rpcs, to, data) {
+  let last;
+  for (const endpoint of rpcs) {
+    try {
+      const r = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }),
+        signal: AbortSignal.timeout(8000),
+      });
+      const j = await r.json();
+      if (j.error) { last = new Error(j.error.message); continue; }
+      return j.result;
+    } catch (e) { last = e; }
+  }
+  throw last || new Error('no endpoint answered');
+}
+
+// The SEC1 public key the KeyStore holds for (wallet, keyId): ABI `bytes`,
+// offset + length + data. The SDK's revokeSession takes the public key, not
+// the keyId, and derives keyId = keccak256(publicKey) itself — so what is
+// read here has to be the exact bytes that were registered.
+function decodeBytes(hex) {
+  const h = String(hex || '').replace(/^0x/, '');
+  if (h.length < 128) return null;
+  const len = parseInt(h.slice(64, 128), 16);
+  return '0x' + h.slice(128, 128 + len * 2);
+}
+
+export async function readRevocations(env) {
+  try { return JSON.parse((await env.AGENT.get(KV_KEY)) || '[]'); } catch { return []; }
+}
+
+const explain = {
+  what_this_is: 'Revokes the agent\'s Altana session from the product. The admin key that signs the revocation is a secret on this worker; the route fires only with the operator\'s token.',
+  how: 'POST /session/revoke with header x-operator-token. Body {"keyId":"0x…"} revokes one key; no body revokes every key that is currently valid.',
+  what_happens: 'One admin-signed Altana intent revokes the key on the account and in the public KeyStore. isValidKey() answers false from the next block; the account contract refuses the session\'s next call.',
+  why_a_token: 'A public endpoint that could end the session would be an off-switch any stranger could press. The token is what makes this a control rather than a denial-of-service.',
+  record: 'Every revocation fired here is kept and shown on /session with its transaction.',
+};
+
+export async function handleSessionRevoke(request, env) {
+  const json = (body, status = 200) => new Response(JSON.stringify(body, null, 2), {
+    status, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, x-operator-token', 'access-control-allow-methods': 'GET, POST, OPTIONS' },
+  });
+  // The browser's preflight: a 204 may carry no body at all — a Response
+  // built with one throws, which the page saw as "Failed to fetch".
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, x-operator-token', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-max-age': '600' } });
+  if (request.method !== 'POST') return json({ ...explain, revocations: await readRevocations(env) });
+
+  // Lock 2, before anything else. A constant-time compare is not needed for
+  // a random 32-byte token, but a missing secret must fail closed: an empty
+  // SESSION_REVOKE_TOKEN would otherwise equal an empty header.
+  const token = request.headers.get('x-operator-token') || '';
+  if (!env.SESSION_REVOKE_TOKEN || token.length < 16 || token !== env.SESSION_REVOKE_TOKEN) {
+    return json({ error: 'operator token required', note: 'Only the operator can revoke. This is what stops a stranger from switching the agent off.' }, 401);
+  }
+  if (!env.ALTANA_ADMIN_PRIVATE_KEY) return json({ error: 'the admin key is not configured on this worker' }, 503);
+  const walletAddress = env.ALTANA_AGENT_WALLET;
+  if (!walletAddress) return json({ error: 'no agent wallet configured' }, 503);
+
+  const body = await request.json().catch(() => ({}));
+  const net = ALTANA_NETWORKS[56];
+  const state = await readSessionState(56, walletAddress);
+  if (state.error) return json({ error: `KeyStore unreadable: ${state.error}` }, 503);
+  const want = body.keyId ? String(body.keyId).toLowerCase() : null;
+  const admin = adminKeyId(env);
+  if (want && admin && want === admin) {
+    return json({ error: 'that is the admin (root) key, the one that grants and revokes sessions; the KeyStore refuses to revoke it and this route will not try', keyId: want }, 400);
+  }
+  const targets = (state.keys || []).filter((k) => k.valid === true && k.keyId.toLowerCase() !== admin && (!want || k.keyId.toLowerCase() === want));
+  if (!targets.length) return json({ error: want ? 'that key is not a currently valid session key of this wallet' : 'no valid session key to revoke', keys: state.keys }, 404);
+
+  const signer = signerFromPrivateKey(env.ALTANA_ADMIN_PRIVATE_KEY);
+  const client = createClient({ chains: [BNB] });
+  // createWallet registers the admin authority on the relay when it is not yet
+  // registered; for an existing account it resolves to the same address. The
+  // address the relay names must be the wallet this worker publishes, or the
+  // key on this worker is not the admin of that wallet — refuse, do not sign.
+  const wallet = await client.createWallet({ signer });
+  if (wallet.address.toLowerCase() !== walletAddress.toLowerCase()) {
+    return json({ error: 'the admin key on this worker does not control the published agent wallet', relay_says: wallet.address, published: walletAddress }, 500);
+  }
+
+  const done = [];
+  for (const k of targets) {
+    const rec = { at: new Date().toISOString(), keyId: k.keyId, chainId: 56 };
+    try {
+      const pub = decodeBytes(await ethCall(net.rpcs, net.keyStore, SEL_GET_PUBKEY + pad(walletAddress) + k.keyId.replace(/^0x/, '')));
+      if (!pub) throw new Error('the KeyStore returned no public key for this keyId');
+      const r = await client.revokeSession({ wallet, signer, session: pub });
+      rec.status = r.status || 'submitted';
+      rec.transactionHash = r.transactionHash || null;
+      rec.explorer = r.transactionHash ? `${net.explorer}/tx/${r.transactionHash}` : null;
+    } catch (e) {
+      rec.status = 'failed';
+      rec.error = revertReason(e.message || e);
+    }
+    done.push(rec);
+  }
+  const record = [...done, ...(await readRevocations(env))].slice(0, 50);
+  await env.AGENT.put(KV_KEY, JSON.stringify(record));
+  const after = await readSessionState(56, walletAddress).catch(() => null);
+  return json({ revoked: done, keys_after: after?.keys || null, note: 'isValidKey() is read live; a key can take a block to flip.' }, done.every((d) => d.status !== 'failed') ? 200 : 502);
+}
+
+==============================================================================
 === FILE: worker-agent/session.js
 ==============================================================================
 
@@ -8469,8 +8669,9 @@ export async function handleJobResult(jobId, env) {
 //   GET /session            both chains
 //   GET /session?chain=97   one of them
 //
-// Reads only. Revocation needs the wallet's admin key and is deliberately not
-// reachable from a public endpoint — see the note at the bottom.
+// Reads only. Revocation lives next door in session-revoke.js: the admin key
+// is a secret on this worker and the route fires only with the operator's
+// token — the two locks that make a revoke button publishable at all.
 
 // KeyStore, from the Altana deployment manifests the SDK ships
 // (@altananetwork/sdk/dist/config.js). Kept here as literals because this
@@ -8605,8 +8806,8 @@ export async function handleSession(url, env) {
     chains: states,
     revocation: {
       how: 'The wallet\'s admin key revokes; the effect is immediate and the KeyStore entry stops validating.',
-      why_not_here: 'The admin key is not on this worker and no public endpoint can trigger a revoke. An endpoint that could would be a way for a stranger to disable the agent, which is a denial-of-service dressed as a safety feature.',
-      command: 'node scripts/altana-session.mjs --revoke --confirm',
+      from_the_product: 'POST /session/revoke with the operator token (see GET /session/revoke). The admin key is a secret on this worker; without the token nothing is signed, so a stranger cannot switch the agent off.',
+      command: 'node scripts/altana-session.mjs --mainnet --revoke --confirm (the same call from the operator machine)',
     },
     measured_at: new Date().toISOString(),
   };
@@ -9879,7 +10080,9 @@ id = "<your-kv-namespace-id>"
 # spending authority in the on-chain KeyStore. A plain var and not a secret:
 # it is an address, it is meant to be looked up, and the whole point of the
 # endpoint is that a stranger can make the same call. The admin key that can
-# grant or revoke against it is not on this worker and must never be.
+# grant or revoke against it is a SECRET on this worker (ALTANA_ADMIN_PRIVATE_KEY,
+# since 2026-09-07) so the session can be revoked from the product; the route
+# that uses it fires only with SESSION_REVOKE_TOKEN, the other secret.
 [vars]
 ALTANA_AGENT_WALLET = "0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3"
 # The pool whose width record the hourly cron builds (lp-windows.js). This is
@@ -10618,7 +10821,7 @@ export const KV_KEY = 'lp:agent';
 // price is back inside or the range has been re-set.
 export const OUT_SINCE_KEY = 'lp:out_since';
 const STEPS = ['sweep', 'collect', 'rebalance', 'increase'];
-const DAILY_CRON = '23 5 * * *';
+const DAILY_CRON = '23 4 * * *';
 
 const json = (obj, status = 200) => new Response(JSON.stringify(obj, null, 2), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const account = (key) => privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
@@ -10806,7 +11009,7 @@ async function record(env, entry, partial = false) {
     st.last = entry;
   }
   st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest is sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
-  st.cadence = { daily_utc: '05:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance only' };
+  st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance only' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }
@@ -10855,15 +11058,16 @@ compatibility_date = "2025-01-01"
 
 # Once a day for the money steps: the collect floor is 0.002 BNB of fees, the
 # sweep floor 0.004 BNB of income, and a fifty-dollar position in a 0.05% pool
-# earns the first over days, not hours. 05:23 UTC is a quiet hour on the chain
-# and shares no minute with the agent worker's own jobs.
+# earns the first over days, not hours. 04:23 UTC is a quiet hour on the chain
+# and shares no minute with the agent worker's own jobs (05:23 until
+# 2026-09-08, moved an hour earlier at the operator's request).
 # Every hour at :50 for the range alone: a position outside its range earns
 # nothing, and the daily tick left it there for up to a day (2026-09-03: out
-# from about 08:30 to the next 05:23). The check reads the position and the
+# from about 08:30 to the next daily tick). The check reads the position and the
 # pool, and re-sets only once the price has been outside for two hours. :50
 # is after the agent worker's window tick at :30, which the check reads.
 [triggers]
-crons = ["23 5 * * *", "50 * * * *"]
+crons = ["23 4 * * *", "50 * * * *"]
 
 # The same KV namespace the agent worker reads, so agent.brainonbnb.com can
 # serve /lp/agent from the record this worker writes. This worker itself has

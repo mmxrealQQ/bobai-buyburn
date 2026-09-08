@@ -406,7 +406,7 @@ async function checkWatches(env) {
 // ---------------------------------------------------------------- the liquidity series
 //
 // One point per run of the liquidity agent, taken from the record it writes
-// (worker-lp, 05:23 UTC) and never from a counter: what the position was
+// (worker-lp, 04:23 UTC) and never from a counter: what the position was
 // worth, whether it was in range, what it was owed, what had already been
 // sent on. Kept here, by the worker with no keys, so the series exists
 // without touching the worker that moves money. The first point is the
@@ -1937,7 +1937,7 @@ ${pageTail}`;
         summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',
-        cadence: 'daily, after the 05:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
+        cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
       }, 200, { 'Cache-Control': 'public, max-age=300' });
     }
     if (path === '/run-lp-series' && request.method === 'POST') {

@@ -2613,7 +2613,7 @@ ${lines.join('\n')}
 Every step is a transaction on BNB Chain. Record: <a href="https://agent.brainonbnb.com/lp/agent">agent.brainonbnb.com/lp/agent</a>`;
 }
 
-// Once a day, after the 05:23 run: one sentence, the series' own summary
+// Once a day, after the 04:23 run: one sentence, the series' own summary
 // (agent.brainonbnb.com/lp/series, summary.sentence — the line /liquidity
 // opens with), so the channel and the page never say different things.
 // The five-line report before it was asked away on 2026-09-07: "im tg bot
@@ -3799,7 +3799,7 @@ export default {
     catch (e) { console.error('[WEBHOOK SECRET ERROR]', e.message || e); }
 
     // === LP AGENT — when it acts, the channel hears it ===
-    // The daily tick (worker-lp, 05:23 UTC) writes one record; the agent
+    // The daily tick (worker-lp, 04:23 UTC) writes one record; the agent
     // worker serves it at /lp/agent. Read it a few minutes past each tenth
     // minute — cheap, one fetch — and post ONCE per record that actually moved
     // money: income swept into the liquidity wallet, fees forwarded to the
@@ -3808,8 +3808,8 @@ export default {
     if (new Date().getMinutes() % 10 === 5) {
       try { await postLpAgentAlert(env); }
       catch (e) { console.error('[LP ALERT ERROR]', e.message || e); }
-      // The daily report, once, in the hour after the 05:23 run.
-      if (new Date().getUTCHours() === 5 || new Date().getUTCHours() === 6) {
+      // The daily report, once, in the hour after the 04:23 run.
+      if (new Date().getUTCHours() === 4 || new Date().getUTCHours() === 5) {
         try { await postLpDailyReport(env); }
         catch (e) { console.error('[LP REPORT ERROR]', e.message || e); }
       }

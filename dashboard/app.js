@@ -996,7 +996,7 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
 
 // The liquidity agent's block, on its own so /liquidity can carry it without
 // the rest of the agents block. Same rows, same source, same sums.
-// The record says what the agent saw at 05:23; the chain says what is true
+// The record says what the agent saw at the daily run; the chain says what is true
 // now. Between the two a price can leave the range, and it did: on 2026-09-03
 // the page said "in range and earning" for nine hours after the position had
 // stopped earning. Three reads from the visitor's own browser — the position's
@@ -1093,7 +1093,7 @@ function fillLpBlock(){
         rows.push(item('&#9679;', fees > 0 ? 'Fees produced so far: ' + f(fees, 5) + ' BNB — ' + f(forwarded, 5) + ' to the buyback bot, ' + f(kept, 5) + ' kept as capital' + (folded > 0 ? ' (' + f(folded, 5) + ' of it folded in by ' + resetsWithFees + ' re-set' + (resetsWithFees === 1 ? '' : 's') + ')' : '') : 'No fees collected yet',
           // Dated from the first paint: the chain's own figure replaces it
           // below, but that read can take seconds, and an undated figure
-          // from 05:23 read as "right now" meanwhile.
+          // from the daily run read as "right now" meanwhile.
           (c.owed ? 'Owed at the run at ' + when + ': ' + f(c.owed.bnb_equivalent, 6) + ' BNB. Small amounts are left to grow until collecting them beats the gas. ' : '')
           + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_buyback_pct + '% buys $BOBAI and burns it.' : ''), 'lp-fees'));
         rows.push(item('&#9679;', swept > 0 ? 'Income swept in as capital: ' + f(swept, 5) + ' BNB' + (fout.into_position_bnb ? ' — ' + f(fout.into_position_bnb, 5) + ' BNB put into the position so far' : '') : 'No income swept in yet',
@@ -1118,7 +1118,7 @@ function fillLpBlock(){
           if(!first) return;
           first.textContent = l.inRange ? 'The position is in range and earning'
             : 'The position is out of range right now — it earns nothing; the hourly check re-sets it once the price has been outside for two hours';
-          // The range was last looked at by the hourly check, not the 05:23 run.
+          // The range was last looked at by the hourly check, not the daily run.
           const whenRange = String(last.range_checked_at || last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
           if(sub) sub.textContent = (sub.textContent || '') + ' · checked on the chain just now: price tick ' + l.tick + ', range ' + l.lo + ' to ' + l.hi + (l.inRange ? '' : '; the record above is from ' + whenRange);
         }).catch(() => {});
@@ -1164,7 +1164,7 @@ function fillLpSeries(){
     .then(d => {
       const pts = d && Array.isArray(d.points) ? d.points : [];
       const s = d && d.summary;
-      if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 05:23 UTC run.'; return; }
+      if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 04:23 UTC run.'; return; }
       // The sentence is the worker's (summary.sentence), the same one the
       // Telegram daily report posts; the page only sets the numbers in bold.
       sum.innerHTML = esc(s.sentence || '').replace(/(\d[\d.,]*%?|\d[\d.]* → \d[\d.]* BNB)/g, '<b>$1</b>');

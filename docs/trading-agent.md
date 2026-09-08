@@ -74,7 +74,9 @@ After a change to any file in the table above: `scp -i ~/.ssh/bobai-trader <file
 
 ## Guards
 
-- never more than the pot in one order; nothing under $10; the BNB gas reserve (0.006) is never traded
+- never more than the pot in one order and never more than $1,000 (BOB's pool moves 0.3% at $500); the rest waits in USDT
+- nothing under $10; the BNB gas reserve (0.006) is never traded and refills itself from the pot under 0.003 BNB
+- deposits are taken in by the next tick: BNB above the reserve becomes USDT, USDT beyond the capital on record raises the capital; nothing is added to an open position, the money waits for the next entry
 - daily loss cap: realised losses over 5% of the capital in a UTC day block new entries until the next day (exits still run)
 - a failed or refused order ends the tick and is reported; nothing is retried blind
 - the wallet's own rules, set in the Binance App: 365-day sign-in, high-risk transactions need app confirmation, developer mode off

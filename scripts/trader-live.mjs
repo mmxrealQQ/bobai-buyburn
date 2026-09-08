@@ -58,6 +58,13 @@ const TOKEN = {
 const GAS_RESERVE_BNB = 0.006;      // ~$4.50: dozens of swaps
 // Gas is paid in BNB on top of the quote: 0.00047 BNB (~$0.35) per swap on 2026-09-08. Under $10 that is over 3.5% of an order.
 const MIN_ORDER_USD = 10;
+// No single order above this, whatever the pot: BOB's pool moves 0.3% at $500
+// and 0.7% at $2,500 (scanner ladder, 2026-09-08); the backtest never traded
+// more than a $175 pot. Money above the ceiling waits in USDT.
+const MAX_ORDER_USD = 1000;
+// Gas refills itself: under this much BNB, a small USDT->BNB swap tops the
+// reserve back up, so a busy week never strands the agent without gas.
+const GAS_FLOOR_BNB = 0.003;
 const DAY_LOSS_CAP_PCT = 5;
 const BOBAI_DIP_Z = 1, BOBAI_WINDOW = 168, PROFIT_TO_BOBAI_PCT = 50;
 const POLL_MS = 5000, POLL_MAX_MS = 120000;
@@ -194,14 +201,27 @@ async function tick() {
   // raises the capital. Money is never taken out by this code.
   const spareBnb = Math.max(0, bal(by, 'BNB') - GAS_RESERVE_BNB);
   const spareUsd = spareBnb * (by.BNB ? by.BNB.price : 0);
-  if (!st.position && spareUsd >= MIN_ORDER_USD) {
+  if (spareUsd >= MIN_ORDER_USD) {
     const qty = Math.floor(spareBnb * 1e5) / 1e5;
     lines.push(`deposit: ${qty} BNB (≈ $${spareUsd.toFixed(2)}) above the reserve becomes USDT`);
     const r = swap('BNB', 'USDT', qty, 'deposit: BNB above the reserve into the USDT base');
     if (!r.dry) { log({ kind: 'deposit', bnb: qty, usdt: r.received, txHash: r.txHash }); await notify(`💰 <b>Trader: deposit taken in</b> — ${qty} BNB became ${money(r.received)} USDT and joins the pot.`); }
   }
+  // Gas: refill from the pot when the reserve runs low (a swap's gas is
+  // paid in BNB, not from the order).
+  const bnbNow = bal(balances(), 'BNB');
+  if (bnbNow < GAS_FLOOR_BNB && bal(balances(), 'USDT') >= MIN_ORDER_USD) {
+    const wantBnb = GAS_RESERVE_BNB - bnbNow;
+    const usdtForGas = Math.max(MIN_ORDER_USD, Math.ceil(wantBnb * (by.BNB ? by.BNB.price : 750) * 100) / 100);
+    lines.push(`gas: ${bnbNow.toFixed(5)} BNB is under the ${GAS_FLOOR_BNB} floor — ${money(usdtForGas)} USDT becomes BNB`);
+    const r = swap('USDT', 'BNB', usdtForGas, 'gas refill');
+    if (!r.dry) log({ kind: 'gas_refill', usdt: usdtForGas, bnb: r.received, txHash: r.txHash });
+  }
   const usdtNow = bal(balances(), 'USDT');
-  const known = st.capital_usd + st.profit_pool_usd;
+  // What the agent counts as its own: the capital on record plus the profit
+  // pool. USDT beyond that is a deposit (or a position's proceeds not yet
+  // booked — never the case here, proceeds are booked in the same tick).
+  const known = st.capital_usd + st.profit_pool_usd + (st.position ? 0 : 0);
   if (!st.position && usdtNow > known + 1) {
     lines.push(`deposit: USDT ${money(usdtNow - known)} beyond the capital on record joins it`);
     log({ kind: 'capital_raised', from: st.capital_usd, to: st.capital_usd + (usdtNow - known) });
@@ -239,7 +259,8 @@ async function tick() {
         lines.push(`${leg}: ${s.action.toUpperCase()} — ${s.why}`);
         if (s.action === 'buy' && (!best || s.z < best.z)) best = { leg, z: s.z, why: s.why };
       }
-      const pot = Math.min(st.pot_usdt, st.capital_usd + st.profit_pool_usd * 0);   // the pot, never the operator's other USDT
+      // The pot up to the ceiling; the rest waits in USDT for the next entry.
+      const pot = Math.min(st.pot_usdt, st.capital_usd, MAX_ORDER_USD);
       if (best && pot >= MIN_ORDER_USD) {
         const qty = Math.floor(pot * 100) / 100;
         const r = swap('USDT', best.leg, qty, `enter ${best.leg}: ${best.why}`);

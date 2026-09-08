@@ -48,6 +48,13 @@ export async function recordSession(env, entry) {
       // scheduled probes pad the same counter as organic traffic — would make
       // the record describe our cron instead of the operators.
       ...(entry.probe ? { probe: true } : {}),
+      // Set when the task was one of our own quote runs: the registry publish
+      // asks every Hire button for a price through the live /hire, and until
+      // 2026-09-08 those 262 quote requests sat in the log next to strangers'
+      // questions with nothing to tell them apart — "400 sessions" was, on
+      // inspection, almost entirely us. Only a caller holding this worker's
+      // own secret can set it, so a stranger cannot file its call as ours.
+      ...(entry.ours ? { ours: String(entry.ours).slice(0, 24) } : {}),
       excerpt: entry.excerpt ? String(entry.excerpt).replace(/\s+/g, ' ').slice(0, EXCERPT) : null,
     });
     while (log.length > MAX_SESSIONS) log.shift();
@@ -60,6 +67,31 @@ export async function readSessions(env) {
   catch { return []; }
 }
 
+// Where a session came from. Four answers, and the headline is only honest
+// with all four next to it: on 2026-09-08 the log held 400 sessions, of which
+// 26 were our daily checks, 262 our own quote runs and — in the newest forty —
+// not one from a stranger. Quote runs were not marked before that day, so
+// negotiate entries older than the marking are named for what they are: quote
+// requests whose origin was not recorded (nearly all of them ours). They age
+// out of the rolling log on their own.
+export const ORIGIN_MARKED_SINCE = '2026-09-08T18:50:00.000Z';
+export function originOf(s) {
+  if (s.probe) return 'our_scheduled_checks';
+  if (s.ours) return 'our_quote_runs';
+  if (s.tool === 'erc8183:negotiate' && String(s.at || '') < ORIGIN_MARKED_SINCE) return 'quote_requests_before_marking';
+  return 'outside_callers';
+}
+export function sessionOrigins(sessions, ownAgentIds = []) {
+  const own = new Set(ownAgentIds.map(String));
+  const out = { outside_callers: 0, our_scheduled_checks: 0, our_quote_runs: 0, quote_requests_before_marking: 0, to_our_own_agents: 0 };
+  for (const s of sessions) {
+    out[originOf(s)] += 1;
+    if (own.has(String(s.agent))) out.to_our_own_agents += 1;
+  }
+  out.note = `outside_callers are sessions that carry no mark of ours — a task the operator typed into the page himself looks the same as a stranger's, so this is an upper bound on strangers, not a count of them. our_scheduled_checks is the daily canary; our_quote_runs is the registry publish asking every Hire button for a price through the live /hire (marked since ${ORIGIN_MARKED_SINCE.slice(0, 10)}); quote_requests_before_marking are negotiate calls from before that date whose origin was not recorded, nearly all of them ours. to_our_own_agents counts, across all four, the sessions routed to this project's own five agents.`;
+  return out;
+}
+
 // The track record, derived rather than declared. Every number here comes from
 // the log above; there is no field an operator can set.
 export function trackRecord(sessions) {
@@ -67,10 +99,13 @@ export function trackRecord(sessions) {
   for (const s of sessions) {
     const k = s.operator || s.agent;
     if (!k) continue;
-    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, times: [], tools: new Set(), last: null, failures: [] });
+    if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, quoteRuns: 0, unmarked: 0, times: [], tools: new Set(), last: null, failures: [] });
     const r = by.get(k);
     r.asked++;
-    if (s.probe) r.probes++;
+    const o = originOf(s);
+    if (o === 'our_scheduled_checks') r.probes++;
+    else if (o === 'our_quote_runs') r.quoteRuns++;
+    else if (o === 'quote_requests_before_marking') r.unmarked++;
     if (s.ok) {
       r.answered++;
       if (s.tool) r.tools.add(s.tool);
@@ -95,6 +130,9 @@ export function trackRecord(sessions) {
       // our own scheduled checks means something different from one built from
       // strangers' questions, and the reader is entitled to tell them apart.
       ...(r.probes ? { of_which_our_scheduled_checks: r.probes } : {}),
+      ...(r.quoteRuns ? { of_which_our_quote_runs: r.quoteRuns } : {}),
+      ...(r.unmarked ? { of_which_origin_not_recorded: r.unmarked } : {}),
+      from_outside_callers: r.asked - r.probes - r.quoteRuns - r.unmarked,
       // A real median. The field carried this name from the start but was a
       // mean until 2026-09-03 — one 9-second answer among twenty 150 ms ones
       // read as "600 ms", which is a number no single request ever took.

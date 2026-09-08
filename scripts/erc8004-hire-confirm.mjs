@@ -71,7 +71,12 @@ for (const a of agents) {
   try {
     const r = await fetch(`${ORIGIN}/hire`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      // The worker's own secret files these quote requests as ours in the
+      // session log (/sessions "our quote runs"); without it they would sit
+      // next to strangers' questions as if somebody had asked. Run with
+      // `-r dotenv/config` so HIT_SECRET is set; the header is skipped, not
+      // faked, when it is not.
+      headers: { 'content-type': 'application/json', ...(process.env.HIT_SECRET ? { 'x-hit-secret': process.env.HIT_SECRET } : {}) },
       body: JSON.stringify({ agent: String(a.id), task: TASK[a.category] || TASK.rebalancing }),
       signal: AbortSignal.timeout(90000),
     });

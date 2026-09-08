@@ -820,6 +820,15 @@ section('Transparency');
   const usd = (s) => Math.round(Number(s || 0) * 100);
   ok('earnings split what strangers paid from our own test purchases', !!e.from_strangers && !!e.self_tests && usd(e.from_strangers.totalUsd1) + usd(e.self_tests.totalUsd1) === usd(e.totalUsd1) && (e.from_strangers.count + e.self_tests.count) === e.count);
   ok('every payment on record names its payer and which side it is on', Array.isArray(e.payments) && e.payments.every((p) => typeof p.self_test === 'boolean' && (p.self_test || /^0x[0-9a-f]{40}$/.test(p.from || ''))));
+  // The session log says who asked: outside callers, our daily checks, our
+  // quote runs, and older quote requests whose origin was not recorded — and
+  // the four add up to the headline. 2026-09-08: "400 sessions" was 26 checks,
+  // 262 of our own quote runs and not one stranger in the newest forty.
+  const s = await fetch(`${AGENT}/sessions?format=json`).then((r) => r.json()).catch(() => null);
+  const w = s?.of_which || {};
+  ok('the session headline is split by who asked', !!s && ['outside_callers', 'our_scheduled_checks', 'our_quote_runs', 'quote_requests_before_marking', 'to_our_own_agents'].every((k) => typeof w[k] === 'number'));
+  ok('… and the four origins add up to the sessions recorded', !!s && w.outside_callers + w.our_scheduled_checks + w.our_quote_runs + w.quote_requests_before_marking === s.sessions_recorded);
+  ok('every operator row says how many of its tasks came from outside', Array.isArray(s?.track_record) && s.track_record.every((r) => typeof r.from_outside_callers === 'number' && r.from_outside_callers >= 0 && r.from_outside_callers <= r.tasks_routed));
 }
 {
   // The LP agent's daily tick (worker-lp), served by the agent worker from

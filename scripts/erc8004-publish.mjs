@@ -1754,6 +1754,10 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           // of the four were us — and the reader should not have to open the
           // JSON to find that out.
           var ours=r.of_which_our_scheduled_checks;
+          // ... and how many were our own quote runs (the publish asking every
+          // Hire button for a price) or older quote requests whose origin was
+          // not recorded. What is left is what outside callers asked.
+          var outside=r.from_outside_callers;
           // A seller's own exception text — "PermissionError: [Errno 13]
           // Permission denied: '/secrets/wallets/0x….json'" — is a fact about
           // its code, not a sentence for this page, and it carried the
@@ -1773,12 +1777,14 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
             '<div class="rg-note">'+(r.tools_used||[]).slice(0,4).map(function(t){
               return '<code>'+esc(t)+'</code>';}).join(' ')+
             (ours?' &middot; '+ours+' of those our daily check':'')+
+            (outside!=null?' &middot; '+outside+' from outside callers':'')+
             (r.recent_failures&&r.recent_failures.length?' &middot; last failure: '+esc(failureInWords(r.recent_failures[0])):'')+
             '</div></div>';
         });
         body.innerHTML=rows.join('')+
           '<p class="rg-note" style="margin-top:4px">'+d.sessions_recorded+
-          ' tasks routed so far. Failures are kept and shown &mdash; a record that only listed successes would be marketing. '+
+          ' tasks routed so far'+(d.of_which?', '+d.of_which.outside_callers+' of them from outside callers; the rest were our own daily checks and quote runs, marked as such':'')+
+          '. Failures are kept and shown &mdash; a record that only listed successes would be marketing. '+
           'Full log: <a href="https://agent.brainonbnb.com/sessions">/sessions</a></p>';
         box.hidden=false;
       })

@@ -629,7 +629,7 @@ export async function handleHire(url, body, env, opts = {}) {
   if (!neg.ok) {
     await recordSession(env, {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
-      outcome: neg.error, agent: target, ...(opts.probe ? { probe: true } : {}),
+      outcome: neg.error, agent: target, ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
     });
     return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms } };
   }
@@ -659,7 +659,7 @@ export async function handleHire(url, body, env, opts = {}) {
   await recordSession(env, {
     task, tool: 'erc8183:negotiate', ok: true, ms: Date.now() - started,
     outcome: `quoted ${Number(budget) / 1e18} ${q.currency_symbol}`,
-    agent: target, excerpt: q.service || null, ...(opts.probe ? { probe: true } : {}),
+    agent: target, excerpt: q.service || null, ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
   });
 
   // A quote we cannot address is still worth returning — the price is real

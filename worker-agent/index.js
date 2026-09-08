@@ -29,7 +29,7 @@ import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
 import { handleDispatch } from './dispatch.js';
-import { readSessions, MAX_SESSIONS, trackRecord } from './sessions.js';
+import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
@@ -1219,7 +1219,11 @@ export default {
       // custom domain. Without this, hiring a stranger's agent would work and
       // hiring ours would fail — so the message is handed to the same A2A
       // handler in-process instead of going out and coming back.
-      const r = await handleHire(url, body, env, { localA2A: async (endpoint, data) => {
+      // A quote run of our own (the registry publish asking every Hire button
+      // for a price) carries this worker's secret and is filed as ours in the
+      // session log; a stranger's call cannot claim that.
+      const ours = request.headers.get('x-hit-secret') && request.headers.get('x-hit-secret') === env.HIT_SECRET ? 'quote-run' : null;
+      const r = await handleHire(url, body, env, { ours, localA2A: async (endpoint, data) => {
         if (new URL(endpoint).host !== url.host) return null;
         const res = await handleA2A(new Request(endpoint, {
           method: 'POST',
@@ -1352,8 +1356,9 @@ ${pageTail}`;
       if (wantsHtml) {
         const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
-        const probes = sessions.filter((s) => s.probe).length;
+        const o = sessionOrigins(sessions, OWN_AGENT_IDS);
         const recent = sessions.slice(-40).reverse();
+        const originLabel = (s) => ({ our_scheduled_checks: 'our check', our_quote_runs: 'our quote run', quote_requests_before_marking: 'origin not recorded' }[originOf(s)] || '');
         const html = `${pageHead('What has actually been asked — Brain Plaza', `
 main{max-width:960px}
 p.means{color:#cfc9bd;margin:6px 0 0}.note{color:#a9a49a;font-size:.82rem;margin-top:10px}
@@ -1361,14 +1366,14 @@ p.means{color:#cfc9bd;margin:6px 0 0}.note{color:#a9a49a;font-size:.82rem;margin
 td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .ok{color:#3fe09a}.bad{color:#ff8f6b}.dim{color:#a9a49a}.task{font-style:italic;color:#cfc9bd}.ex{color:#a9a49a;font-size:.78rem}`)}${pageNav({ href: SITE + '/registry', label: 'Brain Plaza' }, { href: '/sessions', label: 'What has actually been asked' }, BUY)}<h1>What has actually been asked</h1>
 <p class="means">Every task Brain Plaza has routed to another agent, and how each one went. Failures included: a record that only showed successes would be marketing. Nobody reports their own score here; an operator appears because it was asked something, and its reliability is the count of times it answered.</p>
-<p class="note">${h(sessions.length)} tasks recorded (the last ${MAX_SESSIONS} are kept) · ${h(record.length)} operators seen · ${h(probes)} of the tasks were our own daily checks, marked below and counted separately. What was asked is stored with a short excerpt of the answer, never the full response.</p>
+<p class="note">${h(sessions.length)} tasks recorded (the last ${MAX_SESSIONS} are kept) · ${h(record.length)} operators seen. Of the tasks, <b>${h(o.outside_callers)} carry no mark of ours</b> (a task the operator typed into the page himself looks the same as a stranger's, so that is an upper bound on strangers), ${h(o.our_scheduled_checks)} were our own daily checks, ${h(o.our_quote_runs)} our own quote runs (the registry publish asking every Hire button for a price)${o.quote_requests_before_marking ? `, and ${h(o.quote_requests_before_marking)} were quote requests from before ${h(ORIGIN_MARKED_SINCE.slice(0, 10))} whose origin was not recorded, nearly all of them ours` : ''}; ${h(o.to_our_own_agents)} of all of them were routed to our own agents. Each is marked below. What was asked is stored with a short excerpt of the answer, never the full response.</p>
 <h2>Track record, by operator</h2>
 <div class="wrap"><table><thead><tr><th>Operator</th><th>Answered</th><th>Median</th><th>Tools it answered with</th><th>Last seen</th><th>Recent failures</th></tr></thead><tbody>
-${record.map((r) => `<tr><td>${h(r.operator)}${r.agent && String(r.agent) !== String(r.operator) ? `<br><span class="dim">${h(r.agent)}</span>` : ''}</td><td class="n ${r.answered === r.tasks_routed ? 'ok' : r.answered ? '' : 'bad'}">${h(r.reliability)}${r.of_which_our_scheduled_checks ? `<br><span class="dim">${h(r.of_which_our_scheduled_checks)} our checks</span>` : ''}</td><td class="n">${r.median_ms == null ? '—' : h(r.median_ms) + ' ms'}</td><td>${r.tools_used.length ? h(r.tools_used.join(' · ')) : '<span class="dim">—</span>'}</td><td class="n">${h(when(r.last_seen))}</td><td class="ex">${r.recent_failures ? h(r.recent_failures.join(' · ')) : ''}</td></tr>`).join('')}
+${record.map((r) => `<tr><td>${h(r.operator)}${r.agent && String(r.agent) !== String(r.operator) ? `<br><span class="dim">${h(r.agent)}</span>` : ''}</td><td class="n ${r.answered === r.tasks_routed ? 'ok' : r.answered ? '' : 'bad'}">${h(r.reliability)}${r.of_which_our_scheduled_checks ? `<br><span class="dim">${h(r.of_which_our_scheduled_checks)} our checks</span>` : ''}${r.of_which_our_quote_runs ? `<br><span class="dim">${h(r.of_which_our_quote_runs)} our quote runs</span>` : ''}${r.of_which_origin_not_recorded ? `<br><span class="dim">${h(r.of_which_origin_not_recorded)} origin not recorded</span>` : ''}<br><span class="dim">${h(r.from_outside_callers)} from outside</span></td><td class="n">${r.median_ms == null ? '—' : h(r.median_ms) + ' ms'}</td><td>${r.tools_used.length ? h(r.tools_used.join(' · ')) : '<span class="dim">—</span>'}</td><td class="n">${h(when(r.last_seen))}</td><td class="ex">${r.recent_failures ? h(r.recent_failures.join(' · ')) : ''}</td></tr>`).join('')}
 </tbody></table></div>
 <h2>The last ${h(recent.length)} tasks, newest first</h2>
 <div class="wrap"><table><thead><tr><th>When</th><th>Asked</th><th>Routed to</th><th>Outcome</th><th>Took</th></tr></thead><tbody>
-${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${s.probe ? '<br><span class="dim">our check</span>' : ''}</td><td><span class="task">&ldquo;${h(s.task)}&rdquo;</span>${s.excerpt ? `<br><span class="ex">${h(s.excerpt)}</span>` : ''}</td><td>${h(s.operator || s.agent || '—')}${s.tool ? `<br><code class="dim">${h(s.tool)}</code>` : ''}</td><td class="${s.ok ? 'ok' : 'bad'}">${h(s.outcome)}</td><td class="n">${typeof s.ms === 'number' ? h(s.ms) + ' ms' : '—'}</td></tr>`).join('')}
+${recent.map((s) => `<tr><td class="n">${h(when(s.at))}${originLabel(s) ? `<br><span class="dim">${h(originLabel(s))}</span>` : ''}</td><td><span class="task">&ldquo;${h(s.task)}&rdquo;</span>${s.excerpt ? `<br><span class="ex">${h(s.excerpt)}</span>` : ''}</td><td>${h(s.operator || s.agent || '—')}${s.tool ? `<br><code class="dim">${h(s.tool)}</code>` : ''}</td><td class="${s.ok ? 'ok' : 'bad'}">${h(s.outcome)}</td><td class="n">${typeof s.ms === 'number' ? h(s.ms) + ' ms' : '—'}</td></tr>`).join('')}
 </tbody></table></div>
 <p class="note">Same record as JSON: <a href="/sessions?format=json">/sessions?format=json</a> · <a href="https://brainonbnb.com/registry">Brain Plaza</a></p>
 ${pageTail}`;
@@ -1378,6 +1383,9 @@ ${pageTail}`;
         what_this_is: 'Every task Brain Plaza has routed to another agent, and how each one went. Failures included — a record that only showed successes would be marketing.',
         how_to_read_it: 'Nobody reports their own score here. An operator appears because it was asked something, and its reliability is the count of times it answered. We store what was asked and a short excerpt of the answer, never the full response.',
         sessions_recorded: sessions.length,
+        // The headline split four ways, because "400 sessions" without it read
+        // as 400 strangers and was, on 2026-09-08, almost entirely us.
+        of_which: sessionOrigins(sessions, OWN_AGENT_IDS),
         operators_seen: record.length,
         track_record: record,
         recent: sessions.slice(-40).reverse(),

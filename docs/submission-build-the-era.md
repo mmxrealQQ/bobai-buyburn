@@ -285,6 +285,28 @@ node scripts/advantage-report.mjs && node scripts/advantage-publish.mjs   # Term
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.
 
+Refresh run 2026-09-08 ~05:00 UTC (judging starts tomorrow; the live pages
+are what is judged): full census re-run in the documented order — 340,473
+ids read (was 332,331 on 09-03), 1,911 claim an endpoint, 848 answer (0.25%),
+83 operators; hire-confirm asked 22 buttons, 12 quoted (was 16 / 11); the
+live counter is level with the scan and the series carries it as its last
+full point. Category order changed at the operator's decision: other
+operators' agents first, ours last, evidence order within each — the
+cold-start check now finds a stranger quoting on the first click in every
+category (Portfolio Rebalancer 0.5 $U, BNB Grid Trader 0.1 $U, BNB Yield
+Optimizer 1 $U, BNB Lending Guardian 5 $U) and no category led by an agent we
+run. The new census surfaced an MCP range keeper as the best match for
+"rebalance my lp range", and the dispatcher's reply lost the sellers behind
+it; fixed the same morning (a tool short of an input is kept as a pointer, the
+remaining candidates get their turn, the sellers are offered). Health 49/49 ·
+smoke 182/182 · dispatch-safety self-test green · /liquidity and /services
+now carry the same frame as /registry and /scanner (measured headless at 1280
+and 390). The liquidity agent's daily run moved from 05:23 to 04:23 UTC; its
+first 04:23 run (2026-09-08) held: position #7359173 in range, 0.0801 BNB,
+every step under its floor. Figures above are current as of this run where
+they name the census; the description in the form still says 814 answering
+and 338,000+ ids — that field cannot be edited after submission.
+
 Refresh run 2026-09-07 ~19:30 UTC: health 49/49 · smoke 182/182 (before the
 scanner build; re-run after it below) · cold-start "no problems", depth
 5/3/5/6, 16 hire buttons, 11 quote, first click quotes in every category ·

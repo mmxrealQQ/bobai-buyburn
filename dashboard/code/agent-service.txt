@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 40 files, 11155 lines.
+# one fetch. 41 files, 11595 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2005,6 +2005,390 @@ export function summarise(record, now) {
   "private": true,
   "type": "module",
   "//": "Marker only, no dependencies. The repo root is CommonJS while worker-agent declares type:module, so a .js file here would be CommonJS to Node and its named exports invisible to the ESM workers and scripts that import it — the bundlers accept the file either way, which is why that breaks in Node long after a deploy has succeeded. This file is what makes one shared module readable from both sides."
+}
+
+==============================================================================
+=== FILE: shared/trader-core.js
+==============================================================================
+
+// THE TRADING AGENT'S ARITHMETIC — pure, no chain, no wallet, no clock.
+//
+// Four legs, one rule. The operator asked for a bot over BNB, BOB, BOBAI and
+// CAKE that "buys the dip and sells the top, mathematically as sensible as
+// possible, maximum profit" (2026-09-08). The honest reading of that is mean
+// reversion: a price that has fallen unusually far below its own recent
+// average is bought, and sold once it is back at or above that average.
+// "Unusually far" is a z-score — how many standard deviations the log price
+// sits below its rolling mean — so the same rule means the same thing on a
+// coin that moves 1% a day and one that moves 10%.
+//
+// What the rule is NOT: a forecast. It earns when prices oscillate and loses
+// when they trend away and never return, which is why every position carries
+// a stop and a maximum holding time, and why the backtest reports the last
+// part of the history it never saw while choosing its parameters.
+//
+// Costs are charged the way the wallet charges them: a percentage of each
+// side, measured per leg (pool fee + price impact at the trade size + the
+// wallet's own fee), plus BOBAI's 3% transfer tax on the buy. A rule that
+// looks good before costs and bad after them is the usual result and the
+// point of counting them.
+//
+// BOBAI is never sold by this agent (operator's thesis: push $BOBAI, never
+// dump it). Its leg buys dips and holds; its profit is marked to market.
+//
+// Everything here is deterministic and pinned by scripts/trader.mjs --self-test.
+
+export const LEGS = ['BNB', 'CAKE', 'BOB', 'BOBAI'];
+
+// Per-side cost in percent of the amount traded, at a $25 leg. Sources
+// 2026-09-08: our pool scanner's cost ladder (fee + impact at size), the
+// wallet's own quotes (BNB->USDT 0.033 BNB came back within 0.05% of the
+// spot price), and a wallet fee allowance nobody has yet measured on a real
+// fill — set high rather than low until one has been (see trader.mjs
+// --measure-fee).
+export const DEFAULT_COSTS_PCT = {
+  BNB: { buy: 0.30, sell: 0.30 },     // BNB <-> USDT, V3 0.01-0.05% + wallet allowance
+  CAKE: { buy: 0.35, sell: 0.35 },    // CAKE <-> BNB, V3 0.05% + impact + allowance
+  BOB: { buy: 0.55, sell: 0.55 },     // V2 0.25% + impact 0.26% at $25 + allowance
+  BOBAI: { buy: 3.60, sell: 3.60 },   // 3% tax + V2 0.25% + impact + allowance (sell never used)
+};
+
+export const NEVER_SELL = new Set(['BOBAI']);
+
+export const DEFAULT_PARAMS = { window: 48, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 };
+
+// Two rule families, judged by the same evidence. 'reversion' buys a dip
+// (z ≤ −entryZ) and sells at the mean (z ≥ exitZ). 'trend' is the mirror:
+// it buys a breakout (z ≥ entryZ) and sells once the price is back under
+// the mean (z ≤ −exitZ). In a market that oscillates the first earns and
+// the second bleeds; in one that trends the reverse. Which one a leg gets
+// is decided by hours it has not seen, not by preference.
+export const MODES = ['reversion', 'trend'];
+export const PARAM_GRID = {
+  mode: MODES,
+  window: [12, 24, 48, 96, 168],
+  entryZ: [1, 1.5, 2, 2.5],
+  exitZ: [0, 0.5, 1],
+  stopPct: [6],
+  maxHoldH: [72],
+};
+
+// Rolling z-score of log price. Returns null until the window is full.
+export function zScores(closes, window) {
+  const logs = closes.map((c) => Math.log(c));
+  const out = new Array(closes.length).fill(null);
+  let sum = 0, sumSq = 0;
+  for (let i = 0; i < logs.length; i++) {
+    sum += logs[i]; sumSq += logs[i] * logs[i];
+    if (i >= window) { sum -= logs[i - window]; sumSq -= logs[i - window] * logs[i - window]; }
+    if (i >= window - 1) {
+      const n = window, mean = sum / n;
+      const varc = Math.max(0, sumSq / n - mean * mean);
+      const sd = Math.sqrt(varc);
+      out[i] = sd > 0 ? (logs[i] - mean) / sd : 0;
+    }
+  }
+  return out;
+}
+
+// One leg replayed over its closes with one parameter set. `legUsd` is the
+// most this leg may hold at once; one position at a time, entered at the
+// close that triggers it and exited at the close that triggers the exit.
+// Costs are taken per side on the traded amount. Returns the trades, the
+// net result in USD, and the drawdown of the leg's equity curve.
+export function replayLeg(closes, times, params, { legUsd = 25, costsPct = { buy: 0.3, sell: 0.3 }, neverSell = false } = {}) {
+  const { window, entryZ, exitZ, stopPct, maxHoldH } = params;
+  const sign = params.mode === 'trend' ? -1 : 1;
+  const z = zScores(closes, window).map((v) => (v == null ? null : sign * v));
+  const trades = [];
+  let pos = null;            // { i, price, units, cost }
+  let cash = legUsd, equityPeak = legUsd, maxDrawdown = 0, spentTotal = 0;
+  const equityAt = (i) => cash + (pos ? pos.units * closes[i] : 0);
+  for (let i = 0; i < closes.length; i++) {
+    const p = closes[i];
+    if (pos && !neverSell) {
+      const heldH = (times[i] - times[pos.i]) / 36e5;
+      const ret = (p - pos.price) / pos.price * 100;
+      let why = null;
+      if (z[i] != null && z[i] >= exitZ) why = 'back at the mean';
+      else if (ret <= -stopPct) why = 'stop';
+      else if (heldH >= maxHoldH) why = 'held too long';
+      if (why) {
+        const gross = pos.units * p;
+        const fee = gross * costsPct.sell / 100;
+        cash += gross - fee;
+        trades.push({ entry: times[pos.i], exit: times[i], entry_price: pos.price, exit_price: p, ret_pct: Math.round(ret * 100) / 100, net_usd: Math.round((gross - fee - pos.spent) * 10000) / 10000, hours: Math.round(heldH), why });
+        pos = null;
+      }
+    }
+    if (!pos && z[i] != null && z[i] <= -entryZ && cash >= 1) {
+      const spend = neverSell ? Math.min(cash, legUsd / 4) : cash;   // BOBAI: four dips per leg budget
+      if (spend >= 1) {
+        const fee = spend * costsPct.buy / 100;
+        const units = (spend - fee) / p;
+        if (neverSell) {
+          // Accumulate: no exit, each dip is its own lot. Track as one growing position.
+          cash -= spend; spentTotal += spend;
+          pos = pos ? { i: pos.i, price: (pos.price * pos.units + p * units) / (pos.units + units), units: pos.units + units, spent: pos.spent + spend } : { i, price: p, units, spent: spend };
+          trades.push({ entry: times[i], exit: null, entry_price: p, exit_price: null, ret_pct: null, net_usd: null, hours: null, why: 'dip bought, held' });
+        } else {
+          cash -= spend; spentTotal += spend;
+          pos = { i, price: p, units, spent: spend };
+        }
+      }
+    }
+    const eq = equityAt(i);
+    if (eq > equityPeak) equityPeak = eq;
+    const dd = (equityPeak - eq) / equityPeak * 100;
+    if (dd > maxDrawdown) maxDrawdown = dd;
+  }
+  const last = closes.length - 1;
+  const endEquity = equityAt(last);
+  const closed = trades.filter((t) => t.exit != null);
+  const wins = closed.filter((t) => t.net_usd > 0).length;
+  const buyHold = legUsd * (closes[last] / closes[0]) * (1 - costsPct.buy / 100);
+  return {
+    params, trades, closed: closed.length, open: pos ? 1 : 0,
+    win_rate_pct: closed.length ? Math.round(wins / closed.length * 1000) / 10 : null,
+    net_usd: Math.round((endEquity - legUsd) * 10000) / 10000,
+    net_pct: Math.round((endEquity - legUsd) / legUsd * 10000) / 100,
+    max_drawdown_pct: Math.round(maxDrawdown * 100) / 100,
+    buy_hold_net_usd: Math.round((buyHold - legUsd) * 10000) / 10000,
+    hours: closes.length,
+    ...(pos ? { open_position: { entry_price: pos.price, units: pos.units, mark: closes[last], unrealised_usd: Math.round((pos.units * closes[last] - pos.spent) * 10000) / 10000 } } : {}),
+  };
+}
+
+// Parameter search on the first `trainShare` of the history, judged on the
+// rest. Picks the set with the best training net per day; reports both
+// halves so the reader sees whether the pick survived hours it never saw.
+export function walkForward(closes, times, { grid = PARAM_GRID, trainShare = 0.6, legUsd = 25, costsPct, neverSell = false, minTrades = 3 } = {}) {
+  const split = Math.floor(closes.length * trainShare);
+  const trainC = closes.slice(0, split), trainT = times.slice(0, split);
+  const testC = closes.slice(split), testT = times.slice(split);
+  const combos = [];
+  for (const mode of (grid.mode || ['reversion'])) for (const window of grid.window) for (const entryZ of grid.entryZ) for (const exitZ of grid.exitZ) for (const stopPct of grid.stopPct) for (const maxHoldH of grid.maxHoldH) {
+    combos.push({ mode, window, entryZ, exitZ, stopPct, maxHoldH });
+  }
+  const scored = combos.map((params) => {
+    const r = replayLeg(trainC, trainT, params, { legUsd, costsPct, neverSell });
+    const trades = neverSell ? r.trades.length : r.closed;
+    return { params, train: r, score: trades >= minTrades ? r.net_usd / (trainC.length / 24) : -Infinity };
+  }).sort((a, b) => b.score - a.score);
+  const best = scored[0];
+  if (!best || best.score === -Infinity) return { pick: null, reason: `no parameter set made ${minTrades} trades on the training half`, train_hours: trainC.length, test_hours: testC.length };
+  // The test half is replayed with a warm window: the last `window` training
+  // closes are prepended so the z-score exists from the first test hour, and
+  // the equity is measured from the split.
+  const warm = best.params.window;
+  const testR = replayLeg(closes.slice(Math.max(0, split - warm)), times.slice(Math.max(0, split - warm)), best.params, { legUsd, costsPct, neverSell });
+  return {
+    pick: best.params,
+    train: { hours: trainC.length, net_usd: best.train.net_usd, closed: best.train.closed, win_rate_pct: best.train.win_rate_pct, max_drawdown_pct: best.train.max_drawdown_pct, buy_hold_net_usd: best.train.buy_hold_net_usd },
+    test: { hours: testC.length, net_usd: testR.net_usd, closed: testR.closed, win_rate_pct: testR.win_rate_pct, max_drawdown_pct: testR.max_drawdown_pct, buy_hold_net_usd: testR.buy_hold_net_usd, open_position: testR.open_position || null },
+    runner_up: scored[1] ? { params: scored[1].params, train_net_usd: scored[1].train.net_usd } : null,
+    combos_tried: combos.length,
+  };
+}
+
+// What the rule says right now for one leg: the current z, and whether a
+// buy or a sell is due given an open position (or none). Pure.
+export function signal(closes, params, { position = null, neverSell = false, nowMs = null, entryMs = null } = {}) {
+  const sign = params.mode === 'trend' ? -1 : 1;
+  const z = zScores(closes, params.window).map((v) => (v == null ? null : sign * v));
+  const zi = z[z.length - 1];
+  const p = closes[closes.length - 1];
+  if (zi == null) return { z: null, action: 'hold', why: `the window needs ${params.window} closes, ${closes.length} on hand` };
+  if (position) {
+    if (neverSell) return { z: zi, action: zi <= -params.entryZ ? 'buy' : 'hold', why: zi <= -params.entryZ ? `z ${zi.toFixed(2)} ≤ −${params.entryZ}: another dip` : `z ${zi.toFixed(2)}: holding, this leg never sells` };
+    const ret = (p - position.price) / position.price * 100;
+    const heldH = nowMs && entryMs ? (nowMs - entryMs) / 36e5 : 0;
+    if (zi >= params.exitZ) return { z: zi, action: 'sell', why: `z ${zi.toFixed(2)} ≥ ${params.exitZ}: back at the mean (${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%)` };
+    if (ret <= -params.stopPct) return { z: zi, action: 'sell', why: `stop: ${ret.toFixed(2)}% against a ${params.stopPct}% stop` };
+    if (heldH >= params.maxHoldH) return { z: zi, action: 'sell', why: `held ${heldH.toFixed(0)} h, the limit is ${params.maxHoldH} h` };
+    return { z: zi, action: 'hold', why: `z ${zi.toFixed(2)}: in a position (${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%), waiting for the mean` };
+  }
+  if (zi <= -params.entryZ) return { z: zi, action: 'buy', why: `z ${zi.toFixed(2)} ≤ −${params.entryZ}: a dip` };
+  return { z: zi, action: 'hold', why: `z ${zi.toFixed(2)}: no dip (a buy needs ≤ −${params.entryZ})` };
+}
+
+// THE PORTFOLIO — the operator's rule of 2026-09-08 ("BNB, BOB und CAKE
+// profit kaufen und wenn BOBAI dippt nur den profit rein, 50%; das andere
+// wieder verwenden zum wachsen"). Three trading legs share the capital.
+// Every closed trade's net result goes into a profit pool. When BOBAI dips
+// (its own z-score below `bobaiDipZ`), half of the pool buys BOBAI, which is
+// never sold; the other half is added to the trading capital, split evenly
+// across the legs. A losing trade shrinks the pool first, then the capital.
+export const TRADING_LEGS = ['BNB', 'CAKE', 'BOB'];
+
+// Align a sparse series (BOBAI has hours without a trade) to a dense hourly
+// grid by carrying the last close forward.
+export function alignTo(times, sparse) {
+  const out = new Array(times.length).fill(null);
+  let j = 0, last = null;
+  for (let i = 0; i < times.length; i++) {
+    while (j < sparse.length && sparse[j][0] <= times[i]) { last = sparse[j][1]; j++; }
+    out[i] = last;
+  }
+  return out;
+}
+
+export function replayPortfolio(legs, bobai, picks, { capitalUsd = 100, profitToBobaiPct = 50, bobaiDipZ = 1, bobaiWindow = 168, costsPct = DEFAULT_COSTS_PCT } = {}) {
+  // legs: { BNB: {closes, times}, ... } on one hourly grid (times identical);
+  // bobai: { closes (aligned to that grid) }.
+  const names = TRADING_LEGS.filter((l) => picks[l]);
+  const times = legs[names[0]].times;
+  const n = times.length;
+  const z = Object.fromEntries(names.map((l) => [l, zScores(legs[l].closes, picks[l].window)]));
+  const zb = bobai && bobai.closes.every((c) => c != null) ? zScores(bobai.closes, bobaiWindow) : (bobai ? zScores(bobai.closes.map((c) => c ?? bobai.closes.find((x) => x != null)), bobaiWindow) : null);
+  const budget = Object.fromEntries(names.map((l) => [l, capitalUsd / names.length]));
+  const pos = Object.fromEntries(names.map((l) => [l, null]));
+  let cashInLegs = capitalUsd, profitPool = 0, bobaiUnits = 0, bobaiSpent = 0, bobaiBuys = 0, grownBy = 0;
+  const trades = [];
+  let peak = capitalUsd, maxDD = 0;
+  for (let i = 0; i < n; i++) {
+    for (const l of names) {
+      const p = legs[l].closes[i], zi = z[l][i], P = picks[l], c = costsPct[l];
+      const open = pos[l];
+      if (open) {
+        const heldH = (times[i] - times[open.i]) / 36e5;
+        const ret = (p - open.price) / open.price * 100;
+        let why = null;
+        if (zi != null && zi >= P.exitZ) why = 'back at the mean';
+        else if (ret <= -P.stopPct) why = 'stop';
+        else if (heldH >= P.maxHoldH) why = 'held too long';
+        if (why) {
+          const gross = open.units * p, fee = gross * c.sell / 100, net = gross - fee - open.spent;
+          // the leg gets its stake back; the result goes to the pool (a loss
+          // eats the pool first, then the leg's own budget)
+          budget[l] += open.spent;
+          if (net >= 0) profitPool += net;
+          else if (profitPool + net >= 0) profitPool += net;
+          else { budget[l] += profitPool + net; profitPool = 0; }
+          trades.push({ leg: l, entry: times[open.i], exit: times[i], ret_pct: Math.round(ret * 100) / 100, net_usd: Math.round(net * 10000) / 10000, hours: Math.round(heldH), why });
+          pos[l] = null;
+        }
+      }
+      if (!pos[l] && zi != null && zi <= -P.entryZ && budget[l] >= 1) {
+        const spend = budget[l], fee = spend * c.buy / 100;
+        pos[l] = { i, price: p, units: (spend - fee) / p, spent: spend };
+        budget[l] = 0;
+      }
+    }
+    // BOBAI dip: half the pool buys, the other half grows the legs
+    if (zb && zb[i] != null && zb[i] <= -bobaiDipZ && profitPool >= 1 && bobai.closes[i]) {
+      const toBobai = profitPool * profitToBobaiPct / 100, toGrow = profitPool - toBobai;
+      const fee = toBobai * costsPct.BOBAI.buy / 100;
+      bobaiUnits += (toBobai - fee) / bobai.closes[i]; bobaiSpent += toBobai; bobaiBuys += 1;
+      for (const l of names) budget[l] += toGrow / names.length;
+      grownBy += toGrow; profitPool = 0;
+      trades.push({ leg: 'BOBAI', entry: times[i], exit: null, ret_pct: null, net_usd: null, hours: null, why: `dip: $${toBobai.toFixed(2)} of profit into BOBAI, $${toGrow.toFixed(2)} into the legs` });
+    }
+    const markLegs = names.reduce((s, l) => s + budget[l] + (pos[l] ? pos[l].units * legs[l].closes[i] : 0), 0);
+    const markBobai = bobai && bobai.closes[i] ? bobaiUnits * bobai.closes[i] : bobaiSpent;
+    const eq = markLegs + profitPool + markBobai;
+    if (eq > peak) peak = eq;
+    const dd = (peak - eq) / peak * 100; if (dd > maxDD) maxDD = dd;
+  }
+  const last = n - 1;
+  const legsMark = names.reduce((s, l) => s + budget[l] + (pos[l] ? pos[l].units * legs[l].closes[last] : 0), 0);
+  const bobaiMark = bobai && bobai.closes[last] ? bobaiUnits * bobai.closes[last] : bobaiSpent;
+  const closed = trades.filter((t) => t.exit != null);
+  const r4 = (x) => Math.round(x * 10000) / 10000;
+  return {
+    capital_usd: capitalUsd, legs: names, hours: n,
+    closed_trades: closed.length, wins: closed.filter((t) => t.net_usd > 0).length,
+    realised_profit_usd: r4(closed.reduce((s, t) => s + t.net_usd, 0)),
+    profit_pool_usd: r4(profitPool),
+    grown_into_legs_usd: r4(grownBy),
+    bobai: { buys: bobaiBuys, spent_usd: r4(bobaiSpent), units: r4(bobaiUnits), mark_usd: r4(bobaiMark) },
+    trading_capital_now_usd: r4(legsMark + profitPool),
+    total_now_usd: r4(legsMark + profitPool + bobaiMark),
+    net_usd: r4(legsMark + profitPool + bobaiMark - capitalUsd),
+    max_drawdown_pct: Math.round(maxDD * 100) / 100,
+    trades,
+  };
+}
+
+// THE ROTATION — the operator's second sentence of 2026-09-08: "immer wenn
+// einer dippt ist es die Moeglichkeit rein zu gehen von einem wo on top ist
+// und profit gemacht hat". One pot. It sits in USDT when nothing dips, buys
+// the deepest dip among BNB, CAKE and BOB, sells when that asset is back at
+// its mean (or stopped, or held too long), and can do both in the same hour
+// — out of a top, into a dip. Every closed trade's net result goes to the
+// pool; at a BOBAI dip half the pool buys BOBAI (never sold) and half grows
+// the pot. Losses eat the pool first, then the pot.
+export function replayRotation(legs, bobai, picks, { capitalUsd = 100, profitToBobaiPct = 50, bobaiDipZ = 1, bobaiWindow = 168, costsPct = DEFAULT_COSTS_PCT, minDipZ = null } = {}) {
+  const names = TRADING_LEGS.filter((l) => picks[l]);
+  const times = legs[names[0]].times, n = times.length;
+  const z = Object.fromEntries(names.map((l) => [l, zScores(legs[l].closes, picks[l].window).map((v) => (v == null ? null : (picks[l].mode === 'trend' ? -v : v)))]));
+  // BOBAI's history starts later than the others (July 2026): the aligned
+  // series is null before its first close. The z-score is computed on the
+  // part that exists and is null before it, so a BOBAI dip can be seen from
+  // the first full window onwards rather than never.
+  const bob = bobai ? bobai.closes.slice() : null;
+  for (let i = 1; bob && i < bob.length; i++) if (bob[i] == null) bob[i] = bob[i - 1];
+  let zb = null;
+  if (bob) {
+    const first = bob.findIndex((c) => c != null);
+    if (first >= 0) { const zz = zScores(bob.slice(first), bobaiWindow); zb = new Array(bob.length).fill(null); for (let i = 0; i < zz.length; i++) zb[first + i] = zz[i]; }
+  }
+  let pot = capitalUsd, pos = null, profitPool = 0, bobaiUnits = 0, bobaiSpent = 0, bobaiBuys = 0, grownBy = 0;
+  const trades = []; let peak = capitalUsd, maxDD = 0;
+  for (let i = 0; i < n; i++) {
+    if (pos) {
+      const l = pos.leg, p = legs[l].closes[i], P = picks[l], c = costsPct[l];
+      const heldH = (times[i] - times[pos.i]) / 36e5, ret = (p - pos.price) / pos.price * 100;
+      let why = null;
+      if (z[l][i] != null && z[l][i] >= P.exitZ) why = 'back at the mean';
+      else if (ret <= -P.stopPct) why = 'stop';
+      else if (heldH >= P.maxHoldH) why = 'held too long';
+      if (why) {
+        const gross = pos.units * p, fee = gross * c.sell / 100, net = gross - fee - pos.spent;
+        pot += pos.spent;
+        if (net >= 0) profitPool += net; else if (profitPool + net >= 0) profitPool += net; else { pot += profitPool + net; profitPool = 0; }
+        trades.push({ leg: l, entry: times[pos.i], exit: times[i], ret_pct: Math.round(ret * 100) / 100, net_usd: Math.round(net * 10000) / 10000, hours: Math.round(heldH), why });
+        pos = null;
+      }
+    }
+    if (!pos && pot >= 1) {
+      // the deepest dip of the hour, if any dips at all
+      let best = null;
+      for (const l of names) {
+        const zi = z[l][i];
+        if (zi == null || zi > -picks[l].entryZ) continue;
+        if (minDipZ != null && zi > -minDipZ) continue;
+        if (!best || zi < best.z) best = { leg: l, z: zi };
+      }
+      if (best) {
+        const l = best.leg, p = legs[l].closes[i], fee = pot * costsPct[l].buy / 100;
+        pos = { leg: l, i, price: p, units: (pot - fee) / p, spent: pot };
+        pot = 0;
+      }
+    }
+    if (zb && zb[i] != null && zb[i] <= -bobaiDipZ && profitPool >= 1 && bob[i]) {
+      const toBobai = profitPool * profitToBobaiPct / 100, toGrow = profitPool - toBobai;
+      bobaiUnits += (toBobai - toBobai * costsPct.BOBAI.buy / 100) / bob[i]; bobaiSpent += toBobai; bobaiBuys += 1;
+      pot += toGrow; grownBy += toGrow; profitPool = 0;
+      trades.push({ leg: 'BOBAI', entry: times[i], exit: null, ret_pct: null, net_usd: null, hours: null, why: `dip: $${toBobai.toFixed(2)} of profit into BOBAI, $${toGrow.toFixed(2)} into the pot` });
+    }
+    const eq = pot + profitPool + (pos ? pos.units * legs[pos.leg].closes[i] : 0) + (bob && bob[i] ? bobaiUnits * bob[i] : bobaiSpent);
+    if (eq > peak) peak = eq; const dd = (peak - eq) / peak * 100; if (dd > maxDD) maxDD = dd;
+  }
+  const last = n - 1;
+  const potMark = pot + profitPool + (pos ? pos.units * legs[pos.leg].closes[last] : 0);
+  const bobaiMark = bob && bob[last] ? bobaiUnits * bob[last] : bobaiSpent;
+  const closed = trades.filter((t) => t.exit != null);
+  const r4 = (x) => Math.round(x * 10000) / 10000;
+  const perLeg = Object.fromEntries(names.map((l) => [l, { closed: closed.filter((t) => t.leg === l).length, net_usd: r4(closed.filter((t) => t.leg === l).reduce((s, t) => s + t.net_usd, 0)) }]));
+  return {
+    capital_usd: capitalUsd, legs: names, hours: n, closed_trades: closed.length, wins: closed.filter((t) => t.net_usd > 0).length,
+    per_leg: perLeg, realised_profit_usd: r4(closed.reduce((s, t) => s + t.net_usd, 0)), profit_pool_usd: r4(profitPool), grown_into_pot_usd: r4(grownBy),
+    bobai: { buys: bobaiBuys, spent_usd: r4(bobaiSpent), units: r4(bobaiUnits), mark_usd: r4(bobaiMark) },
+    open: pos ? { leg: pos.leg, since: times[pos.i], unrealised_usd: r4(pos.units * legs[pos.leg].closes[last] - pos.spent) } : null,
+    trading_capital_now_usd: r4(potMark), total_now_usd: r4(potMark + bobaiMark), net_usd: r4(potMark + bobaiMark - capitalUsd),
+    max_drawdown_pct: Math.round(maxDD * 100) / 100, trades,
+  };
 }
 
 ==============================================================================
@@ -6189,6 +6573,7 @@ ${pageTail}`;
         cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
         width_record: 'https://agent.brainonbnb.com/lp/windows',
         agent_record: 'https://agent.brainonbnb.com/lp/agent',
+        last_run: log.last_run || null,
         last_error: log.last_error || null,
       };
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
@@ -6204,12 +6589,13 @@ p.lead{color:#cfc9bd;margin:6px 0 0}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;font-size:.74rem;letter-spacing:.4px;text-transform:uppercase;border-top:0}th:first-child,td:first-child{text-align:left}tr.w td{color:var(--gold)}
 `)}${pageNav({ href: '/lp/windows', label: 'The width record' }, { href: '/lp/pools', label: 'The pool record' }, BUY)}<h1>The pool record</h1>
-<p class="lead">What ${h(usd(v.usd))} would have earned in each pool the operator named, replayed hour by hour with the same code, in a ±${h(v.width_pct)}% range. The agent is in the pool marked gold. Since ${h(when(log.since))}.</p>
+<p class="lead">What $${h(v.usd)} would have earned in each pool the operator named, replayed hour by hour with the same code, in a ±${h(v.width_pct)}% range. The agent is in the pool marked gold. Since ${h(when(log.since))}.</p>
 <div class="card"><b>${h(v.why.replace(/^[a-z]/, (ch) => ch.toUpperCase()))}</b><p class="note">${h(v.rule)}</p></div>
 <div class="card"><div class="wrap"><table><thead><tr><th>Pool</th><th>Hours</th><th>Windows</th><th>Fees</th><th>Per day</th><th>Swaps</th><th>Quiet</th><th>Held</th><th>Last</th></tr></thead><tbody>
 ${v.pools.map((p) => `<tr${p.watched ? ' class="w"' : ''}><td>${h(p.label)}${p.watched ? ' · the agent is here' : ''}</td><td>${h(p.hours)}</td><td>${h(p.windows)}</td><td>${h(usd(p.fees_usd))}</td><td>${h(usd(p.fees_usd_per_day))}</td><td>${h(p.swaps)}</td><td>${h(p.quiet_windows)}</td><td>${p.held_pct == null ? '—' : h(p.held_pct) + '%'}</td><td>${h(when(p.last))}</td></tr>`).join('')}
 </tbody></table></div>
 <p class="note">Quiet = windows in which nobody swapped in that pool. Held = share of windows the range held through without crossing an edge. Fees are for this capital inside the width, diluted by the pool's own working capital, and are not annualised.</p></div>
+${log.last_run ? `<p class="note">Last run ${h(when(log.last_run.at))}: added ${h((log.last_run.added || []).join(', ') || 'nothing')}${(log.last_run.skipped || []).length ? ' · skipped ' + (log.last_run.skipped || []).map((x) => h((x.pool || '').slice(0, 10)) + ' (' + h(x.why) + ')').join(', ') : ''}</p>` : ''}
 ${log.last_error ? `<p class="note">Last hour that could not be measured: ${h(when(log.last_error.at))} — ${h(log.last_error.message)}</p>` : ''}
 <p class="note">Same facts as JSON: <a href="/lp/pools?format=json">/lp/pools?format=json</a> · another width: <a href="/lp/pools?width=2">?width=2</a> · the width record: <a href="/lp/windows">/lp/windows</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
 ${pageTail}`;
@@ -6255,6 +6641,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 <h2>The pick</h2>
 <div class="card"><dl>
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — about $${h(f(pick.earnings.net_usd_per_day, 2))} a day on $${h(usd)} after ${h(pick.earnings.resets)} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${h(f(pick.earnings.reset_cost_usd, 2))} each, over ${h(f(pick.earnings.hours, 0))} h of recorded prices (${h(f(pick.earnings.hours_in_range, 0))} h of them inside the range)` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
+<dt>Wait</dt><dd>${(() => { const dt = v.delay_test || {}; const ds = dt.delays || []; if (!ds.length) return `${h(dt.in_use_hours ?? 2)} h outside the range before a re-set — the wait the agent uses; whether another wait would net more is replayed once a day of prices is on record`; const line = ds.map((d) => `${h(d.hours)} h: ${d.net_usd_per_day == null ? 'nothing' : `$${h(f(d.net_usd_per_day, 2))} a day at ±${h(d.width)}% after ${h(d.resets)} re-set${d.resets === 1 ? '' : 's'}`}${d.in_use ? ' (in use)' : ''}`).join(' · '); const p = dt.pick; return `<b>${h(dt.in_use_hours)} h</b> outside the range before a re-set is what the agent uses. Replayed with every wait: ${line}.${p && !p.in_use ? ` The record favours ${h(p.hours)} h; the agent keeps ${h(dt.in_use_hours)} h until the operator changes it.` : p ? ' The wait in use is the one that netted the most.' : ''}`; })()}</dd>
 <dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, 2))} — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
 <dt>Held a full day</dt><dd>${v.day_pick ? `±${h(v.day_pick.width)}% is the narrowest width that stayed in range through every tested 24-hour window (${h(v.day_pick.day.held)} of ${h(v.day_pick.day.tested)}). It earns less than the pick; holding is not the goal, netting is.` : 'no width has held through every tested day yet'}</dd>
 <dt>Record</dt><dd>${h(v.windows)} windows, ${h(when(v.from))} to ${h(when(v.to))}, blocks ${h(v.from_block)} to ${h(v.to_block)}${v.overlapping_runs_not_counted ? `; ${h(v.overlapping_runs_not_counted)} overlapping run${v.overlapping_runs_not_counted === 1 ? '' : 's'} counted once` : ''}${v.thin ? ' — thin: too few windows to lean on yet' : ''}</dd>
@@ -6366,7 +6753,14 @@ ${pageTail}`;
       const stepRows = [
         ...sweeps.map((s) => ({ name: `Sweep — ${s.source || 'income'} wallet`, acted: !!s.acted, err: s.error, why: s.why, detail: (s.balance != null ? `${f(s.balance, 4)} ${s.token || ''} waiting${s.bnb_equivalent != null ? `, worth ${f(s.bnb_equivalent, 6)} BNB` : ''}` : '') + (fromDaily ? `${s.balance != null ? '; ' : ''}from the daily run at ${dailyWhen}` : '') })),
         { name: 'Collect — the position\'s fees', acted: !!c.acted, err: c.error, why: plain(c.why), detail: (c.owed ? `owed at that run: ${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)}` : '') + (fromDaily ? `${c.owed ? '; ' : ''}from the daily run at ${dailyWhen}` : '') },
-        { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `; the next re-set would use ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : '') + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
+        // A re-set that acted says what it did — the old range withdrawn, the
+        // other side bought, the new range minted, the gas and the fees folded
+        // in — not the state it found the moment before (2026-09-08: the line
+        // read "outside since 04:50" under a re-set that had already happened).
+        { name: 'Rebalance — the price range', acted: !!rb.acted, err: rb.error, why: rb.why, detail: (rb.acted && !rb.error && rb.new_position
+          ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn, the missing side bought and #${rb.new_position} minted${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees folded into the capital` : ''}`
+          : (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `; the next re-set would use ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''))
+          + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
         { name: 'Increase — grow the position', acted: !!inc.acted, err: inc.error, why: plain(inc.why), detail: (inc.wallet_bnb != null ? `${f(inc.wallet_bnb, 5)} BNB in the wallet, ${f(inc.spendable_bnb, 5)} above the reserve` : '') + (fromDaily ? `${inc.wallet_bnb != null ? '; ' : ''}from the daily run at ${dailyWhen}` : '') },
       ].filter((r) => r.why || r.err || r.detail);
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
@@ -6410,7 +6804,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 <h2>Days it moved money</h2>
 <div class="card">${histRows.filter((r) => r.parts.length).length ? `<ul class="hist">${histRows.filter((r) => r.parts.length).map((r) => `<li><time>${h(when(r.at))}</time>${r.parts.length ? r.parts.map(h).join(' · ') : (r.errs.length ? '' : 'recorded')}${r.errs.length ? `<span class="st bad">error</span> ${h(r.errs.join(' · '))}` : ''}</li>`).join('')}</ul>` : '<p class="note">None yet. The position was opened by hand; the agent has had only quiet days since.</p>'}
 ${histRows.some((r) => !r.parts.length && r.errs.length) ? `<h2>Runs that failed</h2><div class="card"><ul class="hist">${histRows.filter((r) => !r.parts.length && r.errs.length).map((r) => `<li><time>${h(when(r.at))}</time><span class="st bad">error</span> ${h(r.errs.join(' · '))}</li>`).join('')}</ul><p class="note">A failed run moved nothing; it is listed so the record cannot hide it.</p></div>` : ''}
-<p class="note">Quiet days are not listed; the last one is always above. Same facts as JSON: <a href="/lp/agent?format=json">/lp/agent?format=json</a> · width record: <a href="/lp/windows">/lp/windows</a> · <a href="https://brainonbnb.com/liquidity">Back to the liquidity page</a></p></div>
+<p class="note">Quiet days are not listed; the last one is always above. Same facts as JSON: <a href="/lp/agent?format=json">/lp/agent?format=json</a> · width record: <a href="/lp/windows">/lp/windows</a> · pool record: <a href="/lp/pools">/lp/pools</a> · <a href="https://brainonbnb.com/liquidity">Back to the liquidity page</a></p></div>
 ${pageTail}`;
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
     }
@@ -7122,7 +7516,7 @@ export async function readLpPools(env) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const CHAIN_REFUSED = /every BSC endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
+const CHAIN_REFUSED = /every BSC endpoint refused|log endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
 
 // The hourly tick, run after the width record's own so the watched pool's
 // window is already there to copy. One replay per other candidate, one KV
@@ -7134,33 +7528,55 @@ export async function recordLpPools(env) {
   let log = { ...prev, usd: POSITION_USD, pools: { ...(prev.pools || {}) } };
   const added = [], skipped = [];
 
-  // The watched pool: the width record measured it minutes ago.
+  // One replay with the width record's own patience: a refusal from the
+  // chain gets a second try, anything else is a reason in the skip list.
+  const replay = async (pool) => {
+    try { return await measure(pool, POSITION_USD); }
+    catch (e) {
+      if (!CHAIN_REFUSED.test(String(e.message))) { skipped.push({ pool, why: String(e.message).slice(0, 120) }); return null; }
+      await sleep(15000);
+      try { return await measure(pool, POSITION_USD); }
+      catch (e2) { skipped.push({ pool, why: String(e2.message).slice(0, 120) }); return null; }
+    }
+  };
+
+  // The watched pool: the width record measured it minutes ago — unless its
+  // own measurement failed this hour (2026-09-08 08:31: "the log endpoint
+  // refused this range" while the two other pools replayed fine seconds
+  // later). A window older than this tick is not copied; the pool is
+  // replayed here instead, so the hours stay comparable across pools.
   if (watched) {
     const w = JSON.parse((await env.AGENT.get(WINDOWS_KEY)) || 'null');
     const latest = w && w.pool && w.pool.toLowerCase() === watched ? (w.windows || []).slice(-1)[0] : null;
-    if (latest) {
+    const fresh = latest && Date.now() - Date.parse(latest.at) < 50 * 60 * 1000;
+    if (fresh) {
       const r = appendPoolWindow(log, watched, latest);
       log = r.log; if (r.added) added.push(labelOf(watched));
-    } else skipped.push({ pool: watched, why: 'the width record holds no window for it yet' });
+    } else {
+      const plan = await replay(watched);
+      if (plan) {
+        const r = appendPoolWindow(log, watched, windowFromPlan(plan, POSITION_USD));
+        log = r.log; if (r.added) added.push(labelOf(watched) + ' (replayed here; the width record had no window this hour)');
+      }
+      await sleep(3000);
+    }
   }
 
-  // The others: measured now, with the width record's own patience.
+  // The others: measured now.
   for (const c of CANDIDATES) {
     if (c.pool === watched) continue;
-    let plan = null;
-    try { plan = await measure(c.pool, POSITION_USD); }
-    catch (e) {
-      if (!CHAIN_REFUSED.test(String(e.message))) { skipped.push({ pool: c.pool, why: String(e.message).slice(0, 120) }); continue; }
-      await sleep(15000);
-      try { plan = await measure(c.pool, POSITION_USD); }
-      catch (e2) { skipped.push({ pool: c.pool, why: String(e2.message).slice(0, 120) }); continue; }
-    }
+    const plan = await replay(c.pool);
+    if (!plan) continue;
     const r = appendPoolWindow(log, c.pool, windowFromPlan(plan, POSITION_USD));
     log = r.log; if (r.added) added.push(c.label);
     await sleep(3000);
   }
 
-  if (added.length) await env.AGENT.put(KV_KEY, JSON.stringify(log));
+  // Every run leaves a note, added or not: a pool missing from an hour
+  // is a gap the reader should be able to explain (2026-09-08 07:30 the
+  // BOB/BNB window was missing and the record could not say why).
+  log.last_run = { at: new Date().toISOString(), added, skipped };
+  await env.AGENT.put(KV_KEY, JSON.stringify(log));
   return { ok: true, added, skipped, pools: Object.keys(log.pools).length };
 }
 
@@ -7721,6 +8137,27 @@ export function verdict(log, opts = {}) {
   for (const r of rows) r.earnings = r.width === 'full' ? null : earningsTest(used, r.width, opts);
   const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
     .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
+  // THE DELAY TEST — reported, not used (2026-09-08). The earnings test
+  // replays every width with the agent's own wait of RESET_AFTER_HOURS
+  // before a re-set; that wait is a set number, not a measured one. On
+  // 2026-09-08 CAKE rose 18% in five days, the ±1% range was re-set twice
+  // before noon, and an hour after the second re-set the price was back
+  // below the new range — the case the wait exists for, and the case it
+  // costs earning hours in. So every width is also replayed with a wait of
+  // 0, 1, 2 and 3 hours, and the best net per day for each wait is named
+  // beside the pick. The re-set keeps using RESET_AFTER_HOURS until the
+  // operator decides otherwise; this is the evidence for that decision.
+  const DELAYS_H = [0, 1, 2, 3];
+  const delays = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
+    const best = rows.filter((r) => r.width !== 'full')
+      .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
+      .filter((x) => x.e && x.e.net_usd_per_day > 0)
+      .sort((a, b) => b.e.net_usd_per_day - a.e.net_usd_per_day)[0];
+    return best
+      ? { hours: h, width: best.width, net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd, in_use: h === RESET_AFTER_HOURS }
+      : { hours: h, width: null, net_usd_per_day: null, resets: null, fees_usd: null, in_use: h === RESET_AFTER_HOURS };
+  });
+  const delayPick = delays.filter((d) => d.net_usd_per_day != null).sort((a, b) => b.net_usd_per_day - a.net_usd_per_day)[0] || null;
   const first = used[0], last = used[used.length - 1];
   return {
     windows: used.length,
@@ -7739,6 +8176,12 @@ export function verdict(log, opts = {}) {
     day_pick: thin ? null : (dayHolders[0] || null),
     // The width a re-set uses: the most net per day over the recorded prices.
     earnings_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] || null),
+    delay_test: {
+      in_use_hours: RESET_AFTER_HOURS,
+      delays,
+      pick: delayPick,
+      note: 'Every width replayed with each wait before a re-set; the best width per wait is named. Reported for the operator — the re-set keeps the wait in use until that is changed on purpose.',
+    },
     reset_cost: opts.resetCostUsd != null
       ? { usd: opts.resetCostUsd, basis: opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars' }
       : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet' },
@@ -7858,7 +8301,9 @@ export async function readLpWindows(env) {
 // same second — we throttled ourselves, the lesson the census already taught.
 // So the replay starts after the burst has passed, and a refusal gets one
 // more try a little later. The entry says how many asks it took.
-const CHAIN_REFUSED = /every BSC endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
+// "The log endpoint refused this range" (2026-09-08 08:31) is the same class
+// of refusal and used to fall through to the error note without a retry.
+const CHAIN_REFUSED = /every BSC endpoint refused|log endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
 const SETTLE_MS = 25000, RETRY_MS = 20000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

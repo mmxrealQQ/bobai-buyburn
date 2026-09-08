@@ -75,6 +75,11 @@ try {
       clean: read(m.flagsCard({ ...full, is_honeypot: '0' }, true)),
       unknown: read(m.flagsCard({ ...full }, true)),
       noGoplus: read(m.flagsCard({}, false)),
+      // The sell test is ours since 2026-09-07 and stands first on the card;
+      // GoPlus only says whether IT simulated a sell. Both states of ours pinned.
+      sellOk: read(m.flagsCard({ ...full, is_honeypot: '0' }, true, { ok: true, sellable: true })),
+      sellBad: read(m.flagsCard({ ...full, is_honeypot: '0' }, true, { ok: true, sellable: false, sell_error: 'TRANSFER_FROM_FAILED' })),
+      sellNone: read(m.flagsCard({ ...full, is_honeypot: '0' }, true, null)),
       live: read(document.getElementById('sc-out')),
     };
   })()`);
@@ -93,12 +98,22 @@ try {
     }
     if (!has(drawn.flagged, 'bad', 'Honeypot')) problems.push('is_honeypot "1" does not draw the red Honeypot chip');
     if (has(drawn.clean, 'bad', 'Honeypot')) problems.push('is_honeypot "0" draws the red Honeypot chip');
-    if (has(drawn.clean, 'unk', 'Sellability not checked')) problems.push('is_honeypot "0" is reported as not checked');
-    if (!has(drawn.unknown, 'unk', 'Sellability not checked')) problems.push('a missing is_honeypot field is not reported as "Sellability not checked"');
+    const notChecked = (list) => list.some((c) => c.state === 'unk' && /^Sellability not checked/.test(c.label));
+    if (notChecked(drawn.clean)) problems.push('is_honeypot "0" is reported as not checked');
+    if (!notChecked(drawn.unknown)) problems.push('a missing is_honeypot field is not reported as "Sellability not checked by GoPlus"');
     if (has(drawn.unknown, 'bad', 'Honeypot')) problems.push('a missing is_honeypot field draws the red Honeypot chip — silence read as guilt');
-    if (drawn.noGoplus.length) problems.push(`with no GoPlus answer the card still draws ${drawn.noGoplus.length} chip(s)`);
+    // With no GoPlus answer the card may say one thing only: what OUR sell
+    // test found — and a test that did not run is never drawn as a pass.
+    const foreign = drawn.noGoplus.filter((c) => !/^Sell test/.test(c.label));
+    if (foreign.length) problems.push(`with no GoPlus answer the card still draws ${foreign.length} chip(s) beyond the sell test: ${foreign.map((c) => c.label).join(', ')}`);
+    if (has(drawn.noGoplus, 'ok', 'Sell test: goes through')) problems.push('with no simulation the sell test is drawn as a pass');
+    if (!has(drawn.noGoplus, 'unk', 'Sell test: not run')) problems.push('with no simulation the card does not say the sell test did not run');
+    if (!has(drawn.sellOk, 'ok', 'Sell test: goes through')) problems.push('a sell that went through is not drawn as the green sell-test chip');
+    if (!has(drawn.sellBad, 'bad', 'Sell test: REVERTED')) problems.push('a reverted sell is not drawn as the red sell-test chip');
+    if (has(drawn.sellBad, 'ok', 'Sell test: goes through')) problems.push('a reverted sell is drawn as a pass');
+    if (!has(drawn.sellNone, 'unk', 'Sell test: not run')) problems.push('a missing simulation next to a GoPlus answer is not reported as "not run"');
     if (gotResult && has(drawn.live, 'bad', 'Honeypot')) problems.push('the live $BOBAI result carries a Honeypot chip');
-    if (gotResult && has(drawn.live, 'unk', 'Sellability not checked')) notes.push('live: GoPlus ran no sell simulation for $BOBAI today (not a defect — a fact about GoPlus)');
+    if (gotResult && notChecked(drawn.live)) notes.push('live: GoPlus ran no sell simulation for $BOBAI today (not a defect — a fact about GoPlus)');
     notes.push(`flagged → ${drawn.flagged.map((c) => c.label).join(' · ')}`);
     notes.push(`clean → ${drawn.clean.map((c) => c.label).join(' · ') || '(no chips)'}`);
     notes.push(`unknown → ${drawn.unknown.map((c) => c.label).join(' · ')}`);

@@ -63,6 +63,17 @@ const ASSET_TREES = [
   'nft/refs/',
   'assets-src/',          // hero illustration masters
 ];
+// Source that is kept in the repository but not published: the trading
+// agent (operator's decision, 2026-09-08 — it trades the operator's own
+// money through his Binance wallet and is not part of what the site offers).
+// Listed one by one, like the asset trees, so the omission is an intent and
+// the build prints it.
+const PRIVATE_TREES = [
+  'scripts/trader',         // trader.mjs, trader-live.mjs, trader-fetch.mjs
+  'shared/trader-core.js',
+  'data/trader/',           // prices, parameters, state
+  'docs/trading-agent.md',  // its runbook
+];
 
 // Anything binary above this is asset, not source. The self-hosted fonts are
 // the one exception: the CSS names them, and a missing font reads as a bug
@@ -80,6 +91,7 @@ const IDENTIFIERS = PERSONAL;
 function classify (file, size) {
   if (KEEP_ALWAYS.test(file)) return { keep: true };
   for (const t of ASSET_TREES) if (file.startsWith(t)) return { keep: false, why: 'asset tree ' + t };
+  for (const t of PRIVATE_TREES) if (file.startsWith(t)) return { keep: false, why: 'private: the trading agent' };
   // The reason has to be a constant, not the file's own size — otherwise every
   // picture becomes its own line in the summary and the summary says nothing.
   if (BINARY.test(file) && size > BINARY_CAP) return { keep: false, why: `picture over ${BINARY_CAP / 1024} KB` };
@@ -102,6 +114,10 @@ if (args.includes('--self-test')) {
     ['dashboard/index.html',       180 * 1024, true,  'html is never binary, must survive'],
     ['scripts/health.mjs',              20000, true,  'script must survive'],
     ['data/erc8004-v2/registrations.json', 1 << 20, true, 'evidence json must survive whatever its size'],
+    ['scripts/trader-live.mjs',          30000, false, 'the trading agent stays private'],
+    ['shared/trader-core.js',            20000, false, 'the trading agent\'s arithmetic stays private'],
+    ['data/trader/picks.json',            4000, false, 'the trading agent\'s parameters stay private'],
+    ['shared/lp-agent.js',               60000, true,  'the liquidity agent stays public'],
   ];
   for (const [f, size, want, why] of cases) {
     const got = classify(f, size).keep;

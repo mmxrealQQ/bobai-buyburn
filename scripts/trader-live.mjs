@@ -180,15 +180,35 @@ async function tick() {
   const today = now().slice(0, 10);
   if (st.day.date !== today) st.day = { date: today, realised_usd: 0 };
   const dayCapped = st.day.realised_usd <= -(st.capital_usd * DAY_LOSS_CAP_PCT / 100);
+  const lines = [];
   // reconcile: an open position whose token is gone from the wallet is gone
   if (st.position && bal(by, st.position.leg) < st.position.units * 0.5) {
     log({ kind: 'position_missing', position: st.position, wallet: bal(by, st.position.leg) });
     say(`position in ${st.position.leg} is not in the wallet any more — marking it closed by hand`);
     st.position = null;
   }
-  st.pot_usdt = bal(by, 'USDT');
+  // DEPOSITS. The operator adds money by sending it to the wallet; nobody
+  // runs a bootstrap for that (2026-09-08: "wenn ich BNB hinzufuege, arbeitet
+  // er damit automatisch?"). BNB above the gas reserve is turned into the
+  // USDT base here, and USDT beyond what the agent already counts as capital
+  // raises the capital. Money is never taken out by this code.
+  const spareBnb = Math.max(0, bal(by, 'BNB') - GAS_RESERVE_BNB);
+  const spareUsd = spareBnb * (by.BNB ? by.BNB.price : 0);
+  if (!st.position && spareUsd >= MIN_ORDER_USD) {
+    const qty = Math.floor(spareBnb * 1e5) / 1e5;
+    lines.push(`deposit: ${qty} BNB (≈ $${spareUsd.toFixed(2)}) above the reserve becomes USDT`);
+    const r = swap('BNB', 'USDT', qty, 'deposit: BNB above the reserve into the USDT base');
+    if (!r.dry) { log({ kind: 'deposit', bnb: qty, usdt: r.received, txHash: r.txHash }); await notify(`💰 <b>Trader: deposit taken in</b> — ${qty} BNB became ${money(r.received)} USDT and joins the pot.`); }
+  }
+  const usdtNow = bal(balances(), 'USDT');
+  const known = st.capital_usd + st.profit_pool_usd;
+  if (!st.position && usdtNow > known + 1) {
+    lines.push(`deposit: USDT ${money(usdtNow - known)} beyond the capital on record joins it`);
+    log({ kind: 'capital_raised', from: st.capital_usd, to: st.capital_usd + (usdtNow - known) });
+    st.capital_usd = +(st.capital_usd + (usdtNow - known)).toFixed(2);
+  }
+  st.pot_usdt = usdtNow;
   const closesOf = (leg) => prices.series[leg].usd.map((x) => x[1]);
-  const lines = [];
   // 1. exit?
   if (st.position) {
     const leg = st.position.leg, P = picks[leg];

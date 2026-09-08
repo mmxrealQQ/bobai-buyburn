@@ -90,6 +90,25 @@ const USD1_DECIMALS = 18n;
 const NETWORK = 'eip155:56';
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
+// The project's own wallets. A payment from one of these is a test purchase
+// we made ourselves, and /stats says so: on 2026-09-08 every payment on
+// record (0.70 USD1 over three purchases) had come from our NFT relayer, and
+// the total was being read as income from strangers. The list is the eight
+// wallets with a key in this project plus the operator's two personal ones.
+const OWN_WALLETS = new Set([
+  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // creator / dev
+  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
+  '0xbfb4b49787ce948c1ee304f6c197a0e8b038ddb2', // NFT relayer (the test buyer)
+  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // liquidity agent
+  '0x690e950214980bc329823a2db2fd90c06bd54de4', // x402 income
+  '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', // agent provider
+  '0xc5a17b5295fc50badb1f9f9c09b412fe5e84f7d3', // Altana admin
+  '0x5e4102520a71b2aa18a1208330d4848dea4bd105', // prize pool
+  '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', // operator
+  '0x4fa13c52724bcadffefef91676cc429fa6216a48', // operator (builder #3)
+]);
+const isOwnWallet = (a) => OWN_WALLETS.has(String(a || '').toLowerCase());
+
 // The watch price, its window and the USD1 formatter now live in catalog.js,
 // beside the description of the thing being priced.
 
@@ -615,18 +634,33 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
 
 // ---------------------------------------------------------------- earnings
 
+// Every payment on record, and — separately — what came from strangers and
+// what we paid ourselves to prove the path works. The headline total is the
+// sum of both; a reader who wants "has anyone else ever paid" reads
+// from_strangers. A record without a payer (none exist since 2026-09-08; the
+// three older ones were patched from their receipts) counts as ours, not as
+// a stranger's: the claim that is easy to make wrongly is the flattering one.
 async function readEarnings(env) {
   const list = await env.AGENT.list({ prefix: 'earn:' });
-  let total = 0n;
+  let total = 0n, strangers = 0n, own = 0n, strangersCount = 0, ownCount = 0;
   const payments = [];
   for (const k of list.keys) {
     const rec = JSON.parse((await env.AGENT.get(k.name)) || '{}');
     if (!rec.amount) continue;
-    total += BigInt(rec.amount);
-    payments.push({ at: rec.at, amountUsd1: fmtUsd1(BigInt(rec.amount)), tx: rec.tx, for: rec.for });
+    const amount = BigInt(rec.amount);
+    const selfTest = !rec.from || isOwnWallet(rec.from);
+    total += amount;
+    if (selfTest) { own += amount; ownCount += 1; } else { strangers += amount; strangersCount += 1; }
+    payments.push({ at: rec.at, amountUsd1: fmtUsd1(amount), tx: rec.tx, for: rec.for, from: rec.from || null, self_test: selfTest, ...(rec.paid_in ? { paid_in: rec.paid_in } : {}) });
   }
   payments.sort((a, b) => (b.at || 0) - (a.at || 0));
-  return { totalUsd1: fmtUsd1(total), totalRaw: total.toString(), count: payments.length, payments: payments.slice(0, 25) };
+  return {
+    totalUsd1: fmtUsd1(total), totalRaw: total.toString(), count: payments.length,
+    from_strangers: { totalUsd1: fmtUsd1(strangers), count: strangersCount },
+    self_tests: { totalUsd1: fmtUsd1(own), count: ownCount },
+    note: 'totalUsd1 is every payment received. from_strangers is the part paid by wallets that are not ours; self_tests is what we paid ourselves to prove the path works. Each payment names its payer.',
+    payments: payments.slice(0, 25),
+  };
 }
 
 // ---------------------------------------------------------------- handler
@@ -709,9 +743,12 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
   // earn: records USD1 amounts only — /stats sums them as dollars. A payment
   // in another coin is recorded with its coin and its dollar price at the
   // quote, so the total stays a dollar figure and the coin stays visible.
+  // `from` is the payer, so the record can tell a stranger's purchase from
+  // one of our own test purchases.
+  const from = (check.from || '').toLowerCase() || null;
   const earn = asset === 'USD1'
-    ? { at: Date.now(), amount: check.paid.toString(), tx, for: sold }
-    : { at: Date.now(), amount: price.toString(), tx, for: sold, paid_in: asset, paid_atomic: check.paid.toString() };
+    ? { at: Date.now(), amount: check.paid.toString(), tx, for: sold, from }
+    : { at: Date.now(), amount: price.toString(), tx, for: sold, from, paid_in: asset, paid_atomic: check.paid.toString() };
   await env.AGENT.put(`earn:${tx}`, JSON.stringify(earn), { expirationTtl: 60 * 60 * 24 * 400 });
   return { ok: true, tx, paid: check.paid, from: check.from, asset };
 }

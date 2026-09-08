@@ -311,7 +311,7 @@ ${DELIVERIES.map(delivery).join('\n')}
 
   <section class="sv-sec">
     <h2>Point your own agent at us</h2>
-    <p class="sv-sub">The same measurements, callable. This is the machine-readable half of the site, and it is the half that has earned money from strangers.</p>
+    <p class="sv-sub">The same measurements, callable. This is the machine-readable half of the site, and the half a machine can pay for. <span id="sv-paid"></span></p>
 ${GROUPS.filter(([k]) => (CAPABILITIES[k] || []).length).map(([k, title, sub]) => `    <h3 class="sv-needs-h" style="margin:18px 0 4px;font-size:.85rem">${esc(title)}</h3>
     <p class="sv-sub" style="margin-bottom:10px">${esc(sub)}</p>
     <ul class="sv-caps">
@@ -369,6 +369,16 @@ ${CAPABILITIES[k].map(capRow).join('\n')}
     .then(function(d){
       var n = d.asked && d.asked.total;
       if (n != null) el('sv-asked').textContent = nf(n);
+      // Paid, honestly: what other agents paid, with our own test purchases
+      // named separately rather than added in. Live, so the sentence is never
+      // a number that has gone stale.
+      var fs = d.earned && d.earned.from_strangers, st = d.earned && d.earned.self_tests;
+      if (fs) {
+        var own = st && st.totalUsd1 !== '0.00' ? ' Our own test purchases (' + st.totalUsd1 + ' USD1) are counted separately.' : '';
+        el('sv-paid').textContent = fs.totalUsd1 === '0.00'
+          ? 'No other agent has paid for an answer yet.' + own
+          : 'Other agents have paid ' + fs.totalUsd1 + ' USD1 for ' + fs.count + ' answer' + (fs.count === 1 ? '' : 's') + ' so far.' + own;
+      }
     }).catch(function(){});
 })();
 </script>

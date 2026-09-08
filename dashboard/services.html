@@ -22,17 +22,11 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/styles.css?v=37">
 <style>
-  /* One frame, the headline centred inside it — the same shape as /registry,
-     /scanner and /liquidity (one .sec from 86px down). Until 2026-09-08 this
-     page had no frame at all and a left-aligned headline; next to the other
-     three tile pages it read as a page from somewhere else. Hero values are
-     scanner.html's .sc-hero, not an approximation of them. */
-  .sv{padding:0}
-  .sv-hero{padding:8px 0 8px;text-align:center}
-  .sv-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(1.75rem,4.4vw,2.6rem);font-weight:700;letter-spacing:-1px;line-height:1.14;margin:0}
-  .sv-hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold2));background-clip:text;-webkit-background-clip:text;color:transparent}
-  .sv-lead{color:var(--muted);font-size:.9rem;line-height:1.7;max-width:62ch;margin:14px auto 0}
-  .sv-hero .primer,.sv-hero .sv-nums{text-align:left}
+  .sv{max-width:1000px;margin:0 auto;padding:0 20px 60px}
+  .sv-hero{padding:106px 0 8px}
+  .sv-hero h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(28px,5vw,44px);line-height:1.08;margin:0 0 14px}
+  .sv-hero h1 em{color:var(--gold);font-style:normal}
+  .sv-lead{color:var(--muted);font-size:17px;line-height:1.6;max-width:68ch}
   .sv-lead b{color:var(--text);font-weight:600}
   .sv-sec{margin-top:44px}
   .sv-sec > h2{font-family:'Space Grotesk',system-ui,sans-serif;font-size:1.35rem;margin:0 0 6px}
@@ -95,8 +89,6 @@
     <a class="nb" href="/registry">Brain Plaza</a>
   </div></nav>
 
-<section class="sec" style="margin-top:86px">
-  <div class="blk-head"><span class="blk-tag">Services &middot; What we sell</span><span class="blk-line"></span></div>
 <main class="sv">
   <header class="sv-hero">
     <h1>What we can do <em>for you</em></h1>
@@ -113,7 +105,7 @@
     <div class="sv-nums">
       <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids read on-chain</span></div>
       <div class="sv-num"><b id="sv-reach">&ndash;</b><span>of them answer when contacted <i id="sv-when"></i></span></div>
-      <div class="sv-num"><b id="sv-asked">119,305</b><span>requests answered for other agents</span></div>
+      <div class="sv-num"><b id="sv-asked">127,325</b><span>requests answered for other agents</span></div>
       <div class="sv-num"><b>6</b><span>things you can hire us to deliver</span></div>
     </div>
   </header>
@@ -231,7 +223,7 @@
 
   <section class="sv-sec">
     <h2>Point your own agent at us</h2>
-    <p class="sv-sub">The same measurements, callable. This is the machine-readable half of the site, and it is the half that has earned money from strangers.</p>
+    <p class="sv-sub">The same measurements, callable. This is the machine-readable half of the site, and the half a machine can pay for. <span id="sv-paid"></span></p>
     <h3 class="sv-needs-h" style="margin:18px 0 4px;font-size:.85rem">Free, and staying free</h3>
     <p class="sv-sub" style="margin-bottom:10px">Reading public chain data costs us almost nothing, so none of this has a key, an account or a signup.</p>
     <ul class="sv-caps">
@@ -292,7 +284,6 @@
   </section>
 
 </main>
-</section>
 
 <footer><div class="fi2">
   <div class="fb"><img src="/logo-sm.webp" width="96" height="96" alt=""><span>BOBAI</span></div>
@@ -331,6 +322,16 @@
     .then(function(d){
       var n = d.asked && d.asked.total;
       if (n != null) el('sv-asked').textContent = nf(n);
+      // Paid, honestly: what other agents paid, with our own test purchases
+      // named separately rather than added in. Live, so the sentence is never
+      // a number that has gone stale.
+      var fs = d.earned && d.earned.from_strangers, st = d.earned && d.earned.self_tests;
+      if (fs) {
+        var own = st && st.totalUsd1 !== '0.00' ? ' Our own test purchases (' + st.totalUsd1 + ' USD1) are counted separately.' : '';
+        el('sv-paid').textContent = fs.totalUsd1 === '0.00'
+          ? 'No other agent has paid for an answer yet.' + own
+          : 'Other agents have paid ' + fs.totalUsd1 + ' USD1 for ' + fs.count + ' answer' + (fs.count === 1 ? '' : 's') + ' so far.' + own;
+      }
     }).catch(function(){});
 })();
 </script>

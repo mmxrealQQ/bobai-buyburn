@@ -938,14 +938,20 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
       const days = d.asked && d.asked.by_day ? Object.keys(d.asked.by_day).sort() : [];
       if(days.length) el('ag-asked-sub').textContent = 'since ' + days[0];
 
-      const earned = d.earned && d.earned.totalUsd1 || '0.00';
+      // What strangers paid is the figure; what we paid ourselves to prove
+      // the path works is named underneath, never added to it (2026-09-08:
+      // every payment on record had been our own test purchase and the tile
+      // read 0.70 USD1 as earnings).
+      const fs = d.earned && d.earned.from_strangers, st = d.earned && d.earned.self_tests;
+      const earned = fs ? fs.totalUsd1 : (d.earned && d.earned.totalUsd1 || '0.00');
+      const own = st && st.totalUsd1 !== '0.00' ? st.totalUsd1 + ' USD1 in ' + st.count + ' test purchase' + (st.count===1?'':'s') + ' of our own, counted separately' : '';
       el('ag-earned').textContent = earned === '0.00' ? 'none yet' : earned;
       if(earned === '0.00'){
         el('ag-earned').style.fontSize = '1.15rem';
-        el('ag-earned-sub').textContent = 'nobody has bought a watch yet';
+        el('ag-earned-sub').textContent = own ? 'no other agent has paid yet; ' + own : 'nobody has bought anything yet';
       } else {
-        el('ag-earned-sub').textContent = (d.earned.count||0) + ' payment' +
-          ((d.earned.count===1)?'':'s') + ', in USD1';
+        el('ag-earned-sub').textContent = (fs ? fs.count : d.earned.count||0) + ' payment' +
+          (((fs ? fs.count : d.earned.count)===1)?'':'s') + ' from other agents, in USD1' + (own ? '; ' + own : '');
       }
 
       el('ag-watch').textContent = nf(d.active_watches || 0);

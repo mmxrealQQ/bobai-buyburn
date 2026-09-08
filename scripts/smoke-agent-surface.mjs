@@ -813,6 +813,13 @@ section('Transparency');
   ok('flow points at the daily record', /\/lp\/agent/.test(JSON.stringify(j?.money_flow || {})));
   ok('flow ends at the buyback wallet, not a second burn', /0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce/.test(j?.money_flow?.['4'] || '') && !/burns it/.test(j?.money_flow?.['3'] || ''));
   ok('lists free and paid capabilities', (j?.capabilities?.free || []).length >= 4 && (j?.capabilities?.paid || []).length >= 1);
+  // Earnings tell a stranger's payment from our own test purchase, and the
+  // two add up to the headline — 2026-09-08 the headline alone read our own
+  // three purchases as income.
+  const e = j?.earned || {};
+  const usd = (s) => Math.round(Number(s || 0) * 100);
+  ok('earnings split what strangers paid from our own test purchases', !!e.from_strangers && !!e.self_tests && usd(e.from_strangers.totalUsd1) + usd(e.self_tests.totalUsd1) === usd(e.totalUsd1) && (e.from_strangers.count + e.self_tests.count) === e.count);
+  ok('every payment on record names its payer and which side it is on', Array.isArray(e.payments) && e.payments.every((p) => typeof p.self_test === 'boolean' && (p.self_test || /^0x[0-9a-f]{40}$/.test(p.from || ''))));
 }
 {
   // The LP agent's daily tick (worker-lp), served by the agent worker from

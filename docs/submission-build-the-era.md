@@ -139,7 +139,8 @@ nearly all the pair's price and saying otherwise would be spin.
   submitted by other buyers. `/api-jobs.json`, MCP `bnb_agent_employment`.
   Every job that was open at its last reading is read again on each scan
   (2026-09-07), so the card's "paid out" count follows the chain.
-- Reputation: 20,735 ratings read, 39 checkable; we write `responseTime`
+- Reputation: 20,800 ratings read, 361 agents rated by 64 raters, 61 checkable
+  (re-read 2026-09-08 06:44 UTC; 20,735 / 39 on 08-31); we write `responseTime`
   attestations with hashed evidence and answer ratings on our own agents
   (2026-09-01).
 - Fleet unmasking: 814 responders = 103 hosts = 74 operators (2026-09-03).
@@ -284,6 +285,9 @@ node scripts/advantage-report.mjs && node scripts/advantage-publish.mjs   # Term
 ```
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.
+
+Refresh run 2026-09-08 ~06:50 UTC: reputation re-read in full (848 agents, 20,800
+attestations, 361 rated, 64 raters, 61 checkable), published, smoke green.
 
 Refresh run 2026-09-08 ~05:00 UTC (judging starts tomorrow; the live pages
 are what is judged): full census re-run in the documented order — 340,473

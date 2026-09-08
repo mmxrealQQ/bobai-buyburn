@@ -18,7 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { LEGS, DEFAULT_COSTS_PCT, NEVER_SELL, PARAM_GRID, zScores, replayLeg, walkForward, signal } from '../shared/trader-core.js';
+import { LEGS, TRADING_LEGS, DEFAULT_COSTS_PCT, NEVER_SELL, PARAM_GRID, zScores, replayLeg, walkForward, signal, alignTo, replayRotation } from '../shared/trader-core.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PRICES = path.join(ROOT, 'data', 'trader', 'prices.json');
@@ -80,6 +80,30 @@ if (has('--self-test')) {
   is('signal: in a position back at the mean says sell', signal([...Array(20).fill(100), 100], { window: 20, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }, { position: { price: 94 } }).action === 'sell');
   is('signal: in a position 7% down says sell by the stop', signal([...Array(20).fill(100), 87], { window: 20, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }, { position: { price: 94 } }).action === 'sell');
   is('signal: a never-sell leg in a position never says sell', signal([...Array(20).fill(100), 100], { window: 20, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }, { position: { price: 94 }, neverSell: true }).action !== 'sell');
+  // trend mode: a breakout is bought, the fall back under the mean sells it
+  const breakout = [...Array(24).fill(100), 106, 108, 110, 111, 104, 100, 100];
+  const rt = replayLeg(breakout, times(breakout.length), { mode: 'trend', window: 24, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }, { legUsd: 25, costsPct: { buy: 0.3, sell: 0.3 } });
+  is('trend mode buys a breakout and sells once the price is back under the mean', rt.closed === 1 && rt.trades[0].why === 'back at the mean' && rt.trades[0].entry_price >= 106);
+  const rrev = replayLeg(breakout, times(breakout.length), { mode: 'reversion', window: 24, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }, { legUsd: 25 });
+  is('reversion mode does not buy a breakout', rrev.closed === 0 && rrev.open === 0);
+  is('signal in trend mode calls a breakout a buy', signal(spike, { mode: 'trend', window: 20, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }).action === 'buy');
+  // rotation: one pot, out of a top into a dip, profit split at a BOBAI dip
+  const T = times(60);
+  const A = [...Array(24).fill(100), 94, 96, 100, 101, ...Array(32).fill(100)];
+  const B = [...Array(26).fill(50), 47, 48, 50, 51, ...Array(30).fill(50)];
+  const C = Array(60).fill(10);
+  const bobaiSeries = { closes: [...Array(40).fill(1), ...Array(20).fill(0.9)] };
+  const pk = { BNB: { mode: 'reversion', window: 24, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }, CAKE: { mode: 'reversion', window: 24, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }, BOB: { mode: 'reversion', window: 24, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 } };
+  const free = { BNB: { buy: 0, sell: 0 }, CAKE: { buy: 0, sell: 0 }, BOB: { buy: 0, sell: 0 }, BOBAI: { buy: 0, sell: 0 } };
+  const rot = replayRotation({ BNB: { closes: A, times: T }, CAKE: { closes: B, times: T }, BOB: { closes: C, times: T } }, bobaiSeries, pk, { capitalUsd: 100, bobaiWindow: 24, bobaiDipZ: 1, costsPct: free });
+  is('rotation: the pot leaves a top and enters the dip of the same hour', rot.closed_trades === 2 && rot.trades[0].leg === 'BNB' && rot.trades[1].leg === 'CAKE' && rot.trades[1].entry === rot.trades[0].exit);
+  is('rotation: profit is realised from both trades', rot.realised_profit_usd > 0 && rot.per_leg.BNB.net_usd > 0 && rot.per_leg.CAKE.net_usd > 0);
+  is('rotation: at the BOBAI dip half the pool buys BOBAI and half grows the pot', rot.bobai.buys === 1 && Math.abs(rot.bobai.spent_usd - rot.grown_into_pot_usd) < 0.01 && rot.profit_pool_usd === 0);
+  is('rotation: BOBAI is held, marked to market, never sold', rot.bobai.units > 0 && rot.trades.filter((t) => t.leg === 'BOBAI').every((t) => t.exit === null));
+  const Aloss = [...Array(24).fill(100), 94, 90, 86, 85, ...Array(32).fill(85)];
+  const rotL = replayRotation({ BNB: { closes: Aloss, times: T }, CAKE: { closes: C, times: T }, BOB: { closes: C, times: T } }, null, pk, { capitalUsd: 100, costsPct: free });
+  is('rotation: a stopped loss shrinks the pot and buys no BOBAI', rotL.closed_trades >= 1 && rotL.trades[0].why === 'stop' && rotL.trading_capital_now_usd < 100 && rotL.bobai.buys === 0);
+  is('alignTo carries the last sparse close forward', JSON.stringify(alignTo([0, 1, 2, 3], [[1, 5], [3, 7]])) === '[null,5,5,7]');
   is('BOBAI is the leg that is never sold', NEVER_SELL.has('BOBAI') && !NEVER_SELL.has('CAKE'));
   is('every leg has a cost on both sides', LEGS.every((l) => DEFAULT_COSTS_PCT[l] && DEFAULT_COSTS_PCT[l].buy > 0 && DEFAULT_COSTS_PCT[l].sell > 0));
   is('BOBAI costs more than any other leg to buy (the 3% tax)', DEFAULT_COSTS_PCT.BOBAI.buy > 3 && LEGS.filter((l) => l !== 'BOBAI').every((l) => DEFAULT_COSTS_PCT[l].buy < 1));
@@ -106,7 +130,7 @@ if (has('--backtest')) {
     console.log(`${leg.padEnd(6)} ${prices.series[leg].pair.padEnd(10)} ${closes.length} h from ${new Date(times[0]).toISOString().slice(0, 10)} · costs ${DEFAULT_COSTS_PCT[leg].buy}% / ${DEFAULT_COSTS_PCT[leg].sell}% per side${neverSell ? ' · never sold' : ''}`);
     if (!wf.pick) { console.log(`  ${wf.reason}\n`); picks[leg] = null; continue; }
     const p = wf.pick;
-    console.log(`  pick: window ${p.window} h, buy at z ≤ −${p.entryZ}, sell at z ≥ ${p.exitZ}, stop ${p.stopPct}%, max hold ${p.maxHoldH} h (of ${wf.combos_tried} tried)`);
+    console.log(`  pick: ${p.mode === 'trend' ? 'TREND — buy a breakout at z ≥ ' + p.entryZ + ', sell back under the mean at z ≤ −' + p.exitZ : 'REVERSION — buy a dip at z ≤ −' + p.entryZ + ', sell at the mean at z ≥ ' + p.exitZ}, window ${p.window} h, stop ${p.stopPct}%, max hold ${p.maxHoldH} h (of ${wf.combos_tried} tried)`);
     console.log(`  first 60% (${wf.train.hours} h): net $${fmt(wf.train.net_usd)} on $${LEG_USD} · ${wf.train.closed} closed trades · win rate ${wf.train.win_rate_pct ?? '—'}% · max drawdown ${wf.train.max_drawdown_pct}% · buy&hold $${fmt(wf.train.buy_hold_net_usd)}`);
     console.log(`  last 40%  (${wf.test.hours} h): net $${fmt(wf.test.net_usd)} on $${LEG_USD} · ${wf.test.closed} closed trades · win rate ${wf.test.win_rate_pct ?? '—'}% · max drawdown ${wf.test.max_drawdown_pct}% · buy&hold $${fmt(wf.test.buy_hold_net_usd)}${wf.test.open_position ? ` · open position marked $${fmt(wf.test.open_position.unrealised_usd)}` : ''}`);
     console.log('');
@@ -115,7 +139,24 @@ if (has('--backtest')) {
   }
   console.log(`All four legs, $${LEG_USD * LEGS.length}: first 60% net $${fmt(totalTrain)} · last 40% net $${fmt(totalTest)} (buy&hold over the same hours $${fmt(totalHold)})`);
   console.log('\nRead the last-40% line, not the first: the parameters were chosen on the first and have never seen the last. A leg whose last-40% net is below zero or below buy&hold has not earned a live order.');
-  fs.writeFileSync(PICKS, JSON.stringify({ leg_usd: LEG_USD, costs_pct: DEFAULT_COSTS_PCT, picks }, null, 1));
+  // THE ROTATION on the unseen 40%, with the picks the first 60% chose.
+  const grid = legSeries('BNB').times;
+  const legsAll = Object.fromEntries(TRADING_LEGS.map((l) => [l, legSeries(l)]));
+  const split = Math.floor(grid.length * 0.6);
+  const warm = Math.max(...TRADING_LEGS.map((l) => picks[l]?.window || 0));
+  const from = Math.max(0, split - warm);
+  const legsTest = Object.fromEntries(TRADING_LEGS.map((l) => [l, { closes: legsAll[l].closes.slice(from), times: legsAll[l].times.slice(from) }]));
+  const bobaiAligned = { closes: alignTo(grid.slice(from), prices.series.BOBAI.usd) };
+  const picksTrading = Object.fromEntries(TRADING_LEGS.filter((l) => picks[l]).map((l) => [l, picks[l]]));
+  const capital = LEG_USD * TRADING_LEGS.length;
+  const rot = replayRotation(legsTest, bobaiAligned, picksTrading, { capitalUsd: capital });
+  console.log('\nROTATION on the last 40% (one pot of $' + capital + ': out of a top, into the deepest dip; 50% of realised profit into BOBAI at its dips, 50% back into the pot):');
+  console.log('  closed trades ' + rot.closed_trades + ' (' + rot.wins + ' won) · realised profit $' + fmt(rot.realised_profit_usd) + ' · per leg ' + Object.entries(rot.per_leg).map(([l, v]) => l + ' ' + v.closed + '× $' + fmt(v.net_usd)).join(', '));
+  console.log('  BOBAI bought ' + rot.bobai.buys + '× for $' + rot.bobai.spent_usd.toFixed(2) + ', worth $' + rot.bobai.mark_usd.toFixed(2) + ' now · $' + rot.grown_into_pot_usd.toFixed(2) + ' grew the pot · pool waiting $' + rot.profit_pool_usd.toFixed(2));
+  console.log('  pot now $' + rot.trading_capital_now_usd.toFixed(2) + (rot.open ? ' (in ' + rot.open.leg + ', ' + fmt(rot.open.unrealised_usd) + ' unrealised)' : ' (in USDT)') + ' · total $' + rot.total_now_usd.toFixed(2) + ' → net $' + fmt(rot.net_usd) + ' on $' + capital + ' · max drawdown ' + rot.max_drawdown_pct + '%');
+  const rotAll = replayRotation(legsAll, { closes: alignTo(grid, prices.series.BOBAI.usd) }, picksTrading, { capitalUsd: capital });
+  console.log('ROTATION over all ' + rotAll.hours + ' h (parameters partly seen): net $' + fmt(rotAll.net_usd) + ' · ' + rotAll.closed_trades + ' trades · BOBAI $' + rotAll.bobai.spent_usd.toFixed(2) + ' bought · drawdown ' + rotAll.max_drawdown_pct + '%');
+  fs.writeFileSync(PICKS, JSON.stringify({ leg_usd: LEG_USD, capital_usd: capital, costs_pct: DEFAULT_COSTS_PCT, picks, rotation_unseen: { net_usd: rot.net_usd, closed_trades: rot.closed_trades, bobai: rot.bobai, max_drawdown_pct: rot.max_drawdown_pct } }, null, 1));
   console.log(`\nparameters written to data/trader/picks.json`);
   process.exit(0);
 }

@@ -154,10 +154,16 @@ export function refuseRebalance(state) {
 // The wait after the price leaves the range, before a re-set is paid for.
 // outSinceMs is when the agent first saw the price outside (null: this is the
 // first time), nowMs is now. Null means the wait is over and a re-set is due.
+// The checks run on an hourly grid, so "two hours" means the check two slots
+// later — not two hours to the millisecond. On 2026-09-08 the price left the
+// range at the 17:50:37.852 check and the 19:50:37.800 check, 52 ms short of
+// two hours, waited another hour for it; a few minutes of slack is the
+// difference between the rule and the cron's jitter.
+export const RESET_WAIT_SLACK_MIN = 5;
 export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
   if (outSinceMs == null) return `the price has just left the range — waiting ${hours} h in case it comes back on its own`;
   const h = (nowMs - outSinceMs) / 36e5;
-  if (!(h >= hours)) return `the price has been outside for ${Math.max(0, h).toFixed(1)} h — waiting until ${hours} h before paying for a re-set`;
+  if (!(h >= hours - RESET_WAIT_SLACK_MIN / 60)) return `the price has been outside for ${Math.max(0, h).toFixed(1)} h — waiting until ${hours} h before paying for a re-set`;
   return null;
 }
 

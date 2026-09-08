@@ -245,8 +245,13 @@ if (SELF) {
   const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
   check('first hour outside: waits', rebalanceWait(null, now), true);
   check('one hour outside: still waits', rebalanceWait(now - 1 * H, now), true);
-  check('just under the delay: still waits', rebalanceWait(now - (RESET_AFTER_HOURS * H - 60e3), now), true);
+  // The hourly cron has seconds of jitter: the check two slots after the price
+  // left must count as two hours, and the check one slot after must not.
+  check('ten minutes under the delay: still waits', rebalanceWait(now - (RESET_AFTER_HOURS * H - 10 * 60e3), now), true);
+  check('one minute under the delay (cron jitter): due', rebalanceWait(now - (RESET_AFTER_HOURS * H - 60e3), now), false);
+  check('52 ms under the delay (the 2026-09-08 19:50 check): due', rebalanceWait(now - (RESET_AFTER_HOURS * H - 52), now), false);
   check(`exactly ${RESET_AFTER_HOURS} h outside: due`, rebalanceWait(now - RESET_AFTER_HOURS * H, now), false);
+  check('an hour and a few seconds outside: still waits', rebalanceWait(now - (1 * H + 5e3), now), true);
   check('a day outside: due', rebalanceWait(now - 24 * H, now), false);
   console.log('unwind in one transaction');
   const calls = unwindCalls(7309536n, 72166992217730319120n, 1n, 2n, '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', 1800000000n);

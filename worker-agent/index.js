@@ -45,6 +45,7 @@ import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost } from './lp-windows.js';
+import { recordLpPools, readLpPools, noteLpPoolsError, poolVerdict, CANDIDATES as LP_POOL_CANDIDATES } from './lp-pools.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
@@ -1386,6 +1387,59 @@ ${pageTail}`;
     // data/lp-windows.json so `lp-windows.mjs --sync` can merge it straight
     // in, plus the verdict the decision module would draw from it — computed
     // by the same function, so the two cannot disagree.
+    // THE POOL RECORD: the same fifty dollars replayed in each pool the
+    // operator named, hour by hour, at the width the agent uses. A finding
+    // for the operator; the agent never changes pools on its own.
+    if (path === '/lp/pools') {
+      const log = await readLpPools(env);
+      if (!log || !Object.keys(log.pools || {}).length) {
+        return json({ error: 'no pool window has been recorded yet', cadence: "hourly, after the width record's own tick", candidates: LP_POOL_CANDIDATES }, 503);
+      }
+      // The width: the one the agent's position uses, else what the query asks, else ±1%.
+      let width = 1;
+      try {
+        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+        const w = Number(rec?.last?.steps?.rebalance?.width_pct);
+        if (w > 0) width = w;
+      } catch { /* the default stands */ }
+      const q = Number(url.searchParams.get('width'));
+      if (q > 0 && q <= 50) width = q;
+      const v = poolVerdict(log, width, { watched: env.LP_WATCH_POOL });
+      const body = {
+        ...v,
+        since: log.since || null,
+        cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
+        width_record: 'https://agent.brainonbnb.com/lp/windows',
+        agent_record: 'https://agent.brainonbnb.com/lp/agent',
+        last_error: log.last_error || null,
+      };
+      const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
+      if (wantsHtml) {
+        const h = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
+        const f = (x, d = 4) => (x == null || !isFinite(Number(x)) ? '—' : Number(x).toFixed(d));
+        const usd = (x) => (x == null ? '—' : '$' + f(x));
+        const html = `${pageHead('The pool record — the liquidity agent', `
+main{max-width:820px}
+p.lead{color:#cfc9bd;margin:6px 0 0}
+.card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
+.note{color:#a9a49a;font-size:.82rem;margin-top:10px}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;font-size:.74rem;letter-spacing:.4px;text-transform:uppercase;border-top:0}th:first-child,td:first-child{text-align:left}tr.w td{color:var(--gold)}
+`)}${pageNav({ href: '/lp/windows', label: 'The width record' }, { href: '/lp/pools', label: 'The pool record' }, BUY)}<h1>The pool record</h1>
+<p class="lead">What ${h(usd(v.usd))} would have earned in each pool the operator named, replayed hour by hour with the same code, in a ±${h(v.width_pct)}% range. The agent is in the pool marked gold. Since ${h(when(log.since))}.</p>
+<div class="card"><b>${h(v.why.replace(/^[a-z]/, (ch) => ch.toUpperCase()))}</b><p class="note">${h(v.rule)}</p></div>
+<div class="card"><div class="wrap"><table><thead><tr><th>Pool</th><th>Hours</th><th>Windows</th><th>Fees</th><th>Per day</th><th>Swaps</th><th>Quiet</th><th>Held</th><th>Last</th></tr></thead><tbody>
+${v.pools.map((p) => `<tr${p.watched ? ' class="w"' : ''}><td>${h(p.label)}${p.watched ? ' · the agent is here' : ''}</td><td>${h(p.hours)}</td><td>${h(p.windows)}</td><td>${h(usd(p.fees_usd))}</td><td>${h(usd(p.fees_usd_per_day))}</td><td>${h(p.swaps)}</td><td>${h(p.quiet_windows)}</td><td>${p.held_pct == null ? '—' : h(p.held_pct) + '%'}</td><td>${h(when(p.last))}</td></tr>`).join('')}
+</tbody></table></div>
+<p class="note">Quiet = windows in which nobody swapped in that pool. Held = share of windows the range held through without crossing an edge. Fees are for this capital inside the width, diluted by the pool's own working capital, and are not annualised.</p></div>
+${log.last_error ? `<p class="note">Last hour that could not be measured: ${h(when(log.last_error.at))} — ${h(log.last_error.message)}</p>` : ''}
+<p class="note">Same facts as JSON: <a href="/lp/pools?format=json">/lp/pools?format=json</a> · another width: <a href="/lp/pools?width=2">?width=2</a> · the width record: <a href="/lp/windows">/lp/windows</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
+${pageTail}`;
+        return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
+      }
+      return json(body, 200, { 'Cache-Control': 'public, max-age=300' });
+    }
+
     if (path === '/lp/windows') {
       const log = await readLpWindows(env);
       if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
@@ -1435,7 +1489,7 @@ ${rows.map((r) => { const e = r.earnings; const money = (x, d) => (x == null ? '
 <p class="note">Net per day is fees earned inside the range minus the re-sets paid, on $${h(usd)}, over the recorded prices. A narrow width earns more per hour inside the range and leaves it more often; a wide one rarely leaves and earns little. The pick is where those two meet on this pool's recent prices, and it moves as the prices do.</p>
 <p class="note">${h(String(v.earnings_rule || '').replace(/^[a-z]/, (ch) => ch.toUpperCase()))}</p></div>
 ${log.last_error ? (() => { const since = (Array.isArray(log.windows) ? log.windows : []).filter((w) => w && w.at && Date.parse(w.at) > Date.parse(log.last_error.at)).length; return `<p class="note">Last hour that could not be measured: ${h(when(log.last_error.at))} (${h(log.last_error.error)}). ${since ? `${h(since)} window${since === 1 ? '' : 's'} recorded since; it is skipped, not guessed.` : 'Skipped, not guessed.'}</p>`; })() : ''}
-<p class="note">Same facts as JSON: <a href="/lp/windows?format=json">/lp/windows?format=json</a> · the agent's record: <a href="/lp/agent">/lp/agent</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
+<p class="note">Same facts as JSON: <a href="/lp/windows?format=json">/lp/windows?format=json</a> · the agent's record: <a href="/lp/agent">/lp/agent</a> · which pool: <a href="/lp/pools">the pool record</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
 ${pageTail}`;
         return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
       }
@@ -2131,7 +2185,14 @@ ${pageTail}`;
     // and hourly because a 37-minute window every 15 minutes would be the same
     // chain counted four times. 24 KV writes a day.
     if (t.getUTCMinutes() >= 30 && t.getUTCMinutes() < 45) {
-      ctx.waitUntil(recordLpWindow(env).catch((e) => noteLpWindowError(env, e).catch(() => {})));
+      // The pool record follows the width record in the same invocation, so
+      // the watched pool's window is there to copy and the two other
+      // candidates are replayed once each (lp-pools.js). 24 KV writes a day.
+      ctx.waitUntil(
+        recordLpWindow(env).catch((e) => noteLpWindowError(env, e).catch(() => {}))
+          .then(() => recordLpPools(env))
+          .catch((e) => noteLpPoolsError(env, e).catch(() => {})),
+      );
     }
 
     // 21:0x UTC — where our own jobs stand on the kernel, once a day, so the

@@ -255,7 +255,7 @@ export async function noteLpWindowError(env, e) {
   await env.AGENT.put(KV_KEY, JSON.stringify(prev));
 }
 
-async function measure(address, usd) {
+export async function measure(address, usd) {
   const r = await fetch(MEASURE, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

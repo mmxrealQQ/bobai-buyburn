@@ -63,3 +63,6 @@ scripts/lib/personal-identifiers.mjs
 # Scratch file for the LP origin scan. Deliberately untracked; it was staged
 # once by a blanket `git add -A`, which is what this line prevents.
 lpscan-tmp.js
+
+# Local archive of loose drafts, logs and old helpers moved out of the root on 2026-09-08. Never published.
+archive/

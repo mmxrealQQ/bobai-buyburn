@@ -939,6 +939,13 @@ function snapshotHoldings(snaps) {
     as_of_date: last.date,
     tracked_total_bobai: last.total,
     percent_of_total_supply: Math.round(last.total / 1e9 * 10000) / 100,
+    // The watchlist keeps a wallet after it sells or moves out (a cluster's
+    // spent wallets tell where the whale went), so "tracked" is not "whales":
+    // the split says how many still hold the threshold, and how many are empty.
+    wallets_tracked: Object.keys(last.wallets || {}).length,
+    wallets_at_or_above_threshold: Object.values(last.wallets || {}).filter((v) => Number(v) >= 10_000_000).length,
+    wallets_below_threshold: Object.values(last.wallets || {}).filter((v) => Number(v) > 0 && Number(v) < 10_000_000).length,
+    wallets_empty: Object.values(last.wallets || {}).filter((v) => Number(v) <= 0).length,
     change_1d: snapshotDelta(snaps, 1),
     change_7d: snapshotDelta(snaps, 7),
     change_30d: snapshotDelta(snaps, 30),
@@ -1519,6 +1526,7 @@ async function postDailyWhaleRecap(env) {
         const d = h.change_7d || h.change_1d;
         const trend = d ? ` · ${d.window_days}d: ${d.bobai_change >= 0 ? '+' : ''}${formatNumber(d.bobai_change)} BOBAI (${d.percent_change >= 0 ? '+' : ''}${d.percent_change}%)` : '';
         text += `\n💼 <b>Holdings</b>: ${formatNumber(h.tracked_total_bobai)} BOBAI tracked (${h.percent_of_total_supply}% of supply)${trend}`;
+        if (h.wallets_tracked) text += `\n🐋 ${h.wallets_at_or_above_threshold} hold 10M or more · ${h.wallets_below_threshold} below · ${h.wallets_empty} empty`;
       }
     } catch (e) {
       console.error('[WHALE-SNAP RECAP ERROR]', e.message || e);

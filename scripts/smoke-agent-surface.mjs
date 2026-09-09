@@ -610,6 +610,13 @@ section('The marketplace, from the front door');
   ok('/lp/windows is a page for a browser: the pick and every width replayed', /text\/html/.test(winHtml.headers.get('content-type') || '') && /The pick/.test(winText) && /Every width, replayed/.test(winText) && /±0\.25%/.test(winText));
   const winJson = await fetch('https://agent.brainonbnb.com/lp/windows').then((r) => r.json()).catch(() => null);
   ok('/lp/windows stays JSON for a fetch, verdict included', !!winJson && !!winJson.verdict && Array.isArray(winJson.verdict.rows));
+  // The pool record (2026-09-09): either a pick, or the hour the pick is due
+  // and how many hourly runs each pool still needs — "20 h" alone read as a
+  // delay once. Every pool is priced per day or says it has no fees yet.
+  const poolsJson = await fetch('https://agent.brainonbnb.com/lp/pools?format=json').then((r) => r.json()).catch(() => null);
+  const poolRows = poolsJson && Array.isArray(poolsJson.pools) ? poolsJson.pools : [];
+  ok('/lp/pools names a pick or the hour the pick is due', !!poolsJson && poolRows.length >= 2 && (poolsJson.pick ? /earned/.test(poolsJson.why) : (!!poolsJson.pick_due && /due around/.test(poolsJson.why))));
+  ok('every pool in the record says how many hourly runs it still needs', poolRows.length >= 2 && poolRows.every((p) => Number.isInteger(p.runs_to_go) && p.runs_to_go >= 0 && (p.runs_to_go === 0) === (p.hours >= 24)));
   // The series (point 4, 2026-09-03): one point per run, the summary derived
   // from the points and from nothing else, and the page carries the table.
   const ser = await fetch('https://agent.brainonbnb.com/lp/series').then((r) => r.json()).catch(() => null);

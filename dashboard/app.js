@@ -203,6 +203,10 @@ function pcEdge(v){return v==null?'—':v>0&&v<0.001?'<0.001%':(v>=99.9995&&v<10
 }();
 
 // === ON-CHAIN DATA ===
+// BNB in USD as chain() last read it, and the Giggle pot in BNB as ggdata() last summed it: the
+// pot's dollar tile needs both, and the two arrive from different fetches in either order.
+let BNBP=0,GG_BNB=0;
+function ggUsd(){const e=document.getElementById("gg-usd");if(!e||!(BNBP>0))return;e.textContent="$"+(GG_BNB*BNBP).toFixed(2)}
 const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',
       DEVW='0x15Ba17075ef5E0736292b030e3715d9100fe3d38',RPC='https://bsc-dataseed.binance.org/';
 // Log fetch: same-origin proxy first, then the bot's own log domain, then the bundled copy
@@ -300,6 +304,7 @@ async function chain(){
       bnbP=(bnbFeed>50&&bnbFeed<5000)?bnbFeed:Number(w0?b1:b0)/Number(w0?b0:b1),
       pU=(Number(wR)/Number(bR))*bnbP,
       circ=1e9-bAmt;
+    BNBP=bnbP;ggUsd();
     put('mcap','$'+nf(pU*circ));
     put('volume','$'+nf((Number(wR)/1e18)*bnbP*2));
     const pend=u18(q[8]),tp=document.getElementById('tax-pending');
@@ -609,7 +614,7 @@ const LP_SHARE_START=new Date('2026-09-09T05:30:00Z').getTime();
 const GG_START=new Date('2026-09-17T00:01:00Z').getTime();
 const GG_END=new Date('2026-11-20T00:01:00Z').getTime();
 // The Giggle card: sends and their sum from burns.json (giggleBnb/giggleTx per bot run).
-function ggdata(b){try{if(!b)return;const entries=b.filter(x=>x&&x.giggleTx);const cEl=document.getElementById('gg-count');if(!cEl)return;cEl.textContent=entries.length;let total=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.giggleBnb||0);total+=bnb;const tx=x.giggleTx;rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(5)+' BNB</td><td>'+total.toFixed(4)+' BNB</td><td><a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a></td></tr>')}document.getElementById('gg-bnb').textContent=total.toFixed(4)+' BNB';if(rows.length)paintRows('gg-tx-body',rows)}catch(e){console.error('ggdata error:',e)}}
+function ggdata(b){try{if(!b)return;const entries=b.filter(x=>x&&x.giggleTx);const cEl=document.getElementById('gg-count');if(!cEl)return;cEl.textContent=entries.length;let total=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.giggleBnb||0);total+=bnb;const tx=x.giggleTx;rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(5)+' BNB</td><td>'+total.toFixed(4)+' BNB</td><td><a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a></td></tr>')}document.getElementById('gg-bnb').textContent=total.toFixed(4)+' BNB';GG_BNB=total;ggUsd();if(rows.length)paintRows('gg-tx-body',rows)}catch(e){console.error('ggdata error:',e)}}
 function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;const bbC=document.getElementById('bb-count');if(!bbC)return;bbC.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=nf(totalLp,2);paintRows('bb-tx-body',rows)}catch(e){console.error('bbdata error:',e)}}
 
 // === BOBAI LIQ BOOST II DATA (live campaign) ===

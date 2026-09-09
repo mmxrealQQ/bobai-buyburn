@@ -215,6 +215,38 @@ if (has('--bootstrap')) {
   process.exit(0);
 }
 
+
+// The daily report, pure. Sorted largest sleeve first; a signed dollar
+// figure carries its own arrow; blank lines separate the blocks, as /price does.
+const LEG_MARK = { BNB: '🟡', CAKE: '🥞', BOB: '🔨' };
+const signed = (x) => (x > 0 ? '▲ +' : x < 0 ? '▼ −' : '• ') + '$' + Math.abs(Number(x)).toFixed(2);
+const pct = (x, of) => (of > 0 ? (x / of * 100).toFixed(1) + '%' : '—');
+export function formatDailyReport({ date, totalNow, capital, mark, vsCapital, vsMark, cash, valued, pool, bobai, bobaiMark, realised, done, nextPass, monthly, unpriced }) {
+  const rule = '';
+  const legs = TRADING_LEGS.map((l) => ({ l, v: valued[l] })).sort((x, y) => (y.v ?? -1) - (x.v ?? -1));
+  const sleeves = legs.map(({ l, v }) => `${LEG_MARK[l] || '•'} ${l}: ${v == null ? 'no price today' : `$${v.toFixed(2)}  ·  ${pct(v, totalNow)}`}`);
+  sleeves.push(`💵 Cash: $${Number(cash).toFixed(2)}${pool >= 1 ? `  ·  of it profit pool $${Number(pool).toFixed(2)}` : ''}`);
+  const today = done.length ? done.map((d) => `• ${d}`).join('\n') : (monthly ? '• monthly pass: every sleeve inside its band, no order' : '• no order — nothing to do');
+  return [
+    `📊 <b>Trader · ${date}</b>${monthly ? '  ·  monthly pass' : ''}`,
+    rule,
+    `💼 <b>Pot: $${totalNow.toFixed(2)}</b>`,
+    `📥 Put in: $${Number(capital).toFixed(2)}  ·  ${signed(vsCapital)} (${pct(vsCapital, capital)})`,
+    `🏁 Mark: $${Number(mark).toFixed(2)}  ·  ${signed(vsMark)}${vsMark > 0 ? '  → half is taken at the next monthly pass' : ''}`,
+    rule,
+    `📊 <b>Sleeves</b>`,
+    ...sleeves,
+    rule,
+    `🧠 <b>BOBAI</b>`,
+    `🧠 Held: ${Math.round(bobai.units).toLocaleString('en-US')}  ·  ${bobai.buys} buy${bobai.buys === 1 ? '' : 's'}, $${Number(bobai.spent_usd).toFixed(2)} paid, worth $${Number(bobaiMark).toFixed(2)}`,
+    `💰 Profit pool: $${Number(pool).toFixed(2)}  ·  buys BOBAI on its next dip`,
+    `📈 Realised since start: ${signed(realised)}`,
+    rule,
+    `🔁 <b>Today</b>\n${today}`,
+    `📅 Next monthly pass: <b>${nextPass}</b>${unpriced.length ? `\n⚠️ no price for ${unpriced.join(', ')} — not traded today` : ''}`,
+  ].join('\n');
+}
+
 // ---------------------------------------------------------------- tick
 const daysSince = (iso) => (iso ? (Date.now() - Date.parse(iso)) / 86_400_000 : Infinity);
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -394,8 +426,11 @@ async function tick() {
   }
   st.last_tick = now();
   writeState(st);
-  // THE DAILY REPORT: what is held and what it is worth, against what was put
-  // in and against the mark; what was done today; when the next monthly pass is.
+  // THE DAILY REPORT — the operator asked for it sorted, with lines and
+  // emojis, the essentials only (2026-09-09): what the pot is worth against
+  // what went in and against the mark, the sleeves largest first, BOBAI and
+  // the pool, what was done today, when the next monthly pass is. The
+  // reasoning lines stay in the log and on the console.
   const valued = {}; let totalNow = st.pot_usdt;
   for (const leg of TRADING_LEGS) { const p = priceOf(leg); valued[leg] = p > 0 ? r2(st.units[leg] * p) : null; totalNow += valued[leg] || 0; }
   totalNow = r2(totalNow);
@@ -403,7 +438,7 @@ async function tick() {
   const nextPass = st.last_rebalance_at ? new Date(Date.parse(st.last_rebalance_at) + REBALANCE_EVERY_DAYS * 86_400_000).toISOString().slice(0, 10) : 'today';
   const vsCapital = r2(totalNow - st.capital_usd), vsMark = r2(totalNow - st.high_water_usd);
   const legLine = TRADING_LEGS.map((l) => `${l} ${valued[l] == null ? '(no price)' : money(valued[l])}`).join(' · ');
-  const report = `📋 <b>Trader — ${now().slice(0, 10)}</b>\n${legLine} · cash ${money(st.pot_usdt)}\nPot <b>${money(totalNow)}</b> against ${money(st.capital_usd)} put in (${vsCapital >= 0 ? '+' : ''}${money(vsCapital)}) · mark ${money(st.high_water_usd)} (${vsMark >= 0 ? '+' : ''}${money(vsMark)})\nProfit pool ${money(st.profit_pool_usd)} · BOBAI held ${Math.round(st.bobai.units).toLocaleString('en-US')} (${st.bobai.buys} buys, ${money(st.bobai.spent_usd)} paid, worth ${money(bobaiMark)}) · realised since start ${money(st.realised_usd)}\n${done.length ? 'Today: ' + done.join('; ') : 'Today: no order'} · next monthly pass ${nextPass}${lines.length ? '\n' + lines.map((l) => '· ' + l).join('\n') : ''}`;
+  const report = formatDailyReport({ date: now().slice(0, 10), totalNow, capital: st.capital_usd, mark: st.high_water_usd, vsCapital, vsMark, cash: st.pot_usdt, valued, pool: st.profit_pool_usd, bobai: st.bobai, bobaiMark, realised: st.realised_usd, done, nextPass, monthly, unpriced });
   if (CONFIRM) await notify(report);
   for (const l of lines) say('  ' + l);
   say(`  ${legLine} · cash ${st.pot_usdt.toFixed(2)} · pot ${totalNow.toFixed(2)} vs ${st.capital_usd.toFixed(2)} in, mark ${st.high_water_usd.toFixed(2)} · pool ${st.profit_pool_usd.toFixed(2)} · BOBAI ${st.bobai.units} · orders today ${orders} · next monthly pass ${nextPass}`);

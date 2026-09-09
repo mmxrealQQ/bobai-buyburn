@@ -1893,21 +1893,51 @@ async function ensureCommandsRegistered(env) {
 
 // ==================== LP AGENT DAILY REPORT ====================
 
-// Once a day, after the 04:23 run: one sentence, the series' own summary
-// (agent.brainonbnb.com/lp/series, summary.sentence — the line /liquidity
-// opens with), so the channel and the page never say different things.
-// The five-line report before it was asked away on 2026-09-07: "im tg bot
-// nur so etwas ... weil die nachricht sonst im tg bot kapiert kein mensch".
-// Pure, so it can be rendered against a real series without posting.
+// Once a day, after the 04:23 run. The numbers are the series' own summary
+// (agent.brainonbnb.com/lp/series — the same figures /liquidity opens with),
+// so the channel and the page never disagree; only the shape differs. The
+// one-sentence form of 2026-09-07 was asked away on 2026-09-09 for a sorted
+// card with lines and emojis, the essentials only ("das gleiche beim lp
+// agent im öffentlichen chat"). Pure, so it can be rendered against a real
+// series without posting.
 export function formatLpDailyReport(rec, series) {
   const last = rec && rec.last;
-  const sentence = series && series.summary && series.summary.sentence;
-  if (!last || !last.at || !sentence) return null;
-  const failed = last.ok === false ? ' One step failed today; the operator has been told.' : '';
-  return `📋 <b>LP Agent — ${String(last.at || '').slice(0, 10)}</b>
-${sentence}${failed}
-
-<a href="https://brainonbnb.com/liquidity">brainonbnb.com/liquidity</a> · <a href="https://agent.brainonbnb.com/lp/agent">record</a>`;
+  const sum = series && series.summary;
+  if (!last || !last.at || !sum || !sum.profit) return null;
+  const pts = Array.isArray(series.points) ? series.points : [];
+  const pt = pts.length ? pts[pts.length - 1] : null;
+  const f4 = (x) => Number(x || 0).toFixed(4);
+  const f5 = (x) => Number(x || 0).toFixed(5);
+  const usd = (bnb) => (sum.profit.bnb_usd ? ' (≈ $' + (Number(bnb || 0) * Number(sum.profit.bnb_usd)).toFixed(2) + ')' : '');
+  const sign = (x) => (Number(x) > 0 ? '▲ +' : Number(x) < 0 ? '▼ ' : '• ') + f5(Math.abs(Number(x || 0)));
+  const rule = '';
+  const inRange = pt ? (pt.in_range ? '✅ in range' : '⏳ out of range — re-set after two hours') : '';
+  const label = (rec.pool && rec.pool.label) || 'CAKE/BNB 0.05%';
+  const steps = (last.steps && typeof last.steps === 'object') ? last.steps : {};
+  const acted = Object.entries(steps).flatMap(([k, v]) => (Array.isArray(v) ? v : [v]).filter((x) => x && x.acted).map(() => k));
+  const stepWord = { sweep: 'swept income into the position', collect: 'collected fees for the buyback bot', rebalance: 're-set the range around the price', increase: 'grew the position' };
+  const today = last.ok === false
+    ? '⚠️ one step failed; the operator has been told'
+    : acted.length ? [...new Set(acted)].map((k) => '• ' + (stepWord[k] || k)).join('\n') : '• quiet day — every step under its floor, nothing to move';
+  const value = sum.value_bnb || {};
+  return [
+    `💧 <b>LP Agent · ${String(last.at).slice(0, 10)}</b>`,
+    rule,
+    `📍 <b>Position</b>`,
+    `🥞 ${label}${pt && pt.position ? '  ·  #' + pt.position : ''}  ·  ${inRange}`,
+    `💼 Worth: <b>${f4(value.now)} BNB</b>${usd(value.now)}`,
+    `📥 On the capital since ${String(sum.since || '').slice(0, 10)}: ${Number(value.change_pct) >= 0 ? '▲ +' : '▼ '}${Number(value.change_pct || 0).toFixed(2)}%`,
+    rule,
+    `💰 <b>Profit so far: ${sign(sum.profit.bnb)} BNB</b>${usd(sum.profit.bnb)}`,
+    `📈 From CAKE moving against BNB: ${sign(sum.profit.from_price_bnb)}`,
+    `🧾 From fees earned: ${sign(sum.profit.from_fees_bnb)}`,
+    `🔥 Sent to the buyback bot: ${f5(sum.fees_sent_to_buyback_bnb)} BNB`,
+    `🗓 In range: ${sum.days_in_range} of ${sum.runs_with_a_position} runs`,
+    rule,
+    `🔁 <b>Today</b>\n${today}`,
+    '',
+    `<a href="https://brainonbnb.com/liquidity">brainonbnb.com/liquidity</a> · <a href="https://agent.brainonbnb.com/lp/agent">record</a>`,
+  ].join('\n');
 }
 
 async function postLpDailyReport(env) {

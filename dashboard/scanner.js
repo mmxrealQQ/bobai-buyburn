@@ -359,7 +359,7 @@ function renderRanges(out,d){
   const rows=d.ranges||[];
   const w=d.measured_window||{};
   if(!rows.length||!w.swaps){
-    out.appendChild(el('p','cd-foot','No swap in the measured window, so there is nothing to replay a position against. That is a fact about this pool in the last forty minutes, not about the ranges.'));
+    out.appendChild(el('p','cd-foot','No swap in the measured window, so there is nothing to replay a position against. That is a fact about this pool in the last hour, not about the ranges.'));
     return;
   }
 

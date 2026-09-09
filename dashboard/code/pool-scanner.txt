@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 5622 lines.
+# one fetch. 6 files, 5626 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2146,6 +2146,7 @@ export async function scan(input, env) {
       background:linear-gradient(90deg,#3fe09a,#8ff0c6);transition:transform .45s ease}
     .lad-b i.sell{background:linear-gradient(90deg,#ff8f6b,#ffc4ae)}
     .lad-p.lad-dry{color:#a9a49a;font-weight:500;font-style:italic}
+.lad-b i.dry{background:#5b574f}
     .lad-p{font-family:'Space Grotesk',sans-serif;font-size:.79rem;font-weight:700;
       width:64px;flex-shrink:0;text-align:right}
     .lad-x{font-family:'Space Grotesk',sans-serif;font-size:.74rem;color:var(--muted);
@@ -2456,7 +2457,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=57" type="module"></script>
+<script src="scanner.js?v=58" type="module"></script>
 </body>
 </html>
 
@@ -3066,10 +3067,13 @@ function renderLadder(rows,taxNote,floors,venue){
       const mv=side==='buy'?r.buyMove:r.sellMove,cs=side==='buy'?r.buyCost:r.sellCost;
       const row=el('div','lad-r');
       row.appendChild(el('span','lad-s','$'+nf(r.usd)));
-      const t=el('span','lad-b'),bar=el('i',side==='sell'?'sell':null);
-      bar.style.transform='scaleX('+(mv==null?0:Math.min(1,Math.abs(mv)/max)).toFixed(4)+')';
-      t.appendChild(bar);row.appendChild(t);
       const note=side==='buy'?r.buyNote:r.sellNote;
+      // A size the pool cannot fill has no impact figure — it is beyond the
+      // scale, not below it. The bar is drawn full and muted; an empty bar on
+      // the largest size read as 'no impact' (found by the audit, 2026-09-09).
+      const t=el('span','lad-b'),bar=el('i',[side==='sell'?'sell':'',note?'dry':''].filter(Boolean).join(' ')||null);
+      bar.style.transform='scaleX('+(note?1:mv==null?0:Math.min(1,Math.abs(mv)/max)).toFixed(4)+')';
+      t.appendChild(bar);row.appendChild(t);
       row.appendChild(el('span','lad-p'+(note?' lad-dry':impactBand(mv)),note?'runs out':signed(mv)));
       row.appendChild(el('span','lad-x'+(note?'':costBand(cs,floor)),cs==null?'—':cs.toFixed(2)+'%'));
       col.appendChild(row);

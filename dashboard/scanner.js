@@ -600,10 +600,13 @@ function renderLadder(rows,taxNote,floors,venue){
       const mv=side==='buy'?r.buyMove:r.sellMove,cs=side==='buy'?r.buyCost:r.sellCost;
       const row=el('div','lad-r');
       row.appendChild(el('span','lad-s','$'+nf(r.usd)));
-      const t=el('span','lad-b'),bar=el('i',side==='sell'?'sell':null);
-      bar.style.transform='scaleX('+(mv==null?0:Math.min(1,Math.abs(mv)/max)).toFixed(4)+')';
-      t.appendChild(bar);row.appendChild(t);
       const note=side==='buy'?r.buyNote:r.sellNote;
+      // A size the pool cannot fill has no impact figure — it is beyond the
+      // scale, not below it. The bar is drawn full and muted; an empty bar on
+      // the largest size read as 'no impact' (found by the audit, 2026-09-09).
+      const t=el('span','lad-b'),bar=el('i',[side==='sell'?'sell':'',note?'dry':''].filter(Boolean).join(' ')||null);
+      bar.style.transform='scaleX('+(note?1:mv==null?0:Math.min(1,Math.abs(mv)/max)).toFixed(4)+')';
+      t.appendChild(bar);row.appendChild(t);
       row.appendChild(el('span','lad-p'+(note?' lad-dry':impactBand(mv)),note?'runs out':signed(mv)));
       row.appendChild(el('span','lad-x'+(note?'':costBand(cs,floor)),cs==null?'—':cs.toFixed(2)+'%'));
       col.appendChild(row);

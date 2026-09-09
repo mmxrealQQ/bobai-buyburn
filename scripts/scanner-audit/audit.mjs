@@ -67,10 +67,18 @@ const CHECKS=`(()=>{
     })));
   const num=s=>{if(!s)return null;const m=s.replace(/[^0-9.\\-]/g,'');return m===''?null:parseFloat(m)};
   rows.forEach((col,ci)=>{
-    let prevI=null,prevP=null;
+    let prevI=null,prevP=null,prevB=null;
     col.forEach((r,i)=>{
-      const im=Math.abs(num(r.imp)??0), pay=num(r.pay);
-      if(r.imp&&r.imp!=='—'&&!(im>=0))bad.push('col'+ci+' row'+i+' impact unreadable '+r.imp);
+      // A size the pool cannot fill says 'runs out' instead of a figure: it is
+      // the largest impact there is, so it is Infinity here — not 0, which
+      // is what a bare parse made of it and what flagged KII as non-monotone
+      // on 2026-09-09 — and its bar must be drawn full, never shorter than
+      // the size before it.
+      const dry=/runs out/i.test(r.imp||'');
+      const im=dry?Infinity:Math.abs(num(r.imp)??0), pay=num(r.pay);
+      if(!dry&&r.imp&&r.imp!=='—'&&!(im>=0))bad.push('col'+ci+' row'+i+' impact unreadable '+r.imp);
+      if(dry&&r.bar!=null&&prevB!=null&&r.bar<prevB-0.5)bad.push('col'+ci+' row'+i+' runs out but its bar ('+r.bar+'px) is shorter than the size before it ('+prevB+'px)');
+      if(r.bar!=null)prevB=r.bar;
       if(pay!=null&&pay<0)bad.push('col'+ci+' row'+i+' negative cost '+r.pay);
       if(prevI!=null&&im<prevI-1e-9)bad.push('col'+ci+' impact not monotone: '+prevI+' -> '+im);
       if(prevP!=null&&pay!=null&&pay<prevP-1e-9)bad.push('col'+ci+' cost not monotone: '+prevP+' -> '+pay);
@@ -99,7 +107,9 @@ const CHECKS=`(()=>{
 })()`;
 
 const {port}=await launch(PORT,W,H);
-const targets=[...FIXED,...(await geckoTokens(Number(process.env.N||26)))];
+// TOKENS=addr[,addr…] audits just those (a finding to reproduce, a fix to
+// prove) instead of the fixed list plus N from Gecko.
+const targets=process.env.TOKENS?process.env.TOKENS.split(',').map((a)=>[a.slice(0,10),a.trim()]):[...FIXED,...(await geckoTokens(Number(process.env.N||26)))];
 console.log('targets:',targets.length);
 const results=[];
 for(const [label,addr] of targets){

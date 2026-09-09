@@ -29,12 +29,21 @@ import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } fr
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees, resetForward,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
-  V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
 export const ADDR = {
   V3_POSITION_MANAGER: '0x46a15b0b27311cedf172ab29e4f4766fbe7f4364',
   V2_ROUTER: '0x10ed43c718714eb63d5aa57b78b54704e256024e',
+  // PancakeSwap V3 swap router and quoter, verified on chain 2026-09-09: both
+  // answer factory() = 0x0bfb…1865 (the factory the positions live in) and
+  // WETH9() = WBNB. The re-centring trade goes through the position's own
+  // pool (fee tier from positions()[4], 500 = 0.05%) instead of the V2
+  // router's 0.25% pool — the same swap for a fifth of the fee (measured
+  // 2026-09-09: 0.02 WBNB bought 6.526 CAKE on V3 against 6.501 on V2). The
+  // V2 router stays for the sweep and the collect, whose tokens have no V3
+  // pool worth the name.
+  V3_SWAP_ROUTER: '0x1b81d678ffb9c0263b24a97847620c99d213eb14',
+  V3_QUOTER: '0xb048bbc1ee6b733fffcfb9e9cef7375518e25997',
   WBNB: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
   // Where collected fees go: the buyback bot's wallet, which buys and burns
   // $BOBAI as it always has. One burn path, one record.
@@ -104,6 +113,10 @@ export const ABI = {
     'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline)',
     'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) returns (uint256[])',
   ]),
+  V3_ROUTER: parseAbi(['function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256 amountOut)']),
+  // QuoterV2 answers through a revert it catches itself; as an eth_call it
+  // simply returns, so it is declared view here.
+  V3_QUOTER: parseAbi(['function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) view returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)']),
   FEED: parseAbi(['function latestRoundData() view returns (uint80 roundId,int256 answer,uint256 startedAt,uint256 updatedAt,uint80 answeredInRound)']),
 };
 
@@ -512,6 +525,37 @@ export function unwindCalls(tokenId, liquidity, amount0Min, amount1Min, recipien
 // what every PancakeSwap user grants in the interface, and it means the next
 // re-set skips these four transactions entirely.
 const MAX_ALLOWANCE = (1n << 256n) - 1n;
+// The re-centring trade, written down: which side, how much in WBNB terms,
+// which pool and the fee it paid. The window record charges this on top of
+// the gas when it replays the re-sets; without it the replay undercounted a
+// re-set by half (2026-09-09).
+export function swapNote(side, wbnbWei, fee) {
+  const n = Number(formatEther(wbnbWei)), pct = fee / 10000;
+  return { side, venue: `pancakeswap v3 ${pct}%`, fee_pct: pct, notional_bnb: Number(n.toFixed(6)), fee_bnb: Number((n * pct / 100).toFixed(8)) };
+}
+
+// The one V3 swap the agent makes, as the router's struct. Pure, so the
+// self-test can pin every field; sqrtPriceLimitX96 = 0 means "no limit, the
+// minimum out is the guard".
+export function v3SwapArgs(tokenIn, tokenOut, fee, recipient, amountIn, amountOutMinimum, dl) {
+  return { tokenIn, tokenOut, fee, recipient, deadline: dl, amountIn, amountOutMinimum, sqrtPriceLimitX96: 0n };
+}
+
+// What the position's own pool gives for amountIn, from the quoter.
+export async function quoteV3(pub, tokenIn, tokenOut, fee, amountIn) {
+  const q = await read(pub, ADDR.V3_QUOTER, ABI.V3_QUOTER, 'quoteExactInputSingle', [{ tokenIn, tokenOut, amountIn, fee, sqrtPriceLimitX96: 0n }]);
+  return q[0];
+}
+
+// Allow, swap, and return the note for the record. notionalWbnb is the
+// trade in WBNB terms: what went in when WBNB is sold, what the quote said
+// comes out when the other side is.
+async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, minOut, notionalWbnb, label) {
+  await ensureAllowance(pub, send, tokenIn, ADDR.V3_SWAP_ROUTER, amountIn, `allow the V3 router to spend ${tokenIn === ADDR.WBNB ? 'WBNB' : 'the other side'} (once)`);
+  await send(label, { address: ADDR.V3_SWAP_ROUTER, abi: ABI.V3_ROUTER, functionName: 'exactInputSingle', args: [v3SwapArgs(tokenIn, tokenOut, fee, owner, amountIn, minOut, deadline())] });
+  return swapNote(tokenIn === ADDR.WBNB ? 'buy' : 'sell', notionalWbnb, fee);
+}
+
 async function ensureAllowance(pub, send, token, spender, amount, label) {
   const have = await read(pub, token, ABI.ERC20, 'allowance', [send.owner, spender]);
   if (have >= amount) return false;
@@ -544,7 +588,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // gas when it replays the re-sets; without it the replay undercounted a
   // re-set by half (2026-09-09).
   let swap = null;
-  const swapNote = (side, wbnbWei) => { const n = Number(formatEther(wbnbWei)); return { side, venue: 'pancakeswap v2', fee_pct: V2_SWAP_FEE_PCT, notional_bnb: Number(n.toFixed(6)), fee_bnb: Number((n * V2_SWAP_FEE_PCT / 100).toFixed(8)) }; };
+  const fee = Number(plan.pos[4]);
   if (plan.tokenId != null) {
     const old = await readPosition(pub, account.address);
     if (old.tokenId != null && String(old.tokenId) === String(plan.tokenId)) {
@@ -579,22 +623,16 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const targetOther = BigInt(Math.floor(Ln * t.perLOther));
   if (haveOther > targetOther) {
     const sell = haveOther - targetOther;
-    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
-    await ensureAllowance(pub, send, plan.other, ADDR.V2_ROUTER, sell, 'allow the router to sell the other side (once)');
-    await send('sell the excess of the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
-      args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
-    swap = swapNote('sell', q[1]);
+    const q = await quoteV3(pub, plan.other, ADDR.WBNB, fee, sell);
+    swap = await swapV3(pub, send, account.address, plan.other, ADDR.WBNB, fee, sell, (q * 99n) / 100n, q, 'sell the excess of the other side');
   } else if (targetOther > haveOther) {
     const need = targetOther - haveOther;
-    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, plan.other]]);
-    const spend = q[1] > 0n ? (need * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
+    const q = await quoteV3(pub, ADDR.WBNB, plan.other, fee, 10n ** 18n);
+    const spend = q > 0n ? (need * 10n ** 18n * 102n) / (q * 100n) : 0n;
     const cap = haveWbnb > reserved ? haveWbnb - reserved : 0n;
     const wbnbIn = spend > cap ? cap : spend;
     if (wbnbIn > 0n) {
-      await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
-      await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
-        args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
-      swap = swapNote('buy', wbnbIn);
+      swap = await swapV3(pub, send, account.address, ADDR.WBNB, plan.other, fee, wbnbIn, (need * 99n) / 100n, wbnbIn, 'buy the missing other side');
     }
   }
   // The buyback share of the old range's fees leaves here, before the mint
@@ -681,9 +719,9 @@ export async function planIncrease(pub, address, position = null) {
     const targetOther = BigInt(Math.floor(L * perLOther));
     if (targetOther > heldOther) {
       buyOtherRaw = targetOther - heldOther;
-      // Priced by the router that will do the swap, not by the pool.
-      const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, other]]);
-      buyCostRaw = q[1] > 0n ? (buyOtherRaw * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
+      // Priced by the pool that will do the swap — the position's own.
+      const q = await quoteV3(pub, ADDR.WBNB, other, Number(p.pos[4]), 10n ** 18n);
+      buyCostRaw = q > 0n ? (buyOtherRaw * 10n ** 18n * 102n) / (q * 100n) : 0n;
     } else {
       sellOtherRaw = heldOther - targetOther;
     }
@@ -718,6 +756,8 @@ export async function executeIncrease(pub, wallet, account, plan, log = () => {}
   //    side that is missing, or sell what exceeds it. Sized from what the
   //    wallet really holds now, at the price now.
   const t = plan.target;
+  const fee = Number(plan.pos[4]);
+  let swap = null;
   const haveOther0 = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   const haveWbnb0 = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   const value = Number(haveWbnb0) + Number(haveOther0) * t.otherInWbnb;
@@ -726,19 +766,15 @@ export async function executeIncrease(pub, wallet, account, plan, log = () => {}
   const targetOther = BigInt(Math.floor(Ln * t.perLOther));
   if (haveOther0 > targetOther) {
     const sell = haveOther0 - targetOther;
-    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
-    await ensureAllowance(pub, send, plan.other, ADDR.V2_ROUTER, sell, 'allow the router to sell the other side (once)');
-    await send('sell the excess of the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
-      args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
+    const q = await quoteV3(pub, plan.other, ADDR.WBNB, fee, sell);
+    swap = await swapV3(pub, send, account.address, plan.other, ADDR.WBNB, fee, sell, (q * 99n) / 100n, q, 'sell the excess of the other side');
   } else if (targetOther > haveOther0) {
     const need = targetOther - haveOther0;
-    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, plan.other]]);
-    const spend = q[1] > 0n ? (need * 10n ** 18n * 102n) / (q[1] * 100n) : 0n;
+    const q = await quoteV3(pub, ADDR.WBNB, plan.other, fee, 10n ** 18n);
+    const spend = q > 0n ? (need * 10n ** 18n * 102n) / (q * 100n) : 0n;
     const wbnbIn = spend > haveWbnb0 ? haveWbnb0 : spend;
     if (wbnbIn > 0n) {
-      await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
-      await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
-        args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+      swap = await swapV3(pub, send, account.address, ADDR.WBNB, plan.other, fee, wbnbIn, (need * 99n) / 100n, wbnbIn, 'buy the missing other side');
     }
   }
   // 3. Add what the wallet holds. Approvals only when the allowance is short
@@ -763,5 +799,5 @@ export async function executeIncrease(pub, wallet, account, plan, log = () => {}
   // What left the wallet as BNB for this increase, gas included — the figure
   // the money-flow view adds up as "put into the position".
   const after = await pub.getBalance({ address: account.address });
-  return { txs, liquidity_after: String(pos[7]), other_used: formatUnits(haveOther - (await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address])), 18), wbnb_used: formatEther(haveWbnb - wbnbLeft), bnb_spent: formatEther(before > after ? before - after : 0n) };
+  return { txs, swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, liquidity_after: String(pos[7]), other_used: formatUnits(haveOther - (await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address])), 18), wbnb_used: formatEther(haveWbnb - wbnbLeft), bnb_spent: formatEther(before > after ? before - after : 0n) };
 }

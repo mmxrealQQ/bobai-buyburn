@@ -27,7 +27,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd, sender,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance,
 } from '../shared/lp-agent.js';
@@ -261,6 +261,22 @@ if (SELF) {
   check('an hour and a few seconds outside: still waits', rebalanceWait(now - (1 * H + 5e3), now), true);
   check('a day outside: due', rebalanceWait(now - 24 * H, now), false);
   console.log('unwind in one transaction');
+  // The V3 re-centring swap (2026-09-09): the router's struct, every field
+  // pinned, and the note the record keeps — fee from the pool's tier, the
+  // notional in WBNB. The addresses are the ones verified on chain that day
+  // (factory() = the V3 factory, WETH9() = WBNB), written here a second time
+  // so a slip in either copy shows.
+  const v3 = v3SwapArgs(ADDR.WBNB, '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', 500, '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', 20000000000000000n, 6400000000000000000n, 1800000000n);
+  check('the V3 swap sells exactly the amount asked, no more', v3.amountIn === 20000000000000000n, true);
+  check('… into the position\'s fee tier', v3.fee === 500, true);
+  check('… to the wallet, not the router', v3.recipient === '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', true);
+  check('… with the minimum out as the only guard (no price limit)', v3.amountOutMinimum === 6400000000000000000n && v3.sqrtPriceLimitX96 === 0n, true);
+  check('… and a deadline', v3.deadline === 1800000000n, true);
+  check('the V3 router is the verified one', ADDR.V3_SWAP_ROUTER === '0x1b81d678ffb9c0263b24a97847620c99d213eb14', true);
+  check('the V3 quoter is the verified one', ADDR.V3_QUOTER === '0xb048bbc1ee6b733fffcfb9e9cef7375518e25997', true);
+  const note = swapNote('buy', 40000000000000000n, 500);
+  check('a 0.04 WBNB buy through 0.05% notes a 0.00002 BNB fee', note.fee_bnb === 0.00002 && note.notional_bnb === 0.04 && note.fee_pct === 0.05, true);
+  check('… a fifth of what the 0.25% pool took', swapNote('buy', 40000000000000000n, 2500).fee_bnb === 0.0001, true);
   const calls = unwindCalls(7309536n, 72166992217730319120n, 1n, 2n, '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', 1800000000n);
   check('three calls: decreaseLiquidity, collect, burn — in that order', calls.length === 3 && calls[0].startsWith('0x0c49ccbe') && calls[1].startsWith('0xfc6f7865') && calls[2].startsWith('0x42966c68') ? null : calls.map((c) => c.slice(0, 10)).join(','), false);
   check('the token id is in every call', calls.every((c) => c.includes(BigInt(7309536).toString(16).padStart(64, '0'))) ? null : 'a call lacks the token id', false);

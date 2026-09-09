@@ -44,3 +44,19 @@ with the sell test and the latency. The scan answers 200 either way; only `tax.s
 tells them apart, and this is how a change to the RPC path is measured rather than
 believed (2026-09-08: one answer in ten was a label; after the retry, none of ten). A
 measurement, not a gate: exit code 0 always.
+
+## style-arrival.mjs (2026-09-09)
+
+Does the style arrive? Every visible element's classes are held against every
+selector in the stylesheets the page really loaded, in a real browser, on the
+live site. A finding is an element none of whose classes any rule mentions,
+with text of its own, looking bare (no padding, border, background, same font
+and colour as its parent). That is the shape of the three links on /advantage
+that stood unstyled for weeks because `.back-btn` lived inline on two other
+pages. Wrappers, second classes on styled elements and elements a descendant
+selector dresses are counted as hooks, not findings (`--all` lists them).
+
+    node scripts/dashboard-check/style-arrival.mjs --self-test     all pages, plus a planted unstyled class that must be reported
+    node scripts/dashboard-check/style-arrival.mjs --only=services --all
+
+First full run 2026-09-09: 16 pages, 0 findings, 17 hooks.

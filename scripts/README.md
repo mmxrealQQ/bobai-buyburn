@@ -18,6 +18,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `dispatch-safety.mjs` | does the router only call read-only tools, on both origins |
 | `phase-parity.mjs` | do the two copies of the tax split agree |
 | `dashboard-check/` | browser-driven checks of single pages and panels (see its README) |
+| `dashboard-check/style-arrival.mjs` | does every visible class on every page meet a rule in a loaded stylesheet (the /advantage lesson) |
 
 ## The measurements the tools are built on
 | script | checks |

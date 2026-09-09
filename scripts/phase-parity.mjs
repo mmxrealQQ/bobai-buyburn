@@ -36,7 +36,7 @@ const args = process.argv.slice(2);
 // into the other.
 const windowsOf = (src) => {
   const out = {};
-  for (const m of src.matchAll(/const\s+([A-Z0-9_]*(?:BOOST|EXTRA|WC26|PHASE)[A-Z0-9_]*)\s*=\s*new Date\('([^']+)'\)/g)) {
+  for (const m of src.matchAll(/const\s+([A-Z0-9_]*(?:BOOST|EXTRA|WC26|PHASE|SHARE|GIGGLE)[A-Z0-9_]*)\s*=\s*new Date\('([^']+)'\)/g)) {
     out[m[1]] = m[2];
   }
   return out;
@@ -54,14 +54,15 @@ const splitOf = (src, label) => {
   // if the allocation ever starts depending on something outside itself, this
   // throws rather than quietly comparing two different things.
   return new Function(
-    'bobLiqBoost', 'bobaiLiqBoost', 'bobaiLiqExtra', 'wc26Active', 'bobaiLiqBoost2',
-    `${body}\nreturn { bobaiBurnBps, bobBurnBps, creatorBps, bobLiqBps, bobaiLiqBps, wc26PoolBps };`,
+    'bobLiqBoost', 'bobaiLiqBoost', 'bobaiLiqExtra', 'wc26Active', 'bobaiLiqBoost2', 'lpShare', 'giggle',
+    `${body}\nreturn { bobaiBurnBps, bobBurnBps, creatorBps, bobLiqBps, bobaiLiqBps, wc26PoolBps, lpAgentBps, giggleBps };`,
   );
 };
 
+// Seven programs (2026-09-09: the LP Agent share and the Giggle pot joined), so 128 combinations.
 const COMBOS = [];
-for (let i = 0; i < 32; i++) {
-  COMBOS.push([!!(i & 1), !!(i & 2), !!(i & 4), !!(i & 8), !!(i & 16)]);
+for (let i = 0; i < 128; i++) {
+  COMBOS.push([!!(i & 1), !!(i & 2), !!(i & 4), !!(i & 8), !!(i & 16), !!(i & 32), !!(i & 64)]);
 }
 
 const compare = (aSrc, bSrc) => {
@@ -102,6 +103,11 @@ if (args.includes('--self-test')) {
   if (movedSplit === a) fails.push('the self-test could not plant a changed split — the line it edits has moved');
   else if (!compare(a, movedSplit).problems.length) fails.push('a basis-point change in one file only was not reported');
 
+  // A changed share in one of the two new programs must be seen too.
+  const movedShare = a.replace('creatorBps -= 10; lpAgentBps += 30;', 'creatorBps -= 20; lpAgentBps += 40;');
+  if (movedShare === a) fails.push('the self-test could not plant a changed LP share - the line it edits has moved');
+  else if (!compare(a, movedShare).problems.length) fails.push('a changed LP-agent share in one file only was not reported');
+
   // And an identical file must be quiet.
   if (compare(a, a).problems.length) fails.push('a file compared against itself reported a difference');
 
@@ -135,9 +141,11 @@ const active = {
   bobaiLiqExtra: at('BOBAI_LIQ_EXTRA'),
   wc26Active: at('WC26'),
   bobaiLiqBoost2: at('BOBAI_LIQ_BOOST2'),
+  lpShare: at('LP_SHARE'),
+  giggle: at('GIGGLE'),
 };
 const on = Object.entries(active).filter(([, v]) => v).map(([k]) => k);
-const split = af(active.bobLiqBoost, active.bobaiLiqBoost, active.bobaiLiqExtra, active.wc26Active, active.bobaiLiqBoost2);
+const split = af(active.bobLiqBoost, active.bobaiLiqBoost, active.bobaiLiqExtra, active.wc26Active, active.bobaiLiqBoost2, active.lpShare, active.giggle);
 const sum = Object.values(split).reduce((s, v) => s + v, 0);
 console.log(`  active today: ${on.length ? on.join(', ') : 'none — standard 1/1/1'}`);
 console.log(`  split: ${Object.entries(split).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ')}`);

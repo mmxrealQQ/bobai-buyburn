@@ -220,15 +220,42 @@ const addrFromTopic = (t) => '0x' + String(t).slice(26).toLowerCase();
 
 // ---------------------------------------------------------------- counters
 
-// One KV read+write per counted event would cost a write on every single
-// request. Counters are therefore bucketed by day and the totals derived on
-// read, which also gives the transparency block a time series for free.
+// Counters are bucketed by day and the totals derived on read, which also
+// gives the transparency block a time series for free.
+//
+// COALESCED, 2026-09-09. Until then every counted event was one KV read and
+// one KV write, and Cloudflare's KV analytics showed what that meant: 31,000
+// writes in ten hours to this namespace, one per request to this worker
+// (most of them the dashboard's /hit relay), 53,000 the day before — against
+// the 1M a month the plan includes — while the read-modify-write raced with
+// itself under that load and the counters showed a fifth of the traffic.
+// Now an isolate adds up in memory and writes each kind once per FLUSH_MS
+// (the cron flushes quiet isolates too). What an evicted isolate had not
+// flushed is lost: a few minutes of a transparency counter, never money.
 const today = () => new Date().toISOString().slice(0, 10);
+const FLUSH_MS = 5 * 60 * 1000;
+const pending = new Map();
+let lastFlush = 0, flushing = null;
 
 async function bump(env, kind, n = 1) {
   const key = `count:${kind}:${today()}`;
-  const cur = Number((await env.AGENT.get(key)) || 0);
-  await env.AGENT.put(key, String(cur + n), { expirationTtl: 60 * 60 * 24 * 400 });
+  pending.set(key, (pending.get(key) || 0) + n);
+  if (Date.now() - lastFlush < FLUSH_MS) return;
+  return flushCounters(env);
+}
+
+async function flushCounters(env) {
+  if (flushing) return flushing;
+  if (!pending.size) return;
+  lastFlush = Date.now();
+  flushing = (async () => {
+    for (const [key, n] of [...pending]) {
+      pending.delete(key);
+      const cur = Number((await env.AGENT.get(key)) || 0);
+      await env.AGENT.put(key, String(cur + n), { expirationTtl: 60 * 60 * 24 * 400 });
+    }
+  })().finally(() => { flushing = null; });
+  return flushing;
 }
 
 async function readCounters(env) {
@@ -2207,6 +2234,8 @@ ${pageTail}`;
   },
 
   async scheduled(event, env, ctx) {
+    // Counts an isolate has added up but not yet written (see bump).
+    ctx.waitUntil(flushCounters(env).catch(() => {}));
     ctx.waitUntil(checkWatches(env).catch(() => {}));
     // One point per liquidity-agent run; a tick that finds the same record
     // again records nothing.

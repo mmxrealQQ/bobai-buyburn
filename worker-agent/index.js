@@ -649,6 +649,14 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     const gas = gas_bnb != null ? +Number(gas_bnb).toFixed(6) : null;
     const bnb = +(price + fees - (gas || 0)).toFixed(6);
     const usd = last.bnb_usd ? +(bnb * last.bnb_usd).toFixed(2) : null;
+    // The return on the capital, once the profit is known: profit over
+    // everything that went in (the first point, what the operator added by
+    // hand, what the agent put in from deposits). The earlier figure divided
+    // the value change by the first point alone and read +82% on the day a
+    // deposit doubled the position (2026-09-09).
+    const capitalTotal = out.value_bnb.start + byHand + (Number(out.deposits_put_in_bnb) || 0);
+    out.value_bnb.capital_total_bnb = +capitalTotal.toFixed(6);
+    out.value_bnb.change_pct = capitalTotal > 0 ? +((bnb / capitalTotal) * 100).toFixed(2) : out.value_bnb.change_pct;
     out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +foldedKept.toFixed(6), fees_forwarded_at_resets_bnb: +(folded - foldedKept).toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
   }
   // The same figures as one sentence — the line /liquidity opens with and the

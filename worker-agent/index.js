@@ -1828,6 +1828,7 @@ ${pageTail}`;
             Object.entries(counters.byKind).filter(([k]) => INTERNAL.has(k)),
           ),
           note: 'total counts requests made by others. Our own scheduled sweeps are listed separately under internal.',
+          counting: 'Counts before 2026-09-09 10:34 UTC are LOW, not high: the counter was one KV read-modify-write per request and lost most increments under load (Cloudflare\'s own request analytics showed about five requests for every one counted that day). Since that hour the counts are added up in memory and written every five minutes; a restart can lose those minutes, never more.',
         },
         earned: earnings,
         active_watches: watches.keys.length,

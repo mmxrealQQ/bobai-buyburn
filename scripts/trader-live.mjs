@@ -77,6 +77,13 @@ const GAS_FLOOR_BNB = 0.003;
 const BOBAI_DIP_Z = 1, BOBAI_WINDOW = 168, PROFIT_TAKE_PCT = 50;
 const TICK_UTC = { hour: 0, minute: 20 };      // after the 00:00 UTC close the backtest used
 const REMEASURE_UTC = { day: 1, hour: 1, minute: 0 };
+// The Agentic Wallet's session is good for a year but only while it is used
+// at least every 48 hours (Binance's rule, 2026-09-09). The daily tick is a
+// use; if one tick fails the next is 24 h later, still inside the rule — but
+// a second failure in a row would be 48 h and the session gone. So halfway
+// between ticks the loop reads the wallet once more, orders nothing, and
+// says so only when the wallet is no longer connected.
+const KEEPALIVE_UTC = { hour: 12, minute: 20 };
 const POLL_MS = 5000, POLL_MAX_MS = 180000;
 
 // An order the wallet accepted but whose end this tick could not see. The
@@ -195,6 +202,31 @@ if (has('--state')) {
   if (!st) { say('no state yet — run --bootstrap --confirm first'); process.exit(0); }
   say(JSON.stringify(migrate(st), null, 1));
   process.exit(0);
+}
+
+// ---------------------------------------------------------------- keep-alive
+// A wallet read between ticks so the session never sees 48 h of silence.
+// Reads only: status, then the balances (a real use of the session, not a
+// local file check). Never orders, never touches the state.
+async function keepalive() {
+  try {
+    const w = baw(['wallet', 'status']);
+    if (!w.success || w.data.status !== 'CONNECTED') {
+      say('keep-alive: wallet not connected');
+      log({ kind: 'keepalive', ok: false, connected: false });
+      await notify('⚠️ <b>Trader: wallet not connected</b> — the session on the server has ended; sign in again with a QR code.');
+      return false;
+    }
+    const by = balances();
+    const n = Object.keys(by || {}).length;
+    say(`keep-alive: wallet connected, ${n} balances read`);
+    log({ kind: 'keepalive', ok: true, connected: true, balances: n });
+    return true;
+  } catch (e) {
+    say('keep-alive failed: ' + e.message);
+    log({ kind: 'keepalive', ok: false, error: String(e.message).slice(0, 200) });
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------- bootstrap
@@ -468,16 +500,18 @@ async function remeasure() {
 }
 
 if (has('--remeasure') || has('--refit')) { await remeasure(); process.exit(); }
+if (has('--keepalive')) { const ok = await keepalive(); process.exit(ok ? 0 : 1); }
 
 if (has('--loop')) {
-  say(`loop: a tick now, then daily at ${String(TICK_UTC.hour).padStart(2, '0')}:${String(TICK_UTC.minute).padStart(2, '0')} UTC${CONFIRM ? ', sending orders' : ' (dry)'}; a re-measure on the ${REMEASURE_UTC.day}st at ${String(REMEASURE_UTC.hour).padStart(2, '0')}:${String(REMEASURE_UTC.minute).padStart(2, '0')} UTC; STOP file at ${STOP} halts it`);
+  say(`loop: a tick now, then daily at ${String(TICK_UTC.hour).padStart(2, '0')}:${String(TICK_UTC.minute).padStart(2, '0')} UTC${CONFIRM ? ', sending orders' : ' (dry)'}; a wallet keep-alive at ${String(KEEPALIVE_UTC.hour).padStart(2, '0')}:${String(KEEPALIVE_UTC.minute).padStart(2, '0')} UTC (reads only); a re-measure on the ${REMEASURE_UTC.day}st at ${String(REMEASURE_UTC.hour).padStart(2, '0')}:${String(REMEASURE_UTC.minute).padStart(2, '0')} UTC; STOP file at ${STOP} halts it`);
   const run = () => tick().catch(async (e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); await notify('⚠️ <b>Trader: tick failed</b> — ' + String(e.message).slice(0, 200)); });
   await run();
   setInterval(() => {
     const d = new Date(), h = d.getUTCHours(), m = d.getUTCMinutes();
     if (h === TICK_UTC.hour && m === TICK_UTC.minute) run();
+    if (h === KEEPALIVE_UTC.hour && m === KEEPALIVE_UTC.minute) keepalive();
     if (d.getUTCDate() === REMEASURE_UTC.day && h === REMEASURE_UTC.hour && m === REMEASURE_UTC.minute) remeasure();
   }, 60000);
 } else {
-  say('node scripts/trader-live.mjs --tick [--confirm] | --bootstrap --confirm | --loop --confirm | --state | --remeasure');
+  say('node scripts/trader-live.mjs --tick [--confirm] | --bootstrap --confirm | --loop --confirm | --state | --remeasure | --keepalive');
 }

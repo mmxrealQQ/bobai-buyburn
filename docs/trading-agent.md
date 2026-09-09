@@ -5,36 +5,48 @@ Not published: this file, `scripts/trader*.mjs`, `shared/trader-core.js` and
 `PRIVATE_TREES`). The agent trades the operator's own money through his
 Binance Agentic Wallet; it is not part of what brainonbnb.com offers.
 
-## What it is
+## What it is (since 2026-09-09: the slow machine)
 
-Four traded assets on BNB Chain — BNB, CAKE, BOB, USDT — plus $BOBAI as where the
-profit goes (bought on its dips, never sold), and one rule chosen by
-evidence, plus the operator's profit rule:
+The operator's brief, 2026-09-09: *not fast money — slow, long-term, as much as possible.*
+Four assets on BNB Chain — BNB, CAKE, BOB, USDT — plus $BOBAI as where the profit goes
+(bought on its dips, never sold). One rule, chosen by measurement (below), plus the
+operator's profit rule:
 
-- **USDT is the base position.** The pot sits in USDT when nothing earns an entry.
-- **One pot, rotation.** Every hour the rule looks at BNB (against USDT), CAKE and
-  BOB (in USD). If the pot is in a position and that leg says sell (back at its
-  mean, a 6% stop, or 72 h held), it is sold to USDT; if the pot is free and a
-  leg says buy, the deepest signal is bought with the whole pot. Both can
-  happen in the same hour: out of a top, into a dip.
-- **Two rule families, per leg, chosen by unseen hours.** `reversion` buys a
-  dip (z-score of the log price against its rolling mean ≤ −entryZ) and sells at
-  the mean; `trend` buys a breakout (z ≥ entryZ) and sells once the price is
-  back under the mean. Parameters (family, window, entry, exit) are chosen on
-  the first 60% of six months of hourly closes and judged on the last 40%;
-  `--robust` repeats that at four split points and with costs × 1.5.
-- **Profit rule.** Every closed trade's net goes to a profit pool. When BOBAI
-  dips (its own z ≤ −1 over 168 h), half of the pool buys BOBAI — never sold —
-  and half is added to the pot, so the capital compounds. Losses eat the pool
-  first, then the pot.
-- **Costs** per side per leg (pool fee + impact at size + wallet allowance) live
-  in `DEFAULT_COSTS_PCT`; the wallet's own fee turned out to be inside its
-  quote (bootstrap 2026-09-08: received 0.01% above quote). Gas is
-  0.00047 BNB (~$0.35) per swap on top, `DEFAULT_GAS_USD_PER_SWAP`, and since
-  2026-09-09 every replay charges it per side (the first backtest left it out,
-  which flattered the leg that trades most). On a $25 leg that is 1.4% a side,
-  on the $110 pot 0.3% — hence the $10 minimum order, and hence the pot size
-  matters more than the rule.
+- **A target allocation, always invested.** A third each of BNB, CAKE and BOB; USDT only
+  as the arrival buffer for deposits. `ALLOCATION` in `shared/trader-core.js`.
+- **One tick a day, 00:20 UTC** (after the 00:00 close the backtest used). Any day: a
+  *top-up pass* invests cash that arrived (a deposit) into the sleeves under target and
+  sells nothing. **Every 30 days: the full pass** — sleeves that drifted more than 20% from
+  target are sold down / bought up (`planRebalance`, band `REBALANCE_BAND`). Under ~$300
+  the band never fires (a fifth of a third is under the $10 minimum), so the machine is
+  buy-and-hold there; that is fine and was measured.
+- **Profit rule.** Profit is the pot above its own high-water mark, measured at the
+  monthly pass (`profitTake`). Half of the excess leaves the pot for the profit pool, the
+  other half stays and compounds; the mark moves to the pot after the take, so a dollar
+  is never taken twice. Deposits raise the mark, never count as profit. The pool buys
+  BOBAI when BOBAI dips (z ≤ −1 over 168 h) — bought, held, never sold.
+- **Costs** per side per leg in `DEFAULT_COSTS_PCT`, gas 0.00047 BNB (~$0.35) a swap on
+  top. With three trades a month, gas is a dollar; costs × 1.5 move the result by about
+  a dollar (measured). The hourly rule this replaced turned negative under costs × 1.5.
+- **BNB is a sleeve and the gas token.** What the agent bought is `units.BNB`; the rest
+  of the wallet's BNB is the gas reserve (0.006, refilled from cash under 0.003) and
+  whatever the operator sent. Deposit and gas rules look only at that rest.
+- **Pending orders.** A swap is done when the wallet's balance says so, not when the
+  order list does (2026-09-09: the first buy went through on-chain while
+  `market-order list --orderId` answered an empty list for three minutes). An order still
+  unseen after 180 s is written into the state as `pending`; the next tick books what
+  arrived, measured against the balances taken before the order.
+- **Monthly re-measure**, 1st of the month 01:00 UTC: six months fetched, `trader-slow.mjs`
+  run on the pot's size, result reported to the operator. It changes nothing — the
+  allocation is his decision.
+
+### The hourly dip-trader it replaced (2026-09-08 – 2026-09-09 04:25 UTC, no order placed)
+
+Kept in `scripts/trader.mjs` (backtest, robust, plan) and `shared/trader-core.js`
+(`replayLeg`, `replayRotation`, `signal`) as the measured alternative: USDT base, one pot,
+hourly z-score rule per leg (`reversion` buys a dip, `trend` a breakout), 6% stop, 72 h
+hold, parameters chosen by walk-forward and refit weekly. Its evidence is below under
+*Evidence (2026-09-09)*; the reason it was replaced is in *The slow variant, measured*.
 
 ## Where it lives
 
@@ -44,7 +56,8 @@ evidence, plus the operator's profit rule:
 | analysis: self-test, backtest, robust, plan, status | `scripts/trader.mjs` |
 | prices (Binance spot + GeckoTerminal pools, hourly, USD) | `scripts/trader-fetch.mjs` → `data/trader/prices.json` (6 months), `prices-live.json` (400 h, the tick) |
 | chosen parameters | `data/trader/picks.json` (written by `--backtest`) |
-| the live agent: bootstrap, tick, loop, refit, reports | `scripts/trader-live.mjs` |
+| the live agent: bootstrap, tick, loop, re-measure, reports | `scripts/trader-live.mjs` |
+| the slow backtest (allocation × cadence, walk-forward, costs × 1.5) | `scripts/trader-slow.mjs` |
 | its state and log (on the server) | `data/trader/state.json`, `data/trader/log.jsonl` |
 | the server | Hetzner Cloud `bobai-trader`, Helsinki, `2.29.45.27` — see the memory note `reference_trader_vps` |
 | the wallet | Binance Agentic Wallet `0xcCCf2F2198e229027f6F61379a36E82D8F45958c` (BSC), signed in on the server for 365 days, CLI `baw` |
@@ -67,7 +80,7 @@ On the server (as root, the agent runs as user `trader`):
 
 ```
 ssh -i ~/.ssh/bobai-trader root@2.29.45.27
-systemctl status bobai-trader            # the loop: a tick every hour at :05, a refit every Monday 00:20 UTC
+systemctl status bobai-trader            # the loop: a tick now and daily at 00:20 UTC, a re-measure on the 1st at 01:00 UTC
 journalctl -u bobai-trader -n 50         # what the ticks said
 sudo -u trader node /home/trader/bobai/scripts/trader-live.mjs --state
 touch /home/trader/bobai/data/trader/STOP   # halt: the loop keeps running but does nothing; rm to resume
@@ -78,11 +91,11 @@ After a change to any file in the table above: `scp -i ~/.ssh/bobai-trader <file
 
 ## Guards
 
-- never more than the pot in one order and never more than $1,000 (BOB's pool moves 0.3% at $500); the rest waits in USDT
-- nothing under $10; the BNB gas reserve (0.006) is never traded and refills itself from the pot under 0.003 BNB
-- deposits are taken in by the next tick: BNB above the reserve becomes USDT, USDT beyond the capital on record raises the capital; nothing is added to an open position, the money waits for the next entry
-- daily loss cap: realised losses over 5% of the capital in a UTC day block new entries until the next day (exits still run)
-- a failed or refused order ends the tick and is reported; nothing is retried blind
+- never more than the cash there is in one buy and never more than $1,000 in one order (BOB's pool moves 0.3% at $500); the rest waits for tomorrow's pass
+- nothing under $10; the BNB gas reserve (0.006, outside the BNB sleeve) is never traded and refills itself from cash under 0.003 BNB
+- deposits are taken in by the next tick: BNB above the reserve becomes USDT, USDT beyond what the agent counts as its own raises the capital and the high-water mark; the next top-up pass invests it
+- a leg whose price cannot be read (wallet and live file both silent) is not valued and not traded that day
+- a refused or failed order ends the tick and is reported; an order unseen after 180 s becomes `pending` and is booked next tick from the balance; nothing is retried blind
 - the wallet's own rules, set in the Binance App: 365-day sign-in, high-risk transactions need app confirmation, developer mode off
 
 ## Evidence (2026-09-09, six months 12.3.–8.9., $25 a leg, unseen last 40% = 72 days, gas charged)
@@ -130,5 +143,11 @@ thing to measure.
 
 ## Live since
 
-2026-09-08 13:41 UTC. Bootstrap: 0.14822 BNB → 110.32 USDT (tx 0xc8a402…). First ticks: all
-legs hold.
+Hourly agent 2026-09-08 13:41 UTC (bootstrap 0.14822 BNB → 110.32 USDT, tx 0xc8a402…); it
+placed no order in its 15 hours. Operator deposit 2026-09-09 ~04:20 UTC: +29.05 USDT.
+**Slow machine live 2026-09-09 04:25 UTC**, first monthly pass on $139.37: USDT→BNB 46.46
+(0.06165 BNB; the order went through while the order list stayed empty — hence the pending
+mechanism, booked 04:30), USDT→CAKE 46.41 (20.41 CAKE, 0% under quote), USDT→BOB 46.41
+(2.384e9 BOB, 0.03% under quote, tx 0xeeae1797…). Sleeves after: BNB $46.32 · CAKE $46.34 ·
+BOB $46.37 · cash $0.09; pot $139.12 against $139.37 in (the costs). High-water mark
+$139.37; next monthly pass 2026-10-09; daily tick 00:20 UTC.

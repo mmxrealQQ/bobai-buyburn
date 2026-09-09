@@ -388,3 +388,83 @@ export function replayRotation(legs, bobai, picks, { capitalUsd = 100, profitToB
     max_drawdown_pct: Math.round(maxDD * 100) / 100, trades,
   };
 }
+
+// ============================================================================
+// THE SLOW MACHINE (2026-09-09). The operator's brief: not fast money, slow
+// money — long term, as much as possible. Measured first (scripts/trader-slow.mjs,
+// docs/trading-agent.md): on the same six months the hourly rule was judged on,
+// a plain target allocation with monthly rebalancing earned +39% on the unseen
+// 72 days at every pot size, with three trades and a dollar of gas, and
+// costs × 1.5 moved it by a dollar — where the hourly rule turned negative.
+// What it is NOT: an edge. It is exposure to BNB, CAKE and BOB plus the small,
+// steady gain of selling what rose and buying what fell. The arithmetic below
+// is shared by the backtest and the live tick, so what was measured is what runs.
+export const ALLOCATION = { BNB: 1 / 3, CAKE: 1 / 3, BOB: 1 / 3, USDT: 0 };
+export const REBALANCE_EVERY_DAYS = 30;
+// Relative drift a sleeve must show before the monthly pass trades it: a third
+// that has become 40% of the pot (drift +0.2) is sold back; one at 36% is left.
+// Under ~$300 the band never fires because a fifth of a third is under the
+// wallet's $10 minimum — there the machine is buy-and-hold, and that is fine.
+export const REBALANCE_BAND = 0.2;
+export const DEFAULT_MIN_ORDER_USD = 10;
+export const DEFAULT_MAX_ORDER_USD = 1000;
+
+/**
+ * planRebalance — pure. What has to be bought and sold to bring the holdings
+ * to the target weights.
+ *   holdingsUsd: { BNB, CAKE, BOB, USDT } in dollars, what the agent owns.
+ *   weights: shares summing to 1; USDT's share stays as cash.
+ *   band: relative drift under which a sleeve is left alone (0 = always trade).
+ *   sells: false = a top-up pass that only invests cash (a deposit arrived).
+ *   takeUsd: dollars to move out of the assets into cash first (the profit
+ *            take); it forces every sleeve to its target, band or not.
+ * Sells come first so the cash for the buys exists; buys are clamped to the
+ * cash there is; nothing under minOrderUsd, nothing over maxOrderUsd (the rest
+ * waits for the next pass — a $3,000 shift happens over three days).
+ */
+export function planRebalance(holdingsUsd, weights = ALLOCATION, { band = 0, minOrderUsd = DEFAULT_MIN_ORDER_USD, maxOrderUsd = DEFAULT_MAX_ORDER_USD, sells = true, takeUsd = 0 } = {}) {
+  const have = (l) => Number(holdingsUsd[l] || 0);
+  const total = TRADING_LEGS.reduce((s, l) => s + have(l), 0) + have('USDT');
+  const take = Math.min(Math.max(0, takeUsd), total);
+  const investable = total - take;
+  const orders = [], skipped = [], drift = {};
+  for (const l of TRADING_LEGS) {
+    const target = investable * (weights[l] || 0);
+    drift[l] = target > 0 ? (have(l) - target) / target : (have(l) > 0 ? Infinity : 0);
+    const diff = target - have(l);
+    if (take <= 0 && Math.abs(drift[l]) <= band) { skipped.push({ leg: l, usd: diff, why: `drift ${(drift[l] * 100).toFixed(1)}% is inside the ${band * 100}% band` }); continue; }
+    if (Math.abs(diff) < minOrderUsd) { skipped.push({ leg: l, usd: diff, why: `$${Math.abs(diff).toFixed(2)} is under the $${minOrderUsd} minimum` }); continue; }
+    if (diff < 0 && !sells) { skipped.push({ leg: l, usd: diff, why: 'a top-up pass does not sell' }); continue; }
+    orders.push({ leg: l, side: diff < 0 ? 'sell' : 'buy', usd: Math.min(Math.abs(diff), maxOrderUsd), target_usd: target, have_usd: have(l) });
+  }
+  orders.sort((a, b) => (a.side === b.side ? 0 : a.side === 'sell' ? -1 : 1));
+  let cash = have('USDT') + orders.filter((o) => o.side === 'sell').reduce((s, o) => s + o.usd, 0) - take;
+  const kept = [];
+  for (const o of orders) {
+    if (o.side === 'buy') {
+      const usd = Math.min(o.usd, Math.max(0, cash));
+      if (usd < minOrderUsd) { skipped.push({ leg: o.leg, usd: o.usd, why: `only $${Math.max(0, cash).toFixed(2)} of cash for a $${o.usd.toFixed(2)} buy` }); continue; }
+      o.usd = usd; cash -= usd;
+    }
+    kept.push(o);
+  }
+  const r2 = (x) => Math.round(x * 100) / 100;
+  for (const o of kept) { o.usd = r2(o.usd); o.target_usd = r2(o.target_usd); o.have_usd = r2(o.have_usd); }
+  return { total: r2(total), take: r2(take), investable: r2(investable), orders: kept, skipped, drift, cash_after: r2(Math.max(0, cash)) };
+}
+
+/**
+ * profitTake — pure. The operator's profit rule on a machine that never
+ * "closes a trade": profit is the pot above its own high-water mark, measured
+ * at the monthly pass. Half of that excess leaves the pot for the profit
+ * pool (which buys $BOBAI on its dips, never sold); the other half stays and
+ * compounds. The high-water mark moves up to the pot after the take, so the
+ * same dollar is never taken twice. Deposits raise the mark by the deposit,
+ * never count as profit. Below the mark nothing is taken and the mark holds.
+ */
+export function profitTake(totalUsd, highWaterUsd, pct = 50) {
+  const excess = Math.max(0, totalUsd - Math.max(0, highWaterUsd));
+  const take = Math.round(excess * pct) / 100;
+  const r2 = (x) => Math.round(x * 100) / 100;
+  return { excess: r2(excess), take, high_water_after: r2(excess > 0 ? totalUsd - take : Math.max(0, highWaterUsd)) };
+}

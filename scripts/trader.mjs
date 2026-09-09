@@ -19,7 +19,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { LEGS, TRADING_LEGS, DEFAULT_COSTS_PCT, DEFAULT_GAS_USD_PER_SWAP, NEVER_SELL, PARAM_GRID, zScores, replayLeg, walkForward, signal, alignTo, replayRotation } from '../shared/trader-core.js';
+import { LEGS, TRADING_LEGS, DEFAULT_COSTS_PCT, DEFAULT_GAS_USD_PER_SWAP, NEVER_SELL, PARAM_GRID, zScores, replayLeg, walkForward, signal, alignTo, replayRotation, planRebalance, profitTake, ALLOCATION } from '../shared/trader-core.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PRICES = path.join(ROOT, 'data', 'trader', 'prices.json');

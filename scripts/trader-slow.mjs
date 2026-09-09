@@ -30,7 +30,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_COSTS_PCT, DEFAULT_GAS_USD_PER_SWAP } from '../shared/trader-core.js';
+import { DEFAULT_COSTS_PCT, DEFAULT_GAS_USD_PER_SWAP, planRebalance } from '../shared/trader-core.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PRICES = path.join(ROOT, 'data', 'trader', 'prices.json');
@@ -76,32 +76,25 @@ export function replayAllocation(closes, times, weights, { capitalUsd = 100, eve
     const day = (times[i] - times[from]) / DAY_MS;
     const due = lastRebal === null || day - lastRebal >= everyDays;
     if (due) {
-      const total = value(i);
-      // sells first, so the USDT is there for the buys
-      const orders = [];
-      for (const a of ASSETS) {
-        const target = total * (weights[a] || 0);
-        const have = units[a] * closes[i][a];
-        const drift = target > 0 ? Math.abs(have - target) / target : (have > 0 ? Infinity : 0);
-        if (drift <= band) continue;
-        const diff = target - have;
-        if (Math.abs(diff) < MIN_ORDER_USD) continue;
-        orders.push({ a, diff });
-      }
-      orders.sort((x, y) => x.diff - y.diff); // negatives (sells) first
-      for (const { a, diff } of orders) {
-        if (diff < 0) {
-          const usd = -diff;
-          const cost = swapCost(a, usd, 'sell', costsPct, gasUsd);
-          units[a] -= usd / closes[i][a];
-          usdt += usd - cost;
+      // The plan is the live agent's plan — one arithmetic for what was
+      // measured and what runs (shared/trader-core.js planRebalance). The
+      // backtest does not cap an order: the cap is a live guard that spreads
+      // a big shift over days, not a rule about where the money ends up.
+      const holdings = Object.fromEntries(ASSETS.map((a) => [a, units[a] * closes[i][a]]));
+      holdings.USDT = usdt;
+      const plan = planRebalance(holdings, weights, { band, minOrderUsd: MIN_ORDER_USD, maxOrderUsd: Infinity });
+      for (const o of plan.orders) {
+        if (o.side === 'sell') {
+          const cost = swapCost(o.leg, o.usd, 'sell', costsPct, gasUsd);
+          units[o.leg] -= o.usd / closes[i][o.leg];
+          usdt += o.usd - cost;
           feesPaid += cost - gasUsd; gasPaid += gasUsd; trades++;
         } else {
-          const usd = Math.min(diff, usdt);
+          const usd = Math.min(o.usd, usdt);
           if (usd < MIN_ORDER_USD) continue;
-          const cost = swapCost(a, usd, 'buy', costsPct, gasUsd);
+          const cost = swapCost(o.leg, usd, 'buy', costsPct, gasUsd);
           usdt -= usd;
-          units[a] += (usd - cost) / closes[i][a];
+          units[o.leg] += (usd - cost) / closes[i][o.leg];
           feesPaid += cost - gasUsd; gasPaid += gasUsd; trades++;
         }
       }

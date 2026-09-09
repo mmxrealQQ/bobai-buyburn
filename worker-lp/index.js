@@ -155,7 +155,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     let costOpts = {};
     try {
       const m = measuredResetCost(await readState(env), (await readBnbUsd(pub)).bnbUsd);
-      if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB` };
+      if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
     } catch { /* the replay's assumption stands */ }
     const record = log ? verdict(log, costOpts) : null;
     // The pool the record watches lets the plan finish a re-set that stopped

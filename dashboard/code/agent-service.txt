@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 11967 lines.
+# one fetch. 41 files, 12000 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -958,6 +958,7 @@ import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } fr
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees, resetForward,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
+  V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
 export const ADDR = {
@@ -1467,6 +1468,12 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // 0.000998 BNB that every fees figure said was zero — and so the buyback
   // share of them can be sent on before the mint folds the rest in.
   let folded = null, share = null;
+  // The re-centring trade, written down: which side, how much in WBNB terms,
+  // and the pool fee it paid. The window record charges this on top of the
+  // gas when it replays the re-sets; without it the replay undercounted a
+  // re-set by half (2026-09-09).
+  let swap = null;
+  const swapNote = (side, wbnbWei) => { const n = Number(formatEther(wbnbWei)); return { side, venue: 'pancakeswap v2', fee_pct: V2_SWAP_FEE_PCT, notional_bnb: Number(n.toFixed(6)), fee_bnb: Number((n * V2_SWAP_FEE_PCT / 100).toFixed(8)) }; };
   if (plan.tokenId != null) {
     const old = await readPosition(pub, account.address);
     if (old.tokenId != null && String(old.tokenId) === String(plan.tokenId)) {
@@ -1505,6 +1512,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     await ensureAllowance(pub, send, plan.other, ADDR.V2_ROUTER, sell, 'allow the router to sell the other side (once)');
     await send('sell the excess of the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
       args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
+    swap = swapNote('sell', q[1]);
   } else if (targetOther > haveOther) {
     const need = targetOther - haveOther;
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, plan.other]]);
@@ -1515,6 +1523,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
       await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
       await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
         args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+      swap = swapNote('buy', wbnbIn);
     }
   }
   // The buyback share of the old range's fees leaves here, before the mint
@@ -1557,7 +1566,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
   // it that went to the buyback wallet; the difference was minted into the
   // new capital. Records before 2026-09-08 carry only the first.
-  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
       fees_forwarded_bnb: Number(formatEther(forwarded)), fees_kept_pct: share ? share.pct : null,
@@ -1927,6 +1936,12 @@ export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
 // The earnings test needs this much recorded price before it may pick; a
 // width chosen on six hours of a quiet afternoon is a guess with a number on it.
 export const MIN_HOURS_FOR_EARNINGS = 24;
+// A re-set trades about half the position to re-centre it, through the
+// PancakeSwap V2 router — a 0.25% pool. On 2026-09-09 that was measured at
+// 0.04 WBNB a re-set: 0.0001 BNB of fee, more than the re-set's whole gas
+// (0.00007 BNB). Until then the measured re-set cost was gas alone, and the
+// wait test, charged half the true cost, favoured re-setting at once.
+export const V2_SWAP_FEE_PCT = 0.25;
 // How much of the fees a collect keeps as capital, in percent. The rest goes
 // to the buyback wallet. Until 2026-09-04 every collected fee went to the
 // buyback; since then the position keeps half, so it grows out of its own
@@ -6919,7 +6934,7 @@ ${pageTail}`;
       try {
         const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
         const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
-        if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB in ${m.transactions ?? '?'} transactions` };
+        if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
       } catch { /* the replay's assumption stands */ }
       const v = lpVerdict(log, costOpts);
       // THE WIDTH RECORD, READABLE. The record page and /liquidity link here
@@ -8327,7 +8342,7 @@ export async function lpTierPlan(input = {}) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -8516,12 +8531,30 @@ export function verdict(log, opts = {}) {
 // re-set cost in gas, in today's dollars, once the record has one; the
 // replay's assumption until then. `agentRecord` is the lp:agent record the
 // worker writes (history entries carry the rebalance step with gas_bnb).
+// The swap fee a re-set paid. Records since 2026-09-09 carry it measured
+// (steps.rebalance.swap); older ones name the trade, and the fee is worked
+// out from it — a buy names its WBNB, a sell is taken as half the position
+// (what a re-centre moves). A re-set with no trade on record paid none.
+export function resetSwapFee(rb) {
+  if (rb?.swap && Number(rb.swap.fee_bnb) >= 0) return { bnb: Number(rb.swap.fee_bnb), basis: 'measured' };
+  const trade = String(rb?.trade || '');
+  const buy = /with ([\d.]+) WBNB/.exec(trade);
+  if (buy) return { bnb: Number((Number(buy[1]) * V2_SWAP_FEE_PCT / 100).toFixed(8)), basis: `estimated from the trade (${buy[1]} WBNB through the ${V2_SWAP_FEE_PCT}% pool)` };
+  if (/^sell /.test(trade) && Number(rb.value_bnb) > 0) return { bnb: Number((Number(rb.value_bnb) / 2 * V2_SWAP_FEE_PCT / 100).toFixed(8)), basis: `estimated as half the position through the ${V2_SWAP_FEE_PCT}% pool` };
+  return { bnb: 0, basis: 'no trade on record' };
+}
+
+// What the agent's last clean re-set cost: its gas plus the fee of its
+// re-centring trade, in today's dollars. Gas alone was the figure until
+// 2026-09-09, and it was half the truth.
 export function measuredResetCost(agentRecord, bnbUsd) {
   const hist = Array.isArray(agentRecord?.history) ? agentRecord.history : [];
   for (let i = hist.length - 1; i >= 0; i--) {
     const rb = hist[i]?.steps?.rebalance;
     if (rb && rb.acted && !rb.error && Number(rb.gas_bnb) > 0 && Number(bnbUsd) > 0) {
-      return { usd: Math.round(Number(rb.gas_bnb) * Number(bnbUsd) * 100) / 100, gas_bnb: Number(rb.gas_bnb), at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null };
+      const fee = resetSwapFee(rb);
+      const bnb = Number(rb.gas_bnb) + fee.bnb;
+      return { usd: Math.round(bnb * Number(bnbUsd) * 100) / 100, bnb: Number(bnb.toFixed(8)), gas_bnb: Number(rb.gas_bnb), swap_fee_bnb: fee.bnb, swap_basis: fee.basis, at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null };
     }
   }
   return null;
@@ -12004,7 +12037,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     let costOpts = {};
     try {
       const m = measuredResetCost(await readState(env), (await readBnbUsd(pub)).bnbUsd);
-      if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB` };
+      if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
     } catch { /* the replay's assumption stands */ }
     const record = log ? verdict(log, costOpts) : null;
     // The pool the record watches lets the plan finish a re-set that stopped

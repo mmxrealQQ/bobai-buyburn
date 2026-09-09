@@ -29,6 +29,7 @@ import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } fr
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees, resetForward,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
+  V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
 export const ADDR = {
@@ -538,6 +539,12 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // 0.000998 BNB that every fees figure said was zero — and so the buyback
   // share of them can be sent on before the mint folds the rest in.
   let folded = null, share = null;
+  // The re-centring trade, written down: which side, how much in WBNB terms,
+  // and the pool fee it paid. The window record charges this on top of the
+  // gas when it replays the re-sets; without it the replay undercounted a
+  // re-set by half (2026-09-09).
+  let swap = null;
+  const swapNote = (side, wbnbWei) => { const n = Number(formatEther(wbnbWei)); return { side, venue: 'pancakeswap v2', fee_pct: V2_SWAP_FEE_PCT, notional_bnb: Number(n.toFixed(6)), fee_bnb: Number((n * V2_SWAP_FEE_PCT / 100).toFixed(8)) }; };
   if (plan.tokenId != null) {
     const old = await readPosition(pub, account.address);
     if (old.tokenId != null && String(old.tokenId) === String(plan.tokenId)) {
@@ -576,6 +583,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     await ensureAllowance(pub, send, plan.other, ADDR.V2_ROUTER, sell, 'allow the router to sell the other side (once)');
     await send('sell the excess of the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
       args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
+    swap = swapNote('sell', q[1]);
   } else if (targetOther > haveOther) {
     const need = targetOther - haveOther;
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [10n ** 18n, [ADDR.WBNB, plan.other]]);
@@ -586,6 +594,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
       await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V2_ROUTER, wbnbIn, 'allow the router to spend WBNB (once)');
       await send('buy the missing other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokens',
         args: [wbnbIn, (need * 99n) / 100n, [ADDR.WBNB, plan.other], account.address, deadline()] });
+      swap = swapNote('buy', wbnbIn);
     }
   }
   // The buyback share of the old range's fees leaves here, before the mint
@@ -628,7 +637,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
   // it that went to the buyback wallet; the difference was minted into the
   // new capital. Records before 2026-09-08 carry only the first.
-  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
       fees_forwarded_bnb: Number(formatEther(forwarded)), fees_kept_pct: share ? share.pct : null,

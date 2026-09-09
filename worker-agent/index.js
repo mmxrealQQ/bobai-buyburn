@@ -1510,7 +1510,7 @@ ${pageTail}`;
       try {
         const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
         const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
-        if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB in ${m.transactions ?? '?'} transactions` };
+        if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
       } catch { /* the replay's assumption stands */ }
       const v = lpVerdict(log, costOpts);
       // THE WIDTH RECORD, READABLE. The record page and /liquidity link here

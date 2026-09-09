@@ -85,6 +85,12 @@ export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
 // The earnings test needs this much recorded price before it may pick; a
 // width chosen on six hours of a quiet afternoon is a guess with a number on it.
 export const MIN_HOURS_FOR_EARNINGS = 24;
+// A re-set trades about half the position to re-centre it, through the
+// PancakeSwap V2 router — a 0.25% pool. On 2026-09-09 that was measured at
+// 0.04 WBNB a re-set: 0.0001 BNB of fee, more than the re-set's whole gas
+// (0.00007 BNB). Until then the measured re-set cost was gas alone, and the
+// wait test, charged half the true cost, favoured re-setting at once.
+export const V2_SWAP_FEE_PCT = 0.25;
 // How much of the fees a collect keeps as capital, in percent. The rest goes
 // to the buyback wallet. Until 2026-09-04 every collected fee went to the
 // buyback; since then the position keeps half, so it grows out of its own

@@ -34,7 +34,7 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, measuredResetCost, MAX_WINDOWS } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, measuredResetCost, resetSwapFee, MAX_WINDOWS } from '../worker-agent/lp-windows.js';
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
@@ -228,6 +228,19 @@ if (SELF_TEST) {
   t('a re-set that errored is not a cost measurement', mc.at === '2026-09-04T07:50:00Z');
   t('no re-set on record means no measured cost', measuredResetCost({ history: [] }, 700) === null && measuredResetCost(null, 700) === null);
   t('no BNB price means no measured cost', measuredResetCost(rec, null) === null);
+  // The swap fee of a re-set (2026-09-09), both ways: a measured field wins,
+  // a buy is worked out from its WBNB, a sell from half the position, and a
+  // re-set without a trade paid none. The cost the verdict charges is gas
+  // plus the fee — 0.0002 BNB of gas and 0.04 WBNB through the 0.25% pool
+  // at $700 is $0.21, not $0.14.
+  t('a re-set with no trade on record paid no swap fee', resetSwapFee({}).bnb === 0 && /no trade/.test(resetSwapFee({}).basis));
+  t('a buy names its WBNB: 0.04 WBNB through 0.25% is 0.0001 BNB', resetSwapFee({ trade: 'buy the other side with 0.040000 WBNB' }).bnb === 0.0001 && /estimated/.test(resetSwapFee({ trade: 'buy the other side with 0.040000 WBNB' }).basis));
+  t('a sell is taken as half the position', resetSwapFee({ trade: 'sell 18.7 of 0x0e09 for WBNB', value_bnb: 0.08 }).bnb === 0.0001);
+  t('a measured swap field wins over the estimate', resetSwapFee({ trade: 'buy the other side with 0.040000 WBNB', swap: { fee_bnb: 0.00005 } }).bnb === 0.00005 && resetSwapFee({ swap: { fee_bnb: 0.00005 } }).basis === 'measured');
+  const recSwap = { history: [{ at: '2026-09-09T07:50:00Z', steps: { rebalance: { acted: true, gas_bnb: 0.0002, trade: 'buy the other side with 0.040000 WBNB', txs: new Array(3) } } }] };
+  const mcs = measuredResetCost(recSwap, 700);
+  t('the measured cost is gas plus the swap fee ($0.14 + $0.07 = $0.21)', mcs && mcs.usd === 0.21 && mcs.swap_fee_bnb === 0.0001 && mcs.gas_bnb === 0.0002);
+  t('… and the verdict charges that sum', verdict(dayFlat, { resetCostUsd: mcs.usd }).reset_cost.usd === 0.21);
   t('the verdict charges the measured cost when given one', verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.usd === 0.14 && /measured/.test(verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.basis));
   t('… and says the cost is assumed when not', /assumed/.test(verdict(dayFlat).reset_cost.basis));
 

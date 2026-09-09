@@ -23,7 +23,7 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -212,12 +212,30 @@ export function verdict(log, opts = {}) {
 // re-set cost in gas, in today's dollars, once the record has one; the
 // replay's assumption until then. `agentRecord` is the lp:agent record the
 // worker writes (history entries carry the rebalance step with gas_bnb).
+// The swap fee a re-set paid. Records since 2026-09-09 carry it measured
+// (steps.rebalance.swap); older ones name the trade, and the fee is worked
+// out from it — a buy names its WBNB, a sell is taken as half the position
+// (what a re-centre moves). A re-set with no trade on record paid none.
+export function resetSwapFee(rb) {
+  if (rb?.swap && Number(rb.swap.fee_bnb) >= 0) return { bnb: Number(rb.swap.fee_bnb), basis: 'measured' };
+  const trade = String(rb?.trade || '');
+  const buy = /with ([\d.]+) WBNB/.exec(trade);
+  if (buy) return { bnb: Number((Number(buy[1]) * V2_SWAP_FEE_PCT / 100).toFixed(8)), basis: `estimated from the trade (${buy[1]} WBNB through the ${V2_SWAP_FEE_PCT}% pool)` };
+  if (/^sell /.test(trade) && Number(rb.value_bnb) > 0) return { bnb: Number((Number(rb.value_bnb) / 2 * V2_SWAP_FEE_PCT / 100).toFixed(8)), basis: `estimated as half the position through the ${V2_SWAP_FEE_PCT}% pool` };
+  return { bnb: 0, basis: 'no trade on record' };
+}
+
+// What the agent's last clean re-set cost: its gas plus the fee of its
+// re-centring trade, in today's dollars. Gas alone was the figure until
+// 2026-09-09, and it was half the truth.
 export function measuredResetCost(agentRecord, bnbUsd) {
   const hist = Array.isArray(agentRecord?.history) ? agentRecord.history : [];
   for (let i = hist.length - 1; i >= 0; i--) {
     const rb = hist[i]?.steps?.rebalance;
     if (rb && rb.acted && !rb.error && Number(rb.gas_bnb) > 0 && Number(bnbUsd) > 0) {
-      return { usd: Math.round(Number(rb.gas_bnb) * Number(bnbUsd) * 100) / 100, gas_bnb: Number(rb.gas_bnb), at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null };
+      const fee = resetSwapFee(rb);
+      const bnb = Number(rb.gas_bnb) + fee.bnb;
+      return { usd: Math.round(bnb * Number(bnbUsd) * 100) / 100, bnb: Number(bnb.toFixed(8)), gas_bnb: Number(rb.gas_bnb), swap_fee_bnb: fee.bnb, swap_basis: fee.basis, at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null };
     }
   }
   return null;

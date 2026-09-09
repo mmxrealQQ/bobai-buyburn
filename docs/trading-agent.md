@@ -20,6 +20,11 @@ operator's profit rule:
   target are sold down / bought up (`planRebalance`, band `REBALANCE_BAND`). Under ~$300
   the band never fires (a fifth of a third is under the $10 minimum), so the machine is
   buy-and-hold there; that is fine and was measured.
+- **A wallet keep-alive at 12:20 UTC.** The Agentic Wallet session lasts a year but only
+  while it is used at least every 48 hours. The tick is a use; the keep-alive is a second,
+  read-only one (status + balances, no orders, no state) so that one failed tick can never
+  cost the session. It speaks up only when the wallet is no longer connected; then a new
+  QR sign-in on the server is needed (`baw auth signin`). `--keepalive` runs it by hand.
 - **Profit rule.** Profit is the pot above its own high-water mark, measured at the
   monthly pass (`profitTake`). Half of the excess leaves the pot for the profit pool, the
   other half stays and compounds; the mark moves to the pot after the take, so a dollar
@@ -80,7 +85,7 @@ On the server (as root, the agent runs as user `trader`):
 
 ```
 ssh -i ~/.ssh/bobai-trader root@2.29.45.27
-systemctl status bobai-trader            # the loop: a tick now and daily at 00:20 UTC, a re-measure on the 1st at 01:00 UTC
+systemctl status bobai-trader            # the loop: a tick now and daily at 00:20 UTC, a wallet keep-alive at 12:20 UTC, a re-measure on the 1st at 01:00 UTC
 journalctl -u bobai-trader -n 50         # what the ticks said
 sudo -u trader node /home/trader/bobai/scripts/trader-live.mjs --state
 touch /home/trader/bobai/data/trader/STOP   # halt: the loop keeps running but does nothing; rm to resume

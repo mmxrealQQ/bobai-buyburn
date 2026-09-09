@@ -103,6 +103,31 @@ Gas is a fixed dollar amount, so the pot size decides: at $110 the two swaps of 
 cost 0.64% before any fee; at $500 they cost 0.14%. An expectation, not a promise — and a
 thin one.
 
+## The slow variant, measured (2026-09-09, `scripts/trader-slow.mjs`)
+
+The operator's brief on 2026-09-09: not fast money — slow, long-term, as much as possible.
+That is a different machine (daily closes, a target allocation, monthly rebalancing, capital
+always invested), so it was measured on the same 180 daily closes (13.3.–8.9.) with the same
+costs and gas before anything was built. Chosen on the first 108 days, judged on the last 72:
+
+| pot | chosen | unseen 72 d | costs × 1.5 | other splits (50/70/80%) | trades | gas |
+|---|---|---|---|---|---|---|
+| $110 | thirds BNB/CAKE/BOB, monthly | +43.23 (+39.3%) | +42.19 | +54 / +38 / +36 | 3 | $1.05 |
+| $135 | same | +53.40 (+39.6%) | +52.28 | +50 / +48 / +45 | 3 | $1.05 |
+| $500 | thirds, monthly, 20% band | +201.78 (+40.4%) | +199.65 | +190 / +180 / +171 | 3 | $1.05 |
+| $1000 | same | +405.04 (+40.5%) | +401.53 | +381 / +361 / +343 | 3 | $1.05 |
+
+Read honestly: (1) the first 108 days were flat (train P&L +0.25 on $110) and the whole gain
+is the last 72, when BNB, CAKE and BOB rose — this is market exposure, not an edge; the same
+machine loses when they fall (max drawdown over the six months 25–28%). (2) Rebalancing adds
+nothing under ~$300: a third of $110 is $36, and a 20% drift is $7, under the $10 minimum, so
+the machine is buy-and-hold there; at $500–1000 monthly rebalancing added 4–6 points over six
+months and cut the drawdown by ~3 points. (3) Costs stop mattering: × 1.5 moves the result by
+about one dollar, where the hourly agent turned negative. (4) Single assets did better in
+hindsight (CAKE +58%, BOB +49% with a 40% drawdown) — that is a look-back, not a rule. Yield on
+the parked assets (staking BNB/CAKE, lending USDT) is not in these numbers and is the next
+thing to measure.
+
 ## Live since
 
 2026-09-08 13:41 UTC. Bootstrap: 0.14822 BNB → 110.32 USDT (tx 0xc8a402…). First ticks: all

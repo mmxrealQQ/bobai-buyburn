@@ -20,6 +20,10 @@ const PANCAKE_ROUTER_V2 = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
 const BOB_WBNB_PAIR = '0x3c79593e01A7f7FeD5d0735B16621e2D52A6bC58';
 const BOBAI_WBNB_PAIR = '0x6eaDD4CB786898B34929444988380ed0CC6fD9A6';
 const PRIZE_POOL_WALLET = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+// The liquidity agent's wallet (worker-lp): it holds the PancakeSwap V3
+// CAKE/BNB position, grows it from what arrives and sends half of the fees it
+// earns back here to be burned. Operator's instruction 2026-09-09.
+const LP_AGENT_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
 const MIN_BNB = parseEther('0.001');
 const GAS_RESERVE = parseEther('0.003');
 
@@ -43,6 +47,22 @@ const WC26_END   = new Date('2026-07-19T23:59:00Z').getTime();
 const BOBAI_LIQ_BOOST2_START = new Date('2026-08-08T00:00:00Z').getTime();
 const BOBAI_LIQ_BOOST2_END   = new Date('2026-09-16T23:59:59Z').getTime();
 
+// LP Agent share (operator, 2026-09-09: "ab jetzt gehen direkt je 10% von
+// allen 1% an das lp wallet, in bnb"): 10 bps out of EACH of the three slices
+// (BOBAI burn, BOB burn, creator) -> 30 bps of trade as BNB to the liquidity
+// agent's wallet. Cut from the slices as they stand: during Liq Boost II the
+// BOB-burn slice is 20 bps and keeps 10. Runs with the Giggle pot to Nov 20.
+const LP_SHARE_START = new Date('2026-09-09T05:30:00Z').getTime();
+const LP_SHARE_END   = new Date('2026-11-20T00:01:00Z').getTime();
+
+// Giggle Academy pot ("Sunshine", announced on X 2026-07-13): from Sep 17
+// another 10 bps out of each slice -> 30 bps of trade as BNB to the old
+// prize-pool wallet, collected for 64 days and donated in one piece on UN
+// World Children's Day through giggleacademy.com/support-us. Window ends at
+// 00:01 UTC so Nov 20 is a whole day of donation, not of collection.
+const GIGGLE_START = new Date('2026-09-17T00:01:00Z').getTime();
+const GIGGLE_END   = new Date('2026-11-20T00:01:00Z').getTime();
+
 function isLiqBoostActive() {
   const now = Date.now();
   return now >= LIQ_BOOST_START && now <= LIQ_BOOST_END;
@@ -62,6 +82,14 @@ function isWc26Active() {
 function isBobaiLiqBoost2Active() {
   const now = Date.now();
   return now >= BOBAI_LIQ_BOOST2_START && now <= BOBAI_LIQ_BOOST2_END;
+}
+function isLpShareActive() {
+  const now = Date.now();
+  return now >= LP_SHARE_START && now < LP_SHARE_END;
+}
+function isGiggleActive() {
+  const now = Date.now();
+  return now >= GIGGLE_START && now < GIGGLE_END;
 }
 
 // Tax allocation in basis points of trade (TAX_BPS = 300 means 3% total).
@@ -357,6 +385,8 @@ async function runBot(env) {
   const bobaiLiqExtra = isBobaiLiqExtraActive();
   const wc26Active    = isWc26Active();
   const bobaiLiqBoost2 = isBobaiLiqBoost2Active();
+  const lpShare       = isLpShareActive();
+  const giggle        = isGiggleActive();
 
   // Build per-phase BPS allocation from baseline (1/1/1)
   let bobaiBurnBps = 100;
@@ -365,14 +395,19 @@ async function runBot(env) {
   let bobLiqBps    = 0;
   let bobaiLiqBps  = 0;
   let wc26PoolBps  = 0;
+  let lpAgentBps   = 0;
+  let giggleBps    = 0;
 
   if (bobLiqBoost)   { creatorBps -= 50; bobLiqBps   += 50; }
   if (bobaiLiqBoost) { bobBurnBps -= 50; bobaiLiqBps += 50; }
   if (bobaiLiqExtra) { creatorBps -= 25; bobaiLiqBps += 25; }
   if (wc26Active)    { creatorBps -= 26; bobBurnBps  -= 26; wc26PoolBps += 52; }
   if (bobaiLiqBoost2){ bobBurnBps -= 80; bobaiLiqBps += 80; }
+  // Ten from each of the three, after the programs above have had their cut.
+  if (lpShare)       { bobaiBurnBps -= 10; bobBurnBps -= 10; creatorBps -= 10; lpAgentBps += 30; }
+  if (giggle)        { bobaiBurnBps -= 10; bobBurnBps -= 10; creatorBps -= 10; giggleBps  += 30; }
 
-  const bpsSum = bobaiBurnBps + bobBurnBps + creatorBps + bobLiqBps + bobaiLiqBps + wc26PoolBps;
+  const bpsSum = bobaiBurnBps + bobBurnBps + creatorBps + bobLiqBps + bobaiLiqBps + wc26PoolBps + lpAgentBps + giggleBps;
 
   console.log('============================================');
   console.log(`[${new Date().toISOString()}] BOBAI Tax Distribution Bot (CF Worker)`);
@@ -383,17 +418,25 @@ async function runBot(env) {
   if (bobaiLiqExtra) phases.push('BOBAI Liq Extra (+0.25%)');
   if (wc26Active)    phases.push('WC26 Prize Pool');
   if (bobaiLiqBoost2) phases.push('BOBAI Liq Boost II (0.8%)');
+  if (lpShare)       phases.push('LP Agent share (0.3%)');
+  if (giggle)        phases.push('Giggle Academy pot (0.3%)');
   console.log(`Active phases: ${phases.length ? phases.join(' + ') : 'Standard 1/1/1'}`);
   console.log(`Split (bps of trade, total=${bpsSum}):`);
   console.log(`  BOBAI burn ${bobaiBurnBps}  |  BOB burn ${bobBurnBps}  |  Creator ${creatorBps}`);
   if (bobLiqBps)   console.log(`  BOB liq    ${bobLiqBps}`);
   if (bobaiLiqBps) console.log(`  BOBAI liq  ${bobaiLiqBps}`);
   if (wc26PoolBps) console.log(`  WC26 pool  ${wc26PoolBps}`);
+  if (lpAgentBps)  console.log(`  LP agent   ${lpAgentBps}`);
+  if (giggleBps)   console.log(`  Giggle pot ${giggleBps}`);
   console.log('============================================');
 
   // SAFETY: refuse to act if shares don't sum to TAX_BPS.
   if (bpsSum !== TAX_BPS) {
     console.log(`[ABORT] BPS sum ${bpsSum} != ${TAX_BPS}. Config error — no TX sent.`);
+    return;
+  }
+  if ([bobaiBurnBps, bobBurnBps, creatorBps, bobLiqBps, bobaiLiqBps, wc26PoolBps, lpAgentBps, giggleBps].some((b) => b < 0)) {
+    console.log('[ABORT] a slice went negative — the programs cut more than there is. No TX sent.');
     return;
   }
 
@@ -452,8 +495,11 @@ async function runBot(env) {
   const bobLiqAddAmount   = (available * BigInt(bobLiqBps))    / BigInt(TAX_BPS);
   const bobaiLiqAddAmount = (available * BigInt(bobaiLiqBps))  / BigInt(TAX_BPS);
   const wc26PoolAmount    = (available * BigInt(wc26PoolBps))  / BigInt(TAX_BPS);
+  const lpAgentAmount     = (available * BigInt(lpAgentBps))   / BigInt(TAX_BPS);
+  const giggleAmount      = (available * BigInt(giggleBps))    / BigInt(TAX_BPS);
   const bobaiBurnAmount   = available - creatorAmount - bobBurnAmount
-                                      - bobLiqAddAmount - bobaiLiqAddAmount - wc26PoolAmount;
+                                      - bobLiqAddAmount - bobaiLiqAddAmount - wc26PoolAmount
+                                      - lpAgentAmount - giggleAmount;
 
   console.log(`Creator:     ${formatEther(creatorAmount)} BNB (${creatorBps} bps)`);
   console.log(`BOB burn:    ${formatEther(bobBurnAmount)} BNB (${bobBurnBps} bps)`);
@@ -461,6 +507,8 @@ async function runBot(env) {
   if (bobLiqBps)   console.log(`BOB liq:     ${formatEther(bobLiqAddAmount)} BNB (${bobLiqBps} bps)`);
   if (bobaiLiqBps) console.log(`BOBAI liq:   ${formatEther(bobaiLiqAddAmount)} BNB (${bobaiLiqBps} bps)`);
   if (wc26PoolBps) console.log(`WC26 pool:   ${formatEther(wc26PoolAmount)} BNB (${wc26PoolBps} bps)`);
+  if (lpAgentBps)  console.log(`LP agent:    ${formatEther(lpAgentAmount)} BNB (${lpAgentBps} bps)`);
+  if (giggleBps)   console.log(`Giggle pot:  ${formatEther(giggleAmount)} BNB (${giggleBps} bps)`);
 
   // Step 3: Send creator share
   console.log(`\n--- Sending ${formatEther(creatorAmount)} BNB to Creator ---`);
@@ -511,6 +559,36 @@ async function runBot(env) {
   console.log(`\n--- Buying & Burning $BOBAI (${formatEther(bobaiBurnAmount)} BNB) ---`);
   const bobaiResult = await swapAndBurn(walletClient, publicClient, account, bobaiBurnAmount, BOBAI_TOKEN, 'BOBAI');
 
+  // Step 5a: the LP agent's share and the Giggle pot, plain BNB transfers.
+  // A failed send is logged and the BNB stays on the wallet for the next
+  // run, as with the WC26 send below; nothing is retried blind.
+  let lpAgentTxHash = null;
+  if (lpAgentAmount > 0n) {
+    console.log(`\n--- Sending ${formatEther(lpAgentAmount)} BNB to the LP agent ---`);
+    try {
+      lpAgentTxHash = await walletClient.sendTransaction({ to: LP_AGENT_WALLET, value: lpAgentAmount });
+      console.log(`  TX: https://bscscan.com/tx/${lpAgentTxHash}`);
+      await publicClient.waitForTransactionReceipt({ hash: lpAgentTxHash });
+      console.log('  LP agent share sent!');
+    } catch (e) {
+      console.log(`  LP agent send failed: ${e.message}`);
+      lpAgentTxHash = null;
+    }
+  }
+  let giggleTxHash = null;
+  if (giggleAmount > 0n) {
+    console.log(`\n--- Sending ${formatEther(giggleAmount)} BNB to the Giggle Academy pot ---`);
+    try {
+      giggleTxHash = await walletClient.sendTransaction({ to: PRIZE_POOL_WALLET, value: giggleAmount });
+      console.log(`  TX: https://bscscan.com/tx/${giggleTxHash}`);
+      await publicClient.waitForTransactionReceipt({ hash: giggleTxHash });
+      console.log('  Giggle pot funded!');
+    } catch (e) {
+      console.log(`  Giggle pot send failed: ${e.message}`);
+      giggleTxHash = null;
+    }
+  }
+
   // Step 5b: Send WC26 Prize Pool share LAST (only during WC26 window).
   let wc26TxHash = null;
   if (wc26PoolAmount > 0n) {
@@ -558,6 +636,8 @@ async function runBot(env) {
     entry.bobaiBurnTx = bobaiResult.burnHash;
     entry.bobaiBlock = bobaiResult.block;
   }
+  if (lpAgentTxHash) { entry.lpAgentBnb = formatEther(lpAgentAmount); entry.lpAgentTx = lpAgentTxHash; }
+  if (giggleTxHash)  { entry.giggleBnb  = formatEther(giggleAmount);  entry.giggleTx  = giggleTxHash; }
   await kvAppend(env, 'burns.json', entry);
 
   // Step 7: Log BOB liq boost (existing log, unchanged shape)
@@ -588,6 +668,8 @@ async function runBot(env) {
   console.log(`[${new Date().toISOString()}] DISTRIBUTION COMPLETE`);
   console.log(`Creator:    ${formatEther(creatorAmount)} BNB`);
   if (wc26TxHash)     console.log(`WC26 pool:  ${formatEther(wc26PoolAmount)} BNB`);
+  if (lpAgentTxHash)  console.log(`LP agent:   ${formatEther(lpAgentAmount)} BNB`);
+  if (giggleTxHash)   console.log(`Giggle pot: ${formatEther(giggleAmount)} BNB`);
   if (bobLiqResult)   console.log(`BOB liq:    ${bobLiqResult.bnb} BNB → BOB/BNB LP burned`);
   if (bobaiLiqResult) console.log(`BOBAI liq:  ${bobaiLiqResult.bnb} BNB → BOBAI/BNB LP burned`);
   if (bobResult)      console.log(`BOB burned:   ${bobResult.amount}`);

@@ -126,7 +126,7 @@
           {
             "@type": "Question",
             "name": "What is the trading tax on $BOBAI?",
-            "acceptedAnswer": {"@type": "Answer", "text": "The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard."}
+            "acceptedAnswer": {"@type": "Answer", "text": "The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard. From Sep 9, 2026 a tenth of each slice (0.3% of the trade) goes to the liquidity agent's wallet, and from Sep 17 to Nov 20, 2026 another tenth of each (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; from Nov 20 the split is 1/1/1 again."}
           },
           {
             "@type": "Question",
@@ -167,8 +167,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=44" as="style">
-  <link rel="stylesheet" href="styles.css?v=44">
+  <link rel="preload" href="styles.css?v=45" as="style">
+  <link rel="stylesheet" href="styles.css?v=45">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -285,6 +285,38 @@
     </div>
   </section>
 
+  <!-- Giggle Academy community pot ("Sunshine", announced on X 2026-07-13, built
+       2026-09-09). Sep 17 00:01 to Nov 20 00:01 UTC: 0.3% of every trade (0.1%
+       out of each of the three slices) goes as BNB to the old prize-pool wallet;
+       on UN World Children's Day it is donated in one piece through Giggle
+       Academy's own page. Before Sep 17 the clock counts down to the start,
+       during the window to the end. Sends and the total come from burns.json,
+       the same log every other number on this page reads. -->
+  <section class="liq-boost fi" id="giggle">
+    <div class="lb-card">
+      <div class="lb-title">☀️ <em>Giggle Academy</em> <em>Community Pot</em></div>
+      <div class="lb-sub" id="gg-sub">Sep 17 &rarr; Nov 20, 2026: 0.3% of every trade collects in BNB &middot; one donation on UN World Children&rsquo;s Day &middot; <span style="color:var(--gold)" id="gg-phase">collecting starts Sep 17</span></div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-cd-caption" id="gg-cd-label">until collecting starts</div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Sends</div><div class="v" id="gg-count">0</div></div>
+        <div class="lb-stat"><div class="l">BNB Collected</div><div class="v" id="gg-bnb">0.0000</div></div>
+        <div class="lb-stat"><div class="l">Donation Day</div><div class="v">Nov 20</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+          <div class="txw">
+            <table><thead><tr><th style="width:38%">Time</th><th style="width:22%">BNB</th><th style="width:20%">Pot</th><th style="width:20%">TX</th></tr></thead>
+            <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The first send lands with the first tax cycle after Sep 17, 00:01 UTC&hellip;</td></tr></tbody></table>
+          </div>
+        </div>
+      <p class="lb-note">WE are the donation. The pot is the old prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>; every send is a transaction of the buyback bot. On Nov 20 the BNB goes to Giggle Academy through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted here.</p>
+    </div>
+  </section>
+
   <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
 
   <section class="sec" id="about">
@@ -319,6 +351,10 @@
         <div class="tf"><div class="p" id="tax-pct-bob" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span><br><span class="ts-inline" id="ts-inline-bob"></span></div></div>
         <div class="ta">&#x2192;</div>
         <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI</div></div>
+        <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
+        <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/liquidity" style="color:inherit">LP Agent</a></div></div>
+        <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
+        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="#giggle" style="color:inherit">Giggle pot</a></div></div>
       </div>
       <div class="tax-schedule">
         <div class="ts-head">
@@ -352,14 +388,19 @@
             <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-2">
-            <div class="ts-when">Aug 8 &ndash; Sep 16, 2026</div>
+            <div class="ts-when">Aug 8 &ndash; Sep 9, 05:30 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost II</div>
             <div class="ts-split">1% BOBAI burn &middot; 0.2% BOB burn &middot; 1% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b></div>
           </div>
+          <div class="ts-row" data-phase="bobai-liq-2-lp">
+            <div class="ts-when">Sep 9, 05:30 UTC &rarr; Sep 16, 23:59 UTC, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost II + LP Agent</div>
+            <div class="ts-split">0.9% BOBAI burn &middot; 0.1% BOB burn &middot; 0.9% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b> &middot; <b>0.3% &rarr; <a href="/liquidity">LP Agent</a></b></div>
+          </div>
           <div class="ts-row" data-phase="sunshine">
-            <div class="ts-when">Sep 17 &ndash; Nov 20, 2026</div>
-            <div class="ts-name">☀️ Something good ahead</div>
-            <div class="ts-split">stay tuned 😉</div>
+            <div class="ts-when">Sep 17, 00:01 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
+            <div class="ts-name">☀️ Giggle Academy pot + LP Agent</div>
+            <div class="ts-split">0.8% BOBAI burn &middot; 0.8% BOB burn &middot; 0.8% Creator &middot; <b>0.3% &rarr; <a href="/liquidity">LP Agent</a></b> &middot; <b>0.3% &rarr; <a href="#giggle">Giggle Academy pot</a></b></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
             <div class="ts-when">from Nov 20, 2026</div>
@@ -761,7 +802,7 @@
             <span class="lib-t">Buyback &amp; Burn Bot</span>
             <span class="lib-s">The bot that has run every ten minutes since launch.</span>
           </span>
-          <span class="lib-m">3 files &middot; 1,311 lines &middot; 16 KB</span>
+          <span class="lib-m">3 files &middot; 1,475 lines &middot; 18 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -830,7 +871,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 4,265 lines &middot; 62 KB</span>
+          <span class="lib-m">12 files &middot; 4,324 lines &middot; 63 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -902,7 +943,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 5,614 lines &middot; 0.1 MB</span>
+          <span class="lib-m">6 files &middot; 5,618 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1017,7 +1058,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,817 lines &middot; 44 KB</span>
+          <span class="lib-m">4 files &middot; 1,817 lines &middot; 45 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1169,7 +1210,7 @@
         <div class="faq-body">It is a fair launch. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Four.Meme</a> with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes only from the transparent 1% creator slice of the trade tax, not from a reserved token bag.</div>
       </details>
       <details class="faq-item"><summary>What is the trading tax on $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard.</div>
+        <div class="faq-body">The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard. From Sep 9, 2026 a tenth of each slice (0.3% of the trade) goes to the liquidity agent's wallet, and from Sep 17 to Nov 20, 2026 another tenth of each (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; from Nov 20 the split is 1/1/1 again.</div>
       </details>
       <details class="faq-item"><summary>What is the difference between brainonbnb.com and brainonbnb.ai?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">Same official site, two domains. <a href="https://brainonbnb.com">brainonbnb.com</a> is the primary user-facing domain; <a href="https://brainonbnb.ai">brainonbnb.ai</a> is the original brand domain. Both serve identical content from the same Cloudflare Pages deployment.</div>
@@ -1232,6 +1273,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=58" defer></script>
+<script src="app.js?v=60" defer></script>
 </body>
 </html>

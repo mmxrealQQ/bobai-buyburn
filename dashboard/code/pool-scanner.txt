@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 5614 lines.
+# one fetch. 6 files, 5618 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4529,6 +4529,10 @@ export { flagsCard };
     .tb{background:rgba(255,48,40,.07);color:var(--red);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tba{background:rgba(0,230,118,.07);color:var(--green);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .tlp{background:rgba(255,200,0,.08);color:var(--gold);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .tgg{background:rgba(255,160,0,.1);color:var(--gold);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
+    .lb-cd-caption{text-align:center;color:var(--muted);font-size:.72rem;margin:-6px 0 14px;letter-spacing:.3px}
+    .lb-note{color:var(--muted);font-size:.78rem;line-height:1.55;margin:18px 0 0;text-align:center}
 
     /* LIQ BOOST */
     /* WORLDCUP TIPGAME card — sits between top stats and BOB Liq Boost.

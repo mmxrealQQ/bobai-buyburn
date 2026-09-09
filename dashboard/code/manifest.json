@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1311,
-   "zipBytes": 16054,
-   "txtBytes": 51159,
-   "sha256": "b894cb4caf5658f7",
+   "lines": 1475,
+   "zipBytes": 18546,
+   "txtBytes": 60393,
+   "sha256": "3c2961276b895541",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4265,
-   "zipBytes": 63376,
-   "txtBytes": 188763,
-   "sha256": "859ad2ceeb55968c",
+   "lines": 4324,
+   "zipBytes": 64627,
+   "txtBytes": 192330,
+   "sha256": "e1c1237f40da8cc2",
    "reqs": [
     {
      "what": "A bot token",
@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 5614,
-   "zipBytes": 118725,
-   "txtBytes": 357338,
-   "sha256": "85b57e1dcf50547c",
+   "lines": 5618,
+   "zipBytes": 118803,
+   "txtBytes": 357803,
+   "sha256": "d3cb7b4296abbf49",
    "reqs": [
     {
      "what": "A static host",
@@ -538,9 +538,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
    "lines": 1817,
-   "zipBytes": 45470,
-   "txtBytes": 129265,
-   "sha256": "8c6c2ffeebb7def5",
+   "zipBytes": 45585,
+   "txtBytes": 129495,
+   "sha256": "7c268543157420d6",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4265 lines.
+# one fetch. 12 files, 4324 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2511,6 +2511,7 @@ const BOT_COMMANDS = [
   { command: 'burn',     description: 'Burn stats & progress' },
   { command: 'buy',      description: 'How to buy BOBAI' },
   { command: 'ca',       description: 'Contract address' },
+  { command: 'giggle',   description: 'Giggle Academy pot — countdown & BNB collected' },
   { command: 'help',     description: 'Show all commands' },
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
@@ -2532,7 +2533,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v11-no-scan';
+const COMMANDS_VERSION = 'v12-giggle';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -2575,6 +2576,51 @@ async function ensureCommandsRegistered(env) {
   } else {
     console.error('[COMMANDS] Failed:', JSON.stringify({ res1, res2 }));
   }
+}
+
+// ==================== GIGGLE ACADEMY POT (/giggle) ====================
+
+// The pot's windows — the same instants the buyback worker switches on
+// (worker/index.js LP_SHARE_START / GIGGLE_START / GIGGLE_END), so the bot,
+// the page and the bot's own split never disagree about when.
+const GG_LP_START = Date.parse('2026-09-09T05:30:00Z');
+const GG_START = Date.parse('2026-09-17T00:01:00Z');
+const GG_END = Date.parse('2026-11-20T00:01:00Z');
+const GG_POT_WALLET = '0x5E4102520A71B2AA18a1208330d4848dea4BD105';
+const GG_DONATE_URL = 'https://giggleacademy.com/support-us';
+
+// One card, /price-shaped: what it is, where the clock stands, what has been
+// collected (from burns.json — giggleBnb/giggleTx per bot run, the same log
+// the page reads), the last send, and where the donation goes. Pure.
+export function formatGiggleCard(burns, nowMs = Date.now()) {
+  const sends = (Array.isArray(burns) ? burns : []).filter((x) => x && x.giggleTx);
+  const total = sends.reduce((a, x) => a + (parseFloat(x.giggleBnb) || 0), 0);
+  const last = sends.length ? sends[sends.length - 1] : null;
+  const span = (ms) => { const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000); return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`; };
+  let clock;
+  if (nowMs < GG_START) clock = `⏳ Collecting starts in <b>${span(GG_START - nowMs)}</b>  ·  Sep 17, 00:01 UTC`;
+  else if (nowMs < GG_END) clock = `⏳ Collecting ends in <b>${span(GG_END - nowMs)}</b>  ·  Nov 20, 00:01 UTC`;
+  else clock = `✅ Collecting ended Nov 20  ·  donation day`;
+  const lpLine = nowMs >= GG_LP_START && nowMs < GG_END ? '💧 Plus 0.3% to the liquidity agent (Sep 9 → Nov 20)' : null;
+  const lastLine = last ? `🕐 Last send: ${parseFloat(last.giggleBnb).toFixed(5)} BNB  ·  ${String(last.time).slice(0, 16).replace('T', ' ')} UTC  ·  <a href="https://bscscan.com/tx/${last.giggleTx}">tx</a>` : '🕐 Last send: none yet';
+  return [
+    '☀️ <b>Giggle Academy Community Pot</b>',
+    '',
+    '📅 <b>Window</b>',
+    '🗓 Sep 17 → Nov 20, 2026  ·  64 days',
+    clock,
+    '',
+    '⚙️ <b>How it fills</b>',
+    '♻️ 0.3% of every trade — a tenth of each tax slice — sent as BNB by the buyback bot',
+    lpLine,
+    '🎁 One donation on UN World Children’s Day, in BNB, through Giggle Academy’s own page',
+    '',
+    '💰 <b>Collected so far</b>',
+    `🪙 <b>${total.toFixed(4)} BNB</b>  ·  ${sends.length} send${sends.length === 1 ? '' : 's'}`,
+    lastLine,
+    '',
+    `🏦 <a href="https://bscscan.com/address/${GG_POT_WALLET}">Pot wallet</a> · 🎓 <a href="${GG_DONATE_URL}">giggleacademy.com/support-us</a> · 📊 <a href="https://brainonbnb.com/#giggle">brainonbnb.com</a>`,
+  ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
 }
 
 // ==================== LP AGENT DAILY REPORT ====================
@@ -2762,6 +2808,16 @@ async function handleCommand(msg, env) {
       break;
     }
 
+    case '/giggle':
+    case 'giggle': {
+      let burns = [];
+      try {
+        const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } });
+        if (r.ok) burns = await r.json();
+      } catch { /* the card still says what the pot is; the count reads 0 until the log answers */ }
+      reply = formatGiggleCard(burns);
+      break;
+    }
     case '/burn':
     case 'burn': {
       const burn = await getBurnStats();
@@ -2775,6 +2831,8 @@ async function handleCommand(msg, env) {
 ♻️ 3% tax on every buy & sell, fixed in the contract
 🔥 The buyback bot burns BOBAI from it around the clock
 🔥 The rest burns BOB, funds liquidity and the creator — the split changes by phase
+💧 Sep 9 → Nov 20: a tenth of each slice (0.3%) goes to the liquidity agent
+☀️ Sep 17 → Nov 20: another tenth (0.3%) collects in BNB for Giggle Academy — one donation on Nov 20
 👤 Contract ownership renounced
 
 💡 <i>Every trade makes BOBAI more scarce!</i>
@@ -2944,6 +3002,7 @@ Here's what I can do:
 
 🔔 /alerts — Buy & burn alert tiers
 🔥 /burn — Burn stats & progress
+☀️ /giggle — Giggle Academy pot: countdown & BNB collected
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address
 💧 /liq — Liquidity depth, price impact & trade cost

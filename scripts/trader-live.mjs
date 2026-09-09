@@ -84,6 +84,12 @@ const REMEASURE_UTC = { day: 1, hour: 1, minute: 0 };
 // between ticks the loop reads the wallet once more, orders nothing, and
 // says so only when the wallet is no longer connected.
 const KEEPALIVE_UTC = { hour: 12, minute: 20 };
+// A deposit has to work within minutes, not at the next 00:20 (the operator,
+// 2026-09-09: "such things have to happen within seconds or minutes"). Every
+// DEPOSIT_WATCH_MIN the loop reads the balances — one wallet call — and when
+// USDT beyond the record or BNB above the reserve is worth an order, it runs
+// a tick at once; that tick takes the deposit in and invests it.
+const DEPOSIT_WATCH_MIN = 10;
 const POLL_MS = 5000, POLL_MAX_MS = 180000;
 
 // An order the wallet accepted but whose end this tick could not see. The
@@ -202,6 +208,21 @@ if (has('--state')) {
   if (!st) { say('no state yet — run --bootstrap --confirm first'); process.exit(0); }
   say(JSON.stringify(migrate(st), null, 1));
   process.exit(0);
+}
+
+// ---------------------------------------------------------------- deposit watch
+// True when the wallet holds money the record does not know about: USDT
+// beyond the pot and the pool, or BNB above the gas reserve worth an order.
+function depositWaiting() {
+  const st = readState(); if (!st) return null;
+  const w = baw(['wallet', 'status']);
+  if (!w.success || w.data.status !== 'CONNECTED') return null;
+  const by = balances();
+  const usdt = bal(by, 'USDT'), known = st.pot_usdt + st.profit_pool_usd;
+  if (usdt > known + MIN_ORDER_USD) return `${money(usdt - known)} USDT beyond the record`;
+  const bnb = bal(by, 'BNB'), px = by.BNB ? by.BNB.price : 0;
+  if (px > 0 && (bnb - GAS_RESERVE_BNB) * px >= MIN_ORDER_USD) return `${(bnb - GAS_RESERVE_BNB).toFixed(5)} BNB above the reserve`;
+  return null;
 }
 
 // ---------------------------------------------------------------- keep-alive
@@ -503,13 +524,17 @@ if (has('--remeasure') || has('--refit')) { await remeasure(); process.exit(); }
 if (has('--keepalive')) { const ok = await keepalive(); process.exit(ok ? 0 : 1); }
 
 if (has('--loop')) {
-  say(`loop: a tick now, then daily at ${String(TICK_UTC.hour).padStart(2, '0')}:${String(TICK_UTC.minute).padStart(2, '0')} UTC${CONFIRM ? ', sending orders' : ' (dry)'}; a wallet keep-alive at ${String(KEEPALIVE_UTC.hour).padStart(2, '0')}:${String(KEEPALIVE_UTC.minute).padStart(2, '0')} UTC (reads only); a re-measure on the ${REMEASURE_UTC.day}st at ${String(REMEASURE_UTC.hour).padStart(2, '0')}:${String(REMEASURE_UTC.minute).padStart(2, '0')} UTC; STOP file at ${STOP} halts it`);
+  say(`loop: a tick now, then daily at ${String(TICK_UTC.hour).padStart(2, '0')}:${String(TICK_UTC.minute).padStart(2, '0')} UTC${CONFIRM ? ', sending orders' : ' (dry)'}; a wallet keep-alive at ${String(KEEPALIVE_UTC.hour).padStart(2, '0')}:${String(KEEPALIVE_UTC.minute).padStart(2, '0')} UTC (reads only); a deposit watch every ${DEPOSIT_WATCH_MIN} min; a re-measure on the ${REMEASURE_UTC.day}st at ${String(REMEASURE_UTC.hour).padStart(2, '0')}:${String(REMEASURE_UTC.minute).padStart(2, '0')} UTC; STOP file at ${STOP} halts it`);
   const run = () => tick().catch(async (e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); await notify('⚠️ <b>Trader: tick failed</b> — ' + String(e.message).slice(0, 200)); });
   await run();
   setInterval(() => {
     const d = new Date(), h = d.getUTCHours(), m = d.getUTCMinutes();
     if (h === TICK_UTC.hour && m === TICK_UTC.minute) run();
     if (h === KEEPALIVE_UTC.hour && m === KEEPALIVE_UTC.minute) keepalive();
+    if (m % DEPOSIT_WATCH_MIN === 0 && !(h === TICK_UTC.hour && m === TICK_UTC.minute)) {
+      try { const found = depositWaiting(); if (found) { say(`deposit watch: ${found} — running a tick now`); log({ kind: 'deposit_seen', what: found }); run(); } }
+      catch (e) { say('deposit watch failed: ' + e.message); log({ kind: 'deposit_watch_failed', error: String(e.message).slice(0, 200) }); }
+    }
     if (d.getUTCDate() === REMEASURE_UTC.day && h === REMEASURE_UTC.hour && m === REMEASURE_UTC.minute) remeasure();
   }, 60000);
 } else {

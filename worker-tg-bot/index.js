@@ -1977,7 +1977,7 @@ export function formatLpDailyReport(rec, series) {
     `💰 <b>Profit so far: ${sign(sum.profit.bnb)} BNB</b>${usd(sum.profit.bnb)}`,
     `📈 From CAKE moving against BNB: ${sign(sum.profit.from_price_bnb)}`,
     `🧾 From fees earned: ${sign(sum.profit.from_fees_bnb)}`,
-    `🔥 Sent to the buyback bot: ${f5(sum.fees_sent_to_buyback_bnb)} BNB`,
+    `🧠 Into $BOBAI, held in the wallet: ${f5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb)} BNB${sum.bobai_held_units > 0 ? '  ·  ' + Math.round(sum.bobai_held_units).toLocaleString('en-US') + ' BOBAI held' : ''}`,
     `🗓 In range: ${sum.days_in_range} of ${sum.runs_with_a_position} runs`,
     rule,
     `🔁 <b>Today</b>\n${today}`,

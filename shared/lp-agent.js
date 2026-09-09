@@ -48,6 +48,9 @@ export const ADDR = {
   // Where collected fees go: the buyback bot's wallet, which buys and burns
   // $BOBAI as it always has. One burn path, one record.
   BUYBACK_WALLET: '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
+  // The agent's own profit share buys this and holds it (2026-09-09); it does
+  // not go to the buyback wallet any more. BOBAI is a 3% fee-on-transfer token.
+  BOBAI: '0x245c386dcfed896f5c346107596141e5edcbffff',
   // Where AI income goes: the wallet that holds the position.
   LP_WALLET: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
   // BSC mainnet BNB/USD, 8 decimals. On-chain, so the worker needs no outside API.
@@ -112,6 +115,7 @@ export const ABI = {
     'function getAmountsOut(uint256,address[]) view returns (uint256[])',
     'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline)',
     'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to,uint256 deadline) returns (uint256[])',
+    'function swapExactETHForTokensSupportingFeeOnTransferTokens(uint256 amountOutMin,address[] path,address to,uint256 deadline) payable',
   ]),
   V3_ROUTER: parseAbi(['function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256 amountOut)']),
   // QuoterV2 answers through a revert it catches itself; as an eth_call it
@@ -353,10 +357,10 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
   const forward = produced < aboveReserve ? produced : aboveReserve;
   if (forward <= 0n) return { txs, forwarded_bnb: '0', kept_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
   const split = splitFees(forward, keptPct);
-  const out = { txs, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct, forwarded_bnb: formatEther(split.buyback), to: ADDR.BUYBACK_WALLET };
-  if (split.buyback <= 0n) return { ...out, to: null, why: `collected ${formatEther(forward)} BNB of fees; all of it stays as capital (kept share ${split.pct}%)` };
-  await send(`forward ${100 - split.pct}% to the buyback wallet`, { to: ADDR.BUYBACK_WALLET, value: split.buyback, gas: 21000n });
-  return out;
+  const out = { txs, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
+  if (split.buyback <= 0n) return { ...out, bobai_bnb: '0', why: `collected ${formatEther(forward)} BNB of fees; all of it stays as capital (kept share ${split.pct}%)` };
+  const bought = await buyBobaiHold(pub, send, account.address, split.buyback);
+  return { ...out, bobai_bnb: formatEther(bought.spent), bobai_units: formatUnits(bought.units, 18), held_in: account.address };
 }
 
 // --------------------------------------------------------------------------
@@ -500,7 +504,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
       trade: trade ? (trade.sell === 'other' ? `sell ${(trade.amount / 1e18).toFixed(6)} of ${other} for WBNB` : `buy the other side with ${(trade.amount / 1e18).toFixed(6)} WBNB`) : null,
       fees_owed_bnb: Number((Number(owedWei) / 1e18).toFixed(6)),
-      fees_to_buyback_bnb: share ? Number((Number(share.forward) / 1e18).toFixed(6)) : 0,
+      fees_to_bobai_bnb: share ? Number((Number(share.forward) / 1e18).toFixed(6)) : 0,
       fees_kept_pct: share ? share.pct : null,
     },
   };
@@ -554,6 +558,41 @@ async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, minOut
   await ensureAllowance(pub, send, tokenIn, ADDR.V3_SWAP_ROUTER, amountIn, `allow the V3 router to spend ${tokenIn === ADDR.WBNB ? 'WBNB' : 'the other side'} (once)`);
   await send(label, { address: ADDR.V3_SWAP_ROUTER, abi: ABI.V3_ROUTER, functionName: 'exactInputSingle', args: [v3SwapArgs(tokenIn, tokenOut, fee, owner, amountIn, minOut, deadline())] });
   return swapNote(tokenIn === ADDR.WBNB ? 'buy' : 'sell', notionalWbnb, fee);
+}
+
+// The agent's profit share buys BOBAI and holds it in the liquidity wallet,
+// never sells it — so the operator sees, in the wallet, exactly what the agent
+// earned (2026-09-09: "keep it as BOBAI in its own wallet, then I see what
+// really comes in"). It used to send that BNB to the buyback wallet. BOBAI
+// takes a 3% transfer tax, so the swap uses the fee-supporting router call and
+// a 15% floor covers the tax and the trade. Returns BNB spent and BOBAI held.
+async function buyBobaiHold(pub, send, owner, bnbWei) {
+  const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [bnbWei, [ADDR.WBNB, ADDR.BOBAI]]);
+  const before = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [owner]);
+  await send('buy BOBAI with the profit share and hold it', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens', args: [(q[1] * 8500n) / 10000n, [ADDR.WBNB, ADDR.BOBAI], owner, deadline()], value: bnbWei });
+  const after = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [owner]);
+  return { spent: bnbWei, units: after > before ? after - before : 0n };
+}
+
+// What the position holds at today's price plus the two tokens sitting in
+// the wallet beside it, in BNB. The re-set plan values the same way; the
+// increase records it too since 2026-09-09, because a deposit the watch puts
+// in between daily runs is a series point of its own and a point without a
+// value read as the capital gone (the −30 $ of 2026-09-09 11:00).
+export async function positionValueBnb(pub, address, p, poolInfo) {
+  if (!p || p.positions !== 1 || !poolInfo) return null;
+  const token0 = p.pos[2].toLowerCase(), token1 = p.pos[3].toLowerCase();
+  const wbnbIs0 = token0 === ADDR.WBNB;
+  const other = wbnbIs0 ? token1 : token0;
+  const L = Number(p.pos[7]);
+  const s = splitForRange(poolInfo.sqrtP, Number(p.pos[5]), Number(p.pos[6]));
+  const in0 = L * s.perL0, in1 = L * s.perL1;
+  const heldOther = Number(await read(pub, other, ABI.ERC20, 'balanceOf', [address]));
+  const heldWbnb = Number(await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]));
+  const price = poolInfo.sqrtP ** 2;
+  const otherInWbnb = wbnbIs0 ? 1 / price : price;
+  const wbnb = (wbnbIs0 ? in0 : in1) + heldWbnb, oth = (wbnbIs0 ? in1 : in0) + heldOther;
+  return Number(((wbnb + oth * otherInWbnb) / 1e18).toFixed(6));
 }
 
 async function ensureAllowance(pub, send, token, spender, amount, label) {
@@ -640,13 +679,13 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // A wallet that holds less WBNB than the share after the trades (a range
   // that ended all on the other side, with the buy capped) keeps it as
   // capital and says so; the mint takes what is there.
-  let forwarded = 0n, forwardWhy = share ? share.why : null;
+  let boughtBobai = 0n, bobaiUnits = 0n, forwardWhy = share ? share.why : null;
   if (reserved > 0n) {
     const wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
     if (wbnbNow >= reserved) {
-      await send("unwrap the buyback share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
-      await send(`send ${100 - share.pct}% of the old range's fees to the buyback wallet`, { to: ADDR.BUYBACK_WALLET, value: reserved, gas: 21000n });
-      forwarded = reserved;
+      await send("unwrap the profit share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
+      const bought = await buyBobaiHold(pub, send, account.address, reserved);
+      boughtBobai = reserved; bobaiUnits = bought.units;
     } else {
       forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
     }
@@ -678,8 +717,8 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
-      fees_forwarded_bnb: Number(formatEther(forwarded)), fees_kept_pct: share ? share.pct : null,
-      ...(forwarded > 0n ? { forwarded_to: ADDR.BUYBACK_WALLET } : { fees_forward_why: forwardWhy }),
+      bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share ? share.pct : null,
+      ...(boughtBobai > 0n ? { bobai_held_in: account.address } : { fees_forward_why: forwardWhy }),
     } : {}) };
 }
 
@@ -733,6 +772,8 @@ export async function planIncrease(pub, address, position = null) {
     step: 'increase', state, no: refuseIncrease(state),
     tokenId: p.tokenId, pos: p.pos, other, wbnbIs0, nativeRaw, heldWbnb, heldOther, buyOtherRaw, sellOtherRaw, buyCostRaw, target,
     summary: {
+      position: p.tokenId == null ? null : String(p.tokenId),
+      value_bnb: poolInfo ? await positionValueBnb(pub, address, p, poolInfo) : null,
       wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null,
       capital: poolInfo ? { bnb_above_reserve: bn(nativeRaw), wbnb_held: bn(heldWbnb), other_held: formatUnits(heldOther, 18), other_held_in_bnb: Number((heldOtherInWbnb / 1e18).toFixed(6)) } : null,
       would_add: poolInfo && target && target.L > 0 ? {
@@ -799,5 +840,6 @@ export async function executeIncrease(pub, wallet, account, plan, log = () => {}
   // What left the wallet as BNB for this increase, gas included — the figure
   // the money-flow view adds up as "put into the position".
   const after = await pub.getBalance({ address: account.address });
-  return { txs, swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, liquidity_after: String(pos[7]), other_used: formatUnits(haveOther - (await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address])), 18), wbnb_used: formatEther(haveWbnb - wbnbLeft), bnb_spent: formatEther(before > after ? before - after : 0n) };
+  const valueAfter = await positionValueBnb(pub, account.address, { positions: 1, tokenId: plan.tokenId, pos }, await readPool(pub, pos)).catch(() => null);
+  return { txs, swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, liquidity_after: String(pos[7]), value_after_bnb: valueAfter, other_used: formatUnits(haveOther - (await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address])), 18), wbnb_used: formatEther(haveWbnb - wbnbLeft), bnb_spent: formatEther(before > after ? before - after : 0n) };
 }

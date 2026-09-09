@@ -26,7 +26,7 @@ const r6 = (v) => Number(v.toFixed(6));
 export function moneyFlow(rec, { earned = null } = {}) {
   const hist = (Array.isArray(rec?.history) ? rec.history : []).filter((e) => e && !e.dry);
   const bySource = {};
-  let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0;
+  let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0, bobaiUnits = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
   let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
   let lastKeptPct = null;
@@ -50,7 +50,10 @@ export function moneyFlow(rec, { earned = null } = {}) {
         collects += 1;
         feesProduced += produced;
         feesKept += n(c.kept_bnb);
-        feesForwarded += n(c.forwarded_bnb);
+        // Since 2026-09-09 the share buys BOBAI held in the wallet (c.bobai_bnb);
+        // older records sent it to the buyback wallet (c.forwarded_bnb).
+        feesForwarded += n(c.bobai_bnb ?? c.forwarded_bnb);
+        bobaiUnits += n(c.bobai_units);
       }
     }
     const inc = st.increase;
@@ -67,7 +70,8 @@ export function moneyFlow(rec, { earned = null } = {}) {
       // into the new capital; since then the buyback share is sent on first
       // (fees_forwarded_bnb) and only the rest is folded in.
       if (n(rb.fees_folded_bnb) > 0) { feesFolded += n(rb.fees_folded_bnb); resetsWithFees += 1; }
-      if (n(rb.fees_forwarded_bnb) > 0) resetForwarded += n(rb.fees_forwarded_bnb);
+      if (n(rb.bobai_bnb ?? rb.fees_forwarded_bnb) > 0) resetForwarded += n(rb.bobai_bnb ?? rb.fees_forwarded_bnb);
+      bobaiUnits += n(rb.bobai_units);
       if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
     }
     if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
@@ -104,7 +108,10 @@ export function moneyFlow(rec, { earned = null } = {}) {
       total_bnb: r6(incomeBnb + feesProduced + feesFolded),
     },
     out: {
-      buyback_bnb: r6(feesForwarded + resetForwarded),
+      // BNB the agent spent buying BOBAI it now holds in its own wallet
+      // (before 2026-09-09 this went to the buyback wallet).
+      bobai_bnb: r6(feesForwarded + resetForwarded),
+      bobai_units: r6(bobaiUnits),
       kept_as_capital_bnb: r6(feesKept + foldedKept),
       capital_arrived_bnb: r6(incomeBnb + feesKept + foldedKept),
       into_position_bnb: r6(intoPosition),
@@ -113,7 +120,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     },
     gas: { bnb: r6(gas), transactions: txs },
     waiting,
-    rule: keptPct == null ? null : { fee_share_kept_pct: keptPct, fee_share_buyback_pct: 100 - keptPct },
+    rule: keptPct == null ? null : { fee_share_kept_pct: keptPct, fee_share_bobai_pct: 100 - keptPct },
     paid_for: earned ? { x402_answers: n(earned.count), usd1: n(earned.totalUsd1) } : null,
   };
 }
@@ -127,12 +134,12 @@ export function flowLines(flow) {
     ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
   const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
-  const folded = fd > 0 ? `${f(fd)} BNB of fees taken at ${rw} re-set${rw === 1 ? '' : 's'}${rf > 0 ? `, ${f(rf)} of it sent on to the buyback wallet` : ', all of it folded into the capital'}` : '';
+  const folded = fd > 0 ? `${f(fd)} BNB of fees taken at ${rw} re-set${rw === 1 ? '' : 's'}${rf > 0 ? `, ${f(rf)} of it spent on BOBAI held` : ', all of it folded into the capital'}` : '';
   const fees = flow.in.fees.collects
     ? `${f(flow.in.fees.collected_bnb != null ? flow.in.fees.collected_bnb : flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}${folded ? `, ${folded}` : ''}`
     : (folded || 'no fees collected yet');
   const out = flow.in.fees.collects || flow.in.income.length || fd > 0
-    ? `${f(flow.out.buyback_bnb)} BNB to the buyback wallet, ${f(flow.out.kept_as_capital_bnb)} BNB kept as capital, ${f(flow.out.into_position_bnb)} BNB already put into the position`
+    ? `${f(flow.out.bobai_bnb)} BNB spent on BOBAI held in the wallet, ${f(flow.out.kept_as_capital_bnb)} BNB kept as capital, ${f(flow.out.into_position_bnb)} BNB already put into the position`
     : 'nothing has left the wallet yet';
   return {
     came_in: `${income}; ${fees}`,

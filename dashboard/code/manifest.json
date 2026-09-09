@@ -129,9 +129,9 @@
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
    "lines": 4324,
-   "zipBytes": 64627,
-   "txtBytes": 192330,
-   "sha256": "e1c1237f40da8cc2",
+   "zipBytes": 64684,
+   "txtBytes": 192483,
+   "sha256": "4337b652c049095c",
    "reqs": [
     {
      "what": "A bot token",
@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 41,
-   "lines": 12053,
-   "zipBytes": 257709,
-   "txtBytes": 707410,
-   "sha256": "efccfbd0d77bed1b",
+   "lines": 12180,
+   "zipBytes": 260664,
+   "txtBytes": 717057,
+   "sha256": "33060fede2d84a4a",
    "reqs": [
     {
      "what": "A wallet to be paid into",

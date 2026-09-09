@@ -493,7 +493,9 @@ async function recordLpSeries(env) {
   const prev = series.length ? series[series.length - 1] : null;
   const flow = moneyFlow(rec);
   const totals = {
-    forwarded_total_bnb: flow.out.buyback_bnb,
+    bobai_spent_total_bnb: flow.out.bobai_bnb,
+    bobai_units_total: flow.out.bobai_units,
+    forwarded_total_bnb: flow.out.bobai_bnb,
     kept_total_bnb: flow.out.kept_as_capital_bnb,
     fees_total_bnb: flow.in.fees.bnb,
     folded_total_bnb: flow.in.fees.folded_bnb || 0,
@@ -506,14 +508,17 @@ async function recordLpSeries(env) {
     const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {}, inc = st.increase || {};
     const reset = rb.acted && !rb.error && rb.new_position;
     const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
+    // A deposit-watch run (since 2026-09-09) carries only the increase step:
+    // its position, range and value come from there, the value after the
+    // increase when it acted.
     point = {
       at: last.at,
-      position: reset ? String(rb.new_position) : (c.position || rb.position || null),
-      in_range: reset ? true : (c.in_range != null ? c.in_range : (rb.in_range ?? null)),
-      tick: rb.tick ?? null,
+      position: reset ? String(rb.new_position) : (c.position || rb.position || inc.position || null),
+      in_range: reset ? true : (c.in_range != null ? c.in_range : (rb.in_range ?? inc.in_range ?? null)),
+      tick: rb.tick ?? inc.tick ?? null,
       ticks: reset ? (rb.new_ticks || rb.ticks || null) : (rb.ticks || null),
       reset: reset ? { from: rb.position, to: String(rb.new_position), width_pct: rb.width_pct ?? null, gas_bnb: rb.gas_bnb ?? null } : null,
-      value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : null,
+      value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : (inc.acted && !inc.error && inc.value_after_bnb != null ? Number(inc.value_after_bnb) : (inc.value_bnb != null ? Number(inc.value_bnb) : null)),
       owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
       wallet_bnb: inc.wallet_bnb != null ? Number(inc.wallet_bnb) : null,
       waiting: sweeps.filter((s) => s.balance > 0).map((s) => ({ token: s.token || s.source, amount: Number(s.balance) })),
@@ -577,7 +582,7 @@ function lpFeesWhere(p) {
   const parts = [];
   if (p.fees_collected_bnb > 0) parts.push(`${f5(p.fees_collected_bnb)} collected`);
   if (p.fees_folded_bnb > 0) parts.push(`${f5(p.fees_folded_bnb)} folded into the capital by re-sets`);
-  if (p.fees_forwarded_at_resets_bnb > 0) parts.push(`${f5(p.fees_forwarded_at_resets_bnb)} sent to the buyback bot by re-sets`);
+  if (p.fees_forwarded_at_resets_bnb > 0) parts.push(`${f5(p.fees_forwarded_at_resets_bnb)} put into BOBAI by re-sets`);
   parts.push(`${f5(p.fees_owed_bnb)} still owed by the position`);
   return parts.join(', ');
 }
@@ -599,10 +604,17 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     since: first.at,
     days_covered: days,
     value_bnb: f0 && f1 ? { start: f0.value_bnb, now: f1.value_bnb, added_by_hand_bnb: +(Number(f1.capital_added_total_bnb) || 0).toFixed(6), change_pct: f0.value_bnb ? +(((f1.value_bnb - (Number(f1.capital_added_total_bnb) || 0) - f0.value_bnb) / f0.value_bnb) * 100).toFixed(2) : null } : null,
+    // Since 2026-09-09 the share buys BOBAI the agent holds in its own wallet;
+    // the old key stays one more release for readers of the series.
+    fees_into_bobai_bnb: last.bobai_spent_total_bnb ?? last.forwarded_total_bnb,
+    bobai_held_units: last.bobai_units_total ?? 0,
     fees_sent_to_buyback_bnb: last.forwarded_total_bnb,
     fees_kept_as_capital_bnb: last.kept_total_bnb ?? 0,
     fees_produced_bnb: last.fees_total_bnb ?? last.forwarded_total_bnb,
     income_put_in_bnb: last.swept_total_bnb,
+    // What the increase step put in beyond swept income and kept fees is the
+    // operator's own money, taken in by the deposit watch (since 2026-09-09).
+    deposits_put_in_bnb: +Math.max(0, (Number(last.into_position_total_bnb) || 0) - (Number(last.swept_total_bnb) || 0) - (Number(last.kept_total_bnb) || 0)).toFixed(6),
     fees_owed_now_bnb: owed_now_bnb != null ? owed_now_bnb : last.owed_bnb,
     // 1 tick = 0.01 % of price; the sign says which way the pair moved.
     price_move_pct_since_start: tickMove != null ? +((Math.pow(1.0001, tickMove) - 1) * 100).toFixed(2) : null,
@@ -648,9 +660,9 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     + (v && v.start != null ? `, position worth ${f(v.start, 4)} → ${f(v.now, 4)} BNB${v.added_by_hand_bnb ? ` of which ${f(v.added_by_hand_bnb, 4)} BNB was added by the operator` : ''} (${pct(v.change_pct)}${v.added_by_hand_bnb ? ' on the capital' : ''})` : '')
     + (out.price_move_pct_since_start != null ? `, the pair moved ${pct(out.price_move_pct_since_start)}` : '')
     + `, in range on ${out.days_in_range} of ${out.runs_with_a_position}`
-    + `, fees sent to the buyback bot ${f(out.fees_sent_to_buyback_bnb, 5)} BNB`
+    + `, fees put into BOBAI held in the wallet ${f(out.fees_into_bobai_bnb, 5)} BNB${out.bobai_held_units > 0 ? ` (${Math.round(out.bobai_held_units).toLocaleString('en-US')} BOBAI held)` : ''}`
     + (out.fees_kept_as_capital_bnb ? `, kept as capital ${f(out.fees_kept_as_capital_bnb, 5)} BNB` : '')
-    + `, income put in ${f(out.income_put_in_bnb, 5)} BNB.`;
+    + `, income put in ${f(out.income_put_in_bnb, 5)} BNB` + (out.deposits_put_in_bnb > 0 ? `, deposits the agent put in ${f(out.deposits_put_in_bnb, 5)} BNB` : '') + '.';
   const sign = (x) => (x > 0 ? '+' : '') + f(x, 5);
   if (out.profit) {
     const p = out.profit;
@@ -1690,7 +1702,7 @@ ${pageTail}`;
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
         const s = e.steps || {}; const parts = [];
         for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(`swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the liquidity wallet`);
-        if (s.collect?.acted && !s.collect.error && (Number(s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.forwarded_bnb, 5)} BNB to the buyback bot${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
+        if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
         if (s.increase?.acted && !s.increase.error) parts.push(`added ${f(s.increase.wbnb_used, 5)} BNB to the position`);
         const errs = [...(Array.isArray(s.sweep) ? s.sweep : []), s.collect, s.rebalance, s.increase].filter((x) => x && x.error).map((x) => x.error);
@@ -1718,9 +1730,9 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 <h2>Where the money came from, where it went</h2>
 <div class="card"><div class="flow">
 <div><b>Came in</b><span>${h(fl.came_in)}</span>${flow.paid_for && flow.paid_for.x402_answers ? `<i>The x402 service has been paid ${h(f(flow.paid_for.usd1, 2))} USD1 for ${h(flow.paid_for.x402_answers)} answer${flow.paid_for.x402_answers === 1 ? '' : 's'} since it opened. What of it has reached the income wallet is under Waiting and is swept once it is worth more than the gas; the rest went through the earlier path, which burned it directly.</i>` : ''}</div>
-<div><b>Went out</b><span>${h(fl.went_out)}${flow.out.buyback_bnb > 0 && usd(flow.out.buyback_bnb) ? ` — the buyback share${usd(flow.out.buyback_bnb)}` : ''}</span><i>${flow.out.resets} re-set${flow.out.resets === 1 ? '' : 's'} of the range · ${h(fl.cost)}${usd(flow.gas.bnb)}</i></div>
+<div><b>Went out</b><span>${h(fl.went_out)}${flow.out.bobai_bnb > 0 && usd(flow.out.bobai_bnb) ? ` — the BOBAI share${usd(flow.out.bobai_bnb)}${flow.out.bobai_units > 0 ? `, ${h(Math.round(flow.out.bobai_units).toLocaleString('en-US'))} BOBAI held` : ''}` : ''}</span><i>${flow.out.resets} re-set${flow.out.resets === 1 ? '' : 's'} of the range · ${h(fl.cost)}${usd(flow.gas.bnb)}</i></div>
 <div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the liquidity wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
-<div><b>The rule</b><span>${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% of every collect stays as capital, ${h(flow.rule.fee_share_buyback_pct)}% goes to the buyback wallet.` : 'The share of the fees kept as capital is named with the next collect.'} Income goes in as capital in full. The capital never leaves.</span><i>Set in the open: LP_FEE_KEEP_PCT in worker-lp/wrangler.toml, in <a href="https://brainonbnb.com/source">the published source</a>.</i></div>
+<div><b>The rule</b><span>${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% of every collect stays as capital, ${h(flow.rule.fee_share_bobai_pct)}% buys $BOBAI the agent holds in its own wallet, never sold.` : 'The share of the fees kept as capital is named with the next collect.'} Income goes in as capital in full. The capital never leaves.</span><i>Set in the open: LP_FEE_KEEP_PCT in worker-lp/wrangler.toml, in <a href="https://brainonbnb.com/source">the published source</a>.</i></div>
 </div></div>
 <h2>The last run, step by step</h2>${fromDaily ? `<p class="note" style="margin:0 0 8px">The newest run, ${h(when(last.at))}, was an hourly range check; it has the rebalance step only. The other steps run once a day and are shown from ${h(dailyWhen)}.</p>` : ''}
 <div class="card">${stepRows.map((r) => `<div class="step" style="margin:0 0 10px"><b>${h(r.name)}<span class="st ${r.err ? 'bad' : r.acted ? 'ok' : 'quiet'}">${r.err ? 'failed' : r.acted ? 'acted' : 'nothing to do'}</span></b><span>${h(r.err || r.why || '')}</span>${r.detail ? `<i>${h(r.detail)}</i>` : ''}</div>`).join('')}
@@ -2080,7 +2092,9 @@ ${pageTail}`;
       const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
       const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
       const totals = liveFlow ? {
-        forwarded_total_bnb: liveFlow.out.buyback_bnb,
+        bobai_spent_total_bnb: liveFlow.out.bobai_bnb,
+        bobai_units_total: liveFlow.out.bobai_units,
+        forwarded_total_bnb: liveFlow.out.bobai_bnb,
         kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
         fees_total_bnb: liveFlow.in.fees.bnb,
         folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,

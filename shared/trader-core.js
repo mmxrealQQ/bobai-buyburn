@@ -448,6 +448,20 @@ export function planRebalance(holdingsUsd, weights = ALLOCATION, { band = 0, min
     }
     kept.push(o);
   }
+  // A top-up that bought nothing because every sleeve's share of the deposit
+  // was under the minimum still has the cash: $25 arriving on three $46
+  // sleeves is $8 each, and $8 is not an order. The cash then goes to the
+  // sleeve furthest under its target, in one order — the deposit works
+  // today, and the next pass evens the weights (2026-09-09, the operator's
+  // $25 that "just sat there").
+  if (!sells && cash >= minOrderUsd && !kept.some((o) => o.side === 'buy')) {
+    const under = TRADING_LEGS.map((l) => ({ leg: l, gap: investable * (weights[l] || 0) - have(l) })).filter((x) => x.gap > 0).sort((a, b) => b.gap - a.gap)[0];
+    if (under) {
+      const usd = Math.min(cash, maxOrderUsd);
+      kept.push({ leg: under.leg, side: 'buy', usd, target_usd: investable * (weights[under.leg] || 0), have_usd: have(under.leg), pooled: true });
+      cash -= usd;
+    }
+  }
   const r2 = (x) => Math.round(x * 100) / 100;
   for (const o of kept) { o.usd = r2(o.usd); o.target_usd = r2(o.target_usd); o.have_usd = r2(o.have_usd); }
   return { total: r2(total), take: r2(take), investable: r2(investable), orders: kept, skipped, drift, cash_after: r2(Math.max(0, cash)) };

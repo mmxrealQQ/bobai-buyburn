@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-09-08T04:54:03.554Z",
-  "registered_ids": 340473,
-  "reachable_ids": 848,
-  "independent_operators": 83,
-  "operators_speaking_a_protocol": 35,
+  "measured_at": "2026-09-09T11:19:00.385Z",
+  "registered_ids": 342118,
+  "reachable_ids": 871,
+  "independent_operators": 89,
+  "operators_speaking_a_protocol": 41,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -182,11 +182,11 @@
         },
         {
           "name": "topaz_quote_swap",
-          "description": "Get a swap quote for a token pair on Topaz. Searches all v2 (volatile/stable) and v3 (concentrated liquidity) pools with multi-hop routing. Returns the best out"
+          "description": "Get a swap quote for a token pair on Topaz. Uses quote.topazdex.com smart order routing across CL and v2 stable/volatile pools, including splits and mixed route"
         },
         {
           "name": "topaz_build_swap_calldata",
-          "description": "Build wallet-ready swap calldata that a user can sign and broadcast. Includes approval transaction if needed. NEVER broadcasts — only returns calldata for the u"
+          "description": "Build wallet-ready swap calldata that a user can sign and broadcast. Returns ALL ordered calls: ERC20 zero-reset/approve, Permit2.approve, swap, and both allowa"
         },
         {
           "name": "topaz_recommend_lp",
@@ -714,9 +714,6 @@
         118416,
         118457,
         118501,
-        119713,
-        119976,
-        120028,
         120090,
         120154,
         120184,
@@ -729,7 +726,11 @@
         123767,
         123941,
         124183,
+        124208,
         124242,
+        124482,
+        124595,
+        124647,
         124859,
         125033,
         125497,
@@ -738,11 +739,10 @@
         126101,
         126288,
         126392,
-        126473,
-        126708,
-        126745,
-        126886,
-        127144
+        127144,
+        127218,
+        127863,
+        128233
       ],
       "name": "Moments",
       "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -970,7 +970,7 @@
     },
     {
       "operator": "4lpha.tech",
-      "instances": 33,
+      "instances": 39,
       "distinct_capabilities": 1,
       "ids": [
         96179,
@@ -1005,7 +1005,13 @@
         338550,
         338672,
         340032,
-        340232
+        340232,
+        340548,
+        340786,
+        340882,
+        341245,
+        341264,
+        341401
       ],
       "name": "4lpha single agent",
       "description": "AI-powered meme coin intelligence and autonomous trading agents.",
@@ -1191,7 +1197,7 @@
         336161
       ],
       "name": "MANDATE Assay Office",
-      "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks, identity, custody, activity, capability, reputation, performance, producing a millesimal fineness. Below 375 no hallmark is struck. Every finding carries ",
+      "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks — identity, custody, activity, capability, reputation, performance — producing a millesimal fineness. Below 375 no hallmark is struck. Every finding carrie",
       "image": null,
       "speaks": [
         "a2a"
@@ -1233,6 +1239,31 @@
         "Grid plan",
         "Live pancakeswap-v3 read",
         "ERC-8183 quote"
+      ]
+    },
+    {
+      "operator": "bnb-agent-marketplace-ruby.vercel.app",
+      "instances": 4,
+      "distinct_capabilities": 4,
+      "ids": [
+        303779,
+        341563,
+        341564,
+        341565
+      ],
+      "name": "marketplace-operated-grid-planner",
+      "description": "Marketplace-operated Grid seller. It computes deterministic plans and performs no trading or custody. Not an official BNB reference agent.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://bnb-agent-marketplace-ruby.vercel.app/grid/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate a deterministic Grid plan",
+        "Negotiate a deterministic Grid plan",
+        "Compute and submit a funded Grid plan"
       ]
     },
     {
@@ -1284,30 +1315,30 @@
       "agent_card": "https://coin-signal.airblock2026.workers.dev/.well-known/agent-card.json"
     },
     {
-      "operator": "bnb-agent-marketplace-ruby.vercel.app",
+      "operator": "ivl-mainnet.onrender.com",
       "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        303779
+        341628
       ],
-      "name": "marketplace-operated-grid-planner",
-      "description": "Marketplace-operated Grid seller. It computes deterministic plans and performs no trading or custody. Not an official BNB reference agent.",
+      "name": "IVL Rebalancer",
+      "description": "ERC-8183 seller agent (ivlrebalancer-agent) — negotiate + notify_funded + free preview over A2A.",
       "image": null,
       "speaks": [
         "a2a"
       ],
       "endpoints": [
-        "https://bnb-agent-marketplace-ruby.vercel.app/grid/.well-known/agent-card.json"
+        "https://ivl-mainnet.onrender.com/.well-known/agent-card.json"
       ],
       "skills": [
-        "Negotiate a deterministic Grid plan",
-        "Negotiate a deterministic Grid plan",
-        "Compute and submit a funded Grid plan"
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)",
+        "Preview the rebalance plan (free)"
       ]
     },
     {
       "operator": "amazonaws.com",
-      "instances": 12,
+      "instances": 13,
       "distinct_capabilities": 5,
       "ids": [
         33813,
@@ -1321,7 +1352,8 @@
         327090,
         330536,
         330663,
-        330831
+        330831,
+        341493
       ],
       "name": "mandaterebalance-agent",
       "description": "MandateX PancakeSwap V3 rebalancing reference agent (mandaterebalance-agent) - deterministic quote policy plus simulation/refusal receipts over ERC-8183.",
@@ -1335,6 +1367,31 @@
       "skills": [
         "Quote a bounded PancakeSwap V3 rebalance",
         "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "marque.trade",
+      "instances": 5,
+      "distinct_capabilities": 5,
+      "ids": [
+        341553,
+        341554,
+        341555,
+        341556,
+        341557
+      ],
+      "name": "Bound",
+      "description": "Reads a PancakeSwap V3 position on BNB Smart Chain, reports range health and drift, and proposes a re-centred range snapped to the pool’s own tick spacing with the amounts the V3 liquidity formula requires. Non-custodial: it computes, it ne",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://marque.trade/agents/bound/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Read a V3 range",
+        "Propose a legal re-centre"
       ]
     },
     {
@@ -1444,11 +1501,33 @@
       ]
     },
     {
-      "operator": "hevo-rebalance.fly.dev",
+      "operator": "hevo-grid.fly.dev",
       "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        340471
+        340527
+      ],
+      "name": "Hevo Grid",
+      "description": "ERC-8183 seller agent (hevogrid-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://hevo-grid.fly.dev/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "hevo-rebalance.fly.dev",
+      "instances": 2,
+      "distinct_capabilities": 1,
+      "ids": [
+        340471,
+        340502
       ],
       "name": "Hevo Rebalance",
       "description": "ERC-8183 seller agent (hevorebalance-agent) — negotiate + notify_funded over A2A.",
@@ -1458,6 +1537,48 @@
       ],
       "endpoints": [
         "https://hevo-rebalance.fly.dev/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "hevo-sentinel.fly.dev",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        340533
+      ],
+      "name": "Hevo Sentinel",
+      "description": "ERC-8183 seller agent (hevosentinel-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://hevo-sentinel.fly.dev/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "hevo-yield.fly.dev",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        340532
+      ],
+      "name": "Hevo Yield",
+      "description": "ERC-8183 seller agent (hevoyield-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://hevo-yield.fly.dev/.well-known/agent-card.json"
       ],
       "skills": [
         "Negotiate an ERC-8183 job",
@@ -1479,6 +1600,28 @@
       ],
       "endpoints": [
         "https://cm-5268dad98979f28b-site-0c59465952e0.neat-coconut.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "operator": "ngrok-free.dev",
+      "instances": 2,
+      "distinct_capabilities": 1,
+      "ids": [
+        341225,
+        130841
+      ],
+      "name": "yieldrouter — capacity-aware yield optimisation",
+      "description": "ERC-8183 seller agent (yieldrouter-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://tanned-retriever-swimsuit.ngrok-free.dev/.well-known/agent-card.json"
       ],
       "skills": [
         "Negotiate an ERC-8183 job",
@@ -1996,6 +2139,22 @@
       ]
     },
     {
+      "operator": "fengshuibnb.com",
+      "instances": 2,
+      "distinct_capabilities": 0,
+      "ids": [
+        99381,
+        99382
+      ],
+      "name": "Master Xuan (玄) — Mian Xiang & Bazi",
+      "description": "Chinese metaphysics agent: Bazi (Four Pillars) and Mian Xiang (face reading). Reads NFT-bound souls or free-text birth data. Paid in the FENGSHUI token on BNB Chain.",
+      "image": "https://fengshuibnb.com/og-square.png",
+      "speaks": [],
+      "endpoints": [
+        "https://api.fengshuibnb.com/master-xuan/reading/by-nft"
+      ]
+    },
+    {
       "operator": "forge-mint.vercel.app",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2234,21 +2393,6 @@
       "speaks": [],
       "endpoints": [
         "https://nexus-halo.vercel.app/erc8183/status"
-      ]
-    },
-    {
-      "operator": "ngrok-free.dev",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        130841
-      ],
-      "name": "Genesis AI Strategy Agent",
-      "description": "Genesis produces explainable crypto strategy reports, risk notes, and backtestable rules through ERC-8183 paid agent jobs.",
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://encore-silent-unease.ngrok-free.dev/erc8183/status"
       ]
     },
     {

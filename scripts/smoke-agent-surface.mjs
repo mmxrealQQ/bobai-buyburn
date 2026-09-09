@@ -593,7 +593,10 @@ section('The marketplace, from the front door');
   // is a page for a browser and JSON for everything else.
   const lq = await getText(`${SITE}/liquidity`);
   ok('/liquidity is a page that carries the live block', lq.isHtml && /id="ag-lp"/.test(lq.body) && /agent\.brainonbnb\.com\/lp\/agent/.test(lq.body));
-  ok('/liquidity names all three wallets of the loop', /0x690E950214980BC329823A2DB2fD90C06Bd54dE4/.test(lq.body) && /0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A/.test(lq.body) && /0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce/.test(lq.body));
+  // Since 2026-09-09 the loop is income wallet → liquidity wallet → $BOBAI held
+  // in that same wallet; the buyback wallet is no longer a stop on it.
+  ok('/liquidity names the income wallet, the liquidity wallet and the $BOBAI it holds', /0x690E950214980BC329823A2DB2fD90C06Bd54dE4/.test(lq.body) && /0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A/.test(lq.body) && /0x245c386dcfed896f5c346107596141e5edcbffff/i.test(lq.body));
+  ok('/liquidity no longer sends the fee share to the buyback bot', !/half is forwarded to the buyback bot|sent to <a[^>]*>the buyback bot<\/a>/.test(lq.body));
   ok('/liquidity is in the sitemap and /agents is not', /brainonbnb\.com\/liquidity</.test((await getText(`${SITE}/sitemap.xml`)).body) && !/brainonbnb\.com\/agents</.test((await getText(`${SITE}/sitemap.xml`)).body));
   const gone = await fetch(`${SITE}/agents`, { redirect: 'manual' });
   ok('/agents redirects instead of repeating the tiles', gone.status === 301 || gone.status === 308, String(gone.status));

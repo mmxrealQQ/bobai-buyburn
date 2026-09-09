@@ -158,6 +158,12 @@ if (SELF) {
       { at: '2026-09-08T19:50:00Z', ok: true, acted: true, steps: {
         rebalance: { acted: true, new_position: '8', fees_folded_bnb: 0.0004, fees_forwarded_bnb: 0.0002, fees_kept_pct: 50, forwarded_to: '0xdeFC', txs: [{ gas_bnb: 0.00002 }, { gas_bnb: 0.00001 }] },
       } },
+      // Since 2026-09-09 the share buys BOBAI the agent holds: a collect and a
+      // re-set that wrote bobai_bnb / bobai_units instead of forwarding.
+      { at: '2026-09-09T12:00:00Z', ok: true, acted: true, steps: {
+        collect: { acted: true, produced_bnb: 0.001, kept_bnb: 0.0005, kept_pct: 50, bobai_bnb: 0.0005, bobai_units: 2700, txs: [{ gas_bnb: 0.00001 }] },
+        rebalance: { acted: true, new_position: '9', fees_folded_bnb: 0.0002, bobai_bnb: 0.0001, bobai_units: 540, fees_kept_pct: 50, txs: [{ gas_bnb: 0.00001 }] },
+      } },
     ],
     last: { at: '2026-09-04T05:23:00Z', steps: {
       sweep: [{ source: 'x402', token: 'USD1', balance: 0.6, bnb_equivalent: 0.0008 }, { source: 'provider', token: '$U', balance: 0 }],
@@ -171,26 +177,28 @@ if (SELF) {
   is('a dry run counts for nothing', fl.in.fees.bnb < 9 && fl.gas.bnb < 1);
   is('income is summed per source', fl.in.income.length === 1 && fl.in.income[0].source === 'x402' && near(fl.in.income[0].bnb, 0.007) && fl.in.income[0].runs === 1);
   is('a sweep that did not act is not a source', !fl.in.income.some((s) => s.source === 'provider'));
-  is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.collected_bnb, 0.007) && fl.in.fees.collects === 2);
-  is('the fees two re-sets took are fees produced', near(fl.in.fees.folded_bnb, 0.001) && fl.in.fees.resets_with_fees === 2 && near(fl.in.fees.bnb, 0.008));
-  is('a re-set before 2026-09-08 folded all of it in; the one after sent half on', near(fl.in.fees.folded_kept_bnb, 0.0008) && near(fl.in.fees.forwarded_at_resets_bnb, 0.0002));
-  is('the buyback got 0.003 + 0.002 from collects + 0.0002 from the re-set', near(fl.out.buyback_bnb, 0.0052));
-  is('0.002 kept by the collect + 0.0006 + 0.0002 folded by the re-sets was kept as capital', near(fl.out.kept_as_capital_bnb, 0.0028));
-  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0098));
-  is('produced = what went to the buyback + what was kept', near(fl.in.fees.bnb, fl.out.buyback_bnb + fl.out.kept_as_capital_bnb));
+  is('a collect before the split counts what it forwarded as produced', near(fl.in.fees.collected_bnb, 0.008) && fl.in.fees.collects === 3);
+  is('the fees three re-sets took are fees produced', near(fl.in.fees.folded_bnb, 0.0012) && fl.in.fees.resets_with_fees === 3 && near(fl.in.fees.bnb, 0.0092));
+  is('a re-set before 2026-09-08 folded all of it in; the ones after sent half on', near(fl.in.fees.folded_kept_bnb, 0.0009) && near(fl.in.fees.forwarded_at_resets_bnb, 0.0003));
+  is('the share: 0.003 + 0.002 to the buyback from old collects, 0.0002 from the old re-set, 0.0005 + 0.0001 into BOBAI since', near(fl.out.bobai_bnb, 0.0058));
+  is('the BOBAI the agent holds is summed from collects and re-sets (2700 + 540)', near(fl.out.bobai_units, 3240));
+  is('a record without bobai fields holds none', moneyFlow({ history: [rec.history[0]] }).out.bobai_units === 0);
+  is('0.002 + 0.0005 kept by collects + 0.0006 + 0.0002 + 0.0001 folded by re-sets was kept as capital', near(fl.out.kept_as_capital_bnb, 0.0034));
+  is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0104));
+  is('produced = the BOBAI share + what was kept', near(fl.in.fees.bnb, fl.out.bobai_bnb + fl.out.kept_as_capital_bnb));
   is('the increase counts the BNB it spent, gas included', near(fl.out.into_position_bnb, 0.0101) && fl.out.increases === 1);
-  is('two re-sets', fl.out.resets === 2);
-  is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 9 && near(fl.gas.bnb, 0.00014));
-  is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.007));
-  is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-08T19:50:00Z');
+  is('three re-sets', fl.out.resets === 3);
+  is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 11 && near(fl.gas.bnb, 0.00016));
+  is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.008));
+  is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-09T12:00:00Z');
   is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
-  is('the rule is what the last collect named', fl.rule.fee_share_kept_pct === 50 && fl.rule.fee_share_buyback_pct === 50);
+  is('the rule is what the last collect named', fl.rule.fee_share_kept_pct === 50 && fl.rule.fee_share_bobai_pct === 50);
   is('paid_for carries the service earnings', fl.paid_for.x402_answers === 3 && near(fl.paid_for.usd1, 0.7));
   is('an empty record flows nothing', moneyFlow({}).in.total_bnb === 0 && moneyFlow({}).rule === null && moneyFlow(null).gas.transactions === 0);
   const lines = flowLines(fl);
-  is('the lines name the source, the fees, the re-sets\' fees and the split', /USD1/.test(lines.came_in) && /0\.00700 BNB of fees over 2 collects, 0\.00100 BNB of fees taken at 2 re-sets, 0\.00020 of it sent on to the buyback wallet/.test(lines.came_in) && /0\.00520 BNB to the buyback/.test(lines.went_out) && /0\.00280 BNB kept/.test(lines.went_out));
+  is('the lines name the source, the fees, the re-sets\' fees and the split', /USD1/.test(lines.came_in) && /0\.00800 BNB of fees over 3 collects, 0\.00120 BNB of fees taken at 3 re-sets, 0\.00030 of it spent on BOBAI held/.test(lines.came_in) && /0\.00580 BNB spent on BOBAI held in the wallet/.test(lines.went_out) && /0\.00340 BNB kept/.test(lines.went_out));
   is('re-sets that forwarded nothing read as all folded in', /0\.00060 BNB of fees taken at 1 re-set, all of it folded into the capital/.test(flowLines(moneyFlow({ history: rec.history.slice(0, 4) })).came_in));
   is('an empty record reads as nothing yet', /no income swept yet/.test(flowLines(moneyFlow({})).came_in) && /nothing has left/.test(flowLines(moneyFlow({})).went_out));
 
@@ -414,7 +422,7 @@ async function main() {
       console.log(`  would collect, sell the other side, unwrap, keep ${KEEP}% of what this run produced as capital and forward the rest to ${ADDR.BUYBACK_WALLET}`);
       if (CONFIRM) {
         const out = await executeCollect(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
-        console.log(`  produced ${out.produced_bnb || '0'} BNB: kept ${out.kept_bnb} BNB as capital, forwarded ${out.forwarded_bnb} BNB${out.why ? ` — ${out.why}` : ''}`);
+        console.log(`  produced ${out.produced_bnb || '0'} BNB: kept ${out.kept_bnb} BNB as capital, ${out.bobai_bnb} BNB bought ${out.bobai_units || '0'} BOBAI held in the wallet${out.why ? ` — ${out.why}` : ''}`);
         acted += 1;
       }
     }
@@ -439,11 +447,11 @@ async function main() {
     else {
       console.log(`  width ±${s.width_pct}% (${s.width_basis}) -> new ticks ${s.new_ticks[0]} … ${s.new_ticks[1]}`);
       console.log(plan.resume ? `  would ${s.trade}, and mint the range from what the wallet then holds` : `  would withdraw and burn #${s.position}, ${s.trade}, and mint the new range from what the wallet then holds`);
-      if (!plan.resume) console.log(`  the old range owes ${f(s.fees_owed_bnb)} BNB of fees: ${s.fees_to_buyback_bnb > 0 ? `${f(s.fees_to_buyback_bnb)} BNB would go to the buyback wallet before the mint, the rest into the new capital` : 'all of it would be minted into the new capital'} (kept share ${s.fees_kept_pct ?? KEEP}%)`);
+      if (!plan.resume) console.log(`  the old range owes ${f(s.fees_owed_bnb)} BNB of fees: ${s.fees_to_bobai_bnb > 0 ? `${f(s.fees_to_bobai_bnb)} BNB would buy BOBAI (held in the wallet) before the mint, the rest into the new capital` : 'all of it would be minted into the new capital'} (kept share ${s.fees_kept_pct ?? KEEP}%)`);
       if (CONFIRM) {
         const out = await executeRebalance(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
         console.log(`  new position #${out.new_position} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}`);
-        if (out.fees_folded_bnb != null) console.log(`  old range's fees ${f(out.fees_folded_bnb)} BNB: ${out.fees_forwarded_bnb > 0 ? `${f(out.fees_forwarded_bnb)} BNB sent to ${out.forwarded_to}` : out.fees_forward_why}`);
+        if (out.fees_folded_bnb != null) console.log(`  old range's fees ${f(out.fees_folded_bnb)} BNB: ${out.bobai_bnb > 0 ? `${f(out.bobai_bnb)} BNB bought ${out.bobai_units} BOBAI, held in ${out.bobai_held_in}` : out.fees_forward_why}`);
         acted += 1;
       }
     }

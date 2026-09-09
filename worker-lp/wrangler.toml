@@ -13,7 +13,10 @@ compatibility_date = "2025-01-01"
 # pool, and re-sets only once the price has been outside for two hours. :50
 # is after the agent worker's window tick at :30, which the check reads.
 [triggers]
-crons = ["23 4 * * *", "50 * * * *"]
+# 04:23 the daily run; :50 the hourly range check; the deposit watch on the
+# other tens (not :50 — two firings in the same minute would both try to wrap
+# the same BNB and the second would revert).
+crons = ["23 4 * * *", "50 * * * *", "0,10,20,30,40 * * * *"]
 
 # The same KV namespace the agent worker reads, so agent.brainonbnb.com can
 # serve /lp/agent from the record this worker writes. This worker itself has

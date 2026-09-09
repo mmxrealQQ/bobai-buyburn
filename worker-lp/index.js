@@ -50,6 +50,14 @@ export const KV_KEY = 'lp:agent';
 export const OUT_SINCE_KEY = 'lp:out_since';
 const STEPS = ['sweep', 'collect', 'rebalance', 'increase'];
 const DAILY_CRON = '23 4 * * *';
+// The hourly check re-sets the range and, since 2026-09-09, also puts in
+// what the wallet holds — a re-set that lands the position back in range
+// used to leave a deposit idle until the next 04:23. The deposit watch
+// runs every ten minutes on the other minutes and does only the increase:
+// one balance read, and nothing at all under the floor or out of range.
+// The operator's rule, 2026-09-09: "such things have to happen within
+// seconds or minutes" — a deposit that sits for a day is a broken agent.
+const HOURLY_CRON = '50 * * * *';
 
 const json = (obj, status = 200) => new Response(JSON.stringify(obj, null, 2), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const account = (key) => privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
@@ -183,7 +191,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       }
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_buyback_bnb > 0 ? ` and sent ${plan.summary.fees_to_buyback_bnb} BNB of the old range's fees to the buyback wallet` : ''}` };
+    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
     try {
       const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
       await env.AGENT.delete(OUT_SINCE_KEY);
@@ -242,8 +250,8 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest is sent to the buyback wallet, which buys and burns $BOBAI as it always has (collect); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
-  st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance only' };
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase only (a deposit goes in within minutes, in range and above the floor)' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }
@@ -264,9 +272,10 @@ export default {
     return json({ error: 'not found' }, 404);
   },
   async scheduled(event, env, ctx) {
-    // The daily tick runs all four steps; every other firing is the hourly
-    // range check and runs the rebalance step alone.
-    const steps = event.cron === DAILY_CRON ? STEPS : ['rebalance'];
+    // The daily tick runs all four steps; the :50 firing is the hourly range
+    // check (rebalance, then increase so a fresh range takes what waits in the
+    // wallet); every other firing is the deposit watch and runs increase alone.
+    const steps = event.cron === DAILY_CRON ? STEPS : event.cron === HOURLY_CRON ? ['rebalance', 'increase'] : ['increase'];
     ctx.waitUntil(agentTick(env, { steps }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
   },
 };

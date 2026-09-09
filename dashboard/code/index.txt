@@ -84,7 +84,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 4359 lines
+12 files, 4387 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -262,7 +262,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-41 files, 12191 lines
+41 files, 12206 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

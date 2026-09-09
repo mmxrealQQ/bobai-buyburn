@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4359 lines.
+# one fetch. 12 files, 4387 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2640,7 +2640,32 @@ export function formatGiggleCard(burns, nowMs = Date.now()) {
 // card with lines and emojis, the essentials only ("das gleiche beim lp
 // agent im öffentlichen chat"). Pure, so it can be rendered against a real
 // series without posting.
-export function formatLpDailyReport(rec, series) {
+// The pool record (agent.brainonbnb.com/lp/pools) on the card: what the same
+// fifty dollars earned per day in each pool the agent could live in, and the
+// pick once every pool has a day of sampled chain. A finding beside the
+// numbers, never a move — the agent does not change pools by itself. Empty
+// when the record cannot be read, so the card never waits for it.
+export function poolRecordLines(pools) {
+  const rows = pools && Array.isArray(pools.pools) ? pools.pools : [];
+  if (!rows.length) return [];
+  const mark = (label) => (/BOB\//.test(label) ? '🔨' : '🥞');
+  const perDay = (x) => (x == null ? 'no fees yet' : '$' + Number(x).toFixed(2) + '/day');
+  const lines = [`🏁 <b>Pool record</b>  <i>(the same $${Number(pools.usd || 50)} in ±${Number(pools.width_pct || 1)}%)</i>`];
+  for (const p of rows) lines.push(`${mark(p.label)} ${p.label}${p.watched ? ' · here' : ''}: ${perDay(p.fees_usd_per_day)}`);
+  if (pools.pick) {
+    const here = pools.watched && pools.pick.pool === pools.watched.pool;
+    lines.push(here
+      ? `📌 Pick: <b>${pools.pick.label}</b>, the pool the agent is in`
+      : `📌 Pick: <b>${pools.pick.label}</b> — a finding for the operator, not a move`);
+  } else {
+    const due = pools.pick_due ? ` · due around ${String(pools.pick_due).slice(11, 16)} UTC on ${String(pools.pick_due).slice(5, 10)}` : '';
+    lines.push(`📌 No pick yet: every pool needs 24 h of sampled chain (${rows.map((p) => Number(p.hours || 0).toFixed(0) + ' h').join(' / ')})${due}`);
+  }
+  lines.push('');
+  return lines;
+}
+
+export function formatLpDailyReport(rec, series, pools = null) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -2699,6 +2724,7 @@ export function formatLpDailyReport(rec, series) {
     `⛽ Gas: ${n(fees.gas_bnb) > 0 ? '▼ −' + f5(fees.gas_bnb) : '• 0.00000'}`,
     `🗓 In range: ${sum.days_in_range} of ${sum.runs_with_a_position} runs since ${String(sum.since || '').slice(0, 10)}`,
     rule,
+    ...poolRecordLines(pools),
     `🔁 <b>Today</b>\n${today}`,
     '',
     `<a href="https://brainonbnb.com/liquidity">brainonbnb.com/liquidity</a> · <a href="https://agent.brainonbnb.com/lp/agent">record</a>`,
@@ -2727,7 +2753,9 @@ async function postLpDailyReport(env) {
   const series = await rs.json();
   const pts = Array.isArray(series.points) ? series.points : [];
   if (!pts.length || Date.parse(pts[pts.length - 1].at) < Date.parse(rec.last.at)) return skip('series has no point for the run yet; last point ' + (pts.length ? pts[pts.length - 1].at : 'none'));
-  const text = formatLpDailyReport(rec, series);
+  // The pool record is a finding beside the card, never a reason to hold it.
+  const pools = await fetch('https://agent.brainonbnb.com/lp/pools?format=json', { cf: { cacheTtl: 60 } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  const text = formatLpDailyReport(rec, series, pools);
   if (!text) return skip('nothing to say: no sentence in the series');
   console.log('[LP REPORT] posting for ' + today);
   await env.KV.put('lp_report_date', today);

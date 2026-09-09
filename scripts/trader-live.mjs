@@ -75,7 +75,10 @@ const MAX_ORDER_USD = DEFAULT_MAX_ORDER_USD;
 // reserve back up, so a busy week never strands the agent without gas.
 const GAS_FLOOR_BNB = 0.003;
 const BOBAI_DIP_Z = 1, BOBAI_WINDOW = 168, PROFIT_TAKE_PCT = 50;
-const TICK_UTC = { hour: 0, minute: 20 };      // after the 00:00 UTC close the backtest used
+// 04:00 UTC since 2026-09-09: the operator wants the private card once a
+// day at 04:00, and the card is the daily tick's own report (the LP card
+// follows at 05:00 in the public channel, the whale recap at 06:00 inside).
+const TICK_UTC = { hour: 4, minute: 0 };
 const REMEASURE_UTC = { day: 1, hour: 1, minute: 0 };
 // The Agentic Wallet's session is good for a year but only while it is used
 // at least every 48 hours (Binance's rule, 2026-09-09). The daily tick is a
@@ -220,8 +223,11 @@ function depositWaiting() {
   const by = balances();
   const usdt = bal(by, 'USDT'), known = st.pot_usdt + st.profit_pool_usd;
   if (usdt > known + MIN_ORDER_USD) return `${money(usdt - known)} USDT beyond the record`;
-  const bnb = bal(by, 'BNB'), px = by.BNB ? by.BNB.price : 0;
-  if (px > 0 && (bnb - GAS_RESERVE_BNB) * px >= MIN_ORDER_USD) return `${(bnb - GAS_RESERVE_BNB).toFixed(5)} BNB above the reserve`;
+  // BNB the wallet holds beyond the BNB sleeve and the gas reserve — the
+  // sleeve itself is not a deposit (2026-09-09 11:00–11:33: the watch counted
+  // the sleeve, ran a tick every ten minutes, and every tick sent the card).
+  const bnb = bal(by, 'BNB') - Number(st.units && st.units.BNB || 0) - GAS_RESERVE_BNB, px = by.BNB ? by.BNB.price : 0;
+  if (px > 0 && bnb * px >= MIN_ORDER_USD) return `${bnb.toFixed(5)} BNB beyond the sleeve and the reserve`;
   return null;
 }
 
@@ -274,38 +280,71 @@ if (has('--bootstrap')) {
 const LEG_MARK = { BNB: '🟡', CAKE: '🥞', BOB: '🔨' };
 const signed = (x) => (x > 0 ? '▲ +' : x < 0 ? '▼ −' : '• ') + '$' + Math.abs(Number(x)).toFixed(2);
 const pct = (x, of) => (of > 0 ? (x / of * 100).toFixed(1) + '%' : '—');
-export function formatDailyReport({ date, totalNow, capital, mark, vsCapital, vsMark, cash, valued, pool, bobai, bobaiMark, realised, done, nextPass, monthly, unpriced }) {
+// THE CARD, AS A PORTFOLIO (the operator, 2026-09-09: "übersichtlicher mit
+// pnl, holds, gewinn, verlust — wie ein portfolio"): what was put in, what it
+// is worth, and per token its value, what it cost and the P&L in dollars and
+// percent; then $BOBAI held, cash, realised and the total against the
+// deposits; then what happened in the last 24 h. Pure.
+export function formatDailyReport({ date, totalNow, capital, mark, vsCapital, vsMark, cash, valued, cost = {}, pool, bobai, bobaiMark, realised, done, nextPass, monthly, unpriced }) {
   const rule = '';
-  const legs = TRADING_LEGS.map((l) => ({ l, v: valued[l] })).sort((x, y) => (y.v ?? -1) - (x.v ?? -1));
-  const sleeves = legs.map(({ l, v }) => `${LEG_MARK[l] || '•'} ${l}: ${v == null ? 'no price today' : `$${v.toFixed(2)}  ·  ${pct(v, totalNow)}`}`);
-  sleeves.push(`💵 Cash: $${Number(cash).toFixed(2)}${pool >= 1 ? `  ·  of it profit pool $${Number(pool).toFixed(2)}` : ''}`);
-  const today = done.length ? done.map((d) => `• ${d}`).join('\n') : (monthly ? '• monthly pass: every sleeve inside its band, no order' : '• no order — nothing to do');
+  const legs = TRADING_LEGS.map((l) => ({ l, v: valued[l], c: Number(cost[l] || 0) })).sort((x, y) => (y.v ?? -1) - (x.v ?? -1));
+  const pnl = (v, c) => (v == null ? null : v - c);
+  const holdings = legs.map(({ l, v, c }) => v == null
+    ? `${LEG_MARK[l] || '•'} ${l}: no price today  ·  cost $${c.toFixed(2)}`
+    : `${LEG_MARK[l] || '•'} ${l}: <b>$${v.toFixed(2)}</b>  ·  cost $${c.toFixed(2)}  ·  ${signed(pnl(v, c))} (${pct(pnl(v, c), c)})`);
+  const unrealised = legs.reduce((s, { v, c }) => s + (v == null ? 0 : v - c), 0);
+  const bobaiPnl = Number(bobaiMark || 0) - Number(bobai.spent_usd || 0);
+  const today = done.length ? done.map((d) => `• ${d}`).join('\n') : (monthly ? '• monthly pass: every sleeve inside its band, no order' : '• nothing to do — no deposit, no drift');
   return [
     `📊 <b>Trader · ${date}</b>${monthly ? '  ·  monthly pass' : ''}`,
     rule,
-    `💼 <b>Pot: $${totalNow.toFixed(2)}</b>`,
-    `📥 Put in: $${Number(capital).toFixed(2)}  ·  ${signed(vsCapital)} (${pct(vsCapital, capital)})`,
-    `🏁 Mark: $${Number(mark).toFixed(2)}  ·  ${signed(vsMark)}${vsMark > 0 ? '  → half is taken at the next monthly pass' : ''}`,
+    `📥 <b>Deposits: $${Number(capital).toFixed(2)}</b>`,
+    `💼 <b>Portfolio now: $${totalNow.toFixed(2)}</b>  ·  ${signed(vsCapital)} (${pct(vsCapital, capital)})`,
+    `🏁 High-water mark: $${Number(mark).toFixed(2)}  ·  ${signed(vsMark)}${vsMark > 0 ? '  → half of it becomes $BOBAI at the next monthly pass' : ''}`,
     rule,
-    `📊 <b>Sleeves</b>`,
-    ...sleeves,
+    `📊 <b>Holdings</b>  <i>(value · cost · P&L)</i>`,
+    ...holdings,
+    `💵 Cash: $${Number(cash).toFixed(2)}${pool >= 1 ? `  ·  of it profit pool $${Number(pool).toFixed(2)}` : ''}`,
+    rule,
+    `📈 <b>P&L</b>`,
+    `📈 Unrealised on the holdings: ${signed(unrealised)}`,
+    `✅ Realised since start: ${signed(realised)}`,
+    `🧠 $BOBAI held: ${Math.round(bobai.units).toLocaleString('en-US')}  ·  paid $${Number(bobai.spent_usd).toFixed(2)}  ·  worth $${Number(bobaiMark).toFixed(2)}${bobai.units > 0 ? `  ·  ${signed(bobaiPnl)}` : ''}`,
     rule,
     `🧠 <b>BOBAI</b>`,
-    `🧠 Held: ${Math.round(bobai.units).toLocaleString('en-US')}  ·  ${bobai.buys} buy${bobai.buys === 1 ? '' : 's'}, $${Number(bobai.spent_usd).toFixed(2)} paid, worth $${Number(bobaiMark).toFixed(2)}`,
-    `💰 Profit pool: $${Number(pool).toFixed(2)}  ·  buys BOBAI on its next dip`,
-    `📈 Realised since start: ${signed(realised)}`,
+    `🧠 ${bobai.buys} buy${bobai.buys === 1 ? '' : 's'} so far  ·  half of every profit above the mark, bought on a BOBAI dip`,
+    `💰 Profit pool: $${Number(pool).toFixed(2)}  ·  buys $BOBAI on its next dip, held in this wallet, never sold`,
     rule,
-    `🔁 <b>Today</b>\n${today}`,
+    `🔁 <b>Last 24 h</b>\n${today}`,
     `📅 Next monthly pass: <b>${nextPass}</b>${unpriced.length ? `\n⚠️ no price for ${unpriced.join(', ')} — not traded today` : ''}`,
   ].join('\n');
+}
+
+// What the log says happened in the last 24 h, in the card's words — the
+// orders a deposit-watch tick sent at 10:54 belong on the 04:00 card too.
+function recentDone(todayDone) {
+  const out = [];
+  try {
+    const since = Date.now() - 86_400_000;
+    const rows = fs.readFileSync(LOG, 'utf8').trim().split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((r) => r && Date.parse(r.at) >= since);
+    for (const r of rows) {
+      if (r.kind === 'bought' && r.leg) out.push(`bought ${money(r.spent_usd)} of ${r.leg}`);
+      else if (r.kind === 'sold' && r.leg) out.push(`sold ${money(r.received_usd)} of ${r.leg} (${r.net_usd >= 0 ? '+' : ''}${money(r.net_usd)})`);
+      else if (r.kind === 'capital_raised') out.push(`deposit taken in: ${money(r.to - r.from)} USDT`);
+      else if (r.kind === 'deposit') out.push(`${r.bnb} BNB → ${money(r.usdt)} USDT (deposit)`);
+      else if (r.kind === 'gas_refill') out.push(`${money(r.usdt)} USDT → gas`);
+      else if (r.kind === 'profit_taken') out.push(`profit taken: ${money(r.moved)} to the pool`);
+    }
+  } catch { /* no log yet */ }
+  return out.length ? [...new Set(out)] : todayDone;
 }
 
 // ---------------------------------------------------------------- tick
 const daysSince = (iso) => (iso ? (Date.now() - Date.parse(iso)) / 86_400_000 : Infinity);
 const r2 = (x) => Math.round(x * 100) / 100;
 
-async function tick() {
-  say(`tick ${now()}${CONFIRM ? '' : ' (dry)'}`);
+async function tick({ daily = false } = {}) {
+  say(`tick ${now()}${CONFIRM ? '' : ' (dry)'}${daily ? ' (daily — with the card)' : ''}`);
   if (fs.existsSync(STOP)) { say('STOP file present — doing nothing'); log({ kind: 'stopped' }); return; }
   const w = baw(['wallet', 'status']);
   if (!w.success || w.data.status !== 'CONNECTED') { say('wallet not connected — sign in again (baw auth signin)'); log({ kind: 'not_connected' }); await notify('⚠️ <b>Trader: wallet not connected</b> — the session on the server has ended; sign in again with a QR code.'); return; }
@@ -491,8 +530,11 @@ async function tick() {
   const nextPass = st.last_rebalance_at ? new Date(Date.parse(st.last_rebalance_at) + REBALANCE_EVERY_DAYS * 86_400_000).toISOString().slice(0, 10) : 'today';
   const vsCapital = r2(totalNow - st.capital_usd), vsMark = r2(totalNow - st.high_water_usd);
   const legLine = TRADING_LEGS.map((l) => `${l} ${valued[l] == null ? '(no price)' : money(valued[l])}`).join(' · ');
-  const report = formatDailyReport({ date: now().slice(0, 10), totalNow, capital: st.capital_usd, mark: st.high_water_usd, vsCapital, vsMark, cash: st.pot_usdt, valued, pool: st.profit_pool_usd, bobai: st.bobai, bobaiMark, realised: st.realised_usd, done, nextPass, monthly, unpriced });
-  if (CONFIRM) await notify(report);
+  const report = formatDailyReport({ date: now().slice(0, 10), totalNow, capital: st.capital_usd, mark: st.high_water_usd, vsCapital, vsMark, cash: st.pot_usdt, valued, cost: st.cost_usd, pool: st.profit_pool_usd, bobai: st.bobai, bobaiMark, realised: st.realised_usd, done: recentDone(done), nextPass, monthly, unpriced });
+  // The card goes out with the daily tick only. A deposit-watch tick and a
+  // restart tick log the same lines and say nothing in the chat; their
+  // orders are announced as events when they happen.
+  if (CONFIRM && daily) await notify(report);
   for (const l of lines) say('  ' + l);
   say(`  ${legLine} · cash ${st.pot_usdt.toFixed(2)} · pot ${totalNow.toFixed(2)} vs ${st.capital_usd.toFixed(2)} in, mark ${st.high_water_usd.toFixed(2)} · pool ${st.profit_pool_usd.toFixed(2)} · BOBAI ${st.bobai.units} · orders today ${orders} · next monthly pass ${nextPass}`);
   log({ kind: 'tick', dry: !CONFIRM, monthly, pot_usdt: st.pot_usdt, units: st.units, valued, total_usd: totalNow, capital_usd: st.capital_usd, high_water_usd: st.high_water_usd, profit_pool_usd: st.profit_pool_usd, bobai: st.bobai, orders, lines });
@@ -525,11 +567,11 @@ if (has('--keepalive')) { const ok = await keepalive(); process.exit(ok ? 0 : 1)
 
 if (has('--loop')) {
   say(`loop: a tick now, then daily at ${String(TICK_UTC.hour).padStart(2, '0')}:${String(TICK_UTC.minute).padStart(2, '0')} UTC${CONFIRM ? ', sending orders' : ' (dry)'}; a wallet keep-alive at ${String(KEEPALIVE_UTC.hour).padStart(2, '0')}:${String(KEEPALIVE_UTC.minute).padStart(2, '0')} UTC (reads only); a deposit watch every ${DEPOSIT_WATCH_MIN} min; a re-measure on the ${REMEASURE_UTC.day}st at ${String(REMEASURE_UTC.hour).padStart(2, '0')}:${String(REMEASURE_UTC.minute).padStart(2, '0')} UTC; STOP file at ${STOP} halts it`);
-  const run = () => tick().catch(async (e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); await notify('⚠️ <b>Trader: tick failed</b> — ' + String(e.message).slice(0, 200)); });
-  await run();
+  const run = (daily = false) => tick({ daily }).catch(async (e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); await notify('⚠️ <b>Trader: tick failed</b> — ' + String(e.message).slice(0, 200)); });
+  await run(false);
   setInterval(() => {
     const d = new Date(), h = d.getUTCHours(), m = d.getUTCMinutes();
-    if (h === TICK_UTC.hour && m === TICK_UTC.minute) run();
+    if (h === TICK_UTC.hour && m === TICK_UTC.minute) run(true);
     if (h === KEEPALIVE_UTC.hour && m === KEEPALIVE_UTC.minute) keepalive();
     if (m % DEPOSIT_WATCH_MIN === 0 && !(h === TICK_UTC.hour && m === TICK_UTC.minute)) {
       try { const found = depositWaiting(); if (found) { say(`deposit watch: ${found} — running a tick now`); log({ kind: 'deposit_seen', what: found }); run(); } }

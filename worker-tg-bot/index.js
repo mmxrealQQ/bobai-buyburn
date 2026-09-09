@@ -3185,7 +3185,9 @@ export default {
     // the clock and 15 from the schedule. Every tick in the window says so.
     {
       const tick = new Date(event && event.scheduledTime ? event.scheduledTime : Date.now());
-      if (tick.getUTCMinutes() % 10 === 5 && (tick.getUTCHours() === 4 || tick.getUTCHours() === 5)) {
+      // 05:00 UTC since 2026-09-09 — the operator's hour for the public LP
+      // card (the trader's private card goes at 04:00, the whale recap at 06:00).
+      if (tick.getUTCMinutes() % 10 === 5 && tick.getUTCHours() === 5) {
         console.log('[LP REPORT] tick ' + tick.toISOString());
         try { await postLpDailyReport(env); }
         catch (e) { console.error('[LP REPORT ERROR]', e.message || e); }

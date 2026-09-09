@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-09-08T04:54:03.554Z",
+  "measured_at": "2026-09-09T11:19:00.385Z",
   "agents": [
     {
       "id": 269223,
@@ -14,14 +14,14 @@
       "ours": false
     },
     {
-      "id": 265876,
-      "label": "BNB Yield Optimizer",
+      "id": 340471,
+      "label": "Hevo Rebalance",
       "category": "rebalancing",
       "ours": false
     },
     {
-      "id": 340471,
-      "label": "Hevo Rebalance",
+      "id": 265876,
+      "label": "BNB Yield Optimizer",
       "category": "rebalancing",
       "ours": false
     },
@@ -40,6 +40,12 @@
     {
       "id": 336622,
       "label": "RangeKeeper",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 341628,
+      "label": "IVL Rebalancer",
       "category": "rebalancing",
       "ours": false
     },
@@ -68,6 +74,12 @@
       "ours": false
     },
     {
+      "id": 340527,
+      "label": "Hevo Grid",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
       "id": 302258,
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
@@ -92,8 +104,20 @@
       "ours": false
     },
     {
+      "id": 341225,
+      "label": "yieldrouter — capacity-aware yield optimisation",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 338253,
       "label": "HyperliquidVault",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 340532,
+      "label": "Hevo Yield",
       "category": "yield-optimization",
       "ours": false
     },

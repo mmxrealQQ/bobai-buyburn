@@ -520,7 +520,10 @@ async function recordLpSeries(env) {
       reset: reset ? { from: rb.position, to: String(rb.new_position), width_pct: rb.width_pct ?? null, gas_bnb: rb.gas_bnb ?? null } : null,
       value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : (inc.acted && !inc.error && inc.value_after_bnb != null ? Number(inc.value_after_bnb) : (inc.value_bnb != null ? Number(inc.value_bnb) : null)),
       owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
-      wallet_bnb: inc.wallet_bnb != null ? Number(inc.wallet_bnb) : null,
+      // The increase step reads the wallet before it spends; when it acted,
+      // the point carries what was left, else the card and the page would
+      // show a deposit as still waiting after it went into the position.
+      wallet_bnb: inc.wallet_bnb != null ? Math.max(0, Number(inc.wallet_bnb) - (inc.acted && !inc.error && inc.bnb_spent != null ? Number(inc.bnb_spent) : 0)) : null,
       waiting: sweeps.filter((s) => s.balance > 0).map((s) => ({ token: s.token || s.source, amount: Number(s.balance) })),
       ...totals,
       acted: !!last.acted,

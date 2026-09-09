@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4324 lines.
+# one fetch. 12 files, 4351 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2638,10 +2638,11 @@ export function formatLpDailyReport(rec, series) {
   if (!last || !last.at || !sum || !sum.profit) return null;
   const pts = Array.isArray(series.points) ? series.points : [];
   const pt = pts.length ? pts[pts.length - 1] : null;
-  const f4 = (x) => Number(x || 0).toFixed(4);
-  const f5 = (x) => Number(x || 0).toFixed(5);
-  const usd = (bnb) => (sum.profit.bnb_usd ? ' (≈ $' + (Number(bnb || 0) * Number(sum.profit.bnb_usd)).toFixed(2) + ')' : '');
-  const sign = (x) => (Number(x) > 0 ? '▲ +' : Number(x) < 0 ? '▼ ' : '• ') + f5(Math.abs(Number(x || 0)));
+  const n = (x) => Number(x || 0);
+  const f4 = (x) => n(x).toFixed(4);
+  const f5 = (x) => n(x).toFixed(5);
+  const usd = (bnb) => (sum.profit.bnb_usd ? ' (≈ $' + (n(bnb) * n(sum.profit.bnb_usd)).toFixed(2) + ')' : '');
+  const sign = (x) => (n(x) > 0 ? '▲ +' : n(x) < 0 ? '▼ −' : '• ') + f5(Math.abs(n(x)));
   const rule = '';
   const inRange = pt ? (pt.in_range ? '✅ in range' : '⏳ out of range — re-set after two hours') : '';
   const label = (rec.pool && rec.pool.label) || 'CAKE/BNB 0.05%';
@@ -2651,20 +2652,44 @@ export function formatLpDailyReport(rec, series) {
   const today = last.ok === false
     ? '⚠️ one step failed; the operator has been told'
     : acted.length ? [...new Set(acted)].map((k) => '• ' + (stepWord[k] || k)).join('\n') : '• quiet day — every step under its floor, nothing to move';
+  // As a portfolio (the operator, 2026-09-09): what went in, what it is
+  // worth, what is held where, and the P&L split by where it came from.
+  // Every number is the series' own summary, the same the page opens with.
   const value = sum.value_bnb || {};
+  const putIn = n(value.capital_total_bnb) || (n(value.start) + n(value.added_by_hand_bnb) + n(sum.deposits_put_in_bnb) + n(sum.income_put_in_bnb));
+  const sources = [`start ${f4(value.start)}`];
+  if (n(value.added_by_hand_bnb) > 0) sources.push(`by hand ${f4(value.added_by_hand_bnb)}`);
+  if (n(sum.deposits_put_in_bnb) > 0) sources.push(`from the tax ${f4(sum.deposits_put_in_bnb)}`);
+  if (n(sum.income_put_in_bnb) > 0) sources.push(`from AI income ${f4(sum.income_put_in_bnb)}`);
+  const changePct = n(value.change_pct);
+  const bobaiBnb = n(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb);
+  const bobaiUnits = n(sum.bobai_held_units);
+  const walletBnb = pt ? n(pt.wallet_bnb) : 0;
+  const fees = sum.profit;
+  const feeParts = [];
+  if (n(fees.fees_folded_bnb) > 0) feeParts.push(`${f5(fees.fees_folded_bnb)} folded into the position`);
+  if (n(fees.fees_forwarded_at_resets_bnb) > 0) feeParts.push(`${f5(fees.fees_forwarded_at_resets_bnb)} into $BOBAI`);
+  if (n(fees.fees_owed_bnb) > 0) feeParts.push(`${f5(fees.fees_owed_bnb)} still owed by the position`);
   return [
     `💧 <b>LP Agent · ${String(last.at).slice(0, 10)}</b>`,
     rule,
-    `📍 <b>Position</b>`,
-    `🥞 ${label}${pt && pt.position ? '  ·  #' + pt.position : ''}  ·  ${inRange}`,
-    `💼 Worth: <b>${f4(value.now)} BNB</b>${usd(value.now)}`,
-    `📥 On the capital since ${String(sum.since || '').slice(0, 10)}: ${Number(value.change_pct) >= 0 ? '▲ +' : '▼ '}${Number(value.change_pct || 0).toFixed(2)}%`,
+    `📥 <b>Put in: ${f4(putIn)} BNB</b>${usd(putIn)}  ·  ${sources.join(' · ')}`,
+    `💼 <b>Position worth: ${f4(value.now)} BNB</b>${usd(value.now)}`,
     rule,
-    `💰 <b>Profit so far: ${sign(sum.profit.bnb)} BNB</b>${usd(sum.profit.bnb)}`,
-    `📈 From CAKE moving against BNB: ${sign(sum.profit.from_price_bnb)}`,
-    `🧾 From fees earned: ${sign(sum.profit.from_fees_bnb)}`,
-    `🧠 Into $BOBAI, held in the wallet: ${f5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb)} BNB${sum.bobai_held_units > 0 ? '  ·  ' + Math.round(sum.bobai_held_units).toLocaleString('en-US') + ' BOBAI held' : ''}`,
-    `🗓 In range: ${sum.days_in_range} of ${sum.runs_with_a_position} runs`,
+    `📊 <b>Holdings</b>`,
+    `🥞 ${label}${pt && pt.position ? '  ·  #' + pt.position : ''}  ·  ${inRange}`,
+    `🥞 In the position: ${f4(value.now)} BNB${n(sum.fees_owed_now_bnb) > 0 ? '  ·  fees owed ' + f5(sum.fees_owed_now_bnb) : ''}`,
+    bobaiUnits > 0
+      ? `🧠 $BOBAI held: ${Math.round(bobaiUnits).toLocaleString('en-US')}  ·  bought with ${f5(bobaiBnb)} BNB of fees  ·  never sold`
+      : `🧠 $BOBAI held: 0  ·  ${f5(bobaiBnb)} BNB of fees went into $BOBAI so far`,
+    `💵 Wallet: ${f4(walletBnb)} BNB${walletBnb > 0 ? '  ·  waits for the next run' : ''}`,
+    rule,
+    `📈 <b>P&L</b>`,
+    `💰 <b>Profit so far: ${sign(fees.bnb)} BNB</b>${usd(fees.bnb)}  ·  ${changePct >= 0 ? '▲ +' : '▼ '}${changePct.toFixed(2)}% on the capital`,
+    `📈 From CAKE moving against BNB: ${sign(fees.from_price_bnb)}`,
+    `🧾 From fees earned: ${sign(fees.from_fees_bnb)}${feeParts.length ? '  ·  ' + feeParts.join(' · ') : ''}`,
+    `⛽ Gas: ${n(fees.gas_bnb) > 0 ? '▼ −' + f5(fees.gas_bnb) : '• 0.00000'}`,
+    `🗓 In range: ${sum.days_in_range} of ${sum.runs_with_a_position} runs since ${String(sum.since || '').slice(0, 10)}`,
     rule,
     `🔁 <b>Today</b>\n${today}`,
     '',
@@ -3871,7 +3896,9 @@ export default {
     // the clock and 15 from the schedule. Every tick in the window says so.
     {
       const tick = new Date(event && event.scheduledTime ? event.scheduledTime : Date.now());
-      if (tick.getUTCMinutes() % 10 === 5 && (tick.getUTCHours() === 4 || tick.getUTCHours() === 5)) {
+      // 05:00 UTC since 2026-09-09 — the operator's hour for the public LP
+      // card (the trader's private card goes at 04:00, the whale recap at 06:00).
+      if (tick.getUTCMinutes() % 10 === 5 && tick.getUTCHours() === 5) {
         console.log('[LP REPORT] tick ' + tick.toISOString());
         try { await postLpDailyReport(env); }
         catch (e) { console.error('[LP REPORT ERROR]', e.message || e); }

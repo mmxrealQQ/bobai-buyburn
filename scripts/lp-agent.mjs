@@ -251,6 +251,13 @@ if (SELF) {
   check('one minute under the delay (cron jitter): due', rebalanceWait(now - (RESET_AFTER_HOURS * H - 60e3), now), false);
   check('52 ms under the delay (the 2026-09-08 19:50 check): due', rebalanceWait(now - (RESET_AFTER_HOURS * H - 52), now), false);
   check(`exactly ${RESET_AFTER_HOURS} h outside: due`, rebalanceWait(now - RESET_AFTER_HOURS * H, now), false);
+  // A measured wait of 0 h (2026-09-09): due the hour the price is first
+  // seen outside, and due a minute later too; a wait passed explicitly is
+  // the one used, not the set one.
+  check('a measured wait of 0 h: due at once, first sighting', rebalanceWait(null, now, 0), false);
+  check('a measured wait of 0 h: due a minute after the first sighting', rebalanceWait(now - 60e3, now, 0), false);
+  check('a measured wait of 3 h: still waits at 2 h', rebalanceWait(now - 2 * H, now, 3), true);
+  check('a measured wait of 1 h: due at 1 h', rebalanceWait(now - 1 * H, now, 1), false);
   check('an hour and a few seconds outside: still waits', rebalanceWait(now - (1 * H + 5e3), now), true);
   check('a day outside: due', rebalanceWait(now - 24 * H, now), false);
   console.log('unwind in one transaction');

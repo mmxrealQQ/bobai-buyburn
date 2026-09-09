@@ -41,7 +41,7 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
-import { rebalanceWait, splitFees } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -142,8 +142,10 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   //    included. Checked every hour, not once a day: a position outside its
   //    range earns nothing, and the daily tick left it there for up to a day.
   //    But not on the first hour outside — a price that just left is often
-  //    back on its own, so the agent waits RESET_AFTER_HOURS (the same delay
-  //    the earnings test replays) before paying for a re-set. Gated by
+  //    back on its own, so the agent waits before paying for a re-set. The
+  //    wait is the record's own since 2026-09-09: delay_test.in_use_hours,
+  //    the wait that netted the most per day when every width was replayed
+  //    with each wait (a set 2 h until the record clears the bar). Gated by
   //    LP_REBALANCE in wrangler.toml: the first re-set was run by hand and
   //    watched (2026-09-02), then the cron took over.
   await run('rebalance', async () => {
@@ -168,13 +170,17 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       return { ...plan.summary, acted: false, why: plan.no };
     }
     if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
+    const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
+    const waitNote = { wait_h: waitH, wait_basis: record?.delay_test?.wait_basis || 'set' };
     if (!plan.resume) {
       if (outSince == null) {
         if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
-        return { ...plan.summary, acted: false, outside_since: at, why: rebalanceWait(null, Date.parse(at)) };
+        const first = rebalanceWait(null, Date.parse(at), waitH);
+        if (first) return { ...plan.summary, ...waitNote, acted: false, outside_since: at, why: first };
+      } else {
+        const wait = rebalanceWait(outSince, Date.parse(at), waitH);
+        if (wait) return { ...plan.summary, ...waitNote, acted: false, outside_since: outSinceRaw, why: wait };
       }
-      const wait = rebalanceWait(outSince, Date.parse(at));
-      if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
     if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_buyback_bnb > 0 ? ` and sent ${plan.summary.fees_to_buyback_bnb} BNB of the old range's fees to the buyback wallet` : ''}` };

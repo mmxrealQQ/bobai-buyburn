@@ -35,7 +35,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, measuredResetCost, MAX_WINDOWS } from '../worker-agent/lp-windows.js';
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const LOG = path.join(ROOT, 'data', 'lp-windows.json');
@@ -188,7 +188,33 @@ if (SELF_TEST) {
     const n0 = at0 && at0.net_usd_per_day != null ? at0.net_usd_per_day : -Infinity;
     return at0 && at2 && at2.resets === 0 && (at0.resets == null || at0.resets > 0) && at2.net_usd_per_day > n0;
   })());
-  t('the delay test never changes the earnings pick', verdict(dayDrift).earnings_pick.width === verdict(dayDrift).earnings_pick.width && verdict(dayDrift).earnings_rule.includes(`${RESET_AFTER_HOURS} h`));
+  t('under the bar the earnings pick is replayed with the set wait', verdict(dayDrift).delay_test.wait_basis === 'set' && verdict(dayDrift).earnings_rule.includes(`${RESET_AFTER_HOURS} h`));
+  // THE MEASURED WAIT (2026-09-09), both ways. A price that steps 1.5% up
+  // every six hours and stays leaves a ±1% range four times a day; a re-set
+  // at once earns five of the six hours, a re-set after two earns four. Over
+  // a week of such prices 0 h nets a quarter more than 2 h — over the bar —
+  // so the re-set uses it, and the width pick is replayed with it. The same
+  // path over sixty hours decides nothing; a flat week, where every wait
+  // nets the same, keeps the set wait because nothing beat it by the bar.
+  const stepRows = [row(1, true, 1.0), row(5, true, 0.03), row(10, true, 0.015)];
+  const step = (hours) => Array.from({ length: hours }, (_, i) => pwin(i, 100 * Math.pow(1.015, Math.floor(i / 6)), stepRows));
+  const vStep = verdict({ windows: step(130) });
+  t('a week of stepping prices: the re-set uses the wait that netted the most (0 h)', vStep.delay_test.in_use_hours === 0 && vStep.delay_test.wait_basis === 'measured');
+  t('… the 0 h row is the one marked in use', vStep.delay_test.delays.filter((d) => d.in_use).map((d) => d.hours).join() === '0');
+  t('… by more than the bar over the set wait', (() => { const d0 = vStep.delay_test.delays.find((d) => d.hours === 0), d2 = vStep.delay_test.delays.find((d) => d.hours === 2); return d0.net_usd_per_day >= d2.net_usd_per_day * (1 + WAIT_PICK_MARGIN); })());
+  t('… and the earnings pick is replayed with that wait', vStep.earnings_pick && vStep.earnings_pick.earnings.resets === vStep.delay_test.delays.find((d) => d.hours === 0).resets && /0 h/.test(vStep.earnings_rule) && /measured/.test(vStep.earnings_rule));
+  const vShort = verdict({ windows: step(60) });
+  t(`the same prices over 60 h keep the set wait (${WAIT_PICK_MIN_HOURS} h needed)`, vShort.delay_test.in_use_hours === RESET_AFTER_HOURS && vShort.delay_test.wait_basis === 'set' && vShort.delay_test.why.includes(String(WAIT_PICK_MIN_HOURS)));
+  const vFlatWeek = verdict({ windows: Array.from({ length: 130 }, (_, i) => pwin(i, 100)) });
+  t('a flat week, every wait equal: the set wait stands (nothing beat it by the bar)', vFlatWeek.delay_test.in_use_hours === RESET_AFTER_HOURS && vFlatWeek.delay_test.wait_basis === 'set' && /bar/.test(vFlatWeek.delay_test.why));
+  // waitInUse alone, on made-up rows: the set wait winning is "measured" too;
+  // a winner a cent over the set wait is not a change; no rows is the set wait.
+  const dr = (hours, net) => ({ hours, width: 1, net_usd_per_day: net });
+  t('when the set wait nets the most it is in use and called measured', (() => { const w = waitInUse([dr(0, 0.5), dr(1, 0.6), dr(2, 0.9), dr(3, 0.7)], 200); return w.hours === 2 && w.basis === 'measured'; })());
+  t('a wait a cent ahead of the set wait does not replace it', (() => { const w = waitInUse([dr(0, 0.91), dr(1, 0.6), dr(2, 0.9), dr(3, 0.7)], 200); return w.hours === 2 && w.basis === 'set'; })());
+  t('a wait a tenth ahead of the set wait replaces it', (() => { const w = waitInUse([dr(0, 0.99), dr(1, 0.6), dr(2, 0.9), dr(3, 0.7)], 200); return w.hours === 0 && w.basis === 'measured'; })());
+  t('no delay rows: the set wait, called set', (() => { const w = waitInUse([], 200); return w.hours === RESET_AFTER_HOURS && w.basis === 'set'; })());
+  t('a set wait that netted nothing cannot be the base: the set wait stands', (() => { const w = waitInUse([dr(0, 0.9), { hours: 2, width: null, net_usd_per_day: null }], 200); return w.hours === RESET_AFTER_HOURS && w.basis === 'set'; })());
   // The measured re-set cost, both ways: only a re-set that acted, did not
   // error and recorded gas counts, the newest one wins, and without one the
   // verdict says the cost is assumed.

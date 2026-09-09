@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 11918 lines.
+# one fetch. 41 files, 11967 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -410,6 +410,13 @@ if (SELF) {
   check('one minute under the delay (cron jitter): due', rebalanceWait(now - (RESET_AFTER_HOURS * H - 60e3), now), false);
   check('52 ms under the delay (the 2026-09-08 19:50 check): due', rebalanceWait(now - (RESET_AFTER_HOURS * H - 52), now), false);
   check(`exactly ${RESET_AFTER_HOURS} h outside: due`, rebalanceWait(now - RESET_AFTER_HOURS * H, now), false);
+  // A measured wait of 0 h (2026-09-09): due the hour the price is first
+  // seen outside, and due a minute later too; a wait passed explicitly is
+  // the one used, not the set one.
+  check('a measured wait of 0 h: due at once, first sighting', rebalanceWait(null, now, 0), false);
+  check('a measured wait of 0 h: due a minute after the first sighting', rebalanceWait(now - 60e3, now, 0), false);
+  check('a measured wait of 3 h: still waits at 2 h', rebalanceWait(now - 2 * H, now, 3), true);
+  check('a measured wait of 1 h: due at 1 h', rebalanceWait(now - 1 * H, now, 1), false);
   check('an hour and a few seconds outside: still waits', rebalanceWait(now - (1 * H + 5e3), now), true);
   check('a day outside: due', rebalanceWait(now - 24 * H, now), false);
   console.log('unwind in one transaction');
@@ -1888,6 +1895,35 @@ export const MIN_REBALANCE_BNB = 0.02;
 // the window record replays every width with this same delay, so the width
 // it picks was picked for the way the agent actually behaves.
 export const RESET_AFTER_HOURS = 2;
+// Since 2026-09-09 the wait is measured, not set. The window record replays
+// every width with a wait of 0, 1, 2 and 3 h before a re-set and names the
+// net per day of each; the re-set uses the wait that netted the most — once
+// the record holds WAIT_PICK_MIN_HOURS of prices AND that wait beats the set
+// one by WAIT_PICK_MARGIN. Under either bar the set wait stands. The bar is
+// there because the first readings were not monotonic (157 h on 2026-09-09:
+// 0 h $0.89, 1 h $0.80, 2 h $0.73, 3 h $0.81 a day on $50): a wait that wins
+// by a few cents on a week of prices is noise with a number on it, and a
+// re-set rule that flips every hour would be worse than a fixed one.
+export const WAIT_PICK_MIN_HOURS = 120;
+export const WAIT_PICK_MARGIN = 0.10;
+// delays: the window record's delay test rows ({hours, net_usd_per_day, …});
+// hoursOfPrices: how much price the record holds. Returns the wait a re-set
+// uses and where it comes from — a pure function, so the record page, the
+// worker and the self-test cannot read the same rows three ways.
+export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
+  const priced = (delays || []).filter((d) => d && d.net_usd_per_day != null);
+  const base = priced.find((d) => d.hours === set) || null;
+  const best = priced.slice().sort((a, b) => b.net_usd_per_day - a.net_usd_per_day)[0] || null;
+  const keep = (why) => ({ hours: set, basis: 'set', why });
+  if (!best || !base) return keep(`the set wait of ${set} h — the record has not yet replayed every wait`);
+  if (!(hoursOfPrices >= WAIT_PICK_MIN_HOURS)) return keep(`the set wait of ${set} h — the record holds ${hoursOfPrices} h of prices and a measured wait needs ${WAIT_PICK_MIN_HOURS} h`);
+  if (best.hours === set) return { hours: set, basis: 'measured', why: `${set} h netted the most per day over ${hoursOfPrices} h of prices` };
+  // Nets are rounded to four places; so is the bar, or 0.9 × 1.1 lands a
+  // hair above 0.99 and a wait exactly a tenth ahead is refused.
+  const bar = Math.round(base.net_usd_per_day * (1 + WAIT_PICK_MARGIN) * 1e4) / 1e4;
+  if (!(best.net_usd_per_day >= bar)) return keep(`the set wait of ${set} h — ${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day}, under the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar for a change`);
+  return { hours: best.hours, basis: 'measured', why: `${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day} at the set ${set} h, over ${hoursOfPrices} h of prices — more than the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar` };
+}
 // The earnings test needs this much recorded price before it may pick; a
 // width chosen on six hours of a quiet afternoon is a guess with a number on it.
 export const MIN_HOURS_FOR_EARNINGS = 24;
@@ -1996,6 +2032,9 @@ export function refuseRebalance(state) {
 // difference between the rule and the cron's jitter.
 export const RESET_WAIT_SLACK_MIN = 5;
 export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
+  // A measured wait of 0 h is no wait: the re-set is due the hour the price
+  // is first seen outside.
+  if (!(hours > 0)) return null;
   if (outSinceMs == null) return `the price has just left the range — waiting ${hours} h in case it comes back on its own`;
   const h = (nowMs - outSinceMs) / 36e5;
   if (!(h >= hours - RESET_WAIT_SLACK_MIN / 60)) return `the price has been outside for ${Math.max(0, h).toFixed(1)} h — waiting until ${hours} h before paying for a re-set`;
@@ -6908,7 +6947,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 <h2>The pick</h2>
 <div class="card"><dl>
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — about $${h(f(pick.earnings.net_usd_per_day, 2))} a day on $${h(usd)} after ${h(pick.earnings.resets)} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${h(f(pick.earnings.reset_cost_usd, 2))} each, over ${h(f(pick.earnings.hours, 0))} h of recorded prices (${h(f(pick.earnings.hours_in_range, 0))} h of them inside the range)` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
-<dt>Wait</dt><dd>${(() => { const dt = v.delay_test || {}; const ds = dt.delays || []; if (!ds.length) return `${h(dt.in_use_hours ?? 2)} h outside the range before a re-set — the wait the agent uses; whether another wait would net more is replayed once a day of prices is on record`; const line = ds.map((d) => `${h(d.hours)} h: ${d.net_usd_per_day == null ? 'nothing' : `$${h(f(d.net_usd_per_day, 2))} a day at ±${h(d.width)}% after ${h(d.resets)} re-set${d.resets === 1 ? '' : 's'}`}${d.in_use ? ' (in use)' : ''}`).join(' · '); const p = dt.pick; return `<b>${h(dt.in_use_hours)} h</b> outside the range before a re-set is what the agent uses. Replayed with every wait: ${line}.${p && !p.in_use ? ` The record favours ${h(p.hours)} h; the agent keeps ${h(dt.in_use_hours)} h until the operator changes it.` : p ? ' The wait in use is the one that netted the most.' : ''}`; })()}</dd>
+<dt>Wait</dt><dd>${(() => { const dt = v.delay_test || {}; const ds = dt.delays || []; if (!ds.length) return `${h(dt.in_use_hours ?? 2)} h outside the range before a re-set — the wait the agent uses; whether another wait would net more is replayed once a day of prices is on record`; const line = ds.map((d) => `${h(d.hours)} h: ${d.net_usd_per_day == null ? 'nothing' : `$${h(f(d.net_usd_per_day, 2))} a day at ±${h(d.width)}% after ${h(d.resets)} re-set${d.resets === 1 ? '' : 's'}`}${d.in_use ? ' (in use)' : ''}`).join(' · '); return `<b>${h(dt.in_use_hours)} h</b> outside the range before a re-set is what the agent uses — ${dt.wait_basis === 'measured' ? 'measured' : 'set'}: ${h(dt.why || '')}. Replayed with every wait: ${line}. A measured wait needs a week of prices and a tenth more per day than the set wait; under either bar the set wait stands.`; })()}</dd>
 <dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, 2))} — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
 <dt>Held a full day</dt><dd>${v.day_pick ? `±${h(v.day_pick.width)}% is the narrowest width that stayed in range through every tested 24-hour window (${h(v.day_pick.day.held)} of ${h(v.day_pick.day.tested)}). It earns less than the pick; holding is not the goal, netting is.` : 'no width has held through every tested day yet'}</dd>
 <dt>Record</dt><dd>${h(v.windows)} windows, ${h(when(v.from))} to ${h(when(v.to))}, blocks ${h(v.from_block)} to ${h(v.to_block)}${v.overlapping_runs_not_counted ? `; ${h(v.overlapping_runs_not_counted)} overlapping run${v.overlapping_runs_not_counted === 1 ? '' : 's'} counted once` : ''}${v.thin ? ' — thin: too few windows to lean on yet' : ''}</dd>
@@ -8288,7 +8327,7 @@ export async function lpTierPlan(input = {}) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -8409,35 +8448,37 @@ export function verdict(log, opts = {}) {
   const dayHolders = safe.filter((r) => r.day && r.day.tested > 0 && r.day.held === r.day.tested);
   const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0);
   const hoursOfPrices = priced.length >= 2 ? Math.round((Date.parse(priced[priced.length - 1].at) - Date.parse(priced[0].at)) / 36e5) : 0;
-  // THE EARNINGS TEST. The day test names the width that would not have
-  // needed a re-set; it says nothing about what a width earns. A width that
-  // holds every day earns a tenth of one that needs a re-set a week, and a
-  // position exists to earn. So each width is replayed the way the agent
-  // lives it, and the one with the most left after its re-sets is the pick.
-  for (const r of rows) r.earnings = r.width === 'full' ? null : earningsTest(used, r.width, opts);
-  const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
-    .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
-  // THE DELAY TEST — reported, not used (2026-09-08). The earnings test
-  // replays every width with the agent's own wait of RESET_AFTER_HOURS
-  // before a re-set; that wait is a set number, not a measured one. On
-  // 2026-09-08 CAKE rose 18% in five days, the ±1% range was re-set twice
-  // before noon, and an hour after the second re-set the price was back
-  // below the new range — the case the wait exists for, and the case it
-  // costs earning hours in. So every width is also replayed with a wait of
-  // 0, 1, 2 and 3 hours, and the best net per day for each wait is named
-  // beside the pick. The re-set keeps using RESET_AFTER_HOURS until the
-  // operator decides otherwise; this is the evidence for that decision.
+  // THE DELAY TEST. On 2026-09-08 CAKE rose 18% in five days, the ±1%
+  // range was re-set twice before noon, and an hour after the second re-set
+  // the price was back below the new range — the case the wait before a
+  // re-set exists for, and the case it costs earning hours in. So every
+  // width is replayed with a wait of 0, 1, 2 and 3 hours, and the best net
+  // per day for each wait is named. Reported only until 2026-09-09; since
+  // then the re-set USES the wait that netted the most, behind the bar in
+  // waitInUse (a week of prices, a tenth over the set wait) — the same way
+  // the width has been measured rather than set since 2026-09-04.
   const DELAYS_H = [0, 1, 2, 3];
-  const delays = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
+  const delayRows = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
     const best = rows.filter((r) => r.width !== 'full')
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
       .filter((x) => x.e && x.e.net_usd_per_day > 0)
       .sort((a, b) => b.e.net_usd_per_day - a.e.net_usd_per_day)[0];
     return best
-      ? { hours: h, width: best.width, net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd, in_use: h === RESET_AFTER_HOURS }
-      : { hours: h, width: null, net_usd_per_day: null, resets: null, fees_usd: null, in_use: h === RESET_AFTER_HOURS };
+      ? { hours: h, width: best.width, net_usd_per_day: best.e.net_usd_per_day, resets: best.e.resets, fees_usd: best.e.fees_usd }
+      : { hours: h, width: null, net_usd_per_day: null, resets: null, fees_usd: null };
   });
+  const wait = waitInUse(delayRows, hoursOfPrices);
+  const delays = delayRows.map((d) => ({ ...d, in_use: d.hours === wait.hours }));
   const delayPick = delays.filter((d) => d.net_usd_per_day != null).sort((a, b) => b.net_usd_per_day - a.net_usd_per_day)[0] || null;
+  // THE EARNINGS TEST, with the wait in use. The day test names the width
+  // that would not have needed a re-set; it says nothing about what a width
+  // earns. A width that holds every day earns a tenth of one that needs a
+  // re-set a week, and a position exists to earn. So each width is replayed
+  // the way the agent lives it — with the wait it really uses before a
+  // re-set — and the one with the most left after its re-sets is the pick.
+  for (const r of rows) r.earnings = r.width === 'full' ? null : earningsTest(used, r.width, { ...opts, resetAfterHours: wait.hours });
+  const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
+    .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
   const first = used[0], last = used[used.length - 1];
   return {
     windows: used.length,
@@ -8457,15 +8498,17 @@ export function verdict(log, opts = {}) {
     // The width a re-set uses: the most net per day over the recorded prices.
     earnings_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] || null),
     delay_test: {
-      in_use_hours: RESET_AFTER_HOURS,
+      in_use_hours: wait.hours,
+      wait_basis: wait.basis,
+      why: wait.why,
       delays,
       pick: delayPick,
-      note: 'Every width replayed with each wait before a re-set; the best width per wait is named. Reported for the operator — the re-set keeps the wait in use until that is changed on purpose.',
+      note: 'Every width replayed with each wait before a re-set; the best width per wait is named. The re-set uses the wait that netted the most once the record holds a week of prices and it beats the set wait by a tenth; under either bar the set wait stands.',
     },
     reset_cost: opts.resetCostUsd != null
       ? { usd: opts.resetCostUsd, basis: opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars' }
       : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet' },
-    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred, at the replay's re-set cost) once the price has been outside for ${RESET_AFTER_HOURS} h — the agent's own delay. Net per day is what is left after the re-sets; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred, at the replay's re-set cost) once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Net per day is what is left after the re-sets; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
   };
 }
 
@@ -11847,7 +11890,7 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
-import { rebalanceWait, splitFees } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -11948,8 +11991,10 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   //    included. Checked every hour, not once a day: a position outside its
   //    range earns nothing, and the daily tick left it there for up to a day.
   //    But not on the first hour outside — a price that just left is often
-  //    back on its own, so the agent waits RESET_AFTER_HOURS (the same delay
-  //    the earnings test replays) before paying for a re-set. Gated by
+  //    back on its own, so the agent waits before paying for a re-set. The
+  //    wait is the record's own since 2026-09-09: delay_test.in_use_hours,
+  //    the wait that netted the most per day when every width was replayed
+  //    with each wait (a set 2 h until the record clears the bar). Gated by
   //    LP_REBALANCE in wrangler.toml: the first re-set was run by hand and
   //    watched (2026-09-02), then the cron took over.
   await run('rebalance', async () => {
@@ -11974,13 +12019,17 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       return { ...plan.summary, acted: false, why: plan.no };
     }
     if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
+    const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
+    const waitNote = { wait_h: waitH, wait_basis: record?.delay_test?.wait_basis || 'set' };
     if (!plan.resume) {
       if (outSince == null) {
         if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
-        return { ...plan.summary, acted: false, outside_since: at, why: rebalanceWait(null, Date.parse(at)) };
+        const first = rebalanceWait(null, Date.parse(at), waitH);
+        if (first) return { ...plan.summary, ...waitNote, acted: false, outside_since: at, why: first };
+      } else {
+        const wait = rebalanceWait(outSince, Date.parse(at), waitH);
+        if (wait) return { ...plan.summary, ...waitNote, acted: false, outside_since: outSinceRaw, why: wait };
       }
-      const wait = rebalanceWait(outSince, Date.parse(at));
-      if (wait) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: wait };
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
     if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_buyback_bnb > 0 ? ` and sent ${plan.summary.fees_to_buyback_bnb} BNB of the old range's fees to the buyback wallet` : ''}` };

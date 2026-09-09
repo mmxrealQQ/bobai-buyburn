@@ -53,6 +53,35 @@ export const MIN_REBALANCE_BNB = 0.02;
 // the window record replays every width with this same delay, so the width
 // it picks was picked for the way the agent actually behaves.
 export const RESET_AFTER_HOURS = 2;
+// Since 2026-09-09 the wait is measured, not set. The window record replays
+// every width with a wait of 0, 1, 2 and 3 h before a re-set and names the
+// net per day of each; the re-set uses the wait that netted the most — once
+// the record holds WAIT_PICK_MIN_HOURS of prices AND that wait beats the set
+// one by WAIT_PICK_MARGIN. Under either bar the set wait stands. The bar is
+// there because the first readings were not monotonic (157 h on 2026-09-09:
+// 0 h $0.89, 1 h $0.80, 2 h $0.73, 3 h $0.81 a day on $50): a wait that wins
+// by a few cents on a week of prices is noise with a number on it, and a
+// re-set rule that flips every hour would be worse than a fixed one.
+export const WAIT_PICK_MIN_HOURS = 120;
+export const WAIT_PICK_MARGIN = 0.10;
+// delays: the window record's delay test rows ({hours, net_usd_per_day, …});
+// hoursOfPrices: how much price the record holds. Returns the wait a re-set
+// uses and where it comes from — a pure function, so the record page, the
+// worker and the self-test cannot read the same rows three ways.
+export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
+  const priced = (delays || []).filter((d) => d && d.net_usd_per_day != null);
+  const base = priced.find((d) => d.hours === set) || null;
+  const best = priced.slice().sort((a, b) => b.net_usd_per_day - a.net_usd_per_day)[0] || null;
+  const keep = (why) => ({ hours: set, basis: 'set', why });
+  if (!best || !base) return keep(`the set wait of ${set} h — the record has not yet replayed every wait`);
+  if (!(hoursOfPrices >= WAIT_PICK_MIN_HOURS)) return keep(`the set wait of ${set} h — the record holds ${hoursOfPrices} h of prices and a measured wait needs ${WAIT_PICK_MIN_HOURS} h`);
+  if (best.hours === set) return { hours: set, basis: 'measured', why: `${set} h netted the most per day over ${hoursOfPrices} h of prices` };
+  // Nets are rounded to four places; so is the bar, or 0.9 × 1.1 lands a
+  // hair above 0.99 and a wait exactly a tenth ahead is refused.
+  const bar = Math.round(base.net_usd_per_day * (1 + WAIT_PICK_MARGIN) * 1e4) / 1e4;
+  if (!(best.net_usd_per_day >= bar)) return keep(`the set wait of ${set} h — ${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day}, under the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar for a change`);
+  return { hours: best.hours, basis: 'measured', why: `${best.hours} h netted $${best.net_usd_per_day} a day against $${base.net_usd_per_day} at the set ${set} h, over ${hoursOfPrices} h of prices — more than the ${Math.round(WAIT_PICK_MARGIN * 100)}% bar` };
+}
 // The earnings test needs this much recorded price before it may pick; a
 // width chosen on six hours of a quiet afternoon is a guess with a number on it.
 export const MIN_HOURS_FOR_EARNINGS = 24;
@@ -161,6 +190,9 @@ export function refuseRebalance(state) {
 // difference between the rule and the cron's jitter.
 export const RESET_WAIT_SLACK_MIN = 5;
 export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
+  // A measured wait of 0 h is no wait: the re-set is due the hour the price
+  // is first seen outside.
+  if (!(hours > 0)) return null;
   if (outSinceMs == null) return `the price has just left the range — waiting ${hours} h in case it comes back on its own`;
   const h = (nowMs - outSinceMs) / 36e5;
   if (!(h >= hours - RESET_WAIT_SLACK_MIN / 60)) return `the price has been outside for ${Math.max(0, h).toFixed(1)} h — waiting until ${hours} h before paying for a re-set`;

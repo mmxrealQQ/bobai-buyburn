@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 5626 lines.
+# one fetch. 6 files, 5634 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -26,7 +26,7 @@
 //
 // Three endpoints, each chosen for one capability:
 //   RPC      eth_call. Binance's dataseed refuses eth_getLogs outright.
-//   LOGS_RPC eth_getLogs, ~5000 blocks near the head. That is enough to find
+//   LOGS_RPC eth_getLogs, ~7,900 blocks (an hour) near the head. That is enough to find
 //            real trades and measure what they were actually charged.
 //   GOPLUS   contract properties no call reveals (mintable, proxy, LP lockers).
 //            Optional, always attributed, never silently trusted.
@@ -48,6 +48,14 @@ export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com'
 // probably share a budget — but two hostnames spread a burst of five tier
 // queries better than one does, and the caller cannot be asked to go slower.
 export const LOGS_RPCS=['https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
+// THE WINDOW. One eth_getLogs call of this many blocks at the head: an hour of
+// chain at BSC's 0.45 s blocks (7,900 blocks = 59 min, so hourly windows taken
+// at the same minute never overlap). Measured 2026-09-09: the free log
+// endpoint and the keyed one both answer 7,900 blocks in one call and refuse
+// only beyond ~12,000 as "archive". It was 4,999 (37.5 min) before, and the
+// pool and width records counted that as "hours" — a day of them took a day
+// and a half of runs, and the fee estimate rested on 62% of each hour's swaps.
+export const WINDOW_BLOCKS=7900;
 // Live bindings: useKeyedRpcs() below moves a keyed endpoint to the front.
 export let RPC=RPCS[0],
   LOGS_RPC=LOGS_RPCS[0];
@@ -2457,7 +2465,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=58" type="module"></script>
+<script src="scanner.js?v=59" type="module"></script>
 </body>
 </html>
 
@@ -2843,7 +2851,7 @@ function renderRanges(out,d){
   // The honest headline is the narrowest range that HELD, not the one that
   // earned most. The best earner is regularly a range the price walked out of,
   // and naming that as the answer would be recommending a position on the
-  // strength of the forty minutes before it broke.
+  // strength of the hour before it broke.
   if(held){
     const row=rows.find(r=>r.width_pct!=null&&('±'+r.width_pct+'%')===held);
     const full=rows.find(r=>r.full_range);
@@ -2855,7 +2863,7 @@ function renderRanges(out,d){
         : 'Narrower ranges earn more per dollar and stop earning the moment the price leaves them.');
   }else{
     line('unknown','No range on this list held for the whole window.',
-      'On this pool, in these forty minutes, the price was outside every width at some point. That is worth knowing before placing anything, and it is why the crossing count is a column rather than a footnote.');
+      'On this pool, in this hour, the price was outside every width at some point. That is worth knowing before placing anything, and it is why the crossing count is a column rather than a footnote.');
   }
   if(best&&held&&best!==held){
     const b=rows.find(r=>('±'+r.width_pct+'%')===best);
@@ -2911,7 +2919,7 @@ function renderRanges(out,d){
   out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
     ' minutes of chain — a sample, not a rate, and not annualised. Replayed against the '+w.swaps+
     ' swaps that actually happened in it, using the liquidity the pool itself reported as active at each one — not a simulation of a market, arithmetic over trades that occurred. The pool paid $'+
-    (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them. Not annualised: what a range did over forty minutes is not what it does over a year. '+
+    (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them. Not annualised: what a range did in one hour is not what it does over a year. '+
     (d.tier_chosen_because?'Pool picked for you: the '+d.tier_chosen_because+' — which tier PAYS best is the card above. ':'')+
     'Impermanent loss is not in any of this, and it is worst exactly where the fees are best.'));
 }
@@ -5256,8 +5264,8 @@ export { flagsCard };
 //
 // So this returns one figure per tier: the swap fees the pool actually paid out
 // over a measured window, divided by the quote-side capital sitting in it.
-// Nothing here is annualised. The window is around forty minutes of real chain
-// and is reported in the answer, because a forty-minute sample multiplied into
+// Nothing here is annualised. The window is around an hour of real chain
+// and is reported in the answer, because an hour's sample multiplied into
 // an APR is exactly the kind of number this project exists to stop repeating.
 //
 // PancakeSwap only, deliberately. The same token often trades on Uniswap V2 and
@@ -5269,7 +5277,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -5416,9 +5424,9 @@ export async function feeTiers(input) {
     );
 
   const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16);
-  // One window, and only one: this endpoint serves roughly 5,000 blocks at the
-  // head and answers anything older by demanding a personal token.
-  const from = head - 4999;
+  // One window, and only one: an hour of chain (WINDOW_BLOCKS in scanner-chain);
+  // the endpoint answers anything much older by demanding a personal token.
+  const from = head - (WINDOW_BLOCKS - 1);
 
   // Which data word is the quote side. The factories sort token0 below token1,
   // so this is derivable — but it is asked anyway, because the whole figure
@@ -5585,7 +5593,7 @@ export async function feeTiers(input) {
     measured_window: {
       from_block: from, to_block: head, blocks: head - from + 1,
       minutes: minutes == null ? null : +minutes.toFixed(1),
-      note: 'A single sample of live chain, not a rate. It is not annualised here and should not be annualised from here: forty minutes of flow says what happened in forty minutes.',
+      note: 'A single sample of live chain, not a rate. It is not annualised here and should not be annualised from here: an hour of flow says what happened in that hour.',
     },
     tiers,
     // How many tiers were actually read, kept separate from how many exist.

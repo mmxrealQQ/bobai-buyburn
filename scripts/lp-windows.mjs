@@ -2,9 +2,9 @@
 // ONE WINDOW IS NOT EVIDENCE. This collects several.
 //
 // lp-plan.mjs picks a range from a single replay, and that replay covers about
-// thirty-seven minutes — as much live chain as the log endpoint will serve near
-// the head. On that one sample a very narrow range looks best, because in
-// thirty-seven quiet minutes it never had to be nursed. Over a day it will be,
+// an hour (thirty-seven minutes before 2026-09-09) — one log call near the
+// head. On that one sample a very narrow range looks best, because in
+// one quiet hour it never had to be nursed. Over a day it will be,
 // and each re-entry costs roughly a percent of a fifty-dollar position.
 //
 // So this records windows instead of arguing about one. Run it whenever, as

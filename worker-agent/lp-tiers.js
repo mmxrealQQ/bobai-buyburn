@@ -34,7 +34,7 @@
 // answered the first one for both of them.
 //
 // WHAT IT REFUSES TO DO
-// It does not annualise. The window is about forty minutes of chain, it travels
+// It does not annualise. The window is about an hour of chain, it travels
 // with every figure, and turning it into an APR would be the exact move this
 // marketplace was built to argue against. It does not know impermanent loss, so
 // it says so rather than implying a tier is "best" in a sense it cannot measure.
@@ -139,7 +139,7 @@ export async function lpTierPlan(input = {}) {
 
   // The comparison that decides anything: how long the better tier needs to run
   // at this rate before it has paid for the move. Reported as a duration, not
-  // as a verdict, and explicitly conditional — the rate is a forty-minute
+  // as a verdict, and explicitly conditional — the rate is an hour's
   // sample and the honest thing is to say what would have to hold, not to
   // pretend it will.
   //

@@ -20,7 +20,7 @@
 // denominator at every step.
 //
 // WHAT IT STILL CANNOT KNOW
-// It is one window of about forty minutes. A range that held through it is not
+// It is one window of about an hour. A range that held through it is not
 // a range that holds tomorrow, and the replay says nothing about impermanent
 // loss — a narrow range that captured the most fees is also the one that ends
 // up furthest from the composition it started in. Both are stated in the
@@ -29,7 +29,7 @@
 import {
   QUOTES, BNB_PAIR, WBNB, LOGS_RPC, LOGS_RPCS, SEL as S,
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
-  classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit,
+  classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS,
   SWAP_V3_T, SWAP_V3_UNI, int256,
 } from './scanner-chain.js';
 
@@ -160,7 +160,7 @@ export async function rangePlan(input, opts = {}) {
   const p1PerUnit = (tokenIs0 ? qUsd / 10 ** qDec : tokUsd / 10 ** tokDec);
 
   const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16);
-  const from = head - 4999;
+  const from = head - (WINDOW_BLOCKS - 1);
   let logs = null;
   for (let attempt = 0; attempt < 3 && logs === null; attempt++) {
     if (attempt) await new Promise((r) => setTimeout(r, 250 * attempt));
@@ -312,7 +312,7 @@ export async function rangePlan(input, opts = {}) {
       'The position is placed around the price as it stands now, then walked back through the window. A position opened at the start of the window would have sat slightly differently.',
       'Impermanent loss is not in any of this, and it is worst exactly where the fees are best: the narrow range that captured the most is also the one that ends furthest from what it started as.',
       'The position is centred on the price as it stands now, so a narrow range can show as arrived-in rather than left — the crossing count runs in both directions for that reason, and "held" means in range for the whole window rather than never seen leaving.',
-      'A range that held through forty minutes is not a range that holds. The crossing count is what happened, not what will.',
+      'A range that held through an hour is not a range that holds. The crossing count is what happened, not what will.',
       swaps.length < 10
         ? `Only ${swaps.length} swaps in the window, which is too few to separate the widths with any confidence. Treat the ordering as noise until this pool trades more.`
         : `${swaps.length} swaps carried this comparison.`,

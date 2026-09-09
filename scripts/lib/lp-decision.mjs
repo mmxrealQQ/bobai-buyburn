@@ -66,8 +66,8 @@ const sqrtAtTick = (t) => Math.pow(TICK_BASE, t / 2);
 
 // WHAT THE RECORD SAYS, when there is one.
 //
-// A single replay covers about thirty-seven minutes, which is as much live
-// chain as the log endpoint serves near the head. That is enough to compare
+// A single replay covers about an hour (thirty-seven minutes before
+// 2026-09-09), one log call near the head. That is enough to compare
 // widths and nowhere near enough to choose one for a position nobody watches:
 // measured on the same pool two hours apart, +/-0.25% went from best in the
 // list to SIX crossings and minus $2.74 on fifty dollars. The narrow width had

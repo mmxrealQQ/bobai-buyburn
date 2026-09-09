@@ -85,11 +85,12 @@ export function appendPoolWindow(log, pool, entry) {
 export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOURS_TO_PICK } = {}) {
   const usd = log?.usd || POSITION_USD;
   const pools = Object.entries(log?.pools || {}).map(([pool, rec]) => {
-    let fees = 0, hours = 0, swaps = 0, quiet = 0, held = 0, priced = 0;
+    let fees = 0, hours = 0, swaps = 0, quiet = 0, held = 0, priced = 0, lastMinutes = null;
     for (const w of rec.windows || []) {
       const row = (w.rows || []).find((r) => r.width === widthPct);
       if (!row || typeof row.fees !== 'number') continue;
       const h = (w.minutes || 37.5) / 60;
+      lastMinutes = w.minutes || 37.5;
       fees += row.fees; hours += h; priced += 1;
       swaps += Number(w.swaps || 0);
       if (!Number(w.swaps || 0)) quiet += 1;
@@ -107,6 +108,9 @@ export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOUR
       held_pct: priced ? Math.round((held / priced) * 1000) / 10 : null,
       fees_usd: r4(fees),
       fees_usd_per_day: hours > 0 ? r4((fees / hours) * 24) : null,
+      // What the newest window covers: the forecast of runs to go rests on it,
+      // not on an average over windows of two sizes.
+      minutes_per_window: lastMinutes,
       first: (rec.windows || [])[0]?.at || null,
       last: (rec.windows || []).slice(-1)[0]?.at || null,
     };
@@ -115,13 +119,13 @@ export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOUR
   const pick = enough ? pools[0] : null;
   const watchedRow = pools.find((p) => p.watched) || null;
   // The hours are sampled chain, not clock time: an hourly window covers the
-  // ~37 minutes the log endpoint serves, so a day of hours takes about a day
-  // and a half of runs. On 2026-09-09 the record read "20 h" after 33 hours
+  // minutes it covers (37.5 until 2026-09-09, ~59 since), so a day of hours
+  // took a day and a half of runs. On 2026-09-09 the record read "20 h" after 33 hours
   // and the operator took it for a delay. Each pool says how many more
   // hourly runs it needs, and the record names the hour the pick is due.
   const toGo = pools.map((p) => {
     if (!p.windows || p.hours >= minHours) return { ...p, runs_to_go: 0 };
-    const perWindow = p.hours / p.windows;
+    const perWindow = (p.minutes_per_window || 37.5) / 60;
     return { ...p, runs_to_go: Math.ceil((minHours - p.hours) / perWindow) };
   });
   const pending = toGo.filter((p) => p.runs_to_go > 0 && p.last);
@@ -136,7 +140,7 @@ export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOUR
     pick_due: pickDue,
     watched: watchedRow ? { pool: watchedRow.pool, label: watchedRow.label, fees_usd_per_day: watchedRow.fees_usd_per_day } : null,
     why: !pools.length ? 'nothing recorded yet'
-      : !enough ? `no pick until every pool has ${minHours} h of sampled chain (${toGo.map((p) => `${p.label} ${p.hours} h`).join(', ')}); an hourly window covers about ${pools[0].windows ? Math.round(pools[0].hours / pools[0].windows * 60) : 37} minutes, so ${Math.max(...toGo.map((p) => p.runs_to_go))} more hourly runs${pickDue ? `, the pick is due around ${pickDue.slice(11, 16)} UTC on ${pickDue.slice(0, 10)}` : ''}`
+      : !enough ? `no pick until every pool has ${minHours} h of sampled chain (${toGo.map((p) => `${p.label} ${p.hours} h`).join(', ')}); an hourly window covers about ${Math.round(pools[0].minutes_per_window || 37.5)} minutes, so ${Math.max(...toGo.map((p) => p.runs_to_go))} more hourly runs${pickDue ? `, the pick is due around ${pickDue.slice(11, 16)} UTC on ${pickDue.slice(0, 10)}` : ''}`
       : pick && watchedRow && pick.pool === watchedRow.pool ? `${pick.label}, the pool the agent is in, earned the most per day for $${usd} in ±${widthPct}%`
       : pick && watchedRow ? `${pick.label} earned $${pick.fees_usd_per_day} a day for $${usd} in ±${widthPct}% against $${watchedRow.fees_usd_per_day} in ${watchedRow.label}, where the agent is. A finding, not a move: the agent never changes pools by itself.`
       : `${pick.label} earned the most per day for $${usd} in ±${widthPct}%`,

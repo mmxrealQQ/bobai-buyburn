@@ -27,7 +27,7 @@ import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT }
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
-// Hourly windows of ~37 minutes never overlap, so the count is honest by
+// Hourly windows of ~59 minutes (37 before 2026-09-09) never overlap, so the count is honest by
 // construction; the cap only keeps the KV value from growing without bound.
 // 400 hourly windows is over two weeks, which is more than the decision needs.
 export const MAX_WINDOWS = 400;
@@ -46,7 +46,7 @@ export function windowFromPlan(plan, usd, at = new Date().toISOString()) {
     minutes: w.minutes,
     swaps: w.swaps,
     // The price at the window's head, kept so the record can answer the
-    // question a 37-minute replay cannot: would this width have held for a
+    // question an hour's replay cannot: would this width have held for a
     // DAY. The position went out of a +/-0.5% range within five hours of a
     // record in which that width had held every window.
     price: typeof plan.price_now === 'number' ? plan.price_now : null,
@@ -133,8 +133,8 @@ export function verdict(log, opts = {}) {
   const thin = used.length < 2;
   const safe = rows.filter((r) => r.width !== 'full' && r.heldEvery && !r.everNegative && r.net > 0);
   safe.sort((a, b) => b.net - a.net);
-  // THE DAY TEST. A width that held every 37-minute window is the narrowest
-  // width that held for 37 minutes; a position nobody watches is left alone
+  // THE DAY TEST. A width that held every hourly window is the narrowest
+  // width that held for an hour; a position nobody watches is left alone
   // for a day. So each priced window is treated as a hypothetical mint and
   // asked whether the price stayed inside +/-width for the 24 hours after it.
   // Only windows with at least twenty hours of later record count as tested;

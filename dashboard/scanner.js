@@ -376,7 +376,7 @@ function renderRanges(out,d){
   // The honest headline is the narrowest range that HELD, not the one that
   // earned most. The best earner is regularly a range the price walked out of,
   // and naming that as the answer would be recommending a position on the
-  // strength of the forty minutes before it broke.
+  // strength of the hour before it broke.
   if(held){
     const row=rows.find(r=>r.width_pct!=null&&('±'+r.width_pct+'%')===held);
     const full=rows.find(r=>r.full_range);
@@ -388,7 +388,7 @@ function renderRanges(out,d){
         : 'Narrower ranges earn more per dollar and stop earning the moment the price leaves them.');
   }else{
     line('unknown','No range on this list held for the whole window.',
-      'On this pool, in these forty minutes, the price was outside every width at some point. That is worth knowing before placing anything, and it is why the crossing count is a column rather than a footnote.');
+      'On this pool, in this hour, the price was outside every width at some point. That is worth knowing before placing anything, and it is why the crossing count is a column rather than a footnote.');
   }
   if(best&&held&&best!==held){
     const b=rows.find(r=>('±'+r.width_pct+'%')===best);
@@ -444,7 +444,7 @@ function renderRanges(out,d){
   out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
     ' minutes of chain — a sample, not a rate, and not annualised. Replayed against the '+w.swaps+
     ' swaps that actually happened in it, using the liquidity the pool itself reported as active at each one — not a simulation of a market, arithmetic over trades that occurred. The pool paid $'+
-    (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them. Not annualised: what a range did over forty minutes is not what it does over a year. '+
+    (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them. Not annualised: what a range did in one hour is not what it does over a year. '+
     (d.tier_chosen_because?'Pool picked for you: the '+d.tier_chosen_because+' — which tier PAYS best is the card above. ':'')+
     'Impermanent loss is not in any of this, and it is worst exactly where the fees are best.'));
 }

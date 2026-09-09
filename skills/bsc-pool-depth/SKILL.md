@@ -111,9 +111,9 @@ and a 1.00% pool held real money on every pair while trading on none of them —
 
 Three things to hold on to when reporting it:
 
-**It is a sample, not a rate.** The window is around forty minutes of chain and
-is returned with the answer in `measured_window`. Do not annualise it. Forty
-minutes of flow says what happened in forty minutes.
+**It is a sample, not a rate.** The window is around an hour of chain and
+is returned with the answer in `measured_window`. Do not annualise it. An
+hour of flow says what happened in that hour.
 
 **Capital is both sides of the pool.** Dividing by one side makes the identical
 V3 pool look several times better or worse depending on which token you call the

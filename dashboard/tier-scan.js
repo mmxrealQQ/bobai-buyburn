@@ -14,8 +14,8 @@
 //
 // So this returns one figure per tier: the swap fees the pool actually paid out
 // over a measured window, divided by the quote-side capital sitting in it.
-// Nothing here is annualised. The window is around forty minutes of real chain
-// and is reported in the answer, because a forty-minute sample multiplied into
+// Nothing here is annualised. The window is around an hour of real chain
+// and is reported in the answer, because an hour's sample multiplied into
 // an APR is exactly the kind of number this project exists to stop repeating.
 //
 // PancakeSwap only, deliberately. The same token often trades on Uniswap V2 and
@@ -27,7 +27,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -174,9 +174,9 @@ export async function feeTiers(input) {
     );
 
   const head = parseInt(await rpc('eth_blockNumber', [], LOGS_RPC), 16);
-  // One window, and only one: this endpoint serves roughly 5,000 blocks at the
-  // head and answers anything older by demanding a personal token.
-  const from = head - 4999;
+  // One window, and only one: an hour of chain (WINDOW_BLOCKS in scanner-chain);
+  // the endpoint answers anything much older by demanding a personal token.
+  const from = head - (WINDOW_BLOCKS - 1);
 
   // Which data word is the quote side. The factories sort token0 below token1,
   // so this is derivable — but it is asked anyway, because the whole figure
@@ -343,7 +343,7 @@ export async function feeTiers(input) {
     measured_window: {
       from_block: from, to_block: head, blocks: head - from + 1,
       minutes: minutes == null ? null : +minutes.toFixed(1),
-      note: 'A single sample of live chain, not a rate. It is not annualised here and should not be annualised from here: forty minutes of flow says what happened in forty minutes.',
+      note: 'A single sample of live chain, not a rate. It is not annualised here and should not be annualised from here: an hour of flow says what happened in that hour.',
     },
     tiers,
     // How many tiers were actually read, kept separate from how many exist.

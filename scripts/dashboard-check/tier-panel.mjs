@@ -190,13 +190,13 @@ else {
   if (R.rows.length && !/minutes of chain/i.test(R.text)) {
     problems.push('the measured window is not stated under the figures');
   }
-  // A yearly framing on a forty-minute sample is the failure. Saying that it is
+  // A yearly framing on an hour's sample is the failure. Saying that it is
   // NOT annualised is the fix — and the first version of this check flagged the
   // fix, because it matched the word and not the claim. The disclaimer is
   // removed before the text is tested.
   const claiming = String(R.text).replace(/\b(not|never|nor)\s+annualis|\bnot\s+a\s+rate\b/gi, '');
   if (/\bAPR\b|\bAPY\b|per year|per annum|annualis(ed|e)\b|yearly/i.test(claiming)) {
-    problems.push('the card uses a yearly framing for a forty-minute sample');
+    problems.push('the card uses a yearly framing for an hour of sample');
   }
   // And the disclaimer has to actually be there.
   if (R.rows.length && !/not annualis/i.test(R.text)) {

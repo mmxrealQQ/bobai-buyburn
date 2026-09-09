@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12206 lines.
+# one fetch. 41 files, 12210 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7132,7 +7132,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;text-transform:none;border-top:0}td:first-child,th:first-child{text-align:left}tr.pick td{color:#f0b90b;font-weight:700}
 `)}${pageNav({ href: '/lp/agent', label: 'The record' }, { href: '/lp/windows', label: 'The width record' }, BUY)}<h1>The width record</h1>
-<p class="lead">How wide the liquidity agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last ~37 minutes of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price with the agent's own re-set delay and its measured re-set cost. The width that nets the most per day is the one the next re-set uses. Nothing here is a forecast.</p>
+<p class="lead">How wide the liquidity agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price with the agent's own re-set delay and its measured re-set cost. The width that nets the most per day is the one the next re-set uses. Nothing here is a forecast.</p>
 <h2>The pick</h2>
 <div class="card"><dl>
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — about $${h(f(pick.earnings.net_usd_per_day, 2))} a day on $${h(usd)} after ${h(pick.earnings.resets)} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${h(f(pick.earnings.reset_cost_usd, 2))} each, over ${h(f(pick.earnings.hours, 0))} h of recorded prices (${h(f(pick.earnings.hours_in_range, 0))} h of them inside the range)` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
@@ -7154,7 +7154,7 @@ ${pageTail}`;
         return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
       }
       return json({ ...log, verdict: v, cadence: 'hourly',
-        note: 'Every entry is one replay of pancakeswap_range_plan over ~37 minutes of live chain, recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
+        note: 'Every entry is one replay of pancakeswap_range_plan over about an hour of live chain (37 minutes before 2026-09-09), recorded by the cron whether anybody is watching or not. Overlapping entries are counted once in the verdict. Nothing here is a forecast.' });
     }
 
     // Our own ERC-8183 jobs and the date each one was first seen to complete.
@@ -7864,10 +7864,10 @@ ${pageTail}`;
       ctx.waitUntil(runCanary(env).catch(() => {}));
     }
 
-    // xx:3x every hour — one replay of the LP pool's last ~37 minutes into the
+    // xx:3x every hour — one replay of the LP pool's last hour into the
     // width record (lp-windows.js). Pinned to the half-hour tick so it never
     // shares an invocation with the census, the frontier probe or the canary,
-    // and hourly because a 37-minute window every 15 minutes would be the same
+    // and hourly because an hour's window every 15 minutes would be the same
     // chain counted four times. 24 KV writes a day.
     if (t.getUTCMinutes() >= 30 && t.getUTCMinutes() < 45) {
       // The pool record follows the width record in the same invocation, so
@@ -7979,11 +7979,12 @@ export function appendPoolWindow(log, pool, entry) {
 export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOURS_TO_PICK } = {}) {
   const usd = log?.usd || POSITION_USD;
   const pools = Object.entries(log?.pools || {}).map(([pool, rec]) => {
-    let fees = 0, hours = 0, swaps = 0, quiet = 0, held = 0, priced = 0;
+    let fees = 0, hours = 0, swaps = 0, quiet = 0, held = 0, priced = 0, lastMinutes = null;
     for (const w of rec.windows || []) {
       const row = (w.rows || []).find((r) => r.width === widthPct);
       if (!row || typeof row.fees !== 'number') continue;
       const h = (w.minutes || 37.5) / 60;
+      lastMinutes = w.minutes || 37.5;
       fees += row.fees; hours += h; priced += 1;
       swaps += Number(w.swaps || 0);
       if (!Number(w.swaps || 0)) quiet += 1;
@@ -8001,6 +8002,9 @@ export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOUR
       held_pct: priced ? Math.round((held / priced) * 1000) / 10 : null,
       fees_usd: r4(fees),
       fees_usd_per_day: hours > 0 ? r4((fees / hours) * 24) : null,
+      // What the newest window covers: the forecast of runs to go rests on it,
+      // not on an average over windows of two sizes.
+      minutes_per_window: lastMinutes,
       first: (rec.windows || [])[0]?.at || null,
       last: (rec.windows || []).slice(-1)[0]?.at || null,
     };
@@ -8009,13 +8013,13 @@ export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOUR
   const pick = enough ? pools[0] : null;
   const watchedRow = pools.find((p) => p.watched) || null;
   // The hours are sampled chain, not clock time: an hourly window covers the
-  // ~37 minutes the log endpoint serves, so a day of hours takes about a day
-  // and a half of runs. On 2026-09-09 the record read "20 h" after 33 hours
+  // minutes it covers (37.5 until 2026-09-09, ~59 since), so a day of hours
+  // took a day and a half of runs. On 2026-09-09 the record read "20 h" after 33 hours
   // and the operator took it for a delay. Each pool says how many more
   // hourly runs it needs, and the record names the hour the pick is due.
   const toGo = pools.map((p) => {
     if (!p.windows || p.hours >= minHours) return { ...p, runs_to_go: 0 };
-    const perWindow = p.hours / p.windows;
+    const perWindow = (p.minutes_per_window || 37.5) / 60;
     return { ...p, runs_to_go: Math.ceil((minHours - p.hours) / perWindow) };
   });
   const pending = toGo.filter((p) => p.runs_to_go > 0 && p.last);
@@ -8030,7 +8034,7 @@ export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOUR
     pick_due: pickDue,
     watched: watchedRow ? { pool: watchedRow.pool, label: watchedRow.label, fees_usd_per_day: watchedRow.fees_usd_per_day } : null,
     why: !pools.length ? 'nothing recorded yet'
-      : !enough ? `no pick until every pool has ${minHours} h of sampled chain (${toGo.map((p) => `${p.label} ${p.hours} h`).join(', ')}); an hourly window covers about ${pools[0].windows ? Math.round(pools[0].hours / pools[0].windows * 60) : 37} minutes, so ${Math.max(...toGo.map((p) => p.runs_to_go))} more hourly runs${pickDue ? `, the pick is due around ${pickDue.slice(11, 16)} UTC on ${pickDue.slice(0, 10)}` : ''}`
+      : !enough ? `no pick until every pool has ${minHours} h of sampled chain (${toGo.map((p) => `${p.label} ${p.hours} h`).join(', ')}); an hourly window covers about ${Math.round(pools[0].minutes_per_window || 37.5)} minutes, so ${Math.max(...toGo.map((p) => p.runs_to_go))} more hourly runs${pickDue ? `, the pick is due around ${pickDue.slice(11, 16)} UTC on ${pickDue.slice(0, 10)}` : ''}`
       : pick && watchedRow && pick.pool === watchedRow.pool ? `${pick.label}, the pool the agent is in, earned the most per day for $${usd} in ±${widthPct}%`
       : pick && watchedRow ? `${pick.label} earned $${pick.fees_usd_per_day} a day for $${usd} in ±${widthPct}% against $${watchedRow.fees_usd_per_day} in ${watchedRow.label}, where the agent is. A finding, not a move: the agent never changes pools by itself.`
       : `${pick.label} earned the most per day for $${usd} in ±${widthPct}%`,
@@ -8320,7 +8324,7 @@ export async function lpPositionPlan(params = {}, env = null) {
 // answered the first one for both of them.
 //
 // WHAT IT REFUSES TO DO
-// It does not annualise. The window is about forty minutes of chain, it travels
+// It does not annualise. The window is about an hour of chain, it travels
 // with every figure, and turning it into an APR would be the exact move this
 // marketplace was built to argue against. It does not know impermanent loss, so
 // it says so rather than implying a tier is "best" in a sense it cannot measure.
@@ -8425,7 +8429,7 @@ export async function lpTierPlan(input = {}) {
 
   // The comparison that decides anything: how long the better tier needs to run
   // at this rate before it has paid for the move. Reported as a duration, not
-  // as a verdict, and explicitly conditional — the rate is a forty-minute
+  // as a verdict, and explicitly conditional — the rate is an hour's
   // sample and the honest thing is to say what would have to hold, not to
   // pretend it will.
   //
@@ -8540,7 +8544,7 @@ import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT }
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
-// Hourly windows of ~37 minutes never overlap, so the count is honest by
+// Hourly windows of ~59 minutes (37 before 2026-09-09) never overlap, so the count is honest by
 // construction; the cap only keeps the KV value from growing without bound.
 // 400 hourly windows is over two weeks, which is more than the decision needs.
 export const MAX_WINDOWS = 400;
@@ -8559,7 +8563,7 @@ export function windowFromPlan(plan, usd, at = new Date().toISOString()) {
     minutes: w.minutes,
     swaps: w.swaps,
     // The price at the window's head, kept so the record can answer the
-    // question a 37-minute replay cannot: would this width have held for a
+    // question an hour's replay cannot: would this width have held for a
     // DAY. The position went out of a +/-0.5% range within five hours of a
     // record in which that width had held every window.
     price: typeof plan.price_now === 'number' ? plan.price_now : null,
@@ -8646,8 +8650,8 @@ export function verdict(log, opts = {}) {
   const thin = used.length < 2;
   const safe = rows.filter((r) => r.width !== 'full' && r.heldEvery && !r.everNegative && r.net > 0);
   safe.sort((a, b) => b.net - a.net);
-  // THE DAY TEST. A width that held every 37-minute window is the narrowest
-  // width that held for 37 minutes; a position nobody watches is left alone
+  // THE DAY TEST. A width that held every hourly window is the narrowest
+  // width that held for an hour; a position nobody watches is left alone
   // for a day. So each priced window is treated as a hypothetical mint and
   // asked whether the price stayed inside +/-width for the 24 hours after it.
   // Only windows with at least twenty hours of later record count as tested;

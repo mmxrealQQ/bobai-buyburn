@@ -72,7 +72,7 @@ console.log(`  one crossing  $${fmt(w.rebalanceUsd, 2)} of gas to put it back`);
 console.log(`  best net      ${w.bestNet} once the nursing is paid for${w.bestNet === `±${w.width_pct}%` ? ' — the same width' : ' — a DIFFERENT width from the one that held'}`);
 console.log('');
 console.log('  What this plan does NOT claim:');
-console.log('   · Nothing is annualised. The window is one sample of about forty minutes.');
+console.log('   · Nothing is annualised. The window is one sample of about an hour.');
 console.log('   · Impermanent loss is not in the figure, and it is worst exactly where the fees are best.');
 console.log('   · The price stayed inside this range for one window. That is what happened, not what will.');
 console.log(`   · Opening costs gas: wrap, swap, two approvals and a mint, roughly $${fmt(0.0012 * w.bnbUsd, 2)} at 1 gwei — ${(0.0012 * w.bnbUsd / USD * 100).toFixed(1)}% of the position.`);

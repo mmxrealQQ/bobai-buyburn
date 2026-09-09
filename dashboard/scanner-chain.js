@@ -10,7 +10,7 @@
 //
 // Three endpoints, each chosen for one capability:
 //   RPC      eth_call. Binance's dataseed refuses eth_getLogs outright.
-//   LOGS_RPC eth_getLogs, ~5000 blocks near the head. That is enough to find
+//   LOGS_RPC eth_getLogs, ~7,900 blocks (an hour) near the head. That is enough to find
 //            real trades and measure what they were actually charged.
 //   GOPLUS   contract properties no call reveals (mintable, proxy, LP lockers).
 //            Optional, always attributed, never silently trusted.
@@ -32,6 +32,14 @@ export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com'
 // probably share a budget — but two hostnames spread a burst of five tier
 // queries better than one does, and the caller cannot be asked to go slower.
 export const LOGS_RPCS=['https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
+// THE WINDOW. One eth_getLogs call of this many blocks at the head: an hour of
+// chain at BSC's 0.45 s blocks (7,900 blocks = 59 min, so hourly windows taken
+// at the same minute never overlap). Measured 2026-09-09: the free log
+// endpoint and the keyed one both answer 7,900 blocks in one call and refuse
+// only beyond ~12,000 as "archive". It was 4,999 (37.5 min) before, and the
+// pool and width records counted that as "hours" — a day of them took a day
+// and a half of runs, and the fee estimate rested on 62% of each hour's swaps.
+export const WINDOW_BLOCKS=7900;
 // Live bindings: useKeyedRpcs() below moves a keyed endpoint to the front.
 export let RPC=RPCS[0],
   LOGS_RPC=LOGS_RPCS[0];

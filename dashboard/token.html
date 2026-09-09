@@ -23,8 +23,8 @@
   <meta name="twitter:title" content="$BOBAI — the token, its tax and its liquidity">
   <meta name="twitter:description" content="How $BOBAI burns supply on every trade, every tax phase since launch, and how deep the liquidity really is, read from the pool contract.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
-  <link rel="preload" href="styles.css?v=44" as="style">
-  <link rel="stylesheet" href="styles.css?v=44">
+  <link rel="preload" href="styles.css?v=48" as="style">
+  <link rel="stylesheet" href="styles.css?v=48">
   <link rel="stylesheet" href="home.css?v=1">
 </head>
 <body class="np">
@@ -100,6 +100,10 @@
         <div class="tf"><div class="p" id="tax-pct-bob" style="color:var(--red)">~1%</div><div class="d">Burn $BOB <span class="bob-sub">(Build On BNB)</span><br><span class="ts-inline" id="ts-inline-bob"></span></div></div>
         <div class="ta">&#x2192;</div>
         <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI</div></div>
+        <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
+        <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/liquidity" style="color:inherit">LP Agent</a></div></div>
+        <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
+        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="#giggle" style="color:inherit">Giggle pot</a></div></div>
       </div>
       <div class="tax-schedule">
         <div class="ts-head">
@@ -133,14 +137,19 @@
             <div class="ts-split">1% BOBAI burn &middot; 1% BOB burn &middot; 1% Creator</div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-2">
-            <div class="ts-when">Aug 8 &ndash; Sep 16, 2026</div>
+            <div class="ts-when">Aug 8 &ndash; Sep 9, 05:30 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost II</div>
             <div class="ts-split">1% BOBAI burn &middot; 0.2% BOB burn &middot; 1% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b></div>
           </div>
+          <div class="ts-row" data-phase="bobai-liq-2-lp">
+            <div class="ts-when">Sep 9, 05:30 UTC &rarr; Sep 16, 23:59 UTC, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost II + LP Agent</div>
+            <div class="ts-split">0.9% BOBAI burn &middot; 0.1% BOB burn &middot; 0.9% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b> &middot; <b>0.3% &rarr; <a href="/liquidity">LP Agent</a></b></div>
+          </div>
           <div class="ts-row" data-phase="sunshine">
-            <div class="ts-when">Sep 17 &ndash; Nov 20, 2026</div>
-            <div class="ts-name">☀️ Something good ahead</div>
-            <div class="ts-split">stay tuned 😉</div>
+            <div class="ts-when">Sep 17, 00:01 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
+            <div class="ts-name">☀️ Giggle Academy pot + LP Agent</div>
+            <div class="ts-split">0.8% BOBAI burn &middot; 0.8% BOB burn &middot; 0.8% Creator &middot; <b>0.3% &rarr; <a href="/liquidity">LP Agent</a></b> &middot; <b>0.3% &rarr; <a href="#giggle">Giggle Academy pot</a></b></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
             <div class="ts-when">from Nov 20, 2026</div>
@@ -268,6 +277,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=36" defer></script>
+<script src="app.js?v=64" defer></script>
 </body>
 </html>

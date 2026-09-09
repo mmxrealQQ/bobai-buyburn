@@ -583,7 +583,7 @@
        judders sideways with it. `contain` keeps the movement in the box.
        That is the precise fix — NOT overflow-x on html/body again, which is what
        produced the double scrollbar on Aug 9. */
-    .txw{max-height:400px;overflow-y:auto;overscroll-behavior:contain;
+    .txw{max-height:400px;overflow-y:auto;overflow-x:auto;overscroll-behavior:contain;
       border-radius:var(--radius);border:1px solid var(--border)}
     .txw::-webkit-scrollbar{width:4px}
     .txw::-webkit-scrollbar-track{background:rgba(10,10,22,.9)}
@@ -596,6 +596,8 @@
     .txl{color:var(--gold);font-family:'Space Grotesk',monospace;font-size:.72rem;
       text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);text-underline-offset:3px;text-decoration-thickness:1px}
     .txl:hover{text-decoration-color:var(--gold)}
+    /* Four columns at a phone's width: less padding so a burn row (time, tag, amount, tx) fits 390px without pushing the table out of its wrapper. */
+    @media (max-width:480px){table th,table td{padding:8px 7px;font-size:.7rem}.txl{font-size:.64rem}}
     .tb{background:rgba(255,48,40,.07);color:var(--red);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tba{background:rgba(0,230,118,.07);color:var(--green);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
@@ -847,6 +849,8 @@
     .lib-c code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.68rem;color:var(--acc);
       flex:1;min-width:0;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
     .lib-c code::-webkit-scrollbar{display:none}
+    /* On a phone the curl line wraps instead of hiding its tail behind a scroll nobody sees. */
+    @media (max-width:480px){.lib-c code{white-space:normal;overflow-wrap:anywhere;overflow-x:visible}}
     .lib-cp{flex-shrink:0;font-size:.6rem;text-transform:uppercase;letter-spacing:1px;font-weight:600;
       padding:4px 9px;border-radius:6px;cursor:pointer;border:1px solid var(--border);
       background:transparent;color:var(--muted);transition:color .2s,border-color .2s}

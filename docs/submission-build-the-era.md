@@ -286,6 +286,23 @@ node scripts/advantage-report.mjs && node scripts/advantage-publish.mjs   # Term
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.
 
+Refresh run 2026-09-09 ~06:30 UTC: every checker in scripts/README.md green
+(health 49/49 with the one known gas floor of the creator wallet, smoke
+187/187, dispatch-safety 21/21, phase-parity 14 windows / 128 combinations,
+route 11/11, sell-sim and curve both ways, link audit "every promise
+resolves", asset audit 0 missing, secret audit publishable, site audit 57/58
+with registry.html's 254 KB the one MED, LP self-tests 126/126 and 12/12, gas
+every wallet above its floor). Changes today, all live: the buyback bot sends
+a tenth of each tax slice (0.3% of every trade) as BNB to the liquidity
+agent's wallet since 05:30 UTC (first send 05:50 UTC, 0.007796 BNB, tx
+0x068452945cf9…, in the public burn log) and from Sep 17 another tenth into
+the Giggle Academy pot (brainonbnb.com/#giggle, /giggle in the Telegram bot);
+the Pool Scanner's Worker path asks a keyed BSC endpoint first (10 of 10
+scans measured on-chain, median 561 ms, 0 label answers); the liquidity
+agent took in a hand deposit of 0.0395 BNB into #7384951 (liquidity 225.9e18
+→ 295.8e18, recorded as capital, not gain). The trading agent is private and
+not part of this submission.
+
 Refresh run 2026-09-08 ~10:30 UTC: the liquidity agent re-set its range twice
 today on its own, both times after the two-hour hysteresis in a rising CAKE
 market — 06:50 UTC #7359173 → #7373886 (3 transactions, 0.000066 BNB of gas,

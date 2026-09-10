@@ -969,20 +969,28 @@ function snapshotDelta(snaps, days) {
   };
 }
 
-export function snapshotHoldings(snaps) {
+// `tracked`, when given, narrows the split to wallets still on the watch-set:
+// the day's snapshot is taken before the retire rule drops the empty ones,
+// so until the next snapshot it would still count them (2026-09-10 06:07:
+// 26 tracked, "8 empty").
+export function snapshotHoldings(snaps, tracked = null) {
   if (!snaps.length) return null;
   const last = snaps[snaps.length - 1];
+  const keep = tracked ? new Set(tracked.map((a) => String(a).toLowerCase())) : null;
+  const wallets = Object.fromEntries(Object.entries(last.wallets || {}).filter(([a]) => !keep || keep.has(a.toLowerCase())));
+  const vals = Object.values(wallets);
+  const total = keep ? vals.reduce((s, v) => s + Number(v), 0) : last.total;
   return {
     as_of_date: last.date,
-    tracked_total_bobai: last.total,
-    percent_of_total_supply: Math.round(last.total / 1e9 * 10000) / 100,
+    tracked_total_bobai: total,
+    percent_of_total_supply: Math.round(total / 1e9 * 10000) / 100,
     // The watchlist keeps a wallet after it sells or moves out (a cluster's
     // spent wallets tell where the whale went), so "tracked" is not "whales":
     // the split says how many still hold the threshold, and how many are empty.
-    wallets_tracked: Object.keys(last.wallets || {}).length,
-    wallets_at_or_above_threshold: Object.values(last.wallets || {}).filter((v) => Number(v) >= 10_000_000).length,
-    wallets_below_threshold: Object.values(last.wallets || {}).filter((v) => Number(v) > 0 && Number(v) < 10_000_000).length,
-    wallets_empty: Object.values(last.wallets || {}).filter((v) => Number(v) <= 0).length,
+    wallets_tracked: vals.length,
+    wallets_at_or_above_threshold: vals.filter((v) => Number(v) >= 10_000_000).length,
+    wallets_below_threshold: vals.filter((v) => Number(v) > 0 && Number(v) < 10_000_000).length,
+    wallets_empty: vals.filter((v) => Number(v) <= 0).length,
     change_1d: snapshotDelta(snaps, 1),
     change_7d: snapshotDelta(snaps, 7),
     change_30d: snapshotDelta(snaps, 30),
@@ -1431,7 +1439,7 @@ ${sections.join('\n\n')}
       fetchBobaiPriceUsd().catch(() => null),
       loadWhaleSnapshots(env).catch(() => []),
     ]);
-    reply = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ false, snapshotHoldings(snaps));
+    reply = renderDailyRecap(events, tracked, price, /*withDateStamp=*/ false, snapshotHoldings(snaps, tracked));
   }
 
   else if (cmd === '/whaleadd') {
@@ -1562,13 +1570,12 @@ async function postDailyWhaleRecap(env) {
     let tracked = tracked0, holdings = null, retired = [];
     try {
       const snaps = await takeWhaleSnapshotIfDue(env, tracked0);
-      holdings = snapshotHoldings(snaps);
       retired = await retireEmptyWallets(env, snaps, tracked0);
       if (retired.length) {
         const gone = new Set(retired);
         tracked = tracked0.filter((a) => !gone.has(a));
-        if (holdings) { holdings.wallets_tracked = tracked.length; holdings.wallets_empty = Math.max(0, holdings.wallets_empty - retired.length); }
       }
+      holdings = snapshotHoldings(snaps, tracked);
     } catch (e) {
       console.error('[WHALE-SNAP RECAP ERROR]', e.message || e);
     }
@@ -2882,7 +2889,7 @@ export default {
         };
         const moverWallet = (e) => (e.kind === 'SELL' || e.kind === 'BURN' || e.kind === 'TRANSFER_OUT') ? e.from : e.to;
         const movers = recentEvents(events, 24)
-          .filter(e => ['BUY', 'SELL', 'BURN', 'TRANSFER_OUT', 'TRANSFER_IN', 'INTERNAL_T'].includes(e.kind))
+          .filter(e => !e.quiet && !isQuietMove(e.kind, e.usdValue || 0) && ['BUY', 'SELL', 'BURN', 'TRANSFER_OUT', 'TRANSFER_IN', 'INTERNAL_T'].includes(e.kind))
           .slice()
           .sort((a, b) => (b.usdValue || 0) - (a.usdValue || 0))
           .slice(0, 3)
@@ -2899,7 +2906,7 @@ export default {
           as_of: new Date().toISOString(),
           tracked_wallets: tracked.length,
           tracking_threshold: '10,000,000 BOBAI (1% of supply) — wallets enter the watchlist automatically when they cross it',
-          holdings: snapshotHoldings(snaps),
+          holdings: snapshotHoldings(snaps, tracked),
           last_24h: win(24),
           last_7d: win(168),
           top_movers_24h: movers,

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12210 lines.
+# one fetch. 41 files, 12372 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -194,6 +194,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, rebalanceWait, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
+  widthUpgrade, widthClassOf,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines } from '../shared/lp-flow.js';
 
@@ -408,6 +409,33 @@ if (SELF) {
     [{ ...resume, width: null, hoursOfPrices: 6 }, 'no width has earned its re-sets yet'],
     [{ ...resume, positions: 1 }, 'a position exists — that is a re-set, and its in-range check applies'],
   ]) check(why, refuseRebalance(state), state.positions === 1 ? false : true);
+  console.log('width upgrade (in range, the record names a better width)');
+  // 380 ticks is ±1.9%: the record's 2%. 190 ticks: 1%. 40 ticks: 0.25%.
+  check('380 ticks read as the 2% class', widthClassOf([-57990, -57610]) === 2 ? null : `got ${widthClassOf([-57990, -57610])}`, false);
+  check('190 ticks read as the 1% class', widthClassOf([-57800, -57610]) === 1 ? null : `got ${widthClassOf([-57800, -57610])}`, false);
+  check('no ticks: no class', widthClassOf(null) === null ? null : 'got a class', false);
+  const rows = [
+    { width: 1, earnings: { net_usd_per_day: 0.6983 } },
+    { width: 2, earnings: { net_usd_per_day: 0.6111 } },
+    { width: 'full', earnings: null },
+  ];
+  // The live case of 2026-09-10: $154 at 2%, the record picks 1%: +$0.27 a day against a $0.10 re-set.
+  const up = { daily: true, inRange: true, ticks: [-57990, -57610], pick: rows[0], rows, hoursOfPrices: 182, valueBnb: 0.2127, bnbUsd: 723.6, resetCostUsd: 0.1 };
+  const u = widthUpgrade(up);
+  check('the daily run upgrades 2% → 1% when the gain pays the re-set within a day', u.upgrade ? null : u.why, false);
+  check('the upgrade names from, to and the gain', u.from === 2 && u.to === 1 && u.gain_usd_per_day > 0.2 && u.gain_usd_per_day < 0.3 ? null : JSON.stringify(u), false);
+  for (const [state, why] of [
+    [{ ...up, daily: false }, 'the hourly check never upgrades'],
+    [{ ...up, inRange: false }, 'outside the range it is a re-set, not an upgrade'],
+    [{ ...up, ticks: null }, 'no ticks, no class'],
+    [{ ...up, pick: null }, 'no pick, nothing to upgrade to'],
+    [{ ...up, hoursOfPrices: 12 }, 'under a day of prices'],
+    [{ ...up, ticks: [-57800, -57610] }, 'already at the picked width'],
+    [{ ...up, rows: [rows[0]] }, 'the record has no earnings for the current width'],
+    [{ ...up, valueBnb: 0 }, 'no dollar value'],
+    [{ ...up, rows: [rows[0], { width: 2, earnings: { net_usd_per_day: 0.66 } }] }, 'a gain under a tenth of the current net is noise'],
+    [{ ...up, resetCostUsd: 0.5 }, 'a gain under the re-set cost would not pay back within a day'],
+  ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
   console.log('rebalance wait');
   const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
   check('first hour outside: waits', rebalanceWait(null, now), true);
@@ -2166,6 +2194,56 @@ export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
   return null;
 }
 
+// A width upgrade: the price is inside the range, so nothing forces a re-set,
+// but the window record's earnings test now names a different width that
+// nets more per day. Until 2026-09-10 the agent only took the new width when
+// the price left the old range — a position minted at 2% sat for days
+// while the record said 1% earned a seventh more. The rule: once a day, in
+// range, with a day of prices on record, re-set into the picked width when
+// the extra it nets on this position's capital clears the re-set's cost
+// within a day AND is more than a tenth of what the current width nets —
+// the same margin the wait pick uses, so noise between two close widths
+// never pays for a re-set. At most one such re-set a day, bounded by the
+// daily run; the hourly checks never upgrade.
+export const WIDTH_UPGRADE_MARGIN = 0.1;
+export const RECORD_WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
+
+// The width class of a position from its ticks: half its span, in percent,
+// snapped to the record's width nearest on a log scale (a 380-tick range is
+// ±1.9%, the record's 2%). Null without ticks.
+export function widthClassOf(ticks) {
+  if (!Array.isArray(ticks) || ticks.length !== 2 || !(ticks[1] > ticks[0])) return null;
+  const half = (Math.pow(1.0001, (ticks[1] - ticks[0]) / 2) - 1) * 100;
+  return RECORD_WIDTHS.slice().sort((a, b) => Math.abs(Math.log(a / half)) - Math.abs(Math.log(b / half)))[0];
+}
+
+// state: { daily, inRange, ticks, pick: {width, earnings:{net_usd_per_day}},
+//          rows: the record's rows, hoursOfPrices, valueBnb, bnbUsd, resetCostUsd }
+// Returns { upgrade: true, why, from, to, gain_usd_per_day } or { upgrade: false, why }.
+export function widthUpgrade(state) {
+  const no = (why) => ({ upgrade: false, why });
+  if (!state.daily) return no('the hourly check does not upgrade a width — the daily run does, once');
+  if (!state.inRange) return no('the price is outside the range — that is a re-set, not an upgrade');
+  const from = widthClassOf(state.ticks);
+  if (from == null) return no('the position names no ticks');
+  const pick = state.pick;
+  if (!pick || pick.earnings == null || !(pick.earnings.net_usd_per_day > 0)) return no('the record names no width that earns');
+  if (!(state.hoursOfPrices >= MIN_HOURS_FOR_EARNINGS)) return no(`${state.hoursOfPrices || 0} h of prices on record, ${MIN_HOURS_FOR_EARNINGS} h needed before a width may be upgraded`);
+  if (pick.width === from) return no(`the position is at the picked width (${from}%)`);
+  const row = (state.rows || []).find((r) => r.width === from);
+  const nowNet = row && row.earnings ? Number(row.earnings.net_usd_per_day) : null;
+  if (nowNet == null) return no(`the record has no earnings for the position's width (${from}%)`);
+  const usd = Number(state.valueBnb || 0) * Number(state.bnbUsd || 0);
+  if (!(usd > 0)) return no('the position has no dollar value to scale the record by');
+  const scale = usd / 50;
+  const gain = (Number(pick.earnings.net_usd_per_day) - nowNet) * scale;
+  const cost = Number(state.resetCostUsd || 0);
+  const r4 = (x) => Math.round(x * 1e4) / 1e4;
+  if (!(gain > nowNet * scale * WIDTH_UPGRADE_MARGIN)) return no(`${pick.width}% nets $${r4(gain)} a day more than ${from}% on $${usd.toFixed(2)} — under a tenth of what ${from}% nets, too close to pay for a re-set`);
+  if (!(gain >= cost)) return no(`${pick.width}% nets $${r4(gain)} a day more than ${from}% on $${usd.toFixed(2)}, but a re-set costs $${r4(cost)} — it would not pay back within a day`);
+  return { upgrade: true, from, to: pick.width, gain_usd_per_day: r4(gain), why: `in range at ${from}%, but ${pick.width}% netted $${r4(gain)} a day more on $${usd.toFixed(2)} over ${state.hoursOfPrices} h of prices, and a re-set costs $${r4(cost)} — upgrading the width` };
+}
+
 // state: { positions, spendableBnb, inRange }
 // spendableBnb is what the wallet holds above the reserve and the gas budget.
 export function refuseIncrease(state) {
@@ -2702,6 +2780,61 @@ export const REBALANCE_EVERY_DAYS = 30;
 export const REBALANCE_BAND = 0.2;
 export const DEFAULT_MIN_ORDER_USD = 10;
 export const DEFAULT_MAX_ORDER_USD = 1000;
+
+// THE DIP RESERVE (2026-09-10). The operator wants stables for dips ("der
+// trader braucht ja stables für die dips"). Carving a quarter of the thirds
+// out as cash was measured and refused (scripts/trader-sleeve.mjs: ten points
+// behind at every split — cash drag in a rising quarter). A reserve is not a
+// carve-out: it is new money that stays USDT by the operator's decision, and
+// the only question is whether it does better buying dips than sitting idle.
+// Rule: one lot at a time, the whole reserve, into the leg furthest under its
+// trailing 7-day mean of daily closes when that is at least RESERVE_DIP_PCT
+// under; back to USDT at the first daily close at or above that mean. Deposits
+// fill the reserve up to RESERVE_TARGET_USD before they top up the thirds.
+// The thirds never see the reserve: it is not in their holdings.
+export const RESERVE_TARGET_USD = 50;
+export const RESERVE_MEAN_DAYS = 7;
+export const RESERVE_DIP_PCT = 8; // measured 2026-09-10, scripts/trader-sleeve.mjs --reserve
+
+// The trailing mean of the n closes before the last one (today is not in it).
+export function trailingMeanOf(closes, n = RESERVE_MEAN_DAYS) {
+  if (!Array.isArray(closes) || closes.length < n + 1) return null;
+  const w = closes.slice(-(n + 1), -1);
+  return w.reduce((s, x) => s + x, 0) / n;
+}
+
+/**
+ * planReserve — pure. What the reserve does at this daily close.
+ *   reserveUsd: the cash the reserve holds (USDT).
+ *   lot: { leg, units, cost_usd } or null — the open lot.
+ *   closesByLeg: { BNB: [...], CAKE: [...], BOB: [...] } daily closes, oldest
+ *                first, the last one today's; at least meanDays + 1 each.
+ * Returns { action: 'sell', leg, why } | { action: 'buy', leg, usd, dip_pct, why }
+ *       | { action: null, why }. Never more than one order.
+ */
+export function planReserve({ reserveUsd = 0, lot = null, closesByLeg = {}, dipPct = RESERVE_DIP_PCT, meanDays = RESERVE_MEAN_DAYS, minOrderUsd = DEFAULT_MIN_ORDER_USD } = {}) {
+  const r2 = (x) => Math.round(x * 100) / 100;
+  if (lot && lot.units > 0) {
+    const c = closesByLeg[lot.leg];
+    const m = trailingMeanOf(c, meanDays);
+    if (m == null) return { action: null, why: `the lot in ${lot.leg} waits: fewer than ${meanDays + 1} daily closes to judge it by` };
+    const px = c[c.length - 1];
+    if (px >= m) return { action: 'sell', leg: lot.leg, why: `${lot.leg} closed at ${px} — at or above its ${meanDays}-day mean of ${r2(m)}: the lot goes back to USDT` };
+    return { action: null, why: `the lot in ${lot.leg} waits: ${px} is still ${r2((1 - px / m) * 100)}% under its ${meanDays}-day mean of ${r2(m)}` };
+  }
+  if (!(reserveUsd >= minOrderUsd)) return { action: null, why: `the reserve holds $${r2(reserveUsd)}, under the $${minOrderUsd} minimum — nothing to buy a dip with` };
+  let best = null;
+  for (const leg of TRADING_LEGS) {
+    const c = closesByLeg[leg];
+    const m = trailingMeanOf(c, meanDays);
+    if (m == null) continue;
+    const px = c[c.length - 1];
+    const dip = (1 - px / m) * 100;
+    if (dip >= dipPct && (!best || dip > best.dip)) best = { leg, dip, px, m };
+  }
+  if (!best) return { action: null, why: `no leg closed ${dipPct}% or more under its ${meanDays}-day mean — the reserve waits in USDT` };
+  return { action: 'buy', leg: best.leg, usd: Math.floor(reserveUsd * 100) / 100, dip_pct: r2(best.dip), why: `${best.leg} closed at ${best.px}, ${r2(best.dip)}% under its ${meanDays}-day mean of ${r2(best.m)} — the reserve buys the dip` };
+}
 
 /**
  * planRebalance — pure. What has to be bought and sold to bring the holdings
@@ -12121,7 +12254,7 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
-import { rebalanceWait, splitFees, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -12240,9 +12373,10 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     const log = await readLpWindows(env);
     // The width is picked with the cost the agent really pays, once it has
     // paid one: the last re-set's gas from its own record, in today's dollars.
-    let costOpts = {};
+    let costOpts = {}, bnbUsd = null;
     try {
-      const m = measuredResetCost(await readState(env), (await readBnbUsd(pub)).bnbUsd);
+      bnbUsd = (await readBnbUsd(pub)).bnbUsd;
+      const m = measuredResetCost(await readState(env), bnbUsd);
       if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
     } catch { /* the replay's assumption stands */ }
     const record = log ? verdict(log, costOpts) : null;
@@ -12253,11 +12387,30 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
+    let upgrade = null;
     if (plan.summary.in_range) {
       if (outSince != null) await env.AGENT.delete(OUT_SINCE_KEY);
-      return { ...plan.summary, acted: false, why: plan.no };
+      // In range, nothing forces a re-set — unless the record's pick now
+      // nets enough more on this capital to pay for one within a day. The
+      // daily run alone may upgrade (once a day, by construction).
+      upgrade = widthUpgrade({
+        daily: steps.length === STEPS.length, inRange: true, ticks: plan.summary.ticks,
+        pick: record?.earnings_pick || null, rows: record?.rows || [], hoursOfPrices: record?.hours_of_prices || 0,
+        valueBnb: plan.summary.value_bnb, bnbUsd, resetCostUsd: costOpts.resetCostUsd ?? record?.reset_cost?.usd ?? 0,
+      });
+      if (!upgrade.upgrade) return { ...plan.summary, acted: false, why: plan.no, upgrade: upgrade.why };
+      if (plan.width == null || !plan.ticks) return { ...plan.summary, acted: false, why: plan.no, upgrade: 'the plan carries no new ticks to upgrade into' };
+    } else if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
+    if (upgrade && upgrade.upgrade) {
+      if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
+      if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };
+      try {
+        const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
+        return { ...plan.summary, acted: true, upgrade: upgrade.why, upgraded_from_pct: upgrade.from, upgraded_to_pct: upgrade.to, gain_usd_per_day: upgrade.gain_usd_per_day, ...done };
+      } catch (e) {
+        return { ...plan.summary, acted: true, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      }
     }
-    if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
     const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
     const waitNote = { wait_h: waitH, wait_basis: record?.delay_test?.wait_basis || 'set' };
     if (!plan.resume) {
@@ -12317,6 +12470,15 @@ function whyOf(steps) {
 // looked at them. A full run replaces the daily record as before.
 async function record(env, entry, partial = false) {
   const st = await readState(env);
+  // A dry run reads and decides but signs nothing, and it is not the day's
+  // run: on 2026-09-10 a hand-triggered dry run at 04:41 replaced the 04:23
+  // daily record, the series had no point for it, and the 05:00 card was
+  // held back. A dry run is kept as `last_dry` and touches nothing else.
+  if (entry.dry) {
+    st.last_dry = entry;
+    await env.AGENT.put(KV_KEY, JSON.stringify(st));
+    return entry;
+  }
   // Every real action and every error is kept; quiet days are summarised as
   // the last check so the history is a history of what happened, not of the
   // cron firing.

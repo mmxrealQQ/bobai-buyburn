@@ -28,7 +28,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_COSTS_PCT, DEFAULT_GAS_USD_PER_SWAP, planRebalance, REBALANCE_EVERY_DAYS, REBALANCE_BAND } from '../shared/trader-core.js';
+import { DEFAULT_COSTS_PCT, DEFAULT_GAS_USD_PER_SWAP, planRebalance, REBALANCE_EVERY_DAYS, REBALANCE_BAND, planReserve, RESERVE_TARGET_USD, RESERVE_DIP_PCT, RESERVE_MEAN_DAYS } from '../shared/trader-core.js';
 import { dailyCloses, replayAllocation, ALLOCATIONS } from './trader-slow.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -261,12 +261,92 @@ function report(capitals) {
   console.log(`Build rule (2026-09-09): live only if the sleeve is ahead of the thirds at every split. ${verdicts.map((v) => `$${v.capitalUsd}: ${v.aheadAt}/${v.of}`).join(', ')}.`);
 }
 
+// ---------------------------------------------------------------- the reserve
+// The operator's reserve (2026-09-10): new money that stays USDT and buys
+// dips — not carved out of the thirds. Replayed through planReserve, the
+// arithmetic the live tick runs, on the same daily closes. Its benchmark is
+// idle USDT (what the money would otherwise do), and the thirds are shown
+// beside it for honesty.
+export function replayReserve(closes, times, { reserveUsd = RESERVE_TARGET_USD, dipPct = RESERVE_DIP_PCT, meanDays = RESERVE_MEAN_DAYS, costsPct = DEFAULT_COSTS_PCT, gasUsd = DEFAULT_GAS_USD_PER_SWAP, from = 0, to = closes.length } = {}) {
+  let usdt = reserveUsd, lot = null;
+  let buys = 0, sells = 0, gasPaid = 0, feesPaid = 0, lotDays = 0, wins = 0;
+  const equity = [];
+  for (let i = from; i < to; i++) {
+    // The last meanDays + 1 closes up to today, per leg — what the tick sees.
+    const closesByLeg = {};
+    for (const a of ASSETS) closesByLeg[a] = closes.slice(Math.max(0, i - meanDays), i + 1).map((c) => c[a]);
+    const p = planReserve({ reserveUsd: usdt, lot, closesByLeg, dipPct, meanDays, minOrderUsd: MIN_ORDER_USD });
+    if (p.action === 'buy') {
+      const cost = swapCost(p.leg, p.usd, 'buy', costsPct, gasUsd);
+      usdt -= p.usd;
+      lot = { leg: p.leg, units: (p.usd - cost) / closes[i][p.leg], cost_usd: p.usd };
+      feesPaid += cost - gasUsd; gasPaid += gasUsd; buys++;
+    } else if (p.action === 'sell') {
+      const usd = lot.units * closes[i][lot.leg];
+      const cost = swapCost(lot.leg, usd, 'sell', costsPct, gasUsd);
+      usdt += usd - cost;
+      if (usd - cost > lot.cost_usd) wins++;
+      feesPaid += cost - gasUsd; gasPaid += gasUsd; sells++;
+      lot = null;
+    }
+    if (lot) lotDays++;
+    equity.push(usdt + (lot ? lot.units * closes[i][lot.leg] : 0));
+  }
+  const final = equity[equity.length - 1];
+  let peak = -Infinity, maxDd = 0;
+  for (const v of equity) { peak = Math.max(peak, v); maxDd = Math.max(maxDd, (peak - v) / peak); }
+  return { final, pnl: final - reserveUsd, pnlPct: (final / reserveUsd - 1) * 100, maxDdPct: maxDd * 100, buys, sells, wins, gasPaid, feesPaid, lotDays, days: to - from, open: lot ? lot.leg : null, equity };
+}
+
+export function walkForwardReserve(closes, times, { reserveUsd, trainShare = 0.6, costsPct = DEFAULT_COSTS_PCT, gasUsd = DEFAULT_GAS_USD_PER_SWAP, grid = DIP_GRID }) {
+  const split = Math.floor(closes.length * trainShare);
+  let best = null;
+  for (const dipPct of grid) {
+    const r = replayReserve(closes, times, { reserveUsd, dipPct, costsPct, gasUsd, from: 0, to: split });
+    if (!best || r.pnl > best.train.pnl) best = { dipPct, train: r };
+  }
+  const unseen = replayReserve(closes, times, { reserveUsd, dipPct: best.dipPct, costsPct, gasUsd, from: split });
+  const thirds = replayAllocation(closes, times, ALLOCATIONS['thirds'], { capitalUsd: reserveUsd, everyDays: REBALANCE_EVERY_DAYS, band: REBALANCE_BAND, costsPct, gasUsd, from: split });
+  return { ...best, unseen, thirds, splitDay: split, unseenDays: closes.length - split };
+}
+
+function reportReserve(reserveUsd) {
+  const raw = JSON.parse(fs.readFileSync(PRICES, 'utf8'));
+  const { times, closes } = dailyCloses(raw.series);
+  const split = Math.floor(closes.length * 0.6);
+  console.log(`\nThe dip reserve: $${reserveUsd} of USDT on ${closes.length} daily closes (${new Date(times[0]).toISOString().slice(0, 10)} – ${new Date(times[times.length - 1]).toISOString().slice(0, 10)})`);
+  console.log(`one lot at a time, the whole reserve, into the leg furthest under its ${RESERVE_MEAN_DAYS}-day mean by X% or more; back to USDT at the mean. Same costs and gas as the thirds. Benchmark: idle USDT (+0).`);
+  console.log(`\n${pad('X', 6)} ${rpad('6 months $', 11)} ${rpad('%', 7)} ${rpad('maxDD%', 7)} ${rpad('lots', 5)} ${rpad('won', 4)} ${rpad('days in', 8)} ${rpad('gas $', 6)} | ${rpad('unseen 40% $', 13)} ${rpad('%', 7)} ${rpad('lots', 5)} ${rpad('won', 4)} ${rpad('open', 5)}`);
+  for (const dipPct of DIP_GRID) {
+    const full = replayReserve(closes, times, { reserveUsd, dipPct });
+    const un = replayReserve(closes, times, { reserveUsd, dipPct, from: split });
+    console.log(`${pad(dipPct + '%', 6)} ${rpad(fmt(full.pnl), 11)} ${rpad(fmt(full.pnlPct, 1), 7)} ${rpad(full.maxDdPct.toFixed(1), 7)} ${rpad(full.buys, 5)} ${rpad(full.wins, 4)} ${rpad(full.lotDays, 8)} ${rpad(full.gasPaid.toFixed(2), 6)} | ${rpad(fmt(un.pnl), 13)} ${rpad(fmt(un.pnlPct, 1), 7)} ${rpad(un.buys, 5)} ${rpad(un.wins, 4)} ${rpad(un.open || '-', 5)}`);
+  }
+  const thirdsFull = replayAllocation(closes, times, ALLOCATIONS['thirds'], { capitalUsd: reserveUsd, everyDays: REBALANCE_EVERY_DAYS, band: REBALANCE_BAND });
+  const thirdsUn = replayAllocation(closes, times, ALLOCATIONS['thirds'], { capitalUsd: reserveUsd, everyDays: REBALANCE_EVERY_DAYS, band: REBALANCE_BAND, from: split });
+  console.log(`${pad('thirds', 6)} ${rpad(fmt(thirdsFull.pnl), 11)} ${rpad(fmt(thirdsFull.pnlPct, 1), 7)} ${rpad(thirdsFull.maxDdPct.toFixed(1), 7)} ${rpad('-', 5)} ${rpad('-', 4)} ${rpad('-', 8)} ${rpad(thirdsFull.gasPaid.toFixed(2), 6)} | ${rpad(fmt(thirdsUn.pnl), 13)} ${rpad(fmt(thirdsUn.pnlPct, 1), 7)} ${rpad('-', 5)} ${rpad('-', 4)} ${rpad('-', 5)}   (the same $${reserveUsd} in the thirds instead)`);
+  const wf = walkForwardReserve(closes, times, { reserveUsd });
+  const wf15 = walkForwardReserve(closes, times, { reserveUsd, costsPct: scale(DEFAULT_COSTS_PCT, 1.5), gasUsd: DEFAULT_GAS_USD_PER_SWAP * 1.5 });
+  console.log(`\nX chosen on the first 60%: ${wf.dipPct}% (train ${fmt(wf.train.pnl)}, ${wf.train.buys} lots, ${wf.train.wins} won)`);
+  console.log(`  on the unseen 40%: ${fmt(wf.unseen.pnl)} (${fmt(wf.unseen.pnlPct, 1)}%), ${wf.unseen.buys} lots, ${wf.unseen.wins} won, ${wf.unseen.lotDays} days invested of ${wf.unseen.days}, max drawdown ${wf.unseen.maxDdPct.toFixed(1)}%`);
+  console.log(`  the same $${reserveUsd} in the thirds, same days: ${fmt(wf.thirds.pnl)} (${fmt(wf.thirds.pnlPct, 1)}%)`);
+  console.log(`  with costs and gas × 1.5, chosen again: X ${wf15.dipPct}% → unseen ${fmt(wf15.unseen.pnl)}`);
+  const splits = [0.5, 0.6, 0.7, 0.8].map((s) => { const r = walkForwardReserve(closes, times, { reserveUsd, trainShare: s }); return `${Math.round(s * 100)}%: X ${r.dipPct}% ${fmt(r.unseen.pnl)} (${r.unseen.buys} lots)`; });
+  console.log(`  at every split: ${splits.join(' · ')}`);
+  const positive = [0.5, 0.6, 0.7, 0.8].filter((s) => walkForwardReserve(closes, times, { reserveUsd, trainShare: s }).unseen.pnl > 0).length;
+  console.log(`  against idle USDT the reserve is ahead at ${positive} of 4 splits. Against the thirds it is a bet on falling or choppy prices; the thirds are a bet on rising ones.`);
+  console.log(`  the live rule uses RESERVE_DIP_PCT = ${RESERVE_DIP_PCT}% (shared/trader-core.js).`);
+}
+
 // -------------------------------------------------------------------- main
 const isMain = process.argv[1] && path.resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
 if (isMain) {
   const argv = process.argv.slice(2);
   if (argv.includes('--self-test')) selfTest();
-  else {
+  else if (argv.includes('--reserve')) {
+    const i = argv.indexOf('--reserve');
+    reportReserve(Number(argv[i + 1]) || RESERVE_TARGET_USD);
+  } else {
     const i = argv.indexOf('--capital');
     const capitals = i >= 0 ? [Number(argv[i + 1])] : [167, 500, 1000];
     report(capitals);

@@ -43,7 +43,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { TRADING_LEGS, zScores, planRebalance, profitTake, ALLOCATION, REBALANCE_EVERY_DAYS, REBALANCE_BAND, DEFAULT_MIN_ORDER_USD, DEFAULT_MAX_ORDER_USD } from '../shared/trader-core.js';
+import { TRADING_LEGS, zScores, planRebalance, profitTake, planReserve, ALLOCATION, REBALANCE_EVERY_DAYS, REBALANCE_BAND, DEFAULT_MIN_ORDER_USD, DEFAULT_MAX_ORDER_USD, RESERVE_TARGET_USD, RESERVE_DIP_PCT, RESERVE_MEAN_DAYS } from '../shared/trader-core.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIR = path.join(ROOT, 'data', 'trader');
@@ -137,13 +137,18 @@ function readState() {
 function writeState(st) { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(STATE, JSON.stringify(st, null, 1)); }
 const zeros = () => Object.fromEntries(TRADING_LEGS.map((l) => [l, 0]));
 function freshState(capital) {
-  return { mode: 'allocation', capital_usd: capital, pot_usdt: 0, units: zeros(), cost_usd: zeros(), high_water_usd: capital, last_rebalance_at: null, profit_pool_usd: 0, bobai: { units: 0, spent_usd: 0, buys: 0 }, realised_usd: 0, fees_measured: [], started_at: now() };
+  return { mode: 'allocation', capital_usd: capital, pot_usdt: 0, units: zeros(), cost_usd: zeros(), high_water_usd: capital, last_rebalance_at: null, profit_pool_usd: 0, bobai: { units: 0, spent_usd: 0, buys: 0 }, realised_usd: 0, fees_measured: [], reserve_usd: 0, reserve_lot: null, started_at: now() };
 }
 // The state the hourly agent left (2026-09-08/09) becomes the slow machine's:
 // its pot is the cash, an open position (there was none) would be the leg's
 // units at what it cost, and the high-water mark starts at what it has now.
 function migrate(st) {
-  if (st.mode === 'allocation') return st;
+  if (st.mode === 'allocation') {
+    // The reserve fields arrived on 2026-09-10; an older state simply has none.
+    if (st.reserve_usd == null) st.reserve_usd = 0;
+    if (st.reserve_lot === undefined) st.reserve_lot = null;
+    return st;
+  }
   const out = { ...freshState(st.capital_usd), pot_usdt: st.pot_usdt, profit_pool_usd: st.profit_pool_usd || 0, bobai: st.bobai || { units: 0, spent_usd: 0, buys: 0 }, realised_usd: st.realised_usd || 0, fees_measured: st.fees_measured || [], started_at: st.started_at || now() };
   if (st.position && st.position.leg) { out.units[st.position.leg] = st.position.units; out.cost_usd[st.position.leg] = st.position.spent_usd; }
   out.high_water_usd = +(out.pot_usdt + TRADING_LEGS.reduce((s, l) => s + out.cost_usd[l], 0)).toFixed(2);
@@ -285,7 +290,13 @@ const pct = (x, of) => (of > 0 ? (x / of * 100).toFixed(1) + '%' : '—');
 // is worth, and per token its value, what it cost and the P&L in dollars and
 // percent; then $BOBAI held, cash, realised and the total against the
 // deposits; then what happened in the last 24 h. Pure.
-export function formatDailyReport({ date, totalNow, capital, mark, vsCapital, vsMark, cash, valued, cost = {}, pool, bobai, bobaiMark, realised, done, nextPass, monthly, unpriced }) {
+export function formatDailyReport({ date, totalNow, capital, mark, vsCapital, vsMark, cash, valued, cost = {}, pool, bobai, bobaiMark, realised, done, nextPass, monthly, unpriced, reserve = null }) {
+  // The dip reserve: cash that waits for a leg RESERVE_DIP_PCT under its
+  // mean, or the lot it holds. Absent when the operator has not funded one.
+  const reserveLine = !reserve || (!(reserve.usd > 0) && !reserve.lot) ? null
+    : reserve.lot
+      ? `🎯 Dip lot: <b>${LEG_MARK[reserve.lot.leg] || '•'} ${reserve.lot.leg} $${Number(reserve.lotValue ?? reserve.lot.cost_usd).toFixed(2)}</b>  ·  cost $${Number(reserve.lot.cost_usd).toFixed(2)}${reserve.lot.dip_pct != null ? `  ·  bought ${reserve.lot.dip_pct}% under the mean` : ''}  ·  sells at the ${RESERVE_MEAN_DAYS}-day mean`
+      : `🎯 Dip reserve: <b>$${Number(reserve.usd).toFixed(2)}</b>  ·  waits for a leg ${RESERVE_DIP_PCT}% under its ${RESERVE_MEAN_DAYS}-day mean`;
   const rule = '';
   const legs = TRADING_LEGS.map((l) => ({ l, v: valued[l], c: Number(cost[l] || 0) })).sort((x, y) => (y.v ?? -1) - (x.v ?? -1));
   const pnl = (v, c) => (v == null ? null : v - c);
@@ -305,6 +316,7 @@ export function formatDailyReport({ date, totalNow, capital, mark, vsCapital, vs
     `📊 <b>Holdings</b>  <i>(value · cost · P&L)</i>`,
     ...holdings,
     `💵 Cash: $${Number(cash).toFixed(2)}${pool >= 1 ? `  ·  of it profit pool $${Number(pool).toFixed(2)}` : ''}`,
+    ...(reserveLine ? [reserveLine] : []),
     rule,
     `📈 <b>P&L</b>`,
     `📈 Unrealised on the holdings: ${signed(unrealised)}`,
@@ -366,7 +378,10 @@ async function tick({ daily = false } = {}) {
     const received = Math.max(0, bal(by, p.toSym) - p.before.to);
     const spent = Math.max(0, p.before.from - bal(by, p.fromSym));
     if (received > 0 && (!p.quoted || received >= p.quoted * 0.5)) {
-      if (p.fromSym === 'USDT' && TRADING_LEGS.includes(p.toSym)) { st.units[p.toSym] += received; st.cost_usd[p.toSym] = r2(st.cost_usd[p.toSym] + spent); log({ kind: 'bought', leg: p.toSym, units: received, spent_usd: spent, price_usd: spent / received, why: 'rebalance (pending order, booked from the balance)', orderId: p.orderId }); done.push(`booked the pending buy: ${money(spent)} of ${p.toSym}`); }
+      const forReserve = typeof p.why === 'string' && p.why.startsWith('reserve:');
+      if (forReserve && p.fromSym === 'USDT' && TRADING_LEGS.includes(p.toSym)) { st.reserve_lot = { leg: p.toSym, units: received, cost_usd: r2(spent), at: p.at, dip_pct: null }; st.reserve_usd = r2(Math.max(0, st.reserve_usd - spent)); log({ kind: 'reserve_bought', leg: p.toSym, units: received, spent_usd: spent, why: 'pending order, booked from the balance', orderId: p.orderId }); done.push(`booked the pending dip lot: ${money(spent)} of ${p.toSym}`); }
+      else if (forReserve && p.toSym === 'USDT' && st.reserve_lot && p.fromSym === st.reserve_lot.leg) { const basis = st.reserve_lot.cost_usd; st.reserve_usd = r2(st.reserve_usd + received); st.realised_usd = r2(st.realised_usd + received - basis); log({ kind: 'reserve_sold', leg: p.fromSym, units: spent, received_usd: received, basis_usd: basis, net_usd: r2(received - basis), why: 'pending order, booked from the balance', orderId: p.orderId }); st.reserve_lot = null; done.push(`booked the pending dip sale: ${money(received)} back to the reserve`); }
+      else if (p.fromSym === 'USDT' && TRADING_LEGS.includes(p.toSym)) { st.units[p.toSym] += received; st.cost_usd[p.toSym] = r2(st.cost_usd[p.toSym] + spent); log({ kind: 'bought', leg: p.toSym, units: received, spent_usd: spent, price_usd: spent / received, why: 'rebalance (pending order, booked from the balance)', orderId: p.orderId }); done.push(`booked the pending buy: ${money(spent)} of ${p.toSym}`); }
       else if (p.toSym === 'USDT' && TRADING_LEGS.includes(p.fromSym)) { const share = st.units[p.fromSym] > 0 ? Math.min(1, spent / st.units[p.fromSym]) : 1; const basis = r2(st.cost_usd[p.fromSym] * share); st.units[p.fromSym] = Math.max(0, st.units[p.fromSym] - spent); st.cost_usd[p.fromSym] = r2(st.cost_usd[p.fromSym] - basis); st.realised_usd = r2(st.realised_usd + received - basis); log({ kind: 'sold', leg: p.fromSym, units: spent, received_usd: received, basis_usd: basis, net_usd: r2(received - basis), why: 'rebalance (pending order, booked from the balance)', orderId: p.orderId }); done.push(`booked the pending sale: ${money(received)} of ${p.fromSym}`); }
       else if (p.toSym === 'BOBAI') { st.bobai.units += received; st.bobai.spent_usd = r2(st.bobai.spent_usd + spent); st.bobai.buys += 1; st.profit_pool_usd = r2(Math.max(0, st.profit_pool_usd - spent)); log({ kind: 'bobai_bought', received, spent_usd: spent, why: 'pending order, booked from the balance', orderId: p.orderId }); done.push(`booked the pending BOBAI buy: ${money(spent)}`); }
       else log({ kind: 'pending_resolved', ...p, received, spent });
@@ -419,17 +434,26 @@ async function tick({ daily = false } = {}) {
   const usdtNow = bal(by, 'USDT');
   if (usdtNow > known + 1) {
     const add = r2(usdtNow - known);
-    lines.push(`deposit: ${money(add)} USDT beyond the record joins the pot`);
-    log({ kind: 'capital_raised', from: st.capital_usd, to: r2(st.capital_usd + add), high_water_from: st.high_water_usd, high_water_to: r2(st.high_water_usd + add) });
+    // The dip reserve fills first, up to its target; the rest joins the thirds.
+    const toReserve = r2(Math.min(add, Math.max(0, RESERVE_TARGET_USD - st.reserve_usd - (st.reserve_lot ? st.reserve_lot.cost_usd : 0))));
+    lines.push(`deposit: ${money(add)} USDT beyond the record joins the pot${toReserve > 0 ? ` — ${money(toReserve)} of it fills the dip reserve` : ''}`);
+    log({ kind: 'capital_raised', from: st.capital_usd, to: r2(st.capital_usd + add), high_water_from: st.high_water_usd, high_water_to: r2(st.high_water_usd + add), to_reserve: toReserve });
     st.capital_usd = r2(st.capital_usd + add); st.high_water_usd = r2(st.high_water_usd + add);
-    if (CONFIRM) await notify(`💰 <b>Trader: deposit taken in</b> — ${money(add)} USDT joins the pot; capital on record ${money(st.capital_usd)}.`);
+    st.reserve_usd = r2(st.reserve_usd + toReserve);
+    if (CONFIRM) await notify(`💰 <b>Trader: deposit taken in</b> — ${money(add)} USDT${toReserve > 0 ? `; ${money(toReserve)} of it is the dip reserve (buys a leg ${RESERVE_DIP_PCT}% under its ${RESERVE_MEAN_DAYS}-day mean, sells at the mean)${add - toReserve > 0.01 ? `, ${money(r2(add - toReserve))} joins the thirds` : ''}` : ' joins the thirds'}; capital on record ${money(st.capital_usd)}.`);
   }
   st.pot_usdt = r2(Math.max(0, usdtNow - st.profit_pool_usd));
+  // The reserve is cash the thirds never see: it is not in their holdings.
+  // It cannot exceed the cash there is (a sale that did not arrive, say).
+  st.reserve_usd = r2(Math.min(st.reserve_usd, st.pot_usdt));
   // Valuation. A leg without a price is not valued and not traded today.
-  const holdings = { USDT: st.pot_usdt };
+  const holdings = { USDT: r2(Math.max(0, st.pot_usdt - st.reserve_usd)) };
   const unpriced = [];
   for (const leg of TRADING_LEGS) { const p = priceOf(leg); if (p > 0) holdings[leg] = r2(st.units[leg] * p); else { holdings[leg] = 0; if (st.units[leg] > 0) unpriced.push(leg); } }
-  const total = r2(Object.values(holdings).reduce((a, b) => a + b, 0));
+  // The reserve's worth (cash, or its open lot at today's price) counts
+  // towards the pot against the high-water mark — a deposit raised the mark.
+  const reserveWorth = r2(st.reserve_usd + (st.reserve_lot && priceOf(st.reserve_lot.leg) > 0 ? st.reserve_lot.units * priceOf(st.reserve_lot.leg) : (st.reserve_lot ? st.reserve_lot.cost_usd : 0)));
+  const total = r2(Object.values(holdings).reduce((a, b) => a + b, 0) + reserveWorth);
   // THE PLAN. Monthly: the full pass — profit take first, then every sleeve
   // back inside its band. Any other day: a top-up pass that invests cash
   // that arrived (a deposit, a sale's leftover) and sells nothing.
@@ -495,6 +519,49 @@ async function tick({ daily = false } = {}) {
     st.high_water_usd = take.high_water_after;
     st.last_rebalance_at = now();
   } else if (monthly && !CONFIRM) lines.push('(dry: the monthly pass is not written down)');
+  // THE DIP RESERVE. Daily closes (the hour stamped 00:00 UTC) of the live
+  // series, the last RESERVE_MEAN_DAYS + 1 per leg — the same closes the
+  // measurement used. One order at most: the whole reserve into the leg
+  // furthest under its mean by RESERVE_DIP_PCT, or the open lot back to USDT
+  // at the mean. A lot's gain or loss stays in the reserve; a deposit refills
+  // it up to the target.
+  if (!unpriced.length && (st.reserve_usd >= MIN_ORDER_USD || st.reserve_lot)) {
+    const closesByLeg = {};
+    for (const leg of TRADING_LEGS) closesByLeg[leg] = (prices.series[leg]?.usd || []).filter(([ts]) => ts % 86_400_000 === 0).slice(-(RESERVE_MEAN_DAYS + 1)).map(([, px]) => Number(px));
+    const rp = planReserve({ reserveUsd: st.reserve_usd, lot: st.reserve_lot, closesByLeg, dipPct: RESERVE_DIP_PCT, meanDays: RESERVE_MEAN_DAYS, minOrderUsd: MIN_ORDER_USD });
+    lines.push(`reserve: ${rp.why}`);
+    try {
+      if (rp.action === 'buy') {
+        const r = swap('USDT', rp.leg, rp.usd, `reserve: ${rp.why}`);
+        if (!r.dry) {
+          st.reserve_lot = { leg: rp.leg, units: r.received, cost_usd: r2(r.spent), at: now(), dip_pct: rp.dip_pct };
+          st.reserve_usd = r2(Math.max(0, st.reserve_usd - r.spent));
+          if (r.costPct != null) st.fees_measured.push({ at: now(), pair: `USDT->${rp.leg}`, cost_vs_quote_pct: r.costPct });
+          log({ kind: 'reserve_bought', leg: rp.leg, units: r.received, spent_usd: r.spent, dip_pct: rp.dip_pct, txHash: r.txHash });
+          done.push(`dip lot: ${money(r.spent)} of ${rp.leg} bought ${rp.dip_pct}% under its ${RESERVE_MEAN_DAYS}-day mean`);
+          await notify(`🎯 <b>Trader: the reserve bought a dip</b> — ${money(r.spent)} of ${rp.leg}, ${rp.dip_pct}% under its ${RESERVE_MEAN_DAYS}-day mean. It goes back to USDT at the first daily close at or above the mean. <a href="https://bscscan.com/tx/${r.txHash}">tx</a>`);
+          orders++;
+        }
+      } else if (rp.action === 'sell') {
+        const qty = Math.min(bal(by, rp.leg), Math.floor(st.reserve_lot.units * 1e6) / 1e6);
+        const r = swap(rp.leg, 'USDT', qty, `reserve: ${rp.why}`);
+        if (!r.dry) {
+          const basis = st.reserve_lot.cost_usd, net = r2(r.received - basis);
+          st.reserve_usd = r2(st.reserve_usd + r.received); st.realised_usd = r2(st.realised_usd + net);
+          if (r.costPct != null) st.fees_measured.push({ at: now(), pair: `${rp.leg}->USDT`, cost_vs_quote_pct: r.costPct });
+          log({ kind: 'reserve_sold', leg: rp.leg, units: r.spent, received_usd: r.received, basis_usd: basis, net_usd: net, held_since: st.reserve_lot.at, txHash: r.txHash });
+          done.push(`dip lot sold: ${money(r.received)} of ${rp.leg} back to the reserve (${net >= 0 ? '+' : ''}${money(net)})`);
+          await notify(`🎯 <b>Trader: the dip lot is back in USDT</b> — ${rp.leg} closed at its ${RESERVE_MEAN_DAYS}-day mean; ${money(r.received)} back in the reserve, ${net >= 0 ? '+' : ''}${money(net)} against what it cost. <a href="https://bscscan.com/tx/${r.txHash}">tx</a>`);
+          st.reserve_lot = null;
+          orders++;
+        }
+      }
+    } catch (e) {
+      if (e instanceof PendingOrder) { st.pending = e.pending; st.last_tick = now(); writeState(st); await notify(`⏳ <b>Trader: a reserve order is still pending</b> — ${e.pending.qty} ${e.pending.fromSym} → ${e.pending.toSym} (${e.pending.orderId}). The next tick books what arrived.`); }
+      throw e;
+    }
+    if (CONFIRM) { by = balances(); st.pot_usdt = r2(Math.max(0, bal(by, 'USDT') - st.profit_pool_usd)); }
+  } else if (st.reserve_usd > 0) lines.push(`reserve: $${st.reserve_usd.toFixed(2)} waits — under the $${MIN_ORDER_USD} minimum until the next deposit`);
   // THE PROFIT RULE. The pool waits in USDT and buys BOBAI when BOBAI itself
   // dips (z ≤ −1 over 168 h). Bought, held, never sold.
   if (st.profit_pool_usd >= 1) {
@@ -525,19 +592,22 @@ async function tick({ daily = false } = {}) {
   // reasoning lines stay in the log and on the console.
   const valued = {}; let totalNow = st.pot_usdt;
   for (const leg of TRADING_LEGS) { const p = priceOf(leg); valued[leg] = p > 0 ? r2(st.units[leg] * p) : null; totalNow += valued[leg] || 0; }
-  totalNow = r2(totalNow);
+  // The open dip lot is not in the pot's cash nor in the thirds' units.
+  const lotValue = st.reserve_lot ? (priceOf(st.reserve_lot.leg) > 0 ? r2(st.reserve_lot.units * priceOf(st.reserve_lot.leg)) : st.reserve_lot.cost_usd) : 0;
+  totalNow = r2(totalNow + lotValue);
+  const reserve = { usd: st.reserve_usd, lot: st.reserve_lot, lotValue };
   const bobaiMark = by.BOBAI ? by.BOBAI.value : 0;
   const nextPass = st.last_rebalance_at ? new Date(Date.parse(st.last_rebalance_at) + REBALANCE_EVERY_DAYS * 86_400_000).toISOString().slice(0, 10) : 'today';
   const vsCapital = r2(totalNow - st.capital_usd), vsMark = r2(totalNow - st.high_water_usd);
   const legLine = TRADING_LEGS.map((l) => `${l} ${valued[l] == null ? '(no price)' : money(valued[l])}`).join(' · ');
-  const report = formatDailyReport({ date: now().slice(0, 10), totalNow, capital: st.capital_usd, mark: st.high_water_usd, vsCapital, vsMark, cash: st.pot_usdt, valued, cost: st.cost_usd, pool: st.profit_pool_usd, bobai: st.bobai, bobaiMark, realised: st.realised_usd, done: recentDone(done), nextPass, monthly, unpriced });
+  const report = formatDailyReport({ date: now().slice(0, 10), totalNow, capital: st.capital_usd, mark: st.high_water_usd, vsCapital, vsMark, cash: st.pot_usdt, valued, cost: st.cost_usd, pool: st.profit_pool_usd, bobai: st.bobai, bobaiMark, realised: st.realised_usd, done: recentDone(done), nextPass, monthly, unpriced, reserve });
   // The card goes out with the daily tick only. A deposit-watch tick and a
   // restart tick log the same lines and say nothing in the chat; their
   // orders are announced as events when they happen.
   if (CONFIRM && daily) await notify(report);
   for (const l of lines) say('  ' + l);
   say(`  ${legLine} · cash ${st.pot_usdt.toFixed(2)} · pot ${totalNow.toFixed(2)} vs ${st.capital_usd.toFixed(2)} in, mark ${st.high_water_usd.toFixed(2)} · pool ${st.profit_pool_usd.toFixed(2)} · BOBAI ${st.bobai.units} · orders today ${orders} · next monthly pass ${nextPass}`);
-  log({ kind: 'tick', dry: !CONFIRM, monthly, pot_usdt: st.pot_usdt, units: st.units, valued, total_usd: totalNow, capital_usd: st.capital_usd, high_water_usd: st.high_water_usd, profit_pool_usd: st.profit_pool_usd, bobai: st.bobai, orders, lines });
+  log({ kind: 'tick', dry: !CONFIRM, monthly, pot_usdt: st.pot_usdt, units: st.units, valued, total_usd: totalNow, capital_usd: st.capital_usd, high_water_usd: st.high_water_usd, profit_pool_usd: st.profit_pool_usd, reserve_usd: st.reserve_usd, reserve_lot: st.reserve_lot, bobai: st.bobai, orders, lines });
 }
 
 if (has('--notify-test')) { const ok = await notify('✅ Trader on the server can reach this chat. Reports: every order as it happens, a summary daily at 00:20 UTC.'); say(ok ? 'sent' : 'not sent (no secret, or the route refused)'); process.exit(ok ? 0 : 1); }

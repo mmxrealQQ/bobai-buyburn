@@ -19,7 +19,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { LEGS, TRADING_LEGS, DEFAULT_COSTS_PCT, DEFAULT_GAS_USD_PER_SWAP, NEVER_SELL, PARAM_GRID, zScores, replayLeg, walkForward, signal, alignTo, replayRotation, planRebalance, profitTake, ALLOCATION } from '../shared/trader-core.js';
+import { LEGS, TRADING_LEGS, DEFAULT_COSTS_PCT, DEFAULT_GAS_USD_PER_SWAP, NEVER_SELL, PARAM_GRID, zScores, replayLeg, walkForward, signal, alignTo, replayRotation, planRebalance, profitTake, ALLOCATION, planReserve, trailingMeanOf, RESERVE_DIP_PCT, RESERVE_MEAN_DAYS, RESERVE_TARGET_USD } from '../shared/trader-core.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PRICES = path.join(ROOT, 'data', 'trader', 'prices.json');
@@ -121,6 +121,26 @@ if (has('--self-test')) {
   is('rotation: gas lowers the realised profit and the BOBAI bought, trade count unchanged', rotG.closed_trades === rot.closed_trades && rotG.realised_profit_usd < rot.realised_profit_usd && rotG.bobai.units < rot.bobai.units);
   const tiny = replayLeg(osc, times(osc.length), { window: 24, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 }, { legUsd: 0.3, costsPct: { buy: 0, sell: 0 }, gasUsd: 0.35 });
   is('a leg smaller than one swap of gas never trades', tiny.closed === 0 && tiny.open === 0);
+  // THE DIP RESERVE (2026-09-10): one lot, the whole reserve, the deepest dip,
+  // back at the mean; never under the minimum, never two orders.
+  const seven = [100, 100, 100, 100, 100, 100, 100];
+  is('trailing mean: the seven closes before the last, not the last', trailingMeanOf([...seven, 50]) === 100 && trailingMeanOf([90, ...seven, 50]) === 100);
+  is('trailing mean: null under eight closes', trailingMeanOf(seven) === null && trailingMeanOf(null) === null);
+  const flatLegs = { BNB: [...seven, 100], CAKE: [...seven, 100], BOB: [...seven, 100] };
+  is('flat closes: the reserve waits', planReserve({ reserveUsd: 50, closesByLeg: flatLegs }).action === null);
+  const dipLegs = { BNB: [...seven, 91], CAKE: [...seven, 88], BOB: [...seven, 95] };
+  const buy = planReserve({ reserveUsd: 50, closesByLeg: dipLegs, dipPct: 8 });
+  is('two legs under 8%: the deepest (CAKE −12%) gets the whole reserve', buy.action === 'buy' && buy.leg === 'CAKE' && buy.usd === 50 && buy.dip_pct === 12);
+  is('a 7.9% dip is not an 8% dip', planReserve({ reserveUsd: 50, closesByLeg: { ...flatLegs, BNB: [...seven, 92.1] }, dipPct: 8 }).action === null);
+  is('a reserve under the $10 minimum buys nothing, whatever the dip', planReserve({ reserveUsd: 9.99, closesByLeg: dipLegs, dipPct: 8 }).action === null);
+  is('cents are floored, never rounded up past the cash', planReserve({ reserveUsd: 50.999, closesByLeg: dipLegs, dipPct: 8 }).usd === 50.99);
+  const lot = { leg: 'CAKE', units: 0.55, cost_usd: 50 };
+  is('an open lot under the mean waits, even when another leg dips', planReserve({ reserveUsd: 0, lot, closesByLeg: { ...dipLegs, CAKE: [...seven, 95] }, dipPct: 8 }).action === null);
+  is('an open lot at the mean is sold', planReserve({ reserveUsd: 0, lot, closesByLeg: { ...dipLegs, CAKE: [...seven, 100] } }).action === 'sell');
+  is('an open lot above the mean is sold', planReserve({ reserveUsd: 0, lot, closesByLeg: { ...dipLegs, CAKE: [...seven, 104] } }).action === 'sell');
+  is('a falling mean sells the lot where the price meets it (the rule as measured, no profit floor)', planReserve({ reserveUsd: 0, lot, closesByLeg: { ...dipLegs, CAKE: [90, 90, 90, 90, 90, 90, 90, 90] } }).action === 'sell');
+  is('the lot waits without eight closes to judge by', planReserve({ reserveUsd: 0, lot, closesByLeg: { ...dipLegs, CAKE: [100, 100, 100] } }).action === null);
+  is('the live dip is the measured one: 8% under a 7-day mean, $50 target', RESERVE_DIP_PCT === 8 && RESERVE_MEAN_DAYS === 7 && RESERVE_TARGET_USD === 50);
   console.log(`\n${n - bad}/${n} checks behave in both directions`);
   process.exit(bad ? 1 : 0);
 }

@@ -63,7 +63,7 @@ hold, parameters chosen by walk-forward and refit weekly. Its evidence is below 
 | chosen parameters | `data/trader/picks.json` (written by `--backtest`) |
 | the live agent: bootstrap, tick, loop, re-measure, reports | `scripts/trader-live.mjs` |
 | the slow backtest (allocation × cadence, walk-forward, costs × 1.5) | `scripts/trader-slow.mjs` |
-| the cash sleeve, measured and not built (25 % USDT buying dips) | `scripts/trader-sleeve.mjs` |
+| the cash sleeve, measured and not built (25 % USDT buying dips); `--reserve 50` measures the dip reserve | `scripts/trader-sleeve.mjs` |
 | its state and log (on the server) | `data/trader/state.json`, `data/trader/log.jsonl` |
 | the server | Hetzner Cloud `bobai-trader`, Helsinki, `2.29.45.27` — see the memory note `reference_trader_vps` |
 | the wallet | Binance Agentic Wallet `0xcCCf2F2198e229027f6F61379a36E82D8F45958c` (BSC), signed in on the server for 365 days, CLI `baw` |
@@ -178,6 +178,43 @@ against 24.5%. That is insurance, paid for in return; it is not what the brief a
 
 Not built. Deposits keep going to the thirds through the top-up pass. If cash is ever wanted it
 should be for a stated reason (a drawdown ceiling), not for return, and this is its price.
+
+## The dip reserve (2026-09-10, live)
+
+The operator wants stables for dips and is sending $50 USDT for that. A carve-out of the
+thirds was measured and refused (above); a reserve is different money: it stays USDT by the
+operator's decision, so its benchmark is idle USDT, not the thirds. Rule (`planReserve` in
+`shared/trader-core.js`, the tick and the measurement run the same function): one lot at a
+time, the whole reserve, into the leg furthest under its trailing 7-day mean of daily closes
+when that is 8% or more under; back to USDT at the first daily close at or above the mean.
+Deposits fill the reserve up to $50 before they top up the thirds; a lot's gain or loss stays
+in the reserve; the thirds never see it (it is not in their holdings). One order at most per
+tick; a pending reserve order is booked from the balance like any other.
+
+Measured on the same 180 daily closes (`scripts/trader-sleeve.mjs --reserve 50`):
+
+| X | 6 months | lots / won | unseen 72 d | lots / won |
+|---|---|---|---|---|
+| 5% | +14.71 | 12 / 8 | −4.80 | 3 / 1 |
+| 8% | +25.17 | 9 / 7 | +4.86 | 3 / 2 |
+| 10% | +22.22 | 5 / 4 | +0.00 | 0 / 0 |
+| the same $50 in the thirds | +18.64 | — | +18.85 | — |
+
+Chosen blind on the first 108 days the pick is 10%, and a 10% dip never came in the last 72,
+so the blind result is exactly zero at every split. 8% is the operator's rule by judgment:
+more lots, seven of nine won over six months, it fires in the unseen part and nets there.
+Read honestly: the reserve is a bet on falling or choppy prices and the thirds a bet on rising
+ones; on this rising half-year the thirds would have earned four times as much with the same
+$50. Costs: a round trip is ~1.5% plus $0.70 of gas, about 3% of a $50 lot, which is why
+nothing under 8% is worth buying. Yield on the waiting USDT (Lista 5%, Venus 2.7% through
+the wallet's DeFi commands) is $0.23 a month on $50 — under one deposit's gas, not built.
+
+## The server (2026-09-10)
+
+Hetzner CX22-class, 1 vCPU / 2 GB, load 0.03, the trader is the only service. It exists
+because the Agentic Wallet's CLI needs a signed-in host that Cloudflare Workers cannot be;
+everything that needs the wallet to act belongs here (the thirds, the reserve, a DeFi step
+if one is ever measured worth it), and nothing that does not.
 
 ## Live since
 

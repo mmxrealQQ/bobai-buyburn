@@ -409,6 +409,61 @@ export const REBALANCE_BAND = 0.2;
 export const DEFAULT_MIN_ORDER_USD = 10;
 export const DEFAULT_MAX_ORDER_USD = 1000;
 
+// THE DIP RESERVE (2026-09-10). The operator wants stables for dips ("der
+// trader braucht ja stables für die dips"). Carving a quarter of the thirds
+// out as cash was measured and refused (scripts/trader-sleeve.mjs: ten points
+// behind at every split — cash drag in a rising quarter). A reserve is not a
+// carve-out: it is new money that stays USDT by the operator's decision, and
+// the only question is whether it does better buying dips than sitting idle.
+// Rule: one lot at a time, the whole reserve, into the leg furthest under its
+// trailing 7-day mean of daily closes when that is at least RESERVE_DIP_PCT
+// under; back to USDT at the first daily close at or above that mean. Deposits
+// fill the reserve up to RESERVE_TARGET_USD before they top up the thirds.
+// The thirds never see the reserve: it is not in their holdings.
+export const RESERVE_TARGET_USD = 50;
+export const RESERVE_MEAN_DAYS = 7;
+export const RESERVE_DIP_PCT = 8; // measured 2026-09-10, scripts/trader-sleeve.mjs --reserve
+
+// The trailing mean of the n closes before the last one (today is not in it).
+export function trailingMeanOf(closes, n = RESERVE_MEAN_DAYS) {
+  if (!Array.isArray(closes) || closes.length < n + 1) return null;
+  const w = closes.slice(-(n + 1), -1);
+  return w.reduce((s, x) => s + x, 0) / n;
+}
+
+/**
+ * planReserve — pure. What the reserve does at this daily close.
+ *   reserveUsd: the cash the reserve holds (USDT).
+ *   lot: { leg, units, cost_usd } or null — the open lot.
+ *   closesByLeg: { BNB: [...], CAKE: [...], BOB: [...] } daily closes, oldest
+ *                first, the last one today's; at least meanDays + 1 each.
+ * Returns { action: 'sell', leg, why } | { action: 'buy', leg, usd, dip_pct, why }
+ *       | { action: null, why }. Never more than one order.
+ */
+export function planReserve({ reserveUsd = 0, lot = null, closesByLeg = {}, dipPct = RESERVE_DIP_PCT, meanDays = RESERVE_MEAN_DAYS, minOrderUsd = DEFAULT_MIN_ORDER_USD } = {}) {
+  const r2 = (x) => Math.round(x * 100) / 100;
+  if (lot && lot.units > 0) {
+    const c = closesByLeg[lot.leg];
+    const m = trailingMeanOf(c, meanDays);
+    if (m == null) return { action: null, why: `the lot in ${lot.leg} waits: fewer than ${meanDays + 1} daily closes to judge it by` };
+    const px = c[c.length - 1];
+    if (px >= m) return { action: 'sell', leg: lot.leg, why: `${lot.leg} closed at ${px} — at or above its ${meanDays}-day mean of ${r2(m)}: the lot goes back to USDT` };
+    return { action: null, why: `the lot in ${lot.leg} waits: ${px} is still ${r2((1 - px / m) * 100)}% under its ${meanDays}-day mean of ${r2(m)}` };
+  }
+  if (!(reserveUsd >= minOrderUsd)) return { action: null, why: `the reserve holds $${r2(reserveUsd)}, under the $${minOrderUsd} minimum — nothing to buy a dip with` };
+  let best = null;
+  for (const leg of TRADING_LEGS) {
+    const c = closesByLeg[leg];
+    const m = trailingMeanOf(c, meanDays);
+    if (m == null) continue;
+    const px = c[c.length - 1];
+    const dip = (1 - px / m) * 100;
+    if (dip >= dipPct && (!best || dip > best.dip)) best = { leg, dip, px, m };
+  }
+  if (!best) return { action: null, why: `no leg closed ${dipPct}% or more under its ${meanDays}-day mean — the reserve waits in USDT` };
+  return { action: 'buy', leg: best.leg, usd: Math.floor(reserveUsd * 100) / 100, dip_pct: r2(best.dip), why: `${best.leg} closed at ${best.px}, ${r2(best.dip)}% under its ${meanDays}-day mean of ${r2(best.m)} — the reserve buys the dip` };
+}
+
 /**
  * planRebalance — pure. What has to be bought and sold to bring the holdings
  * to the target weights.

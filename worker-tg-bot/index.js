@@ -2048,7 +2048,10 @@ export function formatLpDailyReport(rec, series, pools = null) {
   const putIn = n(value.capital_total_bnb) || (n(value.start) + n(value.added_by_hand_bnb) + n(sum.deposits_put_in_bnb) + n(sum.income_put_in_bnb));
   const sources = [`start ${f4(value.start)}`];
   if (n(value.added_by_hand_bnb) > 0) sources.push(`by hand ${f4(value.added_by_hand_bnb)}`);
-  if (n(sum.deposits_put_in_bnb) > 0) sources.push(`from the tax ${f4(sum.deposits_put_in_bnb)}`);
+  // What the deposit watch took in: the operator's transfers and the tax's
+  // share alike — the wallet cannot tell them apart, so the card does not
+  // claim to (2026-09-10: "from the tax" named the operator's own $50).
+  if (n(sum.deposits_put_in_bnb) > 0) sources.push(`deposited ${f4(sum.deposits_put_in_bnb)}`);
   if (n(sum.income_put_in_bnb) > 0) sources.push(`from AI income ${f4(sum.income_put_in_bnb)}`);
   const changePct = n(value.change_pct);
   const bobaiBnb = n(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb);

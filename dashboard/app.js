@@ -1080,10 +1080,11 @@ function fillLpPortfolio(){
     const holdings = [
       li('🥞', esc(m.pool.label || 'the pool') + (m.pool.position ? ' · #' + esc(m.pool.position) : '') + (range ? ' · ' + range : '')),
       li('🥞', 'In the position: <b>' + f4(h.position_bnb) + ' BNB</b>' + (n(h.fees_owed_bnb) > 0 ? ' <span class="m">· fees owed ' + f5(h.fees_owed_bnb) + '</span>' : '')),
-      li('🧠', h.bobai_units > 0 ? '$BOBAI held: <b>' + Math.round(h.bobai_units).toLocaleString('en-US') + '</b> <span class="m">· bought with ' + f5(h.bobai_bnb) + ' BNB of fees · never sold</span>' : '$BOBAI held: <b>0</b> <span class="m">· ' + f5(h.bobai_bnb) + ' BNB of fees went into $BOBAI so far</span>'),
+      li('🧠', h.bobai_units > 0 ? '$BOBAI held: <b>' + Math.round(h.bobai_units).toLocaleString('en-US') + '</b>' + (h.bobai_usd != null ? ' <span class="m">(≈ $' + n(h.bobai_usd).toFixed(2) + ')</span>' : '') + ' <span class="m">· bought with ' + f5(h.bobai_bnb) + ' BNB of fees · never sold</span>' : '$BOBAI held: <b>0</b> <span class="m">· ' + f5(h.bobai_bnb) + ' BNB of fees went into $BOBAI so far</span>'),
       li('💵', 'Wallet: <b>' + f4(h.wallet_bnb) + ' BNB</b>' + (n(h.wallet_bnb) > 0.005 ? ' <span class="m">· goes into the position at the next run in range</span>' : '')),
     ].join('');
     const pnl = [
+      li('🔁', 'Of the fees: <b>' + f5(p.kept_working_bnb) + ' BNB</b> kept working in the position · <b>' + f5(p.into_bobai_bnb) + ' BNB</b> became <b>' + Math.round(n(p.bobai_units)).toLocaleString('en-US') + ' $BOBAI</b>, held'),
       li('📈', 'From ' + esc(p.other_token) + ' moving against BNB: <b>' + sign(p.from_price_bnb) + '</b>'),
       li('🧾', 'From fees earned: <b>' + sign(p.from_fees_bnb) + '</b>' + (p.fee_parts.length ? ' <span class="m">· ' + esc(p.fee_parts.map(x => f5(x.bnb) + ' ' + x.label).join(' · ')) + '</span>' : '')),
       li('⛽', 'Gas: <b>' + (n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0.00000') + '</b>'),
@@ -1130,20 +1131,19 @@ function fillLpSeries(){
       const pts = d && Array.isArray(d.points) ? d.points : [];
       const s = d && d.summary;
       if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 04:23 UTC run.'; return; }
-      // The sentence is the worker's (summary.sentence), the same one the
-      // Telegram daily report posts; the page only sets the numbers in bold.
-      sum.innerHTML = esc(s.sentence || '').replace(/(\d[\d.,]*%?|\d[\d.]* → \d[\d.]* BNB)/g, '<b>$1</b>');
-      const base = pts.find(p => p.value_bnb != null);
-      const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>Since start</th><th>Range</th><th>Fees owed (BNB)</th><th>Sent to buyback (BNB)</th><th>Income put in (BNB)</th><th>Did</th></tr>';
+      // One line, not the portfolio again: the portfolio above already says
+      // what went in and what came out. The table is the evidence.
+      sum.textContent = 'Since ' + String(s.since || '').slice(0, 10) + ': ' + pts.length + ' runs with a position, in range on ' + (s.days_in_range || 0) + ' of ' + (s.runs_with_a_position || 0) + '. Worth is the position in BNB; "on the capital" is that value against everything that had gone in by then — the first point, what the operator added, what the deposit watch put in — so a deposit is not a gain.';
+      const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>On the capital</th><th>Range</th><th>Fees owed (BNB)</th><th>Into $BOBAI (BNB)</th><th>Did</th></tr>';
       const rows = pts.slice().reverse().map(p => {
-        // Capital added by hand is in the value but is not a gain: since-start is net of it.
-        const chg = base && p.value_bnb != null && base.value_bnb ? ((p.value_bnb - (p.capital_added_total_bnb || 0) - base.value_bnb) / base.value_bnb) * 100 : null;
+        // The worker's own figure (series point capital_bnb / on_capital_pct); the page computes nothing.
+        const chg = p.on_capital_pct;
         return '<tr><td>' + esc(String(p.at).replace('T',' ').slice(0,16)) + '</td>' +
           '<td>' + (p.position ? '#' + esc(p.position) : '—') + '</td>' +
-          '<td>' + f(p.value_bnb,4) + '</td>' +
+          '<td>' + f(p.value_bnb,4) + (p.capital_bnb != null ? ' <span style="opacity:.55">of ' + f(p.capital_bnb,4) + '</span>' : '') + '</td>' +
           '<td class="' + (chg == null ? '' : chg >= 0 ? 'up' : 'down') + '">' + pct(chg) + '</td>' +
           '<td class="' + (p.in_range ? 'up' : p.in_range === false ? 'down' : '') + '">' + (p.in_range ? 'in' : p.in_range === false ? 'out' : '—') + '</td>' +
-          '<td>' + f(p.owed_bnb,6) + '</td><td>' + f(p.forwarded_total_bnb,5) + '</td><td>' + f(p.swept_total_bnb,5) + '</td>' +
+          '<td>' + f(p.owed_bnb,6) + '</td><td>' + f(p.bobai_spent_total_bnb != null ? p.bobai_spent_total_bnb : p.forwarded_total_bnb,5) + '</td>' +
           '<td>' + (p.capital_added_here_bnb ? 'operator added ' + f(p.capital_added_here_bnb, 4) + ' BNB by hand; ' : '') + (p.ok === false ? 'one step failed' : p.reset ? 're-set the range' : p.acted ? 'moved money' : p.seen ? 'hourly check found a new position' : 'nothing to do') + '</td></tr>';
       });
       table.innerHTML = head + rows.join('');

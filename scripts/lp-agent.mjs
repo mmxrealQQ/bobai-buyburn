@@ -32,7 +32,7 @@ import {
   planRebalance, planRelocate, executeRelocate, executeRebalance,
 } from '../shared/lp-agent.js';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, rebalanceWait, RESET_AFTER_HOURS,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
   widthUpgrade, widthClassOf,
@@ -293,6 +293,14 @@ if (SELF) {
   check('under the floor: refuses', refuseRelocate({ ...relOk, valueBnb: 0.01 }), true);
   check('a move the rule allows: goes', refuseRelocate(relOk), false);
   check('a person naming the pool passes no rule and goes', refuseRelocate({ ...relOk, move: null }), false);
+
+  console.log('deposit forces a re-set');
+  check('in range: no', depositForcesReset({ inRange: true, spendableBnb: 1, valueBnb: 0.3 }), false);
+  check('a deposit under the increase floor: no', depositForcesReset({ inRange: false, spendableBnb: 0.004, valueBnb: 0.01 }), false);
+  check(`a deposit under ${DEPOSIT_RESET_SHARE * 100}% of the position: no`, depositForcesReset({ inRange: false, spendableBnb: 0.05, valueBnb: 0.3 }), false);
+  check(`a deposit of exactly ${DEPOSIT_RESET_SHARE * 100}%: yes`, depositForcesReset({ inRange: false, spendableBnb: 0.075, valueBnb: 0.3 }), true);
+  check('the 2026-09-10 case, 0.3056 beside 0.29: yes, and it says the share', /105%/.test(depositForcesReset({ inRange: false, spendableBnb: 0.3056, valueBnb: 0.29 }) || ''), true);
+  check('no position value: no', depositForcesReset({ inRange: false, spendableBnb: 0.3, valueBnb: 0 }), false);
 
   console.log('rebalance wait');
   const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');

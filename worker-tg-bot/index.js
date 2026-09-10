@@ -2028,12 +2028,13 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
     `🥞 ${m.pool.label || 'the pool'}${m.pool.position ? '  ·  #' + m.pool.position : ''}${range ? '  ·  ' + range : ''}`,
     `🥞 In the position: ${f4(h.position_bnb)} BNB${n(h.fees_owed_bnb) > 0 ? '  ·  fees owed ' + f5(h.fees_owed_bnb) : ''}`,
     h.bobai_units > 0
-      ? `🧠 $BOBAI held: ${Math.round(h.bobai_units).toLocaleString('en-US')}  ·  bought with ${f5(h.bobai_bnb)} BNB of fees  ·  never sold`
+      ? `🧠 $BOBAI held: ${Math.round(h.bobai_units).toLocaleString('en-US')}${h.bobai_usd != null ? ' (≈ $' + n(h.bobai_usd).toFixed(2) + ')' : ''}  ·  bought with ${f5(h.bobai_bnb)} BNB of fees  ·  never sold`
       : `🧠 $BOBAI held: 0  ·  ${f5(h.bobai_bnb)} BNB of fees went into $BOBAI so far`,
     `💵 Wallet: ${f4(h.wallet_bnb)} BNB${n(h.wallet_bnb) > 0.005 ? '  ·  goes into the position at the next run in range' : ''}`,
     '',
     `📈 <b>P&L</b>`,
     `💰 <b>Profit so far: ${sign(p.profit_bnb)} BNB</b>${usd(p.profit_usd)}  ·  ${n(p.change_pct) >= 0 ? '▲ +' : '▼ '}${n(p.change_pct).toFixed(2)}% on the capital`,
+    `🔁 Of the fees: ${f5(p.kept_working_bnb)} BNB kept working in the position  ·  ${f5(p.into_bobai_bnb)} BNB became ${Math.round(n(p.bobai_units)).toLocaleString('en-US')} $BOBAI, held`,
     `📈 From ${p.other_token} moving against BNB: ${sign(p.from_price_bnb)}`,
     `🧾 From fees earned: ${sign(p.from_fees_bnb)}${p.fee_parts.length ? '  ·  ' + p.fee_parts.map((x) => `${f5(x.bnb)} ${x.label}`).join(' · ') : ''}`,
     `⛽ Gas: ${n(p.gas_bnb) > 0 ? '▼ −' + f5(p.gas_bnb) : '• 0.00000'}`,

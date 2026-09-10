@@ -109,12 +109,12 @@
 
   <div class="lp-part" id="series">
     <div class="sh fi"><h2>Day by <em>day</em></h2>
-      <p class="sh-sub">One line per run of the agent, from its own record: what the position was worth, whether the price stayed in the range, what it was owed and what it had already sent on. The first line is the baseline everything after it is measured against. An hourly range check gets a line only when it re-set the position or found one the series did not know yet.</p>
+      <p class="sh-sub">One line per run of the agent, from its own record. An hourly range check gets a line only when it re-set the position or found one the series did not know yet.</p>
     </div>
     <div class="agt-flow fi" id="ag-lp-series-wrap">
       <p class="agt-note" id="ag-lp-series-sum">Reading the series&hellip;</p>
       <div style="overflow-x:auto"><table class="lp-series" id="ag-lp-series"></table></div>
-      <p class="agt-note">Value is in BNB because the position is quoted in BNB; a dollar figure would move with BNB and say nothing about the position. Fees are not annualised. After a re-set the fees column starts at zero: the re-set folds the old range&rsquo;s fees into the new capital. Those fees are counted all the same &mdash; as fees produced and as capital kept, and the profit line says how much of its fees came in that way. Same facts as JSON: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.</p>
+      <p class="agt-note">Value is in BNB because the position is quoted in BNB. After a re-set the fees-owed column starts at zero: the re-set folds the old range&rsquo;s fees into the new capital, and the portfolio counts them as fees all the same. Same facts as JSON: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.</p>
     </div>
   </div>
 
@@ -176,6 +176,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=67" defer></script>
+<script src="app.js?v=70" defer></script>
 </body>
 </html>

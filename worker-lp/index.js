@@ -42,7 +42,7 @@ import {
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
 import { readLpPools, switchVerdict } from '../worker-agent/lp-pools.js';
-import { rebalanceWait, splitFees, widthUpgrade, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -77,7 +77,11 @@ async function readState(env) {
 // One run. `dry` reads and decides but signs nothing — the same code path up
 // to the first transaction, which is the part worth being able to test after
 // a deploy without moving money. `steps` narrows a hand-triggered run.
-export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
+// `watch` marks the ten-minute deposit watch: it re-sets the range only when
+// a large deposit waits beside a range the price has left (depositForcesReset),
+// and its rebalance step is not recorded otherwise, so the hourly check's
+// own record is not overwritten six times an hour with "no re-set".
+export async function agentTick(env, { dry = false, steps = STEPS, watch = false } = {}) {
   const at = new Date().toISOString();
   const pub = createPublicClient({ chain: bsc, transport: transport() });
   const entry = { at, dry, ok: true, acted: false, steps: {} };
@@ -228,6 +232,17 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       if (!upgrade.upgrade) return { ...plan.summary, acted: false, why: plan.no, upgrade: upgrade.why };
       if (plan.width == null || !plan.ticks) return { ...plan.summary, acted: false, why: plan.no, upgrade: 'the plan carries no new ticks to upgrade into' };
     } else if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
+    // A large deposit waiting beside a range the price has left ends the wait.
+    let forced = null, waiting = null;
+    if (!plan.resume && !plan.summary.in_range) {
+      try {
+        const inc = await planIncrease(pub, lp.address);
+        waiting = { spendable_bnb: inc.state.spendableBnb, value_bnb: plan.summary.value_bnb };
+        forced = depositForcesReset({ inRange: false, spendableBnb: inc.state.spendableBnb, valueBnb: plan.summary.value_bnb });
+      } catch (e) { waiting = { error: String(e.shortMessage || e.message).slice(0, 160) }; forced = null; }
+    }
+    const forcedNote = { ...(waiting ? { deposit_beside: waiting } : {}), ...(forced ? { forced_by_deposit: forced } : {}) };
+    if (watch && !forced) return { ...plan.summary, ...forcedNote, acted: false, watch: true, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
     if (upgrade && upgrade.upgrade) {
       if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
       if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };
@@ -239,8 +254,8 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       }
     }
     const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
-    const waitNote = { wait_h: waitH, wait_basis: record?.delay_test?.wait_basis || 'set' };
-    if (!plan.resume) {
+    const waitNote = { wait_h: waitH, wait_basis: record?.delay_test?.wait_basis || 'set', ...(forced ? { forced_by_deposit: forced } : {}) };
+    if (!plan.resume && !forced) {
       if (outSince == null) {
         if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
         const first = rebalanceWait(null, Date.parse(at), waitH);
@@ -250,16 +265,19 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
         if (wait) return { ...plan.summary, ...waitNote, acted: false, outside_since: outSinceRaw, why: wait };
       }
     }
-    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
+    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
+    if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
     try {
       const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
       await env.AGENT.delete(OUT_SINCE_KEY);
-      return { ...plan.summary, acted: true, outside_since: outSinceRaw, ...done };
+      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {
-      return { ...plan.summary, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
+  // The watch's rebalance step is kept only when it did something or a
+  // deposit forced it; a "no re-set here" every ten minutes is not a record.
+  if (watch && entry.steps.rebalance && !entry.steps.rebalance.acted && !entry.steps.rebalance.forced_by_deposit && !entry.steps.rebalance.error) delete entry.steps.rebalance;
 
   // 4. increase: whatever is above the reserve, into the same position.
   await run('increase', async () => {
@@ -325,7 +343,7 @@ async function record(env, entry, partial = false) {
     st.last = entry;
   }
   st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
-  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase only (a deposit goes in within minutes, in range and above the floor)' };
+  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }
@@ -340,7 +358,8 @@ export default {
       const dry = url.searchParams.get('dry') !== '0';
       const step = url.searchParams.get('step');
       const steps = step && STEPS.includes(step) ? [step] : STEPS;
-      return json(await agentTick(env, { dry, steps }));
+      const watch = url.searchParams.get('watch') === '1';
+      return json(await agentTick(env, { dry, steps, watch }));
     }
     if (url.pathname === '/') return json(await readState(env));
     return json({ error: 'not found' }, 404);
@@ -348,8 +367,10 @@ export default {
   async scheduled(event, env, ctx) {
     // The daily tick runs all five steps; the :50 firing is the hourly range
     // check (rebalance, then increase so a fresh range takes what waits in the
-    // wallet); every other firing is the deposit watch and runs increase alone.
-    const steps = event.cron === DAILY_CRON ? STEPS : event.cron === HOURLY_CRON ? ['rebalance', 'increase'] : ['increase'];
-    ctx.waitUntil(agentTick(env, { steps }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
+    // wallet); every other firing is the deposit watch: increase, and a re-set
+    // only when a large deposit waits beside a range the price has left.
+    const watch = event.cron !== DAILY_CRON && event.cron !== HOURLY_CRON;
+    const steps = event.cron === DAILY_CRON ? STEPS : ['rebalance', 'increase'];
+    ctx.waitUntil(agentTick(env, { steps, watch }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
   },
 };

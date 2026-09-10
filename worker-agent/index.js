@@ -981,6 +981,18 @@ async function buildLpSeries(env) {
         const tot = upTo.reduce((x, a) => x + Number(a.bnb || 0), 0);
         return tot ? { ...p, capital_added_total_bnb: +tot.toFixed(6), ...(here.length ? { capital_added_here_bnb: +here.reduce((x, a) => x + Number(a.bnb || 0), 0).toFixed(6), capital_added_note: here.map((a) => a.note).filter(Boolean).join(' · ') } : {}) } : p;
       });
+      // Every point carries the capital that was in it — the first value, what
+      // the operator added by hand, what the deposit watch put in — and the
+      // value against that capital. The page's "since start" column divided
+      // by the first point alone and read +196% on the day the trader's BNB
+      // arrived (2026-09-10: "das ist kein profit").
+      const base = series.find((p) => p.value_bnb != null);
+      const withCapital = series.map((p) => {
+        if (!base || p.value_bnb == null) return p;
+        const deposits = Math.max(0, (Number(p.into_position_total_bnb) || 0) - (Number(p.swept_total_bnb) || 0) - (Number(p.kept_total_bnb) || 0));
+        const capital = +(Number(base.value_bnb) + (Number(p.capital_added_total_bnb) || 0) + deposits).toFixed(6);
+        return { ...p, capital_bnb: capital, on_capital_pct: capital > 0 ? +(((p.value_bnb - capital) / capital) * 100).toFixed(2) : null };
+      });
       const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
       const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
       const totals = liveFlow ? {
@@ -1004,8 +1016,8 @@ async function buildLpSeries(env) {
       }
       return {
         what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
-        summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
-        points: series,
+        summary: lpSeriesSummary(withCapital, { gas_bnb, owed_now_bnb, totals }),
+        points: withCapital,
         record: 'https://agent.brainonbnb.com/lp/agent',
         cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
       };
@@ -2178,7 +2190,8 @@ ${pageTail}`;
       const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
       const series = await buildLpSeries(env);
       const pb = await buildLpPools(env, null);
-      const model = lpPortfolio(rec, series, pb.error ? null : pb.body);
+      const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
+      const model = lpPortfolio(rec, series, pb.error ? null : pb.body, { bobaiUsd });
       if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
       return json({
         what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from, the pool record\'s verdict and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',

@@ -214,6 +214,23 @@ export function refuseRelocate(state) {
 // range at the 17:50:37.852 check and the 19:50:37.800 check, 52 ms short of
 // two hours, waited another hour for it; a few minutes of slack is the
 // difference between the rule and the cron's jitter.
+// A deposit that waits beside a range the price has left. The wait rule
+// weighs a re-set's cost against the chance that the price comes back on its
+// own — for the position alone. With a deposit of a quarter of the position
+// or more idle in the wallet, the hours of waiting cost more than the re-set:
+// on 2026-09-10 0.3056 BNB waited beside a 0.29 BNB position from 11:18 UTC
+// for a 12:50 re-set, a third of a day's fees on the whole capital against a
+// $0.09 re-set. Then the re-set is due now, and the deposit watch may call
+// it. Pure; pinned by scripts/lp-agent.mjs --self-test.
+export const DEPOSIT_RESET_SHARE = 0.25;
+export function depositForcesReset(state) {
+  const spendable = Number(state.spendableBnb || 0), value = Number(state.valueBnb || 0);
+  if (state.inRange) return null;
+  if (!(spendable >= MIN_INCREASE_BNB)) return null;
+  if (!(value > 0) || spendable < DEPOSIT_RESET_SHARE * value) return null;
+  return `${spendable.toFixed(4)} BNB waits beside a ${value.toFixed(4)} BNB position the price has left — a deposit of ${Math.round((spendable / value) * 100)}% of the position earns nothing while the wait runs, so the range is re-set now`;
+}
+
 export const RESET_WAIT_SLACK_MIN = 5;
 export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
   // A measured wait of 0 h is no wait: the re-set is due the hour the price

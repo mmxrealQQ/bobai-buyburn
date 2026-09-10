@@ -35,9 +35,10 @@ export function stepWords(name, s) {
   }
 }
 
-// Every action in the last day, newest last: the daily run and every hourly
-// check that moved something, from the record's own history (only runs
-// that acted or failed are kept there).
+// Every action in the last day, newest first (the operator, 2026-09-10:
+// "das erste zuoberst"): the daily run and every hourly check that moved
+// something, from the record's own history (only runs that acted or failed
+// are kept there).
 export function lastDay(rec, now = Date.now()) {
   const since = now - 24 * 3600e3;
   const runs = (Array.isArray(rec?.history) ? rec.history : []).filter((h) => h && h.at && Date.parse(h.at) >= since);
@@ -51,10 +52,10 @@ export function lastDay(rec, now = Date.now()) {
       }
     }
   }
-  return out;
+  return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 }
 
-export function lpPortfolio(rec, series, pools, { now = Date.now() } = {}) {
+export function lpPortfolio(rec, series, pools, { now = Date.now(), bobaiUsd = null } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -114,9 +115,20 @@ export function lpPortfolio(rec, series, pools, { now = Date.now() } = {}) {
     holdings: {
       position_bnb: r4(value.now), fees_owed_bnb: r5(sum.fees_owed_now_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
+      // What the held $BOBAI is worth now, at the pair's own price — read by
+      // the route, so the model can say "3,895 $BOBAI (≈ $x)" beside the
+      // BNB it cost.
+      bobai_usd: bobaiUsd > 0 ? Math.round(n(sum.bobai_held_units) * bobaiUsd * 100) / 100 : null,
+      bobai_usd_price: bobaiUsd > 0 ? bobaiUsd : null,
       wallet_bnb: r4(walletBnb),
     },
     pnl: {
+      // Where the profit went, the operator's two halves: the fees kept as
+      // capital (collected and kept, or folded in by a re-set) keep working;
+      // the other half became $BOBAI the agent holds.
+      kept_working_bnb: r5(sum.fees_kept_as_capital_bnb),
+      into_bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
+      bobai_units: Math.round(n(sum.bobai_held_units)),
       profit_bnb: r5(p.bnb), profit_usd: p.usd != null ? Math.round(n(p.usd) * 100) / 100 : usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
       from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),

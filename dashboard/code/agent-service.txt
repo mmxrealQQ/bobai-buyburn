@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 40 files, 11985 lines.
+# one fetch. 41 files, 12534 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -188,10 +188,10 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, executeRebalance,
+  planRebalance, planRelocate, executeRelocate, executeRebalance,
 } from '../shared/lp-agent.js';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, rebalanceWait, RESET_AFTER_HOURS,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
   widthUpgrade, widthClassOf,
@@ -202,8 +202,12 @@ const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
 const argOf = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null; };
 const stepArg = argOf('--step');
-const ALL = ['sweep', 'collect', 'rebalance', 'increase'];
-const STEPS = stepArg ? [stepArg] : ALL;
+const ALL = ['sweep', 'collect', 'relocate', 'rebalance', 'increase'];
+// The pool a relocate moves to, named by a person: `--step relocate --to 0x…`.
+const TO = argOf('--to');
+// Without --step, the hand script runs the four steps of a day; a relocate is
+// asked for by name, with the pool it moves to.
+const STEPS = stepArg ? [stepArg] : ALL.filter((x) => x !== 'relocate');
 // A width named by a person for the re-set. It is printed as a hand-made
 // choice and never remembered: the record's earnings test is the standing rule.
 const WIDTH = argOf('--width') != null ? Number(argOf('--width')) : null;
@@ -436,6 +440,27 @@ if (SELF) {
     [{ ...up, rows: [rows[0], { width: 2, earnings: { net_usd_per_day: 0.66 } }] }, 'a gain under a tenth of the current net is noise'],
     [{ ...up, resetCostUsd: 0.5 }, 'a gain under the re-set cost would not pay back within a day'],
   ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
+  console.log('relocate');
+  const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
+  check('no position: refuses', refuseRelocate({ ...relOk, positions: 0 }), true);
+  check('two positions: refuses', refuseRelocate({ ...relOk, positions: 2 }), true);
+  check('the switch rule says stay: refuses with its reason', /switch rule says stay/.test(refuseRelocate({ ...relOk, move: { move: false, why: 'lead under 25%' } }) || ''), true);
+  check('no pool named: refuses', refuseRelocate({ ...relOk, hasTarget: false }), true);
+  check('a pool without WBNB: refuses', refuseRelocate({ ...relOk, targetHasWbnb: false }), true);
+  check('the pool the position is in: refuses', refuseRelocate({ ...relOk, samePool: true }), true);
+  check('no width: refuses', refuseRelocate({ ...relOk, width: null }), true);
+  check('under the floor: refuses', refuseRelocate({ ...relOk, valueBnb: 0.01 }), true);
+  check('a move the rule allows: goes', refuseRelocate(relOk), false);
+  check('a person naming the pool passes no rule and goes', refuseRelocate({ ...relOk, move: null }), false);
+
+  console.log('deposit forces a re-set');
+  check('in range: no', depositForcesReset({ inRange: true, spendableBnb: 1, valueBnb: 0.3 }), false);
+  check('a deposit under the increase floor: no', depositForcesReset({ inRange: false, spendableBnb: 0.004, valueBnb: 0.01 }), false);
+  check(`a deposit under ${DEPOSIT_RESET_SHARE * 100}% of the position: no`, depositForcesReset({ inRange: false, spendableBnb: 0.05, valueBnb: 0.3 }), false);
+  check(`a deposit of exactly ${DEPOSIT_RESET_SHARE * 100}%: yes`, depositForcesReset({ inRange: false, spendableBnb: 0.075, valueBnb: 0.3 }), true);
+  check('the 2026-09-10 case, 0.3056 beside 0.29: yes, and it says the share', /105%/.test(depositForcesReset({ inRange: false, spendableBnb: 0.3056, valueBnb: 0.29 }) || ''), true);
+  check('no position value: no', depositForcesReset({ inRange: false, spendableBnb: 0.3, valueBnb: 0 }), false);
+
   console.log('rebalance wait');
   const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
   check('first hour outside: waits', rebalanceWait(null, now), true);
@@ -639,6 +664,27 @@ async function main() {
         const out = await executeRebalance(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
         console.log(`  new position #${out.new_position} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}`);
         if (out.fees_folded_bnb != null) console.log(`  old range's fees ${f(out.fees_folded_bnb)} BNB: ${out.bobai_bnb > 0 ? `${f(out.bobai_bnb)} BNB bought ${out.bobai_units} BOBAI, held in ${out.bobai_held_in}` : out.fees_forward_why}`);
+        acted += 1;
+      }
+    }
+  }
+
+  if (STEPS.includes('relocate')) {
+    console.log('\nRELOCATE — the whole position -> another pool of the universe');
+    if (!TO) console.log('  name the pool with --to 0x… (the pool record at https://agent.brainonbnb.com/lp/pools says which one is worth it)');
+    const plan = await planRelocate(pub, lp.address, { toPool: TO, widthOverride: WIDTH, keptPct: KEEP });
+    const s = plan.summary;
+    if (plan.pos) console.log(`  position #${s.position} in ${s.from_pool}, ticks ${s.from_ticks[0]} … ${s.from_ticks[1]}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
+    if (plan.to) console.log(`  to ${s.to_pool} (fee ${s.to_fee_pct}%), tick there ${s.to_tick}`);
+    if (plan.no) console.log(`  nothing to do: ${plan.no}`);
+    else {
+      console.log(`  width ±${s.width_pct}% (${s.width_basis}) -> new ticks ${s.new_ticks[0]} … ${s.new_ticks[1]}`);
+      console.log(`  would withdraw and burn #${s.position}, ${(s.trades || ['trade nothing']).join(', ')}, and mint the range in the new pool from what the wallet then holds`);
+      console.log(`  the old range owes ${f(s.fees_owed_bnb)} BNB of fees: ${s.fees_to_bobai_bnb > 0 ? `${f(s.fees_to_bobai_bnb)} BNB would buy BOBAI (held in the wallet) before the mint, the rest into the new capital` : 'all of it would be minted into the new capital'} (kept share ${s.fees_kept_pct ?? KEEP}%)`);
+      if (CONFIRM) {
+        const out = await executeRelocate(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
+        console.log(`  new position #${out.new_position} in ${out.new_pool} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}; gas ${f(out.gas_bnb)} BNB, swap fees ${f(out.swap_fee_bnb)} BNB`);
+        console.log(`  old range's fees ${f(out.fees_folded_bnb)} BNB: ${out.bobai_bnb > 0 ? `${f(out.bobai_bnb)} BNB bought ${out.bobai_units} BOBAI, held in ${out.bobai_held_in}` : out.fees_forward_why}`);
         acted += 1;
       }
     }
@@ -1008,7 +1054,7 @@ export function summarize(service, result) {
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees, resetForward,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
 } from './lp-guards.js';
 
@@ -1704,6 +1750,202 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
 }
 
 // --------------------------------------------------------------------------
+// relocate: the whole position -> another pool of the universe
+// --------------------------------------------------------------------------
+// A re-set that changes pools. The pool record (worker-agent/lp-pools.js)
+// replays the same fifty dollars in every pool the rule allows and its
+// switch rule says when the best of them is worth the move; this is the
+// move. Everything the position holds, plus what waits beside it, goes:
+// withdraw and burn the old range, sell its other side for WBNB in its own
+// tier (unless the new pool is the same pair in another tier), buy the new
+// pair's other side in the new tier for the share the new range needs, send
+// the profit share of the old range's fees into $BOBAI as a re-set does,
+// mint in the new pool. The width is the class the position had: the width
+// record measures the pool the agent is in, and it starts over on the new
+// pool the hour after the move (lp-windows.js drops a record whose pool
+// changed), so the first range there is the shape that earned here and the
+// record corrects it once it can.
+export async function planRelocate(pub, address, { toPool = null, widthOverride = null, keptPct = FEE_SHARE_KEPT_PCT, move = null } = {}) {
+  const p = await readPosition(pub, address);
+  const to = String(toPool || '').toLowerCase();
+  let from = null, target = null, have = null, valueBnb = 0, owedWei = 0n, share = null, ticks = null, tgt = null;
+  let width = widthOverride ?? null;
+  if (p.positions === 1) {
+    const poolInfo = await readPool(pub, p.pos);
+    const token0 = p.pos[2].toLowerCase(), token1 = p.pos[3].toLowerCase();
+    const wbnbIs0 = token0 === ADDR.WBNB;
+    if (!wbnbIs0 && token1 !== ADDR.WBNB) throw new Error('the position is not against WBNB; this agent only knows how to move a WBNB pair');
+    const other = wbnbIs0 ? token1 : token0;
+    const L = Number(p.pos[7]);
+    const sp = splitForRange(poolInfo.sqrtP, Number(p.pos[5]), Number(p.pos[6]));
+    const in0 = L * sp.perL0, in1 = L * sp.perL1;
+    const heldOther = Number(await read(pub, other, ABI.ERC20, 'balanceOf', [address]));
+    const heldWbnb = Number(await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]));
+    const price = poolInfo.sqrtP ** 2;
+    const otherInWbnb = wbnbIs0 ? 1 / price : price;
+    have = { other: (wbnbIs0 ? in1 : in0) + heldOther, wbnb: (wbnbIs0 ? in0 : in1) + heldWbnb };
+    valueBnb = (have.wbnb + have.other * otherInWbnb) / 1e18;
+    if (width == null) width = widthClassOf([Number(p.pos[5]), Number(p.pos[6])]);
+    if (p.owed0 != null) {
+      const owedWbnb = wbnbIs0 ? p.owed0 : p.owed1, owedOther = wbnbIs0 ? p.owed1 : p.owed0;
+      owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * otherInWbnb));
+      share = resetForward(owedWei, keptPct);
+    }
+    from = { pool: String(poolInfo.pool).toLowerCase(), other, fee: Number(p.pos[4]), wbnbIs0, tokenId: p.tokenId, tick: poolInfo.tick, inRange: poolInfo.inRange, otherInWbnb, ticks: [Number(p.pos[5]), Number(p.pos[6])] };
+  }
+  if (/^0x[0-9a-f]{40}$/.test(to)) {
+    const pair = await readPoolPair(pub, to);
+    const t0 = String(pair[2]).toLowerCase(), t1 = String(pair[3]).toLowerCase();
+    const wbnbIs0 = t0 === ADDR.WBNB;
+    const hasWbnb = wbnbIs0 || t1 === ADDR.WBNB;
+    const spacing = Number(await read(pub, to, ABI.POOL, 'tickSpacing')) || 1;
+    const s0 = await read(pub, to, ABI.POOL, 'slot0');
+    const sqrtP = Number(s0[0]) / 2 ** 96, tick = Number(s0[1]);
+    const price = sqrtP ** 2;
+    const otherInWbnb = wbnbIs0 ? 1 / price : price;
+    target = { pool: to, pair, token0: pair[2], token1: pair[3], fee: Number(pair[4]), other: wbnbIs0 ? t1 : t0, wbnbIs0, hasWbnb, spacing, sqrtP, tick, otherInWbnb };
+    if (hasWbnb && width != null && valueBnb > 0) {
+      ticks = ticksAround(tick, width, spacing);
+      if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
+      const n = splitForRange(sqrtP, ticks.tickLower, ticks.tickUpper);
+      const perLOther = wbnbIs0 ? n.perL1 : n.perL0, perLWbnb = wbnbIs0 ? n.perL0 : n.perL1;
+      const perLValue = perLWbnb + perLOther * otherInWbnb;
+      const capital = valueBnb * 1e18 - (share ? Number(share.forward) : 0);
+      const Ln = perLValue > 0 ? (capital * 0.99) / perLValue : 0;
+      tgt = { other: Ln * perLOther, wbnb: Ln * perLWbnb, perLOther, perLWbnb, otherInWbnb };
+    }
+  }
+  const sameOther = !!(from && target && from.other === target.other);
+  const state = {
+    positions: p.positions, hasTarget: !!target, targetHasWbnb: target ? target.hasWbnb : false,
+    samePool: !!(from && target && from.pool === target.pool), width, valueBnb, move,
+  };
+  const trades = [];
+  if (from && target && tgt) {
+    if (!sameOther && have.other > 0) trades.push(`sell all ${(have.other / 1e18).toFixed(6)} of ${from.other} for WBNB in the old pool`);
+    const keep = sameOther ? have.other : 0;
+    if (tgt.other > keep) trades.push(`buy ${((tgt.other - keep) / 1e18).toFixed(6)} of ${target.other} with ~${(((tgt.other - keep) * tgt.otherInWbnb) / 1e18).toFixed(6)} WBNB in the new pool`);
+    else if (keep > tgt.other) trades.push(`sell ${((keep - tgt.other) / 1e18).toFixed(6)} of ${target.other} for WBNB in the new pool`);
+  }
+  return {
+    step: 'relocate', state, no: refuseRelocate(state),
+    tokenId: p.tokenId, pos: p.pos, from, to: target, width, ticks, target: tgt, sameOther, share,
+    summary: {
+      position: p.tokenId == null ? null : String(p.tokenId),
+      from_pool: from ? from.pool : null, from_ticks: from ? from.ticks : null, in_range: from ? from.inRange : false,
+      to_pool: target ? target.pool : null, to_fee_pct: target ? target.fee / 10000 : null, to_tick: target ? target.tick : null,
+      value_bnb: Number(valueBnb.toFixed(6)),
+      width_pct: width, width_basis: widthOverride != null ? 'named by hand' : 'the class the position had; the width record starts over on the new pool',
+      new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
+      trades: trades.length ? trades : null,
+      fees_owed_bnb: Number((Number(owedWei) / 1e18).toFixed(6)),
+      fees_to_bobai_bnb: share ? Number((Number(share.forward) / 1e18).toFixed(6)) : 0,
+      fees_kept_pct: share ? share.pct : null,
+      ...(move ? { move: move.move, move_why: move.why } : {}),
+    },
+  };
+}
+
+export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
+  if (!plan.from || !plan.to || !plan.target || !plan.ticks) throw new Error('the plan carries no move');
+  const txs = [];
+  const send = sender(pub, wallet, txs, log);
+  send.owner = account.address;
+  const swaps = [];
+  // 1. What the old range owes, read now, so the record counts it as fees
+  //    and the profit share of it can leave before the mint.
+  const old = await readPosition(pub, account.address);
+  if (old.tokenId == null || String(old.tokenId) !== String(plan.tokenId)) throw new Error('the position changed since the plan was made');
+  const owedWbnb = plan.from.wbnbIs0 ? old.owed0 : old.owed1, owedOther = plan.from.wbnbIs0 ? old.owed1 : old.owed0;
+  const owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * plan.from.otherInWbnb));
+  const folded = { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), bnb_equivalent: Number((Number(owedWei) / 1e18).toFixed(6)) };
+  const share = resetForward(owedWei, keptPct);
+  const reserved = share.forward > 0n ? share.forward : 0n;
+  // 2. Withdraw, collect and burn the old range, one transaction.
+  {
+    const liquidity = plan.pos[7];
+    const sim = await pub.simulateContract({
+      address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
+      args: [{ tokenId: plan.tokenId, liquidity, amount0Min: 0n, amount1Min: 0n, deadline: deadline() }], account,
+    });
+    const calls = unwindCalls(plan.tokenId, liquidity, (sim.result[0] * 99n) / 100n, (sim.result[1] * 99n) / 100n, account.address, deadline());
+    await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
+    await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
+  }
+  // 3. Leave the old pair: its other side becomes WBNB in the old tier.
+  if (!plan.sameOther) {
+    const haveOld = await read(pub, plan.from.other, ABI.ERC20, 'balanceOf', [account.address]);
+    if (haveOld > 0n) {
+      const q = await quoteV3(pub, plan.from.other, ADDR.WBNB, plan.from.fee, haveOld);
+      swaps.push(await swapV3(pub, send, account.address, plan.from.other, ADDR.WBNB, plan.from.fee, haveOld, (q * 99n) / 100n, q, 'leave the old pair: sell its other side for WBNB'));
+    }
+  }
+  // 4. Size the new range from what the wallet really holds now; the
+  //    profit share is kept out of the sizing so it stays as WBNB.
+  const t = plan.target, fee = plan.to.fee, other = plan.to.other;
+  const haveOther = await read(pub, other, ABI.ERC20, 'balanceOf', [account.address]);
+  const haveWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  const value = Number(haveWbnb - reserved) + Number(haveOther) * t.otherInWbnb;
+  const perLValue = t.perLWbnb + t.perLOther * t.otherInWbnb;
+  const Ln = (value * 0.99) / perLValue;
+  const targetOther = BigInt(Math.floor(Ln * t.perLOther));
+  if (haveOther > targetOther) {
+    const sell = haveOther - targetOther;
+    const q = await quoteV3(pub, other, ADDR.WBNB, fee, sell);
+    swaps.push(await swapV3(pub, send, account.address, other, ADDR.WBNB, fee, sell, (q * 99n) / 100n, q, 'sell the excess of the new other side'));
+  } else if (targetOther > haveOther) {
+    const need = targetOther - haveOther;
+    const q = await quoteV3(pub, ADDR.WBNB, other, fee, 10n ** 18n);
+    const spend = q > 0n ? (need * 10n ** 18n * 102n) / (q * 100n) : 0n;
+    const cap = haveWbnb > reserved ? haveWbnb - reserved : 0n;
+    const wbnbIn = spend > cap ? cap : spend;
+    if (wbnbIn > 0n) swaps.push(await swapV3(pub, send, account.address, ADDR.WBNB, other, fee, wbnbIn, (need * 99n) / 100n, wbnbIn, 'enter the new pair: buy its other side'));
+  }
+  // 5. The profit share of the old range's fees becomes $BOBAI, held.
+  let boughtBobai = 0n, bobaiUnits = 0n, forwardWhy = share.why;
+  if (reserved > 0n) {
+    const wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+    if (wbnbNow >= reserved) {
+      await send("unwrap the profit share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
+      const bought = await buyBobaiHold(pub, send, account.address, reserved);
+      boughtBobai = reserved; bobaiUnits = bought.units;
+    } else {
+      forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
+    }
+  }
+  // 6. Mint in the new pool.
+  const mintOther = await read(pub, other, ABI.ERC20, 'balanceOf', [account.address]);
+  const mintWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  await ensureAllowance(pub, send, other, ADDR.V3_POSITION_MANAGER, mintOther, 'allow the position manager to take the new other side (once)');
+  await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, mintWbnb, 'allow the position manager to take WBNB (once)');
+  const amount0Desired = plan.to.wbnbIs0 ? mintWbnb : mintOther;
+  const amount1Desired = plan.to.wbnbIs0 ? mintOther : mintWbnb;
+  const now = await readPool(pub, plan.to.pair);
+  const mintMins = minsForRange(now.sqrtP, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
+  await send(`mint the range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper} in the new pool`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
+    args: [{
+      token0: plan.to.token0, token1: plan.to.token1, fee,
+      tickLower: plan.ticks.tickLower, tickUpper: plan.ticks.tickUpper,
+      amount0Desired, amount1Desired,
+      ...mintMins,
+      recipient: account.address, deadline: deadline(),
+    }] });
+  const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
+  const np = await readPosition(pub, account.address);
+  const gasBnb = txs.reduce((a, x) => a + (x.gas_bnb || 0), 0);
+  const swapFee = swaps.reduce((a, x) => a + (x && x.fee_bnb ? x.fee_bnb : 0), 0);
+  return {
+    txs, gas_bnb: Number(gasBnb.toFixed(6)), swaps, swap_fee_bnb: Number(swapFee.toFixed(6)),
+    new_position: np.tokenId == null ? null : String(np.tokenId), new_pool: plan.to.pool, new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper],
+    liquidity_after: np.pos ? String(np.pos[7]) : null,
+    fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
+    bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share.pct,
+    ...(boughtBobai > 0n ? { bobai_held_in: account.address } : { fees_forward_why: forwardWhy }),
+  };
+}
+
+// --------------------------------------------------------------------------
 // increase: BNB above the reserve -> more of the same position
 // --------------------------------------------------------------------------
 
@@ -1755,7 +1997,7 @@ export async function planIncrease(pub, address, position = null) {
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
       value_bnb: poolInfo ? await positionValueBnb(pub, address, p, poolInfo) : null,
-      wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null,
+      wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null, pool: poolInfo ? String(poolInfo.pool).toLowerCase() : null,
       capital: poolInfo ? { bnb_above_reserve: bn(nativeRaw), wbnb_held: bn(heldWbnb), other_held: formatUnits(heldOther, 18), other_held_in_bnb: Number((heldOtherInWbnb / 1e18).toFixed(6)) } : null,
       would_add: poolInfo && target && target.L > 0 ? {
         other: formatUnits(BigInt(Math.floor(target.L * target.perLOther)), 18), other_token: other, wbnb: formatEther(BigInt(Math.floor(target.L * target.perLWbnb))),
@@ -2175,6 +2417,25 @@ export function refuseRebalance(state) {
   return null;
 }
 
+// state: { positions, hasTarget, targetHasWbnb, samePool, width, valueBnb, move }
+// A relocate is a re-set into another pool: withdraw, leave the old pair,
+// enter the new one, mint. The pool record's switch rule (move) says whether
+// it is worth it; a person naming --to on the hand script is a decision of
+// their own and passes no move. Everything a re-set refuses, this refuses too.
+export function refuseRelocate(state) {
+  if (state.positions !== 1) return state.positions === 0
+    ? 'this wallet holds no position to move'
+    : `this wallet holds ${state.positions} positions — which one to move is a decision for a person`;
+  if (state.move && state.move.move === false) return `the switch rule says stay: ${state.move.why}`;
+  if (!state.hasTarget) return 'no pool to move to was named';
+  if (!state.targetHasWbnb) return 'the pool named is not against WBNB; this agent only holds WBNB pairs, so the record stays in BNB';
+  if (state.samePool) return 'the pool named is the one the position is in — nothing to move';
+  if (state.width == null) return 'no width is known for the new range';
+  if (!(state.valueBnb >= MIN_REBALANCE_BNB))
+    return `the position is worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a move would cost more than it is likely to earn back`;
+  return null;
+}
+
 // The wait after the price leaves the range, before a re-set is paid for.
 // outSinceMs is when the agent first saw the price outside (null: this is the
 // first time), nowMs is now. Null means the wait is over and a re-set is due.
@@ -2183,6 +2444,23 @@ export function refuseRebalance(state) {
 // range at the 17:50:37.852 check and the 19:50:37.800 check, 52 ms short of
 // two hours, waited another hour for it; a few minutes of slack is the
 // difference between the rule and the cron's jitter.
+// A deposit that waits beside a range the price has left. The wait rule
+// weighs a re-set's cost against the chance that the price comes back on its
+// own — for the position alone. With a deposit of a quarter of the position
+// or more idle in the wallet, the hours of waiting cost more than the re-set:
+// on 2026-09-10 0.3056 BNB waited beside a 0.29 BNB position from 11:18 UTC
+// for a 12:50 re-set, a third of a day's fees on the whole capital against a
+// $0.09 re-set. Then the re-set is due now, and the deposit watch may call
+// it. Pure; pinned by scripts/lp-agent.mjs --self-test.
+export const DEPOSIT_RESET_SHARE = 0.25;
+export function depositForcesReset(state) {
+  const spendable = Number(state.spendableBnb || 0), value = Number(state.valueBnb || 0);
+  if (state.inRange) return null;
+  if (!(spendable >= MIN_INCREASE_BNB)) return null;
+  if (!(value > 0) || spendable < DEPOSIT_RESET_SHARE * value) return null;
+  return `${spendable.toFixed(4)} BNB waits beside a ${value.toFixed(4)} BNB position the price has left — a deposit of ${Math.round((spendable / value) * 100)}% of the position earns nothing while the wait runs, so the range is re-set now`;
+}
+
 export const RESET_WAIT_SLACK_MIN = 5;
 export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
   // A measured wait of 0 h is no wait: the re-set is due the hour the price
@@ -5181,9 +5459,10 @@ import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
-import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration } from './lp-windows.js';
+import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool } from './lp-windows.js';
 import { widthClassOf } from '../shared/lp-guards.js';
 import { recordLpPools, readLpPools, noteLpPoolsError, poolVerdict, switchVerdict, CANDIDATES as LP_POOL_CANDIDATES, UNIVERSE_RULE as LP_UNIVERSE_RULE } from './lp-pools.js';
+import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
@@ -6099,6 +6378,110 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
   } };
 }
 
+// The series as /lp/series serves it, built once so the portfolio can carry
+// the same summary without a request to ourselves (a worker cannot fetch
+// its own hostname).
+async function buildLpSeries(env) {
+      const series0 = lpSeriesShown(await readLpSeries(env));
+      const recRaw = await env.AGENT.get('lp:agent');
+      // Capital the operator put in by hand (record.capital_added, written
+      // by hand too): it is in the position's value from that run on but is
+      // not a gain, so every point carries the total added up to it and the
+      // amount that arrived between the previous point and this one.
+      const added = recRaw ? (JSON.parse(recRaw).capital_added || []) : [];
+      const series = series0.map((p, i) => {
+        const upTo = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at));
+        const prevAt = i ? Date.parse(series0[i - 1].at) : -Infinity;
+        const here = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at) && Date.parse(a.at) > prevAt);
+        const tot = upTo.reduce((x, a) => x + Number(a.bnb || 0), 0);
+        return tot ? { ...p, capital_added_total_bnb: +tot.toFixed(6), ...(here.length ? { capital_added_here_bnb: +here.reduce((x, a) => x + Number(a.bnb || 0), 0).toFixed(6), capital_added_note: here.map((a) => a.note).filter(Boolean).join(' · ') } : {}) } : p;
+      });
+      // Every point carries the capital that was in it — the first value, what
+      // the operator added by hand, what the deposit watch put in — and the
+      // value against that capital. The page's "since start" column divided
+      // by the first point alone and read +196% on the day the trader's BNB
+      // arrived (2026-09-10: "das ist kein profit").
+      const base = series.find((p) => p.value_bnb != null);
+      const withCapital = series.map((p) => {
+        if (!base || p.value_bnb == null) return p;
+        const deposits = Math.max(0, (Number(p.into_position_total_bnb) || 0) - (Number(p.swept_total_bnb) || 0) - (Number(p.kept_total_bnb) || 0));
+        const capital = +(Number(base.value_bnb) + (Number(p.capital_added_total_bnb) || 0) + deposits).toFixed(6);
+        return { ...p, capital_bnb: capital, on_capital_pct: capital > 0 ? +(((p.value_bnb - capital) / capital) * 100).toFixed(2) : null };
+      });
+      const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
+      const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
+      const totals = liveFlow ? {
+        bobai_spent_total_bnb: liveFlow.out.bobai_bnb,
+        bobai_units_total: liveFlow.out.bobai_units,
+        forwarded_total_bnb: liveFlow.out.bobai_bnb,
+        kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
+        fees_total_bnb: liveFlow.in.fees.bnb,
+        folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,
+        folded_kept_total_bnb: liveFlow.in.fees.folded_kept_bnb ?? (liveFlow.in.fees.folded_bnb || 0),
+        into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
+        swept_total_bnb: liveFlow.in.income_bnb,
+      } : null;
+      // Fees owed now, from the chain: the last point is often a re-set, whose
+      // own figure is zero by construction, while the liquidity page shows the
+      // live figure two lines below the profit — the two must agree.
+      let owed_now_bnb = null;
+      const lastPt = series[series.length - 1];
+      if (lastPt && lastPt.position) {
+        try { const lk = await lpPositionLook({ position: String(lastPt.position) }); if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent); } catch { owed_now_bnb = null; }
+      }
+      return {
+        what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
+        summary: lpSeriesSummary(withCapital, { gas_bnb, owed_now_bnb, totals }),
+        points: withCapital,
+        record: 'https://agent.brainonbnb.com/lp/agent',
+        cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
+      };
+}
+
+// The pool record's verdict and switch rule, built once for /lp/pools and
+// the portfolio alike.
+async function buildLpPools(env, widthQuery = null) {
+      const log = await readLpPools(env);
+      if (!log || !Object.keys(log.pools || {}).length) {
+        return { error: { error: 'no pool window has been recorded yet', cadence: "hourly, after the width record's own tick", candidates: LP_POOL_CANDIDATES } };
+      }
+      // The width: the one the agent's position uses, else what the query asks, else ±1%.
+      let width = 1;
+      try {
+        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+        const w = Number(rec?.last?.steps?.rebalance?.width_pct);
+        if (w > 0) width = w;
+      } catch { /* the default stands */ }
+      const q = Number(widthQuery);
+      if (q > 0 && q <= 50) width = q;
+      const watched = await watchedPool(env);
+      const v = poolVerdict(log, width, { watched });
+      // The switch rule reads the position's own size and the measured re-set
+      // cost, so the payback is the position's, not fifty dollars'.
+      let positionUsd = null, resetCostUsd = null;
+      try {
+        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+        const price = await bnbUsd().catch(() => null);
+        const valueBnb = Number(rec?.last_check?.steps?.increase?.value_bnb ?? rec?.last?.steps?.increase?.value_bnb);
+        if (price > 0 && valueBnb > 0) positionUsd = Math.round(valueBnb * price * 100) / 100;
+        const m = measuredResetCost(rec, price);
+        if (m && m.usd > 0) resetCostUsd = m.usd;
+      } catch { /* the defaults stand */ }
+      const move = switchVerdict(log, width, { watched, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
+      const body = {
+        ...v,
+        move: { ...move, position_usd: positionUsd, reset_cost_usd: resetCostUsd, acts: true, acts_note: 'the daily run (04:23 UTC) acts on this verdict and nothing else: a move here is a relocate there, gated by LP_RELOCATE on the DeFi worker' },
+        universe: LP_UNIVERSE_RULE,
+        since: log.since || null,
+        cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
+        width_record: 'https://agent.brainonbnb.com/lp/windows',
+        agent_record: 'https://agent.brainonbnb.com/lp/agent',
+        last_run: log.last_run || null,
+        last_error: log.last_error || null,
+      };
+      return { log, v, move, body, positionUsd, width };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -6639,43 +7022,9 @@ ${pageTail}`;
     // the agent uses — and the switch rule that says whether the best of
     // them is worth moving to.
     if (path === '/lp/pools') {
-      const log = await readLpPools(env);
-      if (!log || !Object.keys(log.pools || {}).length) {
-        return json({ error: 'no pool window has been recorded yet', cadence: "hourly, after the width record's own tick", candidates: LP_POOL_CANDIDATES }, 503);
-      }
-      // The width: the one the agent's position uses, else what the query asks, else ±1%.
-      let width = 1;
-      try {
-        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
-        const w = Number(rec?.last?.steps?.rebalance?.width_pct);
-        if (w > 0) width = w;
-      } catch { /* the default stands */ }
-      const q = Number(url.searchParams.get('width'));
-      if (q > 0 && q <= 50) width = q;
-      const v = poolVerdict(log, width, { watched: env.LP_WATCH_POOL });
-      // The switch rule reads the position's own size and the measured re-set
-      // cost, so the payback is the position's, not fifty dollars'.
-      let positionUsd = null, resetCostUsd = null;
-      try {
-        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
-        const price = await bnbUsd().catch(() => null);
-        const valueBnb = Number(rec?.last_check?.steps?.increase?.value_bnb ?? rec?.last?.steps?.increase?.value_bnb);
-        if (price > 0 && valueBnb > 0) positionUsd = Math.round(valueBnb * price * 100) / 100;
-        const m = measuredResetCost(rec, price);
-        if (m && m.usd > 0) resetCostUsd = m.usd;
-      } catch { /* the defaults stand */ }
-      const move = switchVerdict(log, width, { watched: env.LP_WATCH_POOL, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
-      const body = {
-        ...v,
-        move: { ...move, position_usd: positionUsd, reset_cost_usd: resetCostUsd, acts: false, acts_note: 'the daily run does not relocate yet; when it does, it will act on this verdict and nothing else' },
-        universe: LP_UNIVERSE_RULE,
-        since: log.since || null,
-        cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
-        width_record: 'https://agent.brainonbnb.com/lp/windows',
-        agent_record: 'https://agent.brainonbnb.com/lp/agent',
-        last_run: log.last_run || null,
-        last_error: log.last_error || null,
-      };
+      const built = await buildLpPools(env, url.searchParams.get('width'));
+      if (built.error) return json(built.error, 503);
+      const { log, v, move, body, positionUsd } = built;
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
       if (wantsHtml) {
         const h = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -7250,49 +7599,22 @@ ${pageTail}`;
     // Same shared secret as /hit; nothing here is reachable without it.
     // The liquidity series: every run of the DeFi agent as one point,
     // and what the points say so far. Read by /defi.
-    if (path === '/lp/series') {
-      const series0 = lpSeriesShown(await readLpSeries(env));
-      const recRaw = await env.AGENT.get('lp:agent');
-      // Capital the operator put in by hand (record.capital_added, written
-      // by hand too): it is in the position's value from that run on but is
-      // not a gain, so every point carries the total added up to it and the
-      // amount that arrived between the previous point and this one.
-      const added = recRaw ? (JSON.parse(recRaw).capital_added || []) : [];
-      const series = series0.map((p, i) => {
-        const upTo = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at));
-        const prevAt = i ? Date.parse(series0[i - 1].at) : -Infinity;
-        const here = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at) && Date.parse(a.at) > prevAt);
-        const tot = upTo.reduce((x, a) => x + Number(a.bnb || 0), 0);
-        return tot ? { ...p, capital_added_total_bnb: +tot.toFixed(6), ...(here.length ? { capital_added_here_bnb: +here.reduce((x, a) => x + Number(a.bnb || 0), 0).toFixed(6), capital_added_note: here.map((a) => a.note).filter(Boolean).join(' · ') } : {}) } : p;
-      });
-      const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
-      const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
-      const totals = liveFlow ? {
-        bobai_spent_total_bnb: liveFlow.out.bobai_bnb,
-        bobai_units_total: liveFlow.out.bobai_units,
-        forwarded_total_bnb: liveFlow.out.bobai_bnb,
-        kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
-        fees_total_bnb: liveFlow.in.fees.bnb,
-        folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,
-        folded_kept_total_bnb: liveFlow.in.fees.folded_kept_bnb ?? (liveFlow.in.fees.folded_bnb || 0),
-        into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
-        swept_total_bnb: liveFlow.in.income_bnb,
-      } : null;
-      // Fees owed now, from the chain: the last point is often a re-set, whose
-      // own figure is zero by construction, while the liquidity page shows the
-      // live figure two lines below the profit — the two must agree.
-      let owed_now_bnb = null;
-      const lastPt = series[series.length - 1];
-      if (lastPt && lastPt.position) {
-        try { const lk = await lpPositionLook({ position: String(lastPt.position) }); if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent); } catch { owed_now_bnb = null; }
-      }
+    // THE PORTFOLIO: the agent as one picture, one model for the /defi page
+    // and the Telegram card alike (worker-agent/lp-portfolio.js).
+    if (path === '/lp/portfolio') {
+      const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+      const series = await buildLpSeries(env);
+      const pb = await buildLpPools(env, null);
+      const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
+      const model = lpPortfolio(rec, series, pb.error ? null : pb.body, { bobaiUsd });
+      if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
       return json({
-        what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
-        summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
-        points: series,
-        record: 'https://agent.brainonbnb.com/lp/agent',
-        cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
-      }, 200, { 'Cache-Control': 'public, max-age=300' });
+        what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from, the pool record\'s verdict and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',
+        ...model,
+      }, 200, { 'Cache-Control': 'public, max-age=120' });
+    }
+    if (path === '/lp/series') {
+      return json(await buildLpSeries(env), 200, { 'Cache-Control': 'public, max-age=300' });
     }
     if (path === '/run-lp-series' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
@@ -7545,7 +7867,7 @@ ${pageTail}`;
 // candidates is ~290 replays a day and one KV write an hour; the screen of
 // 2026-09-10 measured 1.4-2.8 s per replay, the busiest pool (USDT/WBNB
 // 0.01%, 16k swaps an hour) 2.8 s.
-import { KV_KEY as WINDOWS_KEY, POSITION_USD, measure, windowFromPlan } from './lp-windows.js';
+import { KV_KEY as WINDOWS_KEY, POSITION_USD, measure, windowFromPlan, watchedPool } from './lp-windows.js';
 
 export const KV_KEY = 'lp:pools';
 // Hourly windows; 200 is over a week per pool, which is more than a pool
@@ -7753,7 +8075,7 @@ const CHAIN_REFUSED = /every BSC endpoint refused|log endpoint refused|rate limi
 // read, one KV write. A candidate the chain refuses this hour is skipped
 // this hour — a missing window is a gap, an invented one is a lie.
 export async function recordLpPools(env) {
-  const watched = String(env.LP_WATCH_POOL || '').toLowerCase();
+  const watched = await watchedPool(env);
   const prev = (await readLpPools(env)) || { usd: POSITION_USD, since: new Date().toISOString(), pools: {} };
   let log = { ...prev, usd: POSITION_USD, pools: { ...(prev.pools || {}) } };
   const added = [], skipped = [];
@@ -7814,6 +8136,153 @@ export async function noteLpPoolsError(env, e) {
   const prev = (await readLpPools(env)) || { usd: POSITION_USD, since: new Date().toISOString(), pools: {} };
   prev.last_error = { at: new Date().toISOString(), message: String(e && e.message || e).slice(0, 200) };
   await env.AGENT.put(KV_KEY, JSON.stringify(prev));
+}
+
+==============================================================================
+=== FILE: worker-agent/lp-portfolio.js
+==============================================================================
+
+// THE PORTFOLIO: the DeFi agent as one picture — what went in, what it is
+// worth, what it holds where, the P&L by where it came from, the pool
+// record's verdict, and what it did in the last day.
+//
+// One model, built here from the three records (the agent's own, the series,
+// the pool record) and served at agent.brainonbnb.com/lp/portfolio. The
+// /defi page and the Telegram card (/defi, and the 05:00 UTC post) render
+// this JSON and compute nothing of their own — the operator's rule since
+// 2026-09-07: a number the page shows and a number the bot posts come from
+// one function, or one of them is wrong.
+//
+// Pure. Pinned by scripts/lp-portfolio.mjs --self-test.
+import { CANDIDATES } from './lp-pools.js';
+
+const n = (x) => Number(x || 0);
+const r4 = (x) => Math.round(n(x) * 1e4) / 1e4;
+const r5 = (x) => Math.round(n(x) * 1e5) / 1e5;
+
+const labelOf = (pool) => (CANDIDATES.find((c) => c.pool === String(pool || '').toLowerCase()) || {}).label || null;
+
+// What one recorded step did, in a few words, or null when it did nothing.
+export function stepWords(name, s) {
+  if (!s || typeof s !== 'object') return null;
+  if (s.error) return { what: `${name}: ${s.error}`, error: true };
+  if (!s.acted) return null;
+  switch (name) {
+    case 'sweep': return { what: `swept ${s.bnb_out != null ? r5(s.bnb_out) + ' BNB of ' : ''}income into the DeFi wallet` };
+    case 'collect': return { what: `collected ${s.produced_bnb != null ? r5(s.produced_bnb) + ' BNB of ' : ''}fees${s.bobai_units ? `, ${Math.round(n(s.bobai_units)).toLocaleString('en-US')} $BOBAI bought and held` : ''}` };
+    case 'relocate': return { what: `moved the position to ${s.to_label || labelOf(s.new_pool) || s.new_pool || 'another pool'}${s.new_position ? ` (#${s.new_position})` : ''}` };
+    case 'rebalance': return { what: s.upgraded_to_pct != null
+      ? `re-set the range wider/narrower: ±${s.upgraded_from_pct}% → ±${s.upgraded_to_pct}%${s.new_position ? ` (#${s.new_position})` : ''}`
+      : `re-set the range around the price${s.new_position ? ` (#${s.new_position})` : ''}${n(s.bobai_bnb) > 0 ? `, ${r5(s.bobai_bnb)} BNB of its fees into $BOBAI` : ''}` };
+    case 'increase': return { what: `grew the position${n(s.bnb_spent) > 0 ? ` by ${r4(s.bnb_spent)} BNB` : ''}` };
+    default: return { what: `${name} acted` };
+  }
+}
+
+// Every action in the last day, newest first (the operator, 2026-09-10:
+// "das erste zuoberst"): the daily run and every hourly check that moved
+// something, from the record's own history (only runs that acted or failed
+// are kept there).
+export function lastDay(rec, now = Date.now()) {
+  const since = now - 24 * 3600e3;
+  const runs = (Array.isArray(rec?.history) ? rec.history : []).filter((h) => h && h.at && Date.parse(h.at) >= since);
+  const out = [];
+  for (const h of runs) {
+    const steps = h.steps && typeof h.steps === 'object' ? h.steps : {};
+    for (const [name, v] of Object.entries(steps)) {
+      for (const s of Array.isArray(v) ? v : [v]) {
+        const w = stepWords(name, s);
+        if (w) out.push({ at: h.at, step: name, ...w });
+      }
+    }
+  }
+  return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+}
+
+export function lpPortfolio(rec, series, pools, { now = Date.now(), bobaiUsd = null } = {}) {
+  const last = rec && rec.last;
+  const sum = series && series.summary;
+  if (!last || !last.at || !sum || !sum.profit) return null;
+  const pts = Array.isArray(series.points) ? series.points : [];
+  const pt = pts.length ? pts[pts.length - 1] : null;
+  const bnbUsd = n(sum.profit.bnb_usd) || null;
+  const usd = (bnb) => (bnbUsd ? Math.round(n(bnb) * bnbUsd * 100) / 100 : null);
+  const value = sum.value_bnb || {};
+  const putIn = n(value.capital_total_bnb) || (n(value.start) + n(value.added_by_hand_bnb) + n(sum.deposits_put_in_bnb) + n(sum.income_put_in_bnb));
+  const sources = [{ label: 'start', bnb: r4(value.start) }];
+  if (n(value.added_by_hand_bnb) > 0) sources.push({ label: 'by hand', bnb: r4(value.added_by_hand_bnb) });
+  if (n(sum.deposits_put_in_bnb) > 0) sources.push({ label: 'deposited', bnb: r4(sum.deposits_put_in_bnb) });
+  if (n(sum.income_put_in_bnb) > 0) sources.push({ label: 'from AI income', bnb: r4(sum.income_put_in_bnb) });
+
+  // The range as it stands: the newest check, not the series' last point —
+  // on 2026-09-10 the card said "in range" from the 05:40 point while the
+  // 11:30 check had the price outside for two hours.
+  const chk = rec.last_check && rec.last_check.at && Date.parse(rec.last_check.at) >= Date.parse(last.at) ? rec.last_check : last;
+  const inc = (chk.steps && chk.steps.increase) || (last.steps && last.steps.increase) || {};
+  const rb = (chk.steps && chk.steps.rebalance) || {};
+  const position = (inc.position != null ? String(inc.position) : null) || (pt && pt.position != null ? String(pt.position) : null) || (rb.new_position != null ? String(rb.new_position) : null);
+  const inRange = inc.in_range != null ? !!inc.in_range : rb.in_range != null ? !!rb.in_range : pt ? !!pt.in_range : null;
+  const poolAddr = String(rec.pool || (pools && pools.watched && pools.watched.pool) || '').toLowerCase() || null;
+  const poolLabel = (pools && pools.watched && pools.watched.label) || labelOf(poolAddr) || null;
+  const walletBnb = inc.wallet_bnb != null ? n(inc.wallet_bnb) : pt ? n(pt.wallet_bnb) : 0;
+
+  const p = sum.profit;
+  const feeParts = [];
+  if (n(p.fees_collected_bnb) > 0) feeParts.push({ label: 'collected', bnb: r5(p.fees_collected_bnb) });
+  if (n(p.fees_folded_bnb) > 0) feeParts.push({ label: 'folded into the position', bnb: r5(p.fees_folded_bnb) });
+  if (n(p.fees_forwarded_at_resets_bnb) > 0) feeParts.push({ label: 'into $BOBAI', bnb: r5(p.fees_forwarded_at_resets_bnb) });
+  if (n(p.fees_owed_bnb) > 0) feeParts.push({ label: 'still owed by the position', bnb: r5(p.fees_owed_bnb) });
+
+  let poolRecord = null;
+  if (pools && Array.isArray(pools.pools) && pools.pools.length) {
+    const rows = pools.pools;
+    const shown = rows.slice(0, 3);
+    const here = rows.find((x) => x.watched);
+    if (here && !shown.includes(here)) shown.push(here);
+    const same = !!(pools.pick && pools.watched && pools.pick.pool === pools.watched.pool);
+    poolRecord = {
+      usd: n(pools.usd) || 50, width_pct: n(pools.width_pct) || 1, pools: rows.length,
+      rows: shown.map((x) => ({ label: x.label, here: !!x.watched, fees_usd_per_day: x.fees_usd_per_day == null ? null : r4(x.fees_usd_per_day), hours: x.hours })),
+      pick: pools.pick ? { label: pools.pick.label, here: same } : null,
+      pick_due: pools.pick_due || null,
+      least_hours: rows.reduce((m, x) => Math.min(m, n(x.hours)), Infinity),
+      move: pools.move ? { move: !!pools.move.move, why: pools.move.why, to: pools.move.to ? pools.move.to.label : null } : null,
+    };
+  }
+
+  const day = lastDay(rec, now);
+  return {
+    at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsd,
+    pool: { address: poolAddr, label: poolLabel, position, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null },
+    put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
+    worth: { bnb: r4(value.now), usd: usd(value.now) },
+    holdings: {
+      position_bnb: r4(value.now), fees_owed_bnb: r5(sum.fees_owed_now_bnb),
+      bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
+      // What the held $BOBAI is worth now, at the pair's own price — read by
+      // the route, so the model can say "3,895 $BOBAI (≈ $x)" beside the
+      // BNB it cost.
+      bobai_usd: bobaiUsd > 0 ? Math.round(n(sum.bobai_held_units) * bobaiUsd * 100) / 100 : null,
+      bobai_usd_price: bobaiUsd > 0 ? bobaiUsd : null,
+      wallet_bnb: r4(walletBnb),
+    },
+    pnl: {
+      // Where the profit went, the operator's two halves: the fees kept as
+      // capital (collected and kept, or folded in by a re-set) keep working;
+      // the other half became $BOBAI the agent holds.
+      kept_working_bnb: r5(sum.fees_kept_as_capital_bnb),
+      into_bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
+      bobai_units: Math.round(n(sum.bobai_held_units)),
+      profit_bnb: r5(p.bnb), profit_usd: p.usd != null ? Math.round(n(p.usd) * 100) / 100 : usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
+      from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
+      in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
+      other_token: poolLabel ? poolLabel.split('/')[0] : 'the other side',
+    },
+    pool_record: poolRecord,
+    last_24h: day,
+    last_run_ok: last.ok !== false,
+    links: { page: 'https://brainonbnb.com/defi', record: 'https://agent.brainonbnb.com/lp/agent', series: 'https://agent.brainonbnb.com/lp/series', pools: 'https://agent.brainonbnb.com/lp/pools' },
+  };
 }
 
 ==============================================================================
@@ -8556,7 +9025,7 @@ function dayHold(used, widthPct) {
 // 06:30 and 14:00 UTC on 2026-09-02 four of eight hourly windows were simply
 // missing, with nothing anywhere to say why.
 export async function noteLpWindowError(env, e) {
-  const prev = (await readLpWindows(env)) || { pool: String(env.LP_WATCH_POOL || '').toLowerCase(), usd: POSITION_USD, windows: [] };
+  const prev = (await readLpWindows(env)) || { pool: await watchedPool(env), usd: POSITION_USD, windows: [] };
   prev.last_error = { at: new Date().toISOString(), error: String(e?.message || e).slice(0, 200) };
   prev.errors = (prev.errors || 0) + 1;
   await env.AGENT.put(KV_KEY, JSON.stringify(prev));
@@ -8582,6 +9051,18 @@ export async function measure(address, usd) {
   return plan;
 }
 
+// The pool the agent is in: what its own record says (worker-lp writes the
+// position's pool with every run since 2026-09-10, so a relocate is followed
+// the hour after), else the var the first weeks used.
+export async function watchedPool(env) {
+  try {
+    const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+    const p = String(rec?.pool || '').toLowerCase();
+    if (/^0x[0-9a-f]{40}$/.test(p)) return p;
+  } catch { /* the var stands */ }
+  return String(env.LP_WATCH_POOL || '').toLowerCase();
+}
+
 export async function readLpWindows(env) {
   const raw = await env.AGENT.get(KV_KEY);
   return raw ? JSON.parse(raw) : null;
@@ -8603,8 +9084,8 @@ const SETTLE_MS = 25000, RETRY_MS = 20000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function recordLpWindow(env, { settle = true } = {}) {
-  const pool = String(env.LP_WATCH_POOL || '').toLowerCase();
-  if (!/^0x[0-9a-f]{40}$/.test(pool)) return { ok: false, error: 'LP_WATCH_POOL is not set' };
+  const pool = await watchedPool(env);
+  if (!/^0x[0-9a-f]{40}$/.test(pool)) return { ok: false, error: 'no watched pool: the agent record names none and LP_WATCH_POOL is not set' };
   if (settle) await sleep(SETTLE_MS);
   let plan, attempts = 1;
   try { plan = await measure(pool, POSITION_USD); }
@@ -11859,17 +12340,21 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, executeRebalance, readBnbUsd,
+  planRebalance, executeRebalance, planRelocate, executeRelocate, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
-import { rebalanceWait, splitFees, widthUpgrade, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
+import { readLpPools, switchVerdict } from '../worker-agent/lp-pools.js';
+import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
 // can tell "just left" from "gone for two hours". Cleared the moment the
 // price is back inside or the range has been re-set.
 export const OUT_SINCE_KEY = 'lp:out_since';
-const STEPS = ['sweep', 'collect', 'rebalance', 'increase'];
+// relocate sits before rebalance: a day on which the pool record's switch
+// rule says "move" ends with the position in the new pool, and the re-set
+// step then finds it in range. It runs in the daily tick only.
+const STEPS = ['sweep', 'collect', 'relocate', 'rebalance', 'increase'];
 const DAILY_CRON = '23 4 * * *';
 // The hourly check re-sets the range and, since 2026-09-09, also puts in
 // what the wallet holds — a re-set that lands the position back in range
@@ -11894,7 +12379,11 @@ async function readState(env) {
 // One run. `dry` reads and decides but signs nothing — the same code path up
 // to the first transaction, which is the part worth being able to test after
 // a deploy without moving money. `steps` narrows a hand-triggered run.
-export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
+// `watch` marks the ten-minute deposit watch: it re-sets the range only when
+// a large deposit waits beside a range the price has left (depositForcesReset),
+// and its rebalance step is not recorded otherwise, so the hourly check's
+// own record is not overwritten six times an hour with "no re-set".
+export async function agentTick(env, { dry = false, steps = STEPS, watch = false } = {}) {
   const at = new Date().toISOString();
   const pub = createPublicClient({ chain: bsc, transport: transport() });
   const entry = { at, dry, ok: true, acted: false, steps: {} };
@@ -11941,7 +12430,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
   const lpKey = env.LP_PRIVATE_KEY;
   if (!lpKey) {
     entry.ok = false;
-    for (const s of ['collect', 'rebalance', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: 'LP_PRIVATE_KEY is not set on this worker' };
+    for (const s of ['collect', 'relocate', 'rebalance', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: 'LP_PRIVATE_KEY is not set on this worker' };
     entry.why = whyOf(entry.steps);
     return record(env, entry, steps.length < STEPS.length);
   }
@@ -11962,6 +12451,42 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct })) };
     } catch (e) {
       return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+    }
+  });
+
+  // 2b. relocate: the pool record's switch rule, acted on. The record
+  //     replays fifty dollars in every pool of the universe each hour; when
+  //     another pool has out-earned this one by a quarter over all its hours
+  //     and over the last day, and the extra fees on this capital pay for the
+  //     move within three days, the position moves there. Once a day, and
+  //     gated by LP_RELOCATE the way the first re-set was gated: the first
+  //     move is watched, then the cron takes over.
+  await run('relocate', async () => {
+    const poolsLog = await readLpPools(env);
+    if (!poolsLog || !Object.keys(poolsLog.pools || {}).length) return { acted: false, why: 'the pool record holds no windows yet' };
+    // Where the position is and how wide, read once, so the rule compares at
+    // the width the agent uses and against the pool it is really in.
+    const here = await planRelocate(pub, lp.address, { keptPct });
+    if (here.state.positions !== 1) return { ...here.summary, acted: false, why: here.no };
+    let positionUsd, resetCostUsd;
+    try {
+      const bnbUsd = (await readBnbUsd(pub)).bnbUsd;
+      if (bnbUsd > 0 && here.summary.value_bnb > 0) positionUsd = here.summary.value_bnb * bnbUsd;
+      const m = measuredResetCost(await readState(env), bnbUsd);
+      if (m && m.usd > 0) resetCostUsd = m.usd;
+    } catch { /* the rule's defaults stand */ }
+    const move = switchVerdict(poolsLog, here.width, { watched: here.from.pool, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
+    if (!move.move) return { ...here.summary, acted: false, move: false, why: `stay: ${move.why}` };
+    const plan = await planRelocate(pub, lp.address, { toPool: move.to.pool, keptPct, move });
+    if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
+    if (String(env.LP_RELOCATE || '0') !== '1') return { ...plan.summary, acted: false, why: `a move to ${move.to.label} is due and LP_RELOCATE is not 1 — the first move is run by hand and watched, then the cron takes over` };
+    if (dry) return { ...plan.summary, acted: false, why: `dry run — would have moved the position to ${move.to.label}` };
+    try {
+      const done = await executeRelocate(pub, lpWallet(), lp, plan, () => {}, { keptPct });
+      await env.AGENT.delete(OUT_SINCE_KEY);
+      return { ...plan.summary, acted: true, to_label: move.to.label, ...done };
+    } catch (e) {
+      return { ...plan.summary, acted: true, to_label: move.to.label, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
 
@@ -12009,6 +12534,17 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       if (!upgrade.upgrade) return { ...plan.summary, acted: false, why: plan.no, upgrade: upgrade.why };
       if (plan.width == null || !plan.ticks) return { ...plan.summary, acted: false, why: plan.no, upgrade: 'the plan carries no new ticks to upgrade into' };
     } else if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
+    // A large deposit waiting beside a range the price has left ends the wait.
+    let forced = null, waiting = null;
+    if (!plan.resume && !plan.summary.in_range) {
+      try {
+        const inc = await planIncrease(pub, lp.address);
+        waiting = { spendable_bnb: inc.state.spendableBnb, value_bnb: plan.summary.value_bnb };
+        forced = depositForcesReset({ inRange: false, spendableBnb: inc.state.spendableBnb, valueBnb: plan.summary.value_bnb });
+      } catch (e) { waiting = { error: String(e.shortMessage || e.message).slice(0, 160) }; forced = null; }
+    }
+    const forcedNote = { ...(waiting ? { deposit_beside: waiting } : {}), ...(forced ? { forced_by_deposit: forced } : {}) };
+    if (watch && !forced) return { ...plan.summary, ...forcedNote, acted: false, watch: true, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
     if (upgrade && upgrade.upgrade) {
       if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
       if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };
@@ -12020,8 +12556,8 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       }
     }
     const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
-    const waitNote = { wait_h: waitH, wait_basis: record?.delay_test?.wait_basis || 'set' };
-    if (!plan.resume) {
+    const waitNote = { wait_h: waitH, wait_basis: record?.delay_test?.wait_basis || 'set', ...(forced ? { forced_by_deposit: forced } : {}) };
+    if (!plan.resume && !forced) {
       if (outSince == null) {
         if (!dry) await env.AGENT.put(OUT_SINCE_KEY, at);
         const first = rebalanceWait(null, Date.parse(at), waitH);
@@ -12031,16 +12567,19 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
         if (wait) return { ...plan.summary, ...waitNote, acted: false, outside_since: outSinceRaw, why: wait };
       }
     }
-    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
+    if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
+    if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
     try {
       const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
       await env.AGENT.delete(OUT_SINCE_KEY);
-      return { ...plan.summary, acted: true, outside_since: outSinceRaw, ...done };
+      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {
-      return { ...plan.summary, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
+  // The watch's rebalance step is kept only when it did something or a
+  // deposit forced it; a "no re-set here" every ten minutes is not a record.
+  if (watch && entry.steps.rebalance && !entry.steps.rebalance.acted && !entry.steps.rebalance.forced_by_deposit && !entry.steps.rebalance.error) delete entry.steps.rebalance;
 
   // 4. increase: whatever is above the reserve, into the same position.
   await run('increase', async () => {
@@ -12092,6 +12631,11 @@ async function record(env, entry, partial = false) {
   // cron firing.
   if (entry.acted || !entry.ok) st.history = st.history.concat(entry).slice(-200);
   st.last_check = entry;
+  // Where the position lives, for the records that follow it (the width and
+  // pool records watch this pool). A relocate names the new one the moment
+  // it minted; every other run names what the increase step read.
+  const pool = entry.steps?.relocate?.new_pool || entry.steps?.increase?.pool;
+  if (pool && /^0x[0-9a-f]{40}$/i.test(pool)) st.pool = String(pool).toLowerCase();
   if (partial && st.last && st.last.steps) {
     const steps = { ...st.last.steps, ...entry.steps };
     // "Range checked" only when the range was: a hand-narrowed collect run
@@ -12100,8 +12644,8 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
-  st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase only (a deposit goes in within minutes, in range and above the floor)' };
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }
@@ -12116,17 +12660,20 @@ export default {
       const dry = url.searchParams.get('dry') !== '0';
       const step = url.searchParams.get('step');
       const steps = step && STEPS.includes(step) ? [step] : STEPS;
-      return json(await agentTick(env, { dry, steps }));
+      const watch = url.searchParams.get('watch') === '1';
+      return json(await agentTick(env, { dry, steps, watch }));
     }
     if (url.pathname === '/') return json(await readState(env));
     return json({ error: 'not found' }, 404);
   },
   async scheduled(event, env, ctx) {
-    // The daily tick runs all four steps; the :50 firing is the hourly range
+    // The daily tick runs all five steps; the :50 firing is the hourly range
     // check (rebalance, then increase so a fresh range takes what waits in the
-    // wallet); every other firing is the deposit watch and runs increase alone.
-    const steps = event.cron === DAILY_CRON ? STEPS : event.cron === HOURLY_CRON ? ['rebalance', 'increase'] : ['increase'];
-    ctx.waitUntil(agentTick(env, { steps }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
+    // wallet); every other firing is the deposit watch: increase, and a re-set
+    // only when a large deposit waits beside a range the price has left.
+    const watch = event.cron !== DAILY_CRON && event.cron !== HOURLY_CRON;
+    const steps = event.cron === DAILY_CRON ? STEPS : ['rebalance', 'increase'];
+    ctx.waitUntil(agentTick(env, { steps, watch }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
   },
 };
 
@@ -12185,6 +12732,13 @@ id = "<your-kv-namespace-id>"
 # 0–100 falls back to the default in shared/lp-guards.js (50), never to 0 or 100.
 [vars]
 LP_REBALANCE = "1"
+# Whether the daily run may move the position to another pool of the
+# universe when the pool record's switch rule says so. "1" since 2026-09-10
+# 12:30 UTC, the operator's word: "voll automatisch, ab jetzt". A move that
+# stops between its unwind and its mint leaves the two tokens in the wallet;
+# the hourly check's resume mints them into the pool the width record
+# watches, and a token of the other pair waits there for a hand.
+LP_RELOCATE = "1"
 LP_FEE_KEEP_PCT = "50"
 
 # Secrets, set with `wrangler secret put`, never in this file:

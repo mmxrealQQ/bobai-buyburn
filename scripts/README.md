@@ -86,6 +86,8 @@ Runs on the trading server through the Binance Agentic Wallet; runbook in `docs/
 | `trader-fetch.mjs` | hourly closes for BNB, CAKE, BOB, BOBAI in USD (Binance spot, GeckoTerminal), paged, into `data/trader/` |
 | `trader.mjs` | `--self-test` (31 checks) · `--backtest` (parameters chosen on 60 %, judged on the unseen 40 %, writes picks.json) · `--robust` (four splits, costs ×1.5) · `--plan` · `--status` |
 | `trader-live.mjs` | the live agent: `--bootstrap`, `--tick [--confirm]`, `--loop --confirm` (the service), `--refit`, `--state`, `--notify-test`; reports to the operator's private Telegram chat |
+| `trader-slow.mjs` | the slow machine measured: allocation × cadence on daily closes, chosen on 60 %, judged on the unseen 40 %, four splits, costs ×1.5; `--self-test` (12 pins) |
+| `trader-sleeve.mjs` | the cash sleeve measured, not built: 25 % USDT buying X %-dips under the 7-day mean, back to USDT at the mean; same discipline; `--self-test` (17 pins) |
 
 ## Left over
 `lp-origin-scan.js` (whose LP is which, for the manual liquidity adds),

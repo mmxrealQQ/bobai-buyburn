@@ -254,10 +254,15 @@ function report(capitals) {
 }
 
 // -------------------------------------------------------------------- main
-const argv = process.argv.slice(2);
-if (argv.includes('--self-test')) selfTest();
-else {
-  const i = argv.indexOf('--capital');
-  const capitals = i >= 0 ? [Number(argv[i + 1])] : [110, 135, 500, 1000];
-  report(capitals);
+// Only when run directly: trader-sleeve.mjs imports the arithmetic above and
+// must not trigger this report.
+const isMain = process.argv[1] && path.resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
+if (isMain) {
+  const argv = process.argv.slice(2);
+  if (argv.includes('--self-test')) selfTest();
+  else {
+    const i = argv.indexOf('--capital');
+    const capitals = i >= 0 ? [Number(argv[i + 1])] : [110, 135, 500, 1000];
+    report(capitals);
+  }
 }

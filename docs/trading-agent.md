@@ -63,6 +63,7 @@ hold, parameters chosen by walk-forward and refit weekly. Its evidence is below 
 | chosen parameters | `data/trader/picks.json` (written by `--backtest`) |
 | the live agent: bootstrap, tick, loop, re-measure, reports | `scripts/trader-live.mjs` |
 | the slow backtest (allocation × cadence, walk-forward, costs × 1.5) | `scripts/trader-slow.mjs` |
+| the cash sleeve, measured and not built (25 % USDT buying dips) | `scripts/trader-sleeve.mjs` |
 | its state and log (on the server) | `data/trader/state.json`, `data/trader/log.jsonl` |
 | the server | Hetzner Cloud `bobai-trader`, Helsinki, `2.29.45.27` — see the memory note `reference_trader_vps` |
 | the wallet | Binance Agentic Wallet `0xcCCf2F2198e229027f6F61379a36E82D8F45958c` (BSC), signed in on the server for 365 days, CLI `baw` |
@@ -145,6 +146,38 @@ about one dollar, where the hourly agent turned negative. (4) Single assets did 
 hindsight (CAKE +58%, BOB +49% with a 40% drawdown) — that is a look-back, not a rule. Yield on
 the parked assets (staking BNB/CAKE, lending USDT) is not in these numbers and is the next
 thing to measure.
+
+## The cash sleeve, measured and not built (2026-09-10, `scripts/trader-sleeve.mjs`)
+
+On 2026-09-09 the operator saw that the thirds leave the agent with no USDT when a dip comes.
+Measured before building, on the same 180 daily closes (13.3.–8.9.), same costs and gas, the
+live monthly pass with the 20% band: weights 25/25/25 + 25 USDT; on every close a leg that is
+X% under its trailing 7-day mean gets a lot (a third of the sleeve) from the cash, and the lot
+goes back to USDT when a close is at or above that mean; on the monthly pass open lots fold
+into their legs and the sleeve is refilled. X was chosen blind on the first 108 days from
+3/4/5/6/8/10% and judged on the last 72, then again at the 50/70/80% splits and with costs × 1.5.
+The rule agreed the day before: live only if the sleeve beats the thirds at every split.
+
+| pot | X chosen | sleeve, unseen 72 d | thirds (live), same days | sleeve at 50/70/80% | thirds at 50/70/80% | verdict |
+|---|---|---|---|---|---|---|
+| $167 | 10% | +49.43 (+29.6%) | +66.41 (+39.8%) | +62 / +44 / +42 | +84 / +59 / +56 | behind at 4 of 4 |
+| $500 | 10% | +150.96 (+30.2%) | +201.78 (+40.4%) | +190 / +135 / +128 | +254 / +180 / +171 | behind at 4 of 4 |
+| $1000 | 10% | +303.41 (+30.3%) | +405.04 (+40.5%) | +381 / +271 / +257 | +511 / +361 / +343 | behind at 4 of 4 |
+
+Why: (1) the cash itself costs ten points on a rising quarter — the sleeve without any dip rule
+lands at +29.6% against +39.8% — and no X earns them back. (2) On $167 a lot is $14, and a
+round trip costs ~1.5% plus $0.70 of gas, about 6.5% of the lot; the lots lose money at every
+X under 8% (dip 3%: 27 lots, −12.38 over six months; 5%: 18 lots, −3.11) and only 8–10% dips
+come out ahead (+1.24 / +2.94), which is why the blind choice is 10% — and on the unseen 72
+days a 10% dip under the 7-day mean never happened, so the chosen machine bought nothing and
+is simply the thirds with a quarter parked. (3) At $1000 the lots do earn (+36 to +41 at
+5–10% over six months) but not the ten points the cash gives up. (4) What the sleeve does buy
+is a smaller drawdown: 9.8–9.9% on the unseen days against 12.8%, 19–22% over six months
+against 24.5%. That is insurance, paid for in return; it is not what the brief asked for.
+(5) Costs × 1.5 change the picture by a dollar or two, nowhere the verdict.
+
+Not built. Deposits keep going to the thirds through the top-up pass. If cash is ever wanted it
+should be for a stated reason (a drawdown ceiling), not for return, and this is its price.
 
 ## Live since
 

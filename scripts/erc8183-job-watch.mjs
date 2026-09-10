@@ -27,6 +27,7 @@
 // SENDING IS A SEPARATE, DELIBERATE STEP
 //   --settle <id>          simulate settle(id) from the buyer wallet, print the call
 //   --settle <id> --send   sign it with the buyer key in .env and broadcast
+//                          (0.1 gwei floor; add --replace to resend a stuck one at the same nonce)
 //   --refund <id>          simulate claimRefund(id) on the kernel — a job that was
 //                          funded, never delivered and is past expiry gives the
 //                          budget back to the buyer; --send as above
@@ -44,7 +45,7 @@
 import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createPublicClient, createWalletClient, http, formatEther } from 'viem';
+import { createPublicClient, createWalletClient, http, formatEther, formatGwei, parseGwei } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 import { decodeJob, ERC8183 } from '../worker-agent/hire.js';
@@ -54,6 +55,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const RECORD = path.join(ROOT, 'data', 'erc8183', 'own-jobs.json');
 const RPC = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org';
 const WORKER = 'https://agent.brainonbnb.com';
+const FLOOR_GAS_PRICE = parseGwei('0.1');
 
 const KERNEL = ERC8183.commerce, ROUTER = ERC8183.router, POLICY = ERC8183.policy;
 const SEL = { getJob: '0xbf22c457', settle: '0x39c2ebb9', disputeWindow: '0x117f5f92', claimRefund: '0x5b7baf64' };
@@ -224,12 +226,29 @@ Not sent. To send it, a person runs:
             if (account.address.toLowerCase() !== BUYER.toLowerCase()) { console.log(`the key in .env is ${account.address}, not the buyer ${BUYER}`); process.exitCode = 1; }
             else {
               const bal = await pub.getBalance({ address: account.address });
-              console.log(`  buyer gas: ${formatEther(bal)} BNB`);
-              const wallet = createWalletClient({ account, chain: bsc, transport: http(RPC) });
-              const hash = await wallet.sendTransaction({ to: action.to, data, gas: 300000n });
-              console.log(`  sent ${hash}`);
-              const rcpt = await pub.waitForTransactionReceipt({ hash });
-              console.log(`  ${rcpt.status} in block ${rcpt.blockNumber} — run the watch again to record the transition`);
+              console.log(`  buyer balance: ${formatEther(bal)} BNB`);
+              // BSC validators take 0.05 gwei but serve 0.1 gwei first; at the
+              // node's floor a settle sat unmined for 10+ minutes (10.9.2026).
+              const nodePrice = await pub.getGasPrice();
+              const gasPrice = nodePrice > FLOOR_GAS_PRICE ? nodePrice : FLOOR_GAS_PRICE;
+              // A stuck earlier send is replaced, never stacked: same nonce, higher price.
+              const [latest, pending] = await Promise.all([
+                pub.getTransactionCount({ address: account.address }),
+                pub.getTransactionCount({ address: account.address, blockTag: 'pending' }),
+              ]);
+              const replace = process.argv.includes('--replace');
+              if (pending > latest && !replace) {
+                console.log(`  a transaction from the buyer is still pending (nonce ${latest}); add --replace to resend it at ${formatGwei(gasPrice)} gwei`);
+                process.exitCode = 1;
+              } else {
+                const nonce = replace && pending > latest ? latest : undefined;
+                console.log(`  gas price ${formatGwei(gasPrice)} gwei${nonce !== undefined ? `, replacing nonce ${nonce}` : ''}`);
+                const wallet = createWalletClient({ account, chain: bsc, transport: http(RPC) });
+                const hash = await wallet.sendTransaction({ to: action.to, data, gas: 300000n, gasPrice, nonce });
+                console.log(`  sent ${hash}`);
+                const rcpt = await pub.waitForTransactionReceipt({ hash, timeout: 600_000 });
+                console.log(`  ${rcpt.status} in block ${rcpt.blockNumber} — run the watch again to record the transition`);
+              }
             }
           }
         }

@@ -609,7 +609,7 @@ function lbdata(entries){try{if(!entries||entries.length===0)return;const lbC=do
 // archive card, frozen at its final numbers), everything after to the live boost II card.
 const BB2_START=new Date('2026-08-08T00:00:00Z').getTime();
 const BB2_END=new Date('2026-09-16T23:59:59Z').getTime();
-// LP Agent share and Giggle Academy pot — the same instants the buyback worker switches on.
+// DeFi Agent share and Giggle Academy pot — the same instants the buyback worker switches on.
 const LP_SHARE_START=new Date('2026-09-09T05:30:00Z').getTime();
 const GG_START=new Date('2026-09-17T00:01:00Z').getTime();
 const GG_END=new Date('2026-11-20T00:01:00Z').getTime();
@@ -872,11 +872,11 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     {id:'standard-bb',   start:new Date('2026-07-19T23:59:00Z').getTime(), end:new Date('2026-08-01T23:59:59Z').getTime(), creatorNote:'(−0.25% → $BOBAI liq add)', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'0.75%', bobPct:'0.5%', bobaiPct:'1%'},
     {id:'standard-post', start:new Date('2026-08-01T23:59:59Z').getTime(), end:new Date('2026-08-08T00:00:00Z').getTime(), creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'},
     {id:'bobai-liq-2',   start:new Date('2026-08-08T00:00:00Z').getTime(), end:LP_SHARE_START, creatorNote:'', bobNote:'(−0.8% → $BOBAI liq add)', creatorPct:'1%', bobPct:'0.2%', bobaiPct:'1%'},
-    // 2026-09-09: a tenth of each slice to the liquidity agent, cut from the slices as they stand
+    // 2026-09-09: a tenth of each slice to the DeFi agent, cut from the slices as they stand
     // (the BOB-burn slice is 0.2% during Liq Boost II and keeps 0.1%); from Sep 17 another tenth
     // of each into the Giggle Academy pot. Both end Nov 20, 00:01 UTC. Same windows as the bot.
-    {id:'bobai-liq-2-lp',start:LP_SHARE_START, end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'(−0.1% → LP Agent)', bobNote:'(−0.8% → $BOBAI liq add, −0.1% → LP Agent)', creatorPct:'0.9%', bobPct:'0.1%', bobaiPct:'0.9%', lpPct:'0.3%'},
-    {id:'sunshine',      start:GG_START, end:GG_END, creatorNote:'(−0.1% → LP Agent, −0.1% → Giggle pot)', bobNote:'(−0.1% → LP Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.8%', bobaiPct:'0.8%', lpPct:'0.3%', gigglePct:'0.3%'},
+    {id:'bobai-liq-2-lp',start:LP_SHARE_START, end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'(−0.1% → DeFi Agent)', bobNote:'(−0.8% → $BOBAI liq add, −0.1% → DeFi Agent)', creatorPct:'0.9%', bobPct:'0.1%', bobaiPct:'0.9%', lpPct:'0.3%'},
+    {id:'sunshine',      start:GG_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.8%', bobaiPct:'0.8%', lpPct:'0.3%', gigglePct:'0.3%'},
     {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'}
   ];
   // Size the scroll window to exactly: 1 past phase (context) + active + everything upcoming.
@@ -932,7 +932,7 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     // panel right below it showed the campaign split. One page cannot say two
     // things about the same tax, so the card reads from the same schedule.
     const st=document.getElementById('step-split');
-    if(st)st.textContent=active?(active.creatorPct+'/'+active.bobPct+'/'+active.bobaiPct+(active.lpPct?' + '+active.lpPct+' LP Agent':'')+(active.gigglePct?' + '+active.gigglePct+' Giggle':'')):'~1/1/1';
+    if(st)st.textContent=active?(active.creatorPct+'/'+active.bobPct+'/'+active.bobaiPct+(active.lpPct?' + '+active.lpPct+' DeFi Agent':'')+(active.gigglePct?' + '+active.gigglePct+' Giggle':'')):'~1/1/1';
   }
   apply();setInterval(apply,60000);
 }();
@@ -1035,7 +1035,7 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     });
 }();
 
-// The liquidity agent's block, on its own so /liquidity can carry it without
+// The DeFi agent's block, on its own so /defi can carry it without
 // the rest of the agents block. Same rows, same source, same sums.
 // The record says what the agent saw at the daily run; the chain says what is true
 // now. Between the two a price can leave the range, and it did: on 2026-09-03
@@ -1061,7 +1061,7 @@ function fillLpBlock(){
   const get = u => fetch(u, {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
   return Promise.all([get('https://agent.brainonbnb.com/lp/agent'), get('https://agent.brainonbnb.com/lp/series')])
     .then(([rec, ser]) => {
-        // The liquidity agent's own record: what it holds, whether it is
+        // The DeFi agent's own record: what it holds, whether it is
         // earning right now, and what it has already moved. Sums come from
         // the history of actions, not from a counter anyone could edit.
         const list = el('ag-lp'), noteEl = el('ag-lp-note');
@@ -1193,7 +1193,7 @@ function fillLpBlock(){
 }
 if(!document.getElementById('ag-asked') && document.getElementById('ag-lp')) fillLpBlock();
 
-// The series: one row per run of the liquidity agent, from /lp/series. The
+// The series: one row per run of the DeFi agent, from /lp/series. The
 // summary line answers the question first; the table is the evidence.
 function fillLpSeries(){
   const el = id => document.getElementById(id);
@@ -1239,7 +1239,7 @@ function fillLpYours(){
   const A = 'https://agent.brainonbnb.com';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const paramsFor = v => /^\d+$/.test(v) ? {position: v} : {address: v};
-  const taskFor = v => /^\d+$/.test(v) ? 'what would the liquidity agent do with PancakeSwap V3 position ' + v : 'what would the liquidity agent do with the PancakeSwap V3 position held by ' + v;
+  const taskFor = v => /^\d+$/.test(v) ? 'what would the DeFi agent do with PancakeSwap V3 position ' + v : 'what would the DeFi agent do with the PancakeSwap V3 position held by ' + v;
   const render = ans => {
     const s = ans.summary || {};
     out.innerHTML = '<div class="lp-terms"><div class="lp-head">' + esc(s.headline || 'Delivered.') + '</div>' +

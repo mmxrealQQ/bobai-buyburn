@@ -46,7 +46,7 @@ const ANSWER_NAMES = {
   yield_plan: 'Venus yield ranking, and whether moving pays for itself',
   rebalance_plan: 'Portfolio rebalance, priced against the pools that would execute it',
   lp_tier_plan: 'Which PancakeSwap fee tier is actually paying its liquidity providers',
-  lp_position_plan: 'The liquidity agent on YOUR PancakeSwap V3 position: in range, worth, fees owed, whether a re-set is due and in which width — the same code that runs ours. Reads and plans, signs nothing',
+  lp_position_plan: 'The DeFi agent on YOUR PancakeSwap V3 position: in range, worth, fees owed, whether a re-set is due and in which width — the same code that runs ours. Reads and plans, signs nothing',
 };
 const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/watch',
@@ -108,7 +108,7 @@ is paid, because something has to still be running in an hour.
 | \`https://brainonbnb.com/scanner\` | The measurement in a browser |
 | \`npx skills add https://brainonbnb.com\` | The same measurement as an installable agent skill |
 | \`GET https://agent.brainonbnb.com/find?q=…\` | Broker: ERC-8004 agents on BNB Chain that expose something matching |
-| \`GET https://agent.brainonbnb.com/lp/look?position=…\` | The liquidity agent's look at any PancakeSwap V3 position: in range, room, value, fees owed. The plan is the paid \`lp_position_plan\` |
+| \`GET https://agent.brainonbnb.com/lp/look?position=…\` | The DeFi agent's look at any PancakeSwap V3 position: in range, room, value, fees owed. The plan is the paid \`lp_position_plan\` |
 | \`POST https://agent.brainonbnb.com/dispatch\` | Routes a task to an agent that can answer it and names who produced the result. Read-only tools only — anything that signs, sends or swaps is listed for you to call yourself, never invoked on your behalf. |
 | \`GET https://agent.brainonbnb.com/sessions\` | Every task routed, who answered, how long it took, what failed |
 

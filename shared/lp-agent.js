@@ -1,4 +1,4 @@
-// The LP agent's three steps, written once.
+// The DeFi agent's three steps, written once.
 //
 // worker-lp/index.js runs them daily with the keys as Worker secrets;
 // scripts/lp-agent.mjs runs the same functions from a laptop, plan by default.
@@ -9,7 +9,7 @@
 //
 // THE MONEY, in the order the daily tick runs it:
 //   sweep     what the AI side earned (USD1 for watches, $U for delivered
-//             jobs) is sold for BNB and sent to the liquidity wallet
+//             jobs) is sold for BNB and sent to the DeFi wallet
 //   collect   the position's fees are collected and sold for BNB; part of it
 //             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
 //             the rest goes to the buyback wallet — only the fees, never the
@@ -364,7 +364,7 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
 }
 
 // --------------------------------------------------------------------------
-// sweep: AI income -> BNB -> liquidity wallet
+// sweep: AI income -> BNB -> DeFi wallet
 // --------------------------------------------------------------------------
 
 export async function readBnbUsd(pub) {
@@ -398,7 +398,7 @@ export async function planSweep(pub, source, feed = null) {
 }
 
 // Approve exactly the amount, sell it, and have the router pay the BNB
-// straight to the liquidity wallet — one transaction fewer, and the income
+// straight to the DeFi wallet — one transaction fewer, and the income
 // wallet never holds BNB it could be tempted to keep.
 export async function executeSweep(pub, wallet, account, plan, log = () => {}) {
   const txs = [];
@@ -407,7 +407,7 @@ export async function executeSweep(pub, wallet, account, plan, log = () => {}) {
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
   // 3% floor: both pairs are deep and both tokens are dollars; the guard has
   // already refused a route that prices them off a dollar.
-  await send(`sell ${plan.source.symbol} for BNB to the liquidity wallet`, {
+  await send(`sell ${plan.source.symbol} for BNB to the DeFi wallet`, {
     address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
     args: [plan.amount, (plan.bnbOut * 9700n) / 10000n, [plan.source.token, ADDR.WBNB], ADDR.LP_WALLET, deadline()],
   });
@@ -560,7 +560,7 @@ async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, minOut
   return swapNote(tokenIn === ADDR.WBNB ? 'buy' : 'sell', notionalWbnb, fee);
 }
 
-// The agent's profit share buys BOBAI and holds it in the liquidity wallet,
+// The agent's profit share buys BOBAI and holds it in the DeFi wallet,
 // never sells it — so the operator sees, in the wallet, exactly what the agent
 // earned (2026-09-09: "keep it as BOBAI in its own wallet, then I see what
 // really comes in"). It used to send that BNB to the buyback wallet. BOBAI

@@ -126,7 +126,7 @@ export const SERVICES = {
   },
   lp_position_plan: {
     id: 'lp_position_plan',
-    name: 'The liquidity agent, on your position',
+    name: 'The DeFi agent, on your position',
     category: 'rebalancing',
     price: '100000000000000000',
     price_display: '0.10 USD1',
@@ -314,7 +314,7 @@ export const SEED_TASKS = {
   lp_tier_plan: `which PancakeSwap fee tier is actually paying for ${SEED_CAKE}, placing $1000 of liquidity`,
   // Our own position, read the way a stranger's would be: the example IS the
   // agent looking at itself through the paid door.
-  lp_position_plan: 'what would the liquidity agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+  lp_position_plan: 'what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
 };
 // The seed sentences carry the numbers a service needs in words; the same
 // extractor a funded job goes through turns them into parameters, plus the

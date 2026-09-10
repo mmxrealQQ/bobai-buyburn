@@ -9,7 +9,7 @@
 //
 //   1. The admin key is a Cloudflare secret (ALTANA_ADMIN_PRIVATE_KEY). It is
 //      never in code, never in the public mirror, never returned by any route.
-//      The same arrangement holds the liquidity wallet's key and the provider
+//      The same arrangement holds the DeFi wallet's key and the provider
 //      wallet's key on the other workers of this project.
 //   2. The route fires only with the operator's token (SESSION_REVOKE_TOKEN,
 //      also a secret) in the request. Without it the answer is 401 and nothing

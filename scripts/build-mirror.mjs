@@ -120,7 +120,7 @@ if (args.includes('--self-test')) {
     ['scripts/trader-live.mjs',          30000, false, 'the trading agent stays private'],
     ['shared/trader-core.js',            20000, false, 'the trading agent\'s arithmetic stays private'],
     ['data/trader/picks.json',            4000, false, 'the trading agent\'s parameters stay private'],
-    ['shared/lp-agent.js',               60000, true,  'the liquidity agent stays public'],
+    ['shared/lp-agent.js',               60000, true,  'the DeFi agent stays public'],
   ];
   for (const [f, size, want, why] of cases) {
     const got = classify(f, size).keep;

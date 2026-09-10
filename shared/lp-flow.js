@@ -1,4 +1,4 @@
-// Where the money came from and where it went, from the liquidity agent's
+// Where the money came from and where it went, from the DeFi agent's
 // own record.
 //
 // One function, used by the agent worker (the /lp/agent JSON and page, the
@@ -15,7 +15,7 @@
 //         into the position (increases), and how many re-sets
 //   gas   what all of it cost in BNB, over how many transactions
 //   waiting   what the last run saw still waiting: income on the wallets,
-//         fees owed by the position, BNB in the liquidity wallet above reserve
+//         fees owed by the position, BNB in the DeFi wallet above reserve
 //   rule  the fee share kept, as the last collect named it
 //   paid_for  what the x402 service was paid for (from the agent worker's
 //         own earnings record), when the caller has it

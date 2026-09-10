@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- The liquidity agent's own page, behind its Ecosystem tile. One part, on
+  <!-- The DeFi agent's own page, behind its Ecosystem tile. One part, on
        its own, nothing repeated from the other three tiles: where the money
        comes from and goes, what the agent holds right now, what it decides
        every day and why, and where the full daily record is. The live block
@@ -11,19 +11,19 @@
   <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/fonts.css?v=1">
-  <title>The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI</title>
-  <meta name="description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, splits the fees between that position and $BOBAI it buys and holds in its own wallet. Every step is a transaction; the daily record is public.">
+  <title>The DeFi agent — AI income goes to work, half the profit becomes $BOBAI</title>
+  <meta name="description" content="An agent that puts what other AIs pay this project to work in a PancakeSwap V3 pool on BNB Chain once a day; half of what it earns keeps working, half buys $BOBAI it holds in its own wallet. Every step is a transaction; the daily record is public.">
   <link rel="canonical" href="https://brainonbnb.com/liquidity">
   <link rel="icon" type="image/png" href="favicon.png?v=4">
   <link rel="apple-touch-icon" href="logo.png?v=4">
-  <meta property="og:title" content="The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI">
-  <meta property="og:description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, splits the fees between that position and $BOBAI it buys and holds in its own wallet. Every step is a transaction; the daily record is public.">
+  <meta property="og:title" content="The DeFi agent — AI income goes to work, half the profit becomes $BOBAI">
+  <meta property="og:description" content="An agent that puts what other AIs pay this project to work in a PancakeSwap V3 pool on BNB Chain once a day; half of what it earns keeps working, half buys $BOBAI it holds in its own wallet. Every step is a transaction; the daily record is public.">
   <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
   <meta property="og:url" content="https://brainonbnb.com/liquidity">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="The liquidity agent — AI income becomes liquidity, fees become burned $BOBAI">
-  <meta name="twitter:description" content="An agent that turns what other AIs pay this project into a PancakeSwap liquidity position once a day, splits the fees between that position and $BOBAI it buys and holds in its own wallet. Every step is a transaction; the daily record is public.">
+  <meta name="twitter:title" content="The DeFi agent — AI income goes to work, half the profit becomes $BOBAI">
+  <meta name="twitter:description" content="An agent that puts what other AIs pay this project to work in a PancakeSwap V3 pool on BNB Chain once a day; half of what it earns keeps working, half buys $BOBAI it holds in its own wallet. Every step is a transaction; the daily record is public.">
   <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
   <link rel="preload" href="styles.css?v=49" as="style">
   <link rel="stylesheet" href="styles.css?v=49">
@@ -68,15 +68,15 @@
 <div class="page">
   <nav><div class="nav">
     <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
-    <a class="brand-link" href="/liquidity">The Liquidity Agent</a>
+    <a class="brand-link" href="/defi">The DeFi Agent</a>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
   <section class="sec b-violet" style="margin-top:86px">
-    <div class="blk-head"><span class="blk-tag">Agent &middot; Liquidity</span><span class="blk-line"></span></div>
+    <div class="blk-head"><span class="blk-tag">Agent &middot; DeFi</span><span class="blk-line"></span></div>
 
     <div class="lp-hero">
-      <h1>The liquidity <em>agent</em></h1>
-      <p class="lp-lead">What other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent turns it into liquidity; of what that liquidity earns, half buys $BOBAI and burns it and half grows the position. Every step is a transaction on BNB Chain, and the record below is read from the agent itself.</p>
+      <h1>The DeFi <em>agent</em></h1>
+      <p class="lp-lead">What other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent puts it to work in a PancakeSwap V3 pool on BNB Chain; of what that position earns, half keeps working and half buys $BOBAI the agent holds. Every step is a transaction on BNB Chain, and the record below is read from the agent itself.</p>
     </div>
 
   <div class="lp-part" id="flow">
@@ -89,8 +89,8 @@
       <h3>The loop</h3>
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>An agent pays</b><span>A few cents per pool watch or per job, straight to <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">the income wallet</a>, used for nothing else. The hired agents deliver to <a href="https://bscscan.com/address/0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963" target="_blank" rel="noopener">a second one</a>.</span></div></li>
-        <li><span class="agt-i">2</span><div><b>It becomes liquidity</b><span>Once a day the income is sold for BNB and put into the project&rsquo;s own <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">liquidity wallet</a>, which holds a PancakeSwap V3 position. That capital stays.</span></div></li>
-        <li><span class="agt-i">3</span><div><b>The fees: half buys $BOBAI the agent keeps, half grows the position</b><span>What the position earns is collected; half of it stays as capital, so the position grows out of its own earnings. The other half buys $BOBAI on PancakeSwap and stays in <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the agent&rsquo;s own wallet</a>, never sold &mdash; the operator&rsquo;s rule since Sep 9, 2026, so what the agent really earns can be seen in one place. Until then that half went to the buyback bot.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>It goes to work</b><span>Once a day the income is sold for BNB and put into the project&rsquo;s own <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">DeFi wallet</a>, which holds one PancakeSwap V3 position in the pool the agent&rsquo;s own record measures as the best-paying of its candidates. Not the $BOBAI pool: the position earns on other people&rsquo;s trades. That capital stays.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>The profit: half keeps working, half becomes $BOBAI</b><span>What the position earns is collected; half of it stays as capital, so the position grows out of its own earnings. The other half buys $BOBAI on PancakeSwap and stays in <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the agent&rsquo;s own wallet</a>, never sold &mdash; the operator&rsquo;s rule since Sep 9, 2026, so what the agent really earns can be seen in one place. Until then that half went to the buyback bot.</span></div></li>
       </ol>
     </div>
 
@@ -149,7 +149,7 @@
     <div class="agt-flow fi">
       <h3>The four steps</h3>
       <ol class="agt-steps">
-        <li><span class="agt-i">1</span><div><b>Sweep</b><span>Sells the income (USD1 and $U) for BNB and sends it to the liquidity wallet. Waits until a sweep is worth more than the gas it costs, and never moves more than about fifty dollars in one run.</span></div></li>
+        <li><span class="agt-i">1</span><div><b>Sweep</b><span>Sells the income (USD1 and $U) for BNB and sends it to the DeFi wallet. Waits until a sweep is worth more than the gas it costs, and never moves more than about fifty dollars in one run.</span></div></li>
         <li><span class="agt-i">2</span><div><b>Collect</b><span>Collects the fees the position has earned and sells the token side for BNB. Half stays as capital for the next increase; half buys $BOBAI that stays in the agent&rsquo;s wallet. The share is a public setting in the source. Small amounts are left to grow.</span></div></li>
         <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour, not once a day. If the price has been outside the range for two hours, the position is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices of the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a> &mdash; re-sets and their cost included. Inside the range it does nothing.</span></div></li>
         <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the same position. The capital only ever grows; it is never withdrawn.</span></div></li>
@@ -170,7 +170,7 @@
   </section>
   <footer><div class="fi2">
     <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
-    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/liquidity">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
 <script src="app.js?v=66" defer></script>

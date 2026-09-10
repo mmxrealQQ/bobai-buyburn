@@ -126,7 +126,7 @@
           {
             "@type": "Question",
             "name": "What is the trading tax on $BOBAI?",
-            "acceptedAnswer": {"@type": "Answer", "text": "The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard. From Sep 9, 2026 a tenth of each slice (0.3% of the trade) goes to the liquidity agent's wallet, and from Sep 17 to Nov 20, 2026 another tenth of each (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; from Nov 20 the split is 1/1/1 again."}
+            "acceptedAnswer": {"@type": "Answer", "text": "The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard. From Sep 9, 2026 a tenth of each slice (0.3% of the trade) goes to the DeFi agent's wallet, and from Sep 17 to Nov 20, 2026 another tenth of each (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; from Nov 20 the split is 1/1/1 again."}
           },
           {
             "@type": "Question",
@@ -352,7 +352,7 @@
         <div class="ta">&#x2192;</div>
         <div class="tf"><div class="p" id="tax-pct-bobai" style="color:var(--green)">~1%</div><div class="d">Burn $BOBAI</div></div>
         <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
-        <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/liquidity" style="color:inherit">LP Agent</a></div></div>
+        <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/defi" style="color:inherit">DeFi Agent</a></div></div>
         <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
         <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="#giggle" style="color:inherit">Giggle pot</a></div></div>
       </div>
@@ -394,13 +394,13 @@
           </div>
           <div class="ts-row" data-phase="bobai-liq-2-lp">
             <div class="ts-when">Sep 9, 05:30 UTC &rarr; Sep 16, 23:59 UTC, 2026</div>
-            <div class="ts-name">$BOBAI Liq Boost II + LP Agent</div>
-            <div class="ts-split">0.9% BOBAI burn &middot; 0.1% BOB burn &middot; 0.9% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b> &middot; <b>0.3% &rarr; <a href="/liquidity">LP Agent</a></b></div>
+            <div class="ts-name">$BOBAI Liq Boost II + DeFi Agent</div>
+            <div class="ts-split">0.9% BOBAI burn &middot; 0.1% BOB burn &middot; 0.9% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b> &middot; <b>0.3% &rarr; <a href="/defi">DeFi Agent</a></b></div>
           </div>
           <div class="ts-row" data-phase="sunshine">
             <div class="ts-when">Sep 17, 00:01 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
-            <div class="ts-name">☀️ Giggle Academy pot + LP Agent</div>
-            <div class="ts-split">0.8% BOBAI burn &middot; 0.8% BOB burn &middot; 0.8% Creator &middot; <b>0.3% &rarr; <a href="/liquidity">LP Agent</a></b> &middot; <b>0.3% &rarr; <a href="#giggle">Giggle Academy pot</a></b></div>
+            <div class="ts-name">☀️ Giggle Academy pot + DeFi Agent</div>
+            <div class="ts-split">0.8% BOBAI burn &middot; 0.8% BOB burn &middot; 0.8% Creator &middot; <b>0.3% &rarr; <a href="/defi">DeFi Agent</a></b> &middot; <b>0.3% &rarr; <a href="#giggle">Giggle Academy pot</a></b></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
             <div class="ts-when">from Nov 20, 2026</div>
@@ -719,7 +719,7 @@
            repeated as panels. Since 2026-09-03 they are cards like every other
            app here: one sentence, one button, the page behind it does the rest.
            What cannot be a card - the live figures and where the money goes -
-           is /liquidity, which the Liquidity Agent tile opens. Four tiles, four pages, nothing twice. -->
+           is /defi, which the DeFi Agent tile opens. Four tiles, four pages, nothing twice. -->
       <a class="ec fi" href="/registry">
         <div class="ec-top">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8"
@@ -747,16 +747,16 @@
         <p>One command puts the token check into your own AI assistant. Other people's agents pay a few cents to have a pool watched around the clock; that is this project's first income outside its own tax.</p>
         <div class="ec-foot"><span class="ec-go">See The Offer <span class="arr">&#x2192;</span></span><span class="ec-st beta">Building</span></div>
       </a>
-      <a class="ec fi" href="/liquidity">
+      <a class="ec fi" href="/defi">
         <div class="ec-top">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3s-6 6.7-6 11a6 6 0 0 0 12 0c0-4.3-6-11-6-11z"/>
             <path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>
           </svg>
-          <h3>Liquidity Agent</h3>
+          <h3>DeFi Agent</h3>
         </div>
-        <p>What other AIs pay us is turned into BNB and put into the project's own liquidity position, once a day, on its own. Half the fees go to the buyback bot that burns $BOBAI, half grow the position. Every step is a transaction you can check.</p>
+        <p>What other AIs pay us is turned into BNB and put to work in a PancakeSwap V3 pool on BNB Chain, once a day, on its own. Half of what it earns keeps working, half buys $BOBAI the agent holds. Every step is a transaction you can check.</p>
         <div class="ec-foot"><span class="ec-go">Read The Record <span class="arr">&#x2192;</span></span><span class="ec-st beta">Building</span></div>
       </a>
       <a class="ec fi" href="brainscreener/">
@@ -871,7 +871,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 4,442 lines &middot; 66 KB</span>
+          <span class="lib-m">12 files &middot; 4,443 lines &middot; 66 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1081,7 +1081,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">41 files &middot; 12,427 lines &middot; 0.3 MB</span>
+          <span class="lib-m">40 files &middot; 11,888 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1210,7 +1210,7 @@
         <div class="faq-body">It is a fair launch. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Four.Meme</a> with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes only from the transparent 1% creator slice of the trade tax, not from a reserved token bag.</div>
       </details>
       <details class="faq-item"><summary>What is the trading tax on $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard. From Sep 9, 2026 a tenth of each slice (0.3% of the trade) goes to the liquidity agent's wallet, and from Sep 17 to Nov 20, 2026 another tenth of each (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; from Nov 20 the split is 1/1/1 again.</div>
+        <div class="faq-body">The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard. From Sep 9, 2026 a tenth of each slice (0.3% of the trade) goes to the DeFi agent's wallet, and from Sep 17 to Nov 20, 2026 another tenth of each (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; from Nov 20 the split is 1/1/1 again.</div>
       </details>
       <details class="faq-item"><summary>What is the difference between brainonbnb.com and brainonbnb.ai?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">Same official site, two domains. <a href="https://brainonbnb.com">brainonbnb.com</a> is the primary user-facing domain; <a href="https://brainonbnb.ai">brainonbnb.ai</a> is the original brand domain. Both serve identical content from the same Cloudflare Pages deployment.</div>

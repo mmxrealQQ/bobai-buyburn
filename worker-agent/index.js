@@ -100,7 +100,7 @@ const OWN_WALLETS = new Set([
   '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // creator / dev
   '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
   '0xbfb4b49787ce948c1ee304f6c197a0e8b038ddb2', // NFT relayer (the test buyer)
-  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // liquidity agent
+  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent
   '0x690e950214980bc329823a2db2fd90c06bd54de4', // x402 income
   '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', // agent provider
   '0xc5a17b5295fc50badb1f9f9c09b412fe5e84f7d3', // Altana admin
@@ -459,7 +459,7 @@ async function checkWatches(env) {
 
 // ---------------------------------------------------------------- the liquidity series
 //
-// One point per run of the liquidity agent, taken from the record it writes
+// One point per run of the DeFi agent, taken from the record it writes
 // (worker-lp, 04:23 UTC) and never from a counter: what the position was
 // worth, whether it was in range, what it was owed, what had already been
 // sent on. Kept here, by the worker with no keys, so the series exists
@@ -663,7 +663,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     out.value_bnb.change_pct = capitalTotal > 0 ? +((bnb / capitalTotal) * 100).toFixed(2) : out.value_bnb.change_pct;
     out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +foldedKept.toFixed(6), fees_forwarded_at_resets_bnb: +(folded - foldedKept).toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
   }
-  // The same figures as one sentence — the line /liquidity opens with and the
+  // The same figures as one sentence — the line /defi opens with and the
   // whole of the Telegram daily report, so the two never say different things.
   const f = (v, d) => (v == null || !isFinite(Number(v))) ? '—' : Number(v).toFixed(d);
   const pct = (v) => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%';
@@ -842,7 +842,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
         how: `Send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
-        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the liquidity agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
         accepts: requirements.accepts,
@@ -1240,7 +1240,7 @@ export default {
       const r = await handleFind(url);
       return json(r.body, r.status);
     }
-    // The liquidity agent's free look at anybody's PancakeSwap V3 position:
+    // The DeFi agent's free look at anybody's PancakeSwap V3 position:
     // in range or not, room left, value, fees owed. Open, no key, read live.
     // The plan (re-set, width, what spare BNB adds) is the paid answer.
     if (path === '/lp/look') {
@@ -1530,7 +1530,7 @@ ${pageTail}`;
         const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
         const f = (x, d = 4) => (x == null || !isFinite(Number(x)) ? '—' : Number(x).toFixed(d));
         const usd = (x) => (x == null ? '—' : '$' + f(x));
-        const html = `${pageHead('The pool record — the liquidity agent', `
+        const html = `${pageHead('The pool record — the DeFi agent', `
 main{max-width:820px}
 p.lead{color:#cfc9bd;margin:6px 0 0}
 .card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
@@ -1574,7 +1574,7 @@ ${pageTail}`;
           v.calibration = lpCalibration(await readLpSeries(env), v.rows, widthClassOf(ticks));
         } catch { v.calibration = null; }
       }
-      // THE WIDTH RECORD, READABLE. The record page and /liquidity link here
+      // THE WIDTH RECORD, READABLE. The record page and /defi link here
       // as "the width record", and a person arrived at raw JSON (pressed
       // 2026-09-04). The same verdict as a page: which width the agent would
       // use and why, every width replayed side by side, and what the record
@@ -1587,7 +1587,7 @@ ${pageTail}`;
         const pick = v.earnings_pick || null;
         const rows = (v.rows || []).slice().sort((a, b) => a.width - b.width);
         const usd = log.usd || 50;
-        const html = `${pageHead('The width record — the liquidity agent', `
+        const html = `${pageHead('The width record — the DeFi agent', `
 main{max-width:820px}
 p.lead{color:#cfc9bd;margin:6px 0 0}
 .card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
@@ -1595,7 +1595,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;text-transform:none;border-top:0}td:first-child,th:first-child{text-align:left}tr.pick td{color:#f0b90b;font-weight:700}
 `)}${pageNav({ href: '/lp/agent', label: 'The record' }, { href: '/lp/windows', label: 'The width record' }, BUY)}<h1>The width record</h1>
-<p class="lead">How wide the liquidity agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price with the agent's own re-set delay and its measured re-set cost. The width that nets the most per day is the one the next re-set uses. Nothing here is a forecast.</p>
+<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price with the agent's own re-set delay and its measured re-set cost. The width that nets the most per day is the one the next re-set uses. Nothing here is a forecast.</p>
 <h2>The pick</h2>
 <div class="card"><dl>
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — about $${h(f(pick.earnings.net_usd_per_day, 2))} a day on $${h(usd)} after ${h(pick.earnings.resets)} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${h(f(pick.earnings.reset_cost_usd, 2))} each, over ${h(f(pick.earnings.hours, 0))} h of recorded prices (${h(f(pick.earnings.hours_in_range, 0))} h of them inside the range)` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
@@ -1624,12 +1624,12 @@ ${pageTail}`;
     // Our own ERC-8183 jobs and the date each one was first seen to complete.
     // The figure this marketplace argues with is 287 SUBMITTED against 8
     // COMPLETED; this is where our own jobs stand against it, checked daily.
-    // What the LP agent's daily tick did — sweep, collect, rebalance,
+    // What the DeFi agent's daily tick did — sweep, collect, rebalance,
     // increase (worker-lp writes it, this serves it; that worker holds the
     // keys and no public face on purpose). /lp/collect is the old name.
     if (path === '/lp/agent' || path === '/lp/collect') {
       const raw = await env.AGENT.get('lp:agent');
-      if (!raw) return json({ error: 'the LP agent has not run yet', cadence: 'daily' }, 503);
+      if (!raw) return json({ error: 'the DeFi agent has not run yet', cadence: 'daily' }, 503);
       const rec = JSON.parse(raw);
       // Where the money came from and where it went: computed once, here,
       // from the record and the service's own earnings — the page below, the
@@ -1724,7 +1724,7 @@ ${pageTail}`;
       ].filter((r) => r.why || r.err || r.detail);
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
         const s = e.steps || {}; const parts = [];
-        for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(`swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the liquidity wallet`);
+        for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(`swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the DeFi wallet`);
         if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
         if (s.increase?.acted && !s.increase.error) parts.push(`added ${f(s.increase.wbnb_used, 5)} BNB to the position`);
@@ -1732,7 +1732,7 @@ ${pageTail}`;
         if (e.error) errs.push(e.error);
         return { at: e.at, parts, errs, ok: e.ok !== false };
       });
-      const html = `${pageHead('The liquidity agent — its record', `
+      const html = `${pageHead('The DeFi agent — its record', `
 main{max-width:760px}
 p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:.9rem}dt{color:#a9a49a}dd{margin:0;overflow-wrap:anywhere}
 .card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
@@ -1741,7 +1741,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 .ok{background:rgba(63,224,154,.15);color:#3fe09a}.quiet{background:rgba(255,255,255,.08);color:#a9a49a}.bad{background:rgba(255,143,107,.15);color:#ff8f6b}
 .step b{display:block}.step span{display:block;color:#cfc9bd;font-size:.88rem}.step i{display:block;color:#a9a49a;font-size:.8rem;font-style:normal;margin-top:2px}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}ul.hist{list-style:none;padding:0;margin:0}ul.hist li{padding:8px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.9rem}ul.hist li:first-child{border-top:0}ul.hist time{color:#a9a49a;font-size:.8rem;display:block}
-`)}${pageNav({ href: SITE + '/liquidity', label: 'Liquidity' }, { href: '/lp/agent', label: 'The liquidity agent — its record' }, BUY)}<h1>The liquidity agent <span class="st ${last.ok === false ? 'bad' : last.acted ? 'ok' : 'quiet'}">${last.ok === false ? 'one step failed' : reset ? 're-set the range' : last.acted ? 'acted' : 'quiet day'}</span></h1>
+`)}${pageNav({ href: SITE + '/defi', label: 'Liquidity' }, { href: '/lp/agent', label: 'The DeFi agent — its record' }, BUY)}<h1>The DeFi agent <span class="st ${last.ok === false ? 'bad' : last.acted ? 'ok' : 'quiet'}">${last.ok === false ? 'one step failed' : reset ? 're-set the range' : last.acted ? 'acted' : 'quiet day'}</span></h1>
 <p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_buyback_pct)}% go to the buyback bot, which buys $BOBAI and burns it, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'part goes to the buyback bot, which buys $BOBAI and burns it, and part stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}${last !== daily ? ` (an hourly check that ${reset ? 're-set the range' : 'acted'}; the daily run before it, ${h(dailyWhen)}, ${daily.acted ? 'acted' : 'had nothing to do'})` : ''}.</p>
 <h2>What it holds</h2>
 <div class="card"><dl>
@@ -1754,7 +1754,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 <div class="card"><div class="flow">
 <div><b>Came in</b><span>${h(fl.came_in)}</span>${flow.paid_for && flow.paid_for.x402_answers ? `<i>The x402 service has been paid ${h(f(flow.paid_for.usd1, 2))} USD1 for ${h(flow.paid_for.x402_answers)} answer${flow.paid_for.x402_answers === 1 ? '' : 's'} since it opened. What of it has reached the income wallet is under Waiting and is swept once it is worth more than the gas; the rest went through the earlier path, which burned it directly.</i>` : ''}</div>
 <div><b>Went out</b><span>${h(fl.went_out)}${flow.out.bobai_bnb > 0 && usd(flow.out.bobai_bnb) ? ` — the BOBAI share${usd(flow.out.bobai_bnb)}${flow.out.bobai_units > 0 ? `, ${h(Math.round(flow.out.bobai_units).toLocaleString('en-US'))} BOBAI held` : ''}` : ''}</span><i>${flow.out.resets} re-set${flow.out.resets === 1 ? '' : 's'} of the range · ${h(fl.cost)}${usd(flow.gas.bnb)}</i></div>
-<div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the liquidity wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
+<div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the DeFi wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
 <div><b>The rule</b><span>${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% of every collect stays as capital, ${h(flow.rule.fee_share_bobai_pct)}% buys $BOBAI the agent holds in its own wallet, never sold.` : 'The share of the fees kept as capital is named with the next collect.'} Income goes in as capital in full. The capital never leaves.</span><i>Set in the open: LP_FEE_KEEP_PCT in worker-lp/wrangler.toml, in <a href="https://brainonbnb.com/source">the published source</a>.</i></div>
 </div></div>
 <h2>The last run, step by step</h2>${fromDaily ? `<p class="note" style="margin:0 0 8px">The newest run, ${h(when(last.at))}, was an hourly range check; it has the rebalance step only. The other steps run once a day and are shown from ${h(dailyWhen)}.</p>` : ''}
@@ -1870,12 +1870,12 @@ ${pageTail}`;
         money_flow: {
           '1': 'an agent pays USD1 for a watch, or $U for a job delivered on the ERC-8183 kernel',
           '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
-          '3': 'once a day it is sold for BNB and sent to the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
-          '4': 'the fees that position earns are collected daily and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half is sent to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce, which buys and burns $BOBAI as it always has — one burn path, one log',
+          '3': 'once a day it is sold for BNB and sent to the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
+          '4': 'the fees that position earns are collected and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half buys $BOBAI that the agent holds in its own wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A and never sells (since 2026-09-09; until then that half went to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce)',
           '5': 'every step is a public transaction, verifiable on BscScan; the daily record is at /lp/agent',
           floors: 'nothing is sold below 0.004 BNB of value, no fees are collected below 0.002 BNB and nothing is added to the position below 0.005 BNB — under a floor, gas would eat the amount, and a day under one is recorded as a decision, not an error',
           before: 'until 2026-09-02 the earnings were burned directly from the service wallet, by hand. The first: 0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
-          note: 'Automated since 2026-09-02 by the LP agent (worker-lp): sweep, collect, increase, and a re-set of the range once the record holds a day of prices. The burn log at logs.brainonbnb.com lists the buyback bot\'s own runs, and the LP fees reach it through that bot, so nothing here needs a second log.',
+          note: 'Automated since 2026-09-02 by the DeFi agent (worker-lp): sweep, collect, increase, and a re-set of the range once the record holds a day of prices. The $BOBAI the agent buys from its fees shows on its own wallet; the burn log at logs.brainonbnb.com lists only the runs of the buyback bot.',
         },
         capabilities: offering(),
         generated_at: new Date().toISOString(),
@@ -2095,8 +2095,8 @@ ${pageTail}`;
     // waiting for it or trusting that it works — and "the paid part is
     // presumably fine" is not a state this service should ever be shipped in.
     // Same shared secret as /hit; nothing here is reachable without it.
-    // The liquidity series: every run of the liquidity agent as one point,
-    // and what the points say so far. Read by /liquidity.
+    // The liquidity series: every run of the DeFi agent as one point,
+    // and what the points say so far. Read by /defi.
     if (path === '/lp/series') {
       const series0 = lpSeriesShown(await readLpSeries(env));
       const recRaw = await env.AGENT.get('lp:agent');
@@ -2134,7 +2134,7 @@ ${pageTail}`;
         try { const lk = await lpPositionLook({ position: String(lastPt.position) }); if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent); } catch { owed_now_bnb = null; }
       }
       return json({
-        what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
+        what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
         summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',

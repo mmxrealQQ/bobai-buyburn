@@ -1,4 +1,4 @@
-# The liquidity agent for other people's positions — stage 2 (designed, not built)
+# The DeFi agent for other people's positions — stage 2 (designed, not built)
 
 Stage 1 is live (2026-09-03): `lp_position_plan`, sold per answer over x402 and
 through the escrow, reads any PancakeSwap V3 position and returns what the agent
@@ -53,7 +53,7 @@ The agent must never hold a key that can move the client's capital out. So:
   execute path moves into a small worker of its own with only that key).
 - [ ] A dry-run mode that prints the UserOp it *would* send, checked against the
   plan, for every client position, every day, before any live run.
-- [ ] The client-side flow on /liquidity: grant the session (their wallet),
+- [ ] The client-side flow on /defi: grant the session (their wallet),
   see the exact allowlist and caps read back from the KeyStore, revoke.
 - [ ] A record per client like `/lp/agent`: what was decided, why, and every
   transaction hash — readable by the client and by nobody else without the

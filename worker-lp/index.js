@@ -1,10 +1,10 @@
-// The LP agent's daily tick: AI income into the position, the position's
+// The DeFi agent's daily tick: AI income into the position, the position's
 // fees into the buyback bot.
 //
 // THE FLOW, as the user set it on 2026-09-02
 //   1. everything the AI side earns (USD1 for watches, $U for delivered jobs)
-//      goes to the liquidity wallet, in BNB                      -> sweep
-//   2. the liquidity wallet's profit — the fees the position earns — is
+//      goes to the DeFi wallet, in BNB                      -> sweep
+//   2. the DeFi wallet's profit — the fees the position earns — is
 //      split: part stays as capital so the position grows out of its own
 //      earnings (LP_FEE_KEEP_PCT, half since 2026-09-04: "er soll auch davon
 //      wachsen"), the rest goes to the buyback wallet, which buys and burns
@@ -107,7 +107,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       try {
         const plan = await planSweep(pub, src, feed);
         if (plan.no) { out.push({ ...plan.summary, acted: false, why: plan.no }); continue; }
-        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the liquidity wallet' }); continue; }
+        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the DeFi wallet' }); continue; }
         const wallet = createWalletClient({ account: acct, chain: bsc, transport: transport() });
         out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan)) });
       } catch (e) {
@@ -279,7 +279,7 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
   st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase only (a deposit goes in within minutes, in range and above the floor)' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;

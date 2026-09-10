@@ -1,5 +1,5 @@
 // THE POOL RECORD: what the same fifty dollars would have earned in each of
-// the pools the liquidity agent could live in, hour by hour.
+// the pools the DeFi agent could live in, hour by hour.
 //
 // The width record (lp-windows.js) answers "how wide" for the pool the agent
 // is in. This answers the question that comes before it and was answered

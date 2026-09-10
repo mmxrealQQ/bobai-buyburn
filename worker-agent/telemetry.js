@@ -404,7 +404,7 @@ async function probeRebalance() {
   }
 }
 
-// The LP agent, probed on the pair with the most fee tiers actually trading.
+// The DeFi agent, probed on the pair with the most fee tiers actually trading.
 //
 // The headline here is a claim nothing else on this chain publishes, and it is
 // re-checked every run rather than asserted once: whether the PancakeSwap tier

@@ -77,7 +77,7 @@ const ASKS = {
   yield_plan: 'Where should this sit to earn most — and is moving it worth the gas?',
   rebalance_plan: 'What would it cost me to get back to my target weights?',
   lp_tier_plan: 'Which fee tier should I put liquidity in?',
-  lp_position_plan: 'What would the liquidity agent decide about my position?',
+  lp_position_plan: 'What would the DeFi agent decide about my position?',
 };
 
 // The count in words, so the copy cannot say "five" over a list of six
@@ -150,7 +150,7 @@ const delivery = (d) => `      <article class="sv-buy">
         <p class="sv-needs-h">What it needs from you</p>
 ${needsList(d.needs)}
         ${d.agent ? `<p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}">hire it on Brain Plaza &rarr;</a></p>`
-          : `<p class="sv-cost">Sold per answer only, no escrow: <code>${esc(d.x402)}</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/liquidity">what the agent does on our own position &rarr;</a></p>`}
+          : `<p class="sv-cost">Sold per answer only, no escrow: <code>${esc(d.x402)}</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/defi">what the agent does on our own position &rarr;</a></p>`}
       </article>`;
 
 const capRow = (c) => {

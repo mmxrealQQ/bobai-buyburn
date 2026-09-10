@@ -573,13 +573,13 @@ section('The marketplace, from the front door');
   // /neu, unlinked). Both the card and the three tool panels are checked.
   const { body } = await getText(`${SITE}/`);
   // Since 2026-09-03 the agent sector is four cards in the Ecosystem grid -
-  // the scanner, the marketplace, the services page, the liquidity agent -
+  // the scanner, the marketplace, the services page, the DeFi agent -
   // and no section of its own. The old banner and the old three-panel row
   // must stay gone: two doors to the same page read as two destinations.
   const card = (href, title) => new RegExp('<a class="ec fi" href="' + href + '">[\\s\\S]{0,900}?<h3>' + title + '</h3>').test(body);
   ok('the marketplace is an Ecosystem card', card('/registry', 'Brain Plaza'));
   ok('the services page is an Ecosystem card', card('/services', 'Agent Services'));
-  ok('the liquidity agent is an Ecosystem card that opens its own page', card('/liquidity', 'Liquidity Agent'));
+  ok('the DeFi agent is an Ecosystem card that opens its own page', card('/defi', 'DeFi Agent'));
   ok('the old marketplace banner is off the homepage', !/class="mkt fi"/.test(body));
   ok('the old three-panel agent row is off the homepage', !/class="agt-cols/.test(body));
   ok('the nav carries neither Agents nor Marketplace as a second word for Ecosystem',
@@ -591,13 +591,13 @@ section('The marketplace, from the front door');
   // /agents, which repeated the tiles, is gone and redirects; the liquidity
   // agent has its own page carrying the live block, and the record behind it
   // is a page for a browser and JSON for everything else.
-  const lq = await getText(`${SITE}/liquidity`);
-  ok('/liquidity is a page that carries the live block', lq.isHtml && /id="ag-lp"/.test(lq.body) && /agent\.brainonbnb\.com\/lp\/agent/.test(lq.body));
-  // Since 2026-09-09 the loop is income wallet → liquidity wallet → $BOBAI held
+  const lq = await getText(`${SITE}/defi`);
+  ok('/defi is a page that carries the live block', lq.isHtml && /id="ag-lp"/.test(lq.body) && /agent\.brainonbnb\.com\/lp\/agent/.test(lq.body));
+  // Since 2026-09-09 the loop is income wallet → DeFi wallet → $BOBAI held
   // in that same wallet; the buyback wallet is no longer a stop on it.
-  ok('/liquidity names the income wallet, the liquidity wallet and the $BOBAI it holds', /0x690E950214980BC329823A2DB2fD90C06Bd54dE4/.test(lq.body) && /0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A/.test(lq.body) && /0x245c386dcfed896f5c346107596141e5edcbffff/i.test(lq.body));
-  ok('/liquidity no longer sends the fee share to the buyback bot', !/half is forwarded to the buyback bot|sent to <a[^>]*>the buyback bot<\/a>/.test(lq.body));
-  ok('/liquidity is in the sitemap and /agents is not', /brainonbnb\.com\/liquidity</.test((await getText(`${SITE}/sitemap.xml`)).body) && !/brainonbnb\.com\/agents</.test((await getText(`${SITE}/sitemap.xml`)).body));
+  ok('/defi names the income wallet, the DeFi wallet and the $BOBAI it holds', /0x690E950214980BC329823A2DB2fD90C06Bd54dE4/.test(lq.body) && /0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A/.test(lq.body) && /0x245c386dcfed896f5c346107596141e5edcbffff/i.test(lq.body));
+  ok('/defi no longer sends the fee share to the buyback bot', !/half is forwarded to the buyback bot|sent to <a[^>]*>the buyback bot<\/a>/.test(lq.body));
+  ok('/defi is in the sitemap and /agents is not', /brainonbnb\.com\/defi</.test((await getText(`${SITE}/sitemap.xml`)).body) && !/brainonbnb\.com\/agents</.test((await getText(`${SITE}/sitemap.xml`)).body));
   const gone = await fetch(`${SITE}/agents`, { redirect: 'manual' });
   ok('/agents redirects instead of repeating the tiles', gone.status === 301 || gone.status === 308, String(gone.status));
   const lpHtml = await fetch('https://agent.brainonbnb.com/lp/agent', { headers: { accept: 'text/html' } });
@@ -632,7 +632,7 @@ section('The marketplace, from the front door');
   // A later check that still sees the same position adds no point, so the
   // point may be older than the check as long as it names the check's position.
   ok('the last series point is the newest run in the record, or the hourly check that found a new position', !!lastPt && !!newestRun && (lastPt.at === newestRun.at || (chkIsNewer && Date.parse(lastPt.at) <= Date.parse(chk.at) && Date.parse(lastPt.at) > Date.parse(newestRun.at) && String(lastPt.position) === String(chkPos))), lastPt && newestRun && `${lastPt.at} vs run ${newestRun.at}${chk ? ` / check ${chk.at}` : ''}`);
-  ok('/liquidity carries the day-by-day table', /id="ag-lp-series"/.test(lq.body) && /lp\/series/.test(lq.body));
+  ok('/defi carries the day-by-day table', /id="ag-lp-series"/.test(lq.body) && /lp\/series/.test(lq.body));
   ok('/run-lp-series is not open', (await fetch('https://agent.brainonbnb.com/run-lp-series', { method: 'POST' })).status === 403);
 }
 {
@@ -665,10 +665,10 @@ section('The marketplace, from the front door');
   // the pair, never typed; a quote that cannot be read leaves USD1 alone.
   const bobaiAccept = (ansBody.accepts || []).find((a) => a.extra && a.extra.symbol === 'BOBAI');
   ok('the 402 quotes the same price in $BOBAI from the pair', !!bobaiAccept && /^0x245c386d/i.test(bobaiAccept.asset) && BigInt(bobaiAccept.maxAmountRequired) > 0n && ansBody.in_bobai && ansBody.in_bobai.usd_per_bobai > 0 && ansBody.in_bobai.tokens > 100, JSON.stringify(ansBody.in_bobai));
-  // The sixth answer: the liquidity agent on a position that is not ours.
+  // The sixth answer: the DeFi agent on a position that is not ours.
   const lpEx = await fetch(`${AGENT}/example?service=lp_position_plan`).then((r) => r.json()).catch(() => null);
   // The free look (2026-09-04): the facts without the plan, open, no key.
-  // Asked by the liquidity wallet's address, not by the id on the daily
+  // Asked by the DeFi wallet's address, not by the id on the daily
   // record: 2026-09-06 the record's collect step had no position (the re-set
   // of the day before had stopped before its mint) and this read nothing.
   // The wallet holds exactly one position whenever the agent is whole, and
@@ -841,7 +841,7 @@ section('Transparency');
   ok('every operator row says how many of its tasks came from outside', Array.isArray(s?.track_record) && s.track_record.every((r) => typeof r.from_outside_callers === 'number' && r.from_outside_callers >= 0 && r.from_outside_callers <= r.tasks_routed));
 }
 {
-  // The LP agent's daily tick (worker-lp), served by the agent worker from
+  // The DeFi agent's daily tick (worker-lp), served by the agent worker from
   // the KV record. 503 "not run yet" is a valid answer before the first run.
   const { body, isHtml } = await getText(`${AGENT}/lp/agent`);
   ok('/lp/agent is routed', !isHtml && /"cadence":\s*"daily"/.test(body), body.slice(0, 120));
@@ -889,7 +889,7 @@ section('Transparency');
 {
   const { body } = await getText(`${SITE}/`);
   ok('the agents live in the Ecosystem block, not a block of their own', /Block 04 &middot; Ecosystem/.test(body) && !/Block 05 &middot; Agents/.test(body));
-  ok('the liquidity-agent card links to /liquidity', /href="\/liquidity"/.test(body));
+  ok('the liquidity-agent card links to /defi', /href="\/defi"/.test(body));
   const csp = (await fetch(`${SITE}/`)).headers.get('content-security-policy') || '';
   ok('CSP allows the stats endpoint', csp.includes('https://agent.brainonbnb.com'));
 }

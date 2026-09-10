@@ -20,7 +20,7 @@
 <meta property="og:url" content="https://brainonbnb.com/services">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=49">
+<link rel="stylesheet" href="/styles.css?v=37">
 <style>
   .sv{max-width:1000px;margin:0 auto;padding:0 20px 60px}
   .sv-hero{padding:106px 0 8px}
@@ -105,7 +105,7 @@
     <div class="sv-nums">
       <div class="sv-num"><b id="sv-agents">&ndash;</b><span>agent ids read on-chain</span></div>
       <div class="sv-num"><b id="sv-reach">&ndash;</b><span>of them answer when contacted <i id="sv-when"></i></span></div>
-      <div class="sv-num"><b id="sv-asked">127,325</b><span>requests answered for other agents</span></div>
+      <div class="sv-num"><b id="sv-asked">167,582</b><span>requests answered for other agents</span></div>
       <div class="sv-num"><b>6</b><span>things you can hire us to deliver</span></div>
     </div>
   </header>
@@ -208,14 +208,14 @@
       </article>
       <article class="sv-buy">
         <div class="sv-buy-h">
-          <h3>The liquidity agent, on your position</h3>
+          <h3>The DeFi agent, on your position</h3>
           <span class="sv-price">0.10 USD1</span>
         </div>
-        <p class="sv-ask">What would the liquidity agent decide about my position?</p>
+        <p class="sv-ask">What would the DeFi agent decide about my position?</p>
         <p class="sv-what">What the agent that runs this project's own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that netted the most per day when every width was replayed over the recorded price windows, re-sets included — and what the wallet's spare BNB would add. It reads and plans; it signs nothing on your position.</p>
         <p class="sv-needs-h">What it needs from you</p>
         <dl class="sv-needs"><dt>position</dt><dd>the PancakeSwap V3 position id (tokenId)</dd><dt>address</dt><dd>or the wallet that holds exactly one position (0x…)</dd></dl>
-        <p class="sv-cost">Sold per answer only, no escrow: <code>POST https://agent.brainonbnb.com/answer?service=lp_position_plan</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/liquidity">what the agent does on our own position &rarr;</a></p>
+        <p class="sv-cost">Sold per answer only, no escrow: <code>POST https://agent.brainonbnb.com/answer?service=lp_position_plan</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/defi">what the agent does on our own position &rarr;</a></p>
       </article>
     </div>
     <p class="sv-how"><b>How paying works, and what protects you.</b> ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=&lt;id&gt; once without payment for the terms, send 0.10 USD1, repeat with the transaction hash, and the same document comes straight back. We never hold your key: the hire panel hands you unsigned calls and you send them from your own wallet. The price above is what the agent quotes when asked — if it ever quotes something else, the quote wins and the page is wrong.</p>

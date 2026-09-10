@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// The LP agent by hand: the same three steps the daily worker runs
+// The DeFi agent by hand: the same three steps the daily worker runs
 // (worker-lp/index.js), from a laptop, plan by default.
 //
 //   sweep     AI income (USD1 on the x402 wallet, $U on the provider wallet)
-//             -> BNB -> the liquidity wallet
+//             -> BNB -> the DeFi wallet
 //   collect   the position's fees -> BNB -> the buyback wallet
 //   increase  BNB above the reserve -> more of the same position
 //
@@ -404,7 +404,7 @@ async function main() {
   let acted = 0;
 
   if (STEPS.includes('sweep')) {
-    console.log('SWEEP — AI income -> BNB -> liquidity wallet');
+    console.log('SWEEP — AI income -> BNB -> DeFi wallet');
     const feed = await readBnbUsd(pub);
     console.log(`  BNB ${f(feed.bnbUsd, 2)} $ (Chainlink, ${feed.feedAgeS} s old)`);
     for (const src of INCOME_SOURCES) {
@@ -420,7 +420,7 @@ async function main() {
       if (!CONFIRM) continue;
       const wallet = createWalletClient({ account: a, chain: bsc, transport: transport() });
       const out = await executeSweep(pub, wallet, a, plan, log);
-      console.log(`    sold ${out.sold} ${src.symbol}, the liquidity wallet received ${out.received_bnb} BNB`);
+      console.log(`    sold ${out.sold} ${src.symbol}, the DeFi wallet received ${out.received_bnb} BNB`);
       acted += 1;
     }
   }

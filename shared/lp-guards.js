@@ -1,11 +1,11 @@
-// Every reason the LP agent refuses to act, in one file.
+// Every reason the DeFi agent refuses to act, in one file.
 //
 // Shared by scripts/lp-agent.mjs (a person, plan by default) and
 // worker-lp/index.js (the daily cron with the keys). Two copies of a refusal
 // list is how one of them stops refusing. Pure: no chain, no I/O.
 //
 // Three steps, three guard functions, and the floors they share:
-//   sweep     AI income (USD1, $U) -> BNB -> the liquidity wallet
+//   sweep     AI income (USD1, $U) -> BNB -> the DeFi wallet
 //   collect   position fees -> BNB -> the buyback wallet
 //   increase  BNB above the reserve -> more of the same position
 //
@@ -13,7 +13,7 @@
 // the money. A day under a floor is a decision, not an error, and is recorded
 // as one.
 
-// What the liquidity wallet keeps back after every run. Above MIN_GAS_BNB on
+// What the DeFi wallet keeps back after every run. Above MIN_GAS_BNB on
 // purpose: the first build kept 0.001 and demanded 0.0015 to act, so the first
 // real collect would have left the wallet unable to do the second.
 export const GAS_RESERVE_BNB = 0.002;
@@ -96,7 +96,7 @@ export const V2_SWAP_FEE_PCT = 0.25;
 // to the buyback wallet. Until 2026-09-04 every collected fee went to the
 // buyback; since then the position keeps half, so it grows out of its own
 // earnings and the buyback's share grows with it ("er soll auch davon
-// wachsen"). The kept share waits as BNB in the liquidity wallet and goes
+// wachsen"). The kept share waits as BNB in the DeFi wallet and goes
 // into the position with the next increase. worker-lp reads the live value
 // from LP_FEE_KEEP_PCT in wrangler.toml; this is the default and the one the
 // hand script uses.

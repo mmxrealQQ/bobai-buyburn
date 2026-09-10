@@ -11,7 +11,7 @@
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/fonts.css?v=1">
   <title>Brain On BNB AI — $BOBAI, draft</title>
-  <meta name="description" content="$BOBAI is a meme token on BNB Chain that burns its own supply on every trade. The tools built here — a token check, an AI agent marketplace, a liquidity agent — are free for everyone.">
+  <meta name="description" content="$BOBAI is a meme token on BNB Chain that burns its own supply on every trade. The tools built here — a token check, an AI agent marketplace, a DeFi agent — are free for everyone.">
   <meta name="robots" content="noindex,nofollow">
   <link rel="canonical" href="https://brainonbnb.com/">
   <link rel="icon" type="image/png" href="favicon.png?v=4">
@@ -130,7 +130,7 @@
       </a>
     </div>
     <p class="forai">For your own assistant: <code>npx skills add https://brainonbnb.com</code> &middot; <span id="n-asked">&ndash;</span> requests answered for other people's agents so far.</p>
-    <p class="line"><b><span class="dot"></span>The liquidity agent</b> <span id="n-lp-line">reading its record&hellip;</span> <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">record &rarr;</a></p>
+    <p class="line"><b><span class="dot"></span>The DeFi agent</b> <span id="n-lp-line">reading its record&hellip;</span> <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">record &rarr;</a></p>
     <p class="more" style="margin-top:22px">
       <a href="/nft/">NFT Buy Drops</a>
       <a href="/brainscreener/">brainScreener</a>
@@ -250,7 +250,7 @@
     var bnb=0,lp=0; e.forEach(function(x){bnb+=parseFloat(x.bnb||0);lp+=parseFloat(x.lpBurned||0)});
     $('n-bb2').textContent=e.length+' adds, '+bnb.toFixed(4)+' BNB, '+nf(lp,2)+' LP burned so far';
   }).catch(function(){ $('n-bb2').textContent='log not reachable right now'; });
-  // The liquidity agent, in one line, from the record the bot writes.
+  // The DeFi agent, in one line, from the record the bot writes.
   fetch('https://agent.brainonbnb.com/lp/agent').then(function(r){return r.json()}).then(function(rec){
     var last=rec&&rec.last; if(!last){$('n-lp-line').textContent='has not run yet.';return}
     var st=last.steps||{}, c=st.collect||{}; var hist=rec.history||[];
@@ -267,7 +267,7 @@
       var ev=[]; var burns=Array.isArray(x[0])?x[0]:((x[0]&&x[0].burns)||[]);
       burns.slice(-3).forEach(function(b){ev.push({t:b.time,k:'burn',h:'Burned '+nf(b.bobaiBurned)+' $BOBAI'+(b.bobBurned?' and '+nf(b.bobBurned)+' $BOB':''),s:'the buyback bot, from '+Number(b.totalBnb||0).toFixed(4)+' BNB of tax',u:b.bobaiBurnTx?'https://bscscan.com/tx/'+b.bobaiBurnTx:null})});
       (Array.isArray(x[1])?x[1]:[]).slice(-2).forEach(function(a){ev.push({t:a.time,k:'add',h:'Added '+Number(a.bnb||0).toFixed(4)+' BNB to the pool, LP burned',s:'Liquidity Boost II, 0.8% of every trade',u:a.addLiqTx?'https://bscscan.com/tx/'+a.addLiqTx:null})});
-      if(x[2]&&x[2].last){var l=x[2].last,c=(l.steps||{}).collect||{};ev.push({t:l.at,k:'lp',h:l.acted?'The liquidity agent acted':'The liquidity agent checked its position',s:c.position?(c.in_range===false?'position #'+c.position+' out of range, waiting for a re-set':'position #'+c.position+' in range and earning'):'no position open',u:'https://agent.brainonbnb.com/lp/agent'})}
+      if(x[2]&&x[2].last){var l=x[2].last,c=(l.steps||{}).collect||{};ev.push({t:l.at,k:'lp',h:l.acted?'The DeFi agent acted':'The DeFi agent checked its position',s:c.position?(c.in_range===false?'position #'+c.position+' out of range, waiting for a re-set':'position #'+c.position+' in range and earning'):'no position open',u:'https://agent.brainonbnb.com/lp/agent'})}
       if(x[3]&&x[3].asked&&x[3].asked.by_day){var days=Object.keys(x[3].asked.by_day).sort();var d=days[days.length-1];var n=0;var bd=x[3].asked.by_day[d]||{};Object.keys(bd).forEach(function(k){if(k!=='watch_checks')n+=bd[k]});ev.push({t:d+'T23:59:59Z',k:'agent',h:nf(n)+' requests answered for other people\'s agents on '+d,s:'pool scans, registry look-ups, routed tasks',u:'https://agent.brainonbnb.com/stats'})}
       ev.sort(function(a,b){return new Date(b.t)-new Date(a.t)});
       $('n-feed').innerHTML=ev.slice(0,7).map(function(e){return '<li><i class="'+e.k+'"></i><div><b>'+e.h+'</b><br><span>'+e.s+(e.u?' · <a href="'+e.u+'" target="_blank" rel="noopener">see it</a>':'')+'</span></div><time>'+ago(e.t)+'</time></li>'}).join('')||'<li><i></i><span>Nothing readable right now.</span><time></time></li>';

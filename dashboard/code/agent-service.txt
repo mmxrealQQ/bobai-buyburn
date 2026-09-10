@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12427 lines.
+# one fetch. 40 files, 11888 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -158,11 +158,11 @@ away from advertising a price we do not charge.
 ==============================================================================
 
 #!/usr/bin/env node
-// The LP agent by hand: the same three steps the daily worker runs
+// The DeFi agent by hand: the same three steps the daily worker runs
 // (worker-lp/index.js), from a laptop, plan by default.
 //
 //   sweep     AI income (USD1 on the x402 wallet, $U on the provider wallet)
-//             -> BNB -> the liquidity wallet
+//             -> BNB -> the DeFi wallet
 //   collect   the position's fees -> BNB -> the buyback wallet
 //   increase  BNB above the reserve -> more of the same position
 //
@@ -563,7 +563,7 @@ async function main() {
   let acted = 0;
 
   if (STEPS.includes('sweep')) {
-    console.log('SWEEP — AI income -> BNB -> liquidity wallet');
+    console.log('SWEEP — AI income -> BNB -> DeFi wallet');
     const feed = await readBnbUsd(pub);
     console.log(`  BNB ${f(feed.bnbUsd, 2)} $ (Chainlink, ${feed.feedAgeS} s old)`);
     for (const src of INCOME_SOURCES) {
@@ -579,7 +579,7 @@ async function main() {
       if (!CONFIRM) continue;
       const wallet = createWalletClient({ account: a, chain: bsc, transport: transport() });
       const out = await executeSweep(pub, wallet, a, plan, log);
-      console.log(`    sold ${out.sold} ${src.symbol}, the liquidity wallet received ${out.received_bnb} BNB`);
+      console.log(`    sold ${out.sold} ${src.symbol}, the DeFi wallet received ${out.received_bnb} BNB`);
       acted += 1;
     }
   }
@@ -979,7 +979,7 @@ export function summarize(service, result) {
 === FILE: shared/lp-agent.js
 ==============================================================================
 
-// The LP agent's three steps, written once.
+// The DeFi agent's three steps, written once.
 //
 // worker-lp/index.js runs them daily with the keys as Worker secrets;
 // scripts/lp-agent.mjs runs the same functions from a laptop, plan by default.
@@ -990,7 +990,7 @@ export function summarize(service, result) {
 //
 // THE MONEY, in the order the daily tick runs it:
 //   sweep     what the AI side earned (USD1 for watches, $U for delivered
-//             jobs) is sold for BNB and sent to the liquidity wallet
+//             jobs) is sold for BNB and sent to the DeFi wallet
 //   collect   the position's fees are collected and sold for BNB; part of it
 //             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
 //             the rest goes to the buyback wallet — only the fees, never the
@@ -1345,7 +1345,7 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
 }
 
 // --------------------------------------------------------------------------
-// sweep: AI income -> BNB -> liquidity wallet
+// sweep: AI income -> BNB -> DeFi wallet
 // --------------------------------------------------------------------------
 
 export async function readBnbUsd(pub) {
@@ -1379,7 +1379,7 @@ export async function planSweep(pub, source, feed = null) {
 }
 
 // Approve exactly the amount, sell it, and have the router pay the BNB
-// straight to the liquidity wallet — one transaction fewer, and the income
+// straight to the DeFi wallet — one transaction fewer, and the income
 // wallet never holds BNB it could be tempted to keep.
 export async function executeSweep(pub, wallet, account, plan, log = () => {}) {
   const txs = [];
@@ -1388,7 +1388,7 @@ export async function executeSweep(pub, wallet, account, plan, log = () => {}) {
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
   // 3% floor: both pairs are deep and both tokens are dollars; the guard has
   // already refused a route that prices them off a dollar.
-  await send(`sell ${plan.source.symbol} for BNB to the liquidity wallet`, {
+  await send(`sell ${plan.source.symbol} for BNB to the DeFi wallet`, {
     address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
     args: [plan.amount, (plan.bnbOut * 9700n) / 10000n, [plan.source.token, ADDR.WBNB], ADDR.LP_WALLET, deadline()],
   });
@@ -1541,7 +1541,7 @@ async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, minOut
   return swapNote(tokenIn === ADDR.WBNB ? 'buy' : 'sell', notionalWbnb, fee);
 }
 
-// The agent's profit share buys BOBAI and holds it in the liquidity wallet,
+// The agent's profit share buys BOBAI and holds it in the DeFi wallet,
 // never sells it — so the operator sees, in the wallet, exactly what the agent
 // earned (2026-09-09: "keep it as BOBAI in its own wallet, then I see what
 // really comes in"). It used to send that BNB to the buyback wallet. BOBAI
@@ -1829,7 +1829,7 @@ export async function executeIncrease(pub, wallet, account, plan, log = () => {}
 === FILE: shared/lp-flow.js
 ==============================================================================
 
-// Where the money came from and where it went, from the liquidity agent's
+// Where the money came from and where it went, from the DeFi agent's
 // own record.
 //
 // One function, used by the agent worker (the /lp/agent JSON and page, the
@@ -1846,7 +1846,7 @@ export async function executeIncrease(pub, wallet, account, plan, log = () => {}
 //         into the position (increases), and how many re-sets
 //   gas   what all of it cost in BNB, over how many transactions
 //   waiting   what the last run saw still waiting: income on the wallets,
-//         fees owed by the position, BNB in the liquidity wallet above reserve
+//         fees owed by the position, BNB in the DeFi wallet above reserve
 //   rule  the fee share kept, as the last collect named it
 //   paid_for  what the x402 service was paid for (from the agent worker's
 //         own earnings record), when the caller has it
@@ -1986,14 +1986,14 @@ export function flowLines(flow) {
 === FILE: shared/lp-guards.js
 ==============================================================================
 
-// Every reason the LP agent refuses to act, in one file.
+// Every reason the DeFi agent refuses to act, in one file.
 //
 // Shared by scripts/lp-agent.mjs (a person, plan by default) and
 // worker-lp/index.js (the daily cron with the keys). Two copies of a refusal
 // list is how one of them stops refusing. Pure: no chain, no I/O.
 //
 // Three steps, three guard functions, and the floors they share:
-//   sweep     AI income (USD1, $U) -> BNB -> the liquidity wallet
+//   sweep     AI income (USD1, $U) -> BNB -> the DeFi wallet
 //   collect   position fees -> BNB -> the buyback wallet
 //   increase  BNB above the reserve -> more of the same position
 //
@@ -2001,7 +2001,7 @@ export function flowLines(flow) {
 // the money. A day under a floor is a decision, not an error, and is recorded
 // as one.
 
-// What the liquidity wallet keeps back after every run. Above MIN_GAS_BNB on
+// What the DeFi wallet keeps back after every run. Above MIN_GAS_BNB on
 // purpose: the first build kept 0.001 and demanded 0.0015 to act, so the first
 // real collect would have left the wallet unable to do the second.
 export const GAS_RESERVE_BNB = 0.002;
@@ -2084,7 +2084,7 @@ export const V2_SWAP_FEE_PCT = 0.25;
 // to the buyback wallet. Until 2026-09-04 every collected fee went to the
 // buyback; since then the position keeps half, so it grows out of its own
 // earnings and the buyback's share grows with it ("er soll auch davon
-// wachsen"). The kept share waits as BNB in the liquidity wallet and goes
+// wachsen"). The kept share waits as BNB in the DeFi wallet and goes
 // into the position with the next increase. worker-lp reads the live value
 // from LP_FEE_KEEP_PCT in wrangler.toml; this is the default and the one the
 // hand script uses.
@@ -2367,550 +2367,6 @@ export function summarise(record, now) {
 }
 
 ==============================================================================
-=== FILE: shared/trader-core.js
-==============================================================================
-
-// THE TRADING AGENT'S ARITHMETIC — pure, no chain, no wallet, no clock.
-//
-// Four legs, one rule. The operator asked for a bot over BNB, BOB, BOBAI and
-// CAKE that "buys the dip and sells the top, mathematically as sensible as
-// possible, maximum profit" (2026-09-08). The honest reading of that is mean
-// reversion: a price that has fallen unusually far below its own recent
-// average is bought, and sold once it is back at or above that average.
-// "Unusually far" is a z-score — how many standard deviations the log price
-// sits below its rolling mean — so the same rule means the same thing on a
-// coin that moves 1% a day and one that moves 10%.
-//
-// What the rule is NOT: a forecast. It earns when prices oscillate and loses
-// when they trend away and never return, which is why every position carries
-// a stop and a maximum holding time, and why the backtest reports the last
-// part of the history it never saw while choosing its parameters.
-//
-// Costs are charged the way the wallet charges them: a percentage of each
-// side, measured per leg (pool fee + price impact at the trade size + the
-// wallet's own fee), plus BOBAI's 3% transfer tax on the buy. A rule that
-// looks good before costs and bad after them is the usual result and the
-// point of counting them.
-//
-// BOBAI is never sold by this agent (operator's thesis: push $BOBAI, never
-// dump it). Its leg buys dips and holds; its profit is marked to market.
-//
-// Everything here is deterministic and pinned by scripts/trader.mjs --self-test.
-
-export const LEGS = ['BNB', 'CAKE', 'BOB', 'BOBAI'];
-
-// Per-side cost in percent of the amount traded, at a $25 leg. Sources
-// 2026-09-08: our pool scanner's cost ladder (fee + impact at size), the
-// wallet's own quotes (BNB->USDT 0.033 BNB came back within 0.05% of the
-// spot price), and a wallet fee allowance nobody has yet measured on a real
-// fill — set high rather than low until one has been (see trader.mjs
-// --measure-fee).
-export const DEFAULT_COSTS_PCT = {
-  BNB: { buy: 0.30, sell: 0.30 },     // BNB <-> USDT, V3 0.01-0.05% + wallet allowance
-  CAKE: { buy: 0.35, sell: 0.35 },    // CAKE <-> BNB, V3 0.05% + impact + allowance
-  BOB: { buy: 0.55, sell: 0.55 },     // V2 0.25% + impact 0.26% at $25 + allowance
-  BOBAI: { buy: 3.60, sell: 3.60 },   // 3% tax + V2 0.25% + impact + allowance (sell never used)
-};
-
-// Gas, in dollars per swap, on top of the percentage above. Measured on the
-// bootstrap swap of 2026-09-08: 0.00047 BNB at ~$750 = $0.35, and it does
-// not scale with the amount — on a $25 leg that is 1.4% a side, on the $110
-// pot 0.3%. The first backtest left it out, which flattered exactly the leg
-// that trades most (BOB: 16 trades at a 37.5% hit rate) and was the reason
-// the six-month figure could not be trusted. Every replay charges it per
-// side now; a caller that wants the old picture passes gasUsd: 0.
-export const DEFAULT_GAS_USD_PER_SWAP = 0.35;
-
-export const NEVER_SELL = new Set(['BOBAI']);
-
-export const DEFAULT_PARAMS = { window: 48, entryZ: 2, exitZ: 0, stopPct: 6, maxHoldH: 72 };
-
-// Two rule families, judged by the same evidence. 'reversion' buys a dip
-// (z ≤ −entryZ) and sells at the mean (z ≥ exitZ). 'trend' is the mirror:
-// it buys a breakout (z ≥ entryZ) and sells once the price is back under
-// the mean (z ≤ −exitZ). In a market that oscillates the first earns and
-// the second bleeds; in one that trends the reverse. Which one a leg gets
-// is decided by hours it has not seen, not by preference.
-export const MODES = ['reversion', 'trend'];
-export const PARAM_GRID = {
-  mode: MODES,
-  window: [12, 24, 48, 96, 168],
-  entryZ: [1, 1.5, 2, 2.5],
-  exitZ: [0, 0.5, 1],
-  stopPct: [6],
-  maxHoldH: [72],
-};
-
-// Rolling z-score of log price. Returns null until the window is full.
-export function zScores(closes, window) {
-  const logs = closes.map((c) => Math.log(c));
-  const out = new Array(closes.length).fill(null);
-  let sum = 0, sumSq = 0;
-  for (let i = 0; i < logs.length; i++) {
-    sum += logs[i]; sumSq += logs[i] * logs[i];
-    if (i >= window) { sum -= logs[i - window]; sumSq -= logs[i - window] * logs[i - window]; }
-    if (i >= window - 1) {
-      const n = window, mean = sum / n;
-      const varc = Math.max(0, sumSq / n - mean * mean);
-      const sd = Math.sqrt(varc);
-      out[i] = sd > 0 ? (logs[i] - mean) / sd : 0;
-    }
-  }
-  return out;
-}
-
-// One leg replayed over its closes with one parameter set. `legUsd` is the
-// most this leg may hold at once; one position at a time, entered at the
-// close that triggers it and exited at the close that triggers the exit.
-// Costs are taken per side on the traded amount. Returns the trades, the
-// net result in USD, and the drawdown of the leg's equity curve.
-export function replayLeg(closes, times, params, { legUsd = 25, costsPct = { buy: 0.3, sell: 0.3 }, neverSell = false, gasUsd = DEFAULT_GAS_USD_PER_SWAP } = {}) {
-  const { window, entryZ, exitZ, stopPct, maxHoldH } = params;
-  const sign = params.mode === 'trend' ? -1 : 1;
-  const z = zScores(closes, window).map((v) => (v == null ? null : sign * v));
-  const trades = [];
-  let pos = null;            // { i, price, units, cost }
-  let cash = legUsd, equityPeak = legUsd, maxDrawdown = 0, spentTotal = 0;
-  const equityAt = (i) => cash + (pos ? pos.units * closes[i] : 0);
-  for (let i = 0; i < closes.length; i++) {
-    const p = closes[i];
-    if (pos && !neverSell) {
-      const heldH = (times[i] - times[pos.i]) / 36e5;
-      const ret = (p - pos.price) / pos.price * 100;
-      let why = null;
-      if (z[i] != null && z[i] >= exitZ) why = 'back at the mean';
-      else if (ret <= -stopPct) why = 'stop';
-      else if (heldH >= maxHoldH) why = 'held too long';
-      if (why) {
-        const gross = pos.units * p;
-        const fee = gross * costsPct.sell / 100 + gasUsd;
-        cash += gross - fee;
-        trades.push({ entry: times[pos.i], exit: times[i], entry_price: pos.price, exit_price: p, ret_pct: Math.round(ret * 100) / 100, net_usd: Math.round((gross - fee - pos.spent) * 10000) / 10000, hours: Math.round(heldH), why });
-        pos = null;
-      }
-    }
-    if (!pos && z[i] != null && z[i] <= -entryZ && cash >= 1) {
-      const spend = neverSell ? Math.min(cash, legUsd / 4) : cash;   // BOBAI: four dips per leg budget
-      if (spend >= 1 && spend > gasUsd) {
-        const fee = spend * costsPct.buy / 100 + gasUsd;
-        const units = (spend - fee) / p;
-        if (neverSell) {
-          // Accumulate: no exit, each dip is its own lot. Track as one growing position.
-          cash -= spend; spentTotal += spend;
-          pos = pos ? { i: pos.i, price: (pos.price * pos.units + p * units) / (pos.units + units), units: pos.units + units, spent: pos.spent + spend } : { i, price: p, units, spent: spend };
-          trades.push({ entry: times[i], exit: null, entry_price: p, exit_price: null, ret_pct: null, net_usd: null, hours: null, why: 'dip bought, held' });
-        } else {
-          cash -= spend; spentTotal += spend;
-          pos = { i, price: p, units, spent: spend };
-        }
-      }
-    }
-    const eq = equityAt(i);
-    if (eq > equityPeak) equityPeak = eq;
-    const dd = (equityPeak - eq) / equityPeak * 100;
-    if (dd > maxDrawdown) maxDrawdown = dd;
-  }
-  const last = closes.length - 1;
-  const endEquity = equityAt(last);
-  const closed = trades.filter((t) => t.exit != null);
-  const wins = closed.filter((t) => t.net_usd > 0).length;
-  const buyHold = (legUsd - gasUsd) * (closes[last] / closes[0]) * (1 - costsPct.buy / 100);
-  return {
-    params, trades, closed: closed.length, open: pos ? 1 : 0,
-    win_rate_pct: closed.length ? Math.round(wins / closed.length * 1000) / 10 : null,
-    net_usd: Math.round((endEquity - legUsd) * 10000) / 10000,
-    net_pct: Math.round((endEquity - legUsd) / legUsd * 10000) / 100,
-    max_drawdown_pct: Math.round(maxDrawdown * 100) / 100,
-    buy_hold_net_usd: Math.round((buyHold - legUsd) * 10000) / 10000,
-    hours: closes.length,
-    ...(pos ? { open_position: { entry_price: pos.price, units: pos.units, mark: closes[last], unrealised_usd: Math.round((pos.units * closes[last] - pos.spent) * 10000) / 10000 } } : {}),
-  };
-}
-
-// Parameter search on the first `trainShare` of the history, judged on the
-// rest. Picks the set with the best training net per day; reports both
-// halves so the reader sees whether the pick survived hours it never saw.
-export function walkForward(closes, times, { grid = PARAM_GRID, trainShare = 0.6, legUsd = 25, costsPct, neverSell = false, minTrades = 3, gasUsd = DEFAULT_GAS_USD_PER_SWAP } = {}) {
-  const split = Math.floor(closes.length * trainShare);
-  const trainC = closes.slice(0, split), trainT = times.slice(0, split);
-  const testC = closes.slice(split), testT = times.slice(split);
-  const combos = [];
-  for (const mode of (grid.mode || ['reversion'])) for (const window of grid.window) for (const entryZ of grid.entryZ) for (const exitZ of grid.exitZ) for (const stopPct of grid.stopPct) for (const maxHoldH of grid.maxHoldH) {
-    combos.push({ mode, window, entryZ, exitZ, stopPct, maxHoldH });
-  }
-  const scored = combos.map((params) => {
-    const r = replayLeg(trainC, trainT, params, { legUsd, costsPct, neverSell, gasUsd });
-    const trades = neverSell ? r.trades.length : r.closed;
-    return { params, train: r, score: trades >= minTrades ? r.net_usd / (trainC.length / 24) : -Infinity };
-  }).sort((a, b) => b.score - a.score);
-  const best = scored[0];
-  if (!best || best.score === -Infinity) return { pick: null, reason: `no parameter set made ${minTrades} trades on the training half`, train_hours: trainC.length, test_hours: testC.length };
-  // The test half is replayed with a warm window: the last `window` training
-  // closes are prepended so the z-score exists from the first test hour, and
-  // the equity is measured from the split.
-  const warm = best.params.window;
-  const testR = replayLeg(closes.slice(Math.max(0, split - warm)), times.slice(Math.max(0, split - warm)), best.params, { legUsd, costsPct, neverSell, gasUsd });
-  return {
-    pick: best.params,
-    train: { hours: trainC.length, net_usd: best.train.net_usd, closed: best.train.closed, win_rate_pct: best.train.win_rate_pct, max_drawdown_pct: best.train.max_drawdown_pct, buy_hold_net_usd: best.train.buy_hold_net_usd },
-    test: { hours: testC.length, net_usd: testR.net_usd, closed: testR.closed, win_rate_pct: testR.win_rate_pct, max_drawdown_pct: testR.max_drawdown_pct, buy_hold_net_usd: testR.buy_hold_net_usd, open_position: testR.open_position || null },
-    runner_up: scored[1] ? { params: scored[1].params, train_net_usd: scored[1].train.net_usd } : null,
-    combos_tried: combos.length,
-  };
-}
-
-// What the rule says right now for one leg: the current z, and whether a
-// buy or a sell is due given an open position (or none). Pure.
-export function signal(closes, params, { position = null, neverSell = false, nowMs = null, entryMs = null } = {}) {
-  const sign = params.mode === 'trend' ? -1 : 1;
-  const z = zScores(closes, params.window).map((v) => (v == null ? null : sign * v));
-  const zi = z[z.length - 1];
-  const p = closes[closes.length - 1];
-  if (zi == null) return { z: null, action: 'hold', why: `the window needs ${params.window} closes, ${closes.length} on hand` };
-  if (position) {
-    if (neverSell) return { z: zi, action: zi <= -params.entryZ ? 'buy' : 'hold', why: zi <= -params.entryZ ? `z ${zi.toFixed(2)} ≤ −${params.entryZ}: another dip` : `z ${zi.toFixed(2)}: holding, this leg never sells` };
-    const ret = (p - position.price) / position.price * 100;
-    const heldH = nowMs && entryMs ? (nowMs - entryMs) / 36e5 : 0;
-    if (zi >= params.exitZ) return { z: zi, action: 'sell', why: `z ${zi.toFixed(2)} ≥ ${params.exitZ}: back at the mean (${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%)` };
-    if (ret <= -params.stopPct) return { z: zi, action: 'sell', why: `stop: ${ret.toFixed(2)}% against a ${params.stopPct}% stop` };
-    if (heldH >= params.maxHoldH) return { z: zi, action: 'sell', why: `held ${heldH.toFixed(0)} h, the limit is ${params.maxHoldH} h` };
-    return { z: zi, action: 'hold', why: `z ${zi.toFixed(2)}: in a position (${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%), waiting for the mean` };
-  }
-  if (zi <= -params.entryZ) return { z: zi, action: 'buy', why: `z ${zi.toFixed(2)} ≤ −${params.entryZ}: a dip` };
-  return { z: zi, action: 'hold', why: `z ${zi.toFixed(2)}: no dip (a buy needs ≤ −${params.entryZ})` };
-}
-
-// THE PORTFOLIO — the operator's rule of 2026-09-08 ("BNB, BOB und CAKE
-// profit kaufen und wenn BOBAI dippt nur den profit rein, 50%; das andere
-// wieder verwenden zum wachsen"). Three trading legs share the capital.
-// Every closed trade's net result goes into a profit pool. When BOBAI dips
-// (its own z-score below `bobaiDipZ`), half of the pool buys BOBAI, which is
-// never sold; the other half is added to the trading capital, split evenly
-// across the legs. A losing trade shrinks the pool first, then the capital.
-export const TRADING_LEGS = ['BNB', 'CAKE', 'BOB'];
-
-// Align a sparse series (BOBAI has hours without a trade) to a dense hourly
-// grid by carrying the last close forward.
-export function alignTo(times, sparse) {
-  const out = new Array(times.length).fill(null);
-  let j = 0, last = null;
-  for (let i = 0; i < times.length; i++) {
-    while (j < sparse.length && sparse[j][0] <= times[i]) { last = sparse[j][1]; j++; }
-    out[i] = last;
-  }
-  return out;
-}
-
-export function replayPortfolio(legs, bobai, picks, { capitalUsd = 100, profitToBobaiPct = 50, bobaiDipZ = 1, bobaiWindow = 168, costsPct = DEFAULT_COSTS_PCT } = {}) {
-  // legs: { BNB: {closes, times}, ... } on one hourly grid (times identical);
-  // bobai: { closes (aligned to that grid) }.
-  const names = TRADING_LEGS.filter((l) => picks[l]);
-  const times = legs[names[0]].times;
-  const n = times.length;
-  const z = Object.fromEntries(names.map((l) => [l, zScores(legs[l].closes, picks[l].window)]));
-  const zb = bobai && bobai.closes.every((c) => c != null) ? zScores(bobai.closes, bobaiWindow) : (bobai ? zScores(bobai.closes.map((c) => c ?? bobai.closes.find((x) => x != null)), bobaiWindow) : null);
-  const budget = Object.fromEntries(names.map((l) => [l, capitalUsd / names.length]));
-  const pos = Object.fromEntries(names.map((l) => [l, null]));
-  let cashInLegs = capitalUsd, profitPool = 0, bobaiUnits = 0, bobaiSpent = 0, bobaiBuys = 0, grownBy = 0;
-  const trades = [];
-  let peak = capitalUsd, maxDD = 0;
-  for (let i = 0; i < n; i++) {
-    for (const l of names) {
-      const p = legs[l].closes[i], zi = z[l][i], P = picks[l], c = costsPct[l];
-      const open = pos[l];
-      if (open) {
-        const heldH = (times[i] - times[open.i]) / 36e5;
-        const ret = (p - open.price) / open.price * 100;
-        let why = null;
-        if (zi != null && zi >= P.exitZ) why = 'back at the mean';
-        else if (ret <= -P.stopPct) why = 'stop';
-        else if (heldH >= P.maxHoldH) why = 'held too long';
-        if (why) {
-          const gross = open.units * p, fee = gross * c.sell / 100, net = gross - fee - open.spent;
-          // the leg gets its stake back; the result goes to the pool (a loss
-          // eats the pool first, then the leg's own budget)
-          budget[l] += open.spent;
-          if (net >= 0) profitPool += net;
-          else if (profitPool + net >= 0) profitPool += net;
-          else { budget[l] += profitPool + net; profitPool = 0; }
-          trades.push({ leg: l, entry: times[open.i], exit: times[i], ret_pct: Math.round(ret * 100) / 100, net_usd: Math.round(net * 10000) / 10000, hours: Math.round(heldH), why });
-          pos[l] = null;
-        }
-      }
-      if (!pos[l] && zi != null && zi <= -P.entryZ && budget[l] >= 1) {
-        const spend = budget[l], fee = spend * c.buy / 100;
-        pos[l] = { i, price: p, units: (spend - fee) / p, spent: spend };
-        budget[l] = 0;
-      }
-    }
-    // BOBAI dip: half the pool buys, the other half grows the legs
-    if (zb && zb[i] != null && zb[i] <= -bobaiDipZ && profitPool >= 1 && bobai.closes[i]) {
-      const toBobai = profitPool * profitToBobaiPct / 100, toGrow = profitPool - toBobai;
-      const fee = toBobai * costsPct.BOBAI.buy / 100;
-      bobaiUnits += (toBobai - fee) / bobai.closes[i]; bobaiSpent += toBobai; bobaiBuys += 1;
-      for (const l of names) budget[l] += toGrow / names.length;
-      grownBy += toGrow; profitPool = 0;
-      trades.push({ leg: 'BOBAI', entry: times[i], exit: null, ret_pct: null, net_usd: null, hours: null, why: `dip: $${toBobai.toFixed(2)} of profit into BOBAI, $${toGrow.toFixed(2)} into the legs` });
-    }
-    const markLegs = names.reduce((s, l) => s + budget[l] + (pos[l] ? pos[l].units * legs[l].closes[i] : 0), 0);
-    const markBobai = bobai && bobai.closes[i] ? bobaiUnits * bobai.closes[i] : bobaiSpent;
-    const eq = markLegs + profitPool + markBobai;
-    if (eq > peak) peak = eq;
-    const dd = (peak - eq) / peak * 100; if (dd > maxDD) maxDD = dd;
-  }
-  const last = n - 1;
-  const legsMark = names.reduce((s, l) => s + budget[l] + (pos[l] ? pos[l].units * legs[l].closes[last] : 0), 0);
-  const bobaiMark = bobai && bobai.closes[last] ? bobaiUnits * bobai.closes[last] : bobaiSpent;
-  const closed = trades.filter((t) => t.exit != null);
-  const r4 = (x) => Math.round(x * 10000) / 10000;
-  return {
-    capital_usd: capitalUsd, legs: names, hours: n,
-    closed_trades: closed.length, wins: closed.filter((t) => t.net_usd > 0).length,
-    realised_profit_usd: r4(closed.reduce((s, t) => s + t.net_usd, 0)),
-    profit_pool_usd: r4(profitPool),
-    grown_into_legs_usd: r4(grownBy),
-    bobai: { buys: bobaiBuys, spent_usd: r4(bobaiSpent), units: r4(bobaiUnits), mark_usd: r4(bobaiMark) },
-    trading_capital_now_usd: r4(legsMark + profitPool),
-    total_now_usd: r4(legsMark + profitPool + bobaiMark),
-    net_usd: r4(legsMark + profitPool + bobaiMark - capitalUsd),
-    max_drawdown_pct: Math.round(maxDD * 100) / 100,
-    trades,
-  };
-}
-
-// THE ROTATION — the operator's second sentence of 2026-09-08: "immer wenn
-// einer dippt ist es die Moeglichkeit rein zu gehen von einem wo on top ist
-// und profit gemacht hat". One pot. It sits in USDT when nothing dips, buys
-// the deepest dip among BNB, CAKE and BOB, sells when that asset is back at
-// its mean (or stopped, or held too long), and can do both in the same hour
-// — out of a top, into a dip. Every closed trade's net result goes to the
-// pool; at a BOBAI dip half the pool buys BOBAI (never sold) and half grows
-// the pot. Losses eat the pool first, then the pot.
-export function replayRotation(legs, bobai, picks, { capitalUsd = 100, profitToBobaiPct = 50, bobaiDipZ = 1, bobaiWindow = 168, costsPct = DEFAULT_COSTS_PCT, minDipZ = null, gasUsd = DEFAULT_GAS_USD_PER_SWAP } = {}) {
-  const names = TRADING_LEGS.filter((l) => picks[l]);
-  const times = legs[names[0]].times, n = times.length;
-  const z = Object.fromEntries(names.map((l) => [l, zScores(legs[l].closes, picks[l].window).map((v) => (v == null ? null : (picks[l].mode === 'trend' ? -v : v)))]));
-  // BOBAI's history starts later than the others (July 2026): the aligned
-  // series is null before its first close. The z-score is computed on the
-  // part that exists and is null before it, so a BOBAI dip can be seen from
-  // the first full window onwards rather than never.
-  const bob = bobai ? bobai.closes.slice() : null;
-  for (let i = 1; bob && i < bob.length; i++) if (bob[i] == null) bob[i] = bob[i - 1];
-  let zb = null;
-  if (bob) {
-    const first = bob.findIndex((c) => c != null);
-    if (first >= 0) { const zz = zScores(bob.slice(first), bobaiWindow); zb = new Array(bob.length).fill(null); for (let i = 0; i < zz.length; i++) zb[first + i] = zz[i]; }
-  }
-  let pot = capitalUsd, pos = null, profitPool = 0, bobaiUnits = 0, bobaiSpent = 0, bobaiBuys = 0, grownBy = 0;
-  const trades = []; let peak = capitalUsd, maxDD = 0;
-  for (let i = 0; i < n; i++) {
-    if (pos) {
-      const l = pos.leg, p = legs[l].closes[i], P = picks[l], c = costsPct[l];
-      const heldH = (times[i] - times[pos.i]) / 36e5, ret = (p - pos.price) / pos.price * 100;
-      let why = null;
-      if (z[l][i] != null && z[l][i] >= P.exitZ) why = 'back at the mean';
-      else if (ret <= -P.stopPct) why = 'stop';
-      else if (heldH >= P.maxHoldH) why = 'held too long';
-      if (why) {
-        const gross = pos.units * p, fee = gross * c.sell / 100 + gasUsd, net = gross - fee - pos.spent;
-        pot += pos.spent;
-        if (net >= 0) profitPool += net; else if (profitPool + net >= 0) profitPool += net; else { pot += profitPool + net; profitPool = 0; }
-        trades.push({ leg: l, entry: times[pos.i], exit: times[i], ret_pct: Math.round(ret * 100) / 100, net_usd: Math.round(net * 10000) / 10000, hours: Math.round(heldH), why });
-        pos = null;
-      }
-    }
-    if (!pos && pot >= 1) {
-      // the deepest dip of the hour, if any dips at all
-      let best = null;
-      for (const l of names) {
-        const zi = z[l][i];
-        if (zi == null || zi > -picks[l].entryZ) continue;
-        if (minDipZ != null && zi > -minDipZ) continue;
-        if (!best || zi < best.z) best = { leg: l, z: zi };
-      }
-      if (best && pot > gasUsd) {
-        const l = best.leg, p = legs[l].closes[i], fee = pot * costsPct[l].buy / 100 + gasUsd;
-        pos = { leg: l, i, price: p, units: (pot - fee) / p, spent: pot };
-        pot = 0;
-      }
-    }
-    if (zb && zb[i] != null && zb[i] <= -bobaiDipZ && profitPool >= 1 && bob[i]) {
-      const toBobai = profitPool * profitToBobaiPct / 100, toGrow = profitPool - toBobai;
-      // One swap into BOBAI: its percentage cost plus the gas, never more
-      // than the amount itself.
-      bobaiUnits += Math.max(0, toBobai - toBobai * costsPct.BOBAI.buy / 100 - gasUsd) / bob[i]; bobaiSpent += toBobai; bobaiBuys += 1;
-      pot += toGrow; grownBy += toGrow; profitPool = 0;
-      trades.push({ leg: 'BOBAI', entry: times[i], exit: null, ret_pct: null, net_usd: null, hours: null, why: `dip: $${toBobai.toFixed(2)} of profit into BOBAI, $${toGrow.toFixed(2)} into the pot` });
-    }
-    const eq = pot + profitPool + (pos ? pos.units * legs[pos.leg].closes[i] : 0) + (bob && bob[i] ? bobaiUnits * bob[i] : bobaiSpent);
-    if (eq > peak) peak = eq; const dd = (peak - eq) / peak * 100; if (dd > maxDD) maxDD = dd;
-  }
-  const last = n - 1;
-  const potMark = pot + profitPool + (pos ? pos.units * legs[pos.leg].closes[last] : 0);
-  const bobaiMark = bob && bob[last] ? bobaiUnits * bob[last] : bobaiSpent;
-  const closed = trades.filter((t) => t.exit != null);
-  const r4 = (x) => Math.round(x * 10000) / 10000;
-  const perLeg = Object.fromEntries(names.map((l) => [l, { closed: closed.filter((t) => t.leg === l).length, net_usd: r4(closed.filter((t) => t.leg === l).reduce((s, t) => s + t.net_usd, 0)) }]));
-  return {
-    capital_usd: capitalUsd, legs: names, hours: n, closed_trades: closed.length, wins: closed.filter((t) => t.net_usd > 0).length,
-    per_leg: perLeg, realised_profit_usd: r4(closed.reduce((s, t) => s + t.net_usd, 0)), profit_pool_usd: r4(profitPool), grown_into_pot_usd: r4(grownBy),
-    bobai: { buys: bobaiBuys, spent_usd: r4(bobaiSpent), units: r4(bobaiUnits), mark_usd: r4(bobaiMark) },
-    open: pos ? { leg: pos.leg, since: times[pos.i], unrealised_usd: r4(pos.units * legs[pos.leg].closes[last] - pos.spent) } : null,
-    trading_capital_now_usd: r4(potMark), total_now_usd: r4(potMark + bobaiMark), net_usd: r4(potMark + bobaiMark - capitalUsd),
-    max_drawdown_pct: Math.round(maxDD * 100) / 100, trades,
-  };
-}
-
-// ============================================================================
-// THE SLOW MACHINE (2026-09-09). The operator's brief: not fast money, slow
-// money — long term, as much as possible. Measured first (scripts/trader-slow.mjs,
-// docs/trading-agent.md): on the same six months the hourly rule was judged on,
-// a plain target allocation with monthly rebalancing earned +39% on the unseen
-// 72 days at every pot size, with three trades and a dollar of gas, and
-// costs × 1.5 moved it by a dollar — where the hourly rule turned negative.
-// What it is NOT: an edge. It is exposure to BNB, CAKE and BOB plus the small,
-// steady gain of selling what rose and buying what fell. The arithmetic below
-// is shared by the backtest and the live tick, so what was measured is what runs.
-export const ALLOCATION = { BNB: 1 / 3, CAKE: 1 / 3, BOB: 1 / 3, USDT: 0 };
-export const REBALANCE_EVERY_DAYS = 30;
-// Relative drift a sleeve must show before the monthly pass trades it: a third
-// that has become 40% of the pot (drift +0.2) is sold back; one at 36% is left.
-// Under ~$300 the band never fires because a fifth of a third is under the
-// wallet's $10 minimum — there the machine is buy-and-hold, and that is fine.
-export const REBALANCE_BAND = 0.2;
-export const DEFAULT_MIN_ORDER_USD = 10;
-export const DEFAULT_MAX_ORDER_USD = 1000;
-
-// THE DIP RESERVE (2026-09-10). The operator wants stables for dips ("der
-// trader braucht ja stables für die dips"). Carving a quarter of the thirds
-// out as cash was measured and refused (scripts/trader-sleeve.mjs: ten points
-// behind at every split — cash drag in a rising quarter). A reserve is not a
-// carve-out: it is new money that stays USDT by the operator's decision, and
-// the only question is whether it does better buying dips than sitting idle.
-// Rule: one lot at a time, the whole reserve, into the leg furthest under its
-// trailing 7-day mean of daily closes when that is at least RESERVE_DIP_PCT
-// under; back to USDT at the first daily close at or above that mean. Deposits
-// fill the reserve up to RESERVE_TARGET_USD before they top up the thirds.
-// The thirds never see the reserve: it is not in their holdings.
-export const RESERVE_TARGET_USD = 50;
-export const RESERVE_MEAN_DAYS = 7;
-export const RESERVE_DIP_PCT = 8; // measured 2026-09-10, scripts/trader-sleeve.mjs --reserve
-
-// The trailing mean of the n closes before the last one (today is not in it).
-export function trailingMeanOf(closes, n = RESERVE_MEAN_DAYS) {
-  if (!Array.isArray(closes) || closes.length < n + 1) return null;
-  const w = closes.slice(-(n + 1), -1);
-  return w.reduce((s, x) => s + x, 0) / n;
-}
-
-/**
- * planReserve — pure. What the reserve does at this daily close.
- *   reserveUsd: the cash the reserve holds (USDT).
- *   lot: { leg, units, cost_usd } or null — the open lot.
- *   closesByLeg: { BNB: [...], CAKE: [...], BOB: [...] } daily closes, oldest
- *                first, the last one today's; at least meanDays + 1 each.
- * Returns { action: 'sell', leg, why } | { action: 'buy', leg, usd, dip_pct, why }
- *       | { action: null, why }. Never more than one order.
- */
-export function planReserve({ reserveUsd = 0, lot = null, closesByLeg = {}, dipPct = RESERVE_DIP_PCT, meanDays = RESERVE_MEAN_DAYS, minOrderUsd = DEFAULT_MIN_ORDER_USD } = {}) {
-  const r2 = (x) => Math.round(x * 100) / 100;
-  if (lot && lot.units > 0) {
-    const c = closesByLeg[lot.leg];
-    const m = trailingMeanOf(c, meanDays);
-    if (m == null) return { action: null, why: `the lot in ${lot.leg} waits: fewer than ${meanDays + 1} daily closes to judge it by` };
-    const px = c[c.length - 1];
-    if (px >= m) return { action: 'sell', leg: lot.leg, why: `${lot.leg} closed at ${px} — at or above its ${meanDays}-day mean of ${r2(m)}: the lot goes back to USDT` };
-    return { action: null, why: `the lot in ${lot.leg} waits: ${px} is still ${r2((1 - px / m) * 100)}% under its ${meanDays}-day mean of ${r2(m)}` };
-  }
-  if (!(reserveUsd >= minOrderUsd)) return { action: null, why: `the reserve holds $${r2(reserveUsd)}, under the $${minOrderUsd} minimum — nothing to buy a dip with` };
-  let best = null;
-  for (const leg of TRADING_LEGS) {
-    const c = closesByLeg[leg];
-    const m = trailingMeanOf(c, meanDays);
-    if (m == null) continue;
-    const px = c[c.length - 1];
-    const dip = (1 - px / m) * 100;
-    if (dip >= dipPct && (!best || dip > best.dip)) best = { leg, dip, px, m };
-  }
-  if (!best) return { action: null, why: `no leg closed ${dipPct}% or more under its ${meanDays}-day mean — the reserve waits in USDT` };
-  return { action: 'buy', leg: best.leg, usd: Math.floor(reserveUsd * 100) / 100, dip_pct: r2(best.dip), why: `${best.leg} closed at ${best.px}, ${r2(best.dip)}% under its ${meanDays}-day mean of ${r2(best.m)} — the reserve buys the dip` };
-}
-
-/**
- * planRebalance — pure. What has to be bought and sold to bring the holdings
- * to the target weights.
- *   holdingsUsd: { BNB, CAKE, BOB, USDT } in dollars, what the agent owns.
- *   weights: shares summing to 1; USDT's share stays as cash.
- *   band: relative drift under which a sleeve is left alone (0 = always trade).
- *   sells: false = a top-up pass that only invests cash (a deposit arrived).
- *   takeUsd: dollars to move out of the assets into cash first (the profit
- *            take); it forces every sleeve to its target, band or not.
- * Sells come first so the cash for the buys exists; buys are clamped to the
- * cash there is; nothing under minOrderUsd, nothing over maxOrderUsd (the rest
- * waits for the next pass — a $3,000 shift happens over three days).
- */
-export function planRebalance(holdingsUsd, weights = ALLOCATION, { band = 0, minOrderUsd = DEFAULT_MIN_ORDER_USD, maxOrderUsd = DEFAULT_MAX_ORDER_USD, sells = true, takeUsd = 0 } = {}) {
-  const have = (l) => Number(holdingsUsd[l] || 0);
-  const total = TRADING_LEGS.reduce((s, l) => s + have(l), 0) + have('USDT');
-  const take = Math.min(Math.max(0, takeUsd), total);
-  const investable = total - take;
-  const orders = [], skipped = [], drift = {};
-  for (const l of TRADING_LEGS) {
-    const target = investable * (weights[l] || 0);
-    drift[l] = target > 0 ? (have(l) - target) / target : (have(l) > 0 ? Infinity : 0);
-    const diff = target - have(l);
-    if (take <= 0 && Math.abs(drift[l]) <= band) { skipped.push({ leg: l, usd: diff, why: `drift ${(drift[l] * 100).toFixed(1)}% is inside the ${band * 100}% band` }); continue; }
-    if (Math.abs(diff) < minOrderUsd) { skipped.push({ leg: l, usd: diff, why: `$${Math.abs(diff).toFixed(2)} is under the $${minOrderUsd} minimum` }); continue; }
-    if (diff < 0 && !sells) { skipped.push({ leg: l, usd: diff, why: 'a top-up pass does not sell' }); continue; }
-    orders.push({ leg: l, side: diff < 0 ? 'sell' : 'buy', usd: Math.min(Math.abs(diff), maxOrderUsd), target_usd: target, have_usd: have(l) });
-  }
-  orders.sort((a, b) => (a.side === b.side ? 0 : a.side === 'sell' ? -1 : 1));
-  let cash = have('USDT') + orders.filter((o) => o.side === 'sell').reduce((s, o) => s + o.usd, 0) - take;
-  const kept = [];
-  for (const o of orders) {
-    if (o.side === 'buy') {
-      const usd = Math.min(o.usd, Math.max(0, cash));
-      if (usd < minOrderUsd) { skipped.push({ leg: o.leg, usd: o.usd, why: `only $${Math.max(0, cash).toFixed(2)} of cash for a $${o.usd.toFixed(2)} buy` }); continue; }
-      o.usd = usd; cash -= usd;
-    }
-    kept.push(o);
-  }
-  // A top-up that bought nothing because every sleeve's share of the deposit
-  // was under the minimum still has the cash: $25 arriving on three $46
-  // sleeves is $8 each, and $8 is not an order. The cash then goes to the
-  // sleeve furthest under its target, in one order — the deposit works
-  // today, and the next pass evens the weights (2026-09-09, the operator's
-  // $25 that "just sat there").
-  if (!sells && cash >= minOrderUsd && !kept.some((o) => o.side === 'buy')) {
-    const under = TRADING_LEGS.map((l) => ({ leg: l, gap: investable * (weights[l] || 0) - have(l) })).filter((x) => x.gap > 0).sort((a, b) => b.gap - a.gap)[0];
-    if (under) {
-      const usd = Math.min(cash, maxOrderUsd);
-      kept.push({ leg: under.leg, side: 'buy', usd, target_usd: investable * (weights[under.leg] || 0), have_usd: have(under.leg), pooled: true });
-      cash -= usd;
-    }
-  }
-  const r2 = (x) => Math.round(x * 100) / 100;
-  for (const o of kept) { o.usd = r2(o.usd); o.target_usd = r2(o.target_usd); o.have_usd = r2(o.have_usd); }
-  return { total: r2(total), take: r2(take), investable: r2(investable), orders: kept, skipped, drift, cash_after: r2(Math.max(0, cash)) };
-}
-
-/**
- * profitTake — pure. The operator's profit rule on a machine that never
- * "closes a trade": profit is the pot above its own high-water mark, measured
- * at the monthly pass. Half of that excess leaves the pot for the profit
- * pool (which buys $BOBAI on its dips, never sold); the other half stays and
- * compounds. The high-water mark moves up to the pot after the take, so the
- * same dollar is never taken twice. Deposits raise the mark by the deposit,
- * never count as profit. Below the mark nothing is taken and the mark holds.
- */
-export function profitTake(totalUsd, highWaterUsd, pct = 50) {
-  const excess = Math.max(0, totalUsd - Math.max(0, highWaterUsd));
-  const take = Math.round(excess * pct) / 100;
-  const r2 = (x) => Math.round(x * 100) / 100;
-  return { excess: r2(excess), take, high_water_after: r2(excess > 0 ? totalUsd - take : Math.max(0, highWaterUsd)) };
-}
-
-==============================================================================
 === FILE: worker-agent/canary.js
 ==============================================================================
 
@@ -3039,8 +2495,8 @@ export const CAPABILITIES = {
     // the decision, not for the protocol it is delivered over.
     { name: 'which fee tier pays', where: 'https://brainonbnb.com/api/fee-tiers?address=0x...', example: 'https://brainonbnb.com/api/fee-tiers?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', what: 'a pair lives in up to five PancakeSwap pools at once. This measures what each actually paid its liquidity providers over a live window — per dollar in the pool, and per dollar standing within 2% of the price, which is the only part earning. The two rankings disagree often.' },
     { name: 'which price range', where: 'https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000', example: 'https://brainonbnb.com/api/range-plan?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&capitalUsd=1000', what: 'a V3 position is not in a pool, it is between two prices. A position of the size you name is replayed through the swaps that really happened: what each width would have collected, how much of the window it stayed in range, and what putting it back would cost.' },
-    // The free half of the liquidity agent: anybody's PancakeSwap V3 position,
-    // read live. /liquidity sells it as "the look is free"; it was not listed
+    // The free half of the DeFi agent: anybody's PancakeSwap V3 position,
+    // read live. /defi sells it as "the look is free"; it was not listed
     // here. The wallet form does not go stale when the position is re-set.
     { name: 'look at a V3 position', where: 'https://agent.brainonbnb.com/lp/look?position=<id> or ?address=<wallet>', example: 'https://agent.brainonbnb.com/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', what: 'any PancakeSwap V3 position, read from the chain: in range or not, room to the edges, value, fees owed and whether collecting pays for its gas. The plan — re-set, width, what spare BNB adds — is the paid lp_position_plan' },
     { name: 'which route, and can you get out', where: 'https://brainonbnb.com/api/best-route?address=0x...&usd=250', example: 'https://brainonbnb.com/api/best-route?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&usd=250', what: 'which of the five pools actually returns the most at your size, quoted by the venue rather than ranked by depth — and what comes back if you sell straight into the same route, with the transfer tax measured from executed trades folded in.' },
@@ -5781,7 +5237,7 @@ const OWN_WALLETS = new Set([
   '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // creator / dev
   '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
   '0xbfb4b49787ce948c1ee304f6c197a0e8b038ddb2', // NFT relayer (the test buyer)
-  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // liquidity agent
+  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent
   '0x690e950214980bc329823a2db2fd90c06bd54de4', // x402 income
   '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', // agent provider
   '0xc5a17b5295fc50badb1f9f9c09b412fe5e84f7d3', // Altana admin
@@ -6140,7 +5596,7 @@ async function checkWatches(env) {
 
 // ---------------------------------------------------------------- the liquidity series
 //
-// One point per run of the liquidity agent, taken from the record it writes
+// One point per run of the DeFi agent, taken from the record it writes
 // (worker-lp, 04:23 UTC) and never from a counter: what the position was
 // worth, whether it was in range, what it was owed, what had already been
 // sent on. Kept here, by the worker with no keys, so the series exists
@@ -6344,7 +5800,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     out.value_bnb.change_pct = capitalTotal > 0 ? +((bnb / capitalTotal) * 100).toFixed(2) : out.value_bnb.change_pct;
     out.profit = { bnb, usd, from_price_bnb: price, from_fees_bnb: fees, fees_collected_bnb: +collected.toFixed(6), fees_folded_bnb: +foldedKept.toFixed(6), fees_forwarded_at_resets_bnb: +(folded - foldedKept).toFixed(6), fees_owed_bnb: +(out.fees_owed_now_bnb || 0).toFixed(6), gas_bnb: gas, bnb_usd: last.bnb_usd || null };
   }
-  // The same figures as one sentence — the line /liquidity opens with and the
+  // The same figures as one sentence — the line /defi opens with and the
   // whole of the Telegram daily report, so the two never say different things.
   const f = (v, d) => (v == null || !isFinite(Number(v))) ? '—' : Number(v).toFixed(d);
   const pct = (v) => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%';
@@ -6523,7 +5979,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
         how: `Send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
-        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the liquidity agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
+        ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
         accepts: requirements.accepts,
@@ -6921,7 +6377,7 @@ export default {
       const r = await handleFind(url);
       return json(r.body, r.status);
     }
-    // The liquidity agent's free look at anybody's PancakeSwap V3 position:
+    // The DeFi agent's free look at anybody's PancakeSwap V3 position:
     // in range or not, room left, value, fees owed. Open, no key, read live.
     // The plan (re-set, width, what spare BNB adds) is the paid answer.
     if (path === '/lp/look') {
@@ -7211,7 +6667,7 @@ ${pageTail}`;
         const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
         const f = (x, d = 4) => (x == null || !isFinite(Number(x)) ? '—' : Number(x).toFixed(d));
         const usd = (x) => (x == null ? '—' : '$' + f(x));
-        const html = `${pageHead('The pool record — the liquidity agent', `
+        const html = `${pageHead('The pool record — the DeFi agent', `
 main{max-width:820px}
 p.lead{color:#cfc9bd;margin:6px 0 0}
 .card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
@@ -7255,7 +6711,7 @@ ${pageTail}`;
           v.calibration = lpCalibration(await readLpSeries(env), v.rows, widthClassOf(ticks));
         } catch { v.calibration = null; }
       }
-      // THE WIDTH RECORD, READABLE. The record page and /liquidity link here
+      // THE WIDTH RECORD, READABLE. The record page and /defi link here
       // as "the width record", and a person arrived at raw JSON (pressed
       // 2026-09-04). The same verdict as a page: which width the agent would
       // use and why, every width replayed side by side, and what the record
@@ -7268,7 +6724,7 @@ ${pageTail}`;
         const pick = v.earnings_pick || null;
         const rows = (v.rows || []).slice().sort((a, b) => a.width - b.width);
         const usd = log.usd || 50;
-        const html = `${pageHead('The width record — the liquidity agent', `
+        const html = `${pageHead('The width record — the DeFi agent', `
 main{max-width:820px}
 p.lead{color:#cfc9bd;margin:6px 0 0}
 .card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
@@ -7276,7 +6732,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;text-transform:none;border-top:0}td:first-child,th:first-child{text-align:left}tr.pick td{color:#f0b90b;font-weight:700}
 `)}${pageNav({ href: '/lp/agent', label: 'The record' }, { href: '/lp/windows', label: 'The width record' }, BUY)}<h1>The width record</h1>
-<p class="lead">How wide the liquidity agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price with the agent's own re-set delay and its measured re-set cost. The width that nets the most per day is the one the next re-set uses. Nothing here is a forecast.</p>
+<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price with the agent's own re-set delay and its measured re-set cost. The width that nets the most per day is the one the next re-set uses. Nothing here is a forecast.</p>
 <h2>The pick</h2>
 <div class="card"><dl>
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — about $${h(f(pick.earnings.net_usd_per_day, 2))} a day on $${h(usd)} after ${h(pick.earnings.resets)} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${h(f(pick.earnings.reset_cost_usd, 2))} each, over ${h(f(pick.earnings.hours, 0))} h of recorded prices (${h(f(pick.earnings.hours_in_range, 0))} h of them inside the range)` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
@@ -7305,12 +6761,12 @@ ${pageTail}`;
     // Our own ERC-8183 jobs and the date each one was first seen to complete.
     // The figure this marketplace argues with is 287 SUBMITTED against 8
     // COMPLETED; this is where our own jobs stand against it, checked daily.
-    // What the LP agent's daily tick did — sweep, collect, rebalance,
+    // What the DeFi agent's daily tick did — sweep, collect, rebalance,
     // increase (worker-lp writes it, this serves it; that worker holds the
     // keys and no public face on purpose). /lp/collect is the old name.
     if (path === '/lp/agent' || path === '/lp/collect') {
       const raw = await env.AGENT.get('lp:agent');
-      if (!raw) return json({ error: 'the LP agent has not run yet', cadence: 'daily' }, 503);
+      if (!raw) return json({ error: 'the DeFi agent has not run yet', cadence: 'daily' }, 503);
       const rec = JSON.parse(raw);
       // Where the money came from and where it went: computed once, here,
       // from the record and the service's own earnings — the page below, the
@@ -7405,7 +6861,7 @@ ${pageTail}`;
       ].filter((r) => r.why || r.err || r.detail);
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
         const s = e.steps || {}; const parts = [];
-        for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(`swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the liquidity wallet`);
+        for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(`swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the DeFi wallet`);
         if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
         if (s.increase?.acted && !s.increase.error) parts.push(`added ${f(s.increase.wbnb_used, 5)} BNB to the position`);
@@ -7413,7 +6869,7 @@ ${pageTail}`;
         if (e.error) errs.push(e.error);
         return { at: e.at, parts, errs, ok: e.ok !== false };
       });
-      const html = `${pageHead('The liquidity agent — its record', `
+      const html = `${pageHead('The DeFi agent — its record', `
 main{max-width:760px}
 p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:.9rem}dt{color:#a9a49a}dd{margin:0;overflow-wrap:anywhere}
 .card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
@@ -7422,7 +6878,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 .ok{background:rgba(63,224,154,.15);color:#3fe09a}.quiet{background:rgba(255,255,255,.08);color:#a9a49a}.bad{background:rgba(255,143,107,.15);color:#ff8f6b}
 .step b{display:block}.step span{display:block;color:#cfc9bd;font-size:.88rem}.step i{display:block;color:#a9a49a;font-size:.8rem;font-style:normal;margin-top:2px}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}ul.hist{list-style:none;padding:0;margin:0}ul.hist li{padding:8px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.9rem}ul.hist li:first-child{border-top:0}ul.hist time{color:#a9a49a;font-size:.8rem;display:block}
-`)}${pageNav({ href: SITE + '/liquidity', label: 'Liquidity' }, { href: '/lp/agent', label: 'The liquidity agent — its record' }, BUY)}<h1>The liquidity agent <span class="st ${last.ok === false ? 'bad' : last.acted ? 'ok' : 'quiet'}">${last.ok === false ? 'one step failed' : reset ? 're-set the range' : last.acted ? 'acted' : 'quiet day'}</span></h1>
+`)}${pageNav({ href: SITE + '/defi', label: 'Liquidity' }, { href: '/lp/agent', label: 'The DeFi agent — its record' }, BUY)}<h1>The DeFi agent <span class="st ${last.ok === false ? 'bad' : last.acted ? 'ok' : 'quiet'}">${last.ok === false ? 'one step failed' : reset ? 're-set the range' : last.acted ? 'acted' : 'quiet day'}</span></h1>
 <p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_buyback_pct)}% go to the buyback bot, which buys $BOBAI and burns it, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'part goes to the buyback bot, which buys $BOBAI and burns it, and part stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}${last !== daily ? ` (an hourly check that ${reset ? 're-set the range' : 'acted'}; the daily run before it, ${h(dailyWhen)}, ${daily.acted ? 'acted' : 'had nothing to do'})` : ''}.</p>
 <h2>What it holds</h2>
 <div class="card"><dl>
@@ -7435,7 +6891,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 <div class="card"><div class="flow">
 <div><b>Came in</b><span>${h(fl.came_in)}</span>${flow.paid_for && flow.paid_for.x402_answers ? `<i>The x402 service has been paid ${h(f(flow.paid_for.usd1, 2))} USD1 for ${h(flow.paid_for.x402_answers)} answer${flow.paid_for.x402_answers === 1 ? '' : 's'} since it opened. What of it has reached the income wallet is under Waiting and is swept once it is worth more than the gas; the rest went through the earlier path, which burned it directly.</i>` : ''}</div>
 <div><b>Went out</b><span>${h(fl.went_out)}${flow.out.bobai_bnb > 0 && usd(flow.out.bobai_bnb) ? ` — the BOBAI share${usd(flow.out.bobai_bnb)}${flow.out.bobai_units > 0 ? `, ${h(Math.round(flow.out.bobai_units).toLocaleString('en-US'))} BOBAI held` : ''}` : ''}</span><i>${flow.out.resets} re-set${flow.out.resets === 1 ? '' : 's'} of the range · ${h(fl.cost)}${usd(flow.gas.bnb)}</i></div>
-<div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the liquidity wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
+<div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the DeFi wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
 <div><b>The rule</b><span>${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% of every collect stays as capital, ${h(flow.rule.fee_share_bobai_pct)}% buys $BOBAI the agent holds in its own wallet, never sold.` : 'The share of the fees kept as capital is named with the next collect.'} Income goes in as capital in full. The capital never leaves.</span><i>Set in the open: LP_FEE_KEEP_PCT in worker-lp/wrangler.toml, in <a href="https://brainonbnb.com/source">the published source</a>.</i></div>
 </div></div>
 <h2>The last run, step by step</h2>${fromDaily ? `<p class="note" style="margin:0 0 8px">The newest run, ${h(when(last.at))}, was an hourly range check; it has the rebalance step only. The other steps run once a day and are shown from ${h(dailyWhen)}.</p>` : ''}
@@ -7551,12 +7007,12 @@ ${pageTail}`;
         money_flow: {
           '1': 'an agent pays USD1 for a watch, or $U for a job delivered on the ERC-8183 kernel',
           '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
-          '3': 'once a day it is sold for BNB and sent to the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
-          '4': 'the fees that position earns are collected daily and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half is sent to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce, which buys and burns $BOBAI as it always has — one burn path, one log',
+          '3': 'once a day it is sold for BNB and sent to the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
+          '4': 'the fees that position earns are collected and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half buys $BOBAI that the agent holds in its own wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A and never sells (since 2026-09-09; until then that half went to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce)',
           '5': 'every step is a public transaction, verifiable on BscScan; the daily record is at /lp/agent',
           floors: 'nothing is sold below 0.004 BNB of value, no fees are collected below 0.002 BNB and nothing is added to the position below 0.005 BNB — under a floor, gas would eat the amount, and a day under one is recorded as a decision, not an error',
           before: 'until 2026-09-02 the earnings were burned directly from the service wallet, by hand. The first: 0.50 USD1 -> 6,043.28 $BOBAI, burned 2026-08-22: https://bscscan.com/tx/0x0da33c6339fd88de8fa443f7d41d0e0749fbac14e678c976fd3dc0f6ea39b27e',
-          note: 'Automated since 2026-09-02 by the LP agent (worker-lp): sweep, collect, increase, and a re-set of the range once the record holds a day of prices. The burn log at logs.brainonbnb.com lists the buyback bot\'s own runs, and the LP fees reach it through that bot, so nothing here needs a second log.',
+          note: 'Automated since 2026-09-02 by the DeFi agent (worker-lp): sweep, collect, increase, and a re-set of the range once the record holds a day of prices. The $BOBAI the agent buys from its fees shows on its own wallet; the burn log at logs.brainonbnb.com lists only the runs of the buyback bot.',
         },
         capabilities: offering(),
         generated_at: new Date().toISOString(),
@@ -7776,8 +7232,8 @@ ${pageTail}`;
     // waiting for it or trusting that it works — and "the paid part is
     // presumably fine" is not a state this service should ever be shipped in.
     // Same shared secret as /hit; nothing here is reachable without it.
-    // The liquidity series: every run of the liquidity agent as one point,
-    // and what the points say so far. Read by /liquidity.
+    // The liquidity series: every run of the DeFi agent as one point,
+    // and what the points say so far. Read by /defi.
     if (path === '/lp/series') {
       const series0 = lpSeriesShown(await readLpSeries(env));
       const recRaw = await env.AGENT.get('lp:agent');
@@ -7815,7 +7271,7 @@ ${pageTail}`;
         try { const lk = await lpPositionLook({ position: String(lastPt.position) }); if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent); } catch { owed_now_bnb = null; }
       }
       return json({
-        what_this_is: 'One point per run of the liquidity agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
+        what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
         summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
         points: series,
         record: 'https://agent.brainonbnb.com/lp/agent',
@@ -8038,7 +7494,7 @@ ${pageTail}`;
 ==============================================================================
 
 // THE POOL RECORD: what the same fifty dollars would have earned in each of
-// the pools the liquidity agent could live in, hour by hour.
+// the pools the DeFi agent could live in, hour by hour.
 //
 // The width record (lp-windows.js) answers "how wide" for the pool the agent
 // is in. This answers the question that comes before it and was answered
@@ -8267,7 +7723,7 @@ export async function noteLpPoolsError(env, e) {
 === FILE: worker-agent/lp-service.js
 ==============================================================================
 
-// The liquidity agent, for somebody else's position.
+// The DeFi agent, for somebody else's position.
 //
 // Point 5 of the Block-05 list. The agent that runs this project's own
 // PancakeSwap V3 position reads, plans and re-sets it every day from ONE core
@@ -9555,7 +9011,7 @@ export const SERVICES = {
   },
   lp_position_plan: {
     id: 'lp_position_plan',
-    name: 'The liquidity agent, on your position',
+    name: 'The DeFi agent, on your position',
     category: 'rebalancing',
     price: '100000000000000000',
     price_display: '0.10 USD1',
@@ -9743,7 +9199,7 @@ export const SEED_TASKS = {
   lp_tier_plan: `which PancakeSwap fee tier is actually paying for ${SEED_CAKE}, placing $1000 of liquidity`,
   // Our own position, read the way a stranger's would be: the example IS the
   // agent looking at itself through the paid door.
-  lp_position_plan: 'what would the liquidity agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
+  lp_position_plan: 'what would the DeFi agent do with the PancakeSwap V3 position held by 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A',
 };
 // The seed sentences carry the numbers a service needs in words; the same
 // extractor a funded job goes through turns them into parameters, plus the
@@ -9931,7 +9387,7 @@ export async function handleJobResult(jobId, env) {
 //
 //   1. The admin key is a Cloudflare secret (ALTANA_ADMIN_PRIVATE_KEY). It is
 //      never in code, never in the public mirror, never returned by any route.
-//      The same arrangement holds the liquidity wallet's key and the provider
+//      The same arrangement holds the DeFi wallet's key and the provider
 //      wallet's key on the other workers of this project.
 //   2. The route fires only with the operator's token (SESSION_REVOKE_TOKEN,
 //      also a secret) in the request. Without it the answer is 401 and nothing
@@ -10987,7 +10443,7 @@ async function probeRebalance() {
   }
 }
 
-// The LP agent, probed on the pair with the most fee tiers actually trading.
+// The DeFi agent, probed on the pair with the most fee tiers actually trading.
 //
 // The headline here is a claim nothing else on this chain publishes, and it is
 // re-checked every run rather than asserted once: whether the PancakeSwap tier
@@ -11637,7 +11093,7 @@ const ANSWER_NAMES = {
   yield_plan: 'Venus yield ranking, and whether moving pays for itself',
   rebalance_plan: 'Portfolio rebalance, priced against the pools that would execute it',
   lp_tier_plan: 'Which PancakeSwap fee tier is actually paying its liquidity providers',
-  lp_position_plan: 'The liquidity agent on YOUR PancakeSwap V3 position: in range, worth, fees owed, whether a re-set is due and in which width — the same code that runs ours. Reads and plans, signs nothing',
+  lp_position_plan: 'The DeFi agent on YOUR PancakeSwap V3 position: in range, worth, fees owed, whether a re-set is due and in which width — the same code that runs ours. Reads and plans, signs nothing',
 };
 const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/watch',
@@ -11699,7 +11155,7 @@ is paid, because something has to still be running in an hour.
 | \`https://brainonbnb.com/scanner\` | The measurement in a browser |
 | \`npx skills add https://brainonbnb.com\` | The same measurement as an installable agent skill |
 | \`GET https://agent.brainonbnb.com/find?q=…\` | Broker: ERC-8004 agents on BNB Chain that expose something matching |
-| \`GET https://agent.brainonbnb.com/lp/look?position=…\` | The liquidity agent's look at any PancakeSwap V3 position: in range, room, value, fees owed. The plan is the paid \`lp_position_plan\` |
+| \`GET https://agent.brainonbnb.com/lp/look?position=…\` | The DeFi agent's look at any PancakeSwap V3 position: in range, room, value, fees owed. The plan is the paid \`lp_position_plan\` |
 | \`POST https://agent.brainonbnb.com/dispatch\` | Routes a task to an agent that can answer it and names who produced the result. Read-only tools only — anything that signs, sends or swaps is listed for you to call yourself, never invoked on your behalf. |
 | \`GET https://agent.brainonbnb.com/sessions\` | Every task routed, who answered, how long it took, what failed |
 
@@ -12266,13 +11722,13 @@ export async function yieldPlan(input = {}) {
 === FILE: worker-lp/index.js
 ==============================================================================
 
-// The LP agent's daily tick: AI income into the position, the position's
+// The DeFi agent's daily tick: AI income into the position, the position's
 // fees into the buyback bot.
 //
 // THE FLOW, as the user set it on 2026-09-02
 //   1. everything the AI side earns (USD1 for watches, $U for delivered jobs)
-//      goes to the liquidity wallet, in BNB                      -> sweep
-//   2. the liquidity wallet's profit — the fees the position earns — is
+//      goes to the DeFi wallet, in BNB                      -> sweep
+//   2. the DeFi wallet's profit — the fees the position earns — is
 //      split: part stays as capital so the position grows out of its own
 //      earnings (LP_FEE_KEEP_PCT, half since 2026-09-04: "er soll auch davon
 //      wachsen"), the rest goes to the buyback wallet, which buys and burns
@@ -12375,7 +11831,7 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
       try {
         const plan = await planSweep(pub, src, feed);
         if (plan.no) { out.push({ ...plan.summary, acted: false, why: plan.no }); continue; }
-        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the liquidity wallet' }); continue; }
+        if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the DeFi wallet' }); continue; }
         const wallet = createWalletClient({ account: acct, chain: bsc, transport: transport() });
         out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan)) });
       } catch (e) {
@@ -12547,7 +12003,7 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the liquidity wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
   st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase only (a deposit goes in within minutes, in range and above the floor)' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;

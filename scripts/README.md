@@ -32,7 +32,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `binance-route-crosscheck.mjs` · `binance-web3-check.mjs` | a second opinion from Binance's API; the signing, proven |
 | `goplus-check.mjs` | the GoPlus key and signature |
 
-## The liquidity agent
+## The DeFi agent
 | script | does |
 |---|---|
 | `lp-plan.mjs` | where the tools would put the project's money |

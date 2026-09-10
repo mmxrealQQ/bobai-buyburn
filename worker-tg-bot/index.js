@@ -1973,7 +1973,7 @@ export function formatGiggleCard(burns, nowMs = Date.now()) {
   if (nowMs < GG_START) clock = `⏳ Collecting starts in <b>${span(GG_START - nowMs)}</b>  ·  Sep 17, 00:01 UTC`;
   else if (nowMs < GG_END) clock = `⏳ Collecting ends in <b>${span(GG_END - nowMs)}</b>  ·  Nov 20, 00:01 UTC`;
   else clock = `✅ Collecting ended Nov 20  ·  donation day`;
-  const lpLine = nowMs >= GG_LP_START && nowMs < GG_END ? '💧 Plus 0.3% to the liquidity agent (Sep 9 → Nov 20)' : null;
+  const lpLine = nowMs >= GG_LP_START && nowMs < GG_END ? '💧 Plus 0.3% to the DeFi agent (Sep 9 → Nov 20)' : null;
   const lastLine = last ? `🕐 Last send: ${parseFloat(last.giggleBnb).toFixed(5)} BNB  ·  ${String(last.time).slice(0, 16).replace('T', ' ')} UTC  ·  <a href="https://bscscan.com/tx/${last.giggleTx}">tx</a>` : '🕐 Last send: none yet';
   return [
     '☀️ <b>Giggle Academy Community Pot</b>',
@@ -1998,7 +1998,7 @@ export function formatGiggleCard(burns, nowMs = Date.now()) {
 // ==================== LP AGENT DAILY REPORT ====================
 
 // Once a day, after the 04:23 run. The numbers are the series' own summary
-// (agent.brainonbnb.com/lp/series — the same figures /liquidity opens with),
+// (agent.brainonbnb.com/lp/series — the same figures /defi opens with),
 // so the channel and the page never disagree; only the shape differs. The
 // one-sentence form of 2026-09-07 was asked away on 2026-09-09 for a sorted
 // card with lines and emojis, the essentials only ("das gleiche beim lp
@@ -2071,7 +2071,7 @@ export function formatLpDailyReport(rec, series, pools = null) {
   if (n(fees.fees_forwarded_at_resets_bnb) > 0) feeParts.push(`${f5(fees.fees_forwarded_at_resets_bnb)} into $BOBAI`);
   if (n(fees.fees_owed_bnb) > 0) feeParts.push(`${f5(fees.fees_owed_bnb)} still owed by the position`);
   return [
-    `💧 <b>LP Agent · ${String(last.at).slice(0, 10)}</b>`,
+    `💧 <b>DeFi Agent · ${String(last.at).slice(0, 10)}</b>`,
     rule,
     `📥 <b>Put in: ${f4(putIn)} BNB</b>${usd(putIn)}  ·  ${sources.join(' · ')}`,
     `💼 <b>Position worth: ${f4(value.now)} BNB</b>${usd(value.now)}`,
@@ -2259,7 +2259,7 @@ async function handleCommand(msg, env) {
 ♻️ 3% tax on every buy & sell, fixed in the contract
 🔥 The buyback bot burns BOBAI from it around the clock
 🔥 The rest burns BOB, funds liquidity and the creator — the split changes by phase
-💧 Sep 9 → Nov 20: a tenth of each slice (0.3%) goes to the liquidity agent
+💧 Sep 9 → Nov 20: a tenth of each slice (0.3%) goes to the DeFi agent
 ☀️ Sep 17 → Nov 20: another tenth (0.3%) collects in BNB for Giggle Academy — one donation on Nov 20
 👤 Contract ownership renounced
 
@@ -2271,7 +2271,7 @@ async function handleCommand(msg, env) {
 
     case '/liq':
     case 'liq':
-    case '/liquidity':
+    case '/defi':
     case 'liquidity':
     case '/depth': {
       const lq = await fetchLiquidityStats();

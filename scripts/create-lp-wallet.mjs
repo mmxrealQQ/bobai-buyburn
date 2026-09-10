@@ -37,7 +37,7 @@ const existing = fs.existsSync(ENV) ? fs.readFileSync(ENV, 'utf8') : '';
 if (new RegExp(`^${KEY_NAME}=`, 'm').test(existing)) {
   const addr = existing.match(new RegExp(`^${ADDR_NAME}=(.*)$`, 'm'));
   console.log(`${KEY_NAME} already exists in .env — refusing to overwrite.`);
-  if (addr) console.log(`Existing liquidity wallet: ${addr[1].trim()}`);
+  if (addr) console.log(`Existing DeFi wallet: ${addr[1].trim()}`);
   console.log('Delete both lines by hand first if you really want a new wallet.');
   process.exit(0);
 }

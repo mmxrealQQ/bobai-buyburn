@@ -59,7 +59,7 @@ const splitOf = (src, label) => {
   );
 };
 
-// Seven programs (2026-09-09: the LP Agent share and the Giggle pot joined), so 128 combinations.
+// Seven programs (2026-09-09: the DeFi Agent share and the Giggle pot joined), so 128 combinations.
 const COMBOS = [];
 for (let i = 0; i < 128; i++) {
   COMBOS.push([!!(i & 1), !!(i & 2), !!(i & 4), !!(i & 8), !!(i & 16), !!(i & 32), !!(i & 64)]);

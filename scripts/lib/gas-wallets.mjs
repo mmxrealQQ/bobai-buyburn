@@ -20,7 +20,7 @@
 // current floor and the price BSC charged for years, so a spike costs headroom
 // rather than uptime.
 //
-// The liquidity wallet's floor is the number this project already used before
+// The DeFi wallet's floor is the number this project already used before
 // this file existed — 0.0015 BNB, the figure the liquidity-add runbook checks
 // against. It is reproduced here by the same rule that sets every other floor
 // (one full cycle at the planning price), rather than restated as a constant,
@@ -124,12 +124,12 @@ export const WALLETS = [
     env: 'X402_PRIVATE_KEY',
     address: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
     // Settles paid agent requests, and once a day sells what arrived for BNB
-    // to the liquidity wallet (approve + swap). Same shape as the provider:
+    // to the DeFi wallet (approve + swap). Same shape as the provider:
     // rare, small, and a failure that a paying caller sees.
     cycleGas: 250_000,
     floorCycles: 4,
     targetCycles: 16,
-    does: 'settling paid agent requests and sweeping the USD1 they paid to the liquidity wallet',
+    does: 'settling paid agent requests and sweeping the USD1 they paid to the DeFi wallet',
   },
 ];
 

@@ -60,7 +60,7 @@ const DEFAULT_TASKS = {
   yield_plan: 'where is the best yield on BNB Chain for USDT right now',
   rebalance_plan: 'rebalance holdings [{"token":"0x245c386dcfed896f5c346107596141e5edcbffff","usd":700},{"token":"0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82","usd":300}] to equal weight',
   lp_tier_plan: 'which PancakeSwap fee tier is actually paying for 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82, placing $1000 of liquidity',
-  lp_position_plan: 'what would the liquidity agent do with PancakeSwap V3 position 7309536',
+  lp_position_plan: 'what would the DeFi agent do with PancakeSwap V3 position 7309536',
 };
 const task = arg('--task', DEFAULT_TASKS[service]);
 // --proof <tx>: a payment already made whose answer was refused (bad input)
@@ -175,7 +175,7 @@ else {
                   console.log(`  ${ans.summary.headline}`);
                   for (const [k, v] of ans.summary.facts || []) console.log(`    ${k}: ${v}`);
                   console.log(`\n  paid ${ans.paid}, tx ${ans.tx}`);
-                  console.log('  this payment now shows on agent.brainonbnb.com/stats and will be swept by the liquidity agent.');
+                  console.log('  this payment now shows on agent.brainonbnb.com/stats and will be swept by the DeFi agent.');
                 } else {
                   console.log(`  ${JSON.stringify(ans).slice(0, 600)}`);
                   if (res.status !== 200) process.exitCode = 1;

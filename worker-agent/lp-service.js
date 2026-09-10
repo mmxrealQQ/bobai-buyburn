@@ -1,4 +1,4 @@
-// The liquidity agent, for somebody else's position.
+// The DeFi agent, for somebody else's position.
 //
 // Point 5 of the Block-05 list. The agent that runs this project's own
 // PancakeSwap V3 position reads, plans and re-sets it every day from ONE core

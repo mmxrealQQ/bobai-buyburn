@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12372 lines.
+# one fetch. 41 files, 12427 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5725,7 +5725,8 @@ import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
-import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost } from './lp-windows.js';
+import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration } from './lp-windows.js';
+import { widthClassOf } from '../shared/lp-guards.js';
 import { recordLpPools, readLpPools, noteLpPoolsError, poolVerdict, CANDIDATES as LP_POOL_CANDIDATES } from './lp-pools.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -7244,6 +7245,16 @@ ${pageTail}`;
         if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
       } catch { /* the replay's assumption stands */ }
       const v = lpVerdict(log, costOpts);
+      // What the agent's own position earned against the replay's figure
+      // for its width class (2026-09-10): the record says so beside the
+      // dollar it names. Missing under a day of series, or without a position.
+      if (v) {
+        try {
+          const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+          const ticks = rec?.last?.steps?.rebalance?.ticks || rec?.last?.steps?.increase?.ticks || null;
+          v.calibration = lpCalibration(await readLpSeries(env), v.rows, widthClassOf(ticks));
+        } catch { v.calibration = null; }
+      }
       // THE WIDTH RECORD, READABLE. The record page and /liquidity link here
       // as "the width record", and a person arrived at raw JSON (pressed
       // 2026-09-04). The same verdict as a page: which width the agent would
@@ -7271,6 +7282,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — about $${h(f(pick.earnings.net_usd_per_day, 2))} a day on $${h(usd)} after ${h(pick.earnings.resets)} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${h(f(pick.earnings.reset_cost_usd, 2))} each, over ${h(f(pick.earnings.hours, 0))} h of recorded prices (${h(f(pick.earnings.hours_in_range, 0))} h of them inside the range)` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
 <dt>Wait</dt><dd>${(() => { const dt = v.delay_test || {}; const ds = dt.delays || []; if (!ds.length) return `${h(dt.in_use_hours ?? 2)} h outside the range before a re-set — the wait the agent uses; whether another wait would net more is replayed once a day of prices is on record`; const line = ds.map((d) => `${h(d.hours)} h: ${d.net_usd_per_day == null ? 'nothing' : `$${h(f(d.net_usd_per_day, 2))} a day at ±${h(d.width)}% after ${h(d.resets)} re-set${d.resets === 1 ? '' : 's'}`}${d.in_use ? ' (in use)' : ''}`).join(' · '); return `<b>${h(dt.in_use_hours)} h</b> outside the range before a re-set is what the agent uses — ${dt.wait_basis === 'measured' ? 'measured' : 'set'}: ${h(dt.why || '')}. Replayed with every wait: ${line}. A measured wait needs a week of prices and a tenth more per day than the set wait; under either bar the set wait stands.`; })()}</dd>
 <dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, 2))} — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
+<dt>Measured</dt><dd>${v.calibration ? `the agent's own position at ±${h(v.calibration.position_width_pct)}% earned <b>$${h(f(v.calibration.measured_usd_per_day_on_50, 2))} a day on $50</b> over the last ${h(f(v.calibration.hours, 0))} h, against $${h(f(v.calibration.replay_usd_per_day_on_50, 2))} the replay puts on that width${v.calibration.factor != null ? ` — ${h(f(v.calibration.factor * 100, 0))}% of the replay's figure` : ''}. The replay overstates every width alike, so the pick between widths stands; the dollar beside it is an estimate, this line is the measurement.` : 'the position has not earned for a day yet on the series — the replay\'s dollars are estimates until it has'}</dd>
 <dt>Held a full day</dt><dd>${v.day_pick ? `±${h(v.day_pick.width)}% is the narrowest width that stayed in range through every tested 24-hour window (${h(v.day_pick.day.held)} of ${h(v.day_pick.day.tested)}). It earns less than the pick; holding is not the goal, netting is.` : 'no width has held through every tested day yet'}</dd>
 <dt>Record</dt><dd>${h(v.windows)} windows, ${h(when(v.from))} to ${h(when(v.to))}, blocks ${h(v.from_block)} to ${h(v.to_block)}${v.overlapping_runs_not_counted ? `; ${h(v.overlapping_runs_not_counted)} overlapping run${v.overlapping_runs_not_counted === 1 ? '' : 's'} counted once` : ''}${v.thin ? ' — thin: too few windows to lean on yet' : ''}</dd>
 </dl></div>
@@ -8925,6 +8937,49 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
     hours: r2(hours), hours_in_range: r2(hoursIn), fees_usd: r4(fees),
     resets, reset_cost_usd: r2(cost), net_usd: r4(net),
     net_usd_per_day: hours > 0 ? r4(net / (hours / 24)) : null,
+  };
+}
+
+// THE CALIBRATION. The replay says what $50 in a width would have collected
+// from the pool's fees; the agent's own position says what it did collect.
+// On 2026-09-10 the position at the 2% class had earned about three
+// quarters of what the replay put on that width — the replay overstates
+// every width alike, so the pick stands, but the dollar figure on the record
+// should say so. `points` is the liquidity series (fees_total_bnb, owed_bnb,
+// value_bnb, at), `rows` the verdict's rows, `widthClass` the position's
+// width class. Gross fees on both sides: the measured window may hold
+// re-sets, whose cost is not a fee. Null under a day of series.
+export function calibration(points, rows, widthClass, { minHours = 20, maxHours = 72 } = {}) {
+  const pts = (points || []).filter((p) => p && p.at && typeof p.value_bnb === 'number' && p.value_bnb > 0 && p.fees_total_bnb != null);
+  if (pts.length < 2 || widthClass == null) return null;
+  const last = pts[pts.length - 1];
+  const cutoff = Date.parse(last.at) - maxHours * 36e5;
+  const used = pts.filter((p) => Date.parse(p.at) >= cutoff);
+  if (used.length < 2) return null;
+  const first = used[0];
+  const hours = (Date.parse(last.at) - Date.parse(first.at)) / 36e5;
+  if (!(hours >= minHours)) return null;
+  const feesBnb = (Number(last.fees_total_bnb) + Number(last.owed_bnb || 0)) - (Number(first.fees_total_bnb) + Number(first.owed_bnb || 0));
+  // Capital, time-weighted over the points, minus what the operator put in
+  // with each point (a deposit is not fees' doing).
+  let capBnbH = 0;
+  for (let i = 1; i < used.length; i++) capBnbH += used[i - 1].value_bnb * ((Date.parse(used[i].at) - Date.parse(used[i - 1].at)) / 36e5);
+  const capitalBnb = capBnbH / hours;
+  if (!(capitalBnb > 0) || !(feesBnb >= 0)) return null;
+  // Fees over capital is a rate; on $50 a day it is dollars, whatever BNB costs.
+  const measured = (feesBnb / capitalBnb) * 50 * (24 / hours);
+  const row = (rows || []).find((r) => r.width === widthClass && r.earnings && r.earnings.hours > 0);
+  const replay = row ? row.earnings.fees_usd / (row.earnings.hours / 24) : null;
+  const factor = replay > 0 ? measured / replay : null;
+  return {
+    hours: r2(hours), from: first.at, to: last.at,
+    position_width_pct: widthClass,
+    fees_bnb: Number(feesBnb.toFixed(6)),
+    capital_bnb: Number(capitalBnb.toFixed(6)),
+    measured_usd_per_day_on_50: r4(measured),
+    replay_usd_per_day_on_50: replay == null ? null : r4(replay),
+    factor: factor == null ? null : r2(factor),
+    basis: `the position's own fees over ${r2(hours)} h against the replay's gross fees for the ±${widthClass}% width, both on $50 a day; the pick compares widths with each other and is not scaled`,
   };
 }
 

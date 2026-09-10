@@ -10,7 +10,7 @@
 //   node scripts/trader-live.mjs --tick                 plan today, sign nothing
 //   node scripts/trader-live.mjs --tick --confirm       plan and send
 //   node scripts/trader-live.mjs --bootstrap --confirm  turn the wallet's BNB into USDT (keeps a gas reserve)
-//   node scripts/trader-live.mjs --loop --confirm       a tick now, then daily at 00:20 UTC; a re-measure on the 1st, forever
+//   node scripts/trader-live.mjs --loop --confirm       a tick now, then daily at 04:00 UTC; a re-measure on the 1st, forever
 //   node scripts/trader-live.mjs --state                what the agent holds and has done
 //   node scripts/trader-live.mjs --remeasure            fetch six months and run the slow backtest again (reports, changes nothing)
 //
@@ -610,7 +610,7 @@ async function tick({ daily = false } = {}) {
   log({ kind: 'tick', dry: !CONFIRM, monthly, pot_usdt: st.pot_usdt, units: st.units, valued, total_usd: totalNow, capital_usd: st.capital_usd, high_water_usd: st.high_water_usd, profit_pool_usd: st.profit_pool_usd, reserve_usd: st.reserve_usd, reserve_lot: st.reserve_lot, bobai: st.bobai, orders, lines });
 }
 
-if (has('--notify-test')) { const ok = await notify('✅ Trader on the server can reach this chat. Reports: every order as it happens, a summary daily at 00:20 UTC.'); say(ok ? 'sent' : 'not sent (no secret, or the route refused)'); process.exit(ok ? 0 : 1); }
+if (has('--notify-test')) { const ok = await notify('✅ Trader on the server can reach this chat. Reports: every order as it happens, a summary daily at 04:00 UTC.'); say(ok ? 'sent' : 'not sent (no secret, or the route refused)'); process.exit(ok ? 0 : 1); }
 
 if (has('--tick')) { await tick().catch(async (e) => { say('tick failed: ' + e.message); log({ kind: 'tick_failed', error: e.message }); await notify('⚠️ <b>Trader: tick failed</b> — ' + String(e.message).slice(0, 200)); process.exitCode = 1; }); process.exit(); }
 

@@ -14,7 +14,7 @@ operator's profit rule:
 
 - **A target allocation, always invested.** A third each of BNB, CAKE and BOB; USDT only
   as the arrival buffer for deposits. `ALLOCATION` in `shared/trader-core.js`.
-- **One tick a day, 00:20 UTC** (after the 00:00 close the backtest used). Any day: a
+- **One tick a day, 04:00 UTC** (the private card's hour; the daily closes it reads are the 00:00 UTC hours the backtest used). Any day: a
   *top-up pass* invests cash that arrived (a deposit) into the sleeves under target and
   sells nothing. **Every 30 days: the full pass** — sleeves that drifted more than 20% from
   target are sold down / bought up (`planRebalance`, band `REBALANCE_BAND`). Under ~$300
@@ -86,7 +86,7 @@ On the server (as root, the agent runs as user `trader`):
 
 ```
 ssh -i ~/.ssh/bobai-trader root@2.29.45.27
-systemctl status bobai-trader            # the loop: a tick now and daily at 00:20 UTC, a wallet keep-alive at 12:20 UTC, a re-measure on the 1st at 01:00 UTC
+systemctl status bobai-trader            # the loop: a tick now and daily at 04:00 UTC, a wallet keep-alive at 12:20 UTC, a re-measure on the 1st at 01:00 UTC
 journalctl -u bobai-trader -n 50         # what the ticks said
 sudo -u trader node /home/trader/bobai/scripts/trader-live.mjs --state
 touch /home/trader/bobai/data/trader/STOP   # halt: the loop keeps running but does nothing; rm to resume
@@ -225,4 +225,4 @@ placed no order in its 15 hours. Operator deposit 2026-09-09 ~04:20 UTC: +29.05 
 mechanism, booked 04:30), USDT→CAKE 46.41 (20.41 CAKE, 0% under quote), USDT→BOB 46.41
 (2.384e9 BOB, 0.03% under quote, tx 0xeeae1797…). Sleeves after: BNB $46.32 · CAKE $46.34 ·
 BOB $46.37 · cash $0.09; pot $139.12 against $139.37 in (the costs). High-water mark
-$139.37; next monthly pass 2026-10-09; daily tick 00:20 UTC.
+$139.37; next monthly pass 2026-10-09; daily tick 04:00 UTC (moved from 00:20 on 2026-09-09).

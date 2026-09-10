@@ -187,6 +187,13 @@ export const SWITCH_MARGIN = 0.25;
 export const SWITCH_PAYBACK_DAYS = 3;
 export const SWITCH_COST_IN_RESETS = 2;
 export const DEFAULT_RESET_COST_USD = 0.25;
+// The measured re-set cost is gas and the pool's swap fee. A move trades the
+// whole position through two pools, and the price impact of that is the
+// larger part: on 2026-09-10 12:20 UTC a re-set plus an increase of the
+// same size (0.29 + 0.30 BNB through CAKE/BNB 0.05%) left the position about
+// half a percent short of what went in. Half a percent of the position is
+// charged on every move until the record measures it better.
+export const SWITCH_IMPACT_PCT = 0.005;
 export function switchVerdict(log, widthPct, { watched = null, positionUsd = POSITION_USD, resetCostUsd = DEFAULT_RESET_COST_USD, now = Date.now(), minHours = MIN_HOURS_TO_PICK } = {}) {
   const v = poolVerdict(log, widthPct, { watched, minHours });
   const usd = v.usd;
@@ -208,13 +215,14 @@ export function switchVerdict(log, widthPct, { watched = null, positionUsd = POS
   const pct = (x) => (x === Infinity ? 'every dollar' : `${Math.round(x * 100)}%`);
   const scale = positionUsd / usd;
   const gainPerDay = Math.max(0, (rate(pickAll) || 0) - (rate(homeAll) || 0)) * scale;
-  const cost = SWITCH_COST_IN_RESETS * resetCostUsd;
+  const cost = SWITCH_COST_IN_RESETS * resetCostUsd + SWITCH_IMPACT_PCT * positionUsd;
   const payback = gainPerDay > 0 ? cost / gainPerDay : Infinity;
   const facts = {
     lead_all_pct: leadAll === Infinity ? null : Math.round(leadAll * 1000) / 10,
     lead_recent_pct: leadRecent === Infinity ? null : Math.round(leadRecent * 1000) / 10,
     gain_usd_per_day_on_position: Math.round(gainPerDay * 10000) / 10000,
     switch_cost_usd: Math.round(cost * 10000) / 10000,
+    switch_cost_basis: `${SWITCH_COST_IN_RESETS} re-sets at $${resetCostUsd} of gas and swap fee plus ${SWITCH_IMPACT_PCT * 100}% of the $${positionUsd} position for the price impact of trading it through two pools`,
     payback_days: payback === Infinity ? null : Math.round(payback * 10) / 10,
     recent_hours: { pick: pickRecent?.hours ?? 0, watched: homeRecent?.hours ?? 0 },
   };

@@ -53,7 +53,7 @@ if (SELF) {
   const NOW = Date.UTC(2026, 8, 9, 2);
   const sv = (l, opts = {}) => switchVerdict(l, 1, { watched: A, positionUsd: 200, resetCostUsd: 0.1, now: NOW, ...opts });
   is('a lead of 100% over all hours and the last day, paying back in a day: move', sv(log).move === true && sv(log).to.pool === B && sv(log).payback_days <= 1);
-  is('the move names its numbers', sv(log).lead_all_pct === 100 && sv(log).lead_recent_pct === 100 && sv(log).switch_cost_usd === 0.2 && sv(log).gain_usd_per_day_on_position === 1.92);
+  is('the move names its numbers: two re-sets plus half a percent of the position', sv(log).lead_all_pct === 100 && sv(log).lead_recent_pct === 100 && sv(log).switch_cost_usd === 1.2 && sv(log).gain_usd_per_day_on_position === 1.92);
   is('the same record before the day is full: no pick, no move', sv({ usd: 50, pools: { [A]: log.pools[A], [B]: { ...log.pools[B], windows: log.pools[B].windows.slice(0, 12) } } }).move === false);
   is('when the watched pool leads there is nothing to move to', sv(l2).move === false && /nothing to move to/.test(sv(l2).why));
   let thinLead = { usd: 50, pools: {} };

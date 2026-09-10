@@ -619,7 +619,11 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     income_put_in_bnb: last.swept_total_bnb,
     // What the increase step put in beyond swept income and kept fees is the
     // operator's own money, taken in by the deposit watch (since 2026-09-09).
-    deposits_put_in_bnb: +Math.max(0, (Number(last.into_position_total_bnb) || 0) - (Number(last.swept_total_bnb) || 0) - (Number(last.kept_total_bnb) || 0)).toFixed(6),
+    // kept_total counts the fees kept by collects AND the fees re-sets folded
+    // in; only the former went through an increase, so only the former comes
+    // out of the deposits (2026-09-10: 0.0033 BNB of folded fees made the
+    // capital read 0.5831 where 0.5864 had gone in).
+    deposits_put_in_bnb: +Math.max(0, (Number(last.into_position_total_bnb) || 0) - (Number(last.swept_total_bnb) || 0) - Math.max(0, (Number(last.kept_total_bnb) || 0) - (Number(last.folded_kept_total_bnb) || 0))).toFixed(6),
     fees_owed_now_bnb: owed_now_bnb != null ? owed_now_bnb : last.owed_bnb,
     // 1 tick = 0.01 % of price; the sign says which way the pair moved.
     price_move_pct_since_start: tickMove != null ? +((Math.pow(1.0001, tickMove) - 1) * 100).toFixed(2) : null,
@@ -989,7 +993,7 @@ async function buildLpSeries(env) {
       const base = series.find((p) => p.value_bnb != null);
       const withCapital = series.map((p) => {
         if (!base || p.value_bnb == null) return p;
-        const deposits = Math.max(0, (Number(p.into_position_total_bnb) || 0) - (Number(p.swept_total_bnb) || 0) - (Number(p.kept_total_bnb) || 0));
+        const deposits = Math.max(0, (Number(p.into_position_total_bnb) || 0) - (Number(p.swept_total_bnb) || 0) - Math.max(0, (Number(p.kept_total_bnb) || 0) - (Number(p.folded_kept_total_bnb) || 0)));
         const capital = +(Number(base.value_bnb) + (Number(p.capital_added_total_bnb) || 0) + deposits).toFixed(6);
         return { ...p, capital_bnb: capital, on_capital_pct: capital > 0 ? +(((p.value_bnb - capital) / capital) * 100).toFixed(2) : null };
       });

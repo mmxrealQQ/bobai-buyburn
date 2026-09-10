@@ -268,7 +268,9 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
     if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
     try {
-      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
+      // A re-set a deposit forced takes the deposit with it: wrapped after
+      // the unwind, minted with the rest, no sell-then-buy-back.
+      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, wrapFirst: !!forced });
       await env.AGENT.delete(OUT_SINCE_KEY);
       return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {

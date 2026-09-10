@@ -28,7 +28,7 @@
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf,
-  GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
+  GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT,
 } from './lp-guards.js';
 
 export const ADDR = {
@@ -610,7 +610,20 @@ async function ensureAllowance(pub, send, token, spender, amount, label) {
 // Nine transactions on 2026-09-02; four to five since 2026-09-04 (one
 // multicall for the unwind, approvals only when the allowance is short);
 // two more since 2026-09-08 when the fee share is worth sending.
-export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
+// The BNB waiting in the wallet above the reserve and the gas budget, wrapped
+// so a re-set or a move mints it with the rest. Until 2026-09-10 12:20 UTC a
+// re-set forced by a deposit sold the other side down to the ratio and the
+// increase a minute later bought it back: two trades, two fees, two price
+// impacts on the same capital. Sized like the increase step's own reserve.
+async function wrapWaiting(pub, send, address) {
+  const bal = await pub.getBalance({ address });
+  const spend = bal - parseEther(String(GAS_RESERVE_BNB)) - parseEther(String(INCREASE_GAS_BUDGET_BNB));
+  if (spend < parseEther(String(MIN_INCREASE_BNB))) return 0n;
+  await send(`wrap ${formatEther(spend)} BNB waiting in the wallet so the new range takes it`, { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: spend });
+  return spend;
+}
+
+export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = false } = {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
@@ -649,6 +662,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
     await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
   }
+  const wrapped = wrapFirst ? await wrapWaiting(pub, send, account.address) : 0n;
 
   // Sized from what the wallet really holds now, not from the plan's estimate.
   const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -714,7 +728,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
   // it that went to the buyback wallet; the difference was minted into the
   // new capital. Records before 2026-09-08 carry only the first.
-  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
       bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share ? share.pct : null,
@@ -819,7 +833,7 @@ export async function planRelocate(pub, address, { toPool = null, widthOverride 
   };
 }
 
-export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
+export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = true } = {}) {
   if (!plan.from || !plan.to || !plan.target || !plan.ticks) throw new Error('the plan carries no move');
   const txs = [];
   const send = sender(pub, wallet, txs, log);
@@ -845,6 +859,7 @@ export async function executeRelocate(pub, wallet, account, plan, log = () => {}
     await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
     await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
   }
+  const wrapped = wrapFirst ? await wrapWaiting(pub, send, account.address) : 0n;
   // 3. Leave the old pair: its other side becomes WBNB in the old tier.
   if (!plan.sameOther) {
     const haveOld = await read(pub, plan.from.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -909,7 +924,7 @@ export async function executeRelocate(pub, wallet, account, plan, log = () => {}
   const gasBnb = txs.reduce((a, x) => a + (x.gas_bnb || 0), 0);
   const swapFee = swaps.reduce((a, x) => a + (x && x.fee_bnb ? x.fee_bnb : 0), 0);
   return {
-    txs, gas_bnb: Number(gasBnb.toFixed(6)), swaps, swap_fee_bnb: Number(swapFee.toFixed(6)),
+    txs, gas_bnb: Number(gasBnb.toFixed(6)), swaps, swap_fee_bnb: Number(swapFee.toFixed(6)), ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}),
     new_position: np.tokenId == null ? null : String(np.tokenId), new_pool: plan.to.pool, new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper],
     liquidity_after: np.pos ? String(np.pos[7]) : null,
     fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,

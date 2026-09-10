@@ -13,13 +13,13 @@
   <link rel="stylesheet" href="/fonts.css?v=1">
   <title>The DeFi agent — AI income goes to work, half the profit becomes $BOBAI</title>
   <meta name="description" content="An agent that puts what other AIs pay this project to work in a PancakeSwap V3 pool on BNB Chain once a day; half of what it earns keeps working, half buys $BOBAI it holds in its own wallet. Every step is a transaction; the daily record is public.">
-  <link rel="canonical" href="https://brainonbnb.com/liquidity">
+  <link rel="canonical" href="https://brainonbnb.com/defi">
   <link rel="icon" type="image/png" href="favicon.png?v=4">
   <link rel="apple-touch-icon" href="logo.png?v=4">
   <meta property="og:title" content="The DeFi agent — AI income goes to work, half the profit becomes $BOBAI">
   <meta property="og:description" content="An agent that puts what other AIs pay this project to work in a PancakeSwap V3 pool on BNB Chain once a day; half of what it earns keeps working, half buys $BOBAI it holds in its own wallet. Every step is a transaction; the daily record is public.">
   <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
-  <meta property="og:url" content="https://brainonbnb.com/liquidity">
+  <meta property="og:url" content="https://brainonbnb.com/defi">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="The DeFi agent — AI income goes to work, half the profit becomes $BOBAI">
@@ -41,6 +41,25 @@
     .lp-lead{color:var(--muted);font-size:.85rem;line-height:1.7;margin:14px auto 0;max-width:62ch}
     /* The four parts of the page, inside the one frame. */
     .lp-part{margin-top:44px}
+    /* The portfolio: three figures a visitor reads first, then the lists the
+       Telegram card carries, in the same order and from the same model. */
+    .pf-top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+    @media(max-width:700px){.pf-top{grid-template-columns:1fr}}
+    .pf-tile{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+    .pf-tile .k{font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .pf-tile .v{font-family:'Space Grotesk',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:-.3px;line-height:1.15}
+    .pf-tile .s{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.5}
+    .pf-tile.up .v{color:#3fe09a}.pf-tile.down .v{color:#ff8f6b}
+    .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:900px){.pf-grid{grid-template-columns:1fr}}
+    .pf-list{list-style:none;margin:0;padding:0;font-size:.84rem;line-height:1.6}
+    .pf-list li{display:flex;gap:9px;align-items:flex-start;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)}
+    .pf-list li:first-child{border-top:0;padding-top:0}
+    .pf-list .ic{flex:0 0 1.4em;text-align:center}
+    .pf-list b{color:var(--text,#f3efe6)}
+    .pf-list .m{color:var(--muted)}
+    .pf-h{font-size:.98rem;margin:0 0 10px}
+    .pf-when{font-size:.76rem;color:var(--muted);margin:12px 0 0;line-height:1.55}
     .lp-part .sh{margin-bottom:18px}
     /* The series table. Numbers right-aligned so a column reads as one figure;
        a wide table scrolls inside its own box, never the page. */
@@ -79,29 +98,12 @@
       <p class="lp-lead">What other people&rsquo;s AIs pay this project does not sit in a wallet. Once a day an agent puts it to work in a PancakeSwap V3 pool on BNB Chain; of what that position earns, half keeps working and half buys $BOBAI the agent holds. Every step is a transaction on BNB Chain, and the record below is read from the agent itself.</p>
     </div>
 
-  <div class="lp-part" id="flow">
-    <div class="sh fi"><h2>Where the money <em>goes</em></h2>
-      <p class="sh-sub">Three wallets, one direction. The capital never leaves the position; of the fees, half goes on and half stays.</p>
+  <div class="lp-part" id="portfolio">
+    <div class="sh fi"><h2>The <em>portfolio</em></h2>
+      <p class="sh-sub">What went in, what it is worth, what it holds where, and where the profit came from. The same picture the Telegram bot posts every morning and answers to <code>/defi</code>; both read one model from the agent&rsquo;s own records.</p>
     </div>
-
-    <div class="agt-two">
-    <div class="agt-flow fi">
-      <h3>The loop</h3>
-      <ol class="agt-steps">
-        <li><span class="agt-i">1</span><div><b>An agent pays</b><span>A few cents per pool watch or per job, straight to <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">the income wallet</a>, used for nothing else. The hired agents deliver to <a href="https://bscscan.com/address/0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963" target="_blank" rel="noopener">a second one</a>.</span></div></li>
-        <li><span class="agt-i">2</span><div><b>It goes to work</b><span>Once a day the income is sold for BNB and put into the project&rsquo;s own <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">DeFi wallet</a>, which holds one PancakeSwap V3 position in the pool the agent&rsquo;s own record measures as the best-paying of its candidates. Not the $BOBAI pool: the position earns on other people&rsquo;s trades. That capital stays.</span></div></li>
-        <li><span class="agt-i">3</span><div><b>The profit: half keeps working, half becomes $BOBAI</b><span>What the position earns is collected; half of it stays as capital, so the position grows out of its own earnings. The other half buys $BOBAI on PancakeSwap and stays in <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the agent&rsquo;s own wallet</a>, never sold &mdash; the operator&rsquo;s rule since Sep 9, 2026, so what the agent really earns can be seen in one place. Until then that half went to the buyback bot.</span></div></li>
-      </ol>
-    </div>
-
-    <div class="agt-flow fi" id="ag-lp-wrap">
-      <h3>Right now</h3>
-      <ol class="agt-steps" id="ag-lp">
-        <li><span class="agt-i">&middot;</span><div><b>Reading the record&hellip;</b><span>agent.brainonbnb.com/lp/agent</span></div></li>
-      </ol>
-      <p class="agt-note" id="ag-lp-note"></p>
-      <a class="mkt-go" style="display:inline-flex;margin-top:12px" href="https://agent.brainonbnb.com/lp/agent" rel="noopener">Today&rsquo;s full record, step by step &rarr;</a>
-    </div>
+    <div class="agt-flow fi" id="defi-card">
+      <p class="agt-note">Reading the portfolio&hellip; <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">agent.brainonbnb.com/lp/portfolio</a></p>
     </div>
   </div>
 
@@ -113,6 +115,33 @@
       <p class="agt-note" id="ag-lp-series-sum">Reading the series&hellip;</p>
       <div style="overflow-x:auto"><table class="lp-series" id="ag-lp-series"></table></div>
       <p class="agt-note">Value is in BNB because the position is quoted in BNB; a dollar figure would move with BNB and say nothing about the position. Fees are not annualised. After a re-set the fees column starts at zero: the re-set folds the old range&rsquo;s fees into the new capital. Those fees are counted all the same &mdash; as fees produced and as capital kept, and the profit line says how much of its fees came in that way. Same facts as JSON: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.</p>
+    </div>
+  </div>
+
+  <div class="lp-part" id="steps">
+    <div class="sh fi"><h2>How it <em>works</em></h2>
+      <p class="sh-sub">One PancakeSwap V3 position on BNB Chain, in the pool that pays the most for it, run by a program that reads and decides once a day and checks the range every hour. Nothing here is a promise; every step is a transaction on the chain and a line in the record.</p>
+    </div>
+    <div class="agt-two">
+    <div class="agt-flow fi">
+      <h3>The money</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>In</b><span>What other AIs pay this project &mdash; a few cents per pool watch or per delivered job &mdash; lands in <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">the income wallet</a>. Once a day it is sold for BNB and sent to <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the DeFi wallet</a>, together with a slice of the trading tax and what the operator puts in by hand.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>At work</b><span>The DeFi wallet holds one position in a PancakeSwap V3 pool that pairs BNB with a major &mdash; not the $BOBAI pool: the position earns on other people&rsquo;s trades. The capital stays; it is never withdrawn.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Out</b><span>Of what the position earns, half stays as capital so it grows out of its own fees, and half buys $BOBAI that stays in <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the agent&rsquo;s own wallet</a>, never sold &mdash; the operator&rsquo;s rule since Sep 9, 2026.</span></div></li>
+      </ol>
+    </div>
+    <div class="agt-flow fi">
+      <h3>The program, every day at 04:23 UTC</h3>
+      <ol class="agt-steps">
+        <li><span class="agt-i">1</span><div><b>Sweep</b><span>Income into BNB, into the DeFi wallet &mdash; once it is worth more than the gas.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>Collect</b><span>The fees the position earned: half kept, half into $BOBAI. Small amounts are left to grow.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Relocate</b><span>The <a href="https://agent.brainonbnb.com/lp/pools" rel="noopener">pool record</a> replays the same fifty dollars in every pool of the universe each hour. When another pool has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there.</span></div></li>
+        <li><span class="agt-i">4</span><div><b>Rebalance</b><span>Checked every hour. A position the price has left is re-set around the price, in the width that netted the most per day in the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a>, re-sets and their cost included.</span></div></li>
+        <li><span class="agt-i">5</span><div><b>Increase</b><span>BNB above the gas reserve goes into the position &mdash; a deposit within minutes, when the range is live.</span></div></li>
+      </ol>
+      <p class="agt-note">The record, run by run and in the agent&rsquo;s own words: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>. The code: one core, <code>shared/lp-agent.js</code>, run by the worker and by hand alike, in <a href="/source">the published source</a>. It never touches the buyback bot&rsquo;s own code.</p>
+    </div>
     </div>
   </div>
 
@@ -141,38 +170,12 @@
     </div>
   </div>
 
-  <div class="lp-part" id="steps">
-    <div class="sh fi"><h2>What it does <em>every day</em></h2>
-      <p class="sh-sub">At 04:23 UTC, four steps in a fixed order; every hour at :50, the range check alone. Each has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.</p>
-    </div>
-    <div class="agt-two">
-    <div class="agt-flow fi">
-      <h3>The four steps</h3>
-      <ol class="agt-steps">
-        <li><span class="agt-i">1</span><div><b>Sweep</b><span>Sells the income (USD1 and $U) for BNB and sends it to the DeFi wallet. Waits until a sweep is worth more than the gas it costs, and never moves more than about fifty dollars in one run.</span></div></li>
-        <li><span class="agt-i">2</span><div><b>Collect</b><span>Collects the fees the position has earned and sells the token side for BNB. Half stays as capital for the next increase; half buys $BOBAI that stays in the agent&rsquo;s wallet. The share is a public setting in the source. Small amounts are left to grow.</span></div></li>
-        <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour, not once a day. If the price has been outside the range for two hours, the position is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices of the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a> &mdash; re-sets and their cost included. Inside the range it does nothing.</span></div></li>
-        <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the same position. The capital only ever grows; it is never withdrawn.</span></div></li>
-      </ol>
-    </div>
-    <div class="agt-flow fi">
-      <h3>How to check it</h3>
-      <ol class="agt-steps">
-        <li><span class="agt-i">&#9679;</span><div><b>The position</b><span>PancakeSwap V3, CAKE/BNB. The position id is in the record; the wallet above shows it as an NFT on BscScan.</span></div></li>
-        <li><span class="agt-i">&#9679;</span><div><b>The record</b><span>Every run writes what it did and why, in the agent&rsquo;s own words. Days that moved money are listed with their figures; quiet days say so. <a href="https://agent.brainonbnb.com/lp/agent?format=json" rel="noopener">JSON</a> for machines, a page for people.</span></div></li>
-        <li><span class="agt-i">&#9679;</span><div><b>The pool record</b><span>Which pool the same fifty dollars would earn the most in &mdash; every PancakeSwap V3 pool on BNB Chain that pairs BNB with a major, in every fee tier &mdash; replayed hour by hour with the same code, at the width the agent uses: <a href="https://agent.brainonbnb.com/lp/pools" rel="noopener">/lp/pools</a>. Beside it the switch rule says whether the best of them is worth moving to: a lead of a quarter over all hours and over the last day, paying the move back within three days.</span></div></li>
-        <li><span class="agt-i">&#9679;</span><div><b>The code</b><span>One core, <code>shared/lp-agent.js</code>, run by the worker and by hand alike, in <a href="/source">the published source</a>. It never touches the buyback bot&rsquo;s own code.</span></div></li>
-      </ol>
-      <p class="agt-note">Why it matters: until this loop existed, every cent this project earned came from its own trading tax. This is the first money from outside, small today, and the loop that turns it into burn is running; the record above says how far it has got.</p>
-    </div>
-    </div>
-  </div>
   </section>
   <footer><div class="fi2">
     <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=66" defer></script>
+<script src="app.js?v=67" defer></script>
 </body>
 </html>

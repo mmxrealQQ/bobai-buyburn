@@ -17,7 +17,7 @@ const PAGES = [
   ['session', 'https://brainonbnb.com/session'],
   ['services', 'https://brainonbnb.com/services'],
   ['status', 'https://agent.brainonbnb.com/status'],
-  ['liquidity', 'https://brainonbnb.com/liquidity'],
+  ['defi', 'https://brainonbnb.com/defi'],
   ['lp-agent', 'https://agent.brainonbnb.com/lp/agent'],
   ['lp-windows', 'https://agent.brainonbnb.com/lp/windows'],
 ];

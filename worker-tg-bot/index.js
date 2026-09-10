@@ -1883,6 +1883,7 @@ const BOT_COMMANDS = [
   { command: 'burn',     description: 'Burn stats & progress' },
   { command: 'buy',      description: 'How to buy BOBAI' },
   { command: 'ca',       description: 'Contract address' },
+  { command: 'defi',     description: 'The DeFi agent as a portfolio: put in, worth, P&L, pool record, last 24 h' },
   { command: 'giggle',   description: 'Giggle Academy pot — countdown & BNB collected' },
   { command: 'help',     description: 'Show all commands' },
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
@@ -1905,7 +1906,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v12-giggle';
+const COMMANDS_VERSION = 'v13-defi';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -2004,105 +2005,62 @@ export function formatGiggleCard(burns, nowMs = Date.now()) {
 // card with lines and emojis, the essentials only ("das gleiche beim lp
 // agent im öffentlichen chat"). Pure, so it can be rendered against a real
 // series without posting.
-// The pool record (agent.brainonbnb.com/lp/pools) on the card: what the same
-// fifty dollars earned per day in the best pools of the universe (WBNB with
-// a major, every tier — twelve pools since 2026-09-10), the pool the agent
-// is in, the pick once every pool has a day of sampled chain, and the switch
-// rule's answer. Twelve rows would be the card; three and "here" are the
-// card's share of it. Empty when the record cannot be read, so the card
-// never waits for it.
-export function poolRecordLines(pools) {
-  const rows = pools && Array.isArray(pools.pools) ? pools.pools : [];
-  if (!rows.length) return [];
-  const mark = (label) => (/BOB\//.test(label) ? '🔨' : '🥞');
-  const perDay = (x) => (x == null ? 'no fees yet' : '$' + Number(x).toFixed(2) + '/day');
-  const lines = [`🏁 <b>Pool record</b>  <i>(the same $${Number(pools.usd || 50)} in ±${Number(pools.width_pct || 1)}%, ${rows.length} pools)</i>`];
-  const shown = rows.slice(0, 3);
-  const here = rows.find((p) => p.watched);
-  if (here && !shown.includes(here)) shown.push(here);
-  for (const p of shown) lines.push(`${mark(p.label)} ${p.label}${p.watched ? ' · here' : ''}: ${perDay(p.fees_usd_per_day)}`);
-  if (pools.pick) {
-    const same = pools.watched && pools.pick.pool === pools.watched.pool;
-    lines.push(same
-      ? `📌 Pick: <b>${pools.pick.label}</b>, the pool the agent is in`
-      : `📌 Pick: <b>${pools.pick.label}</b>`);
-    if (pools.move && !same) lines.push(pools.move.move ? `➡️ Move: ${pools.move.why}` : `⏸ Stay: ${pools.move.why}`);
-  } else {
-    const due = pools.pick_due ? ` · due around ${String(pools.pick_due).slice(11, 16)} UTC on ${String(pools.pick_due).slice(5, 10)}` : '';
-    const least = rows.reduce((m, p) => Math.min(m, Number(p.hours || 0)), Infinity);
-    lines.push(`📌 No pick yet: every pool needs 24 h of sampled chain (the least has ${least.toFixed(0)} h)${due}`);
-  }
-  lines.push('');
-  return lines;
-}
-
-export function formatLpDailyReport(rec, series, pools = null) {
-  const last = rec && rec.last;
-  const sum = series && series.summary;
-  if (!last || !last.at || !sum || !sum.profit) return null;
-  const pts = Array.isArray(series.points) ? series.points : [];
-  const pt = pts.length ? pts[pts.length - 1] : null;
+// THE DeFi CARD, from the portfolio model (agent.brainonbnb.com/lp/portfolio,
+// built by worker-agent/lp-portfolio.js). The same card answers /defi and
+// is posted at 05:00 UTC; the /defi page renders the same JSON. The bot
+// computes no number of its own here — the operator's rule: one source.
+export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
+  if (!m || !m.put_in || !m.pnl) return null;
   const n = (x) => Number(x || 0);
   const f4 = (x) => n(x).toFixed(4);
   const f5 = (x) => n(x).toFixed(5);
-  const usd = (bnb) => (sum.profit.bnb_usd ? ' (≈ $' + (n(bnb) * n(sum.profit.bnb_usd)).toFixed(2) + ')' : '');
+  const usd = (x) => (x == null ? '' : ' (≈ $' + n(x).toFixed(2) + ')');
   const sign = (x) => (n(x) > 0 ? '▲ +' : n(x) < 0 ? '▼ −' : '• ') + f5(Math.abs(n(x)));
-  const rule = '';
-  const inRange = pt ? (pt.in_range ? '✅ in range' : '⏳ out of range — re-set after two hours') : '';
-  const label = (rec.pool && rec.pool.label) || 'CAKE/BNB 0.05%';
-  const steps = (last.steps && typeof last.steps === 'object') ? last.steps : {};
-  const acted = Object.entries(steps).flatMap(([k, v]) => (Array.isArray(v) ? v : [v]).filter((x) => x && x.acted).map(() => k));
-  const stepWord = { sweep: 'swept income into the position', collect: 'collected fees for the buyback bot', rebalance: 're-set the range around the price', increase: 'grew the position' };
-  const today = last.ok === false
-    ? '⚠️ one step failed; the operator has been told'
-    : acted.length ? [...new Set(acted)].map((k) => '• ' + (stepWord[k] || k)).join('\n') : '• quiet day — every step under its floor, nothing to move';
-  // As a portfolio (the operator, 2026-09-09): what went in, what it is
-  // worth, what is held where, and the P&L split by where it came from.
-  // Every number is the series' own summary, the same the page opens with.
-  const value = sum.value_bnb || {};
-  const putIn = n(value.capital_total_bnb) || (n(value.start) + n(value.added_by_hand_bnb) + n(sum.deposits_put_in_bnb) + n(sum.income_put_in_bnb));
-  const sources = [`start ${f4(value.start)}`];
-  if (n(value.added_by_hand_bnb) > 0) sources.push(`by hand ${f4(value.added_by_hand_bnb)}`);
-  // What the deposit watch took in: the operator's transfers and the tax's
-  // share alike — the wallet cannot tell them apart, so the card does not
-  // claim to (2026-09-10: "from the tax" named the operator's own $50).
-  if (n(sum.deposits_put_in_bnb) > 0) sources.push(`deposited ${f4(sum.deposits_put_in_bnb)}`);
-  if (n(sum.income_put_in_bnb) > 0) sources.push(`from AI income ${f4(sum.income_put_in_bnb)}`);
-  const changePct = n(value.change_pct);
-  const bobaiBnb = n(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb);
-  const bobaiUnits = n(sum.bobai_held_units);
-  const walletBnb = pt ? n(pt.wallet_bnb) : 0;
-  const fees = sum.profit;
-  const feeParts = [];
-  if (n(fees.fees_folded_bnb) > 0) feeParts.push(`${f5(fees.fees_folded_bnb)} folded into the position`);
-  if (n(fees.fees_forwarded_at_resets_bnb) > 0) feeParts.push(`${f5(fees.fees_forwarded_at_resets_bnb)} into $BOBAI`);
-  if (n(fees.fees_owed_bnb) > 0) feeParts.push(`${f5(fees.fees_owed_bnb)} still owed by the position`);
-  return [
-    `💧 <b>DeFi Agent · ${String(last.at).slice(0, 10)}</b>`,
-    rule,
-    `📥 <b>Put in: ${f4(putIn)} BNB</b>${usd(putIn)}  ·  ${sources.join(' · ')}`,
-    `💼 <b>Position worth: ${f4(value.now)} BNB</b>${usd(value.now)}`,
-    rule,
-    `📊 <b>Holdings</b>`,
-    `🥞 ${label}${pt && pt.position ? '  ·  #' + pt.position : ''}  ·  ${inRange}`,
-    `🥞 In the position: ${f4(value.now)} BNB${n(sum.fees_owed_now_bnb) > 0 ? '  ·  fees owed ' + f5(sum.fees_owed_now_bnb) : ''}`,
-    bobaiUnits > 0
-      ? `🧠 $BOBAI held: ${Math.round(bobaiUnits).toLocaleString('en-US')}  ·  bought with ${f5(bobaiBnb)} BNB of fees  ·  never sold`
-      : `🧠 $BOBAI held: 0  ·  ${f5(bobaiBnb)} BNB of fees went into $BOBAI so far`,
-    `💵 Wallet: ${f4(walletBnb)} BNB${walletBnb > 0 ? '  ·  waits for the next run' : ''}`,
-    rule,
-    `📈 <b>P&L</b>`,
-    `💰 <b>Profit so far: ${sign(fees.bnb)} BNB</b>${usd(fees.bnb)}  ·  ${changePct >= 0 ? '▲ +' : '▼ '}${changePct.toFixed(2)}% on the capital`,
-    `📈 From CAKE moving against BNB: ${sign(fees.from_price_bnb)}`,
-    `🧾 From fees earned: ${sign(fees.from_fees_bnb)}${feeParts.length ? '  ·  ' + feeParts.join(' · ') : ''}`,
-    `⛽ Gas: ${n(fees.gas_bnb) > 0 ? '▼ −' + f5(fees.gas_bnb) : '• 0.00000'}`,
-    `🗓 In range: ${sum.days_in_range} of ${sum.runs_with_a_position} runs since ${String(sum.since || '').slice(0, 10)}`,
-    rule,
-    ...poolRecordLines(pools),
-    `🔁 <b>Today</b>\n${today}`,
+  const h = m.holdings, p = m.pnl, pr = m.pool_record;
+  const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ in range' : '⏳ out of range — re-set once it has been outside long enough';
+  const lines = [
+    `💧 <b>${title} · ${m.date}</b>`,
     '',
-    `<a href="https://brainonbnb.com/liquidity">brainonbnb.com/liquidity</a> · <a href="https://agent.brainonbnb.com/lp/agent">record</a>`,
-  ].join('\n');
+    `📥 <b>Put in: ${f4(m.put_in.bnb)} BNB</b>${usd(m.put_in.usd)}  ·  ${m.put_in.sources.map((x) => `${x.label} ${f4(x.bnb)}`).join(' · ')}`,
+    `💼 <b>Position worth: ${f4(m.worth.bnb)} BNB</b>${usd(m.worth.usd)}`,
+    '',
+    `📊 <b>Holdings</b>`,
+    `🥞 ${m.pool.label || 'the pool'}${m.pool.position ? '  ·  #' + m.pool.position : ''}${range ? '  ·  ' + range : ''}`,
+    `🥞 In the position: ${f4(h.position_bnb)} BNB${n(h.fees_owed_bnb) > 0 ? '  ·  fees owed ' + f5(h.fees_owed_bnb) : ''}`,
+    h.bobai_units > 0
+      ? `🧠 $BOBAI held: ${Math.round(h.bobai_units).toLocaleString('en-US')}  ·  bought with ${f5(h.bobai_bnb)} BNB of fees  ·  never sold`
+      : `🧠 $BOBAI held: 0  ·  ${f5(h.bobai_bnb)} BNB of fees went into $BOBAI so far`,
+    `💵 Wallet: ${f4(h.wallet_bnb)} BNB${n(h.wallet_bnb) > 0.005 ? '  ·  goes into the position at the next run in range' : ''}`,
+    '',
+    `📈 <b>P&L</b>`,
+    `💰 <b>Profit so far: ${sign(p.profit_bnb)} BNB</b>${usd(p.profit_usd)}  ·  ${n(p.change_pct) >= 0 ? '▲ +' : '▼ '}${n(p.change_pct).toFixed(2)}% on the capital`,
+    `📈 From ${p.other_token} moving against BNB: ${sign(p.from_price_bnb)}`,
+    `🧾 From fees earned: ${sign(p.from_fees_bnb)}${p.fee_parts.length ? '  ·  ' + p.fee_parts.map((x) => `${f5(x.bnb)} ${x.label}`).join(' · ') : ''}`,
+    `⛽ Gas: ${n(p.gas_bnb) > 0 ? '▼ −' + f5(p.gas_bnb) : '• 0.00000'}`,
+    `🗓 In range: ${p.in_range_runs} of ${p.runs} runs since ${p.since}`,
+    '',
+  ];
+  if (pr) {
+    const mark = (label) => (/BOB\//.test(label) ? '🔨' : '🥞');
+    const perDay = (x) => (x == null ? 'no fees yet' : '$' + n(x).toFixed(2) + '/day');
+    lines.push(`🏁 <b>Pool record</b>  <i>(the same $${pr.usd} in ±${pr.width_pct}%, ${pr.pools} pools)</i>`);
+    for (const r of pr.rows) lines.push(`${mark(r.label)} ${r.label}${r.here ? ' · here' : ''}: ${perDay(r.fees_usd_per_day)}`);
+    if (pr.pick) {
+      lines.push(pr.pick.here ? `📌 Pick: <b>${pr.pick.label}</b>, the pool the agent is in` : `📌 Pick: <b>${pr.pick.label}</b>`);
+      if (pr.move && !pr.pick.here) lines.push(pr.move.move ? `➡️ Move: ${pr.move.why}` : `⏸ Stay: ${pr.move.why}`);
+    } else {
+      const due = pr.pick_due ? ` · due around ${String(pr.pick_due).slice(11, 16)} UTC on ${String(pr.pick_due).slice(5, 10)}` : '';
+      lines.push(`📌 No pick yet: every pool needs 24 h of sampled chain (the least has ${Number(pr.least_hours || 0).toFixed(0)} h)${due}`);
+    }
+    lines.push('');
+  }
+  const day = Array.isArray(m.last_24h) ? m.last_24h : [];
+  lines.push(`🔁 <b>Last 24 h</b>`);
+  if (!m.last_run_ok) lines.push('⚠️ one step failed; the operator has been told');
+  if (day.length) for (const d of day) lines.push(`• ${String(d.at).slice(11, 16)} UTC — ${d.error ? '⚠️ ' : ''}${d.what}`);
+  else lines.push('• quiet — every step under its floor, nothing to move');
+  lines.push('', `<a href="${m.links.page}">brainonbnb.com/defi</a> · <a href="${m.links.record}">record</a>`);
+  return lines.join('\n');
 }
 
 async function postLpDailyReport(env) {
@@ -2127,10 +2085,11 @@ async function postLpDailyReport(env) {
   const series = await rs.json();
   const pts = Array.isArray(series.points) ? series.points : [];
   if (!pts.length || Date.parse(pts[pts.length - 1].at) < Date.parse(rec.last.at)) return skip('series has no point for the run yet; last point ' + (pts.length ? pts[pts.length - 1].at : 'none'));
-  // The pool record is a finding beside the card, never a reason to hold it.
-  const pools = await fetch('https://agent.brainonbnb.com/lp/pools?format=json', { cf: { cacheTtl: 60 } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
-  const text = formatLpDailyReport(rec, series, pools);
-  if (!text) return skip('nothing to say: no sentence in the series');
+  // The card is the portfolio model, the same the /defi command and the
+  // /defi page show; the checks above only decide that today's run is in it.
+  const pm = await fetch('https://agent.brainonbnb.com/lp/portfolio', { cf: { cacheTtl: 30 } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  const text = formatDefiCard(pm);
+  if (!text) return skip('nothing to say: the portfolio could not be read');
   console.log('[LP REPORT] posting for ' + today);
   await env.KV.put('lp_report_date', today);
   await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true });
@@ -2192,6 +2151,15 @@ async function handleCommand(msg, env) {
 <i>(3% on-chain tax on every trade)</i>
 
 📋 CA: <code>${BOBAI_TOKEN}</code>`;
+      break;
+    }
+
+    case '/defi':
+    case 'defi': {
+      // The DeFi agent as a portfolio — the same card the bot posts at
+      // 05:00 UTC, from the same model the /defi page renders.
+      const pm = await fetch('https://agent.brainonbnb.com/lp/portfolio', { cf: { cacheTtl: 30 } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      reply = formatDefiCard(pm) || '⚠️ Could not read the DeFi agent\'s record right now. Try again in a moment!';
       break;
     }
 
@@ -2441,6 +2409,7 @@ Here's what I can do:
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address
 💧 /liq — Liquidity depth, price impact & trade cost
+🤖 /defi — The DeFi agent as a portfolio: put in, worth, P&L, pool record, last 24 h
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links

@@ -1005,7 +1005,7 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
       const note = d.money_flow && d.money_flow.note;
       if(note && el('ag-flow-note')) el('ag-flow-note').textContent = note;
     })
-    .then(() => fillLpBlock())
+    .then(() => fillLpPortfolio())
     .then(() => Promise.all([
       // Two sources on purpose, and the same two the Plaza page itself uses.
       // The full scan is the only thing that knows how many endpoints answer
@@ -1056,142 +1056,64 @@ function lpLiveRange(pos){
       .then(slot => { const tick = s24(slot.slice(66, 130)); return {lo, hi, tick, inRange: tick >= lo && tick < hi}; });
   });
 }
-function fillLpBlock(){
-  const el = id => document.getElementById(id);
-  const get = u => fetch(u, {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
-  return Promise.all([get('https://agent.brainonbnb.com/lp/agent'), get('https://agent.brainonbnb.com/lp/series')])
-    .then(([rec, ser]) => {
-        // The DeFi agent's own record: what it holds, whether it is
-        // earning right now, and what it has already moved. Sums come from
-        // the history of actions, not from a counter anyone could edit.
-        const list = el('ag-lp'), noteEl = el('ag-lp-note');
-        if(!list) return;
-        const item = (i, b, s, cls) => '<li' + (cls ? ' class="' + cls + '"' : '') + '><span class="agt-i">' + i + '</span><div><b>' + b + '</b><span>' + s + '</span></div></li>';
-        if(!rec || !rec.last){
-          list.innerHTML = item('&middot;', 'No record yet', 'The agent has not run its first tick.');
-          return;
-        }
-        // Plain words. The record's own reasons are written for an operator
-        // ("below the 0.002 BNB floor"); a visitor gets the state, not the rule.
-        // "Right now" is about the newest run on record: the daily one, or an
-        // hourly check that re-set the range after it — those land in history.
-        // Reading `last` alone showed "nothing to do, 2026-09-06 05:23" the
-        // morning after two automatic re-sets (7 Sep 02:50 was the newest).
-        const hist = Array.isArray(rec.history) ? rec.history : [];
-        const newest = hist.length ? hist[hist.length - 1] : null;
-        const daily = rec.last;
-        const last = newest && Date.parse(newest.at) > Date.parse(daily.at) ? newest : daily;
-        const st = last.steps || {}, c = st.collect || {}, rb = st.rebalance || {};
-        // The totals come from the record's own money-flow figures (one
-        // function on the agent worker, shared with the Telegram report), so
-        // this page and the bot never disagree about what went where.
-        const flow = rec.flow || {};
-        const fin = flow['in'] || {}, fout = flow.out || {}, rule = flow.rule;
-        const swept = fin.income_bnb || 0, fees = (fin.fees && fin.fees.bnb) || 0;
-        const forwarded = (fout.bobai_bnb != null ? fout.bobai_bnb : fout.buyback_bnb) || 0, kept = fout.kept_as_capital_bnb || 0, bobaiHeld = fout.bobai_units || 0;
-        const f = (v, d) => Number(v || 0).toFixed(d);
-        const when = String(last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
-        // What waits to be swept is the flow's figure (from the daily run's
-        // sweep step); an hourly re-set has no sweep step and would say
-        // "nothing waiting" with 0.6 USD1 in the wallet.
-        const fw = flow.waiting && Array.isArray(flow.waiting.income) ? flow.waiting.income : [];
-        const waiting = fw.filter(s => s.amount > 0).map(s => f(s.amount, 2) + ' ' + (s.token || s.source)).join(' + ');
-        const anyError = last.ok === false;
-        const rows = [];
-        // Profit first — the question a visitor (and the operator) asks before
-        // any other. The figure is the series' own (summary.profit): value now
-        // against the first point, plus fees produced and owed, minus the gas
-        // on record. Nearly all of it is the pair's price, and the line says so.
-        const sm = ser && ser.summary, pr = sm && sm.profit;
-        if(pr){
-          const sg = v => (v > 0 ? '+' : '') + f(v, 5);
-          // Same words as the agent worker's lpFeesWhere: collected, folded
-          // into the capital by re-sets, still owed.
-          const lpFeesWhere = p => {
-            const parts = [];
-            if(p.fees_collected_bnb > 0) parts.push(f(p.fees_collected_bnb, 5) + ' collected');
-            if(p.fees_folded_bnb > 0) parts.push(f(p.fees_folded_bnb, 5) + ' folded into the capital by re-sets');
-            if(p.fees_forwarded_at_resets_bnb > 0) parts.push(f(p.fees_forwarded_at_resets_bnb, 5) + ' put into BOBAI by re-sets');
-            parts.push(f(p.fees_owed_bnb, 5) + ' still owed by the position');
-            return parts.join(', ');
-          };
-          rows.push(item('&#9679;', 'Profit so far: ' + sg(pr.bnb) + ' BNB' + (pr.usd != null ? ' (about $' + Number(pr.usd).toFixed(2) + ')' : ''),
-            'Since ' + String(sm.since).slice(0, 10) + ' on ' + f(sm.value_bnb && sm.value_bnb.start, 4) + ' BNB of capital: ' + sg(pr.from_price_bnb) + ' BNB from CAKE moving against BNB, ' + sg(pr.from_fees_bnb) + ' BNB of fees earned (' + lpFeesWhere(pr) + ')' + (pr.gas_bnb != null ? ', −' + f(pr.gas_bnb, 5) + ' BNB of gas' : '') + '. Dollars at the BNB price of the last run.', 'lp-profit'));
-        }
-        // A hand-triggered run can be narrowed to one step, and a record whose
-        // only step is the rebalance still knows the position. Reading it from
-        // collect alone showed "No position open" the evening the range was
-        // re-set by hand, with the position in range and holding money.
-        // After a re-set the record's rebalance step still names the position it
-        // emptied; the one that exists now is new_position, minted around the
-        // price, so it is in range by construction until the chain says otherwise.
-        const reset = rb.acted && !rb.error && rb.new_position;
-        const pos = reset ? rb.new_position : (c.position || rb.position);
-        const inRange = reset ? true : (c.in_range != null ? c.in_range : rb.in_range);
-        rows.push(item('&#9679;',
-          pos ? (inRange === false ? 'The position is out of range — waiting for a re-set' : 'The position is in range and earning') : 'No position open',
-          pos ? 'PancakeSwap V3 position #' + pos + (rb.value_bnb != null ? ', worth ' + f(rb.value_bnb, 4) + ' BNB' : '') : '', 'lp-pos'));
-        const folded = (fin.fees && fin.fees.folded_bnb) || 0, resetsWithFees = (fin.fees && fin.fees.resets_with_fees) || 0;
-        const foldedKept = fin.fees && fin.fees.folded_kept_bnb != null ? fin.fees.folded_kept_bnb : folded;
-        rows.push(item('&#9679;', fees > 0 ? 'Fees produced so far: ' + f(fees, 5) + ' BNB — ' + f(forwarded, 5) + ' into $BOBAI held in the wallet' + (bobaiHeld > 0 ? ' (' + Math.round(bobaiHeld).toLocaleString('en-US') + ' BOBAI)' : '') + ', ' + f(kept, 5) + ' kept as capital' + (folded > 0 ? ' (' + f(foldedKept, 5) + ' of it folded in by ' + resetsWithFees + ' re-set' + (resetsWithFees === 1 ? '' : 's') + ')' : '') : 'No fees collected yet',
-          // Dated from the first paint: the chain's own figure replaces it
-          // below, but that read can take seconds, and an undated figure
-          // from the daily run read as "right now" meanwhile.
-          (c.owed ? 'Owed at the run at ' + when + ': ' + f(c.owed.bnb_equivalent, 6) + ' BNB. Small amounts are left to grow until collecting them beats the gas. ' : '')
-          + (rule ? rule.fee_share_kept_pct + '% of the fees every collect and every re-set takes stays as capital so the position grows out of its own fees; ' + rule.fee_share_bobai_pct + '% buys $BOBAI the agent holds in its own wallet, never sold.' : ''), 'lp-fees'));
-        rows.push(item('&#9679;', swept > 0 ? 'Income swept in as capital: ' + f(swept, 5) + ' BNB' + (fout.into_position_bnb ? ' — ' + f(fout.into_position_bnb, 5) + ' BNB put into the position so far' : '') : 'No income swept in yet',
-          (waiting ? 'Waiting to be moved: ' + waiting + '. It moves once it is worth more than the gas.' : 'Nothing waiting right now.')
-          + (flow.gas && flow.gas.transactions ? ' The runs on record hold ' + flow.gas.transactions + ' transactions, ' + f(flow.gas.bnb, 6) + ' BNB of gas; runs by hand are on the chain, not in the record.' : '')));
-        const dailyWhen = String(daily.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
-        rows.push(item('&#9679;', reset ? 'Last run: it re-set the range around the price' : last.acted ? 'Last run: it acted' : 'Last run: nothing to do',
-          when + (anyError ? '. One step could not finish; the operator has been told.' : '.')
-          + (last !== daily ? ' The daily run before it, ' + dailyWhen + ', ' + (daily.acted ? 'acted' : 'had nothing to do') + (daily.ok === false ? ' and one step failed' : '') + '.' : '')));
-        // The hourly range check, when the record has one: a visitor should
-        // see that the range was looked at an hour ago, not only at 05:23.
-        const chk = rec.last_check, chkRb = chk && chk.steps && chk.steps.rebalance;
-        if(chk && chk.at !== last.at && chkRb){
-          const when2 = String(chk.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
-          rows.push(item('&#9679;', chkRb.acted ? 'Range check: it re-set the range' : 'Range check: nothing to do',
-            when2 + (chkRb.why ? ' — ' + chkRb.why : '') + '.'));
-        }
-        list.innerHTML = rows.join('');
-        if(noteEl) noteEl.textContent = 'The four steps run once a day on their own; the range is checked every hour. The capital stays in the position; only the buyback share of the fees leaves it.';
-        if(pos) lpLiveRange(pos).then(l => {
-          const first = list.querySelector('li.lp-pos b'), sub = list.querySelector('li.lp-pos div > span');
-          if(!first) return;
-          first.textContent = l.inRange ? 'The position is in range and earning'
-            : 'The position is out of range right now — it earns nothing; the hourly check re-sets it once the price has been outside for two hours';
-          // The range was last looked at by the hourly check, not the daily run.
-          const whenRange = String(last.range_checked_at || last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
-          if(sub) sub.textContent = (sub.textContent || '') + ' · checked on the chain just now: price tick ' + l.tick + ', range ' + l.lo + ' to ' + l.hi + (l.inRange ? '' : '; the record above is from ' + whenRange);
-        }).catch(() => {});
-        // "Owed right now" is the collect step's figure; when the position it
-        // read is not the one open now (none, after a stopped re-set; the new
-        // one minted by hand), the fees owed are read from the chain instead.
-        // The value too: the record's "worth" is from the run, the look is
-        // the chain now, and the record page and the look showed three
-        // figures within minutes with no date on any of them.
-        if(pos) fetch('https://agent.brainonbnb.com/lp/look?position=' + encodeURIComponent(pos), {cache:'no-store'})
-          .then(r => r.ok ? r.json() : null).then(lk => {
-            if(!lk) return;
-            const posSub = list.querySelector('li.lp-pos div > span');
-            if(posSub && lk.value_bnb != null) posSub.textContent = posSub.textContent.replace(/, worth [\d.]+ BNB/, ', worth ' + f(lk.value_bnb, 4) + ' BNB on the chain just now (' + f(rb.value_bnb, 4) + ' at the run)');
-            // 'div > span': the bullet span's parent is the li, the text span's is the div.
-            const li = list.querySelector('li.lp-fees'), sub = li && li.querySelector('div > span');
-            if(!lk.fees_owed || !sub) return;
-            // Always the chain's figure: the profit line above is netted
-            // against it, and on 2026-09-07 the panel said 0.000111 (the
-            // 05:23 run) while the profit line said 0.00034 (the chain) —
-            // two numbers for one thing. The run's own figure stays, dated.
-            const samePos = String(c.position || '') === String(pos);
-            sub.textContent = 'Owed right now: ' + f(lk.fees_owed.bnb_equivalent, 6) + ' BNB on the chain just now'
-              + (samePos && c.owed ? ' (' + f(c.owed.bnb_equivalent, 6) + ' at the run at ' + when + ')' : ' — the run at ' + when + (reset ? ' re-set the range, so its own figure starts at zero' : c.position ? ' read position #' + c.position : ' saw no position'))
-              + '. Small amounts are left to grow until collecting them beats the gas. '
-              + (rule ? rule.fee_share_kept_pct + '% of every collect stays as capital so the position grows out of its own fees; ' + rule.fee_share_bobai_pct + '% buys $BOBAI the agent holds in its own wallet, never sold.' : '');
-          }).catch(() => {});
-      });
+// The portfolio on /defi: one model from agent.brainonbnb.com/lp/portfolio,
+// the same the Telegram bot renders for /defi and at 05:00 UTC. This paints
+// it and computes nothing: a number here and a number there are one number.
+function fillLpPortfolio(){
+  const box = document.getElementById('defi-card');
+  if(!box) return Promise.resolve();
+  const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const n = x => Number(x || 0);
+  const f4 = x => n(x).toFixed(4), f5 = x => n(x).toFixed(5);
+  const usd = x => (x == null ? '' : ' <span class="m">(≈ $' + n(x).toFixed(2) + ')</span>');
+  const sign = x => (n(x) > 0 ? '+' : n(x) < 0 ? '−' : '') + f5(Math.abs(n(x)));
+  const li = (ic, html) => '<li><span class="ic">' + ic + '</span><div>' + html + '</div></li>';
+  return fetch('https://agent.brainonbnb.com/lp/portfolio', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(m => {
+    if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
+    const h = m.holdings, p = m.pnl, pr = m.pool_record;
+    const up = n(p.profit_bnb) > 0 ? 'up' : n(p.profit_bnb) < 0 ? 'down' : '';
+    const range = m.pool.in_range == null ? '' : m.pool.in_range ? '<b>in range</b>, earning' : '<b>out of range</b> — re-set once it has been outside long enough';
+    const tiles =
+      '<div class="pf-tile"><div class="k">Put in</div><div class="v">' + f4(m.put_in.bnb) + ' BNB</div><div class="s">' + (m.put_in.usd != null ? '≈ $' + n(m.put_in.usd).toFixed(2) + ' · ' : '') + esc(m.put_in.sources.map(x => x.label + ' ' + f4(x.bnb)).join(' · ')) + '</div></div>' +
+      '<div class="pf-tile"><div class="k">Position worth</div><div class="v">' + f4(m.worth.bnb) + ' BNB</div><div class="s">' + (m.worth.usd != null ? '≈ $' + n(m.worth.usd).toFixed(2) + ' · ' : '') + esc(m.pool.label || '') + (m.pool.position ? ' · #' + esc(m.pool.position) : '') + '</div></div>' +
+      '<div class="pf-tile ' + up + '"><div class="k">Profit so far</div><div class="v">' + sign(p.profit_bnb) + ' BNB</div><div class="s">' + (p.profit_usd != null ? '≈ $' + n(p.profit_usd).toFixed(2) + ' · ' : '') + (n(p.change_pct) >= 0 ? '+' : '') + n(p.change_pct).toFixed(2) + '% on the capital since ' + esc(p.since) + '</div></div>';
+    const holdings = [
+      li('🥞', esc(m.pool.label || 'the pool') + (m.pool.position ? ' · #' + esc(m.pool.position) : '') + (range ? ' · ' + range : '')),
+      li('🥞', 'In the position: <b>' + f4(h.position_bnb) + ' BNB</b>' + (n(h.fees_owed_bnb) > 0 ? ' <span class="m">· fees owed ' + f5(h.fees_owed_bnb) + '</span>' : '')),
+      li('🧠', h.bobai_units > 0 ? '$BOBAI held: <b>' + Math.round(h.bobai_units).toLocaleString('en-US') + '</b> <span class="m">· bought with ' + f5(h.bobai_bnb) + ' BNB of fees · never sold</span>' : '$BOBAI held: <b>0</b> <span class="m">· ' + f5(h.bobai_bnb) + ' BNB of fees went into $BOBAI so far</span>'),
+      li('💵', 'Wallet: <b>' + f4(h.wallet_bnb) + ' BNB</b>' + (n(h.wallet_bnb) > 0.005 ? ' <span class="m">· goes into the position at the next run in range</span>' : '')),
+    ].join('');
+    const pnl = [
+      li('📈', 'From ' + esc(p.other_token) + ' moving against BNB: <b>' + sign(p.from_price_bnb) + '</b>'),
+      li('🧾', 'From fees earned: <b>' + sign(p.from_fees_bnb) + '</b>' + (p.fee_parts.length ? ' <span class="m">· ' + esc(p.fee_parts.map(x => f5(x.bnb) + ' ' + x.label).join(' · ')) + '</span>' : '')),
+      li('⛽', 'Gas: <b>' + (n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0.00000') + '</b>'),
+      li('🗓', 'In range: <b>' + esc(p.in_range_runs) + ' of ' + esc(p.runs) + '</b> runs since ' + esc(p.since)),
+    ].join('');
+    let pools = '';
+    if(pr){
+      const perDay = x => (x == null ? 'no fees yet' : '$' + n(x).toFixed(2) + '/day');
+      pools = pr.rows.map(r => li(/BOB\//.test(r.label) ? '🔨' : '🥞', esc(r.label) + (r.here ? ' <span class="m">· here</span>' : '') + ': <b>' + perDay(r.fees_usd_per_day) + '</b>')).join('');
+      if(pr.pick){
+        pools += li('📌', 'Pick: <b>' + esc(pr.pick.label) + '</b>' + (pr.pick.here ? ', the pool the agent is in' : ''));
+        if(pr.move && !pr.pick.here) pools += li(pr.move.move ? '➡️' : '⏸', (pr.move.move ? 'Move: ' : 'Stay: ') + esc(pr.move.why));
+      } else {
+        pools += li('📌', 'No pick yet: every pool needs 24 h of sampled chain' + (pr.least_hours != null && isFinite(pr.least_hours) ? ' (the least has ' + Math.round(pr.least_hours) + ' h)' : '') + (pr.pick_due ? ' · due around ' + esc(String(pr.pick_due).slice(11, 16)) + ' UTC on ' + esc(String(pr.pick_due).slice(5, 10)) : ''));
+      }
+    }
+    const day = Array.isArray(m.last_24h) ? m.last_24h : [];
+    const today = (m.last_run_ok === false ? li('⚠️', 'One step failed; the operator has been told.') : '')
+      + (day.length ? day.map(d => li('•', '<span class="m">' + esc(String(d.at).slice(11, 16)) + ' UTC</span> — ' + (d.error ? '⚠️ ' : '') + esc(d.what))).join('') : li('•', 'Quiet — every step under its floor, nothing to move.'));
+    box.innerHTML = '<div class="pf-top">' + tiles + '</div>'
+      + '<div class="pf-grid">'
+      + '<div><h3 class="pf-h">Holdings</h3><ul class="pf-list">' + holdings + '</ul></div>'
+      + '<div><h3 class="pf-h">P&amp;L</h3><ul class="pf-list">' + pnl + '</ul></div>'
+      + (pr ? '<div><h3 class="pf-h">Pool record <span class="m" style="font-weight:400;font-size:.8rem">(the same $' + esc(pr.usd) + ' in ±' + esc(pr.width_pct) + '%, ' + esc(pr.pools) + ' pools)</span></h3><ul class="pf-list">' + pools + '</ul></div>' : '')
+      + '<div><h3 class="pf-h">Last 24 h</h3><ul class="pf-list">' + today + '</ul></div>'
+      + '</div>'
+      + '<p class="pf-when">Last run ' + esc(String(m.at).replace('T', ' ').slice(0, 16)) + ' UTC · range checked ' + esc(String(m.checked_at).replace('T', ' ').slice(0, 16)) + ' UTC · dollars at the BNB price of the last run. Same picture as JSON: <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">/lp/portfolio</a> · the record: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>';
+  });
 }
-if(!document.getElementById('ag-asked') && document.getElementById('ag-lp')) fillLpBlock();
+if(document.getElementById('defi-card')) fillLpPortfolio();
 
 // The series: one row per run of the DeFi agent, from /lp/series. The
 // summary line answers the question first; the table is the evidence.

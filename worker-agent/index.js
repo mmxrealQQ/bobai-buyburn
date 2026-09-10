@@ -47,6 +47,7 @@ import { handleSessionRevoke, readRevocations, annotateRoles } from './session-r
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool } from './lp-windows.js';
 import { widthClassOf } from '../shared/lp-guards.js';
 import { recordLpPools, readLpPools, noteLpPoolsError, poolVerdict, switchVerdict, CANDIDATES as LP_POOL_CANDIDATES, UNIVERSE_RULE as LP_UNIVERSE_RULE } from './lp-pools.js';
+import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
@@ -962,6 +963,98 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
   } };
 }
 
+// The series as /lp/series serves it, built once so the portfolio can carry
+// the same summary without a request to ourselves (a worker cannot fetch
+// its own hostname).
+async function buildLpSeries(env) {
+      const series0 = lpSeriesShown(await readLpSeries(env));
+      const recRaw = await env.AGENT.get('lp:agent');
+      // Capital the operator put in by hand (record.capital_added, written
+      // by hand too): it is in the position's value from that run on but is
+      // not a gain, so every point carries the total added up to it and the
+      // amount that arrived between the previous point and this one.
+      const added = recRaw ? (JSON.parse(recRaw).capital_added || []) : [];
+      const series = series0.map((p, i) => {
+        const upTo = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at));
+        const prevAt = i ? Date.parse(series0[i - 1].at) : -Infinity;
+        const here = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at) && Date.parse(a.at) > prevAt);
+        const tot = upTo.reduce((x, a) => x + Number(a.bnb || 0), 0);
+        return tot ? { ...p, capital_added_total_bnb: +tot.toFixed(6), ...(here.length ? { capital_added_here_bnb: +here.reduce((x, a) => x + Number(a.bnb || 0), 0).toFixed(6), capital_added_note: here.map((a) => a.note).filter(Boolean).join(' · ') } : {}) } : p;
+      });
+      const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
+      const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
+      const totals = liveFlow ? {
+        bobai_spent_total_bnb: liveFlow.out.bobai_bnb,
+        bobai_units_total: liveFlow.out.bobai_units,
+        forwarded_total_bnb: liveFlow.out.bobai_bnb,
+        kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
+        fees_total_bnb: liveFlow.in.fees.bnb,
+        folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,
+        folded_kept_total_bnb: liveFlow.in.fees.folded_kept_bnb ?? (liveFlow.in.fees.folded_bnb || 0),
+        into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
+        swept_total_bnb: liveFlow.in.income_bnb,
+      } : null;
+      // Fees owed now, from the chain: the last point is often a re-set, whose
+      // own figure is zero by construction, while the liquidity page shows the
+      // live figure two lines below the profit — the two must agree.
+      let owed_now_bnb = null;
+      const lastPt = series[series.length - 1];
+      if (lastPt && lastPt.position) {
+        try { const lk = await lpPositionLook({ position: String(lastPt.position) }); if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent); } catch { owed_now_bnb = null; }
+      }
+      return {
+        what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
+        summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
+        points: series,
+        record: 'https://agent.brainonbnb.com/lp/agent',
+        cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
+      };
+}
+
+// The pool record's verdict and switch rule, built once for /lp/pools and
+// the portfolio alike.
+async function buildLpPools(env, widthQuery = null) {
+      const log = await readLpPools(env);
+      if (!log || !Object.keys(log.pools || {}).length) {
+        return { error: { error: 'no pool window has been recorded yet', cadence: "hourly, after the width record's own tick", candidates: LP_POOL_CANDIDATES } };
+      }
+      // The width: the one the agent's position uses, else what the query asks, else ±1%.
+      let width = 1;
+      try {
+        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+        const w = Number(rec?.last?.steps?.rebalance?.width_pct);
+        if (w > 0) width = w;
+      } catch { /* the default stands */ }
+      const q = Number(widthQuery);
+      if (q > 0 && q <= 50) width = q;
+      const watched = await watchedPool(env);
+      const v = poolVerdict(log, width, { watched });
+      // The switch rule reads the position's own size and the measured re-set
+      // cost, so the payback is the position's, not fifty dollars'.
+      let positionUsd = null, resetCostUsd = null;
+      try {
+        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+        const price = await bnbUsd().catch(() => null);
+        const valueBnb = Number(rec?.last_check?.steps?.increase?.value_bnb ?? rec?.last?.steps?.increase?.value_bnb);
+        if (price > 0 && valueBnb > 0) positionUsd = Math.round(valueBnb * price * 100) / 100;
+        const m = measuredResetCost(rec, price);
+        if (m && m.usd > 0) resetCostUsd = m.usd;
+      } catch { /* the defaults stand */ }
+      const move = switchVerdict(log, width, { watched, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
+      const body = {
+        ...v,
+        move: { ...move, position_usd: positionUsd, reset_cost_usd: resetCostUsd, acts: true, acts_note: 'the daily run (04:23 UTC) acts on this verdict and nothing else: a move here is a relocate there, gated by LP_RELOCATE on the DeFi worker' },
+        universe: LP_UNIVERSE_RULE,
+        since: log.since || null,
+        cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
+        width_record: 'https://agent.brainonbnb.com/lp/windows',
+        agent_record: 'https://agent.brainonbnb.com/lp/agent',
+        last_run: log.last_run || null,
+        last_error: log.last_error || null,
+      };
+      return { log, v, move, body, positionUsd, width };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1502,44 +1595,9 @@ ${pageTail}`;
     // the agent uses — and the switch rule that says whether the best of
     // them is worth moving to.
     if (path === '/lp/pools') {
-      const log = await readLpPools(env);
-      if (!log || !Object.keys(log.pools || {}).length) {
-        return json({ error: 'no pool window has been recorded yet', cadence: "hourly, after the width record's own tick", candidates: LP_POOL_CANDIDATES }, 503);
-      }
-      // The width: the one the agent's position uses, else what the query asks, else ±1%.
-      let width = 1;
-      try {
-        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
-        const w = Number(rec?.last?.steps?.rebalance?.width_pct);
-        if (w > 0) width = w;
-      } catch { /* the default stands */ }
-      const q = Number(url.searchParams.get('width'));
-      if (q > 0 && q <= 50) width = q;
-      const watched = await watchedPool(env);
-      const v = poolVerdict(log, width, { watched });
-      // The switch rule reads the position's own size and the measured re-set
-      // cost, so the payback is the position's, not fifty dollars'.
-      let positionUsd = null, resetCostUsd = null;
-      try {
-        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
-        const price = await bnbUsd().catch(() => null);
-        const valueBnb = Number(rec?.last_check?.steps?.increase?.value_bnb ?? rec?.last?.steps?.increase?.value_bnb);
-        if (price > 0 && valueBnb > 0) positionUsd = Math.round(valueBnb * price * 100) / 100;
-        const m = measuredResetCost(rec, price);
-        if (m && m.usd > 0) resetCostUsd = m.usd;
-      } catch { /* the defaults stand */ }
-      const move = switchVerdict(log, width, { watched, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
-      const body = {
-        ...v,
-        move: { ...move, position_usd: positionUsd, reset_cost_usd: resetCostUsd, acts: true, acts_note: 'the daily run (04:23 UTC) acts on this verdict and nothing else: a move here is a relocate there, gated by LP_RELOCATE on the DeFi worker' },
-        universe: LP_UNIVERSE_RULE,
-        since: log.since || null,
-        cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
-        width_record: 'https://agent.brainonbnb.com/lp/windows',
-        agent_record: 'https://agent.brainonbnb.com/lp/agent',
-        last_run: log.last_run || null,
-        last_error: log.last_error || null,
-      };
+      const built = await buildLpPools(env, url.searchParams.get('width'));
+      if (built.error) return json(built.error, 503);
+      const { log, v, move, body, positionUsd } = built;
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
       if (wantsHtml) {
         const h = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -2114,49 +2172,21 @@ ${pageTail}`;
     // Same shared secret as /hit; nothing here is reachable without it.
     // The liquidity series: every run of the DeFi agent as one point,
     // and what the points say so far. Read by /defi.
-    if (path === '/lp/series') {
-      const series0 = lpSeriesShown(await readLpSeries(env));
-      const recRaw = await env.AGENT.get('lp:agent');
-      // Capital the operator put in by hand (record.capital_added, written
-      // by hand too): it is in the position's value from that run on but is
-      // not a gain, so every point carries the total added up to it and the
-      // amount that arrived between the previous point and this one.
-      const added = recRaw ? (JSON.parse(recRaw).capital_added || []) : [];
-      const series = series0.map((p, i) => {
-        const upTo = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at));
-        const prevAt = i ? Date.parse(series0[i - 1].at) : -Infinity;
-        const here = added.filter((a) => Date.parse(a.at) <= Date.parse(p.at) && Date.parse(a.at) > prevAt);
-        const tot = upTo.reduce((x, a) => x + Number(a.bnb || 0), 0);
-        return tot ? { ...p, capital_added_total_bnb: +tot.toFixed(6), ...(here.length ? { capital_added_here_bnb: +here.reduce((x, a) => x + Number(a.bnb || 0), 0).toFixed(6), capital_added_note: here.map((a) => a.note).filter(Boolean).join(' · ') } : {}) } : p;
-      });
-      const liveFlow = recRaw ? moneyFlow(JSON.parse(recRaw)) : null;
-      const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
-      const totals = liveFlow ? {
-        bobai_spent_total_bnb: liveFlow.out.bobai_bnb,
-        bobai_units_total: liveFlow.out.bobai_units,
-        forwarded_total_bnb: liveFlow.out.bobai_bnb,
-        kept_total_bnb: liveFlow.out.kept_as_capital_bnb,
-        fees_total_bnb: liveFlow.in.fees.bnb,
-        folded_total_bnb: liveFlow.in.fees.folded_bnb || 0,
-        folded_kept_total_bnb: liveFlow.in.fees.folded_kept_bnb ?? (liveFlow.in.fees.folded_bnb || 0),
-        into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
-        swept_total_bnb: liveFlow.in.income_bnb,
-      } : null;
-      // Fees owed now, from the chain: the last point is often a re-set, whose
-      // own figure is zero by construction, while the liquidity page shows the
-      // live figure two lines below the profit — the two must agree.
-      let owed_now_bnb = null;
-      const lastPt = series[series.length - 1];
-      if (lastPt && lastPt.position) {
-        try { const lk = await lpPositionLook({ position: String(lastPt.position) }); if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent); } catch { owed_now_bnb = null; }
-      }
+    // THE PORTFOLIO: the agent as one picture, one model for the /defi page
+    // and the Telegram card alike (worker-agent/lp-portfolio.js).
+    if (path === '/lp/portfolio') {
+      const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+      const series = await buildLpSeries(env);
+      const pb = await buildLpPools(env, null);
+      const model = lpPortfolio(rec, series, pb.error ? null : pb.body);
+      if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
       return json({
-        what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
-        summary: lpSeriesSummary(series, { gas_bnb, owed_now_bnb, totals }),
-        points: series,
-        record: 'https://agent.brainonbnb.com/lp/agent',
-        cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
-      }, 200, { 'Cache-Control': 'public, max-age=300' });
+        what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from, the pool record\'s verdict and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',
+        ...model,
+      }, 200, { 'Cache-Control': 'public, max-age=120' });
+    }
+    if (path === '/lp/series') {
+      return json(await buildLpSeries(env), 200, { 'Cache-Control': 'public, max-age=300' });
     }
     if (path === '/run-lp-series' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);

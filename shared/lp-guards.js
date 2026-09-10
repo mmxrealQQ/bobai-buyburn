@@ -187,6 +187,25 @@ export function refuseRebalance(state) {
   return null;
 }
 
+// state: { positions, hasTarget, targetHasWbnb, samePool, width, valueBnb, move }
+// A relocate is a re-set into another pool: withdraw, leave the old pair,
+// enter the new one, mint. The pool record's switch rule (move) says whether
+// it is worth it; a person naming --to on the hand script is a decision of
+// their own and passes no move. Everything a re-set refuses, this refuses too.
+export function refuseRelocate(state) {
+  if (state.positions !== 1) return state.positions === 0
+    ? 'this wallet holds no position to move'
+    : `this wallet holds ${state.positions} positions — which one to move is a decision for a person`;
+  if (state.move && state.move.move === false) return `the switch rule says stay: ${state.move.why}`;
+  if (!state.hasTarget) return 'no pool to move to was named';
+  if (!state.targetHasWbnb) return 'the pool named is not against WBNB; this agent only holds WBNB pairs, so the record stays in BNB';
+  if (state.samePool) return 'the pool named is the one the position is in — nothing to move';
+  if (state.width == null) return 'no width is known for the new range';
+  if (!(state.valueBnb >= MIN_REBALANCE_BNB))
+    return `the position is worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a move would cost more than it is likely to earn back`;
+  return null;
+}
+
 // The wait after the price leaves the range, before a re-set is paid for.
 // outSinceMs is when the agent first saw the price outside (null: this is the
 // first time), nowMs is now. Null means the wait is over and a re-set is due.

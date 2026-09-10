@@ -38,6 +38,10 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # 0–100 falls back to the default in shared/lp-guards.js (50), never to 0 or 100.
 [vars]
 LP_REBALANCE = "1"
+# Whether the daily run may move the position to another pool of the
+# universe when the pool record's switch rule says so (2026-09-10). "0"
+# until the first move has been run by hand and watched, as LP_REBALANCE was.
+LP_RELOCATE = "0"
 LP_FEE_KEEP_PCT = "50"
 
 # Secrets, set with `wrangler secret put`, never in this file:

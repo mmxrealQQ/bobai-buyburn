@@ -34,7 +34,7 @@
 // candidates is ~290 replays a day and one KV write an hour; the screen of
 // 2026-09-10 measured 1.4-2.8 s per replay, the busiest pool (USDT/WBNB
 // 0.01%, 16k swaps an hour) 2.8 s.
-import { KV_KEY as WINDOWS_KEY, POSITION_USD, measure, windowFromPlan } from './lp-windows.js';
+import { KV_KEY as WINDOWS_KEY, POSITION_USD, measure, windowFromPlan, watchedPool } from './lp-windows.js';
 
 export const KV_KEY = 'lp:pools';
 // Hourly windows; 200 is over a week per pool, which is more than a pool
@@ -242,7 +242,7 @@ const CHAIN_REFUSED = /every BSC endpoint refused|log endpoint refused|rate limi
 // read, one KV write. A candidate the chain refuses this hour is skipped
 // this hour — a missing window is a gap, an invented one is a lie.
 export async function recordLpPools(env) {
-  const watched = String(env.LP_WATCH_POOL || '').toLowerCase();
+  const watched = await watchedPool(env);
   const prev = (await readLpPools(env)) || { usd: POSITION_USD, since: new Date().toISOString(), pools: {} };
   let log = { ...prev, usd: POSITION_USD, pools: { ...(prev.pools || {}) } };
   const added = [], skipped = [];

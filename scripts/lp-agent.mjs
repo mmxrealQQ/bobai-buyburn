@@ -29,10 +29,10 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, executeRebalance,
+  planRebalance, planRelocate, executeRelocate, executeRebalance,
 } from '../shared/lp-agent.js';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, rebalanceWait, RESET_AFTER_HOURS,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, rebalanceWait, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
   widthUpgrade, widthClassOf,
@@ -43,8 +43,12 @@ const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
 const argOf = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null; };
 const stepArg = argOf('--step');
-const ALL = ['sweep', 'collect', 'rebalance', 'increase'];
-const STEPS = stepArg ? [stepArg] : ALL;
+const ALL = ['sweep', 'collect', 'relocate', 'rebalance', 'increase'];
+// The pool a relocate moves to, named by a person: `--step relocate --to 0x…`.
+const TO = argOf('--to');
+// Without --step, the hand script runs the four steps of a day; a relocate is
+// asked for by name, with the pool it moves to.
+const STEPS = stepArg ? [stepArg] : ALL.filter((x) => x !== 'relocate');
 // A width named by a person for the re-set. It is printed as a hand-made
 // choice and never remembered: the record's earnings test is the standing rule.
 const WIDTH = argOf('--width') != null ? Number(argOf('--width')) : null;
@@ -277,6 +281,19 @@ if (SELF) {
     [{ ...up, rows: [rows[0], { width: 2, earnings: { net_usd_per_day: 0.66 } }] }, 'a gain under a tenth of the current net is noise'],
     [{ ...up, resetCostUsd: 0.5 }, 'a gain under the re-set cost would not pay back within a day'],
   ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
+  console.log('relocate');
+  const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
+  check('no position: refuses', refuseRelocate({ ...relOk, positions: 0 }), true);
+  check('two positions: refuses', refuseRelocate({ ...relOk, positions: 2 }), true);
+  check('the switch rule says stay: refuses with its reason', /switch rule says stay/.test(refuseRelocate({ ...relOk, move: { move: false, why: 'lead under 25%' } }) || ''), true);
+  check('no pool named: refuses', refuseRelocate({ ...relOk, hasTarget: false }), true);
+  check('a pool without WBNB: refuses', refuseRelocate({ ...relOk, targetHasWbnb: false }), true);
+  check('the pool the position is in: refuses', refuseRelocate({ ...relOk, samePool: true }), true);
+  check('no width: refuses', refuseRelocate({ ...relOk, width: null }), true);
+  check('under the floor: refuses', refuseRelocate({ ...relOk, valueBnb: 0.01 }), true);
+  check('a move the rule allows: goes', refuseRelocate(relOk), false);
+  check('a person naming the pool passes no rule and goes', refuseRelocate({ ...relOk, move: null }), false);
+
   console.log('rebalance wait');
   const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
   check('first hour outside: waits', rebalanceWait(null, now), true);
@@ -480,6 +497,27 @@ async function main() {
         const out = await executeRebalance(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
         console.log(`  new position #${out.new_position} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}`);
         if (out.fees_folded_bnb != null) console.log(`  old range's fees ${f(out.fees_folded_bnb)} BNB: ${out.bobai_bnb > 0 ? `${f(out.bobai_bnb)} BNB bought ${out.bobai_units} BOBAI, held in ${out.bobai_held_in}` : out.fees_forward_why}`);
+        acted += 1;
+      }
+    }
+  }
+
+  if (STEPS.includes('relocate')) {
+    console.log('\nRELOCATE — the whole position -> another pool of the universe');
+    if (!TO) console.log('  name the pool with --to 0x… (the pool record at https://agent.brainonbnb.com/lp/pools says which one is worth it)');
+    const plan = await planRelocate(pub, lp.address, { toPool: TO, widthOverride: WIDTH, keptPct: KEEP });
+    const s = plan.summary;
+    if (plan.pos) console.log(`  position #${s.position} in ${s.from_pool}, ticks ${s.from_ticks[0]} … ${s.from_ticks[1]}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
+    if (plan.to) console.log(`  to ${s.to_pool} (fee ${s.to_fee_pct}%), tick there ${s.to_tick}`);
+    if (plan.no) console.log(`  nothing to do: ${plan.no}`);
+    else {
+      console.log(`  width ±${s.width_pct}% (${s.width_basis}) -> new ticks ${s.new_ticks[0]} … ${s.new_ticks[1]}`);
+      console.log(`  would withdraw and burn #${s.position}, ${(s.trades || ['trade nothing']).join(', ')}, and mint the range in the new pool from what the wallet then holds`);
+      console.log(`  the old range owes ${f(s.fees_owed_bnb)} BNB of fees: ${s.fees_to_bobai_bnb > 0 ? `${f(s.fees_to_bobai_bnb)} BNB would buy BOBAI (held in the wallet) before the mint, the rest into the new capital` : 'all of it would be minted into the new capital'} (kept share ${s.fees_kept_pct ?? KEEP}%)`);
+      if (CONFIRM) {
+        const out = await executeRelocate(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
+        console.log(`  new position #${out.new_position} in ${out.new_pool} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}; gas ${f(out.gas_bnb)} BNB, swap fees ${f(out.swap_fee_bnb)} BNB`);
+        console.log(`  old range's fees ${f(out.fees_folded_bnb)} BNB: ${out.bobai_bnb > 0 ? `${f(out.bobai_bnb)} BNB bought ${out.bobai_units} BOBAI, held in ${out.bobai_held_in}` : out.fees_forward_why}`);
         acted += 1;
       }
     }

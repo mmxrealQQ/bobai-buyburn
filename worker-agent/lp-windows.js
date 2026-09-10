@@ -341,7 +341,7 @@ function dayHold(used, widthPct) {
 // 06:30 and 14:00 UTC on 2026-09-02 four of eight hourly windows were simply
 // missing, with nothing anywhere to say why.
 export async function noteLpWindowError(env, e) {
-  const prev = (await readLpWindows(env)) || { pool: String(env.LP_WATCH_POOL || '').toLowerCase(), usd: POSITION_USD, windows: [] };
+  const prev = (await readLpWindows(env)) || { pool: await watchedPool(env), usd: POSITION_USD, windows: [] };
   prev.last_error = { at: new Date().toISOString(), error: String(e?.message || e).slice(0, 200) };
   prev.errors = (prev.errors || 0) + 1;
   await env.AGENT.put(KV_KEY, JSON.stringify(prev));
@@ -367,6 +367,18 @@ export async function measure(address, usd) {
   return plan;
 }
 
+// The pool the agent is in: what its own record says (worker-lp writes the
+// position's pool with every run since 2026-09-10, so a relocate is followed
+// the hour after), else the var the first weeks used.
+export async function watchedPool(env) {
+  try {
+    const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+    const p = String(rec?.pool || '').toLowerCase();
+    if (/^0x[0-9a-f]{40}$/.test(p)) return p;
+  } catch { /* the var stands */ }
+  return String(env.LP_WATCH_POOL || '').toLowerCase();
+}
+
 export async function readLpWindows(env) {
   const raw = await env.AGENT.get(KV_KEY);
   return raw ? JSON.parse(raw) : null;
@@ -388,8 +400,8 @@ const SETTLE_MS = 25000, RETRY_MS = 20000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function recordLpWindow(env, { settle = true } = {}) {
-  const pool = String(env.LP_WATCH_POOL || '').toLowerCase();
-  if (!/^0x[0-9a-f]{40}$/.test(pool)) return { ok: false, error: 'LP_WATCH_POOL is not set' };
+  const pool = await watchedPool(env);
+  if (!/^0x[0-9a-f]{40}$/.test(pool)) return { ok: false, error: 'no watched pool: the agent record names none and LP_WATCH_POOL is not set' };
   if (settle) await sleep(SETTLE_MS);
   let plan, attempts = 1;
   try { plan = await measure(pool, POSITION_USD); }

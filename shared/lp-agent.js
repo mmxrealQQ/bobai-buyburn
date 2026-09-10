@@ -27,7 +27,7 @@
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, splitFees, resetForward,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, FEE_SHARE_KEPT_PCT,
 } from './lp-guards.js';
 
@@ -723,6 +723,202 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
 }
 
 // --------------------------------------------------------------------------
+// relocate: the whole position -> another pool of the universe
+// --------------------------------------------------------------------------
+// A re-set that changes pools. The pool record (worker-agent/lp-pools.js)
+// replays the same fifty dollars in every pool the rule allows and its
+// switch rule says when the best of them is worth the move; this is the
+// move. Everything the position holds, plus what waits beside it, goes:
+// withdraw and burn the old range, sell its other side for WBNB in its own
+// tier (unless the new pool is the same pair in another tier), buy the new
+// pair's other side in the new tier for the share the new range needs, send
+// the profit share of the old range's fees into $BOBAI as a re-set does,
+// mint in the new pool. The width is the class the position had: the width
+// record measures the pool the agent is in, and it starts over on the new
+// pool the hour after the move (lp-windows.js drops a record whose pool
+// changed), so the first range there is the shape that earned here and the
+// record corrects it once it can.
+export async function planRelocate(pub, address, { toPool = null, widthOverride = null, keptPct = FEE_SHARE_KEPT_PCT, move = null } = {}) {
+  const p = await readPosition(pub, address);
+  const to = String(toPool || '').toLowerCase();
+  let from = null, target = null, have = null, valueBnb = 0, owedWei = 0n, share = null, ticks = null, tgt = null;
+  let width = widthOverride ?? null;
+  if (p.positions === 1) {
+    const poolInfo = await readPool(pub, p.pos);
+    const token0 = p.pos[2].toLowerCase(), token1 = p.pos[3].toLowerCase();
+    const wbnbIs0 = token0 === ADDR.WBNB;
+    if (!wbnbIs0 && token1 !== ADDR.WBNB) throw new Error('the position is not against WBNB; this agent only knows how to move a WBNB pair');
+    const other = wbnbIs0 ? token1 : token0;
+    const L = Number(p.pos[7]);
+    const sp = splitForRange(poolInfo.sqrtP, Number(p.pos[5]), Number(p.pos[6]));
+    const in0 = L * sp.perL0, in1 = L * sp.perL1;
+    const heldOther = Number(await read(pub, other, ABI.ERC20, 'balanceOf', [address]));
+    const heldWbnb = Number(await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]));
+    const price = poolInfo.sqrtP ** 2;
+    const otherInWbnb = wbnbIs0 ? 1 / price : price;
+    have = { other: (wbnbIs0 ? in1 : in0) + heldOther, wbnb: (wbnbIs0 ? in0 : in1) + heldWbnb };
+    valueBnb = (have.wbnb + have.other * otherInWbnb) / 1e18;
+    if (width == null) width = widthClassOf([Number(p.pos[5]), Number(p.pos[6])]);
+    if (p.owed0 != null) {
+      const owedWbnb = wbnbIs0 ? p.owed0 : p.owed1, owedOther = wbnbIs0 ? p.owed1 : p.owed0;
+      owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * otherInWbnb));
+      share = resetForward(owedWei, keptPct);
+    }
+    from = { pool: String(poolInfo.pool).toLowerCase(), other, fee: Number(p.pos[4]), wbnbIs0, tokenId: p.tokenId, tick: poolInfo.tick, inRange: poolInfo.inRange, otherInWbnb, ticks: [Number(p.pos[5]), Number(p.pos[6])] };
+  }
+  if (/^0x[0-9a-f]{40}$/.test(to)) {
+    const pair = await readPoolPair(pub, to);
+    const t0 = String(pair[2]).toLowerCase(), t1 = String(pair[3]).toLowerCase();
+    const wbnbIs0 = t0 === ADDR.WBNB;
+    const hasWbnb = wbnbIs0 || t1 === ADDR.WBNB;
+    const spacing = Number(await read(pub, to, ABI.POOL, 'tickSpacing')) || 1;
+    const s0 = await read(pub, to, ABI.POOL, 'slot0');
+    const sqrtP = Number(s0[0]) / 2 ** 96, tick = Number(s0[1]);
+    const price = sqrtP ** 2;
+    const otherInWbnb = wbnbIs0 ? 1 / price : price;
+    target = { pool: to, pair, token0: pair[2], token1: pair[3], fee: Number(pair[4]), other: wbnbIs0 ? t1 : t0, wbnbIs0, hasWbnb, spacing, sqrtP, tick, otherInWbnb };
+    if (hasWbnb && width != null && valueBnb > 0) {
+      ticks = ticksAround(tick, width, spacing);
+      if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
+      const n = splitForRange(sqrtP, ticks.tickLower, ticks.tickUpper);
+      const perLOther = wbnbIs0 ? n.perL1 : n.perL0, perLWbnb = wbnbIs0 ? n.perL0 : n.perL1;
+      const perLValue = perLWbnb + perLOther * otherInWbnb;
+      const capital = valueBnb * 1e18 - (share ? Number(share.forward) : 0);
+      const Ln = perLValue > 0 ? (capital * 0.99) / perLValue : 0;
+      tgt = { other: Ln * perLOther, wbnb: Ln * perLWbnb, perLOther, perLWbnb, otherInWbnb };
+    }
+  }
+  const sameOther = !!(from && target && from.other === target.other);
+  const state = {
+    positions: p.positions, hasTarget: !!target, targetHasWbnb: target ? target.hasWbnb : false,
+    samePool: !!(from && target && from.pool === target.pool), width, valueBnb, move,
+  };
+  const trades = [];
+  if (from && target && tgt) {
+    if (!sameOther && have.other > 0) trades.push(`sell all ${(have.other / 1e18).toFixed(6)} of ${from.other} for WBNB in the old pool`);
+    const keep = sameOther ? have.other : 0;
+    if (tgt.other > keep) trades.push(`buy ${((tgt.other - keep) / 1e18).toFixed(6)} of ${target.other} with ~${(((tgt.other - keep) * tgt.otherInWbnb) / 1e18).toFixed(6)} WBNB in the new pool`);
+    else if (keep > tgt.other) trades.push(`sell ${((keep - tgt.other) / 1e18).toFixed(6)} of ${target.other} for WBNB in the new pool`);
+  }
+  return {
+    step: 'relocate', state, no: refuseRelocate(state),
+    tokenId: p.tokenId, pos: p.pos, from, to: target, width, ticks, target: tgt, sameOther, share,
+    summary: {
+      position: p.tokenId == null ? null : String(p.tokenId),
+      from_pool: from ? from.pool : null, from_ticks: from ? from.ticks : null, in_range: from ? from.inRange : false,
+      to_pool: target ? target.pool : null, to_fee_pct: target ? target.fee / 10000 : null, to_tick: target ? target.tick : null,
+      value_bnb: Number(valueBnb.toFixed(6)),
+      width_pct: width, width_basis: widthOverride != null ? 'named by hand' : 'the class the position had; the width record starts over on the new pool',
+      new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
+      trades: trades.length ? trades : null,
+      fees_owed_bnb: Number((Number(owedWei) / 1e18).toFixed(6)),
+      fees_to_bobai_bnb: share ? Number((Number(share.forward) / 1e18).toFixed(6)) : 0,
+      fees_kept_pct: share ? share.pct : null,
+      ...(move ? { move: move.move, move_why: move.why } : {}),
+    },
+  };
+}
+
+export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
+  if (!plan.from || !plan.to || !plan.target || !plan.ticks) throw new Error('the plan carries no move');
+  const txs = [];
+  const send = sender(pub, wallet, txs, log);
+  send.owner = account.address;
+  const swaps = [];
+  // 1. What the old range owes, read now, so the record counts it as fees
+  //    and the profit share of it can leave before the mint.
+  const old = await readPosition(pub, account.address);
+  if (old.tokenId == null || String(old.tokenId) !== String(plan.tokenId)) throw new Error('the position changed since the plan was made');
+  const owedWbnb = plan.from.wbnbIs0 ? old.owed0 : old.owed1, owedOther = plan.from.wbnbIs0 ? old.owed1 : old.owed0;
+  const owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * plan.from.otherInWbnb));
+  const folded = { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), bnb_equivalent: Number((Number(owedWei) / 1e18).toFixed(6)) };
+  const share = resetForward(owedWei, keptPct);
+  const reserved = share.forward > 0n ? share.forward : 0n;
+  // 2. Withdraw, collect and burn the old range, one transaction.
+  {
+    const liquidity = plan.pos[7];
+    const sim = await pub.simulateContract({
+      address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'decreaseLiquidity',
+      args: [{ tokenId: plan.tokenId, liquidity, amount0Min: 0n, amount1Min: 0n, deadline: deadline() }], account,
+    });
+    const calls = unwindCalls(plan.tokenId, liquidity, (sim.result[0] * 99n) / 100n, (sim.result[1] * 99n) / 100n, account.address, deadline());
+    await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
+    await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
+  }
+  // 3. Leave the old pair: its other side becomes WBNB in the old tier.
+  if (!plan.sameOther) {
+    const haveOld = await read(pub, plan.from.other, ABI.ERC20, 'balanceOf', [account.address]);
+    if (haveOld > 0n) {
+      const q = await quoteV3(pub, plan.from.other, ADDR.WBNB, plan.from.fee, haveOld);
+      swaps.push(await swapV3(pub, send, account.address, plan.from.other, ADDR.WBNB, plan.from.fee, haveOld, (q * 99n) / 100n, q, 'leave the old pair: sell its other side for WBNB'));
+    }
+  }
+  // 4. Size the new range from what the wallet really holds now; the
+  //    profit share is kept out of the sizing so it stays as WBNB.
+  const t = plan.target, fee = plan.to.fee, other = plan.to.other;
+  const haveOther = await read(pub, other, ABI.ERC20, 'balanceOf', [account.address]);
+  const haveWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  const value = Number(haveWbnb - reserved) + Number(haveOther) * t.otherInWbnb;
+  const perLValue = t.perLWbnb + t.perLOther * t.otherInWbnb;
+  const Ln = (value * 0.99) / perLValue;
+  const targetOther = BigInt(Math.floor(Ln * t.perLOther));
+  if (haveOther > targetOther) {
+    const sell = haveOther - targetOther;
+    const q = await quoteV3(pub, other, ADDR.WBNB, fee, sell);
+    swaps.push(await swapV3(pub, send, account.address, other, ADDR.WBNB, fee, sell, (q * 99n) / 100n, q, 'sell the excess of the new other side'));
+  } else if (targetOther > haveOther) {
+    const need = targetOther - haveOther;
+    const q = await quoteV3(pub, ADDR.WBNB, other, fee, 10n ** 18n);
+    const spend = q > 0n ? (need * 10n ** 18n * 102n) / (q * 100n) : 0n;
+    const cap = haveWbnb > reserved ? haveWbnb - reserved : 0n;
+    const wbnbIn = spend > cap ? cap : spend;
+    if (wbnbIn > 0n) swaps.push(await swapV3(pub, send, account.address, ADDR.WBNB, other, fee, wbnbIn, (need * 99n) / 100n, wbnbIn, 'enter the new pair: buy its other side'));
+  }
+  // 5. The profit share of the old range's fees becomes $BOBAI, held.
+  let boughtBobai = 0n, bobaiUnits = 0n, forwardWhy = share.why;
+  if (reserved > 0n) {
+    const wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+    if (wbnbNow >= reserved) {
+      await send("unwrap the profit share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
+      const bought = await buyBobaiHold(pub, send, account.address, reserved);
+      boughtBobai = reserved; bobaiUnits = bought.units;
+    } else {
+      forwardWhy = `the wallet held ${formatEther(wbnbNow)} WBNB after the trades, less than the ${formatEther(reserved)} BNB share — it stays as capital`;
+    }
+  }
+  // 6. Mint in the new pool.
+  const mintOther = await read(pub, other, ABI.ERC20, 'balanceOf', [account.address]);
+  const mintWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  await ensureAllowance(pub, send, other, ADDR.V3_POSITION_MANAGER, mintOther, 'allow the position manager to take the new other side (once)');
+  await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, mintWbnb, 'allow the position manager to take WBNB (once)');
+  const amount0Desired = plan.to.wbnbIs0 ? mintWbnb : mintOther;
+  const amount1Desired = plan.to.wbnbIs0 ? mintOther : mintWbnb;
+  const now = await readPool(pub, plan.to.pair);
+  const mintMins = minsForRange(now.sqrtP, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
+  await send(`mint the range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper} in the new pool`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
+    args: [{
+      token0: plan.to.token0, token1: plan.to.token1, fee,
+      tickLower: plan.ticks.tickLower, tickUpper: plan.ticks.tickUpper,
+      amount0Desired, amount1Desired,
+      ...mintMins,
+      recipient: account.address, deadline: deadline(),
+    }] });
+  const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+  if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
+  const np = await readPosition(pub, account.address);
+  const gasBnb = txs.reduce((a, x) => a + (x.gas_bnb || 0), 0);
+  const swapFee = swaps.reduce((a, x) => a + (x && x.fee_bnb ? x.fee_bnb : 0), 0);
+  return {
+    txs, gas_bnb: Number(gasBnb.toFixed(6)), swaps, swap_fee_bnb: Number(swapFee.toFixed(6)),
+    new_position: np.tokenId == null ? null : String(np.tokenId), new_pool: plan.to.pool, new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper],
+    liquidity_after: np.pos ? String(np.pos[7]) : null,
+    fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
+    bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share.pct,
+    ...(boughtBobai > 0n ? { bobai_held_in: account.address } : { fees_forward_why: forwardWhy }),
+  };
+}
+
+// --------------------------------------------------------------------------
 // increase: BNB above the reserve -> more of the same position
 // --------------------------------------------------------------------------
 
@@ -774,7 +970,7 @@ export async function planIncrease(pub, address, position = null) {
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
       value_bnb: poolInfo ? await positionValueBnb(pub, address, p, poolInfo) : null,
-      wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null,
+      wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null, pool: poolInfo ? String(poolInfo.pool).toLowerCase() : null,
       capital: poolInfo ? { bnb_above_reserve: bn(nativeRaw), wbnb_held: bn(heldWbnb), other_held: formatUnits(heldOther, 18), other_held_in_bnb: Number((heldOtherInWbnb / 1e18).toFixed(6)) } : null,
       would_add: poolInfo && target && target.L > 0 ? {
         other: formatUnits(BigInt(Math.floor(target.L * target.perLOther)), 18), other_token: other, wbnb: formatEther(BigInt(Math.floor(target.L * target.perLWbnb))),

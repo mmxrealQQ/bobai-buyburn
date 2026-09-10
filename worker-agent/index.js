@@ -44,7 +44,7 @@ import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
-import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration } from './lp-windows.js';
+import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool } from './lp-windows.js';
 import { widthClassOf } from '../shared/lp-guards.js';
 import { recordLpPools, readLpPools, noteLpPoolsError, poolVerdict, switchVerdict, CANDIDATES as LP_POOL_CANDIDATES, UNIVERSE_RULE as LP_UNIVERSE_RULE } from './lp-pools.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
@@ -1515,7 +1515,8 @@ ${pageTail}`;
       } catch { /* the default stands */ }
       const q = Number(url.searchParams.get('width'));
       if (q > 0 && q <= 50) width = q;
-      const v = poolVerdict(log, width, { watched: env.LP_WATCH_POOL });
+      const watched = await watchedPool(env);
+      const v = poolVerdict(log, width, { watched });
       // The switch rule reads the position's own size and the measured re-set
       // cost, so the payback is the position's, not fifty dollars'.
       let positionUsd = null, resetCostUsd = null;
@@ -1527,10 +1528,10 @@ ${pageTail}`;
         const m = measuredResetCost(rec, price);
         if (m && m.usd > 0) resetCostUsd = m.usd;
       } catch { /* the defaults stand */ }
-      const move = switchVerdict(log, width, { watched: env.LP_WATCH_POOL, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
+      const move = switchVerdict(log, width, { watched, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
       const body = {
         ...v,
-        move: { ...move, position_usd: positionUsd, reset_cost_usd: resetCostUsd, acts: false, acts_note: 'the daily run does not relocate yet; when it does, it will act on this verdict and nothing else' },
+        move: { ...move, position_usd: positionUsd, reset_cost_usd: resetCostUsd, acts: true, acts_note: 'the daily run (04:23 UTC) acts on this verdict and nothing else: a move here is a relocate there, gated by LP_RELOCATE on the DeFi worker' },
         universe: LP_UNIVERSE_RULE,
         since: log.since || null,
         cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",

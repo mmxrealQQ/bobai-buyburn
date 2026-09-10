@@ -278,6 +278,49 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
   };
 }
 
+// THE CALIBRATION. The replay says what $50 in a width would have collected
+// from the pool's fees; the agent's own position says what it did collect.
+// On 2026-09-10 the position at the 2% class had earned about three
+// quarters of what the replay put on that width — the replay overstates
+// every width alike, so the pick stands, but the dollar figure on the record
+// should say so. `points` is the liquidity series (fees_total_bnb, owed_bnb,
+// value_bnb, at), `rows` the verdict's rows, `widthClass` the position's
+// width class. Gross fees on both sides: the measured window may hold
+// re-sets, whose cost is not a fee. Null under a day of series.
+export function calibration(points, rows, widthClass, { minHours = 20, maxHours = 72 } = {}) {
+  const pts = (points || []).filter((p) => p && p.at && typeof p.value_bnb === 'number' && p.value_bnb > 0 && p.fees_total_bnb != null);
+  if (pts.length < 2 || widthClass == null) return null;
+  const last = pts[pts.length - 1];
+  const cutoff = Date.parse(last.at) - maxHours * 36e5;
+  const used = pts.filter((p) => Date.parse(p.at) >= cutoff);
+  if (used.length < 2) return null;
+  const first = used[0];
+  const hours = (Date.parse(last.at) - Date.parse(first.at)) / 36e5;
+  if (!(hours >= minHours)) return null;
+  const feesBnb = (Number(last.fees_total_bnb) + Number(last.owed_bnb || 0)) - (Number(first.fees_total_bnb) + Number(first.owed_bnb || 0));
+  // Capital, time-weighted over the points, minus what the operator put in
+  // with each point (a deposit is not fees' doing).
+  let capBnbH = 0;
+  for (let i = 1; i < used.length; i++) capBnbH += used[i - 1].value_bnb * ((Date.parse(used[i].at) - Date.parse(used[i - 1].at)) / 36e5);
+  const capitalBnb = capBnbH / hours;
+  if (!(capitalBnb > 0) || !(feesBnb >= 0)) return null;
+  // Fees over capital is a rate; on $50 a day it is dollars, whatever BNB costs.
+  const measured = (feesBnb / capitalBnb) * 50 * (24 / hours);
+  const row = (rows || []).find((r) => r.width === widthClass && r.earnings && r.earnings.hours > 0);
+  const replay = row ? row.earnings.fees_usd / (row.earnings.hours / 24) : null;
+  const factor = replay > 0 ? measured / replay : null;
+  return {
+    hours: r2(hours), from: first.at, to: last.at,
+    position_width_pct: widthClass,
+    fees_bnb: Number(feesBnb.toFixed(6)),
+    capital_bnb: Number(capitalBnb.toFixed(6)),
+    measured_usd_per_day_on_50: r4(measured),
+    replay_usd_per_day_on_50: replay == null ? null : r4(replay),
+    factor: factor == null ? null : r2(factor),
+    basis: `the position's own fees over ${r2(hours)} h against the replay's gross fees for the ±${widthClass}% width, both on $50 a day; the pick compares widths with each other and is not scaled`,
+  };
+}
+
 const DAY_MS = 24 * 3600 * 1000;
 const MIN_LATER_MS = 20 * 3600 * 1000;
 function dayHold(used, widthPct) {

@@ -34,7 +34,7 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, measuredResetCost, resetSwapFee, MAX_WINDOWS } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, measuredResetCost, resetSwapFee, MAX_WINDOWS, calibration } from '../worker-agent/lp-windows.js';
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
@@ -153,6 +153,27 @@ if (SELF_TEST) {
     return earningsTest(blip, 1, { resetAfterHours: 2 }).resets === 0 && earningsTest(blip, 1, { resetAfterHours: 1 }).resets >= 1;
   })());
   t('a measured re-set cost overrides the replay\'s assumption', earningsTest(drift, 1, { resetCostUsd: 5 }).net_usd < earningsTest(drift, 1).net_usd);
+  // The calibration: the position's own fees against the replay's dollars
+  // for its width class, both on $50 a day. A day of series, a position.
+  {
+    const H = 36e5, t0 = Date.parse('2026-09-09T00:00:00Z');
+    const pt = (h, fees, owed, value) => ({ at: new Date(t0 + h * H).toISOString(), fees_total_bnb: fees, owed_bnb: owed, value_bnb: value, bnb_usd: 700 });
+    // 0.2 BNB earning 0.002 BNB in 24 h = 1% a day → $50 earns $0.50 a day.
+    const series = [pt(0, 0.010, 0, 0.2), pt(12, 0.011, 0, 0.2), pt(24, 0.011, 0.001, 0.2)];
+    const rows = [{ width: 2, earnings: { hours: 48, fees_usd: 2 * 0.6 } }, { width: 1, earnings: { hours: 48, fees_usd: 2 * 0.7 } }];
+    const c = calibration(series, rows, 2);
+    t('a day of series at 1% a day reads $0.50 a day on $50', c && Math.abs(c.measured_usd_per_day_on_50 - 0.5) < 1e-3 && c.hours === 24);
+    t('the replay figure is the width class row, gross fees per day', c && Math.abs(c.replay_usd_per_day_on_50 - 0.6) < 1e-9);
+    t('the factor is measured over replay', c && Math.abs(c.factor - 0.83) < 0.01);
+    t('owed fees count as earned (they are the position\'s, uncollected)', calibration([pt(0, 0.01, 0, 0.2), pt(24, 0.01, 0.002, 0.2)], rows, 2).measured_usd_per_day_on_50 === c.measured_usd_per_day_on_50);
+    t('under 20 h of series: no calibration', calibration([pt(0, 0.01, 0, 0.2), pt(12, 0.011, 0, 0.2)], rows, 2) === null);
+    t('without a width class: no calibration', calibration(series, rows, null) === null);
+    t('a width the record has no row for: measured, but no replay and no factor', (() => { const x = calibration(series, rows, 5); return x && x.replay_usd_per_day_on_50 === null && x.factor === null; })());
+    // A deposit mid-way doubles the capital; the fee rate is on the time-weighted capital, not the last value.
+    const dep = [pt(0, 0.010, 0, 0.2), pt(12, 0.011, 0, 0.4), pt(24, 0.012, 0, 0.4)];
+    t('a deposit mid-way weighs the capital by time', (() => { const x = calibration(dep, rows, 2); return x && Math.abs(x.capital_bnb - 0.3) < 1e-9; })());
+    t('only the last 72 h of series take part', (() => { const long = [pt(-100, 0, 0, 0.2), ...series]; const x = calibration(long, rows, 2); return x && x.hours === 24; })());
+  }
   t('a gap in the record earns nothing for the gap', (() => {
     const gap = [pwin(0, 100), pwin(1, 100), pwin(20, 100), pwin(21, 100)];
     return earningsTest(gap, 1).hours <= 1 + 3 + 1 + 0.01;

@@ -468,7 +468,19 @@ async function tick({ daily = false } = {}) {
     lines.push(`monthly pass: pot ${money(total)} against a high-water mark of ${money(st.high_water_usd)}${take.take > 0 ? ` — ${money(take.excess)} above it, ${money(take.take)} taken for the profit pool` : ' — nothing above it, nothing taken'}`);
   } else {
     plan = planRebalance(holdings, ALLOCATION, { band: 0, minOrderUsd: MIN_ORDER_USD, maxOrderUsd: MAX_ORDER_USD, sells: false });
-    if (plan.orders.length) lines.push(`top-up pass: ${money(st.pot_usdt)} of cash goes into the sleeves under their target`);
+    if (plan.orders.length) lines.push(`top-up pass: ${money(holdings.USDT)} of cash goes into the sleeves under their target`);
+    // Cash under the minimum order cannot buy anything and would sit until
+    // the next deposit ($8.09 on 2026-09-10). It joins the dip reserve
+    // instead: no swap, just the record — the reserve is USDT already, and
+    // a lot is the whole reserve, so the cash works on the next dip. The
+    // target only governs how a deposit is split; the reserve may hold more.
+    const idle = r2(holdings.USDT);
+    if (!plan.orders.length && idle > 0 && idle < MIN_ORDER_USD) {
+      st.reserve_usd = r2(st.reserve_usd + idle); holdings.USDT = 0;
+      log({ kind: 'reserve_topped_from_idle', usd: idle, reserve_usd: st.reserve_usd });
+      lines.push(`idle cash: ${money(idle)} is under the $${MIN_ORDER_USD} minimum — it joins the dip reserve (now ${money(st.reserve_usd)})`);
+      done.push(`${money(idle)} of idle cash joined the dip reserve`);
+    }
   }
   for (const sk of plan.skipped) lines.push(`${sk.leg}: left alone — ${sk.why}`);
   // ORDERS. Sells first (the plan is sorted so), each measured, each written

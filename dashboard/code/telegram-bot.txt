@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4443 lines.
+# one fetch. 12 files, 4450 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2691,25 +2691,32 @@ export function formatGiggleCard(burns, nowMs = Date.now()) {
 // agent im öffentlichen chat"). Pure, so it can be rendered against a real
 // series without posting.
 // The pool record (agent.brainonbnb.com/lp/pools) on the card: what the same
-// fifty dollars earned per day in each pool the agent could live in, and the
-// pick once every pool has a day of sampled chain. A finding beside the
-// numbers, never a move — the agent does not change pools by itself. Empty
-// when the record cannot be read, so the card never waits for it.
+// fifty dollars earned per day in the best pools of the universe (WBNB with
+// a major, every tier — twelve pools since 2026-09-10), the pool the agent
+// is in, the pick once every pool has a day of sampled chain, and the switch
+// rule's answer. Twelve rows would be the card; three and "here" are the
+// card's share of it. Empty when the record cannot be read, so the card
+// never waits for it.
 export function poolRecordLines(pools) {
   const rows = pools && Array.isArray(pools.pools) ? pools.pools : [];
   if (!rows.length) return [];
   const mark = (label) => (/BOB\//.test(label) ? '🔨' : '🥞');
   const perDay = (x) => (x == null ? 'no fees yet' : '$' + Number(x).toFixed(2) + '/day');
-  const lines = [`🏁 <b>Pool record</b>  <i>(the same $${Number(pools.usd || 50)} in ±${Number(pools.width_pct || 1)}%)</i>`];
-  for (const p of rows) lines.push(`${mark(p.label)} ${p.label}${p.watched ? ' · here' : ''}: ${perDay(p.fees_usd_per_day)}`);
+  const lines = [`🏁 <b>Pool record</b>  <i>(the same $${Number(pools.usd || 50)} in ±${Number(pools.width_pct || 1)}%, ${rows.length} pools)</i>`];
+  const shown = rows.slice(0, 3);
+  const here = rows.find((p) => p.watched);
+  if (here && !shown.includes(here)) shown.push(here);
+  for (const p of shown) lines.push(`${mark(p.label)} ${p.label}${p.watched ? ' · here' : ''}: ${perDay(p.fees_usd_per_day)}`);
   if (pools.pick) {
-    const here = pools.watched && pools.pick.pool === pools.watched.pool;
-    lines.push(here
+    const same = pools.watched && pools.pick.pool === pools.watched.pool;
+    lines.push(same
       ? `📌 Pick: <b>${pools.pick.label}</b>, the pool the agent is in`
-      : `📌 Pick: <b>${pools.pick.label}</b> — a finding for the operator, not a move`);
+      : `📌 Pick: <b>${pools.pick.label}</b>`);
+    if (pools.move && !same) lines.push(pools.move.move ? `➡️ Move: ${pools.move.why}` : `⏸ Stay: ${pools.move.why}`);
   } else {
     const due = pools.pick_due ? ` · due around ${String(pools.pick_due).slice(11, 16)} UTC on ${String(pools.pick_due).slice(5, 10)}` : '';
-    lines.push(`📌 No pick yet: every pool needs 24 h of sampled chain (${rows.map((p) => Number(p.hours || 0).toFixed(0) + ' h').join(' / ')})${due}`);
+    const least = rows.reduce((m, p) => Math.min(m, Number(p.hours || 0)), Infinity);
+    lines.push(`📌 No pick yet: every pool needs 24 h of sampled chain (the least has ${least.toFixed(0)} h)${due}`);
   }
   lines.push('');
   return lines;

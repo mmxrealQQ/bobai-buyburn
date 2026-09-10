@@ -46,7 +46,7 @@ import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration } from './lp-windows.js';
 import { widthClassOf } from '../shared/lp-guards.js';
-import { recordLpPools, readLpPools, noteLpPoolsError, poolVerdict, CANDIDATES as LP_POOL_CANDIDATES } from './lp-pools.js';
+import { recordLpPools, readLpPools, noteLpPoolsError, poolVerdict, switchVerdict, CANDIDATES as LP_POOL_CANDIDATES, UNIVERSE_RULE as LP_UNIVERSE_RULE } from './lp-pools.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
 
@@ -1497,9 +1497,10 @@ ${pageTail}`;
     // data/lp-windows.json so `lp-windows.mjs --sync` can merge it straight
     // in, plus the verdict the decision module would draw from it — computed
     // by the same function, so the two cannot disagree.
-    // THE POOL RECORD: the same fifty dollars replayed in each pool the
-    // operator named, hour by hour, at the width the agent uses. A finding
-    // for the operator; the agent never changes pools on its own.
+    // THE POOL RECORD: the same fifty dollars replayed in each pool of the
+    // universe (WBNB with a major, every tier), hour by hour, at the width
+    // the agent uses — and the switch rule that says whether the best of
+    // them is worth moving to.
     if (path === '/lp/pools') {
       const log = await readLpPools(env);
       if (!log || !Object.keys(log.pools || {}).length) {
@@ -1515,8 +1516,22 @@ ${pageTail}`;
       const q = Number(url.searchParams.get('width'));
       if (q > 0 && q <= 50) width = q;
       const v = poolVerdict(log, width, { watched: env.LP_WATCH_POOL });
+      // The switch rule reads the position's own size and the measured re-set
+      // cost, so the payback is the position's, not fifty dollars'.
+      let positionUsd = null, resetCostUsd = null;
+      try {
+        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+        const price = await bnbUsd().catch(() => null);
+        const valueBnb = Number(rec?.last_check?.steps?.increase?.value_bnb ?? rec?.last?.steps?.increase?.value_bnb);
+        if (price > 0 && valueBnb > 0) positionUsd = Math.round(valueBnb * price * 100) / 100;
+        const m = measuredResetCost(rec, price);
+        if (m && m.usd > 0) resetCostUsd = m.usd;
+      } catch { /* the defaults stand */ }
+      const move = switchVerdict(log, width, { watched: env.LP_WATCH_POOL, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
       const body = {
         ...v,
+        move: { ...move, position_usd: positionUsd, reset_cost_usd: resetCostUsd, acts: false, acts_note: 'the daily run does not relocate yet; when it does, it will act on this verdict and nothing else' },
+        universe: LP_UNIVERSE_RULE,
         since: log.since || null,
         cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
         width_record: 'https://agent.brainonbnb.com/lp/windows',
@@ -1537,7 +1552,8 @@ p.lead{color:#cfc9bd;margin:6px 0 0}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;font-size:.74rem;letter-spacing:.4px;text-transform:uppercase;border-top:0}th:first-child,td:first-child{text-align:left}tr.w td{color:var(--gold)}
 `)}${pageNav({ href: '/lp/windows', label: 'The width record' }, { href: '/lp/pools', label: 'The pool record' }, BUY)}<h1>The pool record</h1>
-<p class="lead">What $${h(v.usd)} would have earned in each pool the operator named, replayed hour by hour with the same code, in a ±${h(v.width_pct)}% range. The agent is in the pool marked gold. Since ${h(when(log.since))}.</p>
+<p class="lead">What $${h(v.usd)} would have earned in each pool of the universe, replayed hour by hour with the same code, in a ±${h(v.width_pct)}% range. The agent is in the pool marked gold. Since ${h(when(log.since))}.</p>
+<div class="card"><b>${h(move.move ? 'Move: ' : 'Stay: ')}${h(move.why)}</b><p class="note">The switch rule: a lead of a quarter over all recorded hours and over the last day alone, paying the move back within three days on this position${positionUsd ? ' ($' + h(positionUsd) + ')' : ''}. ${h(move.acts_note)}</p><p class="note">The universe: ${h(LP_UNIVERSE_RULE)}</p></div>
 <div class="card"><b>${h(v.why.replace(/^[a-z]/, (ch) => ch.toUpperCase()))}</b><p class="note">${h(v.rule)}</p></div>
 <div class="card"><div class="wrap"><table><thead><tr><th>Pool</th><th>Hours</th><th>Windows</th><th>Fees</th><th>Per day</th><th>Swaps</th><th>Quiet</th><th>Held</th><th>Last</th></tr></thead><tbody>
 ${v.pools.map((p) => `<tr${p.watched ? ' class="w"' : ''}><td>${h(p.label)}${p.watched ? ' · the agent is here' : ''}</td><td>${h(p.hours)}</td><td>${h(p.windows)}</td><td>${h(usd(p.fees_usd))}</td><td>${h(usd(p.fees_usd_per_day))}</td><td>${h(p.swaps)}</td><td>${h(p.quiet_windows)}</td><td>${p.held_pct == null ? '—' : h(p.held_pct) + '%'}</td><td>${h(when(p.last))}</td></tr>`).join('')}

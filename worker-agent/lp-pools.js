@@ -2,27 +2,38 @@
 // the pools the DeFi agent could live in, hour by hour.
 //
 // The width record (lp-windows.js) answers "how wide" for the pool the agent
-// is in. This answers the question that comes before it and was answered
-// once, by hand, on 2026-09-08: "which pool". The operator's rule is that the
-// position exists to make a profit and that the choice is CAKE/BNB or BOB/BNB,
-// each against BNB — so those are the candidates, in the fee tiers that hold
-// any liquidity at all. One 37-minute sample that morning put CAKE/BNB 0.01%
-// at twice the fees per working dollar of the 0.05% pool the agent is in,
-// and BOB/BNB's V3 pools at zero swaps. A sample is not a rate. This keeps the
-// samples until they are one.
+// is in. This answers the question that comes before it: "which pool". Until
+// 2026-09-10 the candidates were three pools the operator named by hand
+// (CAKE/BNB in two tiers, BOB/BNB). From 2026-09-10 the operator's rule is
+// "always the best pool BNB Chain has on offer", so the candidates are the
+// universe the rule allows: every PancakeSwap V3 pool on BSC that pairs
+// WBNB with a major — a token whose price is set on many venues and cannot
+// be pulled out from under a position overnight — in every fee tier that
+// holds liquidity. The one-hour screen of 2026-09-10 11:45 UTC put the
+// USDT/WBNB and USDC/WBNB 0.01% pools level with CAKE/WBNB 0.05% at ±1%,
+// the BTCB and ETH pools far behind, and meme pools (BNC4/USDT 0.25%,
+// SPCXB/WBNB) at four to five times the fees — those are out by the rule:
+// the fee rate is the price of the risk that the other token goes to zero
+// or that the whole pool's liquidity leaves with its deployer, and a
+// position quoted in BNB cannot carry a token that is not quoted against
+// anything. Pools without WBNB are out for the same reason from the other
+// side: the record and the series are in BNB, and a USDT/BTCB position's
+// value in BNB says nothing about the position. A sample is not a rate.
+// This keeps the samples until they are one.
 //
-// It reads. It signs nothing, holds no key and moves nothing. The agent does
-// not move pools on its own: a pool change is a withdrawal, two trades and a
-// mint, and a record that says "the other pool paid more this week" is the
-// evidence for a decision, not the decision. The record is served at
-// agent.brainonbnb.com/lp/pools and the verdict is pure, so the hand script
-// can pin its rules.
+// It reads. It signs nothing, holds no key and moves nothing. The verdict
+// names the best pool once every pool has a day of hours; switchVerdict()
+// below says whether that finding is worth acting on (the margin, the
+// payback, the lead holding over the last day). The agent's daily run acts
+// on that rule once the relocate step is wired to it; until then the record
+// says so in words.
 //
-// COST. Every candidate but the watched one is one extra replay per hour on
-// our own MCP endpoint (the watched pool's window is copied from the width
-// record, which measured it minutes earlier in the same tick). Two candidates
-// is 48 replays a day and one KV write an hour.
-
+// COST. Every candidate but the watched one is one replay per hour on our
+// own MCP endpoint (the watched pool's window is copied from the width
+// record, which measured it minutes earlier in the same tick). Twelve
+// candidates is ~290 replays a day and one KV write an hour; the screen of
+// 2026-09-10 measured 1.4-2.8 s per replay, the busiest pool (USDT/WBNB
+// 0.01%, 16k swaps an hour) 2.8 s.
 import { KV_KEY as WINDOWS_KEY, POSITION_USD, measure, windowFromPlan } from './lp-windows.js';
 
 export const KV_KEY = 'lp:pools';
@@ -34,14 +45,26 @@ export const MAX_WINDOWS = 200;
 // record uses before it trusts its earnings test.
 export const MIN_HOURS_TO_PICK = 24;
 
-// The pools the operator named, by address. The watched pool is whichever of
-// these env.LP_WATCH_POOL points at; the others are measured beside it.
+// The universe, by address: WBNB paired with a major, every fee tier with
+// liquidity. The watched pool is whichever of these env.LP_WATCH_POOL points
+// at; the others are measured beside it. BOB/BNB stays as the operator's
+// own token pair (named 2026-09-07), measured, never favoured.
 export const CANDIDATES = [
   { pool: '0xafb2da14056725e3ba3a30dd846b6bbbd7886c56', label: 'CAKE/BNB 0.05%', pair: 'CAKE/BNB', fee_pct: 0.05 },
   { pool: '0x1e213600fa9317feac4ef4087acdf5d0e25d7187', label: 'CAKE/BNB 0.01%', pair: 'CAKE/BNB', fee_pct: 0.01 },
+  { pool: '0x172fcd41e0913e95784454622d1c3724f546f849', label: 'USDT/BNB 0.01%', pair: 'USDT/BNB', fee_pct: 0.01 },
+  { pool: '0x36696169c63e42cd08ce11f5deebbcebae652050', label: 'USDT/BNB 0.05%', pair: 'USDT/BNB', fee_pct: 0.05 },
+  { pool: '0xf2688fb5b81049dfb7703ada5e770543770612c4', label: 'USDC/BNB 0.01%', pair: 'USDC/BNB', fee_pct: 0.01 },
+  { pool: '0x4a3218606af9b4728a9f187e1c1a8c07fbc172a9', label: 'USD1/BNB 0.05%', pair: 'USD1/BNB', fee_pct: 0.05 },
+  { pool: '0x6bbc40579ad1bbd243895ca0acb086bb6300d636', label: 'BTCB/BNB 0.05%', pair: 'BTCB/BNB', fee_pct: 0.05 },
+  { pool: '0x62edaf2a56c9fb55be5f9b1399ac067f6a37013b', label: 'BTCB/BNB 0.01%', pair: 'BTCB/BNB', fee_pct: 0.01 },
+  { pool: '0xd0e226f674bbf064f54ab47f42473ff80db98cba', label: 'ETH/BNB 0.05%', pair: 'ETH/BNB', fee_pct: 0.05 },
+  { pool: '0x62fcb3c1794fb95bd8b1a97f6ad5d8a7e4943a1e', label: 'ETH/BNB 0.01%', pair: 'ETH/BNB', fee_pct: 0.01 },
+  { pool: '0xbffec96e8f3b5058b1817c14e4380758fada01ef', label: 'SOL/BNB 0.05%', pair: 'SOL/BNB', fee_pct: 0.05 },
   { pool: '0x910a64e36da4bec09a0772b11d437869ad07dc4b', label: 'BOB/BNB 0.05%', pair: 'BOB/BNB', fee_pct: 0.05 },
 ];
-
+// The rule the universe is drawn by, in words the page can show.
+export const UNIVERSE_RULE = 'PancakeSwap V3 pools on BNB Chain that pair WBNB with a major (CAKE, USDT, USDC, USD1, BTCB, ETH, SOL) plus the project\'s own BOB/BNB, in every fee tier holding liquidity. Meme pairs are out whatever they pay: the fee is the price of the other token going to zero. Pools without WBNB are out: the record is in BNB.';
 const labelOf = (pool) => (CANDIDATES.find((c) => c.pool === String(pool).toLowerCase()) || {}).label || String(pool);
 
 // One window, the shape the width record uses, trimmed to what a pool
@@ -142,9 +165,67 @@ export function poolVerdict(log, widthPct, { watched = null, minHours = MIN_HOUR
     why: !pools.length ? 'nothing recorded yet'
       : !enough ? `no pick until every pool has ${minHours} h of sampled chain (${toGo.map((p) => `${p.label} ${p.hours} h`).join(', ')}); an hourly window covers about ${Math.round(pools[0].minutes_per_window || 37.5)} minutes, so ${Math.max(...toGo.map((p) => p.runs_to_go))} more hourly runs${pickDue ? `, the pick is due around ${pickDue.slice(11, 16)} UTC on ${pickDue.slice(0, 10)}` : ''}`
       : pick && watchedRow && pick.pool === watchedRow.pool ? `${pick.label}, the pool the agent is in, earned the most per day for $${usd} in ±${widthPct}%`
-      : pick && watchedRow ? `${pick.label} earned $${pick.fees_usd_per_day} a day for $${usd} in ±${widthPct}% against $${watchedRow.fees_usd_per_day} in ${watchedRow.label}, where the agent is. A finding, not a move: the agent never changes pools by itself.`
+      : pick && watchedRow ? `${pick.label} earned $${pick.fees_usd_per_day} a day for $${usd} in ±${widthPct}% against $${watchedRow.fees_usd_per_day} in ${watchedRow.label}, where the agent is. Whether that is worth a move is the switch rule beside this.`
       : `${pick.label} earned the most per day for $${usd} in ±${widthPct}%`,
-    rule: 'Each pool is replayed with the same code over its own recorded hours; fees are what this much capital would have collected inside the width, diluted by the pool\'s own working capital. Nothing is picked until every pool has a day of windows. The pick is evidence for the operator; the agent does not act on it.',
+    rule: 'Each pool is replayed with the same code over its own recorded hours; fees are what this much capital would have collected inside the width, diluted by the pool\'s own working capital. Nothing is picked until every pool has a day of windows. Whether the pick is worth a move is the switch rule (move): a lead of a quarter over all hours and over the last day, paying the move back within three days.',
+  };
+}
+
+// WHETHER THE FINDING IS WORTH ACTING ON. Pure; pinned by scripts/lp-pools.mjs.
+// A pool change is a withdrawal, two trades and a mint — about two re-sets
+// of cost — and a record that says "the other pool paid more this week" is
+// evidence, not a move. The rule that turns it into one:
+//   - every pool has its day of hours (the verdict has a pick),
+//   - the pick is not the pool the agent is in,
+//   - the pick leads the watched pool by SWITCH_MARGIN over all recorded hours
+//     AND over the last day alone — a lead built on one busy hour a week ago
+//     is not a lead,
+//   - the extra fees on the position's own capital pay for the move within
+//     SWITCH_PAYBACK_DAYS.
+// Anything short of that is a "stay", with the reason.
+export const SWITCH_MARGIN = 0.25;
+export const SWITCH_PAYBACK_DAYS = 3;
+export const SWITCH_COST_IN_RESETS = 2;
+export const DEFAULT_RESET_COST_USD = 0.25;
+export function switchVerdict(log, widthPct, { watched = null, positionUsd = POSITION_USD, resetCostUsd = DEFAULT_RESET_COST_USD, now = Date.now(), minHours = MIN_HOURS_TO_PICK } = {}) {
+  const v = poolVerdict(log, widthPct, { watched, minHours });
+  const usd = v.usd;
+  const stay = (why, extra = {}) => ({ move: false, from: v.watched, to: null, why, width_pct: widthPct, ...extra });
+  if (!v.pick) return stay(v.why);
+  if (!v.watched) return stay('the watched pool is not in the record, so there is nothing to compare the pick against');
+  if (v.pick.pool === v.watched.pool) return stay(`${v.pick.label}, the pool the agent is in, earns the most; nothing to move to`);
+  const all = v.pools;
+  const pickAll = all.find((p) => p.pool === v.pick.pool), homeAll = all.find((p) => p.pool === v.watched.pool);
+  // The last day alone, from the same windows.
+  const since = now - 24 * 3600e3;
+  const recentLog = { usd, pools: Object.fromEntries(Object.entries(log.pools || {}).map(([k, rec]) => [k, { ...rec, windows: (rec.windows || []).filter((w) => Date.parse(w.at) >= since) }])) };
+  const recent = poolVerdict(recentLog, widthPct, { watched, minHours: 0 }).pools;
+  const pickRecent = recent.find((p) => p.pool === v.pick.pool), homeRecent = recent.find((p) => p.pool === v.watched.pool);
+  const rate = (p) => (p && typeof p.fees_usd_per_day === 'number' ? p.fees_usd_per_day : null);
+  const leadOf = (a, b) => (b > 0 ? (a || 0) / b - 1 : (a || 0) > 0 ? Infinity : 0);
+  const leadAll = leadOf(rate(pickAll), rate(homeAll));
+  const leadRecent = leadOf(rate(pickRecent), rate(homeRecent));
+  const pct = (x) => (x === Infinity ? 'every dollar' : `${Math.round(x * 100)}%`);
+  const scale = positionUsd / usd;
+  const gainPerDay = Math.max(0, (rate(pickAll) || 0) - (rate(homeAll) || 0)) * scale;
+  const cost = SWITCH_COST_IN_RESETS * resetCostUsd;
+  const payback = gainPerDay > 0 ? cost / gainPerDay : Infinity;
+  const facts = {
+    lead_all_pct: leadAll === Infinity ? null : Math.round(leadAll * 1000) / 10,
+    lead_recent_pct: leadRecent === Infinity ? null : Math.round(leadRecent * 1000) / 10,
+    gain_usd_per_day_on_position: Math.round(gainPerDay * 10000) / 10000,
+    switch_cost_usd: Math.round(cost * 10000) / 10000,
+    payback_days: payback === Infinity ? null : Math.round(payback * 10) / 10,
+    recent_hours: { pick: pickRecent?.hours ?? 0, watched: homeRecent?.hours ?? 0 },
+  };
+  if (leadAll < SWITCH_MARGIN) return stay(`${v.pick.label} leads ${v.watched.label} by ${pct(leadAll)} over ${homeAll.hours} h — under the ${Math.round(SWITCH_MARGIN * 100)}% a move needs`, facts);
+  if (!pickRecent || !homeRecent || !pickRecent.hours || !homeRecent.hours) return stay(`${v.pick.label} leads over all hours but one of the two has no window in the last day; no move on a stale lead`, facts);
+  if (leadRecent < SWITCH_MARGIN) return stay(`${v.pick.label} leads by ${pct(leadAll)} over all hours but only ${pct(leadRecent)} over the last day — a lead that is fading is not acted on`, facts);
+  if (payback > SWITCH_PAYBACK_DAYS) return stay(`${v.pick.label} leads by ${pct(leadAll)}, but $${facts.gain_usd_per_day_on_position} a day more on $${positionUsd} pays the $${facts.switch_cost_usd} move back in ${facts.payback_days} days — over the ${SWITCH_PAYBACK_DAYS} the rule allows`, facts);
+  return {
+    move: true, from: v.watched, to: v.pick, width_pct: widthPct,
+    why: `${v.pick.label} earned ${pct(leadAll)} more than ${v.watched.label} over ${homeAll.hours} h and ${pct(leadRecent)} more over the last day; on $${positionUsd} that is $${facts.gain_usd_per_day_on_position} a day and pays the $${facts.switch_cost_usd} move back in ${facts.payback_days} days`,
+    ...facts,
   };
 }
 
@@ -207,7 +288,7 @@ export async function recordLpPools(env) {
     if (!plan) continue;
     const r = appendPoolWindow(log, c.pool, windowFromPlan(plan, POSITION_USD));
     log = r.log; if (r.added) added.push(c.label);
-    await sleep(3000);
+    await sleep(1500);
   }
 
   // Every run leaves a note, added or not: a pool missing from an hour

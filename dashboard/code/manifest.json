@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4387,
-   "zipBytes": 66207,
-   "txtBytes": 197004,
-   "sha256": "7183914f779cf96d",
+   "lines": 4432,
+   "zipBytes": 67698,
+   "txtBytes": 200839,
+   "sha256": "2393b218919afe1f",
    "reqs": [
     {
      "what": "A bot token",

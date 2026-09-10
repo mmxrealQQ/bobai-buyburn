@@ -41,7 +41,7 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
-import { rebalanceWait, splitFees, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -160,9 +160,10 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     const log = await readLpWindows(env);
     // The width is picked with the cost the agent really pays, once it has
     // paid one: the last re-set's gas from its own record, in today's dollars.
-    let costOpts = {};
+    let costOpts = {}, bnbUsd = null;
     try {
-      const m = measuredResetCost(await readState(env), (await readBnbUsd(pub)).bnbUsd);
+      bnbUsd = (await readBnbUsd(pub)).bnbUsd;
+      const m = measuredResetCost(await readState(env), bnbUsd);
       if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
     } catch { /* the replay's assumption stands */ }
     const record = log ? verdict(log, costOpts) : null;
@@ -173,11 +174,30 @@ export async function agentTick(env, { dry = false, steps = STEPS } = {}) {
     const plan = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct });
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
+    let upgrade = null;
     if (plan.summary.in_range) {
       if (outSince != null) await env.AGENT.delete(OUT_SINCE_KEY);
-      return { ...plan.summary, acted: false, why: plan.no };
+      // In range, nothing forces a re-set — unless the record's pick now
+      // nets enough more on this capital to pay for one within a day. The
+      // daily run alone may upgrade (once a day, by construction).
+      upgrade = widthUpgrade({
+        daily: steps.length === STEPS.length, inRange: true, ticks: plan.summary.ticks,
+        pick: record?.earnings_pick || null, rows: record?.rows || [], hoursOfPrices: record?.hours_of_prices || 0,
+        valueBnb: plan.summary.value_bnb, bnbUsd, resetCostUsd: costOpts.resetCostUsd ?? record?.reset_cost?.usd ?? 0,
+      });
+      if (!upgrade.upgrade) return { ...plan.summary, acted: false, why: plan.no, upgrade: upgrade.why };
+      if (plan.width == null || !plan.ticks) return { ...plan.summary, acted: false, why: plan.no, upgrade: 'the plan carries no new ticks to upgrade into' };
+    } else if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
+    if (upgrade && upgrade.upgrade) {
+      if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
+      if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };
+      try {
+        const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
+        return { ...plan.summary, acted: true, upgrade: upgrade.why, upgraded_from_pct: upgrade.from, upgraded_to_pct: upgrade.to, gain_usd_per_day: upgrade.gain_usd_per_day, ...done };
+      } catch (e) {
+        return { ...plan.summary, acted: true, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      }
     }
-    if (plan.no) return { ...plan.summary, acted: false, outside_since: outSinceRaw || null, why: plan.no };
     const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
     const waitNote = { wait_h: waitH, wait_basis: record?.delay_test?.wait_basis || 'set' };
     if (!plan.resume) {

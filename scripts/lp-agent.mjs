@@ -35,6 +35,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, rebalanceWait, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
+  widthUpgrade, widthClassOf,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines } from '../shared/lp-flow.js';
 
@@ -249,6 +250,33 @@ if (SELF) {
     [{ ...resume, width: null, hoursOfPrices: 6 }, 'no width has earned its re-sets yet'],
     [{ ...resume, positions: 1 }, 'a position exists — that is a re-set, and its in-range check applies'],
   ]) check(why, refuseRebalance(state), state.positions === 1 ? false : true);
+  console.log('width upgrade (in range, the record names a better width)');
+  // 380 ticks is ±1.9%: the record's 2%. 190 ticks: 1%. 40 ticks: 0.25%.
+  check('380 ticks read as the 2% class', widthClassOf([-57990, -57610]) === 2 ? null : `got ${widthClassOf([-57990, -57610])}`, false);
+  check('190 ticks read as the 1% class', widthClassOf([-57800, -57610]) === 1 ? null : `got ${widthClassOf([-57800, -57610])}`, false);
+  check('no ticks: no class', widthClassOf(null) === null ? null : 'got a class', false);
+  const rows = [
+    { width: 1, earnings: { net_usd_per_day: 0.6983 } },
+    { width: 2, earnings: { net_usd_per_day: 0.6111 } },
+    { width: 'full', earnings: null },
+  ];
+  // The live case of 2026-09-10: $154 at 2%, the record picks 1%: +$0.27 a day against a $0.10 re-set.
+  const up = { daily: true, inRange: true, ticks: [-57990, -57610], pick: rows[0], rows, hoursOfPrices: 182, valueBnb: 0.2127, bnbUsd: 723.6, resetCostUsd: 0.1 };
+  const u = widthUpgrade(up);
+  check('the daily run upgrades 2% → 1% when the gain pays the re-set within a day', u.upgrade ? null : u.why, false);
+  check('the upgrade names from, to and the gain', u.from === 2 && u.to === 1 && u.gain_usd_per_day > 0.2 && u.gain_usd_per_day < 0.3 ? null : JSON.stringify(u), false);
+  for (const [state, why] of [
+    [{ ...up, daily: false }, 'the hourly check never upgrades'],
+    [{ ...up, inRange: false }, 'outside the range it is a re-set, not an upgrade'],
+    [{ ...up, ticks: null }, 'no ticks, no class'],
+    [{ ...up, pick: null }, 'no pick, nothing to upgrade to'],
+    [{ ...up, hoursOfPrices: 12 }, 'under a day of prices'],
+    [{ ...up, ticks: [-57800, -57610] }, 'already at the picked width'],
+    [{ ...up, rows: [rows[0]] }, 'the record has no earnings for the current width'],
+    [{ ...up, valueBnb: 0 }, 'no dollar value'],
+    [{ ...up, rows: [rows[0], { width: 2, earnings: { net_usd_per_day: 0.66 } }] }, 'a gain under a tenth of the current net is noise'],
+    [{ ...up, resetCostUsd: 0.5 }, 'a gain under the re-set cost would not pay back within a day'],
+  ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
   console.log('rebalance wait');
   const H = 36e5, now = Date.parse('2026-09-04T06:50:00Z');
   check('first hour outside: waits', rebalanceWait(null, now), true);

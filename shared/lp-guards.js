@@ -206,6 +206,56 @@ export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
   return null;
 }
 
+// A width upgrade: the price is inside the range, so nothing forces a re-set,
+// but the window record's earnings test now names a different width that
+// nets more per day. Until 2026-09-10 the agent only took the new width when
+// the price left the old range — a position minted at 2% sat for days
+// while the record said 1% earned a seventh more. The rule: once a day, in
+// range, with a day of prices on record, re-set into the picked width when
+// the extra it nets on this position's capital clears the re-set's cost
+// within a day AND is more than a tenth of what the current width nets —
+// the same margin the wait pick uses, so noise between two close widths
+// never pays for a re-set. At most one such re-set a day, bounded by the
+// daily run; the hourly checks never upgrade.
+export const WIDTH_UPGRADE_MARGIN = 0.1;
+export const RECORD_WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
+
+// The width class of a position from its ticks: half its span, in percent,
+// snapped to the record's width nearest on a log scale (a 380-tick range is
+// ±1.9%, the record's 2%). Null without ticks.
+export function widthClassOf(ticks) {
+  if (!Array.isArray(ticks) || ticks.length !== 2 || !(ticks[1] > ticks[0])) return null;
+  const half = (Math.pow(1.0001, (ticks[1] - ticks[0]) / 2) - 1) * 100;
+  return RECORD_WIDTHS.slice().sort((a, b) => Math.abs(Math.log(a / half)) - Math.abs(Math.log(b / half)))[0];
+}
+
+// state: { daily, inRange, ticks, pick: {width, earnings:{net_usd_per_day}},
+//          rows: the record's rows, hoursOfPrices, valueBnb, bnbUsd, resetCostUsd }
+// Returns { upgrade: true, why, from, to, gain_usd_per_day } or { upgrade: false, why }.
+export function widthUpgrade(state) {
+  const no = (why) => ({ upgrade: false, why });
+  if (!state.daily) return no('the hourly check does not upgrade a width — the daily run does, once');
+  if (!state.inRange) return no('the price is outside the range — that is a re-set, not an upgrade');
+  const from = widthClassOf(state.ticks);
+  if (from == null) return no('the position names no ticks');
+  const pick = state.pick;
+  if (!pick || pick.earnings == null || !(pick.earnings.net_usd_per_day > 0)) return no('the record names no width that earns');
+  if (!(state.hoursOfPrices >= MIN_HOURS_FOR_EARNINGS)) return no(`${state.hoursOfPrices || 0} h of prices on record, ${MIN_HOURS_FOR_EARNINGS} h needed before a width may be upgraded`);
+  if (pick.width === from) return no(`the position is at the picked width (${from}%)`);
+  const row = (state.rows || []).find((r) => r.width === from);
+  const nowNet = row && row.earnings ? Number(row.earnings.net_usd_per_day) : null;
+  if (nowNet == null) return no(`the record has no earnings for the position's width (${from}%)`);
+  const usd = Number(state.valueBnb || 0) * Number(state.bnbUsd || 0);
+  if (!(usd > 0)) return no('the position has no dollar value to scale the record by');
+  const scale = usd / 50;
+  const gain = (Number(pick.earnings.net_usd_per_day) - nowNet) * scale;
+  const cost = Number(state.resetCostUsd || 0);
+  const r4 = (x) => Math.round(x * 1e4) / 1e4;
+  if (!(gain > nowNet * scale * WIDTH_UPGRADE_MARGIN)) return no(`${pick.width}% nets $${r4(gain)} a day more than ${from}% on $${usd.toFixed(2)} — under a tenth of what ${from}% nets, too close to pay for a re-set`);
+  if (!(gain >= cost)) return no(`${pick.width}% nets $${r4(gain)} a day more than ${from}% on $${usd.toFixed(2)}, but a re-set costs $${r4(cost)} — it would not pay back within a day`);
+  return { upgrade: true, from, to: pick.width, gain_usd_per_day: r4(gain), why: `in range at ${from}%, but ${pick.width}% netted $${r4(gain)} a day more on $${usd.toFixed(2)} over ${state.hoursOfPrices} h of prices, and a re-set costs $${r4(cost)} — upgrading the width` };
+}
+
 // state: { positions, spendableBnb, inRange }
 // spendableBnb is what the wallet holds above the reserve and the gas budget.
 export function refuseIncrease(state) {

@@ -9,6 +9,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | script | answers |
 |---|---|
 | `health.mjs` | are all systems alive (bots, agents, site, gas) — one command |
+| `smoke-whale.mjs` | the whale tracker's quiet floor ($5), retire rule (empty 7 daily snapshots) and one-screen recap, 27 pins both ways; `--render` shows the recap and the small-wallet line from the live KV |
 | `smoke-agent-surface.mjs` | does everything offered to a machine work end to end |
 | `site-audit.mjs` · `site-fix.mjs` | every page against one checklist; the fixer applies what the audit found |
 | `layout-audit.mjs` | does every page render at every width (real browser) |
@@ -77,18 +78,6 @@ Run in the order the header of `erc8004-publish.mjs` gives.
 | `advantage-report.mjs` · `advantage-publish.mjs` | the Agent Advantage Report, measured then rendered |
 | `altana-session.mjs` | the agent's spending session in the Altana KeyStore |
 | `dashboard-check/submission-screens.mjs` | screenshots for the hackathon submission, to files only |
-
-## The trading agent (private — kept out of the published mirror)
-Runs on the trading server through the Binance Agentic Wallet; runbook in `docs/trading-agent.md`.
-
-| Script | What it does |
-|---|---|
-| `trader-fetch.mjs` | hourly closes for BNB, CAKE, BOB, BOBAI in USD (Binance spot, GeckoTerminal), paged, into `data/trader/` |
-| `trader.mjs` | `--self-test` (50 checks) · `--backtest` (parameters chosen on 60 %, judged on the unseen 40 %, writes picks.json) · `--robust` (four splits, costs ×1.5) · `--plan` · `--status` |
-| `trader-live.mjs` | the live agent: `--bootstrap`, `--tick [--confirm]`, `--loop --confirm` (the service), `--refit`, `--state`, `--notify-test`; reports to the operator's private Telegram chat |
-| `smoke-whale.mjs` | the whale tracker's quiet floor ($5), retire rule (empty 7 daily snapshots) and one-screen recap, 27 pins both ways; `--render` shows the recap and the small-wallet line from the live KV |
-| `trader-slow.mjs` | the slow machine measured: allocation × cadence on daily closes, chosen on 60 %, judged on the unseen 40 %, four splits, costs ×1.5; `--self-test` (12 pins) |
-| `trader-sleeve.mjs` | the cash sleeve measured, not built: 25 % USDT buying X %-dips under the 7-day mean, back to USDT at the mean; same discipline; `--reserve 50` measures the dip reserve (live since 10.9.); `--self-test` (17 pins) |
 
 ## Left over
 `lp-origin-scan.js` (whose LP is which, for the manual liquidity adds),

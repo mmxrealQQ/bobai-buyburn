@@ -68,6 +68,9 @@ const ASSET_TREES = [
 // money through his Binance wallet and is not part of what the site offers).
 // Listed one by one, like the asset trees, so the omission is an intent and
 // the build prints it.
+// The trading agent was retired on 2026-09-10 (its wallet emptied into the
+// DeFi agent, its server deleted); the rule stays so nothing from its
+// history ever lands in the mirror.
 const PRIVATE_TREES = [
   'scripts/trader',         // trader.mjs, trader-live.mjs, trader-fetch.mjs
   'shared/trader-core.js',

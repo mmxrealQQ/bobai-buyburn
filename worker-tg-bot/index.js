@@ -5,9 +5,10 @@
 let TG_BOT_TOKEN = '';
 let TG_INTERNAL_CHAT_ID = '';
 // The operator's own private chat with this bot (a private chat's id is the
-// user's id). Target 'operator' on /broadcast goes here and nowhere else —
-// the trading agent's reports (2026-09-08: "nur hier für mich und niemand
-// anderem"). The same id guards the reference-media pickup below.
+// user's id). Target 'operator' on /broadcast goes here and nowhere else
+// (2026-09-08: "nur hier für mich und niemand anderem"; the trading agent
+// that used it was retired 2026-09-10). The same id guards the
+// reference-media pickup below.
 const OPERATOR_CHAT_ID = '7334850816';
 const TG_CHAT_ID = '-1003791636543';
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
@@ -3299,7 +3300,7 @@ export default {
     {
       const tick = new Date(event && event.scheduledTime ? event.scheduledTime : Date.now());
       // 05:00 UTC since 2026-09-09 — the operator's hour for the public LP
-      // card (the trader's private card goes at 04:00, the whale recap at 06:00).
+      // card (the whale recap goes at 06:00).
       if (tick.getUTCMinutes() % 10 === 5 && tick.getUTCHours() === 5) {
         console.log('[LP REPORT] tick ' + tick.toISOString());
         try { await postLpDailyReport(env); }

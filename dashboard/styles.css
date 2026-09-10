@@ -95,11 +95,11 @@
        three unstyled links, because the styling lived on the pages that
        happened to be written first. A shared shell that is not in the shared
        stylesheet is not a shell. */
-    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 0;color:var(--gold);
-      font-size:12px;font-weight:600;letter-spacing:.3px;white-space:nowrap;
-      text-decoration:underline;text-decoration-color:rgba(240,185,11,.32);text-underline-offset:3px;text-decoration-thickness:1px;
-      transition:transform .2s ease,text-decoration-color .2s}
-    .back-btn:hover{transform:translateX(-2px);text-decoration-color:var(--gold)}
+    .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+      background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);color:var(--gold);
+      font-size:12px;font-weight:600;letter-spacing:.3px;white-space:nowrap;text-decoration:none;
+      transition:transform .2s ease,background .2s,border-color .2s}
+    .back-btn:hover{transform:translateX(-2px);background:rgba(240,185,11,.14);border-color:rgba(240,185,11,.4)}
     .back-btn span{font-size:14px;line-height:1}
     .brand-link{font-family:'Space Grotesk';font-weight:700;font-size:14px;letter-spacing:.5px;
       color:var(--gold);white-space:nowrap;text-decoration:none}

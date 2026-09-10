@@ -591,7 +591,7 @@ function lpFeesWhere(p) {
   parts.push(`${f5(p.fees_owed_bnb)} still owed by the position`);
   return parts.join(', ');
 }
-function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals = null } = {}) {
+function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals = null, value_now_bnb = null } = {}) {
   if (!series.length) return null;
   const first = series[0], last0 = series[series.length - 1];
   // The totals (fees, buyback share, kept, swept) are the record's own
@@ -608,7 +608,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     points: series.length,
     since: first.at,
     days_covered: days,
-    value_bnb: f0 && f1 ? { start: f0.value_bnb, now: f1.value_bnb, added_by_hand_bnb: +(Number(f1.capital_added_total_bnb) || 0).toFixed(6), change_pct: f0.value_bnb ? +(((f1.value_bnb - (Number(f1.capital_added_total_bnb) || 0) - f0.value_bnb) / f0.value_bnb) * 100).toFixed(2) : null } : null,
+    value_bnb: f0 && f1 ? { start: f0.value_bnb, now: value_now_bnb != null ? value_now_bnb : f1.value_bnb, added_by_hand_bnb: +(Number(f1.capital_added_total_bnb) || 0).toFixed(6), change_pct: f0.value_bnb ? +((((value_now_bnb != null ? value_now_bnb : f1.value_bnb) - (Number(f1.capital_added_total_bnb) || 0) - f0.value_bnb) / f0.value_bnb) * 100).toFixed(2) : null } : null,
     // Since 2026-09-09 the share buys BOBAI the agent holds in its own wallet;
     // the old key stays one more release for readers of the series.
     fees_into_bobai_bnb: last.bobai_spent_total_bnb ?? last.forwarded_total_bnb,
@@ -1009,14 +1009,27 @@ async function buildLpSeries(env) {
       // Fees owed now, from the chain: the last point is often a re-set, whose
       // own figure is zero by construction, while the liquidity page shows the
       // live figure two lines below the profit — the two must agree.
-      let owed_now_bnb = null;
+      // ... and the value now, from the same look. The totals are live (the
+      // record's own flow), so the value they are set against must be live
+      // too: at 12:24 UTC on 2026-09-10 the deposit watch had just put 0.2963
+      // BNB in, the flow counted it, the last point (05:40) did not, and the
+      // summary read a profit of −50%. The position looked at is the one the
+      // record names now, not the last point's — that one may be burned.
+      let owed_now_bnb = null, value_now_bnb = null;
       const lastPt = series[series.length - 1];
-      if (lastPt && lastPt.position) {
-        try { const lk = await lpPositionLook({ position: String(lastPt.position) }); if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent); } catch { owed_now_bnb = null; }
+      const recNow = recRaw ? JSON.parse(recRaw) : null;
+      const chk = recNow && recNow.last_check && recNow.last && Date.parse(recNow.last_check.at) >= Date.parse(recNow.last.at) ? recNow.last_check : recNow && recNow.last;
+      const livePos = (chk && chk.steps && ((chk.steps.increase && chk.steps.increase.position) || (chk.steps.rebalance && chk.steps.rebalance.new_position))) || (lastPt && lastPt.position) || null;
+      if (livePos) {
+        try {
+          const lk = await lpPositionLook({ position: String(livePos) });
+          if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent);
+          if (lk && lk.value_bnb != null && Number(lk.value_bnb) > 0) value_now_bnb = +Number(lk.value_bnb).toFixed(6);
+        } catch { owed_now_bnb = null; value_now_bnb = null; }
       }
       return {
         what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already sent to the buyback bot and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
-        summary: lpSeriesSummary(withCapital, { gas_bnb, owed_now_bnb, totals }),
+        summary: lpSeriesSummary(withCapital, { gas_bnb, owed_now_bnb, totals, value_now_bnb }),
         points: withCapital,
         record: 'https://agent.brainonbnb.com/lp/agent',
         cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',

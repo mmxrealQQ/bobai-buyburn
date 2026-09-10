@@ -1,0 +1,93 @@
+// The whale tracker's two rules and its recap, pinned in both directions.
+//
+//   node scripts/smoke-whale.mjs            the pins, no network
+//   node scripts/smoke-whale.mjs --render   plus the recap and the small-wallet
+//                                           line rendered from the live KV
+//                                           (needs wrangler, reads only)
+//
+// Pure functions are imported straight from the worker; nothing is posted.
+import { execSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const worker = await import(pathToFileURL(path.join(ROOT, 'worker-tg-bot', 'index.js')).href);
+const { isQuietMove, walletsEmptyFor, renderDailyRecap, renderSmallWalletsLine } = worker;
+
+const fails = [];
+const ok = (cond, what) => { if (!cond) fails.push(what); };
+const DAY = 86_400_000;
+
+// Quiet floor: under $5 on the wallet's own trades and transfers in, never on
+// a transfer out (pre-funding), never without a price, never at $5 or above.
+ok(isQuietMove('BUY', 0.61) === true, 'a $0.61 buy is quiet');
+ok(isQuietMove('SELL', 4.99) === true, 'a $4.99 sell is quiet');
+ok(isQuietMove('INTERNAL_T', 1) === true, 'a $1 internal move is quiet');
+ok(isQuietMove('BUY', 5) === false, 'a $5 buy posts');
+ok(isQuietMove('BUY', 0) === false, 'a buy without a price posts');
+ok(isQuietMove('TRANSFER_OUT', 0.1) === false, 'dust to a fresh wallet posts (pre-funding)');
+ok(isQuietMove('NEW_WHALE', 1) === false && isQuietMove('EX_WHALE', 1) === false, 'status changes are never quiet');
+
+// Retire rule: zero in each of the last seven snapshots, nothing shorter.
+const snap = (i, wallets) => ({ date: `d${i}`, ts: i * DAY, total: 0, wallets });
+const A = '0x' + 'a'.repeat(40), B = '0x' + 'b'.repeat(40), C = '0x' + 'c'.repeat(40);
+const seven = Array.from({ length: 7 }, (_, i) => snap(i, { [A]: 0, [B]: 5, [C]: i < 6 ? 0 : 1 }));
+ok(walletsEmptyFor(seven).join() === A, `only the wallet empty in all seven is retired, got ${walletsEmptyFor(seven).join()}`);
+ok(walletsEmptyFor(seven.slice(1)).length === 0, 'six snapshots are not seven');
+const fresh = [...seven.slice(0, 6), snap(6, { [A]: 0, [B]: 5 })];
+ok(walletsEmptyFor(fresh).join() === A, 'a wallet missing from an older snapshot is not retired');
+const newcomer = [...seven.slice(0, 6), snap(6, { [A]: 0, [B]: 5, ['0x' + 'd'.repeat(40)]: 0 })];
+ok(walletsEmptyFor(newcomer).join() === A, 'a wallet that joined empty today waits its seven days');
+ok(walletsEmptyFor([]).length === 0 && walletsEmptyFor(null).length === 0, 'no snapshots, nothing retired');
+
+// Recap: holdings first, quiet count, retired line; a quiet day says so.
+const now = Date.now();
+const ev = [
+  { kind: 'BUY', from: '0x6ead', to: A, amount: 5000, usdValue: 0.7, txHash: '0x1', ts: now - 3600e3, quiet: true },
+  { kind: 'BUY', from: '0x6ead', to: B, amount: 2e6, usdValue: 280, txHash: '0x2', ts: now - 7200e3 },
+  { kind: 'SELL', from: C, to: '0x6ead', amount: 5e5, usdValue: 70, txHash: '0x3', ts: now - 1800e3 },
+  { kind: 'BUY', from: '0x6ead', to: B, amount: 9e5, usdValue: 120, txHash: '0x4', ts: now - 2 * DAY },
+];
+const holdings = { tracked_total_bobai: 485430632, percent_of_total_supply: 48.54, wallets_tracked: 26, wallets_at_or_above_threshold: 19, wallets_below_threshold: 7, wallets_empty: 0, change_7d: { window_days: 7, bobai_change: 6533719, percent_change: 1.36 } };
+const text = renderDailyRecap(ev, [A, B, C], 0.00014, true, holdings, ['0x' + 'f'.repeat(40)]);
+const plain = text.replace(/<[^>]+>/g, '');
+ok(plain.split('\n')[1].startsWith('💼 485.43M BOBAI'), `holdings are the second line: ${plain.split('\n')[1]}`);
+ok(/7d \+6\.53M \(\+1\.36%\)/.test(plain), 'the 7d trend sits on the holdings line');
+ok(/🐋 3 wallets · 19 hold 10M\+ · 7 below$/m.test(plain), `the wallet split omits a zero "empty": ${plain.split('\n')[2]}`);
+ok(/24h net 🟢 \+\$210\.70 · 3 moves · accumulating/.test(plain), `net and count from the last 24 h only: ${plain.split('\n')[4]}`);
+ok(/🟢 2 buys \+\$280\.70/.test(plain) && /🔴 1 sell −\$70\.00/.test(plain), 'one line per kind, plural only when plural');
+ok(!/burn|cascade|internal/.test(plain), 'kinds with no move are not listed');
+ok(/🔕 1 under \$5 — logged, not alerted/.test(plain), 'the quiet count is on the recap');
+ok(/🏆 Top moves\n1\. 🟢/.test(plain) && !/\$0\.70\)/.test(plain), 'top moves follow the flow and skip the quiet ones');
+ok(/🧹 Retired 1 wallet empty for 7 days: 0xffff/.test(plain), 'the recap names what it retired');
+ok(text.length < 900, `one screen: ${text.length} chars`);
+const quietDay = renderDailyRecap([], [A], null, true, holdings, []).replace(/<[^>]+>/g, '');
+ok(/😴 No whale move in the last 24 hours/.test(quietDay) && /💼 485\.43M/.test(quietDay), 'a quiet day still shows the holdings');
+ok(!/🧹/.test(quietDay), 'no retired line when nothing was retired');
+const noHold = renderDailyRecap([], [A, B], null, false).replace(/<[^>]+>/g, '');
+ok(/Whale Watcher · Last 24h\n🐋 2 wallets tracked/.test(noHold), '/whales24h without a snapshot says only the count');
+
+// The small-wallet line: address, balance in M/K, a dot for the active ones.
+const bal = new Map([[A, 4_200_000], [B, 0], [C, 12_500]]);
+const line = renderSmallWalletsLine([A, B, C], bal, new Set([A])).replace(/<[^>]+>/g, '');
+ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `small wallets on one line, largest first, got: ${line}`);
+
+if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
+console.log('smoke-whale ok: 27 pins');
+
+// ---------------------------------------------------------------- --render
+if (process.argv.includes('--render')) {
+  const NS = '13bc5a0a65c34fe1839e806ae2d5e3fa';
+  const kv = (key) => JSON.parse(execSync(`npx wrangler kv key get --remote --namespace-id ${NS} ${key}`, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+  const [events, snaps, tracked] = [kv('whale_events'), kv('whale_snapshots'), kv('tracked_wallets')];
+  const { snapshotHoldings } = worker;
+  const retired = walletsEmptyFor(snaps).filter((a) => tracked.includes(a));
+  const h = snapshotHoldings(snaps);
+  if (h && retired.length) { h.wallets_tracked -= retired.length; h.wallets_empty = Math.max(0, h.wallets_empty - retired.length); }
+  console.log(`\nlive: ${events.length} events, ${snaps.length} snapshots, ${tracked.length} tracked, ${retired.length} would retire at the next recap`);
+  console.log('\n' + renderDailyRecap(events, tracked.filter((a) => !retired.includes(a)), null, true, h, retired).replace(/<[^>]+>/g, ''));
+  const last = snaps[snaps.length - 1];
+  const balByAddr = new Map(Object.entries(last.wallets));
+  const small = tracked.filter((a) => (balByAddr.get(a) || 0) < 10_000_000 && !retired.includes(a));
+  console.log('\n' + renderSmallWalletsLine(small, balByAddr).replace(/<[^>]+>/g, ''));
+}

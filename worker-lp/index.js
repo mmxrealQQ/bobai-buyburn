@@ -257,6 +257,15 @@ function whyOf(steps) {
 // looked at them. A full run replaces the daily record as before.
 async function record(env, entry, partial = false) {
   const st = await readState(env);
+  // A dry run reads and decides but signs nothing, and it is not the day's
+  // run: on 2026-09-10 a hand-triggered dry run at 04:41 replaced the 04:23
+  // daily record, the series had no point for it, and the 05:00 card was
+  // held back. A dry run is kept as `last_dry` and touches nothing else.
+  if (entry.dry) {
+    st.last_dry = entry;
+    await env.AGENT.put(KV_KEY, JSON.stringify(st));
+    return entry;
+  }
   // Every real action and every error is kept; quiet days are summarised as
   // the last check so the history is a history of what happened, not of the
   // cron firing.

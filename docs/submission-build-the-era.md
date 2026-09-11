@@ -237,7 +237,7 @@ nearly all the pair's price and saying otherwise would be spin.
   by the operator's token (401 without it); the session granted 18:12 UTC was
   revoked with it at 18:13 UTC (tx 0x054ea9a0…), recorded on the page; the
   admin (root) key 0xc11b… is named as such and cannot be revoked (KeyStore
-  rule); current session 0x86fa… granted 18:28 UTC, expires 2026-09-14.
+  rule); current sessions: 0x86fa… granted 2026-09-07 18:28 UTC, expires 2026-09-14, and 0x12db… granted 2026-09-11 04:54 UTC, expires 2026-09-25 (tx 0x8aa9f5b9…, so /session shows a valid session through the end of judging); the KeyStore reads 3 of 4 registered keys valid.
 
 ## The repo link
 
@@ -314,9 +314,9 @@ one card of nine lines on the page and in the Telegram bot (profit first,
 put in → worth, the position and its width, the $BOBAI held, price / fees /
 gas with the re-sets' share, the day in counts, the next step in one
 sentence). Position #7408849, ±2%, in range, 0.6045 BNB; the Altana session
-0x86fa… is valid and expires 2026-09-14 — re-grant before then with
-`node scripts/altana-session.mjs --grant --days 14 --confirm` (flag added
-today) so /session shows a valid session through the end of judging.
+0x86fa… expires 2026-09-14, so a second session 0x12db… was granted at 04:54
+UTC for 14 days (tx 0x8aa9f5b9…, `--days` flag added today); /session reads
+3 of 4 registered keys valid through the end of judging.
 
 Refresh run 2026-09-09 ~06:30 UTC: every checker in scripts/README.md green
 (health 49/49 with the one known gas floor of the creator wallet, smoke

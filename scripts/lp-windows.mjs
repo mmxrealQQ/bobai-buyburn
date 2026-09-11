@@ -34,7 +34,7 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, MAX_WINDOWS, calibration } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, MAX_WINDOWS, calibration } from '../worker-agent/lp-windows.js';
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
@@ -280,6 +280,23 @@ if (SELF_TEST) {
   const mcs = measuredResetCost(recSwap, 700);
   t('the measured cost is gas plus the swap fee ($0.14 + $0.07 = $0.21)', mcs && mcs.usd === 0.21 && mcs.swap_fee_bnb === 0.0001 && mcs.gas_bnb === 0.0002);
   t('… and the verdict charges that sum', verdict(dayFlat, { resetCostUsd: mcs.usd }).reset_cost.usd === 0.21);
+  t('a re-set that measured its impact is charged it too ($0.21 + $0.21)', (() => { const r = { history: [{ at: '2026-09-11T02:50:00Z', steps: { rebalance: { acted: true, gas_bnb: 0.0002, swap: { fee_bnb: 0.0001, impact_bnb: 0.0003 }, txs: new Array(5) } } }] }; const m = measuredResetCost(r, 700); return m.usd === 0.42 && m.impact_bnb === 0.0003 && /measured by the swap/.test(m.impact_basis); })());
+  t('a re-set without an impact field is charged none and says so', mcs.impact_bnb === null && /not measured/.test(mcs.impact_basis));
+  // The re-sets' own losses, from ticks: a ±1% range minted at tick 0 and left
+  // at tick −200 (−2.0%) lost 0.76% against holding; execution is gas + fee + impact.
+  const recLoss = { history: [
+    { at: '2026-09-10T16:50:00Z', steps: { rebalance: { acted: true, ticks: [-100, 100], tick: -200, value_bnb: 0.5, fees_folded_bnb: 0.001, width_pct: 1, gas_bnb: 0.0001, swap: { fee_bnb: 0.00015, impact_bnb: 0.0002 } } } },
+    { at: '2026-09-11T02:50:00Z', steps: { rebalance: { acted: true, ticks: [-200, 200], tick: 0, value_bnb: 0.6, width_pct: 2, gas_bnb: 0.0001, trade: 'buy the other side with 0.3 WBNB' } } },
+    { at: '2026-09-11T03:50:00Z', steps: { rebalance: { acted: true, error: 'reverted', ticks: [-200, 200], tick: 0, value_bnb: 0.6, gas_bnb: 0.0001 } } },
+    { at: '2026-09-11T04:50:00Z', steps: { rebalance: { acted: false, ticks: [-200, 200], tick: 0 } } },
+  ] };
+  const rl = resetLosses(recLoss, { bnbUsd: 700 });
+  t('only re-sets that acted and did not error count, newest first', rl.resets === 2 && rl.rows[0].at === '2026-09-11T02:50:00Z');
+  t('a ±1% range left 2% below its middle lost about 0.76% of the position against holding', Math.abs(rl.rows[1].lost_to_price_pct - 0.758) < 0.01 && Math.abs(rl.rows[1].lost_to_price_bnb - 0.501 * 0.00758) < 0.0001 && rl.rows[1].price_move_pct === -1.98);
+  t('a range left at its own middle lost nothing', rl.rows[0].lost_to_price_bnb === 0 && rl.rows[0].price_move_pct === 0);
+  t('execution is gas plus fee plus the measured impact, or the fee estimated from the trade', Math.abs(rl.rows[1].execution_bnb - 0.00045) < 1e-9 && rl.rows[1].impact_bnb === 0.0002 && rl.rows[0].impact_bnb === null && Math.abs(rl.rows[0].execution_bnb - (0.0001 + 0.3 * 0.0025)) < 1e-9);
+  t('the totals add up and the dollars follow the BNB price', Math.abs(rl.lost_to_price_bnb - rl.rows[1].lost_to_price_bnb) < 1e-9 && rl.impact_measured === 1 && rl.rows[1].lost_to_price_usd === Math.round(rl.rows[1].lost_to_price_bnb * 700 * 100) / 100);
+  t('no re-sets: an empty table, zero totals', resetLosses({ history: [] }).resets === 0 && resetLosses(null).lost_to_price_bnb === 0);
   t('the verdict charges the measured cost when given one', verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.usd === 0.14 && /measured/.test(verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.basis));
   t('… and says the cost is assumed when not', /assumed/.test(verdict(dayFlat).reset_cost.basis));
 

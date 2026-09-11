@@ -23,7 +23,7 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -234,11 +234,62 @@ export function measuredResetCost(agentRecord, bnbUsd) {
     const rb = hist[i]?.steps?.rebalance;
     if (rb && rb.acted && !rb.error && Number(rb.gas_bnb) > 0 && Number(bnbUsd) > 0) {
       const fee = resetSwapFee(rb);
-      const bnb = Number(rb.gas_bnb) + fee.bnb;
-      return { usd: Math.round(bnb * Number(bnbUsd) * 100) / 100, bnb: Number(bnb.toFixed(8)), gas_bnb: Number(rb.gas_bnb), swap_fee_bnb: fee.bnb, swap_basis: fee.basis, at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null };
+      // The trade's price impact, measured by the swap itself since
+      // 2026-09-11 (swap.impact_bnb); older re-sets carry none and are
+      // charged none — the record says which.
+      const impact = rb.swap && Number(rb.swap.impact_bnb) >= 0 ? Number(rb.swap.impact_bnb) : null;
+      const bnb = Number(rb.gas_bnb) + fee.bnb + (impact || 0);
+      return {
+        usd: Math.round(bnb * Number(bnbUsd) * 100) / 100, bnb: Number(bnb.toFixed(8)),
+        gas_bnb: Number(rb.gas_bnb), swap_fee_bnb: fee.bnb, swap_basis: fee.basis,
+        impact_bnb: impact, impact_basis: impact == null ? 'not measured by this re-set (before 2026-09-11)' : 'measured by the swap against the pool\'s mid price',
+        at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null,
+      };
     }
   }
   return null;
+}
+
+// WHAT EACH RE-SET COST, from the record's own ticks. A re-set's range was
+// minted centred on a price (the middle of its ticks) and left at another
+// (the tick the re-set saw); rangeValue says exactly what that range then
+// held against the amounts it was minted with — the loss against holding,
+// realised the moment the re-set trades. Beside it the execution: gas, the
+// swap fee and, since 2026-09-11, the measured impact. Nothing here is a
+// replay; every number comes from a re-set that happened. Newest first.
+export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
+  const hist = Array.isArray(agentRecord?.history) ? agentRecord.history : [];
+  const out = [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    const rb = hist[i]?.steps?.rebalance;
+    if (!rb || !rb.acted || rb.error || !Array.isArray(rb.ticks) || rb.ticks.length !== 2 || rb.tick == null) continue;
+    const width = widthClassOf(rb.ticks);
+    if (width == null) continue;
+    const centre = (rb.ticks[0] + rb.ticks[1]) / 2;
+    const pMint = Math.pow(1.0001, centre), pNow = Math.pow(1.0001, Number(rb.tick));
+    const { loss } = rangeValue(pMint, width, pNow);
+    const base = Number(rb.value_bnb || 0) + Number(rb.fees_folded_bnb || 0);
+    const fee = resetSwapFee(rb);
+    const impact = rb.swap && Number(rb.swap.impact_bnb) >= 0 ? Number(rb.swap.impact_bnb) : null;
+    const execution = Number(rb.gas_bnb || 0) + fee.bnb + (impact || 0);
+    out.push({
+      at: hist[i].at, from_width_pct: width, to_width_pct: rb.width_pct ?? null,
+      price_move_pct: Number(((pNow / pMint - 1) * 100).toFixed(2)),
+      position_bnb: Number(base.toFixed(6)),
+      lost_to_price_bnb: Number((loss * base).toFixed(6)), lost_to_price_pct: Number((loss * 100).toFixed(3)),
+      execution_bnb: Number(execution.toFixed(6)), gas_bnb: Number(rb.gas_bnb || 0), swap_fee_bnb: fee.bnb, impact_bnb: impact,
+      forced_by_deposit: !!rb.forced_by_deposit,
+      ...(bnbUsd > 0 ? { lost_to_price_usd: Math.round(loss * base * bnbUsd * 100) / 100, execution_usd: Math.round(execution * bnbUsd * 100) / 100 } : {}),
+    });
+  }
+  const sum = (k) => Number(out.reduce((a, r) => a + (r[k] || 0), 0).toFixed(6));
+  return {
+    resets: out.length,
+    lost_to_price_bnb: sum('lost_to_price_bnb'), execution_bnb: sum('execution_bnb'),
+    impact_measured: out.filter((r) => r.impact_bnb != null).length,
+    rows: out,
+    basis: 'each re-set: the range it left, minted at the middle of its ticks, valued at the tick the re-set saw against the amounts it was minted with (rangeValue) — the loss against holding, realised by the re-set; execution is gas, swap fee and the measured impact',
+  };
 }
 
 // WHAT A RANGE IS WORTH AT ANOTHER PRICE. A position minted centred on p0

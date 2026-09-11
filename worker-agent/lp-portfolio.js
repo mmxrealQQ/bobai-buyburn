@@ -12,6 +12,7 @@
 // Pure. Pinned by scripts/lp-portfolio.mjs --self-test.
 import { CANDIDATES } from './lp-pools.js';
 import { HOME_POOL } from '../shared/lp-guards.js';
+import { resetLosses } from './lp-windows.js';
 
 const n = (x) => Number(x || 0);
 const r4 = (x) => Math.round(n(x) * 1e4) / 1e4;
@@ -109,6 +110,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   else next = pick
     ? `outside the range${outH != null ? ` for ${hm(outH)}` : ''}; re-set after ${waitH ?? 2} h outside, in ±${pick.width_pct}% (nets $${n(pick.net_usd_per_day).toFixed(2)} a day on $50 by the record)`
     : `outside the range${outH != null ? ` for ${hm(outH)}` : ''}; no width nets anything on the record, so the agent holds instead of re-setting`;
+  const losses = resetLosses(rec);
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
     resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'),
@@ -141,6 +143,9 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       bobai_units: Math.round(n(sum.bobai_held_units)),
       profit_bnb: r5(p.bnb), profit_usd: p.usd != null ? Math.round(n(p.usd) * 100) / 100 : usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
       from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
+      // What the re-sets themselves cost, from the record's ticks: the loss
+      // against holding each re-set realised, and its execution.
+      at_resets: { count: losses.resets, lost_to_price_bnb: r5(losses.lost_to_price_bnb), execution_bnb: r5(losses.execution_bnb) },
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
       other_token: poolLabel ? poolLabel.split('/')[0] : 'the other side',
     },

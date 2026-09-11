@@ -554,10 +554,38 @@ export async function quoteV3(pub, tokenIn, tokenOut, fee, amountIn) {
 // Allow, swap, and return the note for the record. notionalWbnb is the
 // trade in WBNB terms: what went in when WBNB is sold, what the quote said
 // comes out when the other side is.
+// Since 2026-09-11 the swap also measures what it lost against the pool's
+// mid price: the quoter is asked for a sliver first (a fill too small to
+// move the price, the fee already off), that rate times the amount is what
+// a trade of no size would have received, and the wallet's balance of the
+// out-token before and after says what this one did. The gap is the price
+// impact, in WBNB — the piece of a re-set's cost that neither gas nor the
+// fee rate names, and the piece that grows with the position. A wallet
+// that cannot be read for it records the trade without it, never a guess.
 async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, minOut, notionalWbnb, label) {
   await ensureAllowance(pub, send, tokenIn, ADDR.V3_SWAP_ROUTER, amountIn, `allow the V3 router to spend ${tokenIn === ADDR.WBNB ? 'WBNB' : 'the other side'} (once)`);
+  let sliver = null, before = null;
+  try {
+    const tiny = 10n ** 12n;
+    sliver = await quoteV3(pub, tokenIn, tokenOut, fee, tiny);
+    before = await read(pub, tokenOut, ABI.ERC20, 'balanceOf', [owner]);
+  } catch { sliver = null; }
   await send(label, { address: ADDR.V3_SWAP_ROUTER, abi: ABI.V3_ROUTER, functionName: 'exactInputSingle', args: [v3SwapArgs(tokenIn, tokenOut, fee, owner, amountIn, minOut, deadline())] });
-  return swapNote(tokenIn === ADDR.WBNB ? 'buy' : 'sell', notionalWbnb, fee);
+  const note = swapNote(tokenIn === ADDR.WBNB ? 'buy' : 'sell', notionalWbnb, fee);
+  if (sliver != null && sliver > 0n && before != null) {
+    try {
+      const after = await read(pub, tokenOut, ABI.ERC20, 'balanceOf', [owner]);
+      const received = after > before ? after - before : 0n;
+      const atMid = (sliver * amountIn) / 10n ** 12n;
+      const gapOut = atMid > received ? atMid - received : 0n;
+      // A buy's gap is in the other token; the sliver's own rate turns it into WBNB.
+      const gapWbnb = tokenOut === ADDR.WBNB ? Number(gapOut) : (Number(gapOut) * Number(amountIn)) / Number(atMid);
+      note.impact_bnb = Number((gapWbnb / 1e18).toFixed(8));
+      note.impact_pct = note.notional_bnb > 0 ? Number(((gapWbnb / 1e18) / note.notional_bnb * 100).toFixed(3)) : null;
+      note.impact_basis = 'measured: the quoter\'s rate for a sliver times the amount, against what the wallet received';
+    } catch { /* the trade stands in the record without its impact */ }
+  }
+  return note;
 }
 
 // The agent's profit share buys BOBAI and holds it in the DeFi wallet,

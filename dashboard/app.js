@@ -1087,7 +1087,7 @@ function fillLpPortfolio(){
     const list = [
       li('🥞', esc(m.pool.label || 'the pool') + (m.pool.position ? ' #' + esc(m.pool.position) : '') + width + (range ? ' · ' + range : '')),
       li('🧠', h.bobai_units > 0 ? '<b>' + Math.round(h.bobai_units).toLocaleString('en-US') + ' $BOBAI</b> held' + (h.bobai_usd != null ? ' <span class="m">(≈ $' + n(h.bobai_usd).toFixed(2) + ')</span>' : '') + ', bought with ' + f5(h.bobai_bnb) + ' BNB of fees, never sold' : 'No $BOBAI held yet — half of every fee buys some'),
-      li('📈', 'Price <b>' + sign(p.from_price_bnb) + '</b> · fees <b>' + sign(p.from_fees_bnb) + '</b> <span class="m">(' + f5(p.kept_working_bnb) + ' kept working)</span> · gas <b>' + (n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0') + '</b>'),
+      li('📈', 'Price <b>' + sign(p.from_price_bnb) + '</b>' + (p.at_resets && p.at_resets.count ? ' <span class="m">(' + esc(p.at_resets.count) + ' re-set' + (p.at_resets.count === 1 ? '' : 's') + ' realised −' + f5(p.at_resets.lost_to_price_bnb) + ')</span>' : '') + ' · fees <b>' + sign(p.from_fees_bnb) + '</b> <span class="m">(' + f5(p.kept_working_bnb) + ' kept working)</span> · gas <b>' + (n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0') + '</b>'),
       li('🗓', 'Last 24 h: <b>' + esc(counts.length ? counts.join(', ') : 'quiet') + '</b>' + (d.last ? ' <span class="m">· last ' + esc(String(d.last.at).slice(11, 16)) + ' UTC ' + (d.last.error ? '⚠️ ' : '') + esc(d.last.what) + '</span>' : '')),
       li('🧭', 'Next: ' + esc(m.next || '—')),
       (m.last_run_ok === false ? li('⚠️', 'One step failed at the last run; the operator has been told.') : ''),

@@ -48,6 +48,7 @@ if (process.argv.includes('--self-test')) {
   is('out of range with a width named: the sentence says when the re-set comes and how wide', /outside the range for 2\.0 h; re-set after 3 h outside, in ±2%/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
   is('out of range with no width named: the agent holds', /no width nets anything.*holds/.test(m.next) && m.pool.width_pct === 1);
   is('in range with a width named: holds and earns, re-set only after the wait', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; return /holds the range and earns; a re-set only after 3 h outside, in ±2%/.test(lpPortfolio(r2, series, { now: NOW, width: w2 }).next); })());
+  is('the P&L names what the re-sets themselves cost', m.pnl.at_resets && m.pnl.at_resets.count === 0 && m.pnl.at_resets.lost_to_price_bnb === 0);
   is('the day is counted: re-sets, top-ups and the newest action', m.day.resets === 1 && m.day.top_ups === 1 && m.day.errors === 0 && m.day.last.step === undefined && /re-set/.test(m.day.last.what));
   is('the last day lists the runs of the last 24 h only, newest first', m.last_24h.length === 2 && m.last_24h[0].step === 'rebalance' && m.last_24h[1].step === 'increase' && /7397034/.test(m.last_24h[0].what));
   is('a re-set that bought BOBAI says so', /into \$BOBAI/.test(m.last_24h[0].what));

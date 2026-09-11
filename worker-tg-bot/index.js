@@ -2034,7 +2034,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
     h.bobai_units > 0
       ? `🧠 ${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI held${h.bobai_usd != null ? ' (≈ $' + n(h.bobai_usd).toFixed(2) + ')' : ''}, bought with ${f5(h.bobai_bnb)} BNB of fees, never sold`
       : `🧠 no $BOBAI held yet — half of every fee buys some`,
-    `📈 Price ${sign(p.from_price_bnb)} · 🧾 fees ${sign(p.from_fees_bnb)} (${f5(p.kept_working_bnb)} kept working) · ⛽ gas ${n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0'}`,
+    `📈 Price ${sign(p.from_price_bnb)}${p.at_resets && p.at_resets.count ? ` (${p.at_resets.count} re-set${p.at_resets.count === 1 ? '' : 's'} realised −${f5(p.at_resets.lost_to_price_bnb)})` : ''} · 🧾 fees ${sign(p.from_fees_bnb)} (${f5(p.kept_working_bnb)} kept working) · ⛽ gas ${n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0'}`,
     `🗓 Last 24 h: ${counts.length ? counts.join(', ') : 'quiet'}${d.last ? ` · last ${String(d.last.at).slice(11, 16)} UTC ${d.last.error ? '⚠️ ' : ''}${d.last.what}` : ''}`,
     `🧭 Next: ${m.next || '—'}`,
   ];

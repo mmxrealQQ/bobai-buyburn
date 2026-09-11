@@ -24,6 +24,29 @@ The figures themselves are checked separately, against an independent swap simul
 the closed forms in `dashboard/app.js` must agree with a real constant-product swap at
 every multiplier, and the two "moves the price 1%" sizes must reproduce exactly ±1%.
 
+## Every check in this folder
+
+| script | asks |
+|---|---|
+| `bnb-source-parity.mjs` | the page and the Telegram bot give the same BNB/USD figure from the same Chainlink feed |
+| `link-colors.mjs` | every link on a page by the colour the browser paints it; a browser-default blue is a link no stylesheet claimed |
+| `page-weight.mjs` | what a page costs to open, request by request |
+| `registry-coldstart.mjs` | a stranger lands on /registry and reaches a real price in every one of the four categories |
+| `registry-hire.mjs` | the hire panel driven in a real browser, up to the wallet |
+| `registry-hire-wallet.mjs` | the hire panel through a REAL wallet, past where the other check stops |
+| `registry-telemetry.mjs` | the live-telemetry lines on /registry really reach the reader |
+| `reload-scroll.mjs` | a plain load starts at the top, a deep link still jumps to its section |
+| `reveal.mjs` | is anything on the page invisible that should not be (the worst failure this site ever had) |
+| `scanner-honeypot.mjs` | the honeypot line on /scanner, pinned both ways |
+| `scanner-rescan.mjs` | scanning a second token on /scanner the way a visitor does |
+| `tier-panel.mjs` | the fee-tier card on /scanner, pressed the way a visitor presses it |
+| `type-click.mjs` | type into a field, press a button, read what appears |
+| `submission-screens.mjs` | the hackathon screenshots, written to files only, never read back |
+| `style-arrival.mjs` | every visible class on every page meets a rule in a loaded stylesheet |
+| `scan-consistency.mjs` | the REST scan answers the same question the same way every time |
+| `depth-panel.mjs / depth-panel-390.mjs` | the liquidity depth panel at 1280 and at 390 (described above) |
+| `page-text.mjs / text-overflow.mjs` | a page as a stranger reads it; the text run that overflows a phone (described below) |
+
 ## page-text.mjs and text-overflow.mjs (2026-09-03)
 
     node scripts/dashboard-check/page-text.mjs https://brainonbnb.com/scanner "#sc-out" 6000 390

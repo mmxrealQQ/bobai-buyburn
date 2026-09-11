@@ -3229,7 +3229,14 @@ export default {
     // a KV write per tick would spend the daily write budget on a heartbeat
     // nobody reads that often — 144 is plenty to tell a running worker from a
     // stopped one, and the freshness check downstream allows for it.
-    if (new Date().getMinutes() % 10 === 0) {
+    //
+    // Gated on the tick's nominal minute, not the clock. On 2026-09-11 the
+    // 11:00 tick wrote its heartbeat at 11:00:49 — dispatched late by most of
+    // a minute — and the 11:10 tick, a little later still, read minute 11
+    // from the clock and wrote nothing; health called the cron dead at 16
+    // minutes. The tick knows when it was meant to run.
+    const nominal = new Date(event && event.scheduledTime ? event.scheduledTime : Date.now());
+    if (nominal.getUTCMinutes() % 10 === 0) {
       try { await env.KV.put('last_cron', new Date().toISOString()); }
       catch (e) { console.error('[HEARTBEAT ERROR]', e.message || e); }
       // The bot's own 24-hour ledger, one bucket per tenth minute. Its
@@ -3762,7 +3769,7 @@ export default {
     // /worldcup command still serves the frozen final numbers on demand.
 
     // === CAPTCHA CLEANUP (every 2 min) ===
-    if (new Date().getMinutes() % 2 === 0) {
+    if (new Date(event && event.scheduledTime ? event.scheduledTime : Date.now()).getUTCMinutes() % 2 === 0) {
       await cleanupExpiredCaptchas(env);
     }
   },

@@ -251,7 +251,9 @@ if (SELF_TEST) {
   t('a wait a cent ahead of the set wait does not replace it', (() => { const w = waitInUse([dr(0, 0.91), dr(1, 0.6), dr(2, 0.9), dr(3, 0.7)], 200); return w.hours === 2 && w.basis === 'set'; })());
   t('a wait a tenth ahead of the set wait replaces it', (() => { const w = waitInUse([dr(0, 0.99), dr(1, 0.6), dr(2, 0.9), dr(3, 0.7)], 200); return w.hours === 0 && w.basis === 'measured'; })());
   t('no delay rows: the set wait, called set', (() => { const w = waitInUse([], 200); return w.hours === RESET_AFTER_HOURS && w.basis === 'set'; })());
-  t('a set wait that netted nothing cannot be the base: the set wait stands', (() => { const w = waitInUse([dr(0, 0.9), { hours: 2, width: null, net_usd_per_day: null }], 200); return w.hours === RESET_AFTER_HOURS && w.basis === 'set'; })());
+  t('a set wait that nets nothing yields to a wait that does', (() => { const w = waitInUse([dr(0, 0.9), { hours: 2, width: null, net_usd_per_day: null }], 200); return w.hours === 0 && w.basis === 'measured' && /netted nothing at any width/.test(w.why); })());
+  t('… but not under the hours a measured wait needs', (() => { const w = waitInUse([dr(0, 0.9), { hours: 2, width: null, net_usd_per_day: null }], 60); return w.hours === RESET_AFTER_HOURS && w.basis === 'set'; })());
+  t('… and not to a wait that nets nothing either', (() => { const w = waitInUse([dr(0, -0.2), { hours: 2, width: null, net_usd_per_day: null }], 200); return w.hours === RESET_AFTER_HOURS && w.basis === 'set' && /no wait nets/.test(w.why); })());
   // The measured re-set cost, both ways: only a re-set that acted, did not
   // error and recorded gas counts, the newest one wins, and without one the
   // verdict says the cost is assumed.

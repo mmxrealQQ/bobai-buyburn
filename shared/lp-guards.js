@@ -73,8 +73,17 @@ export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
   const base = priced.find((d) => d.hours === set) || null;
   const best = priced.slice().sort((a, b) => b.net_usd_per_day - a.net_usd_per_day)[0] || null;
   const keep = (why) => ({ hours: set, basis: 'set', why });
-  if (!best || !base) return keep(`the set wait of ${set} h — the record has not yet replayed every wait`);
+  if (!best) return keep(`the set wait of ${set} h — the record has not yet replayed every wait`);
   if (!(hoursOfPrices >= WAIT_PICK_MIN_HOURS)) return keep(`the set wait of ${set} h — the record holds ${hoursOfPrices} h of prices and a measured wait needs ${WAIT_PICK_MIN_HOURS} h`);
+  // The set wait nets nothing at any width (since 2026-09-11 a re-set is
+  // charged what its range lost against holding, and on a trending week no
+  // width nets at 2 h) while another wait does: that wait is in use. The
+  // bar below guards against flipping between two waits that both earn; a
+  // wait that turns "hold" into "earn" is not a flip.
+  if (!base) {
+    if (best.net_usd_per_day > 0) return { hours: best.hours, basis: 'measured', why: `${best.hours} h netted $${best.net_usd_per_day} a day over ${hoursOfPrices} h of prices while the set ${set} h netted nothing at any width` };
+    return keep(`the set wait of ${set} h — no wait nets anything over ${hoursOfPrices} h of prices`);
+  }
   if (best.hours === set) return { hours: set, basis: 'measured', why: `${set} h netted the most per day over ${hoursOfPrices} h of prices` };
   // Nets are rounded to four places; so is the bar, or 0.9 × 1.1 lands a
   // hair above 0.99 and a wait exactly a tenth ahead is refused.

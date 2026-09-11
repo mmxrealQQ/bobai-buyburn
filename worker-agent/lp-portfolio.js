@@ -11,6 +11,7 @@
 //
 // Pure. Pinned by scripts/lp-portfolio.mjs --self-test.
 import { CANDIDATES } from './lp-pools.js';
+import { HOME_POOL } from '../shared/lp-guards.js';
 
 const n = (x) => Number(x || 0);
 const r4 = (x) => Math.round(n(x) * 1e4) / 1e4;
@@ -55,7 +56,7 @@ export function lastDay(rec, now = Date.now()) {
   return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 }
 
-export function lpPortfolio(rec, series, pools, { now = Date.now(), bobaiUsd = null } = {}) {
+export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -78,8 +79,8 @@ export function lpPortfolio(rec, series, pools, { now = Date.now(), bobaiUsd = n
   const rb = (chk.steps && chk.steps.rebalance) || {};
   const position = (inc.position != null ? String(inc.position) : null) || (pt && pt.position != null ? String(pt.position) : null) || (rb.new_position != null ? String(rb.new_position) : null);
   const inRange = inc.in_range != null ? !!inc.in_range : rb.in_range != null ? !!rb.in_range : pt ? !!pt.in_range : null;
-  const poolAddr = String(rec.pool || (pools && pools.watched && pools.watched.pool) || '').toLowerCase() || null;
-  const poolLabel = (pools && pools.watched && pools.watched.label) || labelOf(poolAddr) || null;
+  const poolAddr = String(rec.pool || HOME_POOL.pool).toLowerCase();
+  const poolLabel = labelOf(poolAddr) || (poolAddr === HOME_POOL.pool ? HOME_POOL.label : null);
   const walletBnb = inc.wallet_bnb != null ? n(inc.wallet_bnb) : pt ? n(pt.wallet_bnb) : 0;
 
   const p = sum.profit;
@@ -88,23 +89,6 @@ export function lpPortfolio(rec, series, pools, { now = Date.now(), bobaiUsd = n
   if (n(p.fees_folded_bnb) > 0) feeParts.push({ label: 'folded into the position', bnb: r5(p.fees_folded_bnb) });
   if (n(p.fees_forwarded_at_resets_bnb) > 0) feeParts.push({ label: 'into $BOBAI', bnb: r5(p.fees_forwarded_at_resets_bnb) });
   if (n(p.fees_owed_bnb) > 0) feeParts.push({ label: 'still owed by the position', bnb: r5(p.fees_owed_bnb) });
-
-  let poolRecord = null;
-  if (pools && Array.isArray(pools.pools) && pools.pools.length) {
-    const rows = pools.pools;
-    const shown = rows.slice(0, 3);
-    const here = rows.find((x) => x.watched);
-    if (here && !shown.includes(here)) shown.push(here);
-    const same = !!(pools.pick && pools.watched && pools.pick.pool === pools.watched.pool);
-    poolRecord = {
-      usd: n(pools.usd) || 50, width_pct: n(pools.width_pct) || 1, pools: rows.length,
-      rows: shown.map((x) => ({ label: x.label, here: !!x.watched, fees_usd_per_day: x.fees_usd_per_day == null ? null : r4(x.fees_usd_per_day), hours: x.hours })),
-      pick: pools.pick ? { label: pools.pick.label, here: same } : null,
-      pick_due: pools.pick_due || null,
-      least_hours: rows.reduce((m, x) => Math.min(m, n(x.hours)), Infinity),
-      move: pools.move ? { move: !!pools.move.move, why: pools.move.why, to: pools.move.to ? pools.move.to.label : null } : null,
-    };
-  }
 
   const day = lastDay(rec, now);
   return {
@@ -134,9 +118,8 @@ export function lpPortfolio(rec, series, pools, { now = Date.now(), bobaiUsd = n
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
       other_token: poolLabel ? poolLabel.split('/')[0] : 'the other side',
     },
-    pool_record: poolRecord,
     last_24h: day,
     last_run_ok: last.ok !== false,
-    links: { page: 'https://brainonbnb.com/defi', record: 'https://agent.brainonbnb.com/lp/agent', series: 'https://agent.brainonbnb.com/lp/series', pools: 'https://agent.brainonbnb.com/lp/pools' },
+    links: { page: 'https://brainonbnb.com/defi', record: 'https://agent.brainonbnb.com/lp/agent', series: 'https://agent.brainonbnb.com/lp/series' },
   };
 }

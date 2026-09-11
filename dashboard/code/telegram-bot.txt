@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4420 lines.
+# one fetch. 12 files, 4406 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2569,7 +2569,7 @@ const BOT_COMMANDS = [
   { command: 'burn',     description: 'Burn stats & progress' },
   { command: 'buy',      description: 'How to buy BOBAI' },
   { command: 'ca',       description: 'Contract address' },
-  { command: 'defi',     description: 'The DeFi agent as a portfolio: put in, worth, P&L, pool record, last 24 h' },
+  { command: 'defi',     description: 'The DeFi agent as a portfolio: put in, worth, P&L, last 24 h' },
   { command: 'giggle',   description: 'Giggle Academy pot — countdown & BNB collected' },
   { command: 'help',     description: 'Show all commands' },
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
@@ -2592,7 +2592,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v13-defi';
+const COMMANDS_VERSION = 'v14-defi-home';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -2702,7 +2702,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
   const f5 = (x) => n(x).toFixed(5);
   const usd = (x) => (x == null ? '' : ' (≈ $' + n(x).toFixed(2) + ')');
   const sign = (x) => (n(x) > 0 ? '▲ +' : n(x) < 0 ? '▼ −' : '• ') + f5(Math.abs(n(x)));
-  const h = m.holdings, p = m.pnl, pr = m.pool_record;
+  const h = m.holdings, p = m.pnl;
   const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ in range' : '⏳ out of range — re-set once it has been outside long enough';
   const lines = [
     `💧 <b>${title} · ${m.date}</b>`,
@@ -2727,20 +2727,6 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
     `🗓 In range: ${p.in_range_runs} of ${p.runs} runs since ${p.since}`,
     '',
   ];
-  if (pr) {
-    const mark = (label) => (/BOB\//.test(label) ? '🔨' : '🥞');
-    const perDay = (x) => (x == null ? 'no fees yet' : '$' + n(x).toFixed(2) + '/day');
-    lines.push(`🏁 <b>Pool record</b>  <i>(the same $${pr.usd} in ±${pr.width_pct}%, ${pr.pools} pools)</i>`);
-    for (const r of pr.rows) lines.push(`${mark(r.label)} ${r.label}${r.here ? ' · here' : ''}: ${perDay(r.fees_usd_per_day)}`);
-    if (pr.pick) {
-      lines.push(pr.pick.here ? `📌 Pick: <b>${pr.pick.label}</b>, the pool the agent is in` : `📌 Pick: <b>${pr.pick.label}</b>`);
-      if (pr.move && !pr.pick.here) lines.push(pr.move.move ? `➡️ Move: ${pr.move.why}` : `⏸ Stay: ${pr.move.why}`);
-    } else {
-      const due = pr.pick_due ? ` · due around ${String(pr.pick_due).slice(11, 16)} UTC on ${String(pr.pick_due).slice(5, 10)}` : '';
-      lines.push(`📌 No pick yet: every pool needs 24 h of sampled chain (the least has ${Number(pr.least_hours || 0).toFixed(0)} h)${due}`);
-    }
-    lines.push('');
-  }
   const day = Array.isArray(m.last_24h) ? m.last_24h : [];
   lines.push(`🔁 <b>Last 24 h</b>`);
   if (!m.last_run_ok) lines.push('⚠️ one step failed; the operator has been told');
@@ -3096,7 +3082,7 @@ Here's what I can do:
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address
 💧 /liq — Liquidity depth, price impact & trade cost
-🤖 /defi — The DeFi agent as a portfolio: put in, worth, P&L, pool record, last 24 h
+🤖 /defi — The DeFi agent as a portfolio: put in, worth, P&L, last 24 h
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links

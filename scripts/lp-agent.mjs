@@ -32,7 +32,7 @@ import {
   planRebalance, planRelocate, executeRelocate, executeRebalance,
 } from '../shared/lp-agent.js';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
   widthUpgrade, widthClassOf,
@@ -282,7 +282,10 @@ if (SELF) {
     [{ ...up, resetCostUsd: 0.5 }, 'a gain under the re-set cost would not pay back within a day'],
   ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
   console.log('relocate');
-  const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
+  const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, toPool: HOME_POOL.pool, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
+  check('a move to any pool but home: refuses by the operator\'s decision', /stays in CAKE\/BNB 0\.05%/.test(refuseRelocate({ ...relOk, toPool: '0x172fcd41e0913e95784454622d1c3724f546f849' }) || ''), true);
+  check('a move with no pool named: refuses by the same decision', /stays in CAKE\/BNB 0\.05%/.test(refuseRelocate({ ...relOk, toPool: null }) || ''), true);
+  check('home, spelled in capitals, is still home', refuseRelocate({ ...relOk, toPool: HOME_POOL.pool.toUpperCase().replace('0X', '0x') }), false);
   check('no position: refuses', refuseRelocate({ ...relOk, positions: 0 }), true);
   check('two positions: refuses', refuseRelocate({ ...relOk, positions: 2 }), true);
   check('the switch rule says stay: refuses with its reason', /switch rule says stay/.test(refuseRelocate({ ...relOk, move: { move: false, why: 'lead under 25%' } }) || ''), true);

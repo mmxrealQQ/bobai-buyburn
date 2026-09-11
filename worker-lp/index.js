@@ -38,11 +38,10 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, executeRebalance, planRelocate, executeRelocate, readBnbUsd,
+  planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
-import { readLpPools, switchVerdict } from '../worker-agent/lp-pools.js';
-import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS, HOME_POOL } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -152,41 +151,14 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     }
   });
 
-  // 2b. relocate: the pool record's switch rule, acted on. The record
-  //     replays fifty dollars in every pool of the universe each hour; when
-  //     another pool has out-earned this one by a quarter over all its hours
-  //     and over the last day, and the extra fees on this capital pay for the
-  //     move within three days, the position moves there. Once a day, and
-  //     gated by LP_RELOCATE the way the first re-set was gated: the first
-  //     move is watched, then the cron takes over.
-  await run('relocate', async () => {
-    const poolsLog = await readLpPools(env);
-    if (!poolsLog || !Object.keys(poolsLog.pools || {}).length) return { acted: false, why: 'the pool record holds no windows yet' };
-    // Where the position is and how wide, read once, so the rule compares at
-    // the width the agent uses and against the pool it is really in.
-    const here = await planRelocate(pub, lp.address, { keptPct });
-    if (here.state.positions !== 1) return { ...here.summary, acted: false, why: here.no };
-    let positionUsd, resetCostUsd;
-    try {
-      const bnbUsd = (await readBnbUsd(pub)).bnbUsd;
-      if (bnbUsd > 0 && here.summary.value_bnb > 0) positionUsd = here.summary.value_bnb * bnbUsd;
-      const m = measuredResetCost(await readState(env), bnbUsd);
-      if (m && m.usd > 0) resetCostUsd = m.usd;
-    } catch { /* the rule's defaults stand */ }
-    const move = switchVerdict(poolsLog, here.width, { watched: here.from.pool, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
-    if (!move.move) return { ...here.summary, acted: false, move: false, why: `stay: ${move.why}` };
-    const plan = await planRelocate(pub, lp.address, { toPool: move.to.pool, keptPct, move });
-    if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
-    if (String(env.LP_RELOCATE || '0') !== '1') return { ...plan.summary, acted: false, why: `a move to ${move.to.label} is due and LP_RELOCATE is not 1 — the first move is run by hand and watched, then the cron takes over` };
-    if (dry) return { ...plan.summary, acted: false, why: `dry run — would have moved the position to ${move.to.label}` };
-    try {
-      const done = await executeRelocate(pub, lpWallet(), lp, plan, () => {}, { keptPct });
-      await env.AGENT.delete(OUT_SINCE_KEY);
-      return { ...plan.summary, acted: true, to_label: move.to.label, ...done };
-    } catch (e) {
-      return { ...plan.summary, acted: true, to_label: move.to.label, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
-    }
-  });
+  // 2b. relocate: retired on 2026-09-11. For one day (2026-09-10) the pool
+  //     record replayed fifty dollars in twelve pools each hour and this
+  //     step would have moved the position to whichever led by a quarter.
+  //     The operator closed the question: the agent stays in CAKE/BNB 0.05%
+  //     and optimises there (HOME_POOL in shared/lp-guards.js). The step
+  //     stays in the record so the day's entries keep their shape, and says
+  //     so in words; the hand script can still bring a stray position home.
+  await run('relocate', async () => ({ acted: false, move: false, why: `stay: ${HOME_POOL.why}` }));
 
   // 3. rebalance: a position the price has left is re-set around today's
   //    price, in the width the window record's earnings test picked — the

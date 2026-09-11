@@ -120,14 +120,14 @@
 
   <div class="lp-part" id="steps">
     <div class="sh fi"><h2>How it <em>works</em></h2>
-      <p class="sh-sub">One PancakeSwap V3 position on BNB Chain, in the pool that pays the most for it, run by a program that reads and decides once a day and checks the range every hour. Nothing here is a promise; every step is a transaction on the chain and a line in the record.</p>
+      <p class="sh-sub">One PancakeSwap V3 position on BNB Chain, in the CAKE/BNB 0.05% pool, run by a program that reads and decides once a day and checks the range every hour. Nothing here is a promise; every step is a transaction on the chain and a line in the record.</p>
     </div>
     <div class="agt-two">
     <div class="agt-flow fi">
       <h3>The money</h3>
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>In</b><span>What other AIs pay this project &mdash; a few cents per pool watch or per delivered job &mdash; lands in <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">the income wallet</a>. Once a day it is sold for BNB and sent to <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the DeFi wallet</a>, together with a slice of the trading tax and what the operator puts in by hand.</span></div></li>
-        <li><span class="agt-i">2</span><div><b>At work</b><span>The DeFi wallet holds one position in a PancakeSwap V3 pool that pairs BNB with a major &mdash; not the $BOBAI pool: the position earns on other people&rsquo;s trades. The capital stays; it is never withdrawn.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>At work</b><span>The DeFi wallet holds one position in the PancakeSwap V3 CAKE/BNB 0.05% pool &mdash; not the $BOBAI pool: the position earns on other people&rsquo;s trades. That pool is the operator&rsquo;s decision (Sep 11, 2026); the agent does not move, it gets better where it is. The capital stays; it is never withdrawn.</span></div></li>
         <li><span class="agt-i">3</span><div><b>Out</b><span>Of what the position earns, half stays as capital so it grows out of its own fees, and half buys $BOBAI that stays in <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the agent&rsquo;s own wallet</a>, never sold &mdash; the operator&rsquo;s rule since Sep 9, 2026.</span></div></li>
       </ol>
     </div>
@@ -136,9 +136,8 @@
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>Sweep</b><span>Income into BNB, into the DeFi wallet &mdash; once it is worth more than the gas.</span></div></li>
         <li><span class="agt-i">2</span><div><b>Collect</b><span>The fees the position earned: half kept, half into $BOBAI. Small amounts are left to grow.</span></div></li>
-        <li><span class="agt-i">3</span><div><b>Relocate</b><span>The <a href="https://agent.brainonbnb.com/lp/pools" rel="noopener">pool record</a> replays the same fifty dollars in every pool of the universe each hour. When another pool has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there.</span></div></li>
-        <li><span class="agt-i">4</span><div><b>Rebalance</b><span>Checked every hour. A position the price has left is re-set around the price, in the width that netted the most per day in the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a>, re-sets and their cost included.</span></div></li>
-        <li><span class="agt-i">5</span><div><b>Increase</b><span>BNB above the gas reserve goes into the position &mdash; a deposit within minutes, when the range is live.</span></div></li>
+        <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour. A position the price has left is re-set around the price, in the width that netted the most per day in the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a> &mdash; each re-set charged its gas and what its range lost against holding. If no width nets anything, the agent holds.</span></div></li>
+        <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the position &mdash; a deposit within minutes, when the range is live.</span></div></li>
       </ol>
       <p class="agt-note">The record, run by run and in the agent&rsquo;s own words: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>. The code: one core, <code>shared/lp-agent.js</code>, run by the worker and by hand alike, in <a href="/source">the published source</a>. It never touches the buyback bot&rsquo;s own code.</p>
     </div>
@@ -176,6 +175,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=70" defer></script>
+<script src="app.js?v=71" defer></script>
 </body>
 </html>

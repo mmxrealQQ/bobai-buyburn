@@ -1070,7 +1070,7 @@ function fillLpPortfolio(){
   const li = (ic, html) => '<li><span class="ic">' + ic + '</span><div>' + html + '</div></li>';
   return fetch('https://agent.brainonbnb.com/lp/portfolio', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(m => {
     if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
-    const h = m.holdings, p = m.pnl, pr = m.pool_record;
+    const h = m.holdings, p = m.pnl;
     const up = n(p.profit_bnb) > 0 ? 'up' : n(p.profit_bnb) < 0 ? 'down' : '';
     const range = m.pool.in_range == null ? '' : m.pool.in_range ? '<b>in range</b>, earning' : '<b>out of range</b> — re-set once it has been outside long enough';
     const tiles =
@@ -1090,17 +1090,6 @@ function fillLpPortfolio(){
       li('⛽', 'Gas: <b>' + (n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0.00000') + '</b>'),
       li('🗓', 'In range: <b>' + esc(p.in_range_runs) + ' of ' + esc(p.runs) + '</b> runs since ' + esc(p.since)),
     ].join('');
-    let pools = '';
-    if(pr){
-      const perDay = x => (x == null ? 'no fees yet' : '$' + n(x).toFixed(2) + '/day');
-      pools = pr.rows.map(r => li(/BOB\//.test(r.label) ? '🔨' : '🥞', esc(r.label) + (r.here ? ' <span class="m">· here</span>' : '') + ': <b>' + perDay(r.fees_usd_per_day) + '</b>')).join('');
-      if(pr.pick){
-        pools += li('📌', 'Pick: <b>' + esc(pr.pick.label) + '</b>' + (pr.pick.here ? ', the pool the agent is in' : ''));
-        if(pr.move && !pr.pick.here) pools += li(pr.move.move ? '➡️' : '⏸', (pr.move.move ? 'Move: ' : 'Stay: ') + esc(pr.move.why));
-      } else {
-        pools += li('📌', 'No pick yet: every pool needs 24 h of sampled chain' + (pr.least_hours != null && isFinite(pr.least_hours) ? ' (the least has ' + Math.round(pr.least_hours) + ' h)' : '') + (pr.pick_due ? ' · due around ' + esc(String(pr.pick_due).slice(11, 16)) + ' UTC on ' + esc(String(pr.pick_due).slice(5, 10)) : ''));
-      }
-    }
     const day = Array.isArray(m.last_24h) ? m.last_24h : [];
     const today = (m.last_run_ok === false ? li('⚠️', 'One step failed; the operator has been told.') : '')
       + (day.length ? day.map(d => li('•', '<span class="m">' + esc(String(d.at).slice(11, 16)) + ' UTC</span> — ' + (d.error ? '⚠️ ' : '') + esc(d.what))).join('') : li('•', 'Quiet — every step under its floor, nothing to move.'));
@@ -1108,7 +1097,6 @@ function fillLpPortfolio(){
       + '<div class="pf-grid">'
       + '<div><h3 class="pf-h">Holdings</h3><ul class="pf-list">' + holdings + '</ul></div>'
       + '<div><h3 class="pf-h">P&amp;L</h3><ul class="pf-list">' + pnl + '</ul></div>'
-      + (pr ? '<div><h3 class="pf-h">Pool record <span class="m" style="font-weight:400;font-size:.8rem">(the same $' + esc(pr.usd) + ' in ±' + esc(pr.width_pct) + '%, ' + esc(pr.pools) + ' pools)</span></h3><ul class="pf-list">' + pools + '</ul></div>' : '')
       + '<div><h3 class="pf-h">Last 24 h</h3><ul class="pf-list">' + today + '</ul></div>'
       + '</div>'
       + '<p class="pf-when">Last run ' + esc(String(m.at).replace('T', ' ').slice(0, 16)) + ' UTC · range checked ' + esc(String(m.checked_at).replace('T', ' ').slice(0, 16)) + ' UTC · dollars at the BNB price of the last run. Same picture as JSON: <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">/lp/portfolio</a> · the record: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>';

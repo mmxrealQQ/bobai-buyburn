@@ -1,4 +1,11 @@
-// THE POOL RECORD: what the same fifty dollars would have earned in each of
+// THE POOL RECORD — RETIRED 2026-09-11. It ran for one day. The operator
+// closed the question it measured: the agent stays in CAKE/BNB 0.05%
+// (HOME_POOL in shared/lp-guards.js) and optimises there. Nothing calls
+// recordLpPools any more; /lp/pools says so; the functions and their pins
+// stay as the record of how twelve pools were compared, and for the day
+// the question is opened again.
+//
+// What it was: what the same fifty dollars would have earned in each of
 // the pools the DeFi agent could live in, hour by hour.
 //
 // The width record (lp-windows.js) answers "how wide" for the pool the agent

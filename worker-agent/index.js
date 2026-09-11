@@ -45,8 +45,7 @@ import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool } from './lp-windows.js';
-import { widthClassOf } from '../shared/lp-guards.js';
-import { recordLpPools, readLpPools, noteLpPoolsError, poolVerdict, switchVerdict, CANDIDATES as LP_POOL_CANDIDATES, UNIVERSE_RULE as LP_UNIVERSE_RULE } from './lp-pools.js';
+import { widthClassOf, HOME_POOL } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -1040,49 +1039,18 @@ async function buildLpSeries(env) {
       };
 }
 
-// The pool record's verdict and switch rule, built once for /lp/pools and
-// the portfolio alike.
-async function buildLpPools(env, widthQuery = null) {
-      const log = await readLpPools(env);
-      if (!log || !Object.keys(log.pools || {}).length) {
-        return { error: { error: 'no pool window has been recorded yet', cadence: "hourly, after the width record's own tick", candidates: LP_POOL_CANDIDATES } };
-      }
-      // The width: the one the agent's position uses, else what the query asks, else ±1%.
-      let width = 1;
-      try {
-        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
-        const w = Number(rec?.last?.steps?.rebalance?.width_pct);
-        if (w > 0) width = w;
-      } catch { /* the default stands */ }
-      const q = Number(widthQuery);
-      if (q > 0 && q <= 50) width = q;
-      const watched = await watchedPool(env);
-      const v = poolVerdict(log, width, { watched });
-      // The switch rule reads the position's own size and the measured re-set
-      // cost, so the payback is the position's, not fifty dollars'.
-      let positionUsd = null, resetCostUsd = null;
-      try {
-        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
-        const price = await bnbUsd().catch(() => null);
-        const valueBnb = Number(rec?.last_check?.steps?.increase?.value_bnb ?? rec?.last?.steps?.increase?.value_bnb);
-        if (price > 0 && valueBnb > 0) positionUsd = Math.round(valueBnb * price * 100) / 100;
-        const m = measuredResetCost(rec, price);
-        if (m && m.usd > 0) resetCostUsd = m.usd;
-      } catch { /* the defaults stand */ }
-      const move = switchVerdict(log, width, { watched, ...(positionUsd ? { positionUsd } : {}), ...(resetCostUsd ? { resetCostUsd } : {}) });
-      const body = {
-        ...v,
-        move: { ...move, position_usd: positionUsd, reset_cost_usd: resetCostUsd, acts: true, acts_note: 'the daily run (04:23 UTC) acts on this verdict and nothing else: a move here is a relocate there, gated by LP_RELOCATE on the DeFi worker' },
-        universe: LP_UNIVERSE_RULE,
-        since: log.since || null,
-        cadence: "hourly, after the width record's own tick; the watched pool's window is the width record's, the others are replayed with the same code",
-        width_record: 'https://agent.brainonbnb.com/lp/windows',
-        agent_record: 'https://agent.brainonbnb.com/lp/agent',
-        last_run: log.last_run || null,
-        last_error: log.last_error || null,
-      };
-      return { log, v, move, body, positionUsd, width };
-}
+// The pool record, retired on 2026-09-11: the operator closed the question
+// it measured for a day. The agent stays in CAKE/BNB 0.05% (HOME_POOL);
+// the route says so, in JSON and on the page, and points at the records
+// that still decide something.
+const LP_POOLS_RETIRED = {
+  retired: '2026-09-11',
+  pool: HOME_POOL.pool, label: HOME_POOL.label,
+  why: HOME_POOL.why,
+  what_it_was: 'for one day (2026-09-10) the same fifty dollars were replayed hourly in twelve PancakeSwap V3 pools that pair WBNB with a major, and a switch rule weighed a move; the finding was in gross fees, and a move costs two re-sets plus what the range lost against holding',
+  width_record: 'https://agent.brainonbnb.com/lp/windows',
+  agent_record: 'https://agent.brainonbnb.com/lp/agent',
+};
 
 export default {
   async fetch(request, env, ctx) {
@@ -1624,36 +1592,22 @@ ${pageTail}`;
     // the agent uses — and the switch rule that says whether the best of
     // them is worth moving to.
     if (path === '/lp/pools') {
-      const built = await buildLpPools(env, url.searchParams.get('width'));
-      if (built.error) return json(built.error, 503);
-      const { log, v, move, body, positionUsd } = built;
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
       if (wantsHtml) {
         const h = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-        const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
-        const f = (x, d = 4) => (x == null || !isFinite(Number(x)) ? '—' : Number(x).toFixed(d));
-        const usd = (x) => (x == null ? '—' : '$' + f(x));
         const html = `${pageHead('The pool record — the DeFi agent', `
 main{max-width:820px}
 p.lead{color:#cfc9bd;margin:6px 0 0}
 .card{border:1px solid rgba(240,185,11,.22);border-radius:14px;padding:14px 16px;background:rgba(240,185,11,.04);margin-bottom:10px}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
-.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;font-size:.74rem;letter-spacing:.4px;text-transform:uppercase;border-top:0}th:first-child,td:first-child{text-align:left}tr.w td{color:var(--gold)}
 `)}${pageNav({ href: '/lp/windows', label: 'The width record' }, { href: '/lp/pools', label: 'The pool record' }, BUY)}<h1>The pool record</h1>
-<p class="lead">What $${h(v.usd)} would have earned in each pool of the universe, replayed hour by hour with the same code, in a ±${h(v.width_pct)}% range. The agent is in the pool marked gold. Since ${h(when(log.since))}.</p>
-<div class="card"><b>${h(move.move ? 'Move: ' : 'Stay: ')}${h(move.why)}</b><p class="note">The switch rule: a lead of a quarter over all recorded hours and over the last day alone, paying the move back within three days on this position${positionUsd ? ' ($' + h(positionUsd) + ')' : ''}. ${h(move.acts_note)}</p><p class="note">The universe: ${h(LP_UNIVERSE_RULE)}</p></div>
-<div class="card"><b>${h(v.why.replace(/^[a-z]/, (ch) => ch.toUpperCase()))}</b><p class="note">${h(v.rule)}</p></div>
-<div class="card"><div class="wrap"><table><thead><tr><th>Pool</th><th>Hours</th><th>Windows</th><th>Fees</th><th>Per day</th><th>Swaps</th><th>Quiet</th><th>Held</th><th>Last</th></tr></thead><tbody>
-${v.pools.map((p) => `<tr${p.watched ? ' class="w"' : ''}><td>${h(p.label)}${p.watched ? ' · the agent is here' : ''}</td><td>${h(p.hours)}</td><td>${h(p.windows)}</td><td>${h(usd(p.fees_usd))}</td><td>${h(usd(p.fees_usd_per_day))}</td><td>${h(p.swaps)}</td><td>${h(p.quiet_windows)}</td><td>${p.held_pct == null ? '—' : h(p.held_pct) + '%'}</td><td>${h(when(p.last))}</td></tr>`).join('')}
-</tbody></table></div>
-<p class="note">Quiet = windows in which nobody swapped in that pool. Held = share of windows the range held through without crossing an edge. Fees are for this capital inside the width, diluted by the pool's own working capital, and are not annualised.</p></div>
-${log.last_run ? `<p class="note">Last run ${h(when(log.last_run.at))}: added ${h((log.last_run.added || []).join(', ') || 'nothing')}${(log.last_run.skipped || []).length ? ' · skipped ' + (log.last_run.skipped || []).map((x) => h((x.pool || '').slice(0, 10)) + ' (' + h(x.why) + ')').join(', ') : ''}</p>` : ''}
-${log.last_error ? `<p class="note">Last hour that could not be measured: ${h(when(log.last_error.at))} — ${h(log.last_error.message)}</p>` : ''}
-<p class="note">Same facts as JSON: <a href="/lp/pools?format=json">/lp/pools?format=json</a> · another width: <a href="/lp/pools?width=2">?width=2</a> · the width record: <a href="/lp/windows">/lp/windows</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
+<p class="lead">Retired on ${h(LP_POOLS_RETIRED.retired)}. ${h(LP_POOLS_RETIRED.why.replace(/^[a-z]/, (ch) => ch.toUpperCase()))}.</p>
+<div class="card"><b>${h(HOME_POOL.label)}</b> is the agent's pool. What is still decided, and measured every hour, is how wide its range is and how long it waits before a re-set: <a href="/lp/windows">the width record</a>.<p class="note">${h(LP_POOLS_RETIRED.what_it_was.replace(/^[a-z]/, (ch) => ch.toUpperCase()))}.</p></div>
+<p class="note">Same facts as JSON: <a href="/lp/pools?format=json">/lp/pools?format=json</a> · the agent's record: <a href="/lp/agent">/lp/agent</a> · <a href="https://brainonbnb.com/defi">how it works</a></p>
 ${pageTail}`;
-        return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
+        return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' } });
       }
-      return json(body, 200, { 'Cache-Control': 'public, max-age=300' });
+      return json(LP_POOLS_RETIRED, 200, { 'Cache-Control': 'public, max-age=300' });
     }
 
     if (path === '/lp/windows') {
@@ -2206,12 +2160,11 @@ ${pageTail}`;
     if (path === '/lp/portfolio') {
       const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
       const series = await buildLpSeries(env);
-      const pb = await buildLpPools(env, null);
       const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
-      const model = lpPortfolio(rec, series, pb.error ? null : pb.body, { bobaiUsd });
+      const model = lpPortfolio(rec, series, { bobaiUsd });
       if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
       return json({
-        what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from, the pool record\'s verdict and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',
+        what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',
         ...model,
       }, 200, { 'Cache-Control': 'public, max-age=120' });
     }
@@ -2416,8 +2369,7 @@ ${pageTail}`;
       // candidates are replayed once each (lp-pools.js). 24 KV writes a day.
       ctx.waitUntil(
         recordLpWindow(env).catch((e) => noteLpWindowError(env, e).catch(() => {}))
-          .then(() => recordLpPools(env))
-          .catch((e) => noteLpPoolsError(env, e).catch(() => {})),
+          .catch(() => {}),
       );
     }
 

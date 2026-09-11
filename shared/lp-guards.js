@@ -192,10 +192,26 @@ export function refuseRebalance(state) {
 // enter the new one, mint. The pool record's switch rule (move) says whether
 // it is worth it; a person naming --to on the hand script is a decision of
 // their own and passes no move. Everything a re-set refuses, this refuses too.
+// THE POOL IS DECIDED. On 2026-09-11 the operator closed the question the
+// pool record had been measuring for a day ("wir bleiben immer bei CAKE/BNB
+// und optimieren nur das. keine anderen Pools"): the agent lives in
+// CAKE/BNB 0.05% and gets better there, width, wait and sizing, with every
+// hour of record about one pool. A move is a withdrawal, two trades through
+// two pools and a mint — two re-sets' cost plus what the range lost — paid
+// to chase a lead measured in gross fees; there is no pool it moves to. The
+// only relocate the guard lets through is one that brings a position that
+// is somewhere else back home.
+export const HOME_POOL = {
+  pool: '0xafb2da14056725e3ba3a30dd846b6bbbd7886c56',
+  label: 'CAKE/BNB 0.05%',
+  since: '2026-09-11',
+  why: 'the agent stays in CAKE/BNB 0.05% and optimises there — the operator\'s decision of 2026-09-11; there is no pool it moves to',
+};
 export function refuseRelocate(state) {
   if (state.positions !== 1) return state.positions === 0
     ? 'this wallet holds no position to move'
     : `this wallet holds ${state.positions} positions — which one to move is a decision for a person`;
+  if (!state.toPool || String(state.toPool).toLowerCase() !== HOME_POOL.pool) return HOME_POOL.why;
   if (state.move && state.move.move === false) return `the switch rule says stay: ${state.move.why}`;
   if (!state.hasTarget) return 'no pool to move to was named';
   if (!state.targetHasWbnb) return 'the pool named is not against WBNB; this agent only holds WBNB pairs, so the record stays in BNB';

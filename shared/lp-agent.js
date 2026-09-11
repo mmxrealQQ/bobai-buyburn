@@ -805,7 +805,7 @@ export async function planRelocate(pub, address, { toPool = null, widthOverride 
   const sameOther = !!(from && target && from.other === target.other);
   const state = {
     positions: p.positions, hasTarget: !!target, targetHasWbnb: target ? target.hasWbnb : false,
-    samePool: !!(from && target && from.pool === target.pool), width, valueBnb, move,
+    samePool: !!(from && target && from.pool === target.pool), toPool: target ? target.pool : null, width, valueBnb, move,
   };
   const trades = [];
   if (from && target && tgt) {

@@ -38,13 +38,8 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # 0–100 falls back to the default in shared/lp-guards.js (50), never to 0 or 100.
 [vars]
 LP_REBALANCE = "1"
-# Whether the daily run may move the position to another pool of the
-# universe when the pool record's switch rule says so. "1" since 2026-09-10
-# 12:30 UTC, the operator's word: "voll automatisch, ab jetzt". A move that
-# stops between its unwind and its mint leaves the two tokens in the wallet;
-# the hourly check's resume mints them into the pool the width record
-# watches, and a token of the other pair waits there for a hand.
-LP_RELOCATE = "1"
+# LP_RELOCATE is gone (2026-09-11): the agent stays in CAKE/BNB 0.05%,
+# HOME_POOL in shared/lp-guards.js; the relocate step only says so.
 LP_FEE_KEEP_PCT = "50"
 
 # Secrets, set with `wrangler secret put`, never in this file:

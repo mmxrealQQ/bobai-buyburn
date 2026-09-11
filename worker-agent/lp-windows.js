@@ -33,6 +33,60 @@ export const KV_KEY = 'lp:windows';
 export const MAX_WINDOWS = 400;
 export const POSITION_USD = 50;
 
+// THE PRICE TAPE (2026-09-11). The hourly window carries one price, so the
+// earnings test saw the price once an hour: a range left and re-entered
+// within the hour never happened to it, and a wait of "three hours outside"
+// was three hourly readings. The DeFi worker reads the pool every ten
+// minutes anyway (the deposit watch, the hourly check) and now writes the
+// tick down: one sample, one KV write, 144 a day. The tape sharpens the
+// replay's in-or-out and its re-set timing; the fees still come from the
+// hourly windows, scaled to the minutes each sample stands for. Thirty days
+// at six an hour is the cap.
+export const TICKS_KEY = 'lp:ticks';
+export const MAX_TICKS = 4320;
+// Appends a sample unless one within a minute of it is already there. Pure.
+export function appendTick(tape, sample) {
+  const list = Array.isArray(tape) ? tape : [];
+  if (!sample || !sample.at || !(Number(sample.price) > 0)) return { tape: list, added: false };
+  const t = Date.parse(sample.at);
+  if (list.some((x) => Math.abs(Date.parse(x.at) - t) < 60e3)) return { tape: list, added: false };
+  const next = list.concat({ at: sample.at, tick: sample.tick ?? null, price: Number(sample.price), pool: sample.pool ? String(sample.pool).toLowerCase() : null })
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  if (next.length > MAX_TICKS) next.splice(0, next.length - MAX_TICKS);
+  return { tape: next, added: true };
+}
+export async function readLpTicks(env) {
+  try { const raw = await env.AGENT.get(TICKS_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; }
+}
+export async function recordLpTick(env, sample) {
+  const { tape, added } = appendTick(await readLpTicks(env), sample);
+  if (added) await env.AGENT.put(TICKS_KEY, JSON.stringify(tape));
+  return added;
+}
+
+// ONE PRICE SERIES from the hourly windows and the tape: every window's head
+// price and every tape sample, in time order, a sample within a minute of a
+// window's head counted once. Each point names the window whose hour it
+// falls in (the first window at or after it; past the last window, the
+// last), so the fee rate a point earns at is that window's row.
+export function priceSeries(priced, tape = null) {
+  const pts = priced.map((w) => ({ at: w.at, t: Date.parse(w.at), price: w.price, window: w }));
+  for (const x of Array.isArray(tape) ? tape : []) {
+    if (!x || !x.at || !(Number(x.price) > 0)) continue;
+    const t = Date.parse(x.at);
+    if (pts.some((p) => Math.abs(p.t - t) < 60e3)) continue;
+    pts.push({ at: x.at, t, price: Number(x.price), window: null });
+  }
+  pts.sort((a, b) => a.t - b.t);
+  let wi = 0;
+  for (const p of pts) {
+    if (p.window) { wi = priced.indexOf(p.window); continue; }
+    while (wi < priced.length - 1 && Date.parse(priced[wi].at) < p.t) wi++;
+    p.window = priced[wi];
+  }
+  return pts;
+}
+
 // One replay -> one log entry. Same field names, same "held" rule as the
 // script: in range for the WHOLE window and never across the edge. A range is
 // centred on today's price and replayed backwards, so it can just as easily be
@@ -135,6 +189,9 @@ export function deriveWidths(window, derived = DERIVED_WIDTHS) {
 }
 
 export function verdict(log, opts = {}) {
+  const poolOf = String(log?.pool || '').toLowerCase();
+  const tape = (Array.isArray(opts.tape) ? opts.tape : []).filter((x) => x && (!x.pool || !poolOf || String(x.pool).toLowerCase() === poolOf));
+  opts = { ...opts, tape };
   const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block).map((w) => deriveWidths(w));
   const used = [];
   for (const w of sorted) {
@@ -217,6 +274,10 @@ export function verdict(log, opts = {}) {
     pick: thin ? null : (safe[0] || null),
     priced_windows: priced.length,
     hours_of_prices: hoursOfPrices,
+    // The ten-minute tape beside the hourly heads (2026-09-11): how many
+    // samples the replay walked and since when. None before the tape began.
+    price_samples: tape.length,
+    price_samples_since: tape.length ? tape[0].at : null,
     // Best net among the widths that held every tested day — reported, no
     // longer the width a re-set uses (it was, until 2026-09-04).
     day_pick: thin ? null : (dayHolders[0] || null),
@@ -363,32 +424,34 @@ export function rangeValue(p0, widthPct, p) {
 // price. Net is what is left after the fees paid for all of it.
 const MAX_GAP_HOURS = 3;
 const r2 = (x) => Math.round(x * 100) / 100, r4 = (x) => Math.round(x * 10000) / 10000;
-export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD } = {}) {
+export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD, tape = null } = {}) {
   const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0 && (w.rows || []).some((r) => r.width === widthPct));
   if (priced.length < 2) return null;
   const costs = priced.map((w) => w.rebalance_cost_usd).filter((c) => typeof c === 'number' && c > 0).sort((a, b) => a - b);
   const cost = resetCostUsd ?? (costs.length ? costs[Math.floor(costs.length / 2)] : 0.5);
   const up = 1 + widthPct / 100, down = 1 / up;
-  let centre = priced[0].price, outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0, lost = 0;
-  for (let i = 1; i < priced.length; i++) {
-    const w = priced[i], prev = priced[i - 1];
-    const dtH = Math.min(MAX_GAP_HOURS, (Date.parse(w.at) - Date.parse(prev.at)) / 36e5);
+  const series = priceSeries(priced, tape);
+  let centre = series[0].price, outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0, lost = 0, samples = 0;
+  for (let i = 1; i < series.length; i++) {
+    const pt = series[i], prev = series[i - 1];
+    const dtH = Math.min(MAX_GAP_HOURS, (pt.t - prev.t) / 36e5);
     if (!(dtH > 0)) continue;
-    const ratio = w.price / centre;
+    if (pt.window.at !== pt.at) samples += 1;
+    const ratio = pt.price / centre;
     if (ratio <= up && ratio >= down) {
-      const row = w.rows.find((r) => r.width === widthPct);
+      const w = pt.window, row = w.rows.find((r) => r.width === widthPct);
       fees += (row.fees / ((w.minutes || 37.5) / 60)) * dtH;
       hoursIn += dtH; outRun = 0;
     } else {
       hoursOut += dtH; outRun += dtH;
       if (outRun >= resetAfterHours) {
         resets += 1;
-        lost += rangeValue(centre, widthPct, w.price).loss * usd;
-        centre = w.price; outRun = 0;
+        lost += rangeValue(centre, widthPct, pt.price).loss * usd;
+        centre = pt.price; outRun = 0;
       }
     }
   }
-  const open = rangeValue(centre, widthPct, priced[priced.length - 1].price).loss * usd;
+  const open = rangeValue(centre, widthPct, series[series.length - 1].price).loss * usd;
   const hours = hoursIn + hoursOut, net = fees - resets * cost - lost - open;
   return {
     hours: r2(hours), hours_in_range: r2(hoursIn), fees_usd: r4(fees),
@@ -396,6 +459,7 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
     lost_to_price_usd: r4(lost), open_loss_usd: r4(open),
     net_usd: r4(net),
     net_usd_per_day: hours > 0 ? r4(net / (hours / 24)) : null,
+    price_points: series.length, tape_samples: samples,
   };
 }
 

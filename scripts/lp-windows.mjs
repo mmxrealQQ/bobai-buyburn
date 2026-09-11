@@ -34,7 +34,7 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, deriveWidths, MAX_WINDOWS, calibration } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, deriveWidths, appendTick, priceSeries, MAX_WINDOWS, MAX_TICKS, calibration } from '../worker-agent/lp-windows.js';
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse, DERIVED_WIDTHS, RECORD_WIDTHS, widthClassOf } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
@@ -306,6 +306,27 @@ if (SELF_TEST) {
   t('a derived row\'s net carries the narrower neighbour\'s re-set cost (±1.5%: fees 0.0133 minus the 0.01 that ±1% paid)', Math.abs(dw.rows.find((r) => r.width === 1.5).net - (0.01 * 2 / 1.5 - 0.01)) < 1e-6);
   t('a window without a wider neighbour gets no derived row there', !deriveWidths({ rows: [{ width: 5, held: true, fees: 0.004, net: 0.004, crossings: 0 }] }).rows.some((r) => r.width === 7));
   t('the verdict replays the derived widths and marks them', (() => { const v = verdict(dayFlat); const r3 = v.rows.find((r) => r.width === 3); return r3 && r3.derived === true && r3.earnings && r3.earnings.fees_usd > 0 && v.rows.find((r) => r.width === 5).derived === false; })());
+  // The price tape: samples between the hourly heads, both ways.
+  const tapeAt = (hourIdx, minutes, price) => ({ at: new Date(1_700_000_000_000 + (hourIdx * 60 + minutes) * 60 * 1000).toISOString(), tick: 0, price, pool: '0xpool' });
+  let tp = appendTick([], tapeAt(0, 10, 100));
+  t('a sample is appended', tp.added && tp.tape.length === 1);
+  t('a second sample within a minute is not', !appendTick(tp.tape, { ...tapeAt(0, 10, 100), at: new Date(Date.parse(tp.tape[0].at) + 30e3).toISOString() }).added);
+  t('a sample without a price is not', !appendTick(tp.tape, { at: tapeAt(0, 20, 0).at, price: 0 }).added);
+  t(`the tape is capped at ${MAX_TICKS} and keeps the newest`, (() => { let x = []; for (let i = 0; i < MAX_TICKS + 3; i++) x = appendTick(x, tapeAt(i, 0, 100)).tape; return x.length === MAX_TICKS && x[0].at === tapeAt(3, 0, 100).at; })());
+  // A flat hour-by-hour record with a flat tape: the same fees, no re-set, the samples counted.
+  const flatTape = [].concat(...flat.slice(0, 29).map((_, i) => [10, 20, 30, 40, 50].map((m) => tapeAt(i, m, 100))));
+  const eFlatTape = earningsTest(flat, 1, { tape: flatTape });
+  t('a flat tape changes nothing but the count of points', Math.abs(eFlatTape.fees_usd - earningsTest(flat, 1).fees_usd) < 1e-6 && eFlatTape.resets === 0 && eFlatTape.tape_samples === flatTape.length && eFlatTape.price_points === 30 + flatTape.length);
+  // A price that leaves the range for twenty minutes between two in-range hourly heads:
+  // the hourly series never sees it; the tape does, and with no wait it is a re-set.
+  const blipTape = [tapeAt(5, 20, 103), tapeAt(5, 40, 103)];
+  t('the hourly series misses an excursion inside the hour', earningsTest(flat, 1, { resetAfterHours: 0 }).resets === 0);
+  t('… the tape sees it, and with no wait it is a re-set charged its loss', (() => { const e = earningsTest(flat, 1, { resetAfterHours: 0, tape: blipTape }); return e.resets >= 1 && e.lost_to_price_usd > 0; })());
+  t('… and with a two-hour wait a twenty-minute excursion is not', earningsTest(flat, 1, { resetAfterHours: 2, tape: blipTape }).resets === 0);
+  t('a sample earns at the rate of the window whose hour it falls in', (() => { const ps = priceSeries(flat.slice(0, 3), [tapeAt(1, 30, 100)]); const smp = ps.find((p) => p.at === tapeAt(1, 30, 100).at); return smp && smp.window === flat[2]; })());
+  t('a sample within a minute of a window head is counted once', priceSeries(flat.slice(0, 3), [{ ...tapeAt(1, 0, 100), at: new Date(Date.parse(flat[1].at) + 20e3).toISOString() }]).length === 3);
+  t('the verdict walks the tape of its own pool only and says how many samples', (() => { const v = verdict({ pool: '0xpool', windows: flat }, { tape: flatTape.concat([{ ...tapeAt(3, 15, 200), pool: '0xother' }]) }); return v.price_samples === flatTape.length && v.rows[0].earnings.resets === 0 && v.price_samples_since === flatTape[0].at; })());
+  t('no tape: no samples, the same verdict as before', verdict(dayFlat).price_samples === 0 && verdict(dayFlat).earnings_pick?.width === 1);
   t('the width class snaps to the finer grid (a ±3.1% range is the 3 class, not 2 or 5)', widthClassOf([-Math.round(Math.log(1.031) / Math.log(1.0001)), Math.round(Math.log(1.031) / Math.log(1.0001))]) === 3 && RECORD_WIDTHS.includes(1.5) && RECORD_WIDTHS.includes(7));
   t('the verdict charges the measured cost when given one', verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.usd === 0.14 && /measured/.test(verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.basis));
   t('… and says the cost is assumed when not', /assumed/.test(verdict(dayFlat).reset_cost.basis));

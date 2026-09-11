@@ -40,7 +40,7 @@ import {
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
-import { readLpWindows, verdict, measuredResetCost } from '../worker-agent/lp-windows.js';
+import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS, HOME_POOL } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
@@ -182,7 +182,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       const m = measuredResetCost(await readState(env), bnbUsd);
       if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
     } catch { /* the replay's assumption stands */ }
-    const record = log ? verdict(log, costOpts) : null;
+    const record = log ? verdict(log, { ...costOpts, tape: await readLpTicks(env) }) : null;
     // The pool the record watches lets the plan finish a re-set that stopped
     // between its unwind and its mint: no position, the two tokens in the
     // wallet (2026-09-05 12:50). Such a resume does not wait the two hours —
@@ -249,6 +249,16 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
     }
   });
+  // The price the check saw goes on the tape, every ten minutes, whatever
+  // the step decided (lp-windows.js, THE PRICE TAPE). The price is WBNB per
+  // unit of the other side, the way the window record quotes it.
+  {
+    const rb = entry.steps.rebalance;
+    if (!dry && rb && rb.tick != null && rb.pool) {
+      const raw = Math.pow(1.0001, Number(rb.tick));
+      await recordLpTick(env, { at, tick: Number(rb.tick), price: rb.wbnb_is0 ? 1 / raw : raw, pool: rb.pool }).catch(() => {});
+    }
+  }
   // The watch's rebalance step is kept only when it did something or a
   // deposit forced it; a "no re-set here" every ten minutes is not a record.
   if (watch && entry.steps.rebalance && !entry.steps.rebalance.acted && !entry.steps.rebalance.forced_by_deposit && !entry.steps.rebalance.error) delete entry.steps.rebalance;

@@ -498,6 +498,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       ...(resume ? { resumed_from_wallet: true, held: have ? { other: (have.other / 1e18).toFixed(6), wbnb: (have.wbnb / 1e18).toFixed(6) } : null } : {}),
       ticks: p.tokenId != null ? [Number(p.pos[5]), Number(p.pos[6])] : null,
       tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange,
+      pool: poolInfo ? String(poolInfo.pool).toLowerCase() : null, wbnb_is0: wbnbIs0,
       value_bnb: Number(valueBnb.toFixed(6)),
       width_pct: width, width_basis: widthBasis,
       expected_net_usd_per_day: pick ? pick.earnings.net_usd_per_day : null,

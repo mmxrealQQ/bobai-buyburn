@@ -260,15 +260,22 @@ if (SELF) {
   check('190 ticks read as the 1% class', widthClassOf([-57800, -57610]) === 1 ? null : `got ${widthClassOf([-57800, -57610])}`, false);
   check('no ticks: no class', widthClassOf(null) === null ? null : 'got a class', false);
   const rows = [
-    { width: 1, earnings: { net_usd_per_day: 0.6983 } },
-    { width: 2, earnings: { net_usd_per_day: 0.6111 } },
-    { width: 'full', earnings: null },
+    { width: 1, earnings: { net_usd_per_day: 0.6983 }, earnings_24h: { net_usd_per_day: 0.71 } },
+    { width: 2, earnings: { net_usd_per_day: 0.6111 }, earnings_24h: { net_usd_per_day: 0.60 } },
+    { width: 'full', earnings: null, earnings_24h: null },
   ];
-  // The live case of 2026-09-10: $154 at 2%, the record picks 1%: +$0.27 a day against a $0.10 re-set.
-  const up = { daily: true, inRange: true, ticks: [-57990, -57610], pick: rows[0], rows, hoursOfPrices: 182, valueBnb: 0.2127, bnbUsd: 723.6, resetCostUsd: 0.1 };
+  // The live case of 2026-09-10: $154 at 2%, the record picks 1%: +$0.27 a day against a $0.10 re-set,
+  // the range at its own middle (tick −57800), so nothing to realise; pays back in under a day.
+  const up = { daily: true, inRange: true, ticks: [-57990, -57610], tick: -57800, pick: rows[0], rows, hoursOfPrices: 182, valueBnb: 0.2127, bnbUsd: 723.6, resetCostUsd: 0.1 };
   const u = widthUpgrade(up);
-  check('the daily run upgrades 2% → 1% when the gain pays the re-set within a day', u.upgrade ? null : u.why, false);
-  check('the upgrade names from, to and the gain', u.from === 2 && u.to === 1 && u.gain_usd_per_day > 0.2 && u.gain_usd_per_day < 0.3 ? null : JSON.stringify(u), false);
+  check('the daily run upgrades 2% → 1% when the gain pays the switch back within three days', u.upgrade ? null : u.why, false);
+  check('the upgrade names from, to, the gain, the cost and the payback', u.from === 2 && u.to === 1 && u.gain_usd_per_day > 0.2 && u.gain_usd_per_day < 0.3 && u.realised_usd === 0 && u.cost_usd === 0.1 && u.payback_days < 1 ? null : JSON.stringify(u), false);
+  // At the edge of its range the switch realises the range's loss against holding: ±2% at its lower
+  // edge (tick −57990) has lost about 0.45% of $154 = $0.70; with $0.20 to execute and a $0.27 gain that is 3.3 days: no.
+  const edge = widthUpgrade({ ...up, tick: -57990, resetCostUsd: 0.2 });
+  check('at the edge of the range the realised loss counts and the payback stretches past three days', !edge.upgrade && /realise/.test(edge.why) && /3\.\d+ days/.test(edge.why) ? null : JSON.stringify(edge), false);
+  const halfway = widthUpgrade({ ...up, tick: -57900 });
+  check('halfway to the edge the realised loss is small and the switch goes', halfway.upgrade && halfway.realised_usd > 0 && halfway.realised_usd < 0.3 && halfway.payback_days < 3 ? null : JSON.stringify(halfway), false);
   for (const [state, why] of [
     [{ ...up, daily: false }, 'the hourly check never upgrades'],
     [{ ...up, inRange: false }, 'outside the range it is a re-set, not an upgrade'],
@@ -278,8 +285,10 @@ if (SELF) {
     [{ ...up, ticks: [-57800, -57610] }, 'already at the picked width'],
     [{ ...up, rows: [rows[0]] }, 'the record has no earnings for the current width'],
     [{ ...up, valueBnb: 0 }, 'no dollar value'],
-    [{ ...up, rows: [rows[0], { width: 2, earnings: { net_usd_per_day: 0.66 } }] }, 'a gain under a tenth of the current net is noise'],
-    [{ ...up, resetCostUsd: 0.5 }, 'a gain under the re-set cost would not pay back within a day'],
+    [{ ...up, rows: [{ ...rows[0], earnings_24h: { net_usd_per_day: 0.55 } }, rows[1]] }, 'a lead over the record but not over the last day is not standing'],
+    [{ ...up, rows: [{ ...rows[0], earnings_24h: null }, rows[1]] }, 'no last-day replay yet: no switch'],
+    [{ ...up, resetCostUsd: 0.9 }, 'a switch that takes more than three days to pay back waits'],
+    [{ ...up, rows: [rows[0], { ...rows[1], earnings: { net_usd_per_day: 0.7 } }] }, 'a pick that nets no more than the current width'],
   ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
   console.log('relocate');
   const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, toPool: HOME_POOL.pool, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };

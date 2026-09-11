@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12804 lines.
+# one fetch. 41 files, 12851 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -419,15 +419,22 @@ if (SELF) {
   check('190 ticks read as the 1% class', widthClassOf([-57800, -57610]) === 1 ? null : `got ${widthClassOf([-57800, -57610])}`, false);
   check('no ticks: no class', widthClassOf(null) === null ? null : 'got a class', false);
   const rows = [
-    { width: 1, earnings: { net_usd_per_day: 0.6983 } },
-    { width: 2, earnings: { net_usd_per_day: 0.6111 } },
-    { width: 'full', earnings: null },
+    { width: 1, earnings: { net_usd_per_day: 0.6983 }, earnings_24h: { net_usd_per_day: 0.71 } },
+    { width: 2, earnings: { net_usd_per_day: 0.6111 }, earnings_24h: { net_usd_per_day: 0.60 } },
+    { width: 'full', earnings: null, earnings_24h: null },
   ];
-  // The live case of 2026-09-10: $154 at 2%, the record picks 1%: +$0.27 a day against a $0.10 re-set.
-  const up = { daily: true, inRange: true, ticks: [-57990, -57610], pick: rows[0], rows, hoursOfPrices: 182, valueBnb: 0.2127, bnbUsd: 723.6, resetCostUsd: 0.1 };
+  // The live case of 2026-09-10: $154 at 2%, the record picks 1%: +$0.27 a day against a $0.10 re-set,
+  // the range at its own middle (tick −57800), so nothing to realise; pays back in under a day.
+  const up = { daily: true, inRange: true, ticks: [-57990, -57610], tick: -57800, pick: rows[0], rows, hoursOfPrices: 182, valueBnb: 0.2127, bnbUsd: 723.6, resetCostUsd: 0.1 };
   const u = widthUpgrade(up);
-  check('the daily run upgrades 2% → 1% when the gain pays the re-set within a day', u.upgrade ? null : u.why, false);
-  check('the upgrade names from, to and the gain', u.from === 2 && u.to === 1 && u.gain_usd_per_day > 0.2 && u.gain_usd_per_day < 0.3 ? null : JSON.stringify(u), false);
+  check('the daily run upgrades 2% → 1% when the gain pays the switch back within three days', u.upgrade ? null : u.why, false);
+  check('the upgrade names from, to, the gain, the cost and the payback', u.from === 2 && u.to === 1 && u.gain_usd_per_day > 0.2 && u.gain_usd_per_day < 0.3 && u.realised_usd === 0 && u.cost_usd === 0.1 && u.payback_days < 1 ? null : JSON.stringify(u), false);
+  // At the edge of its range the switch realises the range's loss against holding: ±2% at its lower
+  // edge (tick −57990) has lost about 0.45% of $154 = $0.70; with $0.20 to execute and a $0.27 gain that is 3.3 days: no.
+  const edge = widthUpgrade({ ...up, tick: -57990, resetCostUsd: 0.2 });
+  check('at the edge of the range the realised loss counts and the payback stretches past three days', !edge.upgrade && /realise/.test(edge.why) && /3\.\d+ days/.test(edge.why) ? null : JSON.stringify(edge), false);
+  const halfway = widthUpgrade({ ...up, tick: -57900 });
+  check('halfway to the edge the realised loss is small and the switch goes', halfway.upgrade && halfway.realised_usd > 0 && halfway.realised_usd < 0.3 && halfway.payback_days < 3 ? null : JSON.stringify(halfway), false);
   for (const [state, why] of [
     [{ ...up, daily: false }, 'the hourly check never upgrades'],
     [{ ...up, inRange: false }, 'outside the range it is a re-set, not an upgrade'],
@@ -437,8 +444,10 @@ if (SELF) {
     [{ ...up, ticks: [-57800, -57610] }, 'already at the picked width'],
     [{ ...up, rows: [rows[0]] }, 'the record has no earnings for the current width'],
     [{ ...up, valueBnb: 0 }, 'no dollar value'],
-    [{ ...up, rows: [rows[0], { width: 2, earnings: { net_usd_per_day: 0.66 } }] }, 'a gain under a tenth of the current net is noise'],
-    [{ ...up, resetCostUsd: 0.5 }, 'a gain under the re-set cost would not pay back within a day'],
+    [{ ...up, rows: [{ ...rows[0], earnings_24h: { net_usd_per_day: 0.55 } }, rows[1]] }, 'a lead over the record but not over the last day is not standing'],
+    [{ ...up, rows: [{ ...rows[0], earnings_24h: null }, rows[1]] }, 'no last-day replay yet: no switch'],
+    [{ ...up, resetCostUsd: 0.9 }, 'a switch that takes more than three days to pay back waits'],
+    [{ ...up, rows: [rows[0], { ...rows[1], earnings: { net_usd_per_day: 0.7 } }] }, 'a pick that nets no more than the current width'],
   ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
   console.log('relocate');
   const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, toPool: HOME_POOL.pool, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
@@ -2555,7 +2564,13 @@ export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
 // the same margin the wait pick uses, so noise between two close widths
 // never pays for a re-set. At most one such re-set a day, bounded by the
 // daily run; the hourly checks never upgrade.
-export const WIDTH_UPGRADE_MARGIN = 0.1;
+export const WIDTH_UPGRADE_MARGIN = 0.1; // until 2026-09-11; kept for the record, no longer applied
+// A switch of a live range pays back within this many days, or it waits
+// (2026-09-11): the gain a day on the position, against the switch's full
+// cost — execution plus what the current range would realise at today's
+// price. Three days, as the pool switch rule had it; a pick that will not
+// carry its own cost in three days is not a pick, it is a reading.
+export const WIDTH_UPGRADE_PAYBACK_DAYS = 3;
 // The widths the hourly replay measures (six, since 2026-09-02) and the
 // widths derived between them (2026-09-11, "die mathematisch beste Range"):
 // inside its range a position's fee share is its liquidity share, and for
@@ -2567,6 +2582,29 @@ export const WIDTH_UPGRADE_MARGIN = 0.1;
 export const REPLAYED_WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
 export const DERIVED_WIDTHS = [1.5, 3, 4, 7];
 export const RECORD_WIDTHS = REPLAYED_WIDTHS.concat(DERIVED_WIDTHS).sort((a, b) => a - b);
+
+// WHAT A RANGE IS WORTH AT ANOTHER PRICE. A position minted centred on p0
+// with a value of 1, in the symmetric range p0/up ... p0*up, holds an amount
+// of each side that the pool's own curve fixes; at another price p it holds
+// different amounts, and less than a wallet that kept the minted amounts
+// would (`hodl`). Inside the range the curve applies; below it the position
+// is all of the priced token and moves with p; above it, all of the quote
+// and moves not at all. `loss` is what the range has given up against
+// holding, as a share of the holding: never negative, zero at p0. The
+// earnings test charges it at every replayed re-set; resetLosses reads it
+// off the re-sets that happened; widthUpgrade charges it to a switch.
+export function rangeValue(p0, widthPct, p) {
+  const up = 1 + widthPct / 100;
+  const pa = p0 / up, pb = p0 * up;
+  const sa = Math.sqrt(pa), sb = Math.sqrt(pb), s0 = Math.sqrt(p0);
+  const L = 1 / (2 * s0 - sa - p0 / sb);
+  const x0 = L * (1 / s0 - 1 / sb), y0 = L * (s0 - sa);
+  const value = p <= pa ? L * (1 / sa - 1 / sb) * p
+    : p >= pb ? L * (sb - sa)
+    : L * (2 * Math.sqrt(p) - sa - p / sb);
+  const hodl = x0 * p + y0;
+  return { value, hodl, loss: Math.max(0, 1 - value / hodl) };
+}
 
 // The width class of a position from its ticks: half its span, in percent,
 // snapped to the record's width nearest on a log scale (a 380-tick range is
@@ -2596,12 +2634,29 @@ export function widthUpgrade(state) {
   const usd = Number(state.valueBnb || 0) * Number(state.bnbUsd || 0);
   if (!(usd > 0)) return no('the position has no dollar value to scale the record by');
   const scale = usd / 50;
-  const gain = (Number(pick.earnings.net_usd_per_day) - nowNet) * scale;
-  const cost = Number(state.resetCostUsd || 0);
   const r4 = (x) => Math.round(x * 1e4) / 1e4;
-  if (!(gain > nowNet * scale * WIDTH_UPGRADE_MARGIN)) return no(`${pick.width}% nets $${r4(gain)} a day more than ${from}% on $${usd.toFixed(2)} — under a tenth of what ${from}% nets, too close to pay for a re-set`);
-  if (!(gain >= cost)) return no(`${pick.width}% nets $${r4(gain)} a day more than ${from}% on $${usd.toFixed(2)}, but a re-set costs $${r4(cost)} — it would not pay back within a day`);
-  return { upgrade: true, from, to: pick.width, gain_usd_per_day: r4(gain), why: `in range at ${from}%, but ${pick.width}% netted $${r4(gain)} a day more on $${usd.toFixed(2)} over ${state.hoursOfPrices} h of prices, and a re-set costs $${r4(cost)} — upgrading the width` };
+  const gain = (Number(pick.earnings.net_usd_per_day) - nowNet) * scale;
+  if (!(gain > 0)) return no(`${pick.width}% nets no more than ${from}% on $${usd.toFixed(2)}`);
+  // The lead must hold over the last day too (2026-09-11): a lead the whole
+  // record shows but the last day does not is one the market has left.
+  const pickRow = (state.rows || []).find((r) => r.width === pick.width);
+  const pickDay = pickRow && pickRow.earnings_24h ? Number(pickRow.earnings_24h.net_usd_per_day) : null;
+  const nowDay = row && row.earnings_24h ? Number(row.earnings_24h.net_usd_per_day) : null;
+  if (pickDay == null || nowDay == null) return no(`the record has no last-day replay for ${pick.width}% and ${from}% yet`);
+  if (!(pickDay > nowDay)) return no(`${pick.width}% leads ${from}% over ${state.hoursOfPrices} h ($${r4(gain)} a day on $${usd.toFixed(2)}) but not over the last day ($${r4(pickDay)} against $${r4(nowDay)} on $50) — the lead is not standing, no switch`);
+  // The full cost of switching now: the re-set's execution (gas, swap fee,
+  // the measured impact) plus what the current range has lost against
+  // holding at today's price — a switch realises it, holding might not.
+  const execution = Number(state.resetCostUsd || 0);
+  const centre = Array.isArray(state.ticks) && state.ticks.length === 2 ? (state.ticks[0] + state.ticks[1]) / 2 : null;
+  const realised = centre != null && state.tick != null ? rangeValue(Math.pow(1.0001, centre), from, Math.pow(1.0001, Number(state.tick))).loss * usd : 0;
+  const cost = execution + realised;
+  const paybackDays = gain > 0 ? cost / gain : Infinity;
+  if (!(paybackDays <= WIDTH_UPGRADE_PAYBACK_DAYS)) return no(`${pick.width}% nets $${r4(gain)} a day more than ${from}% on $${usd.toFixed(2)}, but the switch costs $${r4(cost)} ($${r4(execution)} to execute, $${r4(realised)} the range would realise at today's price) — ${paybackDays === Infinity ? 'never' : r4(paybackDays) + ' days'} to pay back, more than the ${WIDTH_UPGRADE_PAYBACK_DAYS} allowed`);
+  return {
+    upgrade: true, from, to: pick.width, gain_usd_per_day: r4(gain), cost_usd: r4(cost), execution_usd: r4(execution), realised_usd: r4(realised), payback_days: r4(paybackDays),
+    why: `in range at ${from}%, but ${pick.width}% netted $${r4(gain)} a day more on $${usd.toFixed(2)} over ${state.hoursOfPrices} h of prices and leads over the last day too ($${r4(pickDay)} against $${r4(nowDay)} on $50); the switch costs $${r4(cost)} ($${r4(execution)} to execute, $${r4(realised)} realised at today's price) and pays back in ${r4(paybackDays)} days`,
+  };
 }
 
 // state: { positions, spendableBnb, inRange }
@@ -8813,7 +8868,7 @@ export async function lpTierPlan(input = {}) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -9049,6 +9104,14 @@ export function verdict(log, opts = {}) {
   // the way the agent lives it — with the wait it really uses before a
   // re-set — and the one with the most left after its re-sets is the pick.
   for (const r of rows) r.earnings = r.width === 'full' ? null : earningsTest(used, r.width, { ...opts, resetAfterHours: wait.hours });
+  // THE LAST DAY ALONE (2026-09-11). A width that leads over the whole record
+  // but not over the last day is a lead the market has already moved away
+  // from; the width-upgrade rule asks for both (widthUpgrade). Replayed over
+  // the windows of the last 24 h with the wait in use; null under two of them.
+  const dayAgo = used.length ? Date.parse(used[used.length - 1].at) - 24 * 36e5 : 0;
+  const lastDayWins = used.filter((w) => Date.parse(w.at) >= dayAgo);
+  const dayTape = tape.filter((x) => Date.parse(x.at) >= dayAgo);
+  for (const r of rows) r.earnings_24h = r.width === 'full' ? null : earningsTest(lastDayWins, r.width, { ...opts, tape: dayTape, resetAfterHours: wait.hours });
   const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
     .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
   const first = used[0], last = used[used.length - 1];
@@ -9172,26 +9235,10 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
   };
 }
 
-// WHAT A RANGE IS WORTH AT ANOTHER PRICE. A position minted centred on p0
-// with a value of 1, in the symmetric range p0/up ... p0*up, holds an amount
-// of each side that the pool's own curve fixes; at another price p it holds
-// different amounts, and less than a wallet that kept the minted amounts
-// would (`hodl`). Inside the range the curve applies; below it the position
-// is all of the priced token and moves with p; above it, all of the quote
-// and moves not at all. `loss` is what the range has given up against
-// holding, as a share of the holding: never negative, zero at p0.
-export function rangeValue(p0, widthPct, p) {
-  const up = 1 + widthPct / 100;
-  const pa = p0 / up, pb = p0 * up;
-  const sa = Math.sqrt(pa), sb = Math.sqrt(pb), s0 = Math.sqrt(p0);
-  const L = 1 / (2 * s0 - sa - p0 / sb);
-  const x0 = L * (1 / s0 - 1 / sb), y0 = L * (s0 - sa);
-  const value = p <= pa ? L * (1 / sa - 1 / sb) * p
-    : p >= pb ? L * (sb - sa)
-    : L * (2 * Math.sqrt(p) - sa - p / sb);
-  const hodl = x0 * p + y0;
-  return { value, hodl, loss: Math.max(0, 1 - value / hodl) };
-}
+// rangeValue — what a range is worth at another price against holding —
+// lives in shared/lp-guards.js since 2026-09-11 (the width-upgrade rule
+// needs it too) and is re-exported here for the record and its pins.
+export { rangeValue };
 
 // One width, lived through the record. `used` is the non-overlapping window
 // list in block order; only windows that carry a price take part. A window
@@ -12790,7 +12837,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       // nets enough more on this capital to pay for one within a day. The
       // daily run alone may upgrade (once a day, by construction).
       upgrade = widthUpgrade({
-        daily: steps.length === STEPS.length, inRange: true, ticks: plan.summary.ticks,
+        daily: steps.length === STEPS.length, inRange: true, ticks: plan.summary.ticks, tick: plan.summary.tick,
         pick: record?.earnings_pick || null, rows: record?.rows || [], hoursOfPrices: record?.hours_of_prices || 0,
         valueBnb: plan.summary.value_bnb, bnbUsd, resetCostUsd: costOpts.resetCostUsd ?? record?.reset_cost?.usd ?? 0,
       });

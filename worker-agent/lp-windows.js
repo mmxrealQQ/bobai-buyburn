@@ -23,7 +23,7 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -259,6 +259,14 @@ export function verdict(log, opts = {}) {
   // the way the agent lives it — with the wait it really uses before a
   // re-set — and the one with the most left after its re-sets is the pick.
   for (const r of rows) r.earnings = r.width === 'full' ? null : earningsTest(used, r.width, { ...opts, resetAfterHours: wait.hours });
+  // THE LAST DAY ALONE (2026-09-11). A width that leads over the whole record
+  // but not over the last day is a lead the market has already moved away
+  // from; the width-upgrade rule asks for both (widthUpgrade). Replayed over
+  // the windows of the last 24 h with the wait in use; null under two of them.
+  const dayAgo = used.length ? Date.parse(used[used.length - 1].at) - 24 * 36e5 : 0;
+  const lastDayWins = used.filter((w) => Date.parse(w.at) >= dayAgo);
+  const dayTape = tape.filter((x) => Date.parse(x.at) >= dayAgo);
+  for (const r of rows) r.earnings_24h = r.width === 'full' ? null : earningsTest(lastDayWins, r.width, { ...opts, tape: dayTape, resetAfterHours: wait.hours });
   const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
     .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
   const first = used[0], last = used[used.length - 1];
@@ -382,26 +390,10 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
   };
 }
 
-// WHAT A RANGE IS WORTH AT ANOTHER PRICE. A position minted centred on p0
-// with a value of 1, in the symmetric range p0/up ... p0*up, holds an amount
-// of each side that the pool's own curve fixes; at another price p it holds
-// different amounts, and less than a wallet that kept the minted amounts
-// would (`hodl`). Inside the range the curve applies; below it the position
-// is all of the priced token and moves with p; above it, all of the quote
-// and moves not at all. `loss` is what the range has given up against
-// holding, as a share of the holding: never negative, zero at p0.
-export function rangeValue(p0, widthPct, p) {
-  const up = 1 + widthPct / 100;
-  const pa = p0 / up, pb = p0 * up;
-  const sa = Math.sqrt(pa), sb = Math.sqrt(pb), s0 = Math.sqrt(p0);
-  const L = 1 / (2 * s0 - sa - p0 / sb);
-  const x0 = L * (1 / s0 - 1 / sb), y0 = L * (s0 - sa);
-  const value = p <= pa ? L * (1 / sa - 1 / sb) * p
-    : p >= pb ? L * (sb - sa)
-    : L * (2 * Math.sqrt(p) - sa - p / sb);
-  const hodl = x0 * p + y0;
-  return { value, hodl, loss: Math.max(0, 1 - value / hodl) };
-}
+// rangeValue — what a range is worth at another price against holding —
+// lives in shared/lp-guards.js since 2026-09-11 (the width-upgrade rule
+// needs it too) and is re-exported here for the record and its pins.
+export { rangeValue };
 
 // One width, lived through the record. `used` is the non-overlapping window
 // list in block order; only windows that carry a price take part. A window

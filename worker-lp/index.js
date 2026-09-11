@@ -197,7 +197,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       // nets enough more on this capital to pay for one within a day. The
       // daily run alone may upgrade (once a day, by construction).
       upgrade = widthUpgrade({
-        daily: steps.length === STEPS.length, inRange: true, ticks: plan.summary.ticks,
+        daily: steps.length === STEPS.length, inRange: true, ticks: plan.summary.ticks, tick: plan.summary.tick,
         pick: record?.earnings_pick || null, rows: record?.rows || [], hoursOfPrices: record?.hours_of_prices || 0,
         valueBnb: plan.summary.value_bnb, bnbUsd, resetCostUsd: costOpts.resetCostUsd ?? record?.reset_cost?.usd ?? 0,
       });

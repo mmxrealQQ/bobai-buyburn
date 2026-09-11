@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4406 lines.
+# one fetch. 12 files, 4399 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2701,38 +2701,31 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
   const f4 = (x) => n(x).toFixed(4);
   const f5 = (x) => n(x).toFixed(5);
   const usd = (x) => (x == null ? '' : ' (≈ $' + n(x).toFixed(2) + ')');
-  const sign = (x) => (n(x) > 0 ? '▲ +' : n(x) < 0 ? '▼ −' : '• ') + f5(Math.abs(n(x)));
-  const h = m.holdings, p = m.pnl;
-  const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ in range' : '⏳ out of range — re-set once it has been outside long enough';
+  const sign = (x) => (n(x) > 0 ? '+' : n(x) < 0 ? '−' : '') + f5(Math.abs(n(x)));
+  const h = m.holdings, p = m.pnl, d = m.day || {};
+  const arrow = n(p.profit_bnb) > 0 ? '▲' : n(p.profit_bnb) < 0 ? '▼' : '•';
+  const range = m.pool.in_range == null ? '' : m.pool.in_range ? 'in range, earning' : `out of range${m.pool.outside_hours != null ? ` for ${m.pool.outside_hours} h` : ''}`;
+  const width = m.pool.width_pct != null ? ` · ±${m.pool.width_pct}%` : '';
+  const counts = [];
+  if (d.resets) counts.push(`${d.resets} re-set${d.resets === 1 ? '' : 's'}`);
+  if (d.top_ups) counts.push(`${d.top_ups} top-up${d.top_ups === 1 ? '' : 's'}`);
+  if (d.collects) counts.push(`${d.collects} collect${d.collects === 1 ? '' : 's'}`);
+  if (d.sweeps) counts.push(`${d.sweeps} sweep${d.sweeps === 1 ? '' : 's'}`);
+  if (d.errors) counts.push(`⚠️ ${d.errors} failed`);
   const lines = [
     `💧 <b>${title} · ${m.date}</b>`,
-    '',
-    `📥 <b>Put in: ${f4(m.put_in.bnb)} BNB</b>${usd(m.put_in.usd)}  ·  ${m.put_in.sources.map((x) => `${x.label} ${f4(x.bnb)}`).join(' · ')}`,
-    `💼 <b>Position worth: ${f4(m.worth.bnb)} BNB</b>${usd(m.worth.usd)}`,
-    '',
-    `📊 <b>Holdings</b>`,
-    `🥞 ${m.pool.label || 'the pool'}${m.pool.position ? '  ·  #' + m.pool.position : ''}${range ? '  ·  ' + range : ''}`,
-    `🥞 In the position: ${f4(h.position_bnb)} BNB${n(h.fees_owed_bnb) > 0 ? '  ·  fees owed ' + f5(h.fees_owed_bnb) : ''}`,
+    `💰 <b>Profit so far: ${arrow} ${sign(p.profit_bnb)} BNB</b>${usd(p.profit_usd)} · ${n(p.change_pct) >= 0 ? '+' : ''}${n(p.change_pct).toFixed(2)}% on the capital since ${p.since}`,
+    `📥 Put in ${f4(m.put_in.bnb)} BNB${usd(m.put_in.usd)} → 💼 worth ${f4(m.worth.bnb)} BNB${usd(m.worth.usd)}`,
+    `🥞 ${m.pool.label || 'the pool'}${m.pool.position ? ' #' + m.pool.position : ''}${width}${range ? ' · ' + range : ''}`,
     h.bobai_units > 0
-      ? `🧠 $BOBAI held: ${Math.round(h.bobai_units).toLocaleString('en-US')}${h.bobai_usd != null ? ' (≈ $' + n(h.bobai_usd).toFixed(2) + ')' : ''}  ·  bought with ${f5(h.bobai_bnb)} BNB of fees  ·  never sold`
-      : `🧠 $BOBAI held: 0  ·  ${f5(h.bobai_bnb)} BNB of fees went into $BOBAI so far`,
-    `💵 Wallet: ${f4(h.wallet_bnb)} BNB${n(h.wallet_bnb) > 0.005 ? '  ·  goes into the position at the next run in range' : ''}`,
-    '',
-    `📈 <b>P&L</b>`,
-    `💰 <b>Profit so far: ${sign(p.profit_bnb)} BNB</b>${usd(p.profit_usd)}  ·  ${n(p.change_pct) >= 0 ? '▲ +' : '▼ '}${n(p.change_pct).toFixed(2)}% on the capital`,
-    `🔁 Of the fees: ${f5(p.kept_working_bnb)} BNB kept working in the position  ·  ${f5(p.into_bobai_bnb)} BNB became ${Math.round(n(p.bobai_units)).toLocaleString('en-US')} $BOBAI, held`,
-    `📈 From ${p.other_token} moving against BNB: ${sign(p.from_price_bnb)}`,
-    `🧾 From fees earned: ${sign(p.from_fees_bnb)}${p.fee_parts.length ? '  ·  ' + p.fee_parts.map((x) => `${f5(x.bnb)} ${x.label}`).join(' · ') : ''}`,
-    `⛽ Gas: ${n(p.gas_bnb) > 0 ? '▼ −' + f5(p.gas_bnb) : '• 0.00000'}`,
-    `🗓 In range: ${p.in_range_runs} of ${p.runs} runs since ${p.since}`,
-    '',
+      ? `🧠 ${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI held${h.bobai_usd != null ? ' (≈ $' + n(h.bobai_usd).toFixed(2) + ')' : ''}, bought with ${f5(h.bobai_bnb)} BNB of fees, never sold`
+      : `🧠 no $BOBAI held yet — half of every fee buys some`,
+    `📈 Price ${sign(p.from_price_bnb)} · 🧾 fees ${sign(p.from_fees_bnb)} (${f5(p.kept_working_bnb)} kept working) · ⛽ gas ${n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0'}`,
+    `🗓 Last 24 h: ${counts.length ? counts.join(', ') : 'quiet'}${d.last ? ` · last ${String(d.last.at).slice(11, 16)} UTC ${d.last.error ? '⚠️ ' : ''}${d.last.what}` : ''}`,
+    `🧭 Next: ${m.next || '—'}`,
   ];
-  const day = Array.isArray(m.last_24h) ? m.last_24h : [];
-  lines.push(`🔁 <b>Last 24 h</b>`);
-  if (!m.last_run_ok) lines.push('⚠️ one step failed; the operator has been told');
-  if (day.length) for (const d of day) lines.push(`• ${String(d.at).slice(11, 16)} UTC — ${d.error ? '⚠️ ' : ''}${d.what}`);
-  else lines.push('• quiet — every step under its floor, nothing to move');
-  lines.push('', `<a href="${m.links.page}">brainonbnb.com/defi</a> · <a href="${m.links.record}">record</a>`);
+  if (!m.last_run_ok) lines.push('⚠️ one step failed at the last run; the operator has been told');
+  lines.push(`<a href="${m.links.page}">brainonbnb.com/defi</a> · <a href="${m.links.record}">record</a>`);
   return lines.join('\n');
 }
 

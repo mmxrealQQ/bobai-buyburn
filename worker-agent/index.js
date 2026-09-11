@@ -1052,6 +1052,21 @@ const LP_POOLS_RETIRED = {
   agent_record: 'https://agent.brainonbnb.com/lp/agent',
 };
 
+// The width record's verdict with the agent's own measured re-set cost —
+// the same figure worker-lp charges, from the same record — built once for
+// /lp/windows and the portfolio alike.
+async function lpWidthVerdict(env) {
+  const log = await readLpWindows(env);
+  if (!log) return { log: null, v: null };
+  let costOpts = {};
+  try {
+    const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+    const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
+    if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+  } catch { /* the replay's assumption stands */ }
+  return { log, v: lpVerdict(log, costOpts) };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1611,17 +1626,8 @@ ${pageTail}`;
     }
 
     if (path === '/lp/windows') {
-      const log = await readLpWindows(env);
+      const { log, v } = await lpWidthVerdict(env);
       if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
-      // The re-set cost the verdict charges is the agent's own last one when
-      // there is one — the same figure worker-lp uses, from the same record.
-      let costOpts = {};
-      try {
-        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
-        const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
-        if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
-      } catch { /* the replay's assumption stands */ }
-      const v = lpVerdict(log, costOpts);
       // What the agent's own position earned against the replay's figure
       // for its width class (2026-09-10): the record says so beside the
       // dollar it names. Missing under a day of series, or without a position.
@@ -2161,7 +2167,18 @@ ${pageTail}`;
       const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
       const series = await buildLpSeries(env);
       const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
-      const model = lpPortfolio(rec, series, { bobaiUsd });
+      // The width and wait the next re-set would use, from the width record,
+      // and since when the price has been outside, from the DeFi worker's
+      // own note — so the one sentence about what comes next is the record's.
+      let width = null, outsideSince = null;
+      try {
+        const { v } = await lpWidthVerdict(env);
+        const pick = v && v.earnings_pick;
+        if (pick) width = { width_pct: pick.width, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: pick.earnings?.net_usd_per_day ?? null };
+        else if (v) width = { width_pct: null, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: null };
+      } catch { /* the sentence does without */ }
+      try { outsideSince = (await env.AGENT.get('lp:out_since')) || null; } catch { /* likewise */ }
+      const model = lpPortfolio(rec, series, { bobaiUsd, width, outsideSince });
       if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
       return json({
         what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',

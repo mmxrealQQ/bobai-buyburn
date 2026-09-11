@@ -20,7 +20,7 @@ if (process.argv.includes('--self-test')) {
     history: [
       { at: at(30), acted: true, steps: { rebalance: { acted: true, new_position: '7390000' } } },
       { at: at(8), acted: true, steps: { increase: { acted: true, bnb_spent: 0.08 } } },
-      { at: at(3), acted: true, steps: { rebalance: { acted: true, new_position: '7397034', bobai_bnb: 0.0003 } } },
+      { at: at(3), acted: true, steps: { rebalance: { acted: true, new_position: '7397034', bobai_bnb: 0.0003, width_pct: 1 } } },
     ],
   };
   const series = {
@@ -43,6 +43,12 @@ if (process.argv.includes('--self-test')) {
   is('the held $BOBAI is priced when the route has a price, and not otherwise', m.holdings.bobai_usd === 0.78 && lpPortfolio(rec, series, { now: NOW }).holdings.bobai_usd === null);
   is('the two halves of the profit are named: kept working, into $BOBAI', m.pnl.kept_working_bnb === 0.00287 && m.pnl.into_bobai_bnb === 0.00109 && m.pnl.bobai_units === 3895);
   is('the model carries no pool record: the agent stays in CAKE/BNB (2026-09-11)', !('pool_record' in m) && !m.links.pools);
+  // The one sentence about what comes next, both ways: in range, out of range, with and without a width the record names.
+  const w2 = { width_pct: 2, wait_hours: 3, net_usd_per_day: 0.16 };
+  is('out of range with a width named: the sentence says when the re-set comes and how wide', /outside the range for 2\.0 h; re-set after 3 h outside, in ±2%/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
+  is('out of range with no width named: the agent holds', /no width nets anything.*holds/.test(m.next) && m.pool.width_pct === 1);
+  is('in range with a width named: holds and earns, re-set only after the wait', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; return /holds the range and earns; a re-set only after 3 h outside, in ±2%/.test(lpPortfolio(r2, series, { now: NOW, width: w2 }).next); })());
+  is('the day is counted: re-sets, top-ups and the newest action', m.day.resets === 1 && m.day.top_ups === 1 && m.day.errors === 0 && m.day.last.step === undefined && /re-set/.test(m.day.last.what));
   is('the last day lists the runs of the last 24 h only, newest first', m.last_24h.length === 2 && m.last_24h[0].step === 'rebalance' && m.last_24h[1].step === 'increase' && /7397034/.test(m.last_24h[0].what));
   is('a re-set that bought BOBAI says so', /into \$BOBAI/.test(m.last_24h[0].what));
   is('a quiet day has an empty list', lastDay({ history: [{ at: at(40), acted: true, steps: { increase: { acted: true } } }] }, NOW).length === 0);

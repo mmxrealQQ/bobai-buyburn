@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12545 lines.
+# one fetch. 41 files, 12597 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2321,8 +2321,17 @@ export function waitInUse(delays, hoursOfPrices, set = RESET_AFTER_HOURS) {
   const base = priced.find((d) => d.hours === set) || null;
   const best = priced.slice().sort((a, b) => b.net_usd_per_day - a.net_usd_per_day)[0] || null;
   const keep = (why) => ({ hours: set, basis: 'set', why });
-  if (!best || !base) return keep(`the set wait of ${set} h — the record has not yet replayed every wait`);
+  if (!best) return keep(`the set wait of ${set} h — the record has not yet replayed every wait`);
   if (!(hoursOfPrices >= WAIT_PICK_MIN_HOURS)) return keep(`the set wait of ${set} h — the record holds ${hoursOfPrices} h of prices and a measured wait needs ${WAIT_PICK_MIN_HOURS} h`);
+  // The set wait nets nothing at any width (since 2026-09-11 a re-set is
+  // charged what its range lost against holding, and on a trending week no
+  // width nets at 2 h) while another wait does: that wait is in use. The
+  // bar below guards against flipping between two waits that both earn; a
+  // wait that turns "hold" into "earn" is not a flip.
+  if (!base) {
+    if (best.net_usd_per_day > 0) return { hours: best.hours, basis: 'measured', why: `${best.hours} h netted $${best.net_usd_per_day} a day over ${hoursOfPrices} h of prices while the set ${set} h netted nothing at any width` };
+    return keep(`the set wait of ${set} h — no wait nets anything over ${hoursOfPrices} h of prices`);
+  }
   if (best.hours === set) return { hours: set, basis: 'measured', why: `${set} h netted the most per day over ${hoursOfPrices} h of prices` };
   // Nets are rounded to four places; so is the bar, or 0.9 × 1.1 lands a
   // hair above 0.99 and a wait exactly a tenth ahead is refused.
@@ -6501,6 +6510,21 @@ const LP_POOLS_RETIRED = {
   agent_record: 'https://agent.brainonbnb.com/lp/agent',
 };
 
+// The width record's verdict with the agent's own measured re-set cost —
+// the same figure worker-lp charges, from the same record — built once for
+// /lp/windows and the portfolio alike.
+async function lpWidthVerdict(env) {
+  const log = await readLpWindows(env);
+  if (!log) return { log: null, v: null };
+  let costOpts = {};
+  try {
+    const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+    const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
+    if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+  } catch { /* the replay's assumption stands */ }
+  return { log, v: lpVerdict(log, costOpts) };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -7060,17 +7084,8 @@ ${pageTail}`;
     }
 
     if (path === '/lp/windows') {
-      const log = await readLpWindows(env);
+      const { log, v } = await lpWidthVerdict(env);
       if (!log) return json({ error: 'no LP window has been recorded yet', cadence: 'hourly' }, 503);
-      // The re-set cost the verdict charges is the agent's own last one when
-      // there is one — the same figure worker-lp uses, from the same record.
-      let costOpts = {};
-      try {
-        const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
-        const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
-        if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
-      } catch { /* the replay's assumption stands */ }
-      const v = lpVerdict(log, costOpts);
       // What the agent's own position earned against the replay's figure
       // for its width class (2026-09-10): the record says so beside the
       // dollar it names. Missing under a day of series, or without a position.
@@ -7610,7 +7625,18 @@ ${pageTail}`;
       const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
       const series = await buildLpSeries(env);
       const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
-      const model = lpPortfolio(rec, series, { bobaiUsd });
+      // The width and wait the next re-set would use, from the width record,
+      // and since when the price has been outside, from the DeFi worker's
+      // own note — so the one sentence about what comes next is the record's.
+      let width = null, outsideSince = null;
+      try {
+        const { v } = await lpWidthVerdict(env);
+        const pick = v && v.earnings_pick;
+        if (pick) width = { width_pct: pick.width, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: pick.earnings?.net_usd_per_day ?? null };
+        else if (v) width = { width_pct: null, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: null };
+      } catch { /* the sentence does without */ }
+      try { outsideSince = (await env.AGENT.get('lp:out_since')) || null; } catch { /* likewise */ }
+      const model = lpPortfolio(rec, series, { bobaiUsd, width, outsideSince });
       if (!model) return json({ error: 'no portfolio yet: the agent has no run on record or the series no summary' }, 503);
       return json({
         what_this_is: 'The DeFi agent as a portfolio: what went in, what it is worth, what it holds where, the P&L by where it came from and what it did in the last day. One model; the /defi page and the Telegram /defi card render this and compute nothing of their own.',
@@ -8218,7 +8244,7 @@ export function lastDay(rec, now = Date.now()) {
   return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 }
 
-export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null } = {}) {
+export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -8253,9 +8279,35 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null } =
   if (n(p.fees_owed_bnb) > 0) feeParts.push({ label: 'still owed by the position', bnb: r5(p.fees_owed_bnb) });
 
   const day = lastDay(rec, now);
+  // The range as a person asks about it: how wide, in or out, and what the
+  // agent does next — one sentence, from the record's own width and wait.
+  const hist = Array.isArray(rec.history) ? rec.history : [];
+  let widthPct = null;
+  for (let i = hist.length - 1; i >= 0 && widthPct == null; i--) { const r = hist[i]?.steps?.rebalance; if (r && r.acted && !r.error && n(r.width_pct) > 0) widthPct = n(r.width_pct); }
+  if (widthPct == null && n(rb.width_pct) > 0) widthPct = n(rb.width_pct);
+  const pick = width && n(width.width_pct) > 0 ? width : null;
+  const waitH = width && width.wait_hours != null ? n(width.wait_hours) : null;
+  const outH = outsideSince ? Math.max(0, (now - Date.parse(outsideSince)) / 36e5) : null;
+  const hm = (h) => (h == null ? '' : h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`);
+  let next;
+  if (!position) next = 'no position yet — the first mint follows the first deposit above the floor';
+  else if (inRange) next = pick
+    ? `holds the range and earns; a re-set only after ${waitH ?? 2} h outside, in ±${pick.width_pct}% (nets $${n(pick.net_usd_per_day).toFixed(2)} a day on $50 by the record)`
+    : 'holds the range and earns; no width nets anything on the record right now, so it would hold rather than re-set';
+  else next = pick
+    ? `outside the range${outH != null ? ` for ${hm(outH)}` : ''}; re-set after ${waitH ?? 2} h outside, in ±${pick.width_pct}% (nets $${n(pick.net_usd_per_day).toFixed(2)} a day on $50 by the record)`
+    : `outside the range${outH != null ? ` for ${hm(outH)}` : ''}; no width nets anything on the record, so the agent holds instead of re-setting`;
+  const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
+  const daySummary = {
+    resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'),
+    errors: day.filter((d) => d.error).length,
+    last: day.length ? { at: day[0].at, what: day[0].what, error: !!day[0].error } : null,
+  };
   return {
     at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsd,
-    pool: { address: poolAddr, label: poolLabel, position, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null },
+    pool: { address: poolAddr, label: poolLabel, position, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10 },
+    next,
+    day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
     worth: { bnb: r4(value.now), usd: usd(value.now) },
     holdings: {

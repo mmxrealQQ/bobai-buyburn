@@ -56,7 +56,7 @@ export function lastDay(rec, now = Date.now()) {
   return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 }
 
-export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null } = {}) {
+export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
@@ -91,9 +91,35 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null } =
   if (n(p.fees_owed_bnb) > 0) feeParts.push({ label: 'still owed by the position', bnb: r5(p.fees_owed_bnb) });
 
   const day = lastDay(rec, now);
+  // The range as a person asks about it: how wide, in or out, and what the
+  // agent does next — one sentence, from the record's own width and wait.
+  const hist = Array.isArray(rec.history) ? rec.history : [];
+  let widthPct = null;
+  for (let i = hist.length - 1; i >= 0 && widthPct == null; i--) { const r = hist[i]?.steps?.rebalance; if (r && r.acted && !r.error && n(r.width_pct) > 0) widthPct = n(r.width_pct); }
+  if (widthPct == null && n(rb.width_pct) > 0) widthPct = n(rb.width_pct);
+  const pick = width && n(width.width_pct) > 0 ? width : null;
+  const waitH = width && width.wait_hours != null ? n(width.wait_hours) : null;
+  const outH = outsideSince ? Math.max(0, (now - Date.parse(outsideSince)) / 36e5) : null;
+  const hm = (h) => (h == null ? '' : h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`);
+  let next;
+  if (!position) next = 'no position yet — the first mint follows the first deposit above the floor';
+  else if (inRange) next = pick
+    ? `holds the range and earns; a re-set only after ${waitH ?? 2} h outside, in ±${pick.width_pct}% (nets $${n(pick.net_usd_per_day).toFixed(2)} a day on $50 by the record)`
+    : 'holds the range and earns; no width nets anything on the record right now, so it would hold rather than re-set';
+  else next = pick
+    ? `outside the range${outH != null ? ` for ${hm(outH)}` : ''}; re-set after ${waitH ?? 2} h outside, in ±${pick.width_pct}% (nets $${n(pick.net_usd_per_day).toFixed(2)} a day on $50 by the record)`
+    : `outside the range${outH != null ? ` for ${hm(outH)}` : ''}; no width nets anything on the record, so the agent holds instead of re-setting`;
+  const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
+  const daySummary = {
+    resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'),
+    errors: day.filter((d) => d.error).length,
+    last: day.length ? { at: day[0].at, what: day[0].what, error: !!day[0].error } : null,
+  };
   return {
     at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsd,
-    pool: { address: poolAddr, label: poolLabel, position, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null },
+    pool: { address: poolAddr, label: poolLabel, position, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10 },
+    next,
+    day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
     worth: { bnb: r4(value.now), usd: usd(value.now) },
     holdings: {

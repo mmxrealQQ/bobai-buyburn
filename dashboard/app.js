@@ -1070,35 +1070,30 @@ function fillLpPortfolio(){
   const li = (ic, html) => '<li><span class="ic">' + ic + '</span><div>' + html + '</div></li>';
   return fetch('https://agent.brainonbnb.com/lp/portfolio', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(m => {
     if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
-    const h = m.holdings, p = m.pnl;
+    const h = m.holdings, p = m.pnl, d = m.day || {};
     const up = n(p.profit_bnb) > 0 ? 'up' : n(p.profit_bnb) < 0 ? 'down' : '';
-    const range = m.pool.in_range == null ? '' : m.pool.in_range ? '<b>in range</b>, earning' : '<b>out of range</b> — re-set once it has been outside long enough';
+    const range = m.pool.in_range == null ? '' : m.pool.in_range ? '<b>in range</b>, earning' : '<b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
+    const width = m.pool.width_pct != null ? ' · ±' + esc(m.pool.width_pct) + '%' : '';
     const tiles =
       '<div class="pf-tile"><div class="k">Put in</div><div class="v">' + f4(m.put_in.bnb) + ' BNB</div><div class="s">' + (m.put_in.usd != null ? '≈ $' + n(m.put_in.usd).toFixed(2) + ' · ' : '') + esc(m.put_in.sources.map(x => x.label + ' ' + f4(x.bnb)).join(' · ')) + '</div></div>' +
-      '<div class="pf-tile"><div class="k">Position worth</div><div class="v">' + f4(m.worth.bnb) + ' BNB</div><div class="s">' + (m.worth.usd != null ? '≈ $' + n(m.worth.usd).toFixed(2) + ' · ' : '') + esc(m.pool.label || '') + (m.pool.position ? ' · #' + esc(m.pool.position) : '') + '</div></div>' +
+      '<div class="pf-tile"><div class="k">Position worth</div><div class="v">' + f4(m.worth.bnb) + ' BNB</div><div class="s">' + (m.worth.usd != null ? '≈ $' + n(m.worth.usd).toFixed(2) + ' · ' : '') + esc(m.pool.label || '') + (m.pool.position ? ' #' + esc(m.pool.position) : '') + width + '</div></div>' +
       '<div class="pf-tile ' + up + '"><div class="k">Profit so far</div><div class="v">' + sign(p.profit_bnb) + ' BNB</div><div class="s">' + (p.profit_usd != null ? '≈ $' + n(p.profit_usd).toFixed(2) + ' · ' : '') + (n(p.change_pct) >= 0 ? '+' : '') + n(p.change_pct).toFixed(2) + '% on the capital since ' + esc(p.since) + '</div></div>';
-    const holdings = [
-      li('🥞', esc(m.pool.label || 'the pool') + (m.pool.position ? ' · #' + esc(m.pool.position) : '') + (range ? ' · ' + range : '')),
-      li('🥞', 'In the position: <b>' + f4(h.position_bnb) + ' BNB</b>' + (n(h.fees_owed_bnb) > 0 ? ' <span class="m">· fees owed ' + f5(h.fees_owed_bnb) + '</span>' : '')),
-      li('🧠', h.bobai_units > 0 ? '$BOBAI held: <b>' + Math.round(h.bobai_units).toLocaleString('en-US') + '</b>' + (h.bobai_usd != null ? ' <span class="m">(≈ $' + n(h.bobai_usd).toFixed(2) + ')</span>' : '') + ' <span class="m">· bought with ' + f5(h.bobai_bnb) + ' BNB of fees · never sold</span>' : '$BOBAI held: <b>0</b> <span class="m">· ' + f5(h.bobai_bnb) + ' BNB of fees went into $BOBAI so far</span>'),
-      li('💵', 'Wallet: <b>' + f4(h.wallet_bnb) + ' BNB</b>' + (n(h.wallet_bnb) > 0.005 ? ' <span class="m">· goes into the position at the next run in range</span>' : '')),
+    const counts = [];
+    if(d.resets) counts.push(d.resets + ' re-set' + (d.resets === 1 ? '' : 's'));
+    if(d.top_ups) counts.push(d.top_ups + ' top-up' + (d.top_ups === 1 ? '' : 's'));
+    if(d.collects) counts.push(d.collects + ' collect' + (d.collects === 1 ? '' : 's'));
+    if(d.sweeps) counts.push(d.sweeps + ' sweep' + (d.sweeps === 1 ? '' : 's'));
+    if(d.errors) counts.push('⚠️ ' + d.errors + ' failed');
+    const list = [
+      li('🥞', esc(m.pool.label || 'the pool') + (m.pool.position ? ' #' + esc(m.pool.position) : '') + width + (range ? ' · ' + range : '')),
+      li('🧠', h.bobai_units > 0 ? '<b>' + Math.round(h.bobai_units).toLocaleString('en-US') + ' $BOBAI</b> held' + (h.bobai_usd != null ? ' <span class="m">(≈ $' + n(h.bobai_usd).toFixed(2) + ')</span>' : '') + ', bought with ' + f5(h.bobai_bnb) + ' BNB of fees, never sold' : 'No $BOBAI held yet — half of every fee buys some'),
+      li('📈', 'Price <b>' + sign(p.from_price_bnb) + '</b> · fees <b>' + sign(p.from_fees_bnb) + '</b> <span class="m">(' + f5(p.kept_working_bnb) + ' kept working)</span> · gas <b>' + (n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0') + '</b>'),
+      li('🗓', 'Last 24 h: <b>' + esc(counts.length ? counts.join(', ') : 'quiet') + '</b>' + (d.last ? ' <span class="m">· last ' + esc(String(d.last.at).slice(11, 16)) + ' UTC ' + (d.last.error ? '⚠️ ' : '') + esc(d.last.what) + '</span>' : '')),
+      li('🧭', 'Next: ' + esc(m.next || '—')),
+      (m.last_run_ok === false ? li('⚠️', 'One step failed at the last run; the operator has been told.') : ''),
     ].join('');
-    const pnl = [
-      li('🔁', 'Of the fees: <b>' + f5(p.kept_working_bnb) + ' BNB</b> kept working in the position · <b>' + f5(p.into_bobai_bnb) + ' BNB</b> became <b>' + Math.round(n(p.bobai_units)).toLocaleString('en-US') + ' $BOBAI</b>, held'),
-      li('📈', 'From ' + esc(p.other_token) + ' moving against BNB: <b>' + sign(p.from_price_bnb) + '</b>'),
-      li('🧾', 'From fees earned: <b>' + sign(p.from_fees_bnb) + '</b>' + (p.fee_parts.length ? ' <span class="m">· ' + esc(p.fee_parts.map(x => f5(x.bnb) + ' ' + x.label).join(' · ')) + '</span>' : '')),
-      li('⛽', 'Gas: <b>' + (n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0.00000') + '</b>'),
-      li('🗓', 'In range: <b>' + esc(p.in_range_runs) + ' of ' + esc(p.runs) + '</b> runs since ' + esc(p.since)),
-    ].join('');
-    const day = Array.isArray(m.last_24h) ? m.last_24h : [];
-    const today = (m.last_run_ok === false ? li('⚠️', 'One step failed; the operator has been told.') : '')
-      + (day.length ? day.map(d => li('•', '<span class="m">' + esc(String(d.at).slice(11, 16)) + ' UTC</span> — ' + (d.error ? '⚠️ ' : '') + esc(d.what))).join('') : li('•', 'Quiet — every step under its floor, nothing to move.'));
     box.innerHTML = '<div class="pf-top">' + tiles + '</div>'
-      + '<div class="pf-grid">'
-      + '<div><h3 class="pf-h">Holdings</h3><ul class="pf-list">' + holdings + '</ul></div>'
-      + '<div><h3 class="pf-h">P&amp;L</h3><ul class="pf-list">' + pnl + '</ul></div>'
-      + '<div><h3 class="pf-h">Last 24 h</h3><ul class="pf-list">' + today + '</ul></div>'
-      + '</div>'
+      + '<ul class="pf-list pf-one">' + list + '</ul>'
       + '<p class="pf-when">Last run ' + esc(String(m.at).replace('T', ' ').slice(0, 16)) + ' UTC · range checked ' + esc(String(m.checked_at).replace('T', ' ').slice(0, 16)) + ' UTC · dollars at the BNB price of the last run. Same picture as JSON: <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">/lp/portfolio</a> · the record: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>';
   });
 }

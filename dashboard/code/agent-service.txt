@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12689 lines.
+# one fetch. 41 files, 12729 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2555,7 +2555,17 @@ export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
 // never pays for a re-set. At most one such re-set a day, bounded by the
 // daily run; the hourly checks never upgrade.
 export const WIDTH_UPGRADE_MARGIN = 0.1;
-export const RECORD_WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
+// The widths the hourly replay measures (six, since 2026-09-02) and the
+// widths derived between them (2026-09-11, "die mathematisch beste Range"):
+// inside its range a position's fee share is its liquidity share, and for
+// the same dollars that is 1/width — the record's own rows say so to the
+// digit (±1% 0.020, ±2% 0.010, ±5% 0.004, ±10% 0.002 in one hour). So a
+// ±3% row is the ±5% row times 5/3, read off the wider neighbour, which was
+// in range whenever the narrower one was. The grid is what the earnings
+// test replays and what a re-set may mint; widthClassOf snaps to it.
+export const REPLAYED_WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
+export const DERIVED_WIDTHS = [1.5, 3, 4, 7];
+export const RECORD_WIDTHS = REPLAYED_WIDTHS.concat(DERIVED_WIDTHS).sort((a, b) => a - b);
 
 // The width class of a position from its ticks: half its span, in percent,
 // snapped to the record's width nearest on a log scale (a 380-tick range is
@@ -7160,9 +7170,10 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 <h2>Every width, replayed</h2>
 <div class="card"><div class="wrap"><table>
 <tr><th>Width</th><th>Net per day</th><th>Fees earned</th><th>Re-sets</th><th>Lost to the price</th><th>Hours in range</th><th>Windows held</th><th>Days held</th></tr>
-${rows.map((r) => { const e = r.earnings; const money = (x, d) => (x == null ? '—' : '$' + f(x, d)); return `<tr${pick && r.width === pick.width ? ' class="pick"' : ''}><td>${isFinite(Number(r.width)) ? `±${h(r.width)}%` : 'full range (V2-like)'}</td><td>${h(money(e && e.net_usd_per_day, 3))}</td><td>${h(money(e && e.fees_usd, 3))}</td><td>${h(e ? e.resets : 'never')}</td><td>${h(money(e && e.lost_to_price_usd != null ? e.lost_to_price_usd + e.open_loss_usd : null, 3))}</td><td>${e ? `${h(f(e.hours_in_range, 0))} of ${h(f(e.hours, 0))}` : 'always'}</td><td>${h(r.held)} of ${h(r.of)}</td><td>${r.day ? `${h(r.day.held)} of ${h(r.day.tested)}` : 'all'}</td></tr>`; }).join('')}
+${rows.map((r) => { const e = r.earnings; const money = (x, d) => (x == null ? '—' : '$' + f(x, d)); return `<tr${pick && r.width === pick.width ? ' class="pick"' : ''}><td>${isFinite(Number(r.width)) ? `±${h(r.width)}%${r.derived ? ` <span style="color:#a9a49a;font-weight:400">(from ±${h(r.derived_from ? r.derived_from[1] : '')}%)</span>` : ''}` : 'full range (V2-like)'}</td><td>${h(money(e && e.net_usd_per_day, 3))}</td><td>${h(money(e && e.fees_usd, 3))}</td><td>${h(e ? e.resets : 'never')}</td><td>${h(money(e && e.lost_to_price_usd != null ? e.lost_to_price_usd + e.open_loss_usd : null, 3))}</td><td>${e ? `${h(f(e.hours_in_range, 0))} of ${h(f(e.hours, 0))}` : 'always'}</td><td>${h(r.held)} of ${h(r.of)}</td><td>${r.day ? `${h(r.day.held)} of ${h(r.day.tested)}` : 'all'}</td></tr>`; }).join('')}
 </table></div>
 <p class="note">Net per day is fees earned inside the range minus the re-sets paid minus what the ranges lost to the price against holding (the re-sets' losses plus the open range marked at the last price), on $${h(usd)}, over the recorded prices. A narrow width earns more per hour inside the range, leaves it more often and loses more at each edge; a wide one rarely leaves and earns little. The pick is where those two meet on this pool's recent prices, and it moves as the prices do.</p>
+<p class="note">Widths marked "from" are not replayed hour by hour; their fees are read off the next wider replayed width (inside its range a position's share of the pool's fees is 1/width for the same dollars — the record's own rows say so to the digit), and whether they held, off the next narrower one. Since 2026-09-11, so the pick is not bound to a coarse grid.</p>
 <p class="note">${h(String(v.earnings_rule || '').replace(/^[a-z]/, (ch) => ch.toUpperCase()))}</p></div>
 ${v.resets && v.resets.rows.length ? `<h2>What each re-set cost</h2>
 <div class="card"><div class="wrap"><table>
@@ -8801,7 +8812,7 @@ export async function lpTierPlan(input = {}) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -8885,8 +8896,35 @@ export function mergeLogs(a, b) {
 //   - the width a re-set USES is the earnings pick: the most net per day when
 //     every width is replayed over the recorded prices with the agent's own
 //     re-set delay and cost (see earningsTest); nothing until a day of prices.
+// THE WIDTHS BETWEEN THE REPLAYED ONES. For each derived width the row is
+// read off its wider replayed neighbour (fees times neighbour/width: the
+// 1/width law above), and whether it held, how often it crossed and what it
+// netted off its narrower neighbour — a width that held at ±2% held at ±3%,
+// and a width that crossed at ±2% crossed at most as often at ±3%, so the
+// derived row is never rosier than the record allows. A window that lacks
+// either neighbour gets no derived row for that width. Pure; pinned.
+export function deriveWidths(window, derived = DERIVED_WIDTHS) {
+  const rows = Array.isArray(window?.rows) ? window.rows : [];
+  const numeric = rows.filter((r) => isFinite(Number(r.width))).map((r) => ({ ...r, width: Number(r.width) }));
+  const out = rows.slice();
+  for (const w of derived) {
+    if (numeric.some((r) => r.width === w)) continue;
+    const wider = numeric.filter((r) => r.width > w).sort((a, b) => a.width - b.width)[0];
+    const narrower = numeric.filter((r) => r.width < w).sort((a, b) => b.width - a.width)[0];
+    if (!wider || !narrower || typeof wider.fees !== 'number') continue;
+    const fees = wider.fees * (wider.width / w);
+    out.push({
+      width: w, derived: true, derived_from: [narrower.width, wider.width],
+      held: !!narrower.held, in_range_pct: narrower.in_range_pct, crossings: narrower.crossings,
+      fees: Number(fees.toFixed(6)),
+      net: Number((fees - (Number(narrower.fees) - Number(narrower.net))).toFixed(6)),
+    });
+  }
+  return { ...window, rows: out };
+}
+
 export function verdict(log, opts = {}) {
-  const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block);
+  const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block).map((w) => deriveWidths(w));
   const used = [];
   for (const w of sorted) {
     const last = used[used.length - 1];
@@ -8899,6 +8937,8 @@ export function verdict(log, opts = {}) {
     const rs = used.map((x) => x.rows.find((r) => r.width === w)).filter(Boolean);
     return {
       width: w,
+      derived: rs.length > 0 && rs.every((r) => r.derived === true),
+      derived_from: rs.find((r) => r.derived)?.derived_from || null,
       of: rs.length,
       held: rs.filter((r) => r.held).length,
       heldEvery: rs.length > 0 && rs.every((r) => r.held),

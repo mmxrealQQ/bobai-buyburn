@@ -34,8 +34,8 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, MAX_WINDOWS, calibration } from '../worker-agent/lp-windows.js';
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse } from '../shared/lp-guards.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, deriveWidths, MAX_WINDOWS, calibration } from '../worker-agent/lp-windows.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse, DERIVED_WIDTHS, RECORD_WIDTHS, widthClassOf } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const LOG = path.join(ROOT, 'data', 'lp-windows.json');
@@ -297,6 +297,16 @@ if (SELF_TEST) {
   t('execution is gas plus fee plus the measured impact, or the fee estimated from the trade', Math.abs(rl.rows[1].execution_bnb - 0.00045) < 1e-9 && rl.rows[1].impact_bnb === 0.0002 && rl.rows[0].impact_bnb === null && Math.abs(rl.rows[0].execution_bnb - (0.0001 + 0.3 * 0.0025)) < 1e-9);
   t('the totals add up and the dollars follow the BNB price', Math.abs(rl.lost_to_price_bnb - rl.rows[1].lost_to_price_bnb) < 1e-9 && rl.impact_measured === 1 && rl.rows[1].lost_to_price_usd === Math.round(rl.rows[1].lost_to_price_bnb * 700 * 100) / 100);
   t('no re-sets: an empty table, zero totals', resetLosses({ history: [] }).resets === 0 && resetLosses(null).lost_to_price_bnb === 0);
+  // The derived widths: read off the neighbours, never rosier than the record.
+  const wReal = { rows: [{ width: 1, held: false, in_range_pct: 80, crossings: 2, fees: 0.02, net: 0.01 }, { width: 2, held: true, in_range_pct: 100, crossings: 0, fees: 0.01, net: 0.01 }, { width: 5, held: true, in_range_pct: 100, crossings: 0, fees: 0.004, net: 0.004 }, { width: 10, held: true, in_range_pct: 100, crossings: 0, fees: 0.002, net: 0.002 }, { width: 'full', held: true, in_range_pct: 100, crossings: 0, fees: 0.0001, net: 0.0001 }] };
+  const dw = deriveWidths(wReal);
+  t(`the derived widths ${DERIVED_WIDTHS.join('/')} are added to a window`, DERIVED_WIDTHS.every((w) => dw.rows.some((r) => r.width === w && r.derived)) && dw.rows.length === wReal.rows.length + DERIVED_WIDTHS.length);
+  t('a derived width\'s fees are the wider neighbour\'s times neighbour/width (±3% = ±5% × 5/3)', Math.abs(dw.rows.find((r) => r.width === 3).fees - 0.004 * 5 / 3) < 1e-6 && Math.abs(dw.rows.find((r) => r.width === 1.5).fees - 0.01 * 2 / 1.5) < 1e-6);
+  t('… and whether it held comes off the narrower neighbour (±1.5% did not hold because ±1% did not; ±3% held because ±2% did)', dw.rows.find((r) => r.width === 1.5).held === false && dw.rows.find((r) => r.width === 1.5).crossings === 2 && dw.rows.find((r) => r.width === 3).held === true);
+  t('a derived row\'s net carries the narrower neighbour\'s re-set cost (±1.5%: fees 0.0133 minus the 0.01 that ±1% paid)', Math.abs(dw.rows.find((r) => r.width === 1.5).net - (0.01 * 2 / 1.5 - 0.01)) < 1e-6);
+  t('a window without a wider neighbour gets no derived row there', !deriveWidths({ rows: [{ width: 5, held: true, fees: 0.004, net: 0.004, crossings: 0 }] }).rows.some((r) => r.width === 7));
+  t('the verdict replays the derived widths and marks them', (() => { const v = verdict(dayFlat); const r3 = v.rows.find((r) => r.width === 3); return r3 && r3.derived === true && r3.earnings && r3.earnings.fees_usd > 0 && v.rows.find((r) => r.width === 5).derived === false; })());
+  t('the width class snaps to the finer grid (a ±3.1% range is the 3 class, not 2 or 5)', widthClassOf([-Math.round(Math.log(1.031) / Math.log(1.0001)), Math.round(Math.log(1.031) / Math.log(1.0001))]) === 3 && RECORD_WIDTHS.includes(1.5) && RECORD_WIDTHS.includes(7));
   t('the verdict charges the measured cost when given one', verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.usd === 0.14 && /measured/.test(verdict(dayFlat, { resetCostUsd: 0.14 }).reset_cost.basis));
   t('… and says the cost is assumed when not', /assumed/.test(verdict(dayFlat).reset_cost.basis));
 

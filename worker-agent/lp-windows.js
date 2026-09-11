@@ -23,7 +23,7 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -107,8 +107,35 @@ export function mergeLogs(a, b) {
 //   - the width a re-set USES is the earnings pick: the most net per day when
 //     every width is replayed over the recorded prices with the agent's own
 //     re-set delay and cost (see earningsTest); nothing until a day of prices.
+// THE WIDTHS BETWEEN THE REPLAYED ONES. For each derived width the row is
+// read off its wider replayed neighbour (fees times neighbour/width: the
+// 1/width law above), and whether it held, how often it crossed and what it
+// netted off its narrower neighbour — a width that held at ±2% held at ±3%,
+// and a width that crossed at ±2% crossed at most as often at ±3%, so the
+// derived row is never rosier than the record allows. A window that lacks
+// either neighbour gets no derived row for that width. Pure; pinned.
+export function deriveWidths(window, derived = DERIVED_WIDTHS) {
+  const rows = Array.isArray(window?.rows) ? window.rows : [];
+  const numeric = rows.filter((r) => isFinite(Number(r.width))).map((r) => ({ ...r, width: Number(r.width) }));
+  const out = rows.slice();
+  for (const w of derived) {
+    if (numeric.some((r) => r.width === w)) continue;
+    const wider = numeric.filter((r) => r.width > w).sort((a, b) => a.width - b.width)[0];
+    const narrower = numeric.filter((r) => r.width < w).sort((a, b) => b.width - a.width)[0];
+    if (!wider || !narrower || typeof wider.fees !== 'number') continue;
+    const fees = wider.fees * (wider.width / w);
+    out.push({
+      width: w, derived: true, derived_from: [narrower.width, wider.width],
+      held: !!narrower.held, in_range_pct: narrower.in_range_pct, crossings: narrower.crossings,
+      fees: Number(fees.toFixed(6)),
+      net: Number((fees - (Number(narrower.fees) - Number(narrower.net))).toFixed(6)),
+    });
+  }
+  return { ...window, rows: out };
+}
+
 export function verdict(log, opts = {}) {
-  const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block);
+  const sorted = (log?.windows || []).slice().sort((a, b) => a.from_block - b.from_block).map((w) => deriveWidths(w));
   const used = [];
   for (const w of sorted) {
     const last = used[used.length - 1];
@@ -121,6 +148,8 @@ export function verdict(log, opts = {}) {
     const rs = used.map((x) => x.rows.find((r) => r.width === w)).filter(Boolean);
     return {
       width: w,
+      derived: rs.length > 0 && rs.every((r) => r.derived === true),
+      derived_from: rs.find((r) => r.derived)?.derived_from || null,
       of: rs.length,
       held: rs.filter((r) => r.held).length,
       heldEvery: rs.length > 0 && rs.every((r) => r.held),

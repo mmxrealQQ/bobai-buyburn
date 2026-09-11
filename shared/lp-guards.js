@@ -279,7 +279,17 @@ export function rebalanceWait(outSinceMs, nowMs, hours = RESET_AFTER_HOURS) {
 // never pays for a re-set. At most one such re-set a day, bounded by the
 // daily run; the hourly checks never upgrade.
 export const WIDTH_UPGRADE_MARGIN = 0.1;
-export const RECORD_WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
+// The widths the hourly replay measures (six, since 2026-09-02) and the
+// widths derived between them (2026-09-11, "die mathematisch beste Range"):
+// inside its range a position's fee share is its liquidity share, and for
+// the same dollars that is 1/width — the record's own rows say so to the
+// digit (±1% 0.020, ±2% 0.010, ±5% 0.004, ±10% 0.002 in one hour). So a
+// ±3% row is the ±5% row times 5/3, read off the wider neighbour, which was
+// in range whenever the narrower one was. The grid is what the earnings
+// test replays and what a re-set may mint; widthClassOf snaps to it.
+export const REPLAYED_WIDTHS = [0.25, 0.5, 1, 2, 5, 10];
+export const DERIVED_WIDTHS = [1.5, 3, 4, 7];
+export const RECORD_WIDTHS = REPLAYED_WIDTHS.concat(DERIVED_WIDTHS).sort((a, b) => a - b);
 
 // The width class of a position from its ticks: half its span, in percent,
 // snapped to the record's width nearest on a log scale (a 380-tick range is

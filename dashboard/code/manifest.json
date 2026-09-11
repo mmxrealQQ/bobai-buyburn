@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 41,
-   "lines": 12534,
-   "zipBytes": 267874,
-   "txtBytes": 749306,
-   "sha256": "a3ea0fdd384b59ff",
+   "lines": 12617,
+   "zipBytes": 270262,
+   "txtBytes": 756655,
+   "sha256": "41c03b008623e663",
    "reqs": [
     {
      "what": "A wallet to be paid into",

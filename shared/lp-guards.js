@@ -181,7 +181,7 @@ export function refuseRebalance(state) {
     : `this wallet holds ${state.positions} positions — which one to re-set is a decision for a person`;
   if (state.inRange) return 'the price is inside the range — nothing to re-set';
   if (state.width == null)
-    return `no width has yet earned more than its re-sets over the recorded prices (${state.hoursOfPrices || 0} h recorded, ${MIN_HOURS_FOR_EARNINGS} h needed). A re-set into a width that only held 37 minutes is how a position pays for a re-set every day. Holding.`;
+    return `no width nets anything over the recorded prices (${state.hoursOfPrices || 0} h recorded, ${MIN_HOURS_FOR_EARNINGS} h needed) once each re-set is charged what its range lost against holding. A re-set into a width that only held 37 minutes is how a position pays for a re-set every day; a re-set that sells the low and buys the high pays twice. Holding.`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
     return `${state.resume ? "the wallet's two sides are" : 'the position is'} worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a ${state.resume ? 'mint' : 're-set'} would cost more than it is likely to earn back`;
   return null;

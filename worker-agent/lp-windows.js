@@ -202,9 +202,9 @@ export function verdict(log, opts = {}) {
       note: 'Every width replayed with each wait before a re-set; the best width per wait is named. The re-set uses the wait that netted the most once the record holds a week of prices and it beats the set wait by a tenth; under either bar the set wait stands.',
     },
     reset_cost: opts.resetCostUsd != null
-      ? { usd: opts.resetCostUsd, basis: opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars' }
-      : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet' },
-    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred, at the replay's re-set cost) once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Net per day is what is left after the re-sets; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
+      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + '; on top of it each re-set is charged what its range lost against holding' }
+      : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet; on top of it each re-set is charged what its range lost against holding' },
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred) once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). A re-set is charged its gas and swap fee and what the range it leaves had lost against holding its minted amounts (it sold the side that rose and held the side that fell); the range still open is marked the same way at the last price. Net per day is what is left; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. If no width nets anything there is no pick, and the agent holds instead of re-setting.`,
   };
 }
 
@@ -241,21 +241,55 @@ export function measuredResetCost(agentRecord, bnbUsd) {
   return null;
 }
 
+// WHAT A RANGE IS WORTH AT ANOTHER PRICE. A position minted centred on p0
+// with a value of 1, in the symmetric range p0/up ... p0*up, holds an amount
+// of each side that the pool's own curve fixes; at another price p it holds
+// different amounts, and less than a wallet that kept the minted amounts
+// would (`hodl`). Inside the range the curve applies; below it the position
+// is all of the priced token and moves with p; above it, all of the quote
+// and moves not at all. `loss` is what the range has given up against
+// holding, as a share of the holding: never negative, zero at p0.
+export function rangeValue(p0, widthPct, p) {
+  const up = 1 + widthPct / 100;
+  const pa = p0 / up, pb = p0 * up;
+  const sa = Math.sqrt(pa), sb = Math.sqrt(pb), s0 = Math.sqrt(p0);
+  const L = 1 / (2 * s0 - sa - p0 / sb);
+  const x0 = L * (1 / s0 - 1 / sb), y0 = L * (s0 - sa);
+  const value = p <= pa ? L * (1 / sa - 1 / sb) * p
+    : p >= pb ? L * (sb - sa)
+    : L * (2 * Math.sqrt(p) - sa - p / sb);
+  const hodl = x0 * p + y0;
+  return { value, hodl, loss: Math.max(0, 1 - value / hodl) };
+}
+
 // One width, lived through the record. `used` is the non-overlapping window
 // list in block order; only windows that carry a price take part. A window
 // earns for the hour it stands for (its fee row scaled from its own minutes
 // to the time until the next window), never for a gap in the record. The
 // re-set cost is the replay's own assumed cost, median over the windows,
 // unless the caller passes a measured one.
+//
+// A RE-SET IS CHARGED WHAT IT LOSES AGAINST HOLDING. Until 2026-09-11 a
+// re-set cost its gas and its swap fee, $0.16, and +/-1% was the pick. That
+// night the agent re-set twice on CAKE/BNB: out below the range at 16:50 it
+// sold CAKE at the low, out above the next range at 02:50 it bought CAKE
+// back 1.5% higher, and with the price back where it had started the
+// position was 3.5% lighter, $15 on $424, against $1.90 of fees. The gas
+// was never the cost. The cost is that a range sells the side that is
+// rising and holds the side that is falling, and a re-set makes that
+// permanent. So every re-set in the replay is charged what the range it
+// leaves had lost against simply holding its minted amounts (rangeValue),
+// and the range still open at the end is marked the same way at the last
+// price. Net is what is left after the fees paid for all of it.
 const MAX_GAP_HOURS = 3;
 const r2 = (x) => Math.round(x * 100) / 100, r4 = (x) => Math.round(x * 10000) / 10000;
-export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null } = {}) {
+export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD } = {}) {
   const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0 && (w.rows || []).some((r) => r.width === widthPct));
   if (priced.length < 2) return null;
   const costs = priced.map((w) => w.rebalance_cost_usd).filter((c) => typeof c === 'number' && c > 0).sort((a, b) => a - b);
   const cost = resetCostUsd ?? (costs.length ? costs[Math.floor(costs.length / 2)] : 0.5);
   const up = 1 + widthPct / 100, down = 1 / up;
-  let centre = priced[0].price, outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0;
+  let centre = priced[0].price, outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0, lost = 0;
   for (let i = 1; i < priced.length; i++) {
     const w = priced[i], prev = priced[i - 1];
     const dtH = Math.min(MAX_GAP_HOURS, (Date.parse(w.at) - Date.parse(prev.at)) / 36e5);
@@ -267,13 +301,20 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
       hoursIn += dtH; outRun = 0;
     } else {
       hoursOut += dtH; outRun += dtH;
-      if (outRun >= resetAfterHours) { resets += 1; centre = w.price; outRun = 0; }
+      if (outRun >= resetAfterHours) {
+        resets += 1;
+        lost += rangeValue(centre, widthPct, w.price).loss * usd;
+        centre = w.price; outRun = 0;
+      }
     }
   }
-  const hours = hoursIn + hoursOut, net = fees - resets * cost;
+  const open = rangeValue(centre, widthPct, priced[priced.length - 1].price).loss * usd;
+  const hours = hoursIn + hoursOut, net = fees - resets * cost - lost - open;
   return {
     hours: r2(hours), hours_in_range: r2(hoursIn), fees_usd: r4(fees),
-    resets, reset_cost_usd: r2(cost), net_usd: r4(net),
+    resets, reset_cost_usd: r2(cost),
+    lost_to_price_usd: r4(lost), open_loss_usd: r4(open),
+    net_usd: r4(net),
     net_usd_per_day: hours > 0 ? r4(net / (hours / 24)) : null,
   };
 }

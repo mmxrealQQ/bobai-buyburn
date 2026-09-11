@@ -447,7 +447,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   const pick = record?.earnings_pick || null;
   const width = widthOverride ?? pick?.width ?? null;
   const widthBasis = widthOverride != null ? 'named by hand'
-    : (pick ? `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings.net_usd_per_day} a day on $50 after ${pick.earnings.resets} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${pick.earnings.reset_cost_usd} each` : null);
+    : (pick ? `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings.net_usd_per_day} a day on $50 after ${pick.earnings.resets} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${pick.earnings.reset_cost_usd} each${pick.earnings.lost_to_price_usd != null ? ` and $${pick.earnings.lost_to_price_usd} lost to the price against holding` : ''}` : null);
   if (p.positions === 1 || resume) {
     poolInfo = await readPool(pub, p.pos);
     spacing = Number(await read(pub, poolInfo.pool, ABI.POOL, 'tickSpacing')) || 1;

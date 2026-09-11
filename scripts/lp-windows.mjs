@@ -34,7 +34,7 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, measuredResetCost, resetSwapFee, MAX_WINDOWS, calibration } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, MAX_WINDOWS, calibration } from '../worker-agent/lp-windows.js';
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
@@ -140,13 +140,29 @@ if (SELF_TEST) {
   t('a flat price never needs a re-set', e1.resets === 0 && e5.resets === 0);
   t('… and the narrow width earns the most per day', e1.net_usd_per_day > e5.net_usd_per_day && e1.net_usd_per_day > 0);
   t('an hour of window fees is scaled from its minutes (0.10 per 37.5 min → 0.16 per hour)', Math.abs(e1.fees_usd / e1.hours - 0.16) < 0.001);
-  // A price that drifts 0.4% every hour leaves a ±1% range every few hours
-  // and a ±5% range twice a day; the narrow width pays for re-sets it cannot
-  // earn back, the wide one keeps most of what it earns.
-  const drift = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.004, i)));
+  // A price that drifts 0.15% every hour leaves a ±1% range every few hours
+  // and a ±5% range never in a day; the narrow width pays for re-sets it
+  // cannot earn back, the wide one keeps most of what it earns. (0.4% an
+  // hour, the fixture until 2026-09-11, is a 12% day: once a re-set is
+  // charged what its range lost against holding, no width earns on that.)
+  const driftRows = [row(1, true, 0.06), row(5, true, 0.03), row(10, true, 0.015)];
+  const drift = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.0015, i), driftRows));
   e1 = earningsTest(drift, 1); e5 = earningsTest(drift, 5); const e10 = earningsTest(drift, 10);
   t('a drifting price makes the narrow width re-set again and again', e1.resets > e5.resets && e5.resets >= e10.resets);
   t('… so the narrow width nets less than a wider one', e1.net_usd_per_day < e5.net_usd_per_day);
+  // rangeValue: what a range is worth against holding its minted amounts.
+  t('a range at its minting price has lost nothing', rangeValue(100, 1, 100).loss < 1e-9);
+  t('a ±1% range at its lower edge has lost a quarter of a percent', Math.abs(rangeValue(100, 1, 100 / 1.01).loss - 0.0025) < 0.0002);
+  t('below the range the position is all of the priced token and moves with the price', (() => { const a = rangeValue(100, 1, 95), b = rangeValue(100, 1, 90); return Math.abs(b.value / a.value - 90 / 95) < 1e-9; })());
+  t('above the range the position is all of the quote and moves not at all', Math.abs(rangeValue(100, 1, 110).value - rangeValue(100, 1, 120).value) < 1e-12);
+  t('a wide range loses less than a narrow one on the same move', rangeValue(100, 5, 98).loss < rangeValue(100, 1, 98).loss);
+  t('the loss is never negative', [80, 99, 100, 101, 130].every((p) => rangeValue(100, 2, p).loss >= 0));
+  // The replay charges each re-set what its range lost, and marks the open range.
+  t('a re-set on a drifted price is charged what the range lost against holding', e1.resets > 0 && e1.lost_to_price_usd > 0);
+  t('… and net is fees minus re-set costs minus that loss minus the open range\'s mark', Math.abs(e1.net_usd - (e1.fees_usd - e1.resets * e1.reset_cost_usd - e1.lost_to_price_usd - e1.open_loss_usd)) < 0.001);
+  t('a range that never re-set still carries its open loss at the last price', e5.resets === 0 && e5.open_loss_usd > 0 && e5.lost_to_price_usd === 0);
+  t('a flat price loses nothing to the price', earningsTest(flat, 1).lost_to_price_usd === 0 && earningsTest(flat, 1).open_loss_usd === 0);
+  t('a 12% day nets nothing at any width', (() => { const fast = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.004, i))); return [1, 5, 10].every((w) => earningsTest(fast, w).net_usd < 0); })());
   t('a re-set is only counted after the price has been outside for the delay', (() => {
     // outside for one hour, then back: no re-set with a 2 h delay
     const blip = [pwin(0, 100), pwin(1, 103), pwin(2, 100), pwin(3, 100), pwin(4, 100)];

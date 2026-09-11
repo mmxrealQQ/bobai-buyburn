@@ -592,7 +592,7 @@ section('The marketplace, from the front door');
   // agent has its own page carrying the live block, and the record behind it
   // is a page for a browser and JSON for everything else.
   const lq = await getText(`${SITE}/defi`);
-  ok('/defi is a page that carries the live block', lq.isHtml && /id="ag-lp"/.test(lq.body) && /agent\.brainonbnb\.com\/lp\/agent/.test(lq.body));
+  ok('/defi is a page that carries the portfolio card and the series', lq.isHtml && /id="defi-card"/.test(lq.body) && /id="ag-lp-series"/.test(lq.body) && /agent\.brainonbnb\.com\/lp\/agent/.test(lq.body));
   // Since 2026-09-09 the loop is income wallet → DeFi wallet → $BOBAI held
   // in that same wallet; the buyback wallet is no longer a stop on it.
   ok('/defi names the income wallet, the DeFi wallet and the $BOBAI it holds', /0x690E950214980BC329823A2DB2fD90C06Bd54dE4/.test(lq.body) && /0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A/.test(lq.body) && /0x245c386dcfed896f5c346107596141e5edcbffff/i.test(lq.body));
@@ -613,10 +613,17 @@ section('The marketplace, from the front door');
   // The pool record (2026-09-09): either a pick, or the hour the pick is due
   // and how many hourly runs each pool still needs — "20 h" alone read as a
   // delay once. Every pool is priced per day or says it has no fees yet.
+  // The pool record retired on 2026-09-11: the operator closed the question
+  // (the agent stays in CAKE/BNB 0.05%). The route says so, in JSON, and the
+  // portfolio carries no pool block; what is still decided is on /lp/windows.
   const poolsJson = await fetch('https://agent.brainonbnb.com/lp/pools?format=json').then((r) => r.json()).catch(() => null);
-  const poolRows = poolsJson && Array.isArray(poolsJson.pools) ? poolsJson.pools : [];
-  ok('/lp/pools names a pick or the hour the pick is due', !!poolsJson && poolRows.length >= 2 && (poolsJson.pick ? /earned/.test(poolsJson.why) : (!!poolsJson.pick_due && /due around/.test(poolsJson.why))));
-  ok('every pool in the record says how many hourly runs it still needs', poolRows.length >= 2 && poolRows.every((p) => Number.isInteger(p.runs_to_go) && p.runs_to_go >= 0 && (p.runs_to_go === 0) === (p.hours >= 24)));
+  ok('/lp/pools says it is retired and names the home pool', !!poolsJson && poolsJson.retired === '2026-09-11' && poolsJson.pool === '0xafb2da14056725e3ba3a30dd846b6bbbd7886c56' && /CAKE\/BNB 0\.05%/.test(poolsJson.why) && /lp\/windows/.test(poolsJson.width_record || ''));
+  const pf = await fetch('https://agent.brainonbnb.com/lp/portfolio').then((r) => r.json()).catch(() => null);
+  ok('/lp/portfolio carries no pool record, but the next step and the day in counts', !!pf && !('pool_record' in pf) && typeof pf.next === 'string' && pf.next.length > 20 && pf.day && Number.isInteger(pf.day.resets) && pf.pnl && pf.pnl.at_resets && Number.isInteger(pf.pnl.at_resets.count));
+  const wv = await fetch('https://agent.brainonbnb.com/lp/windows?format=json').then((r) => r.json()).catch(() => null);
+  const wr = wv && wv.verdict;
+  ok('/lp/windows replays the derived widths and charges every re-set what its range lost', !!wr && [1.5, 3, 4, 7].every((w) => wr.rows.some((r) => r.width === w && r.derived === true)) && wr.rows.filter((r) => r.earnings).every((r) => typeof r.earnings.lost_to_price_usd === 'number' && r.earnings_24h !== undefined));
+  ok('/lp/windows names the re-sets that happened and the price samples it walked', !!wr && wr.resets && Number.isInteger(wr.resets.resets) && Number.isInteger(wr.price_samples));
   // The series (point 4, 2026-09-03): one point per run, the summary derived
   // from the points and from nothing else, and the page carries the table.
   const ser = await fetch('https://agent.brainonbnb.com/lp/series').then((r) => r.json()).catch(() => null);

@@ -286,6 +286,38 @@ node scripts/advantage-report.mjs && node scripts/advantage-publish.mjs   # Term
 Then replace every dated figure above with the fresh one, and re-capture the
 screens.
 
+Refresh run 2026-09-11 ~04:45 UTC (judging day 3): health 49/49, smoke 192/192
+(five pins rewritten for today's state), route 11/11, LP self-tests 179/179,
+113/113, 23/23, source mirror re-cloned and verified (533 files). The DeFi
+agent (brainonbnb.com/defi, until 2026-09-10 "the liquidity agent") changed
+in five measured steps today, all live and all in the source: (1) the width
+record charges every replayed re-set what its range lost against holding —
+last night two re-sets on CAKE/BNB sold the low and bought the high and the
+position ended 3.5% lighter with the price back where it started, against
+$1.90 of fees; the gas was never the cost; on the live record no width nets
+anything at the set 2 h wait, so the agent holds instead of re-setting, and
+the 3 h wait, which does net, is the wait in use (agent.brainonbnb.com/lp/
+windows, "Re-set cost" and "What each re-set cost": 10 re-sets since Sep 4
+realised 0.0161 BNB against holding, read off their own ticks); (2) the
+operator closed the pool question — the agent stays in CAKE/BNB 0.05% and
+gets better there; the twelve-pool record and the relocate step are retired
+(/lp/pools says so), the guard lets only a move home through; (3) between
+the six replayed widths four are derived (±1.5/3/4/7%, the 1/width law the
+record's own rows show to the digit) and the pick is ±3% at $0.17 a day on
+$50; a live in-range switch needs the pick to lead over the whole record and
+over the last day alone and to pay back execution plus the loss it realises
+within three days — on the live numbers the 04:23 UTC run of Sep 12 should
+switch #7408849 from ±2% to ±3%; (4) every check writes the pool's price to
+a ten-minute tape the replay walks beside the hourly heads, and every swap
+measures its own price impact against a sliver quote; (5) the portfolio is
+one card of nine lines on the page and in the Telegram bot (profit first,
+put in → worth, the position and its width, the $BOBAI held, price / fees /
+gas with the re-sets' share, the day in counts, the next step in one
+sentence). Position #7408849, ±2%, in range, 0.6045 BNB; the Altana session
+0x86fa… is valid and expires 2026-09-14 — re-grant before then with
+`node scripts/altana-session.mjs --grant --days 14 --confirm` (flag added
+today) so /session shows a valid session through the end of judging.
+
 Refresh run 2026-09-09 ~06:30 UTC: every checker in scripts/README.md green
 (health 49/49 with the one known gas floor of the creator wallet, smoke
 187/187, dispatch-safety 21/21, phase-parity 14 windows / 128 combinations,

@@ -19,6 +19,9 @@
 // WHAT THIS SCRIPT DOES
 //   --status     (default) what exists right now, read from the chain
 //   --grant      grant the session and register it in the Keystore
+//   --days N     how long the session lasts (default 7, at most 30) — the
+//                judging of Build the Era runs to 2026-09-23, and the session
+//                of 2026-09-07 expires on the 14th (added 2026-09-11)
 //   --execute    spend through the session key: a real call, on the allowlist
 //   --probe      try a call that is NOT on the allowlist, and show it refused
 //   --revoke     end it early
@@ -249,8 +252,10 @@ if (!SELF_TEST) {
 
   const want = (flag) => process.argv.includes(flag);
 
+  const daysArg = (() => { const i = process.argv.indexOf('--days'); const v = i >= 0 ? Number(process.argv[i + 1]) : NaN; return Number.isInteger(v) && v >= 1 && v <= 30 ? v : 7; })();
+
   if (want('--grant')) {
-    const policy = sessionPolicy(KERNEL, { limit: DAILY_CAP, nativeLimit: DAILY_GAS_CAP });
+    const policy = sessionPolicy(KERNEL, { limit: DAILY_CAP, nativeLimit: DAILY_GAS_CAP, days: daysArg });
     console.log('\nPlan — grant a session');
     console.log(`  allowlist   ${policy.permissions.calls.map((c) => `${c.to}${c.signature ? ' :: ' + c.signature : ''}`).join('\n              ')}`);
     console.log(`  spend cap   ${Number(policy.permissions.spend[0].limit) / 1e18} $U per ${policy.permissions.spend[0].period}`);

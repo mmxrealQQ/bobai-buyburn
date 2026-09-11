@@ -36,8 +36,8 @@ this folder is a cron; the crons are the `worker-*` folders.
 | script | does |
 |---|---|
 | `lp-plan.mjs` | where the tools would put the project's money |
-| `lp-windows.mjs` | the width record, several windows, never one |
-| `lp-pools.mjs` | the pool record: the same $50 replayed in every pool the operator named, hour by hour; `--self-test` pins the verdict |
+| `lp-windows.mjs` | the width record, several windows, never one; since 2026-09-11 every replayed re-set is charged what its range lost against holding, the ten-minute price tape is walked beside the hourly heads, and 1.5/3/4/7% are derived between the replayed widths; `--self-test` pins all of it |
+| `lp-pools.mjs` | RETIRED 2026-09-11 — the agent stays in CAKE/BNB 0.05% (HOME_POOL); the pool record's functions and pins stay as the record of how twelve pools were compared |
 | `lp-open.mjs` | open the position the tools chose |
 | `lp-agent.mjs` | the daily worker's four steps by hand: sweep, collect, rebalance, increase |
 | `create-lp-wallet.mjs` | one-time: the wallet that holds the position |

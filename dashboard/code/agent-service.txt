@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12851 lines.
+# one fetch. 41 files, 12854 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -8393,14 +8393,17 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const waitH = width && width.wait_hours != null ? n(width.wait_hours) : null;
   const outH = outsideSince ? Math.max(0, (now - Date.parse(outsideSince)) / 36e5) : null;
   const hm = (h) => (h == null ? '' : h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`);
+  // Two short sentences, no figures the card does not need (the operator,
+  // 2026-09-12: "einfacher, uebersichtlicher, klarer"). What the pick nets
+  // a day stays in the record (/lp/windows), not on the card.
   let next;
-  if (!position) next = 'no position yet — the first mint follows the first deposit above the floor';
+  if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `holds the range and earns; a re-set only after ${waitH ?? 2} h outside, in ±${pick.width_pct}% (nets $${n(pick.net_usd_per_day).toFixed(2)} a day on $50 by the record)`
-    : 'holds the range and earns; no width nets anything on the record right now, so it would hold rather than re-set';
+    ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range, to ±${pick.width_pct}%.`
+    : 'Holds and earns. No re-set: no width pays right now.';
   else next = pick
-    ? `outside the range${outH != null ? ` for ${hm(outH)}` : ''}; re-set after ${waitH ?? 2} h outside, in ±${pick.width_pct}% (nets $${n(pick.net_usd_per_day).toFixed(2)} a day on $50 by the record)`
-    : `outside the range${outH != null ? ` for ${hm(outH)}` : ''}; no width nets anything on the record, so the agent holds instead of re-setting`;
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after ${waitH ?? 2} h out of range, to ±${pick.width_pct}%.`
+    : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Holds: no width pays right now.`;
   const losses = resetLosses(rec);
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {

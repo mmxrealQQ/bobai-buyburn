@@ -50,6 +50,15 @@
     .pf-tile .v{font-family:'Space Grotesk',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:-.3px;line-height:1.15}
     .pf-tile .s{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.5}
     .pf-tile.up .v{color:#3fe09a}.pf-tile.down .v{color:#ff8f6b}
+    /* Where the result comes from: one caption, three cells that add up to
+       the result tile above them (2026-09-12). */
+    .pf-eq{font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 0 8px 2px}
+    .pf-src{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media(max-width:700px){.pf-src{grid-template-columns:1fr;gap:8px}}
+    .pf-src>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 14px;border:1px dashed var(--border);border-radius:10px;font-size:.84rem;min-width:0}
+    .pf-src .k{color:var(--muted);white-space:nowrap}
+    .pf-src .v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .pf-src .up .v{color:#3fe09a}.pf-src .down .v{color:#ff8f6b}
     .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     @media(max-width:900px){.pf-grid{grid-template-columns:1fr}}
     .pf-list{list-style:none;margin:0;padding:0;font-size:.84rem;line-height:1.6}
@@ -101,7 +110,7 @@
 
   <div class="lp-part" id="portfolio">
     <div class="sh fi"><h2>The <em>portfolio</em></h2>
-      <p class="sh-sub">What went in, what it is worth, what it holds where, and where the profit came from. The same picture the Telegram bot posts every morning and answers to <code>/defi</code>; both read one model from the agent&rsquo;s own records.</p>
+      <p class="sh-sub">What went in, what it is worth now, and where the result came from. The Telegram bot posts the same card every morning and answers it to <code>/defi</code>; both read one model from the agent&rsquo;s own records.</p>
     </div>
     <div class="agt-flow fi" id="defi-card">
       <p class="agt-note">Reading the portfolio&hellip; <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">agent.brainonbnb.com/lp/portfolio</a></p>
@@ -176,6 +185,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=73" defer></script>
+<script src="app.js?v=74" defer></script>
 </body>
 </html>

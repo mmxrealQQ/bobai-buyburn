@@ -1062,22 +1062,37 @@ function lpLiveRange(pos){
 function fillLpPortfolio(){
   const box = document.getElementById('defi-card');
   if(!box) return Promise.resolve();
+  // Same shape as the Telegram card since 2026-09-12: three figures, the
+  // three lines they come from (result = price + fees − gas), the pool and
+  // the $BOBAI, then the last day and the next step. Four decimals, whole
+  // dollars, one figure per line; the position id and the rest of the detail
+  // are in the record the footer links to.
   const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const n = x => Number(x || 0);
-  const f4 = x => n(x).toFixed(4), f5 = x => n(x).toFixed(5);
-  const usd = x => (x == null ? '' : ' <span class="m">(≈ $' + n(x).toFixed(2) + ')</span>');
-  const sign = x => (n(x) > 0 ? '+' : n(x) < 0 ? '−' : '') + f5(Math.abs(n(x)));
+  const bnb = x => n(x).toFixed(4) + ' BNB';
+  const signed = x => (n(x) > 0 ? '+' : n(x) < 0 ? '−' : '') + Math.abs(n(x)).toFixed(4) + ' BNB';
+  const usd = x => (x == null ? null : (n(x) < 0 ? '−' : '') + '$' + (Math.abs(n(x)) >= 20 ? Math.round(Math.abs(n(x))).toLocaleString('en-US') : Math.abs(n(x)).toFixed(2)));
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const day = (iso, year) => { const s = String(iso || ''); const dd = Number(s.slice(8, 10)), mm = Number(s.slice(5, 7)); return dd && mm ? dd + ' ' + MON[mm - 1] + (year ? ' ' + s.slice(0, 4) : '') : s.slice(0, 10); };
+  const dir = x => n(x) > 0 ? 'up' : n(x) < 0 ? 'down' : '';
   const li = (ic, html) => '<li><span class="ic">' + ic + '</span><div>' + html + '</div></li>';
+  const tile = (k, v, s, cls) => '<div class="pf-tile ' + (cls || '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>';
+  const src = (k, v, cls) => '<div class="' + (cls || '') + '"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
   return fetch('https://agent.brainonbnb.com/lp/portfolio', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(m => {
     if(!m || !m.put_in){ box.innerHTML = '<p class="agt-note">The portfolio could not be read right now. The record itself: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>'; return; }
     const h = m.holdings, p = m.pnl, d = m.day || {};
-    const up = n(p.profit_bnb) > 0 ? 'up' : n(p.profit_bnb) < 0 ? 'down' : '';
-    const range = m.pool.in_range == null ? '' : m.pool.in_range ? '<b>in range</b>, earning' : '<b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
-    const width = m.pool.width_pct != null ? ' · ±' + esc(m.pool.width_pct) + '%' : '';
+    const pct = (n(p.change_pct) > 0 ? '+' : n(p.change_pct) < 0 ? '−' : '') + Math.abs(n(p.change_pct)).toFixed(1) + '%';
+    const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ <b>in range</b>' : '⏳ <b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
+    const width = m.pool.width_pct != null ? '±' + esc(m.pool.width_pct) + '%' : '';
     const tiles =
-      '<div class="pf-tile"><div class="k">Put in</div><div class="v">' + f4(m.put_in.bnb) + ' BNB</div><div class="s">' + (m.put_in.usd != null ? '≈ $' + n(m.put_in.usd).toFixed(2) + ' · ' : '') + esc(m.put_in.sources.map(x => x.label + ' ' + f4(x.bnb)).join(' · ')) + '</div></div>' +
-      '<div class="pf-tile"><div class="k">Position worth</div><div class="v">' + f4(m.worth.bnb) + ' BNB</div><div class="s">' + (m.worth.usd != null ? '≈ $' + n(m.worth.usd).toFixed(2) + ' · ' : '') + esc(m.pool.label || '') + (m.pool.position ? ' #' + esc(m.pool.position) : '') + width + '</div></div>' +
-      '<div class="pf-tile ' + up + '"><div class="k">Profit so far</div><div class="v">' + sign(p.profit_bnb) + ' BNB</div><div class="s">' + (p.profit_usd != null ? '≈ $' + n(p.profit_usd).toFixed(2) + ' · ' : '') + (n(p.change_pct) >= 0 ? '+' : '') + n(p.change_pct).toFixed(2) + '% on the capital since ' + esc(p.since) + '</div></div>';
+      tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
+      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width].filter(Boolean).join(' · ')) +
+      tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));
+    const sources = '<div class="pf-eq">Result = price + fees − gas</div><div class="pf-src">'
+      + src('📈 Price', signed(p.from_price_bnb), dir(p.from_price_bnb))
+      + src('🧾 Fees', signed(p.from_fees_bnb), dir(p.from_fees_bnb))
+      + src('⛽ Gas', n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB', n(p.gas_bnb) > 0 ? 'down' : '')
+      + '</div>';
     const counts = [];
     if(d.resets) counts.push(d.resets + ' re-set' + (d.resets === 1 ? '' : 's'));
     if(d.top_ups) counts.push(d.top_ups + ' top-up' + (d.top_ups === 1 ? '' : 's'));
@@ -1085,16 +1100,15 @@ function fillLpPortfolio(){
     if(d.sweeps) counts.push(d.sweeps + ' sweep' + (d.sweeps === 1 ? '' : 's'));
     if(d.errors) counts.push('⚠️ ' + d.errors + ' failed');
     const list = [
-      li('🥞', esc(m.pool.label || 'the pool') + (m.pool.position ? ' #' + esc(m.pool.position) : '') + width + (range ? ' · ' + range : '')),
-      li('🧠', h.bobai_units > 0 ? '<b>' + Math.round(h.bobai_units).toLocaleString('en-US') + ' $BOBAI</b> held' + (h.bobai_usd != null ? ' <span class="m">(≈ $' + n(h.bobai_usd).toFixed(2) + ')</span>' : '') + ', bought with ' + f5(h.bobai_bnb) + ' BNB of fees, never sold' : 'No $BOBAI held yet — half of every fee buys some'),
-      li('📈', 'Price <b>' + sign(p.from_price_bnb) + '</b>' + (p.at_resets && p.at_resets.count ? ' <span class="m">(' + esc(p.at_resets.count) + ' re-set' + (p.at_resets.count === 1 ? '' : 's') + ' realised −' + f5(p.at_resets.lost_to_price_bnb) + ')</span>' : '') + ' · fees <b>' + sign(p.from_fees_bnb) + '</b> <span class="m">(' + f5(p.kept_working_bnb) + ' kept working)</span> · gas <b>' + (n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0') + '</b>'),
-      li('🗓', 'Last 24 h: <b>' + esc(counts.length ? counts.join(', ') : 'quiet') + '</b>' + (d.last ? ' <span class="m">· last ' + esc(String(d.last.at).slice(11, 16)) + ' UTC ' + (d.last.error ? '⚠️ ' : '') + esc(d.last.what) + '</span>' : '')),
+      li('🥞', [esc(m.pool.label || 'the pool'), width, range].filter(Boolean).join(' · ')),
+      li('🧠', h.bobai_units > 0 ? '<b>' + Math.round(h.bobai_units).toLocaleString('en-US') + ' $BOBAI</b> held' + (h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) : '') + ' <span class="m">· bought from fees, never sold</span>' : 'No $BOBAI held yet. Half of every fee buys some.'),
+      li('🗓', 'Last 24 h: <b>' + esc(counts.length ? counts.join(', ') : 'quiet') + '</b>' + (d.last ? ' <span class="m">· last ' + esc(String(d.last.at).slice(11, 16)) + ' UTC' + (d.last.error ? ' ⚠️' : '') + '</span>' : '')),
       li('🧭', 'Next: ' + esc(m.next || '—')),
-      (m.last_run_ok === false ? li('⚠️', 'One step failed at the last run; the operator has been told.') : ''),
+      (m.last_run_ok === false ? li('⚠️', 'One step failed at the last run. The operator has been told.') : ''),
     ].join('');
-    box.innerHTML = '<div class="pf-top">' + tiles + '</div>'
+    box.innerHTML = '<div class="pf-top">' + tiles + '</div>' + sources
       + '<ul class="pf-list pf-one">' + list + '</ul>'
-      + '<p class="pf-when">Last run ' + esc(String(m.at).replace('T', ' ').slice(0, 16)) + ' UTC · range checked ' + esc(String(m.checked_at).replace('T', ' ').slice(0, 16)) + ' UTC · dollars at the BNB price of the last run. Same picture as JSON: <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">/lp/portfolio</a> · the record: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>';
+      + '<p class="pf-when">Last run ' + esc(String(m.at).replace('T', ' ').slice(0, 16)) + ' UTC · range checked ' + esc(String(m.checked_at).replace('T', ' ').slice(0, 16)) + ' UTC' + (m.pool.position ? ' · position #' + esc(m.pool.position) : '') + ' · dollars at the BNB price of the last run. Same picture as JSON: <a href="https://agent.brainonbnb.com/lp/portfolio" rel="noopener">/lp/portfolio</a> · the record: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>.</p>';
   });
 }
 if(document.getElementById('defi-card')) fillLpPortfolio();

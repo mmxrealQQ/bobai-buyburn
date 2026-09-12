@@ -2009,38 +2009,60 @@ export function formatGiggleCard(burns, nowMs = Date.now()) {
 // built by worker-agent/lp-portfolio.js). The same card answers /defi and
 // is posted at 05:00 UTC; the /defi page renders the same JSON. The bot
 // computes no number of its own here — the operator's rule: one source.
+//
+// Shape since 2026-09-12 (the operator: "einfacher, uebersichtlicher,
+// klarer"): four blocks with a blank line between, one figure per line.
+// Money in four decimals, dollars whole; the three lines under the result
+// add up to it (result = price + fees − gas). Details a reader does not
+// need for the picture — position id, the re-sets' realised loss, what a
+// width nets a day — stay in the record the card links to.
 export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
   if (!m || !m.put_in || !m.pnl) return null;
   const n = (x) => Number(x || 0);
-  const f4 = (x) => n(x).toFixed(4);
-  const f5 = (x) => n(x).toFixed(5);
-  const usd = (x) => (x == null ? '' : ' (≈ $' + n(x).toFixed(2) + ')');
-  const sign = (x) => (n(x) > 0 ? '+' : n(x) < 0 ? '−' : '') + f5(Math.abs(n(x)));
+  const bnb = (x) => n(x).toFixed(4) + ' BNB';
+  const signed = (x) => (n(x) > 0 ? '+' : n(x) < 0 ? '−' : '') + n(Math.abs(n(x))).toFixed(4) + ' BNB';
+  const usd = (x) => (x == null ? null : (n(x) < 0 ? '−' : '') + '$' + (Math.abs(n(x)) >= 20 ? Math.round(Math.abs(n(x))).toLocaleString('en-US') : Math.abs(n(x)).toFixed(2)));
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const day = (iso, year) => { const s = String(iso || ''); const dd = Number(s.slice(8, 10)), mm = Number(s.slice(5, 7)); return dd && mm ? `${dd} ${MON[mm - 1]}${year ? ' ' + s.slice(0, 4) : ''}` : s.slice(0, 10); };
   const h = m.holdings, p = m.pnl, d = m.day || {};
   const arrow = n(p.profit_bnb) > 0 ? '▲' : n(p.profit_bnb) < 0 ? '▼' : '•';
-  const range = m.pool.in_range == null ? '' : m.pool.in_range ? 'in range, earning' : `out of range${m.pool.outside_hours != null ? ` for ${m.pool.outside_hours} h` : ''}`;
-  const width = m.pool.width_pct != null ? ` · ±${m.pool.width_pct}%` : '';
+  const pct = (n(p.change_pct) > 0 ? '+' : n(p.change_pct) < 0 ? '−' : '') + Math.abs(n(p.change_pct)).toFixed(1) + '%';
+  const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ in range' : `⏳ out of range${m.pool.outside_hours != null ? ` for ${m.pool.outside_hours} h` : ''}`;
+  const pool = [m.pool.label || 'the pool', m.pool.width_pct != null ? `±${m.pool.width_pct}%` : '', range].filter(Boolean).join(' · ');
   const counts = [];
   if (d.resets) counts.push(`${d.resets} re-set${d.resets === 1 ? '' : 's'}`);
   if (d.top_ups) counts.push(`${d.top_ups} top-up${d.top_ups === 1 ? '' : 's'}`);
   if (d.collects) counts.push(`${d.collects} collect${d.collects === 1 ? '' : 's'}`);
   if (d.sweeps) counts.push(`${d.sweeps} sweep${d.sweeps === 1 ? '' : 's'}`);
   if (d.errors) counts.push(`⚠️ ${d.errors} failed`);
-  const lines = [
-    `💧 <b>${title} · ${m.date}</b>`,
-    `💰 <b>Profit so far: ${arrow} ${sign(p.profit_bnb)} BNB</b>${usd(p.profit_usd)} · ${n(p.change_pct) >= 0 ? '+' : ''}${n(p.change_pct).toFixed(2)}% on the capital since ${p.since}`,
-    `📥 Put in ${f4(m.put_in.bnb)} BNB${usd(m.put_in.usd)} → 💼 worth ${f4(m.worth.bnb)} BNB${usd(m.worth.usd)}`,
-    `🥞 ${m.pool.label || 'the pool'}${m.pool.position ? ' #' + m.pool.position : ''}${width}${range ? ' · ' + range : ''}`,
-    h.bobai_units > 0
-      ? `🧠 ${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI held${h.bobai_usd != null ? ' (≈ $' + n(h.bobai_usd).toFixed(2) + ')' : ''}, bought with ${f5(h.bobai_bnb)} BNB of fees, never sold`
-      : `🧠 no $BOBAI held yet — half of every fee buys some`,
-    `📈 Price ${sign(p.from_price_bnb)}${p.at_resets && p.at_resets.count ? ` (${p.at_resets.count} re-set${p.at_resets.count === 1 ? '' : 's'} realised −${f5(p.at_resets.lost_to_price_bnb)})` : ''} · 🧾 fees ${sign(p.from_fees_bnb)} (${f5(p.kept_working_bnb)} kept working) · ⛽ gas ${n(p.gas_bnb) > 0 ? '−' + f5(p.gas_bnb) : '0'}`,
-    `🗓 Last 24 h: ${counts.length ? counts.join(', ') : 'quiet'}${d.last ? ` · last ${String(d.last.at).slice(11, 16)} UTC ${d.last.error ? '⚠️ ' : ''}${d.last.what}` : ''}`,
-    `🧭 Next: ${m.next || '—'}`,
+  const join = (...xs) => xs.filter((x) => x != null && x !== '').join(' · ');
+  const blocks = [
+    [`💧 <b>${title} · ${day(m.date, true)}</b>`],
+    [
+      `📥 Put in: <b>${bnb(m.put_in.bnb)}</b>${m.put_in.usd != null ? ' · ' + usd(m.put_in.usd) : ''}`,
+      `💼 Worth now: <b>${bnb(m.worth.bnb)}</b>${m.worth.usd != null ? ' · ' + usd(m.worth.usd) : ''}`,
+      `💰 Result: <b>${arrow} ${signed(p.profit_bnb)}</b> · ${join(p.profit_usd != null ? usd(p.profit_usd) : null, `${pct} since ${day(p.since)}`)}`,
+    ],
+    [
+      '<i>Result = price + fees − gas</i>',
+      `📈 Price: ${signed(p.from_price_bnb)}`,
+      `🧾 Fees: ${signed(p.from_fees_bnb)}`,
+      `⛽ Gas: ${n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB'}`,
+    ],
+    [
+      `🥞 ${pool}`,
+      h.bobai_units > 0
+        ? `🧠 <b>${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI</b> held${h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) : ''} · bought from fees, never sold`
+        : '🧠 No $BOBAI held yet. Half of every fee buys some.',
+    ],
+    [
+      `🗓 Last 24 h: ${counts.length ? counts.join(', ') : 'quiet'}${d.last ? ` · last ${String(d.last.at).slice(11, 16)} UTC${d.last.error ? ' ⚠️' : ''}` : ''}`,
+      `🧭 Next: ${m.next || '—'}`,
+    ],
   ];
-  if (!m.last_run_ok) lines.push('⚠️ one step failed at the last run; the operator has been told');
-  lines.push(`<a href="${m.links.page}">brainonbnb.com/defi</a> · <a href="${m.links.record}">record</a>`);
-  return lines.join('\n');
+  if (!m.last_run_ok) blocks.push(['⚠️ One step failed at the last run. The operator has been told.']);
+  blocks.push([`<a href="${m.links.page}">brainonbnb.com/defi</a> · <a href="${m.links.record}">record</a>`]);
+  return blocks.map((b) => b.join('\n')).join('\n\n');
 }
 
 async function postLpDailyReport(env) {

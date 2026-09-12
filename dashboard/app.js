@@ -886,16 +886,16 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
 // === TAX ALLOCATION SCHEDULE — phase-aware highlight + inline notes ===
 !function(){
   const phases=[
-    {id:'liq-boost',     start:0,                                           end:new Date('2026-06-04T23:59:00Z').getTime(), creatorNote:'(−0.5% → $BOB liq add)', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'0.5%', bobPct:'0.5%', bobaiPct:'1%'},
-    {id:'standard-pre',  start:new Date('2026-06-04T23:59:00Z').getTime(), end:new Date('2026-06-11T00:01:00Z').getTime(), creatorNote:'', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'1%', bobPct:'0.5%', bobaiPct:'1%'},
-    {id:'wc26',          start:new Date('2026-06-11T00:01:00Z').getTime(), end:new Date('2026-07-19T23:59:00Z').getTime(), creatorNote:'(−0.26% → Prize Pool, −0.25% → $BOBAI liq)', bobNote:'(−0.26% → Prize Pool, −0.5% → $BOBAI liq)', creatorPct:'0.49%', bobPct:'0.24%', bobaiPct:'1%'},
-    {id:'standard-bb',   start:new Date('2026-07-19T23:59:00Z').getTime(), end:new Date('2026-08-01T23:59:59Z').getTime(), creatorNote:'(−0.25% → $BOBAI liq add)', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'0.75%', bobPct:'0.5%', bobaiPct:'1%'},
+    {id:'liq-boost',     start:0,                                           end:new Date('2026-06-04T23:59:00Z').getTime(), creatorNote:'(−0.5% → $BOB liq add)', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'0.5%', bobPct:'0.5%', bobaiPct:'1%', liqPct:'1%', liqLabel:'liq add'},
+    {id:'standard-pre',  start:new Date('2026-06-04T23:59:00Z').getTime(), end:new Date('2026-06-11T00:01:00Z').getTime(), creatorNote:'', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'1%', bobPct:'0.5%', bobaiPct:'1%', liqPct:'0.5%'},
+    {id:'wc26',          start:new Date('2026-06-11T00:01:00Z').getTime(), end:new Date('2026-07-19T23:59:00Z').getTime(), creatorNote:'(−0.26% → Prize Pool, −0.25% → $BOBAI liq)', bobNote:'(−0.26% → Prize Pool, −0.5% → $BOBAI liq)', creatorPct:'0.49%', bobPct:'0.24%', bobaiPct:'1%', liqPct:'1.27%', liqLabel:'Prize Pool + $BOBAI liq'},
+    {id:'standard-bb',   start:new Date('2026-07-19T23:59:00Z').getTime(), end:new Date('2026-08-01T23:59:59Z').getTime(), creatorNote:'(−0.25% → $BOBAI liq add)', bobNote:'(−0.5% → $BOBAI liq add)', creatorPct:'0.75%', bobPct:'0.5%', bobaiPct:'1%', liqPct:'0.75%'},
     {id:'standard-post', start:new Date('2026-08-01T23:59:59Z').getTime(), end:new Date('2026-08-08T00:00:00Z').getTime(), creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'},
-    {id:'bobai-liq-2',   start:new Date('2026-08-08T00:00:00Z').getTime(), end:LP_SHARE_START, creatorNote:'', bobNote:'(−0.8% → $BOBAI liq add)', creatorPct:'1%', bobPct:'0.2%', bobaiPct:'1%'},
+    {id:'bobai-liq-2',   start:new Date('2026-08-08T00:00:00Z').getTime(), end:LP_SHARE_START, creatorNote:'', bobNote:'(−0.8% → $BOBAI liq add)', creatorPct:'1%', bobPct:'0.2%', bobaiPct:'1%', liqPct:'0.8%'},
     // 2026-09-09: a tenth of each slice to the DeFi agent, cut from the slices as they stand
     // (the BOB-burn slice is 0.2% during Liq Boost II and keeps 0.1%); from Sep 17 another tenth
     // of each into the Giggle Academy pot. Both end Nov 20, 00:01 UTC. Same windows as the bot.
-    {id:'bobai-liq-2-lp',start:LP_SHARE_START, end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'(−0.1% → DeFi Agent)', bobNote:'(−0.8% → $BOBAI liq add, −0.1% → DeFi Agent)', bobaiNote:'(−0.1% → DeFi Agent)', creatorPct:'0.9%', bobPct:'0.1%', bobaiPct:'0.9%', lpPct:'0.3%'},
+    {id:'bobai-liq-2-lp',start:LP_SHARE_START, end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'(−0.1% → DeFi Agent)', bobNote:'(−0.8% → $BOBAI liq add, −0.1% → DeFi Agent)', bobaiNote:'(−0.1% → DeFi Agent)', creatorPct:'0.9%', bobPct:'0.1%', bobaiPct:'0.9%', liqPct:'0.8%', lpPct:'0.3%'},
     {id:'sunshine',      start:GG_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.8%', bobaiPct:'0.8%', lpPct:'0.3%', gigglePct:'0.3%'},
     {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'}
   ];
@@ -953,9 +953,11 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     showBox('tf-lp',active&&active.lpPct);showBox('tf-giggle',active&&active.gigglePct);
     // The "How it works" card two rows up used to state a flat ~1/1/1 while the
     // panel right below it showed the campaign split. One page cannot say two
-    // things about the same tax, so the card reads from the same schedule.
+    // things about the same tax, so the card reads from the same schedule — and
+    // it names every part, liq add included, so the parts add up to the 3%
+    // (2026-09-12: "0.9/0.1/0.9 + 0.3" left 0.8% unexplained).
     const st=document.getElementById('step-split');
-    if(st)st.textContent=active?(active.creatorPct+'/'+active.bobPct+'/'+active.bobaiPct+(active.lpPct?' + '+active.lpPct+' DeFi Agent':'')+(active.gigglePct?' + '+active.gigglePct+' Giggle':'')):'~1/1/1';
+    if(st)st.textContent=active?(active.creatorPct+'/'+active.bobPct+'/'+active.bobaiPct+(active.liqPct?' + '+active.liqPct+' '+(active.liqLabel||'$BOBAI liq add'):'')+(active.lpPct?' + '+active.lpPct+' DeFi Agent':'')+(active.gigglePct?' + '+active.gigglePct+' Giggle':'')):'~1/1/1';
   }
   apply();setInterval(apply,60000);
 }();

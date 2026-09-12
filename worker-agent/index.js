@@ -522,7 +522,13 @@ async function recordLpSeries(env) {
       tick: rb.tick ?? inc.tick ?? null,
       ticks: reset ? (rb.new_ticks || rb.ticks || null) : (rb.ticks || null),
       reset: reset ? { from: rb.position, to: String(rb.new_position), width_pct: rb.width_pct ?? null, gas_bnb: rb.gas_bnb ?? null } : null,
-      value_bnb: rb.value_bnb != null ? Number(rb.value_bnb) : (inc.acted && !inc.error && inc.value_after_bnb != null ? Number(inc.value_after_bnb) : (inc.value_bnb != null ? Number(inc.value_bnb) : null)),
+      // The value AFTER the last step that moved money: the increase runs
+      // after the rebalance, so when it acted its after-value is the
+      // position as the run left it. Until 2026-09-12 the rebalance's value
+      // (read before the run) won, and the 2026-09-10 12:20 point showed
+      // 0.29 BNB against 0.59 of capital (-50%) while the deposit had gone
+      // into the position in the same run — a deposit read as a loss.
+      value_bnb: inc.acted && !inc.error && inc.value_after_bnb != null ? Number(inc.value_after_bnb) : (rb.value_bnb != null ? Number(rb.value_bnb) : (inc.value_bnb != null ? Number(inc.value_bnb) : null)),
       owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
       // The increase step reads the wallet before it spends; when it acted,
       // the point carries what was left, else the card and the page would

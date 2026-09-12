@@ -263,13 +263,16 @@ async function readCounters(env) {
   const list = await env.AGENT.list({ prefix: 'count:' });
   const byKind = {};
   const byDay = {};
-  for (const k of list.keys) {
+  // All keys at once: 175 reads in a row took 6 s cold on 2026-09-12, and
+  // /stats and the /services floor waited on every one of them.
+  const values = await Promise.all(list.keys.map((k) => env.AGENT.get(k.name)));
+  list.keys.forEach((k, i) => {
     const [, kind, day] = k.name.split(':');
-    const v = Number((await env.AGENT.get(k.name)) || 0);
+    const v = Number(values[i] || 0);
     byKind[kind] = (byKind[kind] || 0) + v;
     byDay[day] = byDay[day] || {};
     byDay[day][kind] = v;
-  }
+  });
   return { byKind, byDay };
 }
 
@@ -845,7 +848,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -1062,7 +1065,9 @@ async function lpWidthVerdict(env) {
   try {
     const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
     const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
-    if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+    // The replay is charged the cost per $50 of the position (usd_per_50);
+    // the full figure is what a real re-set pays (the width-upgrade rule).
+    if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
   } catch { /* the replay's assumption stands */ }
   return { log, v: lpVerdict(log, { ...costOpts, tape: await readLpTicks(env) }) };
 }
@@ -1105,13 +1110,22 @@ export default {
     if (path === '/favicon.ico') {
       return Response.redirect('https://brainonbnb.com/favicon.png', 301);
     }
+    // The A2A card and every hire link point agents at this host; an agent
+    // that then asks this host for llms.txt got a 404 until 2026-09-12.
+    if (path === '/llms.txt') return Response.redirect('https://brainonbnb.com/llms.txt', 302);
 
     if (path === '/') {
       return json({
         service: 'Brain On BNB AI — agent service',
-        what_this_is: 'Paid, continuous pool monitoring on BNB Smart Chain, plus the public counters behind brainonbnb.com. Measurement only — nothing here is financial advice.',
+        what_this_is: 'The agent service of Brain On BNB: six measured answers sold per answer over x402 (POST /answer?service=…), the same work sold through the ERC-8183 escrow (GET /hire), a broker over the ERC-8004 registry (GET /find, POST /dispatch), paid pool monitoring, the DeFi agent\'s own records (/lp/*) and the public counters behind brainonbnb.com. Measurement only — nothing here is financial advice.',
         capabilities: offering(),
-        payment: { protocol: 'x402', network: NETWORK, asset: USD1, symbol: 'USD1', payTo },
+        payment: {
+          protocol: 'x402', network: NETWORK, payTo,
+          // What a 402 here accepts, in the order the accepts[] carries it.
+          accepts: ['USDC through the x402 facilitator (accepts[0])', 'USD1 by direct transfer, transaction hash in PAYMENT-SIGNATURE', '$BOBAI by direct transfer, at the quote in the 402'],
+          asset: USD1, symbol: 'USD1',
+        },
+        start_here: { find: 'https://agent.brainonbnb.com/find?q=venus+health+factor', example_answer: 'https://agent.brainonbnb.com/example?service=health_factor', hire: 'https://agent.brainonbnb.com/hire?agent=302257&task=health+factor', card: 'https://agent.brainonbnb.com/.well-known/agent.json' },
         transparency: 'https://agent.brainonbnb.com/stats',
       });
     }

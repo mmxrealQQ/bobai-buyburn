@@ -45,6 +45,8 @@
        Telegram card carries, in the same order and from the same model. */
     .pf-top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
     @media(max-width:700px){.pf-top{grid-template-columns:1fr}}
+    /* The card's date: the newest range check, the same the Telegram card carries. */
+    .pf-date{grid-column:1/-1;font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 0 -4px 2px}
     .pf-tile{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
     .pf-tile .k{font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
     .pf-tile .v{font-family:'Space Grotesk',sans-serif;font-size:1.35rem;font-weight:700;letter-spacing:-.3px;line-height:1.15}
@@ -182,7 +184,7 @@
   </section>
   <footer><div class="fi2">
     <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
-    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
 <script src="app.js?v=74" defer></script>

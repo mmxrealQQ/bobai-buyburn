@@ -239,7 +239,10 @@ export function verdict(log, opts = {}) {
   // then the re-set USES the wait that netted the most, behind the bar in
   // waitInUse (a week of prices, a tenth over the set wait) — the same way
   // the width has been measured rather than set since 2026-09-04.
-  const DELAYS_H = [0, 1, 2, 3];
+  // Up to 12 h since 2026-09-12: with 0-3 h the net still rose at the last
+  // step (0.002 / 0.002 / 0.12 / 0.21 a day), so the grid ended where the
+  // curve had not.
+  const DELAYS_H = [0, 1, 2, 3, 4, 6, 8, 12];
   const delayRows = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
     const best = rows.filter((r) => r.width !== 'full')
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
@@ -300,7 +303,7 @@ export function verdict(log, opts = {}) {
       note: 'Every width replayed with each wait before a re-set; the best width per wait is named. The re-set uses the wait that netted the most once the record holds a week of prices and it beats the set wait by a tenth; under either bar the set wait stands.',
     },
     reset_cost: opts.resetCostUsd != null
-      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + '; on top of it each re-set is charged what its range lost against holding' }
+      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at; on top of it each re-set is charged what its range lost against holding` }
       : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet; on top of it each re-set is charged what its range lost against holding' },
     earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred) once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). A re-set is charged its gas and swap fee and what the range it leaves had lost against holding its minted amounts (it sold the side that rose and held the side that fell); the range still open is marked the same way at the last price. Net per day is what is left; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. If no width nets anything there is no pick, and the agent holds instead of re-setting.`,
   };
@@ -337,8 +340,16 @@ export function measuredResetCost(agentRecord, bnbUsd) {
       // charged none — the record says which.
       const impact = rb.swap && Number(rb.swap.impact_bnb) >= 0 ? Number(rb.swap.impact_bnb) : null;
       const bnb = Number(rb.gas_bnb) + fee.bnb + (impact || 0);
+      // The same cost per $50 of the position it was paid on: the replay
+      // sizes every width at $50 (POSITION_USD), and until 2026-09-12 it
+      // charged each replayed re-set the whole $0.16 a $424 position had
+      // paid — eight times too much, which tilted the pick to wide ranges.
+      const positionUsd = Number(rb.value_bnb) > 0 ? Number(rb.value_bnb) * Number(bnbUsd) : null;
+      const per50 = positionUsd ? bnb * Number(bnbUsd) * POSITION_USD / positionUsd : null;
       return {
         usd: Math.round(bnb * Number(bnbUsd) * 100) / 100, bnb: Number(bnb.toFixed(8)),
+        usd_per_50: per50 == null ? null : Math.round(per50 * 10000) / 10000,
+        position_usd_at_reset: positionUsd == null ? null : Math.round(positionUsd * 100) / 100,
         gas_bnb: Number(rb.gas_bnb), swap_fee_bnb: fee.bnb, swap_basis: fee.basis,
         impact_bnb: impact, impact_basis: impact == null ? 'not measured by this re-set (before 2026-09-11)' : 'measured by the swap against the pool\'s mid price',
         at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null,

@@ -2070,6 +2070,16 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
 
     function esc(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
     function say(html,cls){elMsg.className='rg-msg'+(cls?' '+cls:'');elMsg.innerHTML=html;}
+    // A dead end is not an answer: when the agent does not quote, name one in
+    // the same category that did the last time it was asked (its button's
+    // title starts with "Quoted"), and open it on a click (2026-09-12).
+    function altQuoter(){
+      if(!current)return '';
+      var alt=[].slice.call(document.querySelectorAll('.rg-hirebtn[data-cat="'+current.cat+'"]')).filter(function(b){return b.getAttribute('data-hire')!==current.id&&/^Quoted/.test(b.getAttribute('title')||'');})[0];
+      if(!alt)return '';
+      return ' <button type="button" class="rg-hirebtn" data-alt-hire="'+esc(alt.getAttribute('data-hire'))+'">Try '+esc(alt.getAttribute('data-name'))+' instead — it quoted back</button>';
+    }
+    function wireAlt(){var ab=elMsg.querySelector('[data-alt-hire]');if(ab)ab.addEventListener('click',function(){var b=document.querySelector('.rg-hirebtn[data-hire="'+ab.getAttribute('data-alt-hire')+'"]');if(b)open(b);});}
     function shortAddr(a){return a.slice(0,6)+'…'+a.slice(-4);}
 
     // A starting sentence per category, so the box is never empty and the task
@@ -2129,7 +2139,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         .then(function(j){
           elQuote.textContent='Get a quote';elQuote.disabled=false;
           if(!j||j.error){
-            say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer'),'rg-err');
+            say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer')+altQuoter(),'rg-err');wireAlt();
             // Show the address the broker actually tried. Without it the
             // reader gets a verdict about a stranger's agent and no way to
             // check it - "the endpoint its card names answered 404" names no
@@ -2145,7 +2155,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           if(!j.negotiated||!j.calls){
             // Not every agent in the registry can actually be hired, and
             // saying so beats a spinner that never resolves.
-            say('This agent did not return a quote. '+esc(j.reason||j.note||'It may advertise ERC-8183 without answering negotiation.'),'rg-err');
+            say('This agent did not return a quote. '+esc(j.reason||j.note||'It may advertise ERC-8183 without answering negotiation.')+altQuoter(),'rg-err');wireAlt();
             elRaw.hidden=false;elRaw.textContent=JSON.stringify(j,null,2);
             return;
           }

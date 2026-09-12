@@ -246,12 +246,25 @@ const WBNB='0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
       balOf=a=>'0x70a08231000000000000000000000000'+a.slice(2),
       call=(to,data)=>['eth_call',[{to,data},'latest']],
       u18=h=>(h&&h!=='0x')?Number(BigInt(h))/1e18:0;
+// Two public endpoints, in turn: the hero figures hung on one dataseed alone,
+// and on 2026-09-12 a slow answer from it left the tiles at "--" for 17 s.
+const RPC_FALLBACK='https://bsc.publicnode.com';
 async function rpcBatch(calls){
-  const r=await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(calls.map((c,i)=>({jsonrpc:'2.0',id:i,method:c[0],params:c[1]})))});
-  const j=await r.json(),out=[];
+  const body=JSON.stringify(calls.map((c,i)=>({jsonrpc:'2.0',id:i,method:c[0],params:c[1]})));
+  let j=null;
+  for(const url of [RPC,RPC_FALLBACK]){
+    try{
+      const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),6000);
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body,signal:ctl.signal});
+      clearTimeout(t);
+      j=await r.json();
+      if(Array.isArray(j)&&j.length===calls.length&&j.every(x=>x&&x.result!==undefined))break;
+    }catch(e){j=null}
+  }
+  if(!Array.isArray(j))throw new Error('no RPC answered');
+  const out=[];
   // Responses may come back in any order — index them by the id we sent.
-  if(Array.isArray(j))for(const x of j)out[x.id]=x.result;
+  for(const x of j)out[x.id]=x.result;
   return out;
 }
 // Burn figures are written out in full — the exact number is the point on a
@@ -831,7 +844,14 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     const now=Date.now();
     let diff;
     if(now<BB2_START){diff=BB2_END-BB2_START}
-    else if(now>=BB2_END){diff=0}
+    else if(now>=BB2_END){
+      // Over: the card says so and the zeros go, the way round one's card
+      // reads "Campaign Complete" — not "0 days · running until Sep 16".
+      diff=0;
+      const u=document.getElementById('bb2-until'),cd=document.getElementById('bb2-countdown');
+      if(u)u.textContent='✓ campaign complete · Aug 8 – Sep 16, 2026';
+      if(cd)cd.hidden=true;
+    }
     else{diff=BB2_END-now}
     const d=Math.floor(diff/86400000);
     const h=Math.floor((diff%86400000)/3600000);
@@ -1085,6 +1105,7 @@ function fillLpPortfolio(){
     const range = m.pool.in_range == null ? '' : m.pool.in_range ? '✅ <b>in range</b>' : '⏳ <b>out of range</b>' + (m.pool.outside_hours != null ? ' for ' + esc(m.pool.outside_hours) + ' h' : '');
     const width = m.pool.width_pct != null ? '±' + esc(m.pool.width_pct) + '%' : '';
     const tiles =
+      '<div class="pf-date">' + esc(day(m.checked_at || m.date, true)) + '</div>' +
       tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
       tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width].filter(Boolean).join(' · ')) +
       tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));

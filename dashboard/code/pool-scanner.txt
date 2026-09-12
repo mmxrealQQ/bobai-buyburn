@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 5634 lines.
+# one fetch. 6 files, 5646 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -539,11 +539,12 @@ async function windowSpan(from,to){
 export async function measureTax(token,pair,tokenIs0,kind){
   try{
     const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16);
-    // One window, and only one: this endpoint serves ~5,000 blocks at the head
-    // and answers anything older with "archive requests require a personal
-    // token". The second window the earlier build asked for was refused every
-    // single time, which cost a round trip and bought nothing.
-    const from=head-4999;
+    // One window, and only one: the hour WINDOW_BLOCKS names (7,900 blocks,
+    // 59 min — the endpoint answers that in one call and refuses only beyond
+    // ~12,000 as "archive"). Until 2026-09-12 this read 4,999 blocks (38 min)
+    // while every other reading on the page said "the last hour", and a thin
+    // pool was simulated where an hour of trades would have measured it.
+    const from=head-(WINDOW_BLOCKS-1);
     let logs=null;
     const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
     // Both log hosts, and a second pass after a beat. The two publicnode names
@@ -562,10 +563,10 @@ export async function measureTax(token,pair,tokenIs0,kind){
     // A refused range and a quiet pool arrive as the same emptiness and mean
     // opposite things. Only one of them may be stated as a fact about somebody
     // else's pool.
-    if(!logs)return {ok:false,reason:'the log endpoint refused the range'};
+    if(!logs)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
     if(!logs.length){
       const span=await windowSpan(from,head);
-      return {ok:false,reason:'this pool has not traded in the last '+(span||'~5,000 blocks')};
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~7,900 blocks'),block:head,windowBlocks:WINDOW_BLOCKS};
     }
     const U=h=>BigInt('0x'+h);
     const buys=[],sells=[];const seen=new Set();
@@ -643,8 +644,8 @@ export async function measureTax(token,pair,tokenIs0,kind){
     const med=a=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);
       return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
     const b=med(buys),s=med(sells);
-    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades'};
-    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,
+    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks:WINDOW_BLOCKS};
+    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks:WINDOW_BLOCKS,
       spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
   }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
 }
@@ -1886,6 +1887,9 @@ export async function scan(input, env) {
 
   return {
     address: token, name, symbol: symb, quotable: true,
+    // "At this block" has to name the block (2026-09-12): the head the tax
+    // window ended at, and when this answer was made.
+    block: tax.block ?? null, measuredAt: new Date().toISOString(),
     price: { usd: px, quoteSymbol: pool.sym, quoteUsd: pool.usd },
     supply: { total: supply, burned, circulating: supply != null ? supply - burned : null },
     pool: {
@@ -1933,6 +1937,10 @@ export async function scan(input, env) {
       buyPct: usedTax ? +(taxB * 100).toFixed(3) : null,
       sellPct: usedTax ? +(taxS * 100).toFixed(3) : null,
       measured: !!tax.ok,
+      // Why not, when not: a quiet pool and a throttled log endpoint are
+      // different answers for a caller — one is final, the other says retry.
+      ...(tax.ok ? {} : { reason: tax.reason || null }),
+      windowMinutes: tax.windowBlocks ? Math.round(tax.windowBlocks * 0.45 / 60) : null,
       // Named when the first read was throttled and the second answered: a
       // caller measuring the path can count how often the retry earned its keep.
       ...(secondTry ? { read_on_second_try: true } : {}),
@@ -2784,7 +2792,7 @@ function renderTiers(out,d){
   }
 
   const w=d.measured_window||{};
-  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
+  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~59')+
     ' minutes of chain — a sample, not a rate, and not annualised. Capital is both sides of the pool. "At the price" is the part of it standing within '+
     (d.band_pct||2)+'% of the current price, walked from the pool’s own tick data and checked against PancakeSwap’s quoter; the rest is on the balance sheet and earns nothing while the price is where it is. It assumes the price stays in that band, which it will not do forever. Impermanent loss is not in any of this.'));
 }
@@ -2916,7 +2924,7 @@ function renderRanges(out,d){
   });
   out.appendChild(t);
 
-  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
+  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~59')+
     ' minutes of chain — a sample, not a rate, and not annualised. Replayed against the '+w.swaps+
     ' swaps that actually happened in it, using the liquidity the pool itself reported as active at each one — not a simulation of a market, arithmetic over trades that occurred. The pool paid $'+
     (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them. Not annualised: what a range did in one hour is not what it does over a year. '+
@@ -2994,6 +3002,7 @@ function verdictCard(d,pool,gp,gpOk,tax){
       both?'This token takes '+pc(d.taxB*100)+' out of every trade.'
           :'This token takes '+pc(d.taxB*100)+' when you buy and '+pc(d.taxS*100)+' when you sell.',
       (measured?'Measured from trades that actually executed, not read off the contract label.'
+        :(d.simB||d.simS)?'Simulated on the chain at this block from a fresh address — the same trade run and its gap read, not a label. No executed trade was available to measure it from.'
               :'Reported by GoPlus and not verified here — no executed trade was available to measure it from.')
       +' It is already included in the cost above.');
   }else if(measured){
@@ -3253,7 +3262,10 @@ function render(d){
   const lnk=el('div','hd-l');
   lnk.append(link(short(addr),'https://bscscan.com/token/'+addr),
     link('Pool '+short(pool.pair),'https://bscscan.com/address/'+pool.pair),
-    link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair));
+    link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair),
+    // The same reading as an agent gets it: the page proves the API works,
+    // so the page names the API (2026-09-12).
+    link('Same reading as JSON ↗','/api/pool-scan?address='+addr));
   head.appendChild(lnk);
   o.appendChild(head);
 

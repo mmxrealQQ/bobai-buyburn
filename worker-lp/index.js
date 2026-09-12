@@ -180,7 +180,10 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     try {
       bnbUsd = (await readBnbUsd(pub)).bnbUsd;
       const m = measuredResetCost(await readState(env), bnbUsd);
-      if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+      // The replay is charged the cost per $50 of the position (usd_per_50,
+      // the size every width is replayed at); the full figure stays for the
+      // width-upgrade rule, which pays a real re-set on the real position.
+      if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostFullUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
     } catch { /* the replay's assumption stands */ }
     const record = log ? verdict(log, { ...costOpts, tape: await readLpTicks(env) }) : null;
     // The pool the record watches lets the plan finish a re-set that stopped
@@ -199,7 +202,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       upgrade = widthUpgrade({
         daily: steps.length === STEPS.length, inRange: true, ticks: plan.summary.ticks, tick: plan.summary.tick,
         pick: record?.earnings_pick || null, rows: record?.rows || [], hoursOfPrices: record?.hours_of_prices || 0,
-        valueBnb: plan.summary.value_bnb, bnbUsd, resetCostUsd: costOpts.resetCostUsd ?? record?.reset_cost?.usd ?? 0,
+        valueBnb: plan.summary.value_bnb, bnbUsd, resetCostUsd: costOpts.resetCostFullUsd ?? record?.reset_cost?.usd ?? 0,
       });
       if (!upgrade.upgrade) return { ...plan.summary, acted: false, why: plan.no, upgrade: upgrade.why };
       if (plan.width == null || !plan.ticks) return { ...plan.summary, acted: false, why: plan.no, upgrade: 'the plan carries no new ticks to upgrade into' };
@@ -214,7 +217,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       } catch (e) { waiting = { error: String(e.shortMessage || e.message).slice(0, 160) }; forced = null; }
     }
     const forcedNote = { ...(waiting ? { deposit_beside: waiting } : {}), ...(forced ? { forced_by_deposit: forced } : {}) };
-    if (watch && !forced) return { ...plan.summary, ...forcedNote, acted: false, watch: true, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
+    // The ten-minute watch stamps the moment the price left the range, so the
+    // wait runs from then; until 2026-09-12 only the :50 check stamped it, and
+    // a range left at :51 waited up to an hour longer than the record says.
+    if (watch && !plan.resume && !plan.summary.in_range && outSince == null && !dry) await env.AGENT.put(OUT_SINCE_KEY, at);
+    if (watch && !forced) return { ...plan.summary, ...forcedNote, acted: false, watch: true, outside_since: outSinceRaw || at, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
     if (upgrade && upgrade.upgrade) {
       if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
       if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };

@@ -209,7 +209,7 @@ if (SELF_TEST) {
   t(`the earnings rule names the ${RESET_AFTER_HOURS} h delay it replays`, /2 h/.test(verdict(dayFlat).earnings_rule));
   // The delay test, both ways: reported for every wait, the wait in use
   // marked, nothing under a day of prices, and it never touches the pick.
-  t('the delay test replays the waits 0, 1, 2 and 3 h', verdict(dayFlat).delay_test.delays.map((d) => d.hours).join(',') === '0,1,2,3');
+  t('the delay test replays the waits 0 to 12 h (0,1,2,3,4,6,8,12 since 2026-09-12)', verdict(dayFlat).delay_test.delays.map((d) => d.hours).join(',') === '0,1,2,3,4,6,8,12');
   t(`the wait in use (${RESET_AFTER_HOURS} h) is marked as such`, verdict(dayFlat).delay_test.delays.filter((d) => d.in_use).map((d) => d.hours).join() === String(RESET_AFTER_HOURS));
   t('under a day of prices the delay test reports nothing', verdict(short).delay_test.delays.length === 0 && verdict(short).delay_test.pick === null);
   t('flat prices: every wait nets the same, and none re-sets', (() => {
@@ -282,6 +282,15 @@ if (SELF_TEST) {
   t('… and the verdict charges that sum', verdict(dayFlat, { resetCostUsd: mcs.usd }).reset_cost.usd === 0.21);
   t('a re-set that measured its impact is charged it too ($0.21 + $0.21)', (() => { const r = { history: [{ at: '2026-09-11T02:50:00Z', steps: { rebalance: { acted: true, gas_bnb: 0.0002, swap: { fee_bnb: 0.0001, impact_bnb: 0.0003 }, txs: new Array(5) } } }] }; const m = measuredResetCost(r, 700); return m.usd === 0.42 && m.impact_bnb === 0.0003 && /measured by the swap/.test(m.impact_basis); })());
   t('a re-set without an impact field is charged none and says so', mcs.impact_bnb === null && /not measured/.test(mcs.impact_basis));
+  // Per $50 (2026-09-12): the replay sizes every width at $50, so the cost it
+  // charges is the measured cost per $50 of the position that paid it — $0.21
+  // on a 0.6 BNB ($420) position is $0.025 per $50, not $0.21. Both ways: a
+  // re-set that did not record its value gives no per-$50 figure.
+  const recSized = { history: [{ at: '2026-09-09T07:50:00Z', steps: { rebalance: { acted: true, gas_bnb: 0.0002, value_bnb: 0.6, trade: 'buy the other side with 0.040000 WBNB', txs: new Array(3) } } }] };
+  const mSized = measuredResetCost(recSized, 700);
+  t('the measured cost is also given per $50 of the position it was paid on ($0.21 on $420 → $0.025)', mSized.usd === 0.21 && mSized.position_usd_at_reset === 420 && mSized.usd_per_50 === 0.025);
+  t('… a re-set that did not record its value gives no per-$50 figure', mcs.usd_per_50 === null && mcs.position_usd_at_reset === null);
+  t('… and the verdict says the cost it charges is per $50', /per \$50 of the position/.test(verdict(dayFlat, { resetCostUsd: mSized.usd_per_50 }).reset_cost.basis) && verdict(dayFlat, { resetCostUsd: mSized.usd_per_50 }).reset_cost.usd === 0.025);
   // The re-sets' own losses, from ticks: a ±1% range minted at tick 0 and left
   // at tick −200 (−2.0%) lost 0.76% against holding; execution is gas + fee + impact.
   const recLoss = { history: [

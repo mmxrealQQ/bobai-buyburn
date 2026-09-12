@@ -523,11 +523,12 @@ async function windowSpan(from,to){
 export async function measureTax(token,pair,tokenIs0,kind){
   try{
     const head=parseInt(await rpc('eth_blockNumber',[],LOGS_RPC),16);
-    // One window, and only one: this endpoint serves ~5,000 blocks at the head
-    // and answers anything older with "archive requests require a personal
-    // token". The second window the earlier build asked for was refused every
-    // single time, which cost a round trip and bought nothing.
-    const from=head-4999;
+    // One window, and only one: the hour WINDOW_BLOCKS names (7,900 blocks,
+    // 59 min — the endpoint answers that in one call and refuses only beyond
+    // ~12,000 as "archive"). Until 2026-09-12 this read 4,999 blocks (38 min)
+    // while every other reading on the page said "the last hour", and a thin
+    // pool was simulated where an hour of trades would have measured it.
+    const from=head-(WINDOW_BLOCKS-1);
     let logs=null;
     const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
     // Both log hosts, and a second pass after a beat. The two publicnode names
@@ -546,10 +547,10 @@ export async function measureTax(token,pair,tokenIs0,kind){
     // A refused range and a quiet pool arrive as the same emptiness and mean
     // opposite things. Only one of them may be stated as a fact about somebody
     // else's pool.
-    if(!logs)return {ok:false,reason:'the log endpoint refused the range'};
+    if(!logs)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
     if(!logs.length){
       const span=await windowSpan(from,head);
-      return {ok:false,reason:'this pool has not traded in the last '+(span||'~5,000 blocks')};
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~7,900 blocks'),block:head,windowBlocks:WINDOW_BLOCKS};
     }
     const U=h=>BigInt('0x'+h);
     const buys=[],sells=[];const seen=new Set();
@@ -627,8 +628,8 @@ export async function measureTax(token,pair,tokenIs0,kind){
     const med=a=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);
       return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
     const b=med(buys),s=med(sells);
-    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades'};
-    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,
+    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks:WINDOW_BLOCKS};
+    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks:WINDOW_BLOCKS,
       spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
   }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
 }

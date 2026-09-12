@@ -199,6 +199,10 @@ if (SELF) {
   is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
+  // The newest owed figure wins (2026-09-12): an hourly check's rebalance step
+  // folded into the last record reads what the position owes now; the daily
+  // collect's figure is up to a day old. Without one, the collect's stands.
+  is('an hourly rebalance step\'s owed figure outranks the daily collect\'s', (() => { const l = rec.last; const r2 = { ...rec, last: { ...l, steps: { ...l.steps, rebalance: { ...(l.steps.rebalance || {}), fees_owed_bnb: 0.0049 } } } }; return near(moneyFlow(r2).waiting.fees_owed_bnb, 0.0049); })());
   is('the rule is what the last collect named', fl.rule.fee_share_kept_pct === 50 && fl.rule.fee_share_bobai_pct === 50);
   is('paid_for carries the service earnings', fl.paid_for.x402_answers === 3 && near(fl.paid_for.usd1, 0.7));
   is('an empty record flows nothing', moneyFlow({}).in.total_bnb === 0 && moneyFlow({}).rule === null && moneyFlow(null).gas.transactions === 0);

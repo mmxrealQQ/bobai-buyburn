@@ -309,7 +309,7 @@ function renderTiers(out,d){
   }
 
   const w=d.measured_window||{};
-  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
+  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~59')+
     ' minutes of chain — a sample, not a rate, and not annualised. Capital is both sides of the pool. "At the price" is the part of it standing within '+
     (d.band_pct||2)+'% of the current price, walked from the pool’s own tick data and checked against PancakeSwap’s quoter; the rest is on the balance sheet and earns nothing while the price is where it is. It assumes the price stays in that band, which it will not do forever. Impermanent loss is not in any of this.'));
 }
@@ -441,7 +441,7 @@ function renderRanges(out,d){
   });
   out.appendChild(t);
 
-  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~38')+
+  out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~59')+
     ' minutes of chain — a sample, not a rate, and not annualised. Replayed against the '+w.swaps+
     ' swaps that actually happened in it, using the liquidity the pool itself reported as active at each one — not a simulation of a market, arithmetic over trades that occurred. The pool paid $'+
     (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them. Not annualised: what a range did in one hour is not what it does over a year. '+
@@ -519,6 +519,7 @@ function verdictCard(d,pool,gp,gpOk,tax){
       both?'This token takes '+pc(d.taxB*100)+' out of every trade.'
           :'This token takes '+pc(d.taxB*100)+' when you buy and '+pc(d.taxS*100)+' when you sell.',
       (measured?'Measured from trades that actually executed, not read off the contract label.'
+        :(d.simB||d.simS)?'Simulated on the chain at this block from a fresh address — the same trade run and its gap read, not a label. No executed trade was available to measure it from.'
               :'Reported by GoPlus and not verified here — no executed trade was available to measure it from.')
       +' It is already included in the cost above.');
   }else if(measured){
@@ -778,7 +779,10 @@ function render(d){
   const lnk=el('div','hd-l');
   lnk.append(link(short(addr),'https://bscscan.com/token/'+addr),
     link('Pool '+short(pool.pair),'https://bscscan.com/address/'+pool.pair),
-    link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair));
+    link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair),
+    // The same reading as an agent gets it: the page proves the API works,
+    // so the page names the API (2026-09-12).
+    link('Same reading as JSON ↗','/api/pool-scan?address='+addr));
   head.appendChild(lnk);
   o.appendChild(head);
 

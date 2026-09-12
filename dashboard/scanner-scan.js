@@ -499,6 +499,9 @@ export async function scan(input, env) {
 
   return {
     address: token, name, symbol: symb, quotable: true,
+    // "At this block" has to name the block (2026-09-12): the head the tax
+    // window ended at, and when this answer was made.
+    block: tax.block ?? null, measuredAt: new Date().toISOString(),
     price: { usd: px, quoteSymbol: pool.sym, quoteUsd: pool.usd },
     supply: { total: supply, burned, circulating: supply != null ? supply - burned : null },
     pool: {
@@ -546,6 +549,10 @@ export async function scan(input, env) {
       buyPct: usedTax ? +(taxB * 100).toFixed(3) : null,
       sellPct: usedTax ? +(taxS * 100).toFixed(3) : null,
       measured: !!tax.ok,
+      // Why not, when not: a quiet pool and a throttled log endpoint are
+      // different answers for a caller — one is final, the other says retry.
+      ...(tax.ok ? {} : { reason: tax.reason || null }),
+      windowMinutes: tax.windowBlocks ? Math.round(tax.windowBlocks * 0.45 / 60) : null,
       // Named when the first read was throttled and the second answered: a
       // caller measuring the path can count how often the retry earned its keep.
       ...(secondTry ? { read_on_second_try: true } : {}),

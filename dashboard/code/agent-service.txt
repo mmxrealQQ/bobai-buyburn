@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12854 lines.
+# one fetch. 41 files, 12908 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -358,6 +358,10 @@ if (SELF) {
   is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
+  // The newest owed figure wins (2026-09-12): an hourly check's rebalance step
+  // folded into the last record reads what the position owes now; the daily
+  // collect's figure is up to a day old. Without one, the collect's stands.
+  is('an hourly rebalance step\'s owed figure outranks the daily collect\'s', (() => { const l = rec.last; const r2 = { ...rec, last: { ...l, steps: { ...l.steps, rebalance: { ...(l.steps.rebalance || {}), fees_owed_bnb: 0.0049 } } } }; return near(moneyFlow(r2).waiting.fees_owed_bnb, 0.0049); })());
   is('the rule is what the last collect named', fl.rule.fee_share_kept_pct === 50 && fl.rule.fee_share_bobai_pct === 50);
   is('paid_for carries the service earnings', fl.paid_for.x402_answers === 3 && near(fl.paid_for.usd1, 0.7));
   is('an empty record flows nothing', moneyFlow({}).in.total_bnb === 0 && moneyFlow({}).rule === null && moneyFlow(null).gas.transactions === 0);
@@ -2216,7 +2220,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const lastSweeps = Array.isArray(ls.sweep) ? ls.sweep : [];
   const waiting = {
     income: lastSweeps.filter((s) => s.balance > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.balance), bnb: s.bnb_equivalent != null ? n(s.bnb_equivalent) : null })),
-    fees_owed_bnb: ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
+    // The newest figure: the hourly check's rebalance step reads what the
+    // position owes now; the daily collect's figure is up to a day old.
+    fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
     wallet_spendable_bnb: ls.increase && ls.increase.spendable_bnb != null ? r6(n(ls.increase.spendable_bnb)) : null,
   };
   // The rule is what the last step that split fees named: the last collect,
@@ -4393,6 +4399,22 @@ export async function handleFind(url) {
     } };
   }
 
+  // Nothing asked, nothing ranked: without a query, a category or a protocol
+  // the old answer was the first ten ids by number — "ClawNews", "NAMEAI…" —
+  // each with match 0, which read as a recommendation (2026-09-12).
+  if (!q.trim() && !wantCategory && !needs.length) {
+    return { status: 200, body: {
+      usage: 'GET /find?q=<what you need done> — or ?category=<id> — or ?speaks=mcp,a2a. Results are ranked by how well the tools, skills and registration text of each agent match; nothing is ranked without a question.',
+      categories_available: CATEGORY_IDS,
+      examples: [
+        'https://agent.brainonbnb.com/find?q=venus+health+factor',
+        'https://agent.brainonbnb.com/find?category=rebalancing',
+        'https://agent.brainonbnb.com/find?q=grid&speaks=mcp',
+      ],
+      results: [],
+    } };
+  }
+
   let list;
   try { list = await loadAgents(); }
   catch { return { status: 503, body: { error: 'the agent list is not reachable right now' } }; }
@@ -5815,13 +5837,16 @@ async function readCounters(env) {
   const list = await env.AGENT.list({ prefix: 'count:' });
   const byKind = {};
   const byDay = {};
-  for (const k of list.keys) {
+  // All keys at once: 175 reads in a row took 6 s cold on 2026-09-12, and
+  // /stats and the /services floor waited on every one of them.
+  const values = await Promise.all(list.keys.map((k) => env.AGENT.get(k.name)));
+  list.keys.forEach((k, i) => {
     const [, kind, day] = k.name.split(':');
-    const v = Number((await env.AGENT.get(k.name)) || 0);
+    const v = Number(values[i] || 0);
     byKind[kind] = (byKind[kind] || 0) + v;
     byDay[day] = byDay[day] || {};
     byDay[day][kind] = v;
-  }
+  });
   return { byKind, byDay };
 }
 
@@ -6397,7 +6422,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -6614,7 +6639,9 @@ async function lpWidthVerdict(env) {
   try {
     const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
     const m = measuredResetCost(rec, await bnbUsd().catch(() => null));
-    if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+    // The replay is charged the cost per $50 of the position (usd_per_50);
+    // the full figure is what a real re-set pays (the width-upgrade rule).
+    if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
   } catch { /* the replay's assumption stands */ }
   return { log, v: lpVerdict(log, { ...costOpts, tape: await readLpTicks(env) }) };
 }
@@ -6657,13 +6684,22 @@ export default {
     if (path === '/favicon.ico') {
       return Response.redirect('https://brainonbnb.com/favicon.png', 301);
     }
+    // The A2A card and every hire link point agents at this host; an agent
+    // that then asks this host for llms.txt got a 404 until 2026-09-12.
+    if (path === '/llms.txt') return Response.redirect('https://brainonbnb.com/llms.txt', 302);
 
     if (path === '/') {
       return json({
         service: 'Brain On BNB AI — agent service',
-        what_this_is: 'Paid, continuous pool monitoring on BNB Smart Chain, plus the public counters behind brainonbnb.com. Measurement only — nothing here is financial advice.',
+        what_this_is: 'The agent service of Brain On BNB: six measured answers sold per answer over x402 (POST /answer?service=…), the same work sold through the ERC-8183 escrow (GET /hire), a broker over the ERC-8004 registry (GET /find, POST /dispatch), paid pool monitoring, the DeFi agent\'s own records (/lp/*) and the public counters behind brainonbnb.com. Measurement only — nothing here is financial advice.',
         capabilities: offering(),
-        payment: { protocol: 'x402', network: NETWORK, asset: USD1, symbol: 'USD1', payTo },
+        payment: {
+          protocol: 'x402', network: NETWORK, payTo,
+          // What a 402 here accepts, in the order the accepts[] carries it.
+          accepts: ['USDC through the x402 facilitator (accepts[0])', 'USD1 by direct transfer, transaction hash in PAYMENT-SIGNATURE', '$BOBAI by direct transfer, at the quote in the 402'],
+          asset: USD1, symbol: 'USD1',
+        },
+        start_here: { find: 'https://agent.brainonbnb.com/find?q=venus+health+factor', example_answer: 'https://agent.brainonbnb.com/example?service=health_factor', hire: 'https://agent.brainonbnb.com/hire?agent=302257&task=health+factor', card: 'https://agent.brainonbnb.com/.well-known/agent.json' },
         transparency: 'https://agent.brainonbnb.com/stats',
       });
     }
@@ -9087,7 +9123,10 @@ export function verdict(log, opts = {}) {
   // then the re-set USES the wait that netted the most, behind the bar in
   // waitInUse (a week of prices, a tenth over the set wait) — the same way
   // the width has been measured rather than set since 2026-09-04.
-  const DELAYS_H = [0, 1, 2, 3];
+  // Up to 12 h since 2026-09-12: with 0-3 h the net still rose at the last
+  // step (0.002 / 0.002 / 0.12 / 0.21 a day), so the grid ended where the
+  // curve had not.
+  const DELAYS_H = [0, 1, 2, 3, 4, 6, 8, 12];
   const delayRows = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
     const best = rows.filter((r) => r.width !== 'full')
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))
@@ -9148,7 +9187,7 @@ export function verdict(log, opts = {}) {
       note: 'Every width replayed with each wait before a re-set; the best width per wait is named. The re-set uses the wait that netted the most once the record holds a week of prices and it beats the set wait by a tenth; under either bar the set wait stands.',
     },
     reset_cost: opts.resetCostUsd != null
-      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + '; on top of it each re-set is charged what its range lost against holding' }
+      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at; on top of it each re-set is charged what its range lost against holding` }
       : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet; on top of it each re-set is charged what its range lost against holding' },
     earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred) once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). A re-set is charged its gas and swap fee and what the range it leaves had lost against holding its minted amounts (it sold the side that rose and held the side that fell); the range still open is marked the same way at the last price. Net per day is what is left; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. If no width nets anything there is no pick, and the agent holds instead of re-setting.`,
   };
@@ -9185,8 +9224,16 @@ export function measuredResetCost(agentRecord, bnbUsd) {
       // charged none — the record says which.
       const impact = rb.swap && Number(rb.swap.impact_bnb) >= 0 ? Number(rb.swap.impact_bnb) : null;
       const bnb = Number(rb.gas_bnb) + fee.bnb + (impact || 0);
+      // The same cost per $50 of the position it was paid on: the replay
+      // sizes every width at $50 (POSITION_USD), and until 2026-09-12 it
+      // charged each replayed re-set the whole $0.16 a $424 position had
+      // paid — eight times too much, which tilted the pick to wide ranges.
+      const positionUsd = Number(rb.value_bnb) > 0 ? Number(rb.value_bnb) * Number(bnbUsd) : null;
+      const per50 = positionUsd ? bnb * Number(bnbUsd) * POSITION_USD / positionUsd : null;
       return {
         usd: Math.round(bnb * Number(bnbUsd) * 100) / 100, bnb: Number(bnb.toFixed(8)),
+        usd_per_50: per50 == null ? null : Math.round(per50 * 10000) / 10000,
+        position_usd_at_reset: positionUsd == null ? null : Math.round(positionUsd * 100) / 100,
         gas_bnb: Number(rb.gas_bnb), swap_fee_bnb: fee.bnb, swap_basis: fee.basis,
         impact_bnb: impact, impact_basis: impact == null ? 'not measured by this re-set (before 2026-09-11)' : 'measured by the swap against the pool\'s mid price',
         at: hist[i].at, transactions: Array.isArray(rb.txs) ? rb.txs.length : null,
@@ -12823,7 +12870,10 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     try {
       bnbUsd = (await readBnbUsd(pub)).bnbUsd;
       const m = measuredResetCost(await readState(env), bnbUsd);
-      if (m) costOpts = { resetCostUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+      // The replay is charged the cost per $50 of the position (usd_per_50,
+      // the size every width is replayed at); the full figure stays for the
+      // width-upgrade rule, which pays a real re-set on the real position.
+      if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostFullUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
     } catch { /* the replay's assumption stands */ }
     const record = log ? verdict(log, { ...costOpts, tape: await readLpTicks(env) }) : null;
     // The pool the record watches lets the plan finish a re-set that stopped
@@ -12842,7 +12892,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       upgrade = widthUpgrade({
         daily: steps.length === STEPS.length, inRange: true, ticks: plan.summary.ticks, tick: plan.summary.tick,
         pick: record?.earnings_pick || null, rows: record?.rows || [], hoursOfPrices: record?.hours_of_prices || 0,
-        valueBnb: plan.summary.value_bnb, bnbUsd, resetCostUsd: costOpts.resetCostUsd ?? record?.reset_cost?.usd ?? 0,
+        valueBnb: plan.summary.value_bnb, bnbUsd, resetCostUsd: costOpts.resetCostFullUsd ?? record?.reset_cost?.usd ?? 0,
       });
       if (!upgrade.upgrade) return { ...plan.summary, acted: false, why: plan.no, upgrade: upgrade.why };
       if (plan.width == null || !plan.ticks) return { ...plan.summary, acted: false, why: plan.no, upgrade: 'the plan carries no new ticks to upgrade into' };
@@ -12857,7 +12907,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       } catch (e) { waiting = { error: String(e.shortMessage || e.message).slice(0, 160) }; forced = null; }
     }
     const forcedNote = { ...(waiting ? { deposit_beside: waiting } : {}), ...(forced ? { forced_by_deposit: forced } : {}) };
-    if (watch && !forced) return { ...plan.summary, ...forcedNote, acted: false, watch: true, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
+    // The ten-minute watch stamps the moment the price left the range, so the
+    // wait runs from then; until 2026-09-12 only the :50 check stamped it, and
+    // a range left at :51 waited up to an hour longer than the record says.
+    if (watch && !plan.resume && !plan.summary.in_range && outSince == null && !dry) await env.AGENT.put(OUT_SINCE_KEY, at);
+    if (watch && !forced) return { ...plan.summary, ...forcedNote, acted: false, watch: true, outside_since: outSinceRaw || at, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
     if (upgrade && upgrade.upgrade) {
       if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
       if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };

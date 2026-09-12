@@ -59,7 +59,9 @@ JSON on stdout. The fields that carry the answer:
 |---|---|
 | `tradeCost[]` | Total cost in percent at $100 / 150 / 250 / 500 / 1k / 2.5k, buy and sell separately — tax, fee and impact combined |
 | `onePercentDepth` | USD size that moves the price 1% in each direction. The plainest one-number answer to "how deep is this really" |
-| `tax.measured` | **Check this.** `true` = read off real trades. `false` = a label nobody verified |
+| `tax.measured` | **Check this.** `true` = read off real trades in the last hour. `false` = read `tax.source`: either *simulated on-chain at this block* (the same trade run from a fresh address — nearly as good) or *labelled by GoPlus, unverified*. `tax.reason` says why no trade could be read (a quiet pool is final; a refused log range means retry) |
+| `sellability` | A simulated sell on V2 pairs: `sellable:false` carries the router's own reason; `ok:false` means not checked, never "safe" |
+| `block`, `measuredAt` | The block the tax window ended at and when the answer was made — every "at this block" in this answer means this one |
 | `pool.shareOfLiquidity` | What fraction of the token's liquidity this pool holds. A low number means you are looking at a side pocket |
 | `lp.burnedPct` | Share of LP tokens sent to a burn address and therefore unwithdrawable (V2 pools only) |
 | `quotable` | `false` when no pool is deep or representative enough to quote honestly — read `reason` |
@@ -188,9 +190,10 @@ you are not on today, and `cannot_see` says so in every answer.
 
 ## What this does not do
 
-It does not place trades, hold keys, or sign anything — it only reads. It does
-not detect honeypots, malicious contract logic, or ownership traps; pair it with
-a dedicated security scanner for that. It covers BNB Smart Chain only.
+It does not place trades, hold keys, or sign anything — it only reads. It runs
+one simulated sell (`sellability`) but does not audit contract logic, ownership
+traps or hidden switches; pair it with a dedicated security scanner for that.
+It covers BNB Smart Chain only.
 
 ## Where the numbers come from
 

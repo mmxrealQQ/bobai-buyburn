@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4428,
-   "zipBytes": 67572,
-   "txtBytes": 200475,
-   "sha256": "6b84fca6125e004e",
+   "lines": 4437,
+   "zipBytes": 67858,
+   "txtBytes": 201132,
+   "sha256": "11dfa51b7bc9d1b3",
    "reqs": [
     {
      "what": "A bot token",
@@ -267,10 +267,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 5634,
-   "zipBytes": 119374,
-   "txtBytes": 359196,
-   "sha256": "0d498ab4768da8bc",
+   "lines": 5646,
+   "zipBytes": 119738,
+   "txtBytes": 360333,
+   "sha256": "dfccf750bb5cbf1c",
    "reqs": [
     {
      "what": "A static host",
@@ -537,10 +537,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1817,
-   "zipBytes": 45585,
-   "txtBytes": 129468,
-   "sha256": "8e7453585a8174e5",
+   "lines": 1826,
+   "zipBytes": 45930,
+   "txtBytes": 130554,
+   "sha256": "cf688aa0d663b36d",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 41,
-   "lines": 12854,
-   "zipBytes": 276358,
-   "txtBytes": 773746,
-   "sha256": "e40b553e0491e474",
+   "lines": 12908,
+   "zipBytes": 277992,
+   "txtBytes": 778630,
+   "sha256": "e383642d67930ca1",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -657,10 +657,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4189,
-   "zipBytes": 88402,
-   "txtBytes": 250863,
-   "sha256": "01146d2a97840781",
+   "lines": 4199,
+   "zipBytes": 88748,
+   "txtBytes": 251855,
+   "sha256": "7e983e46807a313f",
    "reqs": [
     {
      "what": "Node 18+ and time",

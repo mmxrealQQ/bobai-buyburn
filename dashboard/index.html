@@ -131,7 +131,7 @@
           {
             "@type": "Question",
             "name": "What is the difference between brainonbnb.com and brainonbnb.ai?",
-            "acceptedAnswer": {"@type": "Answer", "text": "Same official site, two domains. brainonbnb.com is the primary user-facing domain; brainonbnb.ai is the original brand domain. Both serve identical content from the same Cloudflare Pages deployment."}
+            "acceptedAnswer": {"@type": "Answer", "text": "Same official site, two domains. brainonbnb.com is the primary user-facing domain; brainonbnb.ai is the original brand domain and redirects here."}
           },
           {
             "@type": "Question",
@@ -265,8 +265,8 @@
   <section class="liq-boost fi" id="liq-boost-bobai">
     <div class="lb-card">
       <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost II</em></div>
-      <div class="lb-sub">0.8% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)">running until Sep 16</span></div>
-      <div class="lb-countdown">
+      <div class="lb-sub">0.8% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb2-until">running until Sep 16</span></div>
+      <div class="lb-countdown" id="bb2-countdown">
         <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-days">--</div><div class="lb-cd-lbl">Days</div></div>
         <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
         <div class="lb-cd-unit"><div class="lb-cd-val" id="bb2-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
@@ -685,7 +685,7 @@
     </picture>
     <div class="band-ov"><div class="band-in"><div class="band-tx">
       <h2>Built <em>By AI</em></h2>
-      <p class="burn-sub">Four apps. One builder. Nobody at the wheel.</p>
+      <p class="burn-sub">Eight apps. One builder. Nobody at the wheel.</p>
       <p class="burn-lead">The same AI that runs the buyback bot built everything else here. None of it is a roadmap promise. Go click around.</p>
     </div></div></div>
   </div>
@@ -871,7 +871,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 4,428 lines &middot; 66 KB</span>
+          <span class="lib-m">12 files &middot; 4,437 lines &middot; 66 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -943,7 +943,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 5,634 lines &middot; 0.1 MB</span>
+          <span class="lib-m">6 files &middot; 5,646 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1058,7 +1058,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,817 lines &middot; 45 KB</span>
+          <span class="lib-m">4 files &middot; 1,826 lines &middot; 45 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1081,7 +1081,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">41 files &middot; 12,854 lines &middot; 0.3 MB</span>
+          <span class="lib-m">41 files &middot; 12,908 lines &middot; 0.3 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1104,7 +1104,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 4,189 lines &middot; 86 KB</span>
+          <span class="lib-m">7 files &middot; 4,199 lines &middot; 87 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1174,12 +1174,13 @@
         <li><span class="ck">&#x2713;</span><span>NFT auto-mint on every qualifying buy</span></li>
         <li><span class="ck">&#x2713;</span><span>Liquidity Boost campaign — LP burned, not locked</span></li>
         <li><span class="ck">&#x2713;</span><span>Bots migrated to native Cloudflare Workers</span></li>
-        <li><span class="ck">&#x2713;</span><span>Whale tracker watching 29 wallets</span></li>
+        <li><span class="ck">&#x2713;</span><span>Whale tracker live in Telegram</span></li>
+        <li><span class="ck">&#x2713;</span><span>Four agent pieces live — Pool Scanner, Brain Plaza, Agent Services, DeFi Agent</span></li>
       </ul></div>
       <div class="rm rmn fi"><div class="rp">Phase 4 — Next</div><h3>Depth</h3><ul>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Trading volume — the honest bottleneck</span></li>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Wider exchange visibility</span></li>
-        <li><span style="color:var(--muted)">&#x25cb;</span><span>More AI-built apps on Brain On BNB AI</span></li>
+        <li><span style="color:var(--muted)">&#x25cb;</span><span>More agents hired through the marketplace — ours and others'</span></li>
         <li><span class="ck">&#x2713;</span><span>Keep burning. Bot runs every 10 minutes.</span></li>
       </ul></div>
     </div>
@@ -1213,7 +1214,7 @@
         <div class="faq-body">The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard. From Sep 9, 2026 a tenth of each slice (0.3% of the trade) goes to the DeFi agent's wallet, and from Sep 17 to Nov 20, 2026 another tenth of each (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; from Nov 20 the split is 1/1/1 again.</div>
       </details>
       <details class="faq-item"><summary>What is the difference between brainonbnb.com and brainonbnb.ai?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">Same official site, two domains. <a href="https://brainonbnb.com">brainonbnb.com</a> is the primary user-facing domain; <a href="https://brainonbnb.ai">brainonbnb.ai</a> is the original brand domain. Both serve identical content from the same Cloudflare Pages deployment.</div>
+        <div class="faq-body">Same official site, two domains. <a href="https://brainonbnb.com">brainonbnb.com</a> is the primary user-facing domain; brainonbnb.ai is the original brand domain and redirects here.</div>
       </details>
       <details class="faq-item"><summary>Who built $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">$BOBAI was launched on Four.Meme and built entirely with AI tooling — including the contract, the dashboard, the buyback bot, the Telegram bot, and the artwork. The contract source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a> and every buyback-and-burn run lands in a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
@@ -1265,7 +1266,7 @@
 
 <footer><div class="fi2">
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
-  <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · <a href="https://brainonbnb.ai">brainonbnb.ai</a> | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
+  <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai |<a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer>
 </div>
 

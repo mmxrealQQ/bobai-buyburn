@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4428 lines.
+# one fetch. 12 files, 4437 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1491,9 +1491,7 @@ async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice) {
 
 🪙 <b>+${formatNumber(burnedDelta)} BOBAI</b> burned <b>(${burnedUsdStr})</b>
 📊 Total burned: <b>${formatNumber(newBurned)} BOBAI</b>
-🔥 That's <b>${percent}%</b> of total supply!
-
-💡 <i>Every trade makes BOBAI more scarce!</i>
+🔥 <b>${percent}%</b> of total supply
 
 🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
 
@@ -2577,7 +2575,7 @@ const BOT_COMMANDS = [
   { command: 'price',    description: 'Live price, volume & market stats' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
-  { command: 'worldcup', description: 'Tipgame pool, top 10 & latest credits' },
+  { command: 'worldcup', description: "Worldcup '26 tipgame — final results" },
 ];
 
 // Whale watcher menu — only registered for the BOBAI Intern chat (scope=chat).
@@ -2592,7 +2590,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v14-defi-home';
+const COMMANDS_VERSION = 'v15-worldcup-final';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -2723,7 +2721,9 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
   if (d.errors) counts.push(`⚠️ ${d.errors} failed`);
   const join = (...xs) => xs.filter((x) => x != null && x !== '').join(' · ');
   const blocks = [
-    [`💧 <b>${title} · ${day(m.date, true)}</b>`],
+    // Dated by the newest check, not the last daily run: a /defi at 02:50
+    // UTC shows this morning's worth, so it must not carry yesterday's date.
+    [`💧 <b>${title} · ${day(m.checked_at || m.date, true)}</b>`],
     [
       `📥 Put in: <b>${bnb(m.put_in.bnb)}</b>${m.put_in.usd != null ? ' · ' + usd(m.put_in.usd) : ''}`,
       `💼 Worth now: <b>${bnb(m.worth.bnb)}</b>${m.worth.usd != null ? ' · ' + usd(m.worth.usd) : ''}`,
@@ -2779,8 +2779,11 @@ async function postLpDailyReport(env) {
   const text = formatDefiCard(pm);
   if (!text) return skip('nothing to say: the portfolio could not be read');
   console.log('[LP REPORT] posting for ' + today);
+  // The day is marked done only once Telegram has taken the message; a
+  // failed send used to mark it anyway, and the card was lost for the day.
+  const sent = await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch((e) => ({ ok: false, description: String(e && e.message || e) }));
+  if (!sent || !sent.ok) return skip('Telegram refused the card: ' + (sent && sent.description));
   await env.KV.put('lp_report_date', today);
-  await tg('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true });
   return true;
 }
 
@@ -2893,7 +2896,7 @@ async function handleCommand(msg, env) {
 
 🔥 Burned: ${burn.percent}% (${formatNumber(burn.burnedTokens)} BOBAI)
 
-⛓ <i>Read from the chain by this bot: price and liquidity from the pool's reserves and the Chainlink BNB feed, market cap from the supply minus the dead address, volume and trades from the pool's own swap events${st ? (st.hours >= LEDGER_HOURS - 0.5 ? ' over the last 24 hours' : ` over the last ${hoursTxt} (the record is still filling)`) : ' (the record starts with the next tick)'}. Nothing here comes from a price site.</i>
+⛓ <i>Read from the chain: pool reserves, Chainlink BNB feed, swap events${st ? (st.hours >= LEDGER_HOURS - 0.5 ? ' of the last 24 h' : ` of the last ${hoursTxt} (record still filling)`) : ' (record starts with the next tick)'}. No price site.</i>
 
 📈 <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>`;
       break;
@@ -2916,7 +2919,7 @@ async function handleCommand(msg, env) {
       reply = `🔥 <b>BOBAI Burn Dashboard</b>
 
 🔥 Burned: <b>${formatNumber(burn.burnedTokens)} BOBAI</b>
-📊 That's <b>${burn.percent}%</b> of total supply!
+📊 <b>${burn.percent}%</b> of total supply
 
 ⚙️ <b>How it works:</b>
 ♻️ 3% tax on every buy & sell, fixed in the contract
@@ -2926,15 +2929,12 @@ async function handleCommand(msg, env) {
 ☀️ Sep 17 → Nov 20: another tenth (0.3%) collects in BNB for Giggle Academy — one donation on Nov 20
 👤 Contract ownership renounced
 
-💡 <i>Every trade makes BOBAI more scarce!</i>
-
 🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns on BscScan</a> · <a href="https://brainonbnb.com/#tokenomics">Current split</a>`;
       break;
     }
 
     case '/liq':
     case 'liq':
-    case '/defi':
     case 'liquidity':
     case '/depth': {
       const lq = await fetchLiquidityStats();
@@ -2958,7 +2958,7 @@ async function handleCommand(msg, env) {
       if (lq.lpBurnedPct !== null) ratios.push(`🔥 LP burned: <b>${lq.lpBurnedPct >= 99.9995 && lq.lpBurnedPct < 100 ? '>99.999' : lq.lpBurnedPct.toFixed(3)}%</b>`);
 
       reply = `💧 <b>BOBAI Liquidity Depth</b>
-<i>Read from the pool contract${lq.block ? ' at block ' + lq.block.toLocaleString('en-US') : ' just now'} — the pool moves with every trade, so run /liq again rather than trusting an older message.</i>
+<i>Read from the pool contract${lq.block ? ' at block ' + lq.block.toLocaleString('en-US') : ' just now'}.</i>
 
 💎 Pool: <b>${usd0(lq.tvl)}</b> (both sides)
 🟡 BNB side: <b>${usd0(lq.bnbSide)}</b> · ${lq.rBnb.toFixed(2)} BNB
@@ -3102,7 +3102,7 @@ Here's what I can do:
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
-🏆 /worldcup — Tipgame pool, top 10 & latest credits
+🏆 /worldcup — Worldcup '26 tipgame, final results
 
 💡 <i>I also post alerts for buys & burns!</i>
 
@@ -3177,7 +3177,7 @@ title: ${msg.chat.title || '(private)'}`;
         : '<i>None yet</i>';
       const taxLines = taxAdds.length
         ? taxAdds.map(fmtTxLine).join('\n')
-        : '<i>Tax routing starts 11 June 2026</i>';
+        : '<i>No tax routing recorded</i>';
 
       reply = `🏆 <b>BOBAI Worldcup '26 — Prize Pool</b>
 
@@ -3261,6 +3261,13 @@ Tier = buy size · Rarity = rolled probabilistically.
 Sold out tiers stop minting (no refund, no promote).
 
 🖼 <a href="${NFT_DASHBOARD_URL}">brainonbnb.com/nft</a> · 📜 <a href="https://bscscan.com/token/${NFT_CONTRACT}">BscScan</a>`;
+      break;
+    }
+
+    default: {
+      // A slash command the bot does not know (a retired /scan, a typo) gets
+      // one line in a private chat; in the group it stays silent, as before.
+      if (msg.chat && msg.chat.type === 'private' && text.startsWith('/')) reply = 'I don\'t know that command. /help lists what I can do.';
       break;
     }
   }
@@ -3971,8 +3978,11 @@ export default {
     {
       const tick = new Date(event && event.scheduledTime ? event.scheduledTime : Date.now());
       // 05:00 UTC since 2026-09-09 — the operator's hour for the public LP
-      // card (the whale recap goes at 06:00).
-      if (tick.getUTCMinutes() % 10 === 5 && tick.getUTCHours() === 5) {
+      // card (the whale recap goes at 06:00). The window runs to 07:55: a
+      // series point that lands after 05:55 (a late 04:23 run, the agent
+      // worker briefly down) used to cost the whole day; the date flag
+      // inside keeps it to one card.
+      if (tick.getUTCMinutes() % 10 === 5 && tick.getUTCHours() >= 5 && tick.getUTCHours() < 8) {
         console.log('[LP REPORT] tick ' + tick.toISOString());
         try { await postLpDailyReport(env); }
         catch (e) { console.error('[LP REPORT ERROR]', e.message || e); }
@@ -3982,9 +3992,8 @@ export default {
     // === DAILY WHALE RECAP (06:00 UTC = 08:00 CEST, idempotent via KV flag) ===
     if (TG_INTERNAL_CHAT_ID) {
       try {
-        const now = new Date();
-        if (now.getUTCHours() === 6) {
-          const today = now.toISOString().slice(0, 10);
+        if (tick.getUTCHours() === 6) {
+          const today = tick.toISOString().slice(0, 10);
           const last  = await env.KV.get('last_daily_summary');
           if (last !== today) {
             const sent = await postDailyWhaleRecap(env);
@@ -3998,7 +4007,7 @@ export default {
       // Daily holdings snapshot — own date-guard inside takeWhaleSnapshotIfDue,
       // independent of recap success. /whale-summary self-heals if this misses.
       try {
-        if (new Date().getUTCHours() === 6) {
+        if (tick.getUTCHours() === 6) {
           await takeWhaleSnapshotIfDue(env, await loadTrackedWallets(env));
         }
       } catch (e) {
@@ -4476,10 +4485,10 @@ export default {
     // tournament (payout 2026-07-20), so no new donations can arrive. The
     // /worldcup command still serves the frozen final numbers on demand.
 
-    // === CAPTCHA CLEANUP (every 2 min) ===
-    if (new Date(event && event.scheduledTime ? event.scheduledTime : Date.now()).getUTCMinutes() % 2 === 0) {
-      await cleanupExpiredCaptchas(env);
-    }
+    // === CAPTCHA CLEANUP (every tick) ===
+    // KV reads only (the index, then one key per open captcha). Every other
+    // minute left a joiner who was promised 60 seconds muted for up to three.
+    await cleanupExpiredCaptchas(env);
   },
 };
 

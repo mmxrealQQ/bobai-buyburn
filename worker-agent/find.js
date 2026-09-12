@@ -89,6 +89,22 @@ export async function handleFind(url) {
     } };
   }
 
+  // Nothing asked, nothing ranked: without a query, a category or a protocol
+  // the old answer was the first ten ids by number — "ClawNews", "NAMEAI…" —
+  // each with match 0, which read as a recommendation (2026-09-12).
+  if (!q.trim() && !wantCategory && !needs.length) {
+    return { status: 200, body: {
+      usage: 'GET /find?q=<what you need done> — or ?category=<id> — or ?speaks=mcp,a2a. Results are ranked by how well the tools, skills and registration text of each agent match; nothing is ranked without a question.',
+      categories_available: CATEGORY_IDS,
+      examples: [
+        'https://agent.brainonbnb.com/find?q=venus+health+factor',
+        'https://agent.brainonbnb.com/find?category=rebalancing',
+        'https://agent.brainonbnb.com/find?q=grid&speaks=mcp',
+      ],
+      results: [],
+    } };
+  }
+
   let list;
   try { list = await loadAgents(); }
   catch { return { status: 503, body: { error: 'the agent list is not reachable right now' } }; }

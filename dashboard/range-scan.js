@@ -148,6 +148,20 @@ export async function rangePlan(input, opts = {}) {
   const slot0 = meta[5];
   if (!slot0 || slot0.length < 130) throw new RangeError('The pool did not answer.', 'slot0 read back empty.');
   const sP = Number(BigInt('0x' + slot0.slice(2, 66))) / Number(2n ** 96n);
+  // THE PROTOCOL'S CUT (2026-09-13). A swap's fee is not all the liquidity's:
+  // the pool keeps a share for the protocol before it credits the positions.
+  // CAKE/BNB 0.05% carries feeProtocol 3400 on both sides — 34% of every fee
+  // goes to PancakeSwap, 66% to the liquidity. The replay charged the whole
+  // fee to the position and overstated every width by that half again; the
+  // agent's own position measured it (0.57 of the replay over 71 h). Read
+  // from slot0's sixth word: PancakeSwap packs two 16-bit shares in 1/10000
+  // (token0 low, token1 high); a Uniswap-style pool packs two 4-bit divisors
+  // (fee/x, x in 4..10, 0 = none) in one byte. Told apart by size.
+  const fpRaw = slot0.length >= 2 + 64 * 6 ? Number(BigInt('0x' + slot0.slice(2 + 64 * 5, 2 + 64 * 6))) : 0;
+  const protocolShare = fpRaw > 255
+    ? [(fpRaw & 0xffff) / 1e4, (fpRaw >>> 16) / 1e4]
+    : [(fpRaw & 0xf) ? 1 / (fpRaw & 0xf) : 0, (fpRaw >>> 4) ? 1 / (fpRaw >>> 4) : 0];
+  const lpShare = protocolShare.map((x) => (x >= 0 && x < 1 ? 1 - x : 1));
 
   const tokUsd = (await priceToken(token, bnbUsd)).usd;
   const qUsd = knownQ ? (knownQ[2] ? 1 : bnbUsd) : (await priceToken(quote, bnbUsd)).usd;
@@ -183,7 +197,10 @@ export async function rangePlan(input, opts = {}) {
     if (!(sqrt > 0) || !(liq > 0)) continue;
     // The fee is taken out of whichever side went IN, which is the positive one.
     const feeUsd = (a0 > 0n ? Number(a0) * p0PerUnit : Number(a1) * p1PerUnit) * (feeRaw / 1e6);
-    swaps.push({ block: parseInt(L.blockNumber, 16), sqrt, liq, feeUsd: feeUsd > 0 ? feeUsd : 0 });
+    // What the liquidity is credited with: the fee less the protocol's share
+    // on the side that went in.
+    const lpUsd = feeUsd * (a0 > 0n ? lpShare[0] : lpShare[1]);
+    swaps.push({ block: parseInt(L.blockNumber, 16), sqrt, liq, feeUsd: feeUsd > 0 ? feeUsd : 0, lpUsd: lpUsd > 0 ? lpUsd : 0 });
   }
   swaps.sort((a, b) => a.block - b.block);
 
@@ -194,6 +211,7 @@ export async function rangePlan(input, opts = {}) {
   // active liquidity in the event is the pool's after that swap.
   const spanBlocks = swaps.length > 1 ? swaps[swaps.length - 1].block - swaps[0].block : 0;
   const totalFees = swaps.reduce((s, x) => s + x.feeUsd, 0);
+  const totalToLiquidity = swaps.reduce((s, x) => s + x.lpUsd, 0);
   const rows = [...WIDTHS, FULL].map((w) => {
     const k = w === FULL ? 1e9 : sqrtAt(w);
     const sLo = sP / k, sHi = sP * k;
@@ -207,7 +225,7 @@ export async function rangePlan(input, opts = {}) {
         // Share of the liquidity that was actually standing there, with this
         // position's own size in the denominator because adding it is what
         // dilutes everyone including itself.
-        fees += s.feeUsd * (L / (s.liq + L));
+        fees += s.lpUsd * (L / (s.liq + L));
       }
       // THE BLOCKS AFTER THIS SWAP, NOT BEFORE IT.
       //
@@ -293,6 +311,12 @@ export async function rangePlan(input, opts = {}) {
       minutes: minutes == null ? null : +minutes.toFixed(1),
       swaps: swaps.length,
       fees_the_pool_paid_usd: +totalFees.toFixed(6),
+      // The split the pool makes before any position sees a fee. The rows
+      // above are the liquidity's part; the total is what the traders paid.
+      fees_paid_to_liquidity_usd: +totalToLiquidity.toFixed(6),
+      fees_kept_by_the_protocol_usd: +(totalFees - totalToLiquidity).toFixed(6),
+      paid_to_liquidity_pct: +(Math.min(lpShare[0], lpShare[1]) * 100).toFixed(2),
+      protocol_fee_pct: { token0: +(protocolShare[0] * 100).toFixed(2), token1: +(protocolShare[1] * 100).toFixed(2) },
       note: 'One sample of live chain. Not annualised here and not to be annualised from here: what a range did over one window is not what it does over a year.',
     },
     ranges: rows,
@@ -307,6 +331,9 @@ export async function rangePlan(input, opts = {}) {
       ? +(best.fees_usd_in_window / fullRow.fees_usd_in_window).toFixed(1) : null,
     caveats: [
       `Replayed against the ${swaps.length} swaps that actually happened in this window, using the liquidity the pool reported as active at each one. It is not a simulation of a market; it is arithmetic over trades that occurred.`,
+      protocolShare[0] > 0 || protocolShare[1] > 0
+        ? `The pool keeps ${(protocolShare[0] * 100).toFixed(0)}% of every fee for the protocol before it credits the liquidity; every figure above is the liquidity's ${(lpShare[0] * 100).toFixed(0)}%, read from the pool itself (slot0.feeProtocol), not the whole fee the trader paid.`
+        : 'This pool keeps nothing for the protocol (slot0.feeProtocol is zero): the liquidity is credited with the whole fee.',
       `Putting a range back costs gas, so every crossing is charged at $${rebalanceUsd.toFixed(4)} — 700,000 gas priced at 1 gwei, well above the current floor, because a position sized on a quiet chain is stranded by a busy hour. Both sides of that subtraction are the same window, so it is a comparison rather than a rate. It can go negative, and when it does the range collected more than it was worth.`,
       `The window is ${minutes == null ? 'about forty' : minutes.toFixed(1)} minutes of chain and travels with every figure above, because a fee figure without the period it was earned over is the number this project exists to stop people quoting.`,
       'The position is placed around the price as it stands now, then walked back through the window. A position opened at the start of the window would have sat slightly differently.',

@@ -444,7 +444,9 @@ function renderRanges(out,d){
   out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~59')+
     ' minutes of chain — a sample, not a rate, and not annualised. Replayed against the '+w.swaps+
     ' swaps that actually happened in it, using the liquidity the pool itself reported as active at each one — not a simulation of a market, arithmetic over trades that occurred. The pool paid $'+
-    (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them. Not annualised: what a range did in one hour is not what it does over a year. '+
+    (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them'+
+    (typeof w.paid_to_liquidity_pct==='number'&&w.paid_to_liquidity_pct<100?', of which the liquidity is credited '+w.paid_to_liquidity_pct.toFixed(0)+'% — the pool keeps the rest for the protocol, and every figure above is the part credited to the liquidity':'')+
+    '. Not annualised: what a range did in one hour is not what it does over a year. '+
     (d.tier_chosen_because?'Pool picked for you: the '+d.tier_chosen_because+' — which tier PAYS best is the card above. ':'')+
     'Impermanent loss is not in any of this, and it is worst exactly where the fees are best.'));
 }

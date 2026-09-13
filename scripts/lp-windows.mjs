@@ -128,6 +128,9 @@ if (SELF_TEST) {
   t('100% in range with 0 crossings is held', windowFromPlan(plan(100, 0), 50).rows[0].held === true);
   t('100% in range but one crossing is NOT held', windowFromPlan(plan(100, 1), 50).rows[0].held === false);
   t('99% in range is NOT held', windowFromPlan(plan(99, 0), 50).rows[0].held === false);
+  // The liquidity's share of a fee travels with the window (2026-09-13).
+  t('a plan that names paid_to_liquidity_pct gives the window lp_share', windowFromPlan({ ...plan(100, 0), measured_window: { ...plan(100, 0).measured_window, paid_to_liquidity_pct: 66 } }, 50).lp_share === 0.66);
+  t('a plan without it gives lp_share null, not 1', windowFromPlan(plan(100, 0), 50).lp_share === null);
 
   // earningsTest: each width lived through a price path, hour by hour.
   // Fee rows are what a centred range of that width earns in a 37.5-min

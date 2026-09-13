@@ -59,11 +59,21 @@ for (const [name, addr] of list) {
     `${plan.measured_window.swaps} swaps, pool paid $${plan.measured_window.fees_the_pool_paid_usd}`);
   if (!rows.length) continue;
 
-  // 1. Nothing may collect more than the pool paid out in the same window.
-  const overpaid = plan.ranges.filter((r) => r.fees_usd_in_window > plan.measured_window.fees_the_pool_paid_usd);
-  ok(`${name}: no range collects more than the pool paid`, overpaid.length === 0,
+  // 1. Nothing may collect more than the pool credited the liquidity with in
+  //    the same window — since 2026-09-13 that is the fee less the protocol's
+  //    share (CAKE/BNB 0.05% keeps 34%), and the plan says both figures.
+  const mw = plan.measured_window;
+  const toLiquidity = typeof mw.fees_paid_to_liquidity_usd === 'number' ? mw.fees_paid_to_liquidity_usd : mw.fees_the_pool_paid_usd;
+  const overpaid = plan.ranges.filter((r) => r.fees_usd_in_window > toLiquidity);
+  ok(`${name}: no range collects more than the liquidity was credited`, overpaid.length === 0,
     overpaid.length ? overpaid.map((r) => `${r.width_pct}%: $${r.fees_usd_in_window}`).join(', ')
-      : `most any range took: $${Math.max(...plan.ranges.map((r) => r.fees_usd_in_window)).toFixed(6)} of $${plan.measured_window.fees_the_pool_paid_usd}`);
+      : `most any range took: $${Math.max(...plan.ranges.map((r) => r.fees_usd_in_window)).toFixed(6)} of $${toLiquidity} credited (pool paid $${mw.fees_the_pool_paid_usd})`);
+  if (typeof mw.paid_to_liquidity_pct === 'number') {
+    const expect = mw.fees_the_pool_paid_usd * mw.paid_to_liquidity_pct / 100;
+    ok(`${name}: the liquidity's share is the pool's fee less the protocol's cut`,
+      mw.fees_paid_to_liquidity_usd <= mw.fees_the_pool_paid_usd + 1e-9 && Math.abs(mw.fees_paid_to_liquidity_usd - expect) <= Math.max(1e-6, mw.fees_the_pool_paid_usd * 0.005),
+      `${mw.paid_to_liquidity_pct}% of $${mw.fees_the_pool_paid_usd} = $${expect.toFixed(6)}, plan says $${mw.fees_paid_to_liquidity_usd}; protocol ${JSON.stringify(mw.protocol_fee_pct)}`);
+  }
 
   // 2. A wider range contains a narrower one, so it cannot be in range less
   //    often. This catches a sign error or an inverted bound instantly.

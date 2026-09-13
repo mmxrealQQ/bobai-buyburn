@@ -28,7 +28,7 @@
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf,
-  GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT,
+  GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
 export const ADDR = {
@@ -292,22 +292,34 @@ export async function planCollect(pub, address) {
     heldOther = await read(pub, other, ABI.ERC20, 'balanceOf', [address]);
     heldWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]);
   }
-  let otherInBnb = 0n, quoteOffPct = null, poolInfo = null;
+  let otherInBnb = 0n, quoteOffPct = null, poolInfo = null, quoteVia = null;
   if (pos) poolInfo = await readPool(pub, pos);
+  const fee = pos ? Number(pos[4]) : null;
   if (pos && owedOther > 0n) {
-    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [owedOther, [other, ADDR.WBNB]]);
-    otherInBnb = q[1];
-    // The V2 quote against the V3 pool's own price. A thin or manipulated V2
-    // pair would show here as a price far from the one the position lives at.
+    // The collected other side is sold in the position's own V3 pool (since
+    // 2026-09-13; until then through the V2 router, a 0.25% pair, five times
+    // the 0.05% the position lives in). The quoter names the proceeds; the
+    // V2 router only if the quoter will not answer, and the record says which.
+    try {
+      otherInBnb = await quoteV3(pub, other, ADDR.WBNB, fee, owedOther);
+      quoteVia = 'v3';
+    } catch {
+      const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [owedOther, [other, ADDR.WBNB]]);
+      otherInBnb = q[1];
+      quoteVia = 'v2';
+    }
+    // The quote against the pool's own price. A broken quoter or a thin or
+    // manipulated V2 pair would show here as a price far from the one the
+    // position lives at.
     const poolWbnbPerOther = wbnbIs0 ? 1 / (poolInfo.sqrtP ** 2) : poolInfo.sqrtP ** 2;
-    const v2WbnbPerOther = Number(otherInBnb) / Number(owedOther);
-    quoteOffPct = poolWbnbPerOther > 0 ? ((v2WbnbPerOther - poolWbnbPerOther) / poolWbnbPerOther) * 100 : null;
+    const quotedWbnbPerOther = Number(otherInBnb) / Number(owedOther);
+    quoteOffPct = poolWbnbPerOther > 0 ? ((quotedWbnbPerOther - poolWbnbPerOther) / poolWbnbPerOther) * 100 : null;
   }
   const proceeds = bn(owedWbnb + otherInBnb);
   const state = { positions, liquidity: pos ? pos[7] : 0n, owedBnbEquivalent: proceeds, gasBnb: bn(gasBal), quoteOffPct };
   return {
     step: 'collect', state, no: refuseCollect(state),
-    tokenId, pos, other, wbnbIs0, owedWbnb, owedOther, heldOther, heldWbnb, otherInBnb, quoteOffPct,
+    tokenId, pos, other, wbnbIs0, fee, owedWbnb, owedOther, heldOther, heldWbnb, otherInBnb, quoteOffPct, quoteVia,
     summary: {
       position: tokenId == null ? null : String(tokenId),
       ticks: pos ? [Number(pos[5]), Number(pos[6])] : null,
@@ -316,6 +328,7 @@ export async function planCollect(pub, address) {
       owed: { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), other_token: other, bnb_equivalent: proceeds },
       held_outside_position: heldOther > 0n || heldWbnb > 0n ? { wbnb: formatEther(heldWbnb), other: formatUnits(heldOther, 18), note: 'capital, re-used by increase and re-set, not sold here' } : null,
       quote_off_pct: quoteOffPct == null ? null : Number(quoteOffPct.toFixed(2)),
+      sells_via: quoteVia == null ? null : (quoteVia === 'v3' ? `the position's own V3 pool (${fee / 1e4}%)` : 'the V2 router (0.25%) — the V3 quoter did not answer'),
       gas_bnb: state.gasBnb,
     },
   };
@@ -338,13 +351,21 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
   // capital and stays.
   const otherAfter = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   const sell = otherAfter > otherBefore ? otherAfter - otherBefore : 0n;
-  if (sell > 0n) {
+  let swap = null;
+  if (sell > 0n && plan.quoteVia === 'v3') {
+    // The position's own pool, at its own fee, with the impact measured —
+    // the same trade a re-set makes. The V3 router's allowance is set once.
+    const q = await quoteV3(pub, plan.other, ADDR.WBNB, plan.fee, sell);
+    swap = await swapV3(pub, send, account.address, plan.other, ADDR.WBNB, plan.fee, sell, (q * 99n) / 100n, q, 'sell the other side in its own pool');
+  } else if (sell > 0n) {
     await send('approve for sale', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, sell] });
     // 15% floor, the same this project uses for fee-on-transfer tokens; the
     // guard already refused anything that moved more than that.
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
     await send('sell the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
       args: [sell, (q[1] * 8500n) / 10000n, [plan.other, ADDR.WBNB], account.address, deadline()] });
+    const n = Number(formatEther(q[1]));
+    swap = { side: 'sell', venue: `pancakeswap v2 ${V2_SWAP_FEE_PCT}%`, fee_pct: V2_SWAP_FEE_PCT, notional_bnb: Number(n.toFixed(6)), fee_bnb: Number((n * V2_SWAP_FEE_PCT / 100).toFixed(8)), why: 'the V3 quoter did not answer at plan time' };
   }
   // WBNB is never capital-in-waiting (that waits as BNB), so all of it is
   // fees: this collect's, or an earlier one's that never got unwrapped.
@@ -355,9 +376,9 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
   const produced = after - before;           // net of the gas this run spent
   const aboveReserve = after - GAS_RESERVE;   // never dip into the reserve
   const forward = produced < aboveReserve ? produced : aboveReserve;
-  if (forward <= 0n) return { txs, forwarded_bnb: '0', kept_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
+  if (forward <= 0n) return { txs, swap, forwarded_bnb: '0', kept_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
   const split = splitFees(forward, keptPct);
-  const out = { txs, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
+  const out = { txs, swap, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
   if (split.buyback <= 0n) return { ...out, bobai_bnb: '0', why: `collected ${formatEther(forward)} BNB of fees; all of it stays as capital (kept share ${split.pct}%)` };
   const bought = await buyBobaiHold(pub, send, account.address, split.buyback);
   return { ...out, bobai_bnb: formatEther(bought.spent), bobai_units: formatUnits(bought.units, 18), held_in: account.address };

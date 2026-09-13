@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12943 lines.
+# one fetch. 41 files, 12973 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -12898,6 +12898,35 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   //    LP_REBALANCE in wrangler.toml: the first re-set was run by hand and
   //    watched (2026-09-02), then the cron took over.
   await run('rebalance', async () => {
+    // THE WATCH LOOKS BEFORE IT REPLAYS (2026-09-13). Every ten minutes the
+    // watch used to read the width record (~100 KB), the price tape and
+    // replay ten widths with ten waits, twice — to decide, nearly always,
+    // that there is nothing for it to do: it re-sets only when a large
+    // deposit waits beside a range the price has left, or finishes a re-set
+    // that stopped half way. Both show in one look at the position and the
+    // wallet, which the increase step reads anyway. So the watch looks first
+    // and replays only when it may act; the hourly check and the daily run
+    // still replay every time, since they may re-set on the wait alone.
+    if (watch) {
+      const inc = await planIncrease(pub, lp.address);
+      const s = inc.summary;
+      if (inc.pos && s.in_range != null) {
+        const forced = s.in_range ? null : depositForcesReset({ inRange: false, spendableBnb: s.spendable_bnb, valueBnb: s.value_bnb });
+        if (!forced) {
+          const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
+          if (s.in_range) { if (outSinceRaw != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY); }
+          else if (outSinceRaw == null && !dry) await env.AGENT.put(OUT_SINCE_KEY, at);
+          return {
+            position: s.position, ticks: [Number(inc.pos[5]), Number(inc.pos[6])], tick: s.tick, in_range: s.in_range,
+            pool: s.pool, wbnb_is0: inc.wbnbIs0, value_bnb: s.value_bnb,
+            acted: false, watch: true, looked_only: true,
+            outside_since: s.in_range ? null : (outSinceRaw || at),
+            deposit_beside: { spendable_bnb: s.spendable_bnb, value_bnb: s.value_bnb },
+            why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest',
+          };
+        }
+      }
+    }
     const log = await readLpWindows(env);
     // The width is picked with the cost the agent really pays, once it has
     // paid one: the last re-set's gas from its own record, in today's dollars.
@@ -12993,7 +13022,8 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   }
   // The watch's rebalance step is kept only when it did something or a
   // deposit forced it; a "no re-set here" every ten minutes is not a record.
-  if (watch && entry.steps.rebalance && !entry.steps.rebalance.acted && !entry.steps.rebalance.forced_by_deposit && !entry.steps.rebalance.error) delete entry.steps.rebalance;
+  // A dry run keeps it, so a hand check can see what the watch saw.
+  if (watch && !dry && entry.steps.rebalance && !entry.steps.rebalance.acted && !entry.steps.rebalance.forced_by_deposit && !entry.steps.rebalance.error) delete entry.steps.rebalance;
 
   // 4. increase: whatever is above the reserve, into the same position.
   await run('increase', async () => {

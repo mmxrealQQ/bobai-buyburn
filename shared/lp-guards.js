@@ -54,7 +54,7 @@ export const MIN_REBALANCE_BNB = 0.02;
 // it picks was picked for the way the agent actually behaves.
 export const RESET_AFTER_HOURS = 2;
 // Since 2026-09-09 the wait is measured, not set. The window record replays
-// every width with a wait of 0, 1, 2 and 3 h before a re-set and names the
+// every width with a wait of 0 to 24 h (the grid in lp-windows.js) before a re-set and names the
 // net per day of each; the re-set uses the wait that netted the most — once
 // the record holds WAIT_PICK_MIN_HOURS of prices AND that wait beats the set
 // one by WAIT_PICK_MARGIN. Under either bar the set wait stands. The bar is

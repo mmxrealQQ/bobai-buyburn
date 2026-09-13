@@ -209,7 +209,7 @@ if (SELF_TEST) {
   t(`the earnings rule names the ${RESET_AFTER_HOURS} h delay it replays`, /2 h/.test(verdict(dayFlat).earnings_rule));
   // The delay test, both ways: reported for every wait, the wait in use
   // marked, nothing under a day of prices, and it never touches the pick.
-  t('the delay test replays the waits 0 to 12 h (0,1,2,3,4,6,8,12 since 2026-09-12)', verdict(dayFlat).delay_test.delays.map((d) => d.hours).join(',') === '0,1,2,3,4,6,8,12');
+  t('the delay test replays the waits 0 to 24 h (0,1,2,3,4,6,8,12,18,24 since 2026-09-13)', verdict(dayFlat).delay_test.delays.map((d) => d.hours).join(',') === '0,1,2,3,4,6,8,12,18,24');
   t(`the wait in use (${RESET_AFTER_HOURS} h) is marked as such`, verdict(dayFlat).delay_test.delays.filter((d) => d.in_use).map((d) => d.hours).join() === String(RESET_AFTER_HOURS));
   t('under a day of prices the delay test reports nothing', verdict(short).delay_test.delays.length === 0 && verdict(short).delay_test.pick === null);
   t('flat prices: every wait nets the same, and none re-sets', (() => {

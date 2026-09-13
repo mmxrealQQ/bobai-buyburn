@@ -234,15 +234,18 @@ export function verdict(log, opts = {}) {
   // range was re-set twice before noon, and an hour after the second re-set
   // the price was back below the new range — the case the wait before a
   // re-set exists for, and the case it costs earning hours in. So every
-  // width is replayed with a wait of 0, 1, 2 and 3 hours, and the best net
+  // width is replayed with a wait of 0, 1, 2 and 3 hours (more since), and the best net
   // per day for each wait is named. Reported only until 2026-09-09; since
   // then the re-set USES the wait that netted the most, behind the bar in
   // waitInUse (a week of prices, a tenth over the set wait) — the same way
   // the width has been measured rather than set since 2026-09-04.
   // Up to 12 h since 2026-09-12: with 0-3 h the net still rose at the last
   // step (0.002 / 0.002 / 0.12 / 0.21 a day), so the grid ended where the
-  // curve had not.
-  const DELAYS_H = [0, 1, 2, 3, 4, 6, 8, 12];
+  // curve had not. 18 and 24 h since 2026-09-13: 12 h was the edge again
+  // and led for a day (0.30 a day on 229 h) — a grid's last step must never
+  // be its answer, so the grid now reaches a full day, the wait a position
+  // nobody watches would get.
+  const DELAYS_H = [0, 1, 2, 3, 4, 6, 8, 12, 18, 24];
   const delayRows = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? [] : DELAYS_H.map((h) => {
     const best = rows.filter((r) => r.width !== 'full')
       .map((r) => ({ width: r.width, e: earningsTest(used, r.width, { ...opts, resetAfterHours: h }) }))

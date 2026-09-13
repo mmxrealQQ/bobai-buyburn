@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12917 lines.
+# one fetch. 41 files, 12922 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -8995,6 +8995,11 @@ export function windowFromPlan(plan, usd, at = new Date().toISOString()) {
     // record in which that width had held every window.
     price: typeof plan.price_now === 'number' ? plan.price_now : null,
     pool_fees_usd: w.fees_the_pool_paid_usd,
+    // The liquidity's share of a fee (2026-09-13): CAKE/BNB 0.05% keeps 34%
+    // for the protocol, so the rows hold 66% of what the trader paid. Null
+    // on a window recorded before the replay knew — those were scaled once
+    // on 2026-09-13 and carry `lp_share` since.
+    lp_share: typeof w.paid_to_liquidity_pct === 'number' ? Number((w.paid_to_liquidity_pct / 100).toFixed(4)) : null,
     rebalance_cost_usd: plan.rebalance_cost_usd_assumed,
     rows: plan.ranges.map((r) => ({
       width: r.full_range ? 'full' : r.width_pct,

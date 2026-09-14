@@ -145,7 +145,7 @@ export async function gasPriceNow(pub) {
 // the caller's list so a failure mid-sequence still reports what was sent.
 export function sender(pub, wallet, txs, log = () => {}) {
   let price = null;
-  return async (label, req) => {
+  const send = async (label, req) => {
     // Whatever throws — a simulation that reverts before sending, a sent
     // transaction that reverts — carries the list of what was sent so far,
     // so a failed run's record still names its transactions and their gas.
@@ -171,6 +171,12 @@ export function sender(pub, wallet, txs, log = () => {}) {
       throw e;
     }
   };
+  // The wallet's owner rides on the sender, so an allowance check knows whom
+  // to ask. Until 2026-09-14 each execute step set it by hand and the collect
+  // forgot: its first V3 sale asked the allowance of "undefined" and stopped
+  // after the collect transaction, the fees left in the wallet unsold.
+  send.owner = wallet && wallet.account ? wallet.account.address : undefined;
+  return send;
 }
 
 // --------------------------------------------------------------------------
@@ -343,6 +349,7 @@ export async function planCollect(pub, address) {
 export async function executeCollect(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
   const txs = [];
   const send = sender(pub, wallet, txs, log);
+  send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   const otherBefore = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
   await send('collect', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',

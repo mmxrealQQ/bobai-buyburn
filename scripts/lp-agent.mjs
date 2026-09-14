@@ -424,6 +424,12 @@ if (SELF) {
     let err2 = null;
     try { await sender(fakePub, refusing, txs2)('mint', {}); } catch (e) { err2 = e; }
     check('a simulation that refuses before sending carries an empty list, not none', err2 && Array.isArray(err2.txs) && err2.txs.length === 0 ? null : 'not carried', false);
+    // The allowance check asks the sender whom it acts for. The collect of
+    // 2026-09-14 04:23 forgot to say and asked for "undefined": the sender
+    // now knows its wallet's owner on its own.
+    const owned = sender(fakePub, { ...fakeWallet, account: { address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' } }, []);
+    check("a sender knows its wallet's owner without being told", owned.owner === '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', true);
+    check('… and a wallet without an account leaves it unset, not a guess', sender(fakePub, fakeWallet, []).owner === undefined, true);
   })();
 
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);

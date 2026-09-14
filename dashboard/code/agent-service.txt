@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 12986 lines.
+# one fetch. 41 files, 13004 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -589,6 +589,17 @@ if (SELF) {
     const owned = sender(fakePub, { ...fakeWallet, account: { address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' } }, []);
     check("a sender knows its wallet's owner without being told", owned.owner === '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', true);
     check('… and a wallet without an account leaves it unset, not a guess', sender(fakePub, fakeWallet, []).owner === undefined, true);
+    // Until 2026-09-14 each execute step made its own transaction list and it
+    // came back only on a throw out of `send`. A step that sent and then failed
+    // on a READ reported nothing sent: the collect of that morning recorded an
+    // empty list against a collect that had run on chain. The list belongs to
+    // the caller now, so it survives whatever throws.
+    const mine = [];
+    await sender(fakePub, { writeContract: async () => '0xaa' }, mine)('collect', {});
+    let readErr = null;
+    try { await Promise.reject(new Error('a read failed after the send')); } catch (e) { readErr = e; }
+    check('the caller keeps the transactions when the failure comes from a read', mine.length === 1 && mine[0].hash === '0xaa', true);
+    check("… which the error itself never carried, so only the caller's list can say it", readErr.txs === undefined, true);
   })();
 
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);
@@ -1192,6 +1203,11 @@ export async function gasPriceNow(pub) {
 
 // One transaction, waited for, refused to continue past a revert. `txs` is
 // the caller's list so a failure mid-sequence still reports what was sent.
+// Since 2026-09-14 every execute step takes that list from its caller
+// instead of making its own: only a throw out of `send` carried it back,
+// so a step that sent and then failed on a READ reported no transactions
+// at all. The collect of that morning recorded an empty list against a
+// collect that had already run on chain.
 export function sender(pub, wallet, txs, log = () => {}) {
   let price = null;
   const send = async (label, req) => {
@@ -1395,8 +1411,7 @@ export async function planCollect(pub, address) {
 // buyback bot. `keptPct` of what was produced stays in the wallet as BNB —
 // capital for the next increase, so the position grows out of its own fees —
 // and the rest goes to the buyback wallet. The record carries both figures.
-export async function executeCollect(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
-  const txs = [];
+export async function executeCollect(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
@@ -1477,8 +1492,7 @@ export async function planSweep(pub, source, feed = null) {
 // Approve exactly the amount, sell it, and have the router pay the BNB
 // straight to the DeFi wallet — one transaction fewer, and the income
 // wallet never holds BNB it could be tempted to keep.
-export async function executeSweep(pub, wallet, account, plan, log = () => {}) {
-  const txs = [];
+export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log);
   const before = await pub.getBalance({ address: ADDR.LP_WALLET });
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
@@ -1729,8 +1743,7 @@ async function wrapWaiting(pub, send, address) {
   return spend;
 }
 
-export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = false } = {}) {
-  const txs = [];
+export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = false, txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   // A resumed re-set (plan.resume) has no position to unwind: the earlier run
@@ -1939,9 +1952,8 @@ export async function planRelocate(pub, address, { toPool = null, widthOverride 
   };
 }
 
-export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = true } = {}) {
+export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = true, txs = [] } = {}) {
   if (!plan.from || !plan.to || !plan.target || !plan.ticks) throw new Error('the plan carries no move');
-  const txs = [];
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   const swaps = [];
@@ -2102,8 +2114,7 @@ export async function planIncrease(pub, address, position = null) {
   };
 }
 
-export async function executeIncrease(pub, wallet, account, plan, log = () => {}) {
-  const txs = [];
+export async function executeIncrease(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
@@ -12849,14 +12860,17 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       if (!key) { out.push({ source: src.key, acted: false, error: `${src.keyEnv} is not set on this worker` }); continue; }
       const acct = account(key);
       if (acct.address.toLowerCase() !== src.wallet.toLowerCase()) { out.push({ source: src.key, acted: false, error: `${src.keyEnv} does not open ${src.wallet}` }); continue; }
+      const txs = [];
       try {
         const plan = await planSweep(pub, src, feed);
         if (plan.no) { out.push({ ...plan.summary, acted: false, why: plan.no }); continue; }
         if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the DeFi wallet' }); continue; }
         const wallet = createWalletClient({ account: acct, chain: bsc, transport: transport() });
-        out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan)) });
+        out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan, () => {}, { txs })) });
       } catch (e) {
-        out.push({ source: src.key, acted: false, error: String(e.shortMessage || e.message).slice(0, 300) });
+        // A sweep that sent before it failed did act: saying otherwise would
+        // hide its transactions from the record and from the day's counters.
+        out.push({ source: src.key, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs });
       }
     }
     return out;
@@ -12882,10 +12896,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const split = { kept_pct: keptPct, buyback_pct: 100 - keptPct };
     if (plan.no) return { ...plan.summary, ...split, acted: false, why: plan.no };
     if (dry) return { ...plan.summary, ...split, acted: false, why: `dry run — would have collected, kept ${keptPct}% as capital and forwarded the rest`, would_forward_bnb_about: plan.state.owedBnbEquivalent };
+    const txs = [];
     try {
-      return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct })) };
+      return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct, txs })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
 
@@ -12992,11 +13007,12 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     if (upgrade && upgrade.upgrade) {
       if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
       if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };
+      const txs = [];
       try {
-        const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
+        const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, txs });
         return { ...plan.summary, acted: true, upgrade: upgrade.why, upgraded_from_pct: upgrade.from, upgraded_to_pct: upgrade.to, gain_usd_per_day: upgrade.gain_usd_per_day, ...done };
       } catch (e) {
-        return { ...plan.summary, acted: true, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+        return { ...plan.summary, acted: true, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs };
       }
     }
     const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
@@ -13013,14 +13029,15 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
     if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
+    const txs = [];
     try {
       // A re-set a deposit forced takes the deposit with it: wrapped after
       // the unwind, minted with the rest, no sell-then-buy-back.
-      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, wrapFirst: !!forced });
+      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, wrapFirst: !!forced, txs });
       await env.AGENT.delete(OUT_SINCE_KEY);
       return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {
-      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
   // The price the check saw goes on the tape, every ten minutes, whatever
@@ -13043,10 +13060,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const plan = await planIncrease(pub, lp.address);
     if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
     if (dry) return { ...plan.summary, acted: false, why: 'dry run — would have grown the position' };
+    const txs = [];
     try {
-      return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan)) };
+      return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan, () => {}, { txs })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
 

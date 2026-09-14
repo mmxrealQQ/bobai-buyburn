@@ -76,9 +76,12 @@
     /* The series table. Numbers right-aligned so a column reads as one figure;
        a wide table scrolls inside its own box, never the page. */
     .lp-series{width:100%;border-collapse:collapse;font-size:.78rem;margin:10px 0 12px;white-space:nowrap}
-    .lp-series th{text-align:right;font-weight:600;color:var(--muted);font-size:.66rem;letter-spacing:.4px;text-transform:uppercase;padding:4px 8px 6px;border-bottom:1px solid var(--border)}
+    .lp-series-box{overflow:auto;max-height:min(62vh,460px);overscroll-behavior:contain}
+    .lp-series-box .lp-series{margin:0 0 2px}
+    .lp-series th{position:sticky;top:0;z-index:1;background:#191514;text-align:right;font-weight:600;color:var(--muted);font-size:.66rem;letter-spacing:.4px;text-transform:uppercase;padding:6px 8px;box-shadow:inset 0 -1px 0 var(--border)}
     .lp-series th:first-child,.lp-series td:first-child,.lp-series th:nth-child(2),.lp-series td:nth-child(2),.lp-series th:last-child,.lp-series td:last-child{text-align:left}
     .lp-series td{text-align:right;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-variant-numeric:tabular-nums}
+    .lp-series td:last-child{white-space:normal}
     .lp-series td.up{color:#3fe09a}.lp-series td.down{color:#ff8f6b}
     #ag-lp-series-sum b{color:var(--text,#f3efe6)}
     /* Ask it: one field, one button, the answer below in the same box. */
@@ -125,7 +128,7 @@
     </div>
     <div class="agt-flow fi" id="ag-lp-series-wrap">
       <p class="agt-note" id="ag-lp-series-sum">Reading the series&hellip;</p>
-      <div style="overflow-x:auto"><table class="lp-series" id="ag-lp-series"></table></div>
+      <div class="lp-series-box"><table class="lp-series" id="ag-lp-series"></table></div>
       <p class="agt-note">Value is in BNB because the position is quoted in BNB. After a re-set the fees-owed column starts at zero: the re-set folds the old range&rsquo;s fees into the new capital, and the portfolio counts them as fees all the same. Same facts as JSON: <a href="https://agent.brainonbnb.com/lp/series" rel="noopener">/lp/series</a>.</p>
     </div>
   </div>

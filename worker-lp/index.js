@@ -111,14 +111,17 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       if (!key) { out.push({ source: src.key, acted: false, error: `${src.keyEnv} is not set on this worker` }); continue; }
       const acct = account(key);
       if (acct.address.toLowerCase() !== src.wallet.toLowerCase()) { out.push({ source: src.key, acted: false, error: `${src.keyEnv} does not open ${src.wallet}` }); continue; }
+      const txs = [];
       try {
         const plan = await planSweep(pub, src, feed);
         if (plan.no) { out.push({ ...plan.summary, acted: false, why: plan.no }); continue; }
         if (dry) { out.push({ ...plan.summary, acted: false, why: 'dry run — would have sold and sent to the DeFi wallet' }); continue; }
         const wallet = createWalletClient({ account: acct, chain: bsc, transport: transport() });
-        out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan)) });
+        out.push({ ...plan.summary, acted: true, ...(await executeSweep(pub, wallet, acct, plan, () => {}, { txs })) });
       } catch (e) {
-        out.push({ source: src.key, acted: false, error: String(e.shortMessage || e.message).slice(0, 300) });
+        // A sweep that sent before it failed did act: saying otherwise would
+        // hide its transactions from the record and from the day's counters.
+        out.push({ source: src.key, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs });
       }
     }
     return out;
@@ -144,10 +147,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const split = { kept_pct: keptPct, buyback_pct: 100 - keptPct };
     if (plan.no) return { ...plan.summary, ...split, acted: false, why: plan.no };
     if (dry) return { ...plan.summary, ...split, acted: false, why: `dry run — would have collected, kept ${keptPct}% as capital and forwarded the rest`, would_forward_bnb_about: plan.state.owedBnbEquivalent };
+    const txs = [];
     try {
-      return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct })) };
+      return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct, txs })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
 
@@ -254,11 +258,12 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     if (upgrade && upgrade.upgrade) {
       if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
       if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };
+      const txs = [];
       try {
-        const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct });
+        const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, txs });
         return { ...plan.summary, acted: true, upgrade: upgrade.why, upgraded_from_pct: upgrade.from, upgraded_to_pct: upgrade.to, gain_usd_per_day: upgrade.gain_usd_per_day, ...done };
       } catch (e) {
-        return { ...plan.summary, acted: true, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+        return { ...plan.summary, acted: true, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs };
       }
     }
     const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
@@ -275,14 +280,15 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
     if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
+    const txs = [];
     try {
       // A re-set a deposit forced takes the deposit with it: wrapped after
       // the unwind, minted with the rest, no sell-then-buy-back.
-      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, wrapFirst: !!forced });
+      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, wrapFirst: !!forced, txs });
       await env.AGENT.delete(OUT_SINCE_KEY);
       return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...done };
     } catch (e) {
-      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
   // The price the check saw goes on the tape, every ten minutes, whatever
@@ -305,10 +311,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const plan = await planIncrease(pub, lp.address);
     if (plan.no) return { ...plan.summary, acted: false, why: plan.no };
     if (dry) return { ...plan.summary, acted: false, why: 'dry run — would have grown the position' };
+    const txs = [];
     try {
-      return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan)) };
+      return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan, () => {}, { txs })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs: e.txs || [] };
+      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
 

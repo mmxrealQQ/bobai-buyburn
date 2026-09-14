@@ -430,6 +430,17 @@ if (SELF) {
     const owned = sender(fakePub, { ...fakeWallet, account: { address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' } }, []);
     check("a sender knows its wallet's owner without being told", owned.owner === '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', true);
     check('… and a wallet without an account leaves it unset, not a guess', sender(fakePub, fakeWallet, []).owner === undefined, true);
+    // Until 2026-09-14 each execute step made its own transaction list and it
+    // came back only on a throw out of `send`. A step that sent and then failed
+    // on a READ reported nothing sent: the collect of that morning recorded an
+    // empty list against a collect that had run on chain. The list belongs to
+    // the caller now, so it survives whatever throws.
+    const mine = [];
+    await sender(fakePub, { writeContract: async () => '0xaa' }, mine)('collect', {});
+    let readErr = null;
+    try { await Promise.reject(new Error('a read failed after the send')); } catch (e) { readErr = e; }
+    check('the caller keeps the transactions when the failure comes from a read', mine.length === 1 && mine[0].hash === '0xaa', true);
+    check("… which the error itself never carried, so only the caller's list can say it", readErr.txs === undefined, true);
   })();
 
   console.log(`\n${total - bad}/${total} checks behave in both directions (floors: collect ${MIN_COLLECT_BNB}, sweep ${MIN_SWEEP_BNB}, increase ${MIN_INCREASE_BNB} BNB)`);

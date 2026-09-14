@@ -143,6 +143,11 @@ export async function gasPriceNow(pub) {
 
 // One transaction, waited for, refused to continue past a revert. `txs` is
 // the caller's list so a failure mid-sequence still reports what was sent.
+// Since 2026-09-14 every execute step takes that list from its caller
+// instead of making its own: only a throw out of `send` carried it back,
+// so a step that sent and then failed on a READ reported no transactions
+// at all. The collect of that morning recorded an empty list against a
+// collect that had already run on chain.
 export function sender(pub, wallet, txs, log = () => {}) {
   let price = null;
   const send = async (label, req) => {
@@ -346,8 +351,7 @@ export async function planCollect(pub, address) {
 // buyback bot. `keptPct` of what was produced stays in the wallet as BNB —
 // capital for the next increase, so the position grows out of its own fees —
 // and the rest goes to the buyback wallet. The record carries both figures.
-export async function executeCollect(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT } = {}) {
-  const txs = [];
+export async function executeCollect(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
@@ -428,8 +432,7 @@ export async function planSweep(pub, source, feed = null) {
 // Approve exactly the amount, sell it, and have the router pay the BNB
 // straight to the DeFi wallet — one transaction fewer, and the income
 // wallet never holds BNB it could be tempted to keep.
-export async function executeSweep(pub, wallet, account, plan, log = () => {}) {
-  const txs = [];
+export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log);
   const before = await pub.getBalance({ address: ADDR.LP_WALLET });
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
@@ -680,8 +683,7 @@ async function wrapWaiting(pub, send, address) {
   return spend;
 }
 
-export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = false } = {}) {
-  const txs = [];
+export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = false, txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   // A resumed re-set (plan.resume) has no position to unwind: the earlier run
@@ -890,9 +892,8 @@ export async function planRelocate(pub, address, { toPool = null, widthOverride 
   };
 }
 
-export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = true } = {}) {
+export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = true, txs = [] } = {}) {
   if (!plan.from || !plan.to || !plan.target || !plan.ticks) throw new Error('the plan carries no move');
-  const txs = [];
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   const swaps = [];
@@ -1053,8 +1054,7 @@ export async function planIncrease(pub, address, position = null) {
   };
 }
 
-export async function executeIncrease(pub, wallet, account, plan, log = () => {}) {
-  const txs = [];
+export async function executeIncrease(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });

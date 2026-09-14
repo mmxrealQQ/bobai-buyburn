@@ -27,7 +27,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, planRelocate, executeRelocate, executeRebalance,
 } from '../shared/lp-agent.js';
@@ -403,6 +403,50 @@ if (SELF) {
   check(`${MINT_DRIFT_TICKS * 2} ticks up is outside the tolerance and fails`, passes(tol, -58441 + MINT_DRIFT_TICKS * 2) ? 'passes' : null, false);
   check('with zero drift a move of 6 ticks fails — the 12:50 revert', passes(none, -58441 + 6) ? 'passes' : null, false);
   check('the drift lowers the minimums, it never raises them', tol.amount0Min <= none.amount0Min && tol.amount1Min <= none.amount1Min && (tol.amount0Min < none.amount0Min || tol.amount1Min < none.amount1Min) ? null : 'not lower', false);
+
+  console.log('the trade into the range\'s ratio (the 2026-09-14 leftover)');
+  // A wallet that came out of its old range all in WBNB (the price rose
+  // through the top) must buy exactly the other side a centred ±3% range
+  // takes — no 99% headroom, no 2% over-buy — so that the mint takes both
+  // sides whole. Leftover = the share of the value neither side of the mint
+  // uses. The old rule (99% of L, 102% of the buy) left 1.6% on 2026-09-14.
+  const t3 = ticksAround(-57235, 3, 10), sq3 = sqrtAt(-57235);
+  const sp3 = splitForRange(sq3, t3.tickLower, t3.tickUpper);
+  const pxW = sq3 ** 2;                       // token1 per token0; WBNB is token1 here (CAKE/BNB)
+  const pW = sp3.perL1, pO = sp3.perL0, rB = 1 / pxW, rS = pxW;   // rB: other per WBNB, rS: WBNB per other
+  const leftover = (W, C, tr) => {
+    let w = W, c = C;
+    if (tr.side === 'buy') { w -= Number(tr.amount); c += Number(tr.amount) * rB; }
+    if (tr.side === 'sell') { c -= Number(tr.amount); w += Number(tr.amount) * rS; }
+    const L = Math.min(w / pW, c / pO);
+    const used = L * pW + L * pO * rS, value = w + c * rS;
+    return (value - used) / value;
+  };
+  const oldRule = (W, C) => {
+    const value = W + C * rS, Ln = (value * 0.99) / (pW + pO * rS), target = Ln * pO;
+    return C > target ? { side: 'sell', amount: BigInt(Math.floor(C - target)) } : { side: 'buy', amount: BigInt(Math.floor((target - C) * rS * 1.02)) };
+  };
+  const Wall = 1.026e18;
+  const tBuy = tradeToRatio({ wbnb: BigInt(Wall), other: 0n, perLWbnb: pW, perLOther: pO, otherPerWbnb: rB, wbnbPerOther: rS });
+  is('all WBNB: it buys the other side', tBuy.side === 'buy' && tBuy.amount > 0n && tBuy.amount < BigInt(Wall));
+  is('all WBNB: after the buy the mint takes everything (leftover < 0.01%)', leftover(Wall, 0, tBuy) < 1e-4);
+  is('the old rule left about 1% even at a still price (1.6% on 2026-09-14 with the fee and the drift)', leftover(Wall, 0, oldRule(Wall, 0)) > 0.009);
+  const Call = Wall / rS;
+  const tSell = tradeToRatio({ wbnb: 0n, other: BigInt(Math.floor(Call)), perLWbnb: pW, perLOther: pO, otherPerWbnb: rB, wbnbPerOther: rS });
+  is('all other side: it sells, and the mint takes everything', tSell.side === 'sell' && leftover(0, Call, tSell) < 1e-4);
+  const Lx = 1e15, inRatio = tradeToRatio({ wbnb: BigInt(Math.floor(Lx * pW)), other: BigInt(Math.floor(Lx * pO)), perLWbnb: pW, perLOther: pO, otherPerWbnb: rB, wbnbPerOther: rS });
+  is('a wallet already in the ratio trades nothing', inRatio.side === null || inRatio.amount < 1000n);
+  const feeRate = 0.9995;   // a 0.05% pool: the quoter's rate carries the fee
+  const buyFee = tradeToRatio({ wbnb: BigInt(Wall), other: 0n, perLWbnb: pW, perLOther: pO, otherPerWbnb: rB * feeRate, wbnbPerOther: rS * feeRate });
+  is('with the pool fee in the rate it buys a little more WBNB-worth, still no leftover', buyFee.amount > tBuy.amount && (() => { let w = Wall - Number(buyFee.amount), c = Number(buyFee.amount) * rB * feeRate; const L = Math.min(w / pW, c / pO); return (w + c * rS - L * pW - L * pO * rS) / (w + c * rS) < 1e-4; })());
+  const rangeAbove = splitForRange(sqrtAt(t3.tickUpper + 50), t3.tickLower, t3.tickUpper);   // price above the range: only token1 (WBNB) is held
+  const edgeW = tradeToRatio({ wbnb: 0n, other: BigInt(Math.floor(Call)), perLWbnb: rangeAbove.perL1, perLOther: rangeAbove.perL0, otherPerWbnb: rB, wbnbPerOther: rS });
+  is('above the range everything on the other side is sold', edgeW.side === 'sell' && edgeW.amount === BigInt(Math.floor(Call)));
+  const rangeBelow = splitForRange(sqrtAt(t3.tickLower - 50), t3.tickLower, t3.tickUpper);
+  const edgeC = tradeToRatio({ wbnb: BigInt(Wall), other: 0n, perLWbnb: rangeBelow.perL1, perLOther: rangeBelow.perL0, otherPerWbnb: rB, wbnbPerOther: rS });
+  is('below the range all WBNB is spent on the other side', edgeC.side === 'buy' && edgeC.amount === BigInt(Wall));
+  is('no liquidity on either side: nothing to trade', tradeToRatio({ wbnb: BigInt(Wall), other: 0n, perLWbnb: 0, perLOther: 0, otherPerWbnb: rB, wbnbPerOther: rS }).side === null);
+  is('the dust floor is a ten-thousandth of a BNB', TRADE_DUST_WBNB === 10n ** 14n);
 
   console.log('sender: a failed run still names what it sent');
   // Two transactions go through, the third reverts on the chain; the error

@@ -41,6 +41,7 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
+import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
 import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS, HOME_POOL } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
@@ -355,7 +356,17 @@ async function record(env, entry, partial = false) {
   // Every real action and every error is kept; quiet days are summarised as
   // the last check so the history is a history of what happened, not of the
   // cron firing.
-  if (entry.acted || !entry.ok) st.history = st.history.concat(entry).slice(-200);
+  if (entry.acted || !entry.ok) {
+    // The cap keeps the record readable every ten minutes; a run it pushes
+    // out goes to the archive, where the sums still find it (lp-flow.js).
+    const { kept, dropped } = trimHistory(st.history, entry);
+    if (dropped.length) {
+      const arch = JSON.parse((await env.AGENT.get(ARCHIVE_KEY)) || 'null') || { what_this_is: 'Runs the DeFi agent record no longer holds (it keeps the newest 200): the writer moves them here, oldest first, and every total the agent worker reports still counts them.', entries: [] };
+      arch.entries = (Array.isArray(arch.entries) ? arch.entries : []).concat(dropped);
+      await env.AGENT.put(ARCHIVE_KEY, JSON.stringify(arch));
+    }
+    st.history = kept;
+  }
   st.last_check = entry;
   // Where the position lives, for the records that follow it (the width and
   // pool records watch this pool). A relocate names the new one the moment

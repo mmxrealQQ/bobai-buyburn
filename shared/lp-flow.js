@@ -152,3 +152,32 @@ export function flowLines(flow) {
     cost: `${flow.gas.transactions} transaction${flow.gas.transactions === 1 ? '' : 's'} on record, ${n(flow.gas.bnb).toFixed(6)} BNB of gas`,
   };
 }
+
+// THE HISTORY'S CAP AND ITS ARCHIVE (2026-09-15). The record keeps its
+// newest HISTORY_CAP runs; at three runs a day that is about 65 days, and
+// every total above is a sum over that history — put in, fees, the $BOBAI
+// bought, what each re-set lost. Dropping the oldest runs would have made
+// the totals shrink silently from early November 2026. So a run the cap
+// pushes out is not dropped: the writer (worker-lp) appends it to the
+// archive key, and every reader that sums (worker-agent) merges the
+// archive back in front of the history before it counts. The record a
+// browser sees at /lp/agent is the merged one; the archive is a store, not
+// a second source. Both pure, pinned by scripts/lp-agent.mjs --self-test.
+export const HISTORY_CAP = 200;
+export const ARCHIVE_KEY = 'lp:agent:archive';
+
+// The history after one more entry: what stays on the record and what the
+// cap pushed out, oldest first, so the archive keeps the order of the runs.
+export function trimHistory(history, entry, cap = HISTORY_CAP) {
+  const all = (Array.isArray(history) ? history : []).concat(entry === undefined ? [] : [entry]);
+  const over = Math.max(0, all.length - cap);
+  return { kept: all.slice(over), dropped: all.slice(0, over) };
+}
+
+// The record with its archived runs back in front of the history, and how
+// many were archived — the shape every sum expects.
+export function withArchive(rec, archive) {
+  const entries = Array.isArray(archive?.entries) ? archive.entries : [];
+  if (!rec || !entries.length) return rec;
+  return { ...rec, history: entries.concat(Array.isArray(rec.history) ? rec.history : []), history_archived: entries.length };
+}

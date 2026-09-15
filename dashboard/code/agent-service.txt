@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 13065 lines.
+# one fetch. 41 files, 13130 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -196,7 +196,7 @@ import {
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
   widthUpgrade, widthClassOf,
 } from '../shared/lp-guards.js';
-import { moneyFlow, flowLines } from '../shared/lp-flow.js';
+import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
 const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
@@ -355,6 +355,23 @@ if (SELF) {
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 11 && near(fl.gas.bnb, 0.00016));
   is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.008));
   is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-09T12:00:00Z');
+  // The cap and its archive (2026-09-15): what the cap pushes out is not
+  // lost to the sums, and a record under the cap archives nothing.
+  {
+    const runs = Array.from({ length: 5 }, (_, i) => ({ at: `2026-09-0${i + 1}T05:23:00Z`, acted: true, steps: { collect: { acted: true, owed: { bnb_equivalent: 0.001 }, kept_pct: 50, kept_bnb: 0.0005, bobai_bnb: 0.0005, bobai_units: 100, txs: [{ gas_bnb: 0.00001 }] } } }));
+    const t = trimHistory(runs.slice(0, 4), runs[4], 3);
+    is('the cap keeps the newest runs', t.kept.length === 3 && t.kept[0].at === runs[2].at && t.kept[2].at === runs[4].at);
+    is('what the cap pushed out comes back oldest first', t.dropped.length === 2 && t.dropped[0].at === runs[0].at && t.dropped[1].at === runs[1].at);
+    const u = trimHistory(runs.slice(0, 2), runs[2], 3);
+    is('a history under the cap drops nothing', u.kept.length === 3 && u.dropped.length === 0);
+    is('the cap defaults to 200', HISTORY_CAP === 200 && trimHistory(runs, undefined).kept.length === 5);
+    const whole = moneyFlow({ history: runs, last: runs[4] });
+    const merged = withArchive({ history: t.kept, last: runs[4] }, { entries: t.dropped });
+    const part = moneyFlow(merged);
+    is('the sums over archive + history equal the sums over the whole', part.out.bobai_units === whole.out.bobai_units && near(part.in.fees.bnb, whole.in.fees.bnb) && near(part.gas.bnb, whole.gas.bnb) && merged.history_archived === 2);
+    is('the sums over the capped history alone fall short', moneyFlow({ history: t.kept, last: runs[4] }).out.bobai_units < whole.out.bobai_units);
+    is('no archive leaves the record as it is', withArchive({ history: t.kept }, null).history.length === 3 && withArchive({ history: t.kept }, { entries: [] }).history_archived === undefined);
+  }
   is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
@@ -2390,6 +2407,35 @@ export function flowLines(flow) {
     // nonce on the chain is the full count.
     cost: `${flow.gas.transactions} transaction${flow.gas.transactions === 1 ? '' : 's'} on record, ${n(flow.gas.bnb).toFixed(6)} BNB of gas`,
   };
+}
+
+// THE HISTORY'S CAP AND ITS ARCHIVE (2026-09-15). The record keeps its
+// newest HISTORY_CAP runs; at three runs a day that is about 65 days, and
+// every total above is a sum over that history — put in, fees, the $BOBAI
+// bought, what each re-set lost. Dropping the oldest runs would have made
+// the totals shrink silently from early November 2026. So a run the cap
+// pushes out is not dropped: the writer (worker-lp) appends it to the
+// archive key, and every reader that sums (worker-agent) merges the
+// archive back in front of the history before it counts. The record a
+// browser sees at /lp/agent is the merged one; the archive is a store, not
+// a second source. Both pure, pinned by scripts/lp-agent.mjs --self-test.
+export const HISTORY_CAP = 200;
+export const ARCHIVE_KEY = 'lp:agent:archive';
+
+// The history after one more entry: what stays on the record and what the
+// cap pushed out, oldest first, so the archive keeps the order of the runs.
+export function trimHistory(history, entry, cap = HISTORY_CAP) {
+  const all = (Array.isArray(history) ? history : []).concat(entry === undefined ? [] : [entry]);
+  const over = Math.max(0, all.length - cap);
+  return { kept: all.slice(over), dropped: all.slice(0, over) };
+}
+
+// The record with its archived runs back in front of the history, and how
+// many were archived — the shape every sum expects.
+export function withArchive(rec, archive) {
+  const entries = Array.isArray(archive?.entries) ? archive.entries : [];
+  if (!rec || !entries.length) return rec;
+  return { ...rec, history: entries.concat(Array.isArray(rec.history) ? rec.history : []), history_archived: entries.length };
 }
 
 ==============================================================================
@@ -5715,7 +5761,17 @@ import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
-import { moneyFlow, flowLines } from '../shared/lp-flow.js';
+import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY } from '../shared/lp-flow.js';
+
+// The DeFi agent's record with its archived runs merged back in (lp-flow.js):
+// the shape every sum over the history expects. Readers that only want the
+// newest run or the pool read the bare key.
+async function readAgentRecord(env) {
+  const raw = await env.AGENT.get('lp:agent');
+  if (!raw) return null;
+  const arch = JSON.parse((await env.AGENT.get(ARCHIVE_KEY)) || 'null');
+  return withArchive(JSON.parse(raw), arch);
+}
 import { lpPositionLook } from './lp-service.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
@@ -6164,9 +6220,8 @@ async function readLpSeries(env) {
   return raw ? JSON.parse(raw).map(lpSeriesPoint) : [];
 }
 async function recordLpSeries(env) {
-  const raw = await env.AGENT.get('lp:agent');
-  if (!raw) return { recorded: false, why: 'no record yet' };
-  const rec = JSON.parse(raw);
+  const rec = await readAgentRecord(env);
+  if (!rec) return { recorded: false, why: 'no record yet' };
   // The newest run on record: the daily one, or an hourly check that acted
   // (those land in history). A re-set at 07:50 is a run the series must show.
   const hist0 = Array.isArray(rec.history) ? rec.history : [];
@@ -7333,7 +7388,7 @@ ${pageTail}`;
       // dollar it names. Missing under a day of series, or without a position.
       if (v) {
         try {
-          const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+          const rec = await readAgentRecord(env);
           const ticks = rec?.last?.steps?.rebalance?.ticks || rec?.last?.steps?.increase?.ticks || null;
           v.calibration = lpCalibration(await readLpSeries(env), v.rows, widthClassOf(ticks));
           v.resets = resetLosses(rec, { bnbUsd: await bnbUsd().catch(() => null) });
@@ -7401,9 +7456,8 @@ ${pageTail}`;
     // increase (worker-lp writes it, this serves it; that worker holds the
     // keys and no public face on purpose). /lp/collect is the old name.
     if (path === '/lp/agent' || path === '/lp/collect') {
-      const raw = await env.AGENT.get('lp:agent');
-      if (!raw) return json({ error: 'the DeFi agent has not run yet', cadence: 'daily' }, 503);
-      const rec = JSON.parse(raw);
+      const rec = await readAgentRecord(env);
+      if (!rec) return json({ error: 'the DeFi agent has not run yet', cadence: 'daily' }, 503);
       // Where the money came from and where it went: computed once, here,
       // from the record and the service's own earnings — the page below, the
       // liquidity page and the Telegram report all read this one figure set.
@@ -7873,7 +7927,7 @@ ${pageTail}`;
     // THE PORTFOLIO: the agent as one picture, one model for the /defi page
     // and the Telegram card alike (worker-agent/lp-portfolio.js).
     if (path === '/lp/portfolio') {
-      const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+      const rec = await readAgentRecord(env);
       const series = await buildLpSeries(env);
       const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
       // The width and wait the next re-set would use, from the width record,
@@ -12851,6 +12905,7 @@ import {
   planRebalance, executeRebalance, readBnbUsd,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
+import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
 import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS, HOME_POOL } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
@@ -13165,7 +13220,17 @@ async function record(env, entry, partial = false) {
   // Every real action and every error is kept; quiet days are summarised as
   // the last check so the history is a history of what happened, not of the
   // cron firing.
-  if (entry.acted || !entry.ok) st.history = st.history.concat(entry).slice(-200);
+  if (entry.acted || !entry.ok) {
+    // The cap keeps the record readable every ten minutes; a run it pushes
+    // out goes to the archive, where the sums still find it (lp-flow.js).
+    const { kept, dropped } = trimHistory(st.history, entry);
+    if (dropped.length) {
+      const arch = JSON.parse((await env.AGENT.get(ARCHIVE_KEY)) || 'null') || { what_this_is: 'Runs the DeFi agent record no longer holds (it keeps the newest 200): the writer moves them here, oldest first, and every total the agent worker reports still counts them.', entries: [] };
+      arch.entries = (Array.isArray(arch.entries) ? arch.entries : []).concat(dropped);
+      await env.AGENT.put(ARCHIVE_KEY, JSON.stringify(arch));
+    }
+    st.history = kept;
+  }
   st.last_check = entry;
   // Where the position lives, for the records that follow it (the width and
   // pool records watch this pool). A relocate names the new one the moment

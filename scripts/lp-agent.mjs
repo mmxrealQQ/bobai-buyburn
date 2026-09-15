@@ -37,7 +37,7 @@ import {
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
   widthUpgrade, widthClassOf,
 } from '../shared/lp-guards.js';
-import { moneyFlow, flowLines } from '../shared/lp-flow.js';
+import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
 const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
@@ -196,6 +196,23 @@ if (SELF) {
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 11 && near(fl.gas.bnb, 0.00016));
   is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.008));
   is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-09T12:00:00Z');
+  // The cap and its archive (2026-09-15): what the cap pushes out is not
+  // lost to the sums, and a record under the cap archives nothing.
+  {
+    const runs = Array.from({ length: 5 }, (_, i) => ({ at: `2026-09-0${i + 1}T05:23:00Z`, acted: true, steps: { collect: { acted: true, owed: { bnb_equivalent: 0.001 }, kept_pct: 50, kept_bnb: 0.0005, bobai_bnb: 0.0005, bobai_units: 100, txs: [{ gas_bnb: 0.00001 }] } } }));
+    const t = trimHistory(runs.slice(0, 4), runs[4], 3);
+    is('the cap keeps the newest runs', t.kept.length === 3 && t.kept[0].at === runs[2].at && t.kept[2].at === runs[4].at);
+    is('what the cap pushed out comes back oldest first', t.dropped.length === 2 && t.dropped[0].at === runs[0].at && t.dropped[1].at === runs[1].at);
+    const u = trimHistory(runs.slice(0, 2), runs[2], 3);
+    is('a history under the cap drops nothing', u.kept.length === 3 && u.dropped.length === 0);
+    is('the cap defaults to 200', HISTORY_CAP === 200 && trimHistory(runs, undefined).kept.length === 5);
+    const whole = moneyFlow({ history: runs, last: runs[4] });
+    const merged = withArchive({ history: t.kept, last: runs[4] }, { entries: t.dropped });
+    const part = moneyFlow(merged);
+    is('the sums over archive + history equal the sums over the whole', part.out.bobai_units === whole.out.bobai_units && near(part.in.fees.bnb, whole.in.fees.bnb) && near(part.gas.bnb, whole.gas.bnb) && merged.history_archived === 2);
+    is('the sums over the capped history alone fall short', moneyFlow({ history: t.kept, last: runs[4] }).out.bobai_units < whole.out.bobai_units);
+    is('no archive leaves the record as it is', withArchive({ history: t.kept }, null).history.length === 3 && withArchive({ history: t.kept }, { entries: [] }).history_archived === undefined);
+  }
   is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));

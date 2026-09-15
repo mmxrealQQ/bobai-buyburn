@@ -35,7 +35,17 @@ import { buildCatalog } from './x402-catalog.js';
 import { handleHire, decodeJob, ERC8183 } from './hire.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
-import { moneyFlow, flowLines } from '../shared/lp-flow.js';
+import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY } from '../shared/lp-flow.js';
+
+// The DeFi agent's record with its archived runs merged back in (lp-flow.js):
+// the shape every sum over the history expects. Readers that only want the
+// newest run or the pool read the bare key.
+async function readAgentRecord(env) {
+  const raw = await env.AGENT.get('lp:agent');
+  if (!raw) return null;
+  const arch = JSON.parse((await env.AGENT.get(ARCHIVE_KEY)) || 'null');
+  return withArchive(JSON.parse(raw), arch);
+}
 import { lpPositionLook } from './lp-service.js';
 import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
@@ -484,9 +494,8 @@ async function readLpSeries(env) {
   return raw ? JSON.parse(raw).map(lpSeriesPoint) : [];
 }
 async function recordLpSeries(env) {
-  const raw = await env.AGENT.get('lp:agent');
-  if (!raw) return { recorded: false, why: 'no record yet' };
-  const rec = JSON.parse(raw);
+  const rec = await readAgentRecord(env);
+  if (!rec) return { recorded: false, why: 'no record yet' };
   // The newest run on record: the daily one, or an hourly check that acted
   // (those land in history). A re-set at 07:50 is a run the series must show.
   const hist0 = Array.isArray(rec.history) ? rec.history : [];
@@ -1653,7 +1662,7 @@ ${pageTail}`;
       // dollar it names. Missing under a day of series, or without a position.
       if (v) {
         try {
-          const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+          const rec = await readAgentRecord(env);
           const ticks = rec?.last?.steps?.rebalance?.ticks || rec?.last?.steps?.increase?.ticks || null;
           v.calibration = lpCalibration(await readLpSeries(env), v.rows, widthClassOf(ticks));
           v.resets = resetLosses(rec, { bnbUsd: await bnbUsd().catch(() => null) });
@@ -1721,9 +1730,8 @@ ${pageTail}`;
     // increase (worker-lp writes it, this serves it; that worker holds the
     // keys and no public face on purpose). /lp/collect is the old name.
     if (path === '/lp/agent' || path === '/lp/collect') {
-      const raw = await env.AGENT.get('lp:agent');
-      if (!raw) return json({ error: 'the DeFi agent has not run yet', cadence: 'daily' }, 503);
-      const rec = JSON.parse(raw);
+      const rec = await readAgentRecord(env);
+      if (!rec) return json({ error: 'the DeFi agent has not run yet', cadence: 'daily' }, 503);
       // Where the money came from and where it went: computed once, here,
       // from the record and the service's own earnings — the page below, the
       // liquidity page and the Telegram report all read this one figure set.
@@ -2193,7 +2201,7 @@ ${pageTail}`;
     // THE PORTFOLIO: the agent as one picture, one model for the /defi page
     // and the Telegram card alike (worker-agent/lp-portfolio.js).
     if (path === '/lp/portfolio') {
-      const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+      const rec = await readAgentRecord(env);
       const series = await buildLpSeries(env);
       const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
       // The width and wait the next re-set would use, from the width record,

@@ -622,7 +622,7 @@ section('The marketplace, from the front door');
   ok('/lp/portfolio carries no pool record, but the next step and the day in counts', !!pf && !('pool_record' in pf) && typeof pf.next === 'string' && pf.next.length > 20 && pf.day && Number.isInteger(pf.day.resets) && pf.pnl && pf.pnl.at_resets && Number.isInteger(pf.pnl.at_resets.count));
   const wv = await fetch('https://agent.brainonbnb.com/lp/windows?format=json').then((r) => r.json()).catch(() => null);
   const wr = wv && wv.verdict;
-  ok('/lp/windows replays the derived widths and charges every re-set what its range lost', !!wr && [1.5, 3, 4, 7].every((w) => wr.rows.some((r) => r.width === w && r.derived === true)) && wr.rows.filter((r) => r.earnings).every((r) => typeof r.earnings.lost_to_price_usd === 'number' && r.earnings_24h !== undefined));
+  ok('/lp/windows replays the derived widths and every earning row still names lost_to_price (0 for a one-sided re-set, since 2026-09-16)', !!wr && [1.5, 3, 4, 7].every((w) => wr.rows.some((r) => r.width === w && r.derived === true)) && wr.rows.filter((r) => r.earnings).every((r) => typeof r.earnings.lost_to_price_usd === 'number' && r.earnings_24h !== undefined));
   ok('/lp/windows names the re-sets that happened and the price samples it walked', !!wr && wr.resets && Number.isInteger(wr.resets.resets) && Number.isInteger(wr.price_samples));
   // The series (point 4, 2026-09-03): one point per run, the summary derived
   // from the points and from nothing else, and the page carries the table.

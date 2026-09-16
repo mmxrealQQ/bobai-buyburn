@@ -128,10 +128,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4437,
-   "zipBytes": 67858,
-   "txtBytes": 201132,
-   "sha256": "11dfa51b7bc9d1b3",
+   "lines": 4438,
+   "zipBytes": 67911,
+   "txtBytes": 201272,
+   "sha256": "ee58f927f8153d9f",
    "reqs": [
     {
      "what": "A bot token",
@@ -571,10 +571,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 41,
-   "lines": 13130,
-   "zipBytes": 284076,
-   "txtBytes": 795749,
-   "sha256": "e319e051d0cc5d2a",
+   "lines": 13401,
+   "zipBytes": 291365,
+   "txtBytes": 818060,
+   "sha256": "30de9abd14befb96",
    "reqs": [
     {
      "what": "A wallet to be paid into",

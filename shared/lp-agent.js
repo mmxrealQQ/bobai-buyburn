@@ -14,8 +14,10 @@
 //             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
 //             the rest goes to the buyback wallet — only the fees, never the
 //             capital
-//   rebalance a range the price has left is re-set around the price; the
-//             fees the old range owed are split the same way on the way
+//   rebalance a range the price has left is re-set beside the price, on
+//             the side the price came from, with the one token the old
+//             range ended in and no trade (one-sided, since 2026-09-16);
+//             the fees the old range owed are split the same way on the way
 //             (since 2026-09-08): the kept share is minted into the new
 //             capital, the rest goes to the buyback wallet before the mint
 //   increase  BNB above the reserve is put into the same position — the
@@ -27,7 +29,7 @@
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
@@ -496,6 +498,35 @@ export function ticksAround(tick, widthPct, spacing) {
   return { tickLower, tickUpper };
 }
 
+// THE ONE-SIDED RANGE (2026-09-16). A position the price has left holds one
+// token: all of token0 below its range, all of token1 above it. Until now a
+// re-set sold half of it to re-centre — at the low when the price had
+// fallen, at the high when it had risen — and twelve such trades cost 3.4%
+// of the capital in a fortnight, twice the fees. The new range is placed
+// beside the price instead, on the side the price came from, and needs
+// exactly the token the old range ended in: below its range the position
+// is all token0, and a range above the price is all token0 too; above, all
+// token1, and a range below the price is all token1. Nothing is traded;
+// the re-set costs its gas. The range spans what a centred ±width range
+// spans (the same liquidity for the same money, so the width record's fee
+// rows apply to it) and starts ONE_SIDED_GAP_TICKS beyond the price, so a
+// few ticks of drift before the block cannot put the price inside it. If
+// the price comes back it earns from the first tick and turns the fallen
+// side into the other one on the way up, with fees; if it goes on, the
+// position holds what it held — no worse than the hold the old rule
+// resorted to, and one re-set's gas away from earning again.
+// `side` is where the price is relative to the old range (rangeLeft): a
+// price below it gets a range above the price, and the other way round.
+export function ticksAdjacent(tick, widthPct, spacing, side, gapTicks = ONE_SIDED_GAP_TICKS) {
+  const span = Math.round(2 * Math.log(1 + widthPct / 100) / Math.log(1.0001) / spacing) * spacing;
+  if (side === 'below') {
+    const tickLower = Math.ceil((tick + gapTicks) / spacing) * spacing;
+    return { tickLower, tickUpper: tickLower + span, side: 'above_price' };
+  }
+  const tickUpper = Math.floor((tick - gapTicks) / spacing) * spacing;
+  return { tickLower: tickUpper - span, tickUpper, side: 'below_price' };
+}
+
 // `record` is the verdict of the window record (agent.brainonbnb.com/lp/windows
 // or the same function over KV); its earnings_pick names the width — the one
 // that netted the most per day when every width was replayed over the recorded
@@ -510,11 +541,11 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   let resume = false;
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
-  let owedWei = 0n, share = null;
+  let owedWei = 0n, share = null, left = null, oneSided = null;
   const pick = record?.earnings_pick || null;
   const width = widthOverride ?? pick?.width ?? null;
   const widthBasis = widthOverride != null ? 'named by hand'
-    : (pick ? `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings.net_usd_per_day} a day on $50 after ${pick.earnings.resets} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${pick.earnings.reset_cost_usd} each${pick.earnings.lost_to_price_usd != null ? ` and $${pick.earnings.lost_to_price_usd} lost to the price against holding` : ''}` : null);
+    : (pick ? (pick.basis || `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings?.net_usd_per_day} a day on $50 after ${pick.earnings?.resets} re-set${pick.earnings?.resets === 1 ? '' : 's'} at $${pick.earnings?.reset_cost_usd} each`) : null);
   if (p.positions === 1 || resume) {
     poolInfo = await readPool(pub, p.pos);
     spacing = Number(await read(pub, poolInfo.pool, ABI.POOL, 'tickSpacing')) || 1;
@@ -540,8 +571,14 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * otherInWbnb));
       share = resetForward(owedWei, keptPct);
     }
+    // Where the price stands to the old range: inside, at an edge, or gone.
+    if (!resume) left = rangeLeft(poolInfo.tick, Number(p.pos[5]), Number(p.pos[6]));
     if (width != null) {
-      ticks = ticksAround(poolInfo.tick, width, spacing);
+      // A range the price has left is re-set one-sided, beside the price
+      // (ticksAdjacent); a mint from the wallet (resume) or a range by hand
+      // with the price inside is centred as before.
+      oneSided = left && left.left ? left.side : null;
+      ticks = oneSided ? ticksAdjacent(poolInfo.tick, width, spacing, oneSided) : ticksAround(poolInfo.tick, width, spacing);
       if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
       const n = splitForRange(poolInfo.sqrtP, ticks.tickLower, ticks.tickUpper);
       const perLOther = wbnbIs0 ? n.perL1 : n.perL0, perLWbnb = wbnbIs0 ? n.perL0 : n.perL1;
@@ -558,15 +595,17 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   }
   // A wallet without a position is never "in range"; resume says the plan is
   // a mint from what the wallet holds, and the guard sizes it like a re-set.
-  const state = { positions: p.positions, resume, inRange: poolInfo && !resume ? poolInfo.inRange : false, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
+  const state = { positions: p.positions, resume, inRange: poolInfo && !resume ? poolInfo.inRange : false, atEdge: !!(left && left.outside && !left.left), side: left ? left.side : null, ticksAway: left ? left.ticks_away : null, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
   return {
-    step: 'rebalance', state, no: refuseRebalance(state), resume,
+    step: 'rebalance', state, no: refuseRebalance(state), resume, oneSided,
     tokenId: p.tokenId, pos: p.pos, poolInfo, spacing, other, wbnbIs0, width, ticks, target, trade,
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
       ...(resume ? { resumed_from_wallet: true, held: have ? { other: (have.other / 1e18).toFixed(6), wbnb: (have.wbnb / 1e18).toFixed(6) } : null } : {}),
       ticks: p.tokenId != null ? [Number(p.pos[5]), Number(p.pos[6])] : null,
-      tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange,
+      tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange, ...(state.atEdge ? { at_edge: true } : {}),
+      ...(left && left.outside ? { price_side: left.side, ticks_beyond_edge: left.ticks_away } : {}),
+      ...(oneSided ? { one_sided: ticks.side, one_sided_why: `the price is ${oneSided} the old range, which ended all in one token; the new range sits ${ticks.side === 'above_price' ? 'above' : 'below'} the price and takes that token as it is — no trade` } : {}),
       pool: poolInfo ? String(poolInfo.pool).toLowerCase() : null, wbnb_is0: wbnbIs0,
       value_bnb: Number(valueBnb.toFixed(6)),
       width_pct: width, width_basis: widthBasis,
@@ -793,6 +832,12 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
     await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
   }
+  // A deposit waiting as BNB joins a centred mint wrapped, and a one-sided
+  // mint below the price (all WBNB) the same way; a one-sided mint above the
+  // price is all of the other side, and the trade below buys it with the
+  // WBNB the wallet then holds — the deposit buys the fallen side at its
+  // low instead of idling, which is what a deposit beside a left range is
+  // for. Either way the BNB is wrapped first.
   const wrapped = wrapFirst ? await wrapWaiting(pub, send, account.address) : 0n;
 
   // Sized from what the wallet really holds now, not from the plan's
@@ -825,7 +870,17 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const amount1Desired = plan.wbnbIs0 ? mintOther : mintWbnb;
   // The minimums come from what the new range takes at the price now, not
   // from the balances (see amountsForRange).
-  const mintMins = minsForRange((await readPool(pub, plan.pos)).sqrtP, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
+  // A one-sided range is entirely on one side of the price: the manager takes
+  // all of the held token and none of the other, and the minimum is 97% of
+  // the held token as it is. The drift tolerance of a centred mint would
+  // shift the price INTO the range on one side and read the minimum as
+  // zero there; a mint the price has entered would then take almost
+  // nothing without reverting. Here it reverts instead, and the hour after
+  // finishes the re-set from the wallet (resume).
+  const sqrtNow = (await readPool(pub, plan.pos)).sqrtP;
+  const mintMins = plan.oneSided
+    ? (() => { const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired); return { amount0Min: (a.amount0 * MIN_SHARE) / 100n, amount1Min: (a.amount1 * MIN_SHARE) / 100n }; })()
+    : minsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
   await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
     args: [{
       token0: plan.pos[2], token1: plan.pos[3], fee: Number(plan.pos[4]),
@@ -841,7 +896,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
   // it that went to the buyback wallet; the difference was minted into the
   // new capital. Records before 2026-09-08 carry only the first.
-  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(plan.oneSided ? { one_sided: plan.ticks.side } : {}), ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
       bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share ? share.pct : null,

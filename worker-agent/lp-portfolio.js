@@ -31,7 +31,7 @@ export function stepWords(name, s) {
     case 'relocate': return { what: `moved the position to ${s.to_label || labelOf(s.new_pool) || s.new_pool || 'another pool'}${s.new_position ? ` (#${s.new_position})` : ''}` };
     case 'rebalance': return { what: s.upgraded_to_pct != null
       ? `re-set the range wider/narrower: ±${s.upgraded_from_pct}% → ±${s.upgraded_to_pct}%${s.new_position ? ` (#${s.new_position})` : ''}`
-      : `re-set the range around the price${s.new_position ? ` (#${s.new_position})` : ''}${n(s.bobai_bnb) > 0 ? `, ${r5(s.bobai_bnb)} BNB of its fees into $BOBAI` : ''}` };
+      : `re-set the range ${s.one_sided ? `one-sided ${s.one_sided === 'above_price' ? 'above' : 'below'} the price, no trade` : 'around the price'}${s.new_position ? ` (#${s.new_position})` : ''}${n(s.bobai_bnb) > 0 ? `, ${r5(s.bobai_bnb)} BNB of its fees into $BOBAI` : ''}` };
     case 'increase': return { what: `grew the position${n(s.bnb_spent) > 0 ? ` by ${r4(s.bnb_spent)} BNB` : ''}` };
     default: return { what: `${name} acted` };
   }
@@ -55,6 +55,38 @@ export function lastDay(rec, now = Date.now()) {
     }
   }
   return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+}
+
+// AGAINST HOLDING (2026-09-16). The one question a liquidity position has
+// to answer: is the money better off here than in a wallet? The wallet it
+// is measured against holds, from the moment each piece of capital arrived,
+// half of it as BNB and half as the other side at that day's price — the
+// mix a centred range is minted in. Its worth now is what the agent has to
+// beat: worth + the fees that left the position (into $BOBAI) + fees still
+// owed − gas. `points` is the series (capital_bnb, tick per run); each rise
+// in capital is an arrival at that run's price. Pure; pinned.
+export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, bobaiBnb = 0, owedBnb = 0, gasBnb = 0 } = {}) {
+  const pts = (points || []).filter((p) => p && p.tick != null && Number(p.capital_bnb) > 0);
+  if (!pts.length || tickNow == null || !(Number(valueNow) > 0)) return null;
+  const priceAt = (tick) => { const raw = Math.pow(1.0001, Number(tick)); return wbnbIs0 ? 1 / raw : raw; };
+  const pNow = priceAt(tickNow);
+  let holding = 0, prevCap = 0;
+  const arrivals = [];
+  for (const p of pts) {
+    const cap = Number(p.capital_bnb);
+    const d = cap - prevCap;
+    if (d > 1e-9) { arrivals.push({ at: p.at, bnb: +d.toFixed(6), price: priceAt(p.tick) }); holding += d * (0.5 + 0.5 * (pNow / priceAt(p.tick))); }
+    prevCap = Math.max(prevCap, cap);
+  }
+  if (!(holding > 0)) return null;
+  const lp = Number(valueNow) + n(bobaiBnb) + n(owedBnb) - n(gasBnb);
+  const vs = lp - holding;
+  return {
+    holding_bnb: r5(holding), lp_bnb: r5(lp), vs_holding_bnb: r5(vs),
+    vs_holding_pct: prevCap > 0 ? Math.round((vs / prevCap) * 10000) / 100 : null,
+    arrivals: arrivals.length,
+    basis: "a wallet that held each arrival half as BNB, half as the other side at that run's price, against the position now plus the fees that left it as $BOBAI and the fees still owed, less gas",
+  };
 }
 
 export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null } = {}) {
@@ -106,14 +138,20 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // 2026-09-12: "einfacher, uebersichtlicher, klarer"). What the pick nets
   // a day stays in the record (/lp/windows), not on the card.
   let next;
+  const atEdge = rb.at_edge === true || inc.at_edge === true;
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range, to ±${pick.width_pct}%.`
-    : 'Holds and earns. No re-set: no width pays right now.';
+    ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
+  else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after ${waitH ?? 2} h out of range, to ±${pick.width_pct}%.`
-    : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Holds: no width pays right now.`;
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
+  // Where the position was left: the newest tick the record saw.
+  const tickNow = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
+  const wbnbIs0 = rb.wbnb_is0 === true || (hist.slice().reverse().find((x) => x?.steps?.rebalance?.wbnb_is0 != null)?.steps.rebalance.wbnb_is0 === true);
+  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb });
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
     resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'),
@@ -149,6 +187,9 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       // What the re-sets themselves cost, from the record's ticks: the loss
       // against holding each re-set realised, and its execution.
       at_resets: { count: losses.resets, lost_to_price_bnb: r5(losses.lost_to_price_bnb), execution_bnb: r5(losses.execution_bnb) },
+      // The line the whole thing is judged by: the position, with everything
+      // it produced, against a wallet that simply held (holdingBenchmark).
+      vs_holding: vsHold,
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
       other_token: poolLabel ? poolLabel.split('/')[0] : 'the other side',
     },

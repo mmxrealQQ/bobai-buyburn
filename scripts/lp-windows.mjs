@@ -139,7 +139,8 @@ if (SELF_TEST) {
   const feeRows = [row(1, true, 0.10), row(5, true, 0.03), row(10, true, 0.015)];
   const pwin = (hourIdx, price, rows = feeRows) => ({ ...win(hourIdx * 1000, hourIdx * 1000 + 500, rows), at: new Date(1_700_000_000_000 + hourIdx * H * 1000).toISOString(), minutes: 37.5, price, rebalance_cost_usd: 0.5 });
   const flat = Array.from({ length: 30 }, (_, i) => pwin(i, 100));
-  let e1 = earningsTest(flat, 1), e5 = earningsTest(flat, 5);
+  const C = { oneSided: false };   // the centred replay as it was until 2026-09-16
+  let e1 = earningsTest(flat, 1, C), e5 = earningsTest(flat, 5, C);
   t('a flat price never needs a re-set', e1.resets === 0 && e5.resets === 0);
   t('… and the narrow width earns the most per day', e1.net_usd_per_day > e5.net_usd_per_day && e1.net_usd_per_day > 0);
   t('an hour of window fees is scaled from its minutes (0.10 per 37.5 min → 0.16 per hour)', Math.abs(e1.fees_usd / e1.hours - 0.16) < 0.001);
@@ -150,7 +151,7 @@ if (SELF_TEST) {
   // charged what its range lost against holding, no width earns on that.)
   const driftRows = [row(1, true, 0.06), row(5, true, 0.03), row(10, true, 0.015)];
   const drift = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.0015, i), driftRows));
-  e1 = earningsTest(drift, 1); e5 = earningsTest(drift, 5); const e10 = earningsTest(drift, 10);
+  e1 = earningsTest(drift, 1, C); e5 = earningsTest(drift, 5, C); const e10 = earningsTest(drift, 10, C);
   t('a drifting price makes the narrow width re-set again and again', e1.resets > e5.resets && e5.resets >= e10.resets);
   t('… so the narrow width nets less than a wider one', e1.net_usd_per_day < e5.net_usd_per_day);
   // rangeValue: what a range is worth against holding its minted amounts.
@@ -164,14 +165,34 @@ if (SELF_TEST) {
   t('a re-set on a drifted price is charged what the range lost against holding', e1.resets > 0 && e1.lost_to_price_usd > 0);
   t('… and net is fees minus re-set costs minus that loss minus the open range\'s mark', Math.abs(e1.net_usd - (e1.fees_usd - e1.resets * e1.reset_cost_usd - e1.lost_to_price_usd - e1.open_loss_usd)) < 0.001);
   t('a range that never re-set still carries its open loss at the last price', e5.resets === 0 && e5.open_loss_usd > 0 && e5.lost_to_price_usd === 0);
-  t('a flat price loses nothing to the price', earningsTest(flat, 1).lost_to_price_usd === 0 && earningsTest(flat, 1).open_loss_usd === 0);
-  t('a 12% day nets nothing at any width', (() => { const fast = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.004, i))); return [1, 5, 10].every((w) => earningsTest(fast, w).net_usd < 0); })());
+  t('a flat price loses nothing to the price', earningsTest(flat, 1, C).lost_to_price_usd === 0 && earningsTest(flat, 1, C).open_loss_usd === 0);
+  t('a 12% day nets nothing at any width', (() => { const fast = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.004, i))); return [1, 5, 10].every((w) => earningsTest(fast, w, C).net_usd < 0); })());
   t('a re-set is only counted after the price has been outside for the delay', (() => {
     // outside for one hour, then back: no re-set with a 2 h delay
     const blip = [pwin(0, 100), pwin(1, 103), pwin(2, 100), pwin(3, 100), pwin(4, 100)];
-    return earningsTest(blip, 1, { resetAfterHours: 2 }).resets === 0 && earningsTest(blip, 1, { resetAfterHours: 1 }).resets >= 1;
+    return earningsTest(blip, 1, { ...C, resetAfterHours: 2 }).resets === 0 && earningsTest(blip, 1, { ...C, resetAfterHours: 1 }).resets >= 1;
   })());
-  t('a measured re-set cost overrides the replay\'s assumption', earningsTest(drift, 1, { resetCostUsd: 5 }).net_usd < earningsTest(drift, 1).net_usd);
+  t('a measured re-set cost overrides the replay\'s assumption', earningsTest(drift, 1, { ...C, resetCostUsd: 5 }).net_usd < earningsTest(drift, 1, C).net_usd);
+  // THE ONE-SIDED REPLAY (2026-09-16), the default: a re-set trades nothing,
+  // costs its gas, and the position is followed exactly against holding.
+  const o1 = earningsTest(drift, 1), o5 = earningsTest(drift, 5), o10 = earningsTest(drift, 10);
+  t('the default replay is one-sided and says so', o1.one_sided === true && earningsTest(drift, 1, C).one_sided === false);
+  t('a one-sided re-set is charged no loss to the price and no open mark', o1.resets > 0 && o1.lost_to_price_usd === 0 && o1.open_loss_usd === 0);
+  t('… so net is fees less re-sets alone', Math.abs(o1.net_usd - (o1.fees_usd - o1.resets * o1.reset_cost_usd)) < 1e-6);
+  t('a drifting price still re-sets the narrow width more than the wide one', o1.resets > o5.resets && o5.resets >= o10.resets);
+  t('every row names its share of hours in range, and wider is in range more on a drift', o1.in_range_share < o5.in_range_share && o5.in_range_share <= o10.in_range_share && o10.in_range_share <= 1);
+  t('a steady climb leaves the liquidity behind holding — the trend line, reported', o1.vs_holding_usd < 0 && o5.vs_holding_usd < 0);
+  t('… and a flat price leaves it level with holding', Math.abs(earningsTest(flat, 1).vs_holding_usd) < 1e-6);
+  t('the centred replay carries the same holding line, and its charged loss is of the same order', (() => { const c = earningsTest(drift, 1, C); return c.vs_holding_usd < 0 && Math.abs(c.vs_holding_usd) > 0.2 * (c.lost_to_price_usd + c.open_loss_usd); })());
+  // A price that falls out of a ±1% range and comes back: the one-sided
+  // range sat above the low, so the way back is earning hours; the centred
+  // re-set sold at the low and paid for it.
+  const dip = [pwin(0, 100), pwin(1, 100), pwin(2, 97), pwin(3, 97), pwin(4, 97), pwin(5, 98.5), pwin(6, 99.5), pwin(7, 100), pwin(8, 100), pwin(9, 100)];
+  const dOne = earningsTest(dip, 1), dCen = earningsTest(dip, 1, C);
+  t('a dip and back: both replays re-set', dOne.resets >= 1 && dCen.resets >= 1);
+  t('… the one-sided range earns on the way back and ends ahead of the centred one against holding', dOne.hours_in_range > 0 && dOne.vs_holding_usd > dCen.vs_holding_usd);
+  t('… and the centred one paid a loss the one-sided one did not', dCen.lost_to_price_usd > 0 && dOne.lost_to_price_usd === 0);
+
   // The calibration: the position's own fees against the replay's dollars
   // for its width class, both on $50 a day. A day of series, a position.
   {
@@ -202,12 +223,12 @@ if (SELF_TEST) {
   const short = { windows: Array.from({ length: 10 }, (_, i) => pwin(i, 100)) };
   t(`under ${MIN_HOURS_FOR_EARNINGS} h of prices there is no earnings pick`, verdict(short).earnings_pick === null && verdict(short).rows[0].earnings !== null);
   const dayFlat = { windows: flat };
-  t('a day of flat prices picks the narrowest width', verdict(dayFlat).earnings_pick?.width === 1);
+  t('a day of flat prices picks the narrowest width', verdict(dayFlat).earnings_pick?.width === 1 /* flat: every width is in range all week; the narrowest wins */);
   const dayDrift = { windows: drift };
   t('a day of drifting prices picks a wider width than the narrowest', verdict(dayDrift).earnings_pick && verdict(dayDrift).earnings_pick.width > 1);
-  t('a width that nets nothing after its re-sets is never the pick', (() => {
-    const v = verdict({ windows: Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.02, i), [row(1, true, 0.01)])) });
-    return v.earnings_pick === null;
+  t('a price that climbs 2% every hour: no width is in range, the pick is the one in range the most and the record says trending, the net pick is none', (() => {
+    const v = verdict({ windows: Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.02, i), [row(1, true, 0.01), row(5, true, 0.003), row(10, true, 0.001)])) });
+    return v.earnings_pick && v.earnings_pick.reached_target === false && /trending/.test(v.earnings_pick.basis) && v.earnings_pick.width === 10 && (v.net_pick === null || v.net_pick.width != null);
   })());
   t(`the earnings rule names the ${RESET_AFTER_HOURS} h delay it replays`, /2 h/.test(verdict(dayFlat).earnings_rule));
   // The delay test, both ways: reported for every wait, the wait in use
@@ -239,10 +260,19 @@ if (SELF_TEST) {
   const stepRows = [row(1, true, 1.0), row(5, true, 0.03), row(10, true, 0.015)];
   const step = (hours) => Array.from({ length: hours }, (_, i) => pwin(i, 100 * Math.pow(1.015, Math.floor(i / 6)), stepRows));
   const vStep = verdict({ windows: step(130) });
-  t('a week of stepping prices: the re-set uses the wait that netted the most (0 h)', vStep.delay_test.in_use_hours === 0 && vStep.delay_test.wait_basis === 'measured');
-  t('… the 0 h row is the one marked in use', vStep.delay_test.delays.filter((d) => d.in_use).map((d) => d.hours).join() === '0');
-  t('… by more than the bar over the set wait', (() => { const d0 = vStep.delay_test.delays.find((d) => d.hours === 0), d2 = vStep.delay_test.delays.find((d) => d.hours === 2); return d0.net_usd_per_day >= d2.net_usd_per_day * (1 + WAIT_PICK_MARGIN); })());
-  t('… and the earnings pick is replayed with that wait', vStep.earnings_pick && vStep.earnings_pick.earnings.resets === vStep.delay_test.delays.find((d) => d.hours === 0).resets && /0 h/.test(vStep.earnings_rule) && /measured/.test(vStep.earnings_rule));
+  // Since 2026-09-16 the replay is one-sided: on a price that only steps up
+  // no range is re-entered, so the waits differ only by the gas of their
+  // re-sets, and which one nets the most is the fixture's business — the
+  // rule is what is pinned: the wait with the most net is in use when it
+  // beats the set wait by the bar, else the set wait; the row is marked;
+  // the earnings rule names the wait in use.
+  const stepD = vStep.delay_test.delays.filter((d) => d.net_usd_per_day != null);
+  const stepBest = stepD.slice().sort((a, b) => b.net_usd_per_day - a.net_usd_per_day)[0], stepSet = stepD.find((d) => d.hours === RESET_AFTER_HOURS);
+  const stepExpect = !stepBest ? RESET_AFTER_HOURS : stepBest.hours === RESET_AFTER_HOURS ? RESET_AFTER_HOURS : !stepSet ? (stepBest.net_usd_per_day > 0 ? stepBest.hours : RESET_AFTER_HOURS) : (stepBest.net_usd_per_day >= Math.round(stepSet.net_usd_per_day * (1 + WAIT_PICK_MARGIN) * 1e4) / 1e4 ? stepBest.hours : RESET_AFTER_HOURS);
+  t('a week of stepping prices: the wait in use follows the rule (most net over the bar, else the set wait)', vStep.delay_test.in_use_hours === stepExpect);
+  t('… that row is the one marked in use', vStep.delay_test.delays.filter((d) => d.in_use).map((d) => d.hours).join() === String(stepExpect));
+  t('… every wait is reported, whether or not a width nets at it', vStep.delay_test.delays.length === 10 && stepD.every((d) => d.width != null));
+  t('… and the earnings rule names the wait in use', new RegExp(`${stepExpect} h`).test(vStep.earnings_rule));
   const vShort = verdict({ windows: step(60) });
   t(`the same prices over 60 h keep the set wait (${WAIT_PICK_MIN_HOURS} h needed)`, vShort.delay_test.in_use_hours === RESET_AFTER_HOURS && vShort.delay_test.wait_basis === 'set' && vShort.delay_test.why.includes(String(WAIT_PICK_MIN_HOURS)));
   const vFlatWeek = verdict({ windows: Array.from({ length: 130 }, (_, i) => pwin(i, 100)) });
@@ -333,12 +363,15 @@ if (SELF_TEST) {
   // the hourly series never sees it; the tape does, and with no wait it is a re-set.
   const blipTape = [tapeAt(5, 20, 103), tapeAt(5, 40, 103)];
   t('the hourly series misses an excursion inside the hour', earningsTest(flat, 1, { resetAfterHours: 0 }).resets === 0);
-  t('… the tape sees it, and with no wait it is a re-set charged its loss', (() => { const e = earningsTest(flat, 1, { resetAfterHours: 0, tape: blipTape }); return e.resets >= 1 && e.lost_to_price_usd > 0; })());
+  t('… the tape sees it, and with no wait it is a re-set charged its loss (centred replay)', (() => { const e = earningsTest(flat, 1, { ...C, resetAfterHours: 0, tape: blipTape }); return e.resets >= 1 && e.lost_to_price_usd > 0; })());
   t('… and with a two-hour wait a twenty-minute excursion is not', earningsTest(flat, 1, { resetAfterHours: 2, tape: blipTape }).resets === 0);
   t('a sample earns at the rate of the window whose hour it falls in', (() => { const ps = priceSeries(flat.slice(0, 3), [tapeAt(1, 30, 100)]); const smp = ps.find((p) => p.at === tapeAt(1, 30, 100).at); return smp && smp.window === flat[2]; })());
   t('a sample within a minute of a window head is counted once', priceSeries(flat.slice(0, 3), [{ ...tapeAt(1, 0, 100), at: new Date(Date.parse(flat[1].at) + 20e3).toISOString() }]).length === 3);
   t('the verdict walks the tape of its own pool only and says how many samples', (() => { const v = verdict({ pool: '0xpool', windows: flat }, { tape: flatTape.concat([{ ...tapeAt(3, 15, 200), pool: '0xother' }]) }); return v.price_samples === flatTape.length && v.rows[0].earnings.resets === 0 && v.price_samples_since === flatTape[0].at; })());
-  t('no tape: no samples, the same verdict as before', verdict(dayFlat).price_samples === 0 && verdict(dayFlat).earnings_pick?.width === 1);
+  t('no tape: no samples, the same verdict as before', verdict(dayFlat).price_samples === 0 && verdict(dayFlat).earnings_pick?.width === 1 /* flat: every width is in range all week; the narrowest wins */);
+  t('every width is also replayed over the last week alone, and the pick comes from it (2026-09-16)', (() => { const v = verdict(dayFlat); const r = v.rows.find((x) => x.width === 1); return r.earnings_7d && r.earnings_7d.hours > 0 && v.earnings_pick && v.earnings_pick.earnings_7d && v.earnings_pick.basis && v.width_window_hours === 168; })());
+  t('the most-net width is still named beside the pick', (() => { const v = verdict(dayFlat); return v.net_pick && v.net_pick.width != null && v.net_pick.earnings; })());
+  t('the rule says one-sided, gas alone, 95% of the last week', /one-sided/.test(verdict(dayFlat).earnings_rule) && /95%/.test(verdict(dayFlat).earnings_rule));
   t('every width is also replayed over the last day alone', (() => { const v = verdict(dayFlat); const r = v.rows.find((x) => x.width === 1); return r.earnings_24h && r.earnings_24h.hours <= 24.01 && r.earnings_24h.hours >= 20 && v.rows.every((x) => x.width !== 'full' || x.earnings_24h === null); })());
   t('the last-day replay walks only the last day of the tape', (() => { const v = verdict({ pool: '0xpool', windows: flat }, { tape: flatTape }); const r = v.rows.find((x) => x.width === 1); return r.earnings_24h.tape_samples < r.earnings.tape_samples && r.earnings_24h.tape_samples > 0; })());
   t('the width class snaps to the finer grid (a ±3.1% range is the 3 class, not 2 or 5)', widthClassOf([-Math.round(Math.log(1.031) / Math.log(1.0001)), Math.round(Math.log(1.031) / Math.log(1.0001))]) === 3 && RECORD_WIDTHS.includes(1.5) && RECORD_WIDTHS.includes(7));

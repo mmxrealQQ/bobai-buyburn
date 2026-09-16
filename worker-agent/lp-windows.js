@@ -23,7 +23,8 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, IN_RANGE_TARGET, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
+const IN_RANGE_TARGET_PCT = IN_RANGE_TARGET * 100;
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -278,8 +279,16 @@ export function verdict(log, opts = {}) {
   const lastDayWins = used.filter((w) => Date.parse(w.at) >= dayAgo);
   const dayTape = tape.filter((x) => Date.parse(x.at) >= dayAgo);
   for (const r of rows) r.earnings_24h = r.width === 'full' ? null : earningsTest(lastDayWins, r.width, { ...opts, tape: dayTape, resetAfterHours: wait.hours });
+  // THE LAST WEEK (2026-09-16): the window the width is picked on —
+  // WIDTH_WINDOW_HOURS of windows and tape, the wait in use, one-sided
+  // re-sets. A fortnight ago is not this week's volatility; a day is a mood.
+  const weekAgo = used.length ? Date.parse(used[used.length - 1].at) - WIDTH_WINDOW_HOURS * 36e5 : 0;
+  const weekWins = used.filter((w) => Date.parse(w.at) >= weekAgo);
+  const weekTape = tape.filter((x) => Date.parse(x.at) >= weekAgo);
+  for (const r of rows) r.earnings_7d = r.width === 'full' ? null : earningsTest(weekWins, r.width, { ...opts, tape: weekTape, resetAfterHours: wait.hours });
   const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
     .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
+  const widthPick = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : pickWidth(rows);
   const first = used[0], last = used[used.length - 1];
   return {
     windows: used.length,
@@ -300,8 +309,12 @@ export function verdict(log, opts = {}) {
     // Best net among the widths that held every tested day — reported, no
     // longer the width a re-set uses (it was, until 2026-09-04).
     day_pick: thin ? null : (dayHolders[0] || null),
-    // The width a re-set uses: the most net per day over the recorded prices.
-    earnings_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] || null),
+    // The width a re-set uses (2026-09-16): the narrowest width in range for
+    // IN_RANGE_TARGET of the last week's hours, replayed with one-sided
+    // re-sets (pickWidth); the most-net width is still named beside it.
+    earnings_pick: widthPick,
+    net_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] ? { width: earners[0].width, earnings: earners[0].earnings } : null),
+    width_window_hours: WIDTH_WINDOW_HOURS,
     delay_test: {
       in_use_hours: wait.hours,
       wait_basis: wait.basis,
@@ -311,9 +324,9 @@ export function verdict(log, opts = {}) {
       note: 'Every width replayed with each wait before a re-set; the best width per wait is named. The re-set uses the wait that netted the most once the record holds a week of prices and it beats the set wait by a tenth; under either bar the set wait stands.',
     },
     reset_cost: opts.resetCostUsd != null
-      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at; on top of it each re-set is charged what its range lost against holding` }
-      : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet; on top of it each re-set is charged what its range lost against holding' },
-    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred) once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). A re-set is charged its gas and swap fee and what the range it leaves had lost against holding its minted amounts (it sold the side that rose and held the side that fell); the range still open is marked the same way at the last price. Net per day is what is left; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. If no width nets anything there is no pick, and the agent holds instead of re-setting.`,
+      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it` }
+      : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it' },
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Since 2026-09-16 the re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone. Net per day is fees less re-sets. The width a re-set uses is the narrowest that was in range ${Math.round(IN_RANGE_TARGET_PCT)}% of the last ${WIDTH_WINDOW_HOURS} h in that replay (the most time earning at the thinnest spread), or, when no width reaches that, the one in range the most; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. Every row also says where the liquidity ended against holding its minted amounts (vs_holding_usd) — reported, not charged.`,
   };
 }
 
@@ -384,7 +397,9 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
     if (width == null) continue;
     const centre = (rb.ticks[0] + rb.ticks[1]) / 2;
     const pMint = Math.pow(1.0001, centre), pNow = Math.pow(1.0001, Number(rb.tick));
-    const { loss } = rangeValue(pMint, width, pNow);
+    // A one-sided re-set (2026-09-16) trades nothing: the token the old range
+    // ended in goes into the new range as it is, and nothing is realised.
+    const loss = rb.one_sided ? 0 : rangeValue(pMint, width, pNow).loss;
     const base = Number(rb.value_bnb || 0) + Number(rb.fees_folded_bnb || 0);
     const fee = resetSwapFee(rb);
     const impact = rb.swap && Number(rb.swap.impact_bnb) >= 0 ? Number(rb.swap.impact_bnb) : null;
@@ -395,7 +410,7 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
       position_bnb: Number(base.toFixed(6)),
       lost_to_price_bnb: Number((loss * base).toFixed(6)), lost_to_price_pct: Number((loss * 100).toFixed(3)),
       execution_bnb: Number(execution.toFixed(6)), gas_bnb: Number(rb.gas_bnb || 0), swap_fee_bnb: fee.bnb, impact_bnb: impact,
-      forced_by_deposit: !!rb.forced_by_deposit,
+      forced_by_deposit: !!rb.forced_by_deposit, one_sided: rb.one_sided || null,
       ...(bnbUsd > 0 ? { lost_to_price_usd: Math.round(loss * base * bnbUsd * 100) / 100, execution_usd: Math.round(execution * bnbUsd * 100) / 100 } : {}),
     });
   }
@@ -405,7 +420,7 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
     lost_to_price_bnb: sum('lost_to_price_bnb'), execution_bnb: sum('execution_bnb'),
     impact_measured: out.filter((r) => r.impact_bnb != null).length,
     rows: out,
-    basis: 'each re-set: the range it left, minted at the middle of its ticks, valued at the tick the re-set saw against the amounts it was minted with (rangeValue) — the loss against holding, realised by the re-set; execution is gas, swap fee and the measured impact',
+    basis: 'each re-set: the range it left, minted at the middle of its ticks, valued at the tick the re-set saw against the amounts it was minted with (rangeValue) — the loss against holding, realised by the re-set\'s trade; a one-sided re-set (since 2026-09-16) trades nothing and realises nothing; execution is gas, swap fee and the measured impact',
   };
 }
 
@@ -435,39 +450,91 @@ export { rangeValue };
 // price. Net is what is left after the fees paid for all of it.
 const MAX_GAP_HOURS = 3;
 const r2 = (x) => Math.round(x * 100) / 100, r4 = (x) => Math.round(x * 10000) / 10000;
-export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD, tape = null } = {}) {
+// What one unit of liquidity holds of each side at price p in [lo, hi]:
+// token0 (the priced side) and token1 (the quote), the pool's own curve.
+const perL = (p, lo, hi) => ({
+  x: p >= hi ? 0 : 1 / Math.sqrt(Math.max(p, lo)) - 1 / Math.sqrt(hi),
+  y: p <= lo ? 0 : Math.sqrt(Math.min(p, hi)) - Math.sqrt(lo),
+});
+// THE ONE-SIDED REPLAY (2026-09-16). The agent re-sets one-sided: the new
+// range sits beside the price on the side the price came from, spans what
+// a centred ±width range spans, starts ONE_SIDED_GAP_TICKS beyond the
+// price, and takes the one token the old range ended in — nothing is
+// traded. So the replay does the same: a re-set costs its gas (the
+// measured cost, swap fee zero) and nothing is "lost to the price" at it,
+// because nothing is sold. What the position holds is followed exactly
+// (perL) from the centred mint through every re-set, and at the end it is
+// valued against holding the minted amounts: vs_holding_usd, the honest
+// line — an LP behind holding in a trend, ahead of it when the price comes
+// back through its ranges. It is reported, not charged: the width is
+// picked by how much of the time it earns (pickWidth), the wait by net.
+// oneSided false is the replay as it was until 2026-09-16 (centred re-sets
+// charged their realised loss), kept for the pins and the older records.
+export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD, tape = null, oneSided = true } = {}) {
   const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0 && (w.rows || []).some((r) => r.width === widthPct));
   if (priced.length < 2) return null;
   const costs = priced.map((w) => w.rebalance_cost_usd).filter((c) => typeof c === 'number' && c > 0).sort((a, b) => a - b);
   const cost = resetCostUsd ?? (costs.length ? costs[Math.floor(costs.length / 2)] : 0.5);
-  const up = 1 + widthPct / 100, down = 1 / up;
+  const up = 1 + widthPct / 100, down = 1 / up, gap = Math.pow(1.0001, ONE_SIDED_GAP_TICKS);
+  // The agent's own notion of "left" (rangeLeft): a price within the slack
+  // of an edge has not left, and the wait does not run there. A one-sided
+  // range sits the gap beyond the price by construction; without the slack
+  // the replay would re-set it every hour for gas, which the agent does not.
+  const slack = oneSided ? Math.pow(1.0001, RANGE_LEFT_TICKS) : 1;
   const series = priceSeries(priced, tape);
-  let centre = series[0].price, outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0, lost = 0, samples = 0;
+  const p0 = series[0].price;
+  let centre = p0, lo = p0 * down, hi = p0 * up;
+  // The position followed exactly: L units of liquidity in [lo, hi], and the
+  // amounts it was minted with, for the holding line.
+  const m0 = perL(p0, lo, hi);
+  let L = usd / (m0.x * p0 + m0.y);
+  const x0 = L * m0.x, y0 = L * m0.y;
+  let outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0, lost = 0, samples = 0;
   for (let i = 1; i < series.length; i++) {
     const pt = series[i], prev = series[i - 1];
     const dtH = Math.min(MAX_GAP_HOURS, (pt.t - prev.t) / 36e5);
     if (!(dtH > 0)) continue;
     if (pt.window.at !== pt.at) samples += 1;
-    const ratio = pt.price / centre;
-    if (ratio <= up && ratio >= down) {
+    const p = pt.price;
+    if (p <= hi && p >= lo) {
       const w = pt.window, row = w.rows.find((r) => r.width === widthPct);
       fees += (row.fees / ((w.minutes || 37.5) / 60)) * dtH;
       hoursIn += dtH; outRun = 0;
     } else {
-      hoursOut += dtH; outRun += dtH;
-      if (outRun >= resetAfterHours) {
+      hoursOut += dtH;
+      if (p < lo / slack || p > hi * slack) outRun += dtH; else outRun = 0;
+      if (outRun >= resetAfterHours && (p < lo / slack || p > hi * slack)) {
         resets += 1;
-        lost += rangeValue(centre, widthPct, pt.price).loss * usd;
-        centre = pt.price; outRun = 0;
+        const held = perL(p, lo, hi);
+        const x = L * held.x, y = L * held.y;
+        if (oneSided) {
+          // Below the range all token0: a range above the price, all token0.
+          // Above it all token1: a range below the price, all token1.
+          if (p < lo) { lo = p * gap; hi = lo * up * up; } else { hi = p / gap; lo = hi * down * down; }
+          const n = perL(p, lo, hi);
+          L = p < lo ? x / n.x : y / n.y;
+        } else {
+          lost += rangeValue(centre, widthPct, p).loss * usd;
+          centre = p; lo = p * down; hi = p * up;
+          const n = perL(p, lo, hi);
+          L = (x * p + y) / (n.x * p + n.y);
+        }
+        outRun = 0;
       }
     }
   }
-  const open = rangeValue(centre, widthPct, series[series.length - 1].price).loss * usd;
+  const pEnd = series[series.length - 1].price;
+  const open = oneSided ? 0 : rangeValue(centre, widthPct, pEnd).loss * usd;
+  const end = perL(pEnd, lo, hi);
+  const valueEnd = L * (end.x * pEnd + end.y), holdEnd = x0 * pEnd + y0;
   const hours = hoursIn + hoursOut, net = fees - resets * cost - lost - open;
   return {
-    hours: r2(hours), hours_in_range: r2(hoursIn), fees_usd: r4(fees),
-    resets, reset_cost_usd: r2(cost),
+    hours: r2(hours), hours_in_range: r2(hoursIn), in_range_share: hours > 0 ? Math.round((hoursIn / hours) * 1000) / 1000 : null, fees_usd: r4(fees),
+    resets, reset_cost_usd: r2(cost), one_sided: !!oneSided,
     lost_to_price_usd: r4(lost), open_loss_usd: r4(open),
+    // The position at the end against holding what it was minted with, fees
+    // beside it: what the liquidity itself did to the money.
+    vs_holding_usd: r4(valueEnd - holdEnd),
     net_usd: r4(net),
     net_usd_per_day: hours > 0 ? r4(net / (hours / 24)) : null,
     price_points: series.length, tape_samples: samples,

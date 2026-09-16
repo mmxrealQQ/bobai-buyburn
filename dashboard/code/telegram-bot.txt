@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4437 lines.
+# one fetch. 12 files, 4438 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2734,6 +2734,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
       `📈 Price: ${signed(p.from_price_bnb)}`,
       `🧾 Fees: ${signed(p.from_fees_bnb)}`,
       `⛽ Gas: ${n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB'}`,
+      ...(p.vs_holding && p.vs_holding.vs_holding_bnb != null ? [`⚖️ Vs. holding 50/50: ${signed(p.vs_holding.vs_holding_bnb)}`] : []),
     ],
     [
       `🥞 ${pool}`,

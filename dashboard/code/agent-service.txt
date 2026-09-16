@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 13130 lines.
+# one fetch. 41 files, 13401 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -188,13 +188,13 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, IN_RANGE_TARGET, WIDTH_UPGRADE_ENABLED,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -424,6 +424,8 @@ if (SELF) {
     [{ ...healthyRebalance, valueBnb: 0.005 }, 'position too small to pay for a re-set'],
   ]) check(why, refuseRebalance(state), true);
   check('out of range, a day-tested width, enough capital', refuseRebalance(healthyRebalance), false);
+  check('at the edge (outside, within the slack): not left, refuses', refuseRebalance({ ...healthyRebalance, atEdge: true, side: 'below', ticksAway: 30 }), true);
+  check('… and names the slack', /at the edge/.test(refuseRebalance({ ...healthyRebalance, atEdge: true, side: 'below', ticksAway: 30 })) && new RegExp(String(RANGE_LEFT_TICKS)).test(refuseRebalance({ ...healthyRebalance, atEdge: true, side: 'below', ticksAway: 30 })) ? null : 'no slack named', false);
   check(`exactly the floor (${MIN_REBALANCE_BNB})`, refuseRebalance({ ...healthyRebalance, valueBnb: MIN_REBALANCE_BNB }), false);
   console.log('rebalance resumed from the wallet (the 2026-09-05 12:50 stop before the mint)');
   const resume = { positions: 0, resume: true, inRange: false, width: 1, hoursOfPrices: 30, valueBnb: 0.08 };
@@ -444,32 +446,59 @@ if (SELF) {
     { width: 2, earnings: { net_usd_per_day: 0.6111 }, earnings_24h: { net_usd_per_day: 0.60 } },
     { width: 'full', earnings: null, earnings_24h: null },
   ];
-  // The live case of 2026-09-10: $154 at 2%, the record picks 1%: +$0.27 a day against a $0.10 re-set,
-  // the range at its own middle (tick −57800), so nothing to realise; pays back in under a day.
+  // RETIRED 2026-09-16: a position in range is never touched; the width
+  // changes at the next one-sided re-set. The live case of 2026-09-10 ($154
+  // at 2%, the record picking 1%) that used to go through is now refused,
+  // and so is everything else — the function says why, in one sentence.
   const up = { daily: true, inRange: true, ticks: [-57990, -57610], tick: -57800, pick: rows[0], rows, hoursOfPrices: 182, valueBnb: 0.2127, bnbUsd: 723.6, resetCostUsd: 0.1 };
   const u = widthUpgrade(up);
-  check('the daily run upgrades 2% → 1% when the gain pays the switch back within three days', u.upgrade ? null : u.why, false);
-  check('the upgrade names from, to, the gain, the cost and the payback', u.from === 2 && u.to === 1 && u.gain_usd_per_day > 0.2 && u.gain_usd_per_day < 0.3 && u.realised_usd === 0 && u.cost_usd === 0.1 && u.payback_days < 1 ? null : JSON.stringify(u), false);
-  // At the edge of its range the switch realises the range's loss against holding: ±2% at its lower
-  // edge (tick −57990) has lost about 0.45% of $154 = $0.70; with $0.20 to execute and a $0.27 gain that is 3.3 days: no.
-  const edge = widthUpgrade({ ...up, tick: -57990, resetCostUsd: 0.2 });
-  check('at the edge of the range the realised loss counts and the payback stretches past three days', !edge.upgrade && /realise/.test(edge.why) && /3\.\d+ days/.test(edge.why) ? null : JSON.stringify(edge), false);
-  const halfway = widthUpgrade({ ...up, tick: -57900 });
-  check('halfway to the edge the realised loss is small and the switch goes', halfway.upgrade && halfway.realised_usd > 0 && halfway.realised_usd < 0.3 && halfway.payback_days < 3 ? null : JSON.stringify(halfway), false);
+  check('the upgrade is retired: even the case that used to pay back in a day is refused', u.upgrade ? 'upgraded' : null, false);
+  check('… and says the width changes at the next re-set', /next re-set/.test(u.why) ? null : u.why, false);
+  check('the flag says so too', WIDTH_UPGRADE_ENABLED === false ? null : 'enabled', false);
   for (const [state, why] of [
     [{ ...up, daily: false }, 'the hourly check never upgrades'],
     [{ ...up, inRange: false }, 'outside the range it is a re-set, not an upgrade'],
-    [{ ...up, ticks: null }, 'no ticks, no class'],
     [{ ...up, pick: null }, 'no pick, nothing to upgrade to'],
-    [{ ...up, hoursOfPrices: 12 }, 'under a day of prices'],
-    [{ ...up, ticks: [-57800, -57610] }, 'already at the picked width'],
-    [{ ...up, rows: [rows[0]] }, 'the record has no earnings for the current width'],
-    [{ ...up, valueBnb: 0 }, 'no dollar value'],
-    [{ ...up, rows: [{ ...rows[0], earnings_24h: { net_usd_per_day: 0.55 } }, rows[1]] }, 'a lead over the record but not over the last day is not standing'],
-    [{ ...up, rows: [{ ...rows[0], earnings_24h: null }, rows[1]] }, 'no last-day replay yet: no switch'],
-    [{ ...up, resetCostUsd: 0.9 }, 'a switch that takes more than three days to pay back waits'],
-    [{ ...up, rows: [rows[0], { ...rows[1], earnings: { net_usd_per_day: 0.7 } }] }, 'a pick that nets no more than the current width'],
   ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
+
+  console.log('the one-sided range (2026-09-16)');
+  // Below its range the position is all token0 (CAKE here); the new range
+  // sits above the price, starts the gap beyond it on the pool's grid and
+  // spans what a centred ±width range spans. Above: the mirror image.
+  const tickNow = -57807, sp = 10;
+  const aboveP = ticksAdjacent(tickNow, 7, sp, 'below');
+  const centred7 = ticksAround(tickNow, 7, sp);
+  is('price below the old range: the new range is above the price', aboveP.side === 'above_price' && aboveP.tickLower > tickNow);
+  is(`… starting at least ${ONE_SIDED_GAP_TICKS} ticks beyond it, on the grid`, aboveP.tickLower - tickNow >= ONE_SIDED_GAP_TICKS && aboveP.tickLower - tickNow < ONE_SIDED_GAP_TICKS + sp && aboveP.tickLower % sp === 0 && aboveP.tickUpper % sp === 0);
+  is('… spanning what the centred range of that width spans (within a grid step)', Math.abs((aboveP.tickUpper - aboveP.tickLower) - (centred7.tickUpper - centred7.tickLower)) <= sp);
+  const belowP = ticksAdjacent(tickNow, 3, sp, 'above');
+  is('price above the old range: the new range is below the price, the gap away', belowP.side === 'below_price' && belowP.tickUpper < tickNow && tickNow - belowP.tickUpper >= ONE_SIDED_GAP_TICKS && belowP.tickUpper % sp === 0);
+  // A one-sided range needs only the token the old range ended in: the
+  // ratio trade has nothing to do.
+  const sqA = Math.pow(1.0001, tickNow / 2), spA = splitForRange(sqA, aboveP.tickLower, aboveP.tickUpper);
+  is('a range above the price takes only token0 — all CAKE, no WBNB', spA.perL0 > 0 && spA.perL1 === 0);
+  is('… so a wallet holding only CAKE trades nothing for it', tradeToRatio({ wbnb: 0n, other: 10n ** 20n, perLWbnb: spA.perL1, perLOther: spA.perL0, otherPerWbnb: 1 / (sqA ** 2), wbnbPerOther: sqA ** 2 }).side === null);
+  is('… and a deposit of WBNB beside it is all spent on CAKE (the fallen side, bought low)', (() => { const t = tradeToRatio({ wbnb: 10n ** 17n, other: 10n ** 20n, perLWbnb: spA.perL1, perLOther: spA.perL0, otherPerWbnb: 1 / (sqA ** 2), wbnbPerOther: sqA ** 2 }); return t.side === 'buy' && t.amount === 10n ** 17n; })());
+  // rangeLeft: inside, at an edge, gone — both ways.
+  const lo7 = -57530, hi7 = -56940;
+  is('inside the range: not outside, not left', (() => { const r = rangeLeft(-57200, lo7, hi7); return !r.outside && !r.left && r.side === null; })());
+  is(`${RANGE_LEFT_TICKS} ticks below the lower edge: outside, at the edge, not left`, (() => { const r = rangeLeft(lo7 - RANGE_LEFT_TICKS, lo7, hi7); return r.outside && r.side === 'below' && !r.left && r.ticks_away === RANGE_LEFT_TICKS; })());
+  is('one tick further: left', rangeLeft(lo7 - RANGE_LEFT_TICKS - 1, lo7, hi7).left === true);
+  is('the live tick of 2026-09-16 05:05 (277 ticks under): left, below', (() => { const r = rangeLeft(-57807, lo7, hi7); return r.left && r.side === 'below' && r.ticks_away === 277; })());
+  is('at the upper tick itself: outside (the pool counts the upper tick as out), at the edge', (() => { const r = rangeLeft(hi7, lo7, hi7); return r.outside && r.side === 'above' && !r.left; })());
+  is('far above: left, above', rangeLeft(hi7 + 200, lo7, hi7).left === true && rangeLeft(hi7 + 200, lo7, hi7).side === 'above');
+  is('no ticks: nothing', rangeLeft(-57807, null, null).outside === false);
+  // pickWidth: the narrowest width in range for the target share of the
+  // week; none reaching it, the one in range the most.
+  const wk = (w, share, hours = 168) => ({ width: w, earnings: { net_usd_per_day: 0.1 }, earnings_7d: { hours, hours_in_range: hours * share } });
+  const pk = pickWidth([wk(1, 0.6), wk(3, 0.9), wk(5, 0.951), wk(7, 0.98), wk(10, 1), { width: 'full', earnings_7d: null }]);
+  is(`the narrowest width at or over ${Math.round(IN_RANGE_TARGET * 100)}% of the week is the pick (5%, not 7%)`, pk && pk.width === 5 && pk.reached_target === true && pk.in_range_share === 0.951);
+  is('… and the basis says so', /narrowest width in range 95%/.test(pk.basis));
+  const trend = pickWidth([wk(1, 0.3), wk(3, 0.5), wk(5, 0.6), wk(10, 0.7)]);
+  is('a week no width reaches the target: the one in range the most', trend && trend.width === 10 && trend.reached_target === false && /trending/.test(trend.basis));
+  is('a tie goes to the wider width', pickWidth([wk(3, 0.7), wk(5, 0.7)]).width === 5);
+  is('full range and rows without a week are never picked', pickWidth([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168 } }, { width: 2, earnings_7d: null }]) === null);
+  is('a row that reaches the target on a single hour does not count', pickWidth([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0 } }]) === null);
   console.log('relocate');
   const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, toPool: HOME_POOL.pool, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
   check('a move to any pool but home: refuses by the operator\'s decision', /stays in CAKE\/BNB 0\.05%/.test(refuseRelocate({ ...relOk, toPool: '0x172fcd41e0913e95784454622d1c3724f546f849' }) || ''), true);
@@ -1135,8 +1164,10 @@ export function summarize(service, result) {
 //             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
 //             the rest goes to the buyback wallet — only the fees, never the
 //             capital
-//   rebalance a range the price has left is re-set around the price; the
-//             fees the old range owed are split the same way on the way
+//   rebalance a range the price has left is re-set beside the price, on
+//             the side the price came from, with the one token the old
+//             range ended in and no trade (one-sided, since 2026-09-16);
+//             the fees the old range owed are split the same way on the way
 //             (since 2026-09-08): the kept share is minted into the new
 //             capital, the rest goes to the buyback wallet before the mint
 //   increase  BNB above the reserve is put into the same position — the
@@ -1148,7 +1179,7 @@ export function summarize(service, result) {
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
@@ -1617,6 +1648,35 @@ export function ticksAround(tick, widthPct, spacing) {
   return { tickLower, tickUpper };
 }
 
+// THE ONE-SIDED RANGE (2026-09-16). A position the price has left holds one
+// token: all of token0 below its range, all of token1 above it. Until now a
+// re-set sold half of it to re-centre — at the low when the price had
+// fallen, at the high when it had risen — and twelve such trades cost 3.4%
+// of the capital in a fortnight, twice the fees. The new range is placed
+// beside the price instead, on the side the price came from, and needs
+// exactly the token the old range ended in: below its range the position
+// is all token0, and a range above the price is all token0 too; above, all
+// token1, and a range below the price is all token1. Nothing is traded;
+// the re-set costs its gas. The range spans what a centred ±width range
+// spans (the same liquidity for the same money, so the width record's fee
+// rows apply to it) and starts ONE_SIDED_GAP_TICKS beyond the price, so a
+// few ticks of drift before the block cannot put the price inside it. If
+// the price comes back it earns from the first tick and turns the fallen
+// side into the other one on the way up, with fees; if it goes on, the
+// position holds what it held — no worse than the hold the old rule
+// resorted to, and one re-set's gas away from earning again.
+// `side` is where the price is relative to the old range (rangeLeft): a
+// price below it gets a range above the price, and the other way round.
+export function ticksAdjacent(tick, widthPct, spacing, side, gapTicks = ONE_SIDED_GAP_TICKS) {
+  const span = Math.round(2 * Math.log(1 + widthPct / 100) / Math.log(1.0001) / spacing) * spacing;
+  if (side === 'below') {
+    const tickLower = Math.ceil((tick + gapTicks) / spacing) * spacing;
+    return { tickLower, tickUpper: tickLower + span, side: 'above_price' };
+  }
+  const tickUpper = Math.floor((tick - gapTicks) / spacing) * spacing;
+  return { tickLower: tickUpper - span, tickUpper, side: 'below_price' };
+}
+
 // `record` is the verdict of the window record (agent.brainonbnb.com/lp/windows
 // or the same function over KV); its earnings_pick names the width — the one
 // that netted the most per day when every width was replayed over the recorded
@@ -1631,11 +1691,11 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   let resume = false;
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
-  let owedWei = 0n, share = null;
+  let owedWei = 0n, share = null, left = null, oneSided = null;
   const pick = record?.earnings_pick || null;
   const width = widthOverride ?? pick?.width ?? null;
   const widthBasis = widthOverride != null ? 'named by hand'
-    : (pick ? `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings.net_usd_per_day} a day on $50 after ${pick.earnings.resets} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${pick.earnings.reset_cost_usd} each${pick.earnings.lost_to_price_usd != null ? ` and $${pick.earnings.lost_to_price_usd} lost to the price against holding` : ''}` : null);
+    : (pick ? (pick.basis || `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings?.net_usd_per_day} a day on $50 after ${pick.earnings?.resets} re-set${pick.earnings?.resets === 1 ? '' : 's'} at $${pick.earnings?.reset_cost_usd} each`) : null);
   if (p.positions === 1 || resume) {
     poolInfo = await readPool(pub, p.pos);
     spacing = Number(await read(pub, poolInfo.pool, ABI.POOL, 'tickSpacing')) || 1;
@@ -1661,8 +1721,14 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       owedWei = owedWbnb + BigInt(Math.floor(Number(owedOther) * otherInWbnb));
       share = resetForward(owedWei, keptPct);
     }
+    // Where the price stands to the old range: inside, at an edge, or gone.
+    if (!resume) left = rangeLeft(poolInfo.tick, Number(p.pos[5]), Number(p.pos[6]));
     if (width != null) {
-      ticks = ticksAround(poolInfo.tick, width, spacing);
+      // A range the price has left is re-set one-sided, beside the price
+      // (ticksAdjacent); a mint from the wallet (resume) or a range by hand
+      // with the price inside is centred as before.
+      oneSided = left && left.left ? left.side : null;
+      ticks = oneSided ? ticksAdjacent(poolInfo.tick, width, spacing, oneSided) : ticksAround(poolInfo.tick, width, spacing);
       if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
       const n = splitForRange(poolInfo.sqrtP, ticks.tickLower, ticks.tickUpper);
       const perLOther = wbnbIs0 ? n.perL1 : n.perL0, perLWbnb = wbnbIs0 ? n.perL0 : n.perL1;
@@ -1679,15 +1745,17 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   }
   // A wallet without a position is never "in range"; resume says the plan is
   // a mint from what the wallet holds, and the guard sizes it like a re-set.
-  const state = { positions: p.positions, resume, inRange: poolInfo && !resume ? poolInfo.inRange : false, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
+  const state = { positions: p.positions, resume, inRange: poolInfo && !resume ? poolInfo.inRange : false, atEdge: !!(left && left.outside && !left.left), side: left ? left.side : null, ticksAway: left ? left.ticks_away : null, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
   return {
-    step: 'rebalance', state, no: refuseRebalance(state), resume,
+    step: 'rebalance', state, no: refuseRebalance(state), resume, oneSided,
     tokenId: p.tokenId, pos: p.pos, poolInfo, spacing, other, wbnbIs0, width, ticks, target, trade,
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
       ...(resume ? { resumed_from_wallet: true, held: have ? { other: (have.other / 1e18).toFixed(6), wbnb: (have.wbnb / 1e18).toFixed(6) } : null } : {}),
       ticks: p.tokenId != null ? [Number(p.pos[5]), Number(p.pos[6])] : null,
-      tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange,
+      tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange, ...(state.atEdge ? { at_edge: true } : {}),
+      ...(left && left.outside ? { price_side: left.side, ticks_beyond_edge: left.ticks_away } : {}),
+      ...(oneSided ? { one_sided: ticks.side, one_sided_why: `the price is ${oneSided} the old range, which ended all in one token; the new range sits ${ticks.side === 'above_price' ? 'above' : 'below'} the price and takes that token as it is — no trade` } : {}),
       pool: poolInfo ? String(poolInfo.pool).toLowerCase() : null, wbnb_is0: wbnbIs0,
       value_bnb: Number(valueBnb.toFixed(6)),
       width_pct: width, width_basis: widthBasis,
@@ -1914,6 +1982,12 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
     await send('withdraw, collect and burn the old range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
   }
+  // A deposit waiting as BNB joins a centred mint wrapped, and a one-sided
+  // mint below the price (all WBNB) the same way; a one-sided mint above the
+  // price is all of the other side, and the trade below buys it with the
+  // WBNB the wallet then holds — the deposit buys the fallen side at its
+  // low instead of idling, which is what a deposit beside a left range is
+  // for. Either way the BNB is wrapped first.
   const wrapped = wrapFirst ? await wrapWaiting(pub, send, account.address) : 0n;
 
   // Sized from what the wallet really holds now, not from the plan's
@@ -1946,7 +2020,17 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const amount1Desired = plan.wbnbIs0 ? mintOther : mintWbnb;
   // The minimums come from what the new range takes at the price now, not
   // from the balances (see amountsForRange).
-  const mintMins = minsForRange((await readPool(pub, plan.pos)).sqrtP, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
+  // A one-sided range is entirely on one side of the price: the manager takes
+  // all of the held token and none of the other, and the minimum is 97% of
+  // the held token as it is. The drift tolerance of a centred mint would
+  // shift the price INTO the range on one side and read the minimum as
+  // zero there; a mint the price has entered would then take almost
+  // nothing without reverting. Here it reverts instead, and the hour after
+  // finishes the re-set from the wallet (resume).
+  const sqrtNow = (await readPool(pub, plan.pos)).sqrtP;
+  const mintMins = plan.oneSided
+    ? (() => { const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired); return { amount0Min: (a.amount0 * MIN_SHARE) / 100n, amount1Min: (a.amount1 * MIN_SHARE) / 100n }; })()
+    : minsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
   await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
     args: [{
       token0: plan.pos[2], token1: plan.pos[3], fee: Number(plan.pos[4]),
@@ -1962,7 +2046,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
   // it that went to the buyback wallet; the difference was minted into the
   // new capital. Records before 2026-09-08 carry only the first.
-  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(plan.oneSided ? { one_sided: plan.ticks.side } : {}), ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
       bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share ? share.pct : null,
@@ -2621,9 +2705,69 @@ export function refuseSweep(state) {
   return null;
 }
 
-// state: { positions, inRange, width, hoursOfPrices, valueBnb }
-// width is what the earnings test in the window record picked, or what a
-// person named by hand; null means the record cannot yet say which width earns.
+// WHEN A RANGE COUNTS AS LEFT (2026-09-16). A one-sided range is minted
+// right beside the price (ticksAdjacent, ONE_SIDED_GAP_TICKS away), so the
+// pool's own "in range" is false the moment it exists; taken literally, the
+// next hourly check would call that "left" and re-set it to the same place,
+// every hour, for gas. A price within RANGE_LEFT_TICKS of an edge sits at
+// the edge and has not left — that is half a percent, the drift of a quiet
+// hour on CAKE/BNB. The same slack applies to a centred range: a price half
+// a percent past the edge is a price that is often back within the hour.
+// Pure; pinned by scripts/lp-agent.mjs --self-test.
+export const RANGE_LEFT_TICKS = 50;
+export function rangeLeft(tick, tickLower, tickUpper, slack = RANGE_LEFT_TICKS) {
+  const t = Number(tick), lo = Number(tickLower), hi = Number(tickUpper);
+  if (![t, lo, hi].every(Number.isFinite) || !(hi > lo)) return { outside: false, side: null, ticks_away: 0, left: false };
+  if (t < lo) return { outside: true, side: 'below', ticks_away: lo - t, left: lo - t > slack };
+  if (t >= hi) return { outside: true, side: 'above', ticks_away: t - hi + 1, left: t - hi + 1 > slack };
+  return { outside: false, side: null, ticks_away: 0, left: false };
+}
+// A one-sided range starts this many ticks beyond the price (0.2%), so the
+// mint that follows the read is still entirely on its side of the price
+// when the block comes — a range the price has entered in between needs the
+// other token, which the wallet does not hold, and the mint would take
+// nothing. The same tolerance the minimums of a centred mint use.
+export const ONE_SIDED_GAP_TICKS = 20;
+
+// THE WIDTH (2026-09-16): the narrowest width that stayed in range for
+// IN_RANGE_TARGET of the hours of the last WIDTH_WINDOW_HOURS, replayed the
+// way the agent lives it (one-sided re-sets after the wait in use). Until
+// 2026-09-16 the pick was the width with the most net per day once every
+// re-set was charged what its range had lost against holding — on a
+// trending fortnight no width netted anything, and the rule's answer was
+// to hold 100% of the fallen side out of range, earning nothing, which is
+// not a liquidity position. With re-sets that trade nothing, a re-set costs
+// gas; what a width then decides is how much of the time the capital earns
+// at all, against how thin it is spread (fees per hour in range fall as
+// 1/width). Too narrow, and the range is crossed on every wiggle: it sells
+// the whole rising side within half a percent and holds the whole falling
+// one — the worst of both in a trend. The target holds that off; among the
+// widths that reach it the narrowest earns the most per hour. When none
+// reaches it the market is trending and the width that was in range the
+// most is the pick — the agent stays a liquidity position. Pure; pinned.
+export const IN_RANGE_TARGET = 0.95;
+export const WIDTH_WINDOW_HOURS = 168;
+export function pickWidth(rows, { target = IN_RANGE_TARGET, key = 'earnings_7d' } = {}) {
+  const cand = (rows || [])
+    .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0)
+    .map((r) => ({ row: r, width: Number(r.width), share: Number(r[key].hours_in_range) / Number(r[key].hours), hours: Number(r[key].hours) }));
+  if (!cand.length) return null;
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  const reach = cand.filter((c) => c.share >= target).sort((a, b) => a.width - b.width);
+  if (reach.length) {
+    const c = reach[0];
+    return { width: c.width, in_range_share: r3(c.share), hours: c.hours, reached_target: true, earnings: c.row.earnings || null, earnings_7d: c.row[key],
+      basis: `the narrowest width in range ${Math.round(c.share * 100)}% of the last ${Math.round(c.hours)} h (target ${Math.round(target * 100)}%), replayed with one-sided re-sets after the wait in use` };
+  }
+  const best = cand.slice().sort((a, b) => b.share - a.share || b.width - a.width)[0];
+  return { width: best.width, in_range_share: r3(best.share), hours: best.hours, reached_target: false, earnings: best.row.earnings || null, earnings_7d: best.row[key],
+    basis: `no width was in range ${Math.round(target * 100)}% of the last ${Math.round(best.hours)} h — a trending week; ±${best.width}% was in range the most (${Math.round(best.share * 100)}%)` };
+}
+
+// state: { positions, inRange, atEdge, side, ticksAway, width, hoursOfPrices, valueBnb }
+// width is what the width record picked (pickWidth), or what a person named
+// by hand; null means the record holds no day of prices yet. atEdge: the
+// price is outside but within RANGE_LEFT_TICKS of an edge (rangeLeft).
 // state.resume: no position, but the wallet holds the pool's two tokens — a
 // re-set that stopped between its unwind and its mint. Then the plan is the
 // mint alone, sized like a re-set (the same width, the same floor), and the
@@ -2633,8 +2777,9 @@ export function refuseRebalance(state) {
     ? 'this wallet holds no position to re-set'
     : `this wallet holds ${state.positions} positions — which one to re-set is a decision for a person`;
   if (state.inRange) return 'the price is inside the range — nothing to re-set';
+  if (state.atEdge) return `the price sits ${state.ticksAway ?? '?'} tick${state.ticksAway === 1 ? '' : 's'} ${state.side || 'beyond'} the range — at the edge, within the ${RANGE_LEFT_TICKS}-tick slack, not left`;
   if (state.width == null)
-    return `no width nets anything over the recorded prices (${state.hoursOfPrices || 0} h recorded, ${MIN_HOURS_FOR_EARNINGS} h needed) once each re-set is charged what its range lost against holding. A re-set into a width that only held 37 minutes is how a position pays for a re-set every day; a re-set that sells the low and buys the high pays twice. Holding.`;
+    return `no width is on record yet (${state.hoursOfPrices || 0} h of prices recorded, ${MIN_HOURS_FOR_EARNINGS} h needed before the record may name one). Holding.`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
     return `${state.resume ? "the wallet's two sides are" : 'the position is'} worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a ${state.resume ? 'mint' : 're-set'} would cost more than it is likely to earn back`;
   return null;
@@ -2776,8 +2921,15 @@ export function widthClassOf(ticks) {
 // state: { daily, inRange, ticks, pick: {width, earnings:{net_usd_per_day}},
 //          rows: the record's rows, hoursOfPrices, valueBnb, bnbUsd, resetCostUsd }
 // Returns { upgrade: true, why, from, to, gain_usd_per_day } or { upgrade: false, why }.
+// RETIRED 2026-09-16, with the one-sided re-set: a position in range is
+// never touched. A switch of width while in range was a full re-set with
+// its trade and its realised loss, paid for a lead measured in hindsight;
+// the width now changes at the next natural re-set, which trades nothing.
+// The function stays, says so, and its pins pin the refusal.
+export const WIDTH_UPGRADE_ENABLED = false;
 export function widthUpgrade(state) {
   const no = (why) => ({ upgrade: false, why });
+  if (!WIDTH_UPGRADE_ENABLED) return no('the width changes at the next re-set, never while the price is inside the range (2026-09-16)');
   if (!state.daily) return no('the hourly check does not upgrade a width — the daily run does, once');
   if (!state.inRange) return no('the price is outside the range — that is a re-set, not an upgrade');
   const from = widthClassOf(state.ticks);
@@ -7415,13 +7567,13 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;text-transform:none;border-top:0}td:first-child,th:first-child{text-align:left}tr.pick td{color:#f0b90b;font-weight:700}
 `)}${pageNav({ href: '/lp/agent', label: 'The record' }, { href: '/lp/windows', label: 'The width record' }, BUY)}<h1>The width record</h1>
-<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price with the agent's own re-set delay, its measured re-set cost, and what each re-set lost against holding (a range sells the side that rises and holds the side that falls). The width that nets the most per day is the one the next re-set uses. Nothing here is a forecast.</p>
+<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price the way the agent lives them since 2026-09-16: a range the price has left is re-set one-sided, beside the price on the side it came from, with the one token it ended in and no trade, after the agent's own wait, at its measured gas. The width the next re-set uses is the narrowest that was in range 95% of the last week's hours in that replay — the most time earning at the thinnest spread — or, in a week no width reaches that, the one in range the most. Each row also says where the liquidity ended against holding its minted amounts; that line is reported, not charged. Nothing here is a forecast.</p>
 <h2>The pick</h2>
 <div class="card"><dl>
-<dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — about $${h(f(pick.earnings.net_usd_per_day, 2))} a day on $${h(usd)} after ${h(pick.earnings.resets)} re-set${pick.earnings.resets === 1 ? '' : 's'} at $${h(f(pick.earnings.reset_cost_usd, 2))} each and $${h(f(pick.earnings.lost_to_price_usd, 2))} lost to the price against holding, over ${h(f(pick.earnings.hours, 0))} h of recorded prices (${h(f(pick.earnings.hours_in_range, 0))} h of them inside the range)` : `${(v.hours_of_prices || 0) >= 24 ? `<b>none</b> — over ${h(v.hours_of_prices || 0)} h of recorded prices no width nets anything once each re-set is charged what its range lost against holding; the agent holds its range instead of re-setting it, and the record keeps measuring` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}`}</dd>
+<dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — ${h(pick.basis || '')}${pick.earnings_7d ? `: about $${h(f(pick.earnings_7d.fees_usd, 2))} of fees on $${h(usd)} in ${h(f(pick.earnings_7d.hours, 0))} h (${h(f(pick.earnings_7d.hours_in_range, 0))} h of them inside the range) after ${h(pick.earnings_7d.resets)} one-sided re-set${pick.earnings_7d.resets === 1 ? '' : 's'} at $${h(f(pick.earnings_7d.reset_cost_usd, 2))} each; the liquidity ended ${pick.earnings_7d.vs_holding_usd < 0 ? '$' + h(f(-pick.earnings_7d.vs_holding_usd, 2)) + ' behind' : '$' + h(f(pick.earnings_7d.vs_holding_usd, 2)) + ' ahead of'} holding its minted amounts` : ''}` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
 <dt>Wait</dt><dd>${(() => { const dt = v.delay_test || {}; const ds = dt.delays || []; if (!ds.length) return `${h(dt.in_use_hours ?? 2)} h outside the range before a re-set — the wait the agent uses; whether another wait would net more is replayed once a day of prices is on record`; const line = ds.map((d) => `${h(d.hours)} h: ${d.net_usd_per_day == null ? 'nothing' : `$${h(f(d.net_usd_per_day, 2))} a day at ±${h(d.width)}% after ${h(d.resets)} re-set${d.resets === 1 ? '' : 's'}`}${d.in_use ? ' (in use)' : ''}`).join(' · '); return `<b>${h(dt.in_use_hours)} h</b> outside the range before a re-set is what the agent uses — ${dt.wait_basis === 'measured' ? 'measured' : 'set'}: ${h(dt.why || '')}. Replayed with every wait: ${line}. A measured wait needs a week of prices and a tenth more per day than the set wait; under either bar the set wait stands.`; })()}</dd>
 <dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, 2))} — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
-<dt>Re-sets so far</dt><dd>${v.resets && v.resets.resets ? `${h(v.resets.resets)} on record: <b>${h(f(v.resets.lost_to_price_bnb, 5))} BNB</b> lost to the price against holding${v.resets.rows[0] && v.resets.rows[0].lost_to_price_usd != null ? ` (≈ $${h(f(v.resets.rows.reduce((a, r) => a + (r.lost_to_price_usd || 0), 0), 2))})` : ''}, ${h(f(v.resets.execution_bnb, 5))} BNB of execution (gas, swap fee${v.resets.impact_measured ? ', impact measured on ' + h(v.resets.impact_measured) : ', impact not yet measured'}) — the table below` : 'none on record yet'}</dd>
+<dt>Re-sets so far</dt><dd>${v.resets && v.resets.resets ? `${h(v.resets.resets)} on record: <b>${h(f(v.resets.lost_to_price_bnb, 5))} BNB</b> lost to the price against holding by the trades of the centred re-sets (a one-sided re-set, since 2026-09-16, trades nothing and realises nothing)${v.resets.rows[0] && v.resets.rows[0].lost_to_price_usd != null ? ` (≈ $${h(f(v.resets.rows.reduce((a, r) => a + (r.lost_to_price_usd || 0), 0), 2))})` : ''}, ${h(f(v.resets.execution_bnb, 5))} BNB of execution (gas, swap fee${v.resets.impact_measured ? ', impact measured on ' + h(v.resets.impact_measured) : ', impact not yet measured'}) — the table below` : 'none on record yet'}</dd>
 <dt>Measured</dt><dd>${v.calibration ? `the agent's own position at ±${h(v.calibration.position_width_pct)}% earned <b>$${h(f(v.calibration.measured_usd_per_day_on_50, 2))} a day on $50</b> over the last ${h(f(v.calibration.hours, 0))} h, against $${h(f(v.calibration.replay_usd_per_day_on_50, 2))} the replay puts on that width${v.calibration.factor != null ? ` — ${h(f(v.calibration.factor * 100, 0))}% of the replay's figure` : ''}. The replay overstates every width alike, so the pick between widths stands; the dollar beside it is an estimate, this line is the measurement.` : 'the position has not earned for a day yet on the series — the replay\'s dollars are estimates until it has'}</dd>
 <dt>Held a full day</dt><dd>${v.day_pick ? `±${h(v.day_pick.width)}% is the narrowest width that stayed in range through every tested 24-hour window (${h(v.day_pick.day.held)} of ${h(v.day_pick.day.tested)}). It earns less than the pick; holding is not the goal, netting is.` : 'no width has held through every tested day yet'}</dd>
 <dt>Record</dt><dd>${h(v.windows)} windows, ${h(when(v.from))} to ${h(when(v.to))}, blocks ${h(v.from_block)} to ${h(v.to_block)}${v.price_samples ? `; ${h(v.price_samples)} ten-minute price samples since ${h(when(v.price_samples_since))} walked beside the hourly heads` : '; the ten-minute price tape starts with the next check'}${v.overlapping_runs_not_counted ? `; ${h(v.overlapping_runs_not_counted)} overlapping run${v.overlapping_runs_not_counted === 1 ? '' : 's'} counted once` : ''}${v.thin ? ' — thin: too few windows to lean on yet' : ''}</dd>
@@ -8524,7 +8676,7 @@ export function stepWords(name, s) {
     case 'relocate': return { what: `moved the position to ${s.to_label || labelOf(s.new_pool) || s.new_pool || 'another pool'}${s.new_position ? ` (#${s.new_position})` : ''}` };
     case 'rebalance': return { what: s.upgraded_to_pct != null
       ? `re-set the range wider/narrower: ±${s.upgraded_from_pct}% → ±${s.upgraded_to_pct}%${s.new_position ? ` (#${s.new_position})` : ''}`
-      : `re-set the range around the price${s.new_position ? ` (#${s.new_position})` : ''}${n(s.bobai_bnb) > 0 ? `, ${r5(s.bobai_bnb)} BNB of its fees into $BOBAI` : ''}` };
+      : `re-set the range ${s.one_sided ? `one-sided ${s.one_sided === 'above_price' ? 'above' : 'below'} the price, no trade` : 'around the price'}${s.new_position ? ` (#${s.new_position})` : ''}${n(s.bobai_bnb) > 0 ? `, ${r5(s.bobai_bnb)} BNB of its fees into $BOBAI` : ''}` };
     case 'increase': return { what: `grew the position${n(s.bnb_spent) > 0 ? ` by ${r4(s.bnb_spent)} BNB` : ''}` };
     default: return { what: `${name} acted` };
   }
@@ -8548,6 +8700,38 @@ export function lastDay(rec, now = Date.now()) {
     }
   }
   return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+}
+
+// AGAINST HOLDING (2026-09-16). The one question a liquidity position has
+// to answer: is the money better off here than in a wallet? The wallet it
+// is measured against holds, from the moment each piece of capital arrived,
+// half of it as BNB and half as the other side at that day's price — the
+// mix a centred range is minted in. Its worth now is what the agent has to
+// beat: worth + the fees that left the position (into $BOBAI) + fees still
+// owed − gas. `points` is the series (capital_bnb, tick per run); each rise
+// in capital is an arrival at that run's price. Pure; pinned.
+export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, bobaiBnb = 0, owedBnb = 0, gasBnb = 0 } = {}) {
+  const pts = (points || []).filter((p) => p && p.tick != null && Number(p.capital_bnb) > 0);
+  if (!pts.length || tickNow == null || !(Number(valueNow) > 0)) return null;
+  const priceAt = (tick) => { const raw = Math.pow(1.0001, Number(tick)); return wbnbIs0 ? 1 / raw : raw; };
+  const pNow = priceAt(tickNow);
+  let holding = 0, prevCap = 0;
+  const arrivals = [];
+  for (const p of pts) {
+    const cap = Number(p.capital_bnb);
+    const d = cap - prevCap;
+    if (d > 1e-9) { arrivals.push({ at: p.at, bnb: +d.toFixed(6), price: priceAt(p.tick) }); holding += d * (0.5 + 0.5 * (pNow / priceAt(p.tick))); }
+    prevCap = Math.max(prevCap, cap);
+  }
+  if (!(holding > 0)) return null;
+  const lp = Number(valueNow) + n(bobaiBnb) + n(owedBnb) - n(gasBnb);
+  const vs = lp - holding;
+  return {
+    holding_bnb: r5(holding), lp_bnb: r5(lp), vs_holding_bnb: r5(vs),
+    vs_holding_pct: prevCap > 0 ? Math.round((vs / prevCap) * 10000) / 100 : null,
+    arrivals: arrivals.length,
+    basis: "a wallet that held each arrival half as BNB, half as the other side at that run's price, against the position now plus the fees that left it as $BOBAI and the fees still owed, less gas",
+  };
 }
 
 export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null } = {}) {
@@ -8599,14 +8783,20 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // 2026-09-12: "einfacher, uebersichtlicher, klarer"). What the pick nets
   // a day stays in the record (/lp/windows), not on the card.
   let next;
+  const atEdge = rb.at_edge === true || inc.at_edge === true;
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range, to ±${pick.width_pct}%.`
-    : 'Holds and earns. No re-set: no width pays right now.';
+    ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
+  else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after ${waitH ?? 2} h out of range, to ±${pick.width_pct}%.`
-    : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Holds: no width pays right now.`;
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
+  // Where the position was left: the newest tick the record saw.
+  const tickNow = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
+  const wbnbIs0 = rb.wbnb_is0 === true || (hist.slice().reverse().find((x) => x?.steps?.rebalance?.wbnb_is0 != null)?.steps.rebalance.wbnb_is0 === true);
+  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb });
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
     resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'),
@@ -8642,6 +8832,9 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       // What the re-sets themselves cost, from the record's ticks: the loss
       // against holding each re-set realised, and its execution.
       at_resets: { count: losses.resets, lost_to_price_bnb: r5(losses.lost_to_price_bnb), execution_bnb: r5(losses.execution_bnb) },
+      // The line the whole thing is judged by: the position, with everything
+      // it produced, against a wallet that simply held (holdingBenchmark).
+      vs_holding: vsHold,
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
       other_token: poolLabel ? poolLabel.split('/')[0] : 'the other side',
     },
@@ -9073,7 +9266,8 @@ export async function lpTierPlan(input = {}) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue } from '../shared/lp-guards.js';
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, IN_RANGE_TARGET, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
+const IN_RANGE_TARGET_PCT = IN_RANGE_TARGET * 100;
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -9328,8 +9522,16 @@ export function verdict(log, opts = {}) {
   const lastDayWins = used.filter((w) => Date.parse(w.at) >= dayAgo);
   const dayTape = tape.filter((x) => Date.parse(x.at) >= dayAgo);
   for (const r of rows) r.earnings_24h = r.width === 'full' ? null : earningsTest(lastDayWins, r.width, { ...opts, tape: dayTape, resetAfterHours: wait.hours });
+  // THE LAST WEEK (2026-09-16): the window the width is picked on —
+  // WIDTH_WINDOW_HOURS of windows and tape, the wait in use, one-sided
+  // re-sets. A fortnight ago is not this week's volatility; a day is a mood.
+  const weekAgo = used.length ? Date.parse(used[used.length - 1].at) - WIDTH_WINDOW_HOURS * 36e5 : 0;
+  const weekWins = used.filter((w) => Date.parse(w.at) >= weekAgo);
+  const weekTape = tape.filter((x) => Date.parse(x.at) >= weekAgo);
+  for (const r of rows) r.earnings_7d = r.width === 'full' ? null : earningsTest(weekWins, r.width, { ...opts, tape: weekTape, resetAfterHours: wait.hours });
   const earners = rows.filter((r) => r.earnings && r.earnings.net_usd_per_day > 0)
     .sort((a, b) => b.earnings.net_usd_per_day - a.earnings.net_usd_per_day);
+  const widthPick = thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : pickWidth(rows);
   const first = used[0], last = used[used.length - 1];
   return {
     windows: used.length,
@@ -9350,8 +9552,12 @@ export function verdict(log, opts = {}) {
     // Best net among the widths that held every tested day — reported, no
     // longer the width a re-set uses (it was, until 2026-09-04).
     day_pick: thin ? null : (dayHolders[0] || null),
-    // The width a re-set uses: the most net per day over the recorded prices.
-    earnings_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] || null),
+    // The width a re-set uses (2026-09-16): the narrowest width in range for
+    // IN_RANGE_TARGET of the last week's hours, replayed with one-sided
+    // re-sets (pickWidth); the most-net width is still named beside it.
+    earnings_pick: widthPick,
+    net_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] ? { width: earners[0].width, earnings: earners[0].earnings } : null),
+    width_window_hours: WIDTH_WINDOW_HOURS,
     delay_test: {
       in_use_hours: wait.hours,
       wait_basis: wait.basis,
@@ -9361,9 +9567,9 @@ export function verdict(log, opts = {}) {
       note: 'Every width replayed with each wait before a re-set; the best width per wait is named. The re-set uses the wait that netted the most once the record holds a week of prices and it beats the set wait by a tenth; under either bar the set wait stands.',
     },
     reset_cost: opts.resetCostUsd != null
-      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at; on top of it each re-set is charged what its range lost against holding` }
-      : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet; on top of it each re-set is charged what its range lost against holding' },
-    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set (re-centred) once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). A re-set is charged its gas and swap fee and what the range it leaves had lost against holding its minted amounts (it sold the side that rose and held the side that fell); the range still open is marked the same way at the last price. Net per day is what is left; the pick is the width with the most of it, once ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. If no width nets anything there is no pick, and the agent holds instead of re-setting.`,
+      ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it` }
+      : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it' },
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Since 2026-09-16 the re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone. Net per day is fees less re-sets. The width a re-set uses is the narrowest that was in range ${Math.round(IN_RANGE_TARGET_PCT)}% of the last ${WIDTH_WINDOW_HOURS} h in that replay (the most time earning at the thinnest spread), or, when no width reaches that, the one in range the most; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. Every row also says where the liquidity ended against holding its minted amounts (vs_holding_usd) — reported, not charged.`,
   };
 }
 
@@ -9434,7 +9640,9 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
     if (width == null) continue;
     const centre = (rb.ticks[0] + rb.ticks[1]) / 2;
     const pMint = Math.pow(1.0001, centre), pNow = Math.pow(1.0001, Number(rb.tick));
-    const { loss } = rangeValue(pMint, width, pNow);
+    // A one-sided re-set (2026-09-16) trades nothing: the token the old range
+    // ended in goes into the new range as it is, and nothing is realised.
+    const loss = rb.one_sided ? 0 : rangeValue(pMint, width, pNow).loss;
     const base = Number(rb.value_bnb || 0) + Number(rb.fees_folded_bnb || 0);
     const fee = resetSwapFee(rb);
     const impact = rb.swap && Number(rb.swap.impact_bnb) >= 0 ? Number(rb.swap.impact_bnb) : null;
@@ -9445,7 +9653,7 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
       position_bnb: Number(base.toFixed(6)),
       lost_to_price_bnb: Number((loss * base).toFixed(6)), lost_to_price_pct: Number((loss * 100).toFixed(3)),
       execution_bnb: Number(execution.toFixed(6)), gas_bnb: Number(rb.gas_bnb || 0), swap_fee_bnb: fee.bnb, impact_bnb: impact,
-      forced_by_deposit: !!rb.forced_by_deposit,
+      forced_by_deposit: !!rb.forced_by_deposit, one_sided: rb.one_sided || null,
       ...(bnbUsd > 0 ? { lost_to_price_usd: Math.round(loss * base * bnbUsd * 100) / 100, execution_usd: Math.round(execution * bnbUsd * 100) / 100 } : {}),
     });
   }
@@ -9455,7 +9663,7 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
     lost_to_price_bnb: sum('lost_to_price_bnb'), execution_bnb: sum('execution_bnb'),
     impact_measured: out.filter((r) => r.impact_bnb != null).length,
     rows: out,
-    basis: 'each re-set: the range it left, minted at the middle of its ticks, valued at the tick the re-set saw against the amounts it was minted with (rangeValue) — the loss against holding, realised by the re-set; execution is gas, swap fee and the measured impact',
+    basis: 'each re-set: the range it left, minted at the middle of its ticks, valued at the tick the re-set saw against the amounts it was minted with (rangeValue) — the loss against holding, realised by the re-set\'s trade; a one-sided re-set (since 2026-09-16) trades nothing and realises nothing; execution is gas, swap fee and the measured impact',
   };
 }
 
@@ -9485,39 +9693,91 @@ export { rangeValue };
 // price. Net is what is left after the fees paid for all of it.
 const MAX_GAP_HOURS = 3;
 const r2 = (x) => Math.round(x * 100) / 100, r4 = (x) => Math.round(x * 10000) / 10000;
-export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD, tape = null } = {}) {
+// What one unit of liquidity holds of each side at price p in [lo, hi]:
+// token0 (the priced side) and token1 (the quote), the pool's own curve.
+const perL = (p, lo, hi) => ({
+  x: p >= hi ? 0 : 1 / Math.sqrt(Math.max(p, lo)) - 1 / Math.sqrt(hi),
+  y: p <= lo ? 0 : Math.sqrt(Math.min(p, hi)) - Math.sqrt(lo),
+});
+// THE ONE-SIDED REPLAY (2026-09-16). The agent re-sets one-sided: the new
+// range sits beside the price on the side the price came from, spans what
+// a centred ±width range spans, starts ONE_SIDED_GAP_TICKS beyond the
+// price, and takes the one token the old range ended in — nothing is
+// traded. So the replay does the same: a re-set costs its gas (the
+// measured cost, swap fee zero) and nothing is "lost to the price" at it,
+// because nothing is sold. What the position holds is followed exactly
+// (perL) from the centred mint through every re-set, and at the end it is
+// valued against holding the minted amounts: vs_holding_usd, the honest
+// line — an LP behind holding in a trend, ahead of it when the price comes
+// back through its ranges. It is reported, not charged: the width is
+// picked by how much of the time it earns (pickWidth), the wait by net.
+// oneSided false is the replay as it was until 2026-09-16 (centred re-sets
+// charged their realised loss), kept for the pins and the older records.
+export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD, tape = null, oneSided = true } = {}) {
   const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0 && (w.rows || []).some((r) => r.width === widthPct));
   if (priced.length < 2) return null;
   const costs = priced.map((w) => w.rebalance_cost_usd).filter((c) => typeof c === 'number' && c > 0).sort((a, b) => a - b);
   const cost = resetCostUsd ?? (costs.length ? costs[Math.floor(costs.length / 2)] : 0.5);
-  const up = 1 + widthPct / 100, down = 1 / up;
+  const up = 1 + widthPct / 100, down = 1 / up, gap = Math.pow(1.0001, ONE_SIDED_GAP_TICKS);
+  // The agent's own notion of "left" (rangeLeft): a price within the slack
+  // of an edge has not left, and the wait does not run there. A one-sided
+  // range sits the gap beyond the price by construction; without the slack
+  // the replay would re-set it every hour for gas, which the agent does not.
+  const slack = oneSided ? Math.pow(1.0001, RANGE_LEFT_TICKS) : 1;
   const series = priceSeries(priced, tape);
-  let centre = series[0].price, outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0, lost = 0, samples = 0;
+  const p0 = series[0].price;
+  let centre = p0, lo = p0 * down, hi = p0 * up;
+  // The position followed exactly: L units of liquidity in [lo, hi], and the
+  // amounts it was minted with, for the holding line.
+  const m0 = perL(p0, lo, hi);
+  let L = usd / (m0.x * p0 + m0.y);
+  const x0 = L * m0.x, y0 = L * m0.y;
+  let outRun = 0, fees = 0, resets = 0, hoursIn = 0, hoursOut = 0, lost = 0, samples = 0;
   for (let i = 1; i < series.length; i++) {
     const pt = series[i], prev = series[i - 1];
     const dtH = Math.min(MAX_GAP_HOURS, (pt.t - prev.t) / 36e5);
     if (!(dtH > 0)) continue;
     if (pt.window.at !== pt.at) samples += 1;
-    const ratio = pt.price / centre;
-    if (ratio <= up && ratio >= down) {
+    const p = pt.price;
+    if (p <= hi && p >= lo) {
       const w = pt.window, row = w.rows.find((r) => r.width === widthPct);
       fees += (row.fees / ((w.minutes || 37.5) / 60)) * dtH;
       hoursIn += dtH; outRun = 0;
     } else {
-      hoursOut += dtH; outRun += dtH;
-      if (outRun >= resetAfterHours) {
+      hoursOut += dtH;
+      if (p < lo / slack || p > hi * slack) outRun += dtH; else outRun = 0;
+      if (outRun >= resetAfterHours && (p < lo / slack || p > hi * slack)) {
         resets += 1;
-        lost += rangeValue(centre, widthPct, pt.price).loss * usd;
-        centre = pt.price; outRun = 0;
+        const held = perL(p, lo, hi);
+        const x = L * held.x, y = L * held.y;
+        if (oneSided) {
+          // Below the range all token0: a range above the price, all token0.
+          // Above it all token1: a range below the price, all token1.
+          if (p < lo) { lo = p * gap; hi = lo * up * up; } else { hi = p / gap; lo = hi * down * down; }
+          const n = perL(p, lo, hi);
+          L = p < lo ? x / n.x : y / n.y;
+        } else {
+          lost += rangeValue(centre, widthPct, p).loss * usd;
+          centre = p; lo = p * down; hi = p * up;
+          const n = perL(p, lo, hi);
+          L = (x * p + y) / (n.x * p + n.y);
+        }
+        outRun = 0;
       }
     }
   }
-  const open = rangeValue(centre, widthPct, series[series.length - 1].price).loss * usd;
+  const pEnd = series[series.length - 1].price;
+  const open = oneSided ? 0 : rangeValue(centre, widthPct, pEnd).loss * usd;
+  const end = perL(pEnd, lo, hi);
+  const valueEnd = L * (end.x * pEnd + end.y), holdEnd = x0 * pEnd + y0;
   const hours = hoursIn + hoursOut, net = fees - resets * cost - lost - open;
   return {
-    hours: r2(hours), hours_in_range: r2(hoursIn), fees_usd: r4(fees),
-    resets, reset_cost_usd: r2(cost),
+    hours: r2(hours), hours_in_range: r2(hoursIn), in_range_share: hours > 0 ? Math.round((hoursIn / hours) * 1000) / 1000 : null, fees_usd: r4(fees),
+    resets, reset_cost_usd: r2(cost), one_sided: !!oneSided,
     lost_to_price_usd: r4(lost), open_loss_usd: r4(open),
+    // The position at the end against holding what it was minted with, fees
+    // beside it: what the liquidity itself did to the money.
+    vs_holding_usd: r4(valueEnd - holdEnd),
     net_usd: r4(net),
     net_usd_per_day: hours > 0 ? r4(net / (hours / 24)) : null,
     price_points: series.length, tape_samples: samples,
@@ -12906,7 +13166,7 @@ import {
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
-import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS, HOME_POOL } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -13055,16 +13315,21 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       const inc = await planIncrease(pub, lp.address);
       const s = inc.summary;
       if (inc.pos && s.in_range != null) {
-        const forced = s.in_range ? null : depositForcesReset({ inRange: false, spendableBnb: s.spendable_bnb, valueBnb: s.value_bnb });
+        // "Left" is the guard's word, not the pool's: a one-sided range sits
+        // beside the price by construction, and a price within the slack of
+        // an edge has not left (rangeLeft, 2026-09-16).
+        const lf = rangeLeft(s.tick, Number(inc.pos[5]), Number(inc.pos[6]));
+        const settled = s.in_range || !lf.left;
+        const forced = settled ? null : depositForcesReset({ inRange: false, spendableBnb: s.spendable_bnb, valueBnb: s.value_bnb });
         if (!forced) {
           const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
-          if (s.in_range) { if (outSinceRaw != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY); }
+          if (settled) { if (outSinceRaw != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY); }
           else if (outSinceRaw == null && !dry) await env.AGENT.put(OUT_SINCE_KEY, at);
           return {
             position: s.position, ticks: [Number(inc.pos[5]), Number(inc.pos[6])], tick: s.tick, in_range: s.in_range,
             pool: s.pool, wbnb_is0: inc.wbnbIs0, value_bnb: s.value_bnb,
-            acted: false, watch: true, looked_only: true,
-            outside_since: s.in_range ? null : (outSinceRaw || at),
+            acted: false, watch: true, looked_only: true, ...(lf.outside && !lf.left ? { at_edge: true, ticks_beyond_edge: lf.ticks_away } : {}),
+            outside_since: settled ? null : (outSinceRaw || at),
             deposit_beside: { spendable_bnb: s.spendable_bnb, value_bnb: s.value_bnb },
             why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest',
           };
@@ -13092,6 +13357,12 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     let upgrade = null;
+    // At the edge (within the slack) counts as settled: the wait does not
+    // run, and a note that ran is cleared — the price is back at the range.
+    if (plan.summary.at_edge === true && !plan.summary.in_range) {
+      if (outSince != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY);
+      return { ...plan.summary, acted: false, why: plan.no };
+    }
     if (plan.summary.in_range) {
       if (outSince != null) await env.AGENT.delete(OUT_SINCE_KEY);
       // In range, nothing forces a re-set — unless the record's pick now
@@ -13144,7 +13415,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       }
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
+    if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.oneSided ? ` one-sided, ${plan.ticks.side === 'above_price' ? 'above' : 'below'} the price, no trade` : ''}${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
     const txs = [];
     try {
       // A re-set a deposit forced takes the deposit with it: wrapped after
@@ -13245,8 +13516,8 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
-  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the narrowest that was in range 95% of the last week\'s hours when every width was replayed that way (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }

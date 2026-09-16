@@ -177,9 +177,69 @@ export function refuseSweep(state) {
   return null;
 }
 
-// state: { positions, inRange, width, hoursOfPrices, valueBnb }
-// width is what the earnings test in the window record picked, or what a
-// person named by hand; null means the record cannot yet say which width earns.
+// WHEN A RANGE COUNTS AS LEFT (2026-09-16). A one-sided range is minted
+// right beside the price (ticksAdjacent, ONE_SIDED_GAP_TICKS away), so the
+// pool's own "in range" is false the moment it exists; taken literally, the
+// next hourly check would call that "left" and re-set it to the same place,
+// every hour, for gas. A price within RANGE_LEFT_TICKS of an edge sits at
+// the edge and has not left — that is half a percent, the drift of a quiet
+// hour on CAKE/BNB. The same slack applies to a centred range: a price half
+// a percent past the edge is a price that is often back within the hour.
+// Pure; pinned by scripts/lp-agent.mjs --self-test.
+export const RANGE_LEFT_TICKS = 50;
+export function rangeLeft(tick, tickLower, tickUpper, slack = RANGE_LEFT_TICKS) {
+  const t = Number(tick), lo = Number(tickLower), hi = Number(tickUpper);
+  if (![t, lo, hi].every(Number.isFinite) || !(hi > lo)) return { outside: false, side: null, ticks_away: 0, left: false };
+  if (t < lo) return { outside: true, side: 'below', ticks_away: lo - t, left: lo - t > slack };
+  if (t >= hi) return { outside: true, side: 'above', ticks_away: t - hi + 1, left: t - hi + 1 > slack };
+  return { outside: false, side: null, ticks_away: 0, left: false };
+}
+// A one-sided range starts this many ticks beyond the price (0.2%), so the
+// mint that follows the read is still entirely on its side of the price
+// when the block comes — a range the price has entered in between needs the
+// other token, which the wallet does not hold, and the mint would take
+// nothing. The same tolerance the minimums of a centred mint use.
+export const ONE_SIDED_GAP_TICKS = 20;
+
+// THE WIDTH (2026-09-16): the narrowest width that stayed in range for
+// IN_RANGE_TARGET of the hours of the last WIDTH_WINDOW_HOURS, replayed the
+// way the agent lives it (one-sided re-sets after the wait in use). Until
+// 2026-09-16 the pick was the width with the most net per day once every
+// re-set was charged what its range had lost against holding — on a
+// trending fortnight no width netted anything, and the rule's answer was
+// to hold 100% of the fallen side out of range, earning nothing, which is
+// not a liquidity position. With re-sets that trade nothing, a re-set costs
+// gas; what a width then decides is how much of the time the capital earns
+// at all, against how thin it is spread (fees per hour in range fall as
+// 1/width). Too narrow, and the range is crossed on every wiggle: it sells
+// the whole rising side within half a percent and holds the whole falling
+// one — the worst of both in a trend. The target holds that off; among the
+// widths that reach it the narrowest earns the most per hour. When none
+// reaches it the market is trending and the width that was in range the
+// most is the pick — the agent stays a liquidity position. Pure; pinned.
+export const IN_RANGE_TARGET = 0.95;
+export const WIDTH_WINDOW_HOURS = 168;
+export function pickWidth(rows, { target = IN_RANGE_TARGET, key = 'earnings_7d' } = {}) {
+  const cand = (rows || [])
+    .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0)
+    .map((r) => ({ row: r, width: Number(r.width), share: Number(r[key].hours_in_range) / Number(r[key].hours), hours: Number(r[key].hours) }));
+  if (!cand.length) return null;
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  const reach = cand.filter((c) => c.share >= target).sort((a, b) => a.width - b.width);
+  if (reach.length) {
+    const c = reach[0];
+    return { width: c.width, in_range_share: r3(c.share), hours: c.hours, reached_target: true, earnings: c.row.earnings || null, earnings_7d: c.row[key],
+      basis: `the narrowest width in range ${Math.round(c.share * 100)}% of the last ${Math.round(c.hours)} h (target ${Math.round(target * 100)}%), replayed with one-sided re-sets after the wait in use` };
+  }
+  const best = cand.slice().sort((a, b) => b.share - a.share || b.width - a.width)[0];
+  return { width: best.width, in_range_share: r3(best.share), hours: best.hours, reached_target: false, earnings: best.row.earnings || null, earnings_7d: best.row[key],
+    basis: `no width was in range ${Math.round(target * 100)}% of the last ${Math.round(best.hours)} h — a trending week; ±${best.width}% was in range the most (${Math.round(best.share * 100)}%)` };
+}
+
+// state: { positions, inRange, atEdge, side, ticksAway, width, hoursOfPrices, valueBnb }
+// width is what the width record picked (pickWidth), or what a person named
+// by hand; null means the record holds no day of prices yet. atEdge: the
+// price is outside but within RANGE_LEFT_TICKS of an edge (rangeLeft).
 // state.resume: no position, but the wallet holds the pool's two tokens — a
 // re-set that stopped between its unwind and its mint. Then the plan is the
 // mint alone, sized like a re-set (the same width, the same floor), and the
@@ -189,8 +249,9 @@ export function refuseRebalance(state) {
     ? 'this wallet holds no position to re-set'
     : `this wallet holds ${state.positions} positions — which one to re-set is a decision for a person`;
   if (state.inRange) return 'the price is inside the range — nothing to re-set';
+  if (state.atEdge) return `the price sits ${state.ticksAway ?? '?'} tick${state.ticksAway === 1 ? '' : 's'} ${state.side || 'beyond'} the range — at the edge, within the ${RANGE_LEFT_TICKS}-tick slack, not left`;
   if (state.width == null)
-    return `no width nets anything over the recorded prices (${state.hoursOfPrices || 0} h recorded, ${MIN_HOURS_FOR_EARNINGS} h needed) once each re-set is charged what its range lost against holding. A re-set into a width that only held 37 minutes is how a position pays for a re-set every day; a re-set that sells the low and buys the high pays twice. Holding.`;
+    return `no width is on record yet (${state.hoursOfPrices || 0} h of prices recorded, ${MIN_HOURS_FOR_EARNINGS} h needed before the record may name one). Holding.`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
     return `${state.resume ? "the wallet's two sides are" : 'the position is'} worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a ${state.resume ? 'mint' : 're-set'} would cost more than it is likely to earn back`;
   return null;
@@ -332,8 +393,15 @@ export function widthClassOf(ticks) {
 // state: { daily, inRange, ticks, pick: {width, earnings:{net_usd_per_day}},
 //          rows: the record's rows, hoursOfPrices, valueBnb, bnbUsd, resetCostUsd }
 // Returns { upgrade: true, why, from, to, gain_usd_per_day } or { upgrade: false, why }.
+// RETIRED 2026-09-16, with the one-sided re-set: a position in range is
+// never touched. A switch of width while in range was a full re-set with
+// its trade and its realised loss, paid for a lead measured in hindsight;
+// the width now changes at the next natural re-set, which trades nothing.
+// The function stays, says so, and its pins pin the refusal.
+export const WIDTH_UPGRADE_ENABLED = false;
 export function widthUpgrade(state) {
   const no = (why) => ({ upgrade: false, why });
+  if (!WIDTH_UPGRADE_ENABLED) return no('the width changes at the next re-set, never while the price is inside the range (2026-09-16)');
   if (!state.daily) return no('the hourly check does not upgrade a width — the daily run does, once');
   if (!state.inRange) return no('the price is outside the range — that is a re-set, not an upgrade');
   const from = widthClassOf(state.ticks);

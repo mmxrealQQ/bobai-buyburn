@@ -404,3 +404,15 @@ position to the record. Figures above are current as of that run.
 
 Refresh run 2026-09-04 ~07:10 UTC: health 49/49 · smoke 177/177 · cold-start
 "no problems" · dispatch-safety live · screens captured (7 pages at 1440).
+
+Refresh run 2026-09-16 ~05:55 UTC (judging day 8): LP self-tests 213/213,
+132/132, 34/34. The DeFi agent's re-set is one-sided since this morning:
+a range the price has left is re-set beside the price, on the side the
+price came from, with the one token the old range ended in and no trade —
+twelve centred re-sets had sold the low or bought the high for 3.4% of the
+capital in a fortnight, twice the fees. The width is now the narrowest that
+stayed in range 95% of the last week in the one-sided replay (±4% today,
+97%), and the card carries the line the whole thing is judged by: the
+position against a wallet that simply held 50/50 since each deposit
+(−4.49% today, a trending fortnight). First live one-sided re-set 05:50 UTC:
+#7435603 → #7450202, three transactions, 0.00005 BNB of gas, no swap.

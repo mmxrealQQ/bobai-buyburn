@@ -36,11 +36,11 @@ this folder is a cron; the crons are the `worker-*` folders.
 | script | does |
 |---|---|
 | `lp-plan.mjs` | where the tools would put the project's money |
-| `lp-windows.mjs` | the width record, several windows, never one; since 2026-09-11 every replayed re-set is charged what its range lost against holding, the ten-minute price tape is walked beside the hourly heads, and 1.5/3/4/7% are derived between the replayed widths; `--self-test` pins all of it |
+| `lp-windows.mjs` | the width record, several windows, never one; since 2026-09-16 every width is replayed with one-sided re-sets (beside the price, no trade, gas alone) and the pick is the narrowest width in range 95% of the last week's hours, with where the liquidity ended against holding reported beside it; the ten-minute price tape is walked beside the hourly heads, and 1.5/3/4/7% are derived between the replayed widths; `--self-test` pins all of it |
 | `lp-pools.mjs` | RETIRED 2026-09-11 — the agent stays in CAKE/BNB 0.05% (HOME_POOL); the pool record's functions and pins stay as the record of how twelve pools were compared |
 | `lp-portfolio.mjs` | the portfolio model as the page, the bot and the 05:00 card see it; `--self-test` pins its rules both ways |
 | `lp-open.mjs` | open the position the tools chose |
-| `lp-agent.mjs` | the daily worker's four steps by hand: sweep, collect, rebalance, increase |
+| `lp-agent.mjs` | the daily worker's steps by hand: sweep, collect, rebalance (one-sided since 2026-09-16), increase; `--self-test` pins the guards, the tick math and the trade sizing |
 | `create-lp-wallet.mjs` | one-time: the wallet that holds the position |
 
 ## The census and the marketplace (ERC-8004 / ERC-8183)

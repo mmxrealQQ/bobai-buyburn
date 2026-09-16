@@ -2048,6 +2048,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
       `📈 Price: ${signed(p.from_price_bnb)}`,
       `🧾 Fees: ${signed(p.from_fees_bnb)}`,
       `⛽ Gas: ${n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB'}`,
+      ...(p.vs_holding && p.vs_holding.vs_holding_bnb != null ? [`⚖️ Vs. holding 50/50: ${signed(p.vs_holding.vs_holding_bnb)}`] : []),
     ],
     [
       `🥞 ${pool}`,

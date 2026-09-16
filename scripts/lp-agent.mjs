@@ -29,13 +29,13 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, IN_RANGE_TARGET, WIDTH_UPGRADE_ENABLED,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -265,6 +265,8 @@ if (SELF) {
     [{ ...healthyRebalance, valueBnb: 0.005 }, 'position too small to pay for a re-set'],
   ]) check(why, refuseRebalance(state), true);
   check('out of range, a day-tested width, enough capital', refuseRebalance(healthyRebalance), false);
+  check('at the edge (outside, within the slack): not left, refuses', refuseRebalance({ ...healthyRebalance, atEdge: true, side: 'below', ticksAway: 30 }), true);
+  check('… and names the slack', /at the edge/.test(refuseRebalance({ ...healthyRebalance, atEdge: true, side: 'below', ticksAway: 30 })) && new RegExp(String(RANGE_LEFT_TICKS)).test(refuseRebalance({ ...healthyRebalance, atEdge: true, side: 'below', ticksAway: 30 })) ? null : 'no slack named', false);
   check(`exactly the floor (${MIN_REBALANCE_BNB})`, refuseRebalance({ ...healthyRebalance, valueBnb: MIN_REBALANCE_BNB }), false);
   console.log('rebalance resumed from the wallet (the 2026-09-05 12:50 stop before the mint)');
   const resume = { positions: 0, resume: true, inRange: false, width: 1, hoursOfPrices: 30, valueBnb: 0.08 };
@@ -285,32 +287,59 @@ if (SELF) {
     { width: 2, earnings: { net_usd_per_day: 0.6111 }, earnings_24h: { net_usd_per_day: 0.60 } },
     { width: 'full', earnings: null, earnings_24h: null },
   ];
-  // The live case of 2026-09-10: $154 at 2%, the record picks 1%: +$0.27 a day against a $0.10 re-set,
-  // the range at its own middle (tick −57800), so nothing to realise; pays back in under a day.
+  // RETIRED 2026-09-16: a position in range is never touched; the width
+  // changes at the next one-sided re-set. The live case of 2026-09-10 ($154
+  // at 2%, the record picking 1%) that used to go through is now refused,
+  // and so is everything else — the function says why, in one sentence.
   const up = { daily: true, inRange: true, ticks: [-57990, -57610], tick: -57800, pick: rows[0], rows, hoursOfPrices: 182, valueBnb: 0.2127, bnbUsd: 723.6, resetCostUsd: 0.1 };
   const u = widthUpgrade(up);
-  check('the daily run upgrades 2% → 1% when the gain pays the switch back within three days', u.upgrade ? null : u.why, false);
-  check('the upgrade names from, to, the gain, the cost and the payback', u.from === 2 && u.to === 1 && u.gain_usd_per_day > 0.2 && u.gain_usd_per_day < 0.3 && u.realised_usd === 0 && u.cost_usd === 0.1 && u.payback_days < 1 ? null : JSON.stringify(u), false);
-  // At the edge of its range the switch realises the range's loss against holding: ±2% at its lower
-  // edge (tick −57990) has lost about 0.45% of $154 = $0.70; with $0.20 to execute and a $0.27 gain that is 3.3 days: no.
-  const edge = widthUpgrade({ ...up, tick: -57990, resetCostUsd: 0.2 });
-  check('at the edge of the range the realised loss counts and the payback stretches past three days', !edge.upgrade && /realise/.test(edge.why) && /3\.\d+ days/.test(edge.why) ? null : JSON.stringify(edge), false);
-  const halfway = widthUpgrade({ ...up, tick: -57900 });
-  check('halfway to the edge the realised loss is small and the switch goes', halfway.upgrade && halfway.realised_usd > 0 && halfway.realised_usd < 0.3 && halfway.payback_days < 3 ? null : JSON.stringify(halfway), false);
+  check('the upgrade is retired: even the case that used to pay back in a day is refused', u.upgrade ? 'upgraded' : null, false);
+  check('… and says the width changes at the next re-set', /next re-set/.test(u.why) ? null : u.why, false);
+  check('the flag says so too', WIDTH_UPGRADE_ENABLED === false ? null : 'enabled', false);
   for (const [state, why] of [
     [{ ...up, daily: false }, 'the hourly check never upgrades'],
     [{ ...up, inRange: false }, 'outside the range it is a re-set, not an upgrade'],
-    [{ ...up, ticks: null }, 'no ticks, no class'],
     [{ ...up, pick: null }, 'no pick, nothing to upgrade to'],
-    [{ ...up, hoursOfPrices: 12 }, 'under a day of prices'],
-    [{ ...up, ticks: [-57800, -57610] }, 'already at the picked width'],
-    [{ ...up, rows: [rows[0]] }, 'the record has no earnings for the current width'],
-    [{ ...up, valueBnb: 0 }, 'no dollar value'],
-    [{ ...up, rows: [{ ...rows[0], earnings_24h: { net_usd_per_day: 0.55 } }, rows[1]] }, 'a lead over the record but not over the last day is not standing'],
-    [{ ...up, rows: [{ ...rows[0], earnings_24h: null }, rows[1]] }, 'no last-day replay yet: no switch'],
-    [{ ...up, resetCostUsd: 0.9 }, 'a switch that takes more than three days to pay back waits'],
-    [{ ...up, rows: [rows[0], { ...rows[1], earnings: { net_usd_per_day: 0.7 } }] }, 'a pick that nets no more than the current width'],
   ]) check(why, (() => { const r = widthUpgrade(state); return r.upgrade ? null : r.why; })(), true);
+
+  console.log('the one-sided range (2026-09-16)');
+  // Below its range the position is all token0 (CAKE here); the new range
+  // sits above the price, starts the gap beyond it on the pool's grid and
+  // spans what a centred ±width range spans. Above: the mirror image.
+  const tickNow = -57807, sp = 10;
+  const aboveP = ticksAdjacent(tickNow, 7, sp, 'below');
+  const centred7 = ticksAround(tickNow, 7, sp);
+  is('price below the old range: the new range is above the price', aboveP.side === 'above_price' && aboveP.tickLower > tickNow);
+  is(`… starting at least ${ONE_SIDED_GAP_TICKS} ticks beyond it, on the grid`, aboveP.tickLower - tickNow >= ONE_SIDED_GAP_TICKS && aboveP.tickLower - tickNow < ONE_SIDED_GAP_TICKS + sp && aboveP.tickLower % sp === 0 && aboveP.tickUpper % sp === 0);
+  is('… spanning what the centred range of that width spans (within a grid step)', Math.abs((aboveP.tickUpper - aboveP.tickLower) - (centred7.tickUpper - centred7.tickLower)) <= sp);
+  const belowP = ticksAdjacent(tickNow, 3, sp, 'above');
+  is('price above the old range: the new range is below the price, the gap away', belowP.side === 'below_price' && belowP.tickUpper < tickNow && tickNow - belowP.tickUpper >= ONE_SIDED_GAP_TICKS && belowP.tickUpper % sp === 0);
+  // A one-sided range needs only the token the old range ended in: the
+  // ratio trade has nothing to do.
+  const sqA = Math.pow(1.0001, tickNow / 2), spA = splitForRange(sqA, aboveP.tickLower, aboveP.tickUpper);
+  is('a range above the price takes only token0 — all CAKE, no WBNB', spA.perL0 > 0 && spA.perL1 === 0);
+  is('… so a wallet holding only CAKE trades nothing for it', tradeToRatio({ wbnb: 0n, other: 10n ** 20n, perLWbnb: spA.perL1, perLOther: spA.perL0, otherPerWbnb: 1 / (sqA ** 2), wbnbPerOther: sqA ** 2 }).side === null);
+  is('… and a deposit of WBNB beside it is all spent on CAKE (the fallen side, bought low)', (() => { const t = tradeToRatio({ wbnb: 10n ** 17n, other: 10n ** 20n, perLWbnb: spA.perL1, perLOther: spA.perL0, otherPerWbnb: 1 / (sqA ** 2), wbnbPerOther: sqA ** 2 }); return t.side === 'buy' && t.amount === 10n ** 17n; })());
+  // rangeLeft: inside, at an edge, gone — both ways.
+  const lo7 = -57530, hi7 = -56940;
+  is('inside the range: not outside, not left', (() => { const r = rangeLeft(-57200, lo7, hi7); return !r.outside && !r.left && r.side === null; })());
+  is(`${RANGE_LEFT_TICKS} ticks below the lower edge: outside, at the edge, not left`, (() => { const r = rangeLeft(lo7 - RANGE_LEFT_TICKS, lo7, hi7); return r.outside && r.side === 'below' && !r.left && r.ticks_away === RANGE_LEFT_TICKS; })());
+  is('one tick further: left', rangeLeft(lo7 - RANGE_LEFT_TICKS - 1, lo7, hi7).left === true);
+  is('the live tick of 2026-09-16 05:05 (277 ticks under): left, below', (() => { const r = rangeLeft(-57807, lo7, hi7); return r.left && r.side === 'below' && r.ticks_away === 277; })());
+  is('at the upper tick itself: outside (the pool counts the upper tick as out), at the edge', (() => { const r = rangeLeft(hi7, lo7, hi7); return r.outside && r.side === 'above' && !r.left; })());
+  is('far above: left, above', rangeLeft(hi7 + 200, lo7, hi7).left === true && rangeLeft(hi7 + 200, lo7, hi7).side === 'above');
+  is('no ticks: nothing', rangeLeft(-57807, null, null).outside === false);
+  // pickWidth: the narrowest width in range for the target share of the
+  // week; none reaching it, the one in range the most.
+  const wk = (w, share, hours = 168) => ({ width: w, earnings: { net_usd_per_day: 0.1 }, earnings_7d: { hours, hours_in_range: hours * share } });
+  const pk = pickWidth([wk(1, 0.6), wk(3, 0.9), wk(5, 0.951), wk(7, 0.98), wk(10, 1), { width: 'full', earnings_7d: null }]);
+  is(`the narrowest width at or over ${Math.round(IN_RANGE_TARGET * 100)}% of the week is the pick (5%, not 7%)`, pk && pk.width === 5 && pk.reached_target === true && pk.in_range_share === 0.951);
+  is('… and the basis says so', /narrowest width in range 95%/.test(pk.basis));
+  const trend = pickWidth([wk(1, 0.3), wk(3, 0.5), wk(5, 0.6), wk(10, 0.7)]);
+  is('a week no width reaches the target: the one in range the most', trend && trend.width === 10 && trend.reached_target === false && /trending/.test(trend.basis));
+  is('a tie goes to the wider width', pickWidth([wk(3, 0.7), wk(5, 0.7)]).width === 5);
+  is('full range and rows without a week are never picked', pickWidth([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168 } }, { width: 2, earnings_7d: null }]) === null);
+  is('a row that reaches the target on a single hour does not count', pickWidth([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0 } }]) === null);
   console.log('relocate');
   const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, toPool: HOME_POOL.pool, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
   check('a move to any pool but home: refuses by the operator\'s decision', /stays in CAKE\/BNB 0\.05%/.test(refuseRelocate({ ...relOk, toPool: '0x172fcd41e0913e95784454622d1c3724f546f849' }) || ''), true);

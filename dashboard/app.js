@@ -1118,6 +1118,7 @@ function fillLpPortfolio(){
       + src('📈 Price', signed(p.from_price_bnb), dir(p.from_price_bnb))
       + src('🧾 Fees', signed(p.from_fees_bnb), dir(p.from_fees_bnb))
       + src('⛽ Gas', n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB', n(p.gas_bnb) > 0 ? 'down' : '')
+      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? src('⚖️ Vs. holding 50/50', signed(p.vs_holding.vs_holding_bnb), dir(p.vs_holding.vs_holding_bnb)) : '')
       + '</div>';
     const counts = [];
     if(d.resets) counts.push(d.resets + ' re-set' + (d.resets === 1 ? '' : 's'));

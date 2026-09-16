@@ -5,7 +5,7 @@
 //   node scripts/lp-portfolio.mjs --self-test   pin the model's rules on synthetic records, both ways
 //
 // It reads. It signs nothing, holds no key and moves nothing.
-import { lpPortfolio, lastDay, stepWords } from '../worker-agent/lp-portfolio.js';
+import { lpPortfolio, lastDay, stepWords, holdingBenchmark } from '../worker-agent/lp-portfolio.js';
 import { CANDIDATES } from '../worker-agent/lp-pools.js';
 
 if (process.argv.includes('--self-test')) {
@@ -45,9 +45,10 @@ if (process.argv.includes('--self-test')) {
   is('the model carries no pool record: the agent stays in CAKE/BNB (2026-09-11)', !('pool_record' in m) && !m.links.pools);
   // The one sentence about what comes next, both ways: in range, out of range, with and without a width the record names.
   const w2 = { width_pct: 2, wait_hours: 3, net_usd_per_day: 0.16 };
-  is('out of range with a width named: the sentence says when the re-set comes and how wide', /^Out of range for 2\.0 h\. Re-set after 3 h out of range, to ±2%\.$/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
-  is('out of range with no width named: the agent holds', /^Out of range\. Holds: no width pays right now\.$/.test(m.next) && m.pool.width_pct === 1);
-  is('in range with a width named: holds and earns, re-set only after the wait', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; return /^Holds and earns\. A re-set only after 3 h out of range, to ±2%\.$/.test(lpPortfolio(r2, series, { now: NOW, width: w2 }).next); })());
+  is('out of range with a width named: the sentence says when the re-set comes, how wide, and that it trades nothing', /^Out of range for 2\.0 h\. Re-set after 3 h out of range: one-sided beside the price, ±2% wide, no trade\.$/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
+  is('out of range with no width named yet: the re-set waits for the record', /^Out of range\. Re-set after the wait; the width record has no day of prices yet\.$/.test(m.next) && m.pool.width_pct === 1);
+  is('at the edge of the range: not left, says so', (() => { const r3 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, at_edge: true } } } }; return /^At the edge of its range, not left\./.test(lpPortfolio(r3, series, { now: NOW }).next); })());
+  is('in range with a width named: holds and earns, re-set only after the wait', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; return /^Holds and earns\. A re-set only after 3 h out of range: one-sided beside the price, ±2% wide, no trade\.$/.test(lpPortfolio(r2, series, { now: NOW, width: w2 }).next); })());
   is('the sentence carries no dollar figure (2026-09-12: the card stays simple; what a width nets lives in /lp/windows)', !/\$/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
   is('the P&L names what the re-sets themselves cost', m.pnl.at_resets && m.pnl.at_resets.count === 0 && m.pnl.at_resets.lost_to_price_bnb === 0);
   is('the day is counted: re-sets, top-ups and the newest action', m.day.resets === 1 && m.day.top_ups === 1 && m.day.errors === 0 && m.day.last.step === undefined && /re-set/.test(m.day.last.what));
@@ -58,6 +59,20 @@ if (process.argv.includes('--self-test')) {
   is('a step that did not act is not listed', stepWords('increase', { acted: false }) === null);
   is('a relocate names the pool it moved to', /USDT\/BNB 0\.01%/.test(stepWords('relocate', { acted: true, new_pool: CANDIDATES[2].pool, new_position: '9' }).what));
   is('a width upgrade names both widths', /±2% → ±1%/.test(stepWords('rebalance', { acted: true, upgraded_from_pct: 2, upgraded_to_pct: 1 }).what));
+  is('a one-sided re-set says which side and that it traded nothing', /one-sided above the price, no trade/.test(stepWords('rebalance', { acted: true, one_sided: 'above_price', new_position: '7' }).what));
+  // AGAINST HOLDING: two arrivals, a price that rose 10% since the first.
+  // 1 BNB arrived at price 1 (tick 0), 1 BNB at price 1.1 (tick ln(1.1)/ln(1.0001)); now the price is 1.1.
+  const tk = (px) => Math.round(Math.log(px) / Math.log(1.0001));
+  const pts = [{ at: at(50), tick: tk(1), capital_bnb: 1 }, { at: at(40), tick: tk(1.05), capital_bnb: 1 }, { at: at(20), tick: tk(1.1), capital_bnb: 2 }];
+  const hb = holdingBenchmark(pts, { valueNow: 2.1, tickNow: tk(1.1), bobaiBnb: 0.01, owedBnb: 0.002, gasBnb: 0.001 });
+  is('two arrivals are found (a point with the same capital is not one)', hb && hb.arrivals === 2);
+  is('holding: the first BNB half in the risen side is worth 1.05, the second 1.00 — 2.05', hb && Math.abs(hb.holding_bnb - 2.05) < 1e-4);
+  is('the position side counts what it produced and what it paid', hb && Math.abs(hb.lp_bnb - (2.1 + 0.01 + 0.002 - 0.001)) < 1e-9);
+  is('vs holding is the difference, in BNB and in percent of the capital', hb && Math.abs(hb.vs_holding_bnb - (2.111 - 2.05)) < 1e-4 && Math.abs(hb.vs_holding_pct - 3.05) < 0.01);
+  is('the other way round (WBNB as token0) reads the price inverted', Math.abs(holdingBenchmark(pts, { valueNow: 2.1, tickNow: tk(1.1), wbnbIs0: true }).holding_bnb - (1 * (0.5 + 0.5 * (1 / 1.1) / 1) + 1 * (0.5 + 0.5 * (1 / 1.1) / (1 / 1.1)))) < 1e-4);
+  is('no ticks, no value or no capital: no line', holdingBenchmark([], { valueNow: 1, tickNow: 0 }) === null && holdingBenchmark(pts, { valueNow: 0, tickNow: 0 }) === null && holdingBenchmark(pts, { valueNow: 1, tickNow: null }) === null);
+  is('the model carries the line under pnl when the series has ticks', (() => { const s2 = { ...series, points: [{ at: at(8), position: '7397034', in_range: true, wallet_bnb: 0.003, tick: -57800, capital_bnb: 0.2872 }] }; const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, tick: -57800 } } } }; const x = lpPortfolio(r2, s2, { now: NOW }); return x.pnl.vs_holding && x.pnl.vs_holding.holding_bnb > 0 && typeof x.pnl.vs_holding.vs_holding_bnb === 'number'; })());
+  is('… and null when it has none', m.pnl.vs_holding === null);
   is('without a series there is no model', lpPortfolio(rec, null) === null);
   console.log(`\n${n - bad}/${n} checks behave in both directions`);
   process.exitCode = bad ? 1 : 0;

@@ -42,7 +42,7 @@ import {
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
-import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, RESET_AFTER_HOURS, HOME_POOL } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -191,16 +191,21 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       const inc = await planIncrease(pub, lp.address);
       const s = inc.summary;
       if (inc.pos && s.in_range != null) {
-        const forced = s.in_range ? null : depositForcesReset({ inRange: false, spendableBnb: s.spendable_bnb, valueBnb: s.value_bnb });
+        // "Left" is the guard's word, not the pool's: a one-sided range sits
+        // beside the price by construction, and a price within the slack of
+        // an edge has not left (rangeLeft, 2026-09-16).
+        const lf = rangeLeft(s.tick, Number(inc.pos[5]), Number(inc.pos[6]));
+        const settled = s.in_range || !lf.left;
+        const forced = settled ? null : depositForcesReset({ inRange: false, spendableBnb: s.spendable_bnb, valueBnb: s.value_bnb });
         if (!forced) {
           const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
-          if (s.in_range) { if (outSinceRaw != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY); }
+          if (settled) { if (outSinceRaw != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY); }
           else if (outSinceRaw == null && !dry) await env.AGENT.put(OUT_SINCE_KEY, at);
           return {
             position: s.position, ticks: [Number(inc.pos[5]), Number(inc.pos[6])], tick: s.tick, in_range: s.in_range,
             pool: s.pool, wbnb_is0: inc.wbnbIs0, value_bnb: s.value_bnb,
-            acted: false, watch: true, looked_only: true,
-            outside_since: s.in_range ? null : (outSinceRaw || at),
+            acted: false, watch: true, looked_only: true, ...(lf.outside && !lf.left ? { at_edge: true, ticks_beyond_edge: lf.ticks_away } : {}),
+            outside_since: settled ? null : (outSinceRaw || at),
             deposit_beside: { spendable_bnb: s.spendable_bnb, value_bnb: s.value_bnb },
             why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest',
           };
@@ -228,6 +233,12 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     let upgrade = null;
+    // At the edge (within the slack) counts as settled: the wait does not
+    // run, and a note that ran is cleared — the price is back at the range.
+    if (plan.summary.at_edge === true && !plan.summary.in_range) {
+      if (outSince != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY);
+      return { ...plan.summary, acted: false, why: plan.no };
+    }
     if (plan.summary.in_range) {
       if (outSince != null) await env.AGENT.delete(OUT_SINCE_KEY);
       // In range, nothing forces a re-set — unless the record's pick now
@@ -280,7 +291,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       }
     }
     if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: 'a re-set is due and LP_REBALANCE is not 1 — the first one is run by hand and watched, then the cron takes over' };
-    if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
+    if (dry) return { ...plan.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: plan.resume ? 'dry run — would have minted the range from what the wallet holds' : `dry run — would have re-set the range${plan.oneSided ? ` one-sided, ${plan.ticks.side === 'above_price' ? 'above' : 'below'} the price, no trade` : ''}${plan.summary.fees_to_bobai_bnb > 0 ? ` and bought BOBAI with ${plan.summary.fees_to_bobai_bnb} BNB of the old range's fees` : ''}` };
     const txs = [];
     try {
       // A re-set a deposit forced takes the deposit with it: wrapped after
@@ -381,8 +392,8 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left for two hours is re-set around the current price, in the width that netted the most per day when every width was replayed over the recorded prices with the same delay and the re-set cost included (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
-  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the narrowest that was in range 95% of the last week\'s hours when every width was replayed that way (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }

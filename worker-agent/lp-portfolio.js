@@ -11,7 +11,7 @@
 //
 // Pure. Pinned by scripts/lp-portfolio.mjs --self-test.
 import { CANDIDATES } from './lp-pools.js';
-import { HOME_POOL } from '../shared/lp-guards.js';
+import { HOME_POOL, rangeLeft } from '../shared/lp-guards.js';
 import { resetLosses } from './lp-windows.js';
 
 const n = (x) => Number(x || 0);
@@ -138,7 +138,13 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // 2026-09-12: "einfacher, uebersichtlicher, klarer"). What the pick nets
   // a day stays in the record (/lp/windows), not on the card.
   let next;
-  const atEdge = rb.at_edge === true || inc.at_edge === true;
+  // At the edge is read off the ticks, not off a flag: the ten-minute watch
+  // keeps no rebalance step when it did nothing, so the flag would only be
+  // there after the hourly check; the position's own ticks are always there.
+  const posTicks = (rb.acted && !rb.error && rb.new_ticks) || rb.ticks || (pt && pt.ticks) || null;
+  const tickSeen = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
+  const edgeRead = Array.isArray(posTicks) && posTicks.length === 2 && tickSeen != null ? rangeLeft(tickSeen, posTicks[0], posTicks[1]) : null;
+  const atEdge = rb.at_edge === true || inc.at_edge === true || !!(edgeRead && edgeRead.outside && !edgeRead.left);
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
     ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`

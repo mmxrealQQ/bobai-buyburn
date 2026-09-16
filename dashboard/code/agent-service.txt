@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 13407 lines.
+# one fetch. 41 files, 13436 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -194,7 +194,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, IN_RANGE_TARGET, WIDTH_UPGRADE_ENABLED,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -488,17 +488,23 @@ if (SELF) {
   is('at the upper tick itself: outside (the pool counts the upper tick as out), at the edge', (() => { const r = rangeLeft(hi7, lo7, hi7); return r.outside && r.side === 'above' && !r.left; })());
   is('far above: left, above', rangeLeft(hi7 + 200, lo7, hi7).left === true && rangeLeft(hi7 + 200, lo7, hi7).side === 'above');
   is('no ticks: nothing', rangeLeft(-57807, null, null).outside === false);
-  // pickWidth: the narrowest width in range for the target share of the
-  // week; none reaching it, the one in range the most.
-  const wk = (w, share, hours = 168) => ({ width: w, earnings: { net_usd_per_day: 0.1 }, earnings_7d: { hours, hours_in_range: hours * share } });
-  const pk = pickWidth([wk(1, 0.6), wk(3, 0.9), wk(5, 0.951), wk(7, 0.98), wk(10, 1), { width: 'full', earnings_7d: null }]);
-  is(`the narrowest width at or over ${Math.round(IN_RANGE_TARGET * 100)}% of the week is the pick (5%, not 7%)`, pk && pk.width === 5 && pk.reached_target === true && pk.in_range_share === 0.951);
-  is('… and the basis says so', /narrowest width in range 95%/.test(pk.basis));
-  const trend = pickWidth([wk(1, 0.3), wk(3, 0.5), wk(5, 0.6), wk(10, 0.7)]);
-  is('a week no width reaches the target: the one in range the most', trend && trend.width === 10 && trend.reached_target === false && /trending/.test(trend.basis));
-  is('a tie goes to the wider width', pickWidth([wk(3, 0.7), wk(5, 0.7)]).width === 5);
-  is('full range and rows without a week are never picked', pickWidth([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168 } }, { width: 2, earnings_7d: null }]) === null);
-  is('a row that reaches the target on a single hour does not count', pickWidth([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0 } }]) === null);
+  // pickWidth: the width that ended the most ahead against holding over
+  // the week, fees in; the width in use is kept under the bar.
+  const wk = (w, fees, vs, share = 0.9, hours = 168) => ({ width: w, earnings: { net_usd_per_day: 0.1 }, earnings_7d: { hours, hours_in_range: hours * share, fees_usd: fees, vs_holding_usd: vs } });
+  // The live week of 2026-09-16: narrow earned the most fees and lost the most to the trend.
+  const week = [wk(0.25, 2.88, -5.42), wk(1, 2.53, -4.21), wk(3, 1.41, -1.91), wk(4, 1.14, -1.37), wk(5, 0.93, -0.99), wk(7, 0.72, -0.45), wk(10, 0.54, -0.05), { width: 'full', earnings_7d: null }];
+  const pk = pickWidth(week);
+  is('the pick is the width with the most money against holding, fees in (±10%: $0.49, not ±4%: −$0.23)', pk && pk.width === 10 && pk.score_usd === 0.49 && pk.kept_current === false);
+  is('… and the basis names the week', /ended the most ahead/.test(pk.basis) && /±10% \+\$0\.49/.test(pk.basis) && /±4% −\$0\.23/.test(pk.basis));
+  is('the width in use is replaced when the lead is over the bar (±4% in use, ±10% $0.72 ahead)', (() => { const r = pickWidth(week, { current: 4 }); return r.width === 10 && r.kept_current === false && /over the bar/.test(r.basis); })());
+  is('… and kept when the lead is under it (±7% in use at $0.27, ±10% at $0.29: the bar is $0.30)', (() => { const r = pickWidth([wk(7, 0.72, -0.45), wk(10, 0.54, -0.25)], { current: 7 }); return r.width === 7 && r.kept_current === true && /stays/.test(r.basis) && r.best_width === 10; })());
+  is('… the bar is a tenth of the score in use, at least two cents (a score of $0.05 in use needs $0.07)', (() => { const rows = [wk(2, 0.05, 0), wk(5, 0.069, 0), wk(7, 0.071, 0)]; return pickWidth(rows, { current: 2 }).width === 7 && pickWidth(rows.slice(0, 2), { current: 2 }).width === 2; })());
+  is('a width in use that is the best stays and says so', (() => { const r = pickWidth(week, { current: 10 }); return r.width === 10 && r.kept_current === true && /the width in use/.test(r.basis); })());
+  is('a ranging week (no loss to the trend) picks the narrowest, which earns the most', pickWidth([wk(1, 2.5, 0), wk(3, 1.4, 0), wk(10, 0.5, 0)]).width === 1);
+  is('a tie goes to the wider width', pickWidth([wk(3, 1, -0.3), wk(5, 0.7, 0)]).width === 5);
+  is('full range, rows without a week and rows without the holding line are never picked', pickWidth([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168, fees_usd: 1, vs_holding_usd: 0 } }, { width: 2, earnings_7d: null }, { width: 3, earnings_7d: { hours: 168, hours_in_range: 100, fees_usd: 1 } }]) === null);
+  is('a row with no hours does not count', pickWidth([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0, fees_usd: 0, vs_holding_usd: 0 } }]) === null);
+  is('the pick carries fees, the holding line, the share of hours in range and the week', pk.fees_usd === 0.54 && pk.vs_holding_usd === -0.05 && pk.in_range_share === 0.9 && pk.hours === 168 && pk.best_width === 10);
   console.log('relocate');
   const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, toPool: HOME_POOL.pool, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
   check('a move to any pool but home: refuses by the operator\'s decision', /stays in CAKE\/BNB 0\.05%/.test(refuseRelocate({ ...relOk, toPool: '0x172fcd41e0913e95784454622d1c3724f546f849' }) || ''), true);
@@ -1179,7 +1185,7 @@ export function summarize(service, result) {
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
@@ -1692,7 +1698,11 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
   let owedWei = 0n, share = null, left = null, oneSided = null;
-  const pick = record?.earnings_pick || null;
+  // The record's pick, re-read with the width the position is in: a width
+  // in use is kept unless another leads it by the bar (pickWidth). Records
+  // without weekly rows (before 2026-09-16) keep their own pick.
+  const inUse = p.positions === 1 && p.pos ? widthClassOf([Number(p.pos[5]), Number(p.pos[6])]) : null;
+  const pick = (Array.isArray(record?.rows) && record.rows.some((r) => r.earnings_7d) && (record.earnings_pick || record.hours_of_prices >= 24) ? pickWidth(record.rows, { current: inUse }) : null) || record?.earnings_pick || null;
   const width = widthOverride ?? pick?.width ?? null;
   const widthBasis = widthOverride != null ? 'named by hand'
     : (pick ? (pick.basis || `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings?.net_usd_per_day} a day on $50 after ${pick.earnings?.resets} re-set${pick.earnings?.resets === 1 ? '' : 's'} at $${pick.earnings?.reset_cost_usd} each`) : null);
@@ -2729,39 +2739,54 @@ export function rangeLeft(tick, tickLower, tickUpper, slack = RANGE_LEFT_TICKS) 
 // nothing. The same tolerance the minimums of a centred mint use.
 export const ONE_SIDED_GAP_TICKS = 20;
 
-// THE WIDTH (2026-09-16): the narrowest width that stayed in range for
-// IN_RANGE_TARGET of the hours of the last WIDTH_WINDOW_HOURS, replayed the
-// way the agent lives it (one-sided re-sets after the wait in use). Until
-// 2026-09-16 the pick was the width with the most net per day once every
-// re-set was charged what its range had lost against holding — on a
-// trending fortnight no width netted anything, and the rule's answer was
-// to hold 100% of the fallen side out of range, earning nothing, which is
-// not a liquidity position. With re-sets that trade nothing, a re-set costs
-// gas; what a width then decides is how much of the time the capital earns
-// at all, against how thin it is spread (fees per hour in range fall as
-// 1/width). Too narrow, and the range is crossed on every wiggle: it sells
-// the whole rising side within half a percent and holds the whole falling
-// one — the worst of both in a trend. The target holds that off; among the
-// widths that reach it the narrowest earns the most per hour. When none
-// reaches it the market is trending and the width that was in range the
-// most is the pick — the agent stays a liquidity position. Pure; pinned.
-export const IN_RANGE_TARGET = 0.95;
+// THE WIDTH (2026-09-16, evening): the width that left the most money
+// against holding over the last WIDTH_WINDOW_HOURS, fees included —
+// replayed the way the agent lives it (one-sided re-sets after the wait in
+// use). Score = fees_usd − the re-sets' cost + vs_holding_usd of the week's
+// replay: what the liquidity earned, less the gas of its re-sets, plus where
+// it ended against a wallet that held the minted amounts. That is the line the whole agent is judged by on its
+// card, so the width is chosen by it and by nothing else. In a ranging
+// week narrow widths win (fees high, nothing lost to the trend); in a
+// trending week wide ones win (less sold on the way up, less held on the
+// way down). The morning's rule, "the narrowest width in range 95% of the
+// hours", was a stand-in for that and picked ±4% on a week where ±10% had
+// ended $0.72 further ahead on $50; before it, "the most net per day once
+// every re-set is charged its hindsight loss" had answered "hold". A width
+// in use (`current`, the class of the position's ticks) is kept unless
+// another leads it by WIDTH_PICK_MARGIN of its own score and at least
+// WIDTH_PICK_MIN_LEAD_USD on $50 a week — the same bar the wait pick uses,
+// so two widths a few cents apart do not swap every re-set. Pure; pinned.
 export const WIDTH_WINDOW_HOURS = 168;
-export function pickWidth(rows, { target = IN_RANGE_TARGET, key = 'earnings_7d' } = {}) {
+export const WIDTH_PICK_MARGIN = 0.10;
+export const WIDTH_PICK_MIN_LEAD_USD = 0.02;
+// Kept for the record of the morning rule and its pins; not applied.
+export const IN_RANGE_TARGET = 0.95;
+export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = WIDTH_PICK_MARGIN, minLead = WIDTH_PICK_MIN_LEAD_USD } = {}) {
+  const r4 = (x) => Math.round(x * 1e4) / 1e4;
   const cand = (rows || [])
-    .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0)
-    .map((r) => ({ row: r, width: Number(r.width), share: Number(r[key].hours_in_range) / Number(r[key].hours), hours: Number(r[key].hours) }));
+    .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0 && typeof r[key].vs_holding_usd === 'number' && typeof r[key].fees_usd === 'number')
+    .map((r) => ({ row: r, width: Number(r.width), hours: Number(r[key].hours), fees: Number(r[key].fees_usd), vs: Number(r[key].vs_holding_usd), share: Number(r[key].hours_in_range) / Number(r[key].hours) }))
+    .map((c) => ({ ...c, gas: Number(c.row[key].resets || 0) * Number(c.row[key].reset_cost_usd || 0) }))
+    .map((c) => ({ ...c, score: r4(c.fees - c.gas + c.vs) }));
   if (!cand.length) return null;
-  const r3 = (x) => Math.round(x * 1000) / 1000;
-  const reach = cand.filter((c) => c.share >= target).sort((a, b) => a.width - b.width);
-  if (reach.length) {
-    const c = reach[0];
-    return { width: c.width, in_range_share: r3(c.share), hours: c.hours, reached_target: true, earnings: c.row.earnings || null, earnings_7d: c.row[key],
-      basis: `the narrowest width in range ${Math.round(c.share * 100)}% of the last ${Math.round(c.hours)} h (target ${Math.round(target * 100)}%), replayed with one-sided re-sets after the wait in use` };
+  // The most money against holding; a tie goes to the wider width, which
+  // is crossed less often.
+  const sorted = cand.slice().sort((a, b) => b.score - a.score || b.width - a.width);
+  const best = sorted[0];
+  const cur = current != null ? cand.find((c) => c.width === Number(current)) : null;
+  const table = sorted.map((c) => `±${c.width}% ${c.score >= 0 ? '+' : '−'}$${Math.abs(c.score).toFixed(2)}`).join(', ');
+  const shape = (c, kept, why) => ({
+    width: c.width, score_usd: c.score, fees_usd: r4(c.fees), vs_holding_usd: r4(c.vs), in_range_share: Math.round(c.share * 1000) / 1000, hours: c.hours,
+    kept_current: kept, best_width: best.width, best_score_usd: best.score,
+    earnings: c.row.earnings || null, earnings_7d: c.row[key],
+    basis: why,
+  });
+  if (cur && cur.width !== best.width) {
+    const bar = r4(cur.score + Math.max(Math.abs(cur.score) * margin, minLead));
+    if (best.score < bar) return shape(cur, true, `±${cur.width}% stays: ±${best.width}% ended $${best.score.toFixed(2)} against holding (fees in) over the last ${Math.round(cur.hours)} h on $50, ±${cur.width}% $${cur.score.toFixed(2)} — under the bar of $${bar.toFixed(2)} for a change (${Math.round(margin * 100)}% of its own score, at least $${minLead.toFixed(2)}). The week: ${table}`);
+    return shape(best, false, `±${best.width}% ended the most ahead against holding over the last ${Math.round(best.hours)} h on $50, fees in: $${best.score.toFixed(2)} ($${best.fees.toFixed(2)} of fees, ${best.vs >= 0 ? '+' : '−'}$${Math.abs(best.vs).toFixed(2)} against holding), over the bar of $${bar.toFixed(2)} against the ±${cur.width}% in use. The week: ${table}`);
   }
-  const best = cand.slice().sort((a, b) => b.share - a.share || b.width - a.width)[0];
-  return { width: best.width, in_range_share: r3(best.share), hours: best.hours, reached_target: false, earnings: best.row.earnings || null, earnings_7d: best.row[key],
-    basis: `no width was in range ${Math.round(target * 100)}% of the last ${Math.round(best.hours)} h — a trending week; ±${best.width}% was in range the most (${Math.round(best.share * 100)}%)` };
+  return shape(best, !!cur, `±${best.width}% ended the most ahead against holding over the last ${Math.round(best.hours)} h on $50, fees in: $${best.score.toFixed(2)} ($${best.fees.toFixed(2)} of fees, ${best.vs >= 0 ? '+' : '−'}$${Math.abs(best.vs).toFixed(2)} against holding)${cur ? ', the width in use' : ''}. The week: ${table}`);
 }
 
 // state: { positions, inRange, atEdge, side, ticksAway, width, hoursOfPrices, valueBnb }
@@ -5933,7 +5958,7 @@ import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks } from './lp-windows.js';
-import { widthClassOf, HOME_POOL } from '../shared/lp-guards.js';
+import { widthClassOf, HOME_POOL, pickWidth } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -7567,7 +7592,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;text-transform:none;border-top:0}td:first-child,th:first-child{text-align:left}tr.pick td{color:#f0b90b;font-weight:700}
 `)}${pageNav({ href: '/lp/agent', label: 'The record' }, { href: '/lp/windows', label: 'The width record' }, BUY)}<h1>The width record</h1>
-<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price the way the agent lives them since 2026-09-16: a range the price has left is re-set one-sided, beside the price on the side it came from, with the one token it ended in and no trade, after the agent's own wait, at its measured gas. The width the next re-set uses is the narrowest that was in range 95% of the last week's hours in that replay — the most time earning at the thinnest spread — or, in a week no width reaches that, the one in range the most. Each row also says where the liquidity ended against holding its minted amounts; that line is reported, not charged. Nothing here is a forecast.</p>
+<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price the way the agent lives them since 2026-09-16: a range the price has left is re-set one-sided, beside the price on the side it came from, with the one token it ended in and no trade, after the agent's own wait, at its measured gas. The width the next re-set uses is the one that ended the most ahead against holding over the last week in that replay, fees included — what the liquidity earned plus where it ended against a wallet that held the minted amounts, the line the card judges the agent by; the width in use is kept unless another leads it by a tenth of its own score. Nothing here is a forecast.</p>
 <h2>The pick</h2>
 <div class="card"><dl>
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — ${h(pick.basis || '')}${pick.earnings_7d ? `: about $${h(f(pick.earnings_7d.fees_usd, 2))} of fees on $${h(usd)} in ${h(f(pick.earnings_7d.hours, 0))} h (${h(f(pick.earnings_7d.hours_in_range, 0))} h of them inside the range) after ${h(pick.earnings_7d.resets)} one-sided re-set${pick.earnings_7d.resets === 1 ? '' : 's'} at $${h(f(pick.earnings_7d.reset_cost_usd, 2))} each; the liquidity ended ${pick.earnings_7d.vs_holding_usd < 0 ? '$' + h(f(-pick.earnings_7d.vs_holding_usd, 2)) + ' behind' : '$' + h(f(pick.earnings_7d.vs_holding_usd, 2)) + ' ahead of'} holding its minted amounts` : ''}` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
@@ -8088,7 +8113,11 @@ ${pageTail}`;
       let width = null, outsideSince = null;
       try {
         const { v } = await lpWidthVerdict(env);
-        const pick = v && v.earnings_pick;
+        // The same pick the re-set will make: re-read with the width the
+        // position is in, so the card's sentence and the plan agree.
+        const lastRb = rec && rec.last && rec.last.steps && rec.last.steps.rebalance;
+        const inUseTicks = lastRb && ((lastRb.acted && !lastRb.error && lastRb.new_ticks) || lastRb.ticks) || null;
+        const pick = v && ((Array.isArray(v.rows) && v.rows.some((r) => r.earnings_7d) && v.earnings_pick ? pickWidth(v.rows, { current: widthClassOf(inUseTicks) }) : null) || v.earnings_pick);
         if (pick) width = { width_pct: pick.width, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: pick.earnings?.net_usd_per_day ?? null };
         else if (v) width = { width_pct: null, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: null };
       } catch { /* the sentence does without */ }
@@ -9272,8 +9301,7 @@ export async function lpTierPlan(input = {}) {
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, IN_RANGE_TARGET, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
-const IN_RANGE_TARGET_PCT = IN_RANGE_TARGET * 100;
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -9558,9 +9586,10 @@ export function verdict(log, opts = {}) {
     // Best net among the widths that held every tested day — reported, no
     // longer the width a re-set uses (it was, until 2026-09-04).
     day_pick: thin ? null : (dayHolders[0] || null),
-    // The width a re-set uses (2026-09-16): the narrowest width in range for
-    // IN_RANGE_TARGET of the last week's hours, replayed with one-sided
-    // re-sets (pickWidth); the most-net width is still named beside it.
+    // The width a re-set uses (2026-09-16): the width that ended the most
+    // ahead against holding over the last week, fees in, replayed with
+    // one-sided re-sets (pickWidth); the plan re-reads it with the width in
+    // use for the bar. The most-net width is still named beside it.
     earnings_pick: widthPick,
     net_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] ? { width: earners[0].width, earnings: earners[0].earnings } : null),
     width_window_hours: WIDTH_WINDOW_HOURS,
@@ -9575,7 +9604,7 @@ export function verdict(log, opts = {}) {
     reset_cost: opts.resetCostUsd != null
       ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it` }
       : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it' },
-    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Since 2026-09-16 the re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone. Net per day is fees less re-sets. The width a re-set uses is the narrowest that was in range ${Math.round(IN_RANGE_TARGET_PCT)}% of the last ${WIDTH_WINDOW_HOURS} h in that replay (the most time earning at the thinnest spread), or, when no width reaches that, the one in range the most; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. Every row also says where the liquidity ended against holding its minted amounts (vs_holding_usd) — reported, not charged.`,
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Since 2026-09-16 the re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone. Net per day is fees less re-sets. The width a re-set uses is the one that ended the most ahead against holding over the last ${WIDTH_WINDOW_HOURS} h in that replay, fees included (fees_usd + vs_holding_usd: what the liquidity earned plus where it ended against a wallet that held the minted amounts — the line the card judges the agent by); a width in use is kept unless another leads it by a tenth of its own score and at least two cents on $50 a week; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
   };
 }
 
@@ -13522,7 +13551,7 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the narrowest that was in range 95% of the last week\'s hours when every width was replayed that way (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth (rebalance). The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
   st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;

@@ -201,39 +201,54 @@ export function rangeLeft(tick, tickLower, tickUpper, slack = RANGE_LEFT_TICKS) 
 // nothing. The same tolerance the minimums of a centred mint use.
 export const ONE_SIDED_GAP_TICKS = 20;
 
-// THE WIDTH (2026-09-16): the narrowest width that stayed in range for
-// IN_RANGE_TARGET of the hours of the last WIDTH_WINDOW_HOURS, replayed the
-// way the agent lives it (one-sided re-sets after the wait in use). Until
-// 2026-09-16 the pick was the width with the most net per day once every
-// re-set was charged what its range had lost against holding — on a
-// trending fortnight no width netted anything, and the rule's answer was
-// to hold 100% of the fallen side out of range, earning nothing, which is
-// not a liquidity position. With re-sets that trade nothing, a re-set costs
-// gas; what a width then decides is how much of the time the capital earns
-// at all, against how thin it is spread (fees per hour in range fall as
-// 1/width). Too narrow, and the range is crossed on every wiggle: it sells
-// the whole rising side within half a percent and holds the whole falling
-// one — the worst of both in a trend. The target holds that off; among the
-// widths that reach it the narrowest earns the most per hour. When none
-// reaches it the market is trending and the width that was in range the
-// most is the pick — the agent stays a liquidity position. Pure; pinned.
-export const IN_RANGE_TARGET = 0.95;
+// THE WIDTH (2026-09-16, evening): the width that left the most money
+// against holding over the last WIDTH_WINDOW_HOURS, fees included —
+// replayed the way the agent lives it (one-sided re-sets after the wait in
+// use). Score = fees_usd − the re-sets' cost + vs_holding_usd of the week's
+// replay: what the liquidity earned, less the gas of its re-sets, plus where
+// it ended against a wallet that held the minted amounts. That is the line the whole agent is judged by on its
+// card, so the width is chosen by it and by nothing else. In a ranging
+// week narrow widths win (fees high, nothing lost to the trend); in a
+// trending week wide ones win (less sold on the way up, less held on the
+// way down). The morning's rule, "the narrowest width in range 95% of the
+// hours", was a stand-in for that and picked ±4% on a week where ±10% had
+// ended $0.72 further ahead on $50; before it, "the most net per day once
+// every re-set is charged its hindsight loss" had answered "hold". A width
+// in use (`current`, the class of the position's ticks) is kept unless
+// another leads it by WIDTH_PICK_MARGIN of its own score and at least
+// WIDTH_PICK_MIN_LEAD_USD on $50 a week — the same bar the wait pick uses,
+// so two widths a few cents apart do not swap every re-set. Pure; pinned.
 export const WIDTH_WINDOW_HOURS = 168;
-export function pickWidth(rows, { target = IN_RANGE_TARGET, key = 'earnings_7d' } = {}) {
+export const WIDTH_PICK_MARGIN = 0.10;
+export const WIDTH_PICK_MIN_LEAD_USD = 0.02;
+// Kept for the record of the morning rule and its pins; not applied.
+export const IN_RANGE_TARGET = 0.95;
+export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = WIDTH_PICK_MARGIN, minLead = WIDTH_PICK_MIN_LEAD_USD } = {}) {
+  const r4 = (x) => Math.round(x * 1e4) / 1e4;
   const cand = (rows || [])
-    .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0)
-    .map((r) => ({ row: r, width: Number(r.width), share: Number(r[key].hours_in_range) / Number(r[key].hours), hours: Number(r[key].hours) }));
+    .filter((r) => r && r.width !== 'full' && isFinite(Number(r.width)) && r[key] && Number(r[key].hours) > 0 && typeof r[key].vs_holding_usd === 'number' && typeof r[key].fees_usd === 'number')
+    .map((r) => ({ row: r, width: Number(r.width), hours: Number(r[key].hours), fees: Number(r[key].fees_usd), vs: Number(r[key].vs_holding_usd), share: Number(r[key].hours_in_range) / Number(r[key].hours) }))
+    .map((c) => ({ ...c, gas: Number(c.row[key].resets || 0) * Number(c.row[key].reset_cost_usd || 0) }))
+    .map((c) => ({ ...c, score: r4(c.fees - c.gas + c.vs) }));
   if (!cand.length) return null;
-  const r3 = (x) => Math.round(x * 1000) / 1000;
-  const reach = cand.filter((c) => c.share >= target).sort((a, b) => a.width - b.width);
-  if (reach.length) {
-    const c = reach[0];
-    return { width: c.width, in_range_share: r3(c.share), hours: c.hours, reached_target: true, earnings: c.row.earnings || null, earnings_7d: c.row[key],
-      basis: `the narrowest width in range ${Math.round(c.share * 100)}% of the last ${Math.round(c.hours)} h (target ${Math.round(target * 100)}%), replayed with one-sided re-sets after the wait in use` };
+  // The most money against holding; a tie goes to the wider width, which
+  // is crossed less often.
+  const sorted = cand.slice().sort((a, b) => b.score - a.score || b.width - a.width);
+  const best = sorted[0];
+  const cur = current != null ? cand.find((c) => c.width === Number(current)) : null;
+  const table = sorted.map((c) => `±${c.width}% ${c.score >= 0 ? '+' : '−'}$${Math.abs(c.score).toFixed(2)}`).join(', ');
+  const shape = (c, kept, why) => ({
+    width: c.width, score_usd: c.score, fees_usd: r4(c.fees), vs_holding_usd: r4(c.vs), in_range_share: Math.round(c.share * 1000) / 1000, hours: c.hours,
+    kept_current: kept, best_width: best.width, best_score_usd: best.score,
+    earnings: c.row.earnings || null, earnings_7d: c.row[key],
+    basis: why,
+  });
+  if (cur && cur.width !== best.width) {
+    const bar = r4(cur.score + Math.max(Math.abs(cur.score) * margin, minLead));
+    if (best.score < bar) return shape(cur, true, `±${cur.width}% stays: ±${best.width}% ended $${best.score.toFixed(2)} against holding (fees in) over the last ${Math.round(cur.hours)} h on $50, ±${cur.width}% $${cur.score.toFixed(2)} — under the bar of $${bar.toFixed(2)} for a change (${Math.round(margin * 100)}% of its own score, at least $${minLead.toFixed(2)}). The week: ${table}`);
+    return shape(best, false, `±${best.width}% ended the most ahead against holding over the last ${Math.round(best.hours)} h on $50, fees in: $${best.score.toFixed(2)} ($${best.fees.toFixed(2)} of fees, ${best.vs >= 0 ? '+' : '−'}$${Math.abs(best.vs).toFixed(2)} against holding), over the bar of $${bar.toFixed(2)} against the ±${cur.width}% in use. The week: ${table}`);
   }
-  const best = cand.slice().sort((a, b) => b.share - a.share || b.width - a.width)[0];
-  return { width: best.width, in_range_share: r3(best.share), hours: best.hours, reached_target: false, earnings: best.row.earnings || null, earnings_7d: best.row[key],
-    basis: `no width was in range ${Math.round(target * 100)}% of the last ${Math.round(best.hours)} h — a trending week; ±${best.width}% was in range the most (${Math.round(best.share * 100)}%)` };
+  return shape(best, !!cur, `±${best.width}% ended the most ahead against holding over the last ${Math.round(best.hours)} h on $50, fees in: $${best.score.toFixed(2)} ($${best.fees.toFixed(2)} of fees, ${best.vs >= 0 ? '+' : '−'}$${Math.abs(best.vs).toFixed(2)} against holding)${cur ? ', the width in use' : ''}. The week: ${table}`);
 }
 
 // state: { positions, inRange, atEdge, side, ticksAway, width, hoursOfPrices, valueBnb }

@@ -35,7 +35,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, IN_RANGE_TARGET, WIDTH_UPGRADE_ENABLED,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -329,17 +329,23 @@ if (SELF) {
   is('at the upper tick itself: outside (the pool counts the upper tick as out), at the edge', (() => { const r = rangeLeft(hi7, lo7, hi7); return r.outside && r.side === 'above' && !r.left; })());
   is('far above: left, above', rangeLeft(hi7 + 200, lo7, hi7).left === true && rangeLeft(hi7 + 200, lo7, hi7).side === 'above');
   is('no ticks: nothing', rangeLeft(-57807, null, null).outside === false);
-  // pickWidth: the narrowest width in range for the target share of the
-  // week; none reaching it, the one in range the most.
-  const wk = (w, share, hours = 168) => ({ width: w, earnings: { net_usd_per_day: 0.1 }, earnings_7d: { hours, hours_in_range: hours * share } });
-  const pk = pickWidth([wk(1, 0.6), wk(3, 0.9), wk(5, 0.951), wk(7, 0.98), wk(10, 1), { width: 'full', earnings_7d: null }]);
-  is(`the narrowest width at or over ${Math.round(IN_RANGE_TARGET * 100)}% of the week is the pick (5%, not 7%)`, pk && pk.width === 5 && pk.reached_target === true && pk.in_range_share === 0.951);
-  is('… and the basis says so', /narrowest width in range 95%/.test(pk.basis));
-  const trend = pickWidth([wk(1, 0.3), wk(3, 0.5), wk(5, 0.6), wk(10, 0.7)]);
-  is('a week no width reaches the target: the one in range the most', trend && trend.width === 10 && trend.reached_target === false && /trending/.test(trend.basis));
-  is('a tie goes to the wider width', pickWidth([wk(3, 0.7), wk(5, 0.7)]).width === 5);
-  is('full range and rows without a week are never picked', pickWidth([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168 } }, { width: 2, earnings_7d: null }]) === null);
-  is('a row that reaches the target on a single hour does not count', pickWidth([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0 } }]) === null);
+  // pickWidth: the width that ended the most ahead against holding over
+  // the week, fees in; the width in use is kept under the bar.
+  const wk = (w, fees, vs, share = 0.9, hours = 168) => ({ width: w, earnings: { net_usd_per_day: 0.1 }, earnings_7d: { hours, hours_in_range: hours * share, fees_usd: fees, vs_holding_usd: vs } });
+  // The live week of 2026-09-16: narrow earned the most fees and lost the most to the trend.
+  const week = [wk(0.25, 2.88, -5.42), wk(1, 2.53, -4.21), wk(3, 1.41, -1.91), wk(4, 1.14, -1.37), wk(5, 0.93, -0.99), wk(7, 0.72, -0.45), wk(10, 0.54, -0.05), { width: 'full', earnings_7d: null }];
+  const pk = pickWidth(week);
+  is('the pick is the width with the most money against holding, fees in (±10%: $0.49, not ±4%: −$0.23)', pk && pk.width === 10 && pk.score_usd === 0.49 && pk.kept_current === false);
+  is('… and the basis names the week', /ended the most ahead/.test(pk.basis) && /±10% \+\$0\.49/.test(pk.basis) && /±4% −\$0\.23/.test(pk.basis));
+  is('the width in use is replaced when the lead is over the bar (±4% in use, ±10% $0.72 ahead)', (() => { const r = pickWidth(week, { current: 4 }); return r.width === 10 && r.kept_current === false && /over the bar/.test(r.basis); })());
+  is('… and kept when the lead is under it (±7% in use at $0.27, ±10% at $0.29: the bar is $0.30)', (() => { const r = pickWidth([wk(7, 0.72, -0.45), wk(10, 0.54, -0.25)], { current: 7 }); return r.width === 7 && r.kept_current === true && /stays/.test(r.basis) && r.best_width === 10; })());
+  is('… the bar is a tenth of the score in use, at least two cents (a score of $0.05 in use needs $0.07)', (() => { const rows = [wk(2, 0.05, 0), wk(5, 0.069, 0), wk(7, 0.071, 0)]; return pickWidth(rows, { current: 2 }).width === 7 && pickWidth(rows.slice(0, 2), { current: 2 }).width === 2; })());
+  is('a width in use that is the best stays and says so', (() => { const r = pickWidth(week, { current: 10 }); return r.width === 10 && r.kept_current === true && /the width in use/.test(r.basis); })());
+  is('a ranging week (no loss to the trend) picks the narrowest, which earns the most', pickWidth([wk(1, 2.5, 0), wk(3, 1.4, 0), wk(10, 0.5, 0)]).width === 1);
+  is('a tie goes to the wider width', pickWidth([wk(3, 1, -0.3), wk(5, 0.7, 0)]).width === 5);
+  is('full range, rows without a week and rows without the holding line are never picked', pickWidth([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168, fees_usd: 1, vs_holding_usd: 0 } }, { width: 2, earnings_7d: null }, { width: 3, earnings_7d: { hours: 168, hours_in_range: 100, fees_usd: 1 } }]) === null);
+  is('a row with no hours does not count', pickWidth([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0, fees_usd: 0, vs_holding_usd: 0 } }]) === null);
+  is('the pick carries fees, the holding line, the share of hours in range and the week', pk.fees_usd === 0.54 && pk.vs_holding_usd === -0.05 && pk.in_range_share === 0.9 && pk.hours === 168 && pk.best_width === 10);
   console.log('relocate');
   const relOk = { positions: 1, hasTarget: true, targetHasWbnb: true, samePool: false, toPool: HOME_POOL.pool, width: 1, valueBnb: 0.3, move: { move: true, why: 'x' } };
   check('a move to any pool but home: refuses by the operator\'s decision', /stays in CAKE\/BNB 0\.05%/.test(refuseRelocate({ ...relOk, toPool: '0x172fcd41e0913e95784454622d1c3724f546f849' }) || ''), true);

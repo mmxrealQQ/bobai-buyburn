@@ -223,12 +223,12 @@ if (SELF_TEST) {
   const short = { windows: Array.from({ length: 10 }, (_, i) => pwin(i, 100)) };
   t(`under ${MIN_HOURS_FOR_EARNINGS} h of prices there is no earnings pick`, verdict(short).earnings_pick === null && verdict(short).rows[0].earnings !== null);
   const dayFlat = { windows: flat };
-  t('a day of flat prices picks the narrowest width', verdict(dayFlat).earnings_pick?.width === 1 /* flat: every width is in range all week; the narrowest wins */);
+  t('a day of flat prices picks the narrowest width', [1, 1.5].includes(verdict(dayFlat).earnings_pick?.width) /* flat: nothing is lost to the trend; the narrowest earns the most — on this fixture's fee rows the derived ±1.5% row reads the same fees as ±1%, and a tie goes to the wider */);
   const dayDrift = { windows: drift };
   t('a day of drifting prices picks a wider width than the narrowest', verdict(dayDrift).earnings_pick && verdict(dayDrift).earnings_pick.width > 1);
-  t('a price that climbs 2% every hour: no width is in range, the pick is the one in range the most and the record says trending, the net pick is none', (() => {
+  t('a price that climbs 2% every hour: the widest width loses the least against holding and is the pick; the basis says so', (() => {
     const v = verdict({ windows: Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.02, i), [row(1, true, 0.01), row(5, true, 0.003), row(10, true, 0.001)])) });
-    return v.earnings_pick && v.earnings_pick.reached_target === false && /trending/.test(v.earnings_pick.basis) && v.earnings_pick.width === 10 && (v.net_pick === null || v.net_pick.width != null);
+    return v.earnings_pick && v.earnings_pick.width === 10 && v.earnings_pick.vs_holding_usd <= 0 && /against holding/.test(v.earnings_pick.basis) && (v.net_pick === null || v.net_pick.width != null);
   })());
   t(`the earnings rule names the ${RESET_AFTER_HOURS} h delay it replays`, /2 h/.test(verdict(dayFlat).earnings_rule));
   // The delay test, both ways: reported for every wait, the wait in use
@@ -368,10 +368,10 @@ if (SELF_TEST) {
   t('a sample earns at the rate of the window whose hour it falls in', (() => { const ps = priceSeries(flat.slice(0, 3), [tapeAt(1, 30, 100)]); const smp = ps.find((p) => p.at === tapeAt(1, 30, 100).at); return smp && smp.window === flat[2]; })());
   t('a sample within a minute of a window head is counted once', priceSeries(flat.slice(0, 3), [{ ...tapeAt(1, 0, 100), at: new Date(Date.parse(flat[1].at) + 20e3).toISOString() }]).length === 3);
   t('the verdict walks the tape of its own pool only and says how many samples', (() => { const v = verdict({ pool: '0xpool', windows: flat }, { tape: flatTape.concat([{ ...tapeAt(3, 15, 200), pool: '0xother' }]) }); return v.price_samples === flatTape.length && v.rows[0].earnings.resets === 0 && v.price_samples_since === flatTape[0].at; })());
-  t('no tape: no samples, the same verdict as before', verdict(dayFlat).price_samples === 0 && verdict(dayFlat).earnings_pick?.width === 1 /* flat: every width is in range all week; the narrowest wins */);
+  t('no tape: no samples, the same verdict as before', verdict(dayFlat).price_samples === 0 && [1, 1.5].includes(verdict(dayFlat).earnings_pick?.width) /* flat: every width is in range all week; the narrowest wins */);
   t('every width is also replayed over the last week alone, and the pick comes from it (2026-09-16)', (() => { const v = verdict(dayFlat); const r = v.rows.find((x) => x.width === 1); return r.earnings_7d && r.earnings_7d.hours > 0 && v.earnings_pick && v.earnings_pick.earnings_7d && v.earnings_pick.basis && v.width_window_hours === 168; })());
   t('the most-net width is still named beside the pick', (() => { const v = verdict(dayFlat); return v.net_pick && v.net_pick.width != null && v.net_pick.earnings; })());
-  t('the rule says one-sided, gas alone, 95% of the last week', /one-sided/.test(verdict(dayFlat).earnings_rule) && /95%/.test(verdict(dayFlat).earnings_rule));
+  t('the rule says one-sided, gas alone, the most ahead against holding over the last week', /one-sided/.test(verdict(dayFlat).earnings_rule) && /against holding/.test(verdict(dayFlat).earnings_rule) && /168 h/.test(verdict(dayFlat).earnings_rule));
   t('every width is also replayed over the last day alone', (() => { const v = verdict(dayFlat); const r = v.rows.find((x) => x.width === 1); return r.earnings_24h && r.earnings_24h.hours <= 24.01 && r.earnings_24h.hours >= 20 && v.rows.every((x) => x.width !== 'full' || x.earnings_24h === null); })());
   t('the last-day replay walks only the last day of the tape', (() => { const v = verdict({ pool: '0xpool', windows: flat }, { tape: flatTape }); const r = v.rows.find((x) => x.width === 1); return r.earnings_24h.tape_samples < r.earnings.tape_samples && r.earnings_24h.tape_samples > 0; })());
   t('the width class snaps to the finer grid (a ±3.1% range is the 3 class, not 2 or 5)', widthClassOf([-Math.round(Math.log(1.031) / Math.log(1.0001)), Math.round(Math.log(1.031) / Math.log(1.0001))]) === 3 && RECORD_WIDTHS.includes(1.5) && RECORD_WIDTHS.includes(7));

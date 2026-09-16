@@ -55,7 +55,7 @@ import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks } from './lp-windows.js';
-import { widthClassOf, HOME_POOL } from '../shared/lp-guards.js';
+import { widthClassOf, HOME_POOL, pickWidth } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
 import { CAPABILITIES, WATCH_PRICE_USD1, WATCH_DAYS, fmtUsd1, offering } from './catalog.js';
@@ -1689,7 +1689,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}
 .wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}th,td{text-align:right;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);white-space:nowrap}th{color:#a9a49a;font-weight:600;text-transform:none;border-top:0}td:first-child,th:first-child{text-align:left}tr.pick td{color:#f0b90b;font-weight:700}
 `)}${pageNav({ href: '/lp/agent', label: 'The record' }, { href: '/lp/windows', label: 'The width record' }, BUY)}<h1>The width record</h1>
-<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price the way the agent lives them since 2026-09-16: a range the price has left is re-set one-sided, beside the price on the side it came from, with the one token it ended in and no trade, after the agent's own wait, at its measured gas. The width the next re-set uses is the narrowest that was in range 95% of the last week's hours in that replay — the most time earning at the thinnest spread — or, in a week no width reaches that, the one in range the most. Each row also says where the liquidity ended against holding its minted amounts; that line is reported, not charged. Nothing here is a forecast.</p>
+<p class="lead">How wide the DeFi agent sets its price range, and why. Every hour a cron replays a position of $${h(usd)} through the last hour of the CAKE/BNB 0.05% pool and records what each width would have earned; the widths are then replayed over every recorded price the way the agent lives them since 2026-09-16: a range the price has left is re-set one-sided, beside the price on the side it came from, with the one token it ended in and no trade, after the agent's own wait, at its measured gas. The width the next re-set uses is the one that ended the most ahead against holding over the last week in that replay, fees included — what the liquidity earned plus where it ended against a wallet that held the minted amounts, the line the card judges the agent by; the width in use is kept unless another leads it by a tenth of its own score. Nothing here is a forecast.</p>
 <h2>The pick</h2>
 <div class="card"><dl>
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — ${h(pick.basis || '')}${pick.earnings_7d ? `: about $${h(f(pick.earnings_7d.fees_usd, 2))} of fees on $${h(usd)} in ${h(f(pick.earnings_7d.hours, 0))} h (${h(f(pick.earnings_7d.hours_in_range, 0))} h of them inside the range) after ${h(pick.earnings_7d.resets)} one-sided re-set${pick.earnings_7d.resets === 1 ? '' : 's'} at $${h(f(pick.earnings_7d.reset_cost_usd, 2))} each; the liquidity ended ${pick.earnings_7d.vs_holding_usd < 0 ? '$' + h(f(-pick.earnings_7d.vs_holding_usd, 2)) + ' behind' : '$' + h(f(pick.earnings_7d.vs_holding_usd, 2)) + ' ahead of'} holding its minted amounts` : ''}` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
@@ -2210,7 +2210,11 @@ ${pageTail}`;
       let width = null, outsideSince = null;
       try {
         const { v } = await lpWidthVerdict(env);
-        const pick = v && v.earnings_pick;
+        // The same pick the re-set will make: re-read with the width the
+        // position is in, so the card's sentence and the plan agree.
+        const lastRb = rec && rec.last && rec.last.steps && rec.last.steps.rebalance;
+        const inUseTicks = lastRb && ((lastRb.acted && !lastRb.error && lastRb.new_ticks) || lastRb.ticks) || null;
+        const pick = v && ((Array.isArray(v.rows) && v.rows.some((r) => r.earnings_7d) && v.earnings_pick ? pickWidth(v.rows, { current: widthClassOf(inUseTicks) }) : null) || v.earnings_pick);
         if (pick) width = { width_pct: pick.width, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: pick.earnings?.net_usd_per_day ?? null };
         else if (v) width = { width_pct: null, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: null };
       } catch { /* the sentence does without */ }

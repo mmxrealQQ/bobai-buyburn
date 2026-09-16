@@ -23,8 +23,7 @@
 // and the decision module both import verdict() from here, so the number a
 // person reads and the number the mint is sized on come from one function.
 
-import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, IN_RANGE_TARGET, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
-const IN_RANGE_TARGET_PCT = IN_RANGE_TARGET * 100;
+import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -309,9 +308,10 @@ export function verdict(log, opts = {}) {
     // Best net among the widths that held every tested day — reported, no
     // longer the width a re-set uses (it was, until 2026-09-04).
     day_pick: thin ? null : (dayHolders[0] || null),
-    // The width a re-set uses (2026-09-16): the narrowest width in range for
-    // IN_RANGE_TARGET of the last week's hours, replayed with one-sided
-    // re-sets (pickWidth); the most-net width is still named beside it.
+    // The width a re-set uses (2026-09-16): the width that ended the most
+    // ahead against holding over the last week, fees in, replayed with
+    // one-sided re-sets (pickWidth); the plan re-reads it with the width in
+    // use for the bar. The most-net width is still named beside it.
     earnings_pick: widthPick,
     net_pick: thin || hoursOfPrices < MIN_HOURS_FOR_EARNINGS ? null : (earners[0] ? { width: earners[0].width, earnings: earners[0].earnings } : null),
     width_window_hours: WIDTH_WINDOW_HOURS,
@@ -326,7 +326,7 @@ export function verdict(log, opts = {}) {
     reset_cost: opts.resetCostUsd != null
       ? { usd: opts.resetCostUsd, basis: (opts.resetCostBasis || 'measured: the agent\'s last re-set, in today\'s dollars') + `; charged per $${POSITION_USD} of the position, the size every width is replayed at. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it` }
       : { usd: rows.find((r) => r.earnings)?.earnings?.reset_cost_usd ?? null, basis: 'assumed by the replay (median over the windows) — no re-set has been measured yet. Since 2026-09-16 a re-set trades nothing (one-sided), so it costs its gas and nothing is lost to the price at it' },
-    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Since 2026-09-16 the re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone. Net per day is fees less re-sets. The width a re-set uses is the narrowest that was in range ${Math.round(IN_RANGE_TARGET_PCT)}% of the last ${WIDTH_WINDOW_HOURS} h in that replay (the most time earning at the thinnest spread), or, when no width reaches that, the one in range the most; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record. Every row also says where the liquidity ended against holding its minted amounts (vs_holding_usd) — reported, not charged.`,
+    earnings_rule: `each width replayed over the recorded prices: minted centred on the first price, earning that hour's fees inside the range and nothing outside, re-set once the price has been outside for ${wait.hours} h — the wait the agent uses (${wait.basis}). Since 2026-09-16 the re-set is one-sided, the way the agent does it: the new range sits beside the price on the side it came from, takes the one token the old range ended in and trades nothing, so it is charged its gas alone. Net per day is fees less re-sets. The width a re-set uses is the one that ended the most ahead against holding over the last ${WIDTH_WINDOW_HOURS} h in that replay, fees included (fees_usd + vs_holding_usd: what the liquidity earned plus where it ended against a wallet that held the minted amounts — the line the card judges the agent by); a width in use is kept unless another leads it by a tenth of its own score and at least two cents on $50 a week; nothing until ${MIN_HOURS_FOR_EARNINGS} h of prices are on record.`,
   };
 }
 

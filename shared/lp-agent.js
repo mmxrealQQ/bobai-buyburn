@@ -29,7 +29,7 @@
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
@@ -542,7 +542,11 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   if (p.positions === 0 && pool) { p = { ...p, pos: await readPoolPair(pub, pool) }; resume = true; }
   let poolInfo = null, spacing = null, other = null, wbnbIs0 = false, valueBnb = 0, have = null, target = null, ticks = null, trade = null;
   let owedWei = 0n, share = null, left = null, oneSided = null;
-  const pick = record?.earnings_pick || null;
+  // The record's pick, re-read with the width the position is in: a width
+  // in use is kept unless another leads it by the bar (pickWidth). Records
+  // without weekly rows (before 2026-09-16) keep their own pick.
+  const inUse = p.positions === 1 && p.pos ? widthClassOf([Number(p.pos[5]), Number(p.pos[6])]) : null;
+  const pick = (Array.isArray(record?.rows) && record.rows.some((r) => r.earnings_7d) && (record.earnings_pick || record.hours_of_prices >= 24) ? pickWidth(record.rows, { current: inUse }) : null) || record?.earnings_pick || null;
   const width = widthOverride ?? pick?.width ?? null;
   const widthBasis = widthOverride != null ? 'named by hand'
     : (pick ? (pick.basis || `netted the most per day over ${record?.hours_of_prices} h of recorded prices: about $${pick.earnings?.net_usd_per_day} a day on $50 after ${pick.earnings?.resets} re-set${pick.earnings?.resets === 1 ? '' : 's'} at $${pick.earnings?.reset_cost_usd} each`) : null);

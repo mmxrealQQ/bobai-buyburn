@@ -416,3 +416,9 @@ stayed in range 95% of the last week in the one-sided replay (±4% today,
 position against a wallet that simply held 50/50 since each deposit
 (−4.49% today, a trending fortnight). First live one-sided re-set 05:50 UTC:
 #7435603 → #7450202, three transactions, 0.00005 BNB of gas, no swap.
+Same day, evening: the width is picked by the line the card judges the agent
+by — fees less re-set gas plus the position against holding, over the last
+week in the one-sided replay — instead of the morning's 95%-in-range stand-in;
+the width in use is kept unless another leads by a tenth. Today that reads
+±7% (+$0.58 on $50 a week) over the ±4% in use (+$0.16); the change comes at
+the next natural re-set, the position in range is never touched.

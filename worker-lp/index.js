@@ -159,6 +159,22 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   // The width record's verdict, replayed once per tick (the rebalance step
   // fills it; the ladder step reads it).
   let widthRecord = null;
+  // The width record's verdict with the agent's own measured re-set cost —
+  // one loader for the rebalance and the ladder step, so the two never pick
+  // a different width from the same record (2026-09-16: a hand-narrowed
+  // ladder run replayed without the cost and named ±4% where the re-set
+  // had just taken ±7%).
+  const loadWidthRecord = async () => {
+    const log = await readLpWindows(env);
+    let costOpts = {}, bnbUsd = null;
+    try {
+      bnbUsd = (await readBnbUsd(pub)).bnbUsd;
+      const m = measuredResetCost(await readState(env), bnbUsd);
+      if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostFullUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+    } catch { /* the replay's assumption stands */ }
+    const record = log ? verdict(log, { ...costOpts, tape: await readLpTicks(env) }) : null;
+    return { log, record, costOpts, bnbUsd };
+  };
 
   // 2. collect: fees -> BNB -> part kept as capital, the rest to the buyback
   //    wallet. Only what this run produced. The share is a var, not a secret:
@@ -233,19 +249,11 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
         }
       }
     }
-    const log = await readLpWindows(env);
     // The width is picked with the cost the agent really pays, once it has
-    // paid one: the last re-set's gas from its own record, in today's dollars.
-    let costOpts = {}, bnbUsd = null;
-    try {
-      bnbUsd = (await readBnbUsd(pub)).bnbUsd;
-      const m = measuredResetCost(await readState(env), bnbUsd);
-      // The replay is charged the cost per $50 of the position (usd_per_50,
-      // the size every width is replayed at); the full figure stays for the
-      // width-upgrade rule, which pays a real re-set on the real position.
-      if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostFullUsd: m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
-    } catch { /* the replay's assumption stands */ }
-    const record = log ? verdict(log, { ...costOpts, tape: await readLpTicks(env) }) : null;
+    // paid one: the last re-set's gas from its own record, in today's dollars
+    // (loadWidthRecord; the replay is charged the cost per $50 of the
+    // position, the full figure stays for the record).
+    const { log, record, costOpts, bnbUsd } = await loadWidthRecord();
     // The pool the record watches lets the plan finish a re-set that stopped
     // between its unwind and its mint: no position, the two tokens in the
     // wallet (2026-09-05 12:50). Such a resume does not wait the two hours —
@@ -369,7 +377,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   await run('ladder', async () => {
     // A hand-narrowed run (step=ladder) has no rebalance step before it to
     // fill the width record; replay it here then, so the reserve's width is known.
-    if (!widthRecord) { try { const log = await readLpWindows(env); widthRecord = log ? verdict(log, { tape: await readLpTicks(env) }) : null; } catch { widthRecord = null; } }
+    if (!widthRecord) { try { widthRecord = (await loadWidthRecord()).record; } catch { widthRecord = null; } }
     const plan = await planLadder(pub, lp.address, { record: widthRecord, ladder });
     const base = { ...plan.summary, gate: ladderOn ? 'on' : 'off' };
     if (plan.no) return { ...base, acted: false, why: `${plan.why} — ${plan.no}` };

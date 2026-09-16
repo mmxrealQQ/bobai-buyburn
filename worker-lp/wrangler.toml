@@ -45,7 +45,7 @@ LP_FEE_KEEP_PCT = "50"
 # do; "1" mints and grows the reserve range below the price from BNB that
 # arrives while the main range is all of the other side above it. The first
 # reserve is watched before the gate opens, as the first re-set was.
-LP_LADDER = "0"
+LP_LADDER = "1"
 
 # Secrets, set with `wrangler secret put`, never in this file:
 #   LP_PRIVATE_KEY              the liquidity wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A

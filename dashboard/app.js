@@ -1128,6 +1128,7 @@ function fillLpPortfolio(){
     if(d.errors) counts.push('⚠️ ' + d.errors + ' failed');
     const list = [
       li('🥞', [esc(m.pool.label || 'the pool'), width, range].filter(Boolean).join(' · ')),
+      (h.reserve && h.reserve.bnb > 0 ? li('🪜', 'Reserve below the price: <b>' + bnb(h.reserve.bnb) + '</b> <span class="m">· buys on the way down, no trade</span>') : ''),
       li('🧠', h.bobai_units > 0 ? '<b>' + Math.round(h.bobai_units).toLocaleString('en-US') + ' $BOBAI</b> held' + (h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) : '') + ' <span class="m">· bought from fees, never sold</span>' : 'No $BOBAI held yet. Half of every fee buys some.'),
       li('🗓', 'Last 24 h: <b>' + esc(counts.length ? counts.join(', ') : 'quiet') + '</b>' + (d.last ? ' <span class="m">· last ' + esc(String(d.last.at).slice(11, 16)) + ' UTC' + (d.last.error ? ' ⚠️' : '') + '</span>' : '')),
       li('🧭', 'Next: ' + esc(m.next || '—')),

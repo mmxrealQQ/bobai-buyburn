@@ -29,13 +29,13 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -253,6 +253,8 @@ if (SELF) {
     [{ ...healthyIncrease, inRange: false }, 'price outside the range'],
   ]) check(why, refuseIncrease(state), true);
   check('capital above the floor and a price in range', refuseIncrease(healthyIncrease), false);
+  check('out of range but the range is all WBNB below the price: BNB joins it, no trade (2026-09-16)', refuseIncrease({ ...healthyIncrease, inRange: false, wbnbOnly: true }), false);
+  check('out of range and the range is all of the other side above the price: refuses, names the ladder', /ladder/.test(refuseIncrease({ ...healthyIncrease, inRange: false, wbnbOnly: false }) || '') ? null : 'no ladder named', false);
   check(`exactly the floor (${MIN_INCREASE_BNB})`, refuseIncrease({ ...healthyIncrease, spendableBnb: MIN_INCREASE_BNB }), false);
 
   console.log('rebalance');
@@ -361,6 +363,32 @@ if (SELF) {
   check('under the floor: refuses', refuseRelocate({ ...relOk, valueBnb: 0.01 }), true);
   check('a move the rule allows: goes', refuseRelocate(relOk), false);
   check('a person naming the pool passes no rule and goes', refuseRelocate({ ...relOk, move: null }), false);
+
+  console.log('the ladder (2026-09-16): BNB beside a sell ladder opens a buy ladder');
+  const L = (over) => ({ positions: 1, reserve: false, mainSide: 'other', reserveSide: null, spendableBnb: 0.03, reserveLeft: false, ...over });
+  is(`main all of the other side above the price, ${LADDER_GATE} aside, BNB over the floor: mint the reserve`, ladderDecision(L({})).act === 'mint_reserve');
+  is('… under the floor: nothing, and it says the ladder opens with the next deposit', (() => { const d = ladderDecision(L({ spendableBnb: MIN_INCREASE_BNB / 2 })); return d.act === null && /next deposit/.test(d.why); })());
+  is('main all WBNB below the price: no ladder, the increase takes the BNB', (() => { const d = ladderDecision(L({ mainSide: 'wbnb' })); return d.act === null && /increase step/.test(d.why); })());
+  is('main in range: no ladder, the increase takes the BNB', ladderDecision(L({ mainSide: 'both' })).act === null);
+  is('no position: nothing', ladderDecision(L({ positions: 0 })).act === null);
+  is('two positions the record does not name: a decision for a person', /person/.test(ladderDecision(L({ positions: 2, reserve: false })).why));
+  is('three positions: a decision for a person', /person/.test(ladderDecision(L({ positions: 3, reserve: true })).why));
+  const R = (over) => L({ positions: 2, reserve: true, reserveSide: 'wbnb', ...over });
+  is('reserve stands (WBNB below), main above, BNB over the floor: grow the reserve', ladderDecision(R({})).act === 'increase_reserve');
+  is('… under the floor: the ladder stands, nothing to do', (() => { const d = ladderDecision(R({ spendableBnb: 0.001 })); return d.act === null && /stands/.test(d.why); })());
+  is('both hold only the other side (the price fell through the reserve): merge', ladderDecision(R({ reserveSide: 'other' })).act === 'merge');
+  is('both hold only WBNB (the price rose through the main range): merge', ladderDecision(R({ mainSide: 'wbnb', reserveSide: 'wbnb' })).act === 'merge');
+  is('the merge outranks a left reserve and waiting BNB', ladderDecision(R({ reserveSide: 'other', reserveLeft: true, spendableBnb: 1 })).act === 'merge');
+  is('the reserve left below the price by more than the slack, main still above: re-set the reserve beside the price', ladderDecision(R({ reserveLeft: true })).act === 'reset_reserve');
+  is('main in range, reserve below it, BNB waits: the increase takes it, not the ladder', (() => { const d = ladderDecision(R({ mainSide: 'both' })); return d.act === null && /increase step/.test(d.why); })());
+  is('the gate is a worker variable named LP_LADDER', LADDER_GATE === 'LP_LADDER');
+  // positionSide: which token a range holds at a price.
+  const psPos = [0n, '0x0', '0xcake', '0xwbnb', 500, -57780, -57000, 10n ** 20n];   // CAKE/BNB: WBNB is token1
+  is('a range above the price holds only the other side', positionSide(psPos, Math.pow(1.0001, -57807 / 2), false).side === 'other');
+  is('a range below the price holds only WBNB', positionSide(psPos, Math.pow(1.0001, -56900 / 2), false).side === 'wbnb');
+  is('a range around the price holds both', positionSide(psPos, Math.pow(1.0001, -57400 / 2), false).side === 'both');
+  is('a range with no liquidity holds nothing', positionSide([...psPos.slice(0, 7), 0n], Math.pow(1.0001, -57400 / 2), false).side === null);
+  is('… and its value in BNB is the two sides at the price', (() => { const v = positionSide(psPos, Math.pow(1.0001, -57400 / 2), false); return v.valueBnb > 0 && Math.abs(v.valueBnb - (v.wbnb + v.other * Math.pow(1.0001, -57400)) / 1e18) < 1e-12; })());
 
   console.log('deposit forces a re-set');
   check('in range: no', depositForcesReset({ inRange: true, spendableBnb: 1, valueBnb: 0.3 }), false);

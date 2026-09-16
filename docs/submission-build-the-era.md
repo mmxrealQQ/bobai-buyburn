@@ -422,3 +422,10 @@ week in the one-sided replay — instead of the morning's 95%-in-range stand-in;
 the width in use is kept unless another leads by a tenth. Today that reads
 ±7% (+$0.58 on $50 a week) over the ±4% in use (+$0.16); the change comes at
 the next natural re-set, the position in range is never touched.
+Same day, later: the ladder is built behind a gate (LP_LADDER=0, planned and
+recorded, not run): BNB that arrives while the main range is all of the
+other side above the price opens a reserve range below the price, WBNB only,
+no trade — a buy ladder under the sell ladder — and the two merge back into
+one at the main range's next re-set once they hold the same token. Pins
+240/240, 132/132, 34/34. The first reserve will be run watched, as the first
+re-set was.

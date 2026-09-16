@@ -456,14 +456,54 @@ export function widthUpgrade(state) {
   };
 }
 
-// state: { positions, spendableBnb, inRange }
+// state: { positions, spendableBnb, inRange, wbnbOnly }
 // spendableBnb is what the wallet holds above the reserve and the gas budget.
+// wbnbOnly (2026-09-16): the range lies entirely below the price and holds
+// only WBNB — a buy ladder. BNB joins it as it is, no trade, and earns the
+// moment the price comes down into it; that is growth, not a range that
+// earns nothing. A range above the price (all of the other side) still
+// refuses: joining it would mean buying the other side, and buying is what
+// the ladder step does with a range of its own below the price.
 export function refuseIncrease(state) {
   if (state.positions !== 1) return state.positions === 0
     ? 'this wallet holds no position to grow'
     : `this wallet holds ${state.positions} positions — which one to grow is a decision for a person`;
   if (!(state.spendableBnb >= MIN_INCREASE_BNB))
     return `only ${Number(state.spendableBnb || 0).toFixed(6)} BNB above the reserve, below the ${MIN_INCREASE_BNB} BNB floor — it stays as BNB until more arrives`;
-  if (!state.inRange) return 'the price is outside the position\'s range. Adding to a range that earns nothing is not growth; the BNB is held until the range is re-set.';
+  if (!state.inRange && state.wbnbOnly) return null;
+  if (!state.inRange) return 'the price is outside the position\'s range, above it: the range is all of the other side, and BNB would have to be traded into it. The BNB is held for the ladder (a range of its own below the price) or the next re-set.';
   return null;
 }
+
+// THE LADDER (2026-09-16, the operator's "BNB als Reserve fuer Nachkauf").
+// After a one-sided re-set below the price the whole position is the other
+// side, waiting above the price. BNB that arrives then — a deposit, the
+// kept half of the fees — used to be traded into the other side (the
+// increase) or to idle. The ladder gives it a range of its own BELOW the
+// price, WBNB only, no trade: a buy ladder under the sell ladder. Whichever
+// way the price goes, one of the two earns, and the lower one buys the other
+// side on the way down through fees instead of through a swap. The two are
+// merged back into one the moment they hold the same token (the price went
+// through one of them): the reserve is unwound at the main range's next
+// re-set and its tokens go into the new range as they are.
+// state: { gate, positions, mainSide ('other'|'wbnb'|'both'|null), reserve
+//          (bool), reserveSide, spendableBnb, reserveLeft (bool) }
+// Returns { act: 'mint_reserve'|'increase_reserve'|'merge'|'reset_reserve'
+//           |null, why }. Pure; pinned both ways.
+export const LADDER_GATE = 'LP_LADDER';
+export function ladderDecision(state) {
+  const no = (why) => ({ act: null, why });
+  if (state.positions === 0) return no('no position: the first deposit opens the main range, not a ladder');
+  if (state.positions > 2 || (state.positions === 2 && !state.reserve)) return no(`this wallet holds ${state.positions} positions the ladder record does not name — a decision for a person`);
+  const spendable = Number(state.spendableBnb || 0);
+  if (state.reserve) {
+    if (state.mainSide && state.reserveSide && state.mainSide === state.reserveSide && state.mainSide !== 'both') return { act: 'merge', why: `main and reserve both hold only ${state.mainSide === 'wbnb' ? 'WBNB' : 'the other side'} — the price went through one of them; the reserve joins the main range at its re-set, no trade` };
+    if (state.reserveLeft) return { act: 'reset_reserve', why: 'the price has left the reserve range by more than the slack — it is re-set beside the price, one-sided, no trade' };
+    if (spendable >= MIN_INCREASE_BNB && state.mainSide === 'other') return { act: 'increase_reserve', why: `${spendable.toFixed(6)} BNB waits and the main range is all of the other side above the price — the BNB joins the reserve range below it, no trade` };
+    return no(spendable >= MIN_INCREASE_BNB ? 'BNB waits, but the main range is not all of the other side — the increase step takes it' : `the ladder stands: main above the price, reserve below it; ${spendable.toFixed(6)} BNB waits, under the ${MIN_INCREASE_BNB} BNB floor`);
+  }
+  if (state.mainSide !== 'other') return no(state.mainSide === 'wbnb' ? 'the main range is all WBNB below the price — BNB joins it through the increase step, no ladder needed' : 'the main range is in range and earns on both sides — BNB joins it through the increase step');
+  if (!(spendable >= MIN_INCREASE_BNB)) return no(`the main range is all of the other side above the price and only ${spendable.toFixed(6)} BNB waits, under the ${MIN_INCREASE_BNB} BNB floor — the ladder opens with the next deposit`);
+  return { act: 'mint_reserve', why: `the main range is all of the other side above the price and ${spendable.toFixed(6)} BNB waits — it opens a reserve range below the price, WBNB only, no trade` };
+}
+

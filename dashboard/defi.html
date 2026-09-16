@@ -152,7 +152,7 @@
         <li><span class="agt-i">1</span><div><b>Sweep</b><span>Income into BNB, into the DeFi wallet &mdash; once it is worth more than the gas.</span></div></li>
         <li><span class="agt-i">2</span><div><b>Collect</b><span>The fees the position earned: half kept, half into $BOBAI. Small amounts are left to grow.</span></div></li>
         <li><span class="agt-i">3</span><div><b>Rebalance</b><span>Checked every hour. A position the price has left is re-set beside the price, on the side the price came from, with the one token it ended in and no trade &mdash; one-sided, so a re-set costs its gas and never sells the low. The width is the one that ended the most ahead against holding over the last week, fees included, in the <a href="https://agent.brainonbnb.com/lp/windows" rel="noopener">width record</a>; the width in use is kept unless another leads it by a tenth. The card says where the position stands against simply holding.</span></div></li>
-        <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the position &mdash; a deposit within minutes, when the range is live.</span></div></li>
+        <li><span class="agt-i">4</span><div><b>Increase</b><span>BNB above the gas reserve goes into the position &mdash; a deposit within minutes, when the range is live. BNB that waits beside a range sitting above the price opens a reserve range below it instead, WBNB only, no trade: a buy ladder under the sell ladder, merged back into one when the price has gone through either.</span></div></li>
       </ol>
       <p class="agt-note">The record, run by run and in the agent&rsquo;s own words: <a href="https://agent.brainonbnb.com/lp/agent" rel="noopener">/lp/agent</a>. The code: one core, <code>shared/lp-agent.js</code>, run by the worker and by hand alike, in <a href="/source">the published source</a>. It never touches the buyback bot&rsquo;s own code.</p>
     </div>
@@ -190,6 +190,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=76" defer></script>
+<script src="app.js?v=77" defer></script>
 </body>
 </html>

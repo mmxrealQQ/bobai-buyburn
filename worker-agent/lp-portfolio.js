@@ -33,6 +33,10 @@ export function stepWords(name, s) {
       ? `re-set the range wider/narrower: ±${s.upgraded_from_pct}% → ±${s.upgraded_to_pct}%${s.new_position ? ` (#${s.new_position})` : ''}`
       : `re-set the range ${s.one_sided ? `one-sided ${s.one_sided === 'above_price' ? 'above' : 'below'} the price, no trade` : 'around the price'}${s.new_position ? ` (#${s.new_position})` : ''}${n(s.bobai_bnb) > 0 ? `, ${r5(s.bobai_bnb)} BNB of its fees into $BOBAI` : ''}` };
     case 'increase': return { what: `grew the position${n(s.bnb_spent) > 0 ? ` by ${r4(s.bnb_spent)} BNB` : ''}` };
+    case 'ladder': return { what: s.new_reserve && !s.old_reserve ? `opened a reserve range below the price with ${r4(s.bnb_spent)} BNB, no trade (#${s.new_reserve})`
+      : s.old_reserve ? `re-set the reserve range beside the price, no trade (#${s.old_reserve} → #${s.new_reserve})`
+      : s.merged_reserve ? `merged the reserve range into the main one (#${s.merged_reserve})`
+      : `grew the reserve range by ${r4(s.bnb_spent)} BNB, no trade` };
     default: return { what: `${name} acted` };
   }
 }
@@ -115,6 +119,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const poolAddr = String(rec.pool || HOME_POOL.pool).toLowerCase();
   const poolLabel = labelOf(poolAddr) || (poolAddr === HOME_POOL.pool ? HOME_POOL.label : null);
   const walletBnb = inc.wallet_bnb != null ? n(inc.wallet_bnb) : pt ? n(pt.wallet_bnb) : 0;
+  const reserve = inc.reserve || rb.reserve || null;
 
   const p = sum.profit;
   const feeParts = [];
@@ -166,7 +171,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   };
   return {
     at: last.at, date: String(last.at).slice(0, 10), checked_at: chk.at || last.at, bnb_usd: bnbUsd,
-    pool: { address: poolAddr, label: poolLabel, position, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10 },
+    pool: { address: poolAddr, label: poolLabel, position, reserve_position: reserve ? String(reserve.position) : null, in_range: inRange, range_checked_at: last.range_checked_at || chk.at || null, width_pct: widthPct, outside_since: outsideSince || null, outside_hours: outH == null ? null : Math.round(outH * 10) / 10 },
     next,
     day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
@@ -180,6 +185,9 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       bobai_usd: bobaiUsd > 0 ? Math.round(n(sum.bobai_held_units) * bobaiUsd * 100) / 100 : null,
       bobai_usd_price: bobaiUsd > 0 ? bobaiUsd : null,
       wallet_bnb: r4(walletBnb),
+      // The ladder's reserve range (2026-09-16), when one stands: BNB below
+      // the price, waiting to buy the other side through fees.
+      reserve: reserve ? { position: String(reserve.position), ticks: reserve.ticks || null, bnb: r4(reserve.value_bnb) } : null,
     },
     pnl: {
       // Where the profit went, the operator's two halves: the fees kept as

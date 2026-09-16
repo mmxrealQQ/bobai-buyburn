@@ -61,6 +61,13 @@ export function moneyFlow(rec, { earned = null } = {}) {
       increases += 1;
       intoPosition += inc.bnb_spent != null ? n(inc.bnb_spent) : n(inc.wbnb_used);
     }
+    // The ladder step (2026-09-16) puts BNB into the reserve range: capital
+    // into the position like an increase, counted the same way.
+    const ld = st.ladder;
+    if (ld && ld.acted && !ld.error && n(ld.bnb_spent) > 0) {
+      increases += 1;
+      intoPosition += n(ld.bnb_spent);
+    }
     const rb = st.rebalance;
     if (rb && rb.acted && !rb.error && rb.new_position) {
       resets += 1;
@@ -75,7 +82,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
       if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
     }
     if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
-    for (const step of [...sweeps, c, inc, rb]) {
+    for (const step of [...sweeps, c, inc, rb, st.ladder]) {
       for (const t of (step && Array.isArray(step.txs) ? step.txs : [])) { txs += 1; gas += n(t.gas_bnb); }
     }
     if (e.acted) { if (!first) first = e.at; lastMoved = e.at; }

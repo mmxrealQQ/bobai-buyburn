@@ -40,7 +40,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `lp-pools.mjs` | RETIRED 2026-09-11 — the agent stays in CAKE/BNB 0.05% (HOME_POOL); the pool record's functions and pins stay as the record of how twelve pools were compared |
 | `lp-portfolio.mjs` | the portfolio model as the page, the bot and the 05:00 card see it; `--self-test` pins its rules both ways |
 | `lp-open.mjs` | open the position the tools chose |
-| `lp-agent.mjs` | the daily worker's steps by hand: sweep, collect, rebalance (one-sided since 2026-09-16), increase; `--self-test` pins the guards, the tick math and the trade sizing |
+| `lp-agent.mjs` | the daily worker's steps by hand: sweep, collect, rebalance (one-sided since 2026-09-16), increase; the ladder (a reserve range below the price from waiting BNB, gated by LP_LADDER) lives in the worker; `--self-test` pins the guards, the ladder rule, the tick math and the trade sizing |
 | `create-lp-wallet.mjs` | one-time: the wallet that holds the position |
 
 ## The census and the marketplace (ERC-8004 / ERC-8183)

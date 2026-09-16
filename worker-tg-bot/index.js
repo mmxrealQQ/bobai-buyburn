@@ -2052,6 +2052,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
     ],
     [
       `🥞 ${pool}`,
+      ...(h.reserve && h.reserve.bnb > 0 ? [`🪜 Reserve below the price: ${bnb(h.reserve.bnb)} · buys on the way down, no trade`] : []),
       h.bobai_units > 0
         ? `🧠 <b>${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI</b> held${h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) : ''} · bought from fees, never sold`
         : '🧠 No $BOBAI held yet. Half of every fee buys some.',

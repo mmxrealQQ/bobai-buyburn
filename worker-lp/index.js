@@ -339,14 +339,14 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
         if (lp2.act === 'merge') {
           const m = await executeLadder(pub, lpWallet(), lp, lp2, () => {}, { txs });
           merged = { merged_reserve: m.merged_reserve, reserve_fees_folded: m.reserve_fees_folded };
-          await writeLadder(env, { main: plan.summary.position, reserve: null, since: ladder.since });
+          ladder.reserve = null; await writeLadder(env, ladder);
         }
       }
       // A re-set a deposit forced takes the deposit with it: wrapped after
       // the unwind, minted with the rest, no sell-then-buy-back.
       const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, wrapFirst: !!forced, txs });
       await env.AGENT.delete(OUT_SINCE_KEY);
-      if (done.new_position) await writeLadder(env, { main: String(done.new_position), reserve: merged ? null : (ladder.reserve ?? null), since: ladder.since || at });
+      if (done.new_position) { ladder.main = String(done.new_position); ladder.since = ladder.since || at; await writeLadder(env, ladder); }
       return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...(merged || {}), ...done };
     } catch (e) {
       return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
@@ -388,7 +388,9 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const txs = [];
     try {
       const done = await executeLadder(pub, lpWallet(), lp, plan, () => {}, { txs });
-      if (done.new_reserve) await writeLadder(env, { main: plan.summary.position, reserve: String(done.new_reserve), since: ladder.since || at });
+      // The record on KV and the one this tick holds in hand: the increase
+      // step that follows must read the wallet through the new reserve too.
+      if (done.new_reserve) { ladder.main = plan.summary.position; ladder.reserve = String(done.new_reserve); ladder.since = ladder.since || at; await writeLadder(env, ladder); }
       return { ...base, acted: true, ...done };
     } catch (e) {
       return { ...base, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };

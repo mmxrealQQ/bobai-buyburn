@@ -78,6 +78,41 @@ The local Node script is the same logic as a manual fallback.`,
   },
   {
     group: 'bots',
+    slug: 'defi-agent',
+    title: 'DeFi Agent — a PancakeSwap V3 range that runs itself',
+    tagline: 'One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.',
+    about: `Holds one PancakeSwap V3 position in CAKE/BNB 0.05% and looks after it. Once a day it
+collects the fees: half stays as capital, half buys $BOBAI that the agent holds. Every hour it
+checks the range; a range the price has left is re-set beside the price with the one token it
+ended in — one-sided, nothing is sold at the low or bought at the high. BNB that arrives while
+the range waits above the price opens a reserve range below it, a buy ladder under the sell
+ladder, and the two merge again once they hold the same token. A deposit is in the position
+within ten minutes. The width is not a setting: every hour a window of the pool's swaps is
+recorded, every candidate width is replayed over the last week with the agent's own re-set
+cost, and the width that ended the most ahead against simply holding is the one in use. Every
+decision is a pure function in one guards file, pinned in both directions by a self-test, and
+every run — including the ones that decided to do nothing — is written to a public record.`,
+    reqs: [
+      {what: 'A wallet that holds the position', ours: 'one BSC wallet used for nothing else',
+       alt: 'any wallet — the agent refuses when it finds positions it does not know, so keep it to itself'},
+      {what: 'Somewhere that runs code on a schedule', ours: 'a Cloudflare Worker: a daily run, an hourly check, a ten-minute deposit watch',
+       alt: 'a VPS with crontab or node on your own machine — scripts/lp-agent.mjs runs the same steps by hand, dry by default'},
+      {what: 'Somewhere to keep the record', ours: 'one Cloudflare KV namespace',
+       alt: 'Redis, SQLite, Postgres or a JSON file — one record, one width log, one price tape'},
+      {what: 'A BSC RPC endpoint', ours: 'the public endpoints, with failover',
+       alt: 'any node; a read that fails throws, so a throttled node never looks like an empty wallet'},
+      {what: 'A V3 pool with real volume', ours: 'CAKE/BNB 0.05% on PancakeSwap V3',
+       alt: 'any Uniswap-V3-style pool with WBNB on one side — the pool is one constant, the position manager another'},
+      {what: 'One secret at runtime: LP_PRIVATE_KEY', ours: 'wrangler secret put',
+       alt: 'a .env file for the hand script — anything but the source code'},
+    ],
+    run: ['node scripts/lp-agent.mjs --self-test   # every guard, both ways, no chain needed', 'node scripts/lp-agent.mjs                # dry: reads the wallet and prints what it would do', 'cd worker-lp && npx wrangler deploy'],
+    entries: ['worker-lp', 'shared/lp-agent.js', 'shared/lp-guards.js', 'shared/lp-flow.js', 'shared/package.json',
+      'worker-agent/lp-windows.js', 'worker-agent/lp-pools.js', 'worker-agent/lp-portfolio.js', 'worker-agent/lp-service.js',
+      'scripts/lp-agent.mjs', 'scripts/lp-windows.mjs', 'scripts/lp-portfolio.mjs'],
+  },
+  {
+    group: 'bots',
     slug: 'dev-sweep-bot',
     title: 'Dev Sweep Bot',
     tagline: 'The hourly one that empties the tax wallet.',
@@ -348,7 +383,7 @@ swaps is handed back for the caller to do themselves, never executed on their be
        alt: 'the ownership proofs in the catalogue are signed offline and pasted in as constants — the private key never reaches the worker'},
     ],
     run: ['npx wrangler deploy', 'node scripts/x402-catalog-proof.mjs --verify  # check the catalogue signs what it claims'],
-    entries: ['worker-agent', 'worker-lp', 'shared', 'scripts/lp-agent.mjs', 'scripts/x402-catalog-proof.mjs', 'docs/x402-catalog.md'],
+    entries: ['worker-agent', 'shared', 'scripts/x402-catalog-proof.mjs', 'docs/x402-catalog.md'],
   },
   {
     group: 'apps',

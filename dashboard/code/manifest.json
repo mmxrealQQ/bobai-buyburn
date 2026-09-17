@@ -48,6 +48,65 @@
    ]
   },
   {
+   "slug": "defi-agent",
+   "group": "bots",
+   "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
+   "tagline": "One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.",
+   "files": 14,
+   "lines": 5346,
+   "zipBytes": 128074,
+   "txtBytes": 396839,
+   "sha256": "256449f494d2f957",
+   "reqs": [
+    {
+     "what": "A wallet that holds the position",
+     "ours": "one BSC wallet used for nothing else",
+     "alt": "any wallet — the agent refuses when it finds positions it does not know, so keep it to itself"
+    },
+    {
+     "what": "Somewhere that runs code on a schedule",
+     "ours": "a Cloudflare Worker: a daily run, an hourly check, a ten-minute deposit watch",
+     "alt": "a VPS with crontab or node on your own machine — scripts/lp-agent.mjs runs the same steps by hand, dry by default"
+    },
+    {
+     "what": "Somewhere to keep the record",
+     "ours": "one Cloudflare KV namespace",
+     "alt": "Redis, SQLite, Postgres or a JSON file — one record, one width log, one price tape"
+    },
+    {
+     "what": "A BSC RPC endpoint",
+     "ours": "the public endpoints, with failover",
+     "alt": "any node; a read that fails throws, so a throttled node never looks like an empty wallet"
+    },
+    {
+     "what": "A V3 pool with real volume",
+     "ours": "CAKE/BNB 0.05% on PancakeSwap V3",
+     "alt": "any Uniswap-V3-style pool with WBNB on one side — the pool is one constant, the position manager another"
+    },
+    {
+     "what": "One secret at runtime: LP_PRIVATE_KEY",
+     "ours": "wrangler secret put",
+     "alt": "a .env file for the hand script — anything but the source code"
+    }
+   ],
+   "paths": [
+    "scripts/lp-agent.mjs",
+    "scripts/lp-portfolio.mjs",
+    "scripts/lp-windows.mjs",
+    "shared/lp-agent.js",
+    "shared/lp-flow.js",
+    "shared/lp-guards.js",
+    "shared/package.json",
+    "worker-agent/lp-pools.js",
+    "worker-agent/lp-portfolio.js",
+    "worker-agent/lp-service.js",
+    "worker-agent/lp-windows.js",
+    "worker-lp/index.js",
+    "worker-lp/package.json",
+    "worker-lp/wrangler.toml"
+   ]
+  },
+  {
    "slug": "dev-sweep-bot",
    "group": "bots",
    "title": "Dev Sweep Bot",
@@ -570,11 +629,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 41,
-   "lines": 13859,
-   "zipBytes": 301694,
-   "txtBytes": 859159,
-   "sha256": "6f0242fb2f6127d6",
+   "files": 37,
+   "lines": 12557,
+   "zipBytes": 268597,
+   "txtBytes": 754483,
+   "sha256": "5d2ccdc2e5133b7c",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -609,7 +668,6 @@
    ],
    "paths": [
     "docs/x402-catalog.md",
-    "scripts/lp-agent.mjs",
     "scripts/x402-catalog-proof.mjs",
     "shared/agent-registrations.js",
     "shared/job-summary.js",
@@ -645,10 +703,7 @@
     "worker-agent/wrangler.toml",
     "worker-agent/x402-catalog.js",
     "worker-agent/x402.js",
-    "worker-agent/yield.js",
-    "worker-lp/index.js",
-    "worker-lp/package.json",
-    "worker-lp/wrangler.toml"
+    "worker-agent/yield.js"
    ]
   },
   {

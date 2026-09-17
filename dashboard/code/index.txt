@@ -41,6 +41,32 @@ needs:
 zip: https://brainonbnb.com/code/buyback-bot.zip
 txt: https://brainonbnb.com/code/buyback-bot.txt
 
+DeFi Agent — a PancakeSwap V3 range that runs itself
+----------------------------------------------------
+One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.
+14 files, 5346 lines
+needs:
+  - A wallet that holds the position
+      ours: one BSC wallet used for nothing else
+      also: any wallet — the agent refuses when it finds positions it does not know, so keep it to itself
+  - Somewhere that runs code on a schedule
+      ours: a Cloudflare Worker: a daily run, an hourly check, a ten-minute deposit watch
+      also: a VPS with crontab or node on your own machine — scripts/lp-agent.mjs runs the same steps by hand, dry by default
+  - Somewhere to keep the record
+      ours: one Cloudflare KV namespace
+      also: Redis, SQLite, Postgres or a JSON file — one record, one width log, one price tape
+  - A BSC RPC endpoint
+      ours: the public endpoints, with failover
+      also: any node; a read that fails throws, so a throttled node never looks like an empty wallet
+  - A V3 pool with real volume
+      ours: CAKE/BNB 0.05% on PancakeSwap V3
+      also: any Uniswap-V3-style pool with WBNB on one side — the pool is one constant, the position manager another
+  - One secret at runtime: LP_PRIVATE_KEY
+      ours: wrangler secret put
+      also: a .env file for the hand script — anything but the source code
+zip: https://brainonbnb.com/code/defi-agent.zip
+txt: https://brainonbnb.com/code/defi-agent.txt
+
 Dev Sweep Bot
 -------------
 The hourly one that empties the tax wallet.
@@ -262,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-41 files, 13859 lines
+37 files, 12557 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

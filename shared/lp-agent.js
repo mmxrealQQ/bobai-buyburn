@@ -29,7 +29,7 @@
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
@@ -226,6 +226,35 @@ export async function readPosition(pub, address, ladder = null) {
   if (positions !== 1) return { positions, tokenId: null, pos: null, owed0: 0n, owed1: 0n };
   const tokenId = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 0n]);
   return { positions, ...(await readOne(pub, address, tokenId)), positions_held: 1 };
+}
+
+// The ids of the positions a wallet holds, as strings. A mint is named by the
+// id that is there after it and was not before — readPosition alone returns
+// no id for a wallet that holds the main range and a reserve (2026-09-17: the
+// re-set of 09-16 08:50 minted #7451444 beside reserve #7450613, read "two
+// positions", recorded new_position null, and the ladder record kept naming
+// the burnt main range — every step refused for a day).
+export async function heldIds(pub, address) {
+  const n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address]));
+  const ids = [];
+  for (let i = 0; i < n; i++) ids.push(String(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, BigInt(i)])));
+  return ids;
+}
+// The chain half of ladderHeal (lp-guards.js): what the wallet holds, and
+// whether the one position beside the reserve is in the reserve's pool.
+// Reads only when the record names both a main range and a reserve.
+export async function healLadder(pub, address, ladder) {
+  if (!ladder || ladder.main == null || ladder.reserve == null) return null;
+  const held = await heldIds(pub, address);
+  if (held.length !== 2 || !held.includes(String(ladder.reserve)) || held.includes(String(ladder.main))) return null;
+  const [a, b] = await Promise.all(held.map((i) => read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(i)])));
+  const samePool = a[2].toLowerCase() === b[2].toLowerCase() && a[3].toLowerCase() === b[3].toLowerCase() && Number(a[4]) === Number(b[4]);
+  return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool });
+}
+async function mintedSince(pub, address, idsBefore) {
+  const id = (await heldIds(pub, address)).find((i) => !idsBefore.includes(i));
+  if (id == null) return { tokenId: null, pos: null };
+  return { tokenId: BigInt(id), pos: await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(id)]) };
 }
 
 // What a position holds at a price, in WBNB terms, and which side that is:
@@ -920,6 +949,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   const mintMins = plan.oneSided
     ? (() => { const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired); return { amount0Min: (a.amount0 * MIN_SHARE) / 100n, amount1Min: (a.amount1 * MIN_SHARE) / 100n }; })()
     : minsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
+  const idsBeforeMint = await heldIds(pub, account.address);
   await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
     args: [{
       token0: plan.pos[2], token1: plan.pos[3], fee: Number(plan.pos[4]),
@@ -930,7 +960,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     }] });
   const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
-  const np = await readPosition(pub, account.address);
+  const np = await mintedSince(pub, account.address, idsBeforeMint);
   const gasBnb = txs.reduce((s, t) => s + (t.gas_bnb || 0), 0);
   // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
   // it that went to the buyback wallet; the difference was minted into the
@@ -1302,7 +1332,7 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
   const send = sender(pub, wallet, txs, log);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
-  const held = async () => { const n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [account.address])); const ids = []; for (let i = 0; i < n; i++) ids.push(String(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [account.address, BigInt(i)]))); return ids; };
+  const held = () => heldIds(pub, account.address);
   const gasOf = () => Number(txs.reduce((s, t) => s + (t.gas_bnb || 0), 0).toFixed(6));
   const mintReserve = async (label) => {
     const wbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);

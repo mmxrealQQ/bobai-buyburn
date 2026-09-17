@@ -491,6 +491,23 @@ export function refuseIncrease(state) {
 // Returns { act: 'mint_reserve'|'increase_reserve'|'merge'|'reset_reserve'
 //           |null, why }. Pure; pinned both ways.
 export const LADDER_GATE = 'LP_LADDER';
+// THE LADDER RECORD FOLLOWS THE CHAIN (2026-09-17). The record names a main
+// range the wallet no longer holds (burnt at a re-set whose new id was never
+// written — a tick that died between the mint and the KV write, or the read
+// that returned no id on 09-16 08:50) while the reserve it names is still
+// there beside exactly one other position in the same pool: that other one
+// is the main range. Anything else — the main still held, the reserve gone,
+// a third position, another pool — is left as it is, and the guards refuse.
+// state: { main, reserve, held: [ids], samePool (bool) }
+// Returns { main, why } or null. Pure; pinned both ways.
+export function ladderHeal(state) {
+  const held = (state.held || []).map(String);
+  if (state.main == null || state.reserve == null || held.length !== 2) return null;
+  if (!held.includes(String(state.reserve)) || held.includes(String(state.main))) return null;
+  if (state.samePool !== true) return null;
+  const main = held.find((i) => i !== String(state.reserve));
+  return { main, why: `the ladder record named main range #${state.main}, which this wallet no longer holds; beside the reserve #${state.reserve} it holds exactly one other position in the same pool, #${main} — that is the main range now` };
+}
 export function ladderDecision(state) {
   const no = (why) => ({ act: null, why });
   if (state.positions === 0) return no('no position: the first deposit opens the main range, not a ladder');

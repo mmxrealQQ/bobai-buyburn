@@ -38,7 +38,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, executeRebalance, readBnbUsd, planLadder, executeLadder,
+  planRebalance, executeRebalance, readBnbUsd, planLadder, executeLadder, healLadder,
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
@@ -155,6 +155,13 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   entry.wallet = lp.address;
   const lpWallet = () => createWalletClient({ account: lp, chain: bsc, transport: transport() });
   const ladder = await readLadder(env);
+  // The record follows the chain (ladderHeal, 2026-09-17): a main range the
+  // wallet no longer holds is replaced by the one position that stands beside
+  // the reserve in the same pool. A dry run heals in hand only.
+  try {
+    const healed = await healLadder(pub, lp.address, ladder);
+    if (healed) { entry.ladder_healed = { from: ladder.main, to: healed.main, why: healed.why }; ladder.main = healed.main; if (!dry) await writeLadder(env, ladder); }
+  } catch { /* an RPC that did not answer heals nothing; the guards refuse as before */ }
   const ladderOn = String(env[LADDER_GATE] || '0') === '1';
   // The width record's verdict, replayed once per tick (the rebalance step
   // fills it; the ladder step reads it).

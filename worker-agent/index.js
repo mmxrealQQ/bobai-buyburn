@@ -1046,6 +1046,21 @@ async function buildLpSeries(env) {
           const lk = await lpPositionLook({ position: String(livePos) });
           if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) owed_now_bnb = Number(lk.fees_owed.bnb_equivalent);
           if (lk && lk.value_bnb != null && Number(lk.value_bnb) > 0) value_now_bnb = +Number(lk.value_bnb).toFixed(6);
+          // The ladder's reserve range is capital too (2026-09-17): the flow
+          // counts the BNB that opened it as put in, and the points carry it in
+          // their value, so the live value must as well — without it the card
+          // read the 0.041 BNB reserve as a loss, 2.7% of the capital. The
+          // ladder record (worker-lp, KV lp:ladder) names it; a reserve that
+          // cannot be read leaves the live figures unknown rather than short.
+          const ladderRaw = value_now_bnb != null ? await env.AGENT.get('lp:ladder') : null;
+          const reserveId = ladderRaw ? (JSON.parse(ladderRaw) || {}).reserve : null;
+          if (reserveId != null && String(reserveId) !== String(livePos)) {
+            const rk = await lpPositionLook({ position: String(reserveId) });
+            if (rk && rk.value_bnb != null) {
+              value_now_bnb = +(value_now_bnb + Number(rk.value_bnb)).toFixed(6);
+              if (owed_now_bnb != null && rk.fees_owed && rk.fees_owed.bnb_equivalent != null) owed_now_bnb += Number(rk.fees_owed.bnb_equivalent);
+            } else { owed_now_bnb = null; value_now_bnb = null; }
+          }
         } catch { owed_now_bnb = null; value_now_bnb = null; }
       }
       return {

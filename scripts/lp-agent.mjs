@@ -35,7 +35,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -382,6 +382,16 @@ if (SELF) {
   is('the reserve left below the price by more than the slack, main still above: re-set the reserve beside the price', ladderDecision(R({ reserveLeft: true })).act === 'reset_reserve');
   is('main in range, reserve below it, BNB waits: the increase takes it, not the ladder', (() => { const d = ladderDecision(R({ mainSide: 'both' })); return d.act === null && /increase step/.test(d.why); })());
   is('the gate is a worker variable named LP_LADDER', LADDER_GATE === 'LP_LADDER');
+  // The ladder record follows the chain (2026-09-17, the day the agent stood still).
+  const HL = (over) => ({ main: '7450561', reserve: '7450613', held: ['7450613', '7451444'], samePool: true, ...over });
+  is('the record names a burnt main range, the reserve stands beside one other position in its pool: that one is the main range', (() => { const h = ladderHeal(HL({})); return h && h.main === '7451444' && /7450561/.test(h.why); })());
+  is('… the ids may come as numbers or bigints', ladderHeal(HL({ main: 7450561, reserve: 7450613n, held: [7450613n, 7451444n] }))?.main === '7451444');
+  is('the main range is still held: nothing to heal', ladderHeal(HL({ held: ['7450613', '7450561'] })) === null);
+  is('the reserve is gone: nothing to heal, the guards decide', ladderHeal(HL({ held: ['7451444', '7451500'] })) === null);
+  is('a third position: nothing to heal', ladderHeal(HL({ held: ['7450613', '7451444', '7451500'] })) === null);
+  is('one position only: nothing to heal', ladderHeal(HL({ held: ['7450613'] })) === null);
+  is('the other position is in another pool: nothing to heal', ladderHeal(HL({ samePool: false })) === null);
+  is('no reserve in the record, or no main: nothing to heal', ladderHeal(HL({ reserve: null })) === null && ladderHeal(HL({ main: null })) === null);
   // positionSide: which token a range holds at a price.
   const psPos = [0n, '0x0', '0xcake', '0xwbnb', 500, -57780, -57000, 10n ** 20n];   // CAKE/BNB: WBNB is token1
   is('a range above the price holds only the other side', positionSide(psPos, Math.pow(1.0001, -57807 / 2), false).side === 'other');

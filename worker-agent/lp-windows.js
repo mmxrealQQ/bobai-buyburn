@@ -470,7 +470,7 @@ const perL = (p, lo, hi) => ({
 // picked by how much of the time it earns (pickWidth), the wait by net.
 // oneSided false is the replay as it was until 2026-09-16 (centred re-sets
 // charged their realised loss), kept for the pins and the older records.
-export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD, tape = null, oneSided = true } = {}) {
+export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOURS, resetCostUsd = null, usd = POSITION_USD, tape = null, oneSided = true, resetAfterHoursAbove = null } = {}) {
   const priced = used.filter((w) => typeof w.price === 'number' && w.price > 0 && (w.rows || []).some((r) => r.width === widthPct));
   if (priced.length < 2) return null;
   const costs = priced.map((w) => w.rebalance_cost_usd).filter((c) => typeof c === 'number' && c > 0).sort((a, b) => a - b);
@@ -503,7 +503,9 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
     } else {
       hoursOut += dtH;
       if (p < lo / slack || p > hi * slack) outRun += dtH; else outRun = 0;
-      if (outRun >= resetAfterHours && (p < lo / slack || p > hi * slack)) {
+      // resetAfterHoursAbove (a measurement option, 2026-09-17): a wait of its
+      // own for a price that left above the range (the position all WBNB).
+      if (outRun >= (p > hi && resetAfterHoursAbove != null ? resetAfterHoursAbove : resetAfterHours) && (p < lo / slack || p > hi * slack)) {
         resets += 1;
         const held = perL(p, lo, hi);
         const x = L * held.x, y = L * held.y;

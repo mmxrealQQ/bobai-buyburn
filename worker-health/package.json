@@ -1,0 +1,6 @@
+{
+  "name": "bobai-health",
+  "private": true,
+  "type": "module",
+  "//": "Marker only, no dependencies: viem resolves from the repo root. type:module is what lets Node load index.js for a check; wrangler bundles it either way."
+}

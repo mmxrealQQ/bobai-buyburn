@@ -1,0 +1,16 @@
+name = "bobai-health"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+# 09:10 UTC: both daily posts have closed their windows by then (the DeFi card
+# at 08:00, the whale recap at 09:00), so "did it go out today" has an answer.
+[triggers]
+crons = ["10 9 * * *"]
+
+# The Telegram bot by binding, not by address: a worker that fetches a sibling's
+# workers.dev host gets a 404 from Cloudflare's own router.
+[[services]]
+binding = "TG"
+service = "bobai-tg-bot"
+
+# Secret: BROADCAST_SECRET (the same one the bot's /broadcast asks for).

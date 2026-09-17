@@ -254,6 +254,7 @@ const DIR_NOTE = {
   dashboard: 'the site, the marketplace at /registry, and the workers behind them',
   worker: 'the buy-back and burn worker',
   'worker-agent': 'the paid agent service — x402, ERC-8183 hiring, /status telemetry',
+  'worker-health': 'the morning health run — the checks of scripts/health.mjs, daily, reported to the operator',
   scripts: 'every audit and one-off tool, each with its own --self-test',
   data: 'the census output: what we measured about the chain',
   docs: 'how the x402 catalogue and its signatures were derived',

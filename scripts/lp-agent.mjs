@@ -392,6 +392,11 @@ if (SELF) {
   is('one position only: nothing to heal', ladderHeal(HL({ held: ['7450613'] })) === null);
   is('the other position is in another pool: nothing to heal', ladderHeal(HL({ samePool: false })) === null);
   is('no reserve in the record, or no main: nothing to heal', ladderHeal(HL({ reserve: null })) === null && ladderHeal(HL({ main: null })) === null);
+  // The re-set beside a reserve: it reads its old range by id and names its new one by the mint (source pins; the chain half cannot run here).
+  const coreSrc = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');
+  const rebSrc = coreSrc.slice(coreSrc.indexOf('export async function executeRebalance'), coreSrc.indexOf('export async function', coreSrc.indexOf('export async function executeRebalance') + 10));
+  is('executeRebalance never asks for "the position of the wallet" — beside a reserve that read names none', rebSrc.length > 500 && !/readPosition\(/.test(rebSrc));
+  is('… it reads the old range by the id the plan names, and the new one as the id the mint added', /readOne\(pub, account\.address, plan\.tokenId\)/.test(rebSrc) && /mintedSince\(pub, account\.address, idsBeforeMint\)/.test(rebSrc));
   // positionSide: which token a range holds at a price.
   const psPos = [0n, '0x0', '0xcake', '0xwbnb', 500, -57780, -57000, 10n ** 20n];   // CAKE/BNB: WBNB is token1
   is('a range above the price holds only the other side', positionSide(psPos, Math.pow(1.0001, -57807 / 2), false).side === 'other');

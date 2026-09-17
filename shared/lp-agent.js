@@ -880,7 +880,11 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   let swap = null;
   const fee = Number(plan.pos[4]);
   if (plan.tokenId != null) {
-    const old = await readPosition(pub, account.address);
+    // The range the plan names, read by its id — not "the wallet's position":
+    // beside a reserve the wallet holds two, that read names none, and the
+    // fees the old range owed were folded in uncounted, with no $BOBAI bought
+    // for their half (2026-09-17; the re-set of 09-16 08:50 owed 0.000005 BNB).
+    const old = await readOne(pub, account.address, plan.tokenId);
     if (old.tokenId != null && String(old.tokenId) === String(plan.tokenId)) {
       const owedWbnb = plan.wbnbIs0 ? old.owed0 : old.owed1, owedOther = plan.wbnbIs0 ? old.owed1 : old.owed0;
       const otherInWbnb = plan.target && plan.target.otherInWbnb ? plan.target.otherInWbnb : 0;

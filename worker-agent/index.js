@@ -1753,7 +1753,14 @@ ${pageTail}`;
       const earned = await readEarnings(env).catch(() => null);
       const flow = moneyFlow(rec, { earned });
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
-      if (!wantsHtml) return json({ ...rec, flow, cadence: 'daily' });
+      // The ladder record beside it (worker-lp, KV lp:ladder): which position
+      // is the main range and which the reserve. The hand script reads it
+      // from here, so it sees the wallet the way the worker does (2026-09-17).
+      if (!wantsHtml) {
+        let ladder = null;
+        try { ladder = JSON.parse((await env.AGENT.get('lp:ladder')) || 'null'); } catch { ladder = null; }
+        return json({ ...rec, flow, ladder, cadence: 'daily' });
+      }
       // THE RECORD, READABLE. The homepage, /agents and the Telegram alert all
       // say "the daily record is here" and pointed a person at raw JSON. The
       // same facts as a page: what the agent holds, what it decided on its

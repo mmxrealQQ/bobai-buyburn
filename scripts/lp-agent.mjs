@@ -20,6 +20,7 @@
 // Usage:
 //   node scripts/lp-agent.mjs                       plan all three steps
 //   node scripts/lp-agent.mjs --step collect        one step
+//   node scripts/lp-agent.mjs --step ladder         what the worker's ladder step would do (planned here, never sent)
 //   node scripts/lp-agent.mjs --self-test           prove the guards fire
 //   node scripts/lp-agent.mjs --confirm [--step x]  send it
 import 'dotenv/config';
@@ -29,7 +30,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
@@ -43,7 +44,7 @@ const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
 const argOf = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null; };
 const stepArg = argOf('--step');
-const ALL = ['sweep', 'collect', 'relocate', 'rebalance', 'increase'];
+const ALL = ['sweep', 'collect', 'relocate', 'rebalance', 'ladder', 'increase'];
 // The pool a relocate moves to, named by a person: `--step relocate --to 0x…`.
 const TO = argOf('--to');
 // Without --step, the hand script runs the four steps of a day; a relocate is
@@ -68,6 +69,11 @@ if (WIDTH != null && !(WIDTH > 0 && WIDTH <= 50)) {
   process.exitCode = 2;
 }
 const WINDOWS_URL = 'https://agent.brainonbnb.com/lp/windows';
+// The worker's ladder record (KV lp:ladder), as the agent's public record
+// carries it: which position is the main range and which the reserve. Without
+// it this script read a wallet with a reserve as "2 positions" and refused
+// every step the worker was running fine (2026-09-17).
+const RECORD_URL = 'https://agent.brainonbnb.com/lp/agent?format=json';
 
 // --------------------------------------------------------------------------
 // --self-test: every refusal, and the one allow, for each of the three guards
@@ -381,6 +387,7 @@ if (SELF) {
   is('the merge outranks a left reserve and waiting BNB', ladderDecision(R({ reserveSide: 'other', reserveLeft: true, spendableBnb: 1 })).act === 'merge');
   is('the reserve left below the price by more than the slack, main still above: re-set the reserve beside the price', ladderDecision(R({ reserveLeft: true })).act === 'reset_reserve');
   is('main in range, reserve below it, BNB waits: the increase takes it, not the ladder', (() => { const d = ladderDecision(R({ mainSide: 'both' })); return d.act === null && /increase step/.test(d.why); })());
+  is('a standing ladder says where the main range is: in range, not "above the price"', /main in range/.test(ladderDecision(R({ mainSide: 'both', spendableBnb: 0.001 })).why) && /main above the price/.test(ladderDecision(R({ spendableBnb: 0.001 })).why));
   is('the gate is a worker variable named LP_LADDER', LADDER_GATE === 'LP_LADDER');
   // The ladder record follows the chain (2026-09-17, the day the agent stood still).
   const HL = (over) => ({ main: '7450561', reserve: '7450613', held: ['7450613', '7451444'], samePool: true, ...over });
@@ -631,9 +638,23 @@ async function main() {
   const lp = acct(lpKey);
   const lpWallet = () => createWalletClient({ account: lp, chain: bsc, transport: transport() });
 
+  // The wallet as the worker sees it: through the ladder record, healed in
+  // hand the way the worker heals it (ladderHeal) — this script writes no KV.
+  let ladder = null;
+  try {
+    const rec = await fetch(RECORD_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
+    const l = rec && rec.ladder && typeof rec.ladder === 'object' ? rec.ladder : null;
+    ladder = l ? { main: l.main ?? null, reserve: l.reserve ?? null, since: l.since ?? null } : null;
+    if (ladder && ladder.reserve != null) {
+      const healed = await healLadder(pub, lp.address, ladder);
+      if (healed) { console.log(`\nLADDER RECORD — ${healed.why} (read so here; the worker writes it on its next run)`); ladder.main = healed.main; }
+      console.log(`\nLADDER RECORD — main range #${ladder.main}, reserve range #${ladder.reserve}: the two read as one position with a reserve attached`);
+    }
+  } catch (e) { console.log(`\nLADDER RECORD unreadable (${e.message}) — a wallet that holds a reserve range will read as two positions`); }
+
   if (STEPS.includes('collect')) {
     console.log(`\nCOLLECT — fees of the position held by ${lp.address} -> BNB -> buyback wallet`);
-    const plan = await planCollect(pub, lp.address);
+    const plan = await planCollect(pub, lp.address, ladder);
     const s = plan.summary;
     if (plan.pos) {
       console.log(`  position #${s.position}  ticks ${s.ticks[0]} … ${s.ticks[1]}  ${s.in_range ? 'in range' : 'OUT OF RANGE'}  liquidity ${s.liquidity}`);
@@ -664,10 +685,10 @@ async function main() {
       pool = w.pool || null;
       if (record) console.log(`  record: ${record.windows} windows, ${record.hours_of_prices} h of prices, earnings pick ${record.earnings_pick ? `±${record.earnings_pick.width}% ($${record.earnings_pick.earnings.net_usd_per_day}/day on $50)` : 'none yet'}, day-pick ${record.day_pick ? `±${record.day_pick.width}%` : 'none yet'}${w.last_error ? `, last cron error ${w.last_error.at.slice(0, 16)}: ${w.last_error.error}` : ''}`);
     } catch (e) { console.log(`  record unreadable (${e.message}) — only a --width named by hand can re-set today`); }
-    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH, pool, keptPct: KEEP });
+    const plan = await planRebalance(pub, lp.address, { record, widthOverride: WIDTH, pool, keptPct: KEEP, ladder });
     const s = plan.summary;
     if (plan.resume) console.log(`  no position — the wallet holds ${s.held?.other} of the other side and ${s.held?.wbnb} WBNB (worth ${f(s.value_bnb)} BNB), tick now ${s.tick}: a re-set that stopped before its mint`);
-    else if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB`);
+    else if (plan.pos) console.log(`  position #${s.position} ticks ${s.ticks[0]} … ${s.ticks[1]}, tick now ${s.tick}, ${s.in_range ? 'in range' : 'OUT OF RANGE'}, worth ${f(s.value_bnb)} BNB${s.reserve ? `; reserve #${s.reserve.position} ticks ${s.reserve.ticks[0]} … ${s.reserve.ticks[1]}, worth ${f(s.reserve.value_bnb)} BNB` : ''}`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);
     else {
       console.log(`  width ±${s.width_pct}% (${s.width_basis}) -> new ticks ${s.new_ticks[0]} … ${s.new_ticks[1]}`);
@@ -676,6 +697,7 @@ async function main() {
       if (CONFIRM) {
         const out = await executeRebalance(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
         console.log(`  new position #${out.new_position} at ${out.new_ticks[0]} … ${out.new_ticks[1]}, liquidity ${out.liquidity_after}`);
+        if (ladder && ladder.reserve != null) { ladder.main = out.new_position; console.log('  the ladder record on KV still names the old main range; the worker heals it on its next run (ladderHeal)'); }
         if (out.fees_folded_bnb != null) console.log(`  old range's fees ${f(out.fees_folded_bnb)} BNB: ${out.bobai_bnb > 0 ? `${f(out.bobai_bnb)} BNB bought ${out.bobai_units} BOBAI, held in ${out.bobai_held_in}` : out.fees_forward_why}`);
         acted += 1;
       }
@@ -703,9 +725,23 @@ async function main() {
     }
   }
 
+  if (STEPS.includes('ladder')) {
+    console.log('\nLADDER — BNB beside a main range that is all of the other side -> a reserve range below the price');
+    let record = null;
+    try { record = (await fetch(WINDOWS_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json())).verdict || null; } catch { record = null; }
+    const plan = await planLadder(pub, lp.address, { record, ladder });
+    const s = plan.summary;
+    if (s.position) console.log(`  main #${s.position} ${s.main_ticks ? `ticks ${s.main_ticks[0]} … ${s.main_ticks[1]}` : ''} holds ${s.main_side === 'both' ? 'both sides (in range)' : s.main_side === 'wbnb' ? 'only WBNB' : 'only the other side'}${s.reserve ? `; reserve #${s.reserve.position} ticks ${s.reserve.ticks[0]} … ${s.reserve.ticks[1]}, ${f(s.reserve.value_bnb)} BNB${s.reserve.left ? ', left by the price' : ''}` : '; no reserve'}; ${f(s.spendable_bnb)} BNB waits`);
+    console.log(plan.act ? `  the worker would: ${plan.act} — ${plan.why}${plan.no ? ` — ${plan.no}` : ''}` : `  nothing to do: ${plan.why}${plan.no ? ` — ${plan.no}` : ''}`);
+    // Planned here, run by the worker alone: a reserve minted or re-set by
+    // hand would be a position the KV record does not name, and the worker
+    // would refuse every step until a person wrote the record.
+    if (plan.act && CONFIRM) console.log('  not sent from here: the ladder is the worker\'s step, because it must write the ladder record with it');
+  }
+
   if (STEPS.includes('increase')) {
     console.log('\nINCREASE — BNB above the reserve -> the same position');
-    const plan = await planIncrease(pub, lp.address);
+    const plan = await planIncrease(pub, lp.address, null, ladder);
     const s = plan.summary;
     console.log(`  wallet holds ${f(s.wallet_bnb)} BNB, ${f(s.spendable_bnb)} above the reserve and gas budget${s.tick != null ? `, tick ${s.tick} ${s.in_range ? 'in range' : 'OUT OF RANGE'}` : ''}`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);

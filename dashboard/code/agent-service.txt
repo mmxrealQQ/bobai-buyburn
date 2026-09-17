@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 12561 lines.
+# one fetch. 37 files, 12568 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2577,7 +2577,7 @@ export function ladderDecision(state) {
     if (state.mainSide && state.reserveSide && state.mainSide === state.reserveSide && state.mainSide !== 'both') return { act: 'merge', why: `main and reserve both hold only ${state.mainSide === 'wbnb' ? 'WBNB' : 'the other side'} — the price went through one of them; the reserve joins the main range at its re-set, no trade` };
     if (state.reserveLeft) return { act: 'reset_reserve', why: 'the price has left the reserve range by more than the slack — it is re-set beside the price, one-sided, no trade' };
     if (spendable >= MIN_INCREASE_BNB && state.mainSide === 'other') return { act: 'increase_reserve', why: `${spendable.toFixed(6)} BNB waits and the main range is all of the other side above the price — the BNB joins the reserve range below it, no trade` };
-    return no(spendable >= MIN_INCREASE_BNB ? 'BNB waits, but the main range is not all of the other side — the increase step takes it' : `the ladder stands: main above the price, reserve below it; ${spendable.toFixed(6)} BNB waits, under the ${MIN_INCREASE_BNB} BNB floor`);
+    return no(spendable >= MIN_INCREASE_BNB ? 'BNB waits, but the main range is not all of the other side — the increase step takes it' : `the ladder stands: main ${state.mainSide === 'both' ? 'in range' : state.mainSide === 'wbnb' ? 'below the price' : 'above the price'}, reserve below it; ${spendable.toFixed(6)} BNB waits, under the ${MIN_INCREASE_BNB} BNB floor`);
   }
   if (state.mainSide !== 'other') return no(state.mainSide === 'wbnb' ? 'the main range is all WBNB below the price — BNB joins it through the increase step, no ladder needed' : 'the main range is in range and earns on both sides — BNB joins it through the increase step');
   if (!(spendable >= MIN_INCREASE_BNB)) return no(`the main range is all of the other side above the price and only ${spendable.toFixed(6)} BNB waits, under the ${MIN_INCREASE_BNB} BNB floor — the ladder opens with the next deposit`);
@@ -7234,7 +7234,14 @@ ${pageTail}`;
       const earned = await readEarnings(env).catch(() => null);
       const flow = moneyFlow(rec, { earned });
       const wantsHtml = /text\/html/.test(request.headers.get('accept') || '') && url.searchParams.get('format') !== 'json';
-      if (!wantsHtml) return json({ ...rec, flow, cadence: 'daily' });
+      // The ladder record beside it (worker-lp, KV lp:ladder): which position
+      // is the main range and which the reserve. The hand script reads it
+      // from here, so it sees the wallet the way the worker does (2026-09-17).
+      if (!wantsHtml) {
+        let ladder = null;
+        try { ladder = JSON.parse((await env.AGENT.get('lp:ladder')) || 'null'); } catch { ladder = null; }
+        return json({ ...rec, flow, ladder, cadence: 'daily' });
+      }
       // THE RECORD, READABLE. The homepage, /agents and the Telegram alert all
       // say "the daily record is here" and pointed a person at raw JSON. The
       // same facts as a page: what the agent holds, what it decided on its

@@ -386,6 +386,10 @@ if (SELF) {
   is('both hold only WBNB (the price rose through the main range): merge', ladderDecision(R({ mainSide: 'wbnb', reserveSide: 'wbnb' })).act === 'merge');
   is('the merge outranks a left reserve and waiting BNB', ladderDecision(R({ reserveSide: 'other', reserveLeft: true, spendableBnb: 1 })).act === 'merge');
   is('the reserve left below the price by more than the slack, main still above: re-set the reserve beside the price', ladderDecision(R({ reserveLeft: true })).act === 'reset_reserve');
+  // The reserve does not chase a price the main range is in (2026-09-17: eight re-sets in a day, 0.96% of the reserve, fees of dust).
+  is('the reserve left, but the main range is in range: it waits where it is, no re-set', (() => { const d = ladderDecision(R({ reserveLeft: true, mainSide: 'both', spendableBnb: 0.001 })); return d.act === null && /waits where it is/.test(d.why) && /buys on the way down/.test(d.why); })());
+  is('… and with BNB over the floor the increase still takes it, not a re-set', (() => { const d = ladderDecision(R({ reserveLeft: true, mainSide: 'both' })); return d.act === null && /increase step/.test(d.why); })());
+  is('the reserve left and the main range unread: no re-set', ladderDecision(R({ reserveLeft: true, mainSide: null, spendableBnb: 0.001 })).act === null);
   is('main in range, reserve below it, BNB waits: the increase takes it, not the ladder', (() => { const d = ladderDecision(R({ mainSide: 'both' })); return d.act === null && /increase step/.test(d.why); })());
   is('a standing ladder says where the main range is: in range, not "above the price"', /main in range/.test(ladderDecision(R({ mainSide: 'both', spendableBnb: 0.001 })).why) && /main above the price/.test(ladderDecision(R({ spendableBnb: 0.001 })).why));
   is('the gate is a worker variable named LP_LADDER', LADDER_GATE === 'LP_LADDER');

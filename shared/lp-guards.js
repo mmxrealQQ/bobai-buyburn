@@ -515,7 +515,17 @@ export function ladderDecision(state) {
   const spendable = Number(state.spendableBnb || 0);
   if (state.reserve) {
     if (state.mainSide && state.reserveSide && state.mainSide === state.reserveSide && state.mainSide !== 'both') return { act: 'merge', why: `main and reserve both hold only ${state.mainSide === 'wbnb' ? 'WBNB' : 'the other side'} — the price went through one of them; the reserve joins the main range at its re-set, no trade` };
-    if (state.reserveLeft) return { act: 'reset_reserve', why: 'the price has left the reserve range by more than the slack — it is re-set beside the price, one-sided, no trade' };
+    // THE RESERVE DOES NOT CHASE A PRICE THE MAIN RANGE IS IN (2026-09-17).
+    // A reserve the price has left earns nothing where it stands and nothing
+    // more one re-set higher; each re-set costs ~0.12% of it in gas. On 09-17
+    // the price climbed inside the main range and the reserve was re-set
+    // eight times behind it — 0.96% of the reserve in a day, for fees of
+    // dust. While the main range is in range it is itself the ladder that
+    // buys on the way down, and if the price climbs out of it both hold WBNB
+    // and merge. The reserve is re-set only when nothing else stands at the
+    // price: the main range is all of the other side above it.
+    if (state.reserveLeft && state.mainSide === 'other') return { act: 'reset_reserve', why: 'the price has left the reserve range by more than the slack and the main range is all of the other side above it — the reserve is re-set beside the price, one-sided, no trade' };
+    if (state.reserveLeft && spendable < MIN_INCREASE_BNB) return no(`the price has left the reserve range, but the main range is ${state.mainSide === 'both' ? 'in range and buys on the way down itself' : 'not above the price'} — the reserve waits where it is; a re-set would cost gas and earn nothing`);
     if (spendable >= MIN_INCREASE_BNB && state.mainSide === 'other') return { act: 'increase_reserve', why: `${spendable.toFixed(6)} BNB waits and the main range is all of the other side above the price — the BNB joins the reserve range below it, no trade` };
     return no(spendable >= MIN_INCREASE_BNB ? 'BNB waits, but the main range is not all of the other side — the increase step takes it' : `the ladder stands: main ${state.mainSide === 'both' ? 'in range' : state.mainSide === 'wbnb' ? 'below the price' : 'above the price'}, reserve below it; ${spendable.toFixed(6)} BNB waits, under the ${MIN_INCREASE_BNB} BNB floor`);
   }

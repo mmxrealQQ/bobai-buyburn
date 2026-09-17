@@ -408,6 +408,16 @@ if (SELF) {
   const rebSrc = coreSrc.slice(coreSrc.indexOf('export async function executeRebalance'), coreSrc.indexOf('export async function', coreSrc.indexOf('export async function executeRebalance') + 10));
   is('executeRebalance never asks for "the position of the wallet" — beside a reserve that read names none', rebSrc.length > 500 && !/readPosition\(/.test(rebSrc));
   is('… it reads the old range by the id the plan names, and the new one as the id the mint added', /readOne\(pub, account\.address, plan\.tokenId\)/.test(rebSrc) && /mintedSince\(pub, account\.address, idsBeforeMint\)/.test(rebSrc));
+  // The reserve grows through the increase itself (2026-09-17): with the price inside it, WBNB alone is liquidity zero and the manager reverts (simulated on chain).
+  const ladSrc = coreSrc.slice(coreSrc.indexOf('export async function executeLadder'));
+  const incResSrc = ladSrc.slice(ladSrc.indexOf("plan.act === 'increase_reserve'"), ladSrc.indexOf("plan.act === 'reset_reserve'"));
+  is('increase_reserve plans and runs the increase on the reserve range, read at the price now', incResSrc.length > 200 && /planIncrease\(pub, account\.address, \{ positions: 1, tokenId: plan\.reserve\.tokenId, pos: plan\.reserve\.pos/.test(incResSrc) && /executeIncrease\(pub, wallet, account, inc/.test(incResSrc));
+  is('… and never sends a WBNB-only increaseLiquidity of its own', !/increaseLiquidity/.test(incResSrc) && !/amount0Desired/.test(incResSrc));
+  is('what amountsForRange says of WBNB alone: into a range the price is in, nothing; into a range below the price, all of it', (() => {
+    const inside = amountsForRange(Math.pow(1.0001, -57143 / 2), -59000, -57090, 0n, 10n ** 16n);
+    const below = amountsForRange(Math.pow(1.0001, -57000 / 2), -59000, -57090, 0n, 10n ** 16n);
+    return inside.L === 0 && inside.amount1 === 0n && below.amount1 > 99n * 10n ** 14n;
+  })());
   // positionSide: which token a range holds at a price.
   const psPos = [0n, '0x0', '0xcake', '0xwbnb', 500, -57780, -57000, 10n ** 20n];   // CAKE/BNB: WBNB is token1
   is('a range above the price holds only the other side', positionSide(psPos, Math.pow(1.0001, -57807 / 2), false).side === 'other');

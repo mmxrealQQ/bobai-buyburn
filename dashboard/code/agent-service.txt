@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 12578 lines.
+# one fetch. 37 files, 12581 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1824,7 +1824,7 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     const owedWbnb = plan.wbnbIs0 ? r.owed0 : r.owed1, owedOther = plan.wbnbIs0 ? r.owed1 : r.owed0;
     return { reserve_fees_folded: { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18) } };
   };
-  if (plan.act === 'mint_reserve' || plan.act === 'increase_reserve') {
+  if (plan.act === 'mint_reserve') {
     if (plan.spendRaw <= 0n) throw new Error('nothing above the reserve to put into the ladder');
     await send(`wrap ${formatEther(plan.spendRaw)} BNB for the reserve range`, { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: plan.spendRaw });
   }
@@ -1834,18 +1834,21 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     return { txs, gas_bnb: gasOf(), new_reserve: id, new_reserve_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], bnb_spent: formatEther(before > after ? before - after : 0n), one_sided: 'below_price' };
   }
   if (plan.act === 'increase_reserve') {
-    const wbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
-    await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, wbnb, 'allow the position manager to take WBNB (once)');
-    const amount0Desired = plan.wbnbIs0 ? wbnb : 0n, amount1Desired = plan.wbnbIs0 ? 0n : wbnb;
-    const sqrtNow = (await readPool(pub, plan.pos)).sqrtP;
-    const a = amountsForRange(sqrtNow, Number(plan.reserve.pos[5]), Number(plan.reserve.pos[6]), amount0Desired, amount1Desired);
-    await send('grow the reserve range', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'increaseLiquidity',
-      args: [{ tokenId: plan.reserve.tokenId, amount0Desired, amount1Desired, amount0Min: (a.amount0 * MIN_SHARE) / 100n, amount1Min: (a.amount1 * MIN_SHARE) / 100n, deadline: deadline() }] });
-    const left = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
-    if (left > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [left] });
-    const pos = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [plan.reserve.tokenId]);
-    const after = await pub.getBalance({ address: account.address });
-    return { txs, gas_bnb: gasOf(), reserve: String(plan.reserve.tokenId), liquidity_after: String(pos[7]), bnb_spent: formatEther(before > after ? before - after : 0n) };
+    // THE RESERVE GROWS THE WAY THE MAIN RANGE DOES (2026-09-17). The main
+    // range is all of the other side above the price exactly when the price
+    // has fallen out of it — into the reserve below, as often as not. A
+    // reserve the price is IN takes both tokens: WBNB alone is liquidity
+    // zero and the manager reverts (simulated on chain against #7461743 and
+    // #7451444; the same WBNB mints fine into a range below the price). So
+    // the BNB joins the reserve through the increase itself, read for the
+    // reserve's range at the price now: below the price it is WBNB as it
+    // is, no trade; with the price inside, the part the range needs of the
+    // other side is bought first, the way every in-range increase does. It
+    // also takes WBNB a stopped run left wrapped in the wallet.
+    const inc = await planIncrease(pub, account.address, { positions: 1, tokenId: plan.reserve.tokenId, pos: plan.reserve.pos, reserve: null });
+    if (inc.no) throw new Error(`the reserve range does not take the BNB: ${inc.no}`);
+    const done = await executeIncrease(pub, wallet, account, inc, log, { txs });
+    return { txs, gas_bnb: gasOf(), reserve: String(plan.reserve.tokenId), reserve_side: inc.summary.side, swap: done.swap, swap_fee_bnb: done.swap_fee_bnb, liquidity_after: done.liquidity_after, bnb_spent: done.bnb_spent };
   }
   if (plan.act === 'reset_reserve') {
     const folded = await unwindReserve();

@@ -838,34 +838,6 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
   load();loadGt();setInterval(loadGt,60000);
 }();
 
-// === BOBAI LIQ BOOST II COUNTDOWN ===
-!function(){
-  function tick(){
-    const now=Date.now();
-    let diff;
-    if(now<BB2_START){diff=BB2_END-BB2_START}
-    else if(now>=BB2_END){
-      // Over: the card says so and the zeros go, the way round one's card
-      // reads "Campaign Complete" — not "0 days · running until Sep 16".
-      diff=0;
-      const u=document.getElementById('bb2-until'),cd=document.getElementById('bb2-countdown');
-      if(u)u.textContent='✓ campaign complete · Aug 8 – Sep 16, 2026';
-      if(cd)cd.hidden=true;
-    }
-    else{diff=BB2_END-now}
-    const d=Math.floor(diff/86400000);
-    const h=Math.floor((diff%86400000)/3600000);
-    const m=Math.floor((diff%3600000)/60000);
-    const dEl=document.getElementById('bb2-days');
-    const hEl=document.getElementById('bb2-hours');
-    const mEl=document.getElementById('bb2-mins');
-    if(dEl)dEl.textContent=d;
-    if(hEl)hEl.textContent=h;
-    if(mEl)mEl.textContent=m;
-  }
-  tick();setInterval(tick,60000);
-}();
-
 // === GIGGLE ACADEMY POT COUNTDOWN — to the start before Sep 17, to the end during the window ===
 !function(){
   function tick(){

@@ -72,8 +72,30 @@ const bal = new Map([[A, 4_200_000], [B, 0], [C, 12_500]]);
 const line = renderSmallWalletsLine([A, B, C], bal, new Set([A])).replace(/<[^>]+>/g, '');
 ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `small wallets on one line, largest first, got: ${line}`);
 
+// The cron itself, run dry at 06:05 UTC: an empty KV, a network that answers
+// 503. Every gate in scheduled() catches its own errors, so a name that is out
+// of scope throws into a catch and the recap just never goes out (2026-09-12
+// to 09-17: "tick is not defined", every minute, six days). Nothing a gate
+// logs may be a ReferenceError, and the 06:00 gate must reach the recap.
+{
+  const logged = [];
+  const real = { error: console.error, log: console.log, warn: console.warn, fetch: globalThis.fetch };
+  console.error = (...a) => logged.push(a.map(String).join(' '));
+  console.log = () => {}; console.warn = () => {};
+  globalThis.fetch = async () => { return new Response('{}', { status: 503 }); };
+  const reads = [];
+  const KV = { get: async (k) => { reads.push(k); return null; }, put: async () => {}, delete: async () => {}, list: async () => ({ keys: [] }) };
+  try {
+    await worker.default.scheduled({ scheduledTime: Date.UTC(2026, 8, 17, 6, 5) }, { KV, TG_BOT_TOKEN: 'x', TG_INTERNAL_CHAT_ID: '-1' });
+  } catch (e) { logged.push('scheduled threw: ' + (e && e.message || e)); }
+  Object.assign(console, { error: real.error, log: real.log, warn: real.warn }); globalThis.fetch = real.fetch;
+  const undef = logged.filter((l) => /is not defined|scheduled threw/.test(l));
+  ok(undef.length === 0, `the cron reads a name that is out of scope: ${undef.join(' | ')}`);
+  ok(reads.includes('last_daily_summary'), 'the 06:00 gate reaches the recap flag');
+}
+
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-whale ok: 27 pins');
+console.log('smoke-whale ok: 29 pins');
 
 // ---------------------------------------------------------------- --render
 if (process.argv.includes('--render')) {

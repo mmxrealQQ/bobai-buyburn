@@ -9,7 +9,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | script | answers |
 |---|---|
 | `health.mjs` | are all systems alive (bots, agents, site, gas) — one command |
-| `smoke-whale.mjs` | the whale tracker's quiet floor ($5), retire rule (empty 7 daily snapshots) and one-screen recap, 27 pins both ways; `--render` shows the recap and the small-wallet line from the live KV |
+| `smoke-whale.mjs` | the whale tracker's quiet floor ($5), retire rule (empty 7 daily snapshots) and one-screen recap, and the cron run dry at 06:05 (no gate may log an out-of-scope name), 29 pins both ways; `--render` shows the recap and the small-wallet line from the live KV |
 | `smoke-agent-surface.mjs` | does everything offered to a machine work end to end |
 | `site-audit.mjs` · `site-fix.mjs` | every page against one checklist; the fixer applies what the audit found |
 | `layout-audit.mjs` | does every page render at every width (real browser) |

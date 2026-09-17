@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4439 lines.
+# one fetch. 12 files, 4451 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3345,6 +3345,10 @@ export default {
         cron_alive: ageSeconds !== null && ageSeconds < 900,
         channel_configured: Boolean(env.BOT_TOKEN && TG_CHAT_ID),
         alerts: ['buys', 'burns'],
+        // The date each daily post last went out. A running cron says nothing
+        // about them: the whale recap was silent for six days in September
+        // 2026 under a heartbeat that never missed.
+        daily: { whale_recap: await env.KV.get('last_daily_summary'), lp_card: await env.KV.get('lp_report_date') },
         webhook_secured: Boolean(env.TG_WEBHOOK_SECRET) && Boolean(await env.KV.get('webhook_secret_version')),
       }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
     }
@@ -3977,8 +3981,13 @@ export default {
     // Gated on the tick's nominal time, not the clock: a tick that starts
     // late, or reaches this line after the awaits above, reads minute 16 from
     // the clock and 15 from the schedule. Every tick in the window says so.
+    //
+    // Declared out here, not inside the block: the whale gates below read it
+    // too. From 2026-09-12 to 09-17 it lived in the block, the gates threw
+    // "tick is not defined" into their own catch every minute, and no recap
+    // and no 06:00 snapshot went out for six days.
+    const tick = nominal;
     {
-      const tick = new Date(event && event.scheduledTime ? event.scheduledTime : Date.now());
       // 05:00 UTC since 2026-09-09 — the operator's hour for the public LP
       // card (the whale recap goes at 06:00). The window runs to 07:55: a
       // series point that lands after 05:55 (a late 04:23 run, the agent
@@ -3992,9 +4001,12 @@ export default {
     }
 
     // === DAILY WHALE RECAP (06:00 UTC = 08:00 CEST, idempotent via KV flag) ===
+    // The window runs to 08:59, like the LP card's: a recap that cannot go out
+    // at 06:00 (Telegram down, a deploy mid-hour) still goes out that morning,
+    // and the date flag keeps it to one.
     if (TG_INTERNAL_CHAT_ID) {
       try {
-        if (tick.getUTCHours() === 6) {
+        if (tick.getUTCHours() >= 6 && tick.getUTCHours() < 9) {
           const today = tick.toISOString().slice(0, 10);
           const last  = await env.KV.get('last_daily_summary');
           if (last !== today) {
@@ -4009,7 +4021,7 @@ export default {
       // Daily holdings snapshot — own date-guard inside takeWhaleSnapshotIfDue,
       // independent of recap success. /whale-summary self-heals if this misses.
       try {
-        if (tick.getUTCHours() === 6) {
+        if (tick.getUTCHours() >= 6 && tick.getUTCHours() < 9) {
           await takeWhaleSnapshotIfDue(env, await loadTrackedWallets(env));
         }
       } catch (e) {

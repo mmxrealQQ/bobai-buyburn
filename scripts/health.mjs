@@ -62,6 +62,21 @@ const getJson = async (url, init) => {
 const ageHours = (iso) => (Date.now() - new Date(iso).getTime()) / 3600000;
 const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`);
 
+// A daily post is on time when its date flag names today — or yesterday, while
+// today's window (it closes at `closesUtc`) is still open. Pinned both ways on
+// every run: a rule that can only say "fine" is how six silent days got by.
+const dailyOnTime = (flag, closesUtc, now = new Date()) => {
+  const day = (d) => d.toISOString().slice(0, 10);
+  const due = now.getUTCHours() >= closesUtc ? day(now) : day(new Date(now.getTime() - 86400000));
+  return typeof flag === 'string' && flag >= due;
+};
+{
+  const at = (h) => new Date(Date.UTC(2026, 8, 17, h, 30));
+  const pins = [[dailyOnTime('2026-09-17', 9, at(10)), true], [dailyOnTime('2026-09-16', 9, at(10)), false], [dailyOnTime('2026-09-16', 9, at(7)), true],
+    [dailyOnTime('2026-09-11', 9, at(7)), false], [dailyOnTime(null, 9, at(7)), false]];
+  if (pins.some(([got, want]) => got !== want)) { console.error('health: dailyOnTime fails its own pins'); process.exit(2); }
+}
+
 // ---- the bots -------------------------------------------------------------
 {
   const h = await getJson(`${LOGS}/health`);
@@ -92,6 +107,11 @@ const fmtAge = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`
       age === null ? 'no heartbeat recorded yet' : `last tick ${fmtAge(age / 3600)} ago`);
     ok('Bots', 'telegram bot can post', j.channel_configured === true,
       j.channel_configured ? 'token + chat id set' : 'BOT_TOKEN or chat id missing — alerts would fail silently');
+    // The heartbeat proves the cron runs, not that the daily posts go out: the
+    // whale recap was silent 2026-09-12 to 09-17 behind a green heartbeat.
+    const d = j.daily || {};
+    ok('Bots', 'whale recap went out (internal, 06:00 UTC)', dailyOnTime(d.whale_recap, 9), `last sent ${d.whale_recap || 'never'}`);
+    ok('Bots', 'DeFi card went out (channel, 05:00 UTC)', dailyOnTime(d.lp_card, 8), `last sent ${d.lp_card || 'never'}`);
   }
 }
 {

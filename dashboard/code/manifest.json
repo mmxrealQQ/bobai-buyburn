@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1475,
-   "zipBytes": 18546,
-   "txtBytes": 60393,
-   "sha256": "3c2961276b895541",
+   "lines": 1491,
+   "zipBytes": 18936,
+   "txtBytes": 61433,
+   "sha256": "93bb9cf7b5508523",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -189,10 +189,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4475,
-   "zipBytes": 68983,
-   "txtBytes": 204119,
-   "sha256": "8e3f3b46b03df0a2",
+   "lines": 4555,
+   "zipBytes": 70938,
+   "txtBytes": 209098,
+   "sha256": "88fc8f83e8e32581",
    "reqs": [
     {
      "what": "A bot token",
@@ -241,10 +241,10 @@
    "title": "NFT Auto-Mint Bot",
    "tagline": "Watches the pair and mints to the buyer, unasked.",
    "files": 2,
-   "lines": 598,
-   "zipBytes": 11413,
-   "txtBytes": 25260,
-   "sha256": "c9b277c766fd9bde",
+   "lines": 652,
+   "zipBytes": 12472,
+   "txtBytes": 28611,
+   "sha256": "f5598fa78d50178e",
    "reqs": [
     {
      "what": "A deployed ERC-721 it is allowed to mint from",

@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4475 lines.
+# one fetch. 12 files, 4555 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -775,12 +775,23 @@ function keyedEndpoints(env) {
   return env ? [env.BSC_RPC_KEYED_URL_2, env.BSC_RPC_KEYED_URL].filter(Boolean) : [];
 }
 
-// Free endpoints cap getLogs at ~50 blocks since 2026-06-19. If both keyed
-// providers fail, narrow the requested range so the free fallback can still
-// serve at least the most recent ~50 blocks. Strictly better than silence.
-function narrowToRecent(fromBlock, maxBlocks = 50) {
+// HOW FAR BACK THE ALERT SCANS LOOK (2026-09-18). It was 300 blocks under a
+// comment that took a block for 0.75-1.5 s; BSC clears one in ~0.45 s, so the
+// window was 135 seconds over a one-minute cron with no remembered last block:
+// two missed ticks and a buy or a whale move was gone for good (the minter
+// keeps `last_block` and minted all the same — an NFT without an alert). 1,600
+// blocks is about twelve minutes, the same reach as a ledger bucket; the
+// posted-tx sets keep a transaction from being told twice.
+const SCAN_BLOCKS = 1600;
+
+// Free endpoints cap getLogs at ~50 blocks since 2026-06-19. If the keyed
+// providers fail and the free ones refuse the full range, the range is cut to
+// the most recent ~50 blocks — counted from the HEAD, which is read, not
+// guessed from the start of the range. Strictly better than silence. Pure.
+const FREE_LOGS_BLOCKS = 50;
+export function narrowedFrom(fromBlock, latest, maxBlocks = FREE_LOGS_BLOCKS) {
   const from = parseInt(fromBlock, 16);
-  return '0x' + Math.max(0, from + 300 - maxBlocks).toString(16); // = latest - maxBlocks
+  return '0x' + Math.max(0, from, latest - maxBlocks).toString(16);
 }
 
 // Photo file_ids (uploaded once via bot, reusable)
@@ -793,6 +804,21 @@ const IGNORED_WALLETS = new Set([
   '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
   '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot
 ]);
+
+// A NAME SOMEBODY ELSE CHOSE IS TEXT, NOT MARKUP (2026-09-18). Posts go out
+// with parse_mode HTML; a joining member's first name, or a leaderboard
+// username, went into them as it stood. A name with a `<` made Telegram refuse
+// the captcha post AFTER the member had been muted — no question to answer,
+// kicked after 60 seconds — and a name that is an <a href> was a clickable link
+// in the public chat, under the bot's name. Pure; pinned by smoke-whale.
+export function escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+// Shown as a name: escaped, and no longer than a name is (Telegram allows 64).
+export function shownName(s) {
+  const t = String(s == null ? '' : s).trim();
+  return escHtml(t.length > 64 ? t.slice(0, 64) + '…' : t) || 'User';
+}
 
 // ==================== TELEGRAM API ====================
 
@@ -841,21 +867,36 @@ async function tryGetLogs(rpc, fromBlock, address, topic, tag) {
   }
 }
 
-// eth_getLogs with keyed-first / free-fallback. Keyed endpoints get the full
-// requested fromBlock; if all keyed fail, freebies get retried with the most
-// recent 50 blocks only (their current archive cap).
-async function getSwapLogs(fromBlock, env) {
+// eth_getLogs, keyed first, free as the fallback. Every endpoint is asked for
+// the FULL range first — a free one that still serves it is worth more than a
+// cut. Only then is the range cut to the free endpoints' cap. A caller that
+// books what it reads as complete (the swap ledger) passes narrow:false and
+// gets null instead of a part: a gap it re-reads, not a day counted short.
+async function getLogsKeyedThenFree(fromBlock, address, topic, tag, env, { narrow = true } = {}) {
   for (const rpc of keyedEndpoints(env)) {
-    const r = await tryGetLogs(rpc, fromBlock, BOBAI_PAIR, SWAP_TOPIC, 'BUY');
+    const r = await tryGetLogs(rpc, fromBlock, address, topic, tag);
     if (r !== null) return r;
   }
-  const narrow = narrowToRecent(fromBlock);
   for (const rpc of LOGS_RPC_ENDPOINTS) {
-    const r = await tryGetLogs(rpc, narrow, BOBAI_PAIR, SWAP_TOPIC, 'BUY-fb');
+    const r = await tryGetLogs(rpc, fromBlock, address, topic, tag + '-free');
     if (r !== null) return r;
   }
-  console.error('[BUY] getLogs failed on ALL endpoints');
+  if (!narrow) return null;
+  const latestHex = await rpcCall('eth_blockNumber', []);
+  if (!latestHex) return null;
+  const cut = narrowedFrom(fromBlock, parseInt(latestHex, 16));
+  if (parseInt(cut, 16) <= parseInt(fromBlock, 16)) return null;   // the full range was already that small
+  for (const rpc of LOGS_RPC_ENDPOINTS) {
+    const r = await tryGetLogs(rpc, cut, address, topic, tag + '-fb');
+    if (r !== null) return r;
+  }
   return null;
+}
+
+async function getSwapLogs(fromBlock, env, opts) {
+  const r = await getLogsKeyedThenFree(fromBlock, BOBAI_PAIR, SWAP_TOPIC, 'BUY', env, opts);
+  if (r === null) console.error('[BUY] getLogs failed on ALL endpoints');
+  return r;
 }
 
 function hexToBigInt(hex) {
@@ -904,16 +945,7 @@ const WHALE_THRESHOLD_WEI = 10_000_000n * 10n ** 18n;
 // address. Keyed endpoint first, free endpoints as fallback — same arrangement
 // as getSwapLogs above, and for the same reasons.
 async function getAllRecentTransfers(fromBlock, env) {
-  for (const rpc of keyedEndpoints(env)) {
-    const r = await tryGetLogs(rpc, fromBlock, BOBAI_TOKEN, TRANSFER_TOPIC, 'WHALE');
-    if (r !== null) return r;
-  }
-  const narrow = narrowToRecent(fromBlock);
-  for (const rpc of LOGS_RPC_ENDPOINTS) {
-    const r = await tryGetLogs(rpc, narrow, BOBAI_TOKEN, TRANSFER_TOPIC, 'WHALE-fb');
-    if (r !== null) return r;
-  }
-  return [];
+  return (await getLogsKeyedThenFree(fromBlock, BOBAI_TOKEN, TRANSFER_TOPIC, 'WHALE', env)) || [];
 }
 
 // balanceOf(addr) → raw wei BigInt
@@ -927,12 +959,25 @@ async function getBobaiBalance(addr) {
 // True if addr is a contract (eth_getCode returns non-empty bytecode). On RPC
 // failure we conservatively return `true` so cascade-adds skip rather than risk
 // adding an aggregator router (1inch / OKX DEX / 0x). EOAs always return `false`.
+// A PERSON'S WALLET CAN CARRY CODE (2026-09-18). Since EIP-7702 an ordinary
+// wallet can delegate to a smart-account implementation; eth_getCode then
+// answers the delegation designator, 0xef0100 followed by the implementation's
+// address — 23 bytes, and nothing else looks like it. Read as "has code, so a
+// contract", eleven of the last forty-five big-buy recipients were invisible to
+// the whale tracker, one of them holding 10.02M $BOBAI; /whaleadd refused such
+// a wallet and /whalecleanup would have deleted a tracked whale the day it
+// switched a smart account on. Pure; pinned by scripts/smoke-whale.mjs.
+export function codeIsContract(code) {
+  if (code === null || code === undefined) return true;          // unknown: stay careful
+  const c = String(code).toLowerCase();
+  if (c === '0x' || c === '0x0' || c === '0x00') return false;    // no code: a plain wallet
+  if (c.startsWith('0xef0100') && c.length === 2 + 23 * 2) return false;   // a 7702 delegation: still a person's wallet
+  return true;
+}
 async function isContract(addr) {
   if (!/^0x[a-f0-9]{40}$/i.test(addr)) return true;
   try {
-    const code = await rpcCall('eth_getCode', [addr, 'latest']);
-    if (code === null || code === undefined) return true;
-    return code !== '0x' && code !== '0x0' && code !== '0x00';
+    return codeIsContract(await rpcCall('eth_getCode', [addr, 'latest']));
   } catch {
     return true;
   }
@@ -1118,7 +1163,10 @@ async function recordSwapBucket(env) {
   const last = ledger[ledger.length - 1];
   let from = last && latest - last.to <= BUCKET_BLOCKS * 2 ? last.to + 1 : latest - BUCKET_BLOCKS;
   if (from > latest) return { added: false, why: 'no new blocks' };
-  const logs = await getSwapLogs('0x' + from.toString(16), env);
+  // narrow:false — a bucket says "these blocks, all of them"; a cut read booked
+  // under the full range counted the day short. No full read, no bucket: the
+  // next tick reads from the same block again.
+  const logs = await getSwapLogs('0x' + from.toString(16), env, { narrow: false });
   if (!Array.isArray(logs)) throw new Error('swap logs unavailable');
   let buys = 0, sells = 0, volWei = 0n;
   for (const log of logs) {
@@ -1378,9 +1426,13 @@ function getBuyEmojis(usdValue) {
   return { bar, icon };
 }
 
-function getBurnEmojis(usdValue) {
+export function getBurnEmojis(usdValue) {
+  // Each 🔥 = $2, drawn up to 60 like the buy bar (2026-09-18): uncapped, a
+  // burn from about $900 on left Telegram's 1024-unit caption limit, the photo
+  // was refused, nothing was posted and the burn watcher met the same refusal
+  // on every run after it — the biggest burn would have been the silent one.
   const count = Math.max(Math.floor(usdValue / 2), 1);
-  const bar = '🔥'.repeat(count);
+  const bar = '🔥'.repeat(Math.min(count, 60)) + (count > 60 ? ` ×${count}` : '');
   let icon;
   if (usdValue >= 250) icon = '💥 SUPERNOVA BURN!';
   else if (usdValue >= 150) icon = '☄️ APOCALYPSE BURN!';
@@ -1437,6 +1489,17 @@ export function foldBuysByTx(logs) {
     byTx.set(tx, b);
   }
   return [...byTx.values()];
+}
+
+// WHO BOUGHT (2026-09-18). The alert named the transaction's sender; the
+// minter follows the tokens to the wallet that ends up holding them
+// (resolveBuyer). Through a relayer or an aggregator the two differ — 8 of the
+// last 100 drops, a $1,390 buy among them: the alert pointed at a relayer while
+// the NFT went to the buyer. Once the drop is known, its recipient is the buyer
+// the alert names; without a drop (sold out, mint pending) the sender stays.
+export function alertTrade(pending, drop) {
+  const to = drop && typeof drop.to === 'string' && /^0x[a-fA-F0-9]{40}$/.test(drop.to) ? drop.to : null;
+  return to ? { ...pending, buyer: to } : pending;
 }
 
 function nftProgressBar(minted, cap) {
@@ -1521,13 +1584,30 @@ async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice) {
 
 🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
 
-    const result = await tg('sendPhoto', {
+    // 1) The photo alert
+    try {
+      const result = await tg('sendPhoto', {
+        chat_id: TG_CHAT_ID,
+        photo: PHOTO_BURN,
+        caption: message,
+        parse_mode: 'HTML',
+      });
+      if (result?.ok === true) return true;
+      console.error('[BURN] sendPhoto failed, falling back to text:', JSON.stringify(result));
+    } catch (err) {
+      console.error('[BURN] sendPhoto threw, falling back to text:', err.message || err);
+    }
+
+    // 2) Text only, like the buy alert: a burn is always told, even on a day
+    // Telegram refuses the picture.
+    const textRes = await tg('sendMessage', {
       chat_id: TG_CHAT_ID,
-      photo: PHOTO_BURN,
-      caption: message,
+      text: message,
       parse_mode: 'HTML',
+      disable_web_page_preview: true,
     });
-    return result?.ok === true;
+    if (textRes?.ok !== true) console.error('[BURN] text fallback failed:', JSON.stringify(textRes));
+    return textRes?.ok === true;
   } catch (err) {
     console.error('[POST BURN ERROR]', err.message || err);
     return false;
@@ -2486,7 +2566,7 @@ async function handleNewMember(msg, env) {
     const result = await tg('sendPhoto', {
       chat_id: TG_CHAT_ID,
       photo: PHOTO_WELCOME,
-      caption: `👋 Welcome <b>${name}</b> to BOBAI!\n\n🛡 Quick verification — solve this:\n\n🧮 <b>${question} = ?</b>\n\n⏱ You have 60 seconds`,
+      caption: `👋 Welcome <b>${shownName(name)}</b> to BOBAI!\n\n🛡 Quick verification — solve this:\n\n🧮 <b>${question} = ?</b>\n\n⏱ You have 60 seconds`,
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: generateButtons(answer) },
     });
@@ -2534,7 +2614,7 @@ async function handleCallback(callback, env) {
 
     await tg('sendMessage', {
       chat_id: TG_CHAT_ID,
-      text: `✅ <b>${entry.name}</b> joined the BOBAI community! Welcome! 🚀`,
+      text: `✅ <b>${shownName(entry.name)}</b> joined the BOBAI community! Welcome! 🚀`,
       parse_mode: 'HTML',
     });
   } else {
@@ -2569,7 +2649,7 @@ async function cleanupExpiredCaptchas(env) {
         }
         await tg('sendMessage', {
           chat_id: TG_CHAT_ID,
-          text: `👋 <b>${entry.name}</b> didn't verify in time. Bye bye!`,
+          text: `👋 <b>${shownName(entry.name)}</b> didn't verify in time. Bye bye!`,
           parse_mode: 'HTML',
         });
         await tg('banChatMember', { chat_id: TG_CHAT_ID, user_id: parseInt(userId) });
@@ -3189,7 +3269,7 @@ title: ${msg.chat.title || '(private)'}`;
           const flag = isoToFlag(r.avatar_country);
           const wallet = r.has_wallet ? ' ⚽' : '';
           const pts = (r.total_points || 0);
-          return `${rank} ${flag} <b>${r.username}</b>${wallet} ${pts} pts`;
+          return `${rank} ${flag} <b>${shownName(r.username)}</b>${wallet} ${pts} pts`;
         }).join('\n');
       }
 
@@ -4084,7 +4164,7 @@ export default {
         const latestHex = await rpcCall('eth_blockNumber', []);
         if (latestHex) {
           const latest = parseInt(latestHex, 16);
-          const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
+          const fromBlock = '0x' + Math.max(0, latest - SCAN_BLOCKS).toString(16);
           const logs = await getAllRecentTransfers(fromBlock, env);
 
           // Group transfers by tx, preserve chronological order across txs.
@@ -4329,7 +4409,7 @@ export default {
           if (setChanged) await saveTrackedWallets(env, [...trackedSet]);
           if (edgesChanged) await saveWalletEdges(env, edges);
           if (postedWhaleSet.size > prevWhaleSize) {
-            await env.KV.put('posted_whale_txs', JSON.stringify([...postedWhaleSet].slice(-300)));
+            await env.KV.put('posted_whale_txs', JSON.stringify([...postedWhaleSet].slice(-600)));
           }
           if (whaleEvents.length > prevEventCount) {
             await saveWhaleEvents(env, whaleEvents);
@@ -4403,7 +4483,7 @@ export default {
       if (alertsThisRun >= MAX_ALERTS_PER_RUN) { stillPending.push(p); continue; }
       const drop = dropByBuyTx.get(String(p.txHash || '').toLowerCase());
       if (drop) {
-        const sent = await postBuyAlert(p, await burnedPct(), nftLineFromDrop(drop));
+        const sent = await postBuyAlert(alertTrade(p, drop), await burnedPct(), nftLineFromDrop(drop));
         if (sent) { alertsThisRun++; console.log('[BUY] minted-alert', p.txHash, '→ #' + drop.tokenId); }
         else { stillPending.push(p); console.error('[BUY] minted-alert send failed, will retry', p.txHash); }
         continue;
@@ -4424,9 +4504,9 @@ export default {
       const latestHex = await rpcCall('eth_blockNumber', []);
       if (latestHex) {
         const latest = parseInt(latestHex, 16);
-        // ~300 blocks ≈ 4-7 min (BSC ~0.75-1.5s/block) — comfortably covers the
-        // 1-min cron with margin; dedup via posted_txs prevents repeats.
-        const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
+        // SCAN_BLOCKS ≈ 12 min (BSC ~0.45 s/block) — covers the 1-min cron
+        // through ten missed ticks; dedup via posted_txs prevents repeats.
+        const fromBlock = '0x' + Math.max(0, latest - SCAN_BLOCKS).toString(16);
         const logs = await getSwapLogs(fromBlock, env);
 
         if (Array.isArray(logs) && logs.length) {

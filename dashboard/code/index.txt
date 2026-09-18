@@ -21,7 +21,7 @@ environment at runtime, and the config files name the variables only.
 Buyback & Burn Bot
 ------------------
 The bot that has run every ten minutes since launch.
-3 files, 1475 lines
+3 files, 1491 lines
 needs:
   - A wallet with a little gas in it
       ours: one BSC wallet, topped up from the tax itself
@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 4475 lines
+12 files, 4555 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -133,7 +133,7 @@ txt: https://brainonbnb.com/code/telegram-bot.txt
 NFT Auto-Mint Bot
 -----------------
 Watches the pair and mints to the buyer, unasked.
-2 files, 598 lines
+2 files, 652 lines
 needs:
   - A deployed ERC-721 it is allowed to mint from
       ours: the contract in the NFT Buy Drops bundle

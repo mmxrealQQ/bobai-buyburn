@@ -2,7 +2,7 @@
 # Watches the pair and mints to the buyer, unasked.
 #
 # This is the complete nft-mint-bot bundle as a single file, so it can be read in
-# one fetch. 2 files, 598 lines.
+# one fetch. 2 files, 652 lines.
 # Download as a zip: https://brainonbnb.com/code/nft-mint-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -283,6 +283,9 @@ export function foldBuysByTx(logs) {
   return [...byTx.values()];
 }
 
+// How many runs in a row a buy's mint may fail before it is given up (a run is a minute).
+const MINT_TRIES = 30;
+
 function tierFromUsd(usd) {
   for (const [min, t] of TIER_THRESHOLDS) if (usd >= min) return t;
   return -1;
@@ -442,6 +445,13 @@ export default {
     const processed = new Set(processedRaw ? JSON.parse(processedRaw) : []);
     const prevSize = processed.size;
 
+    // Mints that were SENT and whose receipt had not come when the run ended:
+    // buy tx -> mint tx. The next run reads that receipt before it mints again,
+    // or one slow block would hand a buyer two NFTs.
+    let pendingMints = {};
+    try { pendingMints = JSON.parse((await env.KV.get('mint_pending')) || '{}'); } catch { pendingMints = {}; }
+    const savePending = () => env.KV.put('mint_pending', JSON.stringify(Object.fromEntries(Object.entries(pendingMints).slice(-20)))).catch(() => {});
+
     // Read tier mint state once per run
     let mintedArr, capArr;
     try {
@@ -542,12 +552,36 @@ export default {
 
       // Mint
       try {
-        const mintTxHash = await wallet.writeContract({
-          address: contract,
-          abi: NFT_ABI,
-          functionName: 'mintTo',
-          args: [buyer, tier, rarity],
-        });
+        // THE MINT HAS TO HAVE HAPPENED (2026-09-18). The hash was taken for the
+        // mint: a transaction that reverted was written into the drop ledger as
+        // an NFT nobody received. The receipt is waited for; a revert is a
+        // failure like any other and goes the way of the catch below. A mint
+        // whose receipt did not come in time is NOT sent again: its hash is
+        // kept, and the next run asks the chain about it first.
+        let mintTxHash = pendingMints[txHash] || null;
+        if (mintTxHash) {
+          const rc = await publicClient.getTransactionReceipt({ hash: mintTxHash }).catch(() => null);
+          if (!rc) throw new Error(`the mint transaction ${mintTxHash} is still not mined`);
+          if (rc.status !== 'success') { delete pendingMints[txHash]; await savePending(); mintTxHash = null; }
+        }
+        if (!mintTxHash) {
+          mintTxHash = await wallet.writeContract({
+            address: contract,
+            abi: NFT_ABI,
+            functionName: 'mintTo',
+            args: [buyer, tier, rarity],
+          });
+          pendingMints[txHash] = mintTxHash;
+          await savePending();
+          const mintRc = await publicClient.waitForTransactionReceipt({ hash: mintTxHash, timeout: 45000 });
+          if (mintRc.status !== 'success') {
+            delete pendingMints[txHash];
+            await savePending();
+            throw new Error(`the mint transaction ${mintTxHash} reverted`);
+          }
+        }
+        delete pendingMints[txHash];
+        await savePending();
         const blockNum = parseInt(log.blockNumber, 16);
         console.log(`[MINT] $${usd.toFixed(0)} → tier=${tier} rarity=${RARITY_NAME[rarity]} to=${buyer} mintTx=${mintTxHash} buyTx=${txHash}`);
         processed.add(txHash);
@@ -577,7 +611,27 @@ export default {
         }
       } catch (e) {
         console.error(`[MINT FAIL] buyTx=${txHash} err=${e.shortMessage || e.message || e}`);
-        // Do NOT mark processed — retry next run.
+        // A FAILED MINT IS TRIED AGAIN — and until 2026-09-18 it was not: this
+        // comment said "retry next run" while the loop went on, the chunk
+        // completed and last_block moved past the buy. With the relayer out of
+        // gas, every buy of that time lost its NFT for good, and its Telegram
+        // alert read "mint pending" for ever. Now the scan stops HERE: the chunk
+        // is not completed, the next run meets this buy again (buys before it
+        // are in `processed`). A buy that fails MINT_TRIES runs in a row — a
+        // recipient that cannot take an NFT, not an empty relayer — is given
+        // up, loudly, so one buy cannot hold up every buy after it.
+        let tries = {};
+        try { tries = JSON.parse((await env.KV.get('mint_tries')) || '{}'); } catch { tries = {}; }
+        const n = (tries[txHash] || 0) + 1;
+        if (n >= MINT_TRIES) {
+          console.error(`[MINT GIVEN UP] buyTx=${txHash} after ${n} runs — marked processed, no NFT for this buy`);
+          processed.add(txHash);
+          delete tries[txHash];
+          if (pendingMints[txHash]) { delete pendingMints[txHash]; await savePending(); }
+        } else tries[txHash] = n;
+        const keep = Object.fromEntries(Object.entries(tries).slice(-20));
+        await env.KV.put('mint_tries', JSON.stringify(keep)).catch(() => {});
+        if (n < MINT_TRIES) { bailed = true; break outer; }
       }
     }
 

@@ -646,7 +646,11 @@ section('The marketplace, from the front door');
   // jumps by the reserve between a daily row and a deposit-watch row and the
   // last row reads 2.6% under the card above it. Checked against every run
   // in the record that has a point and reported a reserve.
-  const runsWithReserve = lpJson ? [lpJson.last, ...(lpJson.history || [])].filter((e, i, arr) => e && e.at && !e.dry && arr.findIndex((x) => x && x.at === e.at) === i && e.steps && e.steps.rebalance && e.steps.rebalance.value_with_reserve_bnb != null && !(e.steps.increase && e.steps.increase.acted && !e.steps.increase.error)) : [];
+  // History first: the record's `last` keeps the daily run's `at` but its
+  // rebalance step is refreshed by every hourly check (the card's "range
+  // checked"), while the history entry is the run as it happened — and the
+  // point was written from that.
+  const runsWithReserve = lpJson ? [...(lpJson.history || []), lpJson.last].filter((e, i, arr) => e && e.at && !e.dry && arr.findIndex((x) => x && x.at === e.at) === i && e.steps && e.steps.rebalance && e.steps.rebalance.value_with_reserve_bnb != null && !(e.steps.increase && e.steps.increase.acted && !e.steps.increase.error)) : [];
   const pointsOffByReserve = ser ? runsWithReserve.map((e) => [e, ser.points.find((p) => p.at === e.at)]).filter(([e, p]) => p && p.value_bnb != null && Math.abs(Number(p.value_bnb) - Number(e.steps.rebalance.value_with_reserve_bnb)) > 0.000002).map(([e, p]) => `${e.at.slice(0, 16)} point ${p.value_bnb} vs with reserve ${e.steps.rebalance.value_with_reserve_bnb}`) : ['no series'];
   ok('every series point of a run that reported a reserve carries the value with the reserve', runsWithReserve.length > 0 && pointsOffByReserve.length === 0, pointsOffByReserve.join(' · ') || `${runsWithReserve.length} run(s) checked`);
   ok('/defi carries the day-by-day table', /id="ag-lp-series"/.test(lq.body) && /lp\/series/.test(lq.body));

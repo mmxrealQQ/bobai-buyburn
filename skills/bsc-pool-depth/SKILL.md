@@ -60,12 +60,14 @@ JSON on stdout. The fields that carry the answer:
 | `tradeCost[]` | Total cost in percent at $100 / 150 / 250 / 500 / 1k / 2.5k, buy and sell separately — tax, fee and impact combined |
 | `onePercentDepth` | USD size that moves the price 1% in each direction. The plainest one-number answer to "how deep is this really" |
 | `tax.measured` | **Check this.** `true` = read off real trades in the last hour. `false` = read `tax.source`: either *simulated on-chain at this block* (the same trade run from a fresh address — nearly as good) or *labelled by GoPlus, unverified*. `tax.reason` says why no trade could be read (a quiet pool is final; a refused log range means retry) |
-| `sellability` | A simulated sell on V2 pairs: `sellable:false` carries the router's own reason; `ok:false` means not checked, never "safe" |
 | `block`, `measuredAt` | The block the tax window ended at and when the answer was made — every "at this block" in this answer means this one |
 | `pool.shareOfLiquidity` | What fraction of the token's liquidity this pool holds. A low number means you are looking at a side pocket |
 | `lp.burnedPct` | Share of LP tokens sent to a burn address and therefore unwithdrawable (V2 pools only) |
 | `quotable` | `false` when no pool is deep or representative enough to quote honestly — read `reason` |
-| `sellability` | Our own sell test: a sell of one part in a thousand of the reserve, simulated on the router from a fresh address at this block. `ok:false` means not checked, never "safe" |
+| `sellability` | Our own sell test: a sell of one part in a thousand of the reserve, simulated on the router from a fresh address at this block. `sellable:false` carries the router's own reason; `buyable` and `tax.{buy_pct,sell_pct}` are a second, independent tax reading; `ok:false` means not checked, never "safe" |
+| `deeperPoolElsewhere` | Present when a bigger pool for the same token exists than the one read: its pair and liquidity in USD. Decision-relevant: the figures above describe the pool that was read |
+| `tax.simulated` | The tax as a simulated trade at this block measured it, returned beside `tax.measured` as an independent cross-check |
+| `contract.properties` · `contract.notChecked` | The contract flags the page shows as chips, three-state (`true` / `false` / `null` = GoPlus returned no value, which is not "no"), with the unchecked ones named. `slippage_modifiable` is the one to read next to a measured tax: it says the rate can be raised later |
 | `curve` | Present when the token is still raising on four.meme and has no pool yet: `raised`/`maxRaising`/`progressPct`, `priceUsd`, the platform `feePct`, and `tradeCost[]` quoted by four.meme's own contract for the same sizes as a pool ladder. `quotable` stays `false` because there is no pool |
 
 ## Reading the result

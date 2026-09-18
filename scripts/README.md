@@ -21,6 +21,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `phase-parity.mjs` | do the two copies of the tax split agree |
 | `dashboard-check/` | browser-driven checks of single pages and panels (see its README) |
 | `dashboard-check/style-arrival.mjs` | does every visible class on every page meet a rule in a loaded stylesheet (the /advantage lesson) |
+| `scanner-audit/` | drives `/scanner` in headless Chrome over a few dozen live BSC tokens and checks that every figure is a figure (see its README) |
 
 ## The measurements the tools are built on
 | script | checks |
@@ -32,6 +33,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `curve-check.mjs` | the four.meme launch curve: read only for a curve, graduated tokens fall through, a size the curve cannot fill is flagged |
 | `binance-route-crosscheck.mjs` · `binance-web3-check.mjs` | a second opinion from Binance's API; the signing, proven |
 | `goplus-check.mjs` | the GoPlus key and signature |
+| `probe/build-probe.mjs` | the sell-probe bytecode the scanner places by state override — reproducible from the Solidity, `--check` against what the page carries |
 
 ## The DeFi agent
 | script | does |

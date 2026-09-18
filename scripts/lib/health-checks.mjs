@@ -421,11 +421,15 @@ ok('Health', 'the daily-post rule passes its own pins', dailyOnTimeHolds());
 
 // ---- the site -------------------------------------------------------------
 {
-  for (const [name, path] of [['homepage', '/'], ['Brain Plaza', '/registry'], ['scanner', '/scanner'], ['whitepaper', '/whitepaper']]) {
+  for (const [name, path] of [['homepage', '/'], ['Brain Plaza', '/registry'], ['scanner', '/scanner'], ['whitepaper', '/whitepaper'], ['the DeFi agent page', '/defi'], ['the Library', '/library']]) {
     const r = await fetch(SITE + path).catch(() => null);
     const body = r ? await r.text() : '';
     ok('Site', `${name} serves real content`, !!r?.ok && body.length > 2000 && /<title>/.test(body));
   }
+  // The clone the site promises on /source, the homepage tile, llms.txt and
+  // the agent card (2026-09-18): info/refs must name main, or a clone fails.
+  const refs = await fetch(SITE + '/source.git/info/refs?service=git-upload-pack').then((r) => (r.ok ? r.text() : null)).catch(() => null);
+  ok('Site', 'the source mirror can still be cloned', /^[0-9a-f]{40}\s+refs\/heads\/main/m.test(refs || ''), refs ? refs.trim().split('\n')[0].slice(0, 60) : 'info/refs did not answer');
   const csp = (await fetch(SITE).catch(() => null))?.headers.get('content-security-policy') || '';
   ok('Site', 'CSP allows the agent subdomain', csp.includes('agent.brainonbnb.com'));
 }

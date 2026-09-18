@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 12612 lines.
+# one fetch. 37 files, 12698 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -709,6 +709,7 @@ export async function heldIds(pub, address) {
 export async function healLadder(pub, address, ladder) {
   if (!ladder || ladder.main == null || ladder.reserve == null) return null;
   const held = await heldIds(pub, address);
+  if (held.length === 1 && held[0] === String(ladder.reserve)) return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null });
   if (held.length !== 2 || !held.includes(String(ladder.reserve)) || held.includes(String(ladder.main))) return null;
   const [a, b] = await Promise.all(held.map((i) => read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(i)])));
   const samePool = a[2].toLowerCase() === b[2].toLowerCase() && a[3].toLowerCase() === b[3].toLowerCase() && Number(a[4]) === Number(b[4]);
@@ -901,7 +902,7 @@ export async function planCollect(pub, address, ladder = null) {
       held_outside_position: heldOther > 0n || heldWbnb > 0n ? { wbnb: formatEther(heldWbnb), other: formatUnits(heldOther, 18), note: 'capital, re-used by increase and re-set, not sold here' } : null,
       quote_off_pct: quoteOffPct == null ? null : Number(quoteOffPct.toFixed(2)),
       sells_via: quoteVia == null ? null : (quoteVia === 'v3' ? `the position's own V3 pool (${fee / 1e4}%)` : 'the V2 router (0.25%) — the V3 quoter did not answer'),
-      gas_bnb: state.gasBnb,
+      wallet_bnb: state.gasBnb,
     },
   };
 }
@@ -917,6 +918,12 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   const otherBefore = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+  // WBNB the wallet already holds is capital that a wrap left behind (a
+  // re-set, a reserve mint or an increase that stopped after its wrap), not
+  // fees: it is unwrapped below so the increase step finds it as BNB, and it
+  // is taken out of what this collect counts as produced (2026-09-18 — until
+  // then half of it would have bought $BOBAI, never to come back).
+  const wbnbBefore = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   await send('collect', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
     args: [{ tokenId: plan.tokenId, recipient: account.address, amount0Max: MAX128, amount1Max: MAX128 }] });
   // Only what the collect returned is sold; what the wallet held before it is
@@ -939,18 +946,20 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
     const n = Number(formatEther(q[1]));
     swap = { side: 'sell', venue: `pancakeswap v2 ${V2_SWAP_FEE_PCT}%`, fee_pct: V2_SWAP_FEE_PCT, notional_bnb: Number(n.toFixed(6)), fee_bnb: Number((n * V2_SWAP_FEE_PCT / 100).toFixed(8)), why: 'the V3 quoter did not answer at plan time' };
   }
-  // WBNB is never capital-in-waiting (that waits as BNB), so all of it is
-  // fees: this collect's, or an earlier one's that never got unwrapped.
+  // Everything wrapped is unwrapped: this collect's WBNB is fees, what was
+  // there before is capital that goes back to waiting as BNB.
   const wbnbHave = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   if (wbnbHave > 0n) await send('unwrap', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbHave] });
 
   const after = await pub.getBalance({ address: account.address });
-  const produced = after - before;           // net of the gas this run spent
+  const producedRaw = after - before - wbnbBefore;   // net of the gas this run spent, without the capital found wrapped
+  const produced = producedRaw > 0n ? producedRaw : 0n;
   const aboveReserve = after - GAS_RESERVE;   // never dip into the reserve
   const forward = produced < aboveReserve ? produced : aboveReserve;
-  if (forward <= 0n) return { txs, swap, forwarded_bnb: '0', kept_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
+  const found = wbnbBefore > 0n ? { capital_found_wrapped_bnb: formatEther(wbnbBefore), capital_found_note: 'WBNB the wallet held before the collect, a wrap an earlier step left behind: unwrapped here as capital, not counted as fees' } : {};
+  if (forward <= 0n) return { txs, swap, ...found, forwarded_bnb: '0', kept_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
   const split = splitFees(forward, keptPct);
-  const out = { txs, swap, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
+  const out = { txs, swap, ...found, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
   if (split.buyback <= 0n) return { ...out, bobai_bnb: '0', why: `collected ${formatEther(forward)} BNB of fees; all of it stays as capital (kept share ${split.pct}%)` };
   const bought = await buyBobaiHold(pub, send, account.address, split.buyback);
   return { ...out, bobai_bnb: formatEther(bought.spent), bobai_units: formatUnits(bought.units, 18), held_in: account.address };
@@ -985,7 +994,7 @@ export async function planSweep(pub, source, feed = null) {
       source: source.key, wallet: source.wallet, token: source.symbol,
       balance: state.balance, sweeping: Number(formatUnits(amount, source.decimals)),
       bnb_equivalent: state.bnbEquivalent, implied_usd: impliedUsd == null ? null : Number(impliedUsd.toFixed(4)),
-      capped: balance > capRaw, gas_bnb: state.gasBnb,
+      capped: balance > capRaw, wallet_bnb: state.gasBnb,
     },
   };
 }
@@ -1138,7 +1147,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       // the ladder, when there is one, beside it — the sizing above is the
       // main range's alone, the reserve stays where it is.
       value_bnb: Number(valueBnb.toFixed(6)),
-      ...(p.reserve && poolInfo ? { reserve: { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], value_bnb: Number(positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).valueBnb.toFixed(6)) }, value_with_reserve_bnb: Number((valueBnb + positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).valueBnb).toFixed(6)) } : {}),
+      ...(p.reserve && poolInfo ? { reserve: { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], value_bnb: Number(positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).valueBnb.toFixed(6)), side: positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).side }, value_with_reserve_bnb: Number((valueBnb + positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).valueBnb).toFixed(6)) } : {}),
       width_pct: width, width_basis: widthBasis,
       expected_net_usd_per_day: pick ? pick.earnings.net_usd_per_day : null,
       new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
@@ -1675,7 +1684,7 @@ export async function planIncrease(pub, address, position = null, ladder = null)
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
       value_bnb: poolInfo ? Number(((await positionValueBnb(pub, address, p, poolInfo)) + reserveValue).toFixed(6)) : null,
-      ...(p.reserve && poolInfo ? { reserve: { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], value_bnb: Number(reserveValue.toFixed(6)) } } : {}),
+      ...(p.reserve && poolInfo ? { reserve: { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], value_bnb: Number(reserveValue.toFixed(6)), side: positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).side } } : {}),
       side, wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null, pool: poolInfo ? String(poolInfo.pool).toLowerCase() : null,
       capital: poolInfo ? { bnb_above_reserve: bn(nativeRaw), wbnb_held: bn(heldWbnb), other_held: formatUnits(heldOther, 18), other_held_in_bnb: Number((heldOtherInWbnb / 1e18).toFixed(6)) } : null,
       would_add: poolInfo && target && target.L > 0 ? {
@@ -2565,7 +2574,18 @@ export const LADDER_GATE = 'LP_LADDER';
 // Returns { main, why } or null. Pure; pinned both ways.
 export function ladderHeal(state) {
   const held = (state.held || []).map(String);
-  if (state.main == null || state.reserve == null || held.length !== 2) return null;
+  if (state.main == null || state.reserve == null) return null;
+  // A re-set that burned the main range and failed to mint the new one
+  // (2026-09-18, read in the code, never seen with money): the wallet holds
+  // the reserve alone and the record names a burnt main range. Without this
+  // readPosition returns the reserve as the main range while the record
+  // keeps naming the burnt id, and every step refuses forever. The reserve is
+  // the main range now, the ladder is closed; the resume and increase paths
+  // take it from there.
+  if (held.length === 1 && held[0] === String(state.reserve)) {
+    return { main: String(state.reserve), reserve: null, closed: true, why: `the ladder record named main range #${state.main}, which this wallet no longer holds; the reserve #${state.reserve} is the only range left, so it is the main range now and the ladder is closed` };
+  }
+  if (held.length !== 2) return null;
   if (!held.includes(String(state.reserve)) || held.includes(String(state.main))) return null;
   if (state.samePool !== true) return null;
   const main = held.find((i) => i !== String(state.reserve));
@@ -3904,7 +3924,16 @@ export async function handleDispatch(url, body, env, opts = {}) {
   // their traffic under our scheduled checks — which is a small lie in the one
   // direction the log is supposed to protect against.
   const probe = opts.probe === true;
-  if (!task) return { status: 400, body: { error: 'task is required — describe what you need done' } };
+  if (!task) return { status: 400, body: {
+    error: 'task is required — describe what you need done',
+    usage: 'GET /dispatch?task=<what you need> or POST {"task":"…"}; add dry_run (POST) or dry=1 (GET) to see which agent and tool would be called without calling anything',
+    examples: [
+      'https://agent.brainonbnb.com/dispatch?task=what+does+a+%24250+trade+of+0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82+cost',
+      'https://agent.brainonbnb.com/dispatch?task=venus+health+factor+of+0x…&dry=1',
+    ],
+    read_only: 'anything that signs, sends, swaps or orders is named back to you to call yourself, never invoked on your behalf',
+    sessions: 'https://agent.brainonbnb.com/sessions',
+  } };
 
   // Reuse the broker to pick candidates, so routing and search can never
   // disagree about who is out there.
@@ -4001,8 +4030,13 @@ export async function handleDispatch(url, body, env, opts = {}) {
         continue;
       }
 
-      const safe = (card.skills || []).filter(skillIsReadOnly);
-      const blocked = (card.skills || []).filter((sk) => !skillIsReadOnly(sk)).map((sk) => sk.id || sk.name);
+      // The selling handshake is filtered out by name as well as by verb
+      // (2026-09-18): `negotiate` reads as read-only and outscored the rest on
+      // a card that mixed it with one real skill, so a stranger got a price
+      // quote back as if it were the answer, and the log counted it as one.
+      const selling = (sk) => SELLING_SKILLS.has(String(sk.id || sk.name || '').toLowerCase());
+      const safe = (card.skills || []).filter((sk) => skillIsReadOnly(sk) && !selling(sk));
+      const blocked = (card.skills || []).filter((sk) => !skillIsReadOnly(sk) || selling(sk)).map((sk) => sk.id || sk.name);
       const ranked = safe.map((sk) => ({ sk, s: scoreTool({ name: sk.id || sk.name, description: sk.description }, terms) }))
         .sort((a, b) => b.s - a.s);
       const pick = ranked[0]?.s > 0 ? ranked[0].sk : null;
@@ -4382,7 +4416,14 @@ export async function handleFind(url) {
         ...(a.agent_card ? { agent_card: a.agent_card } : {}),
         ...(catOf.has(a.id) ? { categorised: { as: catOf.get(a.id).category, how: catOf.get(a.id).source, evidence: catOf.get(a.id).detail } } : {}),
         match: Math.round(s * 10) / 10,
+        // The next step, per result (2026-09-18): a hit that stops at a score
+        // leaves the caller to guess the URL pattern the dispatcher already emits.
+        next: {
+          dispatch: `https://agent.brainonbnb.com/dispatch?task=${encodeURIComponent(q || '')}`,
+          hire: `https://agent.brainonbnb.com/hire?agent=${a.id}&task=${encodeURIComponent(q || '')}`,
+        },
       })),
+      next: { dispatch: `https://agent.brainonbnb.com/dispatch?task=${encodeURIComponent(q || '')}`, sessions: 'https://agent.brainonbnb.com/sessions' },
       ...(scored.length === 0 && ts.length ? {
         nothing_found: 'Nothing in the census exposes that yet. The registry is growing fast — hundreds of new agents a day — and this index picks up anything with a callable surface automatically. If you build one, you are in it on the next pass: https://brainonbnb.com/registry',
       } : {}),
@@ -5219,7 +5260,11 @@ const rpcCall = async (to, data) => {
 export async function handleHire(url, body, env, opts = {}) {
   const task = String(body?.task || url.searchParams.get('task') || '').slice(0, 400);
   const target = String(body?.agent || url.searchParams.get('agent') || '').trim();
-  if (!task) return { status: 400, body: { error: 'task is required — describe what you want done' } };
+  if (!task) return { status: 400, body: {
+    error: 'task is required — describe what you want done',
+    usage: 'GET /hire?agent=<ERC-8004 id or A2A endpoint>&task=<what you want> returns the seller\'s quote and the unsigned transactions to fund the job; GET /job?id=<job id> follows it',
+    examples: ['https://agent.brainonbnb.com/hire?agent=302257&task=venus+health+factor+of+0x…', 'https://agent.brainonbnb.com/find?q=what+you+need — to pick an agent first'],
+  } };
   if (!target) return { status: 400, body: { error: 'agent is required — an ERC-8004 id or an A2A endpoint URL' } };
 
   const started = Date.now();
@@ -6434,7 +6479,16 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
       requirements,
       body: {
         error: 'payment required',
-        how: `Send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain, then repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        what: `Continuous depth monitoring of one BSC pool for ${WATCH_DAYS} days, with a callback when depth falls below a threshold you set.`,
+        // Both assets named (2026-09-18): accepts[0] is the facilitator route
+        // and settles in USDC, the direct route is USD1 — a client that budgets
+        // off the one-asset sentence holds the wrong token for the other route.
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator (accepts[0]) — either lands in the same wallet`,
+        how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        needs: { token: 'the token to watch (0x…)', pair: 'or the pool/pair address (0x…)', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
+        example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
+        read_back: 'GET /watch/<id> — returned to you when the purchase settles',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
         accepts: requirements.accepts,
       },
     };
@@ -6678,7 +6732,10 @@ export default {
     // Skills are derived from SERVICES rather than listed again, because a card
     // advertising a service the seller does not implement is the failure this
     // whole project keeps documenting in other people's agents.
-    if (path === '/.well-known/agent-card.json') {
+    // Both spellings (2026-09-18): agent.json is what the BNB reference agents
+    // serve and what our own dispatcher tries first on strangers, and GET /
+    // pointed at it here while it returned 404.
+    if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json') {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain On BNB AI — hireable agents',
@@ -6740,6 +6797,13 @@ export default {
             // fails after the money is already in escrow.
             inputs: s.needs,
             price: s.price_display,
+            // Where it is sold (2026-09-18): five through the escrow at their
+            // agent id, the LP plan per answer over x402 only — a card that
+            // lists a price without the channel had a client negotiating an
+            // escrow job for a service no seller id answers.
+            ...(s.id === 'lp_position_plan'
+              ? { escrow: false, buy: `${SELF_ORIGIN}/answer?service=${s.id}`, channel: 'x402, per answer; not sold through the ERC-8183 escrow' }
+              : { escrow: true, channel: 'ERC-8183 escrow at this agent, or per answer over x402 at ' + `${SELF_ORIGIN}/answer?service=${s.id}` }),
           })),
         ],
         // Where the rest of the story is, for a reader rather than a parser.
@@ -7084,6 +7148,9 @@ ${pageTail}`;
         what_this_is: 'Every task Brain Plaza has routed to another agent, and how each one went. Failures included — a record that only showed successes would be marketing.',
         how_to_read_it: 'Nobody reports their own score here. An operator appears because it was asked something, and its reliability is the count of times it answered. We store what was asked and a short excerpt of the answer, never the full response.',
         sessions_recorded: sessions.length,
+        // A rolling window, not the lifetime (2026-09-18): the log keeps the
+        // newest 400 and this read as "400" for good, while /stats counts on.
+        window: `the most recent ${sessions.length} routed tasks; older entries are dropped, the lifetime counts are at https://agent.brainonbnb.com/stats`,
         // The headline split four ways, because "400 sessions" without it read
         // as 400 strangers and was, on 2026-09-08, almost entirely us.
         of_which: sessionOrigins(sessions, OWN_AGENT_IDS),
@@ -7321,7 +7388,10 @@ ${pageTail}`;
       // 2026-09-05; the new one minted by hand the next morning), the fees
       // owed are read from the chain, the same reading /lp/look gives.
       let liveOwed = null;
-      if (pos && String(c.position || '') !== String(pos)) {
+      // ... and after a collect that acted, because its own figure is what it
+      // found before it collected (2026-09-18: 0.006472 BNB shown as "owed
+      // now" two hours after those fees were collected).
+      if (pos && (String(c.position || '') !== String(pos) || c.acted)) {
         try {
           const lk = await lpPositionLook({ position: String(pos) });
           if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) liveOwed = Number(lk.fees_owed.bnb_equivalent);
@@ -7352,7 +7422,8 @@ ${pageTail}`;
         if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
         if (s.increase?.acted && !s.increase.error) parts.push(`added ${f(s.increase.wbnb_used, 5)} BNB to the position`);
-        const errs = [...(Array.isArray(s.sweep) ? s.sweep : []), s.collect, s.rebalance, s.increase].filter((x) => x && x.error).map((x) => x.error);
+        if (s.ladder?.acted && !s.ladder.error) parts.push(s.ladder.new_reserve && !s.ladder.old_reserve ? `opened a reserve range below the price with ${f(s.ladder.bnb_spent, 4)} BNB (#${s.ladder.new_reserve})` : s.ladder.old_reserve ? `re-set the reserve range beside the price (#${s.ladder.old_reserve} → #${s.ladder.new_reserve})` : s.ladder.merged_reserve ? `merged the reserve range into the main one (#${s.ladder.merged_reserve})` : `grew the reserve range by ${f(s.ladder.bnb_spent, 4)} BNB`);
+        const errs = [...(Array.isArray(s.sweep) ? s.sweep : []), s.collect, s.rebalance, s.increase, s.ladder].filter((x) => x && x.error).map((x) => x.error);
         if (e.error) errs.push(e.error);
         return { at: e.at, parts, errs, ok: e.ok !== false };
       });
@@ -7366,11 +7437,11 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 .step b{display:block}.step span{display:block;color:#cfc9bd;font-size:.88rem}.step i{display:block;color:#a9a49a;font-size:.8rem;font-style:normal;margin-top:2px}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}ul.hist{list-style:none;padding:0;margin:0}ul.hist li{padding:8px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.9rem}ul.hist li:first-child{border-top:0}ul.hist time{color:#a9a49a;font-size:.8rem;display:block}
 `)}${pageNav({ href: SITE + '/defi', label: 'Liquidity' }, { href: '/lp/agent', label: 'The DeFi agent — its record' }, BUY)}<h1>The DeFi agent <span class="st ${last.ok === false ? 'bad' : last.acted ? 'ok' : 'quiet'}">${last.ok === false ? 'one step failed' : reset ? 're-set the range' : last.acted ? 'acted' : 'quiet day'}</span></h1>
-<p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_buyback_pct)}% go to the buyback bot, which buys $BOBAI and burns it, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'part goes to the buyback bot, which buys $BOBAI and burns it, and part stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}${last !== daily ? ` (an hourly check that ${reset ? 're-set the range' : 'acted'}; the daily run before it, ${h(dailyWhen)}, ${daily.acted ? 'acted' : 'had nothing to do'})` : ''}.</p>
+<p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_bobai_pct)}% buy $BOBAI that the agent holds and never sells, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'half buys $BOBAI that the agent holds and never sells, and half stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}${last !== daily ? ` (an hourly check that ${reset ? 're-set the range' : 'acted'}; the daily run before it, ${h(dailyWhen)}, ${daily.acted ? 'acted' : 'had nothing to do'})` : ''}.</p>
 <h2>What it holds</h2>
 <div class="card"><dl>
-<dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until an hourly check re-sets it, two hours after the price left`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB${usd(rb.value_bnb)}` : ''}` : 'none open'}</dd>
-<dt>Fees owed now</dt><dd>${liveOwed != null ? `${f(liveOwed, 6)} BNB${usd(liveOwed)} — read from the chain just now; ${reset ? `the re-set at ${h(when(last.at))} folded the old range's fees into the new capital, so the new position started at zero` : `the run at ${h(fromDaily ? dailyWhen : when(last.at))} ${c.position ? `read position #${h(c.position)}` : 'saw no position'}`}. Left to grow until collecting beats the gas` : c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
+<dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until an hourly check finds it outside for longer than the measured wait and re-sets it`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${(rb.value_with_reserve_bnb ?? rb.value_bnb) != null ? `, worth ${f(rb.value_with_reserve_bnb ?? rb.value_bnb, 4)} BNB${usd(rb.value_with_reserve_bnb ?? rb.value_bnb)}${rb.reserve ? ' with the reserve range' : ''}` : ''}` : 'none open'}</dd>
+<dt>Fees owed now</dt><dd>${liveOwed != null ? `${f(liveOwed, 6)} BNB${usd(liveOwed)} — read from the chain just now; ${reset ? `the re-set at ${h(when(last.at))} folded the old range's fees into the new capital, so the new position started at zero` : c.acted && !c.error ? `the collect at ${h(fromDaily ? dailyWhen : when(last.at))} took what was owed then, this is what has accrued since` : `the run at ${h(fromDaily ? dailyWhen : when(last.at))} ${c.position ? `read position #${h(c.position)}` : 'saw no position'}`}. Left to grow until collecting beats the gas` : c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
 <dt>Income waiting</dt><dd>${sweeps.filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${h(s.token || s.source)}`).join(' + ') || 'nothing'} — moves once it is worth more than the gas</dd>
 <dt>Wallet</dt><dd><a href="https://bscscan.com/address/${h(rec.last?.wallet || '')}" target="_blank" rel="noopener"><code>${h(rec.last?.wallet || '—')}</code></a>${inc.wallet_bnb != null ? `, ${f(inc.wallet_bnb, 5)} BNB` : ''}</dd>
 </dl></div>
@@ -8330,7 +8401,7 @@ export function stepWords(name, s) {
     case 'ladder': return { what: s.new_reserve && !s.old_reserve ? `opened a reserve range below the price with ${r4(s.bnb_spent)} BNB, no trade (#${s.new_reserve})`
       : s.old_reserve ? `re-set the reserve range beside the price, no trade (#${s.old_reserve} → #${s.new_reserve})`
       : s.merged_reserve ? `merged the reserve range into the main one (#${s.merged_reserve})`
-      : `grew the reserve range by ${r4(s.bnb_spent)} BNB, no trade` };
+      : `grew the reserve range by ${r4(s.bnb_spent)} BNB${s.swap && n(s.swap.notional_bnb) > 0 ? `, the missing side bought first (${r5(s.swap.notional_bnb)} BNB, fee ${r5(s.swap.fee_bnb)})` : ', no trade'}` };
     default: return { what: `${name} acted` };
   }
 }
@@ -8459,7 +8530,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb });
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
-    resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'),
+    resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'), reserve_moves: dayCount('ladder'),
     errors: day.filter((d) => d.error).length,
     last: day.length ? { at: day[0].at, what: day[0].what, error: !!day[0].error } : null,
   };
@@ -8481,7 +8552,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       wallet_bnb: r4(walletBnb),
       // The ladder's reserve range (2026-09-16), when one stands: BNB below
       // the price, waiting to buy the other side through fees.
-      reserve: reserve ? { position: String(reserve.position), ticks: reserve.ticks || null, bnb: r4(reserve.value_bnb) } : null,
+      // Where the reserve stands: 'wbnb' = below the price (a buy ladder), 'other' = the price fell through it (it waits to merge), 'both' = the price is inside it.
+      reserve: reserve ? { position: String(reserve.position), ticks: reserve.ticks || null, bnb: r4(reserve.value_bnb), side: reserve.side || null } : null,
     },
     pnl: {
       // Where the profit went, the operator's two halves: the fees kept as
@@ -10298,13 +10370,27 @@ const SEED_PARAMS = {
   yield_plan: { amountUsd: 1000 },
   lp_tier_plan: { capitalUsd: 1000 },
 };
+// The way from the free preview to the paid answer (2026-09-18): every 402
+// and the catalogue point into /example, and nothing pointed back out; and
+// the price stood in the escrow's unit ($U) for a reader who came from a
+// USD1 catalogue, with no gloss.
+function exampleLinks(serviceId, service) {
+  return {
+    price: {
+      x402: `0.10 USD1 per answer (or the same in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
+      ...(serviceId === 'lp_position_plan' ? {} : { escrow: `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)` }),
+    },
+    buy: `https://agent.brainonbnb.com/answer?service=${serviceId}`,
+    terms: 'POST it once without payment: the 402 carries the price, the wallet and the inputs it needs',
+  };
+}
 export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   const service = SERVICES[serviceId];
   if (!service) return null;
   const key = `example:${serviceId}`;
   if (!fresh && env?.AGENT) {
     const cached = await env.AGENT.get(key, 'json').catch(() => null);
-    if (cached) return { ...cached, cached: true };
+    if (cached) return { ...cached, ...exampleLinks(serviceId, service), cached: true };
   }
   const task = SEED_TASKS[serviceId];
   const params = extractParams(task, { ...(SEED_PARAMS[serviceId] || {}), service: serviceId });
@@ -10321,7 +10407,7 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
     note: 'Run by the same code a funded job runs, on the sentence the hire box opens with. Not a paid job; the figures are from the moment above.',
   };
   if (env?.AGENT) await env.AGENT.put(key, JSON.stringify(out), { expirationTtl: 60 * 60 * 24 }).catch(() => {});
-  return out;
+  return { ...out, ...exampleLinks(serviceId, service) };
 }
 
 export async function handleA2A(request, env) {
@@ -12172,7 +12258,7 @@ export const OWNERSHIP_PROOFS = {
 // tell a client to prepare a payment for something that never asks for one.
 // The free tools are named in the instructions instead, where an agent reading
 // the catalogue will still find them.
-// Since 2026-09-03 the five deliveries are sold per answer here too — the
+// Since 2026-09-03 the deliveries (ANSWER_IDS, counted, never typed) are sold per answer here too — the
 // same doWork() the ERC-8183 escrow path runs, one payment, the document
 // straight back. Each is its own resource because each has its own inputs.
 const ANSWER_IDS = ['health_factor', 'grid_plan', 'yield_plan', 'rebalance_plan', 'lp_tier_plan', 'lp_position_plan'];
@@ -12197,7 +12283,7 @@ No API key, no account, no signup. Measurement only — nothing here is financia
 
 ## Payment
 
-- **Asset**: USD1 (\`${asset}\`) on BNB Smart Chain (\`${network}\`)
+- **Asset**: USD1 (\`${asset}\`) on BNB Smart Chain (\`${network}\`) by direct transfer; the facilitator route (way 1 below, \`accepts[0]\` in every 402) settles the same amount in USDC
 - **Pay to**: \`${payTo}\`
 - **Header**: send proof in \`PAYMENT-SIGNATURE\`
 
@@ -12220,9 +12306,9 @@ ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}
 
 Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the
-intended way to discover terms. \`GET /answer\` lists the five in one document.
+intended way to discover terms. \`GET /answer\` lists the ${ANSWER_IDS.length} in one document.
 
-The five answers are also sold through the ERC-8183 escrow on
+${ANSWER_IDS.length - 1} of the ${ANSWER_IDS.length} answers are also sold through the ERC-8183 escrow on
 \`https://brainonbnb.com/registry\`, at the same price, for a buyer who wants
 a kernel between them and the seller. Here there is no job and no dispute
 window: the money moves, the document comes back.
@@ -12259,7 +12345,7 @@ on-chain, and the daily record is at \`https://agent.brainonbnb.com/lp/agent\`.
 ## Identity
 
 - **ERC-8004**: agent #49467 on BNB Smart Chain
-- **A2A agent card**: https://brainonbnb.com/.well-known/agent-card.json
+- **A2A agent card**: https://agent.brainonbnb.com/.well-known/agent-card.json (the sellers, with prices and inputs; the parent identity's card is at https://brainonbnb.com/.well-known/agent-card.json)
 - **Site**: https://brainonbnb.com
 `;
 }

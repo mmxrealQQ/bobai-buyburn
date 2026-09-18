@@ -36,7 +36,7 @@ export function stepWords(name, s) {
     case 'ladder': return { what: s.new_reserve && !s.old_reserve ? `opened a reserve range below the price with ${r4(s.bnb_spent)} BNB, no trade (#${s.new_reserve})`
       : s.old_reserve ? `re-set the reserve range beside the price, no trade (#${s.old_reserve} → #${s.new_reserve})`
       : s.merged_reserve ? `merged the reserve range into the main one (#${s.merged_reserve})`
-      : `grew the reserve range by ${r4(s.bnb_spent)} BNB, no trade` };
+      : `grew the reserve range by ${r4(s.bnb_spent)} BNB${s.swap && n(s.swap.notional_bnb) > 0 ? `, the missing side bought first (${r5(s.swap.notional_bnb)} BNB, fee ${r5(s.swap.fee_bnb)})` : ', no trade'}` };
     default: return { what: `${name} acted` };
   }
 }
@@ -165,7 +165,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb });
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
-    resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'),
+    resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'), reserve_moves: dayCount('ladder'),
     errors: day.filter((d) => d.error).length,
     last: day.length ? { at: day[0].at, what: day[0].what, error: !!day[0].error } : null,
   };
@@ -187,7 +187,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       wallet_bnb: r4(walletBnb),
       // The ladder's reserve range (2026-09-16), when one stands: BNB below
       // the price, waiting to buy the other side through fees.
-      reserve: reserve ? { position: String(reserve.position), ticks: reserve.ticks || null, bnb: r4(reserve.value_bnb) } : null,
+      // Where the reserve stands: 'wbnb' = below the price (a buy ladder), 'other' = the price fell through it (it waits to merge), 'both' = the price is inside it.
+      reserve: reserve ? { position: String(reserve.position), ticks: reserve.ticks || null, bnb: r4(reserve.value_bnb), side: reserve.side || null } : null,
     },
     pnl: {
       // Where the profit went, the operator's two halves: the fees kept as

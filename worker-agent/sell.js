@@ -324,13 +324,27 @@ const SEED_PARAMS = {
   yield_plan: { amountUsd: 1000 },
   lp_tier_plan: { capitalUsd: 1000 },
 };
+// The way from the free preview to the paid answer (2026-09-18): every 402
+// and the catalogue point into /example, and nothing pointed back out; and
+// the price stood in the escrow's unit ($U) for a reader who came from a
+// USD1 catalogue, with no gloss.
+function exampleLinks(serviceId, service) {
+  return {
+    price: {
+      x402: `0.10 USD1 per answer (or the same in $BOBAI, quoted on the 402) at POST https://agent.brainonbnb.com/answer?service=${serviceId}`,
+      ...(serviceId === 'lp_position_plan' ? {} : { escrow: `${service.price_display} through the ERC-8183 escrow on https://brainonbnb.com/registry ($U is United Stables, a dollar stablecoin)` }),
+    },
+    buy: `https://agent.brainonbnb.com/answer?service=${serviceId}`,
+    terms: 'POST it once without payment: the 402 carries the price, the wallet and the inputs it needs',
+  };
+}
 export async function exampleFor(serviceId, env, { fresh = false } = {}) {
   const service = SERVICES[serviceId];
   if (!service) return null;
   const key = `example:${serviceId}`;
   if (!fresh && env?.AGENT) {
     const cached = await env.AGENT.get(key, 'json').catch(() => null);
-    if (cached) return { ...cached, cached: true };
+    if (cached) return { ...cached, ...exampleLinks(serviceId, service), cached: true };
   }
   const task = SEED_TASKS[serviceId];
   const params = extractParams(task, { ...(SEED_PARAMS[serviceId] || {}), service: serviceId });
@@ -347,7 +361,7 @@ export async function exampleFor(serviceId, env, { fresh = false } = {}) {
     note: 'Run by the same code a funded job runs, on the sentence the hire box opens with. Not a paid job; the figures are from the moment above.',
   };
   if (env?.AGENT) await env.AGENT.put(key, JSON.stringify(out), { expirationTtl: 60 * 60 * 24 }).catch(() => {});
-  return out;
+  return { ...out, ...exampleLinks(serviceId, service) };
 }
 
 export async function handleA2A(request, env) {

@@ -80,9 +80,8 @@
 
     <!-- THE LIBRARY.
          The cards above are the things you can use. This is the code behind
-         them. It sat on GitHub until that account was flagged, and a link that
-         404s is not transparency — so the code lives on the site now, where
-         nothing but us can take it down.
+         them, readable on the site itself (it is also on GitHub and cloneable
+         from this domain; a copy that lives here cannot 404 on us).
          Everything between the markers is written by scripts/build-library.mjs
          from the real files. Do not edit it by hand; run the script. -->
     <div class="lib" id="library">
@@ -90,13 +89,13 @@
         <h3>The <em>Library</em></h3>
         <p>The code behind everything on this page, packaged so someone who is not us can read it and run it. MIT licensed, no account. Builders only; everyone else can skip this.</p>
       </div>
-      <!-- Collapsed by default since 2026-09-02: fourteen bundles are 2,700 words
+      <!-- Collapsed by default since 2026-09-02: the bundles are thousands of words
            a visitor who came for the token never asked for. The markers and
            the generated section inside are untouched; only the wrapper is new. -->
       <details class="lb-archive lib-fold">
         <summary>
           <div class="lb-arch-head">
-            <div class="lb-arch-title">Open the <em>14 bundles</em></div>
+            <div class="lb-arch-title">Open the <em>15 bundles</em></div>
             <div class="lb-arch-meta">bots, apps, tools &middot; read in the browser or take the zip</div>
           </div>
           <div class="lb-arch-arr">&#x25BE;</div>
@@ -111,7 +110,7 @@
             <span class="lib-t">Buyback &amp; Burn Bot</span>
             <span class="lib-s">The bot that has run every ten minutes since launch.</span>
           </span>
-          <span class="lib-m">3 files &middot; 1,311 lines &middot; 16 KB</span>
+          <span class="lib-m">3 files &middot; 1,475 lines &middot; 18 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -125,6 +124,29 @@
             <span class="lib-cl">Hand the whole thing to an AI</span>
             <code>curl -sL https://brainonbnb.com/code/buyback-bot.txt</code>
             <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/buyback-bot.txt">copy</button>
+          </div>
+        </div>
+      </details>
+      <details class="lib-i">
+        <summary>
+          <span class="lib-h">
+            <span class="lib-t">DeFi Agent — a PancakeSwap V3 range that runs itself</span>
+            <span class="lib-s">One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.</span>
+          </span>
+          <span class="lib-m">14 files &middot; 5,466 lines &middot; 0.1 MB</span>
+          <span class="lib-a">&#x25BE;</span>
+        </summary>
+        <div class="lib-b">
+          <div class="lib-n"><b>What you need to run it &mdash; and what else works</b><ul><li><span class="lib-q">A wallet that holds the position</span><span class="lib-o"><em>ours</em> one BSC wallet used for nothing else</span><span class="lib-o"><em>also</em> any wallet — the agent refuses when it finds positions it does not know, so keep it to itself</span></li><li><span class="lib-q">Somewhere that runs code on a schedule</span><span class="lib-o"><em>ours</em> a Cloudflare Worker: a daily run, an hourly check, a ten-minute deposit watch</span><span class="lib-o"><em>also</em> a VPS with crontab or node on your own machine — scripts/lp-agent.mjs runs the same steps by hand, dry by default</span></li><li><span class="lib-q">Somewhere to keep the record</span><span class="lib-o"><em>ours</em> one Cloudflare KV namespace</span><span class="lib-o"><em>also</em> Redis, SQLite, Postgres or a JSON file — one record, one width log, one price tape</span></li><li><span class="lib-q">A BSC RPC endpoint</span><span class="lib-o"><em>ours</em> the public endpoints, with failover</span><span class="lib-o"><em>also</em> any node; a read that fails throws, so a throttled node never looks like an empty wallet</span></li><li><span class="lib-q">A V3 pool with real volume</span><span class="lib-o"><em>ours</em> CAKE/BNB 0.05% on PancakeSwap V3</span><span class="lib-o"><em>also</em> any Uniswap-V3-style pool with WBNB on one side — the pool is one constant, the position manager another</span></li><li><span class="lib-q">One secret at runtime: LP_PRIVATE_KEY</span><span class="lib-o"><em>ours</em> wrangler secret put</span><span class="lib-o"><em>also</em> a .env file for the hand script — anything but the source code</span></li></ul></div>
+          <div class="lib-g">
+            <button class="lib-btn lib-view" type="button" data-slug="defi-agent" data-title="DeFi Agent — a PancakeSwap V3 range that runs itself">&#x25A3; View the code</button>
+            <a class="lib-btn" href="/code/defi-agent.zip" download>&#x2193; Download .zip</a>
+            <a class="lib-btn lib-alt" href="/code/defi-agent.txt" target="_blank" rel="noopener">Plain text &#x2197;</a>
+          </div>
+          <div class="lib-c">
+            <span class="lib-cl">Hand the whole thing to an AI</span>
+            <code>curl -sL https://brainonbnb.com/code/defi-agent.txt</code>
+            <button class="lib-cp" type="button" data-copy="curl -sL https://brainonbnb.com/code/defi-agent.txt">copy</button>
           </div>
         </div>
       </details>
@@ -180,7 +202,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 4,151 lines &middot; 59 KB</span>
+          <span class="lib-m">12 files &middot; 4,454 lines &middot; 67 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -252,7 +274,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 4,796 lines &middot; 96 KB</span>
+          <span class="lib-m">6 files &middot; 5,662 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -367,7 +389,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,800 lines &middot; 43 KB</span>
+          <span class="lib-m">4 files &middot; 1,901 lines &middot; 48 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -390,7 +412,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">35 files &middot; 8,657 lines &middot; 0.2 MB</span>
+          <span class="lib-m">37 files &middot; 12,698 lines &middot; 0.3 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -413,7 +435,7 @@
             <span class="lib-t">The Census — reading a whole registry</span>
             <span class="lib-s">Every agent id on BNB Chain, and every job they were ever paid for.</span>
           </span>
-          <span class="lib-m">7 files &middot; 3,866 lines &middot; 79 KB</span>
+          <span class="lib-m">7 files &middot; 4,199 lines &middot; 87 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -444,7 +466,7 @@
   </main>
   <footer><div class="fi2">
     <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
-    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">Liquidity</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
+    <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
 </body>

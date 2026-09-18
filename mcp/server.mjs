@@ -20,6 +20,16 @@ const SERVER_INFO = { name: 'Brain On BNB AI ($BOBAI)', version: '1.3.0' };
 
 const noArgs = { type: 'object', properties: {}, additionalProperties: false };
 const TOOLS = [
+  // The seven tools about somebody other than us, first — the same order as
+  // the hosted server (2026-09-18: this file carried 14 of 21 tools while its
+  // header called it the same server). Each is a plain GET on the REST mirror.
+  { name: 'find_agents_on_bnb_chain', description: 'Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against the tools it exposes rather than self-reported categories.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'what you need done' }, speaks: { type: 'string', description: 'optional: mcp, a2a or x402' } }, required: ['query'], additionalProperties: false }, rest: 'https://agent.brainonbnb.com/find', params: { query: 'q', speaks: 'speaks' } },
+  { name: 'bnb_agent_census', description: 'Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: registered, readable, reachable, by operator; every figure with the timestamp of its measurement.', inputSchema: noArgs, rest: '/api-registry.json' },
+  { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain: the ERC-8183 job escrow read job by job — created, funded, delivered, released — optionally for one provider address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'optional: one provider address (0x…)' } }, additionalProperties: false }, rest: '/api-jobs.json' },
+  { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool: cost per size (impact + swap fee + transfer tax measured from executed trades), the USD size that moves the price 1%, share of liquidity, LP burned or not, a sell simulated from a fresh address. Read tax.measured before using the cost columns; quotable: false with a reason is an answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token or pool address, or a link containing one' } }, required: ['address'], additionalProperties: false }, rest: '/api/pool-scan', params: { address: 'address' } },
+  { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider: the up-to-five PancakeSwap pools a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%), compared on what each actually paid its providers per $1,000 over a live window; the window is returned.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' } }, required: ['address'], additionalProperties: false }, rest: '/api/fee-tiers', params: { address: 'address' } },
+  { name: 'pancakeswap_range_plan', description: 'For a PancakeSwap V3 position: which price range. A position of the given size is replayed through the swaps that really happened; per candidate width the fees it would have collected, time in range and edge crossings.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' }, capitalUsd: { type: 'number', description: 'the capital to place, in USD' } }, required: ['address'], additionalProperties: false }, rest: '/api/range-plan', params: { address: 'address', capitalUsd: 'capitalUsd' } },
+  { name: 'pancakeswap_best_route', description: 'Before a swap on PancakeSwap: which of the pools a pair lives in returns the most at this size, and what comes back if the proceeds are sold straight back, with the measured transfer tax applied between the legs.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' }, usd: { type: 'number', description: 'the trade size in USD' } }, required: ['address'], additionalProperties: false }, rest: '/api/best-route', params: { address: 'address', usd: 'usd' } },
   { name: 'bobai_token_info', description: '$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renounced.', inputSchema: noArgs, rest: '/api/token' },
   { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: noArgs, rest: '/api/token' },
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: noArgs, rest: '/api/token' },
@@ -47,7 +57,7 @@ const PROMPTS = [
 ];
 
 async function fetchJson(path) {
-  const res = await fetch(BASE + path, { headers: { accept: 'application/json' } });
+  const res = await fetch(path.startsWith('http') ? path : BASE + path, { headers: { accept: 'application/json' } });
   if (!res.ok) throw new Error(`GET ${path} -> HTTP ${res.status}`);
   return res.json();
 }
@@ -59,6 +69,15 @@ async function runTool(name, args) {
     const address = String(args?.address || '');
     if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error('Invalid BSC address (expected 0x + 40 hex chars)');
     return fetchJson('/api/wallet?address=' + address);
+  }
+  // The measurement tools pass their arguments through as query parameters,
+  // named as the REST mirror names them.
+  if (tool.params) {
+    const qs = new URLSearchParams();
+    for (const [arg, key] of Object.entries(tool.params)) if (args?.[arg] != null && args[arg] !== '') qs.set(key, String(args[arg]));
+    const required = tool.inputSchema.required || [];
+    for (const r of required) if (!qs.has(tool.params[r])) throw new Error(`${name}: ${r} is required`);
+    return fetchJson(tool.rest + (qs.toString() ? '?' + qs.toString() : ''));
   }
   const data = await fetchJson(tool.rest);
   if (name === 'bobai_burned') return { symbol: data.symbol, burned: data.burned, note: 'Permanently sent to dead/zero address — irreversible' };

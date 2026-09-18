@@ -35,6 +35,14 @@ export class ScanError extends Error {
   }
 }
 
+// The contract properties the page shows as chips, in the API too. The page
+// (scanner.js FLAGS) carries the labels; this is the key list, one source.
+export const CONTRACT_PROPERTIES = [
+  'is_mintable', 'is_proxy', 'can_take_back_ownership', 'hidden_owner', 'selfdestruct', 'transfer_pausable',
+  'is_blacklisted', 'slippage_modifiable', 'personal_slippage_modifiable', 'trading_cooldown', 'is_anti_whale',
+  'anti_whale_modifiable', 'cannot_sell_all', 'is_honeypot',
+];
+
 // GoPlus describes contract properties no eth_call reveals (mintable, proxy,
 // LP lockers). It is asked, always attributed, and never allowed to override a
 // figure that was measured on-chain.
@@ -583,6 +591,12 @@ export async function scan(input, env) {
       openSource: gp.is_open_source === '1' ? true : gp.is_open_source === '0' ? false : null,
       proxy: gp.is_proxy === '1' ? true : gp.is_proxy === '0' ? false : null,
       mintable: gp.is_mintable === '1' ? true : gp.is_mintable === '0' ? false : null,
+      // The whole set the page renders (2026-09-18), three-state: true, false,
+      // or null for "GoPlus returned no value", which is not "no". Above all
+      // slippage_modifiable — a measured 3% that can be raised tomorrow.
+      properties: Object.fromEntries(CONTRACT_PROPERTIES.map((k) => [k, gp[k] === '1' ? true : gp[k] === '0' ? false : null])),
+      notChecked: CONTRACT_PROPERTIES.filter((k) => gp[k] == null),
+      ...(gp.owner_address ? { owner: gp.owner_address } : {}),
       source: gpOk
         ? 'GoPlus (contract properties only, never used to override a measured figure)'
         : 'unavailable' + (gpWhy.reason ? ' — GoPlus ' + gpWhy.reason : ''),

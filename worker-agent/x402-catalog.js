@@ -36,7 +36,7 @@ export const OWNERSHIP_PROOFS = {
 // tell a client to prepare a payment for something that never asks for one.
 // The free tools are named in the instructions instead, where an agent reading
 // the catalogue will still find them.
-// Since 2026-09-03 the five deliveries are sold per answer here too — the
+// Since 2026-09-03 the deliveries (ANSWER_IDS, counted, never typed) are sold per answer here too — the
 // same doWork() the ERC-8183 escrow path runs, one payment, the document
 // straight back. Each is its own resource because each has its own inputs.
 const ANSWER_IDS = ['health_factor', 'grid_plan', 'yield_plan', 'rebalance_plan', 'lp_tier_plan', 'lp_position_plan'];
@@ -61,7 +61,7 @@ No API key, no account, no signup. Measurement only — nothing here is financia
 
 ## Payment
 
-- **Asset**: USD1 (\`${asset}\`) on BNB Smart Chain (\`${network}\`)
+- **Asset**: USD1 (\`${asset}\`) on BNB Smart Chain (\`${network}\`) by direct transfer; the facilitator route (way 1 below, \`accepts[0]\` in every 402) settles the same amount in USDC
 - **Pay to**: \`${payTo}\`
 - **Header**: send proof in \`PAYMENT-SIGNATURE\`
 
@@ -84,9 +84,9 @@ ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}
 
 Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the
-intended way to discover terms. \`GET /answer\` lists the five in one document.
+intended way to discover terms. \`GET /answer\` lists the ${ANSWER_IDS.length} in one document.
 
-The five answers are also sold through the ERC-8183 escrow on
+${ANSWER_IDS.length - 1} of the ${ANSWER_IDS.length} answers are also sold through the ERC-8183 escrow on
 \`https://brainonbnb.com/registry\`, at the same price, for a buyer who wants
 a kernel between them and the seller. Here there is no job and no dispute
 window: the money moves, the document comes back.
@@ -123,7 +123,7 @@ on-chain, and the daily record is at \`https://agent.brainonbnb.com/lp/agent\`.
 ## Identity
 
 - **ERC-8004**: agent #49467 on BNB Smart Chain
-- **A2A agent card**: https://brainonbnb.com/.well-known/agent-card.json
+- **A2A agent card**: https://agent.brainonbnb.com/.well-known/agent-card.json (the sellers, with prices and inputs; the parent identity's card is at https://brainonbnb.com/.well-known/agent-card.json)
 - **Site**: https://brainonbnb.com
 `;
 }

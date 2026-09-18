@@ -160,7 +160,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   // the reserve in the same pool. A dry run heals in hand only.
   try {
     const healed = await healLadder(pub, lp.address, ladder);
-    if (healed) { entry.ladder_healed = { from: ladder.main, to: healed.main, why: healed.why }; ladder.main = healed.main; if (!dry) await writeLadder(env, ladder); }
+    if (healed) { entry.ladder_healed = { from: ladder.main, to: healed.main, ...(healed.closed ? { reserve_closed: ladder.reserve } : {}), why: healed.why }; ladder.main = healed.main; if (healed.closed) ladder.reserve = null; if (!dry) await writeLadder(env, ladder); }
   } catch { /* an RPC that did not answer heals nothing; the guards refuse as before */ }
   const ladderOn = String(env[LADDER_GATE] || '0') === '1';
   // The width record's verdict, replayed once per tick (the rebalance step

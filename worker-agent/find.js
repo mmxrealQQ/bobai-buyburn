@@ -152,7 +152,14 @@ export async function handleFind(url) {
         ...(a.agent_card ? { agent_card: a.agent_card } : {}),
         ...(catOf.has(a.id) ? { categorised: { as: catOf.get(a.id).category, how: catOf.get(a.id).source, evidence: catOf.get(a.id).detail } } : {}),
         match: Math.round(s * 10) / 10,
+        // The next step, per result (2026-09-18): a hit that stops at a score
+        // leaves the caller to guess the URL pattern the dispatcher already emits.
+        next: {
+          dispatch: `https://agent.brainonbnb.com/dispatch?task=${encodeURIComponent(q || '')}`,
+          hire: `https://agent.brainonbnb.com/hire?agent=${a.id}&task=${encodeURIComponent(q || '')}`,
+        },
       })),
+      next: { dispatch: `https://agent.brainonbnb.com/dispatch?task=${encodeURIComponent(q || '')}`, sessions: 'https://agent.brainonbnb.com/sessions' },
       ...(scored.length === 0 && ts.length ? {
         nothing_found: 'Nothing in the census exposes that yet. The registry is growing fast — hundreds of new agents a day — and this index picks up anything with a callable surface automatically. If you build one, you are in it on the next pass: https://brainonbnb.com/registry',
       } : {}),

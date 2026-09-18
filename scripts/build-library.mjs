@@ -934,12 +934,18 @@ ${manifest.filter(m => m.group === g.key).map(m => `      <details class="lib-i"
 // The library section lives on /classic since 2026-09-02: the homepage was
 // cut down to the token, the tools, the burns and the community, and links
 // here for the code. The markers moved with the page.
-const INDEX = join(ROOT, 'dashboard', 'index.html');
-const page = readFileSync(INDEX, 'utf8');
+// Both pages that carry the markers (2026-09-18: /library showed 14 bundles
+// and no DeFi-agent code for a week because only index.html was spliced).
 const B = '<!-- LIBRARY:BEGIN -->', E = '<!-- LIBRARY:END -->';
-const i = page.indexOf(B), k = page.indexOf(E);
-if (i < 0 || k < 0) throw new Error('classic.html is missing the LIBRARY markers');
-writeFileSync(INDEX, page.slice(0, i + B.length) + '\n' + BLOCK + '\n' + page.slice(k));
+for (const TARGET of ['index.html', 'library.html']) {
+  const file = join(ROOT, 'dashboard', TARGET);
+  const page = readFileSync(file, 'utf8');
+  const i = page.indexOf(B), k = page.indexOf(E);
+  if (i < 0 || k < 0) throw new Error(`${TARGET} is missing the LIBRARY markers`);
+  let html = page.slice(0, i + B.length) + '\n' + BLOCK + '\n' + page.slice(k);
+  html = html.replace(/Open the <em>\d+ bundles<\/em>/g, `Open the <em>${manifest.length} bundles</em>`);
+  writeFileSync(file, html);
+  console.log('spliced the section into dashboard/' + TARGET);
+}
 
 console.log(`\nwrote ${manifest.length} bundles to dashboard/code/`);
-console.log('spliced the section into dashboard/index.html');

@@ -406,7 +406,16 @@ export async function handleDispatch(url, body, env, opts = {}) {
   // their traffic under our scheduled checks — which is a small lie in the one
   // direction the log is supposed to protect against.
   const probe = opts.probe === true;
-  if (!task) return { status: 400, body: { error: 'task is required — describe what you need done' } };
+  if (!task) return { status: 400, body: {
+    error: 'task is required — describe what you need done',
+    usage: 'GET /dispatch?task=<what you need> or POST {"task":"…"}; add dry_run (POST) or dry=1 (GET) to see which agent and tool would be called without calling anything',
+    examples: [
+      'https://agent.brainonbnb.com/dispatch?task=what+does+a+%24250+trade+of+0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82+cost',
+      'https://agent.brainonbnb.com/dispatch?task=venus+health+factor+of+0x…&dry=1',
+    ],
+    read_only: 'anything that signs, sends, swaps or orders is named back to you to call yourself, never invoked on your behalf',
+    sessions: 'https://agent.brainonbnb.com/sessions',
+  } };
 
   // Reuse the broker to pick candidates, so routing and search can never
   // disagree about who is out there.
@@ -503,8 +512,13 @@ export async function handleDispatch(url, body, env, opts = {}) {
         continue;
       }
 
-      const safe = (card.skills || []).filter(skillIsReadOnly);
-      const blocked = (card.skills || []).filter((sk) => !skillIsReadOnly(sk)).map((sk) => sk.id || sk.name);
+      // The selling handshake is filtered out by name as well as by verb
+      // (2026-09-18): `negotiate` reads as read-only and outscored the rest on
+      // a card that mixed it with one real skill, so a stranger got a price
+      // quote back as if it were the answer, and the log counted it as one.
+      const selling = (sk) => SELLING_SKILLS.has(String(sk.id || sk.name || '').toLowerCase());
+      const safe = (card.skills || []).filter((sk) => skillIsReadOnly(sk) && !selling(sk));
+      const blocked = (card.skills || []).filter((sk) => !skillIsReadOnly(sk) || selling(sk)).map((sk) => sk.id || sk.name);
       const ranked = safe.map((sk) => ({ sk, s: scoreTool({ name: sk.id || sk.name, description: sk.description }, terms) }))
         .sort((a, b) => b.s - a.s);
       const pick = ranked[0]?.s > 0 ? ranked[0].sk : null;

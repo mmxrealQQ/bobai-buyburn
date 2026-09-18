@@ -246,6 +246,7 @@ export async function heldIds(pub, address) {
 export async function healLadder(pub, address, ladder) {
   if (!ladder || ladder.main == null || ladder.reserve == null) return null;
   const held = await heldIds(pub, address);
+  if (held.length === 1 && held[0] === String(ladder.reserve)) return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null });
   if (held.length !== 2 || !held.includes(String(ladder.reserve)) || held.includes(String(ladder.main))) return null;
   const [a, b] = await Promise.all(held.map((i) => read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(i)])));
   const samePool = a[2].toLowerCase() === b[2].toLowerCase() && a[3].toLowerCase() === b[3].toLowerCase() && Number(a[4]) === Number(b[4]);
@@ -438,7 +439,7 @@ export async function planCollect(pub, address, ladder = null) {
       held_outside_position: heldOther > 0n || heldWbnb > 0n ? { wbnb: formatEther(heldWbnb), other: formatUnits(heldOther, 18), note: 'capital, re-used by increase and re-set, not sold here' } : null,
       quote_off_pct: quoteOffPct == null ? null : Number(quoteOffPct.toFixed(2)),
       sells_via: quoteVia == null ? null : (quoteVia === 'v3' ? `the position's own V3 pool (${fee / 1e4}%)` : 'the V2 router (0.25%) — the V3 quoter did not answer'),
-      gas_bnb: state.gasBnb,
+      wallet_bnb: state.gasBnb,
     },
   };
 }
@@ -454,6 +455,12 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   const otherBefore = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+  // WBNB the wallet already holds is capital that a wrap left behind (a
+  // re-set, a reserve mint or an increase that stopped after its wrap), not
+  // fees: it is unwrapped below so the increase step finds it as BNB, and it
+  // is taken out of what this collect counts as produced (2026-09-18 — until
+  // then half of it would have bought $BOBAI, never to come back).
+  const wbnbBefore = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   await send('collect', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
     args: [{ tokenId: plan.tokenId, recipient: account.address, amount0Max: MAX128, amount1Max: MAX128 }] });
   // Only what the collect returned is sold; what the wallet held before it is
@@ -476,18 +483,20 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
     const n = Number(formatEther(q[1]));
     swap = { side: 'sell', venue: `pancakeswap v2 ${V2_SWAP_FEE_PCT}%`, fee_pct: V2_SWAP_FEE_PCT, notional_bnb: Number(n.toFixed(6)), fee_bnb: Number((n * V2_SWAP_FEE_PCT / 100).toFixed(8)), why: 'the V3 quoter did not answer at plan time' };
   }
-  // WBNB is never capital-in-waiting (that waits as BNB), so all of it is
-  // fees: this collect's, or an earlier one's that never got unwrapped.
+  // Everything wrapped is unwrapped: this collect's WBNB is fees, what was
+  // there before is capital that goes back to waiting as BNB.
   const wbnbHave = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   if (wbnbHave > 0n) await send('unwrap', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbHave] });
 
   const after = await pub.getBalance({ address: account.address });
-  const produced = after - before;           // net of the gas this run spent
+  const producedRaw = after - before - wbnbBefore;   // net of the gas this run spent, without the capital found wrapped
+  const produced = producedRaw > 0n ? producedRaw : 0n;
   const aboveReserve = after - GAS_RESERVE;   // never dip into the reserve
   const forward = produced < aboveReserve ? produced : aboveReserve;
-  if (forward <= 0n) return { txs, swap, forwarded_bnb: '0', kept_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
+  const found = wbnbBefore > 0n ? { capital_found_wrapped_bnb: formatEther(wbnbBefore), capital_found_note: 'WBNB the wallet held before the collect, a wrap an earlier step left behind: unwrapped here as capital, not counted as fees' } : {};
+  if (forward <= 0n) return { txs, swap, ...found, forwarded_bnb: '0', kept_bnb: '0', why: 'collected, but nothing net of gas and the reserve to forward' };
   const split = splitFees(forward, keptPct);
-  const out = { txs, swap, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
+  const out = { txs, swap, ...found, produced_bnb: formatEther(forward), kept_bnb: formatEther(split.keep), kept_pct: split.pct };
   if (split.buyback <= 0n) return { ...out, bobai_bnb: '0', why: `collected ${formatEther(forward)} BNB of fees; all of it stays as capital (kept share ${split.pct}%)` };
   const bought = await buyBobaiHold(pub, send, account.address, split.buyback);
   return { ...out, bobai_bnb: formatEther(bought.spent), bobai_units: formatUnits(bought.units, 18), held_in: account.address };
@@ -522,7 +531,7 @@ export async function planSweep(pub, source, feed = null) {
       source: source.key, wallet: source.wallet, token: source.symbol,
       balance: state.balance, sweeping: Number(formatUnits(amount, source.decimals)),
       bnb_equivalent: state.bnbEquivalent, implied_usd: impliedUsd == null ? null : Number(impliedUsd.toFixed(4)),
-      capped: balance > capRaw, gas_bnb: state.gasBnb,
+      capped: balance > capRaw, wallet_bnb: state.gasBnb,
     },
   };
 }
@@ -675,7 +684,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       // the ladder, when there is one, beside it — the sizing above is the
       // main range's alone, the reserve stays where it is.
       value_bnb: Number(valueBnb.toFixed(6)),
-      ...(p.reserve && poolInfo ? { reserve: { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], value_bnb: Number(positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).valueBnb.toFixed(6)) }, value_with_reserve_bnb: Number((valueBnb + positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).valueBnb).toFixed(6)) } : {}),
+      ...(p.reserve && poolInfo ? { reserve: { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], value_bnb: Number(positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).valueBnb.toFixed(6)), side: positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).side }, value_with_reserve_bnb: Number((valueBnb + positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).valueBnb).toFixed(6)) } : {}),
       width_pct: width, width_basis: widthBasis,
       expected_net_usd_per_day: pick ? pick.earnings.net_usd_per_day : null,
       new_ticks: ticks ? [ticks.tickLower, ticks.tickUpper] : null,
@@ -1212,7 +1221,7 @@ export async function planIncrease(pub, address, position = null, ladder = null)
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
       value_bnb: poolInfo ? Number(((await positionValueBnb(pub, address, p, poolInfo)) + reserveValue).toFixed(6)) : null,
-      ...(p.reserve && poolInfo ? { reserve: { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], value_bnb: Number(reserveValue.toFixed(6)) } } : {}),
+      ...(p.reserve && poolInfo ? { reserve: { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], value_bnb: Number(reserveValue.toFixed(6)), side: positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0).side } } : {}),
       side, wallet_bnb: bn(bal), spendable_bnb: spendableBnb, in_range: state.inRange, tick: poolInfo ? poolInfo.tick : null, pool: poolInfo ? String(poolInfo.pool).toLowerCase() : null,
       capital: poolInfo ? { bnb_above_reserve: bn(nativeRaw), wbnb_held: bn(heldWbnb), other_held: formatUnits(heldOther, 18), other_held_in_bnb: Number((heldOtherInWbnb / 1e18).toFixed(6)) } : null,
       would_add: poolInfo && target && target.L > 0 ? {

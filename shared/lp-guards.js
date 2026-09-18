@@ -502,7 +502,18 @@ export const LADDER_GATE = 'LP_LADDER';
 // Returns { main, why } or null. Pure; pinned both ways.
 export function ladderHeal(state) {
   const held = (state.held || []).map(String);
-  if (state.main == null || state.reserve == null || held.length !== 2) return null;
+  if (state.main == null || state.reserve == null) return null;
+  // A re-set that burned the main range and failed to mint the new one
+  // (2026-09-18, read in the code, never seen with money): the wallet holds
+  // the reserve alone and the record names a burnt main range. Without this
+  // readPosition returns the reserve as the main range while the record
+  // keeps naming the burnt id, and every step refuses forever. The reserve is
+  // the main range now, the ladder is closed; the resume and increase paths
+  // take it from there.
+  if (held.length === 1 && held[0] === String(state.reserve)) {
+    return { main: String(state.reserve), reserve: null, closed: true, why: `the ladder record named main range #${state.main}, which this wallet no longer holds; the reserve #${state.reserve} is the only range left, so it is the main range now and the ladder is closed` };
+  }
+  if (held.length !== 2) return null;
   if (!held.includes(String(state.reserve)) || held.includes(String(state.main))) return null;
   if (state.samePool !== true) return null;
   const main = held.find((i) => i !== String(state.reserve));

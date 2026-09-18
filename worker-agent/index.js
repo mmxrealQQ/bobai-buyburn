@@ -940,7 +940,16 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
       requirements,
       body: {
         error: 'payment required',
-        how: `Send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain, then repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        what: `Continuous depth monitoring of one BSC pool for ${WATCH_DAYS} days, with a callback when depth falls below a threshold you set.`,
+        // Both assets named (2026-09-18): accepts[0] is the facilitator route
+        // and settles in USDC, the direct route is USD1 — a client that budgets
+        // off the one-asset sentence holds the wrong token for the other route.
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator (accepts[0]) — either lands in the same wallet`,
+        how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        needs: { token: 'the token to watch (0x…)', pair: 'or the pool/pair address (0x…)', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
+        example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
+        read_back: 'GET /watch/<id> — returned to you when the purchase settles',
+        free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
         accepts: requirements.accepts,
       },
     };
@@ -1184,7 +1193,10 @@ export default {
     // Skills are derived from SERVICES rather than listed again, because a card
     // advertising a service the seller does not implement is the failure this
     // whole project keeps documenting in other people's agents.
-    if (path === '/.well-known/agent-card.json') {
+    // Both spellings (2026-09-18): agent.json is what the BNB reference agents
+    // serve and what our own dispatcher tries first on strangers, and GET /
+    // pointed at it here while it returned 404.
+    if (path === '/.well-known/agent-card.json' || path === '/.well-known/agent.json') {
       return json({
         protocolVersion: '0.3.0',
         name: 'Brain On BNB AI — hireable agents',
@@ -1246,6 +1258,13 @@ export default {
             // fails after the money is already in escrow.
             inputs: s.needs,
             price: s.price_display,
+            // Where it is sold (2026-09-18): five through the escrow at their
+            // agent id, the LP plan per answer over x402 only — a card that
+            // lists a price without the channel had a client negotiating an
+            // escrow job for a service no seller id answers.
+            ...(s.id === 'lp_position_plan'
+              ? { escrow: false, buy: `${SELF_ORIGIN}/answer?service=${s.id}`, channel: 'x402, per answer; not sold through the ERC-8183 escrow' }
+              : { escrow: true, channel: 'ERC-8183 escrow at this agent, or per answer over x402 at ' + `${SELF_ORIGIN}/answer?service=${s.id}` }),
           })),
         ],
         // Where the rest of the story is, for a reader rather than a parser.
@@ -1590,6 +1609,9 @@ ${pageTail}`;
         what_this_is: 'Every task Brain Plaza has routed to another agent, and how each one went. Failures included — a record that only showed successes would be marketing.',
         how_to_read_it: 'Nobody reports their own score here. An operator appears because it was asked something, and its reliability is the count of times it answered. We store what was asked and a short excerpt of the answer, never the full response.',
         sessions_recorded: sessions.length,
+        // A rolling window, not the lifetime (2026-09-18): the log keeps the
+        // newest 400 and this read as "400" for good, while /stats counts on.
+        window: `the most recent ${sessions.length} routed tasks; older entries are dropped, the lifetime counts are at https://agent.brainonbnb.com/stats`,
         // The headline split four ways, because "400 sessions" without it read
         // as 400 strangers and was, on 2026-09-08, almost entirely us.
         of_which: sessionOrigins(sessions, OWN_AGENT_IDS),
@@ -1827,7 +1849,10 @@ ${pageTail}`;
       // 2026-09-05; the new one minted by hand the next morning), the fees
       // owed are read from the chain, the same reading /lp/look gives.
       let liveOwed = null;
-      if (pos && String(c.position || '') !== String(pos)) {
+      // ... and after a collect that acted, because its own figure is what it
+      // found before it collected (2026-09-18: 0.006472 BNB shown as "owed
+      // now" two hours after those fees were collected).
+      if (pos && (String(c.position || '') !== String(pos) || c.acted)) {
         try {
           const lk = await lpPositionLook({ position: String(pos) });
           if (lk && lk.fees_owed && lk.fees_owed.bnb_equivalent != null) liveOwed = Number(lk.fees_owed.bnb_equivalent);
@@ -1858,7 +1883,8 @@ ${pageTail}`;
         if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
         if (s.increase?.acted && !s.increase.error) parts.push(`added ${f(s.increase.wbnb_used, 5)} BNB to the position`);
-        const errs = [...(Array.isArray(s.sweep) ? s.sweep : []), s.collect, s.rebalance, s.increase].filter((x) => x && x.error).map((x) => x.error);
+        if (s.ladder?.acted && !s.ladder.error) parts.push(s.ladder.new_reserve && !s.ladder.old_reserve ? `opened a reserve range below the price with ${f(s.ladder.bnb_spent, 4)} BNB (#${s.ladder.new_reserve})` : s.ladder.old_reserve ? `re-set the reserve range beside the price (#${s.ladder.old_reserve} → #${s.ladder.new_reserve})` : s.ladder.merged_reserve ? `merged the reserve range into the main one (#${s.ladder.merged_reserve})` : `grew the reserve range by ${f(s.ladder.bnb_spent, 4)} BNB`);
+        const errs = [...(Array.isArray(s.sweep) ? s.sweep : []), s.collect, s.rebalance, s.increase, s.ladder].filter((x) => x && x.error).map((x) => x.error);
         if (e.error) errs.push(e.error);
         return { at: e.at, parts, errs, ok: e.ok !== false };
       });
@@ -1872,11 +1898,11 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 .step b{display:block}.step span{display:block;color:#cfc9bd;font-size:.88rem}.step i{display:block;color:#a9a49a;font-size:.8rem;font-style:normal;margin-top:2px}
 .note{color:#a9a49a;font-size:.82rem;margin-top:10px}ul.hist{list-style:none;padding:0;margin:0}ul.hist li{padding:8px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.9rem}ul.hist li:first-child{border-top:0}ul.hist time{color:#a9a49a;font-size:.8rem;display:block}
 `)}${pageNav({ href: SITE + '/defi', label: 'Liquidity' }, { href: '/lp/agent', label: 'The DeFi agent — its record' }, BUY)}<h1>The DeFi agent <span class="st ${last.ok === false ? 'bad' : last.acted ? 'ok' : 'quiet'}">${last.ok === false ? 'one step failed' : reset ? 're-set the range' : last.acted ? 'acted' : 'quiet day'}</span></h1>
-<p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_buyback_pct)}% go to the buyback bot, which buys $BOBAI and burns it, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'part goes to the buyback bot, which buys $BOBAI and burns it, and part stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}${last !== daily ? ` (an hourly check that ${reset ? 're-set the range' : 'acted'}; the daily run before it, ${h(dailyWhen)}, ${daily.acted ? 'acted' : 'had nothing to do'})` : ''}.</p>
+<p class="lead">Once a day, on its own: what the AI side earned is sold for BNB and put into the project's own liquidity position; of the fees that position earns, ${flow.rule ? `${h(flow.rule.fee_share_bobai_pct)}% buy $BOBAI that the agent holds and never sells, and ${h(flow.rule.fee_share_kept_pct)}% stay as capital so the position grows out of its own earnings` : 'half buys $BOBAI that the agent holds and never sells, and half stays as capital'}. Every step is a transaction on BNB Chain. Last run ${h(when(last.at))}${last !== daily ? ` (an hourly check that ${reset ? 're-set the range' : 'acted'}; the daily run before it, ${h(dailyWhen)}, ${daily.acted ? 'acted' : 'had nothing to do'})` : ''}.</p>
 <h2>What it holds</h2>
 <div class="card"><dl>
-<dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until an hourly check re-sets it, two hours after the price left`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${rb.value_bnb != null ? `, worth ${f(rb.value_bnb, 4)} BNB${usd(rb.value_bnb)}` : ''}` : 'none open'}</dd>
-<dt>Fees owed now</dt><dd>${liveOwed != null ? `${f(liveOwed, 6)} BNB${usd(liveOwed)} — read from the chain just now; ${reset ? `the re-set at ${h(when(last.at))} folded the old range's fees into the new capital, so the new position started at zero` : `the run at ${h(fromDaily ? dailyWhen : when(last.at))} ${c.position ? `read position #${h(c.position)}` : 'saw no position'}`}. Left to grow until collecting beats the gas` : c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
+<dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until an hourly check finds it outside for longer than the measured wait and re-sets it`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${(rb.value_with_reserve_bnb ?? rb.value_bnb) != null ? `, worth ${f(rb.value_with_reserve_bnb ?? rb.value_bnb, 4)} BNB${usd(rb.value_with_reserve_bnb ?? rb.value_bnb)}${rb.reserve ? ' with the reserve range' : ''}` : ''}` : 'none open'}</dd>
+<dt>Fees owed now</dt><dd>${liveOwed != null ? `${f(liveOwed, 6)} BNB${usd(liveOwed)} — read from the chain just now; ${reset ? `the re-set at ${h(when(last.at))} folded the old range's fees into the new capital, so the new position started at zero` : c.acted && !c.error ? `the collect at ${h(fromDaily ? dailyWhen : when(last.at))} took what was owed then, this is what has accrued since` : `the run at ${h(fromDaily ? dailyWhen : when(last.at))} ${c.position ? `read position #${h(c.position)}` : 'saw no position'}`}. Left to grow until collecting beats the gas` : c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
 <dt>Income waiting</dt><dd>${sweeps.filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${h(s.token || s.source)}`).join(' + ') || 'nothing'} — moves once it is worth more than the gas</dd>
 <dt>Wallet</dt><dd><a href="https://bscscan.com/address/${h(rec.last?.wallet || '')}" target="_blank" rel="noopener"><code>${h(rec.last?.wallet || '—')}</code></a>${inc.wallet_bnb != null ? `, ${f(inc.wallet_bnb, 5)} BNB` : ''}</dd>
 </dl></div>

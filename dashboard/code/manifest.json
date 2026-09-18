@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 14,
-   "lines": 5442,
-   "zipBytes": 131331,
-   "txtBytes": 406769,
-   "sha256": "f4b8b403af8db66f",
+   "lines": 5466,
+   "zipBytes": 132112,
+   "txtBytes": 409715,
+   "sha256": "dcd93e32c737c4ce",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -187,10 +187,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4451,
-   "zipBytes": 68262,
-   "txtBytes": 202211,
-   "sha256": "12ddfa345ebfc291",
+   "lines": 4454,
+   "zipBytes": 68495,
+   "txtBytes": 202817,
+   "sha256": "4027341d9e49f362",
    "reqs": [
     {
      "what": "A bot token",
@@ -326,10 +326,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 5648,
-   "zipBytes": 119826,
-   "txtBytes": 360608,
-   "sha256": "297fdba25523f284",
+   "lines": 5662,
+   "zipBytes": 120234,
+   "txtBytes": 361578,
+   "sha256": "bc1ae6460dea239c",
    "reqs": [
     {
      "what": "A static host",
@@ -596,10 +596,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1835,
-   "zipBytes": 46103,
-   "txtBytes": 131039,
-   "sha256": "bc12d4560177a914",
+   "lines": 1901,
+   "zipBytes": 48969,
+   "txtBytes": 140923,
+   "sha256": "b6352c5d14131ad9",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -630,10 +630,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 37,
-   "lines": 12612,
-   "zipBytes": 270392,
-   "txtBytes": 758925,
-   "sha256": "115123e7363ba0aa",
+   "lines": 12698,
+   "zipBytes": 273212,
+   "txtBytes": 767931,
+   "sha256": "17e4d991216bcdf5",
    "reqs": [
     {
      "what": "A wallet to be paid into",

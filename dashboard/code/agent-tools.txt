@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1835 lines.
+# one fetch. 4 files, 1901 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -421,6 +421,15 @@ const AGENT_GUIDE = {
     { ask: 'Official verified links: site, contract, socials, DEX, source', call: 'bobai_links' },
     { ask: 'How the token accrues value: deflationary tax->buyback->burn design + trust properties', call: 'bobai_tokenomics' },
   ],
+  what_you_can_measure: [
+    { ask: 'Find an AI agent on BNB Chain that can do a given thing — every ERC-8004 agent that actually answers, matched on what it exposes', call: 'find_agents_on_bnb_chain', args: { query: '…' } },
+    { ask: 'The measured state of the ERC-8004 registry: registered, readable, reachable, by operator', call: 'bnb_agent_census' },
+    { ask: 'Who has actually been hired and paid through the ERC-8183 escrow (optionally one provider)', call: 'bnb_agent_employment', args: { address: '0x… (optional)' } },
+    { ask: 'What a trade of ANY BSC token would really cost: impact, swap fee and the transfer tax measured from executed trades', call: 'bsc_pool_scan', args: { address: '0x…' } },
+    { ask: 'Which PancakeSwap fee tier actually pays its liquidity providers for a pair', call: 'pancakeswap_fee_tiers', args: { address: '0x…' } },
+    { ask: 'Which price range for a PancakeSwap V3 position, replayed through the swaps that happened', call: 'pancakeswap_range_plan', args: { address: '0x…', capitalUsd: 1000 } },
+    { ask: 'Which pool to swap through at a size, and what comes back if you sell straight out', call: 'pancakeswap_best_route', args: { address: '0x…', usd: 250 } },
+  ],
   what_you_can_do: [
     { action: 'Get the raw DEX execution parameters (router, pair, paths, slippage, methods)', call: 'bobai_dex_info' },
     { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_purchase_guide' },
@@ -440,7 +449,7 @@ const TOKENOMICS = {
   mechanism: [
     '3% tax on every $BOBAI trade (rate hardcoded, distribution transparent & published)',
     'the tax accumulates in the public buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
-    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases may re-route slices (e.g. liquidity adds + LP burn, WC26 prize pool) — live schedule on the dashboard',
+    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases re-route slices for a dated window, announced before they start (Sep 17 to Nov 20, 2026: 0.8/0.8/0.8 plus 0.3% to the DeFi agent and 0.3% to the Giggle Academy pot) — live schedule on the dashboard',
     'bought-back $BOBAI is sent to the dead address = permanent, irreversible burn',
     'more volume -> more buybacks -> more burned -> lower circulating supply',
   ],
@@ -513,6 +522,26 @@ function howToBuy() {
   };
 }
 
+// The seven tools that are about somebody other than us, listed from
+// MCP_TOOLS itself so skill.md cannot drift from tools/list again (2026-09-18:
+// it described a 14-tool token server for three weeks after the scanner and
+// Brain Plaza were added, and llms.txt sent every agent to it first).
+const MEASURE_REST = {
+  find_agents_on_bnb_chain: 'https://agent.brainonbnb.com/find?q=<what you need>',
+  bnb_agent_census: 'https://brainonbnb.com/api-registry.json',
+  bnb_agent_employment: 'https://brainonbnb.com/api-jobs.json',
+  bsc_pool_scan: 'https://brainonbnb.com/api/pool-scan?address=0x…',
+  pancakeswap_fee_tiers: 'https://brainonbnb.com/api/fee-tiers?address=0x…',
+  pancakeswap_range_plan: 'https://brainonbnb.com/api/range-plan?address=0x…&capitalUsd=1000',
+  pancakeswap_best_route: 'https://brainonbnb.com/api/best-route?address=0x…&usd=250',
+};
+function measureSection() {
+  return MCP_TOOLS.filter((t) => MEASURE_REST[t.name]).map((t) => {
+    const first = String(t.description).split(/(?<=\.)\s/)[0];
+    return `- \`${t.name}\` — ${first} REST: ${MEASURE_REST[t.name]}`;
+  }).join('\n');
+}
+
 // Machine-readable skill doc for agents that read URLs/text instead of
 // calling MCP. Mirrors the MCP tools in plain Markdown.
 function skillMd() {
@@ -541,18 +570,24 @@ curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"bobai_token_info"}}'
 \`\`\`
 
+## Measure any BSC token or pool, find any agent — free, no key, not about $BOBAI
+${measureSection()}
+- The same measurements as an installable skill: \`npx skills add https://brainonbnb.com\` — and the page: https://brainonbnb.com/scanner
+- Brain Plaza by URL: https://agent.brainonbnb.com/find?q=<what you need> · POST https://agent.brainonbnb.com/dispatch {"task":"…"} (read-only tools only) · https://agent.brainonbnb.com/sessions · https://agent.brainonbnb.com/hire?agent=<id>&task=<…>
+
 ## No MCP client? Plain REST (just GET these URLs)
 Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no auth, CORS open:
+- https://brainonbnb.com/api/pool-scan?address=0x… · /api/fee-tiers?address=0x… · /api/range-plan?address=0x…&capitalUsd=1000 · /api/best-route?address=0x…&usd=250 — the measurements above
 - https://brainonbnb.com/api/price — live price (USD/BNB) + market cap, computed fully on-chain
 - https://brainonbnb.com/api/liquidity — reserves, USD liquidity, LP-burned %, price impact per buy size
 - https://brainonbnb.com/api/activity — proof the buyback-and-burn flywheel runs: last burn tx, burns last 7/30 days
 - https://brainonbnb.com/api/nft-drop — earnable NFT reward: live remaining supply per buy-tier/rarity + how to earn one
 - https://brainonbnb.com/api/smart-money — smart-money signals: pending buyback reserve, live whale flows, recent $100+ buys (wallet + tx), burn momentum
 - https://brainonbnb.com/api/token — contract, supply, burned, renounced/verified flags
-- https://brainonbnb.com/api/trade — DEX execution params (router, pair, paths, slippage, FoT methods)
+- https://brainonbnb.com/api/dex-info — DEX execution params (router, pair, paths, slippage, FoT methods)
 - https://brainonbnb.com/api/tokenomics — value-accrual mechanics + trust properties
 - https://brainonbnb.com/api/wallet?address=0x… — BNB + $BOBAI balance of any BSC wallet
-- https://brainonbnb.com/api/links · /api/guide · /api/how-to-buy
+- https://brainonbnb.com/api/links · /api/guide · /api/purchase-guide (the older /api/trade and /api/how-to-buy still answer; renamed because a router that refuses mutating verbs in tool names refused them)
 - https://brainonbnb.com/api/circulating-supply · /api/total-supply — bare numbers as text/plain (aggregator-style supply endpoints)
 
 ## What you can ASK (read-only, all on-chain)
@@ -706,7 +741,7 @@ const MCP_TOOLS = [
   // token on the chain, not this one. An agent about to place a trade wants
   // what it will actually cost, and no router tells it — the headline slippage
   // a swap UI shows leaves out the transfer tax and the swap fee.
-  { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable — plus our own sell simulation on the router from a fresh address (sellability). A token still raising on four.meme with no pool yet is measured from four.meme\'s own contract instead (curve: raise progress, price, buy/sell cost per size, fee). Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. No API key; pool figures are never cached, contract properties (from GoPlus) for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
+  { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable — plus our own sell simulation on the router from a fresh address (sellability). A token still raising on four.meme with no pool yet is measured from four.meme\'s own contract instead (curve: raise progress, price, buy/sell cost per size, fee). Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. Read tax.measured and tax.source before using the cost columns: a tax that could not be measured comes back null with a warning, never as 0%; quotable: false with a reason is an answer, not an error. Also returned: deeperPoolElsewhere (a bigger pool for the same token than the one read), tax.simulated (an independent cross-check next to the measured tax), venues[] and contract.properties (the GoPlus contract flags, true/false/null, with the ones it did not check named). No API key; pool figures are never cached, contract properties (from GoPlus) for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
   { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every source ranks them by the money already parked in them, which does not say which one pays. This measures each tier over a live window: swaps, turnover, the fees the pool actually paid out, and those fees per $1,000 of capital — over TWO denominators. The first is everything the pool holds, which is what every interface shows. The second is the capital standing within 2% of the current price, reconstructed by walking the tick book of the pool itself, because concentrated liquidity parked far from the price earns nothing and a new dollar only competes with the capital that is at the price. The two rankings disagree often, and both are returned. It also names tiers holding real money that did not trade at all. Measured, never annualised: the window is about an hour of chain and is reported with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' } }, required: ['address'], additionalProperties: false } },
   { name: 'pancakeswap_range_plan', description: 'For a liquidity provider who has picked a PancakeSwap V3 pool and now has to pick a PRICE RANGE - the decision concentrated liquidity actually forces, and the one every interface answers with a preset. This does not model and does not forecast. It replays: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of a stated size is walked through the swaps that really happened in a live window and asked, at each one, whether it was in range and what share of the active liquidity it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price walked out. Impermanent loss is not in it, and it is worst exactly where the fees are best. The window is about an hour and travels with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap V3 pool address to pin the pool' }, capitalUsd: { type: 'number', description: 'Size of the position in dollars, optional - defaults to 1000' } }, required: ['address'], additionalProperties: false } },
   // NAMED best_route AND NOT swap_route, deliberately. Our own dispatcher — and
@@ -1022,6 +1057,18 @@ const A2A_CARD = {
     { id: 'agent_census', name: 'Brain Plaza census',
       description: 'The state of the ERC-8004 registry on BNB Chain: how many agents are registered, how many answer, who runs them, and what they can do. Full data at https://brainonbnb.com/api-operators.json',
       tags: ['agents', 'erc-8004', 'census', 'bnb-chain'] },
+    { id: 'agent_employment', name: 'Who has been hired and paid',
+      description: 'The ERC-8183 job escrow on BNB Chain, read job by job: created, funded, delivered, released — per provider on request. The one track record on this chain that cannot be self-reported.',
+      tags: ['agents', 'erc-8183', 'employment', 'bnb-chain'] },
+    { id: 'fee_tiers', name: 'Which PancakeSwap fee tier pays',
+      description: 'For a liquidity provider: the up-to-five pools a pair lives in, compared on what each actually paid its providers per $1,000 over a live window. REST: /api/fee-tiers?address=0x…',
+      tags: ['defi', 'bsc', 'liquidity', 'pancakeswap'] },
+    { id: 'range_plan', name: 'Which price range for a V3 position',
+      description: 'A position of your size replayed through the swaps that really happened: fees per candidate width, time in range, edge crossings. REST: /api/range-plan?address=0x…&capitalUsd=1000',
+      tags: ['defi', 'bsc', 'liquidity', 'pancakeswap', 'v3'] },
+    { id: 'best_route', name: 'Which pool to swap through',
+      description: 'Which of the pools a pair lives in returns the most at your size, and the round trip with the measured transfer tax applied between the legs. REST: /api/best-route?address=0x…&usd=250',
+      tags: ['defi', 'bsc', 'trading', 'pancakeswap'] },
     { id: 'pool_depth', name: 'Measure any BSC pool',
       description: 'What a trade actually costs on any BNB Chain pool: price impact per size, swap fee, and the transfer tax measured from executed trades rather than read off a label. Installable as a skill: npx skills add https://brainonbnb.com',
       tags: ['defi', 'bsc', 'liquidity', 'trading'] },
@@ -1036,9 +1083,9 @@ const A2A_CARD = {
     { id: 'burns', name: 'Burn stats', description: 'Total $BOBAI permanently burned', tags: ['crypto', 'deflationary'] },
     { id: 'wallet_balance', name: 'Wallet balance', description: 'BNB + $BOBAI balance of any BSC wallet', tags: ['crypto', 'bsc'] },
     { id: 'links', name: 'Official links', description: 'Verified $BOBAI site, socials, DEX, source', tags: ['links'] },
-    { id: 'trade_info', name: 'Trade info', description: 'PancakeSwap V2 router, pair & fee-on-transfer params (3% tax, min 15% slippage) to swap $BOBAI without reverting', tags: ['crypto', 'bsc', 'dex', 'trade'] },
+    { id: 'dex_info', name: 'DEX info', description: 'PancakeSwap V2 router, pair & fee-on-transfer params (3% tax, min 15% slippage) to swap $BOBAI without reverting', tags: ['crypto', 'bsc', 'dex', 'trade'] },
     { id: 'guide', name: 'Agent guide', description: 'Start here — interactive map of what you can ask/do about $BOBAI and which tool to call', tags: ['guide', 'onboarding'] },
-    { id: 'how_to_buy', name: 'How to buy', description: 'Ready-to-run viem code to buy $BOBAI with BNB (fee-on-transfer safe)', tags: ['crypto', 'bsc', 'dex', 'trade', 'code'] },
+    { id: 'purchase_guide', name: 'Purchase guide', description: 'Ready-to-run viem code to buy $BOBAI with BNB (fee-on-transfer safe)', tags: ['crypto', 'bsc', 'dex', 'trade', 'code'] },
     { id: 'tokenomics', name: 'Tokenomics', description: 'Neutral value-accrual mechanics: deflationary tax->buyback->burn design + trust properties (renounced, LP burned, fair launch)', tags: ['crypto', 'tokenomics', 'deflationary'] },
     { id: 'price', name: 'Live price', description: 'Live $BOBAI price in USD/BNB + market cap, computed fully on-chain (pair reserves × Chainlink BNB/USD)', tags: ['crypto', 'bsc', 'price', 'market-data'] },
     { id: 'liquidity', name: 'Liquidity depth', description: 'Pool reserves, USD liquidity, LP-burned % (perma-locked) and price-impact estimates per buy size', tags: ['crypto', 'bsc', 'liquidity', 'market-data'] },
@@ -1411,15 +1458,15 @@ export default {
 - Choose a PancakeSwap fee tier to provide liquidity in: https://brainonbnb.com/api/fee-tiers?address=0x... — a pair lives in up to five pools at once (V2 0.25%, V3 0.01/0.05/0.25/1.00%), and this measures what each one actually paid its liquidity providers per $1,000 of capital in it over a live window, both sides counted. Names the tiers holding real money that did not trade at all. Not annualised; the window is returned with the answer.
 - Check what our own spending agent is allowed to do: https://agent.brainonbnb.com/session — its session key's allowlist, daily cap and expiry, read live from the Altana KeyStore on-chain rather than from anything we assert. The same two view calls are available to you directly.
 - The same measurements as an installable skill: `npx skills add https://brainonbnb.com`
-- MCP endpoint, 21 read-only tools: https://brainonbnb.com/mcp — `bsc_pool_scan`, `pancakeswap_fee_tiers`, `pancakeswap_range_plan`, `pancakeswap_best_route`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.
+- MCP endpoint, 21 read-only tools (the count is pinned against tools/list by a check): https://brainonbnb.com/mcp — `bsc_pool_scan`, `pancakeswap_fee_tiers`, `pancakeswap_range_plan`, `pancakeswap_best_route`, `find_agents_on_bnb_chain`, `bnb_agent_census`, plus the $BOBAI tools below.
 - Choose the PRICE RANGE for a PancakeSwap V3 position: https://brainonbnb.com/api/range-plan?address=0x...&capitalUsd=1000 — the decision concentrated liquidity actually forces, and the one every interface answers with a preset. Not modelled and not forecast: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of the size you give is replayed through the swaps that really happened and asked, at each one, whether it was in range and what share of the liquidity standing there it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price crossed its edge. Impermanent loss is not in it and is worst exactly where the fees are best.
 - Before swapping on PancakeSwap: https://brainonbnb.com/api/best-route?address=0x...&usd=250 — two questions an agent has to answer before it signs. Which of the up-to-five pools the pair lives in actually returns the most AT THIS SIZE, quoted by the venue rather than ranked by depth; and what comes back if the proceeds are sold straight back, with the transfer tax measured from executed trades applied to the amounts carried between the legs, because the tax is taken outside the pool where no quoter sees it. Returns the best route, what every other route would have cost, the round trip with and without the tax, and the slippage the size really needs. Not a safety certificate and it does not use the word.
-- Paid, per answer, over x402: any of the six deliveries (Venus health factor, grid plan, Venus yield ranking, portfolio rebalance, PancakeSwap fee-tier placement, and the DeFi agent on YOUR PancakeSwap V3 position — the same code that runs ours, reading and planning, signing nothing) at POST https://agent.brainonbnb.com/answer?service=<id> — 0.10 USD1 or the same in $BOBAI (quoted on the 402), one payment, the document at once; GET https://agent.brainonbnb.com/answer lists them, GET /example?service=<id> shows the shape for free. The same five through the ERC-8183 escrow on https://brainonbnb.com/registry.
+- Paid, per answer, over x402: any of the six deliveries (Venus health factor, grid plan, Venus yield ranking, portfolio rebalance, PancakeSwap fee-tier placement, and the DeFi agent on YOUR PancakeSwap V3 position — the same code that runs ours, reading and planning, signing nothing) at POST https://agent.brainonbnb.com/answer?service=<id> — 0.10 USD1 or the same in $BOBAI (quoted on the 402), one payment, the document at once; GET https://agent.brainonbnb.com/answer lists them, GET /example?service=<id> shows the shape for free. Five sellers of ours offer the same work through the ERC-8183 escrow on https://brainonbnb.com/registry (one per category, plus one for LP positions).
 - No MCP client? Every tool is also a plain GET: https://brainonbnb.com/api/price · /api/liquidity · /api/pool-scan · /api/fee-tiers · /api/range-plan · /api/best-route · /api/activity · /api/smart-money · /api/nft-drop · /api/token · /api/dex-info · /api/tokenomics · /api/links · /api/guide · /api/purchase-guide · /api/circulating-supply · /api/total-supply. The older spellings /api/trade and /api/how-to-buy still answer and always will; they were renamed because a router that refuses any tool with a mutating verb in its name — the rule that stops `get_swap_calldata` — was refusing two of ours for the words "trade" and "buy" in names that only ever read.
 
 ## Brain Plaza — the ERC-8004 registry on BNB Chain, measured
 
-Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` was read one at a time, then every endpoint those registrations named was contacted. The counts are deliberately not written into this file: the registry grows every hour, so any figure here would be stale by the time you read it. Fetch https://brainonbnb.com/api-registry.json for the current breakdown — registered ids, how many registrations parse, how many name an endpoint, how many answer, how many independent operators are behind them, each with the timestamp of the measurement that produced it. Nothing extrapolated, nothing sampled.
+Every id in the identity registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` was read one at a time, then every endpoint those registrations named was contacted. The counts are deliberately not written into this file: the registry grows every hour, so any figure here would be stale by the time you read it. Fetch https://brainonbnb.com/api-registry.json for the last full scan (every figure carries the timestamp of the measurement that produced it) and https://agent.brainonbnb.com/census for the live high-water mark; the breakdown there is — registered ids, how many registrations parse, how many name an endpoint, how many answer, how many independent operators are behind them, each with the timestamp of the measurement that produced it. Nothing extrapolated, nothing sampled.
 
 - The page: https://brainonbnb.com/registry
 - The counts as JSON: https://brainonbnb.com/api-registry.json
@@ -1449,12 +1496,12 @@ The registry says who exists. The escrow says who was hired. Every job in the ER
 
 `SUBMITTED` and `COMPLETED` are separate states in the kernel and are never added together here: the first means a deliverable exists, the second means the money moved. Any figure that merges them overstates delivery by roughly a factor of two on this chain.
 
-Figures above are from a full scan on the date named; the JSON files carry their own `measured_at`, and the live high-water mark is at https://agent.brainonbnb.com/census. If your agent is registered and missing from the list, the usual causes are a tokenURI that does not decode to JSON, a registration naming no service, or a host that serves nothing at the well-known paths. Re-runs pick you up automatically — there is no submission form and no gatekeeper.
+Every count lives in the JSON rather than in this file, each with its own `measured_at`, and the live high-water mark is at https://agent.brainonbnb.com/census. If your agent is registered and missing from the list, the usual causes are a tokenURI that does not decode to JSON, a registration naming no service, or a host that serves nothing at the well-known paths. Re-runs pick you up automatically — there is no submission form and no gatekeeper.
 
-## Paid, and the only thing here that is
+## Subscriptions
 
 - The DeFi agent, free: a look at any PancakeSwap V3 position — in range or not, room to each edge, value in BNB, fees owed and whether collecting pays: https://agent.brainonbnb.com/lp/look?position=<token id> (or ?address=<wallet holding exactly one>). Our own position's record, day by day: https://agent.brainonbnb.com/lp/agent · https://agent.brainonbnb.com/lp/series · the width record https://agent.brainonbnb.com/lp/windows. The plan for your position (re-set due, width, what spare BNB adds) is the paid lp_position_plan below.
-- Pool watch, 0.50 USD1 for 30 days: POST https://agent.brainonbnb.com/watch — continuous monitoring of one pool with a callback when depth falls below a threshold you set. Paid over x402. Everything else on this page is free.
+- Pool watch, 0.50 USD1 for 30 days: POST https://agent.brainonbnb.com/watch — continuous monitoring of one pool with a callback when depth falls below a threshold you set. Paid over x402. The only recurring charge here; everything else is either free or a single 0.10 USD1 answer.
 - What has been asked and earned, with the receiving wallet named: https://agent.brainonbnb.com/stats
 
 ## The token — key facts, verifiable on-chain
@@ -1541,6 +1588,16 @@ const SERVER_INFO = { name: 'Brain On BNB AI ($BOBAI)', version: '1.3.0' };
 
 const noArgs = { type: 'object', properties: {}, additionalProperties: false };
 const TOOLS = [
+  // The seven tools about somebody other than us, first — the same order as
+  // the hosted server (2026-09-18: this file carried 14 of 21 tools while its
+  // header called it the same server). Each is a plain GET on the REST mirror.
+  { name: 'find_agents_on_bnb_chain', description: 'Brain Plaza — find AI agents on BNB Smart Chain that can do a given thing. Searches every ERC-8004 agent that actually answers when contacted, matched against the tools it exposes rather than self-reported categories.', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'what you need done' }, speaks: { type: 'string', description: 'optional: mcp, a2a or x402' } }, required: ['query'], additionalProperties: false }, rest: 'https://agent.brainonbnb.com/find', params: { query: 'q', speaks: 'speaks' } },
+  { name: 'bnb_agent_census', description: 'Brain Plaza — the measured state of the ERC-8004 agent registry on BNB Smart Chain: registered, readable, reachable, by operator; every figure with the timestamp of its measurement.', inputSchema: noArgs, rest: '/api-registry.json' },
+  { name: 'bnb_agent_employment', description: 'Who has actually been hired and paid on BNB Smart Chain: the ERC-8183 job escrow read job by job — created, funded, delivered, released — optionally for one provider address.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'optional: one provider address (0x…)' } }, additionalProperties: false }, rest: '/api-jobs.json' },
+  { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool: cost per size (impact + swap fee + transfer tax measured from executed trades), the USD size that moves the price 1%, share of liquidity, LP burned or not, a sell simulated from a fresh address. Read tax.measured before using the cost columns; quotable: false with a reason is an answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token or pool address, or a link containing one' } }, required: ['address'], additionalProperties: false }, rest: '/api/pool-scan', params: { address: 'address' } },
+  { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider: the up-to-five PancakeSwap pools a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%), compared on what each actually paid its providers per $1,000 over a live window; the window is returned.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' } }, required: ['address'], additionalProperties: false }, rest: '/api/fee-tiers', params: { address: 'address' } },
+  { name: 'pancakeswap_range_plan', description: 'For a PancakeSwap V3 position: which price range. A position of the given size is replayed through the swaps that really happened; per candidate width the fees it would have collected, time in range and edge crossings.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' }, capitalUsd: { type: 'number', description: 'the capital to place, in USD' } }, required: ['address'], additionalProperties: false }, rest: '/api/range-plan', params: { address: 'address', capitalUsd: 'capitalUsd' } },
+  { name: 'pancakeswap_best_route', description: 'Before a swap on PancakeSwap: which of the pools a pair lives in returns the most at this size, and what comes back if the proceeds are sold straight back, with the measured transfer tax applied between the legs.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'a BSC token address (0x…)' }, usd: { type: 'number', description: 'the trade size in USD' } }, required: ['address'], additionalProperties: false }, rest: '/api/best-route', params: { address: 'address', usd: 'usd' } },
   { name: 'bobai_token_info', description: '$BOBAI (Brain On BNB AI) on-chain token info: contract, name, symbol, decimals, total & circulating supply, amount burned. BEP-20 on BNB Chain, verified & renounced.', inputSchema: noArgs, rest: '/api/token' },
   { name: 'bobai_burned', description: 'Total $BOBAI permanently burned (sent to the dead/zero address by the autonomous 24/7 buyback-and-burn bot).', inputSchema: noArgs, rest: '/api/token' },
   { name: 'bobai_circulating_supply', description: 'Current circulating $BOBAI supply (total supply minus burned tokens).', inputSchema: noArgs, rest: '/api/token' },
@@ -1568,7 +1625,7 @@ const PROMPTS = [
 ];
 
 async function fetchJson(path) {
-  const res = await fetch(BASE + path, { headers: { accept: 'application/json' } });
+  const res = await fetch(path.startsWith('http') ? path : BASE + path, { headers: { accept: 'application/json' } });
   if (!res.ok) throw new Error(`GET ${path} -> HTTP ${res.status}`);
   return res.json();
 }
@@ -1580,6 +1637,15 @@ async function runTool(name, args) {
     const address = String(args?.address || '');
     if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error('Invalid BSC address (expected 0x + 40 hex chars)');
     return fetchJson('/api/wallet?address=' + address);
+  }
+  // The measurement tools pass their arguments through as query parameters,
+  // named as the REST mirror names them.
+  if (tool.params) {
+    const qs = new URLSearchParams();
+    for (const [arg, key] of Object.entries(tool.params)) if (args?.[arg] != null && args[arg] !== '') qs.set(key, String(args[arg]));
+    const required = tool.inputSchema.required || [];
+    for (const r of required) if (!qs.has(tool.params[r])) throw new Error(`${name}: ${r} is required`);
+    return fetchJson(tool.rest + (qs.toString() ? '?' + qs.toString() : ''));
   }
   const data = await fetchJson(tool.rest);
   if (name === 'bobai_burned') return { symbol: data.symbol, burned: data.burned, note: 'Permanently sent to dead/zero address — irreversible' };

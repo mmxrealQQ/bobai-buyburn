@@ -677,9 +677,11 @@ async function fetchLiquidityStats() {
 // ==================== BUY BOT ====================
 
 function getBuyEmojis(usdValue) {
-  // Each 🧠 = $10, no max
+  // Each 🧠 = $10, drawn up to 60: past that the caption would leave
+  // Telegram's 1024-unit limit and the biggest buy would arrive without its
+  // picture, so the count is spelled out instead.
   const count = Math.max(Math.floor(usdValue / 10), 1);
-  const bar = '🧠'.repeat(count);
+  const bar = '🧠'.repeat(Math.min(count, 60)) + (count > 60 ? ` ×${count}` : '');
   let icon;
   if (usdValue >= 2500) icon = '🦑 KRAKEN BUY!';
   else if (usdValue >= 1000) icon = '⚡ THUNDER BUY!';
@@ -2032,6 +2034,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
   if (d.top_ups) counts.push(`${d.top_ups} top-up${d.top_ups === 1 ? '' : 's'}`);
   if (d.collects) counts.push(`${d.collects} collect${d.collects === 1 ? '' : 's'}`);
   if (d.sweeps) counts.push(`${d.sweeps} sweep${d.sweeps === 1 ? '' : 's'}`);
+  if (d.reserve_moves) counts.push(`${d.reserve_moves} reserve move${d.reserve_moves === 1 ? '' : 's'}`);
   if (d.errors) counts.push(`⚠️ ${d.errors} failed`);
   const join = (...xs) => xs.filter((x) => x != null && x !== '').join(' · ');
   const blocks = [
@@ -2052,7 +2055,7 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
     ],
     [
       `🥞 ${pool}`,
-      ...(h.reserve && h.reserve.bnb > 0 ? [`🪜 Reserve below the price: ${bnb(h.reserve.bnb)} · buys on the way down, no trade`] : []),
+      ...(h.reserve && h.reserve.bnb > 0 ? [h.reserve.side === 'other' ? `🪜 Reserve range, the price fell through it: ${bnb(h.reserve.bnb)} · waits for the price to come back, then merges` : h.reserve.side === 'both' ? `🪜 Reserve range, the price inside it: ${bnb(h.reserve.bnb)} · earning beside the main range` : `🪜 Reserve below the price: ${bnb(h.reserve.bnb)} · buys on the way down, no trade`] : []),
       h.bobai_units > 0
         ? `🧠 <b>${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI</b> held${h.bobai_usd != null ? ' · ' + usd(h.bobai_usd) : ''} · bought from fees, never sold`
         : '🧠 No $BOBAI held yet. Half of every fee buys some.',

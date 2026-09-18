@@ -122,7 +122,7 @@
           {
             "@type": "Question",
             "name": "Does $BOBAI have a team allocation? Is it a fair launch?",
-            "acceptedAnswer": {"@type": "Answer", "text": "It is a fair launch. $BOBAI launched on Four.Meme with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so anyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes only from the transparent 1% creator slice of the trade tax, not from a reserved token bag."}
+            "acceptedAnswer": {"@type": "Answer", "text": "It is a fair launch. $BOBAI launched on Four.Meme with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so anyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes from the transparent creator slice of the trade tax (1%, and 0.8% during the current campaign window) plus what other people's agents pay for the paid services. Never from a reserved token bag."}
           },
           {
             "@type": "Question",
@@ -231,8 +231,8 @@
 
   <section class="hero">
     <picture>
-      <!-- Handy quer: eigener 2:1-Zuschnitt aus dem Original, ohne die
-           kuenstlich verbreiterten Raender des Desktop-Bildes. -->
+      <!-- Phone landscape: its own 2:1 crop of the original, without the
+           artificially widened margins of the desktop image. -->
       <source media="(orientation:landscape) and (max-height:520px)" srcset="hero-v3l.webp" type="image/webp">
       <source media="(orientation:landscape) and (max-height:520px)" srcset="hero-v3l.jpg" type="image/jpeg">
       <source media="(max-width:640px)" srcset="hero-v3m.webp?v=5" type="image/webp">
@@ -285,7 +285,7 @@
       <div class="lb-table" style="margin-top:20px">
           <div class="txw">
             <table><thead><tr><th style="width:38%">Time</th><th style="width:22%">BNB</th><th style="width:20%">Pot</th><th style="width:20%">TX</th></tr></thead>
-            <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The first send lands with the first tax cycle after Sep 17, 00:01 UTC&hellip;</td></tr></tbody></table>
+            <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The pot fills from trade tax &mdash; the first send lands with the first bot run that has BNB to split&hellip;</td></tr></tbody></table>
           </div>
         </div>
       <p class="lb-note">WE are the donation. The pot is the old prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>; every send is a transaction of the buyback bot. On Nov 20 the BNB goes to Giggle Academy through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted here.</p>
@@ -736,7 +736,7 @@
           <h3>Brain Plaza</h3>
         </div>
         <p>Every AI agent on BNB Chain that actually answers, sorted by what it does. Pick one and hire it from the page; the payment waits in an on-chain escrow until the job is done.</p>
-        <div class="ec-foot"><span class="ec-go">Hire An Agent <span class="arr">&#x2192;</span></span><span class="ec-st beta">Building</span></div>
+        <div class="ec-foot"><span class="ec-go">Hire An Agent <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="/services">
         <div class="ec-top">
@@ -749,7 +749,7 @@
           <h3>Agent Services</h3>
         </div>
         <p>One command puts the token check into your own AI assistant. Other people's agents pay a few cents to have a pool watched around the clock; that is this project's first income outside its own tax.</p>
-        <div class="ec-foot"><span class="ec-go">See The Offer <span class="arr">&#x2192;</span></span><span class="ec-st beta">Building</span></div>
+        <div class="ec-foot"><span class="ec-go">See The Offer <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="/defi">
         <div class="ec-top">
@@ -761,7 +761,7 @@
           <h3>DeFi Agent</h3>
         </div>
         <p>What other AIs pay us is turned into BNB and put to work in a PancakeSwap V3 pool on BNB Chain, once a day, on its own. Half of what it earns keeps working, half buys $BOBAI the agent holds. Every step is a transaction you can check.</p>
-        <div class="ec-foot"><span class="ec-go">Read The Record <span class="arr">&#x2192;</span></span><span class="ec-st beta">Building</span></div>
+        <div class="ec-foot"><span class="ec-go">Read The Record <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <a class="ec fi" href="brainscreener/">
         <div class="ec-top"><img src="ico-brainscreener.png" alt="brainScreener logo" loading="lazy" decoding="async"><h3>brainScreener</h3></div>
@@ -782,9 +782,8 @@
 
     <!-- THE LIBRARY.
          The cards above are the things you can use. This is the code behind
-         them. It sat on GitHub until that account was flagged, and a link that
-         404s is not transparency — so the code lives on the site now, where
-         nothing but us can take it down.
+         them, readable on the site itself (it is also on GitHub and cloneable
+         from this domain; a copy that lives here cannot 404 on us).
          Everything between the markers is written by scripts/build-library.mjs
          from the real files. Do not edit it by hand; run the script. -->
     <div class="lib" id="library">
@@ -829,7 +828,7 @@
             <span class="lib-t">DeFi Agent — a PancakeSwap V3 range that runs itself</span>
             <span class="lib-s">One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.</span>
           </span>
-          <span class="lib-m">14 files &middot; 5,442 lines &middot; 0.1 MB</span>
+          <span class="lib-m">14 files &middot; 5,466 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -898,7 +897,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 4,451 lines &middot; 67 KB</span>
+          <span class="lib-m">12 files &middot; 4,454 lines &middot; 67 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -970,7 +969,7 @@
             <span class="lib-t">Pool Scanner</span>
             <span class="lib-s">Reads any BNB Chain pool. No backend at all.</span>
           </span>
-          <span class="lib-m">6 files &middot; 5,648 lines &middot; 0.1 MB</span>
+          <span class="lib-m">6 files &middot; 5,662 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1085,7 +1084,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">4 files &middot; 1,835 lines &middot; 45 KB</span>
+          <span class="lib-m">4 files &middot; 1,901 lines &middot; 48 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1108,7 +1107,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">37 files &middot; 12,612 lines &middot; 0.3 MB</span>
+          <span class="lib-m">37 files &middot; 12,698 lines &middot; 0.3 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1235,7 +1234,7 @@
         <div class="faq-body">Yes — contract verified on BscScan, no proxy, no upgrade path, no admin keys, no mint, no pause function. LP tokens are sent to the dead address (perma-locked). $BOBAI is independently listed on <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener">CoinGecko</a>, <a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener">DEXTools</a>, <a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">DexScreener</a>, <a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">GMGN.AI</a>, <a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener">Birdeye</a>, <a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Bubblemaps</a>, and Binance Web3 Wallet.</div>
       </details>
       <details class="faq-item"><summary>Does $BOBAI have a team allocation? Is it a fair launch?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">It is a fair launch. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Four.Meme</a> with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes only from the transparent 1% creator slice of the trade tax, not from a reserved token bag.</div>
+        <div class="faq-body">It is a fair launch. $BOBAI launched on <a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Four.Meme</a> with no presale, no private sale, and no pre-mine — the entire supply entered the market through the public bonding curve, so everyone bought at the same starting point. There is no locked team allocation and no vesting cliff waiting to unlock. Ongoing project funding comes from the transparent creator slice of the trade tax (1%, and 0.8% during the current campaign window) plus what other people's agents pay for the paid services. Never from a reserved token bag.</div>
       </details>
       <details class="faq-item"><summary>What is the trading tax on $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">The standard tax is 3% per trade, split into 1% creator, 1% $BOB burn, and 1% $BOBAI burn. Campaign phases (e.g. BOBAI Liquidity Boost or Worldcup '26 prize pool) can temporarily route a slice elsewhere — the current live split is always shown transparently on this dashboard. From Sep 9, 2026 a tenth of each slice (0.3% of the trade) goes to the DeFi agent's wallet, and from Sep 17 to Nov 20, 2026 another tenth of each (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; from Nov 20 the split is 1/1/1 again.</div>
@@ -1293,7 +1292,7 @@
 
 <footer><div class="fi2">
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
-  <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai |<a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
+  <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai |<a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer>
 </div>
 
@@ -1301,6 +1300,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=78" defer></script>
+<script src="app.js?v=79" defer></script>
 </body>
 </html>

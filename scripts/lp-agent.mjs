@@ -400,7 +400,10 @@ if (SELF) {
   is('the main range is still held: nothing to heal', ladderHeal(HL({ held: ['7450613', '7450561'] })) === null);
   is('the reserve is gone: nothing to heal, the guards decide', ladderHeal(HL({ held: ['7451444', '7451500'] })) === null);
   is('a third position: nothing to heal', ladderHeal(HL({ held: ['7450613', '7451444', '7451500'] })) === null);
-  is('one position only: nothing to heal', ladderHeal(HL({ held: ['7450613'] })) === null);
+  // The reserve alone (2026-09-18): the main range was burned by a re-set whose mint failed.
+  is('the reserve is the only position left: it is the main range now and the ladder is closed', (() => { const h = ladderHeal(HL({ held: ['7450613'] })); return h && h.main === '7450613' && h.reserve === null && h.closed === true && /closed/.test(h.why); })());
+  is('one position that is not the reserve: nothing to heal, the guards decide', ladderHeal(HL({ held: ['7451444'] })) === null);
+  is('... and the main range alone, still held: nothing to heal', ladderHeal(HL({ held: ['7450561'] })) === null);
   is('the other position is in another pool: nothing to heal', ladderHeal(HL({ samePool: false })) === null);
   is('no reserve in the record, or no main: nothing to heal', ladderHeal(HL({ reserve: null })) === null && ladderHeal(HL({ main: null })) === null);
   // The re-set beside a reserve: it reads its old range by id and names its new one by the mint (source pins; the chain half cannot run here).
@@ -676,7 +679,7 @@ async function main() {
       if (s.leftovers) console.log(`  leftovers ${s.leftovers.wbnb} WBNB and ${s.leftovers.other} of the other token, from an interrupted run`);
       console.log(`  worth     ${f(s.owed.bnb_equivalent)} BNB together${s.quote_off_pct != null ? `, quote ${s.quote_off_pct}% off the pool's price${s.sells_via ? ` (sells via ${s.sells_via})` : ''}` : ''}`);
     }
-    console.log(`  gas       ${f(s.gas_bnb)} BNB (reserve kept: ${GAS_RESERVE_BNB})`);
+    console.log(`  gas       ${f(s.wallet_bnb ?? s.gas_bnb)} BNB (reserve kept: ${GAS_RESERVE_BNB})`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);
     else {
       console.log(`  would collect, sell the other side, unwrap, keep ${KEEP}% of what this run produced as capital and forward the rest to ${ADDR.BUYBACK_WALLET}`);

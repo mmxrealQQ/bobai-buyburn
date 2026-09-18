@@ -612,7 +612,11 @@ const rpcCall = async (to, data) => {
 export async function handleHire(url, body, env, opts = {}) {
   const task = String(body?.task || url.searchParams.get('task') || '').slice(0, 400);
   const target = String(body?.agent || url.searchParams.get('agent') || '').trim();
-  if (!task) return { status: 400, body: { error: 'task is required — describe what you want done' } };
+  if (!task) return { status: 400, body: {
+    error: 'task is required — describe what you want done',
+    usage: 'GET /hire?agent=<ERC-8004 id or A2A endpoint>&task=<what you want> returns the seller\'s quote and the unsigned transactions to fund the job; GET /job?id=<job id> follows it',
+    examples: ['https://agent.brainonbnb.com/hire?agent=302257&task=venus+health+factor+of+0x…', 'https://agent.brainonbnb.com/find?q=what+you+need — to pick an agent first'],
+  } };
   if (!target) return { status: 400, body: { error: 'agent is required — an ERC-8004 id or an A2A endpoint URL' } };
 
   const started = Date.now();

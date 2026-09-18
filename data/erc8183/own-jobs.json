@@ -32,6 +32,26 @@
         }
       ]
     },
+    "56668": {
+      "history": [
+        {
+          "at": "2026-09-18T10:27:39.463Z",
+          "status": "SUBMITTED",
+          "state": "settleable",
+          "budget_u": 0.1,
+          "submitted_at": 1788068365,
+          "ends_at": 1788673165
+        },
+        {
+          "at": "2026-09-18T10:29:24.141Z",
+          "status": "COMPLETED",
+          "state": "completed",
+          "budget_u": 0.1,
+          "submitted_at": 1788068365,
+          "ends_at": null
+        }
+      ]
+    },
     "56669": {
       "history": [
         {
@@ -155,22 +175,94 @@
           "ends_at": null
         }
       ]
+    },
+    "56699": {
+      "history": [
+        {
+          "at": "2026-09-18T10:27:39.463Z",
+          "status": "SUBMITTED",
+          "state": "settleable",
+          "budget_u": 0.1,
+          "submitted_at": 1788441011,
+          "ends_at": 1789045811
+        },
+        {
+          "at": "2026-09-18T10:29:49.665Z",
+          "status": "COMPLETED",
+          "state": "completed",
+          "budget_u": 0.1,
+          "submitted_at": 1788441011,
+          "ends_at": null
+        }
+      ]
+    },
+    "56711": {
+      "history": [
+        {
+          "at": "2026-09-18T10:27:39.463Z",
+          "status": "SUBMITTED",
+          "state": "settleable",
+          "budget_u": 0.1,
+          "submitted_at": 1788553226,
+          "ends_at": 1789158026
+        },
+        {
+          "at": "2026-09-18T10:30:14.826Z",
+          "status": "COMPLETED",
+          "state": "completed",
+          "budget_u": 0.1,
+          "submitted_at": 1788553226,
+          "ends_at": null
+        }
+      ]
+    },
+    "56712": {
+      "history": [
+        {
+          "at": "2026-09-18T10:27:39.463Z",
+          "status": "SUBMITTED",
+          "state": "settleable",
+          "budget_u": 0.1,
+          "submitted_at": 1788553455,
+          "ends_at": 1789158255
+        },
+        {
+          "at": "2026-09-18T10:30:30.855Z",
+          "status": "COMPLETED",
+          "state": "completed",
+          "budget_u": 0.1,
+          "submitted_at": 1788553455,
+          "ends_at": null
+        }
+      ]
     }
   },
   "note": "Every ERC-8183 job this project has made or delivered, watched until it completes. history holds one entry per observed transition, first sighting first. The escrow does not release itself: after the dispute window somebody has to call settle(jobId) on the EvaluatorRouter.",
-  "checked_at": "2026-09-10T10:56:26.535Z",
+  "checked_at": "2026-09-18T10:30:30.855Z",
   "summary": {
-    "jobs": 7,
+    "jobs": 11,
     "completed": [
       "56657",
+      "56668",
       "56670",
       "56671",
       "56672",
-      "56694"
+      "56694",
+      "56699",
+      "56711",
+      "56712"
     ],
     "settleable": [],
     "waiting": [],
+    "other": [
+      "56656",
+      "56669"
+    ],
+    "other_states": {
+      "56656": "closed",
+      "56669": "open"
+    },
     "first_completed_seen": "2026-09-02T07:21:32.176Z",
-    "checked_at": "2026-09-10T10:56:26.535Z"
+    "checked_at": "2026-09-18T10:30:30.855Z"
   }
 }

@@ -80,8 +80,8 @@ The local Node script is the same logic as a manual fallback.`,
     group: 'bots',
     slug: 'defi-agent',
     title: 'DeFi Agent — a PancakeSwap V3 range that runs itself',
-    tagline: 'One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.',
-    about: `Holds one PancakeSwap V3 position in CAKE/BNB 0.05% and looks after it. Once a day it
+    tagline: 'A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.',
+    about: `Holds a PancakeSwap V3 range in CAKE/BNB 0.05% — and a reserve range below the price when BNB waits — and looks after them. Once a day it
 collects the fees: half stays as capital, half buys $BOBAI that the agent holds. Every hour it
 checks the range; a range the price has left is re-set beside the price with the one token it
 ended in — one-sided, nothing is sold at the low or bought at the high. BNB that arrives while

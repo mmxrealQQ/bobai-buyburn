@@ -10,7 +10,8 @@ compatibility_date = "2025-01-01"
 # Every hour at :50 for the range alone: a position outside its range earns
 # nothing, and the daily tick left it there for up to a day (2026-09-03: out
 # from about 08:30 to the next daily tick). The check reads the position and the
-# pool, and re-sets only once the price has been outside for two hours. :50
+# pool, and re-sets only once the price has been outside for the wait the
+# width record measured (0 to 24 h; two hours was the set wait until 2026-09-09). :50
 # is after the agent worker's window tick at :30, which the check reads.
 [triggers]
 # 04:23 the daily run; :50 the hourly range check; the deposit watch on the
@@ -31,8 +32,8 @@ id = "ebebebbecec1485aa74ef1f14417c120"
 # operator's word. Still gated by the day test and the size floor. Was:
 # (node scripts/lp-agent.mjs --step rebalance --confirm); the tick still plans
 # it and records that it is due. Flip to "1" and deploy to hand it over.
-# How much of each collect stays as capital, in percent; the rest goes to
-# the buyback wallet. "0" was the rule until 2026-09-04 (every fee to the
+# How much of each collect stays as capital, in percent; the rest buys
+# $BOBAI the agent's wallet holds (since 2026-09-09; the buyback wallet before). "0" was the rule until 2026-09-04 (every fee to the
 # buyback); "50" since, on the operator's word: the position grows out of
 # its own fees, so the buyback's share grows with it. A value that is not
 # 0–100 falls back to the default in shared/lp-guards.js (50), never to 0 or 100.

@@ -515,6 +515,9 @@ async function recordLpSeries(env) {
     folded_kept_total_bnb: flow.in.fees.folded_kept_bnb ?? (flow.in.fees.folded_bnb || 0),
     into_position_total_bnb: flow.out.into_position_bnb || 0,
     swept_total_bnb: flow.in.income_bnb,
+    // Kept fees still waiting in the wallet: not yet in the position, so not
+    // yet to be taken off the deposits (lp-flow.js, waiting.kept_fees_bnb).
+    kept_waiting_bnb: flow.waiting.kept_fees_bnb || 0,
   };
   let point = null;
   if (!prev || Date.parse(prev.at) < Date.parse(last.at)) {
@@ -639,6 +642,8 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     bobai_held_units: last.bobai_units_total ?? 0,
     fees_sent_to_buyback_bnb: last.forwarded_total_bnb,
     fees_kept_as_capital_bnb: last.kept_total_bnb ?? 0,
+    // … of which this much still waits in the wallet as BNB, under the increase floor.
+    fees_kept_waiting_bnb: last.kept_waiting_bnb ?? 0,
     fees_produced_bnb: last.fees_total_bnb ?? last.forwarded_total_bnb,
     income_put_in_bnb: last.swept_total_bnb,
     // What the increase step put in beyond swept income and kept fees is the
@@ -647,7 +652,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     // in; only the former went through an increase, so only the former comes
     // out of the deposits (2026-09-10: 0.0033 BNB of folded fees made the
     // capital read 0.5831 where 0.5864 had gone in).
-    deposits_put_in_bnb: +Math.max(0, (Number(last.into_position_total_bnb) || 0) - (Number(last.swept_total_bnb) || 0) - Math.max(0, (Number(last.kept_total_bnb) || 0) - (Number(last.folded_kept_total_bnb) || 0))).toFixed(6),
+    deposits_put_in_bnb: +Math.max(0, (Number(last.into_position_total_bnb) || 0) - (Number(last.swept_total_bnb) || 0) - Math.max(0, (Number(last.kept_total_bnb) || 0) - (Number(last.folded_kept_total_bnb) || 0) - (Number(last.kept_waiting_bnb) || 0))).toFixed(6),
     fees_owed_now_bnb: owed_now_bnb != null ? owed_now_bnb : last.owed_bnb,
     // 1 tick = 0.01 % of price; the sign says which way the pair moved.
     price_move_pct_since_start: tickMove != null ? +((Math.pow(1.0001, tickMove) - 1) * 100).toFixed(2) : null,
@@ -1028,7 +1033,7 @@ async function buildLpSeries(env) {
       const base = series.find((p) => p.value_bnb != null);
       const withCapital = series.map((p) => {
         if (!base || p.value_bnb == null) return p;
-        const deposits = Math.max(0, (Number(p.into_position_total_bnb) || 0) - (Number(p.swept_total_bnb) || 0) - Math.max(0, (Number(p.kept_total_bnb) || 0) - (Number(p.folded_kept_total_bnb) || 0)));
+        const deposits = Math.max(0, (Number(p.into_position_total_bnb) || 0) - (Number(p.swept_total_bnb) || 0) - Math.max(0, (Number(p.kept_total_bnb) || 0) - (Number(p.folded_kept_total_bnb) || 0) - (Number(p.kept_waiting_bnb) || 0)));
         const capital = +(Number(base.value_bnb) + (Number(p.capital_added_total_bnb) || 0) + deposits).toFixed(6);
         return { ...p, capital_bnb: capital, on_capital_pct: capital > 0 ? +(((p.value_bnb - capital) / capital) * 100).toFixed(2) : null };
       });
@@ -1044,6 +1049,7 @@ async function buildLpSeries(env) {
         folded_kept_total_bnb: liveFlow.in.fees.folded_kept_bnb ?? (liveFlow.in.fees.folded_bnb || 0),
         into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
         swept_total_bnb: liveFlow.in.income_bnb,
+        kept_waiting_bnb: liveFlow.waiting.kept_fees_bnb || 0,
       } : null;
       // Fees owed now, from the chain: the last point is often a re-set, whose
       // own figure is zero by construction, while the liquidity page shows the
@@ -1714,7 +1720,13 @@ ${pageTail}`;
         const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
         const f = (x, d = 2) => (x == null || !isFinite(Number(x)) ? '—' : Number(x).toFixed(d));
-        const pick = v.earnings_pick || null;
+        // The pick the re-set would make: re-read with the width the position
+        // is in (as the plan and the portfolio do) — without it the page could
+        // name a width the agent would not take.
+        let inUseWidth = null;
+        try { const recW = JSON.parse((await env.AGENT.get('lp:agent')) || 'null'); const rbW = recW && recW.last && recW.last.steps && recW.last.steps.rebalance; const tk = rbW && ((rbW.acted && !rbW.error && rbW.new_ticks) || rbW.ticks); if (tk) inUseWidth = widthClassOf(tk); } catch { /* the record's own pick stands */ }
+        const pick = (Array.isArray(v.rows) && v.rows.some((r) => r.earnings_7d) && v.earnings_pick ? pickWidth(v.rows, { current: inUseWidth }) : null) || v.earnings_pick || null;
+        const score7 = (r) => (r && r.earnings_7d ? Number(r.earnings_7d.fees_usd || 0) - Number(r.earnings_7d.resets || 0) * Number(r.earnings_7d.reset_cost_usd || 0) + Number(r.earnings_7d.vs_holding_usd || 0) : null);
         const rows = (v.rows || []).slice().sort((a, b) => a.width - b.width);
         const usd = log.usd || 50;
         const html = `${pageHead('The width record — the DeFi agent', `
@@ -1738,11 +1750,11 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 </dl></div>
 <h2>Every width, replayed</h2>
 <div class="card"><div class="wrap"><table>
-<tr><th>Width</th><th>Net per day</th><th>Fees earned</th><th>Re-sets</th><th>Lost to the price</th><th>Hours in range</th><th>Windows held</th><th>Days held</th></tr>
-${rows.map((r) => { const e = r.earnings; const money = (x, d) => (x == null ? '—' : '$' + f(x, d)); return `<tr${pick && r.width === pick.width ? ' class="pick"' : ''}><td>${isFinite(Number(r.width)) ? `±${h(r.width)}%${r.derived ? ` <span style="color:#a9a49a;font-weight:400">(from ±${h(r.derived_from ? r.derived_from[1] : '')}%)</span>` : ''}` : 'full range (V2-like)'}</td><td>${h(money(e && e.net_usd_per_day, 3))}</td><td>${h(money(e && e.fees_usd, 3))}</td><td>${h(e ? e.resets : 'never')}</td><td>${h(money(e && e.lost_to_price_usd != null ? e.lost_to_price_usd + e.open_loss_usd : null, 3))}</td><td>${e ? `${h(f(e.hours_in_range, 0))} of ${h(f(e.hours, 0))}` : 'always'}</td><td>${h(r.held)} of ${h(r.of)}</td><td>${r.day ? `${h(r.day.held)} of ${h(r.day.tested)}` : 'all'}</td></tr>`; }).join('')}
+<tr><th>Width</th><th>Net per day</th><th>Fees earned</th><th>Re-sets</th><th>Against holding, 7 d</th><th>Score, 7 d</th><th>Hours in range</th><th>Windows held</th><th>Days held</th></tr>
+${rows.map((r) => { const e = r.earnings; const money = (x, d) => (x == null ? '—' : '$' + f(x, d)); return `<tr${pick && r.width === pick.width ? ' class="pick"' : ''}><td>${isFinite(Number(r.width)) ? `±${h(r.width)}%${r.derived ? ` <span style="color:#a9a49a;font-weight:400">(from ±${h(r.derived_from ? r.derived_from[1] : '')}%)</span>` : ''}` : 'full range (V2-like)'}</td><td>${h(money(e && e.net_usd_per_day, 3))}</td><td>${h(money(e && e.fees_usd, 3))}</td><td>${h(e ? e.resets : 'never')}</td><td>${h(r.earnings_7d && r.earnings_7d.vs_holding_usd != null ? (r.earnings_7d.vs_holding_usd < 0 ? '−$' : '$') + f(Math.abs(r.earnings_7d.vs_holding_usd), 2) : '—')}</td><td>${h(score7(r) == null ? '—' : (score7(r) < 0 ? '−$' : '$') + f(Math.abs(score7(r)), 2))}</td><td>${e ? `${h(f(e.hours_in_range, 0))} of ${h(f(e.hours, 0))}` : 'always'}</td><td>${h(r.held)} of ${h(r.of)}</td><td>${r.day ? `${h(r.day.held)} of ${h(r.day.tested)}` : 'all'}</td></tr>`; }).join('')}
 </table></div>
-<p class="note">Net per day is fees earned inside the range minus the re-sets paid minus what the ranges lost to the price against holding (the re-sets' losses plus the open range marked at the last price), on $${h(usd)}, over the recorded prices. A narrow width earns more per hour inside the range, leaves it more often and loses more at each edge; a wide one rarely leaves and earns little. The pick is where those two meet on this pool's recent prices, and it moves as the prices do.</p>
-<p class="note">Widths marked "from" are not replayed hour by hour; their fees are read off the next wider replayed width (inside its range a position's share of the pool's fees is 1/width for the same dollars — the record's own rows say so to the digit), and whether they held, off the next narrower one. Since 2026-09-11, so the pick is not bound to a coarse grid.</p>
+<p class="note">Net per day is fees earned inside the range minus the re-sets paid minus what the ranges lost to the price against holding (the re-sets' losses plus the open range marked at the last price), on $${h(usd)}, over the recorded prices. A narrow width earns more per hour inside the range, leaves it more often and loses more at each edge; a wide one rarely leaves and earns little. Since 2026-09-16 a re-set trades nothing, so what decides is no longer the net per day: the pick is the width with the highest score over the last 7 days — its fees, less its re-sets' gas, plus where it ended against a wallet that simply held (the last two columns) — and the width in use is kept unless another leads it by a tenth. It moves as the prices do.</p>
+<p class="note">Widths marked "from" are not replayed hour by hour; their fees are read off the next wider replayed width by the liquidity a range holds per dollar, 1 / (1 − 1/√(1+width)) — the record's own rows stand in that proportion to the digit, and whether they held, off the next narrower one. Since 2026-09-11, so the pick is not bound to a coarse grid.</p>
 <p class="note">${h(String(v.earnings_rule || '').replace(/^[a-z]/, (ch) => ch.toUpperCase()))}</p></div>
 ${v.resets && v.resets.rows.length ? `<h2>What each re-set cost</h2>
 <div class="card"><div class="wrap"><table>
@@ -1810,6 +1822,10 @@ ${pageTail}`;
       const st = last.steps || {};
       const rb = st.rebalance || {};
       const c = st.collect || dst.collect || {}, inc = st.increase || dst.increase || {};
+      // The ladder step (2026-09-16) and the reserve range it keeps: on the page
+      // since 2026-09-18 — the record carried both, the page showed neither.
+      const ld = st.ladder || dst.ladder || {};
+      const rsv = ld.reserve || rb.reserve || inc.reserve || null;
       const sweeps = Array.isArray(st.sweep) ? st.sweep : (Array.isArray(dst.sweep) ? dst.sweep : []);
       // When a step is the daily run's and the newest run is a later re-set,
       // the step's figures are dated by the daily run.
@@ -1869,6 +1885,7 @@ ${pageTail}`;
           ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn${rb.one_sided ? ` and #${rb.new_position} minted one-sided ${rb.one_sided === 'above_price' ? 'above' : 'below'} the price, no trade` : `, the missing side bought and #${rb.new_position} minted`}${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees ${Number(rb.bobai_bnb) > 0 ? `taken: ${f(rb.bobai_bnb, 6)} BNB bought $BOBAI the agent holds, the rest folded into the capital` : Number(rb.fees_forwarded_bnb) > 0 ? `taken: ${f(rb.fees_forwarded_bnb, 6)} BNB sent to the buyback bot, the rest folded into the capital` : `folded into the capital${rb.fees_forward_why ? ` (${rb.fees_forward_why})` : ''}`}` : ''}`
           : (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `; the next re-set would use ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''))
           + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
+        { name: 'Ladder — the reserve range below the price', acted: !!ld.acted, err: ld.error, why: plain(ld.why), detail: rsv ? `reserve #${rsv.position}${Array.isArray(rsv.ticks) ? `, ticks ${rsv.ticks.join(' … ')}` : ''}${rsv.value_bnb != null ? `, worth ${f(rsv.value_bnb, 5)} BNB` : ''}${rsv.side ? `, ${rsv.side === 'wbnb' ? 'all BNB, below the price' : rsv.side === 'other' ? 'the price fell through it — it joins the main range at the next re-set' : 'the price is inside it'}` : ''}` : (ld.why ? 'no reserve range stands' : '') },
         { name: 'Increase — grow the position', acted: !!inc.acted, err: inc.error, why: plain(inc.why), detail: (inc.wallet_bnb != null ? `${f(inc.wallet_bnb, 5)} BNB in the wallet, ${f(inc.spendable_bnb, 5)} above the reserve` : '') + (fromDaily ? `${inc.wallet_bnb != null ? '; ' : ''}from the daily run at ${dailyWhen}` : '') },
       ].filter((r) => r.why || r.err || r.detail);
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
@@ -1896,6 +1913,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 <h2>What it holds</h2>
 <div class="card"><dl>
 <dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until an hourly check finds it outside for longer than the measured wait and re-sets it`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${(rb.value_with_reserve_bnb ?? rb.value_bnb) != null ? `, worth ${f(rb.value_with_reserve_bnb ?? rb.value_bnb, 4)} BNB${usd(rb.value_with_reserve_bnb ?? rb.value_bnb)}${rb.reserve ? ' with the reserve range' : ''}` : ''}` : 'none open'}</dd>
+${rsv ? `<dt>Reserve range</dt><dd>PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(rsv.position)}?chain=bsc" target="_blank" rel="noopener">#${h(rsv.position)}</a>${rsv.value_bnb != null ? `, worth ${f(rsv.value_bnb, 5)} BNB${usd(rsv.value_bnb)}` : ''} — ${rsv.side === 'wbnb' ? 'BNB below the price: it buys the other side as the price falls into it' : rsv.side === 'other' ? 'the price fell through it; it joins the main range at the next re-set' : 'the price is inside it, it earns on both sides'}. Counted in the worth above.</dd>` : ''}
 <dt>Fees owed now</dt><dd>${liveOwed != null ? `${f(liveOwed, 6)} BNB${usd(liveOwed)} — read from the chain just now; ${reset ? `the re-set at ${h(when(last.at))} folded the old range's fees into the new capital, so the new position started at zero` : c.acted && !c.error ? `the collect at ${h(fromDaily ? dailyWhen : when(last.at))} took what was owed then, this is what has accrued since` : `the run at ${h(fromDaily ? dailyWhen : when(last.at))} ${c.position ? `read position #${h(c.position)}` : 'saw no position'}`}. Left to grow until collecting beats the gas` : c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
 <dt>Income waiting</dt><dd>${sweeps.filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${h(s.token || s.source)}`).join(' + ') || 'nothing'} — moves once it is worth more than the gas</dd>
 <dt>Wallet</dt><dd><a href="https://bscscan.com/address/${h(rec.last?.wallet || '')}" target="_blank" rel="noopener"><code>${h(rec.last?.wallet || '—')}</code></a>${inc.wallet_bnb != null ? `, ${f(inc.wallet_bnb, 5)} BNB` : ''}</dd>

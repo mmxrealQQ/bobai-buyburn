@@ -430,3 +430,25 @@ no trade — a buy ladder under the sell ladder — and the two merge back into
 one at the main range's next re-set once they hold the same token. Pins
 240/240, 132/132, 34/34. The first reserve will be run watched, as the first
 re-set was.
+
+Refresh 2026-09-18 — what changed since the entries above, so the body's
+older sentences are read with it. Fee rule (since 2026-09-09): the half of
+the position's fees that is not kept as capital buys $BOBAI that the agent's
+own wallet holds, never sold — it no longer goes to the buyback that burns.
+The ladder is live (LP_LADDER=1 since 2026-09-16 06:58 UTC): main range
+#7451444 (±7%) with reserve range #7461743 below it; the reserve is re-set
+only when the main range is all of the other side, only by the hourly check,
+never under the re-set floor. A full read of the agent on 09-18 (four
+read-only reviews and a chain check: chain, record and card agree) fixed
+what had never run with money: a rounding that would have failed every
+second re-set upward after its unwind, a re-set whose mint fails beside the
+reserve (finished from the wallet one-sided instead of sold into the
+reserve), strangers' NFTs stopping the agent (ranges are read by the
+record's ids, a mint's id off its own receipt), one-sided ranges placed at
+the price of the mint rather than of the plan, the profit share of a re-set
+downward, gas counted twice in the result, and a replay that marked narrow
+widths down twice (rates now follow the liquidity law the rows themselves
+obey). The health worker reads the agent every morning: age of its last
+look and run, failed steps, a step waiting for a person, a range left past
+its wait, the ranges the record names against the chain. Pins 296/296,
+135/135, 35/35, surface 194/194.

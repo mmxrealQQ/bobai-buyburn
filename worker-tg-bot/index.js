@@ -2068,6 +2068,9 @@ export function formatDefiCard(m, { title = 'DeFi Agent' } = {}) {
     [
       `📥 Put in: <b>${bnb(m.put_in.bnb)}</b>${m.put_in.usd != null ? ' · ' + usd(m.put_in.usd) : ''}`,
       `💼 Worth now: <b>${bnb(m.worth.bnb)}</b>${m.worth.usd != null ? ' · ' + usd(m.worth.usd) : ''}`,
+      // What the position produced and no longer holds ($BOBAI at cost, fees
+      // owed, kept fees waiting): worth + this − put in − gas = the result.
+      ...(m.worth.beside_bnb > 0 ? [`➕ Beside it: <b>${bnb(m.worth.beside_bnb)}</b> · $BOBAI held + fees`] : []),
       `💰 Result: <b>${arrow} ${signed(p.profit_bnb)}</b> · ${join(p.profit_usd != null ? usd(p.profit_usd) : null, `${pct} since ${day(p.since)}`)}`,
     ],
     [

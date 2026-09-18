@@ -4,9 +4,12 @@
 // worker-lp/index.js (the daily cron with the keys). Two copies of a refusal
 // list is how one of them stops refusing. Pure: no chain, no I/O.
 //
-// Three steps, three guard functions, and the floors they share:
+// The steps, their guard functions, and the floors they share:
 //   sweep     AI income (USD1, $U) -> BNB -> the DeFi wallet
-//   collect   position fees -> BNB -> the buyback wallet
+//   collect   position fees -> BNB -> half kept as capital, half into $BOBAI
+//             the wallet holds (the buyback wallet until 2026-09-09)
+//   rebalance a range the price has left -> one-sided beside the price
+//   ladder    BNB beside an all-other main range -> a reserve range below
 //   increase  BNB above the reserve -> more of the same position
 //
 // Every floor is a gas argument: below it, moving the money costs more than
@@ -267,6 +270,12 @@ export function refuseRebalance(state) {
   if (state.atEdge) return `the price sits ${state.ticksAway ?? '?'} tick${state.ticksAway === 1 ? '' : 's'} ${state.side || 'beyond'} the range — at the edge, within the ${RANGE_LEFT_TICKS}-tick slack, not left`;
   if (state.width == null)
     return `no width is on record yet (${state.hoursOfPrices || 0} h of prices recorded, ${MIN_HOURS_FOR_EARNINGS} h needed before the record may name one). Holding.`;
+  // A re-set that runs dry between its unwind and its mint leaves the capital
+  // loose in a wallet that cannot pay to put it back (2026-09-18). Re-sets are
+  // paid from native BNB that only fees and income refill; the collect has
+  // held this floor since the first build, the re-set and the ladder had none.
+  if (state.walletBnb != null && !(Number(state.walletBnb) >= MIN_GAS_BNB))
+    return `the wallet holds ${Number(state.walletBnb).toFixed(6)} BNB, below the ${MIN_GAS_BNB} BNB it takes to be sure of paying a re-set through to its mint — it waits for BNB`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
     return `${state.resume ? "the wallet's two sides are" : 'the position is'} worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a ${state.resume ? 'mint' : 're-set'} would cost more than it is likely to earn back`;
   return null;

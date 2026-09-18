@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 12893 lines.
+# one fetch. 37 files, 13010 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -461,7 +461,7 @@ export function summarize(service, result) {
 === FILE: shared/lp-agent.js
 ==============================================================================
 
-// The DeFi agent's three steps, written once.
+// The DeFi agent's steps, written once.
 //
 // worker-lp/index.js runs them daily with the keys as Worker secrets;
 // scripts/lp-agent.mjs runs the same functions from a laptop, plan by default.
@@ -475,14 +475,18 @@ export function summarize(service, result) {
 //             jobs) is sold for BNB and sent to the DeFi wallet
 //   collect   the position's fees are collected and sold for BNB; part of it
 //             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
-//             the rest goes to the buyback wallet — only the fees, never the
-//             capital
+//             the rest buys $BOBAI the wallet holds (buyBobaiHold, since
+//             2026-09-09; the buyback wallet before) — only the fees, never
+//             the capital
 //   rebalance a range the price has left is re-set beside the price, on
 //             the side the price came from, with the one token the old
 //             range ended in and no trade (one-sided, since 2026-09-16);
 //             the fees the old range owed are split the same way on the way
 //             (since 2026-09-08): the kept share is minted into the new
-//             capital, the rest goes to the buyback wallet before the mint
+//             capital, the rest buys $BOBAI before the mint
+//   ladder    BNB that arrives while the main range is all of the other side
+//             opens a reserve range below the price, WBNB only, no trade
+//             (since 2026-09-16); the two merge at the main range's re-set
 //   increase  BNB above the reserve is put into the same position — the
 //             income the sweep brought and the fee share the collect kept
 //
@@ -494,6 +498,7 @@ import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } fr
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
+  MIN_GAS_BNB,
 } from './lp-guards.js';
 
 export const ADDR = {
@@ -510,8 +515,8 @@ export const ADDR = {
   V3_SWAP_ROUTER: '0x1b81d678ffb9c0263b24a97847620c99d213eb14',
   V3_QUOTER: '0xb048bbc1ee6b733fffcfb9e9cef7375518e25997',
   WBNB: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
-  // Where collected fees go: the buyback bot's wallet, which buys and burns
-  // $BOBAI as it always has. One burn path, one record.
+  // Where collected fees went until 2026-09-09. Nothing in this file sends
+  // to it any more; the address stays for the records that name it.
   BUYBACK_WALLET: '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
   // The agent's own profit share buys this and holds it (2026-09-09); it does
   // not go to the buyback wallet any more. BOBAI is a 3% fee-on-transfer token.
@@ -1223,7 +1228,8 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   }
   // A wallet without a position is never "in range"; resume says the plan is
   // a mint from what the wallet holds, and the guard sizes it like a re-set.
-  const state = { positions: p.positions, resume, inRange: poolInfo && !resume ? poolInfo.inRange : false, atEdge: !!(left && left.outside && !left.left), side: left ? left.side : null, ticksAway: left ? left.ticks_away : null, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
+  const walletBnb = bn(await pub.getBalance({ address }));
+  const state = { positions: p.positions, resume, walletBnb, inRange: poolInfo && !resume ? poolInfo.inRange : false, atEdge: !!(left && left.outside && !left.left), side: left ? left.side : null, ticksAway: left ? left.ticks_away : null, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
   return {
     step: 'rebalance', state, no: refuseRebalance(state), resume, oneSided,
     tokenId: p.tokenId, pos: p.pos, poolInfo, spacing, other, wbnbIs0, width, ticks, target, trade,
@@ -1527,7 +1533,15 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // zero there; a mint the price has entered would then take almost
   // nothing without reverting. Here it reverts instead, and the hour after
   // finishes the re-set from the wallet (resume).
-  const sqrtNow = (await readPool(pub, plan.pos)).sqrtP;
+  // A ONE-SIDED RANGE IS PLACED WHERE THE PRICE IS NOW (2026-09-18), not where
+  // it was when the plan was read: between the two lie the merge, the unwind,
+  // the share's sale and the $BOBAI buy. The plan's ticks start 20-29 ticks
+  // from the plan's price; a price that crossed them by now would take the
+  // held token only in part — dust liquidity, or a revert with the old range
+  // already burnt. Beside the price now it takes all of it, always.
+  const poolNow = await readPool(pub, plan.pos);
+  const sqrtNow = poolNow.sqrtP;
+  if (plan.oneSided && plan.width != null && plan.spacing) plan = { ...plan, ticks: ticksAdjacent(poolNow.tick, plan.width, plan.spacing, plan.oneSided) };
   const mintMins = plan.oneSided
     ? (() => { const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired); return { amount0Min: (a.amount0 * MIN_SHARE) / 100n, amount1Min: (a.amount1 * MIN_SHARE) / 100n }; })()
     : minsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
@@ -1888,7 +1902,11 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
       reserveLeft = lf.left;
       reserveInfo = { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], side: reserveSide, value_bnb: Number(rs.valueBnb.toFixed(6)), left: lf.left, ticks_beyond_edge: lf.ticks_away };
     }
-    const pick = Array.isArray(record?.rows) && record.rows.some((r) => r.earnings_7d) ? pickWidth(record.rows) : record?.earnings_pick || null;
+    // The same pick the main range's plan makes, with the width the main
+    // range is in as the one in use (until 2026-09-18 the ladder picked
+    // without it: the reserve took ±10% beside a main range kept at ±7%).
+    const inUse = widthClassOf([Number(p.pos[5]), Number(p.pos[6])]);
+    const pick = (Array.isArray(record?.rows) && record.rows.some((r) => r.earnings_7d) && (record.earnings_pick || record.hours_of_prices >= 24) ? pickWidth(record.rows, { current: inUse }) : null) || record?.earnings_pick || null;
     width = widthOverride ?? pick?.width ?? null;
     // A range below the price: the price is "above" it (ticksAdjacent's side).
     if (width != null) ticks = ticksAdjacent(poolInfo.tick, width, spacing, 'above');
@@ -1896,7 +1914,8 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
   const positionsHeld = p.positions === 1 ? (p.reserve ? 2 : 1) : p.positions;
   const decision = ladderDecision({ positions: positionsHeld, reserve: !!p.reserve, mainSide, reserveSide, spendableBnb: bn(spendRaw + heldWbnb), reserveLeft, reserveBnb });
   let no = null;
-  if (decision.act && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') && (width == null || !ticks)) no = 'the width record names no width yet — the reserve range waits for a day of prices';
+  if (decision.act && decision.act !== 'merge' && !(bn(bal) >= MIN_GAS_BNB)) no = `the wallet holds ${bn(bal).toFixed(6)} BNB, below the ${MIN_GAS_BNB} BNB it takes to be sure of paying the step through`;
+  else if (decision.act && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') && (width == null || !ticks)) no = 'the width record names no width yet — the reserve range waits for a day of prices';
   return {
     step: 'ladder', act: decision.act, why: decision.why, no,
     tokenId: p.tokenId, pos: p.pos, reserve: p.reserve || null, poolInfo, spacing, wbnbIs0, spendRaw, heldWbnb, ticks, width,
@@ -1928,7 +1947,11 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     if (wbnb <= 0n) throw new Error('no WBNB to mint the reserve range from');
     await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, wbnb, 'allow the position manager to take WBNB (once)');
     const amount0Desired = plan.wbnbIs0 ? wbnb : 0n, amount1Desired = plan.wbnbIs0 ? 0n : wbnb;
-    const sqrtNow = (await readPool(pub, plan.pos)).sqrtP;
+    // Placed beside the price as it is now, not as the plan read it (see
+    // executeRebalance): the wrap or the unwind lies in between.
+    const poolNow = await readPool(pub, plan.pos);
+    const sqrtNow = poolNow.sqrtP;
+    if (plan.width != null && plan.spacing) plan = { ...plan, ticks: ticksAdjacent(poolNow.tick, plan.width, plan.spacing, 'above') };
     const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
     const idsBefore = await held();
     const receipt = await send(label, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
@@ -2028,6 +2051,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
   let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
   let lastKeptPct = null;
   let first = null, lastMoved = null;
+  // Fees a collect kept that no step has put into the position yet: they wait
+  // as BNB in the wallet until the increase floor is reached (keptWaiting).
+  let keptWaiting = 0;
   for (const e of hist) {
     const st = e.steps || {};
     const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
@@ -2047,6 +2073,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
         collects += 1;
         feesProduced += produced;
         feesKept += n(c.kept_bnb);
+        keptWaiting += n(c.kept_bnb);
         // Since 2026-09-09 the share buys BOBAI held in the wallet (c.bobai_bnb);
         // older records sent it to the buyback wallet (c.forwarded_bnb).
         feesForwarded += n(c.bobai_bnb ?? c.forwarded_bnb);
@@ -2057,6 +2084,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     if (inc && inc.acted && !inc.error) {
       increases += 1;
       intoPosition += inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used);
+      keptWaiting = 0;   // an increase takes everything above the reserve, kept fees with it
     }
     // The ladder step (2026-09-16) puts BNB into the reserve range: capital
     // into the position like an increase, counted the same way.
@@ -2064,6 +2092,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     if (ld && ld.acted && !ld.error && n(ld.bnb_spent) > 0) {
       increases += 1;
       intoPosition += Math.max(0, n(ld.bnb_spent) - gasOf(ld));
+      keptWaiting = 0;
     }
     const rb = st.rebalance;
     if (rb && rb.acted && !rb.error && rb.new_position) {
@@ -2079,7 +2108,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
       if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
       // A re-set forced by a deposit wraps the waiting BNB into its own mint:
       // capital put in, like an increase — no increase follows to count it.
-      if (n(rb.wrapped_waiting_bnb) > 0) { intoPosition += n(rb.wrapped_waiting_bnb); increases += 1; }
+      if (n(rb.wrapped_waiting_bnb) > 0) { intoPosition += n(rb.wrapped_waiting_bnb); increases += 1; keptWaiting = 0; }
     }
     if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
     for (const step of [...sweeps, c, inc, rb, st.ladder]) {
@@ -2099,6 +2128,13 @@ export function moneyFlow(rec, { earned = null } = {}) {
     fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
     wallet_spendable_bnb: ls.increase && ls.increase.spendable_bnb != null ? r6(n(ls.increase.spendable_bnb)) : null,
   };
+  // KEPT FEES THAT WAIT ARE STILL THE AGENT'S (2026-09-18). A collect books
+  // its kept half as capital at once; the BNB then sits in the wallet, under
+  // the increase floor, for a day or more. Counted as capital that went in
+  // (it had not) it came off the deposits — "put in" dipped by it after every
+  // collect — and it was on neither side of the comparison with holding.
+  // Never more than the wallet has above its reserve.
+  waiting.kept_fees_bnb = r6(waiting.wallet_spendable_bnb != null ? Math.min(keptWaiting, waiting.wallet_spendable_bnb) : keptWaiting);
   // The rule is what the last step that split fees named: the last collect,
   // or the last re-set that forwarded (since 2026-09-08 re-sets split too).
   const keptPct = ls.collect && ls.collect.kept_pct != null ? n(ls.collect.kept_pct) : lastKeptPct;
@@ -2199,9 +2235,12 @@ export function withArchive(rec, archive) {
 // worker-lp/index.js (the daily cron with the keys). Two copies of a refusal
 // list is how one of them stops refusing. Pure: no chain, no I/O.
 //
-// Three steps, three guard functions, and the floors they share:
+// The steps, their guard functions, and the floors they share:
 //   sweep     AI income (USD1, $U) -> BNB -> the DeFi wallet
-//   collect   position fees -> BNB -> the buyback wallet
+//   collect   position fees -> BNB -> half kept as capital, half into $BOBAI
+//             the wallet holds (the buyback wallet until 2026-09-09)
+//   rebalance a range the price has left -> one-sided beside the price
+//   ladder    BNB beside an all-other main range -> a reserve range below
 //   increase  BNB above the reserve -> more of the same position
 //
 // Every floor is a gas argument: below it, moving the money costs more than
@@ -2462,6 +2501,12 @@ export function refuseRebalance(state) {
   if (state.atEdge) return `the price sits ${state.ticksAway ?? '?'} tick${state.ticksAway === 1 ? '' : 's'} ${state.side || 'beyond'} the range — at the edge, within the ${RANGE_LEFT_TICKS}-tick slack, not left`;
   if (state.width == null)
     return `no width is on record yet (${state.hoursOfPrices || 0} h of prices recorded, ${MIN_HOURS_FOR_EARNINGS} h needed before the record may name one). Holding.`;
+  // A re-set that runs dry between its unwind and its mint leaves the capital
+  // loose in a wallet that cannot pay to put it back (2026-09-18). Re-sets are
+  // paid from native BNB that only fees and income refill; the collect has
+  // held this floor since the first build, the re-set and the ladder had none.
+  if (state.walletBnb != null && !(Number(state.walletBnb) >= MIN_GAS_BNB))
+    return `the wallet holds ${Number(state.walletBnb).toFixed(6)} BNB, below the ${MIN_GAS_BNB} BNB it takes to be sure of paying a re-set through to its mint — it waits for BNB`;
   if (!(state.valueBnb >= MIN_REBALANCE_BNB))
     return `${state.resume ? "the wallet's two sides are" : 'the position is'} worth ${Number(state.valueBnb || 0).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a ${state.resume ? 'mint' : 're-set'} would cost more than it is likely to earn back`;
   return null;
@@ -6232,6 +6277,9 @@ async function recordLpSeries(env) {
     folded_kept_total_bnb: flow.in.fees.folded_kept_bnb ?? (flow.in.fees.folded_bnb || 0),
     into_position_total_bnb: flow.out.into_position_bnb || 0,
     swept_total_bnb: flow.in.income_bnb,
+    // Kept fees still waiting in the wallet: not yet in the position, so not
+    // yet to be taken off the deposits (lp-flow.js, waiting.kept_fees_bnb).
+    kept_waiting_bnb: flow.waiting.kept_fees_bnb || 0,
   };
   let point = null;
   if (!prev || Date.parse(prev.at) < Date.parse(last.at)) {
@@ -6356,6 +6404,8 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     bobai_held_units: last.bobai_units_total ?? 0,
     fees_sent_to_buyback_bnb: last.forwarded_total_bnb,
     fees_kept_as_capital_bnb: last.kept_total_bnb ?? 0,
+    // … of which this much still waits in the wallet as BNB, under the increase floor.
+    fees_kept_waiting_bnb: last.kept_waiting_bnb ?? 0,
     fees_produced_bnb: last.fees_total_bnb ?? last.forwarded_total_bnb,
     income_put_in_bnb: last.swept_total_bnb,
     // What the increase step put in beyond swept income and kept fees is the
@@ -6364,7 +6414,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     // in; only the former went through an increase, so only the former comes
     // out of the deposits (2026-09-10: 0.0033 BNB of folded fees made the
     // capital read 0.5831 where 0.5864 had gone in).
-    deposits_put_in_bnb: +Math.max(0, (Number(last.into_position_total_bnb) || 0) - (Number(last.swept_total_bnb) || 0) - Math.max(0, (Number(last.kept_total_bnb) || 0) - (Number(last.folded_kept_total_bnb) || 0))).toFixed(6),
+    deposits_put_in_bnb: +Math.max(0, (Number(last.into_position_total_bnb) || 0) - (Number(last.swept_total_bnb) || 0) - Math.max(0, (Number(last.kept_total_bnb) || 0) - (Number(last.folded_kept_total_bnb) || 0) - (Number(last.kept_waiting_bnb) || 0))).toFixed(6),
     fees_owed_now_bnb: owed_now_bnb != null ? owed_now_bnb : last.owed_bnb,
     // 1 tick = 0.01 % of price; the sign says which way the pair moved.
     price_move_pct_since_start: tickMove != null ? +((Math.pow(1.0001, tickMove) - 1) * 100).toFixed(2) : null,
@@ -6745,7 +6795,7 @@ async function buildLpSeries(env) {
       const base = series.find((p) => p.value_bnb != null);
       const withCapital = series.map((p) => {
         if (!base || p.value_bnb == null) return p;
-        const deposits = Math.max(0, (Number(p.into_position_total_bnb) || 0) - (Number(p.swept_total_bnb) || 0) - Math.max(0, (Number(p.kept_total_bnb) || 0) - (Number(p.folded_kept_total_bnb) || 0)));
+        const deposits = Math.max(0, (Number(p.into_position_total_bnb) || 0) - (Number(p.swept_total_bnb) || 0) - Math.max(0, (Number(p.kept_total_bnb) || 0) - (Number(p.folded_kept_total_bnb) || 0) - (Number(p.kept_waiting_bnb) || 0)));
         const capital = +(Number(base.value_bnb) + (Number(p.capital_added_total_bnb) || 0) + deposits).toFixed(6);
         return { ...p, capital_bnb: capital, on_capital_pct: capital > 0 ? +(((p.value_bnb - capital) / capital) * 100).toFixed(2) : null };
       });
@@ -6761,6 +6811,7 @@ async function buildLpSeries(env) {
         folded_kept_total_bnb: liveFlow.in.fees.folded_kept_bnb ?? (liveFlow.in.fees.folded_bnb || 0),
         into_position_total_bnb: liveFlow.out.into_position_bnb || 0,
         swept_total_bnb: liveFlow.in.income_bnb,
+        kept_waiting_bnb: liveFlow.waiting.kept_fees_bnb || 0,
       } : null;
       // Fees owed now, from the chain: the last point is often a re-set, whose
       // own figure is zero by construction, while the liquidity page shows the
@@ -7431,7 +7482,13 @@ ${pageTail}`;
         const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const when = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) + ' UTC' : '—');
         const f = (x, d = 2) => (x == null || !isFinite(Number(x)) ? '—' : Number(x).toFixed(d));
-        const pick = v.earnings_pick || null;
+        // The pick the re-set would make: re-read with the width the position
+        // is in (as the plan and the portfolio do) — without it the page could
+        // name a width the agent would not take.
+        let inUseWidth = null;
+        try { const recW = JSON.parse((await env.AGENT.get('lp:agent')) || 'null'); const rbW = recW && recW.last && recW.last.steps && recW.last.steps.rebalance; const tk = rbW && ((rbW.acted && !rbW.error && rbW.new_ticks) || rbW.ticks); if (tk) inUseWidth = widthClassOf(tk); } catch { /* the record's own pick stands */ }
+        const pick = (Array.isArray(v.rows) && v.rows.some((r) => r.earnings_7d) && v.earnings_pick ? pickWidth(v.rows, { current: inUseWidth }) : null) || v.earnings_pick || null;
+        const score7 = (r) => (r && r.earnings_7d ? Number(r.earnings_7d.fees_usd || 0) - Number(r.earnings_7d.resets || 0) * Number(r.earnings_7d.reset_cost_usd || 0) + Number(r.earnings_7d.vs_holding_usd || 0) : null);
         const rows = (v.rows || []).slice().sort((a, b) => a.width - b.width);
         const usd = log.usd || 50;
         const html = `${pageHead('The width record — the DeFi agent', `
@@ -7455,11 +7512,11 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 </dl></div>
 <h2>Every width, replayed</h2>
 <div class="card"><div class="wrap"><table>
-<tr><th>Width</th><th>Net per day</th><th>Fees earned</th><th>Re-sets</th><th>Lost to the price</th><th>Hours in range</th><th>Windows held</th><th>Days held</th></tr>
-${rows.map((r) => { const e = r.earnings; const money = (x, d) => (x == null ? '—' : '$' + f(x, d)); return `<tr${pick && r.width === pick.width ? ' class="pick"' : ''}><td>${isFinite(Number(r.width)) ? `±${h(r.width)}%${r.derived ? ` <span style="color:#a9a49a;font-weight:400">(from ±${h(r.derived_from ? r.derived_from[1] : '')}%)</span>` : ''}` : 'full range (V2-like)'}</td><td>${h(money(e && e.net_usd_per_day, 3))}</td><td>${h(money(e && e.fees_usd, 3))}</td><td>${h(e ? e.resets : 'never')}</td><td>${h(money(e && e.lost_to_price_usd != null ? e.lost_to_price_usd + e.open_loss_usd : null, 3))}</td><td>${e ? `${h(f(e.hours_in_range, 0))} of ${h(f(e.hours, 0))}` : 'always'}</td><td>${h(r.held)} of ${h(r.of)}</td><td>${r.day ? `${h(r.day.held)} of ${h(r.day.tested)}` : 'all'}</td></tr>`; }).join('')}
+<tr><th>Width</th><th>Net per day</th><th>Fees earned</th><th>Re-sets</th><th>Against holding, 7 d</th><th>Score, 7 d</th><th>Hours in range</th><th>Windows held</th><th>Days held</th></tr>
+${rows.map((r) => { const e = r.earnings; const money = (x, d) => (x == null ? '—' : '$' + f(x, d)); return `<tr${pick && r.width === pick.width ? ' class="pick"' : ''}><td>${isFinite(Number(r.width)) ? `±${h(r.width)}%${r.derived ? ` <span style="color:#a9a49a;font-weight:400">(from ±${h(r.derived_from ? r.derived_from[1] : '')}%)</span>` : ''}` : 'full range (V2-like)'}</td><td>${h(money(e && e.net_usd_per_day, 3))}</td><td>${h(money(e && e.fees_usd, 3))}</td><td>${h(e ? e.resets : 'never')}</td><td>${h(r.earnings_7d && r.earnings_7d.vs_holding_usd != null ? (r.earnings_7d.vs_holding_usd < 0 ? '−$' : '$') + f(Math.abs(r.earnings_7d.vs_holding_usd), 2) : '—')}</td><td>${h(score7(r) == null ? '—' : (score7(r) < 0 ? '−$' : '$') + f(Math.abs(score7(r)), 2))}</td><td>${e ? `${h(f(e.hours_in_range, 0))} of ${h(f(e.hours, 0))}` : 'always'}</td><td>${h(r.held)} of ${h(r.of)}</td><td>${r.day ? `${h(r.day.held)} of ${h(r.day.tested)}` : 'all'}</td></tr>`; }).join('')}
 </table></div>
-<p class="note">Net per day is fees earned inside the range minus the re-sets paid minus what the ranges lost to the price against holding (the re-sets' losses plus the open range marked at the last price), on $${h(usd)}, over the recorded prices. A narrow width earns more per hour inside the range, leaves it more often and loses more at each edge; a wide one rarely leaves and earns little. The pick is where those two meet on this pool's recent prices, and it moves as the prices do.</p>
-<p class="note">Widths marked "from" are not replayed hour by hour; their fees are read off the next wider replayed width (inside its range a position's share of the pool's fees is 1/width for the same dollars — the record's own rows say so to the digit), and whether they held, off the next narrower one. Since 2026-09-11, so the pick is not bound to a coarse grid.</p>
+<p class="note">Net per day is fees earned inside the range minus the re-sets paid minus what the ranges lost to the price against holding (the re-sets' losses plus the open range marked at the last price), on $${h(usd)}, over the recorded prices. A narrow width earns more per hour inside the range, leaves it more often and loses more at each edge; a wide one rarely leaves and earns little. Since 2026-09-16 a re-set trades nothing, so what decides is no longer the net per day: the pick is the width with the highest score over the last 7 days — its fees, less its re-sets' gas, plus where it ended against a wallet that simply held (the last two columns) — and the width in use is kept unless another leads it by a tenth. It moves as the prices do.</p>
+<p class="note">Widths marked "from" are not replayed hour by hour; their fees are read off the next wider replayed width by the liquidity a range holds per dollar, 1 / (1 − 1/√(1+width)) — the record's own rows stand in that proportion to the digit, and whether they held, off the next narrower one. Since 2026-09-11, so the pick is not bound to a coarse grid.</p>
 <p class="note">${h(String(v.earnings_rule || '').replace(/^[a-z]/, (ch) => ch.toUpperCase()))}</p></div>
 ${v.resets && v.resets.rows.length ? `<h2>What each re-set cost</h2>
 <div class="card"><div class="wrap"><table>
@@ -7527,6 +7584,10 @@ ${pageTail}`;
       const st = last.steps || {};
       const rb = st.rebalance || {};
       const c = st.collect || dst.collect || {}, inc = st.increase || dst.increase || {};
+      // The ladder step (2026-09-16) and the reserve range it keeps: on the page
+      // since 2026-09-18 — the record carried both, the page showed neither.
+      const ld = st.ladder || dst.ladder || {};
+      const rsv = ld.reserve || rb.reserve || inc.reserve || null;
       const sweeps = Array.isArray(st.sweep) ? st.sweep : (Array.isArray(dst.sweep) ? dst.sweep : []);
       // When a step is the daily run's and the newest run is a later re-set,
       // the step's figures are dated by the daily run.
@@ -7586,6 +7647,7 @@ ${pageTail}`;
           ? `re-set: the old range${rb.ticks ? ` ${rb.ticks.join(' … ')}` : ''} (price at tick ${rb.tick ?? '—'}${rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''}) was withdrawn${rb.one_sided ? ` and #${rb.new_position} minted one-sided ${rb.one_sided === 'above_price' ? 'above' : 'below'} the price, no trade` : `, the missing side bought and #${rb.new_position} minted`}${Array.isArray(rb.new_ticks) ? ` at ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${rb.width_pct}%` : ''}${Array.isArray(rb.txs) ? ` in ${rb.txs.length} transaction${rb.txs.length === 1 ? '' : 's'}` : ''}${rb.gas_bnb != null ? `, ${f(rb.gas_bnb, 6)} BNB of gas` : ''}${rb.fees_folded && rb.fees_folded.bnb_equivalent != null ? `; ${f(rb.fees_folded.bnb_equivalent, 6)} BNB of the old range's fees ${Number(rb.bobai_bnb) > 0 ? `taken: ${f(rb.bobai_bnb, 6)} BNB bought $BOBAI the agent holds, the rest folded into the capital` : Number(rb.fees_forwarded_bnb) > 0 ? `taken: ${f(rb.fees_forwarded_bnb, 6)} BNB sent to the buyback bot, the rest folded into the capital` : `folded into the capital${rb.fees_forward_why ? ` (${rb.fees_forward_why})` : ''}`}` : ''}`
           : (rb.ticks ? `ticks ${rb.ticks.join(' … ')}, price at tick ${rb.tick ?? '—'}` : '') + (rb.width_pct != null ? `; the next re-set would use ±${rb.width_pct}%${rb.expected_net_usd_per_day != null ? ` (about $${rb.expected_net_usd_per_day} a day on $50 over the recorded prices)` : ''}` : '') + (rb.outside_since ? `, outside since ${String(rb.outside_since).replace('T', ' ').slice(0, 16)} UTC` : ''))
           + (last.range_checked_at ? `, range checked ${String(last.range_checked_at).replace('T', ' ').slice(0, 16)} UTC` : '') },
+        { name: 'Ladder — the reserve range below the price', acted: !!ld.acted, err: ld.error, why: plain(ld.why), detail: rsv ? `reserve #${rsv.position}${Array.isArray(rsv.ticks) ? `, ticks ${rsv.ticks.join(' … ')}` : ''}${rsv.value_bnb != null ? `, worth ${f(rsv.value_bnb, 5)} BNB` : ''}${rsv.side ? `, ${rsv.side === 'wbnb' ? 'all BNB, below the price' : rsv.side === 'other' ? 'the price fell through it — it joins the main range at the next re-set' : 'the price is inside it'}` : ''}` : (ld.why ? 'no reserve range stands' : '') },
         { name: 'Increase — grow the position', acted: !!inc.acted, err: inc.error, why: plain(inc.why), detail: (inc.wallet_bnb != null ? `${f(inc.wallet_bnb, 5)} BNB in the wallet, ${f(inc.spendable_bnb, 5)} above the reserve` : '') + (fromDaily ? `${inc.wallet_bnb != null ? '; ' : ''}from the daily run at ${dailyWhen}` : '') },
       ].filter((r) => r.why || r.err || r.detail);
       const histRows = hist.slice().reverse().slice(0, 60).map((e) => {
@@ -7613,6 +7675,7 @@ p.lead{color:#cfc9bd;margin:6px 0 0}dl{display:grid;grid-template-columns:max-co
 <h2>What it holds</h2>
 <div class="card"><dl>
 <dt>Position</dt><dd>${pos ? `PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(pos)}?chain=bsc" target="_blank" rel="noopener">#${h(pos)}</a>, ${live ? (live.inRange ? 'in range and earning' : `out of range right now (tick ${live.tick}, range ${live.lo} to ${live.hi}) — earning nothing until an hourly check finds it outside for longer than the measured wait and re-sets it`) : (inRange === false ? 'out of range at the last run' : 'in range at the last run')}${live && live.inRange !== inRange ? ` — the run at ${h(when(last.at))} saw it ${inRange === false ? 'out of' : 'in'} range` : ''}${(rb.value_with_reserve_bnb ?? rb.value_bnb) != null ? `, worth ${f(rb.value_with_reserve_bnb ?? rb.value_bnb, 4)} BNB${usd(rb.value_with_reserve_bnb ?? rb.value_bnb)}${rb.reserve ? ' with the reserve range' : ''}` : ''}` : 'none open'}</dd>
+${rsv ? `<dt>Reserve range</dt><dd>PancakeSwap V3 <a href="https://pancakeswap.finance/liquidity/${h(rsv.position)}?chain=bsc" target="_blank" rel="noopener">#${h(rsv.position)}</a>${rsv.value_bnb != null ? `, worth ${f(rsv.value_bnb, 5)} BNB${usd(rsv.value_bnb)}` : ''} — ${rsv.side === 'wbnb' ? 'BNB below the price: it buys the other side as the price falls into it' : rsv.side === 'other' ? 'the price fell through it; it joins the main range at the next re-set' : 'the price is inside it, it earns on both sides'}. Counted in the worth above.</dd>` : ''}
 <dt>Fees owed now</dt><dd>${liveOwed != null ? `${f(liveOwed, 6)} BNB${usd(liveOwed)} — read from the chain just now; ${reset ? `the re-set at ${h(when(last.at))} folded the old range's fees into the new capital, so the new position started at zero` : c.acted && !c.error ? `the collect at ${h(fromDaily ? dailyWhen : when(last.at))} took what was owed then, this is what has accrued since` : `the run at ${h(fromDaily ? dailyWhen : when(last.at))} ${c.position ? `read position #${h(c.position)}` : 'saw no position'}`}. Left to grow until collecting beats the gas` : c.owed ? `${f(c.owed.bnb_equivalent, 6)} BNB${usd(c.owed.bnb_equivalent)} — left to grow until collecting beats the gas` : '—'}</dd>
 <dt>Income waiting</dt><dd>${sweeps.filter((s) => s.balance > 0).map((s) => `${f(s.balance, 2)} ${h(s.token || s.source)}`).join(' + ') || 'nothing'} — moves once it is worth more than the gas</dd>
 <dt>Wallet</dt><dd><a href="https://bscscan.com/address/${h(rec.last?.wallet || '')}" target="_blank" rel="noopener"><code>${h(rec.last?.wallet || '—')}</code></a>${inc.wallet_bnb != null ? `, ${f(inc.wallet_bnb, 5)} BNB` : ''}</dd>
@@ -8606,7 +8669,7 @@ export function lastDay(rec, now = Date.now()) {
 // beat: worth + the fees that left the position (into $BOBAI) + fees still
 // owed − gas. `points` is the series (capital_bnb, tick per run); each rise
 // in capital is an arrival at that run's price. Pure; pinned.
-export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, bobaiBnb = 0, owedBnb = 0, gasBnb = 0 } = {}) {
+export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, bobaiBnb = 0, owedBnb = 0, gasBnb = 0, waitingBnb = 0 } = {}) {
   const pts = (points || []).filter((p) => p && p.tick != null && Number(p.capital_bnb) > 0);
   if (!pts.length || tickNow == null || !(Number(valueNow) > 0)) return null;
   const priceAt = (tick) => { const raw = Math.pow(1.0001, Number(tick)); return wbnbIs0 ? 1 / raw : raw; };
@@ -8620,13 +8683,15 @@ export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, b
     prevCap = Math.max(prevCap, cap);
   }
   if (!(holding > 0)) return null;
-  const lp = Number(valueNow) + n(bobaiBnb) + n(owedBnb) - n(gasBnb);
+  // waitingBnb: fees a collect kept that still wait in the wallet as BNB —
+  // the agent's, outside the position, until the next increase takes them.
+  const lp = Number(valueNow) + n(bobaiBnb) + n(owedBnb) + n(waitingBnb) - n(gasBnb);
   const vs = lp - holding;
   return {
     holding_bnb: r5(holding), lp_bnb: r5(lp), vs_holding_bnb: r5(vs),
     vs_holding_pct: prevCap > 0 ? Math.round((vs / prevCap) * 10000) / 100 : null,
     arrivals: arrivals.length,
-    basis: "a wallet that held each arrival half as BNB, half as the other side at that run's price, against the position now plus the fees that left it as $BOBAI and the fees still owed, less gas",
+    basis: "a wallet that held each arrival half as BNB, half as the other side at that run's price, against the position now plus the fees that left it as $BOBAI, the fees still owed and the kept fees that wait in the wallet, less gas",
   };
 }
 
@@ -8699,7 +8764,18 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // Where the position was left: the newest tick the record saw.
   const tickNow = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
   const wbnbIs0 = rb.wbnb_is0 === true || (hist.slice().reverse().find((x) => x?.steps?.rebalance?.wbnb_is0 != null)?.steps.rebalance.wbnb_is0 === true);
-  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb });
+  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb, waitingBnb: sum.fees_kept_waiting_bnb });
+  // WHAT THE AGENT HOLDS BESIDE THE POSITION (2026-09-18). "Worth now" is the
+  // position; the result above it also counts what the position produced and
+  // no longer holds — $BOBAI bought (at what it cost), fees still owed, kept
+  // fees waiting in the wallet. Without this line worth − put in was a
+  // tenth of the result shown beside it. worth + beside − put in − gas = result.
+  const besideParts = [
+    { label: '$BOBAI held, at cost', bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb) },
+    { label: 'fees owed by the position', bnb: r5(sum.fees_owed_now_bnb) },
+    { label: 'kept fees waiting in the wallet', bnb: r5(sum.fees_kept_waiting_bnb) },
+  ].filter((x) => n(x.bnb) > 0);
+  const besideBnb = besideParts.reduce((a, x) => a + n(x.bnb), 0);
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
     resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'), reserve_moves: dayCount('ladder'),
@@ -8712,7 +8788,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
     next,
     day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
-    worth: { bnb: r4(value.now), usd: usd(value.now) },
+    worth: { bnb: r4(value.now), usd: usd(value.now), beside_bnb: r4(besideBnb), beside_usd: usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
     holdings: {
       position_bnb: r4(value.now), fees_owed_bnb: r5(sum.fees_owed_now_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
@@ -8721,7 +8797,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       // BNB it cost.
       bobai_usd: bobaiUsd > 0 ? Math.round(n(sum.bobai_held_units) * bobaiUsd * 100) / 100 : null,
       bobai_usd_price: bobaiUsd > 0 ? bobaiUsd : null,
-      wallet_bnb: r4(walletBnb),
+      wallet_bnb: r4(walletBnb), kept_waiting_bnb: r5(sum.fees_kept_waiting_bnb),
       // The ladder's reserve range (2026-09-16), when one stands: BNB below
       // the price, waiting to buy the other side through fees.
       // Where the reserve stands: 'wbnb' = below the price (a buy ladder), 'other' = the price fell through it (it waits to merge), 'both' = the price is inside it.
@@ -9050,15 +9126,30 @@ export async function lpTierPlan(input = {}) {
   // position, often by a factor of fifty) and ignored dilution (overstating a
   // large position in a thin band). They pulled in opposite directions, which
   // is the worst way for two errors to sit in one number.
+  // WHAT REACHES LIQUIDITY, NOT WHAT TRADERS PAID (2026-09-18). fees_paid_usd
+  // is the pool fee on the measured turnover; PancakeSwap keeps a part of it
+  // for the protocol before liquidity sees any. Read on chain for the agent's
+  // own pool on 2026-09-13 (slot0.feeProtocol 3400 of 10000): 66% reaches
+  // liquidity in the 0.05% tier. The other tiers carry PancakeSwap's published
+  // split (V3 0.01%: 67%, 0.25% and 1%: 68%; V2: 0.17 of its 0.25 = 68%).
+  // Until now "your fees" were the traders' fees, about half too high; the
+  // ranking between tiers hardly moves, the dollars did.
+  const lpShare = (t) => {
+    const fee = Number(t.fee_pct);
+    if (/v2/i.test(String(t.tier || ''))) return 0.68;
+    return fee === 0.05 ? 0.66 : fee === 0.01 ? 0.67 : 0.68;
+  };
   const earned = (t, working) => {
     if (t.fees_paid_usd == null) return null;
     const denom = (working == null ? t.capital_usd : working) + capitalUsd;
-    return denom > 0 ? round(t.fees_paid_usd * (capitalUsd / denom), 6) : null;
+    return denom > 0 ? round(t.fees_paid_usd * lpShare(t) * (capitalUsd / denom), 6) : null;
   };
   const perTier = (m.tiers || []).map((t) => ({
     tier: t.tier,
     pool: t.pool,
     fee_pct: t.fee_pct,
+    // The part of the traders' fees that reaches liquidity; the rest is the protocol's.
+    fees_reaching_liquidity_pct: Math.round(lpShare(t) * 100),
     capital_in_pool_usd: t.capital_usd,
     // What of that is standing within the measured band of the current price.
     // Null means it could not be read, never zero.
@@ -9343,12 +9434,39 @@ export function mergeLogs(a, b) {
 //     every width is replayed over the recorded prices with the agent's own
 //     re-set delay and cost (see earningsTest); nothing until a day of prices.
 // THE WIDTHS BETWEEN THE REPLAYED ONES. For each derived width the row is
-// read off its wider replayed neighbour (fees times neighbour/width: the
-// 1/width law above), and whether it held, how often it crossed and what it
+// read off its wider replayed neighbour (fees by the liquidity law,
+// widthShare — until 2026-09-18 by neighbour/width, 2% too much at ±7%), and whether it held, how often it crossed and what it
 // netted off its narrower neighbour — a width that held at ±2% held at ±3%,
 // and a width that crossed at ±2% crossed at most as often at ±3%, so the
 // derived row is never rosier than the record allows. A window that lacks
 // either neighbour gets no derived row for that width. Pure; pinned.
+// WHAT A RANGE EARNS WHILE THE PRICE IS IN IT (2026-09-18). A centred ±w range
+// holds, per dollar, liquidity in proportion to 1 / (1 − 1/√(1+w)) — the V3
+// identity, not a fit: the record's own rows follow it to the digit (±5% to
+// ±10%: 0.009614 / 0.004979 = 1.931; the law says 1.931, "1/w" says 2). Two
+// ranges the price is inside see the same swaps, so their fees stand in that
+// proportion exactly. widthShare(W, w) is what a ±w range earns for every
+// dollar a ±W range earns while both hold the price. Pure; pinned.
+const liqPerUsd = (w) => 1 / (1 - 1 / Math.sqrt(1 + Number(w) / 100));
+export const widthShare = (fromWidth, toWidth) => liqPerUsd(toWidth) / liqPerUsd(fromWidth);
+// A window's row counts the fees of a range centred on the window's first
+// price, in hindsight, and only the swaps made while that range held the
+// price (in_range_pct). The earnings test follows its OWN range and asks
+// whether the price is inside it — so a narrow width was marked down twice
+// for the time it spends outside: once in the row, once by the test (±0.25%
+// read 40% too little over a week, ±0.5% 7%). The rate the test needs is
+// what the width earns per hour WHILE INSIDE: read off the narrowest
+// replayed row of the window that held the price throughout, by the law
+// above. A window where no row held (a move past ±10% inside the hour)
+// keeps the row's own figure. Pure; pinned.
+export function inRangeFeeRate(window, widthPct) {
+  const rows = Array.isArray(window?.rows) ? window.rows : [];
+  const hours = (window?.minutes || 37.5) / 60;
+  const held = rows.filter((r) => typeof r.width === 'number' && !r.derived && typeof r.fees === 'number' && Number(r.in_range_pct) >= 100).sort((a, b) => a.width - b.width)[0];
+  if (held) return (held.fees * widthShare(held.width, widthPct)) / hours;
+  const own = rows.find((r) => r.width === widthPct);
+  return own && typeof own.fees === 'number' ? own.fees / hours : 0;
+}
 export function deriveWidths(window, derived = DERIVED_WIDTHS) {
   const rows = Array.isArray(window?.rows) ? window.rows : [];
   const numeric = rows.filter((r) => isFinite(Number(r.width))).map((r) => ({ ...r, width: Number(r.width) }));
@@ -9358,7 +9476,7 @@ export function deriveWidths(window, derived = DERIVED_WIDTHS) {
     const wider = numeric.filter((r) => r.width > w).sort((a, b) => a.width - b.width)[0];
     const narrower = numeric.filter((r) => r.width < w).sort((a, b) => b.width - a.width)[0];
     if (!wider || !narrower || typeof wider.fees !== 'number') continue;
-    const fees = wider.fees * (wider.width / w);
+    const fees = wider.fees * widthShare(wider.width, w);
     out.push({
       width: w, derived: true, derived_from: [narrower.width, wider.width],
       held: !!narrower.held, in_range_pct: narrower.in_range_pct, crossings: narrower.crossings,
@@ -9673,8 +9791,7 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
     if (pt.window.at !== pt.at) samples += 1;
     const p = pt.price;
     if (p <= hi && p >= lo) {
-      const w = pt.window, row = w.rows.find((r) => r.width === widthPct);
-      fees += (row.fees / ((w.minutes || 37.5) / 60)) * dtH;
+      fees += inRangeFeeRate(pt.window, widthPct) * dtH;
       hoursIn += dtH; outRun = 0;
     } else {
       hoursOut += dtH;
@@ -10371,7 +10488,7 @@ export const SERVICES = {
     category: 'rebalancing',
     price: '100000000000000000',
     price_display: '0.10 USD1',
-    deliverables: 'What the agent that runs this project\'s own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that netted the most per day when every width was replayed over the recorded price windows, re-sets included — and what the wallet\'s spare BNB would add. It reads and plans; it signs nothing on your position.',
+    deliverables: 'What the agent that runs this project\'s own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that ended the most ahead against simply holding over the last week when every width was replayed over the recorded prices (its fees, less the gas of its re-sets, plus where it stood against a wallet that held), the width in use kept unless another leads it by a tenth — and what the wallet\'s spare BNB would add. It reads and plans; it signs nothing on your position.',
     needs: { position: 'the PancakeSwap V3 position id (tokenId)', address: 'or the wallet that holds exactly one position (0x…)' },
   },
 };

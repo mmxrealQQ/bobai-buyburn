@@ -36,6 +36,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
   let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
   let lastKeptPct = null;
   let first = null, lastMoved = null;
+  // Fees a collect kept that no step has put into the position yet: they wait
+  // as BNB in the wallet until the increase floor is reached (keptWaiting).
+  let keptWaiting = 0;
   for (const e of hist) {
     const st = e.steps || {};
     const sweeps = Array.isArray(st.sweep) ? st.sweep : [];
@@ -55,6 +58,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
         collects += 1;
         feesProduced += produced;
         feesKept += n(c.kept_bnb);
+        keptWaiting += n(c.kept_bnb);
         // Since 2026-09-09 the share buys BOBAI held in the wallet (c.bobai_bnb);
         // older records sent it to the buyback wallet (c.forwarded_bnb).
         feesForwarded += n(c.bobai_bnb ?? c.forwarded_bnb);
@@ -65,6 +69,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     if (inc && inc.acted && !inc.error) {
       increases += 1;
       intoPosition += inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used);
+      keptWaiting = 0;   // an increase takes everything above the reserve, kept fees with it
     }
     // The ladder step (2026-09-16) puts BNB into the reserve range: capital
     // into the position like an increase, counted the same way.
@@ -72,6 +77,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     if (ld && ld.acted && !ld.error && n(ld.bnb_spent) > 0) {
       increases += 1;
       intoPosition += Math.max(0, n(ld.bnb_spent) - gasOf(ld));
+      keptWaiting = 0;
     }
     const rb = st.rebalance;
     if (rb && rb.acted && !rb.error && rb.new_position) {
@@ -87,7 +93,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
       if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
       // A re-set forced by a deposit wraps the waiting BNB into its own mint:
       // capital put in, like an increase — no increase follows to count it.
-      if (n(rb.wrapped_waiting_bnb) > 0) { intoPosition += n(rb.wrapped_waiting_bnb); increases += 1; }
+      if (n(rb.wrapped_waiting_bnb) > 0) { intoPosition += n(rb.wrapped_waiting_bnb); increases += 1; keptWaiting = 0; }
     }
     if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
     for (const step of [...sweeps, c, inc, rb, st.ladder]) {
@@ -107,6 +113,13 @@ export function moneyFlow(rec, { earned = null } = {}) {
     fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
     wallet_spendable_bnb: ls.increase && ls.increase.spendable_bnb != null ? r6(n(ls.increase.spendable_bnb)) : null,
   };
+  // KEPT FEES THAT WAIT ARE STILL THE AGENT'S (2026-09-18). A collect books
+  // its kept half as capital at once; the BNB then sits in the wallet, under
+  // the increase floor, for a day or more. Counted as capital that went in
+  // (it had not) it came off the deposits — "put in" dipped by it after every
+  // collect — and it was on neither side of the comparison with holding.
+  // Never more than the wallet has above its reserve.
+  waiting.kept_fees_bnb = r6(waiting.wallet_spendable_bnb != null ? Math.min(keptWaiting, waiting.wallet_spendable_bnb) : keptWaiting);
   // The rule is what the last step that split fees named: the last collect,
   // or the last re-set that forwarded (since 2026-09-08 re-sets split too).
   const keptPct = ls.collect && ls.collect.kept_pct != null ? n(ls.collect.kept_pct) : lastKeptPct;

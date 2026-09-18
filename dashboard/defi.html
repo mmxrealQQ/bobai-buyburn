@@ -61,6 +61,7 @@
     .pf-src .k{color:var(--muted);white-space:nowrap}
     .pf-src .v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
     .pf-src .up .v{color:#3fe09a}.pf-src .down .v{color:#ff8f6b}
+    @media(max-width:400px){.pf-src>div{padding:9px 8px;gap:6px;font-size:.8rem}}
     .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     @media(max-width:900px){.pf-grid{grid-template-columns:1fr}}
     .pf-list{list-style:none;margin:0;padding:0;font-size:.84rem;line-height:1.6}
@@ -135,14 +136,14 @@
 
   <div class="lp-part" id="steps">
     <div class="sh fi"><h2>How it <em>works</em></h2>
-      <p class="sh-sub">One PancakeSwap V3 position on BNB Chain, in the CAKE/BNB 0.05% pool, run by a program that reads and decides once a day and checks the range every hour. Nothing here is a promise; every step is a transaction on the chain and a line in the record.</p>
+      <p class="sh-sub">One PancakeSwap V3 range on BNB Chain, in the CAKE/BNB 0.05% pool &mdash; with a small reserve range below the price when BNB waits &mdash; run by a program that reads and decides once a day and checks the range every hour. Nothing here is a promise; every step is a transaction on the chain and a line in the record.</p>
     </div>
     <div class="agt-two">
     <div class="agt-flow fi">
       <h3>The money</h3>
       <ol class="agt-steps">
         <li><span class="agt-i">1</span><div><b>In</b><span>What other AIs pay this project &mdash; a few cents per pool watch or per delivered job &mdash; lands in <a href="https://bscscan.com/address/0x690E950214980BC329823A2DB2fD90C06Bd54dE4" target="_blank" rel="noopener">the income wallet</a>. Once a day it is sold for BNB and sent to <a href="https://bscscan.com/address/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the DeFi wallet</a>, together with a slice of the trading tax and what the operator puts in by hand.</span></div></li>
-        <li><span class="agt-i">2</span><div><b>At work</b><span>The DeFi wallet holds one position in the PancakeSwap V3 CAKE/BNB 0.05% pool &mdash; not the $BOBAI pool: the position earns on other people&rsquo;s trades. That pool is the operator&rsquo;s decision (Sep 11, 2026); the agent does not move, it gets better where it is. The capital stays; it is never withdrawn.</span></div></li>
+        <li><span class="agt-i">2</span><div><b>At work</b><span>The DeFi wallet holds its main range in the PancakeSwap V3 CAKE/BNB 0.05% pool, and beside it a reserve range when BNB arrives while the main range is all CAKE &mdash; not the $BOBAI pool: the position earns on other people&rsquo;s trades. That pool is the operator&rsquo;s decision (Sep 11, 2026); the agent does not move, it gets better where it is. The capital stays; it is never withdrawn.</span></div></li>
         <li><span class="agt-i">3</span><div><b>Out</b><span>Of what the position earns, half stays as capital so it grows out of its own fees, and half buys $BOBAI that stays in <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff?a=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A" target="_blank" rel="noopener">the agent&rsquo;s own wallet</a>, never sold &mdash; the operator&rsquo;s rule since Sep 9, 2026.</span></div></li>
       </ol>
     </div>
@@ -190,6 +191,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=79" defer></script>
+<script src="app.js?v=80" defer></script>
 </body>
 </html>

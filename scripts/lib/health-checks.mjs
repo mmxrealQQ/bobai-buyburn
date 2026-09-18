@@ -66,6 +66,56 @@ export const dailyOnTime = (flag, closesUtc, now = new Date()) => {
   const due = now.getUTCHours() >= closesUtc ? day(now) : day(new Date(now.getTime() - 86400000));
   return typeof flag === 'string' && flag >= due;
 };
+// THE DeFi AGENT, WATCHED (2026-09-18). Until now the only things known about
+// it each morning were that its card went out and its page loads. On 09-16/17
+// it stood still for a day — every step answering, politely and with ok:true,
+// that two positions were "a decision for a person" — and nothing here could
+// see it. What is read: how old the last ten-minute look and the last daily
+// run are, whether a run failed, whether a step is waiting for a person,
+// whether the price has been out of the range longer than the wait allows,
+// and whether the wallet still holds the ranges the record names. Pure over
+// what it is given, so it is pinned below with the day it would have caught.
+export function defiVerdicts({ rec, portfolio = null, owners = null, wallet = null, now = Date.now() }) {
+  const out = [];
+  const add = (label, pass, detail = '') => out.push({ label, pass: !!pass, detail });
+  if (!rec || !rec.last) { add('the DeFi agent record answers', false, 'no record'); return out; }
+  const ageMin = (t) => (t ? (now - Date.parse(t)) / 60000 : null);
+  const look = rec.last_check && rec.last_check.at ? rec.last_check : rec.last;
+  const lookAge = ageMin(look.at), dayAge = ageMin(rec.last.at);
+  // Every ten minutes; three missed looks is a stopped cron, not a late one.
+  add('DeFi agent looked at its position in the last 35 min', lookAge != null && lookAge < 35, lookAge == null ? 'no timestamp' : `last look ${Math.round(lookAge)} min ago`);
+  add('DeFi agent ran its day (04:23 UTC) in the last 26 h', dayAge != null && dayAge < 26 * 60, dayAge == null ? 'no timestamp' : `last daily run ${(dayAge / 60).toFixed(1)} h ago`);
+  const stepsOf = (e) => Object.entries((e && e.steps) || {}).flatMap(([k, v]) => (Array.isArray(v) ? v : [v]).map((x) => [k, x || {}]));
+  const all = [...stepsOf(rec.last), ...stepsOf(rec.last_check)];
+  const errs = all.filter(([, x]) => x.error).map(([k, x]) => `${k}: ${String(x.error).slice(0, 80)}`);
+  add('no step of the last run or look failed', rec.last.ok !== false && (rec.last_check ? rec.last_check.ok !== false : true) && !errs.length, errs[0] || (portfolio && portfolio.day && portfolio.day.errors ? `${portfolio.day.errors} error(s) in the last 24 h` : ''));
+  const waits = all.filter(([, x]) => /decision (for )?a person|a person should make/i.test(String(x.why || ''))).map(([k, x]) => `${k}: ${String(x.why).slice(0, 90)}`);
+  add('no step is waiting for a person', !waits.length, waits[0] || '');
+  const rb = (rec.last_check && rec.last_check.steps && rec.last_check.steps.rebalance) || (rec.last.steps && rec.last.steps.rebalance) || {};
+  const outH = portfolio && portfolio.pool && portfolio.pool.outside_hours != null ? Number(portfolio.pool.outside_hours) : null;
+  const waitH = rb.wait_h != null ? Number(rb.wait_h) : 24;
+  add('the range is not left longer than its wait allows', outH == null || outH <= waitH + 3, outH == null ? 'in range or at its edge' : `out of range for ${outH.toFixed(1)} h, the wait is ${waitH} h`);
+  if (owners && rec.ladder) {
+    const mine = (id) => id == null || (owners[String(id)] && wallet && String(owners[String(id)]).toLowerCase() === String(wallet).toLowerCase());
+    const named = [rec.ladder.main, rec.ladder.reserve].filter((x) => x != null);
+    add('the wallet holds the ranges the ladder record names', named.length > 0 && named.every(mine), named.map((id) => `#${id} ${mine(id) ? 'held' : 'NOT held'}`).join(', ') || 'the record names no range');
+  }
+  return out;
+}
+const defiVerdictsHold = () => {
+  const now = Date.parse('2026-09-17T03:00:00Z');
+  const W = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
+  const stood = { ladder: { main: '7450561', reserve: '7450613' }, last: { at: '2026-09-16T04:23:00Z', ok: true, steps: { rebalance: { acted: false, why: 'this wallet holds 2 positions — which one to re-set is a decision for a person' } } }, last_check: { at: '2026-09-17T02:50:00Z', ok: true, steps: { increase: { acted: false, why: 'this wallet holds 2 positions — which one to grow is a decision for a person' } } } };
+  const red = (v, re) => v.some((c) => !c.pass && re.test(c.label));
+  const a = defiVerdicts({ rec: stood, owners: { 7450613: W }, wallet: W, now });
+  const fine = { ladder: { main: '7451444', reserve: '7461743' }, last: { at: '2026-09-17T00:00:00Z', ok: true, steps: { rebalance: { acted: false, why: 'the price is inside the range — nothing to re-set' } } }, last_check: { at: '2026-09-17T02:50:00Z', ok: true, steps: {} } };
+  const b = defiVerdicts({ rec: fine, portfolio: { pool: { outside_hours: null }, day: { errors: 0 } }, owners: { 7451444: W, 7461743: W }, wallet: W, now });
+  const stale = defiVerdicts({ rec: { ...fine, last_check: { at: '2026-09-17T01:00:00Z', ok: true, steps: {} } }, now });
+  const failed = defiVerdicts({ rec: { ...fine, last_check: { at: '2026-09-17T02:50:00Z', ok: false, steps: { collect: { error: 'Address "undefined" is invalid' } } } }, now });
+  const stuck = defiVerdicts({ rec: fine, portfolio: { pool: { outside_hours: 30 } }, now });
+  return red(a, /waiting for a person/) && red(a, /holds the ranges/) && b.every((c) => c.pass) && b.length === 6
+    && red(stale, /last 35 min/) && red(failed, /failed/) && red(stuck, /longer than its wait/);
+};
 const dailyOnTimeHolds = () => {
   const at = (h) => new Date(Date.UTC(2026, 8, 17, h, 30));
   const pins = [[dailyOnTime('2026-09-17', 9, at(10)), true], [dailyOnTime('2026-09-16', 9, at(10)), false], [dailyOnTime('2026-09-16', 9, at(7)), true],
@@ -82,6 +132,7 @@ const RPC = rpc;
 const results = [];
 const ok = (area, name, good, detail = '') => results.push({ area, name, good, detail });
 ok('Health', 'the daily-post rule passes its own pins', dailyOnTimeHolds());
+ok('Health', 'the DeFi agent checks pass their own pins (the day it stood still reads red)', defiVerdictsHold());
 
 // ---- the bots -------------------------------------------------------------
 {
@@ -417,6 +468,30 @@ ok('Health', 'the daily-post rule passes its own pins', dailyOnTimeHolds());
   try { src = await client.getBalance({ address: SOURCE.address }); } catch { src = null; }
   ok('Gas', 'the refill source holds its reserve', src !== null && src >= SOURCE.reserve,
     src === null ? 'balance unreadable' : `${bnb(src)} against a ${bnb(SOURCE.reserve)} reserve — this is the wallet to top up by hand`);
+}
+
+// ---- the DeFi agent --------------------------------------------------------
+{
+  const [r, pf] = await Promise.all([getJson(`${AGENT}/lp/agent?format=json`), getJson(`${AGENT}/lp/portfolio?format=json`)]);
+  const rec = r.json;
+  ok('DeFi', 'the DeFi agent record answers', !!(rec && rec.last), r.error || (r.html ? 'HTML fallback' : ''));
+  if (rec && rec.last) {
+    const wallet = rec.last.wallet || '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
+    // Who holds the ranges the record names, asked of the position manager.
+    // A burnt id reverts: that is "not held", which is the finding.
+    let owners = null;
+    if (rec.ladder && (rec.ladder.main != null || rec.ladder.reserve != null)) {
+      owners = {};
+      const client = createPublicClient({ chain: bsc, transport: http(RPC) });
+      for (const id of [rec.ladder.main, rec.ladder.reserve].filter((x) => x != null)) {
+        try { owners[String(id)] = await client.readContract({ address: '0x46a15b0b27311cedf172ab29e4f4766fbe7f4364', abi: [{ type: 'function', name: 'ownerOf', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] }], functionName: 'ownerOf', args: [BigInt(id)] }); }
+        catch (e) { owners[String(id)] = /revert|nonexistent|invalid token/i.test(String(e.shortMessage || e.message)) ? null : undefined; }
+      }
+      // An RPC that did not answer is not a finding: leave the check out.
+      if (Object.values(owners).some((v) => v === undefined)) owners = null;
+    }
+    for (const c of defiVerdicts({ rec, portfolio: pf.json, owners, wallet })) ok('DeFi', c.label, c.pass, c.detail);
+  }
 }
 
 // ---- the site -------------------------------------------------------------

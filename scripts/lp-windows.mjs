@@ -34,7 +34,7 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, deriveWidths, appendTick, priceSeries, MAX_WINDOWS, MAX_TICKS, calibration } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, deriveWidths, appendTick, priceSeries, MAX_WINDOWS, MAX_TICKS, calibration, widthShare, inRangeFeeRate } from '../worker-agent/lp-windows.js';
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse, DERIVED_WIDTHS, RECORD_WIDTHS, widthClassOf } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
@@ -149,7 +149,8 @@ if (SELF_TEST) {
   // cannot earn back, the wide one keeps most of what it earns. (0.4% an
   // hour, the fixture until 2026-09-11, is a 12% day: once a re-set is
   // charged what its range lost against holding, no width earns on that.)
-  const driftRows = [row(1, true, 0.06), row(5, true, 0.03), row(10, true, 0.015)];
+  // The rows stand in the proportion real ones do (widthShare): the replay reads every width's rate off the row that held.
+  const driftRows = [row(1, true, 0.02), row(5, true, 0.02 * widthShare(1, 5)), row(10, true, 0.02 * widthShare(1, 10))];   // ±1% at 0.02 a window: what the live record reads
   const drift = Array.from({ length: 30 }, (_, i) => pwin(i, 100 * Math.pow(1.0015, i), driftRows));
   e1 = earningsTest(drift, 1, C); e5 = earningsTest(drift, 5, C); const e10 = earningsTest(drift, 10, C);
   t('a drifting price makes the narrow width re-set again and again', e1.resets > e5.resets && e5.resets >= e10.resets);
@@ -343,9 +344,14 @@ if (SELF_TEST) {
   const wReal = { rows: [{ width: 1, held: false, in_range_pct: 80, crossings: 2, fees: 0.02, net: 0.01 }, { width: 2, held: true, in_range_pct: 100, crossings: 0, fees: 0.01, net: 0.01 }, { width: 5, held: true, in_range_pct: 100, crossings: 0, fees: 0.004, net: 0.004 }, { width: 10, held: true, in_range_pct: 100, crossings: 0, fees: 0.002, net: 0.002 }, { width: 'full', held: true, in_range_pct: 100, crossings: 0, fees: 0.0001, net: 0.0001 }] };
   const dw = deriveWidths(wReal);
   t(`the derived widths ${DERIVED_WIDTHS.join('/')} are added to a window`, DERIVED_WIDTHS.every((w) => dw.rows.some((r) => r.width === w && r.derived)) && dw.rows.length === wReal.rows.length + DERIVED_WIDTHS.length);
-  t('a derived width\'s fees are the wider neighbour\'s times neighbour/width (±3% = ±5% × 5/3)', Math.abs(dw.rows.find((r) => r.width === 3).fees - 0.004 * 5 / 3) < 1e-6 && Math.abs(dw.rows.find((r) => r.width === 1.5).fees - 0.01 * 2 / 1.5) < 1e-6);
+  t('a derived width\'s fees are the wider neighbour\'s by the liquidity law (±3% from ±5%, ±1.5% from ±2%) — a little under neighbour/width, which the record\'s own rows never followed', Math.abs(dw.rows.find((r) => r.width === 3).fees - 0.004 * widthShare(5, 3)) < 1e-6 && Math.abs(dw.rows.find((r) => r.width === 1.5).fees - 0.01 * widthShare(2, 1.5)) < 1e-6 && widthShare(5, 3) < 5 / 3 && widthShare(5, 3) > 1.6);
   t('… and whether it held comes off the narrower neighbour (±1.5% did not hold because ±1% did not; ±3% held because ±2% did)', dw.rows.find((r) => r.width === 1.5).held === false && dw.rows.find((r) => r.width === 1.5).crossings === 2 && dw.rows.find((r) => r.width === 3).held === true);
-  t('a derived row\'s net carries the narrower neighbour\'s re-set cost (±1.5%: fees 0.0133 minus the 0.01 that ±1% paid)', Math.abs(dw.rows.find((r) => r.width === 1.5).net - (0.01 * 2 / 1.5 - 0.01)) < 1e-6);
+  t('a derived row\'s net carries the narrower neighbour\'s re-set cost (±1.5%: its fees minus the 0.01 that ±1% paid)', Math.abs(dw.rows.find((r) => r.width === 1.5).net - (0.01 * widthShare(2, 1.5) - 0.01)) < 1e-6);
+  // What a range earns while the price is in it (2026-09-18).
+  t('the law is the record\'s own: ±5% earns 1.931 times ±10% while both hold the price, not twice', Math.abs(widthShare(10, 5) - 1.931) < 0.001 && Math.abs(0.009614 / 0.004979 - widthShare(10, 5)) < 0.002);
+  const lastLive = { minutes: 60, rows: [{ width: 0.25, held: false, in_range_pct: 17.3, fees: 0.062184 }, { width: 1, held: false, in_range_pct: 82.6, fees: 0.039728 }, { width: 2, held: true, in_range_pct: 100, fees: 0.023511 }, { width: 5, held: true, in_range_pct: 100, fees: 0.009614 }, { width: 'full', held: true, in_range_pct: 100, fees: 0.000232 }] };
+  t('a narrow width\'s rate while inside is read off the narrowest row that held, not off its own row — which already left out the time it was outside', Math.abs(inRangeFeeRate(lastLive, 0.25) - 0.023511 * widthShare(2, 0.25)) < 1e-9 && inRangeFeeRate(lastLive, 0.25) > 0.062184 * 2 && Math.abs(inRangeFeeRate(lastLive, 2) - 0.023511) < 1e-9 && Math.abs(inRangeFeeRate(lastLive, 5) - 0.009614) < 0.0001);
+  t('… scaled from the window\'s minutes, and a window where nothing held keeps the row\'s own figure', Math.abs(inRangeFeeRate({ ...lastLive, minutes: 30 }, 2) - 0.047022) < 1e-9 && Math.abs(inRangeFeeRate({ minutes: 60, rows: [{ width: 1, in_range_pct: 40, fees: 0.01 }] }, 1) - 0.01) < 1e-12 && inRangeFeeRate({ minutes: 60, rows: [] }, 1) === 0);
   t('a window without a wider neighbour gets no derived row there', !deriveWidths({ rows: [{ width: 5, held: true, fees: 0.004, net: 0.004, crossings: 0 }] }).rows.some((r) => r.width === 7));
   t('the verdict replays the derived widths and marks them', (() => { const v = verdict(dayFlat); const r3 = v.rows.find((r) => r.width === 3); return r3 && r3.derived === true && r3.earnings && r3.earnings.fees_usd > 0 && v.rows.find((r) => r.width === 5).derived === false; })());
   // The price tape: samples between the hourly heads, both ways.

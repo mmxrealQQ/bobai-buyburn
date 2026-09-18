@@ -1,4 +1,4 @@
-// The DeFi agent's three steps, written once.
+// The DeFi agent's steps, written once.
 //
 // worker-lp/index.js runs them daily with the keys as Worker secrets;
 // scripts/lp-agent.mjs runs the same functions from a laptop, plan by default.
@@ -12,14 +12,18 @@
 //             jobs) is sold for BNB and sent to the DeFi wallet
 //   collect   the position's fees are collected and sold for BNB; part of it
 //             stays as capital (FEE_SHARE_KEPT_PCT, half since 2026-09-04),
-//             the rest goes to the buyback wallet — only the fees, never the
-//             capital
+//             the rest buys $BOBAI the wallet holds (buyBobaiHold, since
+//             2026-09-09; the buyback wallet before) — only the fees, never
+//             the capital
 //   rebalance a range the price has left is re-set beside the price, on
 //             the side the price came from, with the one token the old
 //             range ended in and no trade (one-sided, since 2026-09-16);
 //             the fees the old range owed are split the same way on the way
 //             (since 2026-09-08): the kept share is minted into the new
-//             capital, the rest goes to the buyback wallet before the mint
+//             capital, the rest buys $BOBAI before the mint
+//   ladder    BNB that arrives while the main range is all of the other side
+//             opens a reserve range below the price, WBNB only, no trade
+//             (since 2026-09-16); the two merge at the main range's re-set
 //   increase  BNB above the reserve is put into the same position — the
 //             income the sweep brought and the fee share the collect kept
 //
@@ -31,6 +35,7 @@ import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } fr
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
+  MIN_GAS_BNB,
 } from './lp-guards.js';
 
 export const ADDR = {
@@ -47,8 +52,8 @@ export const ADDR = {
   V3_SWAP_ROUTER: '0x1b81d678ffb9c0263b24a97847620c99d213eb14',
   V3_QUOTER: '0xb048bbc1ee6b733fffcfb9e9cef7375518e25997',
   WBNB: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
-  // Where collected fees go: the buyback bot's wallet, which buys and burns
-  // $BOBAI as it always has. One burn path, one record.
+  // Where collected fees went until 2026-09-09. Nothing in this file sends
+  // to it any more; the address stays for the records that name it.
   BUYBACK_WALLET: '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
   // The agent's own profit share buys this and holds it (2026-09-09); it does
   // not go to the buyback wallet any more. BOBAI is a 3% fee-on-transfer token.
@@ -760,7 +765,8 @@ export async function planRebalance(pub, address, { record = null, widthOverride
   }
   // A wallet without a position is never "in range"; resume says the plan is
   // a mint from what the wallet holds, and the guard sizes it like a re-set.
-  const state = { positions: p.positions, resume, inRange: poolInfo && !resume ? poolInfo.inRange : false, atEdge: !!(left && left.outside && !left.left), side: left ? left.side : null, ticksAway: left ? left.ticks_away : null, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
+  const walletBnb = bn(await pub.getBalance({ address }));
+  const state = { positions: p.positions, resume, walletBnb, inRange: poolInfo && !resume ? poolInfo.inRange : false, atEdge: !!(left && left.outside && !left.left), side: left ? left.side : null, ticksAway: left ? left.ticks_away : null, width, hoursOfPrices: record?.hours_of_prices || 0, valueBnb };
   return {
     step: 'rebalance', state, no: refuseRebalance(state), resume, oneSided,
     tokenId: p.tokenId, pos: p.pos, poolInfo, spacing, other, wbnbIs0, width, ticks, target, trade,
@@ -1064,7 +1070,15 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // zero there; a mint the price has entered would then take almost
   // nothing without reverting. Here it reverts instead, and the hour after
   // finishes the re-set from the wallet (resume).
-  const sqrtNow = (await readPool(pub, plan.pos)).sqrtP;
+  // A ONE-SIDED RANGE IS PLACED WHERE THE PRICE IS NOW (2026-09-18), not where
+  // it was when the plan was read: between the two lie the merge, the unwind,
+  // the share's sale and the $BOBAI buy. The plan's ticks start 20-29 ticks
+  // from the plan's price; a price that crossed them by now would take the
+  // held token only in part — dust liquidity, or a revert with the old range
+  // already burnt. Beside the price now it takes all of it, always.
+  const poolNow = await readPool(pub, plan.pos);
+  const sqrtNow = poolNow.sqrtP;
+  if (plan.oneSided && plan.width != null && plan.spacing) plan = { ...plan, ticks: ticksAdjacent(poolNow.tick, plan.width, plan.spacing, plan.oneSided) };
   const mintMins = plan.oneSided
     ? (() => { const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired); return { amount0Min: (a.amount0 * MIN_SHARE) / 100n, amount1Min: (a.amount1 * MIN_SHARE) / 100n }; })()
     : minsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
@@ -1425,7 +1439,11 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
       reserveLeft = lf.left;
       reserveInfo = { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], side: reserveSide, value_bnb: Number(rs.valueBnb.toFixed(6)), left: lf.left, ticks_beyond_edge: lf.ticks_away };
     }
-    const pick = Array.isArray(record?.rows) && record.rows.some((r) => r.earnings_7d) ? pickWidth(record.rows) : record?.earnings_pick || null;
+    // The same pick the main range's plan makes, with the width the main
+    // range is in as the one in use (until 2026-09-18 the ladder picked
+    // without it: the reserve took ±10% beside a main range kept at ±7%).
+    const inUse = widthClassOf([Number(p.pos[5]), Number(p.pos[6])]);
+    const pick = (Array.isArray(record?.rows) && record.rows.some((r) => r.earnings_7d) && (record.earnings_pick || record.hours_of_prices >= 24) ? pickWidth(record.rows, { current: inUse }) : null) || record?.earnings_pick || null;
     width = widthOverride ?? pick?.width ?? null;
     // A range below the price: the price is "above" it (ticksAdjacent's side).
     if (width != null) ticks = ticksAdjacent(poolInfo.tick, width, spacing, 'above');
@@ -1433,7 +1451,8 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
   const positionsHeld = p.positions === 1 ? (p.reserve ? 2 : 1) : p.positions;
   const decision = ladderDecision({ positions: positionsHeld, reserve: !!p.reserve, mainSide, reserveSide, spendableBnb: bn(spendRaw + heldWbnb), reserveLeft, reserveBnb });
   let no = null;
-  if (decision.act && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') && (width == null || !ticks)) no = 'the width record names no width yet — the reserve range waits for a day of prices';
+  if (decision.act && decision.act !== 'merge' && !(bn(bal) >= MIN_GAS_BNB)) no = `the wallet holds ${bn(bal).toFixed(6)} BNB, below the ${MIN_GAS_BNB} BNB it takes to be sure of paying the step through`;
+  else if (decision.act && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') && (width == null || !ticks)) no = 'the width record names no width yet — the reserve range waits for a day of prices';
   return {
     step: 'ladder', act: decision.act, why: decision.why, no,
     tokenId: p.tokenId, pos: p.pos, reserve: p.reserve || null, poolInfo, spacing, wbnbIs0, spendRaw, heldWbnb, ticks, width,
@@ -1465,7 +1484,11 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     if (wbnb <= 0n) throw new Error('no WBNB to mint the reserve range from');
     await ensureAllowance(pub, send, ADDR.WBNB, ADDR.V3_POSITION_MANAGER, wbnb, 'allow the position manager to take WBNB (once)');
     const amount0Desired = plan.wbnbIs0 ? wbnb : 0n, amount1Desired = plan.wbnbIs0 ? 0n : wbnb;
-    const sqrtNow = (await readPool(pub, plan.pos)).sqrtP;
+    // Placed beside the price as it is now, not as the plan read it (see
+    // executeRebalance): the wrap or the unwind lies in between.
+    const poolNow = await readPool(pub, plan.pos);
+    const sqrtNow = poolNow.sqrtP;
+    if (plan.width != null && plan.spacing) plan = { ...plan, ticks: ticksAdjacent(poolNow.tick, plan.width, plan.spacing, 'above') };
     const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
     const idsBefore = await held();
     const receipt = await send(label, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',

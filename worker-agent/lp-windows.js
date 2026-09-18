@@ -167,12 +167,39 @@ export function mergeLogs(a, b) {
 //     every width is replayed over the recorded prices with the agent's own
 //     re-set delay and cost (see earningsTest); nothing until a day of prices.
 // THE WIDTHS BETWEEN THE REPLAYED ONES. For each derived width the row is
-// read off its wider replayed neighbour (fees times neighbour/width: the
-// 1/width law above), and whether it held, how often it crossed and what it
+// read off its wider replayed neighbour (fees by the liquidity law,
+// widthShare — until 2026-09-18 by neighbour/width, 2% too much at ±7%), and whether it held, how often it crossed and what it
 // netted off its narrower neighbour — a width that held at ±2% held at ±3%,
 // and a width that crossed at ±2% crossed at most as often at ±3%, so the
 // derived row is never rosier than the record allows. A window that lacks
 // either neighbour gets no derived row for that width. Pure; pinned.
+// WHAT A RANGE EARNS WHILE THE PRICE IS IN IT (2026-09-18). A centred ±w range
+// holds, per dollar, liquidity in proportion to 1 / (1 − 1/√(1+w)) — the V3
+// identity, not a fit: the record's own rows follow it to the digit (±5% to
+// ±10%: 0.009614 / 0.004979 = 1.931; the law says 1.931, "1/w" says 2). Two
+// ranges the price is inside see the same swaps, so their fees stand in that
+// proportion exactly. widthShare(W, w) is what a ±w range earns for every
+// dollar a ±W range earns while both hold the price. Pure; pinned.
+const liqPerUsd = (w) => 1 / (1 - 1 / Math.sqrt(1 + Number(w) / 100));
+export const widthShare = (fromWidth, toWidth) => liqPerUsd(toWidth) / liqPerUsd(fromWidth);
+// A window's row counts the fees of a range centred on the window's first
+// price, in hindsight, and only the swaps made while that range held the
+// price (in_range_pct). The earnings test follows its OWN range and asks
+// whether the price is inside it — so a narrow width was marked down twice
+// for the time it spends outside: once in the row, once by the test (±0.25%
+// read 40% too little over a week, ±0.5% 7%). The rate the test needs is
+// what the width earns per hour WHILE INSIDE: read off the narrowest
+// replayed row of the window that held the price throughout, by the law
+// above. A window where no row held (a move past ±10% inside the hour)
+// keeps the row's own figure. Pure; pinned.
+export function inRangeFeeRate(window, widthPct) {
+  const rows = Array.isArray(window?.rows) ? window.rows : [];
+  const hours = (window?.minutes || 37.5) / 60;
+  const held = rows.filter((r) => typeof r.width === 'number' && !r.derived && typeof r.fees === 'number' && Number(r.in_range_pct) >= 100).sort((a, b) => a.width - b.width)[0];
+  if (held) return (held.fees * widthShare(held.width, widthPct)) / hours;
+  const own = rows.find((r) => r.width === widthPct);
+  return own && typeof own.fees === 'number' ? own.fees / hours : 0;
+}
 export function deriveWidths(window, derived = DERIVED_WIDTHS) {
   const rows = Array.isArray(window?.rows) ? window.rows : [];
   const numeric = rows.filter((r) => isFinite(Number(r.width))).map((r) => ({ ...r, width: Number(r.width) }));
@@ -182,7 +209,7 @@ export function deriveWidths(window, derived = DERIVED_WIDTHS) {
     const wider = numeric.filter((r) => r.width > w).sort((a, b) => a.width - b.width)[0];
     const narrower = numeric.filter((r) => r.width < w).sort((a, b) => b.width - a.width)[0];
     if (!wider || !narrower || typeof wider.fees !== 'number') continue;
-    const fees = wider.fees * (wider.width / w);
+    const fees = wider.fees * widthShare(wider.width, w);
     out.push({
       width: w, derived: true, derived_from: [narrower.width, wider.width],
       held: !!narrower.held, in_range_pct: narrower.in_range_pct, crossings: narrower.crossings,
@@ -497,8 +524,7 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
     if (pt.window.at !== pt.at) samples += 1;
     const p = pt.price;
     if (p <= hi && p >= lo) {
-      const w = pt.window, row = w.rows.find((r) => r.width === widthPct);
-      fees += (row.fees / ((w.minutes || 37.5) / 60)) * dtH;
+      fees += inRangeFeeRate(pt.window, widthPct) * dtH;
       hoursIn += dtH; outRun = 0;
     } else {
       hoursOut += dtH;

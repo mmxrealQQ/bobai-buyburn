@@ -12,6 +12,7 @@ this folder is a cron; the crons are the `worker-*` folders.
 | `smoke-health-worker.mjs` | the morning health worker's two decisions: red is asked twice before it is reported, and the message (one line green, failing checks by name red), 9 pins both ways |
 | `smoke-whale.mjs` | the whale tracker's quiet floor ($5), retire rule (empty 7 daily snapshots) and one-screen recap, and the cron run dry at 06:05 (no gate may log an out-of-scope name), 29 pins both ways; `--render` shows the recap and the small-wallet line from the live KV |
 | `buy-fold-check.mjs` | one transaction is one buy: the buy alert (worker-tg-bot) and the Buy Drops minter (worker-nft-mint) fold a pair's Swap logs per transaction before sizing a buy — pinned with the split order of 2026-09-18 ($366 read as $184), the two copies compared letter for letter, 10 pins, offline |
+| `nft-gift-mint.mjs` | a Buy Drops NFT minted by hand for a buy the minter sized wrong (plan by default, `--confirm` sends): tier named by the person, rarity rolled by the slots left on chain as the worker rolls it, the id read off the receipt, the ledger entry printed for KV `recent_drops` — which MUST be put in, or the positional ids of the list shift by one |
 | `smoke-agent-surface.mjs` | does everything offered to a machine work end to end |
 | `site-audit.mjs` · `site-fix.mjs` | every page against one checklist; the fixer applies what the audit found |
 | `layout-audit.mjs` | does every page render at every width (real browser) |

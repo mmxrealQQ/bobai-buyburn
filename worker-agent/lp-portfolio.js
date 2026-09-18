@@ -69,7 +69,7 @@ export function lastDay(rec, now = Date.now()) {
 // beat: worth + the fees that left the position (into $BOBAI) + fees still
 // owed − gas. `points` is the series (capital_bnb, tick per run); each rise
 // in capital is an arrival at that run's price. Pure; pinned.
-export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, bobaiBnb = 0, owedBnb = 0, gasBnb = 0 } = {}) {
+export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, bobaiBnb = 0, owedBnb = 0, gasBnb = 0, waitingBnb = 0 } = {}) {
   const pts = (points || []).filter((p) => p && p.tick != null && Number(p.capital_bnb) > 0);
   if (!pts.length || tickNow == null || !(Number(valueNow) > 0)) return null;
   const priceAt = (tick) => { const raw = Math.pow(1.0001, Number(tick)); return wbnbIs0 ? 1 / raw : raw; };
@@ -83,13 +83,15 @@ export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, b
     prevCap = Math.max(prevCap, cap);
   }
   if (!(holding > 0)) return null;
-  const lp = Number(valueNow) + n(bobaiBnb) + n(owedBnb) - n(gasBnb);
+  // waitingBnb: fees a collect kept that still wait in the wallet as BNB —
+  // the agent's, outside the position, until the next increase takes them.
+  const lp = Number(valueNow) + n(bobaiBnb) + n(owedBnb) + n(waitingBnb) - n(gasBnb);
   const vs = lp - holding;
   return {
     holding_bnb: r5(holding), lp_bnb: r5(lp), vs_holding_bnb: r5(vs),
     vs_holding_pct: prevCap > 0 ? Math.round((vs / prevCap) * 10000) / 100 : null,
     arrivals: arrivals.length,
-    basis: "a wallet that held each arrival half as BNB, half as the other side at that run's price, against the position now plus the fees that left it as $BOBAI and the fees still owed, less gas",
+    basis: "a wallet that held each arrival half as BNB, half as the other side at that run's price, against the position now plus the fees that left it as $BOBAI, the fees still owed and the kept fees that wait in the wallet, less gas",
   };
 }
 
@@ -162,7 +164,18 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // Where the position was left: the newest tick the record saw.
   const tickNow = inc.tick ?? rb.tick ?? (pt ? pt.tick : null);
   const wbnbIs0 = rb.wbnb_is0 === true || (hist.slice().reverse().find((x) => x?.steps?.rebalance?.wbnb_is0 != null)?.steps.rebalance.wbnb_is0 === true);
-  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb });
+  const vsHold = holdingBenchmark(pts, { valueNow: value.now, tickNow, wbnbIs0, bobaiBnb: sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb, owedBnb: sum.fees_owed_now_bnb, gasBnb: p.gas_bnb, waitingBnb: sum.fees_kept_waiting_bnb });
+  // WHAT THE AGENT HOLDS BESIDE THE POSITION (2026-09-18). "Worth now" is the
+  // position; the result above it also counts what the position produced and
+  // no longer holds — $BOBAI bought (at what it cost), fees still owed, kept
+  // fees waiting in the wallet. Without this line worth − put in was a
+  // tenth of the result shown beside it. worth + beside − put in − gas = result.
+  const besideParts = [
+    { label: '$BOBAI held, at cost', bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb) },
+    { label: 'fees owed by the position', bnb: r5(sum.fees_owed_now_bnb) },
+    { label: 'kept fees waiting in the wallet', bnb: r5(sum.fees_kept_waiting_bnb) },
+  ].filter((x) => n(x.bnb) > 0);
+  const besideBnb = besideParts.reduce((a, x) => a + n(x.bnb), 0);
   const dayCount = (step) => day.filter((d) => d.step === step && !d.error).length;
   const daySummary = {
     resets: dayCount('rebalance'), top_ups: dayCount('increase'), collects: dayCount('collect'), sweeps: dayCount('sweep'), reserve_moves: dayCount('ladder'),
@@ -175,7 +188,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
     next,
     day: daySummary,
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
-    worth: { bnb: r4(value.now), usd: usd(value.now) },
+    worth: { bnb: r4(value.now), usd: usd(value.now), beside_bnb: r4(besideBnb), beside_usd: usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
     holdings: {
       position_bnb: r4(value.now), fees_owed_bnb: r5(sum.fees_owed_now_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
@@ -184,7 +197,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       // BNB it cost.
       bobai_usd: bobaiUsd > 0 ? Math.round(n(sum.bobai_held_units) * bobaiUsd * 100) / 100 : null,
       bobai_usd_price: bobaiUsd > 0 ? bobaiUsd : null,
-      wallet_bnb: r4(walletBnb),
+      wallet_bnb: r4(walletBnb), kept_waiting_bnb: r5(sum.fees_kept_waiting_bnb),
       // The ladder's reserve range (2026-09-16), when one stands: BNB below
       // the price, waiting to buy the other side through fees.
       // Where the reserve stands: 'wbnb' = below the price (a buy ladder), 'other' = the price fell through it (it waits to merge), 'both' = the price is inside it.

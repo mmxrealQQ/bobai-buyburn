@@ -1,30 +1,24 @@
-// The DeFi agent's daily tick: AI income into the position, the position's
-// fees into the buyback bot.
+// The DeFi agent's tick: AI income into the position, half of the position's
+// fees kept as capital, the other half into $BOBAI the agent holds.
 //
-// THE FLOW, as the user set it on 2026-09-02
+// THE FLOW, as the user set it on 2026-09-02 (fee rule as of 2026-09-09)
 //   1. everything the AI side earns (USD1 for watches, $U for delivered jobs)
 //      goes to the DeFi wallet, in BNB                      -> sweep
 //   2. the DeFi wallet's profit — the fees the position earns — is
 //      split: part stays as capital so the position grows out of its own
 //      earnings (LP_FEE_KEEP_PCT, half since 2026-09-04: "er soll auch davon
-//      wachsen"), the rest goes to the buyback wallet, which buys and burns
-//      $BOBAI as it always has; the capital stays in the position, always
-//                                                                  -> collect
-//   3. capital that arrived — swept income and the kept fee share — grows
-//      the same position                                           -> increase
-//   A re-set of the range (rebalance) pays the old range's fees out on the
-//   way and splits them the same: the kept share is minted into the new
-//   capital, the rest goes to the buyback wallet before the mint. Until
-//   2026-09-08 it folded all of them in, and since the collect step's floor
-//   was never reached between two re-sets, the buyback had seen nothing.
-// The buyback bot and the dev sweep are not touched by any of this. This
-// worker hands BNB to one of them and reads nothing from either.
-//
-// WHY THE BUYBACK WALLET AND NOT A BURN FROM HERE
-// The buyback bot already buys $BOBAI and burns it, unattended, and its burns
-// are the only ones the public burn log carries. A second buyer with its own
-// burn path would be a second set of numbers to reconcile. One burn path,
-// one record.
+//      wachsen"), the rest buys $BOBAI that stays in this wallet, never sold
+//      (since 2026-09-09; before that it went to the buyback wallet); the
+//      capital stays in the position, always                       -> collect
+//   3. a range the price has left is re-set beside the price, one-sided, with
+//      the token it ended in and no trade (2026-09-16); the old range's fees
+//      are split the same way on the way                           -> rebalance
+//   4. BNB that arrives while the main range is all of the other side opens
+//      a reserve range below the price (2026-09-16)                -> ladder
+//   5. capital that arrived — swept income, the kept fee share, deposits —
+//      grows the same position                                     -> increase
+// The buyback bot and the dev sweep are not touched by any of this; this
+// worker sends them nothing and reads nothing from either.
 //
 // The three steps live in shared/lp-agent.js, shared with the hand script
 // scripts/lp-agent.mjs — the same functions, so what a person can plan on a
@@ -62,6 +56,14 @@ async function readLadder(env) {
   catch { return { main: null, reserve: null, since: null }; }
 }
 async function writeLadder(env, ladder) { await env.AGENT.put(LADDER_KEY, JSON.stringify(ladder)); }
+// WHAT WAS SENT IS RECORDED, WHATEVER KV DOES AFTERWARDS (2026-09-18). The KV
+// writes that follow a step's transactions used to sit in the same try: a put
+// that threw turned a re-set that had happened into `{ error, txs }` without
+// its new position, its fees or its $BOBAI — the money flow never counted it
+// and the ladder record went stale. They run on their own now; a failure is
+// named beside the result (`kv_error`), and ladderHeal follows the chain on
+// the next tick.
+async function afterSend(fn) { try { await fn(); return {}; } catch (e) { return { kv_error: String(e.message || e).slice(0, 200) }; } }
 // relocate sits before rebalance: a day on which the pool record's switch
 // rule says "move" ends with the position in the new pool, and the re-set
 // step then finds it in range. It runs in the daily tick only.
@@ -346,15 +348,15 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
         if (lp2.act === 'merge') {
           const m = await executeLadder(pub, lpWallet(), lp, lp2, () => {}, { txs });
           merged = { merged_reserve: m.merged_reserve, reserve_fees_folded: m.reserve_fees_folded };
-          ladder.reserve = null; await writeLadder(env, ladder);
+          ladder.reserve = null; Object.assign(merged, await afterSend(() => writeLadder(env, ladder)));
         }
       }
       // A re-set a deposit forced takes the deposit with it: wrapped after
       // the unwind, minted with the rest, no sell-then-buy-back.
       const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, wrapFirst: !!forced, txs });
-      await env.AGENT.delete(OUT_SINCE_KEY);
-      if (done.new_position) { ladder.main = String(done.new_position); ladder.since = ladder.since || at; await writeLadder(env, ladder); }
-      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...(merged || {}), ...done };
+      if (done.new_position) { ladder.main = String(done.new_position); ladder.since = ladder.since || at; }
+      const kv = await afterSend(async () => { await env.AGENT.delete(OUT_SINCE_KEY); if (done.new_position) await writeLadder(env, ladder); });
+      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...(merged || {}), ...done, ...kv };
     } catch (e) {
       return { ...plan.summary, ...forcedNote, acted: txs.length > 0, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
@@ -401,8 +403,9 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       const done = await executeLadder(pub, lpWallet(), lp, plan, () => {}, { txs });
       // The record on KV and the one this tick holds in hand: the increase
       // step that follows must read the wallet through the new reserve too.
-      if (done.new_reserve) { ladder.main = plan.summary.position; ladder.reserve = String(done.new_reserve); ladder.since = ladder.since || at; await writeLadder(env, ladder); }
-      return { ...base, acted: true, ...done };
+      let kv = {};
+      if (done.new_reserve) { ladder.main = plan.summary.position; ladder.reserve = String(done.new_reserve); ladder.since = ladder.since || at; kv = await afterSend(() => writeLadder(env, ladder)); }
+      return { ...base, acted: true, ...done, ...kv };
     } catch (e) {
       return { ...base, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
@@ -465,7 +468,11 @@ async function record(env, entry, partial = false) {
     const { kept, dropped } = trimHistory(st.history, entry);
     if (dropped.length) {
       const arch = JSON.parse((await env.AGENT.get(ARCHIVE_KEY)) || 'null') || { what_this_is: 'Runs the DeFi agent record no longer holds (it keeps the newest 200): the writer moves them here, oldest first, and every total the agent worker reports still counts them.', entries: [] };
-      arch.entries = (Array.isArray(arch.entries) ? arch.entries : []).concat(dropped);
+      // Idempotent: if the archive put went through and the record's put after
+      // it did not, the same oldest runs are dropped again on the next trim —
+      // a run already in the archive (by its `at`) is not appended twice.
+      const have = new Set((Array.isArray(arch.entries) ? arch.entries : []).map((x) => x && x.at));
+      arch.entries = (Array.isArray(arch.entries) ? arch.entries : []).concat(dropped.filter((x) => x && !have.has(x.at)));
       await env.AGENT.put(ARCHIVE_KEY, JSON.stringify(arch));
     }
     st.history = kept;

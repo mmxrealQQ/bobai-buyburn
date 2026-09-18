@@ -199,6 +199,9 @@ if (SELF) {
   is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0104));
   is('produced = the BOBAI share + what was kept', near(fl.in.fees.bnb, fl.out.bobai_bnb + fl.out.kept_as_capital_bnb));
   is('the increase counts the BNB it put in — its own gas is on the gas line, not in here too (until 2026-09-18 it was in both, and left the profit twice)', near(fl.out.into_position_bnb, 0.0101 - 0.00003) && fl.out.increases === 1);
+  // Kept fees that wait in the wallet (2026-09-18): the fixture's last collect (09-09, kept 0.0005) came after its last increase.
+  is('fees a collect kept after the last increase still wait: counted as waiting, capped by what the wallet has above its reserve', near(fl.waiting.kept_fees_bnb, 0.0005) && near(moneyFlow({ ...rec, last: { ...rec.last, steps: { ...rec.last.steps, increase: { spendable_bnb: 0.0002 } } } }).waiting.kept_fees_bnb, 0.0002));
+  is('… and an increase after it takes them in: nothing waits', near(moneyFlow({ ...rec, history: [...rec.history, { at: '2026-09-10T05:00:00Z', ok: true, acted: true, steps: { increase: { acted: true, bnb_spent: '0.006', txs: [] } } }] }).waiting.kept_fees_bnb, 0));
   const forcedRec = { history: [{ at: '2026-09-20T10:00:00Z', ok: true, acted: true, steps: { rebalance: { acted: true, new_position: '10', wrapped_waiting_bnb: 0.4, txs: [{ gas_bnb: 0.00005 }] } } }] };
   is('a re-set forced by a deposit wraps it into its own mint: that is capital put in, counted once', near(moneyFlow(forcedRec).out.into_position_bnb, 0.4) && near(moneyFlow({ history: [{ ...forcedRec.history[0], steps: { rebalance: { ...forcedRec.history[0].steps.rebalance, wrapped_waiting_bnb: undefined } } }] }).out.into_position_bnb, 0));
   is('three re-sets', fl.out.resets === 3);
@@ -433,10 +436,12 @@ if (SELF) {
   // plan functions over a chain that answers from a table — no RPC.
   {
     const CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', POOL = '0xafb2da14056725e3ba3a30dd846b6bbbd7886c56', FACT = '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865', ME = ADDR.LP_WALLET;
-    const tickNow = -57900;   // fell out of the old main range (-57860 …), inside the reserve (-59000 … -57090)
+    let tickNow = -57900;   // fell out of the old main range (-57860 …), inside the reserve (-59000 … -57090)
     const chain = ({ cake, wbnb = 0n, ids = [7461743n] }) => ({
       getBalance: async () => 6n * 10n ** 15n,
       simulateContract: async () => ({ result: [0n, 0n] }),
+      getGasPrice: async () => 100000000n,
+      waitForTransactionReceipt: async () => ({ status: 'success', gasUsed: 300000n, effectiveGasPrice: 100000000n, logs: [{ address: ADDR.V3_POSITION_MANAGER, topics: ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', '0x' + '0'.repeat(64), '0x' + ME.slice(2).toLowerCase().padStart(64, '0'), '0x' + (7470001n).toString(16).padStart(64, '0')] }] }),
       readContract: async ({ address, functionName, args }) => {
         const to = String(address).toLowerCase();
         if (functionName === 'balanceOf') return to === ADDR.V3_POSITION_MANAGER ? BigInt(ids.length) : to === CAKE ? cake : to === ADDR.WBNB ? wbnb : 0n;
@@ -450,6 +455,8 @@ if (SELF) {
         if (functionName === 'token0') return CAKE;
         if (functionName === 'token1') return ADDR.WBNB;
         if (functionName === 'fee') return 500;
+        if (functionName === 'allowance') return (1n << 256n) - 1n;
+        if (functionName === 'quoteExactInputSingle') return [args[0].amountIn / 300n, 0n, 0, 0n];
         throw new Error(`the table has no answer for ${functionName}`);
       },
     });
@@ -474,6 +481,21 @@ if (SELF) {
     is('… a record without a reserve reads the main range alone, a stranger beside it or not', (await readPosition(chain({ cake: 0n, ids: [999001n, 7451444n] }), ME, { main: '7451444', reserve: null })).positions === 1);
     is('… and with neither of its ids held the count decides as before', (await readPosition(chain({ cake: 0n, ids: [999001n, 999002n] }), ME, LAD)).positions === 2);
     is('a wallet stuffed with NFTs is never enumerated past the cap', (await heldIds(chain({ cake: 0n, ids: Array.from({ length: 500 }, (_, i) => BigInt(i + 1)) }), ME)).length === HELD_IDS_CAP);
+    // The whole resume, sent to a wallet that writes nothing down but the requests — and the price
+    // moves INTO the planned range between the plan and the mint (C16).
+    {
+      const sent = [];
+      const w = { account: { address: ME }, writeContract: async (req) => { sent.push(req); return `0x${sent.length}`; }, sendTransaction: async (req) => { sent.push(req); return `0x${sent.length}`; } };
+      const planned = await planRebalance(loose, ME, { record: REC, pool: POOL, ladder: LAD });
+      tickNow = planned.ticks.tickLower + 40;   // the price climbed past the planned lower tick
+      const done = await executeRebalance(loose, w, { address: ME }, planned, () => {}, { txs: [] });
+      const mint = sent.find((r) => r.functionName === 'mint');
+      is('the resume beside the reserve runs through: one mint, all of the other side, no swap, the id off the receipt', sent.length === 1 && !!mint && mint.args[0].amount0Desired === 450n * 10n ** 18n && mint.args[0].amount1Desired === 0n && done.swap === null && done.new_position === '7470001' && done.one_sided === 'above_price');
+      is('… placed beside the price as it is at the mint, not as the plan read it: the planned range the price had entered is not minted', mint.args[0].tickLower > tickNow && mint.args[0].tickLower !== planned.ticks.tickLower && mint.args[0].tickLower - tickNow >= 20 && mint.args[0].tickLower - tickNow < 30 && done.new_ticks[0] === mint.args[0].tickLower && mint.args[0].amount0Min > (450n * 10n ** 18n * 969n) / 1000n && mint.args[0].amount0Min <= (450n * 10n ** 18n * 97n) / 100n && mint.args[0].amount1Min === 0n);
+      tickNow = -57900;
+    }
+    is('a wallet that cannot be sure of paying a re-set through does not start one', /waits for BNB/.test(refuseRebalance({ positions: 1, inRange: false, atEdge: false, width: 7, valueBnb: 1.5, walletBnb: MIN_GAS_BNB - 0.0001 }) || '') && refuseRebalance({ positions: 1, inRange: false, atEdge: false, width: 7, valueBnb: 1.5, walletBnb: MIN_GAS_BNB }) === null && refuseRebalance({ positions: 1, inRange: false, atEdge: false, width: 7, valueBnb: 1.5 }) === null);
+    is('… nor a ladder step: the plan refuses below the gas floor and runs above it', await (async () => { tickNow = -59100; /* below the range: the main range is all of the other side */ const poor = { ...chain({ cake: 0n, wbnb: 5n * 10n ** 16n, ids: [7451444n] }), getBalance: async () => 10n ** 15n }; /* 0.05 WBNB waits wrapped, 0.001 BNB to pay with */ const rich = { ...chain({ cake: 0n, ids: [7451444n] }), getBalance: async () => 5n * 10n ** 16n }; const a = await planLadder(poor, ME, { record: REC, ladder: { main: '7451444', reserve: null } }); const b = await planLadder(rich, ME, { record: REC, ladder: { main: '7451444', reserve: null } }); tickNow = -57900; return a.act === 'mint_reserve' && /below the 0\.0015 BNB/.test(a.no || '') && b.act === 'mint_reserve' && b.no === null; })());
     const T = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', pad = (h) => '0x' + h.replace(/^0x/, '').padStart(64, '0');
     const receipt = { logs: [
       { address: CAKE, topics: [T, pad(ME), pad(POOL)], data: '0x' },

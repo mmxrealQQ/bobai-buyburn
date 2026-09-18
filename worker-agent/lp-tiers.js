@@ -101,15 +101,30 @@ export async function lpTierPlan(input = {}) {
   // position, often by a factor of fifty) and ignored dilution (overstating a
   // large position in a thin band). They pulled in opposite directions, which
   // is the worst way for two errors to sit in one number.
+  // WHAT REACHES LIQUIDITY, NOT WHAT TRADERS PAID (2026-09-18). fees_paid_usd
+  // is the pool fee on the measured turnover; PancakeSwap keeps a part of it
+  // for the protocol before liquidity sees any. Read on chain for the agent's
+  // own pool on 2026-09-13 (slot0.feeProtocol 3400 of 10000): 66% reaches
+  // liquidity in the 0.05% tier. The other tiers carry PancakeSwap's published
+  // split (V3 0.01%: 67%, 0.25% and 1%: 68%; V2: 0.17 of its 0.25 = 68%).
+  // Until now "your fees" were the traders' fees, about half too high; the
+  // ranking between tiers hardly moves, the dollars did.
+  const lpShare = (t) => {
+    const fee = Number(t.fee_pct);
+    if (/v2/i.test(String(t.tier || ''))) return 0.68;
+    return fee === 0.05 ? 0.66 : fee === 0.01 ? 0.67 : 0.68;
+  };
   const earned = (t, working) => {
     if (t.fees_paid_usd == null) return null;
     const denom = (working == null ? t.capital_usd : working) + capitalUsd;
-    return denom > 0 ? round(t.fees_paid_usd * (capitalUsd / denom), 6) : null;
+    return denom > 0 ? round(t.fees_paid_usd * lpShare(t) * (capitalUsd / denom), 6) : null;
   };
   const perTier = (m.tiers || []).map((t) => ({
     tier: t.tier,
     pool: t.pool,
     fee_pct: t.fee_pct,
+    // The part of the traders' fees that reaches liquidity; the rest is the protocol's.
+    fees_reaching_liquidity_pct: Math.round(lpShare(t) * 100),
     capital_in_pool_usd: t.capital_usd,
     // What of that is standing within the measured band of the current price.
     // Null means it could not be read, never zero.

@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4588 lines.
+# one fetch. 12 files, 4589 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3134,6 +3134,7 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 🌐 <a href="https://www.dextools.io/token/bobai">DEXTools.io</a>
 😉 <a href="https://funtok.io/coins/bob-6">FunTok</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
+🩷 <a href="https://tradegenius.com/asset/${BOBAI_TOKEN}?network=56">Genius</a>
 🐊 <a href="https://gmgn.ai/bsc/token/${BOBAI_TOKEN}">GMGN.AI</a>
 🫆 <a href="https://app.insightx.network/atlas/bsc/${BOBAI_TOKEN}">InsightX</a>
 

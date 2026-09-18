@@ -38,5 +38,20 @@ const dBad = [{ ...dOk[0], good: false, detail: 'last look 300 min ago' }, dOk[1
 ok(/1 of 2 checks FAILING — DeFi agent looked/.test(defiLine(dBad)) && renderHealthMessage(dBad, [dBad[0]], '2026-09-18').includes('🤖'), 'a red agent is said on its line too');
 ok(defiLine(first) === '' && defiLine([]) === '', 'a run without DeFi checks has no such line');
 
+// The buyback wallet's two looks: only a red second look is told, and the line it is measured against is the bot's own.
+{
+  const { secondLookMessage } = await import(pathToFileURL(path.join(ROOT, 'worker-health', 'index.js')).href);
+  const { buybackWalletVerdict, BUYBACK_ACTS_ABOVE_BNB, BUYBACK_WALLET } = await import(pathToFileURL(path.join(ROOT, 'scripts', 'lib', 'health-checks.mjs')).href);
+  const fs = await import('node:fs');
+  const bot = fs.readFileSync(path.join(ROOT, 'worker', 'index.js'), 'utf8');
+  const eth = (name) => Number((bot.match(new RegExp('const ' + name + " = parseEther\\('([0-9.]+)'\\)")) || [])[1]);
+  ok(Math.abs(eth('GAS_RESERVE') + eth('MIN_BNB') - BUYBACK_ACTS_ABOVE_BNB) < 1e-12, 'the line the check draws is the bot\'s own: GAS_RESERVE + MIN_BNB');
+  ok(fs.readFileSync(path.join(ROOT, 'buyback-bot.js'), 'utf8').includes(BUYBACK_WALLET), 'the wallet looked at is the one the bot\'s fallback script insists on');
+  const first = { bnb: 0.06, nonce: 10, at: 1000 };
+  const stuck = secondLookMessage(buybackWalletVerdict({ bnb: 0.07, nonce: 10, at: 661000 }, first));
+  ok(/Buyback bot/.test(stuck) && /nonce 10 at both looks, 11 min apart/.test(stuck), 'tax held through a run of the bot is told, with the nonce and the minutes');
+  ok(secondLookMessage(buybackWalletVerdict({ bnb: 0.07, nonce: 17, at: 661000 }, first)) === '' && secondLookMessage(buybackWalletVerdict({ bnb: 0.0031, nonce: 17 }, first)) === '', 'a bot that has sent since the first look is told to nobody');
+}
+
 if (fails.length) { console.error('SMOKE-HEALTH-WORKER FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-health-worker ok: 12 pins');
+console.log('smoke-health-worker ok: 16 pins');

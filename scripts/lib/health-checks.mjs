@@ -116,6 +116,48 @@ const defiVerdictsHold = () => {
   return red(a, /waiting for a person/) && red(a, /holds the ranges/) && b.every((c) => c.pass) && b.length === 6
     && red(stale, /last 35 min/) && red(failed, /failed/) && red(stuck, /longer than its wait/);
 };
+// THE BUYBACK BOT IS JUDGED BY THE MONEY, NOT BY ITS HEARTBEAT (2026-09-18).
+// Both money bots write their heartbeat in a `finally`: a bot that throws on its
+// first line, or can no longer send, is as green as one that works, and "last
+// burn" is informational by design (no volume, no burn). What a working bot
+// cannot do is leave tax lying: above 0.004 BNB (its GAS_RESERVE 0.003 +
+// MIN_BNB 0.001) it splits the wallet on its next ten-minute run. So: one look
+// above that line proves nothing (the tax may have just arrived) and asks for a
+// second look after the bot's next run; above it at BOTH looks with the same
+// nonce — a run went by and nothing was sent — is red. Read from the chain,
+// outside the bot's code. Pure; the second look is the health worker's.
+export const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
+export const BUYBACK_ACTS_ABOVE_BNB = 0.004;
+export function buybackWalletVerdict(look, prior = null) {
+  if (!look || !(look.bnb >= 0) || look.nonce == null) return { good: false, recheck: false, detail: 'the buyback wallet could not be read' };
+  const held = `${look.bnb.toFixed(5)} BNB`;
+  if (look.bnb <= BUYBACK_ACTS_ABOVE_BNB) return { good: true, recheck: false, detail: `${held} — under the ${BUYBACK_ACTS_ABOVE_BNB} BNB the bot acts from` };
+  if (!prior) return { good: true, recheck: true, detail: `${held} waits for the bot's next run — one look; the health worker looks again after that run` };
+  if (prior.bnb > BUYBACK_ACTS_ABOVE_BNB && prior.nonce === look.nonce) {
+    const mins = look.at && prior.at ? Math.round((look.at - prior.at) / 60000) : null;
+    return { good: false, recheck: false, detail: `held ${held} through a run of the bot and sent nothing (nonce ${look.nonce} at both looks${mins != null ? `, ${mins} min apart` : ''}) — the heartbeat is green either way` };
+  }
+  return { good: true, recheck: false, detail: `${held}, and the bot has sent since the first look (nonce ${prior.nonce} → ${look.nonce})` };
+}
+// When to look again: 90 seconds after the bot's next ten-minute mark, so a whole run lies between the looks.
+export const msToSecondLook = (now = Date.now()) => (600000 - (now % 600000)) + 90000;
+export async function readBuybackLook(rpc = 'https://bsc-dataseed.binance.org') {
+  try {
+    const client = createPublicClient({ chain: bsc, transport: http(rpc) });
+    const [wei, nonce] = await Promise.all([client.getBalance({ address: BUYBACK_WALLET }), client.getTransactionCount({ address: BUYBACK_WALLET })]);
+    return { bnb: Number(wei) / 1e18, nonce, at: Date.now() };
+  } catch { return null; }
+}
+const buybackVerdictHolds = () => {
+  const a = { bnb: 0.0521, nonce: 3117, at: 1000 }, b = { bnb: 0.0533, nonce: 3117, at: 661000 };
+  return buybackWalletVerdict({ bnb: 0.00298, nonce: 1 }).good === true && buybackWalletVerdict({ bnb: 0.00298, nonce: 1 }).recheck === false
+    && buybackWalletVerdict(a).good === true && buybackWalletVerdict(a).recheck === true
+    && buybackWalletVerdict(b, a).good === false && /11 min apart/.test(buybackWalletVerdict(b, a).detail)
+    && buybackWalletVerdict({ ...b, nonce: 3124 }, a).good === true
+    && buybackWalletVerdict({ bnb: 0.0031, nonce: 3124 }, a).good === true
+    && buybackWalletVerdict(null).good === false
+    && msToSecondLook(Date.UTC(2026, 8, 18, 9, 10, 40)) === 650000 && msToSecondLook(Date.UTC(2026, 8, 18, 9, 20, 0)) === 690000;
+};
 const dailyOnTimeHolds = () => {
   const at = (h) => new Date(Date.UTC(2026, 8, 17, h, 30));
   const pins = [[dailyOnTime('2026-09-17', 9, at(10)), true], [dailyOnTime('2026-09-16', 9, at(10)), false], [dailyOnTime('2026-09-16', 9, at(7)), true],
@@ -127,12 +169,13 @@ const dailyOnTimeHolds = () => {
 // against. `tgFetch`: how to reach the Telegram bot — a worker cannot fetch a
 // sibling's workers.dev address (it gets a 404 from Cloudflare's own router),
 // so the health worker hands in its service binding here.
-export async function runHealth({ rpc = 'https://bsc-dataseed.binance.org', tgFetch = fetch } = {}) {
+export async function runHealth({ rpc = 'https://bsc-dataseed.binance.org', tgFetch = fetch, buybackPrior = null } = {}) {
 const RPC = rpc;
 const results = [];
 const ok = (area, name, good, detail = '') => results.push({ area, name, good, detail });
 ok('Health', 'the daily-post rule passes its own pins', dailyOnTimeHolds());
 ok('Health', 'the DeFi agent checks pass their own pins (the day it stood still reads red)', defiVerdictsHold());
+ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a run reads red, tax that just arrived does not)', buybackVerdictHolds());
 
 // ---- the bots -------------------------------------------------------------
 {
@@ -147,6 +190,12 @@ ok('Health', 'the DeFi agent checks pass their own pins (the day it stood still 
     ok('Bots', 'buyback bot ran recently', b !== null && b < 1, b === null ? 'no timestamp' : `last run ${fmtAge(b)} ago`);
     ok('Bots', 'dev-buyback bot ran recently', d !== null && d < 3, d === null ? 'no timestamp' : `last run ${fmtAge(d)} ago`);
   }
+}
+{
+  // The heartbeat says the cron fired; this says the tax does not lie around.
+  const look = await readBuybackLook(RPC);
+  const v = buybackWalletVerdict(look, buybackPrior);
+  results.push({ area: 'Bots', name: 'the buyback bot is not sitting on tax', good: v.good, detail: v.detail, recheck: v.recheck, look });
 }
 {
   // The Telegram bot was in no check at all until 29 August. It is the surface

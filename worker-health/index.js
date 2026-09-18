@@ -15,9 +15,14 @@
 // fail two runs, a minute apart, to be reported. Throttled endpoints and a slow
 // RPC node recover within that; a stopped bot does not.
 //
+// One check needs two looks ten minutes apart — the buyback wallet holding tax
+// through a run of its bot. The morning message goes out FIRST, as always; the
+// second look comes after it, and only a red one is told, in a message of its
+// own. The daily message never waits on anything.
+//
 //   POST /run            (X-Broadcast-Secret)  run now, answer as JSON
 //   POST /run?notify=1   (X-Broadcast-Secret)  … and send the Telegram message
-import { runHealth } from '../scripts/lib/health-checks.mjs';
+import { runHealth, readBuybackLook, buybackWalletVerdict, msToSecondLook } from '../scripts/lib/health-checks.mjs';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -64,7 +69,7 @@ async function runOnce(env) {
   }
 }
 
-async function morningRun(env, { notify, pauseMs = 60000 }) {
+async function morningRun(env, { notify, pauseMs = 60000, secondLook = false }) {
   const first = await runOnce(env);
   let results = first, failing = first.filter((r) => !r.good);
   if (failing.length) {
@@ -84,12 +89,32 @@ async function morningRun(env, { notify, pauseMs = 60000 }) {
     if (!sent) console.error('[HEALTH] the message did not go out:', JSON.stringify(r));
   }
   console.log(`[HEALTH] ${results.length} checks, ${failing.length} failing, sent=${sent}`);
-  return { checks: results.length, failing, sent, text };
+  const waiting = results.find((r) => r.recheck && r.look);
+  if (secondLook && waiting) await buybackSecondLook(env, waiting.look, { notify });
+  return { checks: results.length, failing, sent, text, second_look: !!waiting };
+}
+
+// Pure: the second look's message, or '' when there is nothing to tell.
+export function secondLookMessage(verdict) {
+  return verdict && verdict.good === false ? `🚨 <b>Buyback bot</b> · the tax is not being split\n     <i>${esc(verdict.detail)}</i>\n\nworker <code>bobai-cron-trigger</code> — logs.brainonbnb.com` : '';
+}
+async function buybackSecondLook(env, prior, { notify }) {
+  await new Promise((r) => setTimeout(r, msToSecondLook()));
+  const verdict = buybackWalletVerdict(await readBuybackLook(env.BSC_RPC_URL || undefined), prior);
+  // A wallet that could not be read is not a bot that stands still.
+  const text = /could not be read/.test(verdict.detail) ? '' : secondLookMessage(verdict);
+  console.log(`[HEALTH] buyback second look: ${verdict.good ? 'ok' : 'RED'} — ${verdict.detail}`);
+  if (!text || !notify) return;
+  await env.TG.fetch('https://tg/broadcast', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET || '' },
+    body: JSON.stringify({ target: 'operator', text }),
+  }).catch((e) => console.error('[HEALTH] the second-look message did not go out:', e && e.message || e));
 }
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(morningRun(env, { notify: true }));
+    ctx.waitUntil(morningRun(env, { notify: true, secondLook: true }));
   },
   async fetch(request, env) {
     const url = new URL(request.url);

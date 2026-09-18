@@ -104,8 +104,16 @@ ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `sm
   ok(codeIsContract(null) === true && codeIsContract(undefined) === true, 'a code read that did not answer stays "contract": a router is never cascade-added on a guess');
 }
 
+// The burn bar is capped like the buy bar: a caption Telegram refuses is a burn nobody hears about.
+{
+  const { getBurnEmojis } = worker;
+  const big = getBurnEmojis(5000);
+  ok([...getBurnEmojis(10).bar].length === 5 && !getBurnEmojis(10).bar.includes('×'), 'a small burn draws one flame per $2');
+  ok([...big.bar].filter((ch) => ch === '🔥').length === 60 && big.bar.endsWith('×2500') && big.bar.length < 200, 'a $5000 burn draws 60 flames and spells the count — the caption stays inside the limit');
+}
+
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-whale ok: 33 pins');
+console.log('smoke-whale ok: 35 pins');
 
 // ---------------------------------------------------------------- --render
 if (process.argv.includes('--render')) {

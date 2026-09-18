@@ -705,9 +705,13 @@ function getBuyEmojis(usdValue) {
   return { bar, icon };
 }
 
-function getBurnEmojis(usdValue) {
+export function getBurnEmojis(usdValue) {
+  // Each 🔥 = $2, drawn up to 60 like the buy bar (2026-09-18): uncapped, a
+  // burn from about $900 on left Telegram's 1024-unit caption limit, the photo
+  // was refused, nothing was posted and the burn watcher met the same refusal
+  // on every run after it — the biggest burn would have been the silent one.
   const count = Math.max(Math.floor(usdValue / 2), 1);
-  const bar = '🔥'.repeat(count);
+  const bar = '🔥'.repeat(Math.min(count, 60)) + (count > 60 ? ` ×${count}` : '');
   let icon;
   if (usdValue >= 250) icon = '💥 SUPERNOVA BURN!';
   else if (usdValue >= 150) icon = '☄️ APOCALYPSE BURN!';
@@ -848,13 +852,30 @@ async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice) {
 
 🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
 
-    const result = await tg('sendPhoto', {
+    // 1) The photo alert
+    try {
+      const result = await tg('sendPhoto', {
+        chat_id: TG_CHAT_ID,
+        photo: PHOTO_BURN,
+        caption: message,
+        parse_mode: 'HTML',
+      });
+      if (result?.ok === true) return true;
+      console.error('[BURN] sendPhoto failed, falling back to text:', JSON.stringify(result));
+    } catch (err) {
+      console.error('[BURN] sendPhoto threw, falling back to text:', err.message || err);
+    }
+
+    // 2) Text only, like the buy alert: a burn is always told, even on a day
+    // Telegram refuses the picture.
+    const textRes = await tg('sendMessage', {
       chat_id: TG_CHAT_ID,
-      photo: PHOTO_BURN,
-      caption: message,
+      text: message,
       parse_mode: 'HTML',
+      disable_web_page_preview: true,
     });
-    return result?.ok === true;
+    if (textRes?.ok !== true) console.error('[BURN] text fallback failed:', JSON.stringify(textRes));
+    return textRes?.ok === true;
   } catch (err) {
     console.error('[POST BURN ERROR]', err.message || err);
     return false;

@@ -439,7 +439,35 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
   };
 }
 
+// THE WORKER RUNS — THEN THIS DOES NOT (2026-09-18). This script is the
+// fallback for a day Cloudflare is down, and nothing kept it from running
+// beside the worker: two processes reading one balance, both splitting it, one
+// of them logging to a local file the page never sees. The worker writes a
+// heartbeat every ten minutes; while that heartbeat is fresh the worker is
+// alive and this script refuses. No answer from the heartbeat (Cloudflare down
+// — the day this script is for) lets it run; `--force` overrides. Pure + one fetch.
+const WORKER_HEALTH_URL = 'https://logs.brainonbnb.com/health';
+function heartbeatIsFresh(health, now = Date.now()) {
+  const t = Date.parse(health && health.buyback);
+  return Number.isFinite(t) && now - t < 15 * 60 * 1000 && now - t > -60 * 1000;
+}
+async function workerHeartbeat() {
+  try {
+    const r = await fetch(WORKER_HEALTH_URL, { signal: AbortSignal.timeout(10000) });
+    return r.ok ? await r.json() : null;
+  } catch (e) { return null; }
+}
+
 async function main() {
+  if (!process.argv.includes('--force')) {
+    const health = await workerHeartbeat();
+    if (heartbeatIsFresh(health)) {
+      console.error('[REFUSED] The Cloudflare worker is alive (heartbeat ' + health.buyback + ') and splits this wallet every ten minutes.');
+      console.error('  This script is the fallback for a day it is down. Nothing was read, nothing was sent. (--force overrides.)');
+      process.exitCode = 1;   // not process.exit(): on Windows it trips a libuv assertion while the fetch handle closes
+      return;
+    }
+  }
   // THE BUYBACK WALLET'S KEY, AND NO OTHER (2026-09-18). This read PRIVATE_KEY
   // first — a leftover from GitHub Actions, where that name held the buyback
   // secret. In the local .env both names are set and PRIVATE_KEY is the

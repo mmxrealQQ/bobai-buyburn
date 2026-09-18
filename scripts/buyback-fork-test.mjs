@@ -58,6 +58,11 @@ console.log('the helpers (offline)');
   ok('the keyed node is asked first and the public ones stand behind it, in order, never ranked', tBlock(workerSrc) === tBlock(fallbackSrc) && t.list.length === 4 && t.list[0].http === 'https://keyed.example/abc' && t.opts.rank === false);
   ok('a node named twice is asked once, and a fork has no second node', mk.rpcTransport(mk.FALLBACK_RPCS[0]).list.length === 3 && mk.rpcTransport('http://127.0.0.1:8547', 'none').http === 'http://127.0.0.1:8547');
   ok('the lock outlives the ten minutes between two ticks', /lock-buyback'[^\n]*expirationTtl: 900/.test(workerSrc) && /crons = \["\*\/10 \* \* \* \*"\]/.test(fs.readFileSync(path.join(ROOT, 'worker', 'wrangler.toml'), 'utf8')));
+  // The fallback script beside a living worker.
+  const hb = new Function(`${fallbackSrc.slice(fallbackSrc.indexOf('function heartbeatIsFresh('), fallbackSrc.indexOf('async function workerHeartbeat('))}; return heartbeatIsFresh;`)();
+  const at = Date.parse('2026-09-18T12:45:00Z');
+  ok('the fallback script refuses while the worker\'s heartbeat is fresh, and runs when there is none', hb({ buyback: '2026-09-18T12:40:57Z' }, at) === true && hb({ buyback: '2026-09-18T12:20:00Z' }, at) === false && hb(null, at) === false && hb({ buyback: 'x' }, at) === false && hb({ buyback: '2026-09-18T14:00:00Z' }, at) === false);
+  ok('and it asks before it reads the key', fallbackSrc.indexOf('heartbeatIsFresh(health)') < fallbackSrc.indexOf('process.env.BUYBACK_PRIVATE_KEY ||'));
   let asked = 0;
   const slow = { waitForTransactionReceipt: async () => { throw new Error('timed out at https://bsc-mainnet.example/v1/SECRETKEY'); }, getTransactionReceipt: async () => (++asked < 3 ? null : { status: 'success', blockNumber: 1n }) };
   const log = console.log; const lines = []; console.log = (...a) => lines.push(a.join(' '));

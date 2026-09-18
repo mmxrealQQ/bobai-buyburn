@@ -151,6 +151,55 @@ const ERC20_ABI = parseAbi([
   'function transfer(address to, uint256 amount) returns (bool)',
 ]);
 
+// WHAT A SENT TRANSACTION CAME TO (2026-09-18). Two things were taken on
+// trust. A receipt wait that threw — a slow node, a timeout — was read as "the
+// leg failed" although the transaction was out: the creator's share could
+// arrive while the run stopped, and the next run split the remainder again,
+// creator included. And a receipt was never looked at: a reverted swap or burn
+// went on as if it had happened, a reverted burn into the log as burned. Now a
+// transaction that was sent is asked about again before it is given up, and
+// only status 'success' counts. Nothing is remembered between runs — the bot
+// stays as stateless as it was.
+async function waitMined(publicClient, hash) {
+  try {
+    return await publicClient.waitForTransactionReceipt({ hash });
+  } catch (e) {
+    console.log(`  receipt wait for ${hash} failed (${say(e)}) — asking again`);
+  }
+  for (let i = 0; i < 6; i++) {
+    await sleep(5000);
+    try {
+      const rc = await publicClient.getTransactionReceipt({ hash });
+      if (rc) return rc;
+    } catch (e) { /* not there yet */ }
+  }
+  return null;
+}
+// Throws unless the transaction is in a block AND succeeded; the callers' own catch blocks do the rest.
+async function mined(publicClient, hash, what) {
+  const rc = await waitMined(publicClient, hash);
+  if (!rc) throw new Error(`${what}: no receipt for ${hash} — it may still arrive`);
+  if (rc.status !== 'success') throw new Error(`${what}: ${hash} reverted`);
+  return rc;
+}
+// An error as it is logged: viem puts the RPC's URL into its messages, and the URL carries the key.
+function say(e) {
+  return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
+}
+
+// THE LEAST A BUY MAY BRING (2026-09-18). $BOBAI keeps 3% of every transfer,
+// so of the quoted output the wallet receives 97% (measured on the bot's own
+// swaps: 3,606 of 120,214 withheld). The router checks what ARRIVES against
+// this minimum; 95% of the gross quote therefore left 2.06% of room, not the
+// 5% the line says, and a price that moved more between quote and block
+// reverted the leg — whose BNB the next run then split over all the shares
+// again. The tax comes off first, then the 5%. $BOB has no transfer tax.
+const TRANSFER_TAX_BPS = { [BOBAI_TOKEN.toLowerCase()]: 300n };
+function minOutFor(quotedOut, tokenAddress) {
+  const tax = TRANSFER_TAX_BPS[String(tokenAddress).toLowerCase()] || 0n;
+  return (((quotedOut * (10000n - tax)) / 10000n) * 95n) / 100n;
+}
+
 async function swapAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, tokenName) {
   const path = [WBNB, tokenAddress];
 
@@ -164,11 +213,11 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
     });
     console.log(`  Expected ${tokenName} output: ${formatEther(amountsOut[1])}`);
   } catch (e) {
-    console.log(`  Quote failed for ${tokenName}: ${e.message}`);
+    console.log(`  Quote failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 
-  const minOut = (amountsOut[1] * 95n) / 100n;
+  const minOut = minOutFor(amountsOut[1], tokenAddress);
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
 
   // Swap BNB -> token
@@ -183,9 +232,9 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
       gas: 300000n,
     });
     console.log(`  Swap TX: https://bscscan.com/tx/${txHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
+    await mined(publicClient, txHash, 'swap');
   } catch (e) {
-    console.log(`  Swap failed for ${tokenName}: ${e.message}`);
+    console.log(`  Swap failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 
@@ -213,11 +262,11 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
       gas: 500000n,
     });
     console.log(`  Burn TX: https://bscscan.com/tx/${burnHash}`);
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
+    const receipt = await mined(publicClient, burnHash, 'burn');
     console.log(`  Burned ${formatEther(tokenBalance)} ${tokenName} in block ${receipt.blockNumber}`);
     return { txHash, burnHash, amount: formatEther(tokenBalance), block: Number(receipt.blockNumber) };
   } catch (e) {
-    console.log(`  Burn failed for ${tokenName}: ${e.message}`);
+    console.log(`  Burn failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 }
@@ -469,10 +518,10 @@ async function runBot(env) {
         gas: 50000n,
       });
       console.log(`  Unwrap TX: https://bscscan.com/tx/${unwrapHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: unwrapHash });
+      await mined(publicClient, unwrapHash, 'unwrap');
       console.log(`  Unwrapped ${formatEther(wbnbBalance)} WBNB → BNB`);
     } catch (e) {
-      console.log(`  Unwrap failed: ${e.message}`);
+      console.log(`  Unwrap failed: ${say(e)}`);
     }
   }
 
@@ -519,10 +568,10 @@ async function runBot(env) {
       value: creatorAmount,
     });
     console.log(`  TX: https://bscscan.com/tx/${creatorTxHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: creatorTxHash });
+    await mined(publicClient, creatorTxHash, 'creator share');
     console.log('  Creator payment sent!');
   } catch (e) {
-    console.log(`  Creator payment failed: ${e.message}`);
+    console.log(`  Creator payment failed: ${say(e)}`);
     return;
   }
 
@@ -568,10 +617,10 @@ async function runBot(env) {
     try {
       lpAgentTxHash = await walletClient.sendTransaction({ to: LP_AGENT_WALLET, value: lpAgentAmount });
       console.log(`  TX: https://bscscan.com/tx/${lpAgentTxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: lpAgentTxHash });
+      await mined(publicClient, lpAgentTxHash, 'LP agent share');
       console.log('  LP agent share sent!');
     } catch (e) {
-      console.log(`  LP agent send failed: ${e.message}`);
+      console.log(`  LP agent send failed: ${say(e)}`);
       lpAgentTxHash = null;
     }
   }
@@ -581,10 +630,10 @@ async function runBot(env) {
     try {
       giggleTxHash = await walletClient.sendTransaction({ to: PRIZE_POOL_WALLET, value: giggleAmount });
       console.log(`  TX: https://bscscan.com/tx/${giggleTxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: giggleTxHash });
+      await mined(publicClient, giggleTxHash, 'Giggle pot');
       console.log('  Giggle pot funded!');
     } catch (e) {
-      console.log(`  Giggle pot send failed: ${e.message}`);
+      console.log(`  Giggle pot send failed: ${say(e)}`);
       giggleTxHash = null;
     }
   }
@@ -599,7 +648,7 @@ async function runBot(env) {
         value: wc26PoolAmount,
       });
       console.log(`  TX: https://bscscan.com/tx/${wc26TxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: wc26TxHash });
+      await mined(publicClient, wc26TxHash, 'WC26 pool');
       console.log('  WC26 pool funded!');
       await sbInsert(env, 'wc_donations', {
         from_address: account.address.toLowerCase(),
@@ -610,7 +659,7 @@ async function runBot(env) {
         swap_tx_hash: null,
       });
     } catch (e) {
-      console.log(`  WC26 pool send failed: ${e.message}`);
+      console.log(`  WC26 pool send failed: ${say(e)}`);
       wc26TxHash = null;
     }
   }

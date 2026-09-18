@@ -1699,6 +1699,24 @@ async function postDailyWhaleRecap(env) {
 // Mover-first alert layout: who moved, in which cluster, how much, what's their
 // position now. Each alert focuses on the tracked wallet — the LP/DEAD or fresh
 // counterparty is shown as a one-line context, not as a co-equal "FROM/TO" row.
+// THE OTHER SIDE OF A WHALE'S TRANSFER (2026-09-18). The watcher looked for a
+// person on the other side and, finding only contracts, said nothing at all: a
+// tracked whale moving into a locker, a bridge or ANOTHER pool — a sale the
+// pair never sees — was silent, and the transaction was marked done. A person
+// is still preferred (the largest first); with none, the largest contract is
+// the other side and the alert says so. A contract is never added to the
+// watch-set. `candidates` is [[address, net]…] largest first. Pure.
+export function pickOtherSide(candidates, isContractOf) {
+  const list = (candidates || []).map(([a]) => a);
+  if (!list.length) return null;
+  const person = list.find((a) => isContractOf(a) === false);
+  return person ? { addr: person, viaContract: false } : { addr: list[0], viaContract: true };
+}
+// A retried transaction tells nobody twice: what has been told is in the event log.
+export function toldAlready(events, txHash, kind, from, to) {
+  return (events || []).some((e) => e.txHash === txHash && e.kind === kind && e.from === from && e.to === to);
+}
+
 async function postWhaleAlert(data) {
   if (!TG_INTERNAL_CHAT_ID) return false;
   const { kind, from, to, amount, usdValue, txHash } = data;
@@ -1773,7 +1791,10 @@ async function postWhaleAlert(data) {
       contextLine = `→ ${otherLink} · <i>${otherDesc}</i>`;
       break;
     case 'TRANSFER_OUT':
-      if (isDust) {
+      if (data.otherIsContract) {
+        headline = `🟠 <b>TRANSFER OUT</b> · ${usdStr}`;
+        contextLine = `→ ${otherLink} · <i>a contract — a locker, a bridge or another pool; not added to the watch-set</i>`;
+      } else if (isDust) {
         headline = `🟡 <b>PRE-FUNDING</b> · ${usdStr} <i>(dust)</i>`;
         contextLine = `→ ${otherLink} · <i>fresh wallet — bigger TX likely incoming</i>`;
       } else {
@@ -1783,7 +1804,7 @@ async function postWhaleAlert(data) {
       break;
     case 'TRANSFER_IN':
       headline = `⚪ <b>RECEIVED</b> · ${usdStr}`;
-      contextLine = `← ${otherLink} · <i>${otherDesc}</i>`;
+      contextLine = data.otherIsContract ? `← ${otherLink} · <i>from a contract</i>` : `← ${otherLink} · <i>${otherDesc}</i>`;
       break;
     default:
       return false;
@@ -3565,9 +3586,10 @@ export default {
 
             // Guard against double-emitting an INTERNAL_T (once per side).
             const alertedThisTx = new Set();
+            let retryTx = false;
 
             for (const [addr, netWei] of movers) {
-              if (alerts >= MAX_WHALE_ALERTS) break;
+              if (alerts >= MAX_WHALE_ALERTS) { retryTx = true; break; }
               if (alertedThisTx.has(addr)) continue;
 
               const isTracked = trackedSet.has(addr);
@@ -3577,6 +3599,7 @@ export default {
 
               let kind = null;
               let counterparty = null;
+              let viaContract = false;   // the other side is a contract: told, never tracked
 
               // Ratio gate: ≥50% of the mover's net flow must hit pair/dead for
               // the alert to classify as a real swap/burn. BOBAI's tax routes
@@ -3601,25 +3624,21 @@ export default {
                 if (trackedSink) {
                   kind = 'INTERNAL_T'; counterparty = trackedSink[0];
                 } else {
-                  // Pick the largest non-contract inflow EOA as the recipient.
-                  let pickedRecipient = null;
-                  for (const [a] of inflows) {
-                    if (!(await isContractCached(a))) { pickedRecipient = a; break; }
-                  }
-                  if (!pickedRecipient) continue; // outflow only to contracts
-                  kind = 'TRANSFER_OUT'; counterparty = pickedRecipient;
+                  // The largest person among the recipients; with none, the largest contract.
+                  for (const [a] of inflows) await isContractCached(a);
+                  const other = pickOtherSide(inflows, (a) => contractCache.get(a));
+                  if (!other) continue; // the outflow went to the special addresses only
+                  kind = 'TRANSFER_OUT'; counterparty = other.addr; viaContract = other.viaContract;
                 }
               } else if (isTracked && isInflow) {
                 // Tracked inflow not from LP — find the source EOA.
                 const outflows = movers.filter(([a, n]) => a !== addr && n < 0n);
                 const trackedSource = outflows.find(([a]) => trackedSet.has(a));
                 if (trackedSource) continue; // INTERNAL_T fires from the sender side
-                let pickedSource = null;
-                for (const [a] of outflows) {
-                  if (!(await isContractCached(a))) { pickedSource = a; break; }
-                }
-                if (!pickedSource) continue;
-                kind = 'TRANSFER_IN'; counterparty = pickedSource;
+                for (const [a] of outflows) await isContractCached(a);
+                const other = pickOtherSide(outflows, (a) => contractCache.get(a));
+                if (!other) continue;
+                kind = 'TRANSFER_IN'; counterparty = other.addr; viaContract = other.viaContract;
               } else if (!isTracked && isInflow) {
                 // NEW_WHALE detection: non-tracked EOA receiving — crossed 10M?
                 if (await isContractCached(addr)) continue;
@@ -3640,7 +3659,7 @@ export default {
                   alerts++;
                   whaleEvents.push({ kind: 'NEW_WHALE', from: pair, to: addr, amount: balTokens, usdValue: usd, txHash, ts: Date.now() });
                   alertedThisTx.add(addr);
-                }
+                } else retryTx = true;
                 continue;
               } else {
                 continue;
@@ -3650,7 +3669,7 @@ export default {
 
               // Cascade-add (TRANSFER_OUT counterparty already EOA-verified).
               let labelsDirty = false;
-              if (kind === 'TRANSFER_OUT' && !trackedSet.has(counterparty)) {
+              if (kind === 'TRANSFER_OUT' && !viaContract && !trackedSet.has(counterparty)) {
                 trackedSet.add(counterparty);
                 setChanged = true;
                 if (addEdgeInMemory(edges, addr, counterparty)) { edgesChanged = true; labelsDirty = true; }
@@ -3677,19 +3696,26 @@ export default {
 
               // Under the quiet floor the move is logged for the recap and
               // never posted; it does not count against the alert cap.
-              const quiet = isQuietMove(kind, usdValue);
-              console.log('[WHALE]', quiet ? 'quiet' : kind, senderAddr.slice(0,8), '→', receiverAddr.slice(0,8), formatNumber(absAmt), 'BOBAI');
-              const sent = quiet ? true : await postWhaleAlert({
+              // A move into or out of a contract under the quiet floor is dust, not pre-funding.
+              const quiet = isQuietMove(kind, usdValue) || (viaContract && usdValue > 0 && usdValue < 5);
+              const told = toldAlready(whaleEvents, txHash, kind, senderAddr, receiverAddr);
+              console.log('[WHALE]', told ? 'told before' : quiet ? 'quiet' : kind, senderAddr.slice(0,8), '→', receiverAddr.slice(0,8), formatNumber(absAmt), 'BOBAI');
+              const sent = told || quiet ? true : await postWhaleAlert({
                 kind, from: senderAddr, to: receiverAddr,
                 amount: absAmt, usdValue, txHash,
-                fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd,
+                fromTag, toTag, fromBal, toBal, priceUsd: bobaiPriceUsd, otherIsContract: viaContract,
               });
               if (sent) {
-                if (!quiet) alerts++;
-                whaleEvents.push({ kind, from: senderAddr, to: receiverAddr, amount: absAmt, usdValue, txHash, ts: Date.now(), ...(quiet ? { quiet: true } : {}) });
+                if (!quiet && !told) alerts++;
+                if (!told) whaleEvents.push({ kind, from: senderAddr, to: receiverAddr, amount: absAmt, usdValue, txHash, ts: Date.now(), ...(quiet ? { quiet: true } : {}), ...(viaContract ? { contract: true } : {}) });
                 alertedThisTx.add(addr);
                 if (kind === 'INTERNAL_T') alertedThisTx.add(counterparty);
               } else {
+                // A FAILED SEND IS TRIED AGAIN (2026-09-18): this line said so and the
+                // transaction was marked done a few lines below all the same — the
+                // alert was lost and missing from the recap. The transaction stays
+                // open now; what it has already told is skipped on the way back.
+                retryTx = true;
                 console.error('[WHALE] alert NOT sent, retry next cron', txHash);
               }
 
@@ -3700,12 +3726,13 @@ export default {
                   if (balAfter < WHALE_THRESHOLD_WEI && (balAfter + absWei) >= WHALE_THRESHOLD_WEI) {
                     const balTokens = Number(balAfter / 10n ** 18n);
                     console.log('[WHALE] EX_WHALE crossed', addr.slice(0, 10), formatNumber(balTokens));
-                    if (alerts < MAX_WHALE_ALERTS) {
+                    if (alerts < MAX_WHALE_ALERTS && !toldAlready(whaleEvents, txHash, 'EX_WHALE', addr, counterparty)) {
                       const usd = bobaiPriceUsd ? balTokens * bobaiPriceUsd : 0;
                       const exSent = await postWhaleAlert({
                         kind: 'EX_WHALE', from: addr, to: counterparty,
                         amount: balTokens, usdValue: usd, txHash,
                       });
+                      if (!exSent) retryTx = true;
                       if (exSent) {
                         alerts++;
                         whaleEvents.push({ kind: 'EX_WHALE', from: addr, to: counterparty, amount: balTokens, usdValue: usd, txHash, ts: Date.now() });
@@ -3716,8 +3743,9 @@ export default {
               }
             }
 
-            // Mark tx processed even if no alert was emitted (avoid re-scan).
-            postedWhaleSet.add(txHash);
+            // Mark tx processed even if no alert was emitted (avoid re-scan) —
+            // unless a send failed or the cap cut its movers short.
+            if (!retryTx) postedWhaleSet.add(txHash);
           }
 
           if (setChanged) await saveTrackedWallets(env, [...trackedSet]);
@@ -3846,7 +3874,10 @@ export default {
             const buyer = (tx?.from || '').toLowerCase();
             if (buyer && IGNORED_WALLETS.has(buyer)) { postedSet.add(txHash); continue; }
 
-            if (alertsThisRun >= MAX_ALERTS_PER_RUN) { postedSet.add(txHash); continue; }
+            // THE CAP DEFERS, IT DOES NOT DROP (2026-09-18): a buy met with the cap
+            // reached was marked posted and never told. It is left open now — the
+            // next run's scan (twelve minutes of reach) meets it again. A buy that
+            // waits for its NFT sends nothing in this phase and is queued as ever.
 
             const tradeBase = {
               bnbAmount,
@@ -3863,7 +3894,9 @@ export default {
 
             console.log('[BUY] on-chain buy', txHash, '$' + usdValue.toFixed(2), 'tier=' + tierIdx, soldOut ? 'SOLD-OUT' : 'queue');
 
-            if (soldOut) {
+            if (soldOut && alertsThisRun >= MAX_ALERTS_PER_RUN) {
+              console.log('[BUY] alert cap reached, sold-out alert left for the next cron', txHash);
+            } else if (soldOut) {
               // No mint will happen — fire immediately with sold-out line
               const sent = await postBuyAlert(tradeBase, await burnedPct(), nftLineSoldOut(tierIdx));
               if (sent) { postedSet.add(txHash); alertsThisRun++; }

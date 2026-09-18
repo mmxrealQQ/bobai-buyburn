@@ -131,8 +131,23 @@ ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `sm
   ok(alertTrade(p, null) === p && alertTrade(p, { to: 'nonsense' }) === p && alertTrade(p, {}).buyer === p.buyer, 'without a drop, or with a broken one, the sender stays');
 }
 
+// The other side of a whale's transfer, and a retried transaction.
+{
+  const { pickOtherSide, toldAlready } = worker;
+  const A = '0x' + 'a'.repeat(40), B = '0x' + 'b'.repeat(40), C = '0x' + 'c'.repeat(40);
+  const kinds = new Map([[A, true], [B, false], [C, true]]);
+  const get = (x) => kinds.get(x);
+  ok(pickOtherSide([[A, 9n], [B, 5n], [C, 1n]], get).addr === B && pickOtherSide([[A, 9n], [B, 5n]], get).viaContract === false, 'a person on the other side is preferred, even a smaller one');
+  ok(pickOtherSide([[A, 9n], [C, 1n]], get).addr === A && pickOtherSide([[A, 9n], [C, 1n]], get).viaContract === true, 'with contracts only, the largest contract is the other side and is marked as one (it was: no alert at all)');
+  ok(pickOtherSide([], get) === null && pickOtherSide([[A, 1n]], () => undefined).viaContract === true, 'nothing on the other side is nothing; an unread address counts as a contract and is never tracked');
+  const ev = [{ txHash: '0x1', kind: 'SELL', from: A, to: B }];
+  ok(toldAlready(ev, '0x1', 'SELL', A, B) === true && toldAlready(ev, '0x1', 'EX_WHALE', A, B) === false && toldAlready(ev, '0x2', 'SELL', A, B) === false && toldAlready(null, '0x1', 'SELL', A, B) === false, 'a retried transaction skips what it has told and nothing else');
+  const src = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');
+  ok(/if \(!retryTx\) postedWhaleSet\.add\(txHash\);/.test(src) && !/MAX_ALERTS_PER_RUN\) \{ postedSet\.add\(txHash\); continue; \}/.test(src), 'a failed whale send leaves its transaction open, and the buy cap no longer marks a buy as posted');
+}
+
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-whale ok: 42 pins');
+console.log('smoke-whale ok: 47 pins');
 
 // ---------------------------------------------------------------- --render
 if (process.argv.includes('--render')) {

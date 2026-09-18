@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 37 files, 13014 lines.
+# one fetch. 39 files, 13209 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2930,9 +2930,14 @@ export function summarise(record, now) {
   const completed = ids.filter((id) => latest(id)?.state === 'completed');
   const settleable = ids.filter((id) => latest(id)?.state === 'settleable');
   const waiting = ids.filter((id) => latest(id)?.state === 'waiting');
+  // Every job is in one bucket, so the parts add up to `jobs`: an EXPIRED and
+  // an OPEN job used to be counted in the total and in none of the lists
+  // (5 + 0 + 0 against "7 jobs").
+  const other = ids.filter((id) => !['completed', 'settleable', 'waiting'].includes(latest(id)?.state));
   return {
     jobs: ids.length,
-    completed, settleable, waiting,
+    completed, settleable, waiting, other,
+    other_states: Object.fromEntries(other.map((id) => [id, latest(id)?.state || latest(id)?.status || 'unknown'])),
     first_completed_seen: completed.map((id) => record[id].history.find((h) => h.state === 'completed')?.at).filter(Boolean).sort()[0] || null,
     checked_at: now,
   };
@@ -3231,7 +3236,7 @@ export const CATEGORIES = [
     blurb: 'Watching a lending position and saying how far it is from liquidation — before it gets there.',
     aliases: ['health-factor', 'health-factor-monitoring', 'liquidation-monitoring', 'lending-monitoring'],
     strong: /health[ -]?factor|liquidat|collateral[ -]?ratio|lending[ -]?guard/i,
-    loose: /borrow.{0,12}health|collateral/i,
+    loose: /borrow.{0,12}health|\bcollateral\b/i,
   },
 ];
 
@@ -3639,7 +3644,10 @@ export async function runCensusTick(env) {
       checked_this_run: checked,
       answered: up,
       position: state.probeCursor,
-      note: 'A slice of the known endpoints is re-checked each run, so every one is revisited roughly monthly. The headline census comes from a full offline scan.',
+      // "Roughly monthly" was never true (2026-09-18): a dozen endpoints a run
+      // against some 1,900 known ones is a round of about five months. Said as
+      // it is: a rotating sample, and the full scan is what re-checks them all.
+      note: 'A small rotating sample of the known endpoints is re-checked each run (about a dozen a day, so a full round takes months). The headline census, and every endpoint\'s status on the page, come from a full offline scan.',
     },
     calls_used: calls,
   }));
@@ -3761,6 +3769,7 @@ export async function runFrontierTick(env) {
 // honest limit of what a router can offer, and it is the same limit the census
 // itself observes: we report what is there, not what it is worth.
 
+import { cappedText } from './net.js';
 import { recordSession } from './sessions.js';
 
 // A tool qualifies as readable if one of these appears as a segment of its
@@ -3774,9 +3783,9 @@ const READ_VERBS = new Set([
 ]);
 
 // Verbs that mean the tool changes something. Checked against the name split
-// into segments, NOT with a word-boundary regex —  treats an underscore as a
-// word character, so /order/ does not match "get_order_status", and more to
-// the point /swap/ does not match "get_swap_calldata". That one nearly
+// into segments, NOT with a word-boundary regex — \b treats an underscore as a
+// word character, so /\border/ does not match "get_order_status", and more to
+// the point /\bswap/ does not match "get_swap_calldata". That one nearly
 // shipped: the classifier called it read-only because it starts with "get".
 // Five such names were found by testing, and none of them would have looked
 // wrong in review.
@@ -3786,7 +3795,20 @@ const MUTATING_VERBS = new Set([
   'revoke', 'deploy', 'mint', 'burn', 'stake', 'unstake', 'vote', 'claim',
   'cancel', 'update', 'delete', 'write', 'pay', 'bridge', 'redeem',
   'register', 'authorize', 'confirm', 'calldata', 'tx', 'transaction',
+  // 2026-09-18: a tool named for one of these acts, whatever else it says —
+  // `liquidate_position`, `harvest_rewards`, `repay_loan` went through because
+  // the list above was written from the verbs of a swap.
+  'liquidate', 'harvest', 'repay',
 ]);
+// Verbs a lending READER is named after too (`borrow_rates`, `supply_apy`,
+// `get_open_positions`): they only disqualify a tool whose whole name is the
+// verb — `borrow`, `rebalance` — where there is no noun for it to be about.
+const SOLO_ACTIONS = new Set(['borrow', 'lend', 'supply', 'rebalance', 'compound', 'migrate', 'open', 'close', 'leverage', 'deleverage']);
+// A name with no separators hides its verb from the segment test: `withdrawall`,
+// `placeorder`, `sendfunds` are one segment each, none of them on the list. For
+// the verbs that are never part of a reader's name the segment is searched,
+// not compared.
+const VERBS_INSIDE_A_SEGMENT = ['withdraw', 'transfer', 'approve', 'deposit', 'liquidat', 'broadcast', 'execute', 'placeorder', 'createorder', 'cancelorder', 'sendfund', 'sendtx', 'sendtransaction', 'repay', 'unstake'];
 
 // Does the task ask for an action, or ask about one? "Swap 1 BNB to CAKE"
 // and "I want to sell my CAKE" ask for one; "what would a trade cost" and
@@ -3842,7 +3864,7 @@ const UNAMBIGUOUS_ACTIONS = new Set([
 // tool when the description has it acting on something: "swaps your tokens",
 // "sends the transaction", "burns LP". "swap fee" and "transfer tax" are not
 // that, and declining them cost this router its own pool scanner.
-const ACTION_ON_OBJECT = /\b(sign|send|execute|submit|broadcast|approve|transfer|withdraw|deposit|stake|unstake|swap|trade|buy|sell|mint|burn|bridge|deploy|revoke|cancel|claim|redeem|pay)s?\s+(a|an|the|your|their|our|his|her|its|funds?|tokens?|assets?|money|transactions?|orders?|positions?|liquidity|collateral|balances?|wallets?|calldata)\b/i;
+const ACTION_ON_OBJECT = /\b(sign|send|execute|submit|broadcast|approve|transfer|withdraw|deposit|stake|unstake|swap|trade|buy|sell|mint|burn|bridge|deploy|revoke|cancel|claim|redeem|pay|rebalance|liquidate|harvest|repay|place|close|add|remove|compound|migrate)s?\s+(a|an|the|your|their|our|his|her|its|funds?|tokens?|assets?|money|transactions?|orders?|positions?|liquidity|collateral|balances?|wallets?|calldata|portfolios?|rewards?|loans?|debts?|trades?)\b/i;
 
 // "get_swap_calldata" -> [get, swap, calldata]; "getSwapCalldata" -> the same.
 const segments = (name) => String(name)
@@ -3956,6 +3978,8 @@ export function isReadOnly(tool) {
   // A mutating verb anywhere in the name disqualifies it, wherever it sits, and
   // this is checked FIRST so that no declaration below can talk its way past it.
   if (segs.some((seg) => MUTATING_VERBS.has(seg))) return false;
+  if (segs.some((seg) => VERBS_INSIDE_A_SEGMENT.some((v) => seg.includes(v)))) return false;
+  if (segs.length === 1 && SOLO_ACTIONS.has(segs[0])) return false;
 
   // MCP has a way for a server to state this outright, and asking beats
   // guessing. `readOnlyHint: false` is a refusal we honour even when the name
@@ -4018,7 +4042,7 @@ const rpcCall = async (endpoint, method, params, timeoutMs = 12000) => {
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
     signal: AbortSignal.timeout(timeoutMs),
   });
-  const text = await r.text();
+  const text = await cappedText(r);
   // Some servers answer MCP over SSE; the last data line is the payload.
   const line = text.trim().split('\n').filter((l) => l.trim()).pop() || '';
   const cleaned = line.replace(/^data:\s*/, '');
@@ -4120,7 +4144,7 @@ async function a2aCall(url, data, timeoutMs = 15000) {
     }),
     signal: AbortSignal.timeout(timeoutMs),
   });
-  const text = await r.text();
+  const text = await cappedText(r);
   try { return JSON.parse(text); } catch { return null; }
 }
 
@@ -4284,8 +4308,14 @@ export async function handleDispatch(url, body, env, opts = {}) {
       const res = await a2aCall(url, { skill: pick.id || pick.name }).catch(() => null);
       const tookA = Date.now() - startedA;
       const payload = res?.result ?? null;
-      if (res?.error || payload == null) {
-        const why = res?.error?.message || 'no usable result';
+      // AN A2A TASK THAT FAILED IS NOT AN ANSWER (2026-09-18). message/send may
+      // return a Task, and a Task in state failed, rejected, canceled or
+      // input-required is the agent saying it did NOT do the work — it was
+      // recorded ok:true and shown to the visitor as the answer.
+      const stateA = String(payload?.status?.state || payload?.state || '').toLowerCase().replace(/[^a-z]/g, '');
+      const failedA = ['failed', 'rejected', 'canceled', 'cancelled', 'inputrequired', 'authrequired'].includes(stateA);
+      if (res?.error || payload == null || failedA) {
+        const why = res?.error?.message || (failedA ? `the agent's task ended in state "${stateA}"` : 'no usable result');
         attempts.push({ agent: agent.name, endpoint: url, skill: pick.id || pick.name, outcome: why });
         if (env) await recordSession(env, { task, operator: operatorOf(agent), agent: agent.name, tool: pick.id || pick.name, ms: tookA, ok: false, probe, outcome: why });
         continue;
@@ -4393,10 +4423,14 @@ export async function handleDispatch(url, body, env, opts = {}) {
     const res = await rpcCall(endpoint, 'tools/call', { name: pick.name, arguments: taken || {} }, 15000).catch(() => null);
     const took = Date.now() - started;
     const content = res?.result?.content?.[0]?.text;
+    // MCP says a tool FAILED with result.isError, not with a JSON-RPC error:
+    // "Error: account required" arrived as ordinary content, was recorded
+    // ok:true and printed as the answer (2026-09-18).
+    const toolFailed = res?.result?.isError === true;
     const asked = addressesInTask(task);
-    const offTarget = !!content && !res?.error && !answersAsked(content, asked.addrs);
-    if (res?.error || !content || offTarget) {
-      const why = offTarget ? 'answered about a different address than the one asked' : (res?.error?.message || 'no usable result');
+    const offTarget = !!content && !res?.error && !toolFailed && !answersAsked(content, asked.addrs);
+    if (res?.error || !content || offTarget || toolFailed) {
+      const why = toolFailed ? `the tool reported an error: ${String(content || 'no message').replace(/\s+/g, ' ').slice(0, 100)}` : offTarget ? 'answered about a different address than the one asked' : (res?.error?.message || 'no usable result');
       attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: why });
       // A failure is a fact about this operator and belongs in the record just
       // as much as a success does.
@@ -4898,6 +4932,7 @@ export async function gridPlan(input = {}) {
 // lowest common denominator is the right output, and the SDK path is offered
 // alongside it rather than instead of it.
 
+import { cappedText } from './net.js';
 import { recordSession } from './sessions.js';
 
 // AgenticCommerce kernel, EvaluatorRouter, OptimisticPolicy, ERC-8004 registry
@@ -5110,7 +5145,7 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    text = await r.text();
+    text = await cappedText(r);
   } catch (e) {
     return { why: `the endpoint its card names did not answer (${e.name === 'TimeoutError' ? `no reply in ${timeoutMs / 1000}s` : e.name})`, ms: Date.now() - t0 };
   }
@@ -5328,7 +5363,10 @@ const expiryFor = (quote, override, disputeWindow = DISPUTE_WINDOW_FALLBACK) => 
   // An override may lengthen the window but never shorten it below the floor:
   // a buyer asking for a one-hour expiry is asking for a job that cannot be
   // delivered, and quietly obeying would be the same bug with a caller to blame.
-  const wanted = override ? Number(override) : Math.max(floor, est * 6);
+  // An override that is not a number ("abc") is no override: it made NaN here
+  // and BigInt(NaN) further down, a bare 500.
+  const ov = Number(override);
+  const wanted = Number.isFinite(ov) && ov > 0 ? ov : Math.max(floor, est * 6);
   return now + Math.min(Math.max(floor, wanted), MAX_EXPIRY);
 };
 
@@ -5491,7 +5529,11 @@ export async function handleHire(url, body, env, opts = {}) {
   if (!target) return { status: 400, body: { error: 'agent is required — an ERC-8004 id or an A2A endpoint URL' } };
 
   const started = Date.now();
-  const resolved = await resolveA2aEndpoint(target);
+  // A target that is neither an id nor a URL the parser accepts used to throw
+  // out of here as a bare 500 ("http://[" did it live).
+  let resolved = null;
+  try { resolved = await resolveA2aEndpoint(target); }
+  catch { return { status: 400, body: { error: 'agent is not an ERC-8004 id or a well-formed https:// A2A endpoint' } }; }
   if (!resolved) {
     return { status: 404, body: {
       error: 'no A2A endpoint found for that agent',
@@ -5504,7 +5546,7 @@ export async function handleHire(url, body, env, opts = {}) {
   if (!neg.ok) {
     await recordSession(env, {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
-      outcome: neg.error, agent: target, ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
+      outcome: neg.error, agent: target, ...(/^\d+$/.test(target) ? {} : { unlisted: true }), ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
     });
     return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms } };
   }
@@ -5527,6 +5569,24 @@ export async function handleHire(url, body, env, opts = {}) {
       expected: 'an integer amount in the payment token\'s smallest unit (1 $U = 1000000000000000000), or a decimal amount such as "0.10"',
     } };
   }
+  // THE QUOTE IS CHECKED BEFORE IT BECOMES TRANSACTIONS (2026-09-18). The
+  // kernel pulls one token, its own paymentToken, on one chain. A quote that
+  // names another asset was still turned into an approve() to THAT address
+  // under the label "Approve $U" — the fund() after it reverts and the buyer
+  // is left with an allowance on a token the seller chose. chain_id,
+  // verifying_contract and quote_expires_at were copied through and never
+  // looked at. A quote that does not fit is not hireable, and says why.
+  const unfit = [];
+  if (String(q.asset || '').toLowerCase() !== String(ERC8183.paymentToken).toLowerCase()) unfit.push(`it prices in ${q.asset}, and this escrow settles in $U (${ERC8183.paymentToken}) only`);
+  if (q.chain_id != null && Number(q.chain_id) !== 56) unfit.push(`it is signed for chain ${q.chain_id}, not BNB Chain (56)`);
+  if (q.verifying_contract && /^0x[a-fA-F0-9]{40}$/.test(String(q.verifying_contract)) && ![ERC8183.commerce, ERC8183.router, ERC8183.policy].filter(Boolean).map((x) => String(x).toLowerCase()).includes(String(q.verifying_contract).toLowerCase())) unfit.push(`it is signed for the contract ${q.verifying_contract}, which is not this escrow`);
+  // Seconds, milliseconds or an ISO date — sellers send all three.
+  const rawExp = q.quote_expires_at;
+  const qExp = rawExp == null ? null : Number.isFinite(Number(rawExp)) ? (Number(rawExp) > 1e12 ? Number(rawExp) / 1000 : Number(rawExp)) : (Number.isFinite(Date.parse(String(rawExp))) ? Date.parse(String(rawExp)) / 1000 : null);
+  if (qExp != null && Number.isFinite(qExp) && qExp < Date.now() / 1000) unfit.push('it has already expired');
+  if (unfit.length) {
+    return { status: 502, body: { error: `the seller's quote cannot be funded here: ${unfit.join('; ')}`, quoted: String(q.price), endpoint, negotiated: true, hireable: false } };
+  }
   const disputeWindow = await readDisputeWindow(opts.rpcCall || rpcCall);
   const expiredAt = expiryFor(q, body?.expires_in_seconds, disputeWindow);
   const { provider, provider_source, provider_problem } = await resolveProvider(q, target, opts.rpcCall || rpcCall);
@@ -5534,7 +5594,7 @@ export async function handleHire(url, body, env, opts = {}) {
   await recordSession(env, {
     task, tool: 'erc8183:negotiate', ok: true, ms: Date.now() - started,
     outcome: `quoted ${Number(budget) / 1e18} ${q.currency_symbol}`,
-    agent: target, excerpt: q.service || null, ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
+    agent: target, ...(/^\d+$/.test(target) ? {} : { unlisted: true }), excerpt: q.service || null, ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
   });
 
   // A quote we cannot address is still worth returning — the price is real
@@ -5596,6 +5656,37 @@ export async function handleHire(url, body, env, opts = {}) {
       'Send the seller {"skill":"notify_funded","job_id":<jobId>} over the same A2A endpoint to request delivery.',
     track: `https://agent.brainonbnb.com/job?id=<jobId>`,
   } };
+}
+
+// THE SELLER THAT WAS HIRED IS THE SELLER THAT IS TOLD (2026-09-18). After the
+// escrow was funded the hire panel posted notify_funded to THIS worker's /a2a,
+// whichever agent the buyer had hired. For 21 of the 26 Hire buttons that is a
+// stranger's agent: our seller answered "job N names 0x… as provider, that is
+// not us", the panel printed "the seller declined to deliver … your budget
+// returns when the job expires" — and the real seller had never been asked,
+// with the buyer's money in escrow for eight days. The page cannot post to a
+// stranger's endpoint itself (its CSP names this worker alone), so the worker
+// relays: by ERC-8004 id only, resolved through the same index /hire used, one
+// fixed message with nothing of the caller's in it but the job's number. Our
+// own agents are answered in-process, as /hire does.
+export async function handleHireNotify(body, opts = {}) {
+  const target = String(body?.agent || '').trim();
+  const jobId = Number(body?.job_id);
+  if (!/^\d{1,12}$/.test(target)) return { status: 400, body: { error: 'agent is required — the ERC-8004 id that was hired (a number; this relay does not take URLs)' } };
+  if (!Number.isInteger(jobId) || jobId <= 0) return { status: 400, body: { error: 'job_id is required — the numeric jobId the createJob transaction logged' } };
+  let resolved = null;
+  try { resolved = await resolveA2aEndpoint(target); } catch { resolved = null; }
+  if (!resolved || !resolved.endpoint) return { status: 404, body: { error: 'no A2A endpoint found for that agent id', job_id: jobId } };
+  const data = { skill: 'notify_funded', job_id: jobId };
+  let res = await a2aSend(resolved.endpoint, data, 25000, opts.localA2A || null);
+  if (res.rpc?.error && WANTS_TEXT.test(String(res.rpc.error.message || ''))) {
+    const retry = await a2aSend(resolved.endpoint, data, 25000, opts.localA2A || null, true);
+    if (retry.rpc && !retry.rpc.error) res = retry;
+  }
+  const base = { job_id: jobId, agent: target, endpoint: resolved.endpoint, ours: !!res.loopback, seller_ms: typeof res.ms === 'number' ? res.ms : null };
+  if (!res.rpc) return { status: 502, body: { ...base, delivered_to_seller: false, error: res.why || 'the seller did not answer', do_it_yourself: `POST ${resolved.endpoint} — A2A message/send with {"skill":"notify_funded","job_id":${jobId}}` } };
+  if (res.rpc.error) return { status: 200, body: { ...base, delivered_to_seller: true, accepted: false, seller_said: String(res.rpc.error.message || 'no reason given').slice(0, 400) } };
+  return { status: 200, body: { ...base, delivered_to_seller: true, accepted: true } };
 }
 
 // Accepts an ERC-8004 id or a URL. For an id we look it up in the same index
@@ -5794,7 +5885,8 @@ import { handleDispatch } from './dispatch.js';
 import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
-import { handleHire, decodeJob, ERC8183 } from './hire.js';
+import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
+import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY } from '../shared/lp-flow.js';
@@ -5868,19 +5960,9 @@ const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 // record (0.70 USD1 over three purchases) had come from our NFT relayer, and
 // the total was being read as income from strangers. The list is the eight
 // wallets with a key in this project plus the operator's two personal ones.
-const OWN_WALLETS = new Set([
-  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // creator / dev
-  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
-  '0xbfb4b49787ce948c1ee304f6c197a0e8b038ddb2', // NFT relayer (the test buyer)
-  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent
-  '0x690e950214980bc329823a2db2fd90c06bd54de4', // x402 income
-  '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', // agent provider
-  '0xc5a17b5295fc50badb1f9f9c09b412fe5e84f7d3', // Altana admin
-  '0x5e4102520a71b2aa18a1208330d4848dea4bd105', // prize pool
-  '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', // operator
-  '0x4fa13c52724bcadffefef91676cc429fa6216a48', // operator (builder #3)
-]);
-const isOwnWallet = (a) => OWN_WALLETS.has(String(a || '').toLowerCase());
+// The wallets that are ours live in own-wallets.js (the telemetry splits
+// delivered jobs by them too).
+
 
 // The watch price, its window and the USD1 formatter now live in catalog.js,
 // beside the description of the thing being priced.
@@ -7199,6 +7281,23 @@ export default {
     // ERC-8183 escrow calls, unsigned. This is the paid half — and the reason
     // it can exist without contradicting the read-only rule is that we build
     // the transactions and the buyer signs them. See hire.js.
+    // The funded job's seller is told to deliver — the seller that was hired,
+    // by id, through the same resolution /hire used (hire.js, handleHireNotify).
+    if (path === '/hire/notify') {
+      if (request.method !== 'POST') return json({ error: 'POST {"agent":"<ERC-8004 id>","job_id":<jobId>}' }, 405);
+      const nb = await request.json().catch(() => ({}));
+      const nr = await handleHireNotify(nb, { localA2A: async (endpoint, data) => {
+        if (new URL(endpoint).host !== url.host) return null;
+        const res = await handleA2A(new Request(endpoint, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
+            params: { message: { role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
+        }), env);
+        return await res.json();
+      } });
+      return json(nr.body, nr.status);
+    }
     if (path === '/hire') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
       // Our own agents live on this worker, and a Worker cannot fetch its own
@@ -7397,6 +7496,9 @@ ${pageTail}`;
           per_day: daily.length > 1
             ? Math.round(((last.highest_id || 0) - (first.highest_id || 0)) / (daily.length - 1))
             : null,
+          // The window the rate is over — the whole time watched, not "since the
+          // last full scan", beside which the page used to print it.
+          per_day_over: daily.length > 1 ? { from: first.date, to: last.date, days: daily.length - 1 } : null,
         } : null,
         daily,
         full_scans: full,
@@ -7753,7 +7855,7 @@ ${pageTail}`;
         checked_at: t.checked_at,
         cadence: t.cadence,
         method: t.method,
-        note: 'Two agents share this origin, so this answers with both. Ask for one with ?agent=302257 or ?agent=grid-trading.',
+        note: `${(t.ours || []).length} agents share this origin, so this answers with all of them. Ask for one with ?agent=302257 or ?agent=grid-trading.`,
       });
     }
 
@@ -10008,6 +10110,38 @@ export async function recordLpWindow(env, { settle = true } = {}) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/net.js
+==============================================================================
+
+// Reading what a stranger's server sends back, with an end to it.
+//
+// Every endpoint this worker talks to is an address somebody wrote into a
+// public registry. `await r.text()` reads whatever arrives: a server that
+// answers with a hundred megabytes (or never stops) takes the invocation's
+// memory and time with it, and one such body written on into KV fails the
+// write in silence. 256 KB is far above the largest honest answer measured
+// (36 KB); what comes after it is dropped and the text is marked cut.
+export const MAX_BODY_BYTES = 256 * 1024;
+export async function cappedText(r, max = MAX_BODY_BYTES) {
+  if (!r || !r.body || typeof r.body.getReader !== 'function') return r && typeof r.text === 'function' ? (await r.text()).slice(0, max) : '';
+  const reader = r.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (size + value.byteLength > max) { chunks.push(value.subarray(0, Math.max(0, max - size))); size = max; break; }
+      chunks.push(value); size += value.byteLength;
+    }
+  } finally { try { await reader.cancel(); } catch { /* already closed */ } }
+  const all = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) { all.set(c, at); at += c.byteLength; }
+  return new TextDecoder().decode(all);
+}
+
+==============================================================================
 === FILE: worker-agent/own-jobs.js
 ==============================================================================
 
@@ -10041,7 +10175,21 @@ export async function readOwnJobs(env) {
 export async function tickOwnJobs(env, rpc, ids = []) {
   const call = (to, data) => rpc('eth_call', [{ to, data }, 'latest']);
   const prev = (await readOwnJobs(env)) || { jobs: {}, checked_at: null };
-  const all = [...new Set([...Object.keys(prev.jobs), ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
+  // EVERY JOB THIS WORKER DELIVERED IS WATCHED (2026-09-18). The list was the
+  // previous record plus ids posted by hand — a job a STRANGER hired and we
+  // delivered never entered it. Four of them sat SUBMITTED with their dispute
+  // windows long over (56668, 56699, 56711, 56712: 0.40 $U of strangers' money
+  // waiting for settle()) while this route answered "settleable: []". The
+  // seller stores each deliverable under job:<id>; those keys are the list.
+  let delivered = [];
+  try {
+    let cursor; do {
+      const page = await env.AGENT.list({ prefix: 'job:', limit: 1000, ...(cursor ? { cursor } : {}) });
+      delivered.push(...page.keys.map((k) => k.name.slice(4)));
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+  } catch { delivered = []; }
+  const all = [...new Set([...Object.keys(prev.jobs), ...delivered, ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
   if (!all.length) return { ok: false, error: 'no job ids recorded yet — POST /own-jobs with the secret and {"ids":[…]}' };
 
   const windowSec = await readDisputeWindow(call);
@@ -10053,6 +10201,9 @@ export async function tickOwnJobs(env, rpc, ids = []) {
   for (const id of all) {
     let job = null;
     try { job = decodeJob(await call(ERC8183.commerce, JOB_CALL(id))); } catch { job = null; }
+    // A read that failed is not a state of the job: it used to be written into
+    // the job's permanent history as a transition to "unknown".
+    if (!job) { rows.push({ id, status: null, state: 'unread', note: 'the kernel did not answer for this job on this tick' }); continue; }
     const c = classify(job, { now, windowSec });
     const snap = { status: job?.status || null, state: c.state, budget_u: job?.budget_u ?? null, submitted_at: job?.submitted_at ?? null, ends_at: c.ends_at ?? null };
     const out = recordTransition(record, id, snap, at);
@@ -10065,6 +10216,28 @@ export async function tickOwnJobs(env, rpc, ids = []) {
   else await env.AGENT.put(KV_KEY, JSON.stringify({ ...prev, checked_at: at, summary: summarise(record, at) }));
   return { ok: true, jobs: all.length, transitions: changes, rows };
 }
+
+==============================================================================
+=== FILE: worker-agent/own-wallets.js
+==============================================================================
+
+// The wallets that are this project's own. A payment or a job from one of
+// them is a test of ours, never a stranger's custom: every figure that says
+// "somebody bought this" is split by this list (earnings on /stats, delivered
+// jobs on the registry).
+export const OWN_WALLETS = new Set([
+  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // creator / dev
+  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
+  '0xbfb4b49787ce948c1ee304f6c197a0e8b038ddb2', // NFT relayer (the test buyer)
+  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent
+  '0x690e950214980bc329823a2db2fd90c06bd54de4', // x402 income
+  '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', // agent provider
+  '0xc5a17b5295fc50badb1f9f9c09b412fe5e84f7d3', // Altana admin
+  '0x5e4102520a71b2aa18a1208330d4848dea4bd105', // prize pool
+  '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', // operator
+  '0x4fa13c52724bcadffefef91676cc429fa6216a48', // operator (builder #3)
+]);
+export const isOwnWallet = (a) => OWN_WALLETS.has(String(a || '').toLowerCase());
 
 ==============================================================================
 === FILE: worker-agent/package.json
@@ -10573,7 +10746,7 @@ function pickService(text = '', explicit) {
   // "which fee tier should I provide liquidity in" is asking about LP range
   // placement, and the rebalance pattern below matches "allocation" — which
   // would have quietly sold them a portfolio rebalance instead.
-  if (/fee.?tier|which (pool|tier)|provide liquidity|add liquidity|LP|liquidity provider|where to (lp|pool)|v3 (range|tier)/i.test(t)) return SERVICES.lp_tier_plan;
+  if (/fee.?tier|which (pool|tier)|provide liquidity|add liquidity|\bLP\b|liquidity provider|where to (lp|pool)|v3 (range|tier)/i.test(t)) return SERVICES.lp_tier_plan;
   if (/rebalanc|re-?weight|target weight|allocation|drift|portfolio/.test(t)) return SERVICES.rebalance_plan;
   if (/health.?factor|liquidat|collateral|venus|lending|borrow/.test(t)) return SERVICES.health_factor;
   if (/grid|ladder|range.?bot|dca.?grid/.test(t)) return SERVICES.grid_plan;
@@ -10760,7 +10933,7 @@ export async function handleA2A(request, env) {
     if (!service) {
       return rpcOk(id, {
         accepted: false,
-        reason: 'We do not sell that. Two things are for sale here and both are measurements, not opinions.',
+        reason: `We do not sell that. ${Object.keys(SERVICES).length} things are for sale here (listed below) and all of them are measurements, not opinions.`,
         services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, price: s.price, currency: 'U' })),
       });
     }
@@ -11034,7 +11207,14 @@ export async function handleSessionRevoke(request, env) {
       const pub = decodeBytes(await ethCall(net.rpcs, net.keyStore, SEL_GET_PUBKEY + pad(walletAddress) + k.keyId.replace(/^0x/, '')));
       if (!pub) throw new Error('the KeyStore returned no public key for this keyId');
       const r = await client.revokeSession({ wallet, signer, session: pub });
-      rec.status = r.status || 'submitted';
+      // The relay answers in capitals (CONFIRMED, PENDING, FAILED) and this file
+      // and the page tested for 'failed' in lower case: a revocation the relay
+      // had FAILED, or only queued, was stored and shown as a green "revoked"
+      // (2026-09-18). One spelling from here on, and only a confirmed one is a
+      // revocation; what the KeyStore says afterwards (keys_after) is the proof.
+      rec.status = String(r.status || 'submitted').toLowerCase();
+      if (/fail|revert|reject/.test(rec.status)) { rec.status = 'failed'; rec.error = rec.error || 'the relay reported the revocation as failed'; }
+      rec.confirmed = rec.status === 'confirmed';
       rec.transactionHash = r.transactionHash || null;
       rec.explorer = r.transactionHash ? `${net.explorer}/tx/${r.transactionHash}` : null;
     } catch (e) {
@@ -11253,9 +11433,17 @@ export async function recordSession(env, entry) {
     log.push({
       at: new Date().toISOString(),
       task: String(entry.task || '').slice(0, 160),
-      operator: entry.operator || null,
-      agent: entry.agent || null,
-      tool: entry.tool || null,
+      // Every string in an entry is bounded (2026-09-18): `agent` was stored as
+      // the caller gave it, a POST body with a megabyte in that field was kept
+      // whole, and some twenty-five of them pass the size a KV value may have —
+      // after which every write fails in silence and the log stands still.
+      operator: entry.operator ? String(entry.operator).slice(0, 80) : null,
+      agent: entry.agent ? String(entry.agent).slice(0, 80) : null,
+      tool: entry.tool ? String(entry.tool).slice(0, 80) : null,
+      // A target that is not an agent of the index (a bare URL somebody passed
+      // to /hire): logged, but it opens no row of its own on the track record
+      // — anyone can stand up a host that answers a quote and ask it N times.
+      ...(entry.unlisted ? { unlisted: true } : {}),
       ms: entry.ms ?? null,
       ok: !!entry.ok,
       // Why it did not work is the part worth keeping. "no read-only tool
@@ -11317,7 +11505,7 @@ export function trackRecord(sessions) {
   const by = new Map();
   for (const s of sessions) {
     const k = s.operator || s.agent;
-    if (!k) continue;
+    if (!k || s.unlisted) continue;
     if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, quoteRuns: 0, unmarked: 0, times: [], tools: new Set(), last: null, failures: [] });
     const r = by.get(k);
     r.asked++;
@@ -11563,6 +11751,8 @@ export async function submitDeliverable({ env, jobId, document, readJob }) {
 // theirs, timestamped, and never folded into anything this project states as
 // measured. The census measures; this quotes.
 
+import { cappedText } from './net.js';
+import { isOwnWallet } from './own-wallets.js';
 import { healthFactor } from './venus.js';
 import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
@@ -11642,7 +11832,7 @@ async function askPeer(peer) {
       return { ...base, reachable: true, has_live_state: false, http: r.status,
         note: r.status === 404 ? 'running, but publishes no live state' : `answered ${r.status}` };
     }
-    const text = await r.text();
+    const text = await cappedText(r);
     let doc = null;
     try { doc = JSON.parse(text); } catch { /* not json */ }
     if (!doc || typeof doc !== 'object') {
@@ -12016,6 +12206,10 @@ async function ownJobs(env) {
     const stored = await Promise.all(read.map((n) => env.AGENT.get(`job:${n}`, 'json')));
 
     const byService = {};
+    // … of which our own test purchases (the client is one of our wallets): a
+    // count that mixes them with strangers' jobs says "nine delivered" where
+    // four were (2026-09-18).
+    const ownByService = {};
     const last = {};
     read.forEach((jobId, i) => {
       const rec = stored[i];
@@ -12025,6 +12219,7 @@ async function ownJobs(env) {
       const service = doc?.service ?? null;
       if (!service) return;
       byService[service] = (byService[service] || 0) + 1;
+      if (isOwnWallet(doc?.client)) ownByService[service] = (ownByService[service] || 0) + 1;
       // ids are descending, so the first one seen for a service is its latest.
       if (!last[service]) {
         last[service] = {
@@ -12034,12 +12229,16 @@ async function ownJobs(env) {
           // Whether OUR maths agreed with the protocol's on that job. Only
           // health-factor deliveries carry it; the grid planner has no protocol
           // to check itself against, it measures the pool directly.
-          agrees: rec.result?.cross_check?.agrees ?? null,
+          // Read where the deliverable carries it (result.position.cross_check).
+          // The path read until 2026-09-18 does not exist, so this was always
+          // null — and two deliveries whose arithmetic DISAGREED with Venus by
+          // 7% and 10% showed nothing.
+          agrees: doc?.result?.position?.cross_check?.agrees ?? doc?.result?.cross_check?.agrees ?? rec.result?.cross_check?.agrees ?? null,
           tx: rec.delivery?.tx ?? null,
         };
       }
     });
-    return { byService, last, truncated: ids.length > RECENT };
+    return { byService, ownByService, last, truncated: ids.length > RECENT };
   } catch {
     // A KV list that fails is not zero jobs. Null says "not known right now",
     // and the page prints nothing rather than a confident 0.
@@ -12070,6 +12269,7 @@ export async function refreshTelemetry(env) {
   // Null means the job list could not be read, and stays null. A KV failure
   // must not be rendered as "this agent has never been hired".
   const delivered = (id) => (jobs.byService ? (jobs.byService[id] || 0) : null);
+  const split = (id) => (jobs.byService ? { jobs_for_strangers: (jobs.byService[id] || 0) - ((jobs.ownByService || {})[id] || 0), jobs_own_test_purchases: (jobs.ownByService || {})[id] || 0 } : {});
 
   const doc = {
     checked_at: new Date().toISOString(),
@@ -12082,6 +12282,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('health_factor'),
+        ...split('health_factor'),
         ...hf,
       },
       {
@@ -12092,6 +12293,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('grid_plan'),
+        ...split('grid_plan'),
         last_delivery: jobs.last.grid_plan || null,
         ...grid,
       },
@@ -12103,6 +12305,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('yield_plan'),
+        ...split('yield_plan'),
         last_delivery: jobs.last.yield_plan || null,
         ...yld,
       },
@@ -12114,6 +12317,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('rebalance_plan'),
+        ...split('rebalance_plan'),
         last_delivery: jobs.last.rebalance_plan || null,
         ...reb,
       },
@@ -12125,6 +12329,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('lp_tier_plan'),
+        ...split('lp_tier_plan'),
         last_delivery: jobs.last.lp_tier_plan || null,
         ...lp,
       },

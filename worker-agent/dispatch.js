@@ -20,6 +20,7 @@
 // honest limit of what a router can offer, and it is the same limit the census
 // itself observes: we report what is there, not what it is worth.
 
+import { cappedText } from './net.js';
 import { recordSession } from './sessions.js';
 
 // A tool qualifies as readable if one of these appears as a segment of its
@@ -33,9 +34,9 @@ const READ_VERBS = new Set([
 ]);
 
 // Verbs that mean the tool changes something. Checked against the name split
-// into segments, NOT with a word-boundary regex —  treats an underscore as a
-// word character, so /order/ does not match "get_order_status", and more to
-// the point /swap/ does not match "get_swap_calldata". That one nearly
+// into segments, NOT with a word-boundary regex — \b treats an underscore as a
+// word character, so /\border/ does not match "get_order_status", and more to
+// the point /\bswap/ does not match "get_swap_calldata". That one nearly
 // shipped: the classifier called it read-only because it starts with "get".
 // Five such names were found by testing, and none of them would have looked
 // wrong in review.
@@ -45,7 +46,20 @@ const MUTATING_VERBS = new Set([
   'revoke', 'deploy', 'mint', 'burn', 'stake', 'unstake', 'vote', 'claim',
   'cancel', 'update', 'delete', 'write', 'pay', 'bridge', 'redeem',
   'register', 'authorize', 'confirm', 'calldata', 'tx', 'transaction',
+  // 2026-09-18: a tool named for one of these acts, whatever else it says —
+  // `liquidate_position`, `harvest_rewards`, `repay_loan` went through because
+  // the list above was written from the verbs of a swap.
+  'liquidate', 'harvest', 'repay',
 ]);
+// Verbs a lending READER is named after too (`borrow_rates`, `supply_apy`,
+// `get_open_positions`): they only disqualify a tool whose whole name is the
+// verb — `borrow`, `rebalance` — where there is no noun for it to be about.
+const SOLO_ACTIONS = new Set(['borrow', 'lend', 'supply', 'rebalance', 'compound', 'migrate', 'open', 'close', 'leverage', 'deleverage']);
+// A name with no separators hides its verb from the segment test: `withdrawall`,
+// `placeorder`, `sendfunds` are one segment each, none of them on the list. For
+// the verbs that are never part of a reader's name the segment is searched,
+// not compared.
+const VERBS_INSIDE_A_SEGMENT = ['withdraw', 'transfer', 'approve', 'deposit', 'liquidat', 'broadcast', 'execute', 'placeorder', 'createorder', 'cancelorder', 'sendfund', 'sendtx', 'sendtransaction', 'repay', 'unstake'];
 
 // Does the task ask for an action, or ask about one? "Swap 1 BNB to CAKE"
 // and "I want to sell my CAKE" ask for one; "what would a trade cost" and
@@ -101,7 +115,7 @@ const UNAMBIGUOUS_ACTIONS = new Set([
 // tool when the description has it acting on something: "swaps your tokens",
 // "sends the transaction", "burns LP". "swap fee" and "transfer tax" are not
 // that, and declining them cost this router its own pool scanner.
-const ACTION_ON_OBJECT = /\b(sign|send|execute|submit|broadcast|approve|transfer|withdraw|deposit|stake|unstake|swap|trade|buy|sell|mint|burn|bridge|deploy|revoke|cancel|claim|redeem|pay)s?\s+(a|an|the|your|their|our|his|her|its|funds?|tokens?|assets?|money|transactions?|orders?|positions?|liquidity|collateral|balances?|wallets?|calldata)\b/i;
+const ACTION_ON_OBJECT = /\b(sign|send|execute|submit|broadcast|approve|transfer|withdraw|deposit|stake|unstake|swap|trade|buy|sell|mint|burn|bridge|deploy|revoke|cancel|claim|redeem|pay|rebalance|liquidate|harvest|repay|place|close|add|remove|compound|migrate)s?\s+(a|an|the|your|their|our|his|her|its|funds?|tokens?|assets?|money|transactions?|orders?|positions?|liquidity|collateral|balances?|wallets?|calldata|portfolios?|rewards?|loans?|debts?|trades?)\b/i;
 
 // "get_swap_calldata" -> [get, swap, calldata]; "getSwapCalldata" -> the same.
 const segments = (name) => String(name)
@@ -215,6 +229,8 @@ export function isReadOnly(tool) {
   // A mutating verb anywhere in the name disqualifies it, wherever it sits, and
   // this is checked FIRST so that no declaration below can talk its way past it.
   if (segs.some((seg) => MUTATING_VERBS.has(seg))) return false;
+  if (segs.some((seg) => VERBS_INSIDE_A_SEGMENT.some((v) => seg.includes(v)))) return false;
+  if (segs.length === 1 && SOLO_ACTIONS.has(segs[0])) return false;
 
   // MCP has a way for a server to state this outright, and asking beats
   // guessing. `readOnlyHint: false` is a refusal we honour even when the name
@@ -277,7 +293,7 @@ const rpcCall = async (endpoint, method, params, timeoutMs = 12000) => {
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
     signal: AbortSignal.timeout(timeoutMs),
   });
-  const text = await r.text();
+  const text = await cappedText(r);
   // Some servers answer MCP over SSE; the last data line is the payload.
   const line = text.trim().split('\n').filter((l) => l.trim()).pop() || '';
   const cleaned = line.replace(/^data:\s*/, '');
@@ -379,7 +395,7 @@ async function a2aCall(url, data, timeoutMs = 15000) {
     }),
     signal: AbortSignal.timeout(timeoutMs),
   });
-  const text = await r.text();
+  const text = await cappedText(r);
   try { return JSON.parse(text); } catch { return null; }
 }
 
@@ -543,8 +559,14 @@ export async function handleDispatch(url, body, env, opts = {}) {
       const res = await a2aCall(url, { skill: pick.id || pick.name }).catch(() => null);
       const tookA = Date.now() - startedA;
       const payload = res?.result ?? null;
-      if (res?.error || payload == null) {
-        const why = res?.error?.message || 'no usable result';
+      // AN A2A TASK THAT FAILED IS NOT AN ANSWER (2026-09-18). message/send may
+      // return a Task, and a Task in state failed, rejected, canceled or
+      // input-required is the agent saying it did NOT do the work — it was
+      // recorded ok:true and shown to the visitor as the answer.
+      const stateA = String(payload?.status?.state || payload?.state || '').toLowerCase().replace(/[^a-z]/g, '');
+      const failedA = ['failed', 'rejected', 'canceled', 'cancelled', 'inputrequired', 'authrequired'].includes(stateA);
+      if (res?.error || payload == null || failedA) {
+        const why = res?.error?.message || (failedA ? `the agent's task ended in state "${stateA}"` : 'no usable result');
         attempts.push({ agent: agent.name, endpoint: url, skill: pick.id || pick.name, outcome: why });
         if (env) await recordSession(env, { task, operator: operatorOf(agent), agent: agent.name, tool: pick.id || pick.name, ms: tookA, ok: false, probe, outcome: why });
         continue;
@@ -652,10 +674,14 @@ export async function handleDispatch(url, body, env, opts = {}) {
     const res = await rpcCall(endpoint, 'tools/call', { name: pick.name, arguments: taken || {} }, 15000).catch(() => null);
     const took = Date.now() - started;
     const content = res?.result?.content?.[0]?.text;
+    // MCP says a tool FAILED with result.isError, not with a JSON-RPC error:
+    // "Error: account required" arrived as ordinary content, was recorded
+    // ok:true and printed as the answer (2026-09-18).
+    const toolFailed = res?.result?.isError === true;
     const asked = addressesInTask(task);
-    const offTarget = !!content && !res?.error && !answersAsked(content, asked.addrs);
-    if (res?.error || !content || offTarget) {
-      const why = offTarget ? 'answered about a different address than the one asked' : (res?.error?.message || 'no usable result');
+    const offTarget = !!content && !res?.error && !toolFailed && !answersAsked(content, asked.addrs);
+    if (res?.error || !content || offTarget || toolFailed) {
+      const why = toolFailed ? `the tool reported an error: ${String(content || 'no message').replace(/\s+/g, ' ').slice(0, 100)}` : offTarget ? 'answered about a different address than the one asked' : (res?.error?.message || 'no usable result');
       attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: why });
       // A failure is a fact about this operator and belongs in the record just
       // as much as a success does.

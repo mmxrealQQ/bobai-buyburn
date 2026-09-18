@@ -26,8 +26,20 @@
       "ours": false
     },
     {
-      "id": 33813,
+      "id": 293902,
       "label": "mandaterebalance-agent",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 331131,
+      "label": "LatticeLatch",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 324818,
+      "label": "RangeReset",
       "category": "rebalancing",
       "ours": false
     },
@@ -62,20 +74,32 @@
       "ours": false
     },
     {
+      "id": 340527,
+      "label": "Hevo Grid",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
       "id": 303779,
       "label": "marketplace-operated-grid-planner",
       "category": "grid-trading",
       "ours": false
     },
     {
-      "id": 340455,
-      "label": "LingoAI Grid Trading Agent",
+      "id": 324936,
+      "label": "Sentinels Grid Trader",
       "category": "grid-trading",
       "ours": false
     },
     {
-      "id": 340527,
-      "label": "Hevo Grid",
+      "id": 331131,
+      "label": "LatticeLatch",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
       "category": "grid-trading",
       "ours": false
     },
@@ -92,7 +116,19 @@
       "ours": false
     },
     {
-      "id": 116170,
+      "id": 340532,
+      "label": "Hevo Yield",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 341225,
+      "label": "yieldrouter — capacity-aware yield optimisation",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 116171,
       "label": "Moments",
       "category": "yield-optimization",
       "ours": false
@@ -104,20 +140,8 @@
       "ours": false
     },
     {
-      "id": 341225,
-      "label": "yieldrouter — capacity-aware yield optimisation",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
       "id": 338253,
       "label": "HyperliquidVault",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 340532,
-      "label": "Hevo Yield",
       "category": "yield-optimization",
       "ours": false
     },

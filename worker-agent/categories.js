@@ -59,7 +59,7 @@ export const CATEGORIES = [
     blurb: 'Watching a lending position and saying how far it is from liquidation — before it gets there.',
     aliases: ['health-factor', 'health-factor-monitoring', 'liquidation-monitoring', 'lending-monitoring'],
     strong: /health[ -]?factor|liquidat|collateral[ -]?ratio|lending[ -]?guard/i,
-    loose: /borrow.{0,12}health|collateral/i,
+    loose: /borrow.{0,12}health|\bcollateral\b/i,
   },
 ];
 

@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-09-09T11:22:23.706Z",
-  "asked": 26,
-  "quoted": 12,
+  "measured_at": "2026-09-18T09:57:41.652Z",
+  "asked": 30,
+  "quoted": 15,
   "agents": [
     {
       "id": 269223,
@@ -45,14 +45,34 @@
       "reason": null
     },
     {
-      "id": 33813,
+      "id": 293902,
       "label": "mandaterebalance-agent",
       "category": "rebalancing",
       "ours": false,
       "quotes": false,
       "price": null,
-      "endpoint": "https://testnet-api.bitagent.io/aip/0xf357a45400fa4b741482be1877dc238323f3108e807bf92cb2e78eeb323d53e8",
-      "reason": "answered {\"status\":\"OK\"} rather than a JSON-RPC reply"
+      "endpoint": "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/a2a",
+      "reason": "answered {\"message\":\"Unauthorized\"} rather than a JSON-RPC reply"
+    },
+    {
+      "id": 331131,
+      "label": "LatticeLatch",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Flatticelatch-H5LyouAY4q/invocations?qualifier=DEFAULT",
+      "reason": "Missing Authentication Token"
+    },
+    {
+      "id": 324818,
+      "label": "RangeReset",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Frangereset-ozY66A9He2/invocations?qualifier=DEFAULT",
+      "reason": "Missing Authentication Token"
     },
     {
       "id": 338475,
@@ -81,8 +101,8 @@
       "ours": false,
       "quotes": false,
       "price": null,
-      "endpoint": null,
-      "reason": "no A2A endpoint found for that agent"
+      "endpoint": "https://ivl-mainnet.onrender.com/",
+      "reason": "the seller's quote cannot be funded here: it prices in 0x55d398326f99059fF775485246999027B3197955, and this escrow settles in $U (0xcE24439F"
     },
     {
       "id": 304494,
@@ -115,6 +135,26 @@
       "reason": "Grid requires GRID_PLAN_V1 with pair, lowerPrice, upperPrice, capital, gridCount."
     },
     {
+      "id": 324936,
+      "label": "Sentinels Grid Trader",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply"
+    },
+    {
+      "id": 331131,
+      "label": "LatticeLatch",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Flatticelatch-H5LyouAY4q/invocations?qualifier=DEFAULT",
+      "reason": "Missing Authentication Token"
+    },
+    {
       "id": 340455,
       "label": "LingoAI Grid Trading Agent",
       "category": "grid-trading",
@@ -129,10 +169,10 @@
       "label": "Hevo Grid",
       "category": "grid-trading",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": null,
-      "reason": "no A2A endpoint found for that agent"
+      "quotes": true,
+      "price": "10 $U",
+      "endpoint": "https://hevo-grid.fly.dev/",
+      "reason": null
     },
     {
       "id": 302258,
@@ -155,7 +195,7 @@
       "reason": null
     },
     {
-      "id": 116170,
+      "id": 116171,
       "label": "Moments",
       "category": "yield-optimization",
       "ours": false,
@@ -175,16 +215,6 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
-      "id": 341225,
-      "label": "yieldrouter — capacity-aware yield optimisation",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": null,
-      "reason": "no A2A endpoint found for that agent"
-    },
-    {
       "id": 338253,
       "label": "HyperliquidVault",
       "category": "yield-optimization",
@@ -199,10 +229,20 @@
       "label": "Hevo Yield",
       "category": "yield-optimization",
       "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": null,
-      "reason": "no A2A endpoint found for that agent"
+      "quotes": true,
+      "price": "10 $U",
+      "endpoint": "https://hevo-yield.fly.dev/",
+      "reason": null
+    },
+    {
+      "id": 341225,
+      "label": "yieldrouter — capacity-aware yield optimisation",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/",
+      "reason": null
     },
     {
       "id": 304493,

@@ -274,7 +274,10 @@ export async function runCensusTick(env) {
       checked_this_run: checked,
       answered: up,
       position: state.probeCursor,
-      note: 'A slice of the known endpoints is re-checked each run, so every one is revisited roughly monthly. The headline census comes from a full offline scan.',
+      // "Roughly monthly" was never true (2026-09-18): a dozen endpoints a run
+      // against some 1,900 known ones is a round of about five months. Said as
+      // it is: a rotating sample, and the full scan is what re-checks them all.
+      note: 'A small rotating sample of the known endpoints is re-checked each run (about a dozen a day, so a full round takes months). The headline census, and every endpoint\'s status on the page, come from a full offline scan.',
     },
     calls_used: calls,
   }));

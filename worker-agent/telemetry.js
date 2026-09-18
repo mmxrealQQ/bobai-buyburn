@@ -33,6 +33,8 @@
 // theirs, timestamped, and never folded into anything this project states as
 // measured. The census measures; this quotes.
 
+import { cappedText } from './net.js';
+import { isOwnWallet } from './own-wallets.js';
 import { healthFactor } from './venus.js';
 import { gridPlan } from './grid.js';
 import { yieldPlan } from './yield.js';
@@ -112,7 +114,7 @@ async function askPeer(peer) {
       return { ...base, reachable: true, has_live_state: false, http: r.status,
         note: r.status === 404 ? 'running, but publishes no live state' : `answered ${r.status}` };
     }
-    const text = await r.text();
+    const text = await cappedText(r);
     let doc = null;
     try { doc = JSON.parse(text); } catch { /* not json */ }
     if (!doc || typeof doc !== 'object') {
@@ -486,6 +488,10 @@ async function ownJobs(env) {
     const stored = await Promise.all(read.map((n) => env.AGENT.get(`job:${n}`, 'json')));
 
     const byService = {};
+    // … of which our own test purchases (the client is one of our wallets): a
+    // count that mixes them with strangers' jobs says "nine delivered" where
+    // four were (2026-09-18).
+    const ownByService = {};
     const last = {};
     read.forEach((jobId, i) => {
       const rec = stored[i];
@@ -495,6 +501,7 @@ async function ownJobs(env) {
       const service = doc?.service ?? null;
       if (!service) return;
       byService[service] = (byService[service] || 0) + 1;
+      if (isOwnWallet(doc?.client)) ownByService[service] = (ownByService[service] || 0) + 1;
       // ids are descending, so the first one seen for a service is its latest.
       if (!last[service]) {
         last[service] = {
@@ -504,12 +511,16 @@ async function ownJobs(env) {
           // Whether OUR maths agreed with the protocol's on that job. Only
           // health-factor deliveries carry it; the grid planner has no protocol
           // to check itself against, it measures the pool directly.
-          agrees: rec.result?.cross_check?.agrees ?? null,
+          // Read where the deliverable carries it (result.position.cross_check).
+          // The path read until 2026-09-18 does not exist, so this was always
+          // null — and two deliveries whose arithmetic DISAGREED with Venus by
+          // 7% and 10% showed nothing.
+          agrees: doc?.result?.position?.cross_check?.agrees ?? doc?.result?.cross_check?.agrees ?? rec.result?.cross_check?.agrees ?? null,
           tx: rec.delivery?.tx ?? null,
         };
       }
     });
-    return { byService, last, truncated: ids.length > RECENT };
+    return { byService, ownByService, last, truncated: ids.length > RECENT };
   } catch {
     // A KV list that fails is not zero jobs. Null says "not known right now",
     // and the page prints nothing rather than a confident 0.
@@ -540,6 +551,7 @@ export async function refreshTelemetry(env) {
   // Null means the job list could not be read, and stays null. A KV failure
   // must not be rendered as "this agent has never been hired".
   const delivered = (id) => (jobs.byService ? (jobs.byService[id] || 0) : null);
+  const split = (id) => (jobs.byService ? { jobs_for_strangers: (jobs.byService[id] || 0) - ((jobs.ownByService || {})[id] || 0), jobs_own_test_purchases: (jobs.ownByService || {})[id] || 0 } : {});
 
   const doc = {
     checked_at: new Date().toISOString(),
@@ -552,6 +564,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('health_factor'),
+        ...split('health_factor'),
         ...hf,
       },
       {
@@ -562,6 +575,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('grid_plan'),
+        ...split('grid_plan'),
         last_delivery: jobs.last.grid_plan || null,
         ...grid,
       },
@@ -573,6 +587,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('yield_plan'),
+        ...split('yield_plan'),
         last_delivery: jobs.last.yield_plan || null,
         ...yld,
       },
@@ -584,6 +599,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('rebalance_plan'),
+        ...split('rebalance_plan'),
         last_delivery: jobs.last.rebalance_plan || null,
         ...reb,
       },
@@ -595,6 +611,7 @@ export async function refreshTelemetry(env) {
         hireable: 'ERC-8183',
         price: '0.10 $U',
         jobs_delivered: delivered('lp_tier_plan'),
+        ...split('lp_tier_plan'),
         last_delivery: jobs.last.lp_tier_plan || null,
         ...lp,
       },

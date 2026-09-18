@@ -23,6 +23,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { CENSUS_DIR } from './lib/census-dir.mjs';
+import 'dotenv/config';
+
+// OUR OWN QUOTE RUN MUST SAY IT IS OURS (2026-09-18). Without HIT_SECRET the
+// header was skipped in silence, and the run of 2026-09-09 stands on the
+// public track record as one to four "outside callers" for some fifteen
+// operators. The run refuses to start without the secret.
+if (!process.env.HIT_SECRET && !process.argv.includes('--self-test')) {
+  console.error('HIT_SECRET is not set (.env). Without it every quote this run asks for is filed as a stranger\'s question on /sessions. Not started.');
+  process.exit(2);
+}
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const arg = (name, fallback) => {

@@ -32,7 +32,8 @@ import { handleDispatch } from './dispatch.js';
 import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
-import { handleHire, decodeJob, ERC8183 } from './hire.js';
+import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
+import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY } from '../shared/lp-flow.js';
@@ -106,19 +107,9 @@ const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 // record (0.70 USD1 over three purchases) had come from our NFT relayer, and
 // the total was being read as income from strangers. The list is the eight
 // wallets with a key in this project plus the operator's two personal ones.
-const OWN_WALLETS = new Set([
-  '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // creator / dev
-  '0xdefc0e900dfc83e207902cf22265ae63f94c01ce', // buyback bot
-  '0xbfb4b49787ce948c1ee304f6c197a0e8b038ddb2', // NFT relayer (the test buyer)
-  '0xbfaa69233741924ed5b9d5daa9b4bf7b84567f0a', // DeFi agent
-  '0x690e950214980bc329823a2db2fd90c06bd54de4', // x402 income
-  '0x73809f69916fcf7ddc5bb1315fbdf96a569a5963', // agent provider
-  '0xc5a17b5295fc50badb1f9f9c09b412fe5e84f7d3', // Altana admin
-  '0x5e4102520a71b2aa18a1208330d4848dea4bd105', // prize pool
-  '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c', // operator
-  '0x4fa13c52724bcadffefef91676cc429fa6216a48', // operator (builder #3)
-]);
-const isOwnWallet = (a) => OWN_WALLETS.has(String(a || '').toLowerCase());
+// The wallets that are ours live in own-wallets.js (the telemetry splits
+// delivered jobs by them too).
+
 
 // The watch price, its window and the USD1 formatter now live in catalog.js,
 // beside the description of the thing being priced.
@@ -1437,6 +1428,23 @@ export default {
     // ERC-8183 escrow calls, unsigned. This is the paid half — and the reason
     // it can exist without contradicting the read-only rule is that we build
     // the transactions and the buyer signs them. See hire.js.
+    // The funded job's seller is told to deliver — the seller that was hired,
+    // by id, through the same resolution /hire used (hire.js, handleHireNotify).
+    if (path === '/hire/notify') {
+      if (request.method !== 'POST') return json({ error: 'POST {"agent":"<ERC-8004 id>","job_id":<jobId>}' }, 405);
+      const nb = await request.json().catch(() => ({}));
+      const nr = await handleHireNotify(nb, { localA2A: async (endpoint, data) => {
+        if (new URL(endpoint).host !== url.host) return null;
+        const res = await handleA2A(new Request(endpoint, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'message/send',
+            params: { message: { role: 'user', messageId: 'hire-' + nb.job_id, parts: [{ kind: 'data', data }] } } }),
+        }), env);
+        return await res.json();
+      } });
+      return json(nr.body, nr.status);
+    }
     if (path === '/hire') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
       // Our own agents live on this worker, and a Worker cannot fetch its own
@@ -1635,6 +1643,9 @@ ${pageTail}`;
           per_day: daily.length > 1
             ? Math.round(((last.highest_id || 0) - (first.highest_id || 0)) / (daily.length - 1))
             : null,
+          // The window the rate is over — the whole time watched, not "since the
+          // last full scan", beside which the page used to print it.
+          per_day_over: daily.length > 1 ? { from: first.date, to: last.date, days: daily.length - 1 } : null,
         } : null,
         daily,
         full_scans: full,
@@ -1991,7 +2002,7 @@ ${pageTail}`;
         checked_at: t.checked_at,
         cadence: t.cadence,
         method: t.method,
-        note: 'Two agents share this origin, so this answers with both. Ask for one with ?agent=302257 or ?agent=grid-trading.',
+        note: `${(t.ours || []).length} agents share this origin, so this answers with all of them. Ask for one with ?agent=302257 or ?agent=grid-trading.`,
       });
     }
 

@@ -57,6 +57,16 @@ const WILDCARD_HOSTS = /(^|\.)(nip\.io|sslip\.io|xip\.io|traefik\.me|localtest\.
 export function operatorOf(agent) {
   const first = (agent.endpoints || []).map(hostOf).find(Boolean);
   if (!first) return null;
+  // An IP address is one host, not a domain with labels: 43.160.214.54 was cut
+  // to its last two "labels" and shown as the operator "214.54" (2026-09-18).
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(first)) return first;
+  // On AWS every customer lives under the same registrable domain: an API
+  // gateway is <id>.execute-api.<region>.amazonaws.com, a bucket is
+  // <name>.s3.<region>.amazonaws.com. Cut to two labels, "amazonaws.com · 13
+  // ids, one deployment" merged at least three unrelated accounts, and a Hire
+  // button was wired to one of them under another one's name. The whole host
+  // is the operator there; the same for ngrok's free tunnels.
+  if (/(^|\.)amazonaws\.com$|(^|\.)ngrok-free\.dev$/i.test(first)) return first;
   const parts = first.split('.');
   if (parts.length <= 2) return first;
   // Keep three labels for known multi-level suffixes, two otherwise.
@@ -126,6 +136,11 @@ export function groupByOperator(agents) {
       // difference should be visible rather than inferred from a count.
       distinct_capabilities: g.signatures.size,
       ids: g.ids.slice(0, 50),
+      // The id whose name, description and tools this record shows (`best`).
+      // A Hire button on the record has to hire THAT agent: the first id of the
+      // list is merely the lowest, and hiring it under the best one's name sent
+      // "Moments" buyers to #116170 "SLY" (2026-09-18).
+      best_id: g.best?.id ?? null,
       name: g.best?.name || [...g.names][0] || null,
       description: g.best?.description || [...g.descriptions][0] || null,
       image: g.best?.image || null,

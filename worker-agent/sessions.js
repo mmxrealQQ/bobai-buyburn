@@ -34,9 +34,17 @@ export async function recordSession(env, entry) {
     log.push({
       at: new Date().toISOString(),
       task: String(entry.task || '').slice(0, 160),
-      operator: entry.operator || null,
-      agent: entry.agent || null,
-      tool: entry.tool || null,
+      // Every string in an entry is bounded (2026-09-18): `agent` was stored as
+      // the caller gave it, a POST body with a megabyte in that field was kept
+      // whole, and some twenty-five of them pass the size a KV value may have —
+      // after which every write fails in silence and the log stands still.
+      operator: entry.operator ? String(entry.operator).slice(0, 80) : null,
+      agent: entry.agent ? String(entry.agent).slice(0, 80) : null,
+      tool: entry.tool ? String(entry.tool).slice(0, 80) : null,
+      // A target that is not an agent of the index (a bare URL somebody passed
+      // to /hire): logged, but it opens no row of its own on the track record
+      // — anyone can stand up a host that answers a quote and ask it N times.
+      ...(entry.unlisted ? { unlisted: true } : {}),
       ms: entry.ms ?? null,
       ok: !!entry.ok,
       // Why it did not work is the part worth keeping. "no read-only tool
@@ -98,7 +106,7 @@ export function trackRecord(sessions) {
   const by = new Map();
   for (const s of sessions) {
     const k = s.operator || s.agent;
-    if (!k) continue;
+    if (!k || s.unlisted) continue;
     if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, quoteRuns: 0, unmarked: 0, times: [], tools: new Set(), last: null, failures: [] });
     const r = by.get(k);
     r.asked++;

@@ -29,23 +29,24 @@
     "a2a_callable": 321,
     "a2a_confirmed_by_probe": 2
   },
-  "independent_operators": 89,
+  "independent_operators": 95,
   "method": {
     "registrations": "Every id read via tokenURI() on the registry. Ids the nodes refused are retried until they answer; the count above reports what remained unreadable after that, so a percentage here is never a statement about node availability.",
     "reachability": "Every claimed HTTP endpoint contacted once. Any HTTP response counts as reachable, including 401, 403 and 404 — only a failed connection counts as dead. MCP endpoints were sent a real tools/list; agent cards had to parse as JSON.",
     "caveat": "Reachability is a snapshot. An endpoint down at that moment is counted as dead, and one that answers may still do nothing useful."
   },
   "source": "https://brainonbnb.com/registry",
-  "hireable_here": 26,
+  "hireable_here": 27,
+  "hire_buttons": 30,
   "categories": [
     "rebalancing",
     "grid-trading",
     "yield-optimization",
     "health-factor"
   ],
-  "quote_asks": 26,
-  "quote_agents_asked": 24,
-  "quoted_when_asked": 12,
-  "quoted_of_hireable": 12,
-  "quotes_measured_at": "2026-09-09T11:22:23.706Z"
+  "quote_asks": 30,
+  "quote_agents_asked": 27,
+  "quoted_when_asked": 15,
+  "quoted_of_hireable": 14,
+  "quotes_measured_at": "2026-09-18T09:57:41.652Z"
 }

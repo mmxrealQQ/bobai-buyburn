@@ -55,7 +55,10 @@ export function aggregate(jobs) {
   for (const j of jobs.values()) {
     byStatus[j.status] = (byStatus[j.status] || 0) + 1;
     clients.add(j.client);
-    const isFunded = j.status !== 'OPEN';
+    // Funded means money was placed: not OPEN, and a budget above zero. A job
+    // REJECTED before anybody funded it carries budget 0 and was counted as
+    // "ever funded" (six of them on 2026-09-07: 55,724 where 55,718 were).
+    const isFunded = j.status !== 'OPEN' && BigInt(j.budget || 0) > 0n;
     if (isFunded) { escrowed += BigInt(j.budget); fundedJobs++; }
 
     const p = j.provider;

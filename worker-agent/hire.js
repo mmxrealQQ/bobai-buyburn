@@ -27,6 +27,7 @@
 // lowest common denominator is the right output, and the SDK path is offered
 // alongside it rather than instead of it.
 
+import { cappedText } from './net.js';
 import { recordSession } from './sessions.js';
 
 // AgenticCommerce kernel, EvaluatorRouter, OptimisticPolicy, ERC-8004 registry
@@ -239,7 +240,7 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    text = await r.text();
+    text = await cappedText(r);
   } catch (e) {
     return { why: `the endpoint its card names did not answer (${e.name === 'TimeoutError' ? `no reply in ${timeoutMs / 1000}s` : e.name})`, ms: Date.now() - t0 };
   }
@@ -457,7 +458,10 @@ const expiryFor = (quote, override, disputeWindow = DISPUTE_WINDOW_FALLBACK) => 
   // An override may lengthen the window but never shorten it below the floor:
   // a buyer asking for a one-hour expiry is asking for a job that cannot be
   // delivered, and quietly obeying would be the same bug with a caller to blame.
-  const wanted = override ? Number(override) : Math.max(floor, est * 6);
+  // An override that is not a number ("abc") is no override: it made NaN here
+  // and BigInt(NaN) further down, a bare 500.
+  const ov = Number(override);
+  const wanted = Number.isFinite(ov) && ov > 0 ? ov : Math.max(floor, est * 6);
   return now + Math.min(Math.max(floor, wanted), MAX_EXPIRY);
 };
 
@@ -620,7 +624,11 @@ export async function handleHire(url, body, env, opts = {}) {
   if (!target) return { status: 400, body: { error: 'agent is required — an ERC-8004 id or an A2A endpoint URL' } };
 
   const started = Date.now();
-  const resolved = await resolveA2aEndpoint(target);
+  // A target that is neither an id nor a URL the parser accepts used to throw
+  // out of here as a bare 500 ("http://[" did it live).
+  let resolved = null;
+  try { resolved = await resolveA2aEndpoint(target); }
+  catch { return { status: 400, body: { error: 'agent is not an ERC-8004 id or a well-formed https:// A2A endpoint' } }; }
   if (!resolved) {
     return { status: 404, body: {
       error: 'no A2A endpoint found for that agent',
@@ -633,7 +641,7 @@ export async function handleHire(url, body, env, opts = {}) {
   if (!neg.ok) {
     await recordSession(env, {
       task, tool: 'erc8183:negotiate', ok: false, ms: Date.now() - started,
-      outcome: neg.error, agent: target, ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
+      outcome: neg.error, agent: target, ...(/^\d+$/.test(target) ? {} : { unlisted: true }), ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
     });
     return { status: 502, body: { error: neg.error, endpoint, negotiated: false, seller_ms: neg.seller_ms } };
   }
@@ -656,6 +664,24 @@ export async function handleHire(url, body, env, opts = {}) {
       expected: 'an integer amount in the payment token\'s smallest unit (1 $U = 1000000000000000000), or a decimal amount such as "0.10"',
     } };
   }
+  // THE QUOTE IS CHECKED BEFORE IT BECOMES TRANSACTIONS (2026-09-18). The
+  // kernel pulls one token, its own paymentToken, on one chain. A quote that
+  // names another asset was still turned into an approve() to THAT address
+  // under the label "Approve $U" — the fund() after it reverts and the buyer
+  // is left with an allowance on a token the seller chose. chain_id,
+  // verifying_contract and quote_expires_at were copied through and never
+  // looked at. A quote that does not fit is not hireable, and says why.
+  const unfit = [];
+  if (String(q.asset || '').toLowerCase() !== String(ERC8183.paymentToken).toLowerCase()) unfit.push(`it prices in ${q.asset}, and this escrow settles in $U (${ERC8183.paymentToken}) only`);
+  if (q.chain_id != null && Number(q.chain_id) !== 56) unfit.push(`it is signed for chain ${q.chain_id}, not BNB Chain (56)`);
+  if (q.verifying_contract && /^0x[a-fA-F0-9]{40}$/.test(String(q.verifying_contract)) && ![ERC8183.commerce, ERC8183.router, ERC8183.policy].filter(Boolean).map((x) => String(x).toLowerCase()).includes(String(q.verifying_contract).toLowerCase())) unfit.push(`it is signed for the contract ${q.verifying_contract}, which is not this escrow`);
+  // Seconds, milliseconds or an ISO date — sellers send all three.
+  const rawExp = q.quote_expires_at;
+  const qExp = rawExp == null ? null : Number.isFinite(Number(rawExp)) ? (Number(rawExp) > 1e12 ? Number(rawExp) / 1000 : Number(rawExp)) : (Number.isFinite(Date.parse(String(rawExp))) ? Date.parse(String(rawExp)) / 1000 : null);
+  if (qExp != null && Number.isFinite(qExp) && qExp < Date.now() / 1000) unfit.push('it has already expired');
+  if (unfit.length) {
+    return { status: 502, body: { error: `the seller's quote cannot be funded here: ${unfit.join('; ')}`, quoted: String(q.price), endpoint, negotiated: true, hireable: false } };
+  }
   const disputeWindow = await readDisputeWindow(opts.rpcCall || rpcCall);
   const expiredAt = expiryFor(q, body?.expires_in_seconds, disputeWindow);
   const { provider, provider_source, provider_problem } = await resolveProvider(q, target, opts.rpcCall || rpcCall);
@@ -663,7 +689,7 @@ export async function handleHire(url, body, env, opts = {}) {
   await recordSession(env, {
     task, tool: 'erc8183:negotiate', ok: true, ms: Date.now() - started,
     outcome: `quoted ${Number(budget) / 1e18} ${q.currency_symbol}`,
-    agent: target, excerpt: q.service || null, ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
+    agent: target, ...(/^\d+$/.test(target) ? {} : { unlisted: true }), excerpt: q.service || null, ...(opts.probe ? { probe: true } : {}), ...(opts.ours ? { ours: opts.ours } : {}),
   });
 
   // A quote we cannot address is still worth returning — the price is real
@@ -725,6 +751,37 @@ export async function handleHire(url, body, env, opts = {}) {
       'Send the seller {"skill":"notify_funded","job_id":<jobId>} over the same A2A endpoint to request delivery.',
     track: `https://agent.brainonbnb.com/job?id=<jobId>`,
   } };
+}
+
+// THE SELLER THAT WAS HIRED IS THE SELLER THAT IS TOLD (2026-09-18). After the
+// escrow was funded the hire panel posted notify_funded to THIS worker's /a2a,
+// whichever agent the buyer had hired. For 21 of the 26 Hire buttons that is a
+// stranger's agent: our seller answered "job N names 0x… as provider, that is
+// not us", the panel printed "the seller declined to deliver … your budget
+// returns when the job expires" — and the real seller had never been asked,
+// with the buyer's money in escrow for eight days. The page cannot post to a
+// stranger's endpoint itself (its CSP names this worker alone), so the worker
+// relays: by ERC-8004 id only, resolved through the same index /hire used, one
+// fixed message with nothing of the caller's in it but the job's number. Our
+// own agents are answered in-process, as /hire does.
+export async function handleHireNotify(body, opts = {}) {
+  const target = String(body?.agent || '').trim();
+  const jobId = Number(body?.job_id);
+  if (!/^\d{1,12}$/.test(target)) return { status: 400, body: { error: 'agent is required — the ERC-8004 id that was hired (a number; this relay does not take URLs)' } };
+  if (!Number.isInteger(jobId) || jobId <= 0) return { status: 400, body: { error: 'job_id is required — the numeric jobId the createJob transaction logged' } };
+  let resolved = null;
+  try { resolved = await resolveA2aEndpoint(target); } catch { resolved = null; }
+  if (!resolved || !resolved.endpoint) return { status: 404, body: { error: 'no A2A endpoint found for that agent id', job_id: jobId } };
+  const data = { skill: 'notify_funded', job_id: jobId };
+  let res = await a2aSend(resolved.endpoint, data, 25000, opts.localA2A || null);
+  if (res.rpc?.error && WANTS_TEXT.test(String(res.rpc.error.message || ''))) {
+    const retry = await a2aSend(resolved.endpoint, data, 25000, opts.localA2A || null, true);
+    if (retry.rpc && !retry.rpc.error) res = retry;
+  }
+  const base = { job_id: jobId, agent: target, endpoint: resolved.endpoint, ours: !!res.loopback, seller_ms: typeof res.ms === 'number' ? res.ms : null };
+  if (!res.rpc) return { status: 502, body: { ...base, delivered_to_seller: false, error: res.why || 'the seller did not answer', do_it_yourself: `POST ${resolved.endpoint} — A2A message/send with {"skill":"notify_funded","job_id":${jobId}}` } };
+  if (res.rpc.error) return { status: 200, body: { ...base, delivered_to_seller: true, accepted: false, seller_said: String(res.rpc.error.message || 'no reason given').slice(0, 400) } };
+  return { status: 200, body: { ...base, delivered_to_seller: true, accepted: true } };
 }
 
 // Accepts an ERC-8004 id or a URL. For an id we look it up in the same index

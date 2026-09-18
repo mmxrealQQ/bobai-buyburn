@@ -631,7 +631,10 @@ const ratingLine = (id) => {
   const r = ratingOf(id);
   if (!r) return '';
   const n = (r.clients || []).length;
-  const by = `<span class="rg-repby"> attested by ${n} ${n === 1 ? 'address' : 'addresses'}</span>`;
+  // `n` is everyone who ever wrote feedback about this agent — not the writers
+  // of the one measurement shown beside it (30 addresses stood next to a
+  // "100% liveness" one of them wrote). Said as what it is.
+  const by = `<span class="rg-repby"> ${n} ${n === 1 ? 'address has' : 'addresses have'} written feedback on this agent</span>`;
   const entries = Object.entries(r.latest);
   const measured = entries.filter(([tag]) => OPERATIONAL_TAGS.has(tag.toLowerCase()));
   if (measured.length) {
@@ -703,7 +706,7 @@ const categorised = CATEGORIES.map((cat) => {
       tele: teleKey(null, o.operator),
       // A collapsed operator row stands for several ids. Negotiation happens
       // with one agent, so the first is offered and the panel names which.
-      agentId: (o.ids || [])[0] ?? null,
+      agentId: o.best_id ?? (o.ids || [])[0] ?? null,
       speaks: o.speaks || [],
       description: o.description || null,
       capabilities: capsOf(o),
@@ -884,7 +887,10 @@ const categoryChips = categorised.map(({ cat, rows }) => {
 // Everything below that says "of them" has to point at THIS set, because it is
 // the set standing next to the sentence on the page.
 const hireableRows = categorised.flatMap(({ rows }) => rows.filter((r) => canHire(r) && r.agentId));
-api.hireable_here = hireableRows.length;
+// Distinct agents, not rows: an agent listed under two categories carries two
+// buttons and is one agent to hire (26 rows were 24 agents on 2026-09-18).
+api.hireable_here = new Set(hireableRows.map((r) => String(r.agentId))).size;
+api.hire_buttons = hireableRows.length;
 api.categories = CATEGORIES.map((c) => c.id);
 // Three different questions live here, and they had been answered with one
 // number. Splitting them is the whole fix:
@@ -904,7 +910,7 @@ if (hireConfirm) {
   api.quote_asks = asks.length;
   api.quote_agents_asked = new Set(asks.map((a) => String(a.id))).size;
   api.quoted_when_asked = asks.filter((a) => a.quotes).length;
-  api.quoted_of_hireable = hireableRows.filter((r) => quoteOf(r.agentId)?.quotes).length;
+  api.quoted_of_hireable = new Set(hireableRows.filter((r) => quoteOf(r.agentId)?.quotes).map((r) => String(r.agentId))).size;
   api.quotes_measured_at = hireConfirm.measured_at || null;
 }
 fs.writeFileSync(path.join(ROOT, 'dashboard', 'api-registry.json'), JSON.stringify(api, null, 2) + '\n');
@@ -1488,7 +1494,7 @@ const page = `<!doctype html>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">2</span>Pick a category and hire</div>
           <div class="rg-chips">${categoryChips}</div>
-          <p class="rg-note">${fmt(api.hireable_here)} carry a Hire button${hireConfirm ? `, and <b>${fmt(api.quoted_of_hireable)} of them returned a price</b> the last time each one was actually asked` : ''}. The price is negotiated live with the agent; your payment waits in an on-chain escrow until the job is delivered.</p>
+          <p class="rg-note">${fmt(api.hireable_here)} agents carry a Hire button${hireConfirm ? `, and <b>${fmt(api.quoted_of_hireable)} of them returned a price</b> the last time each one was actually asked` : ''}. The price is negotiated live with the agent; your payment waits in an on-chain escrow until the job is delivered.</p>
         </div>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">3</span>If you are the agent</div>
@@ -1580,7 +1586,7 @@ ${deployments.rows.slice(0, 40).map((d) => `        <tr>
 
     ${liveRows ? `<details class="rg-box rg-fold">
       <summary><h2>Who is actually out there</h2><span class="rg-peek">${fmt(reachable.length)} that answered, searchable</span></summary>
-      <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first 60 of ${fmt(reachable.length)}; the rest are in the data file.` : ''}</p>
+      <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first ${fmt(Math.min(60, operators.length))} of ${fmt(operators.length)} operators (${fmt(reachable.length)} agents answer between them); the rest are in the data file.` : ''}</p>
       <input class="rg-filter" id="rg-q" type="search" placeholder="Filter by name, tool or endpoint…" aria-label="Filter agents">
       <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Operator</th><th>What it is &amp; what it can do</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
 ${liveRows}
@@ -1747,7 +1753,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   (function(){
     var box=document.getElementById('rg-log'), body=document.getElementById('rg-log-body');
     if(!box||!body)return;
-    function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]});}
+    function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]});}
     var names={};
     document.querySelectorAll('[data-hire]').forEach(function(b){
       var art=b.closest('article');
@@ -1824,7 +1830,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           rows.push('<div class="rg-step"><div class="rg-top"><b>New registrations since the last full scan</b>'+
             '<span>+'+nf(since)+'</span></div>'+
             '<div class="rg-note">'+nf(base.registered_ids)+' on '+base.date+' &rarr; '+nf(last.highest_id)+' at the daily check on '+String(last.date||'')+' (the headline above is live)'+
-            (g&&g.per_day?' &middot; about '+nf(g.per_day)+' a day':'')+'</div></div>');
+            (g&&g.per_day?' &middot; the registry has grown by about '+nf(g.per_day)+' a day on average since '+String((g.per_day_over&&g.per_day_over.from)||d.watching_since||'we started watching'):'')+'</div></div>');
         }
         (d.full_scans||[]).slice(-3).forEach(function(f){
           rows.push('<div class="rg-step"><div class="rg-top"><b>Full scan &middot; '+f.date+'</b>'+
@@ -1835,7 +1841,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         if(last&&last.sample_checked){
           rows.push('<div class="rg-step"><div class="rg-top"><b>Last rotating check</b>'+
             '<span>'+last.sample_answered+'/'+last.sample_checked+'</span></div>'+
-            '<div class="rg-note">'+last.date+' &middot; a sample of known endpoints, re-checked daily so every one comes round about monthly. Not a figure for the whole registry.</div></div>');
+            '<div class="rg-note">'+last.date+' &middot; a small rotating sample of known endpoints, about a dozen a day — a full round takes months, the full scan above is what re-checks them all. Not a figure for the whole registry.</div></div>');
         }
         if(!rows.length)return;
         body.innerHTML=rows.join('');
@@ -1849,7 +1855,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   (function(){
     var i=document.getElementById('rg-task'),b=document.getElementById('rg-go'),o=document.getElementById('rg-out');
     if(!i||!b||!o)return;
-    function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]});}
+    function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]});}
     // What this visitor asked before, kept in this browser only, so the
     // second visit starts from an answer and not from an empty box.
     var rec=document.getElementById('rg-recent');
@@ -1998,7 +2004,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     function ourLine(a){
       var head=a.ready?esc(a.headline||'answering'):'not answering right now';
       var extra=[];
-      if(a.jobs_delivered)extra.push(esc(a.jobs_delivered)+(a.jobs_delivered===1?' job delivered':' jobs delivered'));
+      if(a.jobs_delivered)extra.push(esc(a.jobs_delivered)+(a.jobs_delivered===1?' job delivered':' jobs delivered')+(a.jobs_for_strangers!=null?' ('+esc(a.jobs_for_strangers)+' for strangers, '+esc(a.jobs_own_test_purchases||0)+' our own test purchases)':''));
       if(a.proven_by&&a.proven_by.agreed_with_protocol===true)extra.push('last job agreed with the protocol');
       if(!a.ready&&a.last_error)extra.push(esc(a.last_error));
       return '<div class="rg-live'+(a.ready?'':' rg-dark')+'"><span class="rg-dot"></span>'+
@@ -2145,9 +2151,15 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       if(!task){say('Describe what you want done first.','rg-err');return;}
       elQuote.disabled=true;elQuote.textContent='Asking the agent…';
       say('Negotiating over A2A. This is a live call to the agent, not a price list.');
+      // The answer belongs to the agent it was asked of: a quote can take 25 s,
+      // and one that came back after the panel had moved on to another agent
+      // used to set the plan and render under that other agent's name — the
+      // escrow would have named the wrong provider (2026-09-18).
+      var askedOf=current.id;
       fetch(AGENT+'/hire?agent='+encodeURIComponent(current.id)+'&task='+encodeURIComponent(task),{cache:'no-store'})
         .then(function(r){return r.json();})
         .then(function(j){
+          if(!current||current.id!==askedOf)return;
           elQuote.textContent='Get a quote';elQuote.disabled=false;
           if(!j||j.error){
             say('The agent did not quote: '+esc((j&&(j.error||j.reason))||'no answer')+altQuoter(),'rg-err');wireAlt();
@@ -2412,10 +2424,24 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     // where to watch for it.
     function finish(){
       say('Escrow funded. Telling the seller to deliver…');
-      fetch(AGENT+'/a2a',{method:'POST',headers:{'content-type':'application/json'},
-        body:JSON.stringify({jsonrpc:'2.0',id:1,method:'message/send',params:{message:{role:'user',kind:'message',messageId:'hire-'+jobId,parts:[{kind:'data',data:{skill:'notify_funded',job_id:Number(jobId)}}]}}})})
+      // To the seller that was HIRED, by its id, through the worker's relay
+      // (/hire/notify): this used to post to our own /a2a whichever agent it
+      // was, and a stranger's funded job was answered "that is not us" and shown
+      // as the seller declining — it had never been asked (2026-09-18).
+      fetch(AGENT+'/hire/notify',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({agent:String(current&&current.id||''),job_id:Number(jobId)})})
         .then(function(r){return r.json();})
-        .then(function(j){
+        .then(function(n){
+          // Three outcomes, three sentences: the seller could not be reached, the
+          // seller refused, the seller accepted.
+          if(!n||n.delivered_to_seller!==true){
+            say('The escrow is funded, but the seller could not be reached: '+esc((n&&n.error)||'no answer')+'. '+
+                (n&&n.endpoint?'Its endpoint is '+esc(n.endpoint)+' — send it {"skill":"notify_funded","job_id":'+esc(jobId)+'} over A2A, or wait: ':'')+
+                'your budget returns through claimRefund when the job expires. '+
+                'Job <b>#'+esc(jobId)+'</b> · <a href="'+AGENT+'/job?id='+esc(jobId)+'" target="_blank" rel="noopener">/job?id='+esc(jobId)+' ↗</a>','rg-err');
+            return;
+          }
+          var j=n.accepted===false?{error:{message:n.seller_said}}:{};
           // The seller answers JSON-RPC, so a refusal arrives as a 200 with an
           // error member. This used to ignore the body entirely and report
           // success either way — a buyer whose seller declined the work read

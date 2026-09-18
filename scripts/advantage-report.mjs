@@ -92,7 +92,11 @@ async function rpc(m, method, params) {
 // self-test and then exit 127, which is a failing exit code on a passing test.
 async function getJson(m, url, timeoutMs = 60000) {
   m.count();
-  const r = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  // Calls into our own worker carry its secret, so /hire files them as our
+  // quote runs and not as outside callers on the public track record
+  // (2026-09-18: they never did, and were counted as strangers).
+  const ours = /^https:\/\/agent\.brainonbnb\.com\//.test(url) && process.env.HIT_SECRET ? { headers: { 'x-hit-secret': process.env.HIT_SECRET } } : {};
+  const r = await fetch(url, { ...ours, signal: AbortSignal.timeout(timeoutMs) });
   const text = await r.text();
   if (/^\s*<!doctype html/i.test(text)) {
     // brainonbnb.com answers any unrouted path with 200 and the site HTML, so a

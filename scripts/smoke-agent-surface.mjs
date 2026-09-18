@@ -784,7 +784,9 @@ section('The marketplace, from the front door');
     && reg.quote_agents_asked <= reg.quote_asks,
     'a quote tally is larger than the set it was counted over');
   ok('the hire block counts quotes over its own buttons, not over the quote run',
-    new RegExp(`${reg?.hireable_here} carry a Hire button, and <b>${reg?.quoted_of_hireable} of them returned a price`).test(body),
+    // "agents" since 2026-09-18: both figures count distinct agents, not rows —
+    // an agent listed under two categories carries two buttons.
+    new RegExp(`${reg?.hireable_here} agents carry a Hire button, and <b>${reg?.quoted_of_hireable} of them returned a price`).test(body),
     'the block prints a numerator from the quote run under a count of buttons');
   // Same reasoning as the census counts above: the quote tally is measured
   // afresh every time hire-confirm runs, so llms.txt must not carry a copy of

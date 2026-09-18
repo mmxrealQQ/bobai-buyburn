@@ -165,7 +165,14 @@ export async function handleSessionRevoke(request, env) {
       const pub = decodeBytes(await ethCall(net.rpcs, net.keyStore, SEL_GET_PUBKEY + pad(walletAddress) + k.keyId.replace(/^0x/, '')));
       if (!pub) throw new Error('the KeyStore returned no public key for this keyId');
       const r = await client.revokeSession({ wallet, signer, session: pub });
-      rec.status = r.status || 'submitted';
+      // The relay answers in capitals (CONFIRMED, PENDING, FAILED) and this file
+      // and the page tested for 'failed' in lower case: a revocation the relay
+      // had FAILED, or only queued, was stored and shown as a green "revoked"
+      // (2026-09-18). One spelling from here on, and only a confirmed one is a
+      // revocation; what the KeyStore says afterwards (keys_after) is the proof.
+      rec.status = String(r.status || 'submitted').toLowerCase();
+      if (/fail|revert|reject/.test(rec.status)) { rec.status = 'failed'; rec.error = rec.error || 'the relay reported the revocation as failed'; }
+      rec.confirmed = rec.status === 'confirmed';
       rec.transactionHash = r.transactionHash || null;
       rec.explorer = r.transactionHash ? `${net.explorer}/tx/${r.transactionHash}` : null;
     } catch (e) {

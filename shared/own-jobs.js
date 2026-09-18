@@ -84,9 +84,14 @@ export function summarise(record, now) {
   const completed = ids.filter((id) => latest(id)?.state === 'completed');
   const settleable = ids.filter((id) => latest(id)?.state === 'settleable');
   const waiting = ids.filter((id) => latest(id)?.state === 'waiting');
+  // Every job is in one bucket, so the parts add up to `jobs`: an EXPIRED and
+  // an OPEN job used to be counted in the total and in none of the lists
+  // (5 + 0 + 0 against "7 jobs").
+  const other = ids.filter((id) => !['completed', 'settleable', 'waiting'].includes(latest(id)?.state));
   return {
     jobs: ids.length,
-    completed, settleable, waiting,
+    completed, settleable, waiting, other,
+    other_states: Object.fromEntries(other.map((id) => [id, latest(id)?.state || latest(id)?.status || 'unknown'])),
     first_completed_seen: completed.map((id) => record[id].history.find((h) => h.state === 'completed')?.at).filter(Boolean).sort()[0] || null,
     checked_at: now,
   };

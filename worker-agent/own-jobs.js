@@ -28,7 +28,21 @@ export async function readOwnJobs(env) {
 export async function tickOwnJobs(env, rpc, ids = []) {
   const call = (to, data) => rpc('eth_call', [{ to, data }, 'latest']);
   const prev = (await readOwnJobs(env)) || { jobs: {}, checked_at: null };
-  const all = [...new Set([...Object.keys(prev.jobs), ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
+  // EVERY JOB THIS WORKER DELIVERED IS WATCHED (2026-09-18). The list was the
+  // previous record plus ids posted by hand — a job a STRANGER hired and we
+  // delivered never entered it. Four of them sat SUBMITTED with their dispute
+  // windows long over (56668, 56699, 56711, 56712: 0.40 $U of strangers' money
+  // waiting for settle()) while this route answered "settleable: []". The
+  // seller stores each deliverable under job:<id>; those keys are the list.
+  let delivered = [];
+  try {
+    let cursor; do {
+      const page = await env.AGENT.list({ prefix: 'job:', limit: 1000, ...(cursor ? { cursor } : {}) });
+      delivered.push(...page.keys.map((k) => k.name.slice(4)));
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+  } catch { delivered = []; }
+  const all = [...new Set([...Object.keys(prev.jobs), ...delivered, ...ids.map(String)])].filter((x) => /^\d+$/.test(x));
   if (!all.length) return { ok: false, error: 'no job ids recorded yet — POST /own-jobs with the secret and {"ids":[…]}' };
 
   const windowSec = await readDisputeWindow(call);
@@ -40,6 +54,9 @@ export async function tickOwnJobs(env, rpc, ids = []) {
   for (const id of all) {
     let job = null;
     try { job = decodeJob(await call(ERC8183.commerce, JOB_CALL(id))); } catch { job = null; }
+    // A read that failed is not a state of the job: it used to be written into
+    // the job's permanent history as a transition to "unknown".
+    if (!job) { rows.push({ id, status: null, state: 'unread', note: 'the kernel did not answer for this job on this tick' }); continue; }
     const c = classify(job, { now, windowSec });
     const snap = { status: job?.status || null, state: c.state, budget_u: job?.budget_u ?? null, submitted_at: job?.submitted_at ?? null, ends_at: c.ends_at ?? null };
     const out = recordTransition(record, id, snap, at);

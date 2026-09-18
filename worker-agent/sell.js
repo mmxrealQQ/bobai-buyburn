@@ -211,7 +211,7 @@ function pickService(text = '', explicit) {
   // "which fee tier should I provide liquidity in" is asking about LP range
   // placement, and the rebalance pattern below matches "allocation" — which
   // would have quietly sold them a portfolio rebalance instead.
-  if (/fee.?tier|which (pool|tier)|provide liquidity|add liquidity|LP|liquidity provider|where to (lp|pool)|v3 (range|tier)/i.test(t)) return SERVICES.lp_tier_plan;
+  if (/fee.?tier|which (pool|tier)|provide liquidity|add liquidity|\bLP\b|liquidity provider|where to (lp|pool)|v3 (range|tier)/i.test(t)) return SERVICES.lp_tier_plan;
   if (/rebalanc|re-?weight|target weight|allocation|drift|portfolio/.test(t)) return SERVICES.rebalance_plan;
   if (/health.?factor|liquidat|collateral|venus|lending|borrow/.test(t)) return SERVICES.health_factor;
   if (/grid|ladder|range.?bot|dca.?grid/.test(t)) return SERVICES.grid_plan;
@@ -398,7 +398,7 @@ export async function handleA2A(request, env) {
     if (!service) {
       return rpcOk(id, {
         accepted: false,
-        reason: 'We do not sell that. Two things are for sale here and both are measurements, not opinions.',
+        reason: `We do not sell that. ${Object.keys(SERVICES).length} things are for sale here (listed below) and all of them are measurements, not opinions.`,
         services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, price: s.price, currency: 'U' })),
       });
     }

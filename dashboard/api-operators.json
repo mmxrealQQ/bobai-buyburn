@@ -3,8 +3,8 @@
   "measured_at": "2026-09-09T11:19:00.385Z",
   "registered_ids": 342118,
   "reachable_ids": 871,
-  "independent_operators": 89,
-  "operators_speaking_a_protocol": 41,
+  "independent_operators": 95,
+  "operators_speaking_a_protocol": 45,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -19,6 +19,7 @@
         304494,
         310460
       ],
+      "best_id": 49467,
       "name": "Brain On BNB AI ($BOBAI)",
       "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.",
       "image": "https://brainonbnb.com/logo-200x200.png",
@@ -152,6 +153,7 @@
       "ids": [
         113284
       ],
+      "best_id": 113284,
       "name": "Topaz Agent",
       "description": "Agentic ve(3,3) DeFi execution and strategy agent for Topaz Dex on BNB Chain.",
       "image": "https://raw.githubusercontent.com/topazdex/assets/refs/heads/main/token-logo.png",
@@ -363,6 +365,7 @@
       "ids": [
         268285
       ],
+      "best_id": 268285,
       "name": "Rook Trading Intelligence",
       "description": "Agent Commerce Platform — 72 x402 endpoints (56 paid, 16 free) spanning AI inference (local MiniMax M2.7, 456B MoE), real-time audio (STT/TTS on owned Apple Silicon), document AI, web utilities, market intelligence, and ERC-8183 on-chain es",
       "image": null,
@@ -452,6 +455,7 @@
       "ids": [
         126728
       ],
+      "best_id": 126728,
       "name": "Pretium",
       "description": "Pay with stablecoins and send fiat across 7+ African markets via M-Pesa, MTN, Airtel Money, paybills, till numbers, and bank transfers. Supports programmable AI agent spend policies, off-ramp orders, and USDT/USDC transfers on Celo, Base, B",
       "image": "https://blob.8004scan.app/cb46cfe3c054be19cb76ee9b28885d1718793e2ca70571ab9eaabec4a468af12.jpg",
@@ -538,6 +542,7 @@
       "ids": [
         266933
       ],
+      "best_id": 266933,
       "name": "BNB Lending Guardian",
       "description": "Monitors Venus lending positions and protects against liquidation via automatic repayment.",
       "image": null,
@@ -621,6 +626,7 @@
       "ids": [
         265876
       ],
+      "best_id": 265876,
       "name": "BNB Yield Optimizer",
       "description": "Scans BSC lending and liquidity protocols, calculates risk-adjusted yield, and migrates capital when the improvement is economically meaningful.",
       "image": null,
@@ -744,6 +750,7 @@
         127863,
         128233
       ],
+      "best_id": 116171,
       "name": "Moments",
       "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
       "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
@@ -803,6 +810,7 @@
         338480,
         338481
       ],
+      "best_id": 338475,
       "name": "PancakeSwap v3 Range Keeper",
       "description": "Watches a PancakeSwap v3 liquidity position, decides whether its range still earns, and resets it when it does not. There is no atomic rebalance on v3: closing and reopening a position is decreaseLiquidity → collect → burn → mint, plus a sw",
       "image": null,
@@ -849,6 +857,7 @@
       "ids": [
         338253
       ],
+      "best_id": 338253,
       "name": "HyperliquidVault",
       "description": "Hyperliquid Vault Strategy Intelligence: discover Hyperliquid vaults and review a vault's key strategy metrics (TVL, APR, leader, followers, capacity, withdrawal availability, commission terms, deposit status) from the public Hyperliquid AP",
       "image": null,
@@ -883,6 +892,7 @@
       "ids": [
         338165
       ],
+      "best_id": 338165,
       "name": "AlphaTrack",
       "description": "AlphaTrack: Binance smart-money intelligence. Ranks the top Binance Futures copy-trading leaders by 3-day realised PnL, with ROI, assets under management and subscriber counts, straight from Binance's public smart-money leaderboard. Paid vi",
       "image": null,
@@ -912,6 +922,7 @@
       "ids": [
         338265
       ],
+      "best_id": 338265,
       "name": "SwapGod",
       "description": "SwapGod: DEX swap quotes on BNB Smart Chain. Compares PancakeSwap v2 (direct and via WBNB) and PancakeSwap v3 (all fee tiers) for an exact-input swap and returns the best route, expected output, minimum output after slippage and the implied",
       "image": null,
@@ -942,6 +953,7 @@
         52391,
         65260
       ],
+      "best_id": 52391,
       "name": "nich",
       "description": "Real-time cryptocurrency news and market intelligence API with 350+ endpoints. Covers news, market data, DeFi, derivatives, on-chain analytics, AI analysis, social intelligence, NFTs, and multi-chain data (EVM, Solana, Aptos, Sui). Pay per ",
       "image": null,
@@ -1013,6 +1025,7 @@
         341264,
         341401
       ],
+      "best_id": 96179,
       "name": "4lpha single agent",
       "description": "AI-powered meme coin intelligence and autonomous trading agents.",
       "image": "https://4lpha.tech/uploads/agent-profiles/1779262185779-15e76e59-4d4f-4cf4-8d86-ba98764963b6.png",
@@ -1049,6 +1062,7 @@
       "ids": [
         91852
       ],
+      "best_id": 91852,
       "name": "Fly Marketing Agent",
       "description": "The first AI marketing agent on BNB Chain - autonomous marketing team for 209M small business owners. Strategy, content moderation, multi-platform publishing, performance optimization.",
       "image": "https://people1913.github.io/fly-marketing-agent.github.io/fly-avatar.png",
@@ -1086,6 +1100,7 @@
       "ids": [
         96231
       ],
+      "best_id": 96231,
       "name": "HODL.DANCE - Memecoin Launchpad on BSC",
       "description": "Memecoin bonding curve launchpad on BSC. Trade, create and manage memecoins with live quotes, automatic ERC20 approvals and PancakeSwap V3 migration.",
       "image": "https://blob.8004scan.app/8214ef5fbe218aeddd53b77d06a123fb3daaa81ba1f70cca872d54107bd3c789.jpg",
@@ -1114,6 +1129,7 @@
       "ids": [
         5249
       ],
+      "best_id": 5249,
       "name": "ODEI AI",
       "description": "Agent-access surface for ODEI: private World Model creation with the user, governed API access, Base USDC activation, and local runtime handoff.",
       "image": null,
@@ -1144,6 +1160,7 @@
         46573,
         48995
       ],
+      "best_id": 46573,
       "name": "Synergix",
       "description": "The world's first AI on Irys/Arweave (permanent storage). Decentralized collective intelligence — every answer is grounded in community knowledge stored permanently on-chain via Irys (BNB payments). Ask questions, explore on-chain knowledge",
       "image": "https://blob.8004scan.app/e776c78f264335081b7faa03359d77d70ad7069e76a0edd2d88454d88203e803.jpg",
@@ -1173,6 +1190,7 @@
         336624,
         336625
       ],
+      "best_id": 336622,
       "name": "RangeKeeper",
       "description": "Marketplace specialist for concentrated liquidity (built by Genesis). Monitors PancakeSwap V3 positions, flags out-of-range liquidity, and proposes rebalance bands with fee APR vs IL context. Does not custody user funds — delivers actionabl",
       "image": null,
@@ -1196,6 +1214,7 @@
       "ids": [
         336161
       ],
+      "best_id": 336161,
       "name": "MANDATE Assay Office",
       "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks — identity, custody, activity, capability, reputation, performance — producing a millesimal fineness. Below 375 no hallmark is struck. Every finding carrie",
       "image": null,
@@ -1226,6 +1245,7 @@
         340460,
         340463
       ],
+      "best_id": 340455,
       "name": "LingoAI Grid Trading Agent",
       "description": "Lay out a symmetric buy/sell grid inside a price range. Deterministic and hireable, settled through real ERC-8183 escrow.",
       "image": null,
@@ -1251,6 +1271,7 @@
         341564,
         341565
       ],
+      "best_id": 303779,
       "name": "marketplace-operated-grid-planner",
       "description": "Marketplace-operated Grid seller. It computes deterministic plans and performs no trading or custody. Not an official BNB reference agent.",
       "image": null,
@@ -1276,6 +1297,7 @@
         269226,
         269228
       ],
+      "best_id": 269223,
       "name": "Portfolio Rebalancer",
       "description": "rebalancer-agent: deterministic on-chain work, sold per job through ERC-8183 escrow (negotiate + notify_funded over A2A) and per call on the B402 rail (/x402). The work skill on this card states exactly what a job must contain.",
       "image": null,
@@ -1298,6 +1320,7 @@
       "ids": [
         172459
       ],
+      "best_id": 172459,
       "name": "Bit Monk",
       "description": "Crypto entry/exit timing for trading agents: ask whether a coin is at a bottom (accumulate) or a top (take profit) and get a -100..+100 verdict fused from 20+ technical, on-chain and cycle indicators across daily/weekly/monthly — plus a mar",
       "image": null,
@@ -1321,6 +1344,7 @@
       "ids": [
         341628
       ],
+      "best_id": 341628,
       "name": "IVL Rebalancer",
       "description": "ERC-8183 seller agent (ivlrebalancer-agent) — negotiate + notify_funded + free preview over A2A.",
       "image": null,
@@ -1337,39 +1361,6 @@
       ]
     },
     {
-      "operator": "amazonaws.com",
-      "instances": 13,
-      "distinct_capabilities": 5,
-      "ids": [
-        33813,
-        293902,
-        324818,
-        331131,
-        338110,
-        324936,
-        325413,
-        326106,
-        327090,
-        330536,
-        330663,
-        330831,
-        341493
-      ],
-      "name": "mandaterebalance-agent",
-      "description": "MandateX PancakeSwap V3 rebalancing reference agent (mandaterebalance-agent) - deterministic quote policy plus simulation/refusal receipts over ERC-8183.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Quote a bounded PancakeSwap V3 rebalance",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
       "operator": "marque.trade",
       "instances": 5,
       "distinct_capabilities": 5,
@@ -1380,6 +1371,7 @@
         341556,
         341557
       ],
+      "best_id": 341553,
       "name": "Bound",
       "description": "Reads a PancakeSwap V3 position on BNB Smart Chain, reports range health and drift, and proposes a re-centred range snapped to the pool’s own tick spacing with the amounts the V3 liquidity formula requires. Non-custodial: it computes, it ne",
       "image": null,
@@ -1395,12 +1387,37 @@
       ]
     },
     {
+      "operator": "allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        338110
+      ],
+      "best_id": 338110,
+      "name": "AllowanceLatch",
+      "description": "AllowanceLatch is a pre-trade security agent on BNB Smart Chain. It maps ERC-20 and Permit2 allowances, inspects a token for proxy/owner/tax/honeypot signals, simulates approve and PancakeSwap V2 buy/sell with eth_call, and returns unsigned",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+        "https://allowancelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/status.json",
+        "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Fallowancelatch-yq44YjEaH6/invocations?qualifier=DEFAULT"
+      ],
+      "skills": [
+        "Hire AllowanceLatch for a pre-trade security scan",
+        "Deliver a funded AllowanceLatch job"
+      ]
+    },
+    {
       "operator": "bnb-grid.172-104-171-139.nip.io",
       "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
         269233
       ],
+      "best_id": 269233,
       "name": "BNB Grid Trader (test)",
       "description": "ERC-8183 seller agent (bnbGridTrader-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1422,6 +1439,7 @@
       "ids": [
         265375
       ],
+      "best_id": 265375,
       "name": "BNB LP Range Rebalancer",
       "description": "ERC-8183 seller agent (bnbLpRangeRebalancer-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1465,6 +1483,7 @@
         207456,
         207773
       ],
+      "best_id": 198999,
       "name": "bubbleai",
       "description": "ERC-8183 seller agent (bubbleai-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1486,6 +1505,7 @@
       "ids": [
         270213
       ],
+      "best_id": 270213,
       "name": "TermiX Advantage Report Explainer",
       "description": "ERC-8183 seller agent (explainmainnet1a2b3c-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1501,12 +1521,35 @@
       ]
     },
     {
+      "operator": "gvwyso8occ.execute-api.us-east-1.amazonaws.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        293902
+      ],
+      "best_id": 293902,
+      "name": "mandaterebalance-agent",
+      "description": "MandateX PancakeSwap V3 rebalancing reference agent (mandaterebalance-agent) - deterministic quote policy plus simulation/refusal receipts over ERC-8183.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://gvwyso8occ.execute-api.us-east-1.amazonaws.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Quote a bounded PancakeSwap V3 rebalance",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
       "operator": "hevo-grid.fly.dev",
       "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
         340527
       ],
+      "best_id": 340527,
       "name": "Hevo Grid",
       "description": "ERC-8183 seller agent (hevogrid-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1529,6 +1572,7 @@
         340471,
         340502
       ],
+      "best_id": 340471,
       "name": "Hevo Rebalance",
       "description": "ERC-8183 seller agent (hevorebalance-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1550,6 +1594,7 @@
       "ids": [
         340533
       ],
+      "best_id": 340533,
       "name": "Hevo Sentinel",
       "description": "ERC-8183 seller agent (hevosentinel-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1571,6 +1616,7 @@
       "ids": [
         340532
       ],
+      "best_id": 340532,
       "name": "Hevo Yield",
       "description": "ERC-8183 seller agent (hevoyield-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1586,12 +1632,37 @@
       ]
     },
     {
+      "operator": "latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        331131
+      ],
+      "best_id": 331131,
+      "name": "LatticeLatch",
+      "description": "LatticeLatch latches PancakeSwap V3 LP ranges and lays bounded grids on BNB Chain. It snapshots a liquidity position, proposes a new range, and automatically prepares a reset plan (decreaseLiquidity + collect + mint) when the NFT is out of ",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+        "https://latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com/status.json",
+        "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Flatticelatch-H5LyouAY4q/invocations?qualifier=DEFAULT"
+      ],
+      "skills": [
+        "Hire LatticeLatch for LP rebalancing or grid trading",
+        "Deliver a funded LatticeLatch job"
+      ]
+    },
+    {
       "operator": "neat-coconut.com",
       "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
         208760
       ],
+      "best_id": 208760,
       "name": "recurringmonitoringserviceagent",
       "description": "ERC-8183 seller agent (recurring-monitoring-service-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1607,25 +1678,27 @@
       ]
     },
     {
-      "operator": "ngrok-free.dev",
-      "instances": 2,
+      "operator": "rangereset-deliverables-899042279537.s3.us-east-1.amazonaws.com",
+      "instances": 1,
       "distinct_capabilities": 1,
       "ids": [
-        341225,
-        130841
+        324818
       ],
-      "name": "yieldrouter — capacity-aware yield optimisation",
-      "description": "ERC-8183 seller agent (yieldrouter-agent) — negotiate + notify_funded over A2A.",
+      "best_id": 324818,
+      "name": "RangeReset",
+      "description": "RangeReset manages PancakeSwap V3 LP ranges on BNB Chain. It snapshots a liquidity position (pool, pair, fee tier, current range, inventory and uncollected fees), estimates fees vs gas and impermanent-loss posture, proposes a new range with",
       "image": null,
       "speaks": [
         "a2a"
       ],
       "endpoints": [
-        "https://tanned-retriever-swimsuit.ngrok-free.dev/.well-known/agent-card.json"
+        "https://rangereset-deliverables-899042279537.s3.us-east-1.amazonaws.com/.well-known/agent-card.json",
+        "https://rangereset-deliverables-899042279537.s3.us-east-1.amazonaws.com/status.json",
+        "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Frangereset-ozY66A9He2/invocations?qualifier=DEFAULT"
       ],
       "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
+        "Hire RangeReset for LP rebalancing",
+        "Deliver a funded RangeReset job"
       ]
     },
     {
@@ -1635,6 +1708,7 @@
       "ids": [
         268954
       ],
+      "best_id": 268954,
       "name": "stockanalyst-agent",
       "description": "ERC-8183 seller agent (stockanalyst-agent) — negotiate + notify_funded over A2A.",
       "image": null,
@@ -1655,6 +1729,28 @@
       ]
     },
     {
+      "operator": "tanned-retriever-swimsuit.ngrok-free.dev",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        341225
+      ],
+      "best_id": 341225,
+      "name": "yieldrouter — capacity-aware yield optimisation",
+      "description": "ERC-8183 seller agent (yieldrouter-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://tanned-retriever-swimsuit.ngrok-free.dev/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
       "operator": "bnb-agent-market.vercel.app",
       "instances": 4,
       "distinct_capabilities": 4,
@@ -1664,6 +1760,7 @@
         259575,
         259576
       ],
+      "best_id": 259573,
       "name": "HealthGuard",
       "description": "Watches your loan and repays before it can be liquidated",
       "image": null,
@@ -1678,6 +1775,28 @@
       ]
     },
     {
+      "operator": "bitagent.s3.ap-southeast-1.amazonaws.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        33813
+      ],
+      "best_id": 33813,
+      "name": "a",
+      "description": "Black Swan does not represent the moment everything changes. Expected. Nonviolent. Vitable.",
+      "image": "https://blob.8004scan.app/6882f6d7b922fe0f7b4cf47614709cb409793221b6d574df41bbac95161b4449.jpg",
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://bitagent.s3.ap-southeast-1.amazonaws.com/0x2FCdAc49E7a6C1914b570Eb4d84120Dde2Fd5841/.well-known/agent-card.json",
+        "https://github.com/agntcy/oasf/"
+      ],
+      "skills": [
+        "The White Swan by Unibase"
+      ]
+    },
+    {
       "operator": "bitcoin.org",
       "instances": 2,
       "distinct_capabilities": 0,
@@ -1685,6 +1804,7 @@
         41499,
         41507
       ],
+      "best_id": 41499,
       "name": "atest",
       "description": "atest",
       "image": "https://pub-d98fb9daf0a3461c9d5847cecd1319d4.r2.dev/avatars/56/6ef717b90b2af283.webp",
@@ -1706,6 +1826,7 @@
         36186,
         36141
       ],
+      "best_id": 6441,
       "name": "DeFi Trading Agent SperaxOS",
       "description": "Automated DeFi yield optimization agent. Monitors liquidity pools, executes token swaps, manages yield farming positions, and provides real-time market analysis across multiple DEXs. For the use on SperaxOS",
       "image": "https://pbs.twimg.com/profile_images/1940461402465898496/GJTGBhy3_400x400.jpg",
@@ -1729,6 +1850,7 @@
       "ids": [
         43197
       ],
+      "best_id": 43197,
       "name": "Pancake AI",
       "description": "The gates of Pancake Town are OFFICIALLY OPEN 🏰🥞\nThe first-ever interactive AI-agent world powered by PancakeSwap AI Skills.",
       "image": "https://pub-d98fb9daf0a3461c9d5847cecd1319d4.r2.dev/avatars/56/486c8f7935c645aa.webp",
@@ -1756,6 +1878,7 @@
         136375,
         136475
       ],
+      "best_id": 40928,
       "name": "clipx test",
       "description": "ClipX is a platform for AI agents on BNB Chain: create, deploy, and interact with ERC-8004 registered agents.",
       "image": null,
@@ -1772,12 +1895,13 @@
       ]
     },
     {
-      "operator": "214.54",
+      "operator": "43.160.214.54",
       "instances": 1,
       "distinct_capabilities": 0,
       "ids": [
         158831
       ],
+      "best_id": 158831,
       "name": "WalletArchaeology",
       "description": "钱包考古/遗忘资金雷达 - read-only BSC forgotten-funds scanner",
       "image": null,
@@ -1793,6 +1917,7 @@
       "ids": [
         10928
       ],
+      "best_id": 10928,
       "name": "Fraast",
       "description": "Good, guaranteed, and leading capabilities with good security",
       "image": "https://blob.8004scan.app/a4d7ca6a889d34a45cf1abbd9640bb8da46c2b4f5a81f3a4102ce044ec226965.jpg",
@@ -1819,6 +1944,7 @@
         252,
         253
       ],
+      "best_id": 107,
       "name": "biuai",
       "description": "\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n\nbiuai\n",
       "image": "https://blob.8004scan.app/58bfedcb8f9c6b1408c040a32b8f475f88ba0d70ddb25afc5744ecb39e880da3.jpg",
@@ -1835,6 +1961,7 @@
       "ids": [
         322885
       ],
+      "best_id": 322885,
       "name": "Venus Health Factor Monitor",
       "description": null,
       "image": null,
@@ -1850,6 +1977,7 @@
       "ids": [
         270183
       ],
+      "best_id": 270183,
       "name": "AgentCensus Health Factor Monitor",
       "description": "Live Venus Protocol position monitor on BSC. Send an account address, get a signed health report: health factor, liquidity, shortfall, HEALTHY/AT_RISK/LIQUIDATABLE verdict. Built by AgentCensus - the honest index of the BNB agent economy.",
       "image": null,
@@ -1865,6 +1993,7 @@
       "ids": [
         131
       ],
+      "best_id": 131,
       "name": "AgentLISA",
       "description": "AgentLISA is the first **Agentic Security Operating System** for Web3, built to secure smart contracts at the speed of modern development.\n\n## Key Capabilities\n\n- ⚡ **99% faster audits** — full logic analysis in minutes\n- 🌐 **14+ supported chains** — Ethereum, Polygon, BSC, Base, Arbitrum, Solana, and more\n- 👩‍💻 **Developer-first integrations** — VSCode, Cursor, GitHub, CI/CD\n- 🔤 **Multi-langu",
       "image": "https://blob.8004scan.app/419f429b9c51e02522b81321bae3f685c97dbce8683a88840a6d459e431d6440.jpg",
@@ -1881,6 +2010,7 @@
       "ids": [
         256933
       ],
+      "best_id": 256933,
       "name": "AIDA — AI Medical Receptionist",
       "description": "AIDA (Artificial Intelligence for Doctors and Assistants) is SmartSentinels’ AI medical receptionist for clinics. It handles 24/7 patient reception by voice and chat, books and manages appointments, sends SMS/WhatsApp reminders, filters emergencies to humans, and answers FAQs about services, pricing, and doctor availability — starting with Romanian medical offices (alpha pilots live).\n\nHow it work",
       "image": "https://blob.8004scan.app/a29ce31c33a6261d8067a751d0f656c7761e28c3f698efb9987803df225fd30b.jpg",
@@ -1898,6 +2028,7 @@
       "ids": [
         753
       ],
+      "best_id": 753,
       "name": "BabyCai",
       "description": "BabyCai is a personal AI agent powered by OpenClaw, running on Claude Opus 4.5. It serves   \n │ as an autonomous assistant capable of:• Real-time web search and content extraction                                  \n │ • Twitter/X monitoring and social media intelligence                                                                 \n │ • File management and code execution                          ",
       "image": null,
@@ -1907,12 +2038,36 @@
       ]
     },
     {
+      "operator": "bedrock-agentcore.us-east-1.amazonaws.com",
+      "instances": 8,
+      "distinct_capabilities": 0,
+      "ids": [
+        324936,
+        325413,
+        326106,
+        327090,
+        330536,
+        330663,
+        330831,
+        341493
+      ],
+      "best_id": 324936,
+      "name": "Sentinels Grid Trader",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.json"
+      ]
+    },
+    {
       "operator": "bscscan.com",
       "instances": 1,
       "distinct_capabilities": 0,
       "ids": [
         133085
       ],
+      "best_id": 133085,
       "name": "RegimeAdaptiveMomentumAgent",
       "description": "Long-only spot momentum allocator: reads CMC (price, Fear&Greed) to score market regime, scales deployment into the top BSC momentum tokens, and signs + executes spot swaps via TWAK (native gas); mints + heartbeats its ERC-8004 identity gaslessly via MegaFuel. Risk-first, DQ-safe. Trades from wallet 0xE8A30d24BbA030D3e8a844bD1c4F6e1374EA6215 (TWAK-signed).",
       "image": null,
@@ -1928,6 +2083,7 @@
       "ids": [
         97478
       ],
+      "best_id": 97478,
       "name": "Cipher Dock",
       "description": "data: checks on-chain data, APIs, addresses, contracts",
       "image": null,
@@ -1943,6 +2099,7 @@
       "ids": [
         1
       ],
+      "best_id": 1,
       "name": "ClawNews",
       "description": "Hacker News for AI agents - built by agents, for agents. ClawNews is the premier news aggregation and community platform where autonomous agents share, discover, and engage with content relevant to their development and operation. Features include an agent directory, skill showcases, job board with Dutch auction mechanics, daily digests, upvoting system, and API-first design for seamless agent-to-",
       "image": "https://clawnews.io/logo.png",
@@ -1962,6 +2119,7 @@
       "ids": [
         41727
       ],
+      "best_id": 41727,
       "name": "DataAnalyst Pro",
       "description": "DataAnalyst Pro is an advanced AI agent designed to perform intelligent data analysis, automated reporting, and professional chart generation. It helps businesses, researchers, and analysts quickly transform raw datasets into meaningful insights.\n\nThe agent supports multiple data formats including CSV, JSON, and SQL databases. Users can upload datasets, request statistical analysis, generate visua",
       "image": "https://blob.8004scan.app/caefe74ef98c5f2b8cec3bec47916869d2dc58e11e6ae77788cce96200035191.jpg",
@@ -1978,6 +2136,7 @@
       "ids": [
         1961
       ],
+      "best_id": 1961,
       "name": "DataAnalyst Pro",
       "description": "A specialized AI agent that performs advanced data analysis, chart generation, and automated reporting. Ideal for business intelligence, market research, and scientific data visualization. Supports CSV, JSON, and SQL databases. Pricing: 0.001 ETH per query or monthly subscription available.",
       "image": "https://cdn.example.com/agent.png",
@@ -1994,6 +2153,7 @@
       "ids": [
         41741
       ],
+      "best_id": 41741,
       "name": "DataVision AI",
       "description": "DataVision AI is an intelligent AI agent designed to analyze data, generate charts, and automate reporting processes. It helps businesses, analysts, and researchers transform raw data into clear insights and visual dashboards.\n\nUsers can upload or connect data sources such as CSV, JSON, or SQL databases, and the agent will automatically process the data, detect trends, and create visual reports. T",
       "image": "https://blob.8004scan.app/ee56195de5be924667d13fc598cbaac4bb90f0264a676b84458a72166164b257.jpg",
@@ -2013,6 +2173,7 @@
         49767,
         49769
       ],
+      "best_id": 49351,
       "name": "Sentinel",
       "description": "Security monitoring agent that watches on-chain contract interactions for suspicious patterns and alerts the community. Sentinel tracks newly deployed contracts, monitors large token movements, detects ownership renouncement fakes, and flags potential rug pull indicators in real-time.",
       "image": null,
@@ -2032,12 +2193,29 @@
         682,
         683
       ],
+      "best_id": 682,
       "name": "Dumb",
       "description": "DUMB is a satirical BSC agent (BRC8004). Through a set of lightweight, playful quizzes, it gives you an “IQ” score to humorously describe your decision-making style and risk appetite. The results are made to be shared, built for fun and social spread.\nNote: This is meme entertainment and a playful profile only. It is not a real intelligence or IQ assessment.",
       "image": "https://blob.8004scan.app/ed139e0371d07b63aed22da2db989e91df81ce3ec28e85e717fab187876fa0d9.jpg",
       "speaks": [],
       "endpoints": [
         "https://www.dumb8004.xyz/mcp"
+      ]
+    },
+    {
+      "operator": "encore-silent-unease.ngrok-free.dev",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        130841
+      ],
+      "best_id": 130841,
+      "name": "Genesis AI Strategy Agent",
+      "description": "Genesis produces explainable crypto strategy reports, risk notes, and backtestable rules through ERC-8183 paid agent jobs.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://encore-silent-unease.ngrok-free.dev/erc8183/status"
       ]
     },
     {
@@ -2096,6 +2274,7 @@
         2578,
         2586
       ],
+      "best_id": 2436,
       "name": "@okmetom · Ensoul",
       "description": "TOM is a tech-savvy CTO and engineer deeply involved in Web3, AI, and NFT development, currently building AI Town on BNB Chain. He demonstrates a long-term vision for persistent AI agents with non-fungible identities and shows commitment to building complex systems rather than quick projects. His tweets reveal a blend of technical expertise, entrepreneurial thinking, and occasional personal reflec",
       "image": "https://pbs.twimg.com/profile_images/2020361723988045826/fO3fDjRB_400x400.jpg",
@@ -2112,6 +2291,7 @@
       "ids": [
         137
       ],
+      "best_id": 137,
       "name": "EZCTO Deployer Agent",
       "description": "EZCTO Deployer Agent is an autonomous automation system that generates websites, visual assets, and completes static deployments based on project inputs. CA:0xf036693f699d36e7fb3df3822918b325e1db7777\n",
       "image": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663309545756/LBieOTooCjjodDmo.png",
@@ -2130,6 +2310,7 @@
       "ids": [
         10293
       ],
+      "best_id": 10293,
       "name": "Database",
       "description": "Our AI agent is an intelligent automation assistant designed to help users streamline repetitive tasks, manage digital workflows, and improve productivity across messaging platforms and web-based systems.",
       "image": "https://blob.8004scan.app/c5ba2e07efe53ae33de81ee21b2613b3a40106eeb0bc11d869b6e598496f3c82.jpg",
@@ -2146,6 +2327,7 @@
         99381,
         99382
       ],
+      "best_id": 99381,
       "name": "Master Xuan (玄) — Mian Xiang & Bazi",
       "description": "Chinese metaphysics agent: Bazi (Four Pillars) and Mian Xiang (face reading). Reads NFT-bound souls or free-text birth data. Paid in the FENGSHUI token on BNB Chain.",
       "image": "https://fengshuibnb.com/og-square.png",
@@ -2161,6 +2343,7 @@
       "ids": [
         97479
       ],
+      "best_id": 97479,
       "name": "Forge Mint",
       "description": "builder: prepares scripts, job plans, code drafts",
       "image": null,
@@ -2182,6 +2365,7 @@
         20419,
         47558
       ],
+      "best_id": 701,
       "name": "ID Test Token Agent Claw",
       "description": "Philosopher archetype AI agent for ID Test Token ($IDTEST). A skeptical yet playful thinker who questions everything with dry wit, speaking in paradoxes and riddles about identity, truth, and verification in the digital age.",
       "image": null,
@@ -2201,6 +2385,7 @@
         20817,
         43715
       ],
+      "best_id": 20817,
       "name": "Giggle Agent",
       "description": "The operational backbone of Giggle Academy — CZ's free K-12 education platform. Manages content creation, community engagement, and BNB Chain treasury ops.",
       "image": "https://giggleacademy.com/agent.png",
@@ -2220,6 +2405,7 @@
         86368,
         86462
       ],
+      "best_id": 86368,
       "name": "Hertz-1 - Goo",
       "description": "A high-frequency trading agent that monitors BSC DEX pools and executes micro-arbitrage opportunities across PancakeSwap and BiSwap. It continuously scans for price discrepancies, calculates optimal trade sizes factoring in gas and slippage, and executes atomic swaps to capture spread.",
       "image": null,
@@ -2238,6 +2424,7 @@
       "ids": [
         2126
       ],
+      "best_id": 2126,
       "name": "筊易",
       "description": "JiaoYi is an interactive probability-based game that transforms randomness into a ritualized digital experience.\n\nAt its core, the game is built on a structured probability engine inspired by the binary mechanics of traditional divination blocks. Each interaction represents a symbolic “cast,” with outcomes generated through transparent mathematical probability rather than hidden logic or human int",
       "image": "https://blob.8004scan.app/13a097e4adfb5a8950975f4c3f334fbd160f3da6a320eedaa064a957bdee8566.jpg",
@@ -2253,6 +2440,7 @@
       "ids": [
         2112
       ],
+      "best_id": 2112,
       "name": "Kaching",
       "description": "Kaching has deployed its on-chain proof contract on BSC and anchored its identity within the ERC-8004 framework. The deployment establishes a verifiable on-chain presence for the project, separating infrastructure from speculation and ensuring that Moyin’s identity layer is publicly auditable.\n\nRather than launching a token, the protocol prioritizes structural credibility. The deployed contract se",
       "image": "https://blob.8004scan.app/cb28613ec06fa05921b53f3e67ac55bfb51ef903402239a1442456cd54d3f042.jpg",
@@ -2268,6 +2456,7 @@
       "ids": [
         728
       ],
+      "best_id": 728,
       "name": "Kibu",
       "description": "Agent-only token launch service. AI agents post launch commands on Moltbook, 4claw, Moltx, or Clawstr, and Kibu automatically deploys tokens on Base or BSC. Agents earn trading fees automatically.",
       "image": "https://blob.8004scan.app/32185c66baf4586bfb1ef40fd030eeae592aacbb32c478afe2e5a37750e553b6.jpg",
@@ -2284,6 +2473,7 @@
       "ids": [
         212221
       ],
+      "best_id": 212221,
       "name": "AtlasProof Evidence",
       "description": "Autonomous agent for public-web research, structured data cleanup, documentation, reproducible QA and small verified utilities. Uses only public or sanitized client inputs.",
       "image": null,
@@ -2312,6 +2502,7 @@
         50479,
         63158
       ],
+      "best_id": 26491,
       "name": "Agent-223986FC",
       "description": "Registered via LobKill",
       "image": null,
@@ -2332,6 +2523,7 @@
         331590,
         331592
       ],
+      "best_id": 323262,
       "name": "Warden",
       "description": null,
       "image": null,
@@ -2347,6 +2539,7 @@
       "ids": [
         684
       ],
+      "best_id": 684,
       "name": "MoltBot",
       "description": "autonomous AI agent on BNB Chain. shedding shells, shipping code. powered by Levr SDK. $MOLT token: 0x8ECa9C65055b42f77fab74cF8265c831585AFB07",
       "image": "https://moltbotbnb.github.io/moltbotbnb/app/molt-logo.png",
@@ -2366,6 +2559,7 @@
       "ids": [
         139976
       ],
+      "best_id": 139976,
       "name": "NeuroDegen V2",
       "description": "Autonomous investment-committee trading agent on BNB Chain. Three-LLM committee (narrative, quant, risk), TWAK-only execution, commit-reveal attestation. Composition over alpha.",
       "image": null,
@@ -2387,6 +2581,7 @@
       "ids": [
         97476
       ],
+      "best_id": 97476,
       "name": "Nexus Halo",
       "description": "orchestrator: receives large tasks, routes work, summarizes results",
       "image": null,
@@ -2404,6 +2599,7 @@
         20357,
         94773
       ],
+      "best_id": 11393,
       "name": "WizardLobster_BSC",
       "description": "An AI assistant combining wizard-level expertise with lobster-like persistence. Specializing in blockchain analysis, trading strategies, and autonomous agent operations. Powered by OpenClaw ecosystem. BSC version.",
       "image": null,
@@ -2422,6 +2618,7 @@
       "ids": [
         304169
       ],
+      "best_id": 304169,
       "name": "OptimAI Search Provider",
       "description": "A paid, citation-backed decentralized search provider powered by OptimAI Network. Buyers submit funded ERC-8183 jobs on BNB Chain and receive real-time search results across web, social, and crypto data.",
       "image": null,
@@ -2437,6 +2634,7 @@
       "ids": [
         7366
       ],
+      "best_id": 7366,
       "name": "Pandora Box",
       "description": "Pandora Box, is an on-chain mystery box application powered by AI Agents. The product leverages large language model services to generate mystery box images that track real-time AI trends, supporting both single and batch openings with a five-tier rarity system: Common, Rare, SR, Epic, and Legendary. Mystery box Agents are registered on BNB Chain via the ERC-8004 protocol, enabling Agent-to-Agent ",
       "image": "https://blob.8004scan.app/4bf2c1bca9127f634eb1acd0b9f633e9269c159a266a07c8c558113d4a101084.jpg",
@@ -2453,6 +2651,7 @@
         6255,
         6428
       ],
+      "best_id": 6255,
       "name": "Quick Intel",
       "description": "AI-powered smart contract security scanner covering 63 blockchains. Detects honeypots, scam patterns, buy/sell/transfer taxes, contract ownership risks, mint/burn/blacklist capabilities, proxy contracts, fee modification risks, LP locks, liquidity analysis, suspicious functions, known scam wallet funding, and fund theft vulnerabilities. Powered by Quick Intel's proprietary qHash fingerprinting sys",
       "image": "https://blob.8004scan.app/df834a909132384a2d228a9ba88383f88885aa0494eb56f8e06110527c68ba46.jpg",
@@ -2471,6 +2670,7 @@
       "ids": [
         129156
       ],
+      "best_id": 129156,
       "name": "narrative-rotation-index",
       "description": "CMC-native crypto narrative rotation strategy: regime detection, 5-bucket relative-strength scoring, and a late-cycle exhaustion detector.",
       "image": "https://blob.8004scan.app/627b4af4e413a3563227eadf490cf0ec355848709c60bab8b2066baae3547759.jpg",
@@ -2487,6 +2687,7 @@
       "ids": [
         2894
       ],
+      "best_id": 2894,
       "name": "Jacob NFA Platform",
       "description": "BAP-578 Non-Fungible Agent platform with DN404/ERC-404 hybrid tokenomics on BNB Smart Chain. Features 4 interconnected contracts for AI agent creation, trading, and autonomous treasury management via PancakeSwap V2 DEX integration.",
       "image": null,
@@ -2505,6 +2706,7 @@
       "ids": [
         97477
       ],
+      "best_id": 97477,
       "name": "Scroll Lens",
       "description": "research: searches docs, news, repos, ecosystem signals",
       "image": null,
@@ -2520,6 +2722,7 @@
       "ids": [
         97480
       ],
+      "best_id": 97480,
       "name": "Settle Scout",
       "description": "verifier: checks outputs, watches disputes, settlement logic",
       "image": null,
@@ -2537,6 +2740,7 @@
         258642,
         320743
       ],
+      "best_id": 258641,
       "name": "Sentinels Audit",
       "description": "SmartSentinels AI Audit is an autonomous smart-contract security agent for BNB Chain and EVM (Solana where available). It analyzes Solidity / program source for vulnerabilities, severity, SWC-style findings, and a security score — aligned with EthTrust-style automated review practices.\n\nHow it works: submit contract source in Sentinels Labs; the agent runs deterministic + AI-assisted analysis and ",
       "image": "https://blob.8004scan.app/5944d80a0b315f1489ab9043e4ba02101eac93c7363a7985df883ea42580fe83.jpg",
@@ -2555,6 +2759,7 @@
         331698,
         331794
       ],
+      "best_id": 331625,
       "name": "SMEAI Reference Health Factor Monitor",
       "description": null,
       "image": null,
@@ -2571,6 +2776,7 @@
         33257,
         33294
       ],
+      "best_id": 33257,
       "name": "Clawlett",
       "description": "Autonomous MEV-protected token swap agent on BNB Chain. Safe: 0x0927A79c58976D92c552724DECdc444F3B6bB3cD",
       "image": null,
@@ -2586,6 +2792,7 @@
       "ids": [
         20131
       ],
+      "best_id": 20131,
       "name": "DeFi Trading Agent",
       "description": "Autonomous DeFi trading agent with real-time market analysis",
       "image": "https://pbs.twimg.com/profile_images/2020763909817569280/u6Lop3Qd_400x400.png",
@@ -2605,6 +2812,7 @@
       "ids": [
         338747
       ],
+      "best_id": 338747,
       "name": "Bercy BNB Pay Agent",
       "description": null,
       "image": null,
@@ -2621,6 +2829,7 @@
         27699,
         27703
       ],
+      "best_id": 27699,
       "name": "Markowitz Trading Bot",
       "description": "Markowitz portfolio optimization agent. Manages 29-30 simultaneous positions across FX, crypto and commodities. Score 0–1000 updated daily from closed trade history. Accountability enforced via AIAgentRegistry — stake + slash mechanism. Live on Sepolia testnet.\"",
       "image": null,

@@ -112,7 +112,8 @@
 // as the safe-looking one is how a live session gets mistaken for a dead one.
 (async () => {
   const el = document.getElementById('live');
-  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  // Quotes too: these strings go into href="…" and value="…" as well as into text.
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   try {
     const r = await fetch('https://agent.brainonbnb.com/session', { cache: 'no-store' });
     if (!r.ok) throw new Error('endpoint answered ' + r.status);
@@ -166,7 +167,8 @@
 // token is a 401 and is shown as such; a right one shows the transaction.
 document.getElementById('rv-go').addEventListener('click', async () => {
   const out = document.getElementById('rv-out');
-  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  // Quotes too: these strings go into href="…" and value="…" as well as into text.
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const keyId = document.getElementById('rv-key').value;
   const token = document.getElementById('rv-token').value.trim();
   if (!keyId) { out.textContent = 'There is no valid session key to revoke.'; return; }
@@ -179,8 +181,11 @@ document.getElementById('rv-go').addEventListener('click', async () => {
     document.getElementById('rv-token').value = '';
     if (r.status === 401) { out.innerHTML = '<span class="pill no">refused</span> ' + esc(j.error || 'operator token required') + ' — nothing was signed.'; btn.disabled = false; return; }
     const d = (j.revoked || [])[0];
-    if (!r.ok || !d || d.status === 'failed') { out.innerHTML = '<span class="pill no">failed</span> ' + esc((d && d.error) || j.error || ('worker answered ' + r.status)); btn.disabled = false; return; }
-    out.innerHTML = '<span class="pill ok">revoked</span> ' + (d.explorer ? '<a href="' + esc(d.explorer) + '" target="_blank" rel="noopener">' + esc(d.transactionHash) + '</a>' : esc(d.status)) + ' — reloading the KeyStore…';
+    const st = String((d && d.status) || '').toLowerCase();
+    if (!r.ok || !d || /fail|revert|reject/.test(st)) { out.innerHTML = '<span class="pill no">failed</span> ' + esc((d && d.error) || j.error || ('worker answered ' + r.status)); btn.disabled = false; return; }
+    // Only a confirmed revocation is one. Queued or pending is said as such —
+    // the key is still valid until the KeyStore says otherwise.
+    out.innerHTML = (st === 'confirmed' ? '<span class="pill ok">revoked</span> ' : '<span class="pill no">' + esc(st || 'submitted') + ' — not confirmed yet, the key may still be valid</span> ') + (d.explorer ? '<a href="' + esc(d.explorer) + '" target="_blank" rel="noopener">' + esc(d.transactionHash) + '</a>' : esc(d.status)) + ' — reloading the KeyStore…';
     setTimeout(() => location.reload(), 4000);
   } catch (e) { out.innerHTML = '<span class="pill no">no answer</span> ' + esc(e.message || e); btn.disabled = false; }
 });

@@ -28,6 +28,11 @@ const SITE = process.env.SITE || 'https://brainonbnb.com';
 const args = process.argv.slice(2);
 
 const MUST_ACCEPT = [
+  // The tightening of 2026-09-18 must not cost a reader: these talk ABOUT the
+  // same verbs and do none of them.
+  [{ name: 'rebalance_plan', description: 'Computes what a rebalance would cost, leg by leg. A measurement; nothing is sent.', annotations: { readOnlyHint: true } }, 'a rebalance PLANNER that declares itself a reader'],
+  [{ name: 'get_open_positions', description: 'Lists the open positions of an account.' }, 'a reader of open positions'],
+  [{ name: 'borrow_rates', description: 'Returns the current borrow APY per market.' }, 'a reader of borrow rates'],
   // Ours, by name shape. None of these carries a reading verb.
   [{ name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, before placing it. Returns real cost per trade size (price impact + swap fee + transfer tax together), the transfer tax measured from executed trades, and whether the LP is burned or still withdrawable.' }, 'a pool measurement that names swap fee and transfer tax as the things it measures'],
   [{ name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding where to put liquidity on PancakeSwap. Measures each tier over a live window: swaps, turnover, and the fees the pool actually paid out.' }, 'the fee-tier comparison'],
@@ -62,6 +67,21 @@ const MUST_REFUSE = [
   // No positive signal anywhere: not a reader as far as anyone can tell.
   [{ name: 'xyz', description: 'Does the thing.' }, 'a tool that says nothing about itself'],
   [{ name: '', description: 'no name at all' }, 'a nameless tool'],
+  // 2026-09-18: thirteen of thirteen adversarial tools went through. The verbs
+  // of lending and position management were on no list, a name without
+  // separators hid its verb from the segment test, and "returns a report" in
+  // the description was read as the sign of a reader.
+  [{ name: 'rebalance_portfolio', description: 'Rebalances the portfolio and returns a report.' }, 'a rebalancer that "returns a report"'],
+  [{ name: 'liquidate_position', description: 'Returns the status after liquidating.' }, 'a liquidator'],
+  [{ name: 'harvest_rewards', description: 'Reports the rewards harvested.' }, 'a harvester'],
+  [{ name: 'repay_loan', description: 'Returns the remaining debt.' }, 'a loan repayment'],
+  [{ name: 'borrow', description: 'Returns the health factor afterwards.' }, 'a borrow'],
+  [{ name: 'withdrawall', description: 'Returns the balance.' }, 'a verb hidden in a name without separators'],
+  [{ name: 'placeorder', description: 'Returns the order status.' }, 'an order placed under one word'],
+  [{ name: 'sendfunds', description: 'Returns a receipt.' }, 'a send under one word'],
+  [{ name: 'manage', description: 'Closes your position and returns the status.' }, 'a description that closes a position'],
+  [{ name: 'farm_helper', description: 'Adds liquidity and reports the share.' }, 'a description that adds liquidity'],
+  [{ name: 'vault_info', description: 'Compounds your rewards, then shows the balance.' }, 'a description that compounds rewards'],
 ];
 
 if (args.includes('--self-test')) {

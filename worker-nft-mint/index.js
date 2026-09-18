@@ -243,6 +243,30 @@ async function resolveBuyer(txHash) {
   return best;
 }
 
+// ONE TRANSACTION, ONE BUY (2026-09-18). An aggregator splits an order into
+// several swaps on this pair inside one transaction (0x531f2bfb…: two swaps of
+// 0.2436 + 0.2427 WBNB, $366 together). Read log by log with the transaction
+// marked done after its first log, that buy was a $184 one — alerted as half
+// of itself and given the NFT of the tier below. The logs of one pair are
+// folded per transaction first: WBNB in and BOBAI out summed over its buy
+// swaps, in the order the transactions appeared. Sells (the opposite
+// direction) carry nothing in these two fields and fold to nothing. Pure.
+export function foldBuysByTx(logs) {
+  const byTx = new Map();
+  for (const log of logs || []) {
+    const d = String(log.data || '').slice(2);
+    if (d.length < 256) continue;
+    const amount1In = BigInt('0x' + d.slice(64, 128));    // WBNB in
+    const amount0Out = BigInt('0x' + d.slice(128, 192));  // BOBAI out
+    if (!(amount1In > 0n && amount0Out > 0n)) continue;
+    const tx = log.transactionHash;
+    const b = byTx.get(tx) || { transactionHash: tx, blockNumber: log.blockNumber, amount1In: 0n, amount0Out: 0n, swaps: 0 };
+    b.amount1In += amount1In; b.amount0Out += amount0Out; b.swaps += 1;
+    byTx.set(tx, b);
+  }
+  return [...byTx.values()];
+}
+
 function tierFromUsd(usd) {
   for (const [min, t] of TIER_THRESHOLDS) if (usd >= min) return t;
   return -1;
@@ -452,18 +476,13 @@ export default {
       }
       if (logs.length) console.log(`[scan] blocks ${cFrom}-${cTo}, ${logs.length} swap logs`);
 
-    for (const log of logs) {
+    // One entry per transaction: a buy split into several swaps is one buy of
+    // their sum, and its tier is the sum's (foldBuysByTx). A transaction's
+    // logs share a block, so a chunk never holds half of one.
+    for (const log of foldBuysByTx(logs)) {
       const txHash = log.transactionHash;
       if (processed.has(txHash)) continue;
-
-      // Parse Swap event data: amount0In, amount1In, amount0Out, amount1Out (each uint256)
-      const data = log.data.slice(2);
-      if (data.length < 256) continue;
-      const amount1In  = BigInt('0x' + data.slice(64, 128));   // WBNB in
-      const amount0Out = BigInt('0x' + data.slice(128, 192));  // BOBAI out
-
-      // BUY = WBNB in AND BOBAI out
-      if (!(amount1In > 0n && amount0Out > 0n)) continue;
+      const { amount1In } = log;
 
       const bnbAmt = Number(amount1In) / 1e18;
       if (bnbUsd === null) bnbUsd = await getBnbUsd();

@@ -114,6 +114,8 @@ const OFFICIAL_LINKS = {
   geckoterminal: 'https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6',
   coingecko: 'https://www.coingecko.com/en/coins/brain-on-bnb-ai',
   source: 'https://bscscan.com/address/' + TOKEN + '#code',
+  github: 'https://github.com/mmxrealQQ/bobai-buyburn',
+  source_git: 'https://brainonbnb.com/source.git',
   audit_log: 'https://logs.brainonbnb.com/logs/burns.json',
   llms_txt: 'https://brainonbnb.com/llms.txt',
   skill_md: 'https://brainonbnb.com/skill.md',
@@ -437,6 +439,7 @@ const TOKENOMICS = {
     circulating_supply: 'call bobai_circulating_supply',
     contract: 'https://bscscan.com/token/' + TOKEN,
     contract_source: 'https://bscscan.com/address/' + TOKEN + '#code',
+    source_code: 'https://github.com/mmxrealQQ/bobai-buyburn',
     burn_audit_log: 'https://logs.brainonbnb.com/logs/burns.json',
   },
   disclaimer: "Describes the token's design, not a recommendation to buy. Meme tokens are high-risk. Not financial advice — verify everything on-chain.",
@@ -603,6 +606,7 @@ To sell: reverse the path, approve the router for $BOBAI first, then call \`swap
 - Contract: https://bscscan.com/token/${TOKEN}
 - DexScreener: https://dexscreener.com/bsc/${TOKEN}
 - Contract source (verified): https://bscscan.com/address/${TOKEN}#code
+- Source code (open, GitHub): https://github.com/mmxrealQQ/bobai-buyburn
 - Burn audit log (live): https://logs.brainonbnb.com/logs/burns.json
 
 _Not financial advice. Everything here is verifiable on-chain — don't trust, verify._
@@ -1036,7 +1040,7 @@ const A2A_CARD = {
 const AGENT_REGISTRATION = {
   type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
   name: 'Brain On BNB AI ($BOBAI)',
-  description: 'AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract source verified on BscScan and ownership renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Every burn run is written to a public audit log.',
+  description: 'AI-built deflationary meme token on BNB Chain. A 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract source verified on BscScan and ownership renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Every burn run is written to a public audit log and the whole stack is open source on GitHub.',
   image: 'https://brainonbnb.com/logo-200x200.png',
   active: true,
   // Every agent id this domain claims. The ERC-8004 verifier fetches exactly

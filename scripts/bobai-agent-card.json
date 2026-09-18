@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "Brain On BNB AI ($BOBAI)",
-  "description": "Brain Plaza: a measured census of every ERC-8004 agent on BNB Smart Chain — who is registered, who actually answers, and what they expose — plus an open broker that routes a task to an agent that can do it. Free, no key, no signup. Also the read-only on-chain data surface for $BOBAI, an AI-built deflationary token whose 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract verified and renounced, LP perma-locked, every burn in a public audit log.",
+  "description": "Brain Plaza: a measured census of every ERC-8004 agent on BNB Smart Chain — who is registered, who actually answers, and what they expose — plus an open broker that routes a task to an agent that can do it. Free, no key, no signup. Also the read-only on-chain data surface for $BOBAI, an AI-built deflationary token whose 3% trade tax funds an autonomous 24/7 buyback-and-burn cycle. Contract verified and renounced, LP perma-locked, every burn in a public audit log, the whole stack open source on GitHub.",
   "image": "https://brainonbnb.com/logo-200x200.png",
   "active": true,
   "services": [
@@ -174,6 +174,10 @@
     {
       "trait_type": "Contract Source",
       "value": "https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code"
+    },
+    {
+      "trait_type": "Source Code",
+      "value": "https://github.com/mmxrealQQ/bobai-buyburn"
     },
     {
       "trait_type": "Burn Audit Log",

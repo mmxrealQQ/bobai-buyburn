@@ -54,8 +54,9 @@ Everything is public and on BSC mainnet; nothing needs a login.
 
 Altana (not selectable above): the agent runs on its own Altana wallet 0xC5A17B5295Fc50BAdB1F9f9C09b412fE5e84F7d3 on BNB Smart Chain (chain 56), KeyStore 0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a. The admin (root) key 0xc11b9dc3a76225954ff040294daae83c7b902af060da656d9c72c9eb9939a6e8 grants and revokes; the current session key 0x86fabbfa5b59af42a0d025bd77a6c826cad52389447f012422c918f58f017e99 (granted 2026-09-07 18:28 UTC, tx 0x627a0368a2ae03eb70efe515ccf7f3aa13306211aa48abe8116a8b964d314be7) carries a call allowlist (the ERC-8183 kernel and approve() on $U), a spend cap of 1 $U and 0.002 BNB per day, and expires 2026-09-14. Proven both ways on mainnet: an allowed call through the session key succeeded (0x55128a7f373a9dc4fd0787d97489d5601a3663666e0ee5f155fd88b2589df588), a call outside the allowlist reverted with UnauthorizedCall, and revocation works from the operator's machine (0x363aaffdc70faa1cae5ffc65c2411dc9c0492ad1f6c7903345e0e6fbd58e9e38) and from inside the product: /session shows what the agent may do, live from the KeyStore, and has a Revoke button. The admin key is a Cloudflare secret on the worker, never in the page or the source; the route signs only with the operator's token (401 without it, so a stranger cannot switch the agent off). The session granted at 18:12 UTC was revoked with that button at 18:13 UTC, tx 0x054ea9a00dee6f2126f266e859242d23dbca6d276455800c7957e094725c5939, and every revocation fired from the page is recorded there. Raw JSON: https://agent.brainonbnb.com/session.
 
-Repository: the GitHub account is suspended since 2026-07-24 (under appeal, no
-second account opened). The full source is public at
+Repository: https://github.com/mmxrealQQ/bobai-buyburn (the GitHub account was
+flagged 2026-07-24 and cleared 2026-09-17; the form was submitted while it was
+hidden). The full source is also public at
 `git clone https://brainonbnb.com/source.git` (MIT, secret-audited) and as
 bundles at https://brainonbnb.com/#library.
 

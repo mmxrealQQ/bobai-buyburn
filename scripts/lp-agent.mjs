@@ -31,7 +31,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
@@ -418,6 +418,44 @@ if (SELF) {
   is('… all WBNB: one-sided below the price', resumeSide(0) === 'above' && resumeSide(0.04) === 'above' && ticksAdjacent(-57200, 7, 10, resumeSide(0)).side === 'below_price');
   is('… a mixed wallet is centred as before, and a wallet with nothing in it decides nothing', resumeSide(0.5) === null && resumeSide(0.9) === null && resumeSide(0.1) === null && resumeSide(null) === null && resumeSide(NaN) === null);
   is('planRebalance asks resumeSide when it mints from the wallet (source pin)', /if \(resume && valueBnb > 0\) oneSided = resumeSide\(/.test((await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8')));
+  // THE MAIN RANGE IS GONE, THE RESERVE STANDS (2026-09-18): a re-set burnt the
+  // main range beside the reserve and its mint failed. Driven through the real
+  // plan functions over a chain that answers from a table — no RPC.
+  {
+    const CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', POOL = '0xafb2da14056725e3ba3a30dd846b6bbbd7886c56', FACT = '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865', ME = ADDR.LP_WALLET;
+    const tickNow = -57900;   // fell out of the old main range (-57860 …), inside the reserve (-59000 … -57090)
+    const chain = ({ cake, wbnb = 0n, ids = [7461743n] }) => ({
+      getBalance: async () => 6n * 10n ** 15n,
+      simulateContract: async () => ({ result: [0n, 0n] }),
+      readContract: async ({ address, functionName, args }) => {
+        const to = String(address).toLowerCase();
+        if (functionName === 'balanceOf') return to === ADDR.V3_POSITION_MANAGER ? BigInt(ids.length) : to === CAKE ? cake : to === ADDR.WBNB ? wbnb : 0n;
+        if (functionName === 'tokenOfOwnerByIndex') return ids[Number(args[1])];
+        if (functionName === 'positions') return [0n, '0x0000000000000000000000000000000000000000', CAKE, ADDR.WBNB, 500, -59000, -57090, 10n ** 19n, 0n, 0n, 0n, 0n];
+        if (functionName === 'factory') return FACT;
+        if (functionName === 'getPool') return POOL;
+        if (functionName === 'slot0') return [BigInt(Math.floor(Math.pow(1.0001, tickNow / 2) * 2 ** 96)), tickNow, 0, 0, 0, 0, true];
+        if (functionName === 'tickSpacing') return 10;
+        if (functionName === 'token0') return CAKE;
+        if (functionName === 'token1') return ADDR.WBNB;
+        if (functionName === 'fee') return 500;
+        throw new Error(`the table has no answer for ${functionName}`);
+      },
+    });
+    const LAD = { main: '7451444', reserve: '7461743' };
+    const REC = { hours_of_prices: 300, rows: [], earnings_pick: { width: 7, earnings: { net_usd_per_day: 0.1, resets: 1, reset_cost_usd: 0 } } };
+    const loose = chain({ cake: 450n * 10n ** 18n });   // ~1.37 BNB of CAKE the burnt main range left in the wallet
+    const rp = await readPosition(loose, ME, LAD);
+    is('only the reserve held beside a main range the record names: the wallet holds NO main range, the reserve rides along', rp.positions === 0 && rp.pos === null && String(rp.reserve?.tokenId) === '7461743' && rp.main_missing === '7451444');
+    is('… the same wallet without the record, or once the ladder is closed, reads the one position as the position', (await readPosition(loose, ME, null)).positions === 1 && (await readPosition(loose, ME, { main: '7461743', reserve: null })).positions === 1);
+    is('… and nothing grows the reserve with the loose capital: increase, ladder and collect all stand', /no position to grow/.test((await planIncrease(loose, ME, null, LAD)).no || '') && (await planLadder(loose, ME, { record: REC, ladder: LAD })).act === null && /no position/.test((await planCollect(loose, ME, LAD).catch((e) => ({ no: `no position (${e.message})` }))).no || ''));
+    const rs = await planRebalance(loose, ME, { record: REC, pool: POOL, ladder: LAD });
+    is('the re-set is finished from the wallet beside the reserve: one-sided above the price, all of the other side, no trade', rs.resume === true && rs.no === null && rs.oneSided === 'below' && rs.ticks.side === 'above_price' && rs.ticks.tickLower > tickNow && rs.trade === null && rs.summary.reserve?.position === '7461743' && rs.summary.main_missing === '7451444' && rs.summary.value_with_reserve_bnb > rs.summary.value_bnb);
+    is('ladderHeal leaves that wallet alone — the capital is there to mint', (await healLadder(loose, ME, { ...LAD })) === null && ladderHeal(HL({ held: ['7450613'], looseBnb: 1.37 })) === null && ladderHeal(HL({ held: ['7450613'], looseBnb: MIN_REBALANCE_BNB })) === null);
+    const dust = chain({ cake: 10n ** 18n });   // ~0.003 BNB: nothing to mint a main range from
+    is('… and closes the ladder when nothing worth minting lies beside the reserve', (await healLadder(dust, ME, { ...LAD }))?.closed === true && ladderHeal(HL({ held: ['7450613'], looseBnb: MIN_REBALANCE_BNB - 0.001 }))?.closed === true);
+    is('… where the mint would be refused too (one floor for both, so the wallet never waits between them)', /below the 0.02 BNB floor/.test((await planRebalance(dust, ME, { record: REC, pool: POOL, ladder: LAD })).no || ''));
+  }
   // The re-set beside a reserve: it reads its old range by id and names its new one by the mint (source pins; the chain half cannot run here).
   const coreSrc = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');
   const rebSrc = coreSrc.slice(coreSrc.indexOf('export async function executeRebalance'), coreSrc.indexOf('export async function', coreSrc.indexOf('export async function executeRebalance') + 10));

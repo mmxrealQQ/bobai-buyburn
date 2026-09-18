@@ -225,6 +225,20 @@ export async function readPosition(pub, address, ladder = null) {
   }
   if (positions !== 1) return { positions, tokenId: null, pos: null, owed0: 0n, owed1: 0n };
   const tokenId = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 0n]);
+  // THE MAIN RANGE IS GONE, THE RESERVE STANDS (2026-09-18, read in the code,
+  // never seen with money). A re-set burnt the main range and its mint failed:
+  // the wallet holds the reserve alone and the main range's capital loose.
+  // Read as "the position", the reserve took that capital through the
+  // increase step — all of the other side counted as a deposit and sold into
+  // the reserve's ratio, at the low. The one position being the reserve the
+  // record names (beside a main range it also names) is NOT the main range:
+  // the wallet holds no main range, the reserve rides along, and the re-set
+  // is finished from the wallet beside it (planRebalance's resume, one-sided
+  // — resumeSide). A reserve left with nothing worth minting beside it is
+  // closed into the main range by ladderHeal on the next tick.
+  if (ladder && ladder.main != null && ladder.reserve != null && String(tokenId) === String(ladder.reserve)) {
+    return { positions: 0, tokenId: null, pos: null, owed0: 0n, owed1: 0n, reserve: await readOne(pub, address, tokenId), positions_held: 1, main_missing: String(ladder.main) };
+  }
   return { positions, ...(await readOne(pub, address, tokenId)), positions_held: 1 };
 }
 
@@ -247,7 +261,19 @@ export async function heldIds(pub, address) {
 export async function healLadder(pub, address, ladder) {
   if (!ladder || ladder.main == null) return null;
   const held = await heldIds(pub, address);
-  if (held.length === 1) return ladder.reserve != null && held[0] === String(ladder.reserve) ? ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null }) : null;
+  if (held.length === 1) {
+    if (ladder.reserve == null || held[0] !== String(ladder.reserve)) return null;
+    // Only the reserve is left. What lies loose beside it decides: enough to
+    // mint is a re-set to finish (no heal), less closes the ladder. A read
+    // that fails throws — the caller heals nothing on a guess.
+    const pos = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(held[0])]);
+    const wbnbIs0 = pos[2].toLowerCase() === ADDR.WBNB;
+    const other = wbnbIs0 ? pos[3] : pos[2];
+    const { sqrtP } = await readPool(pub, pos);
+    const otherInWbnb = wbnbIs0 ? 1 / (sqrtP ** 2) : sqrtP ** 2;
+    const [w, o] = await Promise.all([read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]), read(pub, other, ABI.ERC20, 'balanceOf', [address])]);
+    return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null, looseBnb: (Number(w) + Number(o) * otherInWbnb) / 1e18 });
+  }
   if (held.length !== 2) return null;
   const mainHeld = held.includes(String(ladder.main)), reserveHeld = ladder.reserve != null && held.includes(String(ladder.reserve));
   if (mainHeld === reserveHeld) return null;
@@ -688,6 +714,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
     tokenId: p.tokenId, pos: p.pos, poolInfo, spacing, other, wbnbIs0, width, ticks, target, trade,
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
+      ...(p.main_missing ? { main_missing: p.main_missing } : {}),
       ...(resume ? { resumed_from_wallet: true, held: have ? { other: (have.other / 1e18).toFixed(6), wbnb: (have.wbnb / 1e18).toFixed(6) } : null } : {}),
       ticks: p.tokenId != null ? [Number(p.pos[5]), Number(p.pos[6])] : null,
       tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange, ...(state.atEdge ? { at_edge: true } : {}),

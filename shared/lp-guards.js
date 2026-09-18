@@ -515,7 +515,9 @@ export const LADDER_GATE = 'LP_LADDER';
 // there beside exactly one other position in the same pool: that other one
 // is the main range. Anything else — both still held, neither held, a third
 // position, another pool — is left as it is, and the guards refuse.
-// state: { main, reserve, held: [ids], samePool (bool) }
+// state: { main, reserve, held: [ids], samePool (bool), looseBnb (the pool's
+//          two tokens loose in the wallet, in BNB — read when only the
+//          reserve is held) }
 // Returns { main, why } (+ closed | adopted with reserve) or null. Pure;
 // pinned both ways.
 export function ladderHeal(state) {
@@ -543,6 +545,13 @@ export function ladderHeal(state) {
   // the main range now, the ladder is closed; the resume and increase paths
   // take it from there.
   if (held.length === 1 && held[0] === String(state.reserve)) {
+    // ... unless the main range's capital lies loose in the wallet, enough to
+    // mint (the re-set floor): then the re-set is finished from the wallet
+    // beside the reserve (readPosition reads "no main range, reserve
+    // attached", planRebalance resumes one-sided) and the ladder stays a
+    // ladder. Closing it here handed that capital to the increase step, which
+    // sold it into the reserve's ratio (2026-09-18).
+    if (Number(state.looseBnb || 0) >= MIN_REBALANCE_BNB) return null;
     return { main: String(state.reserve), reserve: null, closed: true, why: `the ladder record named main range #${state.main}, which this wallet no longer holds; the reserve #${state.reserve} is the only range left, so it is the main range now and the ladder is closed` };
   }
   if (held.length !== 2) return null;

@@ -2,7 +2,7 @@
 # One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 14 files, 5569 lines.
+# one fetch. 14 files, 5643 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -47,7 +47,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
@@ -434,6 +434,44 @@ if (SELF) {
   is('… all WBNB: one-sided below the price', resumeSide(0) === 'above' && resumeSide(0.04) === 'above' && ticksAdjacent(-57200, 7, 10, resumeSide(0)).side === 'below_price');
   is('… a mixed wallet is centred as before, and a wallet with nothing in it decides nothing', resumeSide(0.5) === null && resumeSide(0.9) === null && resumeSide(0.1) === null && resumeSide(null) === null && resumeSide(NaN) === null);
   is('planRebalance asks resumeSide when it mints from the wallet (source pin)', /if \(resume && valueBnb > 0\) oneSided = resumeSide\(/.test((await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8')));
+  // THE MAIN RANGE IS GONE, THE RESERVE STANDS (2026-09-18): a re-set burnt the
+  // main range beside the reserve and its mint failed. Driven through the real
+  // plan functions over a chain that answers from a table — no RPC.
+  {
+    const CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', POOL = '0xafb2da14056725e3ba3a30dd846b6bbbd7886c56', FACT = '0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865', ME = ADDR.LP_WALLET;
+    const tickNow = -57900;   // fell out of the old main range (-57860 …), inside the reserve (-59000 … -57090)
+    const chain = ({ cake, wbnb = 0n, ids = [7461743n] }) => ({
+      getBalance: async () => 6n * 10n ** 15n,
+      simulateContract: async () => ({ result: [0n, 0n] }),
+      readContract: async ({ address, functionName, args }) => {
+        const to = String(address).toLowerCase();
+        if (functionName === 'balanceOf') return to === ADDR.V3_POSITION_MANAGER ? BigInt(ids.length) : to === CAKE ? cake : to === ADDR.WBNB ? wbnb : 0n;
+        if (functionName === 'tokenOfOwnerByIndex') return ids[Number(args[1])];
+        if (functionName === 'positions') return [0n, '0x0000000000000000000000000000000000000000', CAKE, ADDR.WBNB, 500, -59000, -57090, 10n ** 19n, 0n, 0n, 0n, 0n];
+        if (functionName === 'factory') return FACT;
+        if (functionName === 'getPool') return POOL;
+        if (functionName === 'slot0') return [BigInt(Math.floor(Math.pow(1.0001, tickNow / 2) * 2 ** 96)), tickNow, 0, 0, 0, 0, true];
+        if (functionName === 'tickSpacing') return 10;
+        if (functionName === 'token0') return CAKE;
+        if (functionName === 'token1') return ADDR.WBNB;
+        if (functionName === 'fee') return 500;
+        throw new Error(`the table has no answer for ${functionName}`);
+      },
+    });
+    const LAD = { main: '7451444', reserve: '7461743' };
+    const REC = { hours_of_prices: 300, rows: [], earnings_pick: { width: 7, earnings: { net_usd_per_day: 0.1, resets: 1, reset_cost_usd: 0 } } };
+    const loose = chain({ cake: 450n * 10n ** 18n });   // ~1.37 BNB of CAKE the burnt main range left in the wallet
+    const rp = await readPosition(loose, ME, LAD);
+    is('only the reserve held beside a main range the record names: the wallet holds NO main range, the reserve rides along', rp.positions === 0 && rp.pos === null && String(rp.reserve?.tokenId) === '7461743' && rp.main_missing === '7451444');
+    is('… the same wallet without the record, or once the ladder is closed, reads the one position as the position', (await readPosition(loose, ME, null)).positions === 1 && (await readPosition(loose, ME, { main: '7461743', reserve: null })).positions === 1);
+    is('… and nothing grows the reserve with the loose capital: increase, ladder and collect all stand', /no position to grow/.test((await planIncrease(loose, ME, null, LAD)).no || '') && (await planLadder(loose, ME, { record: REC, ladder: LAD })).act === null && /no position/.test((await planCollect(loose, ME, LAD).catch((e) => ({ no: `no position (${e.message})` }))).no || ''));
+    const rs = await planRebalance(loose, ME, { record: REC, pool: POOL, ladder: LAD });
+    is('the re-set is finished from the wallet beside the reserve: one-sided above the price, all of the other side, no trade', rs.resume === true && rs.no === null && rs.oneSided === 'below' && rs.ticks.side === 'above_price' && rs.ticks.tickLower > tickNow && rs.trade === null && rs.summary.reserve?.position === '7461743' && rs.summary.main_missing === '7451444' && rs.summary.value_with_reserve_bnb > rs.summary.value_bnb);
+    is('ladderHeal leaves that wallet alone — the capital is there to mint', (await healLadder(loose, ME, { ...LAD })) === null && ladderHeal(HL({ held: ['7450613'], looseBnb: 1.37 })) === null && ladderHeal(HL({ held: ['7450613'], looseBnb: MIN_REBALANCE_BNB })) === null);
+    const dust = chain({ cake: 10n ** 18n });   // ~0.003 BNB: nothing to mint a main range from
+    is('… and closes the ladder when nothing worth minting lies beside the reserve', (await healLadder(dust, ME, { ...LAD }))?.closed === true && ladderHeal(HL({ held: ['7450613'], looseBnb: MIN_REBALANCE_BNB - 0.001 }))?.closed === true);
+    is('… where the mint would be refused too (one floor for both, so the wallet never waits between them)', /below the 0.02 BNB floor/.test((await planRebalance(dust, ME, { record: REC, pool: POOL, ladder: LAD })).no || ''));
+  }
   // The re-set beside a reserve: it reads its old range by id and names its new one by the mint (source pins; the chain half cannot run here).
   const coreSrc = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');
   const rebSrc = coreSrc.slice(coreSrc.indexOf('export async function executeRebalance'), coreSrc.indexOf('export async function', coreSrc.indexOf('export async function executeRebalance') + 10));
@@ -1603,6 +1641,20 @@ export async function readPosition(pub, address, ladder = null) {
   }
   if (positions !== 1) return { positions, tokenId: null, pos: null, owed0: 0n, owed1: 0n };
   const tokenId = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 0n]);
+  // THE MAIN RANGE IS GONE, THE RESERVE STANDS (2026-09-18, read in the code,
+  // never seen with money). A re-set burnt the main range and its mint failed:
+  // the wallet holds the reserve alone and the main range's capital loose.
+  // Read as "the position", the reserve took that capital through the
+  // increase step — all of the other side counted as a deposit and sold into
+  // the reserve's ratio, at the low. The one position being the reserve the
+  // record names (beside a main range it also names) is NOT the main range:
+  // the wallet holds no main range, the reserve rides along, and the re-set
+  // is finished from the wallet beside it (planRebalance's resume, one-sided
+  // — resumeSide). A reserve left with nothing worth minting beside it is
+  // closed into the main range by ladderHeal on the next tick.
+  if (ladder && ladder.main != null && ladder.reserve != null && String(tokenId) === String(ladder.reserve)) {
+    return { positions: 0, tokenId: null, pos: null, owed0: 0n, owed1: 0n, reserve: await readOne(pub, address, tokenId), positions_held: 1, main_missing: String(ladder.main) };
+  }
   return { positions, ...(await readOne(pub, address, tokenId)), positions_held: 1 };
 }
 
@@ -1625,7 +1677,19 @@ export async function heldIds(pub, address) {
 export async function healLadder(pub, address, ladder) {
   if (!ladder || ladder.main == null) return null;
   const held = await heldIds(pub, address);
-  if (held.length === 1) return ladder.reserve != null && held[0] === String(ladder.reserve) ? ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null }) : null;
+  if (held.length === 1) {
+    if (ladder.reserve == null || held[0] !== String(ladder.reserve)) return null;
+    // Only the reserve is left. What lies loose beside it decides: enough to
+    // mint is a re-set to finish (no heal), less closes the ladder. A read
+    // that fails throws — the caller heals nothing on a guess.
+    const pos = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(held[0])]);
+    const wbnbIs0 = pos[2].toLowerCase() === ADDR.WBNB;
+    const other = wbnbIs0 ? pos[3] : pos[2];
+    const { sqrtP } = await readPool(pub, pos);
+    const otherInWbnb = wbnbIs0 ? 1 / (sqrtP ** 2) : sqrtP ** 2;
+    const [w, o] = await Promise.all([read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]), read(pub, other, ABI.ERC20, 'balanceOf', [address])]);
+    return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null, looseBnb: (Number(w) + Number(o) * otherInWbnb) / 1e18 });
+  }
   if (held.length !== 2) return null;
   const mainHeld = held.includes(String(ladder.main)), reserveHeld = ladder.reserve != null && held.includes(String(ladder.reserve));
   if (mainHeld === reserveHeld) return null;
@@ -2066,6 +2130,7 @@ export async function planRebalance(pub, address, { record = null, widthOverride
     tokenId: p.tokenId, pos: p.pos, poolInfo, spacing, other, wbnbIs0, width, ticks, target, trade,
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId),
+      ...(p.main_missing ? { main_missing: p.main_missing } : {}),
       ...(resume ? { resumed_from_wallet: true, held: have ? { other: (have.other / 1e18).toFixed(6), wbnb: (have.wbnb / 1e18).toFixed(6) } : null } : {}),
       ticks: p.tokenId != null ? [Number(p.pos[5]), Number(p.pos[6])] : null,
       tick: poolInfo ? poolInfo.tick : null, in_range: state.inRange, ...(state.atEdge ? { at_edge: true } : {}),
@@ -3530,7 +3595,9 @@ export const LADDER_GATE = 'LP_LADDER';
 // there beside exactly one other position in the same pool: that other one
 // is the main range. Anything else — both still held, neither held, a third
 // position, another pool — is left as it is, and the guards refuse.
-// state: { main, reserve, held: [ids], samePool (bool) }
+// state: { main, reserve, held: [ids], samePool (bool), looseBnb (the pool's
+//          two tokens loose in the wallet, in BNB — read when only the
+//          reserve is held) }
 // Returns { main, why } (+ closed | adopted with reserve) or null. Pure;
 // pinned both ways.
 export function ladderHeal(state) {
@@ -3558,6 +3625,13 @@ export function ladderHeal(state) {
   // the main range now, the ladder is closed; the resume and increase paths
   // take it from there.
   if (held.length === 1 && held[0] === String(state.reserve)) {
+    // ... unless the main range's capital lies loose in the wallet, enough to
+    // mint (the re-set floor): then the re-set is finished from the wallet
+    // beside the reserve (readPosition reads "no main range, reserve
+    // attached", planRebalance resumes one-sided) and the ladder stays a
+    // ladder. Closing it here handed that capital to the increase step, which
+    // sold it into the reserve's ratio (2026-09-18).
+    if (Number(state.looseBnb || 0) >= MIN_REBALANCE_BNB) return null;
     return { main: String(state.reserve), reserve: null, closed: true, why: `the ladder record named main range #${state.main}, which this wallet no longer holds; the reserve #${state.reserve} is the only range left, so it is the main range now and the ladder is closed` };
   }
   if (held.length !== 2) return null;

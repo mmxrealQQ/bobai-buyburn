@@ -119,6 +119,21 @@ const IGNORED_WALLETS = new Set([
   '0x15ba17075ef5e0736292b030e3715d9100fe3d38', // dev buyback bot
 ]);
 
+// A NAME SOMEBODY ELSE CHOSE IS TEXT, NOT MARKUP (2026-09-18). Posts go out
+// with parse_mode HTML; a joining member's first name, or a leaderboard
+// username, went into them as it stood. A name with a `<` made Telegram refuse
+// the captcha post AFTER the member had been muted — no question to answer,
+// kicked after 60 seconds — and a name that is an <a href> was a clickable link
+// in the public chat, under the bot's name. Pure; pinned by smoke-whale.
+export function escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+// Shown as a name: escaped, and no longer than a name is (Telegram allows 64).
+export function shownName(s) {
+  const t = String(s == null ? '' : s).trim();
+  return escHtml(t.length > 64 ? t.slice(0, 64) + '…' : t) || 'User';
+}
+
 // ==================== TELEGRAM API ====================
 
 async function tg(method, body) {
@@ -788,6 +803,17 @@ export function foldBuysByTx(logs) {
     byTx.set(tx, b);
   }
   return [...byTx.values()];
+}
+
+// WHO BOUGHT (2026-09-18). The alert named the transaction's sender; the
+// minter follows the tokens to the wallet that ends up holding them
+// (resolveBuyer). Through a relayer or an aggregator the two differ — 8 of the
+// last 100 drops, a $1,390 buy among them: the alert pointed at a relayer while
+// the NFT went to the buyer. Once the drop is known, its recipient is the buyer
+// the alert names; without a drop (sold out, mint pending) the sender stays.
+export function alertTrade(pending, drop) {
+  const to = drop && typeof drop.to === 'string' && /^0x[a-fA-F0-9]{40}$/.test(drop.to) ? drop.to : null;
+  return to ? { ...pending, buyer: to } : pending;
 }
 
 function nftProgressBar(minted, cap) {
@@ -1854,7 +1880,7 @@ async function handleNewMember(msg, env) {
     const result = await tg('sendPhoto', {
       chat_id: TG_CHAT_ID,
       photo: PHOTO_WELCOME,
-      caption: `👋 Welcome <b>${name}</b> to BOBAI!\n\n🛡 Quick verification — solve this:\n\n🧮 <b>${question} = ?</b>\n\n⏱ You have 60 seconds`,
+      caption: `👋 Welcome <b>${shownName(name)}</b> to BOBAI!\n\n🛡 Quick verification — solve this:\n\n🧮 <b>${question} = ?</b>\n\n⏱ You have 60 seconds`,
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: generateButtons(answer) },
     });
@@ -1902,7 +1928,7 @@ async function handleCallback(callback, env) {
 
     await tg('sendMessage', {
       chat_id: TG_CHAT_ID,
-      text: `✅ <b>${entry.name}</b> joined the BOBAI community! Welcome! 🚀`,
+      text: `✅ <b>${shownName(entry.name)}</b> joined the BOBAI community! Welcome! 🚀`,
       parse_mode: 'HTML',
     });
   } else {
@@ -1937,7 +1963,7 @@ async function cleanupExpiredCaptchas(env) {
         }
         await tg('sendMessage', {
           chat_id: TG_CHAT_ID,
-          text: `👋 <b>${entry.name}</b> didn't verify in time. Bye bye!`,
+          text: `👋 <b>${shownName(entry.name)}</b> didn't verify in time. Bye bye!`,
           parse_mode: 'HTML',
         });
         await tg('banChatMember', { chat_id: TG_CHAT_ID, user_id: parseInt(userId) });
@@ -2557,7 +2583,7 @@ title: ${msg.chat.title || '(private)'}`;
           const flag = isoToFlag(r.avatar_country);
           const wallet = r.has_wallet ? ' ⚽' : '';
           const pts = (r.total_points || 0);
-          return `${rank} ${flag} <b>${r.username}</b>${wallet} ${pts} pts`;
+          return `${rank} ${flag} <b>${shownName(r.username)}</b>${wallet} ${pts} pts`;
         }).join('\n');
       }
 
@@ -3771,7 +3797,7 @@ export default {
       if (alertsThisRun >= MAX_ALERTS_PER_RUN) { stillPending.push(p); continue; }
       const drop = dropByBuyTx.get(String(p.txHash || '').toLowerCase());
       if (drop) {
-        const sent = await postBuyAlert(p, await burnedPct(), nftLineFromDrop(drop));
+        const sent = await postBuyAlert(alertTrade(p, drop), await burnedPct(), nftLineFromDrop(drop));
         if (sent) { alertsThisRun++; console.log('[BUY] minted-alert', p.txHash, '→ #' + drop.tokenId); }
         else { stillPending.push(p); console.error('[BUY] minted-alert send failed, will retry', p.txHash); }
         continue;

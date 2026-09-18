@@ -121,8 +121,18 @@ ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `sm
   ok(/const SCAN_BLOCKS = 1600;/.test(src) && !/latest - 300\b/.test(src), 'the alert scans look back 1,600 blocks (~12 min), not 300 (135 s)');
 }
 
+// A name somebody else chose is text; the buyer an alert names is the wallet the NFT went to.
+{
+  const { escHtml, shownName, alertTrade } = worker;
+  ok(shownName('<a href="https://x.y">free</a>') === '&lt;a href=&quot;https://x.y&quot;&gt;free&lt;/a&gt;' && escHtml('Tom & <b>') === 'Tom &amp; &lt;b&gt;', 'markup in a name arrives as text');
+  ok(shownName('Anna') === 'Anna' && shownName('') === 'User' && shownName(null) === 'User' && [...shownName('x'.repeat(200))].length === 65, 'a plain name is left alone, an empty one is "User", a long one is cut');
+  const p = { buyer: '0x' + '1'.repeat(40), txHash: '0xabc', usdValue: 1390 };
+  ok(alertTrade(p, { to: '0x' + '2'.repeat(40), tokenId: 7 }).buyer === '0x' + '2'.repeat(40) && alertTrade(p, { to: '0x' + '2'.repeat(40) }).txHash === '0xabc', 'a minted buy names the wallet the NFT went to, not the relayer that sent the transaction');
+  ok(alertTrade(p, null) === p && alertTrade(p, { to: 'nonsense' }) === p && alertTrade(p, {}).buyer === p.buyer, 'without a drop, or with a broken one, the sender stays');
+}
+
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-whale ok: 38 pins');
+console.log('smoke-whale ok: 42 pins');
 
 // ---------------------------------------------------------------- --render
 if (process.argv.includes('--render')) {

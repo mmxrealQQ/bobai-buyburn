@@ -2,7 +2,7 @@
 # The hourly one that empties the tax wallet.
 #
 # This is the complete dev-sweep-bot bundle as a single file, so it can be read in
-# one fetch. 3 files, 337 lines.
+# one fetch. 3 files, 423 lines.
 # Download as a zip: https://brainonbnb.com/code/dev-sweep-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -41,6 +41,36 @@ const BUILDER_4 = '0x257bA6d47Ae316526448b57d64e4fd18B3Fd4221';
 const BUILDER_5 = '0xa2953b3A35B19fb0078A85A6C87b37F43C14fBB2';
 const GAS_RESERVE = parseEther('0.003');
 const MIN_BNB = parseEther('0.001');
+
+// WHAT A SENT TRANSFER CAME TO — the same two helpers as the tax bot
+// (worker/index.js): a receipt wait that throws is asked again before the
+// transfer is given up, only status 'success' counts, and an error is logged
+// without the RPC URL, which carries the key.
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function waitMined(publicClient, hash) {
+  try {
+    return await publicClient.waitForTransactionReceipt({ hash });
+  } catch (e) {
+    console.log(`  receipt wait for ${hash} failed (${say(e)}) — asking again`);
+  }
+  for (let i = 0; i < 6; i++) {
+    await sleep(5000);
+    try {
+      const rc = await publicClient.getTransactionReceipt({ hash });
+      if (rc) return rc;
+    } catch (e) { /* not there yet */ }
+  }
+  return null;
+}
+async function mined(publicClient, hash, what) {
+  const rc = await waitMined(publicClient, hash);
+  if (!rc) throw new Error(`${what}: no receipt for ${hash} — it may still arrive`);
+  if (rc.status !== 'success') throw new Error(`${what}: ${hash} reverted`);
+  return rc;
+}
+function say(e) {
+  return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
+}
 
 async function main() {
   const privateKey = process.env.PRIVATE_KEY;
@@ -88,10 +118,10 @@ async function main() {
         gas: 50000n,
       });
       console.log(`  Unwrap TX: https://bscscan.com/tx/${unwrapHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: unwrapHash });
+      await mined(publicClient, unwrapHash, 'unwrap');
       console.log(`  Unwrapped ${formatEther(wbnbBalance)} WBNB → BNB`);
     } catch (e) {
-      console.log(`  Unwrap failed: ${e.message}`);
+      console.log(`  Unwrap failed: ${say(e)}`);
     }
   }
 
@@ -124,18 +154,29 @@ async function main() {
     { label: 'Builder #5 (2%)', to: BUILDER_5, value: builder5Amount },
   ];
 
+  // ONE BUILDER'S FAILED TRANSFER IS NOT EVERY BUILDER'S (2026-09-18). The loop
+  // returned on the first failure. The 82% goes first: if THAT fails nothing
+  // has been sent, everything stays and the next run splits it correctly — so
+  // it still returns. But a builder's transfer failing after the 82% had gone
+  // left the other builders unpaid too, and the next run gave 82% of their
+  // money to the first recipient again: 3.2% of the batch for the builders
+  // instead of 18%. Now the others are paid, only the failed share waits, and
+  // every transfer's hash goes into the log (it carried the first one only).
   let personalTxHash;
+  const txs = {}, failed = [];
   for (const s of sends) {
     console.log(`--- Sending ${formatEther(s.value)} BNB to ${s.label} ---`);
     try {
       const hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
       console.log(`  TX: https://bscscan.com/tx/${hash}`);
-      await publicClient.waitForTransactionReceipt({ hash });
+      await mined(publicClient, hash, s.label);
       console.log('  Payment sent!');
+      txs[s.label] = hash;
       if (s.to === PERSONAL_WALLET) personalTxHash = hash;
     } catch (e) {
-      console.log(`  Payment failed: ${e.message}`);
-      return;
+      console.log(`  Payment failed: ${say(e)}`);
+      if (s.to === PERSONAL_WALLET) return;
+      failed.push(s.label);
     }
   }
 
@@ -157,6 +198,8 @@ async function main() {
       builder4Bnb: formatEther(builder4Amount),
       builder5Bnb: formatEther(builder5Amount),
       personalTx: personalTxHash,
+      txs,
+      failed,
     });
     fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
     console.log(`\nLogged to ${logFile}`);
@@ -201,6 +244,36 @@ const BUILDER_4 = '0x257bA6d47Ae316526448b57d64e4fd18B3Fd4221';
 const BUILDER_5 = '0xa2953b3A35B19fb0078A85A6C87b37F43C14fBB2';
 const GAS_RESERVE = parseEther('0.003');
 const MIN_BNB = parseEther('0.001');
+
+// WHAT A SENT TRANSFER CAME TO — the same two helpers as the tax bot
+// (worker/index.js): a receipt wait that throws is asked again before the
+// transfer is given up, only status 'success' counts, and an error is logged
+// without the RPC URL, which carries the key.
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function waitMined(publicClient, hash) {
+  try {
+    return await publicClient.waitForTransactionReceipt({ hash });
+  } catch (e) {
+    console.log(`  receipt wait for ${hash} failed (${say(e)}) — asking again`);
+  }
+  for (let i = 0; i < 6; i++) {
+    await sleep(5000);
+    try {
+      const rc = await publicClient.getTransactionReceipt({ hash });
+      if (rc) return rc;
+    } catch (e) { /* not there yet */ }
+  }
+  return null;
+}
+async function mined(publicClient, hash, what) {
+  const rc = await waitMined(publicClient, hash);
+  if (!rc) throw new Error(`${what}: no receipt for ${hash} — it may still arrive`);
+  if (rc.status !== 'success') throw new Error(`${what}: ${hash} reverted`);
+  return rc;
+}
+function say(e) {
+  return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
+}
 
 async function runBot(env) {
   const privateKey = env.PRIVATE_KEY;
@@ -248,10 +321,10 @@ async function runBot(env) {
         gas: 50000n,
       });
       console.log(`  Unwrap TX: https://bscscan.com/tx/${unwrapHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: unwrapHash });
+      await mined(publicClient, unwrapHash, 'unwrap');
       console.log(`  Unwrapped ${formatEther(wbnbBalance)} WBNB → BNB`);
     } catch (e) {
-      console.log(`  Unwrap failed: ${e.message}`);
+      console.log(`  Unwrap failed: ${say(e)}`);
     }
   }
 
@@ -284,18 +357,29 @@ async function runBot(env) {
     { label: 'Builder #5 (2%)', to: BUILDER_5, value: builder5Amount },
   ];
 
+  // ONE BUILDER'S FAILED TRANSFER IS NOT EVERY BUILDER'S (2026-09-18). The loop
+  // returned on the first failure. The 82% goes first: if THAT fails nothing
+  // has been sent, everything stays and the next run splits it correctly — so
+  // it still returns. But a builder's transfer failing after the 82% had gone
+  // left the other builders unpaid too, and the next run gave 82% of their
+  // money to the first recipient again: 3.2% of the batch for the builders
+  // instead of 18%. Now the others are paid, only the failed share waits, and
+  // every transfer's hash goes into the log (it carried the first one only).
   let personalTxHash;
+  const txs = {}, failed = [];
   for (const s of sends) {
     console.log(`--- Sending ${formatEther(s.value)} BNB to ${s.label} ---`);
     try {
       const hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
       console.log(`  TX: https://bscscan.com/tx/${hash}`);
-      await publicClient.waitForTransactionReceipt({ hash });
+      await mined(publicClient, hash, s.label);
       console.log('  Payment sent!');
+      txs[s.label] = hash;
       if (s.to === PERSONAL_WALLET) personalTxHash = hash;
     } catch (e) {
-      console.log(`  Payment failed: ${e.message}`);
-      return;
+      console.log(`  Payment failed: ${say(e)}`);
+      if (s.to === PERSONAL_WALLET) return;
+      failed.push(s.label);
     }
   }
 
@@ -316,6 +400,8 @@ async function runBot(env) {
       builder4Bnb: formatEther(builder4Amount),
       builder5Bnb: formatEther(builder5Amount),
       personalTx: personalTxHash,
+      txs,
+      failed,
     });
     await env.LOGS.put(logKey, JSON.stringify(logs, null, 2));
     console.log(`\nLogged to KV: ${logKey}`);

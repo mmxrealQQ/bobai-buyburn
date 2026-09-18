@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1491,
-   "zipBytes": 18936,
-   "txtBytes": 61433,
-   "sha256": "93bb9cf7b5508523",
+   "lines": 1650,
+   "zipBytes": 22821,
+   "txtBytes": 70255,
+   "sha256": "3a1ef0e4425a42e0",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -114,10 +114,10 @@
    "title": "Dev Sweep Bot",
    "tagline": "The hourly one that empties the tax wallet.",
    "files": 3,
-   "lines": 337,
-   "zipBytes": 6899,
-   "txtBytes": 13808,
-   "sha256": "0ee5f2e63e8fd568",
+   "lines": 423,
+   "zipBytes": 8594,
+   "txtBytes": 17612,
+   "sha256": "13d5576c784cabf0",
    "reqs": [
     {
      "what": "A wallet that receives the tax",
@@ -152,10 +152,10 @@
    "title": "Liquidity Add & LP Burn",
    "tagline": "Adds liquidity, then burns the LP token it just received.",
    "files": 2,
-   "lines": 388,
-   "zipBytes": 7179,
-   "txtBytes": 15394,
-   "sha256": "ef5c6bb3acdceb74",
+   "lines": 422,
+   "zipBytes": 8031,
+   "txtBytes": 17455,
+   "sha256": "1a273fc1de1f0761",
    "reqs": [
     {
      "what": "A wallet holding both sides of the pair",
@@ -189,10 +189,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4555,
-   "zipBytes": 70938,
-   "txtBytes": 209098,
-   "sha256": "88fc8f83e8e32581",
+   "lines": 4588,
+   "zipBytes": 71949,
+   "txtBytes": 212057,
+   "sha256": "e7caf2437d4a9292",
    "reqs": [
     {
      "what": "A bot token",

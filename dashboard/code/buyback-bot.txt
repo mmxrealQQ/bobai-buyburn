@@ -2,7 +2,7 @@
 # The bot that has run every ten minutes since launch.
 #
 # This is the complete buyback-bot bundle as a single file, so it can be read in
-# one fetch. 3 files, 1491 lines.
+# one fetch. 3 files, 1650 lines.
 # Download as a zip: https://brainonbnb.com/code/buyback-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -26,7 +26,7 @@
 //
 // 100% automatic, 100% transparent, 100% on-chain verifiable
 
-const { createPublicClient, createWalletClient, http, parseAbi, formatEther, parseEther } = require('viem');
+const { createPublicClient, createWalletClient, http, fallback, parseAbi, formatEther, parseEther } = require('viem');
 const { bsc } = require('viem/chains');
 const { privateKeyToAccount } = require('viem/accounts');
 const fs = require('fs');
@@ -173,6 +173,70 @@ const ERC20_ABI = parseAbi([
   'function transfer(address to, uint256 amount) returns (bool)',
 ]);
 
+// WHAT A SENT TRANSACTION CAME TO (2026-09-18). Two things were taken on
+// trust. A receipt wait that threw — a slow node, a timeout — was read as "the
+// leg failed" although the transaction was out: the creator's share could
+// arrive while the run stopped, and the next run split the remainder again,
+// creator included. And a receipt was never looked at: a reverted swap or burn
+// went on as if it had happened, a reverted burn into the log as burned. Now a
+// transaction that was sent is asked about again before it is given up, and
+// only status 'success' counts. Nothing is remembered between runs — the bot
+// stays as stateless as it was.
+// ONE NODE WAS THE WHOLE BOT (2026-09-18). Every read and every send went to
+// one RPC. With that node down the bot does nothing, which is harmless — the
+// tax waits and the next run splits it correctly. With that node FLAKY in the
+// middle of a run, some legs go out and others do not, and the BNB of the ones
+// that did not is split over all the shares again by the next run. The public
+// BNB Chain nodes stand behind the first one now, asked only when it fails, in
+// this order (rank:false — no racing, no reordering). A signed transaction
+// sent twice is the same transaction: same nonce, same hash. `fallbacks:
+// 'none'` is for a fork, where nothing may reach a real node.
+const FALLBACK_RPCS = ['https://bsc-dataseed.binance.org/', 'https://bsc-dataseed1.bnbchain.org', 'https://bsc-dataseed2.bnbchain.org'];
+function rpcTransport(primary, fallbacks) {
+  const urls = [primary, ...(fallbacks === 'none' ? [] : FALLBACK_RPCS)].filter((u, i, all) => u && all.indexOf(u) === i);
+  return urls.length > 1 ? fallback(urls.map((u) => http(u)), { rank: false }) : http(urls[0]);
+}
+
+async function waitMined(publicClient, hash) {
+  try {
+    return await publicClient.waitForTransactionReceipt({ hash });
+  } catch (e) {
+    console.log(`  receipt wait for ${hash} failed (${say(e)}) — asking again`);
+  }
+  for (let i = 0; i < 6; i++) {
+    await sleep(5000);
+    try {
+      const rc = await publicClient.getTransactionReceipt({ hash });
+      if (rc) return rc;
+    } catch (e) { /* not there yet */ }
+  }
+  return null;
+}
+// Throws unless the transaction is in a block AND succeeded; the callers' own catch blocks do the rest.
+async function mined(publicClient, hash, what) {
+  const rc = await waitMined(publicClient, hash);
+  if (!rc) throw new Error(`${what}: no receipt for ${hash} — it may still arrive`);
+  if (rc.status !== 'success') throw new Error(`${what}: ${hash} reverted`);
+  return rc;
+}
+// An error as it is logged: viem puts the RPC's URL into its messages, and the URL carries the key.
+function say(e) {
+  return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
+}
+
+// THE LEAST A BUY MAY BRING (2026-09-18). $BOBAI keeps 3% of every transfer,
+// so of the quoted output the wallet receives 97% (measured on the bot's own
+// swaps: 3,606 of 120,214 withheld). The router checks what ARRIVES against
+// this minimum; 95% of the gross quote therefore left 2.06% of room, not the
+// 5% the line says, and a price that moved more between quote and block
+// reverted the leg — whose BNB the next run then split over all the shares
+// again. The tax comes off first, then the 5%. $BOB has no transfer tax.
+const TRANSFER_TAX_BPS = { [BOBAI_TOKEN.toLowerCase()]: 300n };
+function minOutFor(quotedOut, tokenAddress) {
+  const tax = TRANSFER_TAX_BPS[String(tokenAddress).toLowerCase()] || 0n;
+  return (((quotedOut * (10000n - tax)) / 10000n) * 95n) / 100n;
+}
+
 async function swapAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, tokenName) {
   const path = [WBNB, tokenAddress];
 
@@ -186,11 +250,11 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
     });
     console.log(`  Expected ${tokenName} output: ${formatEther(amountsOut[1])}`);
   } catch (e) {
-    console.log(`  Quote failed for ${tokenName}: ${e.message}`);
+    console.log(`  Quote failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 
-  const minOut = (amountsOut[1] * 95n) / 100n;
+  const minOut = minOutFor(amountsOut[1], tokenAddress);
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
 
   // Swap BNB -> token
@@ -205,9 +269,9 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
       gas: 300000n,
     });
     console.log(`  Swap TX: https://bscscan.com/tx/${txHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
+    await mined(publicClient, txHash, 'swap');
   } catch (e) {
-    console.log(`  Swap failed for ${tokenName}: ${e.message}`);
+    console.log(`  Swap failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 
@@ -235,11 +299,11 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
       gas: 500000n,
     });
     console.log(`  Burn TX: https://bscscan.com/tx/${burnHash}`);
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
+    const receipt = await mined(publicClient, burnHash, 'burn');
     console.log(`  Burned ${formatEther(tokenBalance)} ${tokenName} in block ${receipt.blockNumber}`);
     return { txHash, burnHash, amount: formatEther(tokenBalance), block: Number(receipt.blockNumber) };
   } catch (e) {
-    console.log(`  Burn failed for ${tokenName}: ${e.message}`);
+    console.log(`  Burn failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 }
@@ -391,7 +455,35 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
   };
 }
 
+// THE WORKER RUNS — THEN THIS DOES NOT (2026-09-18). This script is the
+// fallback for a day Cloudflare is down, and nothing kept it from running
+// beside the worker: two processes reading one balance, both splitting it, one
+// of them logging to a local file the page never sees. The worker writes a
+// heartbeat every ten minutes; while that heartbeat is fresh the worker is
+// alive and this script refuses. No answer from the heartbeat (Cloudflare down
+// — the day this script is for) lets it run; `--force` overrides. Pure + one fetch.
+const WORKER_HEALTH_URL = 'https://logs.brainonbnb.com/health';
+function heartbeatIsFresh(health, now = Date.now()) {
+  const t = Date.parse(health && health.buyback);
+  return Number.isFinite(t) && now - t < 15 * 60 * 1000 && now - t > -60 * 1000;
+}
+async function workerHeartbeat() {
+  try {
+    const r = await fetch(WORKER_HEALTH_URL, { signal: AbortSignal.timeout(10000) });
+    return r.ok ? await r.json() : null;
+  } catch (e) { return null; }
+}
+
 async function main() {
+  if (!process.argv.includes('--force')) {
+    const health = await workerHeartbeat();
+    if (heartbeatIsFresh(health)) {
+      console.error('[REFUSED] The Cloudflare worker is alive (heartbeat ' + health.buyback + ') and splits this wallet every ten minutes.');
+      console.error('  This script is the fallback for a day it is down. Nothing was read, nothing was sent. (--force overrides.)');
+      process.exitCode = 1;   // not process.exit(): on Windows it trips a libuv assertion while the fetch handle closes
+      return;
+    }
+  }
   // THE BUYBACK WALLET'S KEY, AND NO OTHER (2026-09-18). This read PRIVATE_KEY
   // first — a leftover from GitHub Actions, where that name held the buyback
   // secret. In the local .env both names are set and PRIVATE_KEY is the
@@ -480,13 +572,13 @@ async function main() {
 
   const publicClient = createPublicClient({
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, process.env.BSC_RPC_FALLBACKS),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, process.env.BSC_RPC_FALLBACKS),
   });
 
   // Step 0: Unwrap any WBNB to native BNB
@@ -507,10 +599,10 @@ async function main() {
         gas: 50000n,
       });
       console.log(`  Unwrap TX: https://bscscan.com/tx/${unwrapHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: unwrapHash });
+      await mined(publicClient, unwrapHash, 'unwrap');
       console.log(`  Unwrapped ${formatEther(wbnbBalance)} WBNB → BNB`);
     } catch (e) {
-      console.log(`  Unwrap failed: ${e.message}`);
+      console.log(`  Unwrap failed: ${say(e)}`);
     }
   }
 
@@ -557,10 +649,10 @@ async function main() {
       value: creatorAmount,
     });
     console.log(`  TX: https://bscscan.com/tx/${creatorTxHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: creatorTxHash });
+    await mined(publicClient, creatorTxHash, 'creator share');
     console.log('  Creator payment sent!');
   } catch (e) {
-    console.log(`  Creator payment failed: ${e.message}`);
+    console.log(`  Creator payment failed: ${say(e)}`);
     return;
   }
 
@@ -608,10 +700,10 @@ async function main() {
     try {
       lpAgentTxHash = await walletClient.sendTransaction({ to: LP_AGENT_WALLET, value: lpAgentAmount });
       console.log(`  TX: https://bscscan.com/tx/${lpAgentTxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: lpAgentTxHash });
+      await mined(publicClient, lpAgentTxHash, 'LP agent share');
       console.log('  LP agent share sent!');
     } catch (e) {
-      console.log(`  LP agent send failed: ${e.message}`);
+      console.log(`  LP agent send failed: ${say(e)}`);
       lpAgentTxHash = null;
     }
   }
@@ -621,10 +713,10 @@ async function main() {
     try {
       giggleTxHash = await walletClient.sendTransaction({ to: PRIZE_POOL_WALLET, value: giggleAmount });
       console.log(`  TX: https://bscscan.com/tx/${giggleTxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: giggleTxHash });
+      await mined(publicClient, giggleTxHash, 'Giggle pot');
       console.log('  Giggle pot funded!');
     } catch (e) {
-      console.log(`  Giggle pot send failed: ${e.message}`);
+      console.log(`  Giggle pot send failed: ${say(e)}`);
       giggleTxHash = null;
     }
   }
@@ -643,7 +735,7 @@ async function main() {
         value: wc26PoolAmount,
       });
       console.log(`  TX: https://bscscan.com/tx/${wc26TxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: wc26TxHash });
+      await mined(publicClient, wc26TxHash, 'WC26 pool');
       console.log('  WC26 pool funded!');
       // Track this TAX add in wc_donations. amount_bobai stays null —
       // worldcup-bot fills it in (proportional) when it swaps the pool's BNB.
@@ -656,7 +748,7 @@ async function main() {
         swap_tx_hash: null,
       });
     } catch (e) {
-      console.log(`  WC26 pool send failed: ${e.message}`);
+      console.log(`  WC26 pool send failed: ${say(e)}`);
       wc26TxHash = null;
     }
   }
@@ -768,7 +860,7 @@ main().catch(console.error);
 //
 // 100% automatic, 100% transparent, 100% on-chain verifiable
 
-import { createPublicClient, createWalletClient, http, parseAbi, formatEther, parseEther } from 'viem';
+import { createPublicClient, createWalletClient, http, fallback, parseAbi, formatEther, parseEther } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -912,6 +1004,70 @@ const ERC20_ABI = parseAbi([
   'function transfer(address to, uint256 amount) returns (bool)',
 ]);
 
+// WHAT A SENT TRANSACTION CAME TO (2026-09-18). Two things were taken on
+// trust. A receipt wait that threw — a slow node, a timeout — was read as "the
+// leg failed" although the transaction was out: the creator's share could
+// arrive while the run stopped, and the next run split the remainder again,
+// creator included. And a receipt was never looked at: a reverted swap or burn
+// went on as if it had happened, a reverted burn into the log as burned. Now a
+// transaction that was sent is asked about again before it is given up, and
+// only status 'success' counts. Nothing is remembered between runs — the bot
+// stays as stateless as it was.
+// ONE NODE WAS THE WHOLE BOT (2026-09-18). Every read and every send went to
+// one RPC. With that node down the bot does nothing, which is harmless — the
+// tax waits and the next run splits it correctly. With that node FLAKY in the
+// middle of a run, some legs go out and others do not, and the BNB of the ones
+// that did not is split over all the shares again by the next run. The public
+// BNB Chain nodes stand behind the first one now, asked only when it fails, in
+// this order (rank:false — no racing, no reordering). A signed transaction
+// sent twice is the same transaction: same nonce, same hash. `fallbacks:
+// 'none'` is for a fork, where nothing may reach a real node.
+const FALLBACK_RPCS = ['https://bsc-dataseed.binance.org/', 'https://bsc-dataseed1.bnbchain.org', 'https://bsc-dataseed2.bnbchain.org'];
+function rpcTransport(primary, fallbacks) {
+  const urls = [primary, ...(fallbacks === 'none' ? [] : FALLBACK_RPCS)].filter((u, i, all) => u && all.indexOf(u) === i);
+  return urls.length > 1 ? fallback(urls.map((u) => http(u)), { rank: false }) : http(urls[0]);
+}
+
+async function waitMined(publicClient, hash) {
+  try {
+    return await publicClient.waitForTransactionReceipt({ hash });
+  } catch (e) {
+    console.log(`  receipt wait for ${hash} failed (${say(e)}) — asking again`);
+  }
+  for (let i = 0; i < 6; i++) {
+    await sleep(5000);
+    try {
+      const rc = await publicClient.getTransactionReceipt({ hash });
+      if (rc) return rc;
+    } catch (e) { /* not there yet */ }
+  }
+  return null;
+}
+// Throws unless the transaction is in a block AND succeeded; the callers' own catch blocks do the rest.
+async function mined(publicClient, hash, what) {
+  const rc = await waitMined(publicClient, hash);
+  if (!rc) throw new Error(`${what}: no receipt for ${hash} — it may still arrive`);
+  if (rc.status !== 'success') throw new Error(`${what}: ${hash} reverted`);
+  return rc;
+}
+// An error as it is logged: viem puts the RPC's URL into its messages, and the URL carries the key.
+function say(e) {
+  return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
+}
+
+// THE LEAST A BUY MAY BRING (2026-09-18). $BOBAI keeps 3% of every transfer,
+// so of the quoted output the wallet receives 97% (measured on the bot's own
+// swaps: 3,606 of 120,214 withheld). The router checks what ARRIVES against
+// this minimum; 95% of the gross quote therefore left 2.06% of room, not the
+// 5% the line says, and a price that moved more between quote and block
+// reverted the leg — whose BNB the next run then split over all the shares
+// again. The tax comes off first, then the 5%. $BOB has no transfer tax.
+const TRANSFER_TAX_BPS = { [BOBAI_TOKEN.toLowerCase()]: 300n };
+function minOutFor(quotedOut, tokenAddress) {
+  const tax = TRANSFER_TAX_BPS[String(tokenAddress).toLowerCase()] || 0n;
+  return (((quotedOut * (10000n - tax)) / 10000n) * 95n) / 100n;
+}
+
 async function swapAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, tokenName) {
   const path = [WBNB, tokenAddress];
 
@@ -925,11 +1081,11 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
     });
     console.log(`  Expected ${tokenName} output: ${formatEther(amountsOut[1])}`);
   } catch (e) {
-    console.log(`  Quote failed for ${tokenName}: ${e.message}`);
+    console.log(`  Quote failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 
-  const minOut = (amountsOut[1] * 95n) / 100n;
+  const minOut = minOutFor(amountsOut[1], tokenAddress);
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
 
   // Swap BNB -> token
@@ -944,9 +1100,9 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
       gas: 300000n,
     });
     console.log(`  Swap TX: https://bscscan.com/tx/${txHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
+    await mined(publicClient, txHash, 'swap');
   } catch (e) {
-    console.log(`  Swap failed for ${tokenName}: ${e.message}`);
+    console.log(`  Swap failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 
@@ -974,11 +1130,11 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
       gas: 500000n,
     });
     console.log(`  Burn TX: https://bscscan.com/tx/${burnHash}`);
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: burnHash });
+    const receipt = await mined(publicClient, burnHash, 'burn');
     console.log(`  Burned ${formatEther(tokenBalance)} ${tokenName} in block ${receipt.blockNumber}`);
     return { txHash, burnHash, amount: formatEther(tokenBalance), block: Number(receipt.blockNumber) };
   } catch (e) {
-    console.log(`  Burn failed for ${tokenName}: ${e.message}`);
+    console.log(`  Burn failed for ${tokenName}: ${say(e)}`);
     return null;
   }
 }
@@ -1203,13 +1359,13 @@ async function runBot(env) {
 
   const publicClient = createPublicClient({
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, env.BSC_RPC_FALLBACKS),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, env.BSC_RPC_FALLBACKS),
   });
 
   // Step 0: Unwrap any WBNB to native BNB
@@ -1230,10 +1386,10 @@ async function runBot(env) {
         gas: 50000n,
       });
       console.log(`  Unwrap TX: https://bscscan.com/tx/${unwrapHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: unwrapHash });
+      await mined(publicClient, unwrapHash, 'unwrap');
       console.log(`  Unwrapped ${formatEther(wbnbBalance)} WBNB → BNB`);
     } catch (e) {
-      console.log(`  Unwrap failed: ${e.message}`);
+      console.log(`  Unwrap failed: ${say(e)}`);
     }
   }
 
@@ -1280,10 +1436,10 @@ async function runBot(env) {
       value: creatorAmount,
     });
     console.log(`  TX: https://bscscan.com/tx/${creatorTxHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: creatorTxHash });
+    await mined(publicClient, creatorTxHash, 'creator share');
     console.log('  Creator payment sent!');
   } catch (e) {
-    console.log(`  Creator payment failed: ${e.message}`);
+    console.log(`  Creator payment failed: ${say(e)}`);
     return;
   }
 
@@ -1329,10 +1485,10 @@ async function runBot(env) {
     try {
       lpAgentTxHash = await walletClient.sendTransaction({ to: LP_AGENT_WALLET, value: lpAgentAmount });
       console.log(`  TX: https://bscscan.com/tx/${lpAgentTxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: lpAgentTxHash });
+      await mined(publicClient, lpAgentTxHash, 'LP agent share');
       console.log('  LP agent share sent!');
     } catch (e) {
-      console.log(`  LP agent send failed: ${e.message}`);
+      console.log(`  LP agent send failed: ${say(e)}`);
       lpAgentTxHash = null;
     }
   }
@@ -1342,10 +1498,10 @@ async function runBot(env) {
     try {
       giggleTxHash = await walletClient.sendTransaction({ to: PRIZE_POOL_WALLET, value: giggleAmount });
       console.log(`  TX: https://bscscan.com/tx/${giggleTxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: giggleTxHash });
+      await mined(publicClient, giggleTxHash, 'Giggle pot');
       console.log('  Giggle pot funded!');
     } catch (e) {
-      console.log(`  Giggle pot send failed: ${e.message}`);
+      console.log(`  Giggle pot send failed: ${say(e)}`);
       giggleTxHash = null;
     }
   }
@@ -1360,7 +1516,7 @@ async function runBot(env) {
         value: wc26PoolAmount,
       });
       console.log(`  TX: https://bscscan.com/tx/${wc26TxHash}`);
-      await publicClient.waitForTransactionReceipt({ hash: wc26TxHash });
+      await mined(publicClient, wc26TxHash, 'WC26 pool');
       console.log('  WC26 pool funded!');
       await sbInsert(env, 'wc_donations', {
         from_address: account.address.toLowerCase(),
@@ -1371,7 +1527,7 @@ async function runBot(env) {
         swap_tx_hash: null,
       });
     } catch (e) {
-      console.log(`  WC26 pool send failed: ${e.message}`);
+      console.log(`  WC26 pool send failed: ${say(e)}`);
       wc26TxHash = null;
     }
   }
@@ -1454,14 +1610,17 @@ const CORS_HEADERS = {
 
 export default {
   async scheduled(event, env, ctx) {
-    // Overlap guard: a liq-add cycle can take a few minutes — skip this tick
-    // if the previous run is still marked as active (TTL auto-clears after 8 min).
+    // Overlap guard: skip this tick if the previous run is still marked as
+    // active. The lock has to OUTLIVE the ten minutes between two ticks (it was
+    // 480 s: a run held up past eight minutes by slow receipts would have met
+    // the next tick with no lock, two runs splitting one balance). A run that
+    // ends deletes it; one that is killed costs a single skipped tick.
     const lock = await env.LOGS.get('lock-buyback');
     if (lock) {
       console.log(`Previous run still active (started ${lock}) — skipping this tick.`);
       return;
     }
-    await env.LOGS.put('lock-buyback', new Date().toISOString(), { expirationTtl: 480 });
+    await env.LOGS.put('lock-buyback', new Date().toISOString(), { expirationTtl: 900 });
     try {
       await runBot(env);
     } finally {

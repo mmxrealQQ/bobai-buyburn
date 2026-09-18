@@ -376,14 +376,30 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
 }
 
 async function main() {
-  const privateKey = process.env.PRIVATE_KEY || process.env.BUYBACK_PRIVATE_KEY;
+  // THE BUYBACK WALLET'S KEY, AND NO OTHER (2026-09-18). This read PRIVATE_KEY
+  // first — a leftover from GitHub Actions, where that name held the buyback
+  // secret. In the local .env both names are set and PRIVATE_KEY is the
+  // CREATOR wallet's: `npm run buyback`, the documented fallback for a day
+  // Cloudflare is down, would have left the tax untouched and split the
+  // creator wallet instead — more than half of it bought and burned, for good.
+  // The buyback name wins, and whatever key is found has to open the buyback
+  // wallet or nothing runs.
+  const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
+  const privateKey = process.env.BUYBACK_PRIVATE_KEY || process.env.PRIVATE_KEY;
   if (!privateKey) {
-    console.log('[ERROR] No PRIVATE_KEY set');
+    console.log('[ERROR] No BUYBACK_PRIVATE_KEY (or PRIVATE_KEY) set');
     process.exit(1);
   }
 
   const rpcUrl = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/';
   const account = privateKeyToAccount(privateKey);
+  if (account.address.toLowerCase() !== BUYBACK_WALLET.toLowerCase()) {
+    console.error('[ERROR] The key does not open the buyback wallet — nothing was sent.');
+    console.error(`  Expected: ${BUYBACK_WALLET}`);
+    console.error(`  Got:      ${account.address}`);
+    console.error('  Set BUYBACK_PRIVATE_KEY to the buyback wallet\'s key.');
+    process.exit(1);
+  }
 
   // Detect active phases (date-based, UTC, auto-switching)
   const bobLiqBoost   = isLiqBoostActive();

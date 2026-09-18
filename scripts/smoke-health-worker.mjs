@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const { renderHealthMessage, failedTwice } = await import(pathToFileURL(path.join(ROOT, 'worker-health', 'index.js')).href);
+const { renderHealthMessage, failedTwice, defiLine } = await import(pathToFileURL(path.join(ROOT, 'worker-health', 'index.js')).href);
 
 const fails = [];
 const ok = (cond, what) => { if (!cond) fails.push(what); };
@@ -30,5 +30,13 @@ ok(red.includes('&lt;b&gt;') && !red.includes('2026-09-11 <b>'), 'a detail canno
 const many = renderHealthMessage(first, Array.from({ length: 30 }, (_, i) => r('check ' + i, false, 'x'.repeat(400))), '2026-09-17');
 ok(many.length < 4096 && /and 18 more/.test(many), `thirty failures still fit one Telegram message: ${many.length} chars`);
 
+// The DeFi agent's own line (2026-09-18): there whenever the run carries DeFi checks, green or red.
+const dOk = [{ area: 'DeFi', name: 'DeFi agent looked at its position in the last 35 min', good: true, detail: 'last look 4 min ago' }, { area: 'DeFi', name: 'the wallet holds the ranges the ladder record names', good: true, detail: '#7451444 held, #7461743 held' }];
+const withDefi = renderHealthMessage([...first.filter((x) => x.good), ...dOk], [], '2026-09-18');
+ok(withDefi.split('\n').length === 2 && /DeFi agent<\/b> · 2\/2 ok · last look 4 min ago · #7451444 held/.test(withDefi), `a green day names the agent on a second line: ${withDefi.split('\n')[1]}`);
+const dBad = [{ ...dOk[0], good: false, detail: 'last look 300 min ago' }, dOk[1]];
+ok(/1 of 2 checks FAILING — DeFi agent looked/.test(defiLine(dBad)) && renderHealthMessage(dBad, [dBad[0]], '2026-09-18').includes('🤖'), 'a red agent is said on its line too');
+ok(defiLine(first) === '' && defiLine([]) === '', 'a run without DeFi checks has no such line');
+
 if (fails.length) { console.error('SMOKE-HEALTH-WORKER FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-health-worker ok: 9 pins');
+console.log('smoke-health-worker ok: 12 pins');

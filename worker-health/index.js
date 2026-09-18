@@ -22,11 +22,27 @@ import { runHealth } from '../scripts/lib/health-checks.mjs';
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // Pure: results in, message out. Exported for scripts/smoke-health-worker.mjs.
+// THE DeFi AGENT HAS A LINE OF ITS OWN, EVERY DAY (2026-09-18). A green check is
+// not named in this message, so the seven that watch the agent were invisible
+// on the morning they were added — and the operator looked for them. The
+// public card in the channel is the agent's own report and arrives even while
+// it stands still (2026-09-17); this line is somebody else looking at it.
+// No DeFi results (an older run, a fixture): no line.
+export function defiLine(results) {
+  const d = (results || []).filter((r) => r.area === 'DeFi');
+  if (!d.length) return '';
+  const bad = d.filter((r) => !r.good);
+  const look = d.find((r) => /looked at its position/.test(r.name));
+  const held = d.find((r) => /holds the ranges/.test(r.name));
+  if (bad.length) return `🤖 <b>DeFi agent</b> · ${bad.length} of ${d.length} checks FAILING — ${esc(bad[0].name)}`;
+  return `🤖 <b>DeFi agent</b> · ${d.length}/${d.length} ok${look && look.detail ? ` · ${esc(look.detail)}` : ''}${held && held.detail ? ` · ${esc(held.detail)}` : ''}`;
+}
 export function renderHealthMessage(results, failing, day) {
-  if (!failing.length) return `✅ <b>Health ${day}</b> · ${results.length}/${results.length} checks, everything running`;
+  const defi = defiLine(results);
+  if (!failing.length) return `✅ <b>Health ${day}</b> · ${results.length}/${results.length} checks, everything running${defi ? '\n' + defi : ''}`;
   const lines = failing.slice(0, 12).map((r) => `❌ <b>${esc(r.area)}</b> · ${esc(r.name)}${r.detail ? `\n     <i>${esc(String(r.detail).slice(0, 160))}</i>` : ''}`);
   if (failing.length > 12) lines.push(`… and ${failing.length - 12} more`);
-  return [`🚨 <b>Health ${day}</b> · ${failing.length} of ${results.length} checks FAILING (twice, a minute apart)`, '', ...lines, '', '<code>node scripts/health.mjs</code> for the full list'].join('\n');
+  return [`🚨 <b>Health ${day}</b> · ${failing.length} of ${results.length} checks FAILING (twice, a minute apart)`, '', ...lines, ...(defi ? ['', defi] : []), '', '<code>node scripts/health.mjs</code> for the full list'].join('\n');
 }
 
 // Pure: a check is failing only if it failed in both runs. A check that is

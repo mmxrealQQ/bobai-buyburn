@@ -39,6 +39,29 @@ const PAIR_ABI = parseAbi([
   'function transfer(address to, uint256 amount) returns (bool)',
 ]);
 
+// THREE THINGS THIS SCRIPT TOOK ON TRUST (2026-09-18).
+// The wallet: it ran on whatever PRIVATE_KEY opened. It is written for the
+// creator wallet (the KEEP amount, the record in liq-runs.json, the page's
+// count are all that wallet's) and now says so before anything is read.
+const CREATOR_WALLET = '0x15Ba17075ef5E0736292b030e3715d9100fe3d38';
+// The receipts: none was looked at. A reverted swap printed "Swap done!", a
+// reverted LP burn would have gone into liq-runs.json as burned — the page's
+// permanent-liquidity figure would have counted LP that still sat on the
+// wallet. Only status 'success' counts now; anything else stops the run.
+function mustSucceed(receipt, what) {
+  if (!receipt || receipt.status !== 'success') throw new Error(`${what} did not succeed (status ${receipt ? receipt.status : 'unknown'}) — nothing after it was sent`);
+  return receipt;
+}
+// The hour: the dev sweep (worker-dev-buyback, minute 0 of every hour) sends
+// everything above 0.003 BNB on this same wallet to the 82/4/4/4/4/2 split. A
+// run across the full hour would have had the BNB it had just sold for swept
+// away before the add, and two senders on one nonce. A run takes two to three
+// minutes; it does not START from five minutes before the hour to three after.
+function inSweepWindow(now = new Date()) {
+  const m = now.getUTCMinutes();
+  return m >= 55 || m < 3;
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -52,6 +75,17 @@ async function main() {
 
   const rpcUrl = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/';
   const account = privateKeyToAccount(privateKey);
+  if (account.address.toLowerCase() !== CREATOR_WALLET.toLowerCase()) {
+    console.error('[ERROR] PRIVATE_KEY does not open the creator wallet — nothing was sent.');
+    console.error(`  Expected: ${CREATOR_WALLET}`);
+    console.error(`  Got:      ${account.address}`);
+    process.exit(1);
+  }
+  if (inSweepWindow()) {
+    console.error('[WAIT] The dev sweep runs on this wallet at the full hour and would take the BNB this run sells for.');
+    console.error('  Start again from minute 03 on (UTC). Nothing was sent.');
+    process.exit(1);
+  }
 
   console.log('============================================');
   console.log('BOBAI Safe Liquidity Add + LP Burn');
@@ -118,7 +152,7 @@ async function main() {
       gas: 100000n,
     });
     console.log(`Approve TX: https://bscscan.com/tx/${approveTx}`);
-    await publicClient.waitForTransactionReceipt({ hash: approveTx });
+    mustSucceed(await publicClient.waitForTransactionReceipt({ hash: approveTx }), 'the approve');
     console.log('Approved!\n');
   } else {
     console.log('Already approved.\n');
@@ -161,7 +195,7 @@ async function main() {
         gas: GAS_LIMIT,
       });
       console.log(`  Swap TX: https://bscscan.com/tx/${swapTx}`);
-      await publicClient.waitForTransactionReceipt({ hash: swapTx });
+      mustSucceed(await publicClient.waitForTransactionReceipt({ hash: swapTx }), `swap chunk ${i + 1}`);
       console.log(`  Swap done!`);
     } catch (e) {
       console.log(`  [ERROR] Swap chunk ${i + 1} failed: ${e.message}`);
@@ -212,7 +246,7 @@ async function main() {
       gas: 500000n,
     });
     console.log(`Add Liquidity TX: https://bscscan.com/tx/${addLiqTx}`);
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: addLiqTx });
+    const receipt = mustSucceed(await publicClient.waitForTransactionReceipt({ hash: addLiqTx }), 'the liquidity add');
     console.log(`Liquidity added in block ${receipt.blockNumber}!`);
   } catch (e) {
     console.log(`[ERROR] Add liquidity failed: ${e.message}`);
@@ -244,7 +278,7 @@ async function main() {
       gas: 100000n,
     });
     console.log(`LP Burn TX: https://bscscan.com/tx/${burnTx}`);
-    await publicClient.waitForTransactionReceipt({ hash: burnTx });
+    mustSucceed(await publicClient.waitForTransactionReceipt({ hash: burnTx }), 'the LP burn');
     console.log(`BURNED ${formatEther(lpBalance)} LP tokens to ${DEAD_ADDRESS}`);
   } catch (e) {
     console.log(`[ERROR] LP burn failed: ${e.message}`);

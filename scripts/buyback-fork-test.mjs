@@ -63,6 +63,14 @@ console.log('the helpers (offline)');
   const at = Date.parse('2026-09-18T12:45:00Z');
   ok('the fallback script refuses while the worker\'s heartbeat is fresh, and runs when there is none', hb({ buyback: '2026-09-18T12:40:57Z' }, at) === true && hb({ buyback: '2026-09-18T12:20:00Z' }, at) === false && hb(null, at) === false && hb({ buyback: 'x' }, at) === false && hb({ buyback: '2026-09-18T14:00:00Z' }, at) === false);
   ok('and it asks before it reads the key', fallbackSrc.indexOf('heartbeatIsFresh(health)') < fallbackSrc.indexOf('process.env.BUYBACK_PRIVATE_KEY ||'));
+  // The liquidity hand script: its wallet, its receipts, its hour.
+  const liqSrc = fs.readFileSync(path.join(ROOT, 'add-liquidity-safe.js'), 'utf8');
+  const liq = new Function(`${liqSrc.slice(liqSrc.indexOf('function mustSucceed('), liqSrc.indexOf('function sleep('))}; return { mustSucceed, inSweepWindow };`)();
+  const threw = (fn) => { try { fn(); return false; } catch { return true; } };
+  ok('the liquidity script stops on a reverted or missing receipt, and only then', threw(() => liq.mustSucceed({ status: 'reverted' }, 'x')) && threw(() => liq.mustSucceed(null, 'x')) && liq.mustSucceed({ status: 'success', blockNumber: 5n }, 'x').blockNumber === 5n && (liqSrc.match(/mustSucceed\(await publicClient\.waitForTransactionReceipt/g) || []).length === 4 && !/^\s+await publicClient\.waitForTransactionReceipt/m.test(liqSrc));
+  const min = (m) => new Date(Date.UTC(2026, 8, 18, 4, m, 30));
+  ok('it does not start across the dev sweep\'s full hour (55 to 02), and does at any other minute', [55, 59, 0, 2].every((m) => liq.inSweepWindow(min(m))) && [3, 4, 30, 54].every((m) => !liq.inSweepWindow(min(m))));
+  ok('and it runs on the creator wallet only, asked before anything is read from the chain', liqSrc.indexOf('does not open the creator wallet') > 0 && liqSrc.indexOf('does not open the creator wallet') < liqSrc.indexOf('createPublicClient({'));
   let asked = 0;
   const slow = { waitForTransactionReceipt: async () => { throw new Error('timed out at https://bsc-mainnet.example/v1/SECRETKEY'); }, getTransactionReceipt: async () => (++asked < 3 ? null : { status: 'success', blockNumber: 1n }) };
   const log = console.log; const lines = []; console.log = (...a) => lines.push(a.join(' '));

@@ -537,7 +537,14 @@ async function recordLpSeries(env) {
       // (read before the run) won, and the 2026-09-10 12:20 point showed
       // 0.29 BNB against 0.59 of capital (-50%) while the deposit had gone
       // into the position in the same run — a deposit read as a loss.
-      value_bnb: inc.acted && !inc.error && inc.value_after_bnb != null ? Number(inc.value_after_bnb) : (rb.value_bnb != null ? Number(rb.value_bnb) : (inc.value_bnb != null ? Number(inc.value_bnb) : null)),
+      // The reserve range is capital too (2026-09-18): the rebalance step's
+      // value_bnb is the main range alone and value_with_reserve_bnb both,
+      // while the increase step's value_bnb (and value_after_bnb) already
+      // carry the reserve — so a daily run's point read the main range alone
+      // and a deposit-watch point both, and the table jumped by the reserve
+      // between one row and the next (2026-09-17 08:50 −3.53%, 09:10 −0.32%)
+      // and read the 04:23 run 2.6% under the card above it.
+      value_bnb: inc.acted && !inc.error && inc.value_after_bnb != null ? Number(inc.value_after_bnb) : (rb.value_with_reserve_bnb != null ? Number(rb.value_with_reserve_bnb) : (rb.value_bnb != null ? Number(rb.value_bnb) : (inc.value_bnb != null ? Number(inc.value_bnb) : null))),
       owed_bnb: c.owed ? Number(c.owed.bnb_equivalent) || 0 : 0,
       // The increase step reads the wallet before it spends; when it acted,
       // the point carries what was left, else the card and the page would
@@ -563,7 +570,7 @@ async function recordLpSeries(env) {
         tick: cr.tick ?? null,
         ticks: cr.ticks || null,
         reset: null,
-        value_bnb: cr.value_bnb != null ? Number(cr.value_bnb) : null,
+        value_bnb: cr.value_with_reserve_bnb != null ? Number(cr.value_with_reserve_bnb) : (cr.value_bnb != null ? Number(cr.value_bnb) : null),
         // The check only looked at the range: fees owed and the wallet were
         // not read, so they are unknown here, not zero.
         owed_bnb: null,
@@ -1394,8 +1401,8 @@ export default {
     // The plan (re-set, width, what spare BNB adds) is the paid answer.
     if (path === '/lp/look') {
       const params = { position: url.searchParams.get('position') || undefined, address: url.searchParams.get('address') || undefined };
-      if (!params.position && !params.address) return json({ error: 'give ?position=<PancakeSwap V3 token id> or ?address=<wallet that holds exactly one>', example: '/lp/look?position=7324788' }, 400);
-      try { return json(await lpPositionLook(params), 200, { 'Cache-Control': 'no-store' }); }
+      if (!params.position && !params.address) return json({ error: 'give ?position=<PancakeSwap V3 token id> or ?address=<wallet> (a wallet with several positions is answered with their ids)', example: '/lp/look?position=7324788' }, 400);
+      try { return json(await lpPositionLook(params, env), 200, { 'Cache-Control': 'no-store' }); }
       catch (e) { return json({ error: String(e.shortMessage || e.message).slice(0, 200) }, 400); }
     }
 

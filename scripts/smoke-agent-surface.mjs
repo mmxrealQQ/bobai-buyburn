@@ -639,6 +639,16 @@ section('The marketplace, from the front door');
   // A later check that still sees the same position adds no point, so the
   // point may be older than the check as long as it names the check's position.
   ok('the last series point is the newest run in the record, or the hourly check that found a new position', !!lastPt && !!newestRun && (lastPt.at === newestRun.at || (chkIsNewer && Date.parse(lastPt.at) <= Date.parse(chk.at) && Date.parse(lastPt.at) > Date.parse(newestRun.at) && String(lastPt.position) === String(chkPos))), lastPt && newestRun && `${lastPt.at} vs run ${newestRun.at}${chk ? ` / check ${chk.at}` : ''}`);
+  // A point's value counts the reserve range (2026-09-18): the rebalance step
+  // reports the main range alone as value_bnb and both as
+  // value_with_reserve_bnb, the increase step reports both as value_bnb — so
+  // a daily run's point must carry the with-reserve figure, or the table
+  // jumps by the reserve between a daily row and a deposit-watch row and the
+  // last row reads 2.6% under the card above it. Checked against every run
+  // in the record that has a point and reported a reserve.
+  const runsWithReserve = lpJson ? [lpJson.last, ...(lpJson.history || [])].filter((e, i, arr) => e && e.at && !e.dry && arr.findIndex((x) => x && x.at === e.at) === i && e.steps && e.steps.rebalance && e.steps.rebalance.value_with_reserve_bnb != null && !(e.steps.increase && e.steps.increase.acted && !e.steps.increase.error)) : [];
+  const pointsOffByReserve = ser ? runsWithReserve.map((e) => [e, ser.points.find((p) => p.at === e.at)]).filter(([e, p]) => p && p.value_bnb != null && Math.abs(Number(p.value_bnb) - Number(e.steps.rebalance.value_with_reserve_bnb)) > 0.000002).map(([e, p]) => `${e.at.slice(0, 16)} point ${p.value_bnb} vs with reserve ${e.steps.rebalance.value_with_reserve_bnb}`) : ['no series'];
+  ok('every series point of a run that reported a reserve carries the value with the reserve', runsWithReserve.length > 0 && pointsOffByReserve.length === 0, pointsOffByReserve.join(' · ') || `${runsWithReserve.length} run(s) checked`);
   ok('/defi carries the day-by-day table', /id="ag-lp-series"/.test(lq.body) && /lp\/series/.test(lq.body));
   ok('/run-lp-series is not open', (await fetch('https://agent.brainonbnb.com/run-lp-series', { method: 'POST' })).status === 403);
 }
@@ -687,7 +697,14 @@ section('The marketplace, from the front door');
   ok('/lp/look without a position says what it needs', (await fetch(`${AGENT}/lp/look`)).status === 400);
   // The dead address holds tens of thousands of burned LP NFTs, so this is
   // the "name one by id" branch; a wallet with none gets the other sentence.
-  ok('/lp/look on a wallet that does not hold exactly one position says so', await fetch(`${AGENT}/lp/look?address=0x000000000000000000000000000000000000dEaD`).then((r) => r.json()).then((j) => j.positions !== 1 && /PancakeSwap V3 position/.test(j.verdict || '')).catch(() => false));
+  // A wallet with several positions is answered with their ids (2026-09-18),
+  // the first ten, so the holder can pick one without another tool.
+  ok('/lp/look on a wallet that holds many positions names their ids', await fetch(`${AGENT}/lp/look?address=0x000000000000000000000000000000000000dEaD`).then((r) => r.json()).then((j) => j.positions > 1 && Array.isArray(j.position_ids) && j.position_ids.length === 10 && j.position_ids.every((id) => /^\d+$/.test(id)) && j.verdict.includes('#' + j.position_ids[0])).catch(() => false));
+  // The agent's own wallet holds two by design since 2026-09-16 (main range +
+  // reserve range of the ladder): asked by that address, the look is the main
+  // range named in the ladder record and says which other id the wallet holds.
+  const ladderRec = lpRec && lpRec.ladder;
+  ok('/lp/look on the agent\'s own wallet is its main range and names the reserve it also holds', !!ladderRec && !!look && String(look.position) === String(ladderRec.main) && (ladderRec.reserve == null || (Array.isArray(look.also_held) && look.also_held.includes(String(ladderRec.reserve)))), look && `position ${look.position}, ladder main ${ladderRec && ladderRec.main}, reserve ${ladderRec && ladderRec.reserve}, also_held ${JSON.stringify(look && look.also_held)}`);
   ok('lp_position_plan reads a position and states what the agent would do', !!lpEx && lpEx.result && lpEx.result.plan && lpEx.result.plan.position && typeof lpEx.result.plan.in_range === 'boolean' && /Re-set:|Out of range|In range/.test(lpEx.result.plan.verdict || ''), lpEx && (lpEx.error || lpEx.result?.plan?.verdict || '').slice(0, 120));
   ok('lp_position_plan signs nothing and says so', !!lpEx && /signs nothing/.test(lpEx.result?.plan?.what_this_is_not || ''));
   const ansBogus = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: '{"task":"x"}' });

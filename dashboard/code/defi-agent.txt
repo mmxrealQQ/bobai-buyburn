@@ -2,7 +2,7 @@
 # One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 14 files, 5418 lines.
+# one fetch. 14 files, 5442 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4107,7 +4107,7 @@ async function readById(pub, tokenId) {
 // facts plus the agent's decisions about them.
 export async function lpPositionFacts(params = {}) {
   const pub = client();
-  let tokenId = null;
+  let tokenId = null, alsoHeld = null;
   const idIn = params.position ?? params.tokenId ?? params.id;
   if (idIn != null && /^\d+$/.test(String(idIn))) tokenId = BigInt(String(idIn));
   const address = String(params.address || params.wallet || params.owner || '').match(/0x[a-fA-F0-9]{40}/)?.[0] || null;
@@ -4115,8 +4115,22 @@ export async function lpPositionFacts(params = {}) {
     if (!address) throw new Error('give a PancakeSwap V3 position id, or the address of a wallet that holds exactly one');
     const n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address]));
     if (n === 0) return { facts: { service: 'lp_position_plan', address, positions: 0, verdict: 'This wallet holds no PancakeSwap V3 position. Nothing to plan.' } };
-    if (n > 1) return { facts: { service: 'lp_position_plan', address, positions: n, verdict: `This wallet holds ${n} PancakeSwap V3 positions. Name one by its id (position: <tokenId>) and the plan is for that one.` } };
-    tokenId = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 0n]);
+    if (n > 1) {
+      // Name the ids, so the holder can pick one without another tool (up to
+      // ten: the dead address holds tens of thousands of burned LP NFTs).
+      const ids = [];
+      for (let i = 0n; i < BigInt(Math.min(n, 10)); i++) ids.push(String(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, i])));
+      // The agent's own wallet holds two by design since 2026-09-16: the main
+      // range and the reserve range of its ladder. Asked by that address, the
+      // look is the main range, and it says which other id the wallet holds.
+      const ladder = params.ladder && params.ladder.main != null ? params.ladder : null;
+      if (ladder && ids.includes(String(ladder.main))) {
+        tokenId = BigInt(String(ladder.main));
+        alsoHeld = ids.filter((id) => id !== String(ladder.main));
+      } else {
+        return { facts: { service: 'lp_position_plan', address, positions: n, position_ids: ids, verdict: `This wallet holds ${n} PancakeSwap V3 positions${n > ids.length ? ` (the first ${ids.length})` : ''}: ${ids.map((id) => '#' + id).join(', ')}. Name one by its id (position: <tokenId>) and the plan is for that one.` } };
+      }
+    } else tokenId = await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 0n]);
   }
   const p = await readById(pub, tokenId);
   const owner = p.owner;
@@ -4146,6 +4160,7 @@ export async function lpPositionFacts(params = {}) {
     value_bnb: valueBnb == null ? null : +valueBnb.toFixed(6),
     fees_owed: { token0: bn(p.owed0), token1: bn(p.owed1), bnb_equivalent: owedBnbEquiv == null ? null : +owedBnbEquiv.toFixed(6) },
     against_wbnb: wbnbIs0 || wbnbIs1,
+    ...(alsoHeld ? { also_held: alsoHeld, also_held_note: 'the wallet holds these too; this is the main range of the ladder the agent runs, the other is its reserve range below the price' } : {}),
   };
   return { facts, pub, p, owner, poolInfo, owedBnbEquiv };
 }
@@ -4154,8 +4169,16 @@ export async function lpPositionFacts(params = {}) {
 // range or not, room left, fees owed and whether collecting them pays. No
 // plan: the width, the re-set and what spare BNB would add are the paid
 // answer. A holder who has seen the look knows what the plan is about.
-export async function lpPositionLook(params = {}) {
-  const r = await lpPositionFacts(params);
+// The ladder record (worker-lp, KV lp:ladder): which position is the main
+// range and which the reserve. Read only when the worker's KV is at hand and
+// the question came as an address, so the agent's own wallet resolves to its
+// main range rather than to "name one of two".
+async function withLadder(params, env) {
+  if (!env || !env.AGENT || params.position != null || params.ladder) return params;
+  try { const l = JSON.parse((await env.AGENT.get('lp:ladder')) || 'null'); return l && l.main != null ? { ...params, ladder: l } : params; } catch { return params; }
+}
+export async function lpPositionLook(params = {}, env = null) {
+  const r = await lpPositionFacts(await withLadder(params, env));
   if (r.facts.positions !== 1) return { ...r.facts, service: 'lp_position_look' };
   const { facts, poolInfo, owedBnbEquiv } = r;
   const lines = [];
@@ -4176,6 +4199,7 @@ export async function lpPositionLook(params = {}) {
 }
 
 export async function lpPositionPlan(params = {}, env = null) {
+  params = await withLadder(params, env);
   const r = await lpPositionFacts(params);
   if (r.facts.positions !== 1) return r.facts;
   const { facts, pub, p, owner, poolInfo, owedBnbEquiv } = r;
@@ -4185,8 +4209,8 @@ export async function lpPositionPlan(params = {}, env = null) {
   // The agent's own decisions, on this position, from the same code.
   const record = env ? await readLpWindows(env).then((log) => (log ? verdict(log) : null)).catch(() => null) : null;
   let rebalance = null, increase = null;
-  try { rebalance = await planRebalance(pub, owner, { record, position: p }); } catch (e) { rebalance = { error: String(e.shortMessage || e.message).slice(0, 200) }; }
-  try { increase = await planIncrease(pub, owner, p); } catch (e) { increase = { error: String(e.shortMessage || e.message).slice(0, 200) }; }
+  try { rebalance = await planRebalance(pub, owner, { record, position: p, ladder: params.ladder || null }); } catch (e) { rebalance = { error: String(e.shortMessage || e.message).slice(0, 200) }; }
+  try { increase = await planIncrease(pub, owner, p, params.ladder || null); } catch (e) { increase = { error: String(e.shortMessage || e.message).slice(0, 200) }; }
   const strip = (x) => (x && x.summary ? { ...x.summary, ...(x.no ? { why: x.no } : {}) } : x);
   const collectPays = owedBnbEquiv != null ? owedBnbEquiv >= 0.002 : null;
   const lines = [];

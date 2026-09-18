@@ -241,12 +241,25 @@ async function getBobaiBalance(addr) {
 // True if addr is a contract (eth_getCode returns non-empty bytecode). On RPC
 // failure we conservatively return `true` so cascade-adds skip rather than risk
 // adding an aggregator router (1inch / OKX DEX / 0x). EOAs always return `false`.
+// A PERSON'S WALLET CAN CARRY CODE (2026-09-18). Since EIP-7702 an ordinary
+// wallet can delegate to a smart-account implementation; eth_getCode then
+// answers the delegation designator, 0xef0100 followed by the implementation's
+// address — 23 bytes, and nothing else looks like it. Read as "has code, so a
+// contract", eleven of the last forty-five big-buy recipients were invisible to
+// the whale tracker, one of them holding 10.02M $BOBAI; /whaleadd refused such
+// a wallet and /whalecleanup would have deleted a tracked whale the day it
+// switched a smart account on. Pure; pinned by scripts/smoke-whale.mjs.
+export function codeIsContract(code) {
+  if (code === null || code === undefined) return true;          // unknown: stay careful
+  const c = String(code).toLowerCase();
+  if (c === '0x' || c === '0x0' || c === '0x00') return false;    // no code: a plain wallet
+  if (c.startsWith('0xef0100') && c.length === 2 + 23 * 2) return false;   // a 7702 delegation: still a person's wallet
+  return true;
+}
 async function isContract(addr) {
   if (!/^0x[a-f0-9]{40}$/i.test(addr)) return true;
   try {
-    const code = await rpcCall('eth_getCode', [addr, 'latest']);
-    if (code === null || code === undefined) return true;
-    return code !== '0x' && code !== '0x0' && code !== '0x00';
+    return codeIsContract(await rpcCall('eth_getCode', [addr, 'latest']));
   } catch {
     return true;
   }

@@ -94,8 +94,18 @@ ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `sm
   ok(reads.includes('last_daily_summary'), 'the 06:00 gate reaches the recap flag');
 }
 
+// A person's wallet can carry code (EIP-7702): the delegation designator is a wallet, anything else with code is a contract.
+{
+  const { codeIsContract } = worker;
+  const delegated = '0xef0100' + 'ab'.repeat(20);
+  ok(codeIsContract('0x') === false && codeIsContract('0x0') === false, 'a wallet without code is not a contract');
+  ok(codeIsContract(delegated) === false && codeIsContract(delegated.toUpperCase().replace('0X', '0x')) === false, 'a 7702-delegated wallet (0xef0100 + 20 bytes) is still a wallet');
+  ok(codeIsContract('0xef0100' + 'ab'.repeat(21)) === true && codeIsContract('0x6080604052') === true && codeIsContract('0xef01') === true, 'anything else with code is a contract — the designator is exactly 23 bytes');
+  ok(codeIsContract(null) === true && codeIsContract(undefined) === true, 'a code read that did not answer stays "contract": a router is never cascade-added on a guess');
+}
+
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-whale ok: 29 pins');
+console.log('smoke-whale ok: 33 pins');
 
 // ---------------------------------------------------------------- --render
 if (process.argv.includes('--render')) {

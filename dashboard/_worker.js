@@ -454,6 +454,24 @@ const TOKENOMICS = {
   disclaimer: "Describes the token's design, not a recommendation to buy. Meme tokens are high-risk. Not financial advice — verify everything on-chain.",
 };
 
+// THE SPLIT IN FORCE NOW, AS DATA (2026-09-18). The mechanism above names the
+// campaign in a sentence with dates in it; an agent asking "what does the tax
+// do today" had to parse English and know what day it is. The two windows
+// that are still ahead of us, from the same constants the page's schedule
+// (app.js, GG_START / GG_END) and the bot use — scripts/tax-phase-check.mjs
+// holds the three against each other. Percent of each trade.
+const TAX_PHASES = [
+  { id: 'sunshine', from: '2026-09-17T00:01:00Z', until: '2026-11-20T00:01:00Z', split_pct: { creator: 0.8, bob_burn: 0.8, bobai_burn: 0.8, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
+  { id: 'standard-final', from: '2026-11-20T00:01:00Z', until: null, split_pct: { creator: 1, bob_burn: 1, bobai_burn: 1 } },
+];
+function taxPhaseAt(nowMs = Date.now()) {
+  const i = TAX_PHASES.findIndex((ph) => nowMs >= Date.parse(ph.from) && (ph.until == null || nowMs < Date.parse(ph.until)));
+  if (i < 0) return null;
+  const sum = (o) => Math.round(Object.values(o).reduce((a, b) => a + b, 0) * 100) / 100;
+  return { ...TAX_PHASES[i], total_pct: sum(TAX_PHASES[i].split_pct), next: TAX_PHASES[i + 1] ? { ...TAX_PHASES[i + 1], total_pct: sum(TAX_PHASES[i + 1].split_pct) } : null };
+}
+const tokenomicsNow = () => ({ ...TOKENOMICS, current_phase: taxPhaseAt(), as_of: new Date().toISOString() });
+
 function howToBuy() {
   const code = [
     "// Buy $BOBAI with BNB on PancakeSwap V2 (BNB Chain).",
@@ -885,7 +903,7 @@ async function runTool(rawName, args) {
     case 'bobai_dex_info': return TRADE_INFO;
     case 'bobai_guide': return AGENT_GUIDE;
     case 'bobai_purchase_guide': return howToBuy();
-    case 'bobai_tokenomics': return TOKENOMICS;
+    case 'bobai_tokenomics': return tokenomicsNow();
     case 'bobai_price': return await getPrice();
     case 'bobai_liquidity': return await getLiquidity();
     case 'bobai_activity': return await getActivity();
@@ -1242,7 +1260,11 @@ export default {
       };
       try {
         const out = WITH_ADDRESS[url.pathname]
-          ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || '' })
+          // The size is part of the question (2026-09-18): llms.txt, skill.md and
+          // the tool descriptions all document ?usd= and ?capitalUsd=, the stdio
+          // MCP server forwards them through this route — and only the address
+          // was handed on, so every REST caller was answered for $250 and $1,000.
+          ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || '', ...(url.searchParams.get('usd') != null ? { usd: url.searchParams.get('usd') } : {}), ...(url.searchParams.get('capitalUsd') != null ? { capitalUsd: url.searchParams.get('capitalUsd') } : {}) })
           : await runTool(REST_TOOLS[url.pathname], {});
         return new Response(JSON.stringify(out, null, 2), { headers });
       } catch (e) {

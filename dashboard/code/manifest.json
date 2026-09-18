@@ -326,10 +326,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 5662,
-   "zipBytes": 120234,
-   "txtBytes": 361578,
-   "sha256": "bc1ae6460dea239c",
+   "lines": 5923,
+   "zipBytes": 126459,
+   "txtBytes": 379890,
+   "sha256": "a1ec6899fea578ca",
    "reqs": [
     {
      "what": "A static host",
@@ -596,10 +596,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1901,
-   "zipBytes": 48969,
-   "txtBytes": 140923,
-   "sha256": "b6352c5d14131ad9",
+   "lines": 1923,
+   "zipBytes": 49730,
+   "txtBytes": 142810,
+   "sha256": "f8dd81958c6f4651",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -630,10 +630,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 37,
-   "lines": 13010,
-   "zipBytes": 281443,
-   "txtBytes": 794181,
-   "sha256": "23af8267129afd49",
+   "lines": 13014,
+   "zipBytes": 281560,
+   "txtBytes": 794572,
+   "sha256": "1188a4af469470e3",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -712,10 +712,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4199,
-   "zipBytes": 88748,
-   "txtBytes": 251855,
-   "sha256": "7e983e46807a313f",
+   "lines": 4210,
+   "zipBytes": 89156,
+   "txtBytes": 252987,
+   "sha256": "a7b8e4e3970c8e78",
    "reqs": [
     {
      "what": "Node 18+ and time",

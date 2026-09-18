@@ -19,7 +19,7 @@ import {
   balOf, call, hx, addrAt, res2, decStr, rpcBatch,
   classify, priceToken, discover,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
-  STEPS, curveInfo, curveLadder,
+  STEPS, curveInfo, curveLadder, decOf,
 } from './scanner-chain.js';
 
 const parseInput = (s) => {
@@ -268,12 +268,26 @@ export async function scan(input, env) {
     }
     const quote = token === a ? b : a;
     const info = await rpcBatch([call(token, S.decimals), call(token, S.symbol), call(token, S.name)]);
-    tokDec = Number(hx(info[0])) || 18;
+    tokDec = decOf(info[0]);
     hop = await priceToken(quote, bnbUsd);
     if (hop.usd == null)
       throw new ScanError(
         'That pool cannot be priced.',
         'It trades against a token with no BNB pool of its own — so there is no way to express its depth in dollars without inventing one.',
+      );
+    // A pool quoted in a token that does not count in 18 decimals: the reserve,
+    // the ladder and the 1% depth all divide the quote side by 1e18. DOGE/VIN
+    // (DOGE has 8) was answered with a price 1e10 too low, liquidity $0 and a
+    // price move of 2e16 % (2026-09-18). Refused, with the way that works.
+    if (hop.dec != null && hop.dec !== 18)
+      throw new ScanError(
+        'That pool is quoted in a token with ' + hop.dec + ' decimals.',
+        'Its depth cannot be stated correctly here yet: the maths of this scan counts the quote side in 18 decimals, as BNB and the stablecoins do. Paste the token itself instead — the scan then measures it in its deepest pool against BNB or a stablecoin.',
+      );
+    if (what.kind === 'v3pool' && !what.pancake)
+      throw new ScanError(
+        'That V3 pool is not a PancakeSwap pool.',
+        'Its factory is ' + (what.factory || 'unreadable') + '. The concentrated-liquidity maths here is priced through PancakeSwap\'s own quoter, which knows nothing about another venue\'s pool — scanning it under PancakeSwap\'s name would state another pool\'s costs. Paste the token instead and the scan finds its PancakeSwap pools.',
       );
     if (what.kind === 'v2pair' && !what.venue)
       throw new ScanError(
@@ -311,7 +325,7 @@ export async function scan(input, env) {
   } else {
     token = input;
     const info = await rpcBatch([call(token, S.decimals), call(token, S.symbol), call(token, S.name)]);
-    tokDec = Number(hx(info[0])) || 18;
+    tokDec = decOf(info[0]);
     const cands = await discover(token, tokDec, bnbUsd);
     pool = cands[0] || null;
     hop = { direct: true, sym: pool ? pool.sym : 'BNB' };
@@ -462,14 +476,26 @@ export async function scan(input, env) {
     tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
     if (!simMeasured(sim)) sim = await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   }
-  const gB = Number(gp.buy_tax);
-  const gS = Number(gp.sell_tax);
+  // GoPlus answers buy_tax:"" for a token it has no figure for. Number("") is 0
+  // and 0 is finite: the blank was read as a labelled 0% — "unknown is never
+  // zero" broken at the last fallback (2026-09-18). Blank, null and garbage
+  // are all "no label".
+  const label = (v) => (v == null || String(v).trim() === '' || !isFinite(Number(v)) ? NaN : Number(v));
+  const gB = label(gp.buy_tax);
+  const gS = label(gp.sell_tax);
   // Per direction: an executed trade first, the simulated trade second (the
   // probe read what arrived at this block), the label last.
   const sB = sim && sim.tax && sim.tax.buy_pct != null ? sim.tax.buy_pct / 100 : null;
   const sS = sim && sim.tax && sim.tax.sell_pct != null ? sim.tax.sell_pct / 100 : null;
-  const taxB = tax.ok && tax.buy != null ? tax.buy : sB != null ? sB : isFinite(gB) ? gB : 0;
-  const taxS = tax.ok && tax.sell != null ? tax.sell : sS != null ? sS : isFinite(gS) ? gS : 0;
+  // A MEASURED ZERO THAT THE SIMULATION CONTRADICTS IS NOT A MEASUREMENT
+  // (2026-09-18). A reflection-style token emits only the net Transfer: the
+  // executed trade then reads 0% "measured", and that outranked the simulation,
+  // which reads what really arrived. Where the trades say ~0 and the simulated
+  // trade at this block says more, the simulation is used for that direction.
+  const hidden = (m, sim) => m != null && sim != null && m < 0.0015 && sim - m > 0.0015;
+  const simOverB = tax.ok && hidden(tax.buy, sB), simOverS = tax.ok && hidden(tax.sell, sS);
+  const taxB = tax.ok && tax.buy != null && !simOverB ? tax.buy : sB != null ? sB : isFinite(gB) ? gB : 0;
+  const taxS = tax.ok && tax.sell != null && !simOverS ? tax.sell : sS != null ? sS : isFinite(gS) ? gS : 0;
   const simulated = sB != null || sS != null;
   const usedTax = tax.ok || simulated || isFinite(gB) || isFinite(gS);
 
@@ -569,16 +595,22 @@ export async function scan(input, env) {
       // from a fresh address and its gap read; labelled means a reputation
       // service said so and nothing verified it. Those disagree in practice,
       // sometimes by more than a point.
-      source: tax.ok ? 'measured from executed trades on-chain' : simulated ? 'simulated on-chain at this block, from a fresh address' : usedTax ? 'labelled by GoPlus, unverified' : 'unknown',
+      source: tax.ok && (simOverB || simOverS) ? 'simulated on-chain at this block — executed trades showed no fee leg (a reflection-style transfer hides it), the simulated trade did' : tax.ok ? 'measured from executed trades on-chain' : simulated ? 'simulated on-chain at this block, from a fresh address' : usedTax ? 'labelled by GoPlus, unverified' : 'unknown',
       ...(simulated ? { simulated: { buyPct: sB == null ? null : +(sB * 100).toFixed(2), sellPct: sS == null ? null : +(sS * 100).toFixed(2), method: sim.tax.method } } : {}),
       ...(usedTax ? {} : { warning: 'No transfer tax could be established — neither from executed trades nor from a label. The cost figures below therefore EXCLUDE any transfer tax. If this token takes a cut on transfer, a real trade costs more than shown.' }),
-      ...(tax.ok && tax.trades ? { tradesSampled: tax.trades } : {}),
+      // How many executed trades each median stands on, and their spread — a
+      // median of one reads differently from a median of three (tradesSampled
+      // was emitted from a field measureTax never set).
+      ...(tax.ok ? { tradesMeasured: { buys: tax.nBuy ?? 0, sells: tax.nSell ?? 0 }, spreadPct: tax.spread || null } : {}),
     },
     ...(pool.kind === 'v2'
       ? {
           lp: {
             totalSupply: lpTot,
-            burnedPct: lpTot > 0 ? +(((lpDead + lpNull) / lpTot) * 100).toFixed(2) : null,
+            // Four places, and never rounded UP to "all of it": 99.9972% burned is
+            // not 100%, and the one agent that acts on "LP fully burned" should not
+            // be told so by a toFixed.
+            burnedPct: lpTot > 0 ? Math.floor(((lpDead + lpNull) / lpTot) * 1e6) / 1e4 : null,
             exchangeFeeShare: lpFee > 0 ? +((lpFee / lpTot) * 100).toFixed(2) : 0,
             feeToAddress: feeTo,
             note: 'LP held at the burn addresses cannot be withdrawn. Any balance at the factory feeTo() belongs to the exchange, not to the token team.',

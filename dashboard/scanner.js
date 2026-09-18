@@ -13,7 +13,7 @@
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER} from './scanner-chain.js?v=26';
+  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf} from './scanner-chain.js?v=27';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -138,6 +138,134 @@ function statRow(items){
   });
   return g;
 }
+// ---- the route: what a trade of MY size returns ----------------------------
+//
+// The scan above prices a trade at a reference size. A trader's own question
+// is narrower: at the size I mean to trade, which of the pools this pair lives
+// in returns the most, what do I get back if I sell straight away (pool fees,
+// my own price impact and the measured transfer tax in it), and what slippage
+// does that take. The measurement has been sold to agents as
+// pancakeswap_best_route (MCP, skill, /api/best-route) since August and had no
+// card here — a person could not ask what an agent could (2026-09-18). Same
+// rule as the two cards below: one number, one source, behind a button.
+function routeCard(token){
+  const c=card('Which route returns the most at your size',
+    'For trading. Quoted by the venue at the size you name, with the round trip and the slippage it takes.');
+  const form=el('div','rt-form');
+  const lab=el('label','rt-lab','Size in USD');
+  const inp=document.createElement('input');
+  inp.type='number';inp.min='1';inp.max='1000000';inp.step='1';inp.value='250';inp.className='rt-inp';inp.inputMode='decimal';
+  inp.setAttribute('aria-label','Trade size in US dollars');
+  const btn=el('button','sc-tierbtn','Quote the routes');
+  btn.type='button';
+  form.append(lab,inp,btn);
+  const out=el('div','tier-out');
+  c.append(form,out);
+
+  const run=async()=>{
+    if(btn.disabled)return;
+    const usdSize=Math.min(1000000,Math.max(1,Number(inp.value)||250));
+    inp.value=String(usdSize);
+    btn.disabled=true;btn.textContent='Quoting…';
+    out.textContent='';
+    try{
+      const r=await fetch('/api/best-route?address='+encodeURIComponent(token)+'&usd='+encodeURIComponent(usdSize));
+      const d=await r.json();
+      if(d.error){renderTierError(out,d.error);return;}
+      renderRoute(out,d);
+    }catch(e){
+      renderTierError(out,'The quote did not come back. Nothing is cached here, so a retry usually works.');
+    }finally{
+      btn.disabled=false;btn.textContent='Quote again';
+    }
+  };
+  btn.addEventListener('click',run);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();run();}});
+  return c;
+}
+
+function renderRoute(out,d){
+  out.textContent='';
+  const routes=(d.routes||[]);
+  const quoted=routes.filter(r=>r.quoted);
+  const sym=(d.token&&d.token.symbol)||'tokens', q=(d.quote&&d.quote.symbol)||'BNB';
+  const amt=x=>x==null?'—':(Math.abs(x)>=1000?nf(x,0):Math.abs(x)>=1?nf(x,2):nf(x,6));
+  // worse_than_best_pct is how much MORE the best route returns than this one
+  // (best/out − 1): a dust pool reads 97,802,455%. What a person means by
+  // "worse" is how much LESS arrives: w/(100+w). A pool that returns under a
+  // hundredth of the best cannot fill the size at all and is named so.
+  const lessPct=r=>{const w=Number(r.worse_than_best_pct)||0;return w<=0?0:w/(100+w)*100;};
+  const cannotFill=r=>lessPct(r)>99;
+  const ans=el('div','vd tier-ans');
+  const line=(tone,head,body)=>{
+    const r=el('div','vd-r vd-'+tone);
+    r.appendChild(el('b',null,head));
+    if(body)r.appendChild(el('span',null,body));
+    ans.appendChild(r);
+  };
+
+  // A reason not to trade outranks every figure below it.
+  for(const why of (d.refuse_to_trade||[]))line('bad','Do not trade this as it stands.',String(why));
+
+  if(!quoted.length){
+    line('unknown','No route could be quoted at this size.',
+      'None of the '+routes.length+' pools answered the quote. That says nothing about the token — ask again in a moment, or try a smaller size.');
+    out.appendChild(ans);
+    return;
+  }
+
+  // 1. The answer: which route, what arrives.
+  line('good',(d.best_route||quoted[0].route)+' returns the most at $'+nf(d.size_usd||0,0)+'.',
+    'You pay '+amt(d.you_pay&&d.you_pay.amount)+' '+q+' and receive about '+amt(d.you_would_receive)+' '+sym+
+    (()=>{const others=quoted.filter(r=>r.route!==d.best_route&&!cannotFill(r));const thin=quoted.filter(cannotFill).length;
+      return (others.length?'. The other route'+(others.length>1?'s':'')+' would return up to '+nf(Math.max(...others.map(lessPct)),2)+'% less':(quoted.length>1?'':'. It is the only pool that quoted'))+
+        (thin?(others.length||quoted.length>1?'; ':'. ')+thin+' pool'+(thin>1?'s are':' is')+' too thin to fill this size':'')+'.';})()+
+    (d.best_route_is_the_deepest_pool===false?' It is not the pool holding the most money — depth and price at your size are different questions.':''));
+
+  // 2. The round trip: what comes back if you sell at once.
+  const rt=d.round_trip;
+  if(rt&&rt.you_keep_pct!=null){
+    const keep=rt.you_keep_pct, tone=keep>=95?'good':keep>=85?'mid':'bad';
+    line(tone,'Sold straight back, '+nf(keep,2)+'% of your '+q+' returns.',
+      'That is '+amt(rt.sell_back_immediately)+' '+q+' of '+amt(d.you_pay&&d.you_pay.amount)+'. Two pool fees and the price your own trade moves are in it'+
+      (rt.you_keep_pct_pools_only!=null&&Math.abs(rt.you_keep_pct_pools_only-keep)>0.01?', and the measured transfer tax: through the pools alone it would be '+nf(rt.you_keep_pct_pools_only,2)+'%.':'.'));
+  }
+
+  // 3. The tax: measured, or said to be unknown — never zero by default.
+  const tx=d.transfer_tax||{};
+  if(tx.buy_pct!=null||tx.sell_pct!=null){
+    const hi=Math.max(tx.buy_pct||0,tx.sell_pct||0);
+    line(hi>10?'bad':hi>0?'mid':'good','Transfer tax measured: '+(tx.buy_pct!=null?nf(tx.buy_pct,2)+'% on a buy':'buy unknown')+', '+(tx.sell_pct!=null?nf(tx.sell_pct,2)+'% on a sell':'sell unknown')+'.',
+      tx.source?String(tx.source):null);
+  }else{
+    line('unknown','The transfer tax could not be measured this time.',
+      (tx.source?String(tx.source)+'. ':'')+(d.round_trip_caveat?String(d.round_trip_caveat):'Unknown is not zero: if this token takes a cut, the round trip above is too high.'));
+  }
+
+  // 4. The setting a wallet asks for.
+  if(d.slippage_bps_needed!=null){
+    line('mid','Slippage to set: about '+nf(d.slippage_bps_needed/100,2)+'%.',d.slippage_note?String(d.slippage_note):null);
+  }
+  out.appendChild(ans);
+
+  // THE EVIDENCE: every pool asked, quoted or not.
+  if(routes.length>1){
+    const t=el('div','rt-t');
+    const head=el('div','rt-r rt-hr');
+    head.append(el('span',null,'route'),el('span','rt-num','you receive'),el('span','rt-num','against the best'));
+    t.appendChild(head);
+    for(const r of routes){
+      const row=el('div','rt-r'+(r.route===d.best_route?' tier-best':''));
+      row.append(el('span','tier-n',String(r.route)),
+        el('span','rt-num',r.quoted?amt(r.out_tokens)+' '+sym:'no quote'),
+        el('span','rt-num',r.quoted?(r.route===d.best_route||!lessPct(r)?'best':cannotFill(r)?'too thin for this size':'−'+nf(lessPct(r),2)+'%'):'—'));
+      t.appendChild(row);
+    }
+    out.appendChild(t);
+  }
+  for(const x of (d.cannot_see||[]))out.appendChild(el('p','cd-foot',String(x)));
+}
+
 // ---- fee tiers: the question a liquidity provider has ----------------------
 //
 // Everything above this card answers "what would a trade cost me". This one
@@ -310,7 +438,7 @@ function renderTiers(out,d){
 
   const w=d.measured_window||{};
   out.appendChild(el('p','cd-foot','Measured over '+(w.minutes??'~59')+
-    ' minutes of chain — a sample, not a rate, and not annualised. Capital is both sides of the pool. "At the price" is the part of it standing within '+
+    ' minutes of chain — a sample, not a rate, and not annualised. What a tier "pays" is what reaches its liquidity providers: the pool fee on the turnover less the part PancakeSwap keeps for the protocol, read from each pool (about a third on V3, 0.08 of V2’s 0.25). Capital is both sides of the pool. "At the price" is the part of it standing within '+
     (d.band_pct||2)+'% of the current price, walked from the pool’s own tick data and checked against PancakeSwap’s quoter; the rest is on the balance sheet and earns nothing while the price is where it is. It assumes the price stays in that band, which it will not do forever. Impermanent loss is not in any of this.'));
 }
 
@@ -430,7 +558,7 @@ function renderRanges(out,d){
     if(isHeld)n.appendChild(el('em','tier-tag','narrowest that held'));
     row.appendChild(n);
     row.appendChild(cell('tier-c','between',
-      r.price_range?(r.price_range.low+' – '+r.price_range.high):'every price'));
+      r.price_range?(r.price_range.low+' – '+r.price_range.high+(r.price_range.unit?' '+r.price_range.unit:'')):'every price'));
     row.appendChild(cell('tier-w','in range',
       r.share_of_window_in_range_pct==null?'—':r.share_of_window_in_range_pct+'%'));
     row.appendChild(cell('tier-v','edge crossed',
@@ -447,7 +575,9 @@ function renderRanges(out,d){
     (w.fees_the_pool_paid_usd||0).toFixed(2)+' in fees across all of them'+
     (typeof w.paid_to_liquidity_pct==='number'&&w.paid_to_liquidity_pct<100?', of which the liquidity is credited '+w.paid_to_liquidity_pct.toFixed(0)+'% — the pool keeps the rest for the protocol, and every figure above is the part credited to the liquidity':'')+
     '. Not annualised: what a range did in one hour is not what it does over a year. '+
+    (d.pair&&d.pair.token&&d.pair.quote?'This is the '+(d.pair.token.symbol||'token')+' / '+(d.pair.quote.symbol||'quote')+' pool'+(d.fee_pct!=null?' at '+d.fee_pct+'%':'')+' — a V3 pool, so it can be another pair than the tier card above measured when the token is deepest in V2 against a different quote. ':'')+
     (d.tier_chosen_because?'Pool picked for you: the '+d.tier_chosen_because+' — which tier PAYS best is the card above. ':'')+
+    ((d.widths_this_tier_cannot_hold_pct||[]).length?'Not shown: ±'+d.widths_this_tier_cannot_hold_pct.join('%, ±')+'% — this tier’s tick spacing ('+d.tick_spacing+') cannot hold a range that narrow; the ranges shown sit on that grid. ':'')+
     'Impermanent loss is not in any of this, and it is worst exactly where the fees are best.'));
 }
 
@@ -636,8 +766,10 @@ function renderLadder(rows,taxNote,floors,venue){
 function taxCard(tax,gp,gpOk,sim){
   const c=card('The transfer tax, measured',
     'Not taken from a label — read off trades that actually executed. The pool reports how many tokens it moved, the token’s own transfer events report how many arrived, and the gap is what the wallet was charged. Where the window holds no trade in a direction, the same trade is simulated on the chain at this block and its gap read the same way.');
-  const gB=gp.buy_tax!=null&&isFinite(Number(gp.buy_tax))?Number(gp.buy_tax)*100:null,
-        gS=gp.sell_tax!=null&&isFinite(Number(gp.sell_tax))?Number(gp.sell_tax)*100:null;
+  // A blank label is no label (GoPlus sends "" for unknown; Number("") is 0).
+  const lab=v=>v!=null&&String(v).trim()!==''&&isFinite(Number(v));
+  const gB=lab(gp.buy_tax)?Number(gp.buy_tax)*100:null,
+        gS=lab(gp.sell_tax)?Number(gp.sell_tax)*100:null;
   // The simulated pair, when the probe could read what arrived. Second to a
   // real executed trade, ahead of a label: it happened on the chain, at this
   // block, just not with anyone's money.
@@ -967,6 +1099,7 @@ function render(d){
       ' for this token, each holding less than '+usd(dustLine)+'. Everything tradable sits in the pool measured above.'));
   }
 
+  o.appendChild(routeCard(addr));
   o.appendChild(tierCard(addr));
   o.appendChild(rangeCard(addr));
   o.appendChild(flagsCard(gp,gpOk,d.sim));
@@ -1098,7 +1231,17 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
 let stage='start';
 const at=s=>{stage=s;step(s)};
 
+// ONE SCAN AT A TIME (2026-09-18). "Try one", the history chips and the feed
+// rows all start a scan without asking whether one is running; two scans
+// then raced, the slower one drew the page last and set ?token= to an address
+// the input field no longer showed. A scan in flight finishes first.
+let scanning=false;
 async function scan(input){
+  if(scanning)return;
+  scanning=true;
+  try{return await scanOnce(input)}finally{scanning=false}
+}
+async function scanOnce(input){
   stage='start';
   busy(true,'identifying the address…');
   try{
@@ -1139,11 +1282,19 @@ async function scan(input){
       }
       const quote=token===a?b:a;
       const info=await rpcBatch([call(token,S.decimals),call(token,S.symbol),call(token,S.name)]);
-      tokDec=Number(hx(info[0]))||18;
+      tokDec=decOf(info[0]);
       hop=await priceToken(quote,bnbUsd);
       if(hop.usd==null)return fail('That pool cannot be priced.',
         'It trades '+(decStr(info[1])||'this token')+' against '+short(quote)+
         ', which has no BNB pool of its own — so there is no way to express its depth in dollars without inventing one.');
+      // The quote side must count in 18 decimals (see scanner-scan.js): refused
+      // rather than answered 1e10 off.
+      if(hop.dec!=null&&hop.dec!==18)
+        return fail('That pool is quoted in a token with '+hop.dec+' decimals.',
+          'Its depth cannot be stated correctly here yet: this scan counts the quote side in 18 decimals, as BNB and the stablecoins do. Paste the token itself instead — it is then measured in its deepest pool against BNB or a stablecoin.');
+      if(what.kind==='v3pool'&&!what.pancake)
+        return fail('That V3 pool is not a PancakeSwap pool.',
+          'Its factory is '+short(what.factory||'')+'. The concentrated-liquidity maths on this page is priced through PancakeSwap\'s own quoter, which knows nothing about another venue\'s pool. Paste the token instead and the scan finds its PancakeSwap pools.');
       if(what.kind==='v2pair'&&!what.venue)
         return fail('That pool is on a venue this page does not price.',
           'Its factory is '+short(what.factory||'')+', which is not one of the constant-product venues whose swap fee has been derived and verified here (PancakeSwap V2, Uniswap V2, Biswap). Applying somebody else’s fee would quietly understate what a trade costs, so no figures are shown.');
@@ -1173,7 +1324,7 @@ async function scan(input){
       token=input;
       at('asking the factories which pools exist…');
       const info=await rpcBatch([call(token,S.decimals),call(token,S.symbol),call(token,S.name)]);
-      tokDec=Number(hx(info[0]))||18;
+      tokDec=decOf(info[0]);
       const cands=await discover(token,tokDec,bnbUsd);
       pool=cands[0]||null;
       hop={direct:true,sym:pool?pool.sym:'BNB'};
@@ -1278,13 +1429,19 @@ async function scan(input){
     const tax=await measureTax(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
     at('simulating a sell…');
     const sim=await simulateRoundTrip(token,pool.pair.toLowerCase(),tokenIs0,pool.kind);
-    const gB=Number(gp.buy_tax),gS=Number(gp.sell_tax);
+    // A blank label is no label: Number("") is 0 and would read as a labelled 0%.
+    const lab2=v=>(v==null||String(v).trim()===''||!isFinite(Number(v))?NaN:Number(v));
+    const gB=lab2(gp.buy_tax),gS=lab2(gp.sell_tax);
     // Which tax the cost columns use, per direction: an executed trade first,
     // the simulation second, the label last, zero (and said so) never quietly.
     const sB=sim&&sim.tax&&sim.tax.buy_pct!=null?sim.tax.buy_pct/100:null,
           sS=sim&&sim.tax&&sim.tax.sell_pct!=null?sim.tax.sell_pct/100:null;
-    const taxB=tax.ok&&tax.buy!=null?tax.buy:(sB!=null?sB:(isFinite(gB)?gB:0)),
-          taxS=tax.ok&&tax.sell!=null?tax.sell:(sS!=null?sS:(isFinite(gS)?gS:0)),
+    // A measured ~0 the simulation contradicts is a hidden fee leg (reflection-style
+    // transfers emit only the net amount): the simulated figure stands for that side.
+    const hid=(m,si)=>m!=null&&si!=null&&m<0.0015&&si-m>0.0015;
+    const simOverB=tax.ok&&hid(tax.buy,sB),simOverS=tax.ok&&hid(tax.sell,sS);
+    const taxB=tax.ok&&tax.buy!=null&&!simOverB?tax.buy:(sB!=null?sB:(isFinite(gB)?gB:0)),
+          taxS=tax.ok&&tax.sell!=null&&!simOverS?tax.sell:(sS!=null?sS:(isFinite(gS)?gS:0)),
           simB=!(tax.ok&&tax.buy!=null)&&sB!=null,simS=!(tax.ok&&tax.sell!=null)&&sS!=null,
           usedTax=tax.ok||sB!=null||sS!=null||isFinite(gB)||isFinite(gS);
 

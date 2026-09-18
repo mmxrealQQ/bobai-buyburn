@@ -339,7 +339,17 @@ ok('Health', 'the DeFi agent checks pass their own pins (the day it stood still 
   // was reported as returning 98.6% of a round trip — that ratio goes to
   // exactly 1 and this check is the only thing that would notice.
   await new Promise((r) => setTimeout(r, 1500));
+  // A pair that is not quoted in BNB must not invent a sell tax (2026-09-18):
+  // the sell test trades through the BNB pair and was solved against the
+  // scanned pair's reserves — CAKE, which has no tax, read 99.87% on its USDT pair.
+  const usdtPair = await askJson(`${SITE}/api/pool-scan?address=0xA39Af17CE4a8eb807E076805Da1e2B8EA7D0755b`);
+  const simSell = usdtPair?.sellability?.tax?.sell_pct ?? usdtPair?.tax?.simulated?.sellPct ?? null;
+  ok('Agents', 'a USDT-quoted pair of an untaxed token reads no sell tax', usdtPair != null && (simSell == null || simSell < 1), `CAKE/USDT simulated sell tax ${simSell}`);
   const route = await askJson(`${SITE}/api/best-route?address=0x245c386dcfed896f5c346107596141e5edcbffff&usd=100`);
+  // The size asked for is the size answered (2026-09-18): the REST route handed
+  // on the address alone, so every caller — the stdio MCP server included —
+  // was answered for $250 whatever it asked. This call asks for $100.
+  ok('Agents', 'the route check answers at the size that was asked', route?.size_usd === 100, `asked 100, answered ${route?.size_usd}`);
   const rt = route?.round_trip || {};
   const tx = route?.transfer_tax || {};
   const implied = (1 - (tx.buy_pct || 0) / 100) * (1 - (tx.sell_pct || 0) / 100);

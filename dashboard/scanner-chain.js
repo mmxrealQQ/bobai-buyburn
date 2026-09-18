@@ -88,6 +88,9 @@ const S={reserves:'0x0902f1ac',token0:'0x0dfe1681',token1:'0xd21220a7',fee:'0xdd
 const pad=a=>'0'.repeat(24)+a.slice(2).toLowerCase();
 const num=v=>BigInt(v).toString(16).padStart(64,'0');
 export const balOf=a=>'0x70a08231'+pad(a);
+// A token's decimals as it states them. `Number(x)||18` read a token with 0
+// decimals as 18 (2026-09-18): zero is an answer; only no answer is 18.
+export const decOf=h=>{if(!h||h==='0x')return 18;const n=Number(hx(h));return Number.isFinite(n)&&n>=0&&n<=36?n:18};
 export const getPair=(t,q)=>'0xe6a43905'+pad(t)+pad(q);
 export const getPool=(t,q,f)=>'0x1698ee82'+pad(t)+pad(q)+num(f);
 export const quoteCall=(tin,tout,amt,fee)=>'0xc6a5026a'+pad(tin)+pad(tout)+num(amt)+num(fee)+num(0);
@@ -221,8 +224,12 @@ export async function classify(addr){
       factory:fac,venue:fac?FACTORIES[fac]:null};
   }
   if(q[1]&&q[1]!=='0x'&&q[2]&&q[2].length>64)
+    // The factory, asked like the V2 pair's: a Uniswap V3 pool answers the same
+    // calls, and read as PancakeSwap's it was scanned under the wrong venue name
+    // with the wrong quoter — every cost row null, 1% depth printed as $0
+    // (2026-09-18).
     return {kind:'v3pool',fee:Number(hx(q[1])),token0:addrAt(q[3]),token1:addrAt(q[4]),
-      sqrt:hx('0x'+q[2].slice(2,66))};
+      sqrt:hx('0x'+q[2].slice(2,66)),factory:addrAt(q[5]),pancake:addrAt(q[5])===V3FACTORY};
   return {kind:'token'};
 }
 
@@ -234,16 +241,19 @@ export async function classify(addr){
 // depth of that intermediate pool is carried out of here and shown.
 export async function priceToken(addr,bnbUsd){
   const known=QUOTES.find(([a])=>a===addr);
-  if(known)return {usd:known[2]?1:bnbUsd,sym:known[1],direct:true};
+  if(known)return {usd:known[2]?1:bnbUsd,sym:known[1],direct:true,dec:18};
   const p=await rpcBatch([call(V2FACTORY,getPair(addr,WBNB)),call(addr,S.symbol),call(addr,S.decimals)]);
-  const pair=addrAt(p[0]),sym=decStr(p[1]).slice(0,12)||'?',dec=Number(hx(p[2]))||18;
-  if(!pair||pair===NULLA)return {usd:null,sym,direct:false};
+  const pair=addrAt(p[0]),sym=decStr(p[1]).slice(0,12)||'?',dec=decOf(p[2]);
+  if(!pair||pair===NULLA)return {usd:null,sym,direct:false,dec};
   const r=await rpcBatch([call(pair,S.reserves),call(pair,S.token0)]);
   const rr=res2(r[0]);if(!rr)return {usd:null,sym,direct:false};
   const is0=addrAt(r[1])===addr,
         tok=(is0?rr[0]:rr[1])/Math.pow(10,dec),wb=(is0?rr[1]:rr[0])/1e18;
   if(!(tok>0)||!(wb>0))return {usd:null,sym,direct:false};
-  return {usd:(wb/tok)*bnbUsd,sym,direct:false,hopBnb:wb,hopPair:pair};
+  // `dec`: the quote side's own decimals. Every quote this tool knows by name
+  // has 18; a pool quoted in another token may not, and the depth maths
+  // downstream is written for 18 (see the scan's refusal).
+  return {usd:(wb/tok)*bnbUsd,sym,direct:false,hopBnb:wb,hopPair:pair,dec};
 }
 
 // === POOL DISCOVERY ===
@@ -841,6 +851,20 @@ export function bandDepthV2(r0,r1,bandPct){
 // runs is one, so 397 is the most a complete answer can ever need. It was 192
 // first, and WBNB/USDT at the 0.01% tier came back truncated — understated by a
 // quarter, flagged, but still a smaller number that looked like a real one.
+// WHAT REACHES LIQUIDITY. slot0's sixth word is the protocol's cut of every
+// swap fee: PancakeSwap packs two 16-bit shares in 1/10000 (token0 low, token1
+// high — 3400 on CAKE/BNB 0.05%, i.e. 34% to the protocol); a Uniswap-style
+// pool packs two 4-bit divisors (fee/x) in one byte. Told apart by size.
+// Returns the share of a swap fee that liquidity providers receive, the mean
+// of the two directions (they are equal on every pool read so far). Pure.
+export const V2_LP_SHARE=0.17/0.25;   // PancakeSwap V2: 0.17 of the 0.25% goes to the pair
+export function lpShareFromSlot0(slot0){
+  if(!slot0||slot0.length<2+64*6)return null;
+  const fp=Number(BigInt('0x'+slot0.slice(2+64*5,2+64*6)));
+  const cut=fp>255?[(fp&0xffff)/1e4,(fp>>>16)/1e4]:[(fp&0xf)?1/(fp&0xf):0,(fp>>>4)?1/(fp>>>4):0];
+  const lp=cut.map(x=>(x>=0&&x<1?1-x:1));
+  return (lp[0]+lp[1])/2;
+}
 export async function bandDepthV3(pools,bandPct,maxTicks=400){
   if(!pools.length)return [];
   // ONE BLOCK FOR ALL THREE ROUNDS.
@@ -869,7 +893,7 @@ export async function bandDepthV3(pools,bandPct,maxTicks=400){
     // which ticks have to be read.
     const k=Math.sqrt(1+bandPct/100);
     const span=Math.ceil(Math.log(1+bandPct/100)/Math.log(TICK_BASE));
-    return {pool:p,sqrtP,tick,L,spacing,
+    return {pool:p,sqrtP,tick,L,spacing,lpShare:lpShareFromSlot0(s),
       sLo:sqrtP/k,sHi:sqrtP*k,tLo:tick-span,tHi:tick+span};
   });
 
@@ -976,7 +1000,7 @@ export async function bandDepthV3(pools,bandPct,maxTicks=400){
       const [x,y]=segAmounts(L,b.sLo,cur,b.sqrtP);a0+=x;a1+=y;
       inDown+=L*(1/b.sLo-1/cur);
     }
-    return {amount0:a0,amount1:a1,tick:b.tick,spacing:b.spacing,
+    return {amount0:a0,amount1:a1,tick:b.tick,spacing:b.spacing,lpShare:b.lpShare,
       complete:!truncated[i],initialized_ticks:inBand.length,
       band_ticks:[b.tLo,b.tHi],
       // What it would take to walk the price to either edge, before the pool
@@ -1113,6 +1137,16 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     if(kind!=='v2')return {ok:false,reason:'the simulation covers PancakeSwap V2 pairs; this token trades on V3'};
     token=token.toLowerCase();
     const url=RPCS[0];
+    // THE PAIR THE PROBE REALLY TRADES THROUGH (2026-09-18). The probe sells
+    // token -> WBNB through PancakeSwap's V2 router, whatever pair was scanned.
+    // The tax was then solved against the SCANNED pair's reserves: for the
+    // CAKE/USDT pair that read a 99.87% sell tax on a token with none, and a
+    // token with no BNB pair on PancakeSwap V2 read "sell REVERTED" — a false
+    // honeypot. The reserves are now those of the pair the router will use;
+    // without one the test says it was not run, which is what happened.
+    const wp=addrAt((await rpcBatch([call(V2FACTORY,getPair(token,WBNB))],url))[0]);
+    if(!wp||wp===NULLA)return {ok:false,reason:'the sell test trades through PancakeSwap V2 against BNB, and this token has no such pair — not run, not cleared'};
+    if(wp!==String(pair).toLowerCase()){pair=wp;tokenIs0=BigInt(token)<BigInt(WBNB);}
     // A realistic size: one part in a thousand of what the pair holds.
     const res=await rpcBatch([call(pair,SEL.reserves)],url);
     const rr=res2(res[0]);if(!rr)return {ok:false,reason:'the pair reserves could not be read'};
@@ -1307,11 +1341,27 @@ export async function curveLadder(token,info,quoteUsd,sizesUsd,url){
     // fee) is then less than the money offered. Checked live: a $2,500 buy
     // against $1,300 left came back "cheaper" than a $1,000 one, because the
     // cost was measured on the capped part only. Such a row says so instead.
+    // ... but "less than offered" alone does not mean capped (2026-09-18): some
+    // curves take a per-token deduction, and cost+fee then comes back at 0.97
+    // of the funds at EVERY size — a curve with 17.85 of 18 BNB still to raise
+    // had all six rows marked "more than the curve has left". Capped is said
+    // only when the buy really reaches what is left: the raise's remainder in
+    // money, or the tokens still on offer. Otherwise the cost is measured from
+    // what the helper says the buy takes (amountMsgValue for a BNB raise,
+    // amountApproval for a token raise), against the tokens it returns.
     const inPaid=cost+fee;
+    const needs=b?Math.max(Number(wordAt(b,5)),Number(wordAt(b,6)))/1e18:0;
+    const leftMoney=(info.maxRaising>0&&info.raised!=null)?info.maxRaising-info.raised:null;
+    const hitsCap=(leftMoney!=null&&inPaid>=leftMoney*0.999)||(info.offersLeft>0&&got>=info.offersLeft*0.999);
     if(b&&got>0&&inPaid>=paid*0.999){
       row.buyCost=(inPaid/(got*info.price)-1)*100;
-    }else if(b&&got>0){
+    }else if(b&&got>0&&hitsCap){
       row.buyNote='more than the curve has left to sell';
+    }else if(b&&got>0){
+      // The helper's figure is taken only where it is plausibly that — the money
+      // offered, give or take; anything else and the money offered stands in.
+      const took=needs>=paid*0.5&&needs<=paid*1.05?needs:paid;
+      row.buyCost=(took/(got*info.price)-1)*100;
     }else row.buyNote='the curve did not quote this size';
     const tokens=paid/info.price;
     const out=s?Number(wordAt(s,2))/1e18:0;

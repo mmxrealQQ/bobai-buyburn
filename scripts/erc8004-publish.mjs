@@ -51,6 +51,11 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 // rescan gets its own directory (--dir erc8004-v3) so it never overwrites the
 // data the page is serving while it runs.
 const DIR = path.join(ROOT, 'data', censusDirArg());
+// The stylesheet version is the homepage's, read, not copied: the page this
+// writes carried v=37 in its template while the site was at v=49 — the built
+// file had been bumped by hand, and the next run would have put it back
+// (found 2026-09-18).
+const STYLES_V = (fs.readFileSync(path.join(ROOT, 'dashboard', 'index.html'), 'utf8').match(/styles\.css\?v=(\d+)/) || [null, '49'])[1];
 const state = JSON.parse(fs.readFileSync(path.join(DIR, 'scan-state.json'), 'utf8'));
 
 let census = null;
@@ -1117,7 +1122,7 @@ const page = `<!doctype html>
 <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
 <link rel="apple-touch-icon" href="/logo.png?v=4">
 <link rel="stylesheet" href="/fonts.css?v=1">
-<link rel="stylesheet" href="/styles.css?v=37">
+<link rel="stylesheet" href="/styles.css?v=${STYLES_V}">
 <link rel="canonical" href="https://brainonbnb.com/registry">
 <style>
   /* nav/.nav/.nb live in styles.css, but .back-btn and .brand-link do not —
@@ -1421,7 +1426,7 @@ const page = `<!doctype html>
        rather than reinvented so the page cannot drift from the rest of the
        site the next time either is touched. -->
   <nav><div class="nav">
-    <a class="back-btn" href="/" title="Back to the homepage"><span>&larr;</span> Dashboard</a>
+    <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
     <a class="brand-link" href="/registry">Brain Plaza</a>
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
   </div></nav>
@@ -1432,7 +1437,7 @@ const page = `<!doctype html>
     <div class="rg-hero">
       <h1 class="rg-h1">Brain <em>Plaza</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer. ' + fmt(operators.length) + ' operators run them.' : 'We asked every one.'}</span></h1>
       <p class="rg-lead">The first number gets quoted everywhere; nobody checks it. We knocked on every door. Below is who answered, sorted by what they can do, with a Hire button on each.</p>
-      <p class="rg-when">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
+      <p class="rg-when" id="rg-when" data-measured="${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))}" data-scanned="${fmt(scanned)}">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
     </div>
 
     <!-- For somebody who has never heard of any of this. The line above is an
@@ -1726,6 +1731,12 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         if(h)h.textContent=n;
         if(t)t.textContent=n;
         if(sub)sub.textContent='live · the counts below are from the last full scan';
+        // The headline is one sentence with two ages in it once this runs: the
+        // first figure is live, who answers and who runs them is the scan's. The
+        // line under it says so (2026-09-18) — it used to keep saying "N of N
+        // ids read" with the scan's N beside a headline that had moved on.
+        var w=document.getElementById('rg-when');
+        if(w&&w.getAttribute('data-measured'))w.textContent='Registered: '+n+', read live just now \\u00b7 who answers and who runs them: measured '+w.getAttribute('data-measured')+' UTC, when '+w.getAttribute('data-scanned')+' ids were read';
       })
       .catch(function(){});
   })();

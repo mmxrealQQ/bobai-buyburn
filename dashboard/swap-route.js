@@ -27,7 +27,7 @@
 import {
   QUOTES, BNB_PAIR, WBNB, QUOTER, SEL as S, V3_FEES,
   call, hx, addrAt, res2, decStr, rpcBatch, quoteCall,
-  classify, priceToken, discover, measureTax, V2_FEE,
+  classify, priceToken, discover, measureTax, simulateRoundTrip, V2_FEE, decOf,
 } from './scanner-chain.js';
 
 export class RouteError extends Error {
@@ -67,15 +67,20 @@ export async function swapRoute(input, opts = {}) {
   const bnbUsd = br ? (addrAt(base[1]) === WBNB ? br[1] / br[0] : br[0] / br[1]) : 0;
   if (!(bnbUsd > 0)) throw new RouteError('Could not price BNB.', 'The reference pool read back empty.');
 
-  let token = address;
+  // A pasted pool fixes both sides of the pair (the tool's description says
+  // so, and the tier tool does it): until 2026-09-18 only the token was taken
+  // from it, so the CAKE/USDT pool was answered with five CAKE/BNB routes and
+  // the pasted pool was not among them.
+  let token = address, pinnedQuote = null;
   if (what.kind === 'v2pair' || what.kind === 'v3pool') {
     const [a, b] = [what.token0, what.token1];
     const qa = QUOTES.find(([x]) => x === a), qb = QUOTES.find(([x]) => x === b);
     token = qa && !qb ? b : qb && !qa ? a : a;
+    pinnedQuote = token === a ? b : a;
   }
 
   const meta = await rpcBatch([call(token, S.decimals), call(token, S.symbol)]);
-  const dec = Number(hx(meta[0])) || 18;
+  const dec = decOf(meta[0]);
   const sym = decStr(meta[1]).slice(0, 12) || null;
 
   const cands = await discover(token, dec, bnbUsd);
@@ -83,7 +88,7 @@ export async function swapRoute(input, opts = {}) {
     throw new RouteError('No pool found for that address.',
       'Every fee tier against BNB, USDT, BUSD, USDC and USD1 was asked directly, and none of them has a pool.');
 
-  const quote = cands[0].quote;
+  const quote = pinnedQuote && cands.some((c) => c.quote === pinnedQuote) ? pinnedQuote : cands[0].quote;
   const known = QUOTES.find(([x]) => x === quote);
   const quoteSym = known ? known[1] : (await priceToken(quote, bnbUsd)).sym;
   const quoteUsd = known ? (known[2] ? 1 : bnbUsd) : (await priceToken(quote, bnbUsd)).usd;
@@ -149,8 +154,28 @@ export async function swapRoute(input, opts = {}) {
   // transfers" on a pair that trades every block — an argument mistake that
   // arrives looking exactly like a quiet token.
   const zero = await rpcBatch([call(best.pool, S.token0)]);
-  const tax = await measureTax(token, best.pool, addrAt(zero[0]) === token, best.kind)
+  let tax = await measureTax(token, best.pool, addrAt(zero[0]) === token, best.kind)
     .catch(() => ({ ok: false, reason: 'not measurable' }));
+  // A QUIET HOUR IS NOT AN UNTAXED TOKEN, AND IT NEED NOT BE AN UNKNOWN ONE
+  // (2026-09-18). With no trade in the window this answered "not measurable"
+  // — for $BOBAI most hours of the day — and put the round trip at 97.9% with
+  // 158 bps of slippage, while the pool scan, asked the same minute, simulated
+  // 3%/3% at this block. The same simulation fills the side no executed trade
+  // could: a test balance sold and bought from a fresh address, reading what
+  // arrived. A measured side always wins over a simulated one.
+  let taxSource = 'measured from executed trades on-chain';
+  if (!tax.ok || tax.buy == null || tax.sell == null) {
+    const sim = await simulateRoundTrip(token, best.pool, addrAt(zero[0]) === token, best.kind).catch(() => null);
+    const sb = sim && sim.ok && sim.tax && sim.tax.buy_pct != null ? sim.tax.buy_pct / 100 : null;
+    const ss = sim && sim.ok && sim.tax && sim.tax.sell_pct != null ? sim.tax.sell_pct / 100 : null;
+    if (sb != null || ss != null) {
+      const hadTrades = tax.ok;
+      tax = { ...tax, ok: true, buy: hadTrades && tax.buy != null ? tax.buy : sb, sell: hadTrades && tax.sell != null ? tax.sell : ss };
+      taxSource = hadTrades
+        ? 'one side measured from executed trades, the other simulated on-chain at this block from a fresh address'
+        : 'simulated on-chain at this block: a test balance sold and bought from a fresh address, reading what arrived (no trade in the window to measure)';
+    }
+  }
   const taxBuy = tax.ok && tax.buy != null ? tax.buy : 0;
   const taxSell = tax.ok && tax.sell != null ? tax.sell : 0;
 
@@ -236,7 +261,7 @@ export async function swapRoute(input, opts = {}) {
     transfer_tax: tax.ok
       ? { buy_pct: tax.buy == null ? null : +(tax.buy * 100).toFixed(2),
           sell_pct: tax.sell == null ? null : +(tax.sell * 100).toFixed(2),
-          source: 'measured from executed trades on-chain' }
+          source: taxSource }
       : { buy_pct: null, sell_pct: null, source: `not measurable (${tax.reason || 'no readable trades'})` },
     slippage_bps_needed: slippageBps,
     slippage_note: fot

@@ -30,7 +30,7 @@ import {
   QUOTES, BNB_PAIR, WBNB, LOGS_RPC, LOGS_RPCS, SEL as S,
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS,
-  SWAP_V3_T, SWAP_V3_UNI, int256,
+  SWAP_V3_T, SWAP_V3_UNI, int256, decOf,
 } from './scanner-chain.js';
 
 export class RangeError extends Error {
@@ -111,7 +111,7 @@ export async function rangePlan(input, opts = {}) {
     feeRaw = Number(hx(f[0])) || 0;
   } else {
     const info0 = await rpcBatch([call(address, S.decimals)]);
-    const dec0 = Number(hx(info0[0])) || 18;
+    const dec0 = decOf(info0[0]);
     const cands = (await discover(address, dec0, bnbUsd)).filter((c) => c.kind === 'v3');
     if (!cands.length)
       throw new RangeError('That token has no PancakeSwap V3 pool.',
@@ -137,15 +137,28 @@ export async function rangePlan(input, opts = {}) {
   const meta = await rpcBatch([
     call(token, S.decimals), call(token, S.symbol),
     call(quote, S.decimals), call(quote, S.symbol),
-    call(pool, S.token0), call(pool, S.slot0),
+    call(pool, S.token0), call(pool, S.slot0), call(pool, '0xd0c93a7c'),   // tickSpacing()
   ]);
-  const tokDec = Number(hx(meta[0])) || 18;
+  const tokDec = decOf(meta[0]);
   const tokSym = decStr(meta[1]).slice(0, 12) || null;
-  const qDec = Number(hx(meta[2])) || 18;
+  const qDec = decOf(meta[2]);
   const knownQ = QUOTES.find(([x]) => x === quote);
   const qSym = knownQ ? knownQ[1] : (decStr(meta[3]).slice(0, 12) || null);
   const tokenIs0 = addrAt(meta[4]) === token;
   const slot0 = meta[5];
+  // A RANGE HAS TO SIT ON THE POOL'S TICK GRID (2026-09-18). A position's
+  // edges are multiples of the tier's tick spacing — 1 on 0.01%, 10 on 0.05%,
+  // 50 on 0.25%, 200 on 1% — so the narrowest position the 1% tier can hold is
+  // 200 ticks, about ±1.0%. The replay offered ±0.25% there all the same and
+  // named it "the narrowest range that held", 3.6 times what any mintable
+  // position collected. Widths under one spacing are left out and said so;
+  // the others are snapped outward onto the grid, as the manager would mint them.
+  const spacing = Number(hx(meta[6])) || 1;
+  const TICK_LN = Math.log(1.0001);
+  const tickOf = (sq) => (2 * Math.log(sq)) / TICK_LN;
+  const sqrtOfTick = (t) => Math.pow(1.0001, t / 2);
+  const mintable = (w) => (2 * Math.log(1 + w / 100)) / TICK_LN >= spacing;
+  const notMintable = WIDTHS.filter((w) => !mintable(w));
   if (!slot0 || slot0.length < 130) throw new RangeError('The pool did not answer.', 'slot0 read back empty.');
   const sP = Number(BigInt('0x' + slot0.slice(2, 66))) / Number(2n ** 96n);
   // THE PROTOCOL'S CUT (2026-09-13). A swap's fee is not all the liquidity's:
@@ -212,9 +225,10 @@ export async function rangePlan(input, opts = {}) {
   const spanBlocks = swaps.length > 1 ? swaps[swaps.length - 1].block - swaps[0].block : 0;
   const totalFees = swaps.reduce((s, x) => s + x.feeUsd, 0);
   const totalToLiquidity = swaps.reduce((s, x) => s + x.lpUsd, 0);
-  const rows = [...WIDTHS, FULL].map((w) => {
+  const rows = [...WIDTHS.filter(mintable), FULL].map((w) => {
     const k = w === FULL ? 1e9 : sqrtAt(w);
-    const sLo = sP / k, sHi = sP * k;
+    let sLo = sP / k, sHi = sP * k;
+    if (w !== FULL && spacing > 1) { sLo = sqrtOfTick(Math.floor(tickOf(sLo) / spacing) * spacing); sHi = sqrtOfTick(Math.ceil(tickOf(sHi) / spacing) * spacing); }
     const L = liquidityFor(capitalUsd, sLo, sHi, sP, p0PerUnit, p1PerUnit);
     let fees = 0, inRange = 0, blocksIn = 0, crossings = 0, was = null;
     for (let i = 0; i < swaps.length; i++) {
@@ -303,6 +317,10 @@ export async function rangePlan(input, opts = {}) {
     pair: { token: { address: token, symbol: tokSym, decimals: tokDec },
             quote: { address: quote, symbol: qSym, decimals: qDec } },
     pool, fee_pct: +(feeRaw / 1e4).toFixed(4),
+    // The grid the ranges were snapped to, and the widths it cannot hold.
+    tick_spacing: spacing,
+    narrowest_mintable_width_pct: +((Math.exp((spacing * TICK_LN) / 2) - 1) * 100).toFixed(3),
+    widths_this_tier_cannot_hold_pct: notMintable,
     tier_chosen_because: chosen,
     price_now: +priceOfToken.toPrecision(8),
     capital_considered_usd: capitalUsd,

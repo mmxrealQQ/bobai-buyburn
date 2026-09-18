@@ -111,8 +111,11 @@ const skip = (name, why) => {
     ok('BOBAI: an unmeasured tax is declared on the slippage, with the 1500 bps floor named',
       /1500/.test(r.slippage_note || '') && /measur/i.test(r.slippage_note || ''), r.slippage_note || 'NO NOTE');
   } else {
+    // Measured from executed trades, or — in an hour without any — simulated
+    // on chain at this block from a fresh address (2026-09-18). Never a label,
+    // never a default.
     ok('BOBAI: the transfer tax is measured, not assumed',
-      measured && t.source.includes('measured'),
+      measured && (t.source.includes('measured') || t.source.includes('simulated on-chain')),
       `buy ${t.buy_pct}%, sell ${t.sell_pct}%`);
 
     // The relation nothing correct can avoid.

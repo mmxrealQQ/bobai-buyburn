@@ -27,7 +27,7 @@ import {
   call, hx, addrAt, res2, decStr, rpcBatch, rpc,
   classify, priceToken, discover,
   SWAP_T, SWAP_V3_T, SWAP_V3_UNI, int256,
-  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS,
+  bandDepthV2, bandDepthV3, windowMinutes, getLogsSplit, WINDOW_BLOCKS, V2_LP_SHARE, decOf,
 } from './scanner-chain.js';
 
 // How wide "at the price" is taken to be. Two percent is not a preference: it
@@ -110,7 +110,7 @@ export async function feeTiers(input) {
   }
 
   const info = await rpcBatch([call(token, S.decimals), call(token, S.symbol)]);
-  const tokDec = Number(hx(info[0])) || 18;
+  const tokDec = decOf(info[0]);
   const tokSym = decStr(info[1]).slice(0, 12) || null;
 
   const cands = await discover(token, tokDec, bnbUsd);
@@ -294,12 +294,25 @@ export async function feeTiers(input) {
       row.reason = 'the log endpoint refused this range';
     } else {
       const vol = turnover(logs, c.kind, quoteIs0);
-      const fees = vol * c.fee;
+      // WHAT A TIER PAYS ITS LIQUIDITY, NOT WHAT TRADERS PAID IT (2026-09-18).
+      // The pool fee on the turnover is the traders' bill. PancakeSwap keeps a
+      // part for the protocol before liquidity sees any — read per pool from
+      // slot0 (V3: 32-34% on the CAKE pools) and 0.08 of V2's 0.25. Every
+      // "pays per $1,000" figure was the gross bill, about half too high, and
+      // two tiers within 3% of each other could rank the wrong way round.
+      const lpShare = c.kind === 'v2' ? V2_LP_SHARE : (band && band.lpShare != null ? band.lpShare : null);
+      const gross = vol * c.fee;
+      const fees = gross * (lpShare != null ? lpShare : 1);
       row.measured = true;
       row.swaps = logs.length;
       row.volume_quote = +vol.toFixed(6);
       row.volume_usd = +(vol * c.usd).toFixed(2);
-      row.fees_paid_usd = +(fees * c.usd).toFixed(6);
+      // fees_paid_usd stays what it always was — the traders' bill — so nothing
+      // that read it breaks; the liquidity's part is named beside it, and the
+      // two per-$1,000 figures below are computed from that part.
+      row.fees_paid_usd = +(gross * c.usd).toFixed(6);
+      row.fees_to_liquidity_usd = +(fees * c.usd).toFixed(6);
+      row.liquidity_share_of_fees_pct = lpShare != null ? +(lpShare * 100).toFixed(2) : null;
       row.fees_per_1000_usd_parked =
         capitalUsd > 0 ? +(((fees * c.usd) / capitalUsd) * 1000).toFixed(6) : null;
       // The same fees over the capital that was actually in a position to earn
@@ -411,7 +424,7 @@ export async function feeTiers(input) {
       tokenUsd == null
         ? 'This token could not be priced against BNB, so no pool could be totalled and no tier is ranked. The per-tier turnover below is still measured.'
         : `Token priced at ${tokPrice.direct ? 'its own quote' : 'one hop through BNB'}; the pool totals inherit that.`,
-      'Fees are the pool fee applied to measured turnover. PancakeSwap pays a share of that to the protocol, so what reaches liquidity providers is somewhat less.',
+      'fees_paid_usd is what traders paid: the pool fee on the measured turnover. PancakeSwap keeps part of it for the protocol (read from each V3 pool, about a third; 0.08 of V2\'s 0.25), so fees_to_liquidity_usd and both per-$1,000 figures are what is left for liquidity providers — liquidity_share_of_fees_pct names the share per tier, and null there means it could not be read and the figure is the gross one.',
       'Impermanent loss is not in this figure. A tier can pay best and still be the worse place to be.',
       measured.length === 0
         ? 'No tier could be read: the log endpoint refused every range. This says nothing about whether the pair traded — it says the measurement did not happen. Retry.'

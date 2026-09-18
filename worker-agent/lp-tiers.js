@@ -114,17 +114,21 @@ export async function lpTierPlan(input = {}) {
     if (/v2/i.test(String(t.tier || ''))) return 0.68;
     return fee === 0.05 ? 0.66 : fee === 0.01 ? 0.67 : 0.68;
   };
+  // The measurement names the liquidity's part itself since 2026-09-18
+  // (fees_to_liquidity_usd, read from each pool's slot0); the constants above
+  // only stand in for a measurement that does not carry it.
+  const toLiquidity = (t) => (t.fees_to_liquidity_usd != null ? t.fees_to_liquidity_usd : t.fees_paid_usd * lpShare(t));
   const earned = (t, working) => {
     if (t.fees_paid_usd == null) return null;
     const denom = (working == null ? t.capital_usd : working) + capitalUsd;
-    return denom > 0 ? round(t.fees_paid_usd * lpShare(t) * (capitalUsd / denom), 6) : null;
+    return denom > 0 ? round(toLiquidity(t) * (capitalUsd / denom), 6) : null;
   };
   const perTier = (m.tiers || []).map((t) => ({
     tier: t.tier,
     pool: t.pool,
     fee_pct: t.fee_pct,
     // The part of the traders' fees that reaches liquidity; the rest is the protocol's.
-    fees_reaching_liquidity_pct: Math.round(lpShare(t) * 100),
+    fees_reaching_liquidity_pct: t.liquidity_share_of_fees_pct != null ? t.liquidity_share_of_fees_pct : Math.round(lpShare(t) * 100),
     capital_in_pool_usd: t.capital_usd,
     // What of that is standing within the measured band of the current price.
     // Null means it could not be read, never zero.

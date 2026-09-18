@@ -274,6 +274,15 @@
     .sc-tierbtn:hover:not(:disabled){background:rgba(240,185,11,.16);border-color:rgba(240,185,11,.5)}
     .sc-tierbtn:disabled{opacity:.55;cursor:default}
     .tier-ans{margin-top:14px}
+    .rt-form{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:4px}
+    .rt-lab{font-size:.74rem;color:var(--muted);letter-spacing:.03em}
+    .rt-inp{width:110px;padding:8px 10px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:inherit;font:inherit;font-variant-numeric:tabular-nums}
+    .rt-form .sc-tierbtn{margin-top:0}
+    .rt-t{margin-top:16px}
+    .rt-r{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,1fr);gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--border);font-size:.8rem}
+    .rt-r>span{min-width:0;overflow-wrap:anywhere}
+    .rt-hr{border-top:0;font-size:.66rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+    .rt-num{text-align:right;font-variant-numeric:tabular-nums}
     .tier-t{margin-top:16px}
     .tier-r{display:grid;
       grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);
@@ -487,6 +496,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=60" type="module"></script>
+<script src="scanner.js?v=61" type="module"></script>
 </body>
 </html>

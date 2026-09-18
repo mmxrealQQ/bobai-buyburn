@@ -10,7 +10,7 @@
 //
 // 100% automatic, 100% transparent, 100% on-chain verifiable
 
-const { createPublicClient, createWalletClient, http, parseAbi, formatEther, parseEther } = require('viem');
+const { createPublicClient, createWalletClient, http, fallback, parseAbi, formatEther, parseEther } = require('viem');
 const { bsc } = require('viem/chains');
 const { privateKeyToAccount } = require('viem/accounts');
 const fs = require('fs');
@@ -166,6 +166,21 @@ const ERC20_ABI = parseAbi([
 // transaction that was sent is asked about again before it is given up, and
 // only status 'success' counts. Nothing is remembered between runs — the bot
 // stays as stateless as it was.
+// ONE NODE WAS THE WHOLE BOT (2026-09-18). Every read and every send went to
+// one RPC. With that node down the bot does nothing, which is harmless — the
+// tax waits and the next run splits it correctly. With that node FLAKY in the
+// middle of a run, some legs go out and others do not, and the BNB of the ones
+// that did not is split over all the shares again by the next run. The public
+// BNB Chain nodes stand behind the first one now, asked only when it fails, in
+// this order (rank:false — no racing, no reordering). A signed transaction
+// sent twice is the same transaction: same nonce, same hash. `fallbacks:
+// 'none'` is for a fork, where nothing may reach a real node.
+const FALLBACK_RPCS = ['https://bsc-dataseed.binance.org/', 'https://bsc-dataseed1.bnbchain.org', 'https://bsc-dataseed2.bnbchain.org'];
+function rpcTransport(primary, fallbacks) {
+  const urls = [primary, ...(fallbacks === 'none' ? [] : FALLBACK_RPCS)].filter((u, i, all) => u && all.indexOf(u) === i);
+  return urls.length > 1 ? fallback(urls.map((u) => http(u)), { rank: false }) : http(urls[0]);
+}
+
 async function waitMined(publicClient, hash) {
   try {
     return await publicClient.waitForTransactionReceipt({ hash });
@@ -513,13 +528,13 @@ async function main() {
 
   const publicClient = createPublicClient({
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, process.env.BSC_RPC_FALLBACKS),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, process.env.BSC_RPC_FALLBACKS),
   });
 
   // Step 0: Unwrap any WBNB to native BNB

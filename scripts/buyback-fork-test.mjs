@@ -51,6 +51,13 @@ console.log('the helpers (offline)');
   const lifted = new Function('BOBAI_TOKEN', 'sleep', `${block(workerSrc)}; return { waitMined, mined, say, minOutFor };`)(BOBAI, async () => {});
   ok('$BOBAI: the 3% the token keeps comes off the quote first, then the 5%', lifted.minOutFor(1000000n, BOBAI) === 921500n && lifted.minOutFor(1000000n, BOBAI.toUpperCase().replace('0X', '0x')) === 921500n);
   ok('$BOB has no transfer tax: 95% of the quote, as before', lifted.minOutFor(1000000n, BOB) === 950000n);
+  // The transport: the first node, the public ones behind it, in order; alone on a fork.
+  const tBlock = (text) => text.slice(text.indexOf('const FALLBACK_RPCS'), text.indexOf('async function waitMined('));
+  const mk = new Function('http', 'fallback', `${tBlock(workerSrc)}; return { rpcTransport, FALLBACK_RPCS };`)((u) => ({ http: u }), (list, opts) => ({ list, opts }));
+  const t = mk.rpcTransport('https://keyed.example/abc');
+  ok('the keyed node is asked first and the public ones stand behind it, in order, never ranked', tBlock(workerSrc) === tBlock(fallbackSrc) && t.list.length === 4 && t.list[0].http === 'https://keyed.example/abc' && t.opts.rank === false);
+  ok('a node named twice is asked once, and a fork has no second node', mk.rpcTransport(mk.FALLBACK_RPCS[0]).list.length === 3 && mk.rpcTransport('http://127.0.0.1:8547', 'none').http === 'http://127.0.0.1:8547');
+  ok('the lock outlives the ten minutes between two ticks', /lock-buyback'[^\n]*expirationTtl: 900/.test(workerSrc) && /crons = \["\*\/10 \* \* \* \*"\]/.test(fs.readFileSync(path.join(ROOT, 'worker', 'wrangler.toml'), 'utf8')));
   let asked = 0;
   const slow = { waitForTransactionReceipt: async () => { throw new Error('timed out at https://bsc-mainnet.example/v1/SECRETKEY'); }, getTransactionReceipt: async () => (++asked < 3 ? null : { status: 'success', blockNumber: 1n }) };
   const log = console.log; const lines = []; console.log = (...a) => lines.push(a.join(' '));

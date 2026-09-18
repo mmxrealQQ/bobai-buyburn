@@ -7,7 +7,7 @@
 //
 // 100% automatic, 100% transparent, 100% on-chain verifiable
 
-import { createPublicClient, createWalletClient, http, parseAbi, formatEther, parseEther } from 'viem';
+import { createPublicClient, createWalletClient, http, fallback, parseAbi, formatEther, parseEther } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -160,6 +160,21 @@ const ERC20_ABI = parseAbi([
 // transaction that was sent is asked about again before it is given up, and
 // only status 'success' counts. Nothing is remembered between runs — the bot
 // stays as stateless as it was.
+// ONE NODE WAS THE WHOLE BOT (2026-09-18). Every read and every send went to
+// one RPC. With that node down the bot does nothing, which is harmless — the
+// tax waits and the next run splits it correctly. With that node FLAKY in the
+// middle of a run, some legs go out and others do not, and the BNB of the ones
+// that did not is split over all the shares again by the next run. The public
+// BNB Chain nodes stand behind the first one now, asked only when it fails, in
+// this order (rank:false — no racing, no reordering). A signed transaction
+// sent twice is the same transaction: same nonce, same hash. `fallbacks:
+// 'none'` is for a fork, where nothing may reach a real node.
+const FALLBACK_RPCS = ['https://bsc-dataseed.binance.org/', 'https://bsc-dataseed1.bnbchain.org', 'https://bsc-dataseed2.bnbchain.org'];
+function rpcTransport(primary, fallbacks) {
+  const urls = [primary, ...(fallbacks === 'none' ? [] : FALLBACK_RPCS)].filter((u, i, all) => u && all.indexOf(u) === i);
+  return urls.length > 1 ? fallback(urls.map((u) => http(u)), { rank: false }) : http(urls[0]);
+}
+
 async function waitMined(publicClient, hash) {
   try {
     return await publicClient.waitForTransactionReceipt({ hash });
@@ -491,13 +506,13 @@ async function runBot(env) {
 
   const publicClient = createPublicClient({
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, env.BSC_RPC_FALLBACKS),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, env.BSC_RPC_FALLBACKS),
   });
 
   // Step 0: Unwrap any WBNB to native BNB
@@ -742,14 +757,17 @@ const CORS_HEADERS = {
 
 export default {
   async scheduled(event, env, ctx) {
-    // Overlap guard: a liq-add cycle can take a few minutes — skip this tick
-    // if the previous run is still marked as active (TTL auto-clears after 8 min).
+    // Overlap guard: skip this tick if the previous run is still marked as
+    // active. The lock has to OUTLIVE the ten minutes between two ticks (it was
+    // 480 s: a run held up past eight minutes by slow receipts would have met
+    // the next tick with no lock, two runs splitting one balance). A run that
+    // ends deletes it; one that is killed costs a single skipped tick.
     const lock = await env.LOGS.get('lock-buyback');
     if (lock) {
       console.log(`Previous run still active (started ${lock}) — skipping this tick.`);
       return;
     }
-    await env.LOGS.put('lock-buyback', new Date().toISOString(), { expirationTtl: 480 });
+    await env.LOGS.put('lock-buyback', new Date().toISOString(), { expirationTtl: 900 });
     try {
       await runBot(env);
     } finally {

@@ -40,6 +40,7 @@ import {
   widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
+import { alertsOf } from '../shared/lp-alerts.js';
 
 const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
@@ -202,6 +203,20 @@ if (SELF) {
   // Kept fees that wait in the wallet (2026-09-18): the fixture's last collect (09-09, kept 0.0005) came after its last increase.
   is('fees a collect kept after the last increase still wait: counted as waiting, capped by what the wallet has above its reserve', near(fl.waiting.kept_fees_bnb, 0.0005) && near(moneyFlow({ ...rec, last: { ...rec.last, steps: { ...rec.last.steps, increase: { spendable_bnb: 0.0002 } } } }).waiting.kept_fees_bnb, 0.0002));
   is('… and an increase after it takes them in: nothing waits', near(moneyFlow({ ...rec, history: [...rec.history, { at: '2026-09-10T05:00:00Z', ok: true, acted: true, steps: { increase: { acted: true, bnb_spent: '0.006', txs: [] } } }] }).waiting.kept_fees_bnb, 0));
+  // What the operator is told at once (shared/lp-alerts.js, 2026-09-18) — and what is left to the daily card.
+  {
+    const quiet = { at: '2026-09-18T12:00:00Z', ok: true, steps: { rebalance: { acted: false, why: 'the price is inside the range — nothing to re-set' }, increase: { acted: true, bnb_spent: '0.04', txs: [{ hash: '0xaa' }] }, collect: { acted: true, produced_bnb: 0.006 } } };
+    const stood = { at: '2026-09-16T09:00:00Z', ok: true, steps: { rebalance: { acted: false, why: 'this wallet holds 2 positions — which one to re-set is a decision for a person' }, increase: { acted: false, why: 'this wallet holds 2 positions — which one to grow is a decision for a person' } } };
+    const broke = { at: '2026-09-18T12:50:00Z', ok: false, steps: { rebalance: { acted: true, error: 'mint the new range reverted — stopped before the next step', txs: [{ hash: '0xabc' }, { hash: '0xdef' }] } } };
+    const up = { at: '2026-09-20T08:50:00Z', ok: true, steps: { rebalance: { acted: true, position: '7451444', new_position: '7477750', one_sided: 'below_price', new_ticks: [-58300, -56390], merged_reserve: '7461743', swap: { side: 'sell', notional_bnb: 0.0009 }, bobai_bnb: 0.001, txs: [{ hash: '0x12' }] } } };
+    is('routine is not an alert: a look, a collect and a top-up say nothing', alertsOf(quiet).length === 0);
+    is('the day the agent stood still is ONE message, not one per refusing step — and it names them', (() => { const m = alertsOf(stood); return m.length === 1 && /rebalance, increase wait for a person/.test(m[0].text) && m[0].quietHours >= 12; })());
+    is('a failed step is told with what had already been sent', (() => { const m = alertsOf(broke); return m.length === 1 && /rebalance FAILED/.test(m[0].text) && /2 transaction\(s\) had already gone through/.test(m[0].text); })());
+    is('… the same failure has the same key (said once while it repeats), another failure another key', alertsOf(broke)[0].key === alertsOf({ ...broke, at: '2026-09-18T13:00:00Z' })[0].key && alertsOf(broke)[0].key !== alertsOf({ ...broke, steps: { rebalance: { ...broke.steps.rebalance, error: 'another reason' } } })[0].key);
+    is('a re-set is told with its direction, the merge and the trade — keyed by the position it made', (() => { const m = alertsOf(up); return m.length === 1 && /re-set UPWARD/.test(m[0].text) && /merged the reserve #7461743/.test(m[0].text) && m[0].key === 'reset:7477750'; })());
+    is('a healed record, a record write that failed after a transaction and every ladder act are told', alertsOf({ at: 'x', ok: true, steps: {}, ladder_healed: { from: '1', to: '2', why: 'w' } }).length === 1 && alertsOf({ at: 'x', ok: true, steps: { ladder: { acted: true, new_reserve: '9', bnb_spent: '0.04', kv_error: 'KV put failed' } } }).length === 2);
+    is('a dry run tells nobody anything, and markup in an error cannot reach the message', alertsOf({ ...broke, dry: true }).length === 0 && !/<script>/.test(alertsOf({ at: 'x', ok: false, steps: { collect: { error: '<script>x</script>' } } })[0].text));
+  }
   const forcedRec = { history: [{ at: '2026-09-20T10:00:00Z', ok: true, acted: true, steps: { rebalance: { acted: true, new_position: '10', wrapped_waiting_bnb: 0.4, txs: [{ gas_bnb: 0.00005 }] } } }] };
   is('a re-set forced by a deposit wraps it into its own mint: that is capital put in, counted once', near(moneyFlow(forcedRec).out.into_position_bnb, 0.4) && near(moneyFlow({ history: [{ ...forcedRec.history[0], steps: { rebalance: { ...forcedRec.history[0].steps.rebalance, wrapped_waiting_bnb: undefined } } }] }).out.into_position_bnb, 0));
   is('three re-sets', fl.out.resets === 3);

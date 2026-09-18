@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 14 files, 5881 lines.
+# one fetch. 16 files, 6243 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -56,6 +56,7 @@ import {
   widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
+import { alertsOf } from '../shared/lp-alerts.js';
 
 const CONFIRM = process.argv.includes('--confirm');
 const SELF = process.argv.includes('--self-test');
@@ -218,6 +219,20 @@ if (SELF) {
   // Kept fees that wait in the wallet (2026-09-18): the fixture's last collect (09-09, kept 0.0005) came after its last increase.
   is('fees a collect kept after the last increase still wait: counted as waiting, capped by what the wallet has above its reserve', near(fl.waiting.kept_fees_bnb, 0.0005) && near(moneyFlow({ ...rec, last: { ...rec.last, steps: { ...rec.last.steps, increase: { spendable_bnb: 0.0002 } } } }).waiting.kept_fees_bnb, 0.0002));
   is('… and an increase after it takes them in: nothing waits', near(moneyFlow({ ...rec, history: [...rec.history, { at: '2026-09-10T05:00:00Z', ok: true, acted: true, steps: { increase: { acted: true, bnb_spent: '0.006', txs: [] } } }] }).waiting.kept_fees_bnb, 0));
+  // What the operator is told at once (shared/lp-alerts.js, 2026-09-18) — and what is left to the daily card.
+  {
+    const quiet = { at: '2026-09-18T12:00:00Z', ok: true, steps: { rebalance: { acted: false, why: 'the price is inside the range — nothing to re-set' }, increase: { acted: true, bnb_spent: '0.04', txs: [{ hash: '0xaa' }] }, collect: { acted: true, produced_bnb: 0.006 } } };
+    const stood = { at: '2026-09-16T09:00:00Z', ok: true, steps: { rebalance: { acted: false, why: 'this wallet holds 2 positions — which one to re-set is a decision for a person' }, increase: { acted: false, why: 'this wallet holds 2 positions — which one to grow is a decision for a person' } } };
+    const broke = { at: '2026-09-18T12:50:00Z', ok: false, steps: { rebalance: { acted: true, error: 'mint the new range reverted — stopped before the next step', txs: [{ hash: '0xabc' }, { hash: '0xdef' }] } } };
+    const up = { at: '2026-09-20T08:50:00Z', ok: true, steps: { rebalance: { acted: true, position: '7451444', new_position: '7477750', one_sided: 'below_price', new_ticks: [-58300, -56390], merged_reserve: '7461743', swap: { side: 'sell', notional_bnb: 0.0009 }, bobai_bnb: 0.001, txs: [{ hash: '0x12' }] } } };
+    is('routine is not an alert: a look, a collect and a top-up say nothing', alertsOf(quiet).length === 0);
+    is('the day the agent stood still is ONE message, not one per refusing step — and it names them', (() => { const m = alertsOf(stood); return m.length === 1 && /rebalance, increase wait for a person/.test(m[0].text) && m[0].quietHours >= 12; })());
+    is('a failed step is told with what had already been sent', (() => { const m = alertsOf(broke); return m.length === 1 && /rebalance FAILED/.test(m[0].text) && /2 transaction\(s\) had already gone through/.test(m[0].text); })());
+    is('… the same failure has the same key (said once while it repeats), another failure another key', alertsOf(broke)[0].key === alertsOf({ ...broke, at: '2026-09-18T13:00:00Z' })[0].key && alertsOf(broke)[0].key !== alertsOf({ ...broke, steps: { rebalance: { ...broke.steps.rebalance, error: 'another reason' } } })[0].key);
+    is('a re-set is told with its direction, the merge and the trade — keyed by the position it made', (() => { const m = alertsOf(up); return m.length === 1 && /re-set UPWARD/.test(m[0].text) && /merged the reserve #7461743/.test(m[0].text) && m[0].key === 'reset:7477750'; })());
+    is('a healed record, a record write that failed after a transaction and every ladder act are told', alertsOf({ at: 'x', ok: true, steps: {}, ladder_healed: { from: '1', to: '2', why: 'w' } }).length === 1 && alertsOf({ at: 'x', ok: true, steps: { ladder: { acted: true, new_reserve: '9', bnb_spent: '0.04', kv_error: 'KV put failed' } } }).length === 2);
+    is('a dry run tells nobody anything, and markup in an error cannot reach the message', alertsOf({ ...broke, dry: true }).length === 0 && !/<script>/.test(alertsOf({ at: 'x', ok: false, steps: { collect: { error: '<script>x</script>' } } })[0].text));
+  }
   const forcedRec = { history: [{ at: '2026-09-20T10:00:00Z', ok: true, acted: true, steps: { rebalance: { acted: true, new_position: '10', wrapped_waiting_bnb: 0.4, txs: [{ gas_bnb: 0.00005 }] } } }] };
   is('a re-set forced by a deposit wraps it into its own mint: that is capital put in, counted once', near(moneyFlow(forcedRec).out.into_position_bnb, 0.4) && near(moneyFlow({ history: [{ ...forcedRec.history[0], steps: { rebalance: { ...forcedRec.history[0].steps.rebalance, wrapped_waiting_bnb: undefined } } }] }).out.into_position_bnb, 0));
   is('three re-sets', fl.out.resets === 3);
@@ -904,6 +919,241 @@ async function main() {
 // that did what it was asked. Every path returns, failures set
 // process.exitCode, and the process closes its own sockets.
 if (!SELF && process.exitCode !== 2) await main().catch((e) => { console.error(`\nFailed: ${e.shortMessage || e.message}`); process.exitCode = 1; });
+
+==============================================================================
+=== FILE: scripts/lp-fork-test.mjs
+==============================================================================
+
+#!/usr/bin/env node
+// The DeFi agent's money paths, RUN — on a local copy of BNB Chain.
+//
+// The self-test (lp-agent.mjs --self-test) pins the rules and drives the plan
+// functions over a chain that answers from a table. What it cannot do is send:
+// whether the position manager takes a one-sided mint at these minimums,
+// whether the router fills a "sell all of it", whether a merge and a re-set go
+// through in one breath — that was only ever known after the agent had done
+// it with the operator's capital. Several of those paths have never run
+// (2026-09-18: the re-set upward, the merge, growing a reserve the price is
+// in, finishing a re-set whose mint failed beside the reserve, selling the
+// profit share of a re-set downward out of the fee token).
+//
+// This script forks the chain with anvil at the current block, takes the DeFi
+// wallet's place by impersonation — NO KEY is read, nothing can reach the real
+// chain: every transaction goes to 127.0.0.1 — moves the pool's price with a
+// made-up whale, and runs the SAME execute functions the worker runs
+// (shared/lp-agent.js) against PancakeSwap's real contracts and the agent's
+// real positions. After each path it reads the chain and checks what must hold.
+//
+// Needs: anvil (foundry; ~/.foundry/bin/anvil.exe or ANVIL=…), and an RPC that
+// serves historical state in BSC_RPC_KEYED_URL_2 (.env) — a fork reads state
+// at its block for minutes, and the public endpoints prune it within seconds.
+//
+//   node scripts/lp-fork-test.mjs            every path
+//   node scripts/lp-fork-test.mjs --only up  one of: up, down, reserve, resume
+import 'dotenv/config';
+import { spawn } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
+import { createPublicClient, createWalletClient, createTestClient, http, parseAbi, parseEther, formatEther, encodeFunctionData } from 'viem';
+import { bsc } from 'viem/chains';
+import {
+  ADDR, ABI, readPosition, readPool, heldIds, healLadder, positionSide, unwindCalls,
+  planRebalance, executeRebalance, planLadder, executeLadder, planIncrease, executeIncrease,
+} from '../shared/lp-agent.js';
+
+const PORT = 8546, LOCAL = `http://127.0.0.1:${PORT}`;
+const FORK_URL = process.env.BSC_RPC_KEYED_URL_2 || process.env.BSC_RPC_KEYED_URL_1 || process.env.BSC_ARCHIVE_RPC_URL;
+const ANVIL = process.env.ANVIL || path.join(os.homedir(), '.foundry', 'bin', process.platform === 'win32' ? 'anvil.exe' : 'anvil');
+const only = (() => { const i = process.argv.indexOf('--only'); return i >= 0 ? process.argv[i + 1] : null; })();
+const LP = ADDR.LP_WALLET, CAKE = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', WHALE = '0x00000000000000000000000000000000000f00d1';
+const ERC20 = parseAbi(['function balanceOf(address) view returns (uint256)', 'function transfer(address,uint256) returns (bool)', 'function approve(address,uint256) returns (bool)', 'function deposit() payable']);
+const NPM = parseAbi(['function multicall(bytes[] data) payable returns (bytes[] results)', 'function decreaseLiquidity((uint256 tokenId,uint128 liquidity,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint256,uint256)']);
+
+if (!FORK_URL) { console.error('No archive RPC in .env (BSC_RPC_KEYED_URL_2). A fork needs state at its block for minutes; the public endpoints prune it within seconds.'); process.exit(2); }
+if (!fs.existsSync(ANVIL)) { console.error(`anvil not found at ${ANVIL} — install foundry, or set ANVIL=…`); process.exit(2); }
+
+let failed = 0, n = 0;
+const ok = (label, pass, detail = '') => { n++; if (!pass) failed++; console.log(`  ${pass ? 'ok  ' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const anvil = spawn(ANVIL, ['--fork-url', FORK_URL, '--port', String(PORT), '--chain-id', '56', '--auto-impersonate', '--silent', '--no-rate-limit', '--gas-price', '100000000', '--block-base-fee-per-gas', '0'], { stdio: 'ignore' });
+const stop = () => { try { anvil.kill(); } catch { /* gone */ } };
+process.on('exit', stop); process.on('SIGINT', () => { stop(); process.exit(130); });
+
+const chain = { ...bsc, rpcUrls: { default: { http: [LOCAL] } } };
+const pub = createPublicClient({ chain, transport: http(LOCAL, { timeout: 120000 }) });
+const test = createTestClient({ chain, mode: 'anvil', transport: http(LOCAL, { timeout: 120000 }) });
+const walletOf = (address) => createWalletClient({ account: address, chain, transport: http(LOCAL, { timeout: 120000 }) });
+// The agent's wallet, with one difference from production that belongs to the
+// fork and not to the agent: every transaction is sent with a fixed gas limit
+// instead of anvil's own estimate.
+const lpWallet = (() => {
+  const w = walletOf(LP);
+  if (process.env.FORK_GAS === '0') return w;   // FORK_GAS=0: anvil's own estimate, which is too tight for the manager's multicall (burn refunds) — measured 2026-09-18, the same call runs on the real chain
+  const write = w.writeContract.bind(w);
+  // 700k covers the largest call (a mint across ticks). The fork answers
+  // eth_gasPrice with 1 gwei where the chain clears at 0.05, so a limit set
+  // generously would not fit inside the agent's 0.003 BNB gas reserve after a
+  // few transactions — on the real chain the limit is the node's estimate.
+  w.writeContract = (req) => write({ ...req, gas: 700000n });
+  return w;
+})();
+const bal = (token, who) => pub.readContract({ address: token, abi: ERC20, functionName: 'balanceOf', args: [who] });
+const sendAs = async (from, req) => { const h = await walletOf(from).writeContract({ ...req, account: from, chain, gas: 25000000n /* the whale crosses hundreds of ticks in one swap */ }); const r = await pub.waitForTransactionReceipt({ hash: h }); if (r.status !== 'success') throw new Error('setup transaction reverted'); return r; };
+
+for (let i = 0; i < 60; i++) { try { await pub.getBlockNumber(); break; } catch { await sleep(500); } }
+const forkBlock = await pub.getBlockNumber();
+console.log(`forked BNB Chain at block ${forkBlock} — every transaction below goes to ${LOCAL} and nowhere else\n`);
+
+// The agent's own record and width verdict, as the worker reads them.
+const rec = await fetch('https://agent.brainonbnb.com/lp/agent?format=json').then((r) => r.json());
+const win = await fetch('https://agent.brainonbnb.com/lp/windows?format=json').then((r) => r.json());
+const record = win.verdict, POOL = String(win.pool || rec.pool).toLowerCase();
+const LADDER0 = { main: String(rec.ladder.main), reserve: rec.ladder.reserve == null ? null : String(rec.ladder.reserve) };
+console.log(`ladder on record: main #${LADDER0.main}, reserve #${LADDER0.reserve}; pool ${POOL}; pick ±${record?.earnings_pick?.width}%\n`);
+
+// A whale with all the BNB and CAKE it needs, and an approval for the router.
+await test.setBalance({ address: WHALE, value: parseEther('2000000') });
+await test.setBalance({ address: LP, value: (await pub.getBalance({ address: LP })) + parseEther('0.05') });   // gas for the paths, as the tax flow refills it
+await sendAs(WHALE, { address: ADDR.WBNB, abi: ERC20, functionName: 'deposit', value: parseEther('1000000') });
+let cakeRich = null;
+for (const h of ['0x45c54210128a065de780c4b0df3d16664f7f859e', '0x5692db8177a81a6c6afc8084c2976c9933ec1bab', '0xa5f8c5dbd5f286960b9d90548680ae5ebff07652', '0x0ed7e52944161450477ee417de9cd3a859b14fd0']) {
+  const b = await bal(CAKE, h); if (!cakeRich || b > cakeRich.b) cakeRich = { h, b };
+}
+await test.setBalance({ address: cakeRich.h, value: parseEther('1') });
+await sendAs(cakeRich.h, { address: CAKE, abi: ERC20, functionName: 'transfer', args: [WHALE, cakeRich.b / 2n] });
+for (const t of [ADDR.WBNB, CAKE]) await sendAs(WHALE, { address: t, abi: ERC20, functionName: 'approve', args: [ADDR.V3_SWAP_ROUTER, (1n << 256n) - 1n] });
+
+const sqrtX96AtTick = (t) => BigInt(Math.floor(Math.pow(1.0001, t / 2) * 2 ** 96));
+const pos0 = await readPosition(pub, LP, LADDER0);
+const FEE = Number(pos0.pos[4]);
+// The whale trades until the pool's price stands at `tick`: one swap with a
+// price limit, so it stops exactly there whatever the depth is.
+async function pushPriceTo(tick) {
+  const now = (await readPool(pub, pos0.pos)).tick;
+  const up = tick > now;   // CAKE is token0, WBNB token1: buying CAKE with WBNB raises the tick
+  const [tokenIn, tokenOut] = up ? [ADDR.WBNB, CAKE] : [CAKE, ADDR.WBNB];
+  const amountIn = await bal(tokenIn, WHALE);
+  await sendAs(WHALE, { address: ADDR.V3_SWAP_ROUTER, abi: ABI.V3_ROUTER, functionName: 'exactInputSingle', args: [{ tokenIn, tokenOut, fee: FEE, recipient: WHALE, deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), amountIn, amountOutMinimum: 0n, sqrtPriceLimitX96: sqrtX96AtTick(tick) }] });
+  return (await readPool(pub, pos0.pos)).tick;
+}
+const valueOf = async (ladder) => {
+  const p = await readPosition(pub, LP, ladder);
+  const info = await readPool(pub, p.pos || pos0.pos);
+  const price = info.sqrtP ** 2;
+  const side = (x) => (x ? positionSide(x.pos, info.sqrtP, false).valueBnb : 0);
+  const loose = (Number(await bal(ADDR.WBNB, LP)) + Number(await bal(CAKE, LP)) * price) / 1e18;
+  return { main: p.pos ? side(p) : 0, reserve: side(p.reserve), loose, native: Number(formatEther(await pub.getBalance({ address: LP }))), tick: info.tick, p };
+};
+const total = (v) => v.main + v.reserve + v.loose + v.native;
+const BOBAI = ADDR.BOBAI;
+
+// What the worker's rebalance step does, in its order: the merge first when the
+// ladder plan says so, then the re-set — with the ladder record kept in hand.
+async function workerRebalance(ladder, { expectMerge = null } = {}) {
+  const plan = await planRebalance(pub, LP, { record, pool: POOL, ladder });
+  if (plan.no) return { plan, refused: plan.no };
+  const txs = [];
+  let merged = null;
+  if (plan.summary.reserve) {
+    const lp2 = await planLadder(pub, LP, { record, ladder });
+    if (lp2.act === 'merge') { merged = await executeLadder(pub, lpWallet, lpWallet.account, lp2, () => {}, { txs }); ladder.reserve = null; }
+    if (expectMerge != null) ok(`the ladder plan ${expectMerge ? 'merges the reserve first' : 'leaves the reserve where it is'}`, (lp2.act === 'merge') === expectMerge, `act ${lp2.act}: ${lp2.why}`);
+  }
+  const done = await executeRebalance(pub, lpWallet, lpWallet.account, plan, () => {}, { txs });
+  if (done.new_position) ladder.main = String(done.new_position);
+  return { plan, done, merged, txs };
+}
+
+async function scenario(name, key, fn) {
+  if (only && only !== key) return;
+  const snap = await test.snapshot();
+  console.log(`\n${name}`);
+  try { await fn(); } catch (e) { ok('the path ran to its end', false, String(e.shortMessage || e.message || e).slice(0, 300)); }
+  await test.revert({ id: snap });
+}
+
+// ---------------------------------------------------------------------------
+await scenario('RE-SET UPWARD — the price leaves above the main range: the reserve merges, one range below the price, all WBNB, no trade of the capital', 'up', async () => {
+  const ladder = { ...LADDER0 };
+  const hi = Number(pos0.pos[6]);
+  const tick = await pushPriceTo(hi + 150);
+  const before = await valueOf(ladder);
+  ok('the whale moved the price above the range', tick >= hi + 100, `tick ${tick}, range top ${hi}`);
+  const bobai0 = await bal(BOBAI, LP);
+  const r = await workerRebalance(ladder, { expectMerge: LADDER0.reserve != null });
+  if (r.refused) return ok('the plan re-sets', false, r.refused);
+  ok('the plan is one-sided, below the price', r.plan.oneSided === 'above' && r.done.one_sided === 'below_price', `ticks ${r.done.new_ticks}`);
+  const ids = await heldIds(pub, LP);
+  ok('one position is left, and it is the new one — read off the mint receipt', ids.length === 1 && ids[0] === String(r.done.new_position), `held ${ids.join(', ')}`);
+  const after = await valueOf(ladder);
+  ok('the new range sits beside the price as it was AT THE MINT (20-29 ticks under it)', after.tick - r.done.new_ticks[1] >= 20 && after.tick - r.done.new_ticks[1] < 30, `tick ${after.tick}, range top ${r.done.new_ticks[1]}`);
+  ok('the capital went back in whole: nothing of it is loose in the wallet', after.loose < 0.0005 * total(after), `${after.loose.toFixed(6)} BNB loose of ${total(after).toFixed(4)}`);
+  ok('the fees the old range paid in CAKE were sold in full — the sale that asked for more than the wallet held before 2026-09-18', (await bal(CAKE, LP)) < 10n ** 15n, `CAKE left ${formatEther(await bal(CAKE, LP))}; swap ${r.done.swap ? JSON.stringify(r.done.swap).slice(0, 120) : 'none'}`);
+  ok('the value is the same before and after, less gas and the fee share', Math.abs(total(after) + (r.done.bobai_bnb || 0) - total(before)) < 0.002 * total(before), `${total(before).toFixed(5)} → ${total(after).toFixed(5)} BNB (+ ${r.done.bobai_bnb || 0} into $BOBAI)`);
+  ok('the profit share bought $BOBAI, held in the wallet', !(r.done.bobai_bnb > 0) || (await bal(BOBAI, LP)) > bobai0, `fees folded ${r.done.fees_folded_bnb}, into $BOBAI ${r.done.bobai_bnb}${r.done.fees_forward_why ? ' — ' + r.done.fees_forward_why : ''}`);
+  console.log(`       ${r.txs.length} transactions: ${r.txs.map((t) => t.label.split(' ').slice(0, 3).join(' ')).join(' · ')}`);
+});
+
+await scenario('RE-SET DOWNWARD — the price falls out of the main range into the reserve: one range above the price, all CAKE, and the profit share sold out of the CAKE fees', 'down', async () => {
+  const ladder = { ...LADDER0 };
+  const lo = Number(pos0.pos[5]);
+  const tick = await pushPriceTo(lo - 150);
+  const before = await valueOf(ladder);
+  ok('the whale moved the price below the range', tick <= lo - 100, `tick ${tick}, range bottom ${lo}`);
+  const bobai0 = await bal(BOBAI, LP);
+  const r = await workerRebalance(ladder, { expectMerge: false });
+  if (r.refused) return ok('the plan re-sets', false, r.refused);
+  ok('the plan is one-sided, above the price', r.done.one_sided === 'above_price', `ticks ${r.done.new_ticks}`);
+  const ids = await heldIds(pub, LP);
+  ok('two positions are held: the new main range and the reserve that stood', ids.length === (LADDER0.reserve ? 2 : 1) && ids.includes(String(r.done.new_position)) && (!LADDER0.reserve || ids.includes(LADDER0.reserve)), `held ${ids.join(', ')}`);
+  const after = await valueOf(ladder);
+  ok('the new range sits 20-29 ticks above the price at the mint', r.done.new_ticks[0] - after.tick >= 20 && r.done.new_ticks[0] - after.tick < 30, `tick ${after.tick}, range bottom ${r.done.new_ticks[0]}`);
+  ok('nothing of the capital is loose', after.loose < 0.0005 * total(after), `${after.loose.toFixed(6)} BNB loose`);
+  ok('the profit share was bought although the fees came in CAKE (before 2026-09-18: "stays as capital")', !(r.done.fees_folded_bnb > 0.0002) || (r.done.bobai_bnb > 0 && (await bal(BOBAI, LP)) > bobai0), `fees folded ${r.done.fees_folded_bnb}, into $BOBAI ${r.done.bobai_bnb}, share sale ${r.done.share_swap ? 'yes' : 'no'}${r.done.fees_forward_why ? ' — ' + r.done.fees_forward_why : ''}`);
+  ok('the value is the same before and after, less gas and the fee share', Math.abs(total(after) + (r.done.bobai_bnb || 0) - total(before)) < 0.002 * total(before), `${total(before).toFixed(5)} → ${total(after).toFixed(5)} BNB`);
+
+  // … and BNB that arrives now joins the reserve the price is IN.
+  if (LADDER0.reserve) {
+    await test.setBalance({ address: LP, value: (await pub.getBalance({ address: LP })) + parseEther('0.06') });
+    const lp3 = await planLadder(pub, LP, { record, ladder });
+    ok('BNB arriving beside an all-CAKE main range grows the reserve', lp3.act === 'increase_reserve' && !lp3.no, `act ${lp3.act}: ${lp3.no || lp3.why}`);
+    if (lp3.act === 'increase_reserve' && !lp3.no) {
+      const liq0 = (await readPosition(pub, LP, ladder)).reserve.pos[7];
+      const d = await executeLadder(pub, lpWallet, lpWallet.account, lp3, () => {}, { txs: [] });
+      const liq1 = (await readPosition(pub, LP, ladder)).reserve.pos[7];
+      ok('… through the ordinary increase, buying the side a range the price is in needs (a WBNB-only add reverted there)', liq1 > liq0 && Number(d.bnb_spent) > 0.05, `reserve side ${d.reserve_side}, liquidity ${liq0} → ${liq1}, spent ${d.bnb_spent} BNB, swap ${d.swap ? 'yes' : 'no'}`);
+    }
+  }
+});
+
+await scenario('A RE-SET WHOSE MINT FAILED BESIDE THE RESERVE — the main range is burnt, its CAKE lies loose: finished from the wallet, not sold into the reserve', 'resume', async () => {
+  if (!LADDER0.reserve) return ok('needs a standing reserve', true, 'skipped: no reserve on record');
+  const ladder = { ...LADDER0 };
+  const lo = Number(pos0.pos[5]);
+  await pushPriceTo(lo - 150);
+  // The first half of a re-set, by hand: withdraw, collect, burn — and then nothing.
+  const p = await readPosition(pub, LP, ladder);
+  await sendAs(LP, { address: ADDR.V3_POSITION_MANAGER, abi: NPM, functionName: 'multicall', args: [unwindCalls(p.tokenId, p.pos[7], 0n, 0n, LP, BigInt(Math.floor(Date.now() / 1000) + 3600))] });
+  const before = await valueOf(ladder);
+  const seen = await readPosition(pub, LP, ladder);
+  ok('the wallet reads as "no main range, the reserve rides along"', seen.positions === 0 && String(seen.reserve?.tokenId) === LADDER0.reserve && seen.main_missing === LADDER0.main);
+  ok('the ladder is NOT closed while the capital lies loose', (await healLadder(pub, LP, { ...ladder })) === null, `${before.loose.toFixed(4)} BNB loose`);
+  const inc = await planIncrease(pub, LP, null, ladder);
+  ok('the increase step does not take the loose CAKE for a deposit', !!inc.no, inc.no);
+  const r = await workerRebalance(ladder, { expectMerge: false });
+  if (r.refused) return ok('the resume mints', false, r.refused);
+  ok('the resume is one-sided on the token held, and trades nothing of the capital', r.plan.resume === true && r.done.one_sided === 'above_price' && !(r.done.swap && Number(r.done.swap.notional_bnb || 0) > 0.01 * before.loose), `swap ${r.done.swap ? JSON.stringify(r.done.swap).slice(0, 100) : 'none'}`);
+  const ids = await heldIds(pub, LP);
+  ok('the main range stands again beside the reserve, its id off the receipt', ids.length === 2 && ids.includes(LADDER0.reserve) && ids.includes(String(r.done.new_position)), `held ${ids.join(', ')}`);
+  const after = await valueOf(ladder);
+  ok('nothing is loose, and the value is what it was', after.loose < 0.0005 * total(after) && Math.abs(total(after) - total(before)) < 0.002 * total(before), `${total(before).toFixed(5)} → ${total(after).toFixed(5)} BNB, loose ${after.loose.toFixed(6)}`);
+});
+
+console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);
+stop();
+process.exit(failed ? 1 : 0);
 
 ==============================================================================
 === FILE: scripts/lp-portfolio.mjs
@@ -3015,6 +3265,84 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     return { txs, gas_bnb: gasOf(), merged_reserve: String(plan.reserve.tokenId), ...folded };
   }
   throw new Error(`the ladder plan names no action (${plan.act})`);
+}
+
+==============================================================================
+=== FILE: shared/lp-alerts.js
+==============================================================================
+
+// What the DeFi agent tells its operator AT ONCE, and what it keeps for the
+// daily card. Pure: a tick's entry in, the messages out.
+//
+// Until 2026-09-18 the operator heard about the agent twice a day — the public
+// card at 05:00 UTC and the health message at 09:10 — and both arrive while an
+// agent stands still (09-16/17: a day, politely refusing every step with
+// ok:true). What cannot wait for the morning:
+//   - a step that failed (the money may be half way: unwound, not minted),
+//   - a step that waits for a person ("which one to re-set is a decision for a
+//     person") — the agent does nothing until somebody looks,
+//   - the ladder record healed, a KV write that failed after a transaction,
+//   - the money moving in a way it rarely does: a re-set of the main range
+//     (with its direction, a merge, a resume from the wallet, the share's
+//     sale), and every act of the ladder. Several of these had never run with
+//     money when this was written, and the first time each one does is the
+//     time to look at the chain.
+// Routine is NOT told: a look that found nothing to do, a collect, a top-up.
+//
+// Each message carries a `key`. The worker remembers a key for `quietHours`
+// and says nothing again while it does — a refusal repeats every ten minutes,
+// and a message every ten minutes is a message nobody reads. Money events
+// carry the ids they made, so they are said once by construction.
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return (h >>> 0).toString(36); };
+const PERSON = /decision (for )?a person|a person should make/i;
+export const RECORD_URL = 'https://agent.brainonbnb.com/lp/agent';
+
+export function alertsOf(entry) {
+  if (!entry || entry.dry) return [];
+  const out = [];
+  const steps = Object.entries(entry.steps || {}).flatMap(([k, v]) => (Array.isArray(v) ? v : [v]).map((x) => [k, x || {}]));
+  const when = String(entry.at || '').slice(11, 16);
+  const tx = (x) => (Array.isArray(x.txs) && x.txs.length ? ` · ${x.txs.length} tx, last <a href="https://bscscan.com/tx/${esc(x.txs[x.txs.length - 1].hash)}">${esc(String(x.txs[x.txs.length - 1].hash).slice(0, 10))}…</a>` : '');
+
+  const waits = [];
+  for (const [k, x] of steps) {
+    if (x.error) {
+      const sent = Array.isArray(x.txs) && x.txs.length;
+      out.push({ key: `err:${k}:${hash(x.error)}`, quietHours: 6, text: `🚨 <b>DeFi agent · ${esc(k)} FAILED</b> (${when} UTC)\n${esc(String(x.error).slice(0, 240))}\n${sent ? `<b>${x.txs.length} transaction(s) had already gone through</b> — the money may be half way (unwound, not minted). The next hourly check tries to finish it; look at the wallet.${tx(x)}` : 'Nothing was sent.'}` });
+    } else if (PERSON.test(String(x.why || ''))) {
+      waits.push([k, x.why]);
+    }
+    if (x.kv_error) out.push({ key: `kv:${k}:${hash(x.kv_error)}`, quietHours: 6, text: `⚠️ <b>DeFi agent · ${esc(k)}</b>: the transaction went through, the record write did not (${esc(String(x.kv_error).slice(0, 160))}). The ladder record heals itself on the next tick — check that it did.` });
+  }
+  if (waits.length) out.push({ key: `person:${waits.map(([k]) => k).join('+')}`, quietHours: 12, text: `✋ <b>DeFi agent · ${esc(waits.map(([k]) => k).join(', '))} wait${waits.length === 1 ? 's' : ''} for a person</b> (${when} UTC)\n${esc(String(waits[0][1]).slice(0, 240))}\nThe agent does nothing there until somebody looks — this is how it stood still for a day on 2026-09-16.` });
+  if (entry.error) out.push({ key: `err:tick:${hash(entry.error)}`, quietHours: 6, text: `🚨 <b>DeFi agent · the tick itself failed</b> (${when} UTC)\n${esc(String(entry.error).slice(0, 240))}` });
+
+  const h = entry.ladder_healed;
+  if (h) out.push({ key: `heal:${h.from}:${h.to}:${h.reserve_adopted || h.reserve_closed || ''}`, quietHours: 24, text: `🩹 <b>DeFi agent · ladder record healed</b> (${when} UTC)\n${esc(String(h.why || '').slice(0, 300))}` });
+
+  const rb = (entry.steps || {}).rebalance;
+  if (rb && rb.acted && !rb.error && rb.new_position) {
+    const dir = rb.one_sided === 'below_price' ? 'UPWARD — the price left above the range; the new range is below the price, all BNB' : rb.one_sided === 'above_price' ? 'downward — the price left below the range; the new range is above the price, all ' + esc(rb.other_token || 'CAKE') : 'centred';
+    const notes = [
+      rb.resumed_from_wallet ? 'FINISHED FROM THE WALLET (an earlier re-set had stopped before its mint)' : null,
+      rb.main_missing ? `the main range #${esc(rb.main_missing)} was gone, the reserve stood` : null,
+      rb.merged_reserve ? `merged the reserve #${esc(rb.merged_reserve)} first` : null,
+      rb.share_swap ? "sold the profit share's part of the CAKE fees" : null,
+      rb.swap ? `a trade of ${esc(rb.swap.notional_bnb)} BNB (${esc(rb.swap.side)})` : 'no trade',
+      rb.bobai_bnb > 0 ? `${esc(rb.bobai_bnb)} BNB into $BOBAI` : (rb.fees_forward_why ? esc(rb.fees_forward_why) : null),
+    ].filter(Boolean);
+    out.push({ key: `reset:${rb.new_position}`, quietHours: 720, text: `🔁 <b>DeFi agent · re-set ${dir}</b> (${when} UTC)\n#${esc(rb.position)} → #${esc(rb.new_position)}${Array.isArray(rb.new_ticks) ? `, ticks ${rb.new_ticks.join(' … ')}` : ''}${rb.width_pct != null ? `, ±${esc(rb.width_pct)}%` : ''} · ${notes.join(' · ')}${rb.gas_bnb != null ? ` · gas ${esc(rb.gas_bnb)} BNB` : ''}${tx(rb)}` });
+  }
+  const ld = (entry.steps || {}).ladder;
+  if (ld && ld.acted && !ld.error) {
+    const what = ld.merged_reserve ? `merged the reserve #${esc(ld.merged_reserve)} into the main range`
+      : ld.old_reserve ? `re-set the reserve #${esc(ld.old_reserve)} → #${esc(ld.new_reserve)} beside the price`
+      : ld.new_reserve ? `opened a reserve range #${esc(ld.new_reserve)} below the price with ${esc(ld.bnb_spent)} BNB`
+      : `grew the reserve #${esc(ld.reserve)} by ${esc(ld.bnb_spent)} BNB (${esc(ld.reserve_side || '?')}${ld.swap ? ', bought the missing side first' : ', no trade'})`;
+    out.push({ key: `ladder:${ld.new_reserve || ld.merged_reserve || ld.reserve}:${entry.at}`, quietHours: 720, text: `🪜 <b>DeFi agent · ladder</b> (${when} UTC)\n${what}${ld.new_reserve === null ? ' — THE NEW ID COULD NOT BE READ; the record heals on the next tick, check it' : ''}${tx(ld)}` });
+  }
+  return out.map((m) => ({ ...m, text: `${m.text}\n<a href="${RECORD_URL}">record</a>` }));
 }
 
 ==============================================================================
@@ -5400,6 +5728,7 @@ import {
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
+import { alertsOf } from '../shared/lp-alerts.js';
 import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE, ladderActsInWatch } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
@@ -5812,6 +6141,32 @@ function whyOf(steps) {
 // the page and the series see the range as it is now — but the daily
 // record's sweep, collect and increase are not wiped by a run that never
 // looked at them. A full run replaces the daily record as before.
+// THE OPERATOR IS TOLD AT ONCE (2026-09-18) what cannot wait for the morning
+// card: a failed step, a step waiting for a person, a healed record, and the
+// money moving in a way it rarely does (shared/lp-alerts.js decides what).
+// Sent through the Telegram bot's own worker (service binding TG, target
+// "operator": the operator's private chat, never the channel). Each message
+// has a key the worker remembers for its quiet hours, so a refusal that
+// repeats every ten minutes is said once. Never throws: a message that did
+// not go out must not cost the tick its record.
+async function tellOperator(env, entry) {
+  if (!env.TG || !env.BROADCAST_SECRET) return { told: 0, why: 'no TG binding or BROADCAST_SECRET on this worker' };
+  let told = 0;
+  for (const m of alertsOf(entry)) {
+    try {
+      const k = `lp:alert:${m.key}`;
+      if (await env.AGENT.get(k)) continue;
+      const r = await env.TG.fetch('https://tg/broadcast', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET },
+        body: JSON.stringify({ target: 'operator', text: m.text }),
+      }).then((x) => x.json()).catch(() => null);
+      if (r && r.ok === true) { told++; await env.AGENT.put(k, entry.at, { expirationTtl: Math.max(3600, Math.round((m.quietHours || 6) * 3600)) }); }
+    } catch { /* the next tick says it */ }
+  }
+  return { told };
+}
+
 async function record(env, entry, partial = false) {
   const st = await readState(env);
   // A dry run reads and decides but signs nothing, and it is not the day's
@@ -5858,12 +6213,21 @@ async function record(env, entry, partial = false) {
   st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); the position stays in its home pool, CAKE/BNB 0.05% — the pool question is closed since 2026-09-11, and the relocate step only records that it stays. Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth (rebalance). BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade — a buy ladder under the sell ladder (ladder, since 2026-09-16, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token. The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
   st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, ladder, increase (relocate is retired and only records that the position stays)', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), ladder, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
+  await tellOperator(env, entry).catch(() => {});
   return entry;
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // Proves the alert channel end to end (binding, secret, the bot's operator
+    // target) without waiting for something to go wrong. Same secret as /run.
+    if (url.pathname === '/alert-test' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return new Response('forbidden', { status: 403 });
+      if (!env.TG || !env.BROADCAST_SECRET) return new Response(JSON.stringify({ ok: false, why: 'no TG binding or BROADCAST_SECRET on this worker' }), { status: 503, headers: { 'content-type': 'application/json' } });
+      const r = await env.TG.fetch('https://tg/broadcast', { method: 'POST', headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET }, body: JSON.stringify({ target: 'operator', text: '🔔 <b>DeFi agent · alert channel test</b>\nThis is where a failed step, a step waiting for a person, a healed record and every re-set or ladder move will be said at once. Routine (looks, collects, top-ups) stays on the daily card.' }) }).then((x) => x.json()).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
+      return new Response(JSON.stringify({ ok: r && r.ok === true, bot: r }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/run' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       // Dry unless asked otherwise: a hand-triggered run is for checking the
@@ -5927,6 +6291,14 @@ crons = ["23 4 * * *", "50 * * * *", "0,10,20,30,40 * * * *"]
 # The same KV namespace the agent worker reads, so agent.brainonbnb.com can
 # serve /lp/agent from the record this worker writes. This worker itself has
 # no custom domain and no public face beyond the secret-gated /run.
+# The operator is told at once about a failed step, a step waiting for a person
+# and the rare money moves (shared/lp-alerts.js) — through the Telegram bot's
+# worker, to the operator's private chat. Needs the secret BROADCAST_SECRET
+# (the one worker-health uses); without it the agent runs and says nothing.
+[[services]]
+binding = "TG"
+service = "bobai-tg-bot"
+
 [[kv_namespaces]]
 binding = "AGENT"
 id = "<your-kv-namespace-id>"

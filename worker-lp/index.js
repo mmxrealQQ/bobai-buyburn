@@ -36,6 +36,7 @@ import {
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
+import { alertsOf } from '../shared/lp-alerts.js';
 import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE, ladderActsInWatch } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
@@ -448,6 +449,32 @@ function whyOf(steps) {
 // the page and the series see the range as it is now — but the daily
 // record's sweep, collect and increase are not wiped by a run that never
 // looked at them. A full run replaces the daily record as before.
+// THE OPERATOR IS TOLD AT ONCE (2026-09-18) what cannot wait for the morning
+// card: a failed step, a step waiting for a person, a healed record, and the
+// money moving in a way it rarely does (shared/lp-alerts.js decides what).
+// Sent through the Telegram bot's own worker (service binding TG, target
+// "operator": the operator's private chat, never the channel). Each message
+// has a key the worker remembers for its quiet hours, so a refusal that
+// repeats every ten minutes is said once. Never throws: a message that did
+// not go out must not cost the tick its record.
+async function tellOperator(env, entry) {
+  if (!env.TG || !env.BROADCAST_SECRET) return { told: 0, why: 'no TG binding or BROADCAST_SECRET on this worker' };
+  let told = 0;
+  for (const m of alertsOf(entry)) {
+    try {
+      const k = `lp:alert:${m.key}`;
+      if (await env.AGENT.get(k)) continue;
+      const r = await env.TG.fetch('https://tg/broadcast', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET },
+        body: JSON.stringify({ target: 'operator', text: m.text }),
+      }).then((x) => x.json()).catch(() => null);
+      if (r && r.ok === true) { told++; await env.AGENT.put(k, entry.at, { expirationTtl: Math.max(3600, Math.round((m.quietHours || 6) * 3600)) }); }
+    } catch { /* the next tick says it */ }
+  }
+  return { told };
+}
+
 async function record(env, entry, partial = false) {
   const st = await readState(env);
   // A dry run reads and decides but signs nothing, and it is not the day's
@@ -494,12 +521,21 @@ async function record(env, entry, partial = false) {
   st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); the position stays in its home pool, CAKE/BNB 0.05% — the pool question is closed since 2026-09-11, and the relocate step only records that it stays. Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth (rebalance). BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade — a buy ladder under the sell ladder (ladder, since 2026-09-16, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token. The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
   st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, ladder, increase (relocate is retired and only records that the position stays)', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), ladder, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
+  await tellOperator(env, entry).catch(() => {});
   return entry;
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // Proves the alert channel end to end (binding, secret, the bot's operator
+    // target) without waiting for something to go wrong. Same secret as /run.
+    if (url.pathname === '/alert-test' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return new Response('forbidden', { status: 403 });
+      if (!env.TG || !env.BROADCAST_SECRET) return new Response(JSON.stringify({ ok: false, why: 'no TG binding or BROADCAST_SECRET on this worker' }), { status: 503, headers: { 'content-type': 'application/json' } });
+      const r = await env.TG.fetch('https://tg/broadcast', { method: 'POST', headers: { 'content-type': 'application/json', 'x-broadcast-secret': env.BROADCAST_SECRET }, body: JSON.stringify({ target: 'operator', text: '🔔 <b>DeFi agent · alert channel test</b>\nThis is where a failed step, a step waiting for a person, a healed record and every re-set or ladder move will be said at once. Routine (looks, collects, top-ups) stays on the daily card.' }) }).then((x) => x.json()).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
+      return new Response(JSON.stringify({ ok: r && r.ok === true, bot: r }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/run' && request.method === 'POST') {
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       // Dry unless asked otherwise: a hand-triggered run is for checking the

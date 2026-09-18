@@ -22,6 +22,14 @@ crons = ["23 4 * * *", "50 * * * *", "0,10,20,30,40 * * * *"]
 # The same KV namespace the agent worker reads, so agent.brainonbnb.com can
 # serve /lp/agent from the record this worker writes. This worker itself has
 # no custom domain and no public face beyond the secret-gated /run.
+# The operator is told at once about a failed step, a step waiting for a person
+# and the rare money moves (shared/lp-alerts.js) — through the Telegram bot's
+# worker, to the operator's private chat. Needs the secret BROADCAST_SECRET
+# (the one worker-health uses); without it the agent runs and says nothing.
+[[services]]
+binding = "TG"
+service = "bobai-tg-bot"
+
 [[kv_namespaces]]
 binding = "AGENT"
 id = "ebebebbecec1485aa74ef1f14417c120"

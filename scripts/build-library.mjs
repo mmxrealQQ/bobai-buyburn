@@ -107,9 +107,9 @@ every run — including the ones that decided to do nothing — is written to a 
        alt: 'a .env file for the hand script — anything but the source code'},
     ],
     run: ['node scripts/lp-agent.mjs --self-test   # every guard, both ways, no chain needed', 'node scripts/lp-agent.mjs                # dry: reads the wallet and prints what it would do', 'cd worker-lp && npx wrangler deploy'],
-    entries: ['worker-lp', 'shared/lp-agent.js', 'shared/lp-guards.js', 'shared/lp-flow.js', 'shared/package.json',
+    entries: ['worker-lp', 'shared/lp-agent.js', 'shared/lp-guards.js', 'shared/lp-flow.js', 'shared/lp-alerts.js', 'shared/package.json',
       'worker-agent/lp-windows.js', 'worker-agent/lp-pools.js', 'worker-agent/lp-portfolio.js', 'worker-agent/lp-service.js',
-      'scripts/lp-agent.mjs', 'scripts/lp-windows.mjs', 'scripts/lp-portfolio.mjs'],
+      'scripts/lp-agent.mjs', 'scripts/lp-windows.mjs', 'scripts/lp-portfolio.mjs', 'scripts/lp-fork-test.mjs'],
   },
   {
     group: 'bots',

@@ -112,8 +112,17 @@ ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `sm
   ok([...big.bar].filter((ch) => ch === '🔥').length === 60 && big.bar.endsWith('×2500') && big.bar.length < 200, 'a $5000 burn draws 60 flames and spells the count — the caption stays inside the limit');
 }
 
+// The free endpoints' cut is counted from the head that was read, never before the range asked for.
+{
+  const { narrowedFrom } = worker;
+  ok(narrowedFrom('0x' + (1000000 - 1600).toString(16), 1000000) === '0x' + (1000000 - 50).toString(16), 'a 1,600-block range is cut to the last 50 blocks before the head');
+  ok(narrowedFrom('0x' + (1000000 - 20).toString(16), 1000000) === '0x' + (1000000 - 20).toString(16), 'a range already inside the cap is left alone');
+  const src = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker-tg-bot', 'index.js'), 'utf8');
+  ok(/const SCAN_BLOCKS = 1600;/.test(src) && !/latest - 300\b/.test(src), 'the alert scans look back 1,600 blocks (~12 min), not 300 (135 s)');
+}
+
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-whale ok: 35 pins');
+console.log('smoke-whale ok: 38 pins');
 
 // ---------------------------------------------------------------- --render
 if (process.argv.includes('--render')) {

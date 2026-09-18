@@ -89,12 +89,23 @@ function keyedEndpoints(env) {
   return env ? [env.BSC_RPC_KEYED_URL_2, env.BSC_RPC_KEYED_URL].filter(Boolean) : [];
 }
 
-// Free endpoints cap getLogs at ~50 blocks since 2026-06-19. If both keyed
-// providers fail, narrow the requested range so the free fallback can still
-// serve at least the most recent ~50 blocks. Strictly better than silence.
-function narrowToRecent(fromBlock, maxBlocks = 50) {
+// HOW FAR BACK THE ALERT SCANS LOOK (2026-09-18). It was 300 blocks under a
+// comment that took a block for 0.75-1.5 s; BSC clears one in ~0.45 s, so the
+// window was 135 seconds over a one-minute cron with no remembered last block:
+// two missed ticks and a buy or a whale move was gone for good (the minter
+// keeps `last_block` and minted all the same — an NFT without an alert). 1,600
+// blocks is about twelve minutes, the same reach as a ledger bucket; the
+// posted-tx sets keep a transaction from being told twice.
+const SCAN_BLOCKS = 1600;
+
+// Free endpoints cap getLogs at ~50 blocks since 2026-06-19. If the keyed
+// providers fail and the free ones refuse the full range, the range is cut to
+// the most recent ~50 blocks — counted from the HEAD, which is read, not
+// guessed from the start of the range. Strictly better than silence. Pure.
+const FREE_LOGS_BLOCKS = 50;
+export function narrowedFrom(fromBlock, latest, maxBlocks = FREE_LOGS_BLOCKS) {
   const from = parseInt(fromBlock, 16);
-  return '0x' + Math.max(0, from + 300 - maxBlocks).toString(16); // = latest - maxBlocks
+  return '0x' + Math.max(0, from, latest - maxBlocks).toString(16);
 }
 
 // Photo file_ids (uploaded once via bot, reusable)
@@ -155,21 +166,36 @@ async function tryGetLogs(rpc, fromBlock, address, topic, tag) {
   }
 }
 
-// eth_getLogs with keyed-first / free-fallback. Keyed endpoints get the full
-// requested fromBlock; if all keyed fail, freebies get retried with the most
-// recent 50 blocks only (their current archive cap).
-async function getSwapLogs(fromBlock, env) {
+// eth_getLogs, keyed first, free as the fallback. Every endpoint is asked for
+// the FULL range first — a free one that still serves it is worth more than a
+// cut. Only then is the range cut to the free endpoints' cap. A caller that
+// books what it reads as complete (the swap ledger) passes narrow:false and
+// gets null instead of a part: a gap it re-reads, not a day counted short.
+async function getLogsKeyedThenFree(fromBlock, address, topic, tag, env, { narrow = true } = {}) {
   for (const rpc of keyedEndpoints(env)) {
-    const r = await tryGetLogs(rpc, fromBlock, BOBAI_PAIR, SWAP_TOPIC, 'BUY');
+    const r = await tryGetLogs(rpc, fromBlock, address, topic, tag);
     if (r !== null) return r;
   }
-  const narrow = narrowToRecent(fromBlock);
   for (const rpc of LOGS_RPC_ENDPOINTS) {
-    const r = await tryGetLogs(rpc, narrow, BOBAI_PAIR, SWAP_TOPIC, 'BUY-fb');
+    const r = await tryGetLogs(rpc, fromBlock, address, topic, tag + '-free');
     if (r !== null) return r;
   }
-  console.error('[BUY] getLogs failed on ALL endpoints');
+  if (!narrow) return null;
+  const latestHex = await rpcCall('eth_blockNumber', []);
+  if (!latestHex) return null;
+  const cut = narrowedFrom(fromBlock, parseInt(latestHex, 16));
+  if (parseInt(cut, 16) <= parseInt(fromBlock, 16)) return null;   // the full range was already that small
+  for (const rpc of LOGS_RPC_ENDPOINTS) {
+    const r = await tryGetLogs(rpc, cut, address, topic, tag + '-fb');
+    if (r !== null) return r;
+  }
   return null;
+}
+
+async function getSwapLogs(fromBlock, env, opts) {
+  const r = await getLogsKeyedThenFree(fromBlock, BOBAI_PAIR, SWAP_TOPIC, 'BUY', env, opts);
+  if (r === null) console.error('[BUY] getLogs failed on ALL endpoints');
+  return r;
 }
 
 function hexToBigInt(hex) {
@@ -218,16 +244,7 @@ const WHALE_THRESHOLD_WEI = 10_000_000n * 10n ** 18n;
 // address. Keyed endpoint first, free endpoints as fallback — same arrangement
 // as getSwapLogs above, and for the same reasons.
 async function getAllRecentTransfers(fromBlock, env) {
-  for (const rpc of keyedEndpoints(env)) {
-    const r = await tryGetLogs(rpc, fromBlock, BOBAI_TOKEN, TRANSFER_TOPIC, 'WHALE');
-    if (r !== null) return r;
-  }
-  const narrow = narrowToRecent(fromBlock);
-  for (const rpc of LOGS_RPC_ENDPOINTS) {
-    const r = await tryGetLogs(rpc, narrow, BOBAI_TOKEN, TRANSFER_TOPIC, 'WHALE-fb');
-    if (r !== null) return r;
-  }
-  return [];
+  return (await getLogsKeyedThenFree(fromBlock, BOBAI_TOKEN, TRANSFER_TOPIC, 'WHALE', env)) || [];
 }
 
 // balanceOf(addr) → raw wei BigInt
@@ -445,7 +462,10 @@ async function recordSwapBucket(env) {
   const last = ledger[ledger.length - 1];
   let from = last && latest - last.to <= BUCKET_BLOCKS * 2 ? last.to + 1 : latest - BUCKET_BLOCKS;
   if (from > latest) return { added: false, why: 'no new blocks' };
-  const logs = await getSwapLogs('0x' + from.toString(16), env);
+  // narrow:false — a bucket says "these blocks, all of them"; a cut read booked
+  // under the full range counted the day short. No full read, no bucket: the
+  // next tick reads from the same block again.
+  const logs = await getSwapLogs('0x' + from.toString(16), env, { narrow: false });
   if (!Array.isArray(logs)) throw new Error('swap logs unavailable');
   let buys = 0, sells = 0, volWei = 0n;
   for (const log of logs) {
@@ -3432,7 +3452,7 @@ export default {
         const latestHex = await rpcCall('eth_blockNumber', []);
         if (latestHex) {
           const latest = parseInt(latestHex, 16);
-          const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
+          const fromBlock = '0x' + Math.max(0, latest - SCAN_BLOCKS).toString(16);
           const logs = await getAllRecentTransfers(fromBlock, env);
 
           // Group transfers by tx, preserve chronological order across txs.
@@ -3677,7 +3697,7 @@ export default {
           if (setChanged) await saveTrackedWallets(env, [...trackedSet]);
           if (edgesChanged) await saveWalletEdges(env, edges);
           if (postedWhaleSet.size > prevWhaleSize) {
-            await env.KV.put('posted_whale_txs', JSON.stringify([...postedWhaleSet].slice(-300)));
+            await env.KV.put('posted_whale_txs', JSON.stringify([...postedWhaleSet].slice(-600)));
           }
           if (whaleEvents.length > prevEventCount) {
             await saveWhaleEvents(env, whaleEvents);
@@ -3772,9 +3792,9 @@ export default {
       const latestHex = await rpcCall('eth_blockNumber', []);
       if (latestHex) {
         const latest = parseInt(latestHex, 16);
-        // ~300 blocks ≈ 4-7 min (BSC ~0.75-1.5s/block) — comfortably covers the
-        // 1-min cron with margin; dedup via posted_txs prevents repeats.
-        const fromBlock = '0x' + Math.max(0, latest - 300).toString(16);
+        // SCAN_BLOCKS ≈ 12 min (BSC ~0.45 s/block) — covers the 1-min cron
+        // through ten missed ticks; dedup via posted_txs prevents repeats.
+        const fromBlock = '0x' + Math.max(0, latest - SCAN_BLOCKS).toString(16);
         const logs = await getSwapLogs(fromBlock, env);
 
         if (Array.isArray(logs) && logs.length) {

@@ -55,6 +55,7 @@ const BOT_WALLED = new Set([
   'bscscan.com', 'www.bscscan.com', 'dexscreener.com', 'www.dexscreener.com',
   'birdeye.so', 'www.dextools.io', 'dextools.io', 'gmgn.ai',
   'blockspot.io', 'www.coingecko.com',
+  'tradegenius.com',   // 403 to every script, home page included (2026-09-18); the asset page opens in a browser
 ]);
 const FORGIVEN = new Set([403, 429]);
 
@@ -149,7 +150,7 @@ if (args.includes('--self-test')) {
   //    adds an exemption, the guard on it has been dead for months.
   {
     const carrier = fs.readFileSync(path.join(DASH, 'index.html'), 'utf8');
-    const present = 'Source &mdash; clone it';
+    const present = 'git clone https://brainonbnb.com/source.git';   // the source tile's own line (the old wording left with c255905, 2026-09-17, and this check went stale unnoticed)
     const absent = 'a sentence this page certainly does not contain ZZ';
     if (!carrier.includes(present)) fails.push(`the disclosure mechanism reads index.html but cannot find "${present}" — either the tile changed or this check is stale`);
     if (carrier.includes(absent)) fails.push('the disclosure check matches text that is not there — it is not comparing anything');

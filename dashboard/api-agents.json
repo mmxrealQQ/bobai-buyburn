@@ -292,7 +292,7 @@
     {
       "id": 304493,
       "name": "Brain on BNB — Venus Yield Ranking",
-      "description": "Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked against Venus's own published APY, with divergences named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.",
+      "description": "Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked against Venus's own published APY whenever their API answers — every row and the summary say whether it did, and a divergence is named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "trust_models": [
         "reputation"

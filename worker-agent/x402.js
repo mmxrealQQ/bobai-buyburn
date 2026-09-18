@@ -37,11 +37,26 @@ export const DEXTER_ASSET = {
 
 // Advertised alongside our direct-transfer scheme. A client picks whichever it
 // can do; both land the same amount in the same wallet.
+// THE SHAPE x402 VERSION 2 NAMES (2026-09-18). The 402 said x402Version 2 and
+// carried version 1's field names: v2 (coinbase/x402, specs/x402-specification-v2
+// §5.1.2) reads the price from `amount` and the resource from a top-level
+// `resource: { url, … }`; `maxAmountRequired` and a per-entry `resource` string
+// are v1. A stock v2 client finds no amount — which is the likeliest reason no
+// facilitator payment has ever arrived. Both spellings are sent: v2's for the
+// clients that follow the spec, v1's for the ones already written against this.
+export function v2Shape(requirements, { url, description = null, mimeType = 'application/json' } = {}) {
+  return {
+    ...requirements,
+    resource: { url, ...(description ? { description } : {}), mimeType },
+    accepts: (requirements.accepts || []).map((a) => ({ ...a, amount: a.amount ?? a.maxAmountRequired })),
+  };
+}
 export function dexterAccepts({ payTo, amountAtomic, description, resource }) {
   return {
     scheme: 'exact',
     network: NETWORK,
     asset: DEXTER_ASSET.address,
+    amount: String(amountAtomic),
     maxAmountRequired: String(amountAtomic),
     payTo,
     resource,

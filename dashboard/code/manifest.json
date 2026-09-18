@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 14,
-   "lines": 5876,
-   "zipBytes": 144816,
-   "txtBytes": 453251,
-   "sha256": "108dc105bd24aaa1",
+   "lines": 5881,
+   "zipBytes": 145063,
+   "txtBytes": 453852,
+   "sha256": "76b21af247a2dbdb",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -327,9 +327,9 @@
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
    "lines": 5923,
-   "zipBytes": 126459,
-   "txtBytes": 379890,
-   "sha256": "a1ec6899fea578ca",
+   "zipBytes": 126452,
+   "txtBytes": 379900,
+   "sha256": "d3f3317425be3d05",
    "reqs": [
     {
      "what": "A static host",
@@ -629,11 +629,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 39,
-   "lines": 13209,
-   "zipBytes": 287218,
-   "txtBytes": 809938,
-   "sha256": "02b862289f447d1c",
+   "files": 40,
+   "lines": 13473,
+   "zipBytes": 295090,
+   "txtBytes": 831655,
+   "sha256": "cd644e821afe7152",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -685,6 +685,7 @@
     "worker-agent/grid.js",
     "worker-agent/hire.js",
     "worker-agent/index.js",
+    "worker-agent/ledger.js",
     "worker-agent/lp-pools.js",
     "worker-agent/lp-portfolio.js",
     "worker-agent/lp-service.js",
@@ -714,10 +715,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 4254,
-   "zipBytes": 90458,
-   "txtBytes": 256724,
-   "sha256": "ace0276cdc136b2d",
+   "lines": 4255,
+   "zipBytes": 90514,
+   "txtBytes": 256838,
+   "sha256": "d515934636bce3e2",
    "reqs": [
     {
      "what": "Node 18+ and time",

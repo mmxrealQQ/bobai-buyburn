@@ -114,6 +114,14 @@ export async function rebalancePlan(input = {}) {
   } else {
     for (const h of parsed) targets[h.token] = 100 / parsed.length;
   }
+  // A TARGET THE PORTFOLIO DOES NOT HOLD YET IS STILL A LEG (2026-09-18). The
+  // legs were built from the holdings alone: holding A with targets {A: 50,
+  // B: 50} came back as one leg, "sell $500 of A" — no buy of B, its cost
+  // missing from the total and the value to move read at half. Every target
+  // token joins the list at a holding of zero.
+  for (const t of Object.keys(targets)) {
+    if (targets[t] > 0 && !parsed.some((h) => h.token === t)) parsed.push({ token: t, usd: 0, not_held_yet: true });
+  }
 
   // Measure every pool involved, one at a time. The scanner is our own service
   // and giving it a dozen simultaneous calls is how this project once measured

@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 39 files, 13209 lines.
+# one fetch. 40 files, 13473 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5880,14 +5880,15 @@ async function resolveProvider(quote, target, rpcCall) {
 
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
-import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
+import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
 import { handleDispatch } from './dispatch.js';
 import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
-import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
+import { readPaid, claimPayment, settlePayment } from './ledger.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY } from '../shared/lp-flow.js';
 
@@ -6028,6 +6029,21 @@ const pageTail = '</main></div></body></html>';
 const BUY = { href: 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff', label: 'Buy $BOBAI', external: true };
 const SITE = 'https://brainonbnb.com';
 
+// A KV list answers a thousand keys and a cursor. Every total on /stats, the
+// earnings record and the watch sweep read ONE page: at a thousand keys the
+// totals stop growing, earnings go missing and paid watches stop being
+// checked — in silence (2026-09-18: 218 count: keys after a month, so about
+// January). Every page is read; the shape is the one list() returns.
+async function listAll(env, prefix) {
+  const keys = [];
+  let cursor = null;
+  do {
+    const page = await env.AGENT.list({ prefix, limit: 1000, ...(cursor ? { cursor } : {}) });
+    keys.push(...page.keys);
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  return { keys, list_complete: true };
+}
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj, null, 2), {
     status,
@@ -6114,7 +6130,7 @@ async function flushCounters(env) {
 }
 
 async function readCounters(env) {
-  const list = await env.AGENT.list({ prefix: 'count:' });
+  const list = await listAll(env, 'count:');
   const byKind = {};
   const byDay = {};
   // All keys at once: 175 reads in a row took 6 s cold on 2026-09-12, and
@@ -6143,11 +6159,18 @@ async function readCounters(env) {
 // `asset` is the token whose transfer counts (USD1 by default); `label` is how
 // its amount is written back to the payer. Since 2026-09-03 an answer can
 // also be paid in $BOBAI — the token this whole loop exists to burn.
+// The payment ledger (claimed -> delivered | credit) lives in ledger.js, where
+// scripts/payment-ledger-check.mjs can run it against a table.
+// A day of blocks on BSC (0.45 s a block). A receipt older than that is not a
+// payment for this request — it is somebody's old transfer to this wallet,
+// found on the explorer. A credit (a failed answer) is exempt: that buyer paid.
+const MAX_PAYMENT_AGE_BLOCKS = 200000;
+
 async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD1') {
   if (!/^0x[a-fA-F0-9]{64}$/.test(txHash || '')) return { ok: false, reason: 'malformed transaction hash' };
 
-  const spent = await env.AGENT.get(`paid:${txHash.toLowerCase()}`);
-  if (spent) return { ok: false, reason: 'this payment has already been used' };
+  const spent = await readPaid(env, txHash.toLowerCase());
+  if (spent && spent.state === 'delivered') return { ok: false, reason: 'this payment has already been used' };
 
   const receipt = await rpc('eth_getTransactionReceipt', [txHash], RECEIPT_RPCS).catch(() => null);
   if (!receipt) return { ok: false, reason: 'transaction not found — if it was just sent, wait for it to confirm' };
@@ -6167,6 +6190,12 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
       paid,
     };
 
+  // Last, so that a transfer to somebody else, or too small a one, is told
+  // what is wrong with it rather than how old it is.
+  if (!(spent && spent.state === 'credit')) {
+    const head = await rpc('eth_blockNumber', [], RECEIPT_RPCS).catch(() => null);
+    if (head && parseInt(head, 16) - parseInt(receipt.blockNumber, 16) > MAX_PAYMENT_AGE_BLOCKS) return { ok: false, reason: 'that payment is more than a day old — a payment is made for the request it buys' };
+  }
   return { ok: true, paid, asset: asset.toLowerCase(), from: (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
 }
 
@@ -6242,7 +6271,23 @@ async function bnbUsd() {
 
 // ---------------------------------------------------------------- watches
 
+// The quote tokens a watch can price: BNB from the reference pair, the dollar
+// stablecoins at one dollar, all of them 18 decimals on BSC. Any other quote
+// was priced at $1 with 18 decimals whatever it was (2026-09-18).
+const WATCH_QUOTES = new Set([WBNB, '0x55d398326f99059ff775485246999027b3197955', '0xe9e7cea3dedca5984780bafc599bd69add087d56', '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d']);
+// WHAT IS SOLD IS WHAT IS MEASURED (2026-09-18). The watch is described, on the
+// 402 and in the catalogue, as firing "when the pool can no longer absorb this
+// USD size at 1% impact". The sweep compared the threshold with the pair's whole
+// quote-side reserve — about two hundred times that figure: depthBelowUsd 1000
+// fired when the RESERVE fell under $1,000, long after a $1,000 trade had
+// stopped fitting. On a constant-product pair the quote that moves the price
+// by 1% is reserve x (sqrt(1.01) - 1), 0.4988% of it.
+const ONE_PCT_OF_RESERVE = Math.sqrt(1.01) - 1;
 async function createWatch(env, spec, payment) {
+  const quoteOf = String(spec.quote || WBNB).toLowerCase();
+  if (!WATCH_QUOTES.has(quoteOf)) throw new Error('this watch prices pools quoted in BNB, USDT, BUSD, USDC or USD1 — name one of those as quote, or leave it out for BNB');
+  if (spec.callback != null && !/^https:\/\/[^\s]{4,400}$/.test(String(spec.callback))) throw new Error('callback must be an https:// URL');
+  if (spec.depthBelowUsd != null && !(Number(spec.depthBelowUsd) > 0)) throw new Error('depthBelowUsd must be a positive number of dollars');
   const id = crypto.randomUUID();
   const now = Date.now();
   const watch = {
@@ -6266,7 +6311,7 @@ async function createWatch(env, spec, payment) {
 }
 
 async function checkWatches(env) {
-  const list = await env.AGENT.list({ prefix: 'watch:' });
+  const list = await listAll(env, 'watch:');
   if (!list.keys.length) return { checked: 0, fired: 0 };
   const price = await bnbUsd().catch(() => 0);
   if (!price) return { checked: 0, fired: 0, error: 'could not price BNB' };
@@ -6280,7 +6325,9 @@ async function checkWatches(env) {
 
     let depth;
     try {
-      depth = await poolDepthUsd(w.pair, w.quote, w.quote === WBNB ? price : 1);
+      const reserveUsd = await poolDepthUsd(w.pair, w.quote, w.quote === WBNB ? price : 1);
+      w.lastReserveUsd = Math.round(reserveUsd);
+      depth = reserveUsd * ONE_PCT_OF_RESERVE;   // the size that moves the price 1%
     } catch { continue; } // a node dropping a call is not a depth collapse
     w.lastDepthUsd = Math.round(depth);
     w.lastCheckedAt = Date.now();
@@ -6570,7 +6617,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
 // three older ones were patched from their receipts) counts as ours, not as
 // a stranger's: the claim that is easy to make wrongly is the flattering one.
 async function readEarnings(env) {
-  const list = await env.AGENT.list({ prefix: 'earn:' });
+  const list = await listAll(env, 'earn:');
   let total = 0n, strangers = 0n, own = 0n, strangersCount = 0, ownCount = 0;
   const payments = [];
   for (const k of list.keys) {
@@ -6654,7 +6701,8 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
     const r = await verifyAndSettle(parsed.value, accepts);
     if (!r.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', stage: r.stage, reason: r.reason } };
     tx = (r.tx || `x402:${Date.now()}`).toLowerCase();
-    if (await env.AGENT.get(`paid:${tx}`)) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: 'this settlement has already been used' } };
+    const seen = await readPaid(env, tx);
+    if (seen && seen.state === 'delivered') return { ok: false, status: 402, body: { error: 'payment not accepted', reason: 'this settlement has already been used' } };
     check = { ok: true, paid: price, from: r.payer };
   } else {
     check = await verifyPayment(env, String(proof).trim(), payTo, price);
@@ -6668,7 +6716,8 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
     if (!check.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: check.reason } };
     tx = String(proof).trim().toLowerCase();
   }
-  await env.AGENT.put(`paid:${tx}`, '1', { expirationTtl: 60 * 60 * 24 * 400 });
+  const claim = await claimPayment(env, tx, sold);
+  if (!claim.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: claim.reason } };
   // earn: records USD1 amounts only — /stats sums them as dollars. A payment
   // in another coin is recorded with its coin and its dollar price at the
   // quote, so the total stays a dollar figure and the coin stays visible.
@@ -6678,8 +6727,10 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
   const earn = asset === 'USD1'
     ? { at: Date.now(), amount: check.paid.toString(), tx, for: sold, from }
     : { at: Date.now(), amount: price.toString(), tx, for: sold, from, paid_in: asset, paid_atomic: check.paid.toString() };
-  await env.AGENT.put(`earn:${tx}`, JSON.stringify(earn), { expirationTtl: 60 * 60 * 24 * 400 });
-  return { ok: true, tx, paid: check.paid, from: check.from, asset };
+  // The earnings record is permanent, like the mark: what was earned does not
+  // stop having been earned after 400 days.
+  await env.AGENT.put(`earn:${tx}`, JSON.stringify(earn));
+  return { ok: true, tx, paid: check.paid, from: check.from, asset, claim: claim.by };
 }
 
 // The five deliveries, sold per answer. The same doWork() the escrow path
@@ -6715,7 +6766,8 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     };
     return {
       status: 402,
-      headers: { 'PAYMENT-REQUIRED': b64(requirements) },
+      // Exposed, or a browser agent cannot read the header it is told to decode.
+      headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
@@ -6723,10 +6775,15 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
-        accepts: requirements.accepts,
+        accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
   }
+  // The input is looked at BEFORE the payment is (sell.js, missingInput): a
+  // request that cannot be worked is told so with its money untouched.
+  const wanted = extractParams(String(body?.task || ''), { ...(body?.params || {}), service: serviceId });
+  const lacks = missingInput(serviceId, wanted);
+  if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
@@ -6738,10 +6795,13 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     // Paid and not deliverable — the one case that must never be silent.
     // The payment is recorded as unspent again so the caller can retry with
     // the input fixed, and the reason is the service's own.
-    await env.AGENT.delete(`paid:${pay.tx}`).catch(() => {});
+    // A credit, held by the same hash — never a deletion: deleting freed the
+    // hash for whoever raced this request, the delivered answer included.
+    await settlePayment(env, pay.tx, pay.claim, 'credit', { failed: String(e.message || e).slice(0, 120) }).catch(() => {});
     await env.AGENT.delete(`earn:${pay.tx}`).catch(() => {});
     return { status: 422, body: { error: `could not produce the answer: ${String(e.message || e).slice(0, 200)}`, needs: service.needs, payment: 'not consumed — repeat with the same PAYMENT-SIGNATURE once the input is fixed' } };
   }
+  await settlePayment(env, pay.tx, pay.claim, 'delivered').catch(() => {});
   ctx.waitUntil(bump(env, 'answer_sold'));
   return { status: 200, body: {
     ok: true, service: serviceId, name: service.name, paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx,
@@ -6785,7 +6845,8 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     };
     return {
       status: 402,
-      headers: { 'PAYMENT-REQUIRED': b64(requirements) },
+      // Exposed, or a browser agent cannot read the header it is told to decode.
+      headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description: `Pool watch for ${WATCH_DAYS} days` })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       requirements,
       body: {
         error: 'payment required',
@@ -6795,11 +6856,11 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         // off the one-asset sentence holds the wrong token for the other route.
         price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator (accepts[0]) — either lands in the same wallet`,
         how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
-        needs: { token: 'the token to watch (0x…)', pair: 'or the pool/pair address (0x…)', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
+        needs: { token: 'the token to watch (0x…)', pair: 'the pool/pair address (0x…) — required, a PancakeSwap V2 pair', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
-        accepts: requirements.accepts,
+        accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
   }
@@ -6813,7 +6874,16 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
   if (!pay.ok) return { status: pay.status, body: pay.body };
   const tx = pay.tx, check = { paid: pay.paid, from: pay.from };
 
-  const watch = await createWatch(env, spec, { tx, from: check.from });
+  // The watch is the goods: created, the payment is delivered and final; a
+  // creation that throws leaves the buyer a credit on the same hash.
+  let watch;
+  try { watch = await createWatch(env, spec, { tx, from: check.from }); }
+  catch (e) {
+    await settlePayment(env, tx, pay.claim, 'credit', { failed: String(e.message || e).slice(0, 120) }).catch(() => {});
+    await env.AGENT.delete(`earn:${tx}`).catch(() => {});
+    return { status: 422, body: { error: `the watch could not be created: ${String(e.message || e).slice(0, 200)}`, payment: 'not consumed — repeat with the same payment once the input is fixed' } };
+  }
+  await settlePayment(env, tx, pay.claim, 'delivered').catch(() => {});
   ctx.waitUntil(bump(env, 'watch_created'));
 
   // Anything the caller sent that this endpoint does not read is named back
@@ -7876,7 +7946,7 @@ ${pageTail}`;
       const [counters, earnings, watches] = await Promise.all([
         readCounters(env),
         readEarnings(env),
-        env.AGENT.list({ prefix: 'watch:' }),
+        listAll(env, 'watch:'),
       ]);
       // "Requests answered" must mean requests somebody made. Our own cron
       // sweeps are counted too — they are worth knowing — but folding them into
@@ -7900,7 +7970,7 @@ ${pageTail}`;
         earned: earnings,
         active_watches: watches.keys.length,
         money_flow: {
-          '1': 'an agent pays USD1 for a watch, or $U for a job delivered on the ERC-8183 kernel',
+          '1': 'an agent pays for a single answer or a 30-day watch over x402 (USD1 by direct transfer, USDC through the facilitator, or $BOBAI at the quoted rate), or $U for a job delivered on the ERC-8183 kernel',
           '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
           '3': 'once a day it is sold for BNB and sent to the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
           '4': 'the fees that position earns are collected and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half buys $BOBAI that the agent holds in its own wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A and never sells (since 2026-09-09; until then that half went to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce)',
@@ -8369,6 +8439,52 @@ ${pageTail}`;
     }
   },
 };
+
+==============================================================================
+=== FILE: worker-agent/ledger.js
+==============================================================================
+
+// ONE PAYMENT, ONE ANSWER — THE LEDGER (2026-09-18).
+// A payment's key was a bare '1', written after the check and DELETED when the
+// answer failed. Two requests with one hash, one of them built to fail: both
+// passed the check, the good one delivered, the bad one's failure path deleted
+// the mark — and the hash was unspent again, for ever, along with its earnings
+// record. N parallel requests each got an answer too.
+// Now a payment has a state and an owner:
+//   claimed   {by: nonce, at}   taken by one request; a second one is refused
+//                               while the claim is fresh, and only the request
+//                               that holds the nonce may change it
+//   delivered                   final; never deleted, no expiry
+//   credit                      the answer failed after a good payment: the
+//                               money is the buyer's to spend again, by the
+//                               same hash, and nothing else ever frees a mark
+// The claim is written, then read back: a request that does not read its own
+// nonce lost the race and stops. KV is eventually consistent between
+// locations, so this narrows the window to a cross-location race of seconds
+// — it does not close it the way a Durable Object would (backlog).
+export const CLAIM_FRESH_MS = 3 * 60 * 1000;
+export const readPaid = async (env, tx) => {
+  const raw = await env.AGENT.get(`paid:${tx}`);
+  if (!raw) return null;
+  if (raw === '1') return { state: 'delivered', legacy: true };   // marks written before the ledger
+  try { return JSON.parse(raw); } catch { return { state: 'delivered' }; }
+};
+export async function claimPayment(env, tx, sold) {
+  const cur = await readPaid(env, tx);
+  if (cur && cur.state === 'delivered') return { ok: false, reason: 'this payment has already been used' };
+  if (cur && cur.state === 'claimed' && Date.now() - Number(cur.at || 0) < CLAIM_FRESH_MS) return { ok: false, reason: 'this payment is being used by another request right now — wait for it to finish' };
+  const by = crypto.randomUUID();
+  await env.AGENT.put(`paid:${tx}`, JSON.stringify({ state: 'claimed', by, at: Date.now(), for: sold, ...(cur && cur.state === 'credit' ? { was_credit: true } : {}) }));
+  const back = await readPaid(env, tx);
+  if (!back || back.by !== by) return { ok: false, reason: 'this payment is being used by another request right now — wait for it to finish' };
+  return { ok: true, by, credit: !!(cur && cur.state === 'credit') };
+}
+export async function settlePayment(env, tx, by, state, extra = {}) {
+  const cur = await readPaid(env, tx);
+  if (!cur || cur.by !== by) return false;   // not ours to change
+  await env.AGENT.put(`paid:${tx}`, JSON.stringify({ ...cur, state, settled_at: Date.now(), ...extra }));
+  return true;
+}
 
 ==============================================================================
 === FILE: worker-agent/lp-pools.js
@@ -9084,7 +9200,12 @@ export async function lpPositionLook(params = {}, env = null) {
 export async function lpPositionPlan(params = {}, env = null) {
   params = await withLadder(params, env);
   const r = await lpPositionFacts(params);
-  if (r.facts.positions !== 1) return r.facts;
+  // A PAID PLAN THAT HAS NO POSITION TO PLAN IS NOT DELIVERED (2026-09-18). A
+  // wallet with none, or with several and no id named, used to be answered
+  // with the free look's facts — and charged 0.10 for it, because the sale
+  // refunds only when the work throws. It throws, with the same sentence (and
+  // the ids to choose from): the buyer keeps the payment as a credit.
+  if (r.facts.positions !== 1) throw new Error(`${r.facts.verdict}${Array.isArray(r.facts.position_ids) && r.facts.position_ids.length ? ` Position ids: ${r.facts.position_ids.join(', ')}.` : ''} The free look says the same: https://agent.brainonbnb.com/lp/look`);
   const { facts, pub, p, owner, poolInfo, owedBnbEquiv } = r;
   if (!facts.against_wbnb) {
     return { ...facts, verdict: 'The position is not against WBNB. This agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.', measured_at: new Date().toISOString() };
@@ -10377,6 +10498,14 @@ export async function rebalancePlan(input = {}) {
   } else {
     for (const h of parsed) targets[h.token] = 100 / parsed.length;
   }
+  // A TARGET THE PORTFOLIO DOES NOT HOLD YET IS STILL A LEG (2026-09-18). The
+  // legs were built from the holdings alone: holding A with targets {A: 50,
+  // B: 50} came back as one leg, "sell $500 of A" — no buy of B, its cost
+  // missing from the total and the value to move read at half. Every target
+  // token joins the list at a holding of zero.
+  for (const t of Object.keys(targets)) {
+    if (targets[t] > 0 && !parsed.some((h) => h.token === t)) parsed.push({ token: t, usd: 0, not_held_yet: true });
+  }
 
   // Measure every pool involved, one at a time. The scanner is our own service
   // and giving it a dozen simultaneous calls is how this project once measured
@@ -10630,7 +10759,7 @@ export const SERVICES = {
     category: 'yield-optimization',
     price: '100000000000000000',
     price_display: '0.10 $U',
-    deliverables: 'Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked against Venus\'s own published APY, with divergences named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.',
+    deliverables: 'Every Venus core-pool market ranked by supply APY, computed from the rate per block and a block time measured against the chain rather than the 10,512,000-blocks-a-year constant most published BSC yield figures still use — which understates these rates by about 6.7x. Cross-checked against Venus\'s own published APY whenever their API answers — every row and the summary say whether it did, and a divergence is named. Given an amount and what you earn today it returns the days until a move pays for its own gas, which below a certain position size is never.',
     needs: { amountUsd: 'position size in USD, optional', from: 'the Venus market held today, optional', currentApyPct: 'what you earn today, optional' },
   },
   rebalance_plan: {
@@ -10707,6 +10836,21 @@ async function readJob(jobId) {
 // ---------------------------------------------------------------------------
 // The work itself.
 // ---------------------------------------------------------------------------
+// WHAT A SERVICE CANNOT START WITHOUT — asked BEFORE the money is taken
+// (2026-09-18). The sale charged first and looked at the input afterwards: a
+// buyer who forgot the address paid, got a 422, and — through the facilitator,
+// whose Permit2 payment cannot be presented twice — had no way to use what he
+// had paid for. Returns the sentence to show, or null when the work can start.
+// Pure; pinned by scripts/payment-ledger-check.mjs.
+export function missingInput(serviceId, params = {}) {
+  const addr = (v) => /^0x[a-fA-F0-9]{40}$/.test(String(v || ''));
+  const p = params || {};
+  if (serviceId === 'health_factor') return addr(p.address) ? null : 'health_factor needs `address`: the account whose Venus position to read (0x…)';
+  if (serviceId === 'grid_plan' || serviceId === 'lp_tier_plan') return addr(p.token) || addr(p.address) ? null : `${serviceId} needs \`token\`: the token or pool address (0x…)`;
+  if (serviceId === 'rebalance_plan') return Array.isArray(p.holdings) && p.holdings.length ? null : 'rebalance_plan needs `holdings`: [{ "token": "0x…", "usd": 1000 }, …]';
+  if (serviceId === 'lp_position_plan') return /^\d+$/.test(String(p.position ?? p.tokenId ?? p.id ?? '')) || addr(p.address) || addr(p.wallet) || addr(p.owner) ? null : 'lp_position_plan needs `position` (the PancakeSwap V3 tokenId) or `address` (a wallet that holds exactly one)';
+  return null;   // yield_plan starts with nothing
+}
 export async function doWork(serviceId, params, env = null) {
   if (serviceId === 'lp_position_plan') {
     return { service: 'lp_position_plan', plan: await lpPositionPlan(params || {}, env) };
@@ -10735,13 +10879,18 @@ export async function doWork(serviceId, params, env = null) {
 // Which service a free-text task is asking for. Buyers describe what they want
 // in prose, and refusing to answer anything that is not an exact service id
 // would make us the kind of seller that only talks to its own client.
-function pickService(text = '', explicit) {
+export function pickService(text = '', explicit) {
   if (explicit && SERVICES[explicit]) return SERVICES[explicit];
   const t = String(text).toLowerCase();
   // Order matters. "venus" appears in both lending questions and yield ones,
   // so the more specific intent is tested first: somebody asking about APY or
   // where to earn wants the yield agent even though they said Venus.
   if (/\bapy\b|\bapr\b|yield|best rate|earn(ing)? (the )?most|where to (put|park|lend)|supply rate/.test(t)) return SERVICES.yield_plan;
+  // A question about ONE position — named by its id, or "my position", in or
+  // out of its range — is the position plan's, and has to be asked before the
+  // tier test below claims every sentence with "LP" in it (2026-09-18: "my LP
+  // position 7451444" was quoted a fee-tier comparison).
+  if (/position\s*(id\s*)?#?\s*\d{3,}|\bmy (lp |v3 |liquidity )?position\b|\bv3 position\b|out of range|in range|re-?set (my|the) range/.test(t)) return SERVICES.lp_position_plan;
   // Before the rebalance test, and this order is load-bearing. Someone asking
   // "which fee tier should I provide liquidity in" is asking about LP range
   // placement, and the rebalance pattern below matches "allocation" — which
@@ -10930,6 +11079,13 @@ export async function handleA2A(request, env) {
     if (!provider) return rpcErr(id, -32000, 'this agent has no provider address configured and cannot quote');
     const wanted = [data.task_description, data.terms?.deliverables, text].filter(Boolean).join(' ');
     const service = pickService(wanted, data.service);
+    // The position plan is sold per answer over x402 and nowhere else — the
+    // card says so (escrow: false). Negotiating it here used to come back
+    // accepted:true in $U, and a job funded on that quote would have been
+    // worked through the escrow the card rules out (2026-09-18).
+    if (service && service.id === 'lp_position_plan') {
+      return rpcOk(id, { accepted: false, reason: 'The position plan is sold per answer over x402, not through the ERC-8183 escrow.', buy_it_here: 'POST https://agent.brainonbnb.com/answer?service=lp_position_plan', price: service.price_display });
+    }
     if (!service) {
       return rpcOk(id, {
         accepted: false,
@@ -10975,14 +11131,43 @@ export async function handleA2A(request, env) {
     if (job.status !== 'FUNDED') {
       return rpcErr(id, -32000, `job ${jobId} is ${job.status}. Fund it first — nothing is worked on before the escrow holds the budget.`);
     }
+    // WORK ONLY FOR AN ESCROW THAT CAN PAY (2026-09-18). A job is released by
+    // the policy only when its evaluator and hook are the router. Anyone can
+    // create a job naming us as provider and THEMSELVES as evaluator, fund ten
+    // cents, take the full result out of this very response, then reject the
+    // job and claim the refund — free answers, our gas. hire.js has always
+    // said so ("a job registered with a different evaluator never reaches the
+    // policy that releases it"); the seller never looked.
+    const router = String(ERC8183.router).toLowerCase();
+    const zero = '0x0000000000000000000000000000000000000000';
+    const evaluator = String(job.evaluator || '').toLowerCase(), hook = String(job.hook || '').toLowerCase();
+    if (evaluator !== router || (hook !== router && hook !== zero && hook !== '')) {
+      return rpcErr(id, -32000, `job ${jobId} is evaluated by ${job.evaluator || 'nobody'}${job.hook ? ` with hook ${job.hook}` : ''}, not by this escrow's router (${ERC8183.router}). Only a job the router evaluates reaches the policy that pays the seller — create it through https://agent.brainonbnb.com/hire and nothing else changes for you.`);
+    }
+    // ONE DELIVERY PER JOB. Two notify_funded for one job used to run the work
+    // twice, and the second one's document replaced the stored one after the
+    // first one's digest was already on-chain. A short lock, read back.
+    const lockKey = `lock:job:${jobId}`, lockBy = crypto.randomUUID();
+    const held = await env.AGENT.get(lockKey);
+    if (held) return rpcErr(id, -32000, `job ${jobId} is being delivered by another request right now — follow it at https://agent.brainonbnb.com/job?id=${jobId}`);
+    await env.AGENT.put(lockKey, lockBy, { expirationTtl: 120 });
+    if ((await env.AGENT.get(lockKey)) !== lockBy) return rpcErr(id, -32000, `job ${jobId} is being delivered by another request right now`);
 
-    const service = pickService(job.description, data.service);
+    // WHAT WAS BOUGHT IS WHAT THE CHAIN SAYS WAS BOUGHT. notify_funded needs no
+    // authentication — it only says "look at the chain" — so nothing in it may
+    // decide the work: `service` and `params` in the message used to win over
+    // the job's own description, and anyone who saw a funded job could have a
+    // different document committed on-chain for the real buyer. The message
+    // now only fills what the description does not say.
+    const service = pickService(job.description, null) || pickService('', data.service);
     if (!service) return rpcErr(id, -32000, 'the job description does not match anything we sell');
     if (BigInt(job.budget) < PRICE_WEI(service.price)) {
       return rpcErr(id, -32000, `job ${jobId} is funded with ${Number(job.budget) / 1e18} $U; ${service.name} costs ${service.price_display}`);
     }
 
-    const params = extractParams(`${job.description} ${text}`, data.params || data);
+    const fromChain = extractParams(String(job.description || ''), {});
+    const asked = extractParams(String(text || ''), data.params || data);
+    const params = { ...asked, ...fromChain, service: service.id };
     let result;
     try {
       result = await doWork(service.id, params, env);
@@ -10990,6 +11175,7 @@ export async function handleA2A(request, env) {
       // A job we cannot do is not delivered and not charged for. The buyer's
       // budget stays in escrow and comes back to them at expiry, which is the
       // correct outcome and the one the kernel already implements.
+      await env.AGENT.delete(lockKey).catch(() => {});
       return rpcErr(id, -32000, `could not complete job ${jobId}: ${e.message}. Nothing was submitted; your budget is untouched and returns to you at expiry.`);
     }
 
@@ -11004,8 +11190,19 @@ export async function handleA2A(request, env) {
       verify: 'The bytes32 on this job is the SHA-256 of exactly this document as served.',
     });
 
-    const delivery = await submitDeliverable({ env, jobId, document, readJob });
-    await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery, result }), { expirationTtl: 60 * 60 * 24 * 365 });
+    // The document is stored BEFORE it is sent, and a submit that throws is an
+    // answer, not a bare 500: the transaction may still land, and a deliverable
+    // on-chain with no document behind it cannot be checked by anyone.
+    const already = await env.AGENT.get(`job:${jobId}`, 'json');
+    if (!already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery: null, result }), { expirationTtl: 60 * 60 * 24 * 365 });
+    let delivery;
+    try { delivery = await submitDeliverable({ env, jobId, document, readJob }); }
+    catch (e) {
+      await env.AGENT.delete(lockKey).catch(() => {});
+      return rpcErr(id, -32000, `job ${jobId}: the work is done and stored, but writing it on-chain did not go through (${String(e.shortMessage || e.message || e).slice(0, 160)}). Send notify_funded again in a minute — the same document is submitted, nothing is worked twice. https://agent.brainonbnb.com/job/${jobId}/result`);
+    }
+    // A delivery that was already on-chain keeps the document it was made from.
+    if (!delivery?.already) await env.AGENT.put(`job:${jobId}`, JSON.stringify({ document, delivery, result }), { expirationTtl: 60 * 60 * 24 * 365 });
 
     return rpcOk(id, {
       delivered: true,
@@ -12075,7 +12272,7 @@ async function probeYield() {
         ? `BSC is at ${plan.measured_block_time.seconds_per_block}s per block — ${plan.measured_block_time.blocks_per_year.toLocaleString('en-US')} a year, not the 10,512,000 most BSC yield figures still assume`
         : 'markets read, block time not measurable',
       measures: 'every Venus core-pool market ranked by what it actually pays, and the days until a move pays for its own gas',
-      note: 'The APY depends entirely on the block time, which is measured here from two blocks a hundred thousand apart rather than assumed. Cross-checked against Venus’s own published figures.',
+      note: 'The APY depends entirely on the block time, which is measured here from two blocks a hundred thousand apart rather than assumed. Cross-checked against Venus’s own published figures when their API answers; the answer says whether it did.',
       not_ready_because: null,
       chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,
@@ -12576,6 +12773,7 @@ export async function healthFactor(account) {
 
   let weightedCollateral = 0n; // collateral after the protocol's own haircut
   let rawCollateral = 0n;      // before it, so the haircut is visible
+  let borrowingPower = 0n;     // what the collateral factor lets the account borrow against it
   let borrowed = 0n;
   const positions = [];
 
@@ -12591,6 +12789,18 @@ export async function healthFactor(account) {
     const borrow = uint(snap, 2);
     const exchangeRate = uint(snap, 3);
     const collateralFactor = uint(mkt, 1);
+    // LIQUIDATION IS DECIDED ON THE LIQUIDATION THRESHOLD, NOT ON THE COLLATERAL
+    // FACTOR (2026-09-18). Venus core now keeps the two apart — markets()
+    // returns the collateral factor in its second word (what may be BORROWED
+    // against an asset) and the liquidation threshold in its fourth (where the
+    // position is LIQUIDATED); vFDUSD reads 0.65 and 0.75. They differ in 23 of
+    // the 55 core markets. This file weighted everything by the collateral
+    // factor: a health factor of 0.90 "liquidatable right now" on FDUSD
+    // collateral is really 1.04, and the cross-check against the protocol's own
+    // getAccountLiquidity disagreed by 7% and 10% on two delivered jobs for
+    // exactly this reason. A market that reports no threshold keeps the factor.
+    const ltRaw = uint(mkt, 3);
+    const liquidationThreshold = ltRaw > 0n && ltRaw <= S ? ltRaw : collateralFactor;
     const price = uint(priceRaw, 0);
 
     // The oracle scales its answer so that (underlying amount * price) / 1e18
@@ -12600,10 +12810,12 @@ export async function healthFactor(account) {
     const underlying = (vTokens * exchangeRate) / S;      // underlying units
     const supplyUsd = (underlying * price) / S;
     const borrowUsd = (borrow * price) / S;
-    const weightedUsd = (supplyUsd * collateralFactor) / S;
+    const weightedUsd = (supplyUsd * liquidationThreshold) / S;
+    const borrowableUsd = (supplyUsd * collateralFactor) / S;
 
     rawCollateral += supplyUsd;
     weightedCollateral += weightedUsd;
+    borrowingPower += borrowableUsd;
     borrowed += borrowUsd;
 
     if (supplyUsd > 0n || borrowUsd > 0n) {
@@ -12613,7 +12825,10 @@ export async function healthFactor(account) {
         supplied_usd: num(supplyUsd),
         borrowed_usd: num(borrowUsd),
         collateral_factor: Number(collateralFactor) / 1e18,
+        liquidation_threshold: Number(liquidationThreshold) / 1e18,
+        // Against liquidation (the threshold); what may still be borrowed is the factor's.
         counts_as_collateral_usd: num(weightedUsd),
+        counts_toward_borrowing_usd: num(borrowableUsd),
       });
     }
   }
@@ -12650,6 +12865,10 @@ export async function healthFactor(account) {
     collateral_usd: num(rawCollateral),
     collateral_after_haircut_usd: num(weightedCollateral),
     headroom_usd: num(ourHeadroom),
+    // The two questions kept apart: how far from liquidation (above), and how
+    // much more could be borrowed (the collateral factor's figure).
+    basis: 'health factor, liquidatable and headroom are on each market\'s liquidation threshold; borrowing power is on its collateral factor',
+    borrowing_power_left_usd: num(borrowingPower - borrowed),
     markets_entered: markets.length,
     positions: positions.sort((a, b) => (b.supplied_usd + b.borrowed_usd) - (a.supplied_usd + a.borrowed_usd)),
     cross_check: {
@@ -12925,11 +13144,26 @@ export const DEXTER_ASSET = {
 
 // Advertised alongside our direct-transfer scheme. A client picks whichever it
 // can do; both land the same amount in the same wallet.
+// THE SHAPE x402 VERSION 2 NAMES (2026-09-18). The 402 said x402Version 2 and
+// carried version 1's field names: v2 (coinbase/x402, specs/x402-specification-v2
+// §5.1.2) reads the price from `amount` and the resource from a top-level
+// `resource: { url, … }`; `maxAmountRequired` and a per-entry `resource` string
+// are v1. A stock v2 client finds no amount — which is the likeliest reason no
+// facilitator payment has ever arrived. Both spellings are sent: v2's for the
+// clients that follow the spec, v1's for the ones already written against this.
+export function v2Shape(requirements, { url, description = null, mimeType = 'application/json' } = {}) {
+  return {
+    ...requirements,
+    resource: { url, ...(description ? { description } : {}), mimeType },
+    accepts: (requirements.accepts || []).map((a) => ({ ...a, amount: a.amount ?? a.maxAmountRequired })),
+  };
+}
 export function dexterAccepts({ payTo, amountAtomic, description, resource }) {
   return {
     scheme: 'exact',
     network: NETWORK,
     asset: DEXTER_ASSET.address,
+    amount: String(amountAtomic),
     maxAmountRequired: String(amountAtomic),
     payTo,
     resource,
@@ -13124,8 +13358,12 @@ const apyFromRate = (ratePerBlock, blocksPerYear) => {
 // than quietly presenting one source as two.
 async function venusPublished() {
   try {
-    const r = await fetch('https://api.venus.io/markets/core-pool?chainId=56', {
-      headers: { accept: 'application/json' },
+    // limit=100: the API pages at 20 by default, and the core pool has 55
+    // markets — without it the "second source" could cover a third of them
+    // at most (2026-09-18). A browser-like agent header, because a bare
+    // Worker fetch is what the API has been refusing.
+    const r = await fetch('https://api.venus.io/markets/core-pool?chainId=56&limit=100', {
+      headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; brainonbnb-yield/1.0; +https://brainonbnb.com)' },
       signal: AbortSignal.timeout(15000),
     });
     const j = await r.json();
@@ -13287,7 +13525,17 @@ export async function venusMarkets() {
   }
 
   live.sort((a, b) => b.supply_apy_pct - a.supply_apy_pct);
-  return { clock, markets: live, excluded, disagreements, oracle, confirmed: published ? published.size : 0 };
+  // What "second-sourced" and "disagrees" are counted over: the markets that
+  // are ranked. `confirmed` was the size of Venus's list ("55 of 54"), and a
+  // market this function itself excludes as deprecated (vUST, 1e14 %) stood in
+  // the disagreements (2026-09-18, the first day the API answered in full).
+  // A market with next to nothing supplied is left out of the comparison too:
+  // Venus publishes 0 for it, the chain still computes its last rate.
+  const ranked = new Set(live.map((m) => m.symbol));
+  const dust = new Set(live.filter((m) => m.total_supplied_usd < 10000).map((m) => m.symbol));
+  const confirmedLive = live.filter((m) => !/^unconfirmed/.test(m.cross_check)).length;
+  const realDisagreements = disagreements.filter((d) => ranked.has(d.market) && !dust.has(d.market));
+  return { clock, markets: live, excluded, disagreements: realDisagreements, oracle, confirmed: confirmedLive };
 }
 
 /**
@@ -13324,11 +13572,16 @@ export async function yieldPlan(input = {}) {
     // some of it was would be the same overstatement this project keeps finding
     // in other people's numbers.
     cross_check: {
-      agrees: disagreements.length === 0,
+      // Agreement needs something to agree WITH. With no market confirmed the
+      // second source did not answer, and "agrees: true" beside "0 of 54" was
+      // one source presented as two (2026-09-18). null = not checked.
+      agrees: confirmed > 0 ? disagreements.length === 0 : null,
       second_sourced: `${confirmed} of ${markets.length} live markets are covered by Venus's own published API; the rest are computed from the chain only and say so per row.`,
       ...(disagreements.length
         ? { disagreements, note: 'Our figure and Venus\'s own published APY differ on these markets by more than 0.1 points. Rates move between their snapshot and our block, but a large gap is a reason to read the market directly before acting.' }
-        : { note: 'Every market Venus also publishes agrees with our independent computation to within 0.1 points — derived from the rate per block and the measured block time, not copied from them.' }),
+        : { note: confirmed > 0
+          ? 'Every market Venus also publishes agrees with our independent computation to within 0.1 points — derived from the rate per block and the measured block time, not copied from them.'
+          : 'Venus\'s own API did not answer this time, so nothing here is second-sourced: every figure is our computation from the chain alone (rate per block, measured block time). Not cross-checked.' }),
     },
     ...(excluded.length ? { excluded_from_ranking: excluded } : {}),
     oracle,
@@ -13361,7 +13614,21 @@ export async function yieldPlan(input = {}) {
   // is priced by the rebalancing agent, which measures the pool — here the cost
   // is stated as gas only and says so, rather than inventing a swap cost this
   // function has not measured.
-  const gasUsd = 0.25; // redeem + mint at BSC gas, generously rounded up
+  // MEASURED, NOT ROUNDED UP (2026-09-18). This was a constant $0.25; BSC clears
+  // at 0.05 gwei and a redeem plus a mint is about 450,000 gas — two cents. A
+  // cost ten times too high made the break-even ten times too long and told
+  // small positions "not worth it". Gas price and the BNB price are read; if
+  // either read fails the old generous figure stands and says it was assumed.
+  const MOVE_GAS = 450000;
+  let gasUsd = 0.25, gasBasis = 'assumed (the gas price could not be read): a generous $0.25';
+  try {
+    const [gp, feed] = await Promise.all([rpc('eth_gasPrice', []), rpc('eth_call', [{ to: '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE', data: '0xfeaf968c' }, 'latest'])]);
+    const gwei = Number(BigInt(gp)) / 1e9, bnbUsd = Number(BigInt('0x' + String(feed).slice(2 + 64, 2 + 128))) / 1e8;
+    if (gwei > 0 && bnbUsd > 0) {
+      gasUsd = +Math.max(0.01, (gwei * 1e-9) * MOVE_GAS * bnbUsd * 1.5).toFixed(2);   // with half again as headroom, never under a cent
+      gasBasis = `measured: ${gwei} gwei x ${MOVE_GAS.toLocaleString('en-US')} gas (a redeem and a mint) at $${bnbUsd.toFixed(0)} a BNB, with half again as headroom`;
+    }
+  } catch { /* the assumed figure stands */ }
   const sameAsset = from && best.symbol.toUpperCase() === from.symbol.toUpperCase();
   const costUsd = gasUsd;
 
@@ -13386,7 +13653,7 @@ export async function yieldPlan(input = {}) {
     apy_gain_pct: +deltaPct.toFixed(4),
     extra_per_year_usd: +extraPerYearUsd.toFixed(2),
     cost_usd: costUsd,
-    cost_basis: 'BSC gas for a redeem and a mint. If the underlying differs the move also needs a swap, whose real cost depends on pool depth — that is measured by the rebalancing agent, and is NOT included here.',
+    cost_basis: gasBasis + '. BSC gas for a redeem and a mint. If the underlying differs the move also needs a swap, whose real cost depends on pool depth — that is measured by the rebalancing agent, and is NOT included here.',
     same_underlying: !!sameAsset,
     days_to_break_even: Number.isFinite(daysToBreakEven) ? +daysToBreakEven.toFixed(1) : null,
     payback,
@@ -13404,7 +13671,9 @@ export async function yieldPlan(input = {}) {
   } else if (payback === 'slow') {
     result.verdict = `Marginal. ${money}, so it pays for itself after ${daysToBreakEven.toFixed(0)} days. Worth doing only if the money is staying put for longer than that.`;
   } else {
-    result.verdict = `Worth it. ${money}. It pays for itself in ${daysToBreakEven.toFixed(1)} days.`;
+    // "Worth it" is about the gas. A move into another underlying also needs a
+    // swap this function has not priced, and the verdict has to say so itself.
+    result.verdict = `Worth it${sameAsset ? '' : ' on gas alone'}. ${money}. It pays for itself in ${daysToBreakEven.toFixed(1)} days.${sameAsset ? '' : ` Moving from ${from ? from.symbol : 'your asset'} into ${best.symbol} also needs a swap, which is NOT in this figure — price it first (rebalance_plan measures it).`}`;
   }
 
   if (amountUsd > best.available_liquidity_usd) {

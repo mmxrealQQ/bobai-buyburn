@@ -711,7 +711,12 @@ section('The marketplace, from the front door');
   ok('/lp/look on the agent\'s own wallet is its main range and names the reserve it also holds', !!ladderRec && !!look && String(look.position) === String(ladderRec.main) && (ladderRec.reserve == null || (Array.isArray(look.also_held) && look.also_held.includes(String(ladderRec.reserve)))), look && `position ${look.position}, ladder main ${ladderRec && ladderRec.main}, reserve ${ladderRec && ladderRec.reserve}, also_held ${JSON.stringify(look && look.also_held)}`);
   ok('lp_position_plan reads a position and states what the agent would do', !!lpEx && lpEx.result && lpEx.result.plan && lpEx.result.plan.position && typeof lpEx.result.plan.in_range === 'boolean' && /Re-set:|Out of range|In range/.test(lpEx.result.plan.verdict || ''), lpEx && (lpEx.error || lpEx.result?.plan?.verdict || '').slice(0, 120));
   ok('lp_position_plan signs nothing and says so', !!lpEx && /signs nothing/.test(lpEx.result?.plan?.what_this_is_not || ''));
-  const ansBogus = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: '{"task":"x"}' });
+  const ansBogus = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: '{"task":"health factor of 0xd319e1F8e987cf78333cEA853F455366640929cF"}' });
+  // Since 2026-09-18 the input is looked at before the payment is: a request that cannot be
+  // worked answers 422 with the money untouched, whatever proof it carries.
+  const ansNoInput = await fetch(`${AGENT}/answer?service=health_factor`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': '0x' + 'ab'.repeat(32) }, body: '{"task":"x"}' });
+  const noInputBody = await ansNoInput.json().catch(() => ({}));
+  ok('a request that cannot be worked is refused BEFORE the payment is taken', ansNoInput.status === 422 && /needs `address`/.test(noInputBody.error || '') && /not taken/.test(noInputBody.payment || ''));
   const bogusBody = await ansBogus.json().catch(() => ({}));
   ok('a fabricated proof is refused with a reason, and nothing is produced', ansBogus.status === 402 && /not accepted/.test(bogusBody.error || '') && !!bogusBody.reason && !bogusBody.result);
   ok('an unknown service does not ask for money', (await fetch(`${AGENT}/answer?service=nope`, { method: 'POST' })).status === 400);

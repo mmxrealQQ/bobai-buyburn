@@ -357,7 +357,7 @@ async function probeYield() {
         ? `BSC is at ${plan.measured_block_time.seconds_per_block}s per block — ${plan.measured_block_time.blocks_per_year.toLocaleString('en-US')} a year, not the 10,512,000 most BSC yield figures still assume`
         : 'markets read, block time not measurable',
       measures: 'every Venus core-pool market ranked by what it actually pays, and the days until a move pays for its own gas',
-      note: 'The APY depends entirely on the block time, which is measured here from two blocks a hundred thousand apart rather than assumed. Cross-checked against Venus’s own published figures.',
+      note: 'The APY depends entirely on the block time, which is measured here from two blocks a hundred thousand apart rather than assumed. Cross-checked against Venus’s own published figures when their API answers; the answer says whether it did.',
       not_ready_because: null,
       chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,

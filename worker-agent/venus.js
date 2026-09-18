@@ -185,6 +185,7 @@ export async function healthFactor(account) {
 
   let weightedCollateral = 0n; // collateral after the protocol's own haircut
   let rawCollateral = 0n;      // before it, so the haircut is visible
+  let borrowingPower = 0n;     // what the collateral factor lets the account borrow against it
   let borrowed = 0n;
   const positions = [];
 
@@ -200,6 +201,18 @@ export async function healthFactor(account) {
     const borrow = uint(snap, 2);
     const exchangeRate = uint(snap, 3);
     const collateralFactor = uint(mkt, 1);
+    // LIQUIDATION IS DECIDED ON THE LIQUIDATION THRESHOLD, NOT ON THE COLLATERAL
+    // FACTOR (2026-09-18). Venus core now keeps the two apart — markets()
+    // returns the collateral factor in its second word (what may be BORROWED
+    // against an asset) and the liquidation threshold in its fourth (where the
+    // position is LIQUIDATED); vFDUSD reads 0.65 and 0.75. They differ in 23 of
+    // the 55 core markets. This file weighted everything by the collateral
+    // factor: a health factor of 0.90 "liquidatable right now" on FDUSD
+    // collateral is really 1.04, and the cross-check against the protocol's own
+    // getAccountLiquidity disagreed by 7% and 10% on two delivered jobs for
+    // exactly this reason. A market that reports no threshold keeps the factor.
+    const ltRaw = uint(mkt, 3);
+    const liquidationThreshold = ltRaw > 0n && ltRaw <= S ? ltRaw : collateralFactor;
     const price = uint(priceRaw, 0);
 
     // The oracle scales its answer so that (underlying amount * price) / 1e18
@@ -209,10 +222,12 @@ export async function healthFactor(account) {
     const underlying = (vTokens * exchangeRate) / S;      // underlying units
     const supplyUsd = (underlying * price) / S;
     const borrowUsd = (borrow * price) / S;
-    const weightedUsd = (supplyUsd * collateralFactor) / S;
+    const weightedUsd = (supplyUsd * liquidationThreshold) / S;
+    const borrowableUsd = (supplyUsd * collateralFactor) / S;
 
     rawCollateral += supplyUsd;
     weightedCollateral += weightedUsd;
+    borrowingPower += borrowableUsd;
     borrowed += borrowUsd;
 
     if (supplyUsd > 0n || borrowUsd > 0n) {
@@ -222,7 +237,10 @@ export async function healthFactor(account) {
         supplied_usd: num(supplyUsd),
         borrowed_usd: num(borrowUsd),
         collateral_factor: Number(collateralFactor) / 1e18,
+        liquidation_threshold: Number(liquidationThreshold) / 1e18,
+        // Against liquidation (the threshold); what may still be borrowed is the factor's.
         counts_as_collateral_usd: num(weightedUsd),
+        counts_toward_borrowing_usd: num(borrowableUsd),
       });
     }
   }
@@ -259,6 +277,10 @@ export async function healthFactor(account) {
     collateral_usd: num(rawCollateral),
     collateral_after_haircut_usd: num(weightedCollateral),
     headroom_usd: num(ourHeadroom),
+    // The two questions kept apart: how far from liquidation (above), and how
+    // much more could be borrowed (the collateral factor's figure).
+    basis: 'health factor, liquidatable and headroom are on each market\'s liquidation threshold; borrowing power is on its collateral factor',
+    borrowing_power_left_usd: num(borrowingPower - borrowed),
     markets_entered: markets.length,
     positions: positions.sort((a, b) => (b.supplied_usd + b.borrowed_usd) - (a.supplied_usd + a.borrowed_usd)),
     cross_check: {

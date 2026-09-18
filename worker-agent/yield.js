@@ -114,8 +114,12 @@ const apyFromRate = (ratePerBlock, blocksPerYear) => {
 // than quietly presenting one source as two.
 async function venusPublished() {
   try {
-    const r = await fetch('https://api.venus.io/markets/core-pool?chainId=56', {
-      headers: { accept: 'application/json' },
+    // limit=100: the API pages at 20 by default, and the core pool has 55
+    // markets — without it the "second source" could cover a third of them
+    // at most (2026-09-18). A browser-like agent header, because a bare
+    // Worker fetch is what the API has been refusing.
+    const r = await fetch('https://api.venus.io/markets/core-pool?chainId=56&limit=100', {
+      headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; brainonbnb-yield/1.0; +https://brainonbnb.com)' },
       signal: AbortSignal.timeout(15000),
     });
     const j = await r.json();
@@ -277,7 +281,17 @@ export async function venusMarkets() {
   }
 
   live.sort((a, b) => b.supply_apy_pct - a.supply_apy_pct);
-  return { clock, markets: live, excluded, disagreements, oracle, confirmed: published ? published.size : 0 };
+  // What "second-sourced" and "disagrees" are counted over: the markets that
+  // are ranked. `confirmed` was the size of Venus's list ("55 of 54"), and a
+  // market this function itself excludes as deprecated (vUST, 1e14 %) stood in
+  // the disagreements (2026-09-18, the first day the API answered in full).
+  // A market with next to nothing supplied is left out of the comparison too:
+  // Venus publishes 0 for it, the chain still computes its last rate.
+  const ranked = new Set(live.map((m) => m.symbol));
+  const dust = new Set(live.filter((m) => m.total_supplied_usd < 10000).map((m) => m.symbol));
+  const confirmedLive = live.filter((m) => !/^unconfirmed/.test(m.cross_check)).length;
+  const realDisagreements = disagreements.filter((d) => ranked.has(d.market) && !dust.has(d.market));
+  return { clock, markets: live, excluded, disagreements: realDisagreements, oracle, confirmed: confirmedLive };
 }
 
 /**
@@ -314,11 +328,16 @@ export async function yieldPlan(input = {}) {
     // some of it was would be the same overstatement this project keeps finding
     // in other people's numbers.
     cross_check: {
-      agrees: disagreements.length === 0,
+      // Agreement needs something to agree WITH. With no market confirmed the
+      // second source did not answer, and "agrees: true" beside "0 of 54" was
+      // one source presented as two (2026-09-18). null = not checked.
+      agrees: confirmed > 0 ? disagreements.length === 0 : null,
       second_sourced: `${confirmed} of ${markets.length} live markets are covered by Venus's own published API; the rest are computed from the chain only and say so per row.`,
       ...(disagreements.length
         ? { disagreements, note: 'Our figure and Venus\'s own published APY differ on these markets by more than 0.1 points. Rates move between their snapshot and our block, but a large gap is a reason to read the market directly before acting.' }
-        : { note: 'Every market Venus also publishes agrees with our independent computation to within 0.1 points — derived from the rate per block and the measured block time, not copied from them.' }),
+        : { note: confirmed > 0
+          ? 'Every market Venus also publishes agrees with our independent computation to within 0.1 points — derived from the rate per block and the measured block time, not copied from them.'
+          : 'Venus\'s own API did not answer this time, so nothing here is second-sourced: every figure is our computation from the chain alone (rate per block, measured block time). Not cross-checked.' }),
     },
     ...(excluded.length ? { excluded_from_ranking: excluded } : {}),
     oracle,
@@ -351,7 +370,21 @@ export async function yieldPlan(input = {}) {
   // is priced by the rebalancing agent, which measures the pool — here the cost
   // is stated as gas only and says so, rather than inventing a swap cost this
   // function has not measured.
-  const gasUsd = 0.25; // redeem + mint at BSC gas, generously rounded up
+  // MEASURED, NOT ROUNDED UP (2026-09-18). This was a constant $0.25; BSC clears
+  // at 0.05 gwei and a redeem plus a mint is about 450,000 gas — two cents. A
+  // cost ten times too high made the break-even ten times too long and told
+  // small positions "not worth it". Gas price and the BNB price are read; if
+  // either read fails the old generous figure stands and says it was assumed.
+  const MOVE_GAS = 450000;
+  let gasUsd = 0.25, gasBasis = 'assumed (the gas price could not be read): a generous $0.25';
+  try {
+    const [gp, feed] = await Promise.all([rpc('eth_gasPrice', []), rpc('eth_call', [{ to: '0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE', data: '0xfeaf968c' }, 'latest'])]);
+    const gwei = Number(BigInt(gp)) / 1e9, bnbUsd = Number(BigInt('0x' + String(feed).slice(2 + 64, 2 + 128))) / 1e8;
+    if (gwei > 0 && bnbUsd > 0) {
+      gasUsd = +Math.max(0.01, (gwei * 1e-9) * MOVE_GAS * bnbUsd * 1.5).toFixed(2);   // with half again as headroom, never under a cent
+      gasBasis = `measured: ${gwei} gwei x ${MOVE_GAS.toLocaleString('en-US')} gas (a redeem and a mint) at $${bnbUsd.toFixed(0)} a BNB, with half again as headroom`;
+    }
+  } catch { /* the assumed figure stands */ }
   const sameAsset = from && best.symbol.toUpperCase() === from.symbol.toUpperCase();
   const costUsd = gasUsd;
 
@@ -376,7 +409,7 @@ export async function yieldPlan(input = {}) {
     apy_gain_pct: +deltaPct.toFixed(4),
     extra_per_year_usd: +extraPerYearUsd.toFixed(2),
     cost_usd: costUsd,
-    cost_basis: 'BSC gas for a redeem and a mint. If the underlying differs the move also needs a swap, whose real cost depends on pool depth — that is measured by the rebalancing agent, and is NOT included here.',
+    cost_basis: gasBasis + '. BSC gas for a redeem and a mint. If the underlying differs the move also needs a swap, whose real cost depends on pool depth — that is measured by the rebalancing agent, and is NOT included here.',
     same_underlying: !!sameAsset,
     days_to_break_even: Number.isFinite(daysToBreakEven) ? +daysToBreakEven.toFixed(1) : null,
     payback,
@@ -394,7 +427,9 @@ export async function yieldPlan(input = {}) {
   } else if (payback === 'slow') {
     result.verdict = `Marginal. ${money}, so it pays for itself after ${daysToBreakEven.toFixed(0)} days. Worth doing only if the money is staying put for longer than that.`;
   } else {
-    result.verdict = `Worth it. ${money}. It pays for itself in ${daysToBreakEven.toFixed(1)} days.`;
+    // "Worth it" is about the gas. A move into another underlying also needs a
+    // swap this function has not priced, and the verdict has to say so itself.
+    result.verdict = `Worth it${sameAsset ? '' : ' on gas alone'}. ${money}. It pays for itself in ${daysToBreakEven.toFixed(1)} days.${sameAsset ? '' : ` Moving from ${from ? from.symbol : 'your asset'} into ${best.symbol} also needs a swap, which is NOT in this figure — price it first (rebalance_plan measures it).`}`;
   }
 
   if (amountUsd > best.available_liquidity_usd) {

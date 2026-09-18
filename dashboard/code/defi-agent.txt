@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 14 files, 5876 lines.
+# one fetch. 14 files, 5881 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4574,7 +4574,12 @@ export async function lpPositionLook(params = {}, env = null) {
 export async function lpPositionPlan(params = {}, env = null) {
   params = await withLadder(params, env);
   const r = await lpPositionFacts(params);
-  if (r.facts.positions !== 1) return r.facts;
+  // A PAID PLAN THAT HAS NO POSITION TO PLAN IS NOT DELIVERED (2026-09-18). A
+  // wallet with none, or with several and no id named, used to be answered
+  // with the free look's facts — and charged 0.10 for it, because the sale
+  // refunds only when the work throws. It throws, with the same sentence (and
+  // the ids to choose from): the buyer keeps the payment as a credit.
+  if (r.facts.positions !== 1) throw new Error(`${r.facts.verdict}${Array.isArray(r.facts.position_ids) && r.facts.position_ids.length ? ` Position ids: ${r.facts.position_ids.join(', ')}.` : ''} The free look says the same: https://agent.brainonbnb.com/lp/look`);
   const { facts, pub, p, owner, poolInfo, owedBnbEquiv } = r;
   if (!facts.against_wbnb) {
     return { ...facts, verdict: 'The position is not against WBNB. This agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.', measured_at: new Date().toISOString() };

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4254 lines.
+# one fetch. 7 files, 4255 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1765,7 +1765,7 @@ const page = `<!doctype html>
   .rgc-ev summary{cursor:pointer;font-size:.72rem;color:var(--muted);list-style:none;
     display:flex;align-items:center;gap:7px;flex-wrap:wrap}
   .rgc-ev summary::-webkit-details-marker{display:none}
-  .rgc-ev summary::before{content:'b8';display:inline-block;transition:transform .2s;color:var(--muted)}
+  .rgc-ev summary::before{content:'\\25b8';display:inline-block;transition:transform .2s;color:var(--muted)}
   .rgc-ev[open] summary::before{transform:rotate(90deg)}
   .rgc-ev summary:hover{color:var(--acc,var(--gold))}
   .rgc-ev > .rg-note{margin-top:7px}
@@ -2423,8 +2423,9 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
           // "tvlUsd" is a field name, not a label. Split the camel case,
           // move the unit into brackets, keep the acronyms.
           var label=function(k){var s=String(k).replace(/_/g,' ').replace(/([a-z0-9])([A-Z])/g,'$1 $2').toLowerCase();
-            s=s.replace(/\busd\b$/,'($)').replace(/\bpct\b$/,'(%)').replace(/\bbps\b$/,'(bps)');
-            s=s.replace(/\b(tvl|apy|apr|usd|bnb|lp|id|url|tx|dex|amm|v2|v3)\b/g,function(m){return m.toUpperCase()});
+            // (doubled backslashes: this is a template literal, where one backslash-b is a backspace)
+            s=s.replace(/\\busd\\b$/,'($)').replace(/\\bpct\\b$/,'(%)').replace(/\\bbps\\b$/,'(bps)');
+            s=s.replace(/\\b(tvl|apy|apr|usd|bnb|lp|id|url|tx|dex|amm|v2|v3)\\b/g,function(m){return m.toUpperCase()});
             return s.charAt(0).toUpperCase()+s.slice(1)};
           var flat=function(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&Object.keys(r).length&&Object.keys(r).length<=40&&Object.keys(r).every(function(k){return r[k]==null||typeof r[k]!=='object'}))};
           var renderResult=function(r){var raw=esc(typeof r==='string'?r:JSON.stringify(r,null,1)).slice(0,3000);if(!flat(r))return '<pre>'+raw+'</pre>';return '<table class="rg-ans">'+Object.keys(r).map(function(k){return '<tr><th title="'+esc(k)+'">'+esc(label(k))+'</th><td>'+esc(fmtVal(r[k]))+'</td></tr>'}).join('')+'</table><details class="rg-raw"><summary>as the agent sent it</summary><pre>'+raw+'</pre></details>'};

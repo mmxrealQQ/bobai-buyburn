@@ -27,14 +27,15 @@
 
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
-import { dexterAccepts, verifyAndSettle, parsePaymentHeader } from './x402.js';
+import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
 import { handleDispatch } from './dispatch.js';
 import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
 import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
-import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams } from './sell.js';
+import { readPaid, claimPayment, settlePayment } from './ledger.js';
+import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
 import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY } from '../shared/lp-flow.js';
 
@@ -175,6 +176,21 @@ const pageTail = '</main></div></body></html>';
 const BUY = { href: 'https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff', label: 'Buy $BOBAI', external: true };
 const SITE = 'https://brainonbnb.com';
 
+// A KV list answers a thousand keys and a cursor. Every total on /stats, the
+// earnings record and the watch sweep read ONE page: at a thousand keys the
+// totals stop growing, earnings go missing and paid watches stop being
+// checked — in silence (2026-09-18: 218 count: keys after a month, so about
+// January). Every page is read; the shape is the one list() returns.
+async function listAll(env, prefix) {
+  const keys = [];
+  let cursor = null;
+  do {
+    const page = await env.AGENT.list({ prefix, limit: 1000, ...(cursor ? { cursor } : {}) });
+    keys.push(...page.keys);
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  return { keys, list_complete: true };
+}
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj, null, 2), {
     status,
@@ -261,7 +277,7 @@ async function flushCounters(env) {
 }
 
 async function readCounters(env) {
-  const list = await env.AGENT.list({ prefix: 'count:' });
+  const list = await listAll(env, 'count:');
   const byKind = {};
   const byDay = {};
   // All keys at once: 175 reads in a row took 6 s cold on 2026-09-12, and
@@ -290,11 +306,18 @@ async function readCounters(env) {
 // `asset` is the token whose transfer counts (USD1 by default); `label` is how
 // its amount is written back to the payer. Since 2026-09-03 an answer can
 // also be paid in $BOBAI — the token this whole loop exists to burn.
+// The payment ledger (claimed -> delivered | credit) lives in ledger.js, where
+// scripts/payment-ledger-check.mjs can run it against a table.
+// A day of blocks on BSC (0.45 s a block). A receipt older than that is not a
+// payment for this request — it is somebody's old transfer to this wallet,
+// found on the explorer. A credit (a failed answer) is exempt: that buyer paid.
+const MAX_PAYMENT_AGE_BLOCKS = 200000;
+
 async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD1') {
   if (!/^0x[a-fA-F0-9]{64}$/.test(txHash || '')) return { ok: false, reason: 'malformed transaction hash' };
 
-  const spent = await env.AGENT.get(`paid:${txHash.toLowerCase()}`);
-  if (spent) return { ok: false, reason: 'this payment has already been used' };
+  const spent = await readPaid(env, txHash.toLowerCase());
+  if (spent && spent.state === 'delivered') return { ok: false, reason: 'this payment has already been used' };
 
   const receipt = await rpc('eth_getTransactionReceipt', [txHash], RECEIPT_RPCS).catch(() => null);
   if (!receipt) return { ok: false, reason: 'transaction not found — if it was just sent, wait for it to confirm' };
@@ -314,6 +337,12 @@ async function verifyPayment(env, txHash, payTo, min, asset = USD1, label = 'USD
       paid,
     };
 
+  // Last, so that a transfer to somebody else, or too small a one, is told
+  // what is wrong with it rather than how old it is.
+  if (!(spent && spent.state === 'credit')) {
+    const head = await rpc('eth_blockNumber', [], RECEIPT_RPCS).catch(() => null);
+    if (head && parseInt(head, 16) - parseInt(receipt.blockNumber, 16) > MAX_PAYMENT_AGE_BLOCKS) return { ok: false, reason: 'that payment is more than a day old — a payment is made for the request it buys' };
+  }
   return { ok: true, paid, asset: asset.toLowerCase(), from: (receipt.from || '').toLowerCase(), block: receipt.blockNumber };
 }
 
@@ -389,7 +418,23 @@ async function bnbUsd() {
 
 // ---------------------------------------------------------------- watches
 
+// The quote tokens a watch can price: BNB from the reference pair, the dollar
+// stablecoins at one dollar, all of them 18 decimals on BSC. Any other quote
+// was priced at $1 with 18 decimals whatever it was (2026-09-18).
+const WATCH_QUOTES = new Set([WBNB, '0x55d398326f99059ff775485246999027b3197955', '0xe9e7cea3dedca5984780bafc599bd69add087d56', '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d']);
+// WHAT IS SOLD IS WHAT IS MEASURED (2026-09-18). The watch is described, on the
+// 402 and in the catalogue, as firing "when the pool can no longer absorb this
+// USD size at 1% impact". The sweep compared the threshold with the pair's whole
+// quote-side reserve — about two hundred times that figure: depthBelowUsd 1000
+// fired when the RESERVE fell under $1,000, long after a $1,000 trade had
+// stopped fitting. On a constant-product pair the quote that moves the price
+// by 1% is reserve x (sqrt(1.01) - 1), 0.4988% of it.
+const ONE_PCT_OF_RESERVE = Math.sqrt(1.01) - 1;
 async function createWatch(env, spec, payment) {
+  const quoteOf = String(spec.quote || WBNB).toLowerCase();
+  if (!WATCH_QUOTES.has(quoteOf)) throw new Error('this watch prices pools quoted in BNB, USDT, BUSD, USDC or USD1 — name one of those as quote, or leave it out for BNB');
+  if (spec.callback != null && !/^https:\/\/[^\s]{4,400}$/.test(String(spec.callback))) throw new Error('callback must be an https:// URL');
+  if (spec.depthBelowUsd != null && !(Number(spec.depthBelowUsd) > 0)) throw new Error('depthBelowUsd must be a positive number of dollars');
   const id = crypto.randomUUID();
   const now = Date.now();
   const watch = {
@@ -413,7 +458,7 @@ async function createWatch(env, spec, payment) {
 }
 
 async function checkWatches(env) {
-  const list = await env.AGENT.list({ prefix: 'watch:' });
+  const list = await listAll(env, 'watch:');
   if (!list.keys.length) return { checked: 0, fired: 0 };
   const price = await bnbUsd().catch(() => 0);
   if (!price) return { checked: 0, fired: 0, error: 'could not price BNB' };
@@ -427,7 +472,9 @@ async function checkWatches(env) {
 
     let depth;
     try {
-      depth = await poolDepthUsd(w.pair, w.quote, w.quote === WBNB ? price : 1);
+      const reserveUsd = await poolDepthUsd(w.pair, w.quote, w.quote === WBNB ? price : 1);
+      w.lastReserveUsd = Math.round(reserveUsd);
+      depth = reserveUsd * ONE_PCT_OF_RESERVE;   // the size that moves the price 1%
     } catch { continue; } // a node dropping a call is not a depth collapse
     w.lastDepthUsd = Math.round(depth);
     w.lastCheckedAt = Date.now();
@@ -717,7 +764,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
 // three older ones were patched from their receipts) counts as ours, not as
 // a stranger's: the claim that is easy to make wrongly is the flattering one.
 async function readEarnings(env) {
-  const list = await env.AGENT.list({ prefix: 'earn:' });
+  const list = await listAll(env, 'earn:');
   let total = 0n, strangers = 0n, own = 0n, strangersCount = 0, ownCount = 0;
   const payments = [];
   for (const k of list.keys) {
@@ -801,7 +848,8 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
     const r = await verifyAndSettle(parsed.value, accepts);
     if (!r.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', stage: r.stage, reason: r.reason } };
     tx = (r.tx || `x402:${Date.now()}`).toLowerCase();
-    if (await env.AGENT.get(`paid:${tx}`)) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: 'this settlement has already been used' } };
+    const seen = await readPaid(env, tx);
+    if (seen && seen.state === 'delivered') return { ok: false, status: 402, body: { error: 'payment not accepted', reason: 'this settlement has already been used' } };
     check = { ok: true, paid: price, from: r.payer };
   } else {
     check = await verifyPayment(env, String(proof).trim(), payTo, price);
@@ -815,7 +863,8 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
     if (!check.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: check.reason } };
     tx = String(proof).trim().toLowerCase();
   }
-  await env.AGENT.put(`paid:${tx}`, '1', { expirationTtl: 60 * 60 * 24 * 400 });
+  const claim = await claimPayment(env, tx, sold);
+  if (!claim.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: claim.reason } };
   // earn: records USD1 amounts only — /stats sums them as dollars. A payment
   // in another coin is recorded with its coin and its dollar price at the
   // quote, so the total stays a dollar figure and the coin stays visible.
@@ -825,8 +874,10 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
   const earn = asset === 'USD1'
     ? { at: Date.now(), amount: check.paid.toString(), tx, for: sold, from }
     : { at: Date.now(), amount: price.toString(), tx, for: sold, from, paid_in: asset, paid_atomic: check.paid.toString() };
-  await env.AGENT.put(`earn:${tx}`, JSON.stringify(earn), { expirationTtl: 60 * 60 * 24 * 400 });
-  return { ok: true, tx, paid: check.paid, from: check.from, asset };
+  // The earnings record is permanent, like the mark: what was earned does not
+  // stop having been earned after 400 days.
+  await env.AGENT.put(`earn:${tx}`, JSON.stringify(earn));
+  return { ok: true, tx, paid: check.paid, from: check.from, asset, claim: claim.by };
 }
 
 // The five deliveries, sold per answer. The same doWork() the escrow path
@@ -862,7 +913,8 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     };
     return {
       status: 402,
-      headers: { 'PAYMENT-REQUIRED': b64(requirements) },
+      // Exposed, or a browser agent cannot read the header it is told to decode.
+      headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
@@ -870,10 +922,15 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
-        accepts: requirements.accepts,
+        accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
   }
+  // The input is looked at BEFORE the payment is (sell.js, missingInput): a
+  // request that cannot be worked is told so with its money untouched.
+  const wanted = extractParams(String(body?.task || ''), { ...(body?.params || {}), service: serviceId });
+  const lacks = missingInput(serviceId, wanted);
+  if (lacks) return { status: 422, body: { error: lacks, needs: service.needs, payment: 'not taken — nothing was charged; send the same request with the input added' } };
   const pay = await chargeX402(env, { payTo, price: ANSWER_PRICE, description, resource, proof, sold: `answer:${serviceId}`,
     alt: bobai ? { asset: BOBAI, min: bobai.atomic, label: 'BOBAI' } : null });
   if (!pay.ok) return { status: pay.status, body: pay.body };
@@ -885,10 +942,13 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
     // Paid and not deliverable — the one case that must never be silent.
     // The payment is recorded as unspent again so the caller can retry with
     // the input fixed, and the reason is the service's own.
-    await env.AGENT.delete(`paid:${pay.tx}`).catch(() => {});
+    // A credit, held by the same hash — never a deletion: deleting freed the
+    // hash for whoever raced this request, the delivered answer included.
+    await settlePayment(env, pay.tx, pay.claim, 'credit', { failed: String(e.message || e).slice(0, 120) }).catch(() => {});
     await env.AGENT.delete(`earn:${pay.tx}`).catch(() => {});
     return { status: 422, body: { error: `could not produce the answer: ${String(e.message || e).slice(0, 200)}`, needs: service.needs, payment: 'not consumed — repeat with the same PAYMENT-SIGNATURE once the input is fixed' } };
   }
+  await settlePayment(env, pay.tx, pay.claim, 'delivered').catch(() => {});
   ctx.waitUntil(bump(env, 'answer_sold'));
   return { status: 200, body: {
     ok: true, service: serviceId, name: service.name, paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx,
@@ -932,7 +992,8 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     };
     return {
       status: 402,
-      headers: { 'PAYMENT-REQUIRED': b64(requirements) },
+      // Exposed, or a browser agent cannot read the header it is told to decode.
+      headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description: `Pool watch for ${WATCH_DAYS} days` })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
       requirements,
       body: {
         error: 'payment required',
@@ -942,11 +1003,11 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         // off the one-asset sentence holds the wrong token for the other route.
         price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator (accepts[0]) — either lands in the same wallet`,
         how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
-        needs: { token: 'the token to watch (0x…)', pair: 'or the pool/pair address (0x…)', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
+        needs: { token: 'the token to watch (0x…)', pair: 'the pool/pair address (0x…) — required, a PancakeSwap V2 pair', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
-        accepts: requirements.accepts,
+        accepts: v2Shape(requirements, { url: resource }).accepts,
       },
     };
   }
@@ -960,7 +1021,16 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
   if (!pay.ok) return { status: pay.status, body: pay.body };
   const tx = pay.tx, check = { paid: pay.paid, from: pay.from };
 
-  const watch = await createWatch(env, spec, { tx, from: check.from });
+  // The watch is the goods: created, the payment is delivered and final; a
+  // creation that throws leaves the buyer a credit on the same hash.
+  let watch;
+  try { watch = await createWatch(env, spec, { tx, from: check.from }); }
+  catch (e) {
+    await settlePayment(env, tx, pay.claim, 'credit', { failed: String(e.message || e).slice(0, 120) }).catch(() => {});
+    await env.AGENT.delete(`earn:${tx}`).catch(() => {});
+    return { status: 422, body: { error: `the watch could not be created: ${String(e.message || e).slice(0, 200)}`, payment: 'not consumed — repeat with the same payment once the input is fixed' } };
+  }
+  await settlePayment(env, tx, pay.claim, 'delivered').catch(() => {});
   ctx.waitUntil(bump(env, 'watch_created'));
 
   // Anything the caller sent that this endpoint does not read is named back
@@ -2023,7 +2093,7 @@ ${pageTail}`;
       const [counters, earnings, watches] = await Promise.all([
         readCounters(env),
         readEarnings(env),
-        env.AGENT.list({ prefix: 'watch:' }),
+        listAll(env, 'watch:'),
       ]);
       // "Requests answered" must mean requests somebody made. Our own cron
       // sweeps are counted too — they are worth knowing — but folding them into
@@ -2047,7 +2117,7 @@ ${pageTail}`;
         earned: earnings,
         active_watches: watches.keys.length,
         money_flow: {
-          '1': 'an agent pays USD1 for a watch, or $U for a job delivered on the ERC-8183 kernel',
+          '1': 'an agent pays for a single answer or a 30-day watch over x402 (USD1 by direct transfer, USDC through the facilitator, or $BOBAI at the quoted rate), or $U for a job delivered on the ERC-8183 kernel',
           '2': `it lands at ${payTo || '(not configured)'} (USD1) or 0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963 ($U) — wallets used for nothing else`,
           '3': 'once a day it is sold for BNB and sent to the DeFi wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A, which holds the project\'s PancakeSwap V3 position and grows it with what arrives; the capital never leaves',
           '4': 'the fees that position earns are collected and sold for BNB; half stays as capital so the position grows out of its own earnings (LP_FEE_KEEP_PCT on worker-lp, since 2026-09-04), the other half buys $BOBAI that the agent holds in its own wallet 0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A and never sells (since 2026-09-09; until then that half went to the buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce)',

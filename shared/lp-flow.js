@@ -22,6 +22,11 @@
 
 const n = (v) => Number(v) || 0;
 const r6 = (v) => Number(v.toFixed(6));
+// What a step's own transactions paid in gas. `bnb_spent` of an increase or a
+// ladder mint is the wallet's balance before minus after, so the gas is in
+// it; gas has its own line below. Counted in both, it left the profit twice
+// (2026-09-18: 0.00087 BNB over 28 steps, 6.5% of the profit on the card).
+const gasOf = (step) => (step && Array.isArray(step.txs) ? step.txs : []).reduce((a, t) => a + n(t.gas_bnb), 0);
 
 export function moneyFlow(rec, { earned = null } = {}) {
   const hist = (Array.isArray(rec?.history) ? rec.history : []).filter((e) => e && !e.dry);
@@ -59,14 +64,14 @@ export function moneyFlow(rec, { earned = null } = {}) {
     const inc = st.increase;
     if (inc && inc.acted && !inc.error) {
       increases += 1;
-      intoPosition += inc.bnb_spent != null ? n(inc.bnb_spent) : n(inc.wbnb_used);
+      intoPosition += inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used);
     }
     // The ladder step (2026-09-16) puts BNB into the reserve range: capital
     // into the position like an increase, counted the same way.
     const ld = st.ladder;
     if (ld && ld.acted && !ld.error && n(ld.bnb_spent) > 0) {
       increases += 1;
-      intoPosition += n(ld.bnb_spent);
+      intoPosition += Math.max(0, n(ld.bnb_spent) - gasOf(ld));
     }
     const rb = st.rebalance;
     if (rb && rb.acted && !rb.error && rb.new_position) {
@@ -80,6 +85,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
       if (n(rb.bobai_bnb ?? rb.fees_forwarded_bnb) > 0) resetForwarded += n(rb.bobai_bnb ?? rb.fees_forwarded_bnb);
       bobaiUnits += n(rb.bobai_units);
       if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
+      // A re-set forced by a deposit wraps the waiting BNB into its own mint:
+      // capital put in, like an increase — no increase follows to count it.
+      if (n(rb.wrapped_waiting_bnb) > 0) { intoPosition += n(rb.wrapped_waiting_bnb); increases += 1; }
     }
     if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
     for (const step of [...sweeps, c, inc, rb, st.ladder]) {

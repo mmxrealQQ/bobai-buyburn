@@ -2,7 +2,7 @@
 # One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 14 files, 5466 lines.
+# one fetch. 14 files, 5569 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -20,7 +20,8 @@
 //
 //   sweep     AI income (USD1 on the x402 wallet, $U on the provider wallet)
 //             -> BNB -> the DeFi wallet
-//   collect   the position's fees -> BNB -> the buyback wallet
+//   collect   the position's fees -> BNB -> part kept as capital, the rest buys
+//             $BOBAI the wallet holds (until 2026-09-09: the buyback wallet)
 //   increase  BNB above the reserve -> more of the same position
 //
 // Every function here is imported from shared/lp-agent.js, the file the
@@ -52,7 +53,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -213,7 +214,9 @@ if (SELF) {
   is('0.002 + 0.0005 kept by collects + 0.0006 + 0.0002 + 0.0001 folded by re-sets was kept as capital', near(fl.out.kept_as_capital_bnb, 0.0034));
   is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0104));
   is('produced = the BOBAI share + what was kept', near(fl.in.fees.bnb, fl.out.bobai_bnb + fl.out.kept_as_capital_bnb));
-  is('the increase counts the BNB it spent, gas included', near(fl.out.into_position_bnb, 0.0101) && fl.out.increases === 1);
+  is('the increase counts the BNB it put in — its own gas is on the gas line, not in here too (until 2026-09-18 it was in both, and left the profit twice)', near(fl.out.into_position_bnb, 0.0101 - 0.00003) && fl.out.increases === 1);
+  const forcedRec = { history: [{ at: '2026-09-20T10:00:00Z', ok: true, acted: true, steps: { rebalance: { acted: true, new_position: '10', wrapped_waiting_bnb: 0.4, txs: [{ gas_bnb: 0.00005 }] } } }] };
+  is('a re-set forced by a deposit wraps it into its own mint: that is capital put in, counted once', near(moneyFlow(forcedRec).out.into_position_bnb, 0.4) && near(moneyFlow({ history: [{ ...forcedRec.history[0], steps: { rebalance: { ...forcedRec.history[0].steps.rebalance, wrapped_waiting_bnb: undefined } } }] }).out.into_position_bnb, 0));
   is('three re-sets', fl.out.resets === 3);
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 11 && near(fl.gas.bnb, 0.00016));
   is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.008));
@@ -422,6 +425,15 @@ if (SELF) {
   is('... and the main range alone, still held: nothing to heal', ladderHeal(HL({ held: ['7450561'] })) === null);
   is('the other position is in another pool: nothing to heal', ladderHeal(HL({ samePool: false })) === null);
   is('no reserve in the record, or no main: nothing to heal', ladderHeal(HL({ reserve: null })) === null && ladderHeal(HL({ main: null })) === null);
+  // The same class on the reserve's side (2026-09-18): a reserve minted, its id never written.
+  is('the main range is held beside one position the record does not name: that one is the reserve', (() => { const h = ladderHeal(HL({ main: '7451444', reserve: null, held: ['7451444', '7461743'] })); return h && h.main === '7451444' && h.reserve === '7461743' && h.adopted === true && /no reserve/.test(h.why); })());
+  is('… also when the record still names a reserve burnt at its re-set', (() => { const h = ladderHeal(HL({ main: '7451444', reserve: '7450613', held: ['7461743', '7451444'] })); return h && h.reserve === '7461743' && h.adopted === true && /7450613/.test(h.why); })());
+  is('… never across pools, never with a third position, never when the record is right', ladderHeal(HL({ main: '7451444', reserve: null, held: ['7451444', '7461743'], samePool: false })) === null && ladderHeal(HL({ main: '7451444', reserve: null, held: ['7451444', '7461743', '7461800'] })) === null && ladderHeal(HL({ main: '7451444', reserve: '7461743', held: ['7451444', '7461743'] })) === null);
+  // A mint from the wallet finishes the re-set it belongs to (2026-09-18).
+  is('a wallet left holding the other side alone is minted one-sided above the price, no trade', resumeSide(1) === 'below' && resumeSide(0.97) === 'below' && ticksAdjacent(-57200, 7, 10, resumeSide(1)).side === 'above_price');
+  is('… all WBNB: one-sided below the price', resumeSide(0) === 'above' && resumeSide(0.04) === 'above' && ticksAdjacent(-57200, 7, 10, resumeSide(0)).side === 'below_price');
+  is('… a mixed wallet is centred as before, and a wallet with nothing in it decides nothing', resumeSide(0.5) === null && resumeSide(0.9) === null && resumeSide(0.1) === null && resumeSide(null) === null && resumeSide(NaN) === null);
+  is('planRebalance asks resumeSide when it mints from the wallet (source pin)', /if \(resume && valueBnb > 0\) oneSided = resumeSide\(/.test((await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8')));
   // The re-set beside a reserve: it reads its old range by id and names its new one by the mint (source pins; the chain half cannot run here).
   const coreSrc = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');
   const rebSrc = coreSrc.slice(coreSrc.indexOf('export async function executeRebalance'), coreSrc.indexOf('export async function', coreSrc.indexOf('export async function executeRebalance') + 10));
@@ -580,6 +592,12 @@ if (SELF) {
   const rangeBelow = splitForRange(sqrtAt(t3.tickLower - 50), t3.tickLower, t3.tickUpper);
   const edgeC = tradeToRatio({ wbnb: BigInt(Wall), other: 0n, perLWbnb: rangeBelow.perL1, perLOther: rangeBelow.perL0, otherPerWbnb: rB, wbnbPerOther: rS });
   is('below the range all WBNB is spent on the other side', edgeC.side === 'buy' && edgeC.amount === BigInt(Wall));
+  // A balance no double can hold: Number() of each of these rounds UP, and the
+  // swap that asked for the rounded figure reverted for want of a few hundred wei.
+  const odd = [31234567890123458700n, 9007199254740993n * 1001n, 1561000000000000123n + 2n ** 60n];
+  is('"all of one side" never asks for more than the wallet holds, whatever the balance (sell)', odd.every((c) => { const t = tradeToRatio({ wbnb: 0n, other: c, perLWbnb: rangeAbove.perL1, perLOther: rangeAbove.perL0, otherPerWbnb: rB, wbnbPerOther: rS }); return t.side === 'sell' && t.amount <= c && c - t.amount < 10n ** 6n; }));
+  is('… nor on the buying side', odd.every((w) => { const t = tradeToRatio({ wbnb: w, other: 0n, perLWbnb: rangeBelow.perL1, perLOther: rangeBelow.perL0, otherPerWbnb: rB, wbnbPerOther: rS }); return t.side === 'buy' && t.amount <= w && w - t.amount < 10n ** 6n; }));
+  is('… and the fixture is one the old rule failed: the nearest double lies above at least one of these balances', odd.some((c) => BigInt(Number(c)) > c));
   is('no liquidity on either side: nothing to trade', tradeToRatio({ wbnb: BigInt(Wall), other: 0n, perLWbnb: 0, perLOther: 0, otherPerWbnb: rB, wbnbPerOther: rS }).side === null);
   is('the dust floor is a ten-thousandth of a BNB', TRADE_DUST_WBNB === 10n ** 14n);
 
@@ -651,7 +669,7 @@ async function main() {
       if (a.address.toLowerCase() !== src.wallet.toLowerCase()) { console.log(`  ${src.name}: ${src.keyEnv} does not open ${src.wallet} — skipped`); continue; }
       const plan = await planSweep(pub, src, feed);
       const s = plan.summary;
-      console.log(`  ${src.name} ${src.wallet}: ${f(s.balance, 4)} ${src.symbol} (${src.earns}), worth ${f(s.bnb_equivalent)} BNB${s.implied_usd != null ? `, route pays $${s.implied_usd}` : ''}, gas ${f(s.gas_bnb)} BNB`);
+      console.log(`  ${src.name} ${src.wallet}: ${f(s.balance, 4)} ${src.symbol} (${src.earns}), worth ${f(s.bnb_equivalent)} BNB${s.implied_usd != null ? `, route pays $${s.implied_usd}` : ''}, its wallet holds ${f(s.wallet_bnb ?? s.gas_bnb)} BNB for gas`);
       if (plan.no) { console.log(`    nothing to do: ${plan.no}`); continue; }
       console.log(`    would sell ${f(s.sweeping, 4)} ${src.symbol}${s.capped ? ' (capped for this run)' : ''} for ~${f(s.bnb_equivalent)} BNB, paid straight to ${ADDR.LP_WALLET}`);
       if (!CONFIRM) continue;
@@ -678,15 +696,17 @@ async function main() {
     const rec = await fetch(RECORD_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
     const l = rec && rec.ladder && typeof rec.ladder === 'object' ? rec.ladder : null;
     ladder = l ? { main: l.main ?? null, reserve: l.reserve ?? null, since: l.since ?? null } : null;
-    if (ladder && ladder.reserve != null) {
+    if (ladder) {
       const healed = await healLadder(pub, lp.address, ladder);
-      if (healed) { console.log(`\nLADDER RECORD — ${healed.why} (read so here; the worker writes it on its next run)`); ladder.main = healed.main; }
+      if (healed) { console.log(`\nLADDER RECORD — ${healed.why} (read so here; the worker writes it on its next run)`); ladder.main = healed.main; if (healed.closed) ladder.reserve = null; if (healed.adopted) ladder.reserve = healed.reserve; }
+    }
+    if (ladder && ladder.reserve != null) {
       console.log(`\nLADDER RECORD — main range #${ladder.main}, reserve range #${ladder.reserve}: the two read as one position with a reserve attached`);
     }
   } catch (e) { console.log(`\nLADDER RECORD unreadable (${e.message}) — a wallet that holds a reserve range will read as two positions`); }
 
   if (STEPS.includes('collect')) {
-    console.log(`\nCOLLECT — fees of the position held by ${lp.address} -> BNB -> buyback wallet`);
+    console.log(`\nCOLLECT — fees of the position held by ${lp.address} -> BNB -> kept as capital / $BOBAI held`);
     const plan = await planCollect(pub, lp.address, ladder);
     const s = plan.summary;
     if (plan.pos) {
@@ -695,10 +715,10 @@ async function main() {
       if (s.leftovers) console.log(`  leftovers ${s.leftovers.wbnb} WBNB and ${s.leftovers.other} of the other token, from an interrupted run`);
       console.log(`  worth     ${f(s.owed.bnb_equivalent)} BNB together${s.quote_off_pct != null ? `, quote ${s.quote_off_pct}% off the pool's price${s.sells_via ? ` (sells via ${s.sells_via})` : ''}` : ''}`);
     }
-    console.log(`  gas       ${f(s.wallet_bnb ?? s.gas_bnb)} BNB (reserve kept: ${GAS_RESERVE_BNB})`);
+    console.log(`  wallet    ${f(s.wallet_bnb ?? s.gas_bnb)} BNB (reserve kept: ${GAS_RESERVE_BNB})`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);
     else {
-      console.log(`  would collect, sell the other side, unwrap, keep ${KEEP}% of what this run produced as capital and forward the rest to ${ADDR.BUYBACK_WALLET}`);
+      console.log(`  would collect, sell the other side, unwrap, keep ${KEEP}% of what this run produced as capital and buy $BOBAI with the rest, held in this wallet`);
       if (CONFIRM) {
         const out = await executeCollect(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
         console.log(`  produced ${out.produced_bnb || '0'} BNB: kept ${out.kept_bnb} BNB as capital, ${out.bobai_bnb} BNB bought ${out.bobai_units || '0'} BOBAI held in the wallet${out.why ? ` — ${out.why}` : ''}`);
@@ -1387,7 +1407,7 @@ if (SELF_TEST) {
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
@@ -1600,12 +1620,15 @@ export async function heldIds(pub, address) {
 }
 // The chain half of ladderHeal (lp-guards.js): what the wallet holds, and
 // whether the one position beside the reserve is in the reserve's pool.
-// Reads only when the record names both a main range and a reserve.
+// Reads the two positions only when exactly one of the two the record names
+// is still held (both held: nothing to heal; neither: the guards decide).
 export async function healLadder(pub, address, ladder) {
-  if (!ladder || ladder.main == null || ladder.reserve == null) return null;
+  if (!ladder || ladder.main == null) return null;
   const held = await heldIds(pub, address);
-  if (held.length === 1 && held[0] === String(ladder.reserve)) return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null });
-  if (held.length !== 2 || !held.includes(String(ladder.reserve)) || held.includes(String(ladder.main))) return null;
+  if (held.length === 1) return ladder.reserve != null && held[0] === String(ladder.reserve) ? ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null }) : null;
+  if (held.length !== 2) return null;
+  const mainHeld = held.includes(String(ladder.main)), reserveHeld = ladder.reserve != null && held.includes(String(ladder.reserve));
+  if (mainHeld === reserveHeld) return null;
   const [a, b] = await Promise.all(held.map((i) => read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(i)])));
   const samePool = a[2].toLowerCase() === b[2].toLowerCase() && a[3].toLowerCase() === b[3].toLowerCase() && Number(a[4]) === Number(b[4]);
   return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool });
@@ -1716,18 +1739,25 @@ export function minsForRange(sqrtP, tickLower, tickUpper, have0, have1, driftTic
 // with four more transactions and a second swap fee. The same share at any
 // size. An edge of the range (one perL zero) resolves to "all of one side".
 // Pure; the self-test pins it.
+//
+// "All of one side" is the balance itself, never the double nearest to it:
+// above 2^53 wei (0.009 of a token) Number(balance) rounds up about every
+// second time, and a swap asking for a few hundred wei more than the wallet
+// holds reverts ("STF") — after the old range is already burnt (found by
+// reading 2026-09-18, before the first re-set upward ever ran).
+const capTo = (amount, balance) => { const b = BigInt(balance); return amount > b ? b : amount; };
 export function tradeToRatio({ wbnb, other, perLWbnb, perLOther, otherPerWbnb, wbnbPerOther }) {
   const W = Number(wbnb), C = Number(other), pW = perLWbnb, pO = perLOther;
   if (!(pW > 0) && !(pO > 0)) return { side: null, amount: 0n };
   const gap = W * pO - C * pW;
   if (gap > 0) {
     const x = gap / (pO + otherPerWbnb * pW);
-    const amount = BigInt(Math.floor(Math.min(x, W)));
+    const amount = capTo(BigInt(Math.floor(Math.min(x, W))), wbnb);
     return amount > 0n ? { side: 'buy', amount } : { side: null, amount: 0n };
   }
   if (gap < 0) {
     const s = -gap / (pW + wbnbPerOther * pO);
-    const amount = BigInt(Math.floor(Math.min(s, C)));
+    const amount = capTo(BigInt(Math.floor(Math.min(s, C))), other);
     return amount > 0n ? { side: 'sell', amount } : { side: null, amount: 0n };
   }
   return { side: null, amount: 0n };
@@ -2009,6 +2039,10 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       // (ticksAdjacent); a mint from the wallet (resume) or a range by hand
       // with the price inside is centred as before.
       oneSided = left && left.left ? left.side : null;
+      // A resume finishes the re-set it belongs to: a wallet holding one
+      // token alone is minted beside the price on that token's side, no
+      // trade (resumeSide); a mixed wallet is centred as before.
+      if (resume && valueBnb > 0) oneSided = resumeSide((have.other * otherInWbnb) / (valueBnb * 1e18));
       ticks = oneSided ? ticksAdjacent(poolInfo.tick, width, spacing, oneSided) : ticksAround(poolInfo.tick, width, spacing);
       if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
       const n = splitForRange(poolInfo.sqrtP, ticks.tickLower, ticks.tickUpper);
@@ -2657,6 +2691,12 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
   const bal = await pub.getBalance({ address });
   const spendRaw0 = bal - GAS_RESERVE - parseEther(String(INCREASE_GAS_BUDGET_BNB));
   const spendRaw = spendRaw0 > 0n ? spendRaw0 : 0n;
+  // WBNB a stopped run left wrapped (the wrap went through, the mint after it
+  // did not) waits for the ladder like native BNB does. Until 2026-09-18 only
+  // native BNB counted: the wrapped deposit read as "only 0.00… BNB waits",
+  // the increase refused it beside a main range that is all of the other
+  // side, and it stood still until the next deposit or re-set.
+  const heldWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]);
   let poolInfo = null, spacing = null, wbnbIs0 = false, mainSide = null, reserveSide = null, reserveLeft = false, ticks = null, width = null, reserveInfo = null;
   if (p.positions === 1 && p.pos) {
     poolInfo = await readPool(pub, p.pos);
@@ -2676,16 +2716,16 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
     if (width != null) ticks = ticksAdjacent(poolInfo.tick, width, spacing, 'above');
   }
   const positionsHeld = p.positions === 1 ? (p.reserve ? 2 : 1) : p.positions;
-  const decision = ladderDecision({ positions: positionsHeld, reserve: !!p.reserve, mainSide, reserveSide, spendableBnb: bn(spendRaw), reserveLeft });
+  const decision = ladderDecision({ positions: positionsHeld, reserve: !!p.reserve, mainSide, reserveSide, spendableBnb: bn(spendRaw + heldWbnb), reserveLeft });
   let no = null;
   if (decision.act && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') && (width == null || !ticks)) no = 'the width record names no width yet — the reserve range waits for a day of prices';
   return {
     step: 'ladder', act: decision.act, why: decision.why, no,
-    tokenId: p.tokenId, pos: p.pos, reserve: p.reserve || null, poolInfo, spacing, wbnbIs0, spendRaw, ticks, width,
+    tokenId: p.tokenId, pos: p.pos, reserve: p.reserve || null, poolInfo, spacing, wbnbIs0, spendRaw, heldWbnb, ticks, width,
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId), positions_held: positionsHeld,
       tick: poolInfo ? poolInfo.tick : null, main_side: mainSide, main_ticks: p.pos ? [Number(p.pos[5]), Number(p.pos[6])] : null,
-      reserve: reserveInfo, wallet_bnb: bn(bal), spendable_bnb: bn(spendRaw),
+      reserve: reserveInfo, wallet_bnb: bn(bal), spendable_bnb: bn(spendRaw + heldWbnb), ...(heldWbnb > 0n ? { wbnb_held: bn(heldWbnb) } : {}),
       act: decision.act, width_pct: width,
       new_reserve_ticks: ticks && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') ? [ticks.tickLower, ticks.tickUpper] : null,
     },
@@ -2729,8 +2769,8 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     return { reserve_fees_folded: { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18) } };
   };
   if (plan.act === 'mint_reserve') {
-    if (plan.spendRaw <= 0n) throw new Error('nothing above the reserve to put into the ladder');
-    await send(`wrap ${formatEther(plan.spendRaw)} BNB for the reserve range`, { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: plan.spendRaw });
+    if (plan.spendRaw <= 0n && !(plan.heldWbnb > 0n)) throw new Error('nothing above the reserve to put into the ladder');
+    if (plan.spendRaw > 0n) await send(`wrap ${formatEther(plan.spendRaw)} BNB for the reserve range`, { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: plan.spendRaw });
   }
   if (plan.act === 'mint_reserve') {
     const id = await mintReserve(`mint the reserve range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper} below the price, WBNB only`);
@@ -2794,6 +2834,11 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
 
 const n = (v) => Number(v) || 0;
 const r6 = (v) => Number(v.toFixed(6));
+// What a step's own transactions paid in gas. `bnb_spent` of an increase or a
+// ladder mint is the wallet's balance before minus after, so the gas is in
+// it; gas has its own line below. Counted in both, it left the profit twice
+// (2026-09-18: 0.00087 BNB over 28 steps, 6.5% of the profit on the card).
+const gasOf = (step) => (step && Array.isArray(step.txs) ? step.txs : []).reduce((a, t) => a + n(t.gas_bnb), 0);
 
 export function moneyFlow(rec, { earned = null } = {}) {
   const hist = (Array.isArray(rec?.history) ? rec.history : []).filter((e) => e && !e.dry);
@@ -2831,14 +2876,14 @@ export function moneyFlow(rec, { earned = null } = {}) {
     const inc = st.increase;
     if (inc && inc.acted && !inc.error) {
       increases += 1;
-      intoPosition += inc.bnb_spent != null ? n(inc.bnb_spent) : n(inc.wbnb_used);
+      intoPosition += inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used);
     }
     // The ladder step (2026-09-16) puts BNB into the reserve range: capital
     // into the position like an increase, counted the same way.
     const ld = st.ladder;
     if (ld && ld.acted && !ld.error && n(ld.bnb_spent) > 0) {
       increases += 1;
-      intoPosition += n(ld.bnb_spent);
+      intoPosition += Math.max(0, n(ld.bnb_spent) - gasOf(ld));
     }
     const rb = st.rebalance;
     if (rb && rb.acted && !rb.error && rb.new_position) {
@@ -2852,6 +2897,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
       if (n(rb.bobai_bnb ?? rb.fees_forwarded_bnb) > 0) resetForwarded += n(rb.bobai_bnb ?? rb.fees_forwarded_bnb);
       bobaiUnits += n(rb.bobai_units);
       if (rb.fees_kept_pct != null) lastKeptPct = n(rb.fees_kept_pct);
+      // A re-set forced by a deposit wraps the waiting BNB into its own mint:
+      // capital put in, like an increase — no increase follows to count it.
+      if (n(rb.wrapped_waiting_bnb) > 0) { intoPosition += n(rb.wrapped_waiting_bnb); increases += 1; }
     }
     if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
     for (const step of [...sweeps, c, inc, rb, st.ladder]) {
@@ -3457,19 +3505,51 @@ export function refuseIncrease(state) {
 //          (bool), reserveSide, spendableBnb, reserveLeft (bool) }
 // Returns { act: 'mint_reserve'|'increase_reserve'|'merge'|'reset_reserve'
 //           |null, why }. Pure; pinned both ways.
+// A MINT FROM THE WALLET FINISHES THE RE-SET IT BELONGS TO (2026-09-18). A
+// one-sided re-set whose mint failed leaves the wallet holding what the old
+// range ended in: all of the other side, or all WBNB. Until now the resume
+// minted CENTRED, which trades about half of the capital — sells the fallen
+// side at its low or buys the risen one at its high, the very trade the
+// one-sided re-set exists to avoid. A wallet that holds (nearly) one token
+// alone is minted one-sided on that token's side; a mixed wallet is centred
+// as before. `shareOther` is the other side's share of the wallet's value.
+// Returns ticksAdjacent's side ('below' = range above the price, all of the
+// other side; 'above' = range below it, all WBNB) or null. Pure; pinned.
+export const RESUME_ONE_SIDED_SHARE = 0.95;
+export function resumeSide(shareOther) {
+  if (shareOther == null || !isFinite(shareOther)) return null;
+  if (shareOther >= RESUME_ONE_SIDED_SHARE) return 'below';
+  if (shareOther <= 1 - RESUME_ONE_SIDED_SHARE) return 'above';
+  return null;
+}
 export const LADDER_GATE = 'LP_LADDER';
 // THE LADDER RECORD FOLLOWS THE CHAIN (2026-09-17). The record names a main
 // range the wallet no longer holds (burnt at a re-set whose new id was never
 // written — a tick that died between the mint and the KV write, or the read
 // that returned no id on 09-16 08:50) while the reserve it names is still
 // there beside exactly one other position in the same pool: that other one
-// is the main range. Anything else — the main still held, the reserve gone,
-// a third position, another pool — is left as it is, and the guards refuse.
+// is the main range. Anything else — both still held, neither held, a third
+// position, another pool — is left as it is, and the guards refuse.
 // state: { main, reserve, held: [ids], samePool (bool) }
-// Returns { main, why } or null. Pure; pinned both ways.
+// Returns { main, why } (+ closed | adopted with reserve) or null. Pure;
+// pinned both ways.
 export function ladderHeal(state) {
   const held = (state.held || []).map(String);
-  if (state.main == null || state.reserve == null) return null;
+  if (state.main == null) return null;
+  // THE SAME CLASS ON THE RESERVE'S SIDE (2026-09-18, read in the code, never
+  // seen with money): a reserve was minted and its id never written — the
+  // read after the mint named no new id, or the tick died before the KV
+  // write. The main range is still held, beside exactly one position the
+  // record does not name (it names no reserve, or one the wallet no longer
+  // holds — burnt at a reserve re-set), in the same pool: that one is the
+  // reserve. Without this the wallet reads as "2 positions" and every step
+  // refuses until a person patches the record, as on 09-16/17.
+  if (held.length === 2 && held.includes(String(state.main)) && (state.reserve == null || !held.includes(String(state.reserve)))) {
+    if (state.samePool !== true) return null;
+    const reserve = held.find((i) => i !== String(state.main));
+    return { main: String(state.main), reserve, adopted: true, why: `the ladder record named ${state.reserve == null ? 'no reserve' : `reserve #${state.reserve}, which this wallet no longer holds`}; beside the main range #${state.main} it holds exactly one other position in the same pool, #${reserve} — that is the reserve now` };
+  }
+  if (state.reserve == null) return null;
   // A re-set that burned the main range and failed to mint the new one
   // (2026-09-18, read in the code, never seen with money): the wallet holds
   // the reserve alone and the record names a burnt main range. Without this
@@ -4096,8 +4176,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
 // ship in an afternoon.
 import { createPublicClient, http, fallback, formatEther } from 'viem';
 import { bsc } from 'viem/chains';
-import { ADDR, ABI, RPCS, readPool, splitForRange, planRebalance, planIncrease } from '../shared/lp-agent.js';
-import { readLpWindows, verdict } from './lp-windows.js';
+import { ADDR, ABI, RPCS, readPool, splitForRange, planRebalance, planIncrease, readBnbUsd } from '../shared/lp-agent.js';
+import { widthVerdict } from './lp-windows.js';
 
 const MAX128 = (1n << 128n) - 1n;
 const ZERO = '0x0000000000000000000000000000000000000000';
@@ -4184,7 +4264,7 @@ export async function lpPositionFacts(params = {}) {
     value_bnb: valueBnb == null ? null : +valueBnb.toFixed(6),
     fees_owed: { token0: bn(p.owed0), token1: bn(p.owed1), bnb_equivalent: owedBnbEquiv == null ? null : +owedBnbEquiv.toFixed(6) },
     against_wbnb: wbnbIs0 || wbnbIs1,
-    ...(alsoHeld ? { also_held: alsoHeld, also_held_note: 'the wallet holds these too; this is the main range of the ladder the agent runs, the other is its reserve range below the price' } : {}),
+    ...(alsoHeld ? { also_held: alsoHeld, also_held_note: 'the wallet holds these too; this is the main range of the ladder the agent runs, the other is its reserve range' } : {}),
   };
   return { facts, pub, p, owner, poolInfo, owedBnbEquiv };
 }
@@ -4231,7 +4311,9 @@ export async function lpPositionPlan(params = {}, env = null) {
     return { ...facts, verdict: 'The position is not against WBNB. This agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.', measured_at: new Date().toISOString() };
   }
   // The agent's own decisions, on this position, from the same code.
-  const record = env ? await readLpWindows(env).then((log) => (log ? verdict(log) : null)).catch(() => null) : null;
+  // The verdict the agent itself acts on: measured re-set cost and the price
+  // tape in (widthVerdict) — not a bare replay of the hourly windows.
+  const record = env ? await widthVerdict(env, await readBnbUsd(pub).then((r) => r.bnbUsd).catch(() => null)).then((x) => x.v).catch(() => null) : null;
   let rebalance = null, increase = null;
   try { rebalance = await planRebalance(pub, owner, { record, position: p, ladder: params.ladder || null }); } catch (e) { rebalance = { error: String(e.shortMessage || e.message).slice(0, 200) }; }
   try { increase = await planIncrease(pub, owner, p, params.ladder || null); } catch (e) { increase = { error: String(e.shortMessage || e.message).slice(0, 200) }; }
@@ -4798,7 +4880,7 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
   const hours = hoursIn + hoursOut, net = fees - resets * cost - lost - open;
   return {
     hours: r2(hours), hours_in_range: r2(hoursIn), in_range_share: hours > 0 ? Math.round((hoursIn / hours) * 1000) / 1000 : null, fees_usd: r4(fees),
-    resets, reset_cost_usd: r2(cost), one_sided: !!oneSided,
+    resets, reset_cost_usd: r4(cost), one_sided: !!oneSided,
     lost_to_price_usd: r4(lost), open_loss_usd: r4(open),
     // The position at the end against holding what it was minted with, fees
     // beside it: what the liquidity itself did to the money.
@@ -4910,6 +4992,27 @@ export async function watchedPool(env) {
   return String(env.LP_WATCH_POOL || '').toLowerCase();
 }
 
+// THE VERDICT THE AGENT ACTS ON, FOR EVERY READER (2026-09-18). The replay
+// charged with the agent's own measured re-set cost (per $50) and walked over
+// the ten-minute price tape. /lp/windows and the portfolio used it; the paid
+// position plan called verdict(log) bare — an assumed cost ~280 times the
+// measured one and hourly prices only — and printed another week table and
+// another wait than the agent's own record while saying "the same record and
+// rule". One loader; `bnbUsd` is the caller's BNB price (null: the replay's
+// own cost assumption stands).
+export async function widthVerdict(env, bnbUsd = null) {
+  const log = await readLpWindows(env);
+  if (!log) return { log: null, v: null };
+  let costOpts = {};
+  try {
+    const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+    const m = measuredResetCost(rec, bnbUsd);
+    // The replay is charged the cost per $50 of the position (usd_per_50);
+    // the full figure is what a real re-set pays (the width-upgrade rule).
+    if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+  } catch { /* the replay's assumption stands */ }
+  return { log, v: verdict(log, { ...costOpts, tape: await readLpTicks(env) }) };
+}
 export async function readLpWindows(env) {
   const raw = await env.AGENT.get(KV_KEY);
   return raw ? JSON.parse(raw) : null;
@@ -5108,7 +5211,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   const lpKey = env.LP_PRIVATE_KEY;
   if (!lpKey) {
     entry.ok = false;
-    for (const s of ['collect', 'relocate', 'rebalance', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: 'LP_PRIVATE_KEY is not set on this worker' };
+    for (const s of ['collect', 'relocate', 'rebalance', 'ladder', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: 'LP_PRIVATE_KEY is not set on this worker' };
     entry.why = whyOf(entry.steps);
     return record(env, entry, steps.length < STEPS.length);
   }
@@ -5121,7 +5224,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   // the reserve in the same pool. A dry run heals in hand only.
   try {
     const healed = await healLadder(pub, lp.address, ladder);
-    if (healed) { entry.ladder_healed = { from: ladder.main, to: healed.main, ...(healed.closed ? { reserve_closed: ladder.reserve } : {}), why: healed.why }; ladder.main = healed.main; if (healed.closed) ladder.reserve = null; if (!dry) await writeLadder(env, ladder); }
+    if (healed) { entry.ladder_healed = { from: ladder.main, to: healed.main, ...(healed.closed ? { reserve_closed: ladder.reserve } : {}), ...(healed.adopted ? { reserve_adopted: healed.reserve, reserve_was: ladder.reserve ?? null } : {}), why: healed.why }; ladder.main = healed.main; if (healed.closed) ladder.reserve = null; if (healed.adopted) ladder.reserve = healed.reserve; if (!dry) await writeLadder(env, ladder); }
   } catch { /* an RPC that did not answer heals nothing; the guards refuse as before */ }
   const ladderOn = String(env[LADDER_GATE] || '0') === '1';
   // The width record's verdict, replayed once per tick (the rebalance step
@@ -5157,7 +5260,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     try {
       return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct, txs })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...plan.summary, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
 
@@ -5238,7 +5341,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       return { ...plan.summary, acted: false, why: plan.no };
     }
     if (plan.summary.in_range) {
-      if (outSince != null) await env.AGENT.delete(OUT_SINCE_KEY);
+      if (outSince != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY);
       // In range, nothing forces a re-set — unless the record's pick now
       // nets enough more on this capital to pay for one within a day. The
       // daily run alone may upgrade (once a day, by construction).
@@ -5269,7 +5372,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     // wait runs from then; until 2026-09-12 only the :50 check stamped it, and
     // a range left at :51 waited up to an hour longer than the record says.
     if (watch && !plan.resume && !plan.summary.in_range && outSince == null && !dry) await env.AGENT.put(OUT_SINCE_KEY, at);
-    if (watch && !forced) return { ...plan.summary, ...forcedNote, acted: false, watch: true, outside_since: outSinceRaw || at, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
+    if (watch && !forced && !plan.resume) return { ...plan.summary, ...forcedNote, acted: false, watch: true, outside_since: outSinceRaw || at, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
     if (upgrade && upgrade.upgrade) {
       if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
       if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };
@@ -5278,7 +5381,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
         const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, txs });
         return { ...plan.summary, acted: true, upgrade: upgrade.why, upgraded_from_pct: upgrade.from, upgraded_to_pct: upgrade.to, gain_usd_per_day: upgrade.gain_usd_per_day, ...done };
       } catch (e) {
-        return { ...plan.summary, acted: true, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+        return { ...plan.summary, acted: txs.length > 0, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs };
       }
     }
     const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
@@ -5317,7 +5420,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       if (done.new_position) { ladder.main = String(done.new_position); ladder.since = ladder.since || at; await writeLadder(env, ladder); }
       return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...(merged || {}), ...done };
     } catch (e) {
-      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...plan.summary, ...forcedNote, acted: txs.length > 0, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
   // The price the check saw goes on the tape, every ten minutes, whatever
@@ -5361,7 +5464,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       if (done.new_reserve) { ladder.main = plan.summary.position; ladder.reserve = String(done.new_reserve); ladder.since = ladder.since || at; await writeLadder(env, ladder); }
       return { ...base, acted: true, ...done };
     } catch (e) {
-      return { ...base, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...base, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
   // The watch keeps its ladder step only when it did something.
@@ -5376,7 +5479,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     try {
       return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan, () => {}, { txs })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...plan.summary, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
 
@@ -5441,8 +5544,8 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth (rebalance). BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade — a buy ladder under the sell ladder (ladder, since 2026-09-16, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token. The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
-  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), ladder, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); the position stays in its home pool, CAKE/BNB 0.05% — the pool question is closed since 2026-09-11, and the relocate step only records that it stays. Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth (rebalance). BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade — a buy ladder under the sell ladder (ladder, since 2026-09-16, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token. The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, ladder, increase (relocate is retired and only records that the position stays)', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), ladder, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }

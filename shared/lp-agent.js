@@ -29,7 +29,7 @@
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
 } from './lp-guards.js';
 
@@ -242,12 +242,15 @@ export async function heldIds(pub, address) {
 }
 // The chain half of ladderHeal (lp-guards.js): what the wallet holds, and
 // whether the one position beside the reserve is in the reserve's pool.
-// Reads only when the record names both a main range and a reserve.
+// Reads the two positions only when exactly one of the two the record names
+// is still held (both held: nothing to heal; neither: the guards decide).
 export async function healLadder(pub, address, ladder) {
-  if (!ladder || ladder.main == null || ladder.reserve == null) return null;
+  if (!ladder || ladder.main == null) return null;
   const held = await heldIds(pub, address);
-  if (held.length === 1 && held[0] === String(ladder.reserve)) return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null });
-  if (held.length !== 2 || !held.includes(String(ladder.reserve)) || held.includes(String(ladder.main))) return null;
+  if (held.length === 1) return ladder.reserve != null && held[0] === String(ladder.reserve) ? ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool: null }) : null;
+  if (held.length !== 2) return null;
+  const mainHeld = held.includes(String(ladder.main)), reserveHeld = ladder.reserve != null && held.includes(String(ladder.reserve));
+  if (mainHeld === reserveHeld) return null;
   const [a, b] = await Promise.all(held.map((i) => read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(i)])));
   const samePool = a[2].toLowerCase() === b[2].toLowerCase() && a[3].toLowerCase() === b[3].toLowerCase() && Number(a[4]) === Number(b[4]);
   return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool });
@@ -358,18 +361,25 @@ export function minsForRange(sqrtP, tickLower, tickUpper, have0, have1, driftTic
 // with four more transactions and a second swap fee. The same share at any
 // size. An edge of the range (one perL zero) resolves to "all of one side".
 // Pure; the self-test pins it.
+//
+// "All of one side" is the balance itself, never the double nearest to it:
+// above 2^53 wei (0.009 of a token) Number(balance) rounds up about every
+// second time, and a swap asking for a few hundred wei more than the wallet
+// holds reverts ("STF") — after the old range is already burnt (found by
+// reading 2026-09-18, before the first re-set upward ever ran).
+const capTo = (amount, balance) => { const b = BigInt(balance); return amount > b ? b : amount; };
 export function tradeToRatio({ wbnb, other, perLWbnb, perLOther, otherPerWbnb, wbnbPerOther }) {
   const W = Number(wbnb), C = Number(other), pW = perLWbnb, pO = perLOther;
   if (!(pW > 0) && !(pO > 0)) return { side: null, amount: 0n };
   const gap = W * pO - C * pW;
   if (gap > 0) {
     const x = gap / (pO + otherPerWbnb * pW);
-    const amount = BigInt(Math.floor(Math.min(x, W)));
+    const amount = capTo(BigInt(Math.floor(Math.min(x, W))), wbnb);
     return amount > 0n ? { side: 'buy', amount } : { side: null, amount: 0n };
   }
   if (gap < 0) {
     const s = -gap / (pW + wbnbPerOther * pO);
-    const amount = BigInt(Math.floor(Math.min(s, C)));
+    const amount = capTo(BigInt(Math.floor(Math.min(s, C))), other);
     return amount > 0n ? { side: 'sell', amount } : { side: null, amount: 0n };
   }
   return { side: null, amount: 0n };
@@ -651,6 +661,10 @@ export async function planRebalance(pub, address, { record = null, widthOverride
       // (ticksAdjacent); a mint from the wallet (resume) or a range by hand
       // with the price inside is centred as before.
       oneSided = left && left.left ? left.side : null;
+      // A resume finishes the re-set it belongs to: a wallet holding one
+      // token alone is minted beside the price on that token's side, no
+      // trade (resumeSide); a mixed wallet is centred as before.
+      if (resume && valueBnb > 0) oneSided = resumeSide((have.other * otherInWbnb) / (valueBnb * 1e18));
       ticks = oneSided ? ticksAdjacent(poolInfo.tick, width, spacing, oneSided) : ticksAround(poolInfo.tick, width, spacing);
       if (ticks.tickUpper <= ticks.tickLower) throw new Error(`a ${width}% range is narrower than this pool's tick spacing (${spacing})`);
       const n = splitForRange(poolInfo.sqrtP, ticks.tickLower, ticks.tickUpper);
@@ -1299,6 +1313,12 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
   const bal = await pub.getBalance({ address });
   const spendRaw0 = bal - GAS_RESERVE - parseEther(String(INCREASE_GAS_BUDGET_BNB));
   const spendRaw = spendRaw0 > 0n ? spendRaw0 : 0n;
+  // WBNB a stopped run left wrapped (the wrap went through, the mint after it
+  // did not) waits for the ladder like native BNB does. Until 2026-09-18 only
+  // native BNB counted: the wrapped deposit read as "only 0.00… BNB waits",
+  // the increase refused it beside a main range that is all of the other
+  // side, and it stood still until the next deposit or re-set.
+  const heldWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]);
   let poolInfo = null, spacing = null, wbnbIs0 = false, mainSide = null, reserveSide = null, reserveLeft = false, ticks = null, width = null, reserveInfo = null;
   if (p.positions === 1 && p.pos) {
     poolInfo = await readPool(pub, p.pos);
@@ -1318,16 +1338,16 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
     if (width != null) ticks = ticksAdjacent(poolInfo.tick, width, spacing, 'above');
   }
   const positionsHeld = p.positions === 1 ? (p.reserve ? 2 : 1) : p.positions;
-  const decision = ladderDecision({ positions: positionsHeld, reserve: !!p.reserve, mainSide, reserveSide, spendableBnb: bn(spendRaw), reserveLeft });
+  const decision = ladderDecision({ positions: positionsHeld, reserve: !!p.reserve, mainSide, reserveSide, spendableBnb: bn(spendRaw + heldWbnb), reserveLeft });
   let no = null;
   if (decision.act && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') && (width == null || !ticks)) no = 'the width record names no width yet — the reserve range waits for a day of prices';
   return {
     step: 'ladder', act: decision.act, why: decision.why, no,
-    tokenId: p.tokenId, pos: p.pos, reserve: p.reserve || null, poolInfo, spacing, wbnbIs0, spendRaw, ticks, width,
+    tokenId: p.tokenId, pos: p.pos, reserve: p.reserve || null, poolInfo, spacing, wbnbIs0, spendRaw, heldWbnb, ticks, width,
     summary: {
       position: p.tokenId == null ? null : String(p.tokenId), positions_held: positionsHeld,
       tick: poolInfo ? poolInfo.tick : null, main_side: mainSide, main_ticks: p.pos ? [Number(p.pos[5]), Number(p.pos[6])] : null,
-      reserve: reserveInfo, wallet_bnb: bn(bal), spendable_bnb: bn(spendRaw),
+      reserve: reserveInfo, wallet_bnb: bn(bal), spendable_bnb: bn(spendRaw + heldWbnb), ...(heldWbnb > 0n ? { wbnb_held: bn(heldWbnb) } : {}),
       act: decision.act, width_pct: width,
       new_reserve_ticks: ticks && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') ? [ticks.tickLower, ticks.tickUpper] : null,
     },
@@ -1371,8 +1391,8 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     return { reserve_fees_folded: { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18) } };
   };
   if (plan.act === 'mint_reserve') {
-    if (plan.spendRaw <= 0n) throw new Error('nothing above the reserve to put into the ladder');
-    await send(`wrap ${formatEther(plan.spendRaw)} BNB for the reserve range`, { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: plan.spendRaw });
+    if (plan.spendRaw <= 0n && !(plan.heldWbnb > 0n)) throw new Error('nothing above the reserve to put into the ladder');
+    if (plan.spendRaw > 0n) await send(`wrap ${formatEther(plan.spendRaw)} BNB for the reserve range`, { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'deposit', value: plan.spendRaw });
   }
   if (plan.act === 'mint_reserve') {
     const id = await mintReserve(`mint the reserve range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper} below the price, WBNB only`);

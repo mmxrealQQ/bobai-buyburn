@@ -20,8 +20,8 @@
 // ship in an afternoon.
 import { createPublicClient, http, fallback, formatEther } from 'viem';
 import { bsc } from 'viem/chains';
-import { ADDR, ABI, RPCS, readPool, splitForRange, planRebalance, planIncrease } from '../shared/lp-agent.js';
-import { readLpWindows, verdict } from './lp-windows.js';
+import { ADDR, ABI, RPCS, readPool, splitForRange, planRebalance, planIncrease, readBnbUsd } from '../shared/lp-agent.js';
+import { widthVerdict } from './lp-windows.js';
 
 const MAX128 = (1n << 128n) - 1n;
 const ZERO = '0x0000000000000000000000000000000000000000';
@@ -108,7 +108,7 @@ export async function lpPositionFacts(params = {}) {
     value_bnb: valueBnb == null ? null : +valueBnb.toFixed(6),
     fees_owed: { token0: bn(p.owed0), token1: bn(p.owed1), bnb_equivalent: owedBnbEquiv == null ? null : +owedBnbEquiv.toFixed(6) },
     against_wbnb: wbnbIs0 || wbnbIs1,
-    ...(alsoHeld ? { also_held: alsoHeld, also_held_note: 'the wallet holds these too; this is the main range of the ladder the agent runs, the other is its reserve range below the price' } : {}),
+    ...(alsoHeld ? { also_held: alsoHeld, also_held_note: 'the wallet holds these too; this is the main range of the ladder the agent runs, the other is its reserve range' } : {}),
   };
   return { facts, pub, p, owner, poolInfo, owedBnbEquiv };
 }
@@ -155,7 +155,9 @@ export async function lpPositionPlan(params = {}, env = null) {
     return { ...facts, verdict: 'The position is not against WBNB. This agent reads it, but plans only WBNB pairs — that is the one thing it knows how to turn into BNB and back.', measured_at: new Date().toISOString() };
   }
   // The agent's own decisions, on this position, from the same code.
-  const record = env ? await readLpWindows(env).then((log) => (log ? verdict(log) : null)).catch(() => null) : null;
+  // The verdict the agent itself acts on: measured re-set cost and the price
+  // tape in (widthVerdict) — not a bare replay of the hourly windows.
+  const record = env ? await widthVerdict(env, await readBnbUsd(pub).then((r) => r.bnbUsd).catch(() => null)).then((x) => x.v).catch(() => null) : null;
   let rebalance = null, increase = null;
   try { rebalance = await planRebalance(pub, owner, { record, position: p, ladder: params.ladder || null }); } catch (e) { rebalance = { error: String(e.shortMessage || e.message).slice(0, 200) }; }
   try { increase = await planIncrease(pub, owner, p, params.ladder || null); } catch (e) { increase = { error: String(e.shortMessage || e.message).slice(0, 200) }; }

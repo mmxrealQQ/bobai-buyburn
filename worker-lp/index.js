@@ -147,7 +147,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   const lpKey = env.LP_PRIVATE_KEY;
   if (!lpKey) {
     entry.ok = false;
-    for (const s of ['collect', 'relocate', 'rebalance', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: 'LP_PRIVATE_KEY is not set on this worker' };
+    for (const s of ['collect', 'relocate', 'rebalance', 'ladder', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: 'LP_PRIVATE_KEY is not set on this worker' };
     entry.why = whyOf(entry.steps);
     return record(env, entry, steps.length < STEPS.length);
   }
@@ -160,7 +160,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   // the reserve in the same pool. A dry run heals in hand only.
   try {
     const healed = await healLadder(pub, lp.address, ladder);
-    if (healed) { entry.ladder_healed = { from: ladder.main, to: healed.main, ...(healed.closed ? { reserve_closed: ladder.reserve } : {}), why: healed.why }; ladder.main = healed.main; if (healed.closed) ladder.reserve = null; if (!dry) await writeLadder(env, ladder); }
+    if (healed) { entry.ladder_healed = { from: ladder.main, to: healed.main, ...(healed.closed ? { reserve_closed: ladder.reserve } : {}), ...(healed.adopted ? { reserve_adopted: healed.reserve, reserve_was: ladder.reserve ?? null } : {}), why: healed.why }; ladder.main = healed.main; if (healed.closed) ladder.reserve = null; if (healed.adopted) ladder.reserve = healed.reserve; if (!dry) await writeLadder(env, ladder); }
   } catch { /* an RPC that did not answer heals nothing; the guards refuse as before */ }
   const ladderOn = String(env[LADDER_GATE] || '0') === '1';
   // The width record's verdict, replayed once per tick (the rebalance step
@@ -196,7 +196,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     try {
       return { ...plan.summary, ...split, acted: true, ...(await executeCollect(pub, lpWallet(), lp, plan, () => {}, { keptPct, txs })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...plan.summary, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
 
@@ -277,7 +277,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       return { ...plan.summary, acted: false, why: plan.no };
     }
     if (plan.summary.in_range) {
-      if (outSince != null) await env.AGENT.delete(OUT_SINCE_KEY);
+      if (outSince != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY);
       // In range, nothing forces a re-set — unless the record's pick now
       // nets enough more on this capital to pay for one within a day. The
       // daily run alone may upgrade (once a day, by construction).
@@ -308,7 +308,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     // wait runs from then; until 2026-09-12 only the :50 check stamped it, and
     // a range left at :51 waited up to an hour longer than the record says.
     if (watch && !plan.resume && !plan.summary.in_range && outSince == null && !dry) await env.AGENT.put(OUT_SINCE_KEY, at);
-    if (watch && !forced) return { ...plan.summary, ...forcedNote, acted: false, watch: true, outside_since: outSinceRaw || at, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
+    if (watch && !forced && !plan.resume) return { ...plan.summary, ...forcedNote, acted: false, watch: true, outside_since: outSinceRaw || at, why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest' };
     if (upgrade && upgrade.upgrade) {
       if (String(env.LP_REBALANCE || '0') !== '1') return { ...plan.summary, acted: false, why: 'a width upgrade is due and LP_REBALANCE is not 1', upgrade: upgrade.why };
       if (dry) return { ...plan.summary, acted: false, why: `dry run — would have upgraded the width from ${upgrade.from}% to ${upgrade.to}%`, upgrade: upgrade.why };
@@ -317,7 +317,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
         const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, txs });
         return { ...plan.summary, acted: true, upgrade: upgrade.why, upgraded_from_pct: upgrade.from, upgraded_to_pct: upgrade.to, gain_usd_per_day: upgrade.gain_usd_per_day, ...done };
       } catch (e) {
-        return { ...plan.summary, acted: true, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+        return { ...plan.summary, acted: txs.length > 0, upgrade: upgrade.why, error: String(e.shortMessage || e.message).slice(0, 300), txs };
       }
     }
     const waitH = record?.delay_test?.in_use_hours ?? RESET_AFTER_HOURS;
@@ -356,7 +356,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       if (done.new_position) { ladder.main = String(done.new_position); ladder.since = ladder.since || at; await writeLadder(env, ladder); }
       return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...(merged || {}), ...done };
     } catch (e) {
-      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...plan.summary, ...forcedNote, acted: txs.length > 0, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
   // The price the check saw goes on the tape, every ten minutes, whatever
@@ -400,7 +400,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       if (done.new_reserve) { ladder.main = plan.summary.position; ladder.reserve = String(done.new_reserve); ladder.since = ladder.since || at; await writeLadder(env, ladder); }
       return { ...base, acted: true, ...done };
     } catch (e) {
-      return { ...base, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...base, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
   // The watch keeps its ladder step only when it did something.
@@ -415,7 +415,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     try {
       return { ...plan.summary, acted: true, ...(await executeIncrease(pub, lpWallet(), lp, plan, () => {}, { txs })) };
     } catch (e) {
-      return { ...plan.summary, acted: true, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...plan.summary, acted: txs.length > 0, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
   });
 
@@ -480,8 +480,8 @@ async function record(env, entry, partial = false) {
   } else {
     st.last = entry;
   }
-  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); when the pool record\'s switch rule says another pool of the universe has out-earned this one by a quarter over all its hours and over the last day, and the extra fees pay for the move within three days, the position moves there (relocate). Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth (rebalance). BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade — a buy ladder under the sell ladder (ladder, since 2026-09-16, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token. The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
-  st.cadence = { daily_utc: '04:23 — sweep, collect, relocate, rebalance, increase', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), ladder, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
+  st.note = 'Once a day: what the AI side earned is sold for BNB and sent to the DeFi wallet (sweep); the fees the PancakeSwap V3 position earned are sold for BNB, part stays as capital (the kept share, named in every collect) and the rest buys $BOBAI that the agent holds in its own wallet, never sold (collect; until 2026-09-09 that share went to the buyback wallet); BNB above the reserve — swept income and kept fees — grows the same position (increase); the position stays in its home pool, CAKE/BNB 0.05% — the pool question is closed since 2026-09-11, and the relocate step only records that it stays. Every hour: a position the price has left (more than half a percent past an edge, for the wait in use) is re-set beside the price, on the side the price came from, with the one token the old range ended in and no trade — one-sided, since 2026-09-16; the width is the one that ended the most ahead against holding over the last week, fees in, when every width was replayed that way, kept unless another leads it by a tenth (rebalance). BNB that waits beside a main range that is all of the other side above the price opens a reserve range below the price, WBNB only, no trade — a buy ladder under the sell ladder (ladder, since 2026-09-16, gated by LP_LADDER); the two merge back into one at the main range\'s next re-set once they hold the same token. The capital never leaves. Each step has a floor under which moving the money would cost more than the money, and a run under a floor is recorded as a decision, not an error.';
+  st.cadence = { daily_utc: '04:23 — sweep, collect, rebalance, ladder, increase (relocate is retired and only records that the position stays)', hourly_utc: ':50 — rebalance (one-sided, no trade, since 2026-09-16), ladder, then increase', deposit_watch_utc: 'every 10 min — increase (a deposit goes in within minutes, in range and above the floor), and a re-set at once when a deposit of a quarter of the position or more waits beside a range the price has left' };
   await env.AGENT.put(KV_KEY, JSON.stringify(st));
   return entry;
 }

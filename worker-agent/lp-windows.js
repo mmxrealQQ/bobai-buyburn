@@ -532,7 +532,7 @@ export function earningsTest(used, widthPct, { resetAfterHours = RESET_AFTER_HOU
   const hours = hoursIn + hoursOut, net = fees - resets * cost - lost - open;
   return {
     hours: r2(hours), hours_in_range: r2(hoursIn), in_range_share: hours > 0 ? Math.round((hoursIn / hours) * 1000) / 1000 : null, fees_usd: r4(fees),
-    resets, reset_cost_usd: r2(cost), one_sided: !!oneSided,
+    resets, reset_cost_usd: r4(cost), one_sided: !!oneSided,
     lost_to_price_usd: r4(lost), open_loss_usd: r4(open),
     // The position at the end against holding what it was minted with, fees
     // beside it: what the liquidity itself did to the money.
@@ -644,6 +644,27 @@ export async function watchedPool(env) {
   return String(env.LP_WATCH_POOL || '').toLowerCase();
 }
 
+// THE VERDICT THE AGENT ACTS ON, FOR EVERY READER (2026-09-18). The replay
+// charged with the agent's own measured re-set cost (per $50) and walked over
+// the ten-minute price tape. /lp/windows and the portfolio used it; the paid
+// position plan called verdict(log) bare — an assumed cost ~280 times the
+// measured one and hourly prices only — and printed another week table and
+// another wait than the agent's own record while saying "the same record and
+// rule". One loader; `bnbUsd` is the caller's BNB price (null: the replay's
+// own cost assumption stands).
+export async function widthVerdict(env, bnbUsd = null) {
+  const log = await readLpWindows(env);
+  if (!log) return { log: null, v: null };
+  let costOpts = {};
+  try {
+    const rec = JSON.parse((await env.AGENT.get('lp:agent')) || 'null');
+    const m = measuredResetCost(rec, bnbUsd);
+    // The replay is charged the cost per $50 of the position (usd_per_50);
+    // the full figure is what a real re-set pays (the width-upgrade rule).
+    if (m) costOpts = { resetCostUsd: m.usd_per_50 ?? m.usd, resetCostBasis: `measured: the re-set of ${m.at.slice(0, 16).replace('T', ' ')} UTC cost $${m.usd} on a $${m.position_usd_at_reset ?? '?'} position — ${m.gas_bnb} BNB of gas in ${m.transactions ?? '?'} transactions and ${m.swap_fee_bnb} BNB of swap fee (${m.swap_basis})` };
+  } catch { /* the replay's assumption stands */ }
+  return { log, v: verdict(log, { ...costOpts, tape: await readLpTicks(env) }) };
+}
 export async function readLpWindows(env) {
   const raw = await env.AGENT.get(KV_KEY);
   return raw ? JSON.parse(raw) : null;

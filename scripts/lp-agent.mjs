@@ -4,7 +4,8 @@
 //
 //   sweep     AI income (USD1 on the x402 wallet, $U on the provider wallet)
 //             -> BNB -> the DeFi wallet
-//   collect   the position's fees -> BNB -> the buyback wallet
+//   collect   the position's fees -> BNB -> part kept as capital, the rest buys
+//             $BOBAI the wallet holds (until 2026-09-09: the buyback wallet)
 //   increase  BNB above the reserve -> more of the same position
 //
 // Every function here is imported from shared/lp-agent.js, the file the
@@ -36,7 +37,7 @@ import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -197,7 +198,9 @@ if (SELF) {
   is('0.002 + 0.0005 kept by collects + 0.0006 + 0.0002 + 0.0001 folded by re-sets was kept as capital', near(fl.out.kept_as_capital_bnb, 0.0034));
   is('capital that arrived = income + kept', near(fl.out.capital_arrived_bnb, 0.0104));
   is('produced = the BOBAI share + what was kept', near(fl.in.fees.bnb, fl.out.bobai_bnb + fl.out.kept_as_capital_bnb));
-  is('the increase counts the BNB it spent, gas included', near(fl.out.into_position_bnb, 0.0101) && fl.out.increases === 1);
+  is('the increase counts the BNB it put in — its own gas is on the gas line, not in here too (until 2026-09-18 it was in both, and left the profit twice)', near(fl.out.into_position_bnb, 0.0101 - 0.00003) && fl.out.increases === 1);
+  const forcedRec = { history: [{ at: '2026-09-20T10:00:00Z', ok: true, acted: true, steps: { rebalance: { acted: true, new_position: '10', wrapped_waiting_bnb: 0.4, txs: [{ gas_bnb: 0.00005 }] } } }] };
+  is('a re-set forced by a deposit wraps it into its own mint: that is capital put in, counted once', near(moneyFlow(forcedRec).out.into_position_bnb, 0.4) && near(moneyFlow({ history: [{ ...forcedRec.history[0], steps: { rebalance: { ...forcedRec.history[0].steps.rebalance, wrapped_waiting_bnb: undefined } } }] }).out.into_position_bnb, 0));
   is('three re-sets', fl.out.resets === 3);
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 11 && near(fl.gas.bnb, 0.00016));
   is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.008));
@@ -406,6 +409,15 @@ if (SELF) {
   is('... and the main range alone, still held: nothing to heal', ladderHeal(HL({ held: ['7450561'] })) === null);
   is('the other position is in another pool: nothing to heal', ladderHeal(HL({ samePool: false })) === null);
   is('no reserve in the record, or no main: nothing to heal', ladderHeal(HL({ reserve: null })) === null && ladderHeal(HL({ main: null })) === null);
+  // The same class on the reserve's side (2026-09-18): a reserve minted, its id never written.
+  is('the main range is held beside one position the record does not name: that one is the reserve', (() => { const h = ladderHeal(HL({ main: '7451444', reserve: null, held: ['7451444', '7461743'] })); return h && h.main === '7451444' && h.reserve === '7461743' && h.adopted === true && /no reserve/.test(h.why); })());
+  is('… also when the record still names a reserve burnt at its re-set', (() => { const h = ladderHeal(HL({ main: '7451444', reserve: '7450613', held: ['7461743', '7451444'] })); return h && h.reserve === '7461743' && h.adopted === true && /7450613/.test(h.why); })());
+  is('… never across pools, never with a third position, never when the record is right', ladderHeal(HL({ main: '7451444', reserve: null, held: ['7451444', '7461743'], samePool: false })) === null && ladderHeal(HL({ main: '7451444', reserve: null, held: ['7451444', '7461743', '7461800'] })) === null && ladderHeal(HL({ main: '7451444', reserve: '7461743', held: ['7451444', '7461743'] })) === null);
+  // A mint from the wallet finishes the re-set it belongs to (2026-09-18).
+  is('a wallet left holding the other side alone is minted one-sided above the price, no trade', resumeSide(1) === 'below' && resumeSide(0.97) === 'below' && ticksAdjacent(-57200, 7, 10, resumeSide(1)).side === 'above_price');
+  is('… all WBNB: one-sided below the price', resumeSide(0) === 'above' && resumeSide(0.04) === 'above' && ticksAdjacent(-57200, 7, 10, resumeSide(0)).side === 'below_price');
+  is('… a mixed wallet is centred as before, and a wallet with nothing in it decides nothing', resumeSide(0.5) === null && resumeSide(0.9) === null && resumeSide(0.1) === null && resumeSide(null) === null && resumeSide(NaN) === null);
+  is('planRebalance asks resumeSide when it mints from the wallet (source pin)', /if \(resume && valueBnb > 0\) oneSided = resumeSide\(/.test((await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8')));
   // The re-set beside a reserve: it reads its old range by id and names its new one by the mint (source pins; the chain half cannot run here).
   const coreSrc = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');
   const rebSrc = coreSrc.slice(coreSrc.indexOf('export async function executeRebalance'), coreSrc.indexOf('export async function', coreSrc.indexOf('export async function executeRebalance') + 10));
@@ -564,6 +576,12 @@ if (SELF) {
   const rangeBelow = splitForRange(sqrtAt(t3.tickLower - 50), t3.tickLower, t3.tickUpper);
   const edgeC = tradeToRatio({ wbnb: BigInt(Wall), other: 0n, perLWbnb: rangeBelow.perL1, perLOther: rangeBelow.perL0, otherPerWbnb: rB, wbnbPerOther: rS });
   is('below the range all WBNB is spent on the other side', edgeC.side === 'buy' && edgeC.amount === BigInt(Wall));
+  // A balance no double can hold: Number() of each of these rounds UP, and the
+  // swap that asked for the rounded figure reverted for want of a few hundred wei.
+  const odd = [31234567890123458700n, 9007199254740993n * 1001n, 1561000000000000123n + 2n ** 60n];
+  is('"all of one side" never asks for more than the wallet holds, whatever the balance (sell)', odd.every((c) => { const t = tradeToRatio({ wbnb: 0n, other: c, perLWbnb: rangeAbove.perL1, perLOther: rangeAbove.perL0, otherPerWbnb: rB, wbnbPerOther: rS }); return t.side === 'sell' && t.amount <= c && c - t.amount < 10n ** 6n; }));
+  is('… nor on the buying side', odd.every((w) => { const t = tradeToRatio({ wbnb: w, other: 0n, perLWbnb: rangeBelow.perL1, perLOther: rangeBelow.perL0, otherPerWbnb: rB, wbnbPerOther: rS }); return t.side === 'buy' && t.amount <= w && w - t.amount < 10n ** 6n; }));
+  is('… and the fixture is one the old rule failed: the nearest double lies above at least one of these balances', odd.some((c) => BigInt(Number(c)) > c));
   is('no liquidity on either side: nothing to trade', tradeToRatio({ wbnb: BigInt(Wall), other: 0n, perLWbnb: 0, perLOther: 0, otherPerWbnb: rB, wbnbPerOther: rS }).side === null);
   is('the dust floor is a ten-thousandth of a BNB', TRADE_DUST_WBNB === 10n ** 14n);
 
@@ -635,7 +653,7 @@ async function main() {
       if (a.address.toLowerCase() !== src.wallet.toLowerCase()) { console.log(`  ${src.name}: ${src.keyEnv} does not open ${src.wallet} — skipped`); continue; }
       const plan = await planSweep(pub, src, feed);
       const s = plan.summary;
-      console.log(`  ${src.name} ${src.wallet}: ${f(s.balance, 4)} ${src.symbol} (${src.earns}), worth ${f(s.bnb_equivalent)} BNB${s.implied_usd != null ? `, route pays $${s.implied_usd}` : ''}, gas ${f(s.gas_bnb)} BNB`);
+      console.log(`  ${src.name} ${src.wallet}: ${f(s.balance, 4)} ${src.symbol} (${src.earns}), worth ${f(s.bnb_equivalent)} BNB${s.implied_usd != null ? `, route pays $${s.implied_usd}` : ''}, its wallet holds ${f(s.wallet_bnb ?? s.gas_bnb)} BNB for gas`);
       if (plan.no) { console.log(`    nothing to do: ${plan.no}`); continue; }
       console.log(`    would sell ${f(s.sweeping, 4)} ${src.symbol}${s.capped ? ' (capped for this run)' : ''} for ~${f(s.bnb_equivalent)} BNB, paid straight to ${ADDR.LP_WALLET}`);
       if (!CONFIRM) continue;
@@ -662,15 +680,17 @@ async function main() {
     const rec = await fetch(RECORD_URL, { signal: AbortSignal.timeout(20000) }).then((r) => r.json());
     const l = rec && rec.ladder && typeof rec.ladder === 'object' ? rec.ladder : null;
     ladder = l ? { main: l.main ?? null, reserve: l.reserve ?? null, since: l.since ?? null } : null;
-    if (ladder && ladder.reserve != null) {
+    if (ladder) {
       const healed = await healLadder(pub, lp.address, ladder);
-      if (healed) { console.log(`\nLADDER RECORD — ${healed.why} (read so here; the worker writes it on its next run)`); ladder.main = healed.main; }
+      if (healed) { console.log(`\nLADDER RECORD — ${healed.why} (read so here; the worker writes it on its next run)`); ladder.main = healed.main; if (healed.closed) ladder.reserve = null; if (healed.adopted) ladder.reserve = healed.reserve; }
+    }
+    if (ladder && ladder.reserve != null) {
       console.log(`\nLADDER RECORD — main range #${ladder.main}, reserve range #${ladder.reserve}: the two read as one position with a reserve attached`);
     }
   } catch (e) { console.log(`\nLADDER RECORD unreadable (${e.message}) — a wallet that holds a reserve range will read as two positions`); }
 
   if (STEPS.includes('collect')) {
-    console.log(`\nCOLLECT — fees of the position held by ${lp.address} -> BNB -> buyback wallet`);
+    console.log(`\nCOLLECT — fees of the position held by ${lp.address} -> BNB -> kept as capital / $BOBAI held`);
     const plan = await planCollect(pub, lp.address, ladder);
     const s = plan.summary;
     if (plan.pos) {
@@ -679,10 +699,10 @@ async function main() {
       if (s.leftovers) console.log(`  leftovers ${s.leftovers.wbnb} WBNB and ${s.leftovers.other} of the other token, from an interrupted run`);
       console.log(`  worth     ${f(s.owed.bnb_equivalent)} BNB together${s.quote_off_pct != null ? `, quote ${s.quote_off_pct}% off the pool's price${s.sells_via ? ` (sells via ${s.sells_via})` : ''}` : ''}`);
     }
-    console.log(`  gas       ${f(s.wallet_bnb ?? s.gas_bnb)} BNB (reserve kept: ${GAS_RESERVE_BNB})`);
+    console.log(`  wallet    ${f(s.wallet_bnb ?? s.gas_bnb)} BNB (reserve kept: ${GAS_RESERVE_BNB})`);
     if (plan.no) console.log(`  nothing to do: ${plan.no}`);
     else {
-      console.log(`  would collect, sell the other side, unwrap, keep ${KEEP}% of what this run produced as capital and forward the rest to ${ADDR.BUYBACK_WALLET}`);
+      console.log(`  would collect, sell the other side, unwrap, keep ${KEEP}% of what this run produced as capital and buy $BOBAI with the rest, held in this wallet`);
       if (CONFIRM) {
         const out = await executeCollect(pub, lpWallet(), lp, plan, log, { keptPct: KEEP });
         console.log(`  produced ${out.produced_bnb || '0'} BNB: kept ${out.kept_bnb} BNB as capital, ${out.bobai_bnb} BNB bought ${out.bobai_units || '0'} BOBAI held in the wallet${out.why ? ` — ${out.why}` : ''}`);

@@ -43,7 +43,8 @@ The agent must never hold a key that can move the client's capital out. So:
   pricing that does not reward an agent for acting when it should not.
 - The fee is paid into the income wallet like every other AI income here and
   follows the same loop: sold for BNB, put into the project's own position,
-  fees to the buyback bot, burn. Paying in $BOBAI means the buyer bought $BOBAI
+  half of the fees stays there as capital, half buys $BOBAI the agent holds
+  (until 2026-09-09: to the buyback bot, burn). Paying in $BOBAI means the buyer bought $BOBAI
   first; that is the push.
 
 ## What has to exist before it is switched on

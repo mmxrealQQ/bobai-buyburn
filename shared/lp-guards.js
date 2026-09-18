@@ -490,19 +490,51 @@ export function refuseIncrease(state) {
 //          (bool), reserveSide, spendableBnb, reserveLeft (bool) }
 // Returns { act: 'mint_reserve'|'increase_reserve'|'merge'|'reset_reserve'
 //           |null, why }. Pure; pinned both ways.
+// A MINT FROM THE WALLET FINISHES THE RE-SET IT BELONGS TO (2026-09-18). A
+// one-sided re-set whose mint failed leaves the wallet holding what the old
+// range ended in: all of the other side, or all WBNB. Until now the resume
+// minted CENTRED, which trades about half of the capital — sells the fallen
+// side at its low or buys the risen one at its high, the very trade the
+// one-sided re-set exists to avoid. A wallet that holds (nearly) one token
+// alone is minted one-sided on that token's side; a mixed wallet is centred
+// as before. `shareOther` is the other side's share of the wallet's value.
+// Returns ticksAdjacent's side ('below' = range above the price, all of the
+// other side; 'above' = range below it, all WBNB) or null. Pure; pinned.
+export const RESUME_ONE_SIDED_SHARE = 0.95;
+export function resumeSide(shareOther) {
+  if (shareOther == null || !isFinite(shareOther)) return null;
+  if (shareOther >= RESUME_ONE_SIDED_SHARE) return 'below';
+  if (shareOther <= 1 - RESUME_ONE_SIDED_SHARE) return 'above';
+  return null;
+}
 export const LADDER_GATE = 'LP_LADDER';
 // THE LADDER RECORD FOLLOWS THE CHAIN (2026-09-17). The record names a main
 // range the wallet no longer holds (burnt at a re-set whose new id was never
 // written — a tick that died between the mint and the KV write, or the read
 // that returned no id on 09-16 08:50) while the reserve it names is still
 // there beside exactly one other position in the same pool: that other one
-// is the main range. Anything else — the main still held, the reserve gone,
-// a third position, another pool — is left as it is, and the guards refuse.
+// is the main range. Anything else — both still held, neither held, a third
+// position, another pool — is left as it is, and the guards refuse.
 // state: { main, reserve, held: [ids], samePool (bool) }
-// Returns { main, why } or null. Pure; pinned both ways.
+// Returns { main, why } (+ closed | adopted with reserve) or null. Pure;
+// pinned both ways.
 export function ladderHeal(state) {
   const held = (state.held || []).map(String);
-  if (state.main == null || state.reserve == null) return null;
+  if (state.main == null) return null;
+  // THE SAME CLASS ON THE RESERVE'S SIDE (2026-09-18, read in the code, never
+  // seen with money): a reserve was minted and its id never written — the
+  // read after the mint named no new id, or the tick died before the KV
+  // write. The main range is still held, beside exactly one position the
+  // record does not name (it names no reserve, or one the wallet no longer
+  // holds — burnt at a reserve re-set), in the same pool: that one is the
+  // reserve. Without this the wallet reads as "2 positions" and every step
+  // refuses until a person patches the record, as on 09-16/17.
+  if (held.length === 2 && held.includes(String(state.main)) && (state.reserve == null || !held.includes(String(state.reserve)))) {
+    if (state.samePool !== true) return null;
+    const reserve = held.find((i) => i !== String(state.main));
+    return { main: String(state.main), reserve, adopted: true, why: `the ladder record named ${state.reserve == null ? 'no reserve' : `reserve #${state.reserve}, which this wallet no longer holds`}; beside the main range #${state.main} it holds exactly one other position in the same pool, #${reserve} — that is the reserve now` };
+  }
+  if (state.reserve == null) return null;
   // A re-set that burned the main range and failed to mint the new one
   // (2026-09-18, read in the code, never seen with money): the wallet holds
   // the reserve alone and the record names a burnt main range. Without this

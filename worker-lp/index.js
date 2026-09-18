@@ -42,7 +42,7 @@ import {
 } from '../shared/lp-agent.js';
 import { readLpWindows, verdict, measuredResetCost, readLpTicks, recordLpTick } from '../worker-agent/lp-windows.js';
 import { trimHistory, ARCHIVE_KEY } from '../shared/lp-flow.js';
-import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE } from '../shared/lp-guards.js';
+import { rebalanceWait, splitFees, widthUpgrade, depositForcesReset, rangeLeft, RESET_AFTER_HOURS, HOME_POOL, LADDER_GATE, ladderActsInWatch } from '../shared/lp-guards.js';
 
 export const KV_KEY = 'lp:agent';
 // When the agent first saw the price outside the range, so an hourly check
@@ -391,6 +391,10 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     if (!plan.act) return { ...base, acted: false, why: plan.why };
     if (plan.act === 'merge') return { ...base, acted: false, why: `${plan.why} (done at the main range's re-set)` };
     if (!ladderOn) return { ...base, acted: false, why: `${plan.why} — ${LADDER_GATE} is not 1: planned, not run` };
+    // The watch opens and grows the reserve; re-setting it is the hourly
+    // check's (ladderActsInWatch) — the reserve does not chase the price
+    // every ten minutes.
+    if (watch && !ladderActsInWatch(plan.act)) return { ...base, acted: false, why: `${plan.why} — left to the hourly check: the ten-minute watch does not re-set the reserve` };
     if (dry) return { ...base, acted: false, why: `dry run — would have ${plan.act === 'mint_reserve' ? 'minted the reserve range' : plan.act === 'increase_reserve' ? 'grown the reserve range' : 're-set the reserve range'}: ${plan.why}` };
     const txs = [];
     try {

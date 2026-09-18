@@ -487,7 +487,8 @@ export function refuseIncrease(state) {
 // through one of them): the reserve is unwound at the main range's next
 // re-set and its tokens go into the new range as they are.
 // state: { gate, positions, mainSide ('other'|'wbnb'|'both'|null), reserve
-//          (bool), reserveSide, spendableBnb, reserveLeft (bool) }
+//          (bool), reserveSide, spendableBnb, reserveLeft (bool), reserveBnb
+//          (what the reserve is worth; absent = not checked) }
 // Returns { act: 'mint_reserve'|'increase_reserve'|'merge'|'reset_reserve'
 //           |null, why }. Pure; pinned both ways.
 // A MINT FROM THE WALLET FINISHES THE RE-SET IT BELONGS TO (2026-09-18). A
@@ -508,6 +509,14 @@ export function resumeSide(shareOther) {
   return null;
 }
 export const LADDER_GATE = 'LP_LADDER';
+// WHAT THE TEN-MINUTE WATCH MAY DO TO THE LADDER (2026-09-18). The watch is
+// there so a deposit goes to work within minutes: it opens and grows the
+// reserve. It does not re-set one. While the main range is all of the other
+// side, every 21-30 ticks the price climbed back re-set the reserve again at
+// the next watch — up to six an hour, each ~0.12% of the reserve in gas, to
+// stand a few ticks nearer a price the main range is about to take back. The
+// hourly check and the daily run re-set it, once, where the price then is.
+export function ladderActsInWatch(act) { return act === 'mint_reserve' || act === 'increase_reserve'; }
 // THE LADDER RECORD FOLLOWS THE CHAIN (2026-09-17). The record names a main
 // range the wallet no longer holds (burnt at a re-set whose new id was never
 // written — a tick that died between the mint and the KV write, or the read
@@ -576,6 +585,11 @@ export function ladderDecision(state) {
     // buys on the way down, and if the price climbs out of it both hold WBNB
     // and merge. The reserve is re-set only when nothing else stands at the
     // price: the main range is all of the other side above it.
+    // A reserve under the re-set floor is not re-set at all: the two
+    // transactions would cost more of it than standing nearer the price is
+    // likely to earn back (the floor the main range is held to). It waits
+    // where it is and joins the main range at the merge.
+    if (state.reserveLeft && state.mainSide === 'other' && state.reserveBnb != null && !(Number(state.reserveBnb) >= MIN_REBALANCE_BNB)) return no(`the price has left the reserve range, which is worth ${Number(state.reserveBnb).toFixed(6)} BNB, below the ${MIN_REBALANCE_BNB} BNB floor — a re-set would cost more than it is likely to earn back; it waits where it is`);
     if (state.reserveLeft && state.mainSide === 'other') return { act: 'reset_reserve', why: 'the price has left the reserve range by more than the slack and the main range is all of the other side above it — the reserve is re-set beside the price, one-sided, no trade' };
     if (state.reserveLeft && spendable < MIN_INCREASE_BNB) return no(`the price has left the reserve range, but the main range is ${state.mainSide === 'both' ? 'in range and buys on the way down itself' : 'not above the price'} — the reserve waits where it is; a re-set would cost gas and earn nothing`);
     if (spendable >= MIN_INCREASE_BNB && state.mainSide === 'other') return { act: 'increase_reserve', why: `${spendable.toFixed(6)} BNB waits and the main range is all of the other side above the price — the BNB joins the reserve range below it, no trade` };

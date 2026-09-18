@@ -96,6 +96,7 @@ export const ABI = {
   NPM: parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function tokenOfOwnerByIndex(address,uint256) view returns (uint256)',
+    'function ownerOf(uint256) view returns (address)',
     'function positions(uint256) view returns (uint96 nonce,address operator,address token0,address token1,uint24 fee,int24 tickLower,int24 tickUpper,uint128 liquidity,uint256 feeGrowthInside0LastX128,uint256 feeGrowthInside1LastX128,uint128 tokensOwed0,uint128 tokensOwed1)',
     'function collect((uint256 tokenId,address recipient,uint128 amount0Max,uint128 amount1Max)) payable returns (uint256 amount0,uint256 amount1)',
     'function increaseLiquidity((uint256 tokenId,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint128 liquidity,uint256 amount0,uint256 amount1)',
@@ -213,6 +214,26 @@ async function readOne(pub, address, tokenId) {
 // alone handles the reserve. Two positions the record does not name still
 // read as two, and every guard refuses as before.
 export async function readPosition(pub, address, ladder = null) {
+  // BY THE RECORD'S IDS, NOT BY THE COUNT (2026-09-18). Anyone can mint a dust
+  // position to this wallet, or send one, for a few cents; counted, it made
+  // "3 positions — a decision for a person" and every step refused until a
+  // person removed it. The ranges the record names are asked for by id
+  // (ownerOf): what else the wallet holds is not the agent's and is not
+  // read. A burnt id reverts and reads as not held. Neither held: the count
+  // below decides as before, and ladderHeal follows the chain.
+  if (ladder && ladder.main != null) {
+    const owns = (id) => (id == null ? Promise.resolve(false)
+      : read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'ownerOf', [BigInt(id)]).then((o) => String(o).toLowerCase() === String(address).toLowerCase()).catch(() => false));
+    const [mainHeld, reserveHeld] = await Promise.all([owns(ladder.main), owns(ladder.reserve)]);
+    if (mainHeld) {
+      const main = await readOne(pub, address, BigInt(ladder.main));
+      if (reserveHeld) return { positions: 1, ...main, reserve: await readOne(pub, address, BigInt(ladder.reserve)), positions_held: 2 };
+      return { positions: 1, ...main, positions_held: 1 };
+    }
+    // The main range is gone, the reserve stands (see below): no main range,
+    // the reserve rides along, the re-set is finished from the wallet.
+    if (reserveHeld) return { positions: 0, tokenId: null, pos: null, owed0: 0n, owed1: 0n, reserve: await readOne(pub, address, BigInt(ladder.reserve)), positions_held: 1, main_missing: String(ladder.main) };
+  }
   const positions = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address]));
   if (positions === 2 && ladder && ladder.reserve != null) {
     const ids = [await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 0n]), await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, 1n])];
@@ -248,8 +269,10 @@ export async function readPosition(pub, address, ladder = null) {
 // re-set of 09-16 08:50 minted #7451444 beside reserve #7450613, read "two
 // positions", recorded new_position null, and the ladder record kept naming
 // the burnt main range — every step refused for a day).
+// Bounded: a wallet anyone can send NFTs to is never enumerated past this.
+export const HELD_IDS_CAP = 12;
 export async function heldIds(pub, address) {
-  const n = Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address]));
+  const n = Math.min(HELD_IDS_CAP, Number(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'balanceOf', [address])));
   const ids = [];
   for (let i = 0; i < n; i++) ids.push(String(await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'tokenOfOwnerByIndex', [address, BigInt(i)])));
   return ids;
@@ -280,6 +303,21 @@ export async function healLadder(pub, address, ladder) {
   const [a, b] = await Promise.all(held.map((i) => read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(i)])));
   const samePool = a[2].toLowerCase() === b[2].toLowerCase() && a[3].toLowerCase() === b[3].toLowerCase() && Number(a[4]) === Number(b[4]);
   return ladderHeal({ main: ladder.main, reserve: ladder.reserve, held, samePool });
+}
+// The id a mint made, from the mint's own receipt: the position manager's
+// Transfer from the zero address to the owner. Until 2026-09-18 the id was
+// the one held after the mint and not before — two enumerations of the
+// wallet, which a read behind the chain's head answered with no new id (the
+// record then named none) and a wallet stuffed with strangers' NFTs made as
+// long as they liked. The enumeration stays as the fallback. Pure.
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+export function mintedIn(receipt, owner) {
+  for (const l of (receipt && receipt.logs) || []) {
+    const t = l.topics || [];
+    if (String(l.address).toLowerCase() !== ADDR.V3_POSITION_MANAGER || t.length !== 4 || t[0] !== TRANSFER_TOPIC) continue;
+    if (BigInt(t[1]) === 0n && BigInt(t[2]) === BigInt(owner)) return String(BigInt(t[3]));
+  }
+  return null;
 }
 async function mintedSince(pub, address, idsBefore) {
   const id = (await heldIds(pub, address)).find((i) => !idsBefore.includes(i));
@@ -409,6 +447,20 @@ export function tradeToRatio({ wbnb, other, perLWbnb, perLOther, otherPerWbnb, w
     return amount > 0n ? { side: 'sell', amount } : { side: null, amount: 0n };
   }
   return { side: null, amount: 0n };
+}
+
+// THE PROFIT SHARE OF A RE-SET DOWNWARD (2026-09-18). A range the price fell
+// out of paid its fees mostly in the other side, so after the unwind the
+// wallet's WBNB is short of the share and the re-set kept all of it as
+// capital — the 50/50 rule held on the way up and never on the way down.
+// The missing part is sold out of the other side, the token the fees came
+// in, the way the collect sells it: `short` WBNB wanted, at `wbnbPerOther`
+// (the quoter's rate for one unit, fee in), half a percent over for the
+// rounding of rate and impact, never more than the wallet holds. Pure.
+export function shareShortfallSale({ short, wbnbPerOtherX18, haveOther }) {
+  if (!(short > 0n) || !(wbnbPerOtherX18 > 0n) || !(haveOther > 0n)) return 0n;
+  const want = ((short * 10n ** 18n) / wbnbPerOtherX18) * 1005n / 1000n + 1n;
+  return want > haveOther ? haveOther : want;
 }
 
 // A trade of no size costs a transaction and moves nothing: below this much
@@ -974,8 +1026,21 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
   // that ended all on the other side, with the buy capped) keeps it as
   // capital and says so; the mint takes what is there.
   let boughtBobai = 0n, bobaiUnits = 0n, forwardWhy = share ? share.why : null;
+  let shareSwap = null;
   if (reserved > 0n) {
-    const wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+    let wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+    if (wbnbNow < reserved) {
+      // Short of the share: the fees came in the other side (a re-set
+      // downward). Sell that much of it — the share is not capital.
+      const haveOther = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
+      const unit = await quoteV3(pub, plan.other, ADDR.WBNB, fee, 10n ** 18n).catch(() => 0n);
+      const amountIn = shareShortfallSale({ short: reserved - wbnbNow, wbnbPerOtherX18: unit, haveOther });
+      if (amountIn > 0n) {
+        const q = await quoteV3(pub, plan.other, ADDR.WBNB, fee, amountIn);
+        shareSwap = await swapV3(pub, send, account.address, plan.other, ADDR.WBNB, fee, amountIn, (q * 99n) / 100n, q, "sell the profit share's part of the old range's fees (they came in the other side)");
+        wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
+      }
+    }
     if (wbnbNow >= reserved) {
       await send("unwrap the profit share of the old range's fees", { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [reserved] });
       const bought = await buyBobaiHold(pub, send, account.address, reserved);
@@ -1004,7 +1069,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     ? (() => { const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired); return { amount0Min: (a.amount0 * MIN_SHARE) / 100n, amount1Min: (a.amount1 * MIN_SHARE) / 100n }; })()
     : minsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
   const idsBeforeMint = await heldIds(pub, account.address);
-  await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
+  const mintReceipt = await send(`mint the new range ${plan.ticks.tickLower} … ${plan.ticks.tickUpper}`, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
     args: [{
       token0: plan.pos[2], token1: plan.pos[3], fee: Number(plan.pos[4]),
       tickLower: plan.ticks.tickLower, tickUpper: plan.ticks.tickUpper,
@@ -1014,12 +1079,13 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
     }] });
   const wbnbLeft = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   if (wbnbLeft > 0n) await send('unwrap what was not needed', { address: ADDR.WBNB, abi: ABI.ERC20, functionName: 'withdraw', args: [wbnbLeft] });
-  const np = await mintedSince(pub, account.address, idsBeforeMint);
+  const mintedId = mintedIn(mintReceipt, account.address);
+  const np = mintedId != null ? { tokenId: BigInt(mintedId), pos: await read(pub, ADDR.V3_POSITION_MANAGER, ABI.NPM, 'positions', [BigInt(mintedId)]) } : await mintedSince(pub, account.address, idsBeforeMint);
   const gasBnb = txs.reduce((s, t) => s + (t.gas_bnb || 0), 0);
   // fees_folded_bnb is all the old range owed; fees_forwarded_bnb the part of
   // it that went to the buyback wallet; the difference was minted into the
   // new capital. Records before 2026-09-08 carry only the first.
-  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(plan.oneSided ? { one_sided: plan.ticks.side } : {}), ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
+  return { txs, gas_bnb: Number(gasBnb.toFixed(6)), swap, swap_fee_bnb: swap ? swap.fee_bnb : 0, ...(plan.oneSided ? { one_sided: plan.ticks.side } : {}), ...(wrapped > 0n ? { wrapped_waiting_bnb: Number(formatEther(wrapped)) } : {}), ...(shareSwap ? { share_swap: shareSwap } : {}), new_position: np.tokenId == null ? null : String(np.tokenId), new_ticks: [plan.ticks.tickLower, plan.ticks.tickUpper], liquidity_after: np.pos ? String(np.pos[7]) : null,
     ...(folded ? {
       fees_folded: folded, fees_folded_bnb: folded.bnb_equivalent,
       bobai_bnb: Number(formatEther(boughtBobai)), bobai_units: Number(formatUnits(bobaiUnits, 18)), fees_kept_pct: share ? share.pct : null,
@@ -1346,7 +1412,7 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
   // the increase refused it beside a main range that is all of the other
   // side, and it stood still until the next deposit or re-set.
   const heldWbnb = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [address]);
-  let poolInfo = null, spacing = null, wbnbIs0 = false, mainSide = null, reserveSide = null, reserveLeft = false, ticks = null, width = null, reserveInfo = null;
+  let poolInfo = null, spacing = null, wbnbIs0 = false, mainSide = null, reserveSide = null, reserveLeft = false, ticks = null, width = null, reserveInfo = null, reserveBnb = null;
   if (p.positions === 1 && p.pos) {
     poolInfo = await readPool(pub, p.pos);
     wbnbIs0 = p.pos[2].toLowerCase() === ADDR.WBNB;
@@ -1354,7 +1420,7 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
     mainSide = positionSide(p.pos, poolInfo.sqrtP, wbnbIs0).side;
     if (p.reserve) {
       const rs = positionSide(p.reserve.pos, poolInfo.sqrtP, wbnbIs0);
-      reserveSide = rs.side;
+      reserveSide = rs.side; reserveBnb = rs.valueBnb;
       const lf = rangeLeft(poolInfo.tick, Number(p.reserve.pos[5]), Number(p.reserve.pos[6]));
       reserveLeft = lf.left;
       reserveInfo = { position: String(p.reserve.tokenId), ticks: [Number(p.reserve.pos[5]), Number(p.reserve.pos[6])], side: reserveSide, value_bnb: Number(rs.valueBnb.toFixed(6)), left: lf.left, ticks_beyond_edge: lf.ticks_away };
@@ -1365,7 +1431,7 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
     if (width != null) ticks = ticksAdjacent(poolInfo.tick, width, spacing, 'above');
   }
   const positionsHeld = p.positions === 1 ? (p.reserve ? 2 : 1) : p.positions;
-  const decision = ladderDecision({ positions: positionsHeld, reserve: !!p.reserve, mainSide, reserveSide, spendableBnb: bn(spendRaw + heldWbnb), reserveLeft });
+  const decision = ladderDecision({ positions: positionsHeld, reserve: !!p.reserve, mainSide, reserveSide, spendableBnb: bn(spendRaw + heldWbnb), reserveLeft, reserveBnb });
   let no = null;
   if (decision.act && (decision.act === 'mint_reserve' || decision.act === 'reset_reserve') && (width == null || !ticks)) no = 'the width record names no width yet — the reserve range waits for a day of prices';
   return {
@@ -1402,9 +1468,11 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     const sqrtNow = (await readPool(pub, plan.pos)).sqrtP;
     const a = amountsForRange(sqrtNow, plan.ticks.tickLower, plan.ticks.tickUpper, amount0Desired, amount1Desired);
     const idsBefore = await held();
-    await send(label, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
+    const receipt = await send(label, { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'mint',
       args: [{ token0: plan.pos[2], token1: plan.pos[3], fee: Number(plan.pos[4]), tickLower: plan.ticks.tickLower, tickUpper: plan.ticks.tickUpper,
         amount0Desired, amount1Desired, amount0Min: (a.amount0 * MIN_SHARE) / 100n, amount1Min: (a.amount1 * MIN_SHARE) / 100n, recipient: account.address, deadline: deadline() }] });
+    const fromReceipt = mintedIn(receipt, account.address);
+    if (fromReceipt != null) return fromReceipt;
     const idsAfter = await held();
     return idsAfter.find((i) => !idsBefore.includes(i)) || null;
   };

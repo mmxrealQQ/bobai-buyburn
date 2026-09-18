@@ -31,13 +31,13 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition, mintedIn, heldIds, HELD_IDS_CAP, shareShortfallSale,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
-  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide,
+  widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
 
@@ -382,6 +382,7 @@ if (SELF) {
   is('no position: nothing', ladderDecision(L({ positions: 0 })).act === null);
   is('two positions the record does not name: a decision for a person', /person/.test(ladderDecision(L({ positions: 2, reserve: false })).why));
   is('three positions: a decision for a person', /person/.test(ladderDecision(L({ positions: 3, reserve: true })).why));
+  const coreSrc0 = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');
   const R = (over) => L({ positions: 2, reserve: true, reserveSide: 'wbnb', ...over });
   is('reserve stands (WBNB below), main above, BNB over the floor: grow the reserve', ladderDecision(R({})).act === 'increase_reserve');
   is('… under the floor: the ladder stands, nothing to do', (() => { const d = ladderDecision(R({ spendableBnb: 0.001 })); return d.act === null && /stands/.test(d.why); })());
@@ -396,6 +397,15 @@ if (SELF) {
   is('main in range, reserve below it, BNB waits: the increase takes it, not the ladder', (() => { const d = ladderDecision(R({ mainSide: 'both' })); return d.act === null && /increase step/.test(d.why); })());
   is('a standing ladder says where the main range is: in range, not "above the price"', /main in range/.test(ladderDecision(R({ mainSide: 'both', spendableBnb: 0.001 })).why) && /main above the price/.test(ladderDecision(R({ spendableBnb: 0.001 })).why));
   is('the gate is a worker variable named LP_LADDER', LADDER_GATE === 'LP_LADDER');
+  // The reserve does not chase (2026-09-18): not on the ten-minute watch, not under the re-set floor.
+  is('the watch opens and grows the reserve, it never re-sets or merges one', ladderActsInWatch('mint_reserve') && ladderActsInWatch('increase_reserve') && !ladderActsInWatch('reset_reserve') && !ladderActsInWatch('merge') && !ladderActsInWatch(null));
+  is('… and the worker asks that rule before the watch may act on the ladder (source pin)', /if \(watch && !ladderActsInWatch\(plan\.act\)\) return/.test((await import('node:fs')).readFileSync(new URL('../worker-lp/index.js', import.meta.url), 'utf8')));
+  is('a reserve under the re-set floor is not re-set: it waits where it is', ladderDecision(R({ reserveLeft: true, reserveBnb: MIN_REBALANCE_BNB - 0.001 })).act === null && /below the 0\.02 BNB floor/.test(ladderDecision(R({ reserveLeft: true, reserveBnb: 0.005 })).why));
+  is('… at the floor and above it is, and a caller that names no value is not held to one', ladderDecision(R({ reserveLeft: true, reserveBnb: MIN_REBALANCE_BNB })).act === 'reset_reserve' && ladderDecision(R({ reserveLeft: true, reserveBnb: 0.041 })).act === 'reset_reserve' && ladderDecision(R({ reserveLeft: true })).act === 'reset_reserve');
+  // The profit share of a re-set downward is sold out of the token the fees came in.
+  is('the share\'s shortfall is sold out of the other side: that many WBNB at the quoted rate, half a percent over', (() => { const a = shareShortfallSale({ short: 4n * 10n ** 14n, wbnbPerOtherX18: 3280000000000000n, haveOther: 10n ** 20n }); const got = (a * 3280000000000000n) / 10n ** 18n; return got >= 4n * 10n ** 14n && got < (4n * 10n ** 14n * 1006n) / 1000n; })());
+  is('… never more than the wallet holds, and nothing when nothing is short, quoted or held', shareShortfallSale({ short: 10n ** 18n, wbnbPerOtherX18: 3280000000000000n, haveOther: 10n ** 18n }) === 10n ** 18n && shareShortfallSale({ short: 0n, wbnbPerOtherX18: 1n, haveOther: 1n }) === 0n && shareShortfallSale({ short: 1n, wbnbPerOtherX18: 0n, haveOther: 1n }) === 0n && shareShortfallSale({ short: 1n, wbnbPerOtherX18: 1n, haveOther: 0n }) === 0n);
+  is('… and the re-set sells it before it decides the share "stays as capital" (source pin)', (() => { const src = (s0) => s0.slice(s0.indexOf('export async function executeRebalance'), s0.indexOf('export async function executeRelocate')); const reb = src(coreSrc0); return reb.indexOf('shareShortfallSale(') > 0 && reb.indexOf('shareShortfallSale(') < reb.indexOf('it stays as capital'); })());
   // The ladder record follows the chain (2026-09-17, the day the agent stood still).
   const HL = (over) => ({ main: '7450561', reserve: '7450613', held: ['7450613', '7451444'], samePool: true, ...over });
   is('the record names a burnt main range, the reserve stands beside one other position in its pool: that one is the main range', (() => { const h = ladderHeal(HL({})); return h && h.main === '7451444' && /7450561/.test(h.why); })());
@@ -431,6 +441,7 @@ if (SELF) {
         const to = String(address).toLowerCase();
         if (functionName === 'balanceOf') return to === ADDR.V3_POSITION_MANAGER ? BigInt(ids.length) : to === CAKE ? cake : to === ADDR.WBNB ? wbnb : 0n;
         if (functionName === 'tokenOfOwnerByIndex') return ids[Number(args[1])];
+        if (functionName === 'ownerOf') { if (ids.includes(BigInt(args[0]))) return ME; throw new Error('ERC721: owner query for nonexistent token'); }
         if (functionName === 'positions') return [0n, '0x0000000000000000000000000000000000000000', CAKE, ADDR.WBNB, 500, -59000, -57090, 10n ** 19n, 0n, 0n, 0n, 0n];
         if (functionName === 'factory') return FACT;
         if (functionName === 'getPool') return POOL;
@@ -455,6 +466,21 @@ if (SELF) {
     const dust = chain({ cake: 10n ** 18n });   // ~0.003 BNB: nothing to mint a main range from
     is('… and closes the ladder when nothing worth minting lies beside the reserve', (await healLadder(dust, ME, { ...LAD }))?.closed === true && ladderHeal(HL({ held: ['7450613'], looseBnb: MIN_REBALANCE_BNB - 0.001 }))?.closed === true);
     is('… where the mint would be refused too (one floor for both, so the wallet never waits between them)', /below the 0.02 BNB floor/.test((await planRebalance(dust, ME, { record: REC, pool: POOL, ladder: LAD })).no || ''));
+    // BY THE RECORD'S IDS, NOT BY THE COUNT (2026-09-18): a stranger's dust NFT.
+    const stuffed = chain({ cake: 0n, ids: [7451444n, 999001n, 7461743n, 999002n] });
+    const sp = await readPosition(stuffed, ME, LAD);
+    is('two strangers\' NFTs in the wallet change nothing: the main range and the reserve are read by the ids the record names', sp.positions === 1 && String(sp.tokenId) === '7451444' && String(sp.reserve?.tokenId) === '7461743' && sp.positions_held === 2);
+    is('… where the count alone read "4 positions" and every step refused', (await readPosition(stuffed, ME, null)).positions === 4 && /no position|positions/.test((await planIncrease(stuffed, ME, null, null)).no || '') && (await planIncrease(stuffed, ME, null, LAD)).state.positions === 1);
+    is('… a record without a reserve reads the main range alone, a stranger beside it or not', (await readPosition(chain({ cake: 0n, ids: [999001n, 7451444n] }), ME, { main: '7451444', reserve: null })).positions === 1);
+    is('… and with neither of its ids held the count decides as before', (await readPosition(chain({ cake: 0n, ids: [999001n, 999002n] }), ME, LAD)).positions === 2);
+    is('a wallet stuffed with NFTs is never enumerated past the cap', (await heldIds(chain({ cake: 0n, ids: Array.from({ length: 500 }, (_, i) => BigInt(i + 1)) }), ME)).length === HELD_IDS_CAP);
+    const T = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', pad = (h) => '0x' + h.replace(/^0x/, '').padStart(64, '0');
+    const receipt = { logs: [
+      { address: CAKE, topics: [T, pad(ME), pad(POOL)], data: '0x' },
+      { address: ADDR.V3_POSITION_MANAGER, topics: [T, pad('0x0'), pad('0x1111111111111111111111111111111111111111'), pad((999003n).toString(16))] },
+      { address: ADDR.V3_POSITION_MANAGER, topics: [T, pad('0x0'), pad(ME), pad((7470001n).toString(16))] },
+    ] };
+    is('the id of a mint is read off its own receipt: the manager\'s transfer from zero to this wallet, no other', mintedIn(receipt, ME) === '7470001' && mintedIn({ logs: receipt.logs.slice(0, 2) }, ME) === null && mintedIn(null, ME) === null);
   }
   // The re-set beside a reserve: it reads its old range by id and names its new one by the mint (source pins; the chain half cannot run here).
   const coreSrc = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');

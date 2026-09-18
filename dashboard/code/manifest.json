@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 14,
-   "lines": 5643,
-   "zipBytes": 137120,
-   "txtBytes": 427225,
-   "sha256": "411ceec2b4be14d7",
+   "lines": 5755,
+   "zipBytes": 140453,
+   "txtBytes": 438846,
+   "sha256": "e7fcaa33e6e55976",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -187,10 +187,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4454,
-   "zipBytes": 68495,
-   "txtBytes": 202817,
-   "sha256": "4027341d9e49f362",
+   "lines": 4472,
+   "zipBytes": 68880,
+   "txtBytes": 203843,
+   "sha256": "ad2e22dca1e3ff27",
    "reqs": [
     {
      "what": "A bot token",
@@ -239,10 +239,10 @@
    "title": "NFT Auto-Mint Bot",
    "tagline": "Watches the pair and mints to the buyer, unasked.",
    "files": 2,
-   "lines": 579,
-   "zipBytes": 10936,
-   "txtBytes": 24134,
-   "sha256": "c03480058f96331d",
+   "lines": 598,
+   "zipBytes": 11413,
+   "txtBytes": 25260,
+   "sha256": "c9b277c766fd9bde",
    "reqs": [
     {
      "what": "A deployed ERC-721 it is allowed to mint from",
@@ -630,10 +630,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 37,
-   "lines": 12811,
-   "zipBytes": 275838,
-   "txtBytes": 776746,
-   "sha256": "a4a17ba24e174143",
+   "lines": 12893,
+   "zipBytes": 277750,
+   "txtBytes": 782987,
+   "sha256": "6912414a7f07a816",
    "reqs": [
     {
      "what": "A wallet to be paid into",

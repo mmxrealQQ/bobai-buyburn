@@ -44,7 +44,7 @@ txt: https://brainonbnb.com/code/buyback-bot.txt
 DeFi Agent — a PancakeSwap V3 range that runs itself
 ----------------------------------------------------
 One concentrated-liquidity position, kept by a cron: collect, re-set, grow. No human in the loop.
-14 files, 5643 lines
+14 files, 5755 lines
 needs:
   - A wallet that holds the position
       ours: one BSC wallet used for nothing else
@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 4454 lines
+12 files, 4472 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -133,7 +133,7 @@ txt: https://brainonbnb.com/code/telegram-bot.txt
 NFT Auto-Mint Bot
 -----------------
 Watches the pair and mints to the buyer, unasked.
-2 files, 579 lines
+2 files, 598 lines
 needs:
   - A deployed ERC-721 it is allowed to mint from
       ours: the contract in the NFT Buy Drops bundle
@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-37 files, 12811 lines
+37 files, 12893 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

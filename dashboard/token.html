@@ -116,9 +116,14 @@
             <div class="ts-split">0.9% BOBAI burn &middot; 0.1% BOB burn &middot; 0.9% Creator &middot; <b>0.8% &rarr; BOBAI liq add + LP burn</b> &middot; <b>0.3% &rarr; <a href="/defi">DeFi Agent</a></b></div>
           </div>
           <div class="ts-row" data-phase="sunshine">
-            <div class="ts-when">Sep 17, 00:01 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
+            <div class="ts-when">Sep 17, 00:01 UTC &rarr; Sep 19, 18:00 UTC, 2026</div>
             <div class="ts-name">☀️ Giggle Academy pot + DeFi Agent</div>
             <div class="ts-split">0.8% BOBAI burn &middot; 0.8% BOB burn &middot; 0.8% Creator &middot; <b>0.3% &rarr; <a href="/defi">DeFi Agent</a></b> &middot; <b>0.3% &rarr; <a href="#giggle">Giggle Academy pot</a></b></div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-3">
+            <div class="ts-when">Sep 19, 18:00 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent</div>
+            <div class="ts-split">0.8% BOBAI burn &middot; 0.5% BOB burn &middot; 0.8% Creator &middot; <b>0.3% &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a></b> &middot; <b>0.3% &rarr; <a href="/defi">DeFi Agent</a></b> &middot; <b>0.3% &rarr; <a href="#giggle">Giggle Academy pot</a></b></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
             <div class="ts-when">from Nov 20, 2026</div>
@@ -240,6 +245,34 @@
       </div>
     </div>
   </section>
+
+  <!-- $BOBAI Permalocked Liquidity Boost III (2026-09-19): 0.3% of every trade out of the
+       BOB-burn slice into the BOBAI/BNB pool, LP burned — beside the Giggle pot and the DeFi
+       agent, ending with them Nov 20, 00:01 UTC. Own IDs (bb3-*); the adds come from the same
+       bobai-liq-log.json as rounds I and II, split by window, so the two archives stay frozen. -->
+  <section class="liq-boost fi" id="liq-boost-bobai-3">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
+      <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.3% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">running now</span></div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-cd-caption" id="bb3-cd-label">until the boost ends</div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb3-count">0</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb3-bnb">0.0000</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb3-lp">0</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+        <div class="txw">
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <tbody id="bb3-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
   <!-- Liquidity Boost II ended 2026-09-16 23:59 UTC: the card moved from the first
        screen to the end of the page (2026-09-17), without its countdown. -->
   <section class="liq-boost fi" id="liq-boost-bobai">
@@ -274,6 +307,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=82" defer></script>
+<script src="app.js?v=83" defer></script>
 </body>
 </html>

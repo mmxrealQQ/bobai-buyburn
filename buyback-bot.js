@@ -55,6 +55,13 @@ const WC26_END   = new Date('2026-07-19T23:59:00Z').getTime();
 const BOBAI_LIQ_BOOST2_START = new Date('2026-08-08T00:00:00Z').getTime();
 const BOBAI_LIQ_BOOST2_END   = new Date('2026-09-16T23:59:59Z').getTime();
 
+// BOBAI Liq Boost III (operator, 2026-09-19): 0.3% of trade -> BOBAI/BNB perma liq + LP burn,
+// again all from the BOB-burn share (0.8 - 0.3 = 0.5%), creator and BOBAI burn untouched.
+// Runs beside the DeFi-agent share and the Giggle pot and ends with them, Nov 20 00:01 UTC
+// (< like theirs, so that second is already 1/1/1). Same add path and log as I and II.
+const BOBAI_LIQ_BOOST3_START = new Date('2026-09-19T18:00:00Z').getTime();
+const BOBAI_LIQ_BOOST3_END   = new Date('2026-11-20T00:01:00Z').getTime();
+
 // LP Agent share (operator, 2026-09-09: "ab jetzt gehen direkt je 10% von
 // allen 1% an das lp wallet, in bnb"): 10 bps out of EACH of the three slices
 // (BOBAI burn, BOB burn, creator) -> 30 bps of trade as BNB to the liquidity
@@ -91,6 +98,10 @@ function isBobaiLiqBoost2Active() {
   const now = Date.now();
   return now >= BOBAI_LIQ_BOOST2_START && now <= BOBAI_LIQ_BOOST2_END;
 }
+function isBobaiLiqBoost3Active() {
+  const now = Date.now();
+  return now >= BOBAI_LIQ_BOOST3_START && now < BOBAI_LIQ_BOOST3_END;
+}
 function isLpShareActive() {
   const now = Date.now();
   return now >= LP_SHARE_START && now < LP_SHARE_END;
@@ -109,6 +120,7 @@ function isGiggleActive() {
 //   + BOBAI Liq Extra:   Creator -25, BOBAI liq +25
 //   + WC26 Prize Pool:   Creator -26, BOB burn -26, WC26 pool +52
 //   + BOBAI Liq Boost II: BOB burn -80, BOBAI liq +80
+//   + BOBAI Liq Boost III: BOB burn -30, BOBAI liq +30
 // Sum is verified before any on-chain action — bot aborts on mismatch.
 // ============================================
 const TAX_BPS = 300;
@@ -539,6 +551,7 @@ async function main() {
   const bobaiLiqExtra = isBobaiLiqExtraActive();
   const wc26Active    = isWc26Active();
   const bobaiLiqBoost2 = isBobaiLiqBoost2Active();
+  const bobaiLiqBoost3 = isBobaiLiqBoost3Active();
   const lpShare       = isLpShareActive();
   const giggle        = isGiggleActive();
 
@@ -557,6 +570,7 @@ async function main() {
   if (bobaiLiqExtra) { creatorBps -= 25; bobaiLiqBps += 25; }
   if (wc26Active)    { creatorBps -= 26; bobBurnBps  -= 26; wc26PoolBps += 52; }
   if (bobaiLiqBoost2){ bobBurnBps -= 80; bobaiLiqBps += 80; }
+  if (bobaiLiqBoost3){ bobBurnBps -= 30; bobaiLiqBps += 30; }
   // Ten from each of the three, after the programs above have had their cut.
   if (lpShare)       { bobaiBurnBps -= 10; bobBurnBps -= 10; creatorBps -= 10; lpAgentBps += 30; }
   if (giggle)        { bobaiBurnBps -= 10; bobBurnBps -= 10; creatorBps -= 10; giggleBps  += 30; }
@@ -572,6 +586,7 @@ async function main() {
   if (bobaiLiqExtra) phases.push('BOBAI Liq Extra (+0.25%)');
   if (wc26Active)    phases.push('WC26 Prize Pool');
   if (bobaiLiqBoost2) phases.push('BOBAI Liq Boost II (0.8%)');
+  if (bobaiLiqBoost3) phases.push('BOBAI Liq Boost III (0.3%)');
   if (lpShare)       phases.push('LP Agent share (0.3%)');
   if (giggle)        phases.push('Giggle Academy pot (0.3%)');
   console.log(`Active phases: ${phases.length ? phases.join(' + ') : 'Standard 1/1/1'}`);

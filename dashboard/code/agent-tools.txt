@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1940 lines.
+# one fetch. 4 files, 1941 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -477,7 +477,8 @@ const TOKENOMICS = {
 // (app.js, GG_START / GG_END) and the bot use — scripts/tax-phase-check.mjs
 // holds the three against each other. Percent of each trade.
 const TAX_PHASES = [
-  { id: 'sunshine', from: '2026-09-17T00:01:00Z', until: '2026-11-20T00:01:00Z', split_pct: { creator: 0.8, bob_burn: 0.8, bobai_burn: 0.8, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
+  { id: 'sunshine', from: '2026-09-17T00:01:00Z', until: '2026-09-19T18:00:00Z', split_pct: { creator: 0.8, bob_burn: 0.8, bobai_burn: 0.8, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
+  { id: 'bobai-liq-3', from: '2026-09-19T18:00:00Z', until: '2026-11-20T00:01:00Z', split_pct: { creator: 0.8, bob_burn: 0.5, bobai_burn: 0.8, bobai_liquidity_add: 0.3, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
   { id: 'standard-final', from: '2026-11-20T00:01:00Z', until: null, split_pct: { creator: 1, bob_burn: 1, bobai_burn: 1 } },
 ];
 function taxPhaseAt(nowMs = Date.now()) {
@@ -1551,7 +1552,7 @@ Every count lives in the JSON rather than in this file, each with its own `measu
 - Ownership: renounced — no mint function, no admin pause, no proxy/upgrade path
 - Liquidity: LP tokens sent to the dead address (perma-locked), not a timelock
 - Launch: fair launch on Four.Meme — no presale, no private sale, no pre-mine; supply entered the market through the public bonding curve
-- Tax: 3% per trade — split 1% creator / 1% $BOB burn / 1% $BOBAI burn (campaign phases may temporarily re-route a slice; the live split is always shown on the dashboard). Sep 9 → Nov 20, 2026: a tenth of each slice (0.3%) goes in BNB to the DeFi agent's wallet; Sep 17 → Nov 20, 2026: another tenth (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day
+- Tax: 3% per trade — split 1% creator / 1% $BOB burn / 1% $BOBAI burn (campaign phases may temporarily re-route a slice; the live split is always shown on the dashboard). Sep 9 → Nov 20, 2026: a tenth of each slice (0.3%) goes in BNB to the DeFi agent's wallet; Sep 17 → Nov 20, 2026: another tenth (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; Sep 19, 18:00 UTC → Nov 20, 2026: 0.3% out of the $BOB-burn slice is added permanently to the BOBAI/BNB pool and the LP burned ($BOBAI Permalocked Liquidity Boost III)
 - Buyback: a Cloudflare-Workers bot runs every 10 minutes, 24/7 — it buys $BOBAI on PancakeSwap and sends it to the dead address; every burn is on-chain and verifiable
 
 ## Where to verify

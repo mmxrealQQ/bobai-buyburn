@@ -54,15 +54,15 @@ const splitOf = (src, label) => {
   // if the allocation ever starts depending on something outside itself, this
   // throws rather than quietly comparing two different things.
   return new Function(
-    'bobLiqBoost', 'bobaiLiqBoost', 'bobaiLiqExtra', 'wc26Active', 'bobaiLiqBoost2', 'lpShare', 'giggle',
+    'bobLiqBoost', 'bobaiLiqBoost', 'bobaiLiqExtra', 'wc26Active', 'bobaiLiqBoost2', 'bobaiLiqBoost3', 'lpShare', 'giggle',
     `${body}\nreturn { bobaiBurnBps, bobBurnBps, creatorBps, bobLiqBps, bobaiLiqBps, wc26PoolBps, lpAgentBps, giggleBps };`,
   );
 };
 
-// Seven programs (2026-09-09: the DeFi Agent share and the Giggle pot joined), so 128 combinations.
+// Eight programs (2026-09-09: the DeFi Agent share and the Giggle pot joined; 2026-09-19: Liq Boost III), so 256 combinations.
 const COMBOS = [];
-for (let i = 0; i < 128; i++) {
-  COMBOS.push([!!(i & 1), !!(i & 2), !!(i & 4), !!(i & 8), !!(i & 16), !!(i & 32), !!(i & 64)]);
+for (let i = 0; i < 256; i++) {
+  COMBOS.push([!!(i & 1), !!(i & 2), !!(i & 4), !!(i & 8), !!(i & 16), !!(i & 32), !!(i & 64), !!(i & 128)]);
 }
 
 const compare = (aSrc, bSrc) => {
@@ -141,11 +141,12 @@ const active = {
   bobaiLiqExtra: at('BOBAI_LIQ_EXTRA'),
   wc26Active: at('WC26'),
   bobaiLiqBoost2: at('BOBAI_LIQ_BOOST2'),
+  bobaiLiqBoost3: at('BOBAI_LIQ_BOOST3'),
   lpShare: at('LP_SHARE'),
   giggle: at('GIGGLE'),
 };
 const on = Object.entries(active).filter(([, v]) => v).map(([k]) => k);
-const split = af(active.bobLiqBoost, active.bobaiLiqBoost, active.bobaiLiqExtra, active.wc26Active, active.bobaiLiqBoost2, active.lpShare, active.giggle);
+const split = af(active.bobLiqBoost, active.bobaiLiqBoost, active.bobaiLiqExtra, active.wc26Active, active.bobaiLiqBoost2, active.bobaiLiqBoost3, active.lpShare, active.giggle);
 const sum = Object.values(split).reduce((s, v) => s + v, 0);
 console.log(`  active today: ${on.length ? on.join(', ') : 'none — standard 1/1/1'}`);
 console.log(`  split: ${Object.entries(split).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ')}`);

@@ -585,7 +585,7 @@ function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].rever
 // again — it is fetched exactly once, at load.
 async function logs(){
   const [burns,bb]=await Promise.all([gj('burns.json'),gj('bobai-liq-log.json')]);
-  bdata(burns);bbdata(bb);bb2data(bb);bbsrc(bb);ggdata(burns);
+  bdata(burns);bbdata(bb);bb2data(bb);bb3data(bb);bbsrc(bb);ggdata(burns);
 }
 // Static file, appended once per manual run: read once at load, and fetched
 // directly rather than through gj() — that helper probes the log worker first,
@@ -622,6 +622,9 @@ function lbdata(entries){try{if(!entries||entries.length===0)return;const lbC=do
 // archive card, frozen at its final numbers), everything after to the live boost II card.
 const BB2_START=new Date('2026-08-08T00:00:00Z').getTime();
 const BB2_END=new Date('2026-09-16T23:59:59Z').getTime();
+// Round three (2026-09-19): 0.3% out of the BOB-burn slice, to the same end as the Giggle pot. Same log, split by window.
+const BB3_START=new Date('2026-09-19T18:00:00Z').getTime();
+const BB3_END=new Date('2026-11-20T00:01:00Z').getTime();
 // DeFi Agent share and Giggle Academy pot — the same instants the buyback worker switches on.
 const LP_SHARE_START=new Date('2026-09-09T05:30:00Z').getTime();
 const GG_START=new Date('2026-09-17T00:01:00Z').getTime();
@@ -634,6 +637,9 @@ function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter
 
 // === BOBAI LIQ BOOST II DATA (live campaign) ===
 function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
+
+// === BOBAI LIQ BOOST III DATA (live campaign, from BB3_START; the same log as I and II) ===
+function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB3_START&&t<BB3_END});const cEl=document.getElementById('bb3-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb3-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb3-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb3-tx-body',rows)}catch(e){console.error('bb3data error:',e)}}
 
 // === THE LIBRARY: copy buttons and the in-page code viewer ===
 // Reading the code should not cost a download. The viewer fetches the bundle's
@@ -857,6 +863,23 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
   tick();setInterval(tick,60000);
 }();
 
+// === LIQ BOOST III COUNTDOWN — to the start before it, to the end during the window ===
+!function(){
+  function tick(){
+    const now=Date.now();
+    const dEl=document.getElementById('bb3-days');if(!dEl)return;
+    let diff,label,phase;
+    if(now<BB3_START){diff=BB3_START-now;label='until the boost starts';phase='starts Sep 19, 18:00 UTC'}
+    else if(now<BB3_END){diff=BB3_END-now;label='until the boost ends';phase='running now — until Nov 20, 00:01 UTC'}
+    else{diff=0;label='campaign complete';phase='ended Nov 20'}
+    const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000),m=Math.floor((diff%3600000)/60000);
+    dEl.textContent=d;
+    const hEl=document.getElementById('bb3-hours'),mEl=document.getElementById('bb3-mins'),lEl=document.getElementById('bb3-cd-label'),pEl=document.getElementById('bb3-phase');
+    if(hEl)hEl.textContent=h;if(mEl)mEl.textContent=m;if(lEl)lEl.textContent=label;if(pEl)pEl.textContent=phase;
+  }
+  tick();setInterval(tick,60000);
+}();
+
 // === TAX ALLOCATION SCHEDULE — phase-aware highlight + inline notes ===
 !function(){
   const phases=[
@@ -870,7 +893,9 @@ function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     // (the BOB-burn slice is 0.2% during Liq Boost II and keeps 0.1%); from Sep 17 another tenth
     // of each into the Giggle Academy pot. Both end Nov 20, 00:01 UTC. Same windows as the bot.
     {id:'bobai-liq-2-lp',start:LP_SHARE_START, end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'(−0.1% → DeFi Agent)', bobNote:'(−0.8% → $BOBAI liq add, −0.1% → DeFi Agent)', bobaiNote:'(−0.1% → DeFi Agent)', creatorPct:'0.9%', bobPct:'0.1%', bobaiPct:'0.9%', liqPct:'0.8%', lpPct:'0.3%'},
-    {id:'sunshine',      start:GG_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.8%', bobaiPct:'0.8%', lpPct:'0.3%', gigglePct:'0.3%'},
+    {id:'sunshine',      start:GG_START, end:BB3_START, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.8%', bobaiPct:'0.8%', lpPct:'0.3%', gigglePct:'0.3%'},
+    // 2026-09-19: Liq Boost III — 0.3% more out of the BOB-burn slice into the BOBAI/BNB pool, LP burned; ends with the pot.
+    {id:'bobai-liq-3',   start:BB3_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.3% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.5%', bobaiPct:'0.8%', liqPct:'0.3%', lpPct:'0.3%', gigglePct:'0.3%'},
     {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'}
   ];
   // Size the scroll window to exactly: 1 past phase (context) + active + everything upcoming.

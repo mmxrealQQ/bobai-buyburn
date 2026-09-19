@@ -2374,6 +2374,7 @@ async function handleCommand(msg, env) {
 🔥 The rest burns BOB, funds liquidity and the creator — the split changes by phase
 💧 Sep 9 → Nov 20: a tenth of each slice (0.3%) goes to the DeFi agent
 ☀️ Sep 17 → Nov 20: another tenth (0.3%) collects in BNB for Giggle Academy — one donation on Nov 20
+🔒 Sep 19 → Nov 20: 0.3% out of the BOB-burn slice is added to the BOBAI/BNB pool for good, LP burned (Liquidity Boost III)
 👤 Contract ownership renounced
 
 🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns on BscScan</a> · <a href="https://brainonbnb.com/#tokenomics">Current split</a>`;

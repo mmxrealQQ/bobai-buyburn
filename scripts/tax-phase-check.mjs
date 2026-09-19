@@ -29,17 +29,21 @@ const { TAX_PHASES, taxPhaseAt } = new Function(`${snippet}; return { TAX_PHASES
 ok('the tool answers with the phase (tokenomicsNow is what the case returns)', /case 'bobai_tokenomics': return tokenomicsNow\(\);/.test(w) && /current_phase: taxPhaseAt\(\)/.test(w));
 
 const iso = (name) => (app.match(new RegExp(name + "=new Date\\('([^']+)'\\)")) || [])[1];
-const sun = TAX_PHASES.find((p) => p.id === 'sunshine'), fin = TAX_PHASES.find((p) => p.id === 'standard-final');
-ok('the campaign window is the page\'s own (GG_START … GG_END)', !!sun && iso('GG_START') === sun.from && iso('GG_END') === sun.until, `${iso('GG_START')} … ${iso('GG_END')}`);
-ok('the standard split begins where the campaign ends', !!fin && fin.from === sun.until && fin.until === null);
-const row = (app.match(/\{id:'sunshine'[^}]+\}/) || [''])[0];
-const pct = (k) => Number((row.match(new RegExp(k + ":'([0-9.]+)%'")) || [])[1]);
+const sun = TAX_PHASES.find((p) => p.id === 'sunshine'), bb3 = TAX_PHASES.find((p) => p.id === 'bobai-liq-3'), fin = TAX_PHASES.find((p) => p.id === 'standard-final');
+// 2026-09-19: Liquidity Boost III splits the pot's window in two — the pot alone, then the pot with the boost, to the same end.
+ok('the campaign windows are the page\'s own (GG_START … BB3_START … GG_END)', !!sun && !!bb3 && iso('GG_START') === sun.from && iso('BB3_START') === sun.until && sun.until === bb3.from && iso('GG_END') === bb3.until, `${iso('GG_START')} … ${iso('BB3_START')} … ${iso('GG_END')}`);
+ok('the standard split begins where the campaign ends', !!fin && fin.from === bb3.until && fin.until === null);
+const rowOf = (id) => (app.match(new RegExp("\\{id:'" + id + "'[^}]+\\}")) || [''])[0];
+const pctOf = (row, k) => Number((row.match(new RegExp(k + ":'([0-9.]+)%'")) || [])[1]);
+const row = rowOf('sunshine'), pct = (k) => pctOf(row, k);
 ok('the percentages are the page\'s row for the same window', pct('creatorPct') === sun.split_pct.creator && pct('bobPct') === sun.split_pct.bob_burn && pct('bobaiPct') === sun.split_pct.bobai_burn && pct('lpPct') === sun.split_pct.defi_agent && pct('gigglePct') === sun.split_pct.giggle_academy_pot, row.slice(0, 40) + '…');
+const row3 = rowOf('bobai-liq-3'), pct3 = (k) => pctOf(row3, k);
+ok('and the Liquidity Boost III row says what the tool says, liq add included', !!bb3 && pct3('creatorPct') === bb3.split_pct.creator && pct3('bobPct') === bb3.split_pct.bob_burn && pct3('bobaiPct') === bb3.split_pct.bobai_burn && pct3('liqPct') === bb3.split_pct.bobai_liquidity_add && pct3('lpPct') === bb3.split_pct.defi_agent && pct3('gigglePct') === bb3.split_pct.giggle_academy_pot && /Liq Boost III/.test(row3), row3.slice(0, 40) + '…');
 ok('every window adds up to the 3% the contract takes', TAX_PHASES.every((p) => Math.abs(Object.values(p.split_pct).reduce((a, b) => a + b, 0) - 3) < 1e-9));
-ok('the bot carries both dates', bot.includes('2026-09-17T00:01:00Z') && bot.includes('2026-11-20T00:01:00Z'));
+ok('the bot carries all three dates', bot.includes('2026-09-17T00:01:00Z') && bot.includes(sun.until) && bot.includes('2026-11-20T00:01:00Z'));
 const at = (d) => taxPhaseAt(Date.parse(d));
-ok('a day inside the campaign answers with it and names what follows', at('2026-10-01T00:00:00Z')?.id === 'sunshine' && at('2026-10-01T00:00:00Z')?.next?.id === 'standard-final' && at('2026-10-01T00:00:00Z')?.total_pct === 3);
-ok('the minute it ends the standard split answers, with nothing after it', at('2026-11-20T00:01:00Z')?.id === 'standard-final' && at('2026-11-20T00:01:00Z')?.next === null && at('2026-11-20T00:00:59Z')?.id === 'sunshine');
+ok('a day inside the campaign answers with it and names what follows', at('2026-10-01T00:00:00Z')?.id === 'bobai-liq-3' && at('2026-10-01T00:00:00Z')?.next?.id === 'standard-final' && at('2026-10-01T00:00:00Z')?.total_pct === 3 && at('2026-09-18T12:00:00Z')?.id === 'sunshine' && at('2026-09-18T12:00:00Z')?.next?.id === 'bobai-liq-3');
+ok('the minute it ends the standard split answers, with nothing after it', at('2026-11-20T00:01:00Z')?.id === 'standard-final' && at('2026-11-20T00:01:00Z')?.next === null && at('2026-11-20T00:00:59Z')?.id === 'bobai-liq-3');
 
 // ── the two bots, run as they stand ─────────────────────────────────────────
 const fallback = src('../buyback-bot.js');
@@ -58,7 +62,7 @@ function splitOf(text, ms) {
 const windowsOf = (text) => Object.fromEntries([...text.matchAll(/const (\w+_(?:START|END))\s*=\s*new Date\('([^']+)'\)/g)].map((m) => [m[1], m[2]]));
 const predicatesOf = (text) => [...text.matchAll(/return now >= (\w+) && now (<=|<) (\w+);/g)].map((m) => m.slice(1).join(' ')).join(' | ');
 const winA = windowsOf(bot), winB = windowsOf(fallback);
-ok('both bots carry the same windows, to the second', Object.keys(winA).length >= 14 && JSON.stringify(winA) === JSON.stringify(winB), `${Object.keys(winA).length} constants`);
+ok('both bots carry the same windows, to the second', Object.keys(winA).length >= 16 && JSON.stringify(winA) === JSON.stringify(winB), `${Object.keys(winA).length} constants`);
 ok('both bots close their windows the same way (< or <=)', predicatesOf(bot).length > 0 && predicatesOf(bot) === predicatesOf(fallback));
 
 // Every boundary still ahead, a second before, on it and a second after; plus today and a day well past the last one.
@@ -70,17 +74,20 @@ for (const t of instants) {
   const when = new Date(t).toISOString();
   if (!a || !b || JSON.stringify(a) !== JSON.stringify(b)) same.push(when);
   if (!a || SLICES.reduce((x, k) => x + a[k], 0) !== 300 || SLICES.some((k) => a[k] < 0)) sums.push(when);
-  // The tool's table speaks in percent of a trade, the bot in bps; the programs the table does not name are over and have to be 0.
+  // The tool's table speaks in percent of a trade, the bot in bps; the programs the table does not name are over and have to be 0 (the liq add it names only from Liq Boost III on).
   const ph = taxPhaseAt(t), sp = ph && ph.split_pct;
   const bps = (v) => Math.round((v || 0) * 100);
-  if (!a || !sp || a.creatorBps !== bps(sp.creator) || a.bobBurnBps !== bps(sp.bob_burn) || a.bobaiBurnBps !== bps(sp.bobai_burn) || a.lpAgentBps !== bps(sp.defi_agent) || a.giggleBps !== bps(sp.giggle_academy_pot) || a.bobLiqBps || a.bobaiLiqBps || a.wc26PoolBps) table.push(when);
+  if (!a || !sp || a.creatorBps !== bps(sp.creator) || a.bobBurnBps !== bps(sp.bob_burn) || a.bobaiBurnBps !== bps(sp.bobai_burn) || a.lpAgentBps !== bps(sp.defi_agent) || a.giggleBps !== bps(sp.giggle_academy_pot) || a.bobaiLiqBps !== bps(sp.bobai_liquidity_add) || a.bobLiqBps || a.wc26PoolBps) table.push(when);
 }
 ok(`the fallback bot splits exactly like the live bot at ${instants.length} instants around every boundary ahead`, same.length === 0, same.join(', '));
 ok('at each of them the live bot\'s split adds up to 300 bps with no slice below zero', sums.length === 0, sums.join(', '));
 ok('and it is the split the MCP tool answers with for that instant', table.length === 0, table.join(', '));
 const endT = Date.parse('2026-11-20T00:01:00Z');
 const before = splitOf(bot, endT - 1000), after = splitOf(bot, endT);
-ok('2026-11-20 00:01:00 UTC: the second before pays the DeFi agent and the Giggle pot, the second itself is 1/1/1', !!before && !!after && before.lpAgentBps === 30 && before.giggleBps === 30 && before.creatorBps === 80 && after.lpAgentBps === 0 && after.giggleBps === 0 && after.creatorBps === 100 && after.bobBurnBps === 100 && after.bobaiBurnBps === 100);
+ok('2026-11-20 00:01:00 UTC: the second before pays the DeFi agent, the Giggle pot and the liq add, the second itself is 1/1/1', !!before && !!after && before.lpAgentBps === 30 && before.giggleBps === 30 && before.bobaiLiqBps === 30 && before.bobBurnBps === 50 && before.creatorBps === 80 && after.lpAgentBps === 0 && after.giggleBps === 0 && after.bobaiLiqBps === 0 && after.creatorBps === 100 && after.bobBurnBps === 100 && after.bobaiBurnBps === 100);
+// Liquidity Boost III (2026-09-19): the second it starts, 30 bps leave the BOB burn for the pool; creator and BOBAI burn do not move.
+const b3T = Date.parse(sun.until), b3Before = splitOf(bot, b3T - 1000), b3On = splitOf(bot, b3T);
+ok(`${sun.until}: the second before is 80/80/80 + 30 + 30, the second itself 80/50/80 + 30 liq + 30 + 30`, !!b3Before && !!b3On && b3Before.bobBurnBps === 80 && b3Before.bobaiLiqBps === 0 && b3On.bobBurnBps === 50 && b3On.bobaiLiqBps === 30 && b3On.creatorBps === 80 && b3On.bobaiBurnBps === 80 && b3On.lpAgentBps === 30 && b3On.giggleBps === 30);
 // Both directions: a fallback bot one window behind has to be caught.
 const stale = fallback.replace("const GIGGLE_END   = new Date('2026-11-20T00:01:00Z')", "const GIGGLE_END   = new Date('2026-11-21T00:01:00Z')");
 ok('a fallback bot with one date a day off is caught (the detector is not blind)', stale !== fallback && JSON.stringify(splitOf(stale, endT)) !== JSON.stringify(splitOf(bot, endT)));

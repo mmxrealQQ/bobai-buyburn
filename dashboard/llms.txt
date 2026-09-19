@@ -67,7 +67,7 @@ Every count lives in the JSON rather than in this file, each with its own `measu
 - Ownership: renounced — no mint function, no admin pause, no proxy/upgrade path
 - Liquidity: LP tokens sent to the dead address (perma-locked), not a timelock
 - Launch: fair launch on Four.Meme — no presale, no private sale, no pre-mine; supply entered the market through the public bonding curve
-- Tax: 3% per trade — split 1% creator / 1% $BOB burn / 1% $BOBAI burn (campaign phases may temporarily re-route a slice; the live split is always shown on the dashboard). Sep 9 → Nov 20, 2026: a tenth of each slice (0.3%) goes in BNB to the DeFi agent's wallet; Sep 17 → Nov 20, 2026: another tenth (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day
+- Tax: 3% per trade — split 1% creator / 1% $BOB burn / 1% $BOBAI burn (campaign phases may temporarily re-route a slice; the live split is always shown on the dashboard). Sep 9 → Nov 20, 2026: a tenth of each slice (0.3%) goes in BNB to the DeFi agent's wallet; Sep 17 → Nov 20, 2026: another tenth (0.3%) collects in BNB for a one-time donation to Giggle Academy on UN World Children's Day; Sep 19, 18:00 UTC → Nov 20, 2026: 0.3% out of the $BOB-burn slice is added permanently to the BOBAI/BNB pool and the LP burned ($BOBAI Permalocked Liquidity Boost III)
 - Buyback: a Cloudflare-Workers bot runs every 10 minutes, 24/7 — it buys $BOBAI on PancakeSwap and sends it to the dead address; every burn is on-chain and verifiable
 
 ## Where to verify

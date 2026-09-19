@@ -25,7 +25,7 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createPublicClient, createTestClient, http, parseAbi, parseEther, formatEther, decodeFunctionData } from 'viem';
+import { createPublicClient, createWalletClient, createTestClient, http, parseAbi, parseEther, formatEther, decodeFunctionData } from 'viem';
 import { bsc } from 'viem/chains';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
@@ -122,6 +122,17 @@ console.log('the helpers (offline)');
   ok('the next append carries it in, oldest first, and clears the key', next === true && healed.map((e) => e.totalBnb).join() === '1,2,3,4' && clearedKey);
   ok('nothing goes in twice, and a stored log that is no array is never overwritten', afterSame === 4 && broken === false && store.get('burns.json') === '{"not":"an array"}' && store.has('unlogged:burns.json:2026-09-19T04:00:00.000Z'));
   ok('/health names what is parked', /unlogged: parked/.test(workerSrc) && /list\(\{ prefix: UNLOGGED \}\)/.test(workerSrc));
+
+  // The liquidity add rests between boosts; what it will do when the next one starts.
+  const liqBlock = (text) => text.slice(text.indexOf('function liqMins('), text.indexOf('\n}\n', text.indexOf('async function addLiquidityAndBurn(')) + 3);
+  const lb = liqBlock(workerSrc);
+  ok('both bots carry the same liquidity add, to the letter', lb.length > 4000 && lb === liqBlock(fallbackSrc));
+  const liqMins = new Function(`${lb.slice(0, lb.indexOf('async function addLiquidityAndBurn('))}; return liqMins;`)();
+  const E = 10n ** 18n;
+  const few = liqMins(1000n * E, 2n * E, 1000000n * E, 1000n * E), many = liqMins(1000n * E, E / 2n, 1000000n * E, 1000n * E);
+  ok('its minimums are 95% of what the router will use: all the tokens when they are the short side', few.tokenUsed === 1000n * E && few.bnbUsed === E && few.tokenMin === 950n * E && few.bnbMin === (E * 95n) / 100n);
+  ok('and all the BNB when that is the short side; a pair without reserves gets no add', many.bnbUsed === E / 2n && many.tokenUsed === 500n * E && many.tokenMin === 475n * E && many.bnbMin === (E / 2n * 95n) / 100n && liqMins(E, E, 0n, E) === null);
+  ok('no minimum of 0, no approval beyond the balance, the chunk minimum knows the transfer tax, every receipt is looked at', !/tokenBalance, 0n, 0n/.test(lb) && /args: \[PANCAKE_ROUTER_V2, tokenBalance\],/.test(lb) && !/tokenBalance \* 2n/.test(lb) && /minOutFor\(amountsOut\[1\], tokenAddress\)/.test(lb) && !/waitForTransactionReceipt/.test(lb) && (lb.match(/await mined\(/g) || []).length === 4 && !/e\.message/.test(lb));
 }
 
 // ── the run, on the fork ────────────────────────────────────────────────────
@@ -159,8 +170,9 @@ console.log(`\nthe run (fork of block ${forkBlock}, throwaway wallet ${bot})`);
 // the text that was read above is run from a copy with the right extension, inside the repo so 'viem' resolves.
 const copy = path.join(ROOT, 'temp', 'buyback-worker-fork.mjs');
 fs.mkdirSync(path.dirname(copy), { recursive: true });
-fs.writeFileSync(copy, workerSrc);
-const worker = (await import(pathToFileURL(copy).href)).default;
+fs.writeFileSync(copy, `${workerSrc}\nexport { addLiquidityAndBurn };\n`);   // the liquidity add is asked for by name further down
+const workerModule = await import(pathToFileURL(copy).href);
+const worker = workerModule.default;
 const log = console.log; const out = []; console.log = (...a) => out.push(a.join(' '));
 try { await worker.scheduled({}, env, {}); } finally { console.log = log; }
 
@@ -196,6 +208,36 @@ const nonce = await pub.getTransactionCount({ address: bot });
 console.log = (...a) => out.push(a.join(' '));
 try { await worker.scheduled({}, env, {}); } finally { console.log = log; }
 ok('a second tick finds the wallet under its threshold and sends nothing', (await pub.getTransactionCount({ address: bot })) === nonce && JSON.parse(kv.get('burns.json')).length === 1);
+
+// ── the liquidity add, which rests between boosts, same fork ────────────────
+console.log('\nthe liquidity add (dormant path, called by name)');
+{
+  const PAIR = parseAbi(['function balanceOf(address) view returns (uint256)']);
+  const ALLOW = parseAbi(['function allowance(address owner, address spender) view returns (uint256)']);
+  const ADD = parseAbi(['function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) payable']);
+  const DEPOSIT = '0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c';   // WBNB Deposit(dst, wad): the BNB the router really used
+  const ROUTER_ADDR = (workerSrc.match(/const PANCAKE_ROUTER_V2 = '(0x[0-9a-fA-F]{40})'/) || [])[1];
+  for (const [name, token, pair] of [['$BOBAI', BOBAI, addr('BOBAI_WBNB_PAIR')], ['$BOB', BOB, addr('BOB_WBNB_PAIR')]]) {
+    const k = generatePrivateKey(), acct = privateKeyToAccount(k);
+    await test.setBalance({ address: acct.address, value: parseEther('0.05') });
+    const wallet = createWalletClient({ account: acct, chain, transport: http(LOCAL, { timeout: 120000 }) });
+    const deadLp = await pub.readContract({ address: pair, abi: PAIR, functionName: 'balanceOf', args: [DEAD] });
+    const lines = []; console.log = (...a) => lines.push(a.join(' '));
+    let res = null;
+    try { res = await workerModule.addLiquidityAndBurn(wallet, pub, acct, parseEther('0.04'), token, pair, name); } finally { console.log = log; }
+    ok(`${name}: three chunks bought, liquidity added, LP burned`, !!res && /^0x[0-9a-f]{64}$/.test(res.addLiqTx || '') && /^0x[0-9a-f]{64}$/.test(res.lpBurnTx || ''), res ? `${res.lpBurned} LP` : lines.slice(-2).join(' / '));
+    if (!res) continue;
+    const [addRc, burnRc, addTx] = await Promise.all([pub.getTransactionReceipt({ hash: res.addLiqTx }), pub.getTransactionReceipt({ hash: res.lpBurnTx }), pub.getTransaction({ hash: res.addLiqTx })]);
+    const burned = (await pub.readContract({ address: pair, abi: PAIR, functionName: 'balanceOf', args: [DEAD] })) - deadLp;
+    ok(`${name}: both in a block with status success, the dead address holds the LP and the wallet none`, addRc.status === 'success' && burnRc.status === 'success' && burned === parseEther(res.lpBurned) && burned > 0n && (await pub.readContract({ address: pair, abi: PAIR, functionName: 'balanceOf', args: [acct.address] })) === 0n);
+    const a = decodeFunctionData({ abi: ADD, data: addTx.input }).args;
+    const dep = addRc.logs.find((l) => l.topics[0] === DEPOSIT);
+    const usedBnb = dep ? BigInt(dep.data) : 0n;
+    ok(`${name}: the add went out with minimums — 95% of the tokens and 95% of the BNB the router then used`, a[2] === (a[1] * 95n) / 100n && a[2] > 0n && a[3] === (usedBnb * 95n) / 100n && a[3] > 0n && usedBnb <= addTx.value, `${formatEther(a[3])} of ${formatEther(usedBnb)} BNB used, ${formatEther(addTx.value - usedBnb)} came back`);
+    const allowance = await pub.readContract({ address: token, abi: ALLOW, functionName: 'allowance', args: [acct.address, ROUTER_ADDR] });
+    ok(`${name}: nothing stays approved and no token stays on the wallet`, allowance === 0n && (await tok(token, acct.address)) === 0n, `allowance ${allowance}`);
+  }
+}
 
 // ── the dev sweep, same fork ────────────────────────────────────────────────
 console.log('\nthe dev sweep (82% / 4 / 4 / 4 / 4 / 2)');

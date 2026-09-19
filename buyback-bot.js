@@ -149,6 +149,8 @@ const ROUTER_ABI = parseAbi([
 
 const PAIR_ABI = parseAbi([
   'function balanceOf(address) view returns (uint256)',
+  'function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
+  'function token0() view returns (address)',
   'function transfer(address to, uint256 amount) returns (bool)',
 ]);
 
@@ -296,8 +298,28 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// THE LIQUIDITY ADD, BEFORE ITS NEXT BOOST (2026-09-19). The path rests between
+// boosts and had four things the swap-and-burn above had already lost:
+// its chunk minimum was 95% of the GROSS quote (2.06% of real room on $BOBAI,
+// which keeps 3% of every transfer) — minOutFor now; no receipt was looked at
+// (a reverted add went on to 'Liquidity added!') — mined() now, and an error is
+// said without its RPC URL; the router was approved for TWICE what it takes —
+// exactly the balance now; and addLiquidityETH went out with both minimums 0,
+// so whoever moved the price between the last chunk and the add set the ratio
+// the LP was minted at. liqMins works out what the router will use from the
+// reserves read just before, the way the router does, and allows 5% below it.
+// The minimums are checked against the amounts BEFORE the token's transfer tax
+// (the pair receives 97% of the $BOBAI; the router does not look at that).
+function liqMins(tokenAmount, bnbAmount, reserveToken, reserveBnb) {
+  if (reserveToken <= 0n || reserveBnb <= 0n) return null;
+  const bnbOptimal = (tokenAmount * reserveBnb) / reserveToken;
+  const used = bnbOptimal <= bnbAmount
+    ? { token: tokenAmount, bnb: bnbOptimal }
+    : { token: (bnbAmount * reserveToken) / reserveBnb, bnb: bnbAmount };
+  return { tokenUsed: used.token, bnbUsed: used.bnb, tokenMin: (used.token * 95n) / 100n, bnbMin: (used.bnb * 95n) / 100n };
+}
+
 async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, pairAddress, tokenName) {
-  const SLIPPAGE_PERCENT = 5;
   const SWAP_CHUNKS = 3;
   const halfBnb = bnbAmount / 2n;
   const liqBnb = bnbAmount - halfBnb;
@@ -321,11 +343,11 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
       });
       console.log(`    Expected ${tokenName}: ${formatEther(amountsOut[1])}`);
     } catch (e) {
-      console.log(`    Quote failed: ${e.message}`);
+      console.log(`    Quote failed: ${say(e)}`);
       return null;
     }
 
-    const minOut = (amountsOut[1] * BigInt(100 - SLIPPAGE_PERCENT)) / 100n;
+    const minOut = minOutFor(amountsOut[1], tokenAddress);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
 
     try {
@@ -338,9 +360,9 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
         gas: 300000n,
       });
       console.log(`    Swap TX: https://bscscan.com/tx/${swapTx}`);
-      await publicClient.waitForTransactionReceipt({ hash: swapTx });
+      await mined(publicClient, swapTx, `${tokenName} liquidity swap ${i + 1}`);
     } catch (e) {
-      console.log(`    Swap chunk ${i + 1} failed: ${e.message}`);
+      console.log(`    Swap chunk ${i + 1} failed: ${say(e)}`);
       return null;
     }
 
@@ -364,23 +386,41 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
   }
   console.log(`  ${tokenName} received: ${formatEther(tokenBalance)}`);
 
-  // Step 3: Approve token for Router
+  // Step 3: Approve the Router for what it will take, not more
   try {
     const approveTx = await walletClient.writeContract({
       address: tokenAddress,
       abi: parseAbi(['function approve(address spender, uint256 amount) returns (bool)']),
       functionName: 'approve',
-      args: [PANCAKE_ROUTER_V2, tokenBalance * 2n],
+      args: [PANCAKE_ROUTER_V2, tokenBalance],
       gas: 100000n,
     });
-    await publicClient.waitForTransactionReceipt({ hash: approveTx });
+    await mined(publicClient, approveTx, `${tokenName} approve`);
     console.log(`  ${tokenName} approved for Router`);
   } catch (e) {
-    console.log(`  Approve failed: ${e.message}`);
+    console.log(`  Approve failed: ${say(e)}`);
     return null;
   }
 
-  // Step 4: Add Liquidity ETH — LP to own wallet first
+  // Step 4: Add Liquidity ETH — LP to own wallet first, minimums from the reserves as they stand
+  let mins;
+  try {
+    const [reserves, token0] = await Promise.all([
+      publicClient.readContract({ address: pairAddress, abi: PAIR_ABI, functionName: 'getReserves' }),
+      publicClient.readContract({ address: pairAddress, abi: PAIR_ABI, functionName: 'token0' }),
+    ]);
+    const tokenIs0 = token0.toLowerCase() === tokenAddress.toLowerCase();
+    mins = liqMins(tokenBalance, liqBnb, tokenIs0 ? reserves[0] : reserves[1], tokenIs0 ? reserves[1] : reserves[0]);
+  } catch (e) {
+    console.log(`  Reserves not read: ${say(e)}`);
+    return null;
+  }
+  if (!mins) {
+    console.log('  The pair has no reserves — no add.');
+    return null;
+  }
+  console.log(`  Router will use ${formatEther(mins.tokenUsed)} ${tokenName} + ${formatEther(mins.bnbUsed)} BNB (minimums 95%)`);
+
   const addDeadline = BigInt(Math.floor(Date.now() / 1000) + 300);
   let addLiqTxHash;
   try {
@@ -388,15 +428,15 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
       address: PANCAKE_ROUTER_V2,
       abi: ROUTER_ABI,
       functionName: 'addLiquidityETH',
-      args: [tokenAddress, tokenBalance, 0n, 0n, account.address, addDeadline],
+      args: [tokenAddress, tokenBalance, mins.tokenMin, mins.bnbMin, account.address, addDeadline],
       value: liqBnb,
       gas: 500000n,
     });
     console.log(`  Add Liq TX: https://bscscan.com/tx/${addLiqTxHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: addLiqTxHash });
+    await mined(publicClient, addLiqTxHash, `${tokenName} liquidity add`);
     console.log('  Liquidity added!');
   } catch (e) {
-    console.log(`  Add liquidity failed: ${e.message}`);
+    console.log(`  Add liquidity failed: ${say(e)}`);
     return null;
   }
 
@@ -423,10 +463,10 @@ async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmoun
       gas: 100000n,
     });
     console.log(`  LP Burn TX: https://bscscan.com/tx/${lpBurnTxHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: lpBurnTxHash });
+    await mined(publicClient, lpBurnTxHash, `${tokenName} LP burn`);
     console.log(`  BURNED ${formatEther(lpBalance)} LP tokens to dead address`);
   } catch (e) {
-    console.log(`  LP burn failed: ${e.message}`);
+    console.log(`  LP burn failed: ${say(e)}`);
     return null;
   }
 

@@ -21,7 +21,7 @@ environment at runtime, and the config files name the variables only.
 Buyback & Burn Bot
 ------------------
 The bot that has run every ten minutes since launch.
-3 files, 1688 lines
+3 files, 1768 lines
 needs:
   - A wallet with a little gas in it
       ours: one BSC wallet, topped up from the tax itself

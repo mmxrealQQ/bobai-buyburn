@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1688,
-   "zipBytes": 23777,
-   "txtBytes": 72669,
-   "sha256": "6e472618bde83ae2",
+   "lines": 1768,
+   "zipBytes": 25324,
+   "txtBytes": 77441,
+   "sha256": "9a67b86da0c90d25",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",

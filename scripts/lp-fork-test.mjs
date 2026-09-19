@@ -23,7 +23,7 @@
 // at its block for minutes, and the public endpoints prune it within seconds.
 //
 //   node scripts/lp-fork-test.mjs            every path
-//   node scripts/lp-fork-test.mjs --only up  one of: up, down, reserve, resume
+//   node scripts/lp-fork-test.mjs --only up  one of: up, down, reserve, resume, collect
 import 'dotenv/config';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
@@ -33,8 +33,9 @@ import { createPublicClient, createWalletClient, createTestClient, http, parseAb
 import { bsc } from 'viem/chains';
 import {
   ADDR, ABI, readPosition, readPool, heldIds, healLadder, positionSide, unwindCalls,
-  planRebalance, executeRebalance, planLadder, executeLadder, planIncrease, executeIncrease,
+  planRebalance, executeRebalance, planLadder, executeLadder, planIncrease, executeIncrease, planCollect, executeCollect,
 } from '../shared/lp-agent.js';
+import { RESERVE_COLLECT_MIN_BNB } from '../shared/lp-guards.js';
 
 const PORT = 8546, LOCAL = `http://127.0.0.1:${PORT}`;
 const FORK_URL = process.env.BSC_RPC_KEYED_URL_2 || process.env.BSC_RPC_KEYED_URL_1 || process.env.BSC_ARCHIVE_RPC_URL;
@@ -223,6 +224,44 @@ await scenario('A RE-SET WHOSE MINT FAILED BESIDE THE RESERVE — the main range
   ok('the main range stands again beside the reserve, its id off the receipt', ids.length === 2 && ids.includes(LADDER0.reserve) && ids.includes(String(r.done.new_position)), `held ${ids.join(', ')}`);
   const after = await valueOf(ladder);
   ok('nothing is loose, and the value is what it was', after.loose < 0.0005 * total(after) && Math.abs(total(after) - total(before)) < 0.002 * total(before), `${total(before).toFixed(5)} → ${total(after).toFixed(5)} BNB, loose ${after.loose.toFixed(6)}`);
+});
+
+await scenario('THE COLLECT TAKES THE RESERVE RANGE\'S FEES TOO — the price trades through both ranges, both earn; one run collects both, sells, splits, buys $BOBAI', 'collect', async () => {
+  if (!LADDER0.reserve) return ok('needs a standing reserve', true, 'skipped: no reserve on record');
+  const ladder = { ...LADDER0 };
+  // As the chain stands: the reserve is asked only when its fees are worth a transaction of their own.
+  const asIs = await planCollect(pub, LP, ladder);
+  const ro = asIs.summary.reserve_owed;
+  ok('as the chain stands, the reserve is taken along exactly when it is owed the floor or more', !!ro && ro.collected_with_it === (ro.bnb_equivalent >= RESERVE_COLLECT_MIN_BNB) && (asIs.reserveTokenId != null) === ro.collected_with_it, ro ? `owed ${ro.bnb_equivalent} BNB against ${RESERVE_COLLECT_MIN_BNB}${ro.why ? ' — ' + ro.why : ''}` : 'no reserve_owed in the plan');
+  // Volume through both ranges: down to the bottom of the reserve and back to where the price stood.
+  const start = (await readPool(pub, pos0.pos)).tick;
+  const resLo = Number((await readPosition(pub, LP, ladder)).reserve.pos[5]);
+  // A range earns 0.05% of what trades through it: a reserve of a few hundredths of a BNB needs the price across it several times.
+  const mainHi = Number(pos0.pos[6]);
+  let trips = 0;
+  for (; trips < 12; trips++) {
+    await pushPriceTo(resLo + 60);
+    await pushPriceTo(mainHi - 60);
+    const look = await planCollect(pub, LP, ladder);
+    if (!look.no && look.reserveTokenId != null) break;
+  }
+  await pushPriceTo(start);
+  console.log(`       the whale took the price across both ranges ${trips + 1} times`);
+  const plan = await planCollect(pub, LP, ladder);
+  const r2 = plan.summary.reserve_owed;
+  ok('after the volume both ranges are owed fees, and the plan takes the reserve along', !plan.no && plan.reserveTokenId != null && String(plan.reserveTokenId) === LADDER0.reserve && r2.collected_with_it === true && r2.bnb_equivalent >= RESERVE_COLLECT_MIN_BNB && plan.summary.owed.bnb_equivalent > r2.bnb_equivalent, plan.no || `owed ${plan.summary.owed.bnb_equivalent} BNB in all, ${r2.bnb_equivalent} of it the reserve's`);
+  if (plan.no || plan.reserveTokenId == null) return;
+  const liq0 = (await readPosition(pub, LP, ladder)).reserve.pos[7], bobai0 = await bal(BOBAI, LP);
+  const txs = [];
+  const done = await executeCollect(pub, lpWallet, lpWallet.account, plan, () => {}, { txs });
+  const after = await readPosition(pub, LP, ladder);
+  ok('one run: collect, collect the reserve, sell, unwrap, buy $BOBAI', txs.some((t) => t.label === 'collect') && txs.some((t) => /reserve range's fees/.test(t.label)) && txs.some((t) => /sell the other side/.test(t.label)) && txs.some((t) => /buy BOBAI/.test(t.label)), txs.map((t) => t.label.split(' ').slice(0, 3).join(' ')).join(' · '));
+  const dust = 10n ** 12n;   // the run's own sale trades through both ranges and leaves each a speck
+  ok('both ranges are owed nothing but the speck the run\'s own sale paid them, and the reserve\'s liquidity is untouched', after.owed0 < dust && after.owed1 < dust && after.reserve.owed0 < dust && after.reserve.owed1 < dust && after.reserve.pos[7] === liq0, `reserve owed ${after.reserve.owed0}/${after.reserve.owed1}`);
+  const produced = Number(done.produced_bnb || 0), planned = plan.summary.owed.bnb_equivalent, gas = txs.filter((t) => !/buy BOBAI/.test(t.label)).reduce((g, t) => g + (t.gas_bnb || 0), 0);   // the fork charges 1 gwei, the chain 0.05; the $BOBAI buy comes after the run has counted what it produced
+  ok('what the run produced is what both were owed, less its gas — the reserve\'s part is in the split', Math.abs(produced + gas - planned) < planned * 0.01 && produced + gas > (planned - r2.bnb_equivalent) * 1.02, `produced ${produced.toFixed(6)} + gas ${gas.toFixed(6)} of ${planned.toFixed(6)} BNB owed (main alone ${(planned - r2.bnb_equivalent).toFixed(6)})`);
+  ok('half of it bought $BOBAI, held in the wallet', Number(done.bobai_bnb) > 0 && Math.abs(Number(done.bobai_bnb) - produced / 2) < produced * 0.01 && (await bal(BOBAI, LP)) > bobai0, `${done.bobai_bnb} BNB into $BOBAI, kept ${done.kept_bnb}`);
+  ok('no CAKE and no WBNB of it is left loose', (await bal(CAKE, LP)) <= plan.heldOther + 10n ** 12n && (await bal(ADDR.WBNB, LP)) === 0n);
 });
 
 console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);

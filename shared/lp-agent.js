@@ -33,7 +33,7 @@
 // must never look like a wallet that holds nothing.
 import { parseAbi, formatEther, formatUnits, parseEther, encodeFunctionData } from 'viem';
 import {
-  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
+  refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, splitFees, resetForward, reserveCollect, widthClassOf, rangeLeft, ONE_SIDED_GAP_TICKS, pickWidth, ladderDecision, ladderHeal, resumeSide,
   GAS_RESERVE_BNB, MAX_SWEEP_USD, INCREASE_GAS_BUDGET_BNB, MIN_INCREASE_BNB, FEE_SHARE_KEPT_PCT, V2_SWAP_FEE_PCT,
   MIN_GAS_BNB,
 } from './lp-guards.js';
@@ -483,14 +483,19 @@ export const TRADE_DUST_WBNB = 10n ** 14n;   // 0.0001 BNB
 // --------------------------------------------------------------------------
 
 export async function planCollect(pub, address, ladder = null) {
-  const { positions, tokenId, pos, owed0, owed1 } = await readPosition(pub, address, ladder);
+  const { positions, tokenId, pos, owed0, owed1, reserve } = await readPosition(pub, address, ladder);
   const gasBal = await pub.getBalance({ address });
   const token0 = pos ? pos[2].toLowerCase() : null, token1 = pos ? pos[3].toLowerCase() : null;
   const wbnbIs0 = token0 === ADDR.WBNB;
   const other = pos ? (wbnbIs0 ? token1 : token0) : null;
   if (pos && !wbnbIs0 && token1 !== ADDR.WBNB) throw new Error('the position is not against WBNB; this agent only knows how to turn a WBNB pair into BNB');
-  const owedWbnb = wbnbIs0 ? owed0 : owed1;
-  const owedOther = wbnbIs0 ? owed1 : owed0;
+  const mainOwedWbnb = wbnbIs0 ? owed0 : owed1;
+  const mainOwedOther = wbnbIs0 ? owed1 : owed0;
+  // The reserve range beside it, when it stands in the same pool: its fees
+  // are fees of the same position in two pieces (reserveCollect, lp-guards).
+  const beside = !!(pos && reserve && reserve.pos && reserve.pos[2].toLowerCase() === token0 && reserve.pos[3].toLowerCase() === token1 && Number(reserve.pos[4]) === Number(pos[4]));
+  const reserveOwedWbnb = beside ? (wbnbIs0 ? reserve.owed0 : reserve.owed1) : 0n;
+  const reserveOwedOther = beside ? (wbnbIs0 ? reserve.owed1 : reserve.owed0) : 0n;
 
   // Tokens the wallet holds OUTSIDE the position — the headroom the mint left
   // over, or what an interrupted run did not finish — are capital, not fees.
@@ -504,6 +509,11 @@ export async function planCollect(pub, address, ladder = null) {
   let otherInBnb = 0n, quoteOffPct = null, poolInfo = null, quoteVia = null;
   if (pos) poolInfo = await readPool(pub, pos);
   const fee = pos ? Number(pos[4]) : null;
+  const poolWbnbPerOther = poolInfo ? (wbnbIs0 ? 1 / (poolInfo.sqrtP ** 2) : poolInfo.sqrtP ** 2) : 0;
+  const reserveOwedBnb = bn(reserveOwedWbnb) + (Number(reserveOwedOther) / 1e18) * poolWbnbPerOther;
+  const withReserve = beside ? reserveCollect(reserveOwedBnb) : { collect: false, why: null };
+  const owedWbnb = mainOwedWbnb + (withReserve.collect ? reserveOwedWbnb : 0n);
+  const owedOther = mainOwedOther + (withReserve.collect ? reserveOwedOther : 0n);
   if (pos && owedOther > 0n) {
     // The collected other side is sold in the position's own V3 pool (since
     // 2026-09-13; until then through the V2 router, a 0.25% pair, five times
@@ -520,7 +530,6 @@ export async function planCollect(pub, address, ladder = null) {
     // The quote against the pool's own price. A broken quoter or a thin or
     // manipulated V2 pair would show here as a price far from the one the
     // position lives at.
-    const poolWbnbPerOther = wbnbIs0 ? 1 / (poolInfo.sqrtP ** 2) : poolInfo.sqrtP ** 2;
     const quotedWbnbPerOther = Number(otherInBnb) / Number(owedOther);
     quoteOffPct = poolWbnbPerOther > 0 ? ((quotedWbnbPerOther - poolWbnbPerOther) / poolWbnbPerOther) * 100 : null;
   }
@@ -529,12 +538,14 @@ export async function planCollect(pub, address, ladder = null) {
   return {
     step: 'collect', state, no: refuseCollect(state),
     tokenId, pos, other, wbnbIs0, fee, owedWbnb, owedOther, heldOther, heldWbnb, otherInBnb, quoteOffPct, quoteVia,
+    reserveTokenId: withReserve.collect ? reserve.tokenId : null,
     summary: {
       position: tokenId == null ? null : String(tokenId),
       ticks: pos ? [Number(pos[5]), Number(pos[6])] : null,
       liquidity: pos ? String(pos[7]) : null,
       in_range: poolInfo ? poolInfo.inRange : null,
       owed: { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), other_token: other, bnb_equivalent: proceeds },
+      ...(beside ? { reserve_owed: { position: String(reserve.tokenId), wbnb: formatEther(reserveOwedWbnb), other: formatUnits(reserveOwedOther, 18), bnb_equivalent: Number(reserveOwedBnb.toFixed(6)), collected_with_it: withReserve.collect, ...(withReserve.why ? { why: withReserve.why } : {}) } } : {}),
       held_outside_position: heldOther > 0n || heldWbnb > 0n ? { wbnb: formatEther(heldWbnb), other: formatUnits(heldOther, 18), note: 'capital, re-used by increase and re-set, not sold here' } : null,
       quote_off_pct: quoteOffPct == null ? null : Number(quoteOffPct.toFixed(2)),
       sells_via: quoteVia == null ? null : (quoteVia === 'v3' ? `the position's own V3 pool (${fee / 1e4}%)` : 'the V2 router (0.25%) — the V3 quoter did not answer'),
@@ -562,6 +573,10 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
   const wbnbBefore = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
   await send('collect', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
     args: [{ tokenId: plan.tokenId, recipient: account.address, amount0Max: MAX128, amount1Max: MAX128 }] });
+  // The reserve range's fees in the same run, when they are worth a
+  // transaction (reserveCollect): sold, split and counted with the rest.
+  if (plan.reserveTokenId != null) await send("collect the reserve range's fees", { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'collect',
+    args: [{ tokenId: plan.reserveTokenId, recipient: account.address, amount0Max: MAX128, amount1Max: MAX128 }] });
   // Only what the collect returned is sold; what the wallet held before it is
   // capital and stays.
   const otherAfter = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -1547,7 +1562,12 @@ export async function executeLadder(pub, wallet, account, plan, log = () => {}, 
     await pub.simulateContract({ address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls], account });
     await send('withdraw, collect and burn the reserve range (one transaction)', { address: ADDR.V3_POSITION_MANAGER, abi: ABI.NPM, functionName: 'multicall', args: [calls] });
     const owedWbnb = plan.wbnbIs0 ? r.owed0 : r.owed1, owedOther = plan.wbnbIs0 ? r.owed1 : r.owed0;
-    return { reserve_fees_folded: { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18) } };
+    // What they were worth, so the fee sum can count them (lp-flow): the
+    // collect step takes the reserve's fees since 2026-09-19, what is left
+    // here is under its floor and stays as capital — counted, not shared.
+    let worth = null;
+    try { const pool = await readPool(pub, r.pos); const perOther = plan.wbnbIs0 ? 1 / (pool.sqrtP ** 2) : pool.sqrtP ** 2; worth = Number((bn(owedWbnb) + (Number(owedOther) / 1e18) * perOther).toFixed(8)); } catch { worth = null; }
+    return { reserve_fees_folded: { wbnb: formatEther(owedWbnb), other: formatUnits(owedOther, 18), ...(worth != null ? { bnb_equivalent: worth } : {}) } };
   };
   if (plan.act === 'mint_reserve') {
     if (plan.spendRaw <= 0n && !(plan.heldWbnb > 0n)) throw new Error('nothing above the reserve to put into the ladder');

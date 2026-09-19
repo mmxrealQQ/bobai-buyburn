@@ -95,6 +95,11 @@ export function moneyFlow(rec, { earned = null } = {}) {
       // capital put in, like an increase — no increase follows to count it.
       if (n(rb.wrapped_waiting_bnb) > 0) { intoPosition += n(rb.wrapped_waiting_bnb); increases += 1; keptWaiting = 0; }
     }
+    // A reserve range unwound (re-set or merged) pays its fees out with its
+    // principal too. They stay as capital — what is worth a share the collect
+    // step has taken before (reserveCollect) — and count as fees produced.
+    const lf = st.ladder && st.ladder.acted && !st.ladder.error ? st.ladder.reserve_fees_folded : null;
+    if (lf && n(lf.bnb_equivalent) > 0) feesFolded += n(lf.bnb_equivalent);
     if (c && c.acted && !c.error && c.kept_pct != null) lastKeptPct = n(c.kept_pct);
     for (const step of [...sweeps, c, inc, rb, st.ladder]) {
       for (const t of (step && Array.isArray(step.txs) ? step.txs : [])) { txs += 1; gas += n(t.gas_bnb); }

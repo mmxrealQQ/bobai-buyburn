@@ -146,6 +146,24 @@ export function resetForward(foldedWei, keptPct = FEE_SHARE_KEPT_PCT) {
   return { forward: split.buyback, kept: split.keep, pct: split.pct, why: null };
 }
 
+// THE RESERVE RANGE'S FEES (2026-09-19). The reserve earns whenever the price
+// stands in it — since 2026-09-17 10:00 it does, about a fiftieth of what the
+// main range earns — and the collect step never asked it for them: they lay
+// there until the reserve was unwound and then went into the capital whole,
+// no share bought $BOBAI and no sum counted them (eight unwinds, 0.000017 BNB;
+// 0.000087 BNB owed on the day this was written). The collect now takes them
+// in the same run, so they are sold, split and counted with the main range's.
+// A collect is one transaction, about 0.000011 BNB: under this much owed the
+// reserve is left alone and its fees wait — at the floor the gas is a
+// twentieth of what it fetches, and the share it buys clears
+// MIN_RESET_FORWARD_BNB. Pure, pinned by the self-test.
+export const RESERVE_COLLECT_MIN_BNB = 2 * MIN_RESET_FORWARD_BNB;
+export function reserveCollect(owedBnb) {
+  const owed = Number(owedBnb) || 0;
+  if (owed >= RESERVE_COLLECT_MIN_BNB) return { collect: true, why: null };
+  return { collect: false, why: owed > 0 ? `the reserve range is owed ${owed.toFixed(6)} BNB, under the ${RESERVE_COLLECT_MIN_BNB} BNB a collect of its own is worth — its fees wait` : 'the reserve range is owed nothing' };
+}
+
 // state: { positions, liquidity (bigint), owedBnbEquivalent, gasBnb, quoteOffPct }
 // owedBnbEquivalent is what this run would turn into BNB: fees owed by the
 // position plus anything an interrupted earlier run left in the wallet.

@@ -36,7 +36,7 @@ import {
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
   GAS_RESERVE_BNB, MIN_GAS_BNB, MIN_COLLECT_BNB, MIN_SWEEP_BNB, MIN_INCREASE_BNB, MIN_REBALANCE_BNB,
-  splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB,
+  splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB, reserveCollect, RESERVE_COLLECT_MIN_BNB,
   widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
 import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
@@ -586,6 +586,22 @@ if (SELF) {
   const note = swapNote('buy', 40000000000000000n, 500);
   check('a 0.04 WBNB buy through 0.05% notes a 0.00002 BNB fee', note.fee_bnb === 0.00002 && note.notional_bnb === 0.04 && note.fee_pct === 0.05, true);
   check('… a fifth of what the 0.25% pool took', swapNote('buy', 40000000000000000n, 2500).fee_bnb === 0.0001, true);
+  // The reserve range's fees (2026-09-19): taken along by the collect when
+  // they are worth a transaction of their own, left to wait when not.
+  check('a reserve owed 0.000085 BNB (the chain, 2026-09-19) is left alone, and the plan says why', !reserveCollect(0.000085).collect && /0\.000085 BNB.*wait/.test(reserveCollect(0.000085).why), true);
+  check('at 0.0002 BNB it is collected with the main range — its share then clears the re-set floor', reserveCollect(0.0002).collect === true && reserveCollect(0.0002).why === null && RESERVE_COLLECT_MIN_BNB === 2 * MIN_RESET_FORWARD_BNB, true);
+  check('a reserve owed nothing, or a number that is none, is never asked', !reserveCollect(0).collect && !reserveCollect(NaN).collect && !reserveCollect(undefined).collect, true);
+  {
+    // The fee sum counts what a reserve unwind folded in, once it names its worth; the eight before 2026-09-19 carry none and stay out.
+    const mk = (ladder) => ({ at: '2026-09-19T10:00:00.000Z', steps: { ladder } });
+    const flowOf = (h) => moneyFlow({ history: h, last: h[h.length - 1] });
+    const with1 = flowOf([mk({ acted: true, reserve_fees_folded: { wbnb: '0.0001', other: '0.01', bnb_equivalent: 0.00013 } })]);
+    const old = flowOf([mk({ acted: true, reserve_fees_folded: { wbnb: '0.0001', other: '0.01' } })]);
+    const failedRun = flowOf([mk({ acted: true, error: 'x', reserve_fees_folded: { bnb_equivalent: 0.00013 } })]);
+    const folded = (f) => f.in.fees.folded_bnb;
+    check('a reserve unwind that names what its fees were worth counts them as fees folded in', folded(with1) === 0.00013, true);
+    check('… one that does not (before 2026-09-19), or whose step failed, adds nothing', folded(old) === 0 && folded(failedRun) === 0, true);
+  }
   // The floor under a swap (2026-09-19): 0.3% under a pool quote, and the
   // $BOBAI buy with the 3% the token keeps taken off first, then 5%.
   check('a pool swap accepts 0.3% under its quote, not 1%', swapFloor(1000000n) === 997000n && POOL_SWAP_FLOOR_BPS === 30n, true);

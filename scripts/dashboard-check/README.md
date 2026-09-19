@@ -39,6 +39,7 @@ every multiplier, and the two "moves the price 1%" sizes must reproduce exactly 
 | `reveal.mjs` | is anything on the page invisible that should not be (the worst failure this site ever had) |
 | `scanner-honeypot.mjs` | the honeypot line on /scanner, pinned both ways |
 | `scanner-rescan.mjs` | scanning a second token on /scanner the way a visitor does |
+| `table-fit.mjs` | every log table on the homepage on a phone (430 to 320px): does the table end inside its `.txw` box — a table that is wider scrolls inside the box, the PAGE does not, so the layout audit never sees it (Live Burns, 2026-09-19); `SELFTEST=1` forces a table wide and passes only if that is reported |
 | `tier-panel.mjs` | the three button cards on /scanner, pressed the way a visitor presses them and picked by name (`data-card`), never by position: fee tiers (default), `PANEL=range` the range replay, `PANEL=route` the route card for trading — names a route that is in the table and marked best, the size asked, the round trip, the tax (measured or said unknown), the slippage, no row losing more than everything, no overflow at `W=390`; `SELFTEST=1 PANEL=route` plants three faults in the rendered card and passes only if all three are reported |
 | `type-click.mjs` | type into a field, press a button, read what appears |
 | `submission-screens.mjs` | the hackathon screenshots, written to files only, never read back |

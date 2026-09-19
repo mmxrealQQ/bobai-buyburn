@@ -607,11 +607,12 @@
          340px and under every log table does (the archived liquidity tables
          ran 39px past their box at 320). Measured at 430, 390, 375, 360, 340
          and 320px: every table ends inside its box. */
-      .bw-card{padding:24px 12px}.bw-card .bw-title,.bw-card .bw-sub{padding:0 8px}
+      /* .burns-wrap in front: the card's own rule stands further down this file and would win at equal weight (it did, on the first deploy) */
+      .burns-wrap .bw-card{padding:24px 12px}.burns-wrap .bw-card .bw-title,.burns-wrap .bw-card .bw-sub{padding:0 8px}
       .tb{font-size:.56rem;padding:2px 5px;white-space:nowrap}
       #tx-body td{padding-left:5px;padding-right:5px}}
     @media (max-width:380px){#tx-body td{font-size:.62rem}#tx-body .tb{font-size:.5rem;padding:2px 4px}#tx-body .txl{font-size:.58rem}}
-    @media (max-width:340px){.bw-card{padding:24px 8px}.txw th,.txw td,#tx-body td{font-size:.54rem;padding:6px 3px}.txw .txl,#tx-body .txl{font-size:.5rem}#tx-body .tb{font-size:.44rem;padding:2px 3px}}
+    @media (max-width:340px){.burns-wrap .bw-card{padding:24px 8px}.txw th,.txw td,#tx-body td{font-size:.54rem;padding:6px 3px}.txw .txl,#tx-body .txl{font-size:.5rem}#tx-body .tb{font-size:.44rem;padding:2px 3px}}
     .tb{background:rgba(255,48,40,.07);color:var(--red);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tba{background:rgba(0,230,118,.07);color:var(--green);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}
     .tcr{background:rgba(64,64,255,.07);color:var(--blue);padding:3px 8px;border-radius:5px;font-size:.64rem;font-weight:600}

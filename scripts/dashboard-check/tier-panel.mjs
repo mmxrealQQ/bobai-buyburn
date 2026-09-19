@@ -16,6 +16,7 @@
 //   node scripts/dashboard-check/tier-panel.mjs             desktop, fee tiers
 //   W=390 node scripts/dashboard-check/tier-panel.mjs       phone
 //   PANEL=range node scripts/dashboard-check/tier-panel.mjs the range replay
+//   PANEL=route node scripts/dashboard-check/tier-panel.mjs the route card (for trading)
 //
 // Two cards, one checker. They are built from the same markup — the same rows,
 // the same phone labels, the same answer block above the table — so checking
@@ -34,9 +35,12 @@ const H = Number(process.env.H || 900);
 // sees none, which exercises both the ranking and the idle-capital line.
 const TOKEN = process.env.TOKEN || '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82';
 // Which of the two cards on the page. They share every class, so the choice is
-// made by position: the fee tiers first, the range replay under it.
+// made by NAME (data-card), not by position: on 2026-09-18 the route card was
+// put in front of the other two, and this checker — counting buttons — pressed
+// the route card for 'tiers' and the tier card for 'range' until 2026-09-19.
 const PANEL = (process.env.PANEL || 'tiers').toLowerCase();
-const NTH = PANEL === 'range' ? 1 : 0;
+const CARD = ['tiers', 'range', 'route'].includes(PANEL) ? PANEL : 'tiers';
+const BTN = `[data-card="${CARD}"] .sc-tierbtn`, OUT = `[data-card="${CARD}"] .tier-out`;
 // A fresh query key every run. Cloudflare caches per key, and a stale
 // scanner.js is exactly how a fixed page kept reporting the old bug.
 const URL = `https://brainonbnb.com/scanner?token=${TOKEN}&probe=${Math.floor(Math.random() * 1e9)}`;
@@ -89,26 +93,40 @@ await ev(`(document.getElementById('wip-ok')||{click(){}}).click()`);
 let appeared = false;
 for (let i = 0; i < 60; i++) {
   await wait(500);
-  if (await ev(`document.querySelectorAll('.sc-tierbtn').length > ${NTH}`)) { appeared = true; break; }
+  if (await ev(`!!document.querySelector('${BTN}')`)) { appeared = true; break; }
 }
 if (!appeared) problems.push(`the ${PANEL} card never appeared after a scan`);
 
 if (appeared) {
-  await ev(`document.querySelectorAll('.sc-tierbtn')[${NTH}].scrollIntoView({block:'center'})`);
+  await ev(`document.querySelector('${BTN}').scrollIntoView({block:'center'})`);
   await wait(300);
-  await ev(`document.querySelectorAll('.sc-tierbtn')[${NTH}].click()`);
+  await ev(`document.querySelector('${BTN}').click()`);
 
   let rendered = false;
   for (let i = 0; i < 90; i++) {
     await wait(500);
-    if (await ev(`(() => { const o = document.querySelectorAll('.tier-out')[${NTH}]; return !!o && (!!o.querySelector('.tier-t') || !!o.querySelector('.cd-foot')); })()`)) { rendered = true; break; }
+    if (await ev(`(() => { const o = document.querySelector('${OUT}'); return !!o && (!!o.querySelector('.tier-t') || !!o.querySelector('.cd-foot') || !!o.querySelector('.tier-ans')); })()`)) { rendered = true; break; }
   }
   if (!rendered) problems.push('the button was pressed and nothing came back within 45 seconds');
 }
 
+// SELFTEST=1 (route card): the rendered card is damaged in the browser before it
+// is read — the best mark moved to another row, the slippage sentence removed,
+// an impossible percentage written in — and the run passes only if every one of
+// the three is reported. A checker that cannot fail proves nothing.
+const SELFTEST = process.env.SELFTEST === '1' && CARD === 'route';
+if (SELFTEST) {
+  await ev(`(() => {
+    const out = document.querySelector('${OUT}');
+    const rows = [...out.querySelectorAll('.rt-r:not(.rt-hr)')];
+    const best = rows.find(r => r.classList.contains('tier-best')), other = rows.find(r => !r.classList.contains('tier-best'));
+    if (best && other) { best.classList.remove('tier-best'); other.classList.add('tier-best'); const c = other.querySelectorAll('.rt-num')[1]; if (c) c.textContent = '−250.00%'; }
+    for (const r of out.querySelectorAll('.tier-ans .vd-r')) if (/Slippage to set/.test(r.textContent)) r.remove();
+  })()`);
+}
+
 const R = await ev(`(() => {
-  const NTH_ = ${NTH};
-  const out = document.querySelectorAll('.tier-out')[NTH_];
+  const out = document.querySelector('${OUT}');
   if (!out) return { missing: true };
   const rows = [...out.querySelectorAll('.tier-r:not(.tier-hr)')].map(r => ({
     tier: r.querySelector('.tier-n')?.innerText.trim(),
@@ -142,6 +160,14 @@ const R = await ev(`(() => {
     labels: [...out.querySelectorAll('.tier-r:not(.tier-hr) .tl')]
       .filter(e => getComputedStyle(e).display !== 'none').length,
     withWork: rows.filter(r => r.work && r.work !== '—').length,
+    // The route card's own table: every pool asked, what arrives, how it compares.
+    routes: [...out.querySelectorAll('.rt-r:not(.rt-hr)')].map(r => ({
+      route: r.querySelector('.tier-n')?.innerText.trim(),
+      cells: [...r.querySelectorAll('.rt-num')].map(e => e.textContent.trim()),
+      best: r.classList.contains('tier-best'),
+    })),
+    sizeAsked: out.parentElement.querySelector('.rt-inp')?.value || null,
+    widestRoute: Math.max(0, ...[...out.querySelectorAll('.rt-r')].map(e => e.getBoundingClientRect().right)) - doc.clientWidth,
     overflow: doc.scrollWidth - doc.clientWidth,
     widest: Math.max(0, ...[...out.querySelectorAll('.tier-r')].map(e => e.getBoundingClientRect().right)) - doc.clientWidth,
   };
@@ -149,6 +175,38 @@ const R = await ev(`(() => {
 
 if (R?.__error) problems.push(`the page threw while being read: ${R.__error}`);
 else if (R?.missing) problems.push('no .tier-out container on the page');
+else if (CARD === 'route') {
+  // The route card answers a trader, not a liquidity provider: which pool
+  // returns the most at the size named, what comes back sold at once, the tax,
+  // and the slippage that takes. Four sentences, then the evidence.
+  const text = String(R.text || ''), said = String(R.said || '');
+  note.push(`${R.routes.length} route rows; size asked $${R.sizeAsked}`);
+  const refused = /Do not trade this as it stands/.test(said), none = /No route could be quoted/.test(said);
+  if (!said) problems.push('the button was pressed and the card gives no answer');
+  if (!none) {
+    const m = said.match(/^(?:Do not trade[^\n]*\n[^\n]*\n)*(.+?) returns the most at \$([0-9,]+)\./m);
+    if (!m) problems.push('the answer does not name a route and the size it was quoted at');
+    else {
+      if (R.sizeAsked && m[2].replace(/,/g, '') !== String(Math.round(Number(R.sizeAsked)))) problems.push(`the answer is for $${m[2]}, the field asks for $${R.sizeAsked}`);
+      if (R.routes.length && !R.routes.some((r) => r.route === m[1].trim())) problems.push(`the answer names "${m[1].trim()}", which is not a row of the table`);
+      const best = R.routes.filter((r) => r.best);
+      if (R.routes.length && (best.length !== 1 || best[0].route !== m[1].trim() || best[0].cells[1] !== 'best')) problems.push('the table does not mark exactly the route the answer names as best');
+    }
+    if (!/Sold straight back, [0-9.]+% of your /.test(said)) problems.push('the round trip is missing: what comes back if it is sold at once');
+    if (!/Transfer tax measured: |The transfer tax could not be measured/.test(said)) problems.push('the card says nothing about the transfer tax — measured or unknown, never silent');
+    if (!/Slippage to set: about [0-9.]+%/.test(said) && !refused) problems.push('the slippage to set is missing');
+  }
+  // "Worse than the best" is how much LESS arrives: never more than all of it.
+  for (const r of R.routes) {
+    const p = (r.cells[1] || '').match(/^−([0-9.,]+)%$/);
+    if (p && Number(p[1].replace(/,/g, '')) > 100) problems.push(`"${r.route}" reads ${r.cells[1]} against the best — more than everything cannot be lost`);
+  }
+  if (/\bAPR\b|\bAPY\b|per year|annualis/i.test(text)) problems.push('a trading card speaks of a yearly rate');
+  for (const w of ['NaN', 'undefined', 'Infinity', '[object']) if (text.includes(w)) problems.push(`"${w}" rendered to the reader`);
+  if (R.overflow > 1) problems.push(`the page scrolls sideways by ${R.overflow}px at ${W}px wide`);
+  if (R.widestRoute > 1) problems.push(`a route row runs ${Math.round(R.widestRoute)}px past the viewport at ${W}px`);
+  if (said) note.push(`says: ${said.split('\n').slice(0, 2).join(' ')}`);
+}
 else {
   const priced = (R.rows || []).filter((r) => r.pays && r.pays !== '—');
   note.push(`${R.rows.length} tier rows, ${priced.length} carrying a figure`);
@@ -210,9 +268,15 @@ else {
   if (R.said) note.push(`says: ${R.said.trim()}`);
 }
 
-console.log(`\nFee-tier panel — ${W}x${H}`);
+console.log(`\n${CARD === 'route' ? 'Route card' : CARD === 'range' ? 'Range replay' : 'Fee-tier panel'} — ${W}x${H}`);
 for (const n of note) console.log(`  ${n}`);
-if (problems.length) {
+if (SELFTEST) {
+  const want = [/does not mark exactly the route/, /slippage to set is missing/, /more than everything cannot be lost/];
+  const missed = want.filter((re) => !problems.some((p) => re.test(p)));
+  for (const p of problems) console.log(`  (damaged on purpose) x ${p}`);
+  console.log(missed.length ? `\nSELF-TEST FAILED: ${missed.length} of 3 planted faults went unreported.` : '\nself-test passed: all 3 planted faults were reported.');
+  process.exitCode = missed.length ? 1 : 0;
+} else if (problems.length) {
   console.log('');
   for (const p of problems) console.log(`  x ${p}`);
   console.log(`\n${problems.length} problem(s).`);

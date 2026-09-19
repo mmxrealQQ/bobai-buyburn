@@ -148,9 +148,13 @@ function statRow(items){
 // pancakeswap_best_route (MCP, skill, /api/best-route) since August and had no
 // card here — a person could not ask what an agent could (2026-09-18). Same
 // rule as the two cards below: one number, one source, behind a button.
+// Each of the three button cards names itself (data-card): they share every
+// class, and the checker that picked them by position pressed the wrong button
+// the day this card was put in front of the other two (2026-09-19).
 function routeCard(token){
   const c=card('Which route returns the most at your size',
     'For trading. Quoted by the venue at the size you name, with the round trip and the slippage it takes.');
+  c.dataset.card='route';
   const form=el('div','rt-form');
   const lab=el('label','rt-lab','Size in USD');
   const inp=document.createElement('input');
@@ -286,6 +290,7 @@ function renderRoute(out,d){
 function tierCard(token){
   const c=card('Which fee tier is paying its liquidity providers',
     'For providing liquidity, not for trading. Measured over a live window and deliberately not annualised.');
+  c.dataset.card='tiers';
   const btn=el('button','sc-tierbtn','Measure the PancakeSwap tiers');
   btn.type='button';
   const out=el('div','tier-out');
@@ -458,6 +463,7 @@ function renderTiers(out,d){
 function rangeCard(token){
   const c=card('Which price range, if you did provide liquidity',
     'A V3 position is not in a pool, it is between two prices. Replayed against the trades that actually happened in a live window.');
+  c.dataset.card='range';
   const btn=el('button','sc-tierbtn','Replay the ranges');
   btn.type='button';
   const out=el('div','tier-out');

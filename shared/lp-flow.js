@@ -28,6 +28,19 @@ const r6 = (v) => Number(v.toFixed(6));
 // (2026-09-18: 0.00087 BNB over 28 steps, 6.5% of the profit on the card).
 const gasOf = (step) => (step && Array.isArray(step.txs) ? step.txs : []).reduce((a, t) => a + n(t.gas_bnb), 0);
 
+// WHAT COUNTS AS A RE-SET (2026-09-19). Three places counted and said 15, 14
+// and 13 on the same record: the loss table counted every re-set it could
+// value, this file every one that named its new position, and the fee
+// sentence the ones that had fees to fold. The 14 was wrong: the re-set of
+// 2026-09-16 08:50 moved the range (#7451444 stands on it) and recorded no
+// new id — the reading bug fixed the day after — and was left out. A re-set
+// is a rebalance step that acted and did not fail. A run that failed half way
+// and the run that finished it from the wallet are one: the first has an
+// error, the second has not. Every count asks here.
+export function isReset(rb) {
+  return !!(rb && rb.acted && !rb.error);
+}
+
 export function moneyFlow(rec, { earned = null } = {}) {
   const hist = (Array.isArray(rec?.history) ? rec.history : []).filter((e) => e && !e.dry);
   const bySource = {};
@@ -80,7 +93,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
       keptWaiting = 0;
     }
     const rb = st.rebalance;
-    if (rb && rb.acted && !rb.error && rb.new_position) {
+    if (isReset(rb)) {
       resets += 1;
       // A re-set does not collect the old range's fees as fees: the unwind
       // pays them out with the principal. They are fees the position
@@ -169,7 +182,9 @@ export function flowLines(flow) {
     ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
   const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
-  const folded = fd > 0 ? `${f(fd)} BNB of fees taken at ${rw} re-set${rw === 1 ? '' : 's'}${rf > 0 ? `, ${f(rf)} of it spent on BOBAI held` : ', all of it folded into the capital'}` : '';
+  // The basis in the sentence: the re-sets that had fees to take, of all there were.
+  const all = flow.out.resets || 0;
+  const folded = fd > 0 ? `${f(fd)} BNB of fees taken at ${rw}${all > rw ? ` of ${all}` : ''} re-set${(all > rw ? all : rw) === 1 ? '' : 's'}${rf > 0 ? `, ${f(rf)} of it spent on BOBAI held` : ', all of it folded into the capital'}` : '';
   const fees = flow.in.fees.collects
     ? `${f(flow.in.fees.collected_bnb != null ? flow.in.fees.collected_bnb : flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}${folded ? `, ${folded}` : ''}`
     : (folded || 'no fees collected yet');

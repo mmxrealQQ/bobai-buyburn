@@ -214,7 +214,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
       // What the re-sets themselves cost, from the record's ticks: the loss
       // against holding each re-set realised, and its execution.
-      at_resets: { count: losses.resets, lost_to_price_bnb: r5(losses.lost_to_price_bnb), execution_bnb: r5(losses.execution_bnb) },
+      at_resets: { count: losses.resets, valued: losses.valued, lost_to_price_bnb: r5(losses.lost_to_price_bnb), execution_bnb: r5(losses.execution_bnb) },
       // The line the whole thing is judged by: the position, with everything
       // it produced, against a wallet that simply held (holdingBenchmark).
       vs_holding: vsHold,

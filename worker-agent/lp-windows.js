@@ -24,6 +24,7 @@
 // person reads and the number the mint is sized on come from one function.
 
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
+import { isReset } from '../shared/lp-flow.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -417,9 +418,16 @@ export function measuredResetCost(agentRecord, bnbUsd) {
 export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
   const hist = Array.isArray(agentRecord?.history) ? agentRecord.history : [];
   const out = [];
+  // Counted by the one definition (isReset, lp-flow); valued where the record
+  // names the range that was left and the tick it was left at. A re-set
+  // finished from the wallet after a failed run has no old range to value.
+  let counted = 0;
   for (let i = hist.length - 1; i >= 0; i--) {
+    if (hist[i]?.dry) continue;
     const rb = hist[i]?.steps?.rebalance;
-    if (!rb || !rb.acted || rb.error || !Array.isArray(rb.ticks) || rb.ticks.length !== 2 || rb.tick == null) continue;
+    if (!isReset(rb)) continue;
+    counted += 1;
+    if (!Array.isArray(rb.ticks) || rb.ticks.length !== 2 || rb.tick == null) continue;
     const width = widthClassOf(rb.ticks);
     if (width == null) continue;
     const centre = (rb.ticks[0] + rb.ticks[1]) / 2;
@@ -443,7 +451,7 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
   }
   const sum = (k) => Number(out.reduce((a, r) => a + (r[k] || 0), 0).toFixed(6));
   return {
-    resets: out.length,
+    resets: counted, valued: out.length,
     lost_to_price_bnb: sum('lost_to_price_bnb'), execution_bnb: sum('execution_bnb'),
     impact_measured: out.filter((r) => r.impact_bnb != null).length,
     rows: out,

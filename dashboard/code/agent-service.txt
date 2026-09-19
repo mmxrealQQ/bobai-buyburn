@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 13630 lines.
+# one fetch. 41 files, 13653 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2182,6 +2182,19 @@ const r6 = (v) => Number(v.toFixed(6));
 // (2026-09-18: 0.00087 BNB over 28 steps, 6.5% of the profit on the card).
 const gasOf = (step) => (step && Array.isArray(step.txs) ? step.txs : []).reduce((a, t) => a + n(t.gas_bnb), 0);
 
+// WHAT COUNTS AS A RE-SET (2026-09-19). Three places counted and said 15, 14
+// and 13 on the same record: the loss table counted every re-set it could
+// value, this file every one that named its new position, and the fee
+// sentence the ones that had fees to fold. The 14 was wrong: the re-set of
+// 2026-09-16 08:50 moved the range (#7451444 stands on it) and recorded no
+// new id — the reading bug fixed the day after — and was left out. A re-set
+// is a rebalance step that acted and did not fail. A run that failed half way
+// and the run that finished it from the wallet are one: the first has an
+// error, the second has not. Every count asks here.
+export function isReset(rb) {
+  return !!(rb && rb.acted && !rb.error);
+}
+
 export function moneyFlow(rec, { earned = null } = {}) {
   const hist = (Array.isArray(rec?.history) ? rec.history : []).filter((e) => e && !e.dry);
   const bySource = {};
@@ -2234,7 +2247,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
       keptWaiting = 0;
     }
     const rb = st.rebalance;
-    if (rb && rb.acted && !rb.error && rb.new_position) {
+    if (isReset(rb)) {
       resets += 1;
       // A re-set does not collect the old range's fees as fees: the unwind
       // pays them out with the principal. They are fees the position
@@ -2323,7 +2336,9 @@ export function flowLines(flow) {
     ? flow.in.income.map((s) => `${f(s.bnb)} BNB from ${s.sold} ${s.token || s.source} (${s.source}, ${s.runs} sweep${s.runs === 1 ? '' : 's'})`).join(', ')
     : 'no income swept yet';
   const fd = flow.in.fees.folded_bnb || 0, rw = flow.in.fees.resets_with_fees || 0, rf = flow.in.fees.forwarded_at_resets_bnb || 0;
-  const folded = fd > 0 ? `${f(fd)} BNB of fees taken at ${rw} re-set${rw === 1 ? '' : 's'}${rf > 0 ? `, ${f(rf)} of it spent on BOBAI held` : ', all of it folded into the capital'}` : '';
+  // The basis in the sentence: the re-sets that had fees to take, of all there were.
+  const all = flow.out.resets || 0;
+  const folded = fd > 0 ? `${f(fd)} BNB of fees taken at ${rw}${all > rw ? ` of ${all}` : ''} re-set${(all > rw ? all : rw) === 1 ? '' : 's'}${rf > 0 ? `, ${f(rf)} of it spent on BOBAI held` : ', all of it folded into the capital'}` : '';
   const fees = flow.in.fees.collects
     ? `${f(flow.in.fees.collected_bnb != null ? flow.in.fees.collected_bnb : flow.in.fees.bnb)} BNB of fees over ${flow.in.fees.collects} collect${flow.in.fees.collects === 1 ? '' : 's'}${folded ? `, ${folded}` : ''}`
     : (folded || 'no fees collected yet');
@@ -9194,7 +9209,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
       // What the re-sets themselves cost, from the record's ticks: the loss
       // against holding each re-set realised, and its execution.
-      at_resets: { count: losses.resets, lost_to_price_bnb: r5(losses.lost_to_price_bnb), execution_bnb: r5(losses.execution_bnb) },
+      at_resets: { count: losses.resets, valued: losses.valued, lost_to_price_bnb: r5(losses.lost_to_price_bnb), execution_bnb: r5(losses.execution_bnb) },
       // The line the whole thing is judged by: the position, with everything
       // it produced, against a wallet that simply held (holdingBenchmark).
       vs_holding: vsHold,
@@ -9680,6 +9695,7 @@ export async function lpTierPlan(input = {}) {
 // person reads and the number the mint is sized on come from one function.
 
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, waitInUse, V2_SWAP_FEE_PCT, widthClassOf, DERIVED_WIDTHS, rangeValue, pickWidth, WIDTH_WINDOW_HOURS, ONE_SIDED_GAP_TICKS, RANGE_LEFT_TICKS } from '../shared/lp-guards.js';
+import { isReset } from '../shared/lp-flow.js';
 
 const MEASURE = 'https://brainonbnb.com/mcp';
 export const KV_KEY = 'lp:windows';
@@ -10073,9 +10089,16 @@ export function measuredResetCost(agentRecord, bnbUsd) {
 export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
   const hist = Array.isArray(agentRecord?.history) ? agentRecord.history : [];
   const out = [];
+  // Counted by the one definition (isReset, lp-flow); valued where the record
+  // names the range that was left and the tick it was left at. A re-set
+  // finished from the wallet after a failed run has no old range to value.
+  let counted = 0;
   for (let i = hist.length - 1; i >= 0; i--) {
+    if (hist[i]?.dry) continue;
     const rb = hist[i]?.steps?.rebalance;
-    if (!rb || !rb.acted || rb.error || !Array.isArray(rb.ticks) || rb.ticks.length !== 2 || rb.tick == null) continue;
+    if (!isReset(rb)) continue;
+    counted += 1;
+    if (!Array.isArray(rb.ticks) || rb.ticks.length !== 2 || rb.tick == null) continue;
     const width = widthClassOf(rb.ticks);
     if (width == null) continue;
     const centre = (rb.ticks[0] + rb.ticks[1]) / 2;
@@ -10099,7 +10122,7 @@ export function resetLosses(agentRecord, { bnbUsd = null } = {}) {
   }
   const sum = (k) => Number(out.reduce((a, r) => a + (r[k] || 0), 0).toFixed(6));
   return {
-    resets: out.length,
+    resets: counted, valued: out.length,
     lost_to_price_bnb: sum('lost_to_price_bnb'), execution_bnb: sum('execution_bnb'),
     impact_measured: out.filter((r) => r.impact_bnb != null).length,
     rows: out,

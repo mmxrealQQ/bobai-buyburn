@@ -39,7 +39,8 @@ import {
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB, reserveCollect, RESERVE_COLLECT_MIN_BNB,
   widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
-import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP } from '../shared/lp-flow.js';
+import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP, isReset } from '../shared/lp-flow.js';
+import { resetLosses } from '../worker-agent/lp-windows.js';
 import { alertsOf } from '../shared/lp-alerts.js';
 
 const CONFIRM = process.argv.includes('--confirm');
@@ -220,6 +221,21 @@ if (SELF) {
   const forcedRec = { history: [{ at: '2026-09-20T10:00:00Z', ok: true, acted: true, steps: { rebalance: { acted: true, new_position: '10', wrapped_waiting_bnb: 0.4, txs: [{ gas_bnb: 0.00005 }] } } }] };
   is('a re-set forced by a deposit wraps it into its own mint: that is capital put in, counted once', near(moneyFlow(forcedRec).out.into_position_bnb, 0.4) && near(moneyFlow({ history: [{ ...forcedRec.history[0], steps: { rebalance: { ...forcedRec.history[0].steps.rebalance, wrapped_waiting_bnb: undefined } } }] }).out.into_position_bnb, 0));
   is('three re-sets', fl.out.resets === 3);
+  {
+    // One definition of a re-set (2026-09-19; the page said 15, the record 14, the fee sentence 13).
+    const run = (rebalance, at = '2026-09-16T08:50:00Z') => ({ at, ok: !rebalance.error, acted: true, steps: { rebalance } });
+    const noId = run({ acted: true, new_position: null, ticks: [-57810, -56460], tick: -57888, one_sided: 'above_price', value_bnb: 1.35 });
+    const failed = run({ acted: true, error: 'mint reverted', ticks: [-57810, -56460], tick: -57888 }, '2026-09-17T08:50:00Z');
+    const resumed = run({ acted: true, resume: true, new_position: '7', ticks: null, tick: -57900 }, '2026-09-17T09:50:00Z');
+    const looked = run({ acted: false, in_range: true }, '2026-09-17T10:50:00Z');
+    const withFees = run({ acted: true, new_position: '8', ticks: [-57810, -56460], tick: -56400, fees_folded_bnb: 0.001, bobai_bnb: 0.0005 }, '2026-09-18T08:50:00Z');
+    is('a re-set that moved the range but recorded no new id is a re-set (2026-09-16 08:50)', isReset(noId.steps.rebalance) && moneyFlow({ history: [noId] }).out.resets === 1);
+    is('a run that failed half way and the run that finished it are ONE re-set; a look is none', !isReset(failed.steps.rebalance) && isReset(resumed.steps.rebalance) && !isReset(looked.steps.rebalance) && !isReset(null) && moneyFlow({ history: [failed, resumed, looked] }).out.resets === 1);
+    const both = moneyFlow({ history: [noId, failed, resumed, withFees] });
+    const losses = resetLosses({ history: [noId, failed, resumed, withFees] });
+    is('the loss table counts the same re-sets and says how many of them it could value', losses.resets === both.out.resets && losses.resets === 3 && losses.valued === 2 && losses.rows.length === 2);
+    is('the fee sentence names its basis: taken at 1 of 3 re-sets', /fees taken at 1 of 3 re-sets/.test(flowLines(both).came_in) && /taken at 1 re-set,/.test(flowLines(moneyFlow({ history: [withFees] })).came_in));
+  }
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 11 && near(fl.gas.bnb, 0.00016));
   is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.008));
   is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-09T12:00:00Z');

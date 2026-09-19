@@ -21,7 +21,7 @@ environment at runtime, and the config files name the variables only.
 Buyback & Burn Bot
 ------------------
 The bot that has run every ten minutes since launch.
-3 files, 1650 lines
+3 files, 1688 lines
 needs:
   - A wallet with a little gas in it
       ours: one BSC wallet, topped up from the tax itself
@@ -70,7 +70,7 @@ txt: https://brainonbnb.com/code/defi-agent.txt
 Dev Sweep Bot
 -------------
 The hourly one that empties the tax wallet.
-3 files, 423 lines
+3 files, 455 lines
 needs:
   - A wallet that receives the tax
       ours: the same wallet the buyback bot spends from

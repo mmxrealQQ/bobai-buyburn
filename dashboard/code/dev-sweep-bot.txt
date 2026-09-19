@@ -2,7 +2,7 @@
 # The hourly one that empties the tax wallet.
 #
 # This is the complete dev-sweep-bot bundle as a single file, so it can be read in
-# one fetch. 3 files, 423 lines.
+# one fetch. 3 files, 455 lines.
 # Download as a zip: https://brainonbnb.com/code/dev-sweep-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -275,6 +275,48 @@ function say(e) {
   return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
 }
 
+// KV log helper — the same text as kvAppend in worker/index.js, where the
+// reason is written down: three tries, then the entry is parked under a key
+// of its own and the next append carries it in. /health of the tax bot's
+// worker counts what is parked (both bots share the namespace).
+const UNLOGGED = 'unlogged:';
+async function kvAppend(env, key, entry, pauseMs = 2000) {
+  let last;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const cur = await env.LOGS.get(key);
+      const arr = cur ? JSON.parse(cur) : [];
+      if (!Array.isArray(arr)) throw new Error('the stored log is not an array');
+      const parked = (await env.LOGS.list({ prefix: `${UNLOGGED}${key}:` })).keys.map(k => k.name).sort();
+      // A put that threw may still have landed, and a parked key may have
+      // outlived its entry: nothing goes in twice (time is the identity).
+      const have = new Set(arr.map(e => e && e.time));
+      for (const name of parked) {
+        const raw = await env.LOGS.get(name);
+        const e = raw ? JSON.parse(raw) : null;
+        if (e && !have.has(e.time)) { arr.push(e); have.add(e.time); }
+      }
+      if (!have.has(entry.time)) arr.push(entry);
+      if (parked.length) arr.sort((a, b) => String(a.time).localeCompare(String(b.time)));
+      await env.LOGS.put(key, JSON.stringify(arr, null, 2));
+      for (const name of parked) await env.LOGS.delete(name).catch(() => {});
+      console.log(`Logged to KV: ${key}${parked.length ? ` (with ${parked.length} parked)` : ''}`);
+      return true;
+    } catch (e) {
+      last = e;
+      console.log(`Failed to log ${key} (try ${attempt} of 3): ${e.message}`);
+      if (attempt < 3) await new Promise(r => setTimeout(r, pauseMs * attempt));
+    }
+  }
+  try {
+    await env.LOGS.put(`${UNLOGGED}${key}:${entry.time}`, JSON.stringify(entry));
+    console.log(`Parked the entry for the next append: ${UNLOGGED}${key}:${entry.time}`);
+  } catch (e) {
+    console.log(`ENTRY LOST, could not even park it (${e.message}; log error: ${last && last.message}): ${JSON.stringify(entry)}`);
+  }
+  return false;
+}
+
 async function runBot(env) {
   const privateKey = env.PRIVATE_KEY;
   if (!privateKey) {
@@ -384,30 +426,20 @@ async function runBot(env) {
   }
 
   // Step 3: Log to KV
-  try {
-    const logKey = 'dev-buyback-log.json';
-    let logs = [];
-    const cur = await env.LOGS.get(logKey);
-    if (cur) logs = JSON.parse(cur);
-    logs.push({
-      time: new Date().toISOString(),
-      balanceBnb: formatEther(balance),
-      availableBnb: formatEther(available),
-      personalBnb: formatEther(personalAmount),
-      builder1Bnb: formatEther(builder1Amount),
-      builder2Bnb: formatEther(builder2Amount),
-      builder3Bnb: formatEther(builder3Amount),
-      builder4Bnb: formatEther(builder4Amount),
-      builder5Bnb: formatEther(builder5Amount),
-      personalTx: personalTxHash,
-      txs,
-      failed,
-    });
-    await env.LOGS.put(logKey, JSON.stringify(logs, null, 2));
-    console.log(`\nLogged to KV: ${logKey}`);
-  } catch (e) {
-    console.log('Failed to log:', e.message);
-  }
+  await kvAppend(env, 'dev-buyback-log.json', {
+    time: new Date().toISOString(),
+    balanceBnb: formatEther(balance),
+    availableBnb: formatEther(available),
+    personalBnb: formatEther(personalAmount),
+    builder1Bnb: formatEther(builder1Amount),
+    builder2Bnb: formatEther(builder2Amount),
+    builder3Bnb: formatEther(builder3Amount),
+    builder4Bnb: formatEther(builder4Amount),
+    builder5Bnb: formatEther(builder5Amount),
+    personalTx: personalTxHash,
+    txs,
+    failed,
+  });
 
   console.log('\n============================================');
   console.log(`[${new Date().toISOString()}] DEV BUYBACK COMPLETE`);

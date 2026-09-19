@@ -2,7 +2,7 @@
 # The bot that has run every ten minutes since launch.
 #
 # This is the complete buyback-bot bundle as a single file, so it can be read in
-# one fetch. 3 files, 1650 lines.
+# one fetch. 3 files, 1688 lines.
 # Download as a zip: https://brainonbnb.com/code/buyback-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -970,17 +970,51 @@ async function sbInsert(env, table, row) {
 }
 
 // KV log helper: append one entry to a JSON-array log stored in KV.
-async function kvAppend(env, key, entry) {
-  try {
-    let arr = [];
-    const cur = await env.LOGS.get(key);
-    if (cur) arr = JSON.parse(cur);
-    arr.push(entry);
-    await env.LOGS.put(key, JSON.stringify(arr, null, 2));
-    console.log(`Logged to KV: ${key}`);
-  } catch (e) {
-    console.log(`Failed to log ${key}: ${e.message}`);
+//
+// A LOG ENTRY THAT DID NOT GET WRITTEN (2026-09-19). The log is one array,
+// read, extended and written back, and a failure here was printed and gone:
+// the money had moved, and the burn table and the Giggle card counted too
+// little for good. It runs after the last transfer, so nothing it does can
+// touch money. Three tries; an entry that still cannot be written is parked
+// under a key of its own (a few hundred bytes instead of the whole array) and
+// the next append carries it in, oldest first. /health counts what is parked.
+// Same text in worker-dev-buyback/index.js.
+const UNLOGGED = 'unlogged:';
+async function kvAppend(env, key, entry, pauseMs = 2000) {
+  let last;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const cur = await env.LOGS.get(key);
+      const arr = cur ? JSON.parse(cur) : [];
+      if (!Array.isArray(arr)) throw new Error('the stored log is not an array');
+      const parked = (await env.LOGS.list({ prefix: `${UNLOGGED}${key}:` })).keys.map(k => k.name).sort();
+      // A put that threw may still have landed, and a parked key may have
+      // outlived its entry: nothing goes in twice (time is the identity).
+      const have = new Set(arr.map(e => e && e.time));
+      for (const name of parked) {
+        const raw = await env.LOGS.get(name);
+        const e = raw ? JSON.parse(raw) : null;
+        if (e && !have.has(e.time)) { arr.push(e); have.add(e.time); }
+      }
+      if (!have.has(entry.time)) arr.push(entry);
+      if (parked.length) arr.sort((a, b) => String(a.time).localeCompare(String(b.time)));
+      await env.LOGS.put(key, JSON.stringify(arr, null, 2));
+      for (const name of parked) await env.LOGS.delete(name).catch(() => {});
+      console.log(`Logged to KV: ${key}${parked.length ? ` (with ${parked.length} parked)` : ''}`);
+      return true;
+    } catch (e) {
+      last = e;
+      console.log(`Failed to log ${key} (try ${attempt} of 3): ${e.message}`);
+      if (attempt < 3) await new Promise(r => setTimeout(r, pauseMs * attempt));
+    }
   }
+  try {
+    await env.LOGS.put(`${UNLOGGED}${key}:${entry.time}`, JSON.stringify(entry));
+    console.log(`Parked the entry for the next append: ${UNLOGGED}${key}:${entry.time}`);
+  } catch (e) {
+    console.log(`ENTRY LOST, could not even park it (${e.message}; log error: ${last && last.message}): ${JSON.stringify(entry)}`);
+  }
+  return false;
 }
 
 const WBNB_ABI = parseAbi([
@@ -1638,11 +1672,15 @@ export default {
 
     // Health/heartbeat endpoint for monitoring
     if (url.pathname === '/health') {
-      const [hb, hbDev] = await Promise.all([
+      // `unlogged`: entries a bot could not write into its log and parked for
+      // the next append (kvAppend). Anything but an empty list is a run whose
+      // money moved and whose line is not in the public log yet.
+      const [hb, hbDev, parked] = await Promise.all([
         env.LOGS.get('heartbeat-buyback'),
         env.LOGS.get('heartbeat-dev'),
+        env.LOGS.list({ prefix: UNLOGGED }).then(l => l.keys.map(k => k.name.slice(UNLOGGED.length)), () => null),
       ]);
-      return new Response(JSON.stringify({ buyback: hb, devBuyback: hbDev }), {
+      return new Response(JSON.stringify({ buyback: hb, devBuyback: hbDev, unlogged: parked }), {
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
       });
     }

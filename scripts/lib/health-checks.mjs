@@ -189,6 +189,11 @@ ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a ru
     const d = j.devBuyback ? ageHours(j.devBuyback) : null;
     ok('Bots', 'buyback bot ran recently', b !== null && b < 1, b === null ? 'no timestamp' : `last run ${fmtAge(b)} ago`);
     ok('Bots', 'dev-buyback bot ran recently', d !== null && d < 3, d === null ? 'no timestamp' : `last run ${fmtAge(d)} ago`);
+    // A run whose money moved and whose line could not be written parks the
+    // entry; the next append carries it in. Until then the public log, the
+    // burn table and the Giggle card count too little.
+    ok('Bots', 'no log entry of a money bot is waiting to be written', Array.isArray(j.unlogged) && j.unlogged.length === 0,
+      Array.isArray(j.unlogged) ? j.unlogged.join(', ') : 'the endpoint does not say');
   }
 }
 {

@@ -84,6 +84,44 @@ console.log('the helpers (offline)');
   ok('a transaction nobody can find is given up as unknown, not as done', never === null && /no receipt/.test(none || ''));
   ok('a reverted receipt is a failure', /reverted/.test(reverted || ''));
   ok('an error is logged without the RPC URL and its key', lines.some((l) => l.includes('[rpc]')) && !lines.some((l) => l.includes('SECRETKEY')) && lifted.say(new Error('x https://a.b/c?key=1 y')) === 'x [rpc] y');
+
+  // The log append: a KV that fails must not cost the line of a run whose money moved.
+  const devSrc = fs.readFileSync(path.join(ROOT, 'worker-dev-buyback', 'index.js'), 'utf8');
+  const app = (text) => text.slice(text.indexOf("const UNLOGGED = 'unlogged:';"), text.indexOf('\n}\n', text.indexOf('async function kvAppend(')) + 3);
+  ok('both workers carry the same log append, to the letter', app(workerSrc).length > 800 && app(workerSrc) === app(devSrc) && !/LOGS\.put\(logKey/.test(devSrc));
+  const kvAppend = new Function(`${app(workerSrc)}; return kvAppend;`)();
+  const store = new Map(); let failPuts = 0, failBig = false;
+  const LOGS = {
+    get: async (k) => (store.has(k) ? store.get(k) : null),
+    put: async (k, v) => { if (failPuts > 0) { failPuts--; throw new Error('KV PUT failed: 500'); } if (failBig && !k.startsWith('unlogged:')) throw new Error('KV PUT failed: 500'); store.set(k, v); },
+    delete: async (k) => { store.delete(k); },
+    list: async ({ prefix }) => ({ keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }),
+  };
+  const read = (k) => JSON.parse(store.get(k) || '[]');
+  console.log = () => {};
+  store.set('burns.json', JSON.stringify([{ time: '2026-09-18T23:10:19.132Z', totalBnb: '1' }]));
+  failPuts = 2;
+  const third = await kvAppend({ LOGS }, 'burns.json', { time: '2026-09-19T01:00:00.000Z', totalBnb: '2' }, 0);
+  const afterRetry = read('burns.json');
+  failBig = true;
+  const parkedRun = await kvAppend({ LOGS }, 'burns.json', { time: '2026-09-19T02:00:00.000Z', totalBnb: '3' }, 0);
+  const whileParked = { log: read('burns.json').length, keys: [...store.keys()].filter((k) => k.startsWith('unlogged:')) };
+  failBig = false;
+  await kvAppend({ LOGS }, 'dev-buyback-log.json', { time: '2026-09-19T02:30:00.000Z' }, 0);   // another log leaves it alone
+  const otherLog = [...store.keys()].filter((k) => k.startsWith('unlogged:')).length;
+  const next = await kvAppend({ LOGS }, 'burns.json', { time: '2026-09-19T03:00:00.000Z', totalBnb: '4' }, 0);
+  const healed = read('burns.json');
+  const clearedKey = ![...store.keys()].some((k) => k.startsWith('unlogged:burns'));
+  await kvAppend({ LOGS }, 'burns.json', { time: '2026-09-19T03:00:00.000Z', totalBnb: '4' }, 0);   // the same entry again
+  const afterSame = read('burns.json').length;
+  store.set('burns.json', '{"not":"an array"}');
+  const broken = await kvAppend({ LOGS }, 'burns.json', { time: '2026-09-19T04:00:00.000Z' }, 0);
+  console.log = log;
+  ok('a put that fails twice is tried a third time, and the line is there once', third === true && afterRetry.length === 2 && afterRetry[1].totalBnb === '2');
+  ok('an entry that cannot be written is parked under its own key, the log untouched', parkedRun === false && whileParked.log === 2 && whileParked.keys.length === 1 && whileParked.keys[0] === 'unlogged:burns.json:2026-09-19T02:00:00.000Z' && otherLog === 1);
+  ok('the next append carries it in, oldest first, and clears the key', next === true && healed.map((e) => e.totalBnb).join() === '1,2,3,4' && clearedKey);
+  ok('nothing goes in twice, and a stored log that is no array is never overwritten', afterSame === 4 && broken === false && store.get('burns.json') === '{"not":"an array"}' && store.has('unlogged:burns.json:2026-09-19T04:00:00.000Z'));
+  ok('/health names what is parked', /unlogged: parked/.test(workerSrc) && /list\(\{ prefix: UNLOGGED \}\)/.test(workerSrc));
 }
 
 // ── the run, on the fork ────────────────────────────────────────────────────
@@ -107,7 +145,7 @@ const env = {
   BUYBACK_PRIVATE_KEY: key,
   BSC_RPC_URL: LOCAL,
   BSC_RPC_FALLBACKS: 'none',   // a fork has no second node; nothing of this run may reach a real one
-  LOGS: { get: async (k) => (kv.has(k) ? kv.get(k) : null), put: async (k, v) => { kv.set(k, v); }, delete: async (k) => { kv.delete(k); } },
+  LOGS: { get: async (k) => (kv.has(k) ? kv.get(k) : null), put: async (k, v) => { kv.set(k, v); }, delete: async (k) => { kv.delete(k); }, list: async ({ prefix }) => ({ keys: [...kv.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }) },
 };
 const addr = (name) => (workerSrc.match(new RegExp(`const ${name} = '(0x[0-9a-fA-F]{40})'`)) || [])[1];
 const CREATOR = addr('CREATOR_WALLET'), LPA = addr('LP_AGENT_WALLET'), POT = addr('PRIZE_POOL_WALLET'), BOB = addr('BOB_TOKEN'), BOBAI = addr('BOBAI_TOKEN'), DEAD = addr('DEAD_ADDRESS');
@@ -177,7 +215,7 @@ console.log('\nthe dev sweep (82% / 4 / 4 / 4 / 4 / 2)');
     await test.setBalance({ address: w, value: parseEther('0.103') });
     const b0 = await Promise.all(who.map(bal));
     const keep = console.log; console.log = () => {};
-    try { await dev.scheduled({}, { PRIVATE_KEY: k, BSC_RPC_URL: LOCAL, LOGS: { get: async (x) => (store.has(x) ? store.get(x) : null), put: async (x, v) => { store.set(x, v); }, delete: async (x) => { store.delete(x); } } }, {}); } finally { console.log = keep; }
+    try { await dev.scheduled({}, { PRIVATE_KEY: k, BSC_RPC_URL: LOCAL, LOGS: { get: async (x) => (store.has(x) ? store.get(x) : null), put: async (x, v) => { store.set(x, v); }, delete: async (x) => { store.delete(x); }, list: async ({ prefix }) => ({ keys: [...store.keys()].filter((x) => x.startsWith(prefix)).map((name) => ({ name })) }) } }, {}); } finally { console.log = keep; }
     const b1 = await Promise.all(who.map(bal));
     return { got: b1.map((v, i) => v - b0[i]), log: JSON.parse(store.get('dev-buyback-log.json') || '[]'), left: await bal(w), store };
   };

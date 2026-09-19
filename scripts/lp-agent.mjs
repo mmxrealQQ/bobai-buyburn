@@ -29,7 +29,7 @@ import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote,
+  RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote, swapFloor, bobaiBuyFloor, requoteOnce, POOL_SWAP_FLOOR_BPS,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
   planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition, mintedIn, heldIds, HELD_IDS_CAP, shareShortfallSale,
 } from '../shared/lp-agent.js';
@@ -586,6 +586,30 @@ if (SELF) {
   const note = swapNote('buy', 40000000000000000n, 500);
   check('a 0.04 WBNB buy through 0.05% notes a 0.00002 BNB fee', note.fee_bnb === 0.00002 && note.notional_bnb === 0.04 && note.fee_pct === 0.05, true);
   check('… a fifth of what the 0.25% pool took', swapNote('buy', 40000000000000000n, 2500).fee_bnb === 0.0001, true);
+  // The floor under a swap (2026-09-19): 0.3% under a pool quote, and the
+  // $BOBAI buy with the 3% the token keeps taken off first, then 5%.
+  check('a pool swap accepts 0.3% under its quote, not 1%', swapFloor(1000000n) === 997000n && POOL_SWAP_FLOOR_BPS === 30n, true);
+  check('the $BOBAI buy takes the 3% off the quote first, then 5% — as the tax bot does', bobaiBuyFloor(1000000n) === 921500n, true);
+  check('… which the eleven buys on chain (each exactly 97% of the quote) clear by 5%, where 15% flat left 12%', bobaiBuyFloor(1000000n) < 970000n && 970000n * 95n / 100n === bobaiBuyFloor(1000000n) && 850000n < bobaiBuyFloor(1000000n), true);
+  {
+    // A swap the node refuses before it is sent is asked once more at a fresh
+    // quote; one that was broadcast is never repeated; a second refusal stands.
+    const calls = [];
+    const refusedOnce = await requoteOnce(async (again) => { calls.push(again); if (!again) { const e = new Error('Too little received'); e.sent = false; throw e; } return 'second'; });
+    check('a swap refused before it was sent is asked again, once, at a fresh quote', refusedOnce === 'second' && calls.join() === 'false,true', true);
+    let broadcast = 0, twice = 0, plain = 0;
+    const b = await requoteOnce(async () => { broadcast++; const e = new Error('reverted'); e.sent = true; throw e; }).catch((e) => e.message);
+    check('one that was broadcast and reverted is not sent again', b === 'reverted' && broadcast === 1, true);
+    const t = await requoteOnce(async () => { twice++; const e = new Error('Too little received'); e.sent = false; throw e; }).catch((e) => e.message);
+    check('and a second refusal stands — no third try', t === 'Too little received' && twice === 2, true);
+    const p = await requoteOnce(async () => { plain++; throw new Error('a read failed'); }).catch((e) => e.message);
+    check('an error that does not say whether anything was sent is never retried', p === 'a read failed' && plain === 1, true);
+    // The sender marks the error: nothing sent when the wallet refuses, sent once a hash exists.
+    const refuse = sender({ waitForTransactionReceipt: async () => ({ status: 'reverted' }), getGasPrice: async () => 100000000n }, { account: { address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' }, writeContract: async () => { throw new Error('execution reverted: Too little received'); } }, []);
+    const went = sender({ waitForTransactionReceipt: async () => ({ status: 'reverted' }), getGasPrice: async () => 100000000n }, { account: { address: '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A' }, writeContract: async () => '0x' + 'ab'.repeat(32) }, []);
+    const e1 = await refuse('swap', { address: ADDR.V3_SWAP_ROUTER }).catch((e) => e), e2 = await went('swap', { address: ADDR.V3_SWAP_ROUTER }).catch((e) => e);
+    check('the sender says which it was: refused in the estimate = not sent, reverted in a block = sent', e1.sent === false && e2.sent === true, true);
+  }
   const calls = unwindCalls(7309536n, 72166992217730319120n, 1n, 2n, '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A', 1800000000n);
   check('three calls: decreaseLiquidity, collect, burn — in that order', calls.length === 3 && calls[0].startsWith('0x0c49ccbe') && calls[1].startsWith('0xfc6f7865') && calls[2].startsWith('0x42966c68') ? null : calls.map((c) => c.slice(0, 10)).join(','), false);
   check('the token id is in every call', calls.every((c) => c.includes(BigInt(7309536).toString(16).padStart(64, '0'))) ? null : 'a call lacks the token id', false);

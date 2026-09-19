@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 13546 lines.
+# one fetch. 41 files, 13587 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -628,6 +628,7 @@ export function sender(pub, wallet, txs, log = () => {}) {
     // Without it the two failed runs of 2026-09-05 (7 transactions) counted
     // as none, and the page said "8 transactions so far" against a wallet
     // nonce of 34.
+    let sent = false;
     try {
       if (price == null) price = await gasPriceNow(pub);
       const hash = req.to
@@ -636,6 +637,7 @@ export function sender(pub, wallet, txs, log = () => {}) {
       const entry = { label, hash };
       txs.push(entry);
       log(`  ${label}: ${hash}`);
+      sent = true;
       const r = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
       // What the transaction really cost, so the record can say what a re-set
       // costs in measured BNB rather than in the replay's assumption.
@@ -643,6 +645,10 @@ export function sender(pub, wallet, txs, log = () => {}) {
       if (r.status !== 'success') throw new Error(`${label} reverted — stopped before the next step`);
       return r;
     } catch (e) {
+      // `sent` tells a caller whether anything left the wallet: a swap refused
+      // in the node's estimate cost nothing and may be asked again at a fresh
+      // quote; one that was broadcast may not.
+      if (e && typeof e === 'object') e.sent = sent;
       if (e && typeof e === 'object' && !e.txs) e.txs = txs;
       throw e;
     }
@@ -1028,14 +1034,16 @@ export async function executeCollect(pub, wallet, account, plan, log = () => {},
     // The position's own pool, at its own fee, with the impact measured —
     // the same trade a re-set makes. The V3 router's allowance is set once.
     const q = await quoteV3(pub, plan.other, ADDR.WBNB, plan.fee, sell);
-    swap = await swapV3(pub, send, account.address, plan.other, ADDR.WBNB, plan.fee, sell, (q * 99n) / 100n, q, 'sell the other side in its own pool');
+    swap = await swapV3(pub, send, account.address, plan.other, ADDR.WBNB, plan.fee, sell, q, q, 'sell the other side in its own pool');
   } else if (sell > 0n) {
     await send('approve for sale', { address: plan.other, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, sell] });
-    // 15% floor, the same this project uses for fee-on-transfer tokens; the
-    // guard already refused anything that moved more than that.
+    // The other side of the home pool keeps nothing of a transfer, so the
+    // floor is the trade's alone: 1% under the quote for its exact size (it
+    // was 15% until 2026-09-19; this path has never run — the V3 quoter has
+    // answered at every collect).
     const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [sell, [plan.other, ADDR.WBNB]]);
     await send('sell the other side', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForETHSupportingFeeOnTransferTokens',
-      args: [sell, (q[1] * 8500n) / 10000n, [plan.other, ADDR.WBNB], account.address, deadline()] });
+      args: [sell, (q[1] * 99n) / 100n, [plan.other, ADDR.WBNB], account.address, deadline()] });
     const n = Number(formatEther(q[1]));
     swap = { side: 'sell', venue: `pancakeswap v2 ${V2_SWAP_FEE_PCT}%`, fee_pct: V2_SWAP_FEE_PCT, notional_bnb: Number(n.toFixed(6)), fee_bnb: Number((n * V2_SWAP_FEE_PCT / 100).toFixed(8)), why: 'the V3 quoter did not answer at plan time' };
   }
@@ -1310,7 +1318,34 @@ export async function quoteV3(pub, tokenIn, tokenOut, fee, amountIn) {
 // impact, in WBNB — the piece of a re-set's cost that neither gas nor the
 // fee rate names, and the piece that grows with the position. A wallet
 // that cannot be read for it records the trade without it, never a guess.
-async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, minOut, notionalWbnb, label) {
+//
+// THE FLOOR UNDER A SWAP (2026-09-19). The minimum out guards one thing: the
+// price moving between the quote and the block, by itself or pushed by someone
+// who saw the transaction. The quote is for the exact size, so the pool's fee
+// and the trade's own impact are already in it. Until today the floor was 1%
+// below the quote and the $BOBAI buy's 15%. Read off the chain for every swap
+// this code has sent: nine pool swaps, eight received the quote to the wei and
+// one 0.0057% less; eleven $BOBAI buys, each exactly the 3% the token keeps and
+// nothing else. A floor of 1% is room nobody but a sandwich uses. Now 0.3%
+// under a pool quote, and the $BOBAI buy as the tax bot sizes its own
+// (worker/index.js minOutFor): the 3% off first, then 5% — that pair is thin
+// and one other buyer in the block moves it. A floor that close can refuse a
+// swap the old one let through; a swap refused in the node's estimate has cost
+// nothing, so it is asked once more at a fresh quote (requoteOnce). One that
+// was broadcast and reverted is not repeated: the step stops, as before.
+export const POOL_SWAP_FLOOR_BPS = 30n;
+export const BOBAI_TRANSFER_TAX_BPS = 300n;
+export const BOBAI_BUY_ROOM_PCT = 5n;
+export function swapFloor(quoted) { return (quoted * (10000n - POOL_SWAP_FLOOR_BPS)) / 10000n; }
+export function bobaiBuyFloor(quoted) { return (((quoted * (10000n - BOBAI_TRANSFER_TAX_BPS)) / 10000n) * (100n - BOBAI_BUY_ROOM_PCT)) / 100n; }
+export async function requoteOnce(attempt) {
+  try { return await attempt(false); } catch (e) {
+    if (!e || e.sent !== false) throw e;
+    return attempt(true);
+  }
+}
+
+async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, quoted, notionalWbnb, label) {
   await ensureAllowance(pub, send, tokenIn, ADDR.V3_SWAP_ROUTER, amountIn, `allow the V3 router to spend ${tokenIn === ADDR.WBNB ? 'WBNB' : 'the other side'} (once)`);
   let sliver = null, before = null;
   try {
@@ -1318,7 +1353,10 @@ async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, minOut
     sliver = await quoteV3(pub, tokenIn, tokenOut, fee, tiny);
     before = await read(pub, tokenOut, ABI.ERC20, 'balanceOf', [owner]);
   } catch { sliver = null; }
-  await send(label, { address: ADDR.V3_SWAP_ROUTER, abi: ABI.V3_ROUTER, functionName: 'exactInputSingle', args: [v3SwapArgs(tokenIn, tokenOut, fee, owner, amountIn, minOut, deadline())] });
+  await requoteOnce(async (again) => {
+    const q = again ? await quoteV3(pub, tokenIn, tokenOut, fee, amountIn) : quoted;
+    return send(label, { address: ADDR.V3_SWAP_ROUTER, abi: ABI.V3_ROUTER, functionName: 'exactInputSingle', args: [v3SwapArgs(tokenIn, tokenOut, fee, owner, amountIn, swapFloor(q), deadline())] });
+  });
   const note = swapNote(tokenIn === ADDR.WBNB ? 'buy' : 'sell', notionalWbnb, fee);
   if (sliver != null && sliver > 0n && before != null) {
     try {
@@ -1341,11 +1379,14 @@ async function swapV3(pub, send, owner, tokenIn, tokenOut, fee, amountIn, minOut
 // earned (2026-09-09: "keep it as BOBAI in its own wallet, then I see what
 // really comes in"). It used to send that BNB to the buyback wallet. BOBAI
 // takes a 3% transfer tax, so the swap uses the fee-supporting router call and
-// a 15% floor covers the tax and the trade. Returns BNB spent and BOBAI held.
+// the floor takes the tax off the quote first, then 5% (bobaiBuyFloor; it was a
+// flat 15% until 2026-09-19). Returns BNB spent and BOBAI held.
 async function buyBobaiHold(pub, send, owner, bnbWei) {
-  const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [bnbWei, [ADDR.WBNB, ADDR.BOBAI]]);
   const before = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [owner]);
-  await send('buy BOBAI with the profit share and hold it', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens', args: [(q[1] * 8500n) / 10000n, [ADDR.WBNB, ADDR.BOBAI], owner, deadline()], value: bnbWei });
+  await requoteOnce(async () => {
+    const q = await read(pub, ADDR.V2_ROUTER, ABI.ROUTER, 'getAmountsOut', [bnbWei, [ADDR.WBNB, ADDR.BOBAI]]);
+    return send('buy BOBAI with the profit share and hold it', { address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens', args: [bobaiBuyFloor(q[1]), [ADDR.WBNB, ADDR.BOBAI], owner, deadline()], value: bnbWei });
+  });
   const after = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [owner]);
   return { spent: bnbWei, units: after > before ? after - before : 0n };
 }
@@ -1395,14 +1436,14 @@ async function tradeToRange(pub, send, owner, other, fee, perLWbnb, perLOther, {
     t = tradeToRatio({ ...args, otherPerWbnb: at.r });
     if (t.side !== 'buy' || t.amount < TRADE_DUST_WBNB) return null;
     const q = await quoteV3(pub, ADDR.WBNB, other, fee, t.amount);
-    return swapV3(pub, send, owner, ADDR.WBNB, other, fee, t.amount, (q * 99n) / 100n, t.amount, buyLabel);
+    return swapV3(pub, send, owner, ADDR.WBNB, other, fee, t.amount, q, t.amount, buyLabel);
   }
   const at = await rateSell(t.amount);
   t = tradeToRatio({ ...args, wbnbPerOther: at.r });
   if (t.side !== 'sell') return null;
   const q = await quoteV3(pub, other, ADDR.WBNB, fee, t.amount);
   if (q < TRADE_DUST_WBNB) return null;
-  return swapV3(pub, send, owner, other, ADDR.WBNB, fee, t.amount, (q * 99n) / 100n, q, sellLabel);
+  return swapV3(pub, send, owner, other, ADDR.WBNB, fee, t.amount, q, q, sellLabel);
 }
 
 async function ensureAllowance(pub, send, token, spender, amount, label) {
@@ -1506,7 +1547,7 @@ export async function executeRebalance(pub, wallet, account, plan, log = () => {
       const amountIn = shareShortfallSale({ short: reserved - wbnbNow, wbnbPerOtherX18: unit, haveOther });
       if (amountIn > 0n) {
         const q = await quoteV3(pub, plan.other, ADDR.WBNB, fee, amountIn);
-        shareSwap = await swapV3(pub, send, account.address, plan.other, ADDR.WBNB, fee, amountIn, (q * 99n) / 100n, q, "sell the profit share's part of the old range's fees (they came in the other side)");
+        shareSwap = await swapV3(pub, send, account.address, plan.other, ADDR.WBNB, fee, amountIn, q, q, "sell the profit share's part of the old range's fees (they came in the other side)");
         wbnbNow = await read(pub, ADDR.WBNB, ABI.ERC20, 'balanceOf', [account.address]);
       }
     }
@@ -1698,7 +1739,7 @@ export async function executeRelocate(pub, wallet, account, plan, log = () => {}
     const haveOld = await read(pub, plan.from.other, ABI.ERC20, 'balanceOf', [account.address]);
     if (haveOld > 0n) {
       const q = await quoteV3(pub, plan.from.other, ADDR.WBNB, plan.from.fee, haveOld);
-      swaps.push(await swapV3(pub, send, account.address, plan.from.other, ADDR.WBNB, plan.from.fee, haveOld, (q * 99n) / 100n, q, 'leave the old pair: sell its other side for WBNB'));
+      swaps.push(await swapV3(pub, send, account.address, plan.from.other, ADDR.WBNB, plan.from.fee, haveOld, q, q, 'leave the old pair: sell its other side for WBNB'));
     }
   }
   // 4. Size the new range from what the wallet really holds now; the

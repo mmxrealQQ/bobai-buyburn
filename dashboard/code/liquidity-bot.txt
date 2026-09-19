@@ -2,7 +2,7 @@
 # Adds liquidity, then burns the LP token it just received.
 #
 # This is the complete liquidity-bot bundle as a single file, so it can be read in
-# one fetch. 2 files, 422 lines.
+# one fetch. 2 files, 462 lines.
 # Download as a zip: https://brainonbnb.com/code/liquidity-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -53,6 +53,8 @@ const ROUTER_ABI = parseAbi([
 const PAIR_ABI = parseAbi([
   'function balanceOf(address) view returns (uint256)',
   'function transfer(address to, uint256 amount) returns (bool)',
+  'function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
+  'function token0() view returns (address)',
 ]);
 
 // THREE THINGS THIS SCRIPT TOOK ON TRUST (2026-09-18).
@@ -76,6 +78,18 @@ function mustSucceed(receipt, what) {
 function inSweepWindow(now = new Date()) {
   const m = now.getUTCMinutes();
   return m >= 55 || m < 3;
+}
+
+// What the router will take of the two amounts, from the pair's reserves, and
+// 5% below it — to the letter the function the tax bot's own add uses
+// (worker/index.js, pinned by scripts/buyback-fork-test.mjs).
+function liqMins(tokenAmount, bnbAmount, reserveToken, reserveBnb) {
+  if (reserveToken <= 0n || reserveBnb <= 0n) return null;
+  const bnbOptimal = (tokenAmount * reserveBnb) / reserveToken;
+  const used = bnbOptimal <= bnbAmount
+    ? { token: tokenAmount, bnb: bnbOptimal }
+    : { token: (bnbAmount * reserveToken) / reserveBnb, bnb: bnbAmount };
+  return { tokenUsed: used.token, bnbUsed: used.bnb, tokenMin: (used.token * 95n) / 100n, bnbMin: (used.bnb * 95n) / 100n };
 }
 
 function sleep(ms) {
@@ -241,15 +255,41 @@ async function main() {
   console.log(`BOBAI for liquidity: ${formatEther(LIQUIDITY_BOBAI)}`);
   console.log(`BNB for liquidity:   ${formatEther(bnbForLiquidity)}`);
 
-  // Slippage tolerance on liquidity add
-  // Router adjusts amounts to match pool ratio and refunds excess BNB
-  // Set minimums low — the tight slippage on the swap already protects us
-  const minToken = 0n; // Router determines actual amount after tax
-  const minBnb = 0n; // Router refunds unused BNB
+  // THE MINIMUMS OF THE ADD (2026-09-19). Both were 0 — "the tight slippage on
+  // the swap already protects us". It protects the swap. Between the last chunk
+  // and this transaction the price can still be moved, and an add with no
+  // minimum mints its LP at whatever ratio it finds. liqMins (the same text as
+  // in worker/index.js, where the tax bot's own add uses it) works out from the
+  // reserves as they stand what the router will take — all the BNB when that is
+  // the short side, which it usually is here, the sale having paid tax and fee —
+  // and allows 5% below it. A price moved further than that stops the add: it
+  // costs the gas of one reverted transaction, the BOBAI and the BNB stay on
+  // the wallet, and the script is simply started again. The router checks these
+  // minimums BEFORE the token's transfer tax, so the 3% is not in them.
+  // Amounts, chunks, the swap's slippage and the record are unchanged.
+  let mins;
+  try {
+    const [reserves, token0] = await Promise.all([
+      publicClient.readContract({ address: PANCAKE_PAIR, abi: PAIR_ABI, functionName: 'getReserves' }),
+      publicClient.readContract({ address: PANCAKE_PAIR, abi: PAIR_ABI, functionName: 'token0' }),
+    ]);
+    const tokenIs0 = token0.toLowerCase() === BOBAI_TOKEN.toLowerCase();
+    mins = liqMins(LIQUIDITY_BOBAI, bnbForLiquidity, tokenIs0 ? reserves[0] : reserves[1], tokenIs0 ? reserves[1] : reserves[0]);
+  } catch (e) {
+    console.log(`[ERROR] The pair's reserves could not be read: ${e.message} — nothing was added, start again.`);
+    process.exit(1);
+  }
+  if (!mins) {
+    console.log('[ERROR] The pair reports no reserves — nothing was added.');
+    process.exit(1);
+  }
+  const minToken = mins.tokenMin;
+  const minBnb = mins.bnbMin;
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
 
-  console.log(`Min BOBAI accepted: 0 (router adjusts for tax + ratio)`);
-  console.log(`Min BNB accepted:   0 (excess BNB refunded)`);
+  console.log(`Router will use:    ${formatEther(mins.tokenUsed)} BOBAI + ${formatEther(mins.bnbUsed)} BNB (the rest stays on the wallet)`);
+  console.log(`Min BOBAI accepted: ${formatEther(minToken)} (95%)`);
+  console.log(`Min BNB accepted:   ${formatEther(minBnb)} (95%)`);
 
   let addLiqTx;
   try {

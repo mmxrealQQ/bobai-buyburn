@@ -152,10 +152,10 @@
    "title": "Liquidity Add & LP Burn",
    "tagline": "Adds liquidity, then burns the LP token it just received.",
    "files": 2,
-   "lines": 422,
-   "zipBytes": 8031,
-   "txtBytes": 17455,
-   "sha256": "1a273fc1de1f0761",
+   "lines": 462,
+   "zipBytes": 8864,
+   "txtBytes": 19910,
+   "sha256": "102da808a20f5d74",
    "reqs": [
     {
      "what": "A wallet holding both sides of the pair",

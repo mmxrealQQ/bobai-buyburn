@@ -90,7 +90,7 @@ txt: https://brainonbnb.com/code/dev-sweep-bot.txt
 Liquidity Add & LP Burn
 -----------------------
 Adds liquidity, then burns the LP token it just received.
-2 files, 422 lines
+2 files, 462 lines
 needs:
   - A wallet holding both sides of the pair
       ours: BNB and the token, in one wallet

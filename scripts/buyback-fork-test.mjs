@@ -132,6 +132,13 @@ console.log('the helpers (offline)');
   const few = liqMins(1000n * E, 2n * E, 1000000n * E, 1000n * E), many = liqMins(1000n * E, E / 2n, 1000000n * E, 1000n * E);
   ok('its minimums are 95% of what the router will use: all the tokens when they are the short side', few.tokenUsed === 1000n * E && few.bnbUsed === E && few.tokenMin === 950n * E && few.bnbMin === (E * 95n) / 100n);
   ok('and all the BNB when that is the short side; a pair without reserves gets no add', many.bnbUsed === E / 2n && many.tokenUsed === 500n * E && many.tokenMin === 475n * E && many.bnbMin === (E / 2n * 95n) / 100n && liqMins(E, E, 0n, E) === null);
+  {
+    // The hand script's add carries the same function, to the letter, and no zero minimum (2026-09-19).
+    const handSrc = fs.readFileSync(path.join(ROOT, 'add-liquidity-safe.js'), 'utf8');
+    const fnOf = (text) => text.slice(text.indexOf('function liqMins('), text.indexOf('\n}\n', text.indexOf('function liqMins(')) + 3);
+    ok('the liquidity hand script sizes its minimums with the bot\'s own liqMins, to the letter, and sends no 0', fnOf(handSrc).length > 300 && fnOf(handSrc) === fnOf(workerSrc) && !/const minToken = 0n|const minBnb = 0n/.test(handSrc) && /args: \[BOBAI_TOKEN, LIQUIDITY_BOBAI, minToken, minBnb, account\.address, deadline\]/.test(handSrc) && /const minToken = mins\.tokenMin;/.test(handSrc) && /const minBnb = mins\.bnbMin;/.test(handSrc));
+    ok('… and nothing else of it moved: keep 808.41, three chunks, 2% on the swap, the creator wallet, the sweep window', /KEEP_BOBAI = parseEther\('808\.41'\)/.test(handSrc) && /SLIPPAGE_PERCENT = 2;/.test(handSrc) && /SWAP_CHUNKS = 3;/.test(handSrc) && /return m >= 55 \|\| m < 3;/.test(handSrc) && /0x15Ba17075ef5E0736292b030e3715d9100fe3d38/.test(handSrc));
+  }
   ok('no minimum of 0, no approval beyond the balance, the chunk minimum knows the transfer tax, every receipt is looked at', !/tokenBalance, 0n, 0n/.test(lb) && /args: \[PANCAKE_ROUTER_V2, tokenBalance\],/.test(lb) && !/tokenBalance \* 2n/.test(lb) && /minOutFor\(amountsOut\[1\], tokenAddress\)/.test(lb) && !/waitForTransactionReceipt/.test(lb) && (lb.match(/await mined\(/g) || []).length === 4 && !/e\.message/.test(lb));
 }
 
@@ -236,6 +243,60 @@ console.log('\nthe liquidity add (dormant path, called by name)');
     ok(`${name}: the add went out with minimums — 95% of the tokens and 95% of the BNB the router then used`, a[2] === (a[1] * 95n) / 100n && a[2] > 0n && a[3] === (usedBnb * 95n) / 100n && a[3] > 0n && usedBnb <= addTx.value, `${formatEther(a[3])} of ${formatEther(usedBnb)} BNB used, ${formatEther(addTx.value - usedBnb)} came back`);
     const allowance = await pub.readContract({ address: token, abi: ALLOW, functionName: 'allowance', args: [acct.address, ROUTER_ADDR] });
     ok(`${name}: nothing stays approved and no token stays on the wallet`, allowance === 0n && (await tok(token, acct.address)) === 0n, `allowance ${allowance}`);
+  }
+}
+
+// ── the liquidity hand script, same fork ────────────────────────────────────
+console.log('\nthe liquidity hand script (add-liquidity-safe.js: a copy, on a throwaway wallet)');
+{
+  const liqSrc = fs.readFileSync(path.join(ROOT, 'add-liquidity-safe.js'), 'utf8');
+  const k = generatePrivateKey(), acct = privateKeyToAccount(k);
+  // The copy differs from the script in four places and no other: it reads no
+  // .env (this test has the real keys in its own environment — the child gets
+  // an environment of its own, written out below, with the throwaway key and
+  // the fork's URL and nothing else), the creator wallet's place is taken by
+  // the throwaway one, the hour is never the sweep's, the record goes to temp/.
+  const runsCopy = path.join(ROOT, 'temp', 'liq-runs-fork.json'), scriptCopy = path.join(ROOT, 'temp', 'add-liquidity-fork.js');
+  const realRuns = fs.readFileSync(path.join(ROOT, 'dashboard', 'liq-runs.json'), 'utf8');
+  fs.writeFileSync(runsCopy, JSON.stringify({ dev: { burns: 0 }, runs: [] }));
+  const copySrc = liqSrc
+    .replace("require('dotenv').config();", '')
+    .replace(/const CREATOR_WALLET = '0x[0-9a-fA-F]{40}';/, `const CREATOR_WALLET = '${acct.address}';`)
+    .replace('return m >= 55 || m < 3;', 'return false;')
+    .replace("require('path').join(__dirname, 'dashboard', 'liq-runs.json')", JSON.stringify(runsCopy));
+  const safeCopy = !/dotenv/.test(copySrc) && copySrc.includes(acct.address) && !/0x15Ba17075ef5E0736292b030e3715d9100fe3d38/i.test(copySrc) && copySrc.includes('liq-runs-fork.json') && !copySrc.includes("'dashboard', 'liq-runs.json'");
+  ok('the copy reads no .env, knows only the throwaway wallet and writes its record to temp/', safeCopy);
+  if (safeCopy) {
+    fs.writeFileSync(scriptCopy, copySrc);
+    // BOBAI for the wallet the way anyone gets it: bought through the router, on the fork.
+    await test.setBalance({ address: acct.address, value: parseEther('0.06') });
+    const wallet = createWalletClient({ account: acct, chain, transport: http(LOCAL, { timeout: 120000 }) });
+    const BUY = parseAbi(['function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable']);
+    const ROUTER_ADDR = (workerSrc.match(/const PANCAKE_ROUTER_V2 = '(0x[0-9a-fA-F]{40})'/) || [])[1], WBNB_ADDR = addr('WBNB'), PAIR_ADDR = addr('BOBAI_WBNB_PAIR');
+    const buy = await wallet.writeContract({ address: ROUTER_ADDR, abi: BUY, functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens', args: [0n, [WBNB_ADDR, BOBAI], acct.address, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.05'), gas: 400000n });
+    await pub.waitForTransactionReceipt({ hash: buy });
+    const had = await tok(BOBAI, acct.address);
+    const LP = parseAbi(['function balanceOf(address) view returns (uint256)']);
+    const deadLp0 = await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [DEAD] });
+    const { spawnSync } = await import('node:child_process');
+    const run = spawnSync(process.execPath, [scriptCopy], { cwd: path.join(ROOT, 'temp'), encoding: 'utf8', timeout: 300000,
+      env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '', PRIVATE_KEY: k, BSC_RPC_URL: LOCAL } });
+    const said = `${run.stdout || ''}${run.stderr || ''}`;
+    ok('the script runs to its end: three chunks sold, liquidity added, LP burned', run.status === 0 && /Liquidity added in block/.test(said) && /BURNED [0-9.]+ LP tokens/.test(said), run.status === 0 ? `${Number(formatEther(had)).toFixed(0)} BOBAI in hand` : said.split('\n').filter(Boolean).slice(-3).join(' / '));
+    const rec = JSON.parse(fs.readFileSync(runsCopy, 'utf8')).runs[0];
+    if (run.status === 0 && rec) {
+      const ADD = parseAbi(['function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) payable']);
+      const [tx, rc, burnRc] = await Promise.all([pub.getTransaction({ hash: rec.addLiqTx }), pub.getTransactionReceipt({ hash: rec.addLiqTx }), pub.getTransactionReceipt({ hash: rec.lpBurnTx })]);
+      const a = decodeFunctionData({ abi: ADD, data: tx.input }).args;
+      const dep = rc.logs.find((l) => l.topics[0] === '0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c');   // WBNB Deposit: the BNB the router really used
+      const usedBnb = dep ? BigInt(dep.data) : 0n;
+      ok('the add went out with minimums, not with 0 and 0: the BNB minimum is to the wei 95% of what the router then used', a[2] > 0n && a[3] > 0n && a[3] === (usedBnb * 95n) / 100n && usedBnb <= tx.value, `min ${formatEther(a[3])} of ${formatEther(usedBnb)} BNB used; ${formatEther(tx.value - usedBnb)} BNB came back`);
+      ok('… and the BOBAI minimum is 95% of what the router takes of the amount offered — never more than was offered', a[2] <= (a[1] * 95n) / 100n && a[2] >= (a[1] * 80n) / 100n, `min ${Number(formatEther(a[2])).toFixed(0)} of ${Number(formatEther(a[1])).toFixed(0)} BOBAI offered`);
+      ok('it says so before it sends', /Min BOBAI accepted: [0-9.]+ \(95%\)/.test(said) && /Min BNB accepted:   [0-9.]+ \(95%\)/.test(said) && !/accepted: 0 /.test(said));
+      const deadLp1 = await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [DEAD] });
+      ok('both receipts are success, the dead address holds the LP the record names, the wallet none — and the 808.41 BOBAI it keeps', rc.status === 'success' && burnRc.status === 'success' && deadLp1 - deadLp0 === parseEther(rec.lp) && (await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [acct.address] })) === 0n && (await tok(BOBAI, acct.address)) >= parseEther('808.41'));
+    }
+    ok('the real dashboard/liq-runs.json was not touched by any of it', fs.readFileSync(path.join(ROOT, 'dashboard', 'liq-runs.json'), 'utf8') === realRuns);
   }
 }
 

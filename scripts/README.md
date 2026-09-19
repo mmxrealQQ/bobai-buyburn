@@ -84,6 +84,7 @@ Run in the order the header of `erc8004-publish.mjs` gives.
 | `build-library.mjs` | the code bundles on the homepage — after every change to a bundled file |
 | `build-services.mjs` | `/services` from the catalogue |
 | `build-skill.mjs` | the installable agent skill |
+| `deploy-dashboard.mjs` | THE way the site is deployed since 2026-09-19: builds `.dashboard-build/` beside `dashboard/` (every page without its HTML comments — 11.5% of a homepage delivery — every other file as it is), checks every page a second way (same tags, same script/style bytes, same text, nothing shrunk by a fifth, no comment left) and only then runs `wrangler pages deploy`; `--dry` builds and checks, `--self-test` pins the stripping both ways; importing it does nothing |
 | `build-mirror.mjs` · `publish-source.mjs` | the public source mirror; then `--verify` |
 | `advantage-report.mjs` · `advantage-publish.mjs` | the Agent Advantage Report, measured then rendered |
 | `altana-session.mjs` | the agent's spending session in the Altana KeyStore |

@@ -15,14 +15,14 @@
 //   node scripts/erc8004-probe.mjs         --dir erc8004-v2
 //   node scripts/erc8004-a2a-confirm.mjs   --dir erc8004-v2
 //   node scripts/erc8004-publish.mjs       --dir erc8004-v2   # also writes hireable.json
-//   npx wrangler pages deploy dashboard …                     # BEFORE hire-confirm, see below
+//   node scripts/deploy-dashboard.mjs                         # BEFORE hire-confirm, see below (the site goes out without its HTML comments since 2026-09-19)
 //   cd worker-agent && npx wrangler deploy                    # BEFORE hire-confirm, see below
 //   node scripts/erc8004-hire-confirm.mjs  --dir erc8004-v2   # asks each one for a price
 //   node scripts/erc8004-publish.mjs       --dir erc8004-v2   # again, to render the answers
 //   node scripts/census-sync.mjs           --dir erc8004-v2   # hands the scan to the worker
 //   # pull the census line in dashboard/llms.txt from api-registry.json
 //   node scripts/build-library.mjs
-//   npx wrangler pages deploy dashboard --project-name=bobai-dashboard --branch=main --commit-dirty=true
+//   node scripts/deploy-dashboard.mjs
 //   node scripts/smoke-agent-surface.mjs   # checks every one of the above landed
 //
 // WHY TWO DEPLOYS SIT IN THE MIDDLE OF THAT LIST

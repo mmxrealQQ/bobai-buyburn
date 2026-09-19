@@ -66,3 +66,5 @@ lpscan-tmp.js
 
 # Local archive of loose drafts, logs and old helpers moved out of the root on 2026-09-08. Never published.
 archive/
+# the dashboard as it is deployed: a copy without HTML comments (scripts/deploy-dashboard.mjs)
+.dashboard-build/

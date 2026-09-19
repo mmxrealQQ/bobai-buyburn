@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 4 files, 1923 lines.
+# one fetch. 4 files, 1940 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -23,7 +23,7 @@ import { useKeyedRpcs } from './scanner-chain.js';
 import { feeTiers } from './tier-scan.js';
 import { rangePlan } from './range-scan.js';
 import { swapRoute } from './swap-route.js';
-import { registrations } from '../shared/agent-registrations.js';
+import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -1055,7 +1055,7 @@ async function handleMcp(request) {
 
 const A2A_CARD = {
   name: 'Brain On BNB AI ($BOBAI)',
-  description: 'Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.',
+  description: 'Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. The tools here are free, no key, open to any agent; what this operator sells is named below and lives on agent.brainonbnb.com.',
   url: 'https://brainonbnb.com/',
   version: '1.0.0',
   protocolVersion: '0.3.0',
@@ -1064,6 +1064,17 @@ const A2A_CARD = {
   capabilities: { streaming: false },
   defaultInputModes: ['text'],
   defaultOutputModes: ['text'],
+  // WHO THIS IS, ON CHAIN (2026-09-19). Agent #49467 names THIS card as its
+  // document, and the card said nothing of it: no registrations, no trust model,
+  // no registry to check either against — the gap Brain Plaza marks in other
+  // operators' cards, in our own front door. The proof document
+  // (/.well-known/agent-registration.json) is what a verifier fetches AFTER it
+  // knows which ids to check; a card is what a client reads FIRST. Same list,
+  // same registries as the agent origin's card, from one file
+  // (shared/agent-registrations.js).
+  registrations: registrations(),
+  supportedTrust: ['reputation'],
+  trustRegistries: TRUST_REGISTRIES,
   skills: [
     // Brain Plaza first: it is the skill another agent is most likely to want
     // from us, and the one nothing else on this chain offers. An agent reading
@@ -1090,13 +1101,19 @@ const A2A_CARD = {
     { id: 'pool_depth', name: 'Measure any BSC pool',
       description: 'What a trade actually costs on any BNB Chain pool: price impact per size, swap fee, and the transfer tax measured from executed trades rather than read off a label. Installable as a skill: npx skills add https://brainonbnb.com',
       tags: ['defi', 'bsc', 'liquidity', 'trading'] },
-    // The one paid skill. Listed among the free ones on purpose: a card that
+    // What is sold, listed among the free tools on purpose: a card that
     // advertises only what costs nothing leaves an agent to discover the paid
-    // service by accident, and the price belongs in the first sentence so that
-    // deciding whether to call it never requires calling it.
+    // services by accident, and a price belongs in the first sentence so that
+    // deciding whether to call never requires calling. This comment said 'the
+    // one paid skill' until 2026-09-19, months after the answers sold per call
+    // had joined the pool watch; they get one entry that points at where they
+    // are priced and negotiated, not a copy of a catalogue that changes.
     { id: 'pool_watch', name: 'Watch a pool (paid)',
       description: 'PAID, 0.50 USD1 for 30 days. Continuous monitoring of one PancakeSwap pool: depth recorded every 15 minutes, callback fired when the pool can no longer absorb a trade of your size. Paid over x402 on BNB Chain — standard scheme via a public facilitator, or a direct USD1 transfer. POST https://agent.brainonbnb.com/watch once without payment to be quoted the terms; full catalogue at https://brainonbnb.com/.well-known/x402',
       tags: ['defi', 'bsc', 'liquidity', 'monitoring', 'x402', 'paid'] },
+    { id: 'paid_answers', name: 'Answers sold per call (paid)',
+      description: 'PAID, per answer. This operator also sells single answers on BNB Chain DeFi — lending health, yield ranking, fee-tier placement, a plan for your own PancakeSwap V3 position and others — each priced in its own first sentence. Two ways to buy: over x402 (catalogue with every price at https://brainonbnb.com/.well-known/x402, an example of each answer before paying at https://agent.brainonbnb.com/example), or as an ERC-8183 job negotiated over A2A — the seller\'s own card, with the negotiate skill, is https://agent.brainonbnb.com/.well-known/agent-card.json. Human-readable: https://brainonbnb.com/services',
+      tags: ['defi', 'bsc', 'x402', 'erc-8183', 'a2a', 'negotiate', 'paid'] },
     { id: 'token_info', name: 'Token info', description: '$BOBAI contract, supply, decimals, amount burned', tags: ['crypto', 'bsc', 'token'] },
     { id: 'burns', name: 'Burn stats', description: 'Total $BOBAI permanently burned', tags: ['crypto', 'deflationary'] },
     { id: 'wallet_balance', name: 'Wallet balance', description: 'BNB + $BOBAI balance of any BSC wallet', tags: ['crypto', 'bsc'] },

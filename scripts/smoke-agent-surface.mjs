@@ -205,6 +205,21 @@ for (const p of ['/.well-known/agent-skills/index.json', '/.well-known/skills/in
   ok(`${p} serves JSON`, r.ok && !isHtml && !!j);
 }
 {
+  // The apex card is the document agent #49467 names on chain (2026-09-19): it
+  // says who it is there, by the same list and the same registries as the proof
+  // document and the agent origin's card, and it names what is sold by pointing
+  // at the seller's own card — which has to answer, with a negotiate skill.
+  const get = (u) => fetch(u).then((r) => r.json()).catch(() => null);
+  const [apex, proof, seller] = await Promise.all([get(`${SITE}/.well-known/agent-card.json`), get(`${SITE}/.well-known/agent-registration.json`), get('https://agent.brainonbnb.com/.well-known/agent-card.json')]);
+  const ids = (d) => (d?.registrations || []).map((x) => `${x.agentRegistry}#${x.agentId}`).sort().join(',');
+  ok('the apex card names its on-chain identities — the list the proof document serves, the parent #49467 in it', ids(apex).length > 0 && ids(apex) === ids(proof) && /#49467(,|$)/.test(ids(apex)));
+  ok('… and the agent origin\'s card names the same ones, against the same registries', ids(seller) === ids(apex) && JSON.stringify(apex?.trustRegistries) === JSON.stringify(seller?.trustRegistries) && /^eip155:56:0x8004/.test(apex?.trustRegistries?.identity || '') && (apex?.supportedTrust || []).includes('reputation'));
+  const paid = (apex?.skills || []).find((s) => s.id === 'paid_answers');
+  const sellerUrl = (paid?.description.match(/https:\/\/agent\.brainonbnb\.com\/\.well-known\/agent-card\.json/) || [])[0];
+  ok('the apex card says what is sold and where it is negotiated, and that card answers with a negotiate skill', !!paid && /^PAID/.test(paid.description) && !!sellerUrl && (seller?.skills || []).some((s) => s.id === 'negotiate'));
+  ok('… beside the free tools, which are still all there', (apex?.skills || []).some((s) => s.id === 'find_agents') && (apex?.skills || []).some((s) => s.id === 'pool_watch') && (apex?.skills || []).length >= 22);
+}
+{
   const j = await fetch(`${SITE}/.well-known/skills/index.json`).then((r) => r.json()).catch(() => null);
   const entry = j?.skills?.[0];
   ok('manifest carries the discovery $schema', j?.$schema === 'https://schemas.agentskills.io/discovery/0.2.0/schema.json');

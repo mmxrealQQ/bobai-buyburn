@@ -53,7 +53,7 @@ import { encodeFunctionData, keccak256, toBytes } from 'viem';
 import { REPUTATION, REPUTATION_ABI } from '../scripts/lib/erc8004-reputation.mjs';
 import { SOLD_BY } from './catalog.js';
 import { refreshTelemetry, readTelemetry } from './telemetry.js';
-import { registrations, OWN_AGENT_IDS } from '../shared/agent-registrations.js';
+import { registrations, OWN_AGENT_IDS, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
 import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict } from './lp-windows.js';
@@ -1287,10 +1287,7 @@ export default {
         // backed: the ratings are readable at the ReputationRegistry below,
         // and the marketplace prints them per agent.
         supportedTrust: ['reputation'],
-        trustRegistries: {
-          identity: 'eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
-          reputation: 'eip155:56:0x8004BAa17C55a88189AE136b182e5fdA19dE9b63',
-        },
+        trustRegistries: TRUST_REGISTRIES,
         defaultInputModes: ['application/json', 'text/plain'],
         defaultOutputModes: ['application/json'],
         skills: [

@@ -32,5 +32,13 @@ export const PARENT_AGENT_ID = 49467;
 // wants. Parent first: it is the id a reader recognises.
 export const PROOF_IDS = [PARENT_AGENT_ID, ...OWN_AGENT_IDS];
 
+// The registries a reader can check us against, one copy for every card that
+// declares them (2026-09-19: the agent origin's card carried them as literals,
+// the apex card — the one #49467 names on chain — carried none).
+export const TRUST_REGISTRIES = {
+  identity: AGENT_REGISTRY,
+  reputation: 'eip155:56:0x8004BAa17C55a88189AE136b182e5fdA19dE9b63',
+};
+
 export const registrations = () =>
   PROOF_IDS.map((agentId) => ({ agentId, agentRegistry: AGENT_REGISTRY }));

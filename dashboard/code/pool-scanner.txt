@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 5944 lines.
+# one fetch. 6 files, 5943 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2114,8 +2114,8 @@ export async function scan(input, env) {
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=51" as="style">
-  <link rel="stylesheet" href="styles.css?v=51">
+  <link rel="preload" href="styles.css?v=52" as="style">
+  <link rel="stylesheet" href="styles.css?v=52">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -4615,8 +4615,7 @@ export { flagsCard };
     @keyframes tspulse{0%,100%{opacity:.4}50%{opacity:1}}
     .ts-split{font-size:.72rem;color:var(--muted);line-height:1.5}
     .ts-split b{color:var(--text);font-weight:600}
-    .ts-row.active .ts-split b{color:var(--gold)}
-    .ts-split a{color:inherit;text-decoration:underline;text-decoration-color:rgba(240,185,11,.3)}
+    .ts-split a{color:var(--gold);text-decoration:underline;text-decoration-color:rgba(240,185,11,.3)}
     .ts-split a:hover{text-decoration-color:var(--gold)}
     @media(max-width:760px){
       .ts-row{grid-template-columns:1fr;gap:4px;padding:12px}

@@ -391,8 +391,7 @@
     @keyframes tspulse{0%,100%{opacity:.4}50%{opacity:1}}
     .ts-split{font-size:.72rem;color:var(--muted);line-height:1.5}
     .ts-split b{color:var(--text);font-weight:600}
-    .ts-row.active .ts-split b{color:var(--gold)}
-    .ts-split a{color:inherit;text-decoration:underline;text-decoration-color:rgba(240,185,11,.3)}
+    .ts-split a{color:var(--gold);text-decoration:underline;text-decoration-color:rgba(240,185,11,.3)}
     .ts-split a:hover{text-decoration-color:var(--gold)}
     @media(max-width:760px){
       .ts-row{grid-template-columns:1fr;gap:4px;padding:12px}

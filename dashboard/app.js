@@ -206,8 +206,11 @@ function pcEdge(v){return v==null?'—':v>0&&v<0.001?'<0.001%':(v>=99.9995&&v<10
 // BNB in USD as chain() last read it, and the Giggle pot in BNB as ggdata() last summed it: the
 // pot's dollar tile needs both, and the two arrive from different fetches in either order.
 let BNBP=0,GG_BNB=0;
+// The BOB tile's second line: dollars from chain(), the bot's own share from the burn log (bdata) — either may land first.
+let BOB_USD=0,BOB_DEAD=0,BOB_OURS=0;
+function bobSub(){const e=document.getElementById('bob-burned-usd');if(!e)return;const p=[];if(BOB_USD>0)p.push('≈$'+nf(BOB_USD,BOB_USD>=1000?0:2));if(BOB_OURS>0){const ou=BOB_DEAD>0&&BOB_USD>0?BOB_USD*BOB_OURS/BOB_DEAD:0;p.push(nf(BOB_OURS)+' by the bot'+(BOB_DEAD>0?' ('+(BOB_OURS/BOB_DEAD*100).toFixed(1)+'%'+(ou>0?', ≈$'+nf(ou,ou>=1000?0:2):'')+')':''))}e.textContent=p.join(' · ')}
 function ggUsd(){const e=document.getElementById("gg-usd");if(!e||!(BNBP>0))return;e.textContent="$"+(GG_BNB*BNBP).toFixed(2)}
-const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',
+const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',BOBP='0x3c79593e01A7f7FeD5d0735B16621e2D52A6bC58',
       DEVW='0x15Ba17075ef5E0736292b030e3715d9100fe3d38',RPC='https://bsc-dataseed.binance.org/';
 // Log fetch: same-origin proxy first, then the bot's own log domain, then the bundled copy
 // Kein '?t='+Date.now() mehr. Der Zusatz machte jede URL einmalig und damit
@@ -297,12 +300,14 @@ async function chain(){
       call(P,balOf(DEVW)),                // 12 LP still held by the dev wallet
       call(P,balOf(FEETO)),               // 13 LP minted to PancakeSwap as protocol fee
       call(BNBFEED,'0x50d25bcd'),         // 14 Chainlink BNB/USD, latestAnswer()
+      call(BOBP,'0x0902f1ac'),            // 15 BOB/WBNB reserves, to price the BOB burned
     ]);
   }catch(e){return}
   // Each tile decodes in its own try/catch so one bad word of calldata can't
   // blank the rest of the bar.
   try{put('wallet-bnb',(u18(q[0])+u18(q[1])).toFixed(4)+' BNB')}catch(e){}
-  try{const v=u18(q[2]);if(v>0)setBig('total-burned',v,'BOB')}catch(e){}
+  let bobAmt=0;
+  try{const v=u18(q[2]);if(v>0){bobAmt=v;setBig('total-burned',v,'BOB')}}catch(e){}
   let bAmt=0;
   try{const v=u18(q[3]);if(v>0){bAmt=v;setBig('total-bobai-burned',v,'BOBAI');
     const pct=document.getElementById('supply-burned-pct');if(pct)pct.textContent=(v/1e9*100).toFixed(1)+'%'}}catch(e){}
@@ -326,6 +331,11 @@ async function chain(){
     const pendUsd=pend*pU;
     if(tp)tp.textContent=pend>=1
       ?'+ '+nf(pend)+' $BOBAI tax queued (≈$'+nf(pendUsd,pendUsd>=1000?0:2)+')':'';
+    // What the burned supply is worth today, under each tile in the small white of the queued tax
+    // (2026-09-19). BOB is token0 in its pair, verified on-chain; the same BNB price as everything else here.
+    try{const bobUsd=bAmt>0?bAmt*pU:0;put('bobai-burned-usd',bobUsd>0?'≈$'+nf(bobUsd,bobUsd>=1000?0:2):'');
+      const hH=q[15],h0=BigInt('0x'+hH.slice(2,66)),h1=BigInt('0x'+hH.slice(66,130)),bobP=(Number(h1)/Number(h0))*bnbP;
+      BOB_USD=bobAmt>0&&bobP>0?bobAmt*bobP:0;BOB_DEAD=bobAmt;bobSub()}catch(e){}
     window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender();
     depth(bR,wR,bnbP,pU*circ);
   }catch(e){}
@@ -569,7 +579,7 @@ function paintRows(id,rows){
   body.__more=more;
   wrap.addEventListener('scroll',more,{passive:true});
 }
-function bdata(b){try{if(b&&b.length>0){const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${nf(ba)} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank" rel="noopener">${bt2.slice(0,6)}…${bt2.slice(-4)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${nf(aa)} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank" rel="noopener">${at.slice(0,6)}…${at.slice(-4)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank" rel="noopener">${x.bobaiCreatorTx.slice(0,6)}…${x.bobaiCreatorTx.slice(-4)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank" rel="noopener">${x.creatorTx.slice(0,6)}…${x.creatorTx.slice(-4)}</a></td></tr>`);if(x.lpAgentTx)rows.push(`<tr><td>${t}</td><td><span class="tlp">DEFI AGENT</span></td><td>${parseFloat(x.lpAgentBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.lpAgentTx}" target="_blank" rel="noopener">${x.lpAgentTx.slice(0,6)}…${x.lpAgentTx.slice(-4)}</a></td></tr>`);if(x.giggleTx)rows.push(`<tr><td>${t}</td><td><span class="tgg">GIGGLE POT</span></td><td>${parseFloat(x.giggleBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.giggleTx}" target="_blank" rel="noopener">${x.giggleTx.slice(0,6)}…${x.giggleTx.slice(-4)}</a></td></tr>`)}put('burn-count',b.length.toString());paintRows('tx-body',rows)}}catch(e){}}
+function bdata(b){try{if(b&&b.length>0){BOB_OURS=b.reduce((s,x)=>s+(parseFloat(x.bob||x.bobBurned)||0),0);bobSub();const rows=[];for(const x of[...b].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC',ba=parseFloat(x.bob||x.bobBurned||0),bt2=x.burnTx||x.bobBurnTx;if(ba>0&&bt2)rows.push(`<tr><td>${t}</td><td><span class="tb">BURN BOB</span></td><td>${nf(ba)} BOB</td><td><a class="txl" href="https://bscscan.com/tx/${bt2}" target="_blank" rel="noopener">${bt2.slice(0,6)}…${bt2.slice(-4)}</a></td></tr>`);const aa=parseFloat(x.bobaiBurned||0),at=x.bobaiBurnTx;if(aa>0&&at)rows.push(`<tr><td>${t}</td><td><span class="tba">BURN BOBAI</span></td><td>${nf(aa)} BOBAI</td><td><a class="txl" href="https://bscscan.com/tx/${at}" target="_blank" rel="noopener">${at.slice(0,6)}…${at.slice(-4)}</a></td></tr>`);if(x.bobaiNote)rows.push(`<tr><td>${t}</td><td><span class="tba" style="opacity:.5">BURN BOBAI</span></td><td style="opacity:.5">failed</td><td style="opacity:.5">${x.bobaiNote}</td></tr>`);if(x.bobaiCreatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.bobaiBurnBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.bobaiCreatorTx}" target="_blank" rel="noopener">${x.bobaiCreatorTx.slice(0,6)}…${x.bobaiCreatorTx.slice(-4)}</a></td></tr>`);if(x.creatorTx)rows.push(`<tr><td>${t}</td><td><span class="tcr">CREATOR</span></td><td>${parseFloat(x.creatorBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.creatorTx}" target="_blank" rel="noopener">${x.creatorTx.slice(0,6)}…${x.creatorTx.slice(-4)}</a></td></tr>`);if(x.lpAgentTx)rows.push(`<tr><td>${t}</td><td><span class="tlp">DEFI AGENT</span></td><td>${parseFloat(x.lpAgentBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.lpAgentTx}" target="_blank" rel="noopener">${x.lpAgentTx.slice(0,6)}…${x.lpAgentTx.slice(-4)}</a></td></tr>`);if(x.giggleTx)rows.push(`<tr><td>${t}</td><td><span class="tgg">GIGGLE POT</span></td><td>${parseFloat(x.giggleBnb).toFixed(4)} BNB</td><td><a class="txl" href="https://bscscan.com/tx/${x.giggleTx}" target="_blank" rel="noopener">${x.giggleTx.slice(0,6)}…${x.giggleTx.slice(-4)}</a></td></tr>`)}put('burn-count',b.length.toString());paintRows('tx-body',rows)}}catch(e){}}
 // The three log files used to be fetched in a serial then-chain — and
 // bobai-liq-log.json twice over, once for each campaign card. One parallel
 // round of fetches, each file read exactly once.
@@ -879,6 +889,9 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
   }
   tick();setInterval(tick,60000);
 }();
+
+// A link into a folded archive card (the schedule points at the finished campaigns) opens the fold, then scrolls.
+!function(){function open(){try{const h=location.hash;if(!h||h.length<2)return;const t=document.getElementById(decodeURIComponent(h.slice(1)));if(!t)return;const d=t.tagName==='DETAILS'?t:t.closest('details');if(d&&!d.open){d.open=true;t.scrollIntoView()}}catch(e){}}addEventListener('hashchange',open);addEventListener('load',open)}();
 
 // === TAX ALLOCATION SCHEDULE — phase-aware highlight + inline notes ===
 !function(){

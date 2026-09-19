@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4590 lines.
+# one fetch. 12 files, 4702 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2691,7 +2691,8 @@ async function cleanupExpiredCaptchas(env) {
 
 const BOT_COMMANDS = [
   { command: 'alerts',   description: 'Buy & burn alert tiers' },
-  { command: 'burn',     description: 'Burn stats & progress' },
+  { command: 'bot',      description: 'What the bot does — the 3% split now & upcoming' },
+  { command: 'burn',     description: 'Burned by the bot & at the dead address, BOBAI and BOB, in USD' },
   { command: 'buy',      description: 'How to buy BOBAI' },
   { command: 'ca',       description: 'Contract address' },
   { command: 'defi',     description: 'The DeFi agent as a portfolio: put in, worth, P&L, last 24 h' },
@@ -2717,7 +2718,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v15-worldcup-final';
+const COMMANDS_VERSION = 'v16-bot';
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -2776,7 +2777,7 @@ const GG_DONATE_URL = 'https://giggleacademy.com/support-us';
 // One card, /price-shaped: what it is, where the clock stands, what has been
 // collected (from burns.json — giggleBnb/giggleTx per bot run, the same log
 // the page reads), the last send, and where the donation goes. Pure.
-export function formatGiggleCard(burns, nowMs = Date.now()) {
+export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
   const sends = (Array.isArray(burns) ? burns : []).filter((x) => x && x.giggleTx);
   const total = sends.reduce((a, x) => a + (parseFloat(x.giggleBnb) || 0), 0);
   const last = sends.length ? sends[sends.length - 1] : null;
@@ -2785,7 +2786,6 @@ export function formatGiggleCard(burns, nowMs = Date.now()) {
   if (nowMs < GG_START) clock = `⏳ Collecting starts in <b>${span(GG_START - nowMs)}</b>  ·  Sep 17, 00:01 UTC`;
   else if (nowMs < GG_END) clock = `⏳ Collecting ends in <b>${span(GG_END - nowMs)}</b>  ·  Nov 20, 00:01 UTC`;
   else clock = `✅ Collecting ended Nov 20  ·  donation day`;
-  const lpLine = nowMs >= GG_LP_START && nowMs < GG_END ? '💧 Plus 0.3% to the DeFi agent (Sep 9 → Nov 20)' : null;
   const lastLine = last ? `🕐 Last send: ${parseFloat(last.giggleBnb).toFixed(5)} BNB  ·  ${String(last.time).slice(0, 16).replace('T', ' ')} UTC  ·  <a href="https://bscscan.com/tx/${last.giggleTx}">tx</a>` : '🕐 Last send: none yet';
   return [
     '☀️ <b>Giggle Academy Community Pot</b>',
@@ -2796,16 +2796,113 @@ export function formatGiggleCard(burns, nowMs = Date.now()) {
     '',
     '⚙️ <b>How it fills</b>',
     '♻️ 0.3% of every trade — a tenth of each tax slice — sent as BNB by the buyback bot',
-    lpLine,
     '🎁 One donation on UN World Children’s Day, in BNB, through Giggle Academy’s own page',
     '',
     '💰 <b>Collected so far</b>',
-    `🪙 <b>${total.toFixed(4)} BNB</b>  ·  ${sends.length} send${sends.length === 1 ? '' : 's'}`,
+    `🪙 <b>${total.toFixed(4)} BNB</b>${bnbUsd > 0 ? ` (≈$${(total * bnbUsd).toFixed(2)})` : ''}  ·  ${sends.length} send${sends.length === 1 ? '' : 's'}`,
     lastLine,
     '',
     `🏦 <a href="https://bscscan.com/address/${GG_POT_WALLET}">Pot wallet</a> · 🎓 <a href="${GG_DONATE_URL}">giggleacademy.com/support-us</a> · 📊 <a href="https://brainonbnb.com/#giggle">brainonbnb.com</a>`,
   ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
 }
+
+// ==================== WHAT THE BOT DOES (/bot) ====================
+// The split as the buyback worker pays it — the same windows as worker/index.js
+// and the schedule on the page. Only the windows still ahead or running are
+// listed; the finished campaigns live on the page's schedule.
+const BB3_START = Date.parse('2026-09-19T18:00:00Z');
+const BOT_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
+const TAX_PHASES_TG = [
+  { from: GG_START, until: BB3_START, when: 'Sep 17 → Sep 19, 18:00 UTC, 2026', name: 'Giggle Academy pot + DeFi Agent',
+    slices: [
+      ['👤', '0.8%', 'Creator', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['👷', '0.8%', 'Burn $BOB (Build On BNB)', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['🧠', '0.8%', 'Burn $BOBAI', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['💧', '0.3%', 'DeFi Agent', ''],
+      ['☀️', '0.3%', 'Giggle Academy pot', ''],
+    ] },
+  { from: BB3_START, until: GG_END, when: 'Sep 19, 18:00 UTC → Nov 20, 2026', name: '$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent',
+    slices: [
+      ['👤', '0.8%', 'Creator', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['👷', '0.5%', 'Burn $BOB (Build On BNB)', '−0.3% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['🧠', '0.8%', 'Burn $BOBAI', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['🔒', '0.3%', 'BOBAI liq add + LP burn', ''],
+      ['💧', '0.3%', 'DeFi Agent', ''],
+      ['☀️', '0.3%', 'Giggle Academy pot', ''],
+    ] },
+  { from: GG_END, until: null, when: 'from Nov 20, 2026', name: 'Standard',
+    slices: [
+      ['👤', '1%', 'Creator', ''],
+      ['👷', '1%', 'Burn $BOB (Build On BNB)', ''],
+      ['🧠', '1%', 'Burn $BOBAI', ''],
+    ] },
+];
+// One card: what the bot is, the split it pays right now — the tax-split box of
+// the page, line for line — and the window(s) that follow. Pure.
+export function formatBotCard(nowMs = Date.now()) {
+  const span = (ms) => { const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000); return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`; };
+  const idx = TAX_PHASES_TG.findIndex((p) => nowMs >= p.from && (p.until === null || nowMs < p.until));
+  const now = idx >= 0 ? TAX_PHASES_TG[idx] : null;
+  const later = idx >= 0 ? TAX_PHASES_TG.slice(idx + 1) : TAX_PHASES_TG;
+  const lines = (p) => p.slices.map(([e, pct, what, note]) => `${e} <b>${pct}</b> ${what}${note ? `  <i>(${note})</i>` : ''}`);
+  const out = [
+    '⚙️ <b>What the BOBAI bot does</b>',
+    '',
+    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in that wallet → the bot splits it → burns, liquidity, creator, agent, pot. No hand on the switch.`,
+    '',
+  ];
+  if (now) {
+    out.push('💸 <b>3% Tax Split — now</b>', `📅 ${now.when} · ${now.name}`, ...lines(now));
+    if (now.until !== null) out.push(`⏳ this split ends in <b>${span(now.until - nowMs)}</b>`);
+    out.push('');
+  }
+  if (later.length) {
+    out.push('📆 <b>Upcoming</b>');
+    for (const p of later) out.push(`📅 ${p.when} · ${p.name}`, ...lines(p), '');
+  }
+  out.push('🔗 <a href="https://brainonbnb.com/#tokenomics">Full schedule</a> · 🔥 /burn · ☀️ /giggle · 🤖 /defi');
+  return out.filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
+}
+
+// The burn card's figures: what the bot itself burned (its log), what sits at
+// the dead address (chain), and what both are worth today (pair reserves ×
+// Chainlink). BOB is token0 in its pair, verified on-chain 2026-09-19.
+const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
+const BOB_PAIR = '0x3c79593e01A7f7FeD5d0735B16621e2D52A6bC58';
+async function readBobOnchain() {
+  try {
+    const balanceData = '0x70a08231' + DEAD.slice(2).padStart(64, '0');
+    const [deadHex, rHex, bnbUsd] = await Promise.all([
+      rpcCall('eth_call', [{ to: BOB_TOKEN, data: balanceData }, 'latest']),
+      rpcCall('eth_call', [{ to: BOB_PAIR, data: '0x0902f1ac' }, 'latest']),
+      getBnbUsd(),
+    ]);
+    const burned = deadHex ? Number(hexToBigInt(deadHex)) / 1e18 : null;
+    let price = null;
+    if (rHex && bnbUsd) {
+      const rBob = BigInt('0x' + rHex.slice(2, 66)), rWbnb = BigInt('0x' + rHex.slice(66, 130));
+      if (rBob > 0n && rWbnb > 0n) price = (Number(rWbnb) / Number(rBob)) * bnbUsd;
+    }
+    return { burned, price };
+  } catch (e) {
+    console.log('[bob] onchain error:', e.message || e);
+    return { burned: null, price: null };
+  }
+}
+// Sums of the bot's own burns out of its log. The BOB figure sat under two
+// names over time ('bob' first, 'bobBurned' since the Worker) — both count.
+export function botBurnsFromLog(burns) {
+  const list = Array.isArray(burns) ? burns : [];
+  const n = (v) => parseFloat(v) || 0;
+  return {
+    runs: list.length,
+    bobai: list.reduce((a, x) => a + n(x && x.bobaiBurned), 0),
+    bob: list.reduce((a, x) => a + n(x && (x.bob || x.bobBurned)), 0),
+  };
+}
+// Billions read as B; the shared formatNumber stops at M because no BOBAI figure reaches 1e9.
+const fmtAmt = (n) => n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : formatNumber(n);
+const approxUsd = (amount, price) => price ? ` (≈${formatUsd(amount * price)})` : '';
 
 // ==================== LP AGENT DAILY REPORT ====================
 
@@ -3042,28 +3139,42 @@ async function handleCommand(msg, env) {
         const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } });
         if (r.ok) burns = await r.json();
       } catch { /* the card still says what the pot is; the count reads 0 until the log answers */ }
-      reply = formatGiggleCard(burns);
+      reply = formatGiggleCard(burns, Date.now(), await getBnbUsd());
       break;
     }
     case '/burn':
     case 'burn': {
-      const burn = await getBurnStats();
+      // Two tokens, two figures each: what the bot burned (its log) and what
+      // the dead address holds (chain), both in dollars of today. The split
+      // itself moved to /bot (2026-09-19).
+      let burns = [];
+      try {
+        const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } });
+        if (r.ok) burns = await r.json();
+      } catch { /* the chain figures still show; the bot's own read 0 until the log answers */ }
+      const [burn, bob, pair] = await Promise.all([getBurnStats(), readBobOnchain(), readPairOnchain()]);
+      const ours = botBurnsFromLog(burns);
+      const bobaiPx = pair ? pair.price : null;
+      const share = (a, b) => b > 0 ? ` · ${(a / b * 100).toFixed(1)}% of it` : '';
 
       reply = `🔥 <b>BOBAI Burn Dashboard</b>
 
-🔥 Burned: <b>${formatNumber(burn.burnedTokens)} BOBAI</b>
-📊 <b>${burn.percent}%</b> of total supply
+🧠 <b>$BOBAI</b>
+🤖 Burned by the bot: <b>${fmtAmt(ours.bobai)} BOBAI</b>${approxUsd(ours.bobai, bobaiPx)}
+💀 At the dead address: <b>${fmtAmt(burn.burnedTokens)} BOBAI</b>${approxUsd(burn.burnedTokens, bobaiPx)} · <b>${burn.percent}%</b> of supply
 
-⚙️ <b>How it works:</b>
-♻️ 3% tax on every buy & sell, fixed in the contract
-🔥 The buyback bot burns BOBAI from it around the clock
-🔥 The rest burns BOB, funds liquidity and the creator — the split changes by phase
-💧 Sep 9 → Nov 20: a tenth of each slice (0.3%) goes to the DeFi agent
-☀️ Sep 17 → Nov 20: another tenth (0.3%) collects in BNB for Giggle Academy — one donation on Nov 20
-🔒 Sep 19 → Nov 20: 0.3% out of the BOB-burn slice is added to the BOBAI/BNB pool for good, LP burned (Liquidity Boost III)
-👤 Contract ownership renounced
+👷 <b>$BOB</b> (Build On BNB)
+🤖 Burned by the bot: <b>${fmtAmt(ours.bob)} BOB</b>${approxUsd(ours.bob, bob.price)}${share(ours.bob, bob.burned)}
+💀 At the dead address: <b>${bob.burned === null ? '?' : fmtAmt(bob.burned)} BOB</b>${bob.burned === null ? '' : approxUsd(bob.burned, bob.price)}
 
-🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns on BscScan</a> · <a href="https://brainonbnb.com/#tokenomics">Current split</a>`;
+⚙️ ${ours.runs.toLocaleString('en-US')} bot runs in the log · every 10 minutes from <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a> · /bot shows the split
+
+🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">BOBAI burns</a> · <a href="https://bscscan.com/token/${BOB_TOKEN}?a=${DEAD}">BOB burns</a> · <a href="https://brainonbnb.com/#burns">Live burns</a>`;
+      break;
+    }
+    case '/bot':
+    case 'bot': {
+      reply = formatBotCard();
       break;
     }
 
@@ -3227,7 +3338,8 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 Here's what I can do:
 
 🔔 /alerts — Buy & burn alert tiers
-🔥 /burn — Burn stats & progress
+⚙️ /bot — What the bot does: the 3% split now & upcoming
+🔥 /burn — Burned by the bot & at the dead address, BOBAI and BOB, in USD
 ☀️ /giggle — Giggle Academy pot: countdown & BNB collected
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address

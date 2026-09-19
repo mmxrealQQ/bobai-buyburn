@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 16,
-   "lines": 6445,
-   "zipBytes": 162464,
-   "txtBytes": 504463,
-   "sha256": "945aaad1caad912d",
+   "lines": 6459,
+   "zipBytes": 162963,
+   "txtBytes": 505792,
+   "sha256": "0247b827fd56d98b",
    "reqs": [
     {
      "what": "A wallet that holds the position",

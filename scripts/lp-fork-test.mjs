@@ -51,20 +51,27 @@ if (!fs.existsSync(ANVIL)) { console.error(`anvil not found at ${ANVIL} — inst
 let failed = 0, n = 0;
 const ok = (label, pass, detail = '') => { n++; if (!pass) failed++; console.log(`  ${pass ? 'ok  ' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Half of Cloudflare's 1000 subrequests per invocation: the fork answers a receipt at once, the chain after a poll or two per transaction.
+const RPC_BUDGET = 500;
+const withinBudget = (what, count) => ok(`${what} stays inside half the worker's subrequest budget`, count > 0 && count < RPC_BUDGET, `${count} requests of ${RPC_BUDGET}`);
 
 const anvil = spawn(ANVIL, ['--fork-url', FORK_URL, '--port', String(PORT), '--chain-id', '56', '--auto-impersonate', '--silent', '--no-rate-limit', '--gas-price', '100000000', '--block-base-fee-per-gas', '0'], { stdio: 'ignore' });
 const stop = () => { try { anvil.kill(); } catch { /* gone */ } };
 process.on('exit', stop); process.on('SIGINT', () => { stop(); process.exit(130); });
 
 const chain = { ...bsc, rpcUrls: { default: { http: [LOCAL] } } };
-const pub = createPublicClient({ chain, transport: http(LOCAL, { timeout: 120000 }) });
+// Every request the AGENT's code makes is counted (its reads through `pub`, its sends through the LP wallet): a
+// Cloudflare invocation may make 1000 subrequests, and a path that grows past that would stop half way, on chain.
+let rpcCount = 0;
+const counting = () => http(LOCAL, { timeout: 120000, onFetchRequest: () => { rpcCount += 1; } });
+const pub = createPublicClient({ chain, transport: counting() });
 const test = createTestClient({ chain, mode: 'anvil', transport: http(LOCAL, { timeout: 120000 }) });
 const walletOf = (address) => createWalletClient({ account: address, chain, transport: http(LOCAL, { timeout: 120000 }) });
 // The agent's wallet, with one difference from production that belongs to the
 // fork and not to the agent: every transaction is sent with a fixed gas limit
 // instead of anvil's own estimate.
 const lpWallet = (() => {
-  const w = walletOf(LP);
+  const w = createWalletClient({ account: LP, chain, transport: counting() });
   if (process.env.FORK_GAS === '0') return w;   // FORK_GAS=0: anvil's own estimate, which is too tight for the manager's multicall (burn refunds) — measured 2026-09-18, the same call runs on the real chain
   const write = w.writeContract.bind(w);
   // 700k covers the largest call (a mint across ticks). The fork answers
@@ -127,6 +134,7 @@ const BOBAI = ADDR.BOBAI;
 // What the worker's rebalance step does, in its order: the merge first when the
 // ladder plan says so, then the re-set — with the ladder record kept in hand.
 async function workerRebalance(ladder, { expectMerge = null } = {}) {
+  const rpc0 = rpcCount;
   const plan = await planRebalance(pub, LP, { record, pool: POOL, ladder });
   if (plan.no) return { plan, refused: plan.no };
   const txs = [];
@@ -138,7 +146,7 @@ async function workerRebalance(ladder, { expectMerge = null } = {}) {
   }
   const done = await executeRebalance(pub, lpWallet, lpWallet.account, plan, () => {}, { txs });
   if (done.new_position) ladder.main = String(done.new_position);
-  return { plan, done, merged, txs };
+  return { plan, done, merged, txs, rpc: rpcCount - rpc0 };
 }
 
 async function scenario(name, key, fn) {
@@ -159,6 +167,7 @@ await scenario('RE-SET UPWARD — the price leaves above the main range: the res
   const bobai0 = await bal(BOBAI, LP);
   const r = await workerRebalance(ladder, { expectMerge: LADDER0.reserve != null });
   if (r.refused) return ok('the plan re-sets', false, r.refused);
+  withinBudget('plan, merge and re-set upward', r.rpc);
   ok('the plan is one-sided, below the price', r.plan.oneSided === 'above' && r.done.one_sided === 'below_price', `ticks ${r.done.new_ticks}`);
   const ids = await heldIds(pub, LP);
   ok('one position is left, and it is the new one — read off the mint receipt', ids.length === 1 && ids[0] === String(r.done.new_position), `held ${ids.join(', ')}`);
@@ -180,6 +189,7 @@ await scenario('RE-SET DOWNWARD — the price falls out of the main range into t
   const bobai0 = await bal(BOBAI, LP);
   const r = await workerRebalance(ladder, { expectMerge: false });
   if (r.refused) return ok('the plan re-sets', false, r.refused);
+  withinBudget('plan and re-set downward with the share sale', r.rpc);
   ok('the plan is one-sided, above the price', r.done.one_sided === 'above_price', `ticks ${r.done.new_ticks}`);
   const ids = await heldIds(pub, LP);
   ok('two positions are held: the new main range and the reserve that stood', ids.length === (LADDER0.reserve ? 2 : 1) && ids.includes(String(r.done.new_position)) && (!LADDER0.reserve || ids.includes(LADDER0.reserve)), `held ${ids.join(', ')}`);
@@ -219,6 +229,7 @@ await scenario('A RE-SET WHOSE MINT FAILED BESIDE THE RESERVE — the main range
   ok('the increase step does not take the loose CAKE for a deposit', !!inc.no, inc.no);
   const r = await workerRebalance(ladder, { expectMerge: false });
   if (r.refused) return ok('the resume mints', false, r.refused);
+  withinBudget('plan and resume', r.rpc);
   ok('the resume is one-sided on the token held, and trades nothing of the capital', r.plan.resume === true && r.done.one_sided === 'above_price' && !(r.done.swap && Number(r.done.swap.notional_bnb || 0) > 0.01 * before.loose), `swap ${r.done.swap ? JSON.stringify(r.done.swap).slice(0, 100) : 'none'}`);
   const ids = await heldIds(pub, LP);
   ok('the main range stands again beside the reserve, its id off the receipt', ids.length === 2 && ids.includes(LADDER0.reserve) && ids.includes(String(r.done.new_position)), `held ${ids.join(', ')}`);
@@ -243,7 +254,8 @@ await scenario('THE COLLECT TAKES THE RESERVE RANGE\'S FEES TOO — the price tr
     await pushPriceTo(resLo + 60);
     await pushPriceTo(mainHi - 60);
     const look = await planCollect(pub, LP, ladder);
-    if (!look.no && look.reserveTokenId != null) break;
+    // With room above the floor: the fees are mostly CAKE, and the way back down to `start` makes them worth less in BNB.
+    if (!look.no && look.reserveTokenId != null && look.summary.reserve_owed.bnb_equivalent >= RESERVE_COLLECT_MIN_BNB * 1.3) break;
   }
   await pushPriceTo(start);
   console.log(`       the whale took the price across both ranges ${trips + 1} times`);
@@ -253,10 +265,12 @@ await scenario('THE COLLECT TAKES THE RESERVE RANGE\'S FEES TOO — the price tr
   if (plan.no || plan.reserveTokenId == null) return;
   const liq0 = (await readPosition(pub, LP, ladder)).reserve.pos[7], bobai0 = await bal(BOBAI, LP);
   const txs = [];
+  const rpcBefore = rpcCount;
   const done = await executeCollect(pub, lpWallet, lpWallet.account, plan, () => {}, { txs });
+  withinBudget('the collect of both ranges with sale and $BOBAI buy', rpcCount - rpcBefore);
   const after = await readPosition(pub, LP, ladder);
   ok('one run: collect, collect the reserve, sell, unwrap, buy $BOBAI', txs.some((t) => t.label === 'collect') && txs.some((t) => /reserve range's fees/.test(t.label)) && txs.some((t) => /sell the other side/.test(t.label)) && txs.some((t) => /buy BOBAI/.test(t.label)), txs.map((t) => t.label.split(' ').slice(0, 3).join(' ')).join(' · '));
-  const dust = 10n ** 12n;   // the run's own sale trades through both ranges and leaves each a speck
+  const dust = plan.owedOther / 1000n;   // the run's own sale trades through both ranges and pays them their share of its 0.05% fee: a speck, never a thousandth of what was sold
   ok('both ranges are owed nothing but the speck the run\'s own sale paid them, and the reserve\'s liquidity is untouched', after.owed0 < dust && after.owed1 < dust && after.reserve.owed0 < dust && after.reserve.owed1 < dust && after.reserve.pos[7] === liq0, `reserve owed ${after.reserve.owed0}/${after.reserve.owed1}`);
   const produced = Number(done.produced_bnb || 0), planned = plan.summary.owed.bnb_equivalent, gas = txs.filter((t) => !/buy BOBAI/.test(t.label)).reduce((g, t) => g + (t.gas_bnb || 0), 0);   // the fork charges 1 gwei, the chain 0.05; the $BOBAI buy comes after the run has counted what it produced
   ok('what the run produced is what both were owed, less its gas — the reserve\'s part is in the split', Math.abs(produced + gas - planned) < planned * 0.01 && produced + gas > (planned - r2.bnb_equivalent) * 1.02, `produced ${produced.toFixed(6)} + gas ${gas.toFixed(6)} of ${planned.toFixed(6)} BNB owed (main alone ${(planned - r2.bnb_equivalent).toFixed(6)})`);

@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-09-09T11:19:00.385Z",
+  "measured_at": "2026-09-19T07:39:00.822Z",
   "agents": [
     {
       "id": 269223,
@@ -58,6 +58,12 @@
     {
       "id": 341628,
       "label": "IVL Rebalancer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 346444,
+      "label": "Bench Reference Rebalancer (operated by Bench)",
       "category": "rebalancing",
       "ours": false
     },
@@ -136,6 +142,12 @@
     {
       "id": 336622,
       "label": "RangeKeeper",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
+      "id": 126728,
+      "label": "Pretium",
       "category": "yield-optimization",
       "ours": false
     },

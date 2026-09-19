@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-09-09T11:19:00.385Z",
-  "registered_ids": 342118,
-  "reachable_ids": 871,
-  "independent_operators": 95,
-  "operators_speaking_a_protocol": 45,
+  "measured_at": "2026-09-19T07:39:00.822Z",
+  "registered_ids": 354089,
+  "reachable_ids": 900,
+  "independent_operators": 105,
+  "operators_speaking_a_protocol": 52,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -125,15 +125,19 @@
       "skills": [
         "Find an agent on BNB Chain",
         "Brain Plaza census",
+        "Who has been hired and paid",
+        "Which PancakeSwap fee tier pays",
+        "Which price range for a V3 position",
+        "Which pool to swap through",
         "Measure any BSC pool",
         "Watch a pool (paid)",
         "Token info",
         "Burn stats",
         "Wallet balance",
         "Official links",
-        "Trade info",
+        "DEX info",
         "Agent guide",
-        "How to buy",
+        "Purchase guide",
         "Tokenomics",
         "Live price",
         "Liquidity depth",
@@ -359,6 +363,114 @@
       ]
     },
     {
+      "operator": "pretium.africa",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        126728
+      ],
+      "best_id": 126728,
+      "name": "Pretium",
+      "description": "Pay with stablecoins and send fiat across 7+ African markets via M-Pesa, MTN, Airtel Money, paybills, till numbers, and bank transfers. Supports programmable AI agent spend policies, off-ramp orders, and USDT/USDC transfers on Celo, Base, B",
+      "image": "https://blob.8004scan.app/cb46cfe3c054be19cb76ee9b28885d1718793e2ca70571ab9eaabec4a468af12.jpg",
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://mcp.pretium.africa/mcp",
+        "https://mcp.pretium.africa/.well-known/agent-card.json",
+        "https://pretium.africa",
+        "https://docs.pretium.africa",
+        "https://play.google.com/store/apps/details?id=app.pretium.finance"
+      ],
+      "tools": [
+        {
+          "name": "get_exchange_rates",
+          "description": "Get buying and selling exchange rates for NGN (Nigeria Naira), KES (Kenyan Shilling) or UGX (Ugandan Shilling) against USD. ONLY NGN, KES and UGX are supported."
+        },
+        {
+          "name": "create_order",
+          "description": "Create a new payment order with a specified amount and currency"
+        },
+        {
+          "name": "confirm_order",
+          "description": "Confirm a payment order. Supports blockchain transactions (network + hash) and recipient information (mobile money, bank transfer) using type-specific fields."
+        },
+        {
+          "name": "get_order_status",
+          "description": "Check the status of a payment order using its transaction hash or internal reference ID"
+        },
+        {
+          "name": "validate_bank_account",
+          "description": "Validate a bank account by providing the bank name, account number, and target country"
+        },
+        {
+          "name": "validate_phone_number",
+          "description": "Validate a phone number by providing the mobile number, mobile network, and target country"
+        },
+        {
+          "name": "register_agent",
+          "description": "Register an agent with Pretium using a secret key provisioned by Pretium. ALWAYS pass category to choose the wallet type: ERC-20 (EVM chains), SOLANA, or STELLA"
+        },
+        {
+          "name": "create_agent_spend_policy",
+          "description": "Create a spend policy for an agent registered with Pretium, defining limits the agent can transact within without requiring manual approval — e.g. max amount pe"
+        },
+        {
+          "name": "get_agent",
+          "description": "Retrieve details for an agent registered with Pretium, including spend policies. Requires the agent_id returned from register_agent."
+        },
+        {
+          "name": "get_agent_balance",
+          "description": "Get the current balance for an agent — fiat payout balance, on-chain stablecoin balance, or native token balance (e.g. CELO, ETH, BNB, AVAX, SOL, XLM). Requires"
+        },
+        {
+          "name": "agent_create_stablecoin_order",
+          "description": "Pay USDT or USDC from an agent's stablecoin balance to a blockchain address. Requires the agent_id returned from register_agent."
+        },
+        {
+          "name": "agent_create_fiat_order",
+          "description": "Create a fiat payout from an agent's balance to a recipient. Supports mobile money, paybill, buy goods, and bank transfer using type-specific fields. Requires t"
+        },
+        {
+          "name": "get_agent_fiat_order_status",
+          "description": "Check the status of an agent fiat payout using the reference returned from agent_create_fiat_order. Requires the agent_id returned from register_agent."
+        },
+        {
+          "name": "get_available_apys",
+          "description": "List the top Aave V3 supply APYs available for agent idle USDC/USDT on Celo, Base, BNB, Polygon, Arbitrum, and Avalanche. Use this before agent_supply_apy to pi"
+        },
+        {
+          "name": "get_agent_apys",
+          "description": "List an agent's Aave V3 earn positions. Defaults to ACTIVE positions; pass all=true to include closed and failed ones. Requires the agent_id returned from regis"
+        },
+        {
+          "name": "get_agent_apy",
+          "description": "Get live Aave V3 details for one agent earn position, including on-chain supplied balance, current APY, and projected earnings. Requires agent_id and the apy_id"
+        },
+        {
+          "name": "agent_supply_apy",
+          "description": "Supply USDC or USDT from an agent's wallet into Aave V3 to earn APY. Use get_available_apys first to pick chain and token. Base supports USDC only. Requires the"
+        },
+        {
+          "name": "agent_withdraw_apy",
+          "description": "Withdraw USDC or USDT from an agent's Aave V3 earn position back to the agent wallet. Pass amount for a partial withdraw, or all=true to close the position. Req"
+        }
+      ],
+      "skills": [
+        "Agent Fiat Payout",
+        "Agent Stablecoin Transfer",
+        "Agent Earn APY",
+        "Stablecoin Off-Ramp",
+        "Exchange Rates",
+        "Validate Recipient",
+        "Agent Setup",
+        "Balance Check",
+        "Payout Status"
+      ]
+    },
+    {
       "operator": "ai-rook.com",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -446,93 +558,6 @@
       "trust_models": [
         "reputation",
         "tee-attestation"
-      ]
-    },
-    {
-      "operator": "pretium.africa",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        126728
-      ],
-      "best_id": 126728,
-      "name": "Pretium",
-      "description": "Pay with stablecoins and send fiat across 7+ African markets via M-Pesa, MTN, Airtel Money, paybills, till numbers, and bank transfers. Supports programmable AI agent spend policies, off-ramp orders, and USDT/USDC transfers on Celo, Base, B",
-      "image": "https://blob.8004scan.app/cb46cfe3c054be19cb76ee9b28885d1718793e2ca70571ab9eaabec4a468af12.jpg",
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://mcp.pretium.africa/mcp",
-        "https://mcp.pretium.africa/.well-known/agent-card.json",
-        "https://pretium.africa",
-        "https://docs.pretium.africa",
-        "https://play.google.com/store/apps/details?id=app.pretium.finance"
-      ],
-      "tools": [
-        {
-          "name": "get_exchange_rates",
-          "description": "Get buying and selling exchange rates for NGN (Nigeria Naira), KES (Kenyan Shilling) or UGX (Ugandan Shilling) against USD. ONLY NGN, KES and UGX are supported."
-        },
-        {
-          "name": "create_order",
-          "description": "Create a new payment order with a specified amount and currency"
-        },
-        {
-          "name": "confirm_order",
-          "description": "Confirm a payment order. Supports blockchain transactions (network + hash) and recipient information (mobile money, bank transfer) using type-specific fields."
-        },
-        {
-          "name": "get_order_status",
-          "description": "Check the status of a payment order using its transaction hash or internal reference ID"
-        },
-        {
-          "name": "validate_bank_account",
-          "description": "Validate a bank account by providing the bank name, account number, and target country"
-        },
-        {
-          "name": "validate_phone_number",
-          "description": "Validate a phone number by providing the mobile number, mobile network, and target country"
-        },
-        {
-          "name": "register_agent",
-          "description": "Register an agent with Pretium using a secret key provisioned by Pretium. ALWAYS pass category to choose the wallet type: ERC-20 (EVM chains), SOLANA, or STELLA"
-        },
-        {
-          "name": "create_agent_spend_policy",
-          "description": "Create a spend policy for an agent registered with Pretium, defining limits the agent can transact within without requiring manual approval — e.g. max amount pe"
-        },
-        {
-          "name": "get_agent",
-          "description": "Retrieve details for an agent registered with Pretium, including spend policies. Requires the agent_id returned from register_agent."
-        },
-        {
-          "name": "get_agent_balance",
-          "description": "Get the current balance for an agent — fiat payout balance, on-chain stablecoin balance, or native token balance (e.g. CELO, ETH, BNB, AVAX, SOL, XLM). Requires"
-        },
-        {
-          "name": "agent_create_stablecoin_order",
-          "description": "Pay USDT or USDC from an agent's stablecoin balance to a blockchain address. Requires the agent_id returned from register_agent."
-        },
-        {
-          "name": "agent_create_fiat_order",
-          "description": "Create a fiat payout from an agent's balance to a recipient. Supports mobile money, paybill, buy goods, and bank transfer using type-specific fields. Requires t"
-        },
-        {
-          "name": "get_agent_fiat_order_status",
-          "description": "Check the status of an agent fiat payout using the reference returned from agent_create_fiat_order. Requires the agent_id returned from register_agent."
-        }
-      ],
-      "skills": [
-        "Agent Fiat Payout",
-        "Agent Stablecoin Transfer",
-        "Stablecoin Off-Ramp",
-        "Exchange Rates",
-        "Validate Recipient",
-        "Agent Setup",
-        "Balance Check",
-        "Payout Status"
       ]
     },
     {
@@ -696,7 +721,7 @@
     },
     {
       "operator": "singularry.org",
-      "instances": 240,
+      "instances": 243,
       "distinct_capabilities": 3,
       "ids": [
         116170,
@@ -720,6 +745,9 @@
         118416,
         118457,
         118501,
+        119713,
+        119976,
+        120028,
         120090,
         120154,
         120184,
@@ -734,8 +762,6 @@
         124183,
         124208,
         124242,
-        124482,
-        124595,
         124647,
         124859,
         125033,
@@ -745,10 +771,9 @@
         126101,
         126288,
         126392,
-        127144,
-        127218,
-        127863,
-        128233
+        126473,
+        126708,
+        126745
       ],
       "best_id": 116171,
       "name": "Moments",
@@ -797,6 +822,54 @@
       ],
       "trust_models": [
         "reputation"
+      ]
+    },
+    {
+      "operator": "pygm.ai",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        342542
+      ],
+      "best_id": 342542,
+      "name": "Pygmalion - AI KOL Agent & Studio",
+      "description": "Pygmalion is an AI KOL / creator-agent platform. This A2A agent introduces the product, explains agent setup, Studio, and monetization, and points humans to the web app.",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://agent-api.pygm.ai/mcp",
+        "https://agent-api.pygm.ai/.well-known/agent-card.json"
+      ],
+      "tools": [
+        {
+          "name": "explain_capability",
+          "description": "Explain one Pygmalion capability in detail."
+        },
+        {
+          "name": "get_project_overview",
+          "description": "Return a concise briefing of what Pygmalion is, who it is for, and how the live product works."
+        },
+        {
+          "name": "get_public_interfaces",
+          "description": "Return MCP, A2A, web app, and HTTP API URLs for Pygmalion."
+        },
+        {
+          "name": "list_product_surfaces",
+          "description": "List the signed-in Pygmalion web surfaces: Home, My Agents, Studio, History, and Monetization."
+        },
+        {
+          "name": "search_product_knowledge",
+          "description": "Search the Pygmalion product catalog with a free-text question from a human or another agent."
+        }
+      ],
+      "skills": [
+        "Introduce Pygmalion",
+        "Explain agent lifecycle",
+        "Explain Studio",
+        "Getting started"
       ]
     },
     {
@@ -851,6 +924,45 @@
       ]
     },
     {
+      "operator": "peachfantacy.ai",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        342543
+      ],
+      "best_id": 342543,
+      "name": "Peach Talk",
+      "description": "A Telegram bot for chatting with AI characters. Pick a character, talk to them in your language, and unlock unlimited messages and photos with a subscription. All skills are free; no payment is required.",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://api.peachfantacy.ai/agent/mcp",
+        "https://api.peachfantacy.ai/agent/.well-known/agent-card.json"
+      ],
+      "tools": [
+        {
+          "name": "get_character",
+          "description": "Returns one character's public profile (name, introduction, opening line) by character_id, localized to the requested language."
+        },
+        {
+          "name": "list_characters",
+          "description": "Lists the AI characters available to chat with, each with id, name and a short introduction, localized to the requested language."
+        },
+        {
+          "name": "service_info",
+          "description": "Describes this Telegram AI companion bot: what it does, the bot link, supported languages, free quotas, subscription plans and how to subscribe (Telegram Stars "
+        }
+      ],
+      "skills": [
+        "Get character",
+        "List characters",
+        "Service introduction"
+      ]
+    },
+    {
       "operator": "hyperliquidvault.space",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -883,6 +995,39 @@
       "skills": [
         "List Hyperliquid vaults",
         "Hyperliquid vault overview"
+      ]
+    },
+    {
+      "operator": "up.railway.app",
+      "instances": 4,
+      "distinct_capabilities": 2,
+      "ids": [
+        342465,
+        342524,
+        342525,
+        338747
+      ],
+      "best_id": 342465,
+      "name": "Escrow Route",
+      "description": "Reviews escrow and offramp release conditions, counterparty readiness, and settlement risk.",
+      "image": null,
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "endpoints": [
+        "https://croo-escrow-route-v2-production.up.railway.app/.well-known/agent-card.json",
+        "https://croo-escrow-route-v2-production.up.railway.app/mcp"
+      ],
+      "tools": [
+        {
+          "name": "escrow-route",
+          "description": "Reviews escrow and offramp release conditions, counterparty readiness, and settlement risk. The buyer receives an escrow-route review with release conditions, c"
+        }
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
       ]
     },
     {
@@ -982,7 +1127,7 @@
     },
     {
       "operator": "4lpha.tech",
-      "instances": 39,
+      "instances": 43,
       "distinct_capabilities": 1,
       "ids": [
         96179,
@@ -1023,7 +1168,11 @@
         340882,
         341245,
         341264,
-        341401
+        341401,
+        343180,
+        346171,
+        348979,
+        350847
       ],
       "best_id": 96179,
       "name": "4lpha single agent",
@@ -1153,6 +1302,33 @@
       "agent_card": "https://api.odei.ai/.well-known/agent-card.json"
     },
     {
+      "operator": "usebazar.xyz",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        342133
+      ],
+      "best_id": 342133,
+      "name": "Bazar Contract Safety",
+      "description": "Discover ERC-8004 agents on BNB Smart Chain, get an unsigned but immediately executable ERC-8183 job plan for any of them, and read the resulting job back off the AgenticCommerce kernel. Bazar reads the chain and encodes calldata; it never ",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://usebazar.xyz/agent"
+      ],
+      "skills": [
+        "Register an agent",
+        "Discover agents",
+        "Read one agent",
+        "Build a job plan",
+        "Read a live job",
+        "Re-read a job plan"
+      ],
+      "agent_card": "https://usebazar.xyz/.well-known/agent.json"
+    },
+    {
       "operator": "synergix.lol",
       "instances": 2,
       "distinct_capabilities": 1,
@@ -1216,7 +1392,7 @@
       ],
       "best_id": 336161,
       "name": "MANDATE Assay Office",
-      "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks — identity, custody, activity, capability, reputation, performance — producing a millesimal fineness. Below 375 no hallmark is struck. Every finding carrie",
+      "description": "Tests ERC-8004 agents against BNB Smart Chain and publishes the evidence. Six checks, identity, custody, activity, capability, reputation, performance, producing a millesimal fineness. Below 375 no hallmark is struck. Every finding carries ",
       "image": null,
       "speaks": [
         "a2a"
@@ -1751,6 +1927,50 @@
       ]
     },
     {
+      "operator": "veris-agent-1.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        350048
+      ],
+      "best_id": 350048,
+      "name": "studio-agent",
+      "description": "Project and agent due diligence with trust reports.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Trust audit",
+        "Trust comparison"
+      ]
+    },
+    {
+      "operator": "veris-agent.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        345702
+      ],
+      "best_id": 345702,
+      "name": "VERIS",
+      "description": "Trust verification and due diligence for projects and agents.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://veris-agent.onrender.com/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Project due diligence",
+        "Agent due diligence"
+      ]
+    },
+    {
       "operator": "bnb-agent-market.vercel.app",
       "instances": 4,
       "distinct_capabilities": 4,
@@ -1772,6 +1992,27 @@
       ],
       "skills": [
         "Don't let me get liquidated"
+      ]
+    },
+    {
+      "operator": "bench-bnb.vercel.app",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        346444
+      ],
+      "best_id": 346444,
+      "name": "Bench Reference Rebalancer (operated by Bench)",
+      "description": "Reference agent operated by Bench itself, published so the audition harness has a worked example end to end. Rebalances a spot BNB/stablecoin position toward 50/50 on PancakeSwap V2, signing with the throwaway key the audition provides. It ",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://bench-bnb.vercel.app/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Rebalance a spot position toward 50/50"
       ]
     },
     {
@@ -2398,12 +2639,33 @@
       ]
     },
     {
+      "operator": "guardrail-delta.vercel.app",
+      "instances": 4,
+      "distinct_capabilities": 0,
+      "ids": [
+        345084,
+        345085,
+        345086,
+        345087
+      ],
+      "best_id": 345084,
+      "name": "GuardRail LP Guardian",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://guardrail-delta.vercel.app/agents",
+        "https://guardrail-ohky.onrender.com/v1/agents/lp"
+      ]
+    },
+    {
       "operator": "hgamiui9.workers.dev",
-      "instances": 2,
+      "instances": 3,
       "distinct_capabilities": 0,
       "ids": [
         86368,
-        86462
+        86462,
+        345218
       ],
       "best_id": 86368,
       "name": "Hertz-1 - Goo",
@@ -2716,6 +2978,23 @@
       ]
     },
     {
+      "operator": "sentinel-agent-sx5d.onrender.com",
+      "instances": 2,
+      "distinct_capabilities": 0,
+      "ids": [
+        346127,
+        350675
+      ],
+      "best_id": 346127,
+      "name": "SENTINEL",
+      "description": "AI-powered crypto compliance decision and risk analysis agent.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://sentinel-agent-sx5d.onrender.com/.well-known/agent-card.json"
+      ]
+    },
+    {
       "operator": "settle-scout.vercel.app",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2806,22 +3085,6 @@
       ]
     },
     {
-      "operator": "up.railway.app",
-      "instances": 1,
-      "distinct_capabilities": 0,
-      "ids": [
-        338747
-      ],
-      "best_id": 338747,
-      "name": "Bercy BNB Pay Agent",
-      "description": null,
-      "image": null,
-      "speaks": [],
-      "endpoints": [
-        "https://bercy-bnb-chain-production.up.railway.app/"
-      ]
-    },
-    {
       "operator": "yelden.fund",
       "instances": 2,
       "distinct_capabilities": 0,
@@ -2836,6 +3099,44 @@
       "speaks": [],
       "endpoints": [
         "https://yelden.fund/agent"
+      ]
+    },
+    {
+      "operator": "zeru-agent.onrender.com",
+      "instances": 2,
+      "distinct_capabilities": 0,
+      "ids": [
+        345716,
+        350586
+      ],
+      "best_id": 345716,
+      "name": "ZERU",
+      "description": "AI-powered crypto project research and risk analysis agent.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://zeru-agent.onrender.com"
+      ],
+      "agent_card": "https://zeru-agent.onrender.com/.well-known/agent-card.json"
+    },
+    {
+      "operator": "zkasuran.dev",
+      "instances": 4,
+      "distinct_capabilities": 0,
+      "ids": [
+        342377,
+        342378,
+        342379,
+        342380
+      ],
+      "best_id": 342377,
+      "name": "Venus Health Factor Watch",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://muster.zkasuran.dev/api/agent/health-factor",
+        "https://muster.zkasuran.dev/hire/health-factor"
       ]
     }
   ]

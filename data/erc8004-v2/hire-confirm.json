@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-09-18T09:57:41.652Z",
-  "asked": 30,
-  "quoted": 15,
+  "measured_at": "2026-09-19T07:41:36.641Z",
+  "asked": 32,
+  "quoted": 14,
   "agents": [
     {
       "id": 269223,
@@ -105,14 +105,24 @@
       "reason": "the seller's quote cannot be funded here: it prices in 0x55d398326f99059fF775485246999027B3197955, and this escrow settles in $U (0xcE24439F"
     },
     {
+      "id": 346444,
+      "label": "Bench Reference Rebalancer (operated by Bench)",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bench-bnb.vercel.app/a2a",
+      "reason": "seller answered, but its reply carries no price"
+    },
+    {
       "id": 304494,
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
       "category": "rebalancing",
       "ours": true,
-      "quotes": true,
-      "price": "0.1 $U",
+      "quotes": false,
+      "price": null,
       "endpoint": "https://agent.brainonbnb.com/a2a",
-      "reason": null
+      "reason": "seller answered, but its reply carries no price"
     },
     {
       "id": 269233,
@@ -122,6 +132,16 @@
       "quotes": true,
       "price": "0.1 $U",
       "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
+      "reason": null
+    },
+    {
+      "id": 340527,
+      "label": "Hevo Grid",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": true,
+      "price": "10 $U",
+      "endpoint": "https://hevo-grid.fly.dev/",
       "reason": null
     },
     {
@@ -165,16 +185,6 @@
       "reason": "seller answered, but its reply carries no price"
     },
     {
-      "id": 340527,
-      "label": "Hevo Grid",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": true,
-      "price": "10 $U",
-      "endpoint": "https://hevo-grid.fly.dev/",
-      "reason": null
-    },
-    {
       "id": 302258,
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
@@ -192,6 +202,26 @@
       "quotes": true,
       "price": "1 $U",
       "endpoint": "https://bnb-yield.172-104-171-139.nip.io/a2a",
+      "reason": null
+    },
+    {
+      "id": 340532,
+      "label": "Hevo Yield",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "10 $U",
+      "endpoint": "https://hevo-yield.fly.dev/",
+      "reason": null
+    },
+    {
+      "id": 341225,
+      "label": "yieldrouter — capacity-aware yield optimisation",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/",
       "reason": null
     },
     {
@@ -215,6 +245,16 @@
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
+      "id": 126728,
+      "label": "Pretium",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://mcp.pretium.africa/mcp",
+      "reason": "Method not found"
+    },
+    {
       "id": 338253,
       "label": "HyperliquidVault",
       "category": "yield-optimization",
@@ -223,26 +263,6 @@
       "price": null,
       "endpoint": "https://hyperliquidvault.space/a2a",
       "reason": "unknown skill \"negotiate\""
-    },
-    {
-      "id": 340532,
-      "label": "Hevo Yield",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "10 $U",
-      "endpoint": "https://hevo-yield.fly.dev/",
-      "reason": null
-    },
-    {
-      "id": 341225,
-      "label": "yieldrouter — capacity-aware yield optimisation",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/",
-      "reason": null
     },
     {
       "id": 304493,

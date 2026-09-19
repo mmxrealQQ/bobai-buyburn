@@ -1085,7 +1085,7 @@ function fillLpPortfolio(){
       '<div class="pf-date">' + esc(day(m.checked_at || m.date, true)) + '</div>' +
       tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
       tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it ($BOBAI held, fees)' : null].filter(Boolean).join(' · ')) +
-      tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));
+      tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb));
     const sources = '<div class="pf-eq">Result = price + fees − gas</div><div class="pf-src">'
       + src('📈 Price', signed(p.from_price_bnb), dir(p.from_price_bnb))
       + src('🧾 Fees', signed(p.from_fees_bnb), dir(p.from_fees_bnb))

@@ -95,6 +95,18 @@ export function holdingBenchmark(points, { valueNow, tickNow, wbnbIs0 = false, b
   };
 }
 
+// The return in words, ONE wording for every surface (2026-09-19): the card
+// said '-1.2% since 3 Sep' and the page '-1.2% on the capital' of the same
+// figure — one named the period, the other the base, neither both. It is the
+// profit over all the capital put in, since the first run with a position.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function changeText(changePct, since) {
+  const v = Math.round(n(changePct) * 10) / 10;
+  const pct = (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%';
+  const s = String(since || ''), dd = Number(s.slice(8, 10)), mm = Number(s.slice(5, 7));
+  return `${pct} on the capital${dd && mm ? ` since ${dd} ${MONTHS[mm - 1]}` : ''}`;
+}
+
 export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, width = null, outsideSince = null } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
@@ -211,6 +223,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       into_bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)),
       profit_bnb: r5(p.bnb), profit_usd: p.usd != null ? Math.round(n(p.usd) * 100) / 100 : usd(p.bnb), change_pct: Math.round(n(value.change_pct) * 100) / 100,
+      change_text: changeText(value.change_pct, sum.since),
       from_price_bnb: r5(p.from_price_bnb), from_fees_bnb: r5(p.from_fees_bnb), fee_parts: feeParts, gas_bnb: r5(p.gas_bnb),
       // What the re-sets themselves cost, from the record's ticks: the loss
       // against holding each re-set realised, and its execution.

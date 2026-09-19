@@ -5,7 +5,8 @@
 //   node scripts/lp-portfolio.mjs --self-test   pin the model's rules on synthetic records, both ways
 //
 // It reads. It signs nothing, holds no key and moves nothing.
-import { lpPortfolio, lastDay, stepWords, holdingBenchmark } from '../worker-agent/lp-portfolio.js';
+import { lpPortfolio, lastDay, stepWords, holdingBenchmark, changeText } from '../worker-agent/lp-portfolio.js';
+import fs from 'node:fs';
 import { CANDIDATES } from '../worker-agent/lp-pools.js';
 
 if (process.argv.includes('--self-test')) {
@@ -50,6 +51,14 @@ if (process.argv.includes('--self-test')) {
   is('at the edge of the range: not left, says so', (() => { const r3 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, at_edge: true } } } }; return /^At the edge of its range, not left\./.test(lpPortfolio(r3, series, { now: NOW }).next); })());
   is('in range with a width named: holds and earns, re-set only after the wait', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; return /^Holds and earns\. A re-set only after 3 h out of range: one-sided beside the price, ±2% wide, no trade\.$/.test(lpPortfolio(r2, series, { now: NOW, width: w2 }).next); })());
   is('the sentence carries no dollar figure (2026-09-12: the card stays simple; what a width nets lives in /lp/windows)', !/\$/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
+  // One wording of the return for every surface (2026-09-19): base AND period, made in the model.
+  is('the return is said once, with its base and its period', changeText(-1.21, '2026-09-03') === '−1.2% on the capital since 3 Sep' && changeText(1.31, '2026-09-03T05:23:19.275Z') === '+1.3% on the capital since 3 Sep' && changeText(0, '2026-12-24') === '0.0% on the capital since 24 Dec');
+  is('… without a start date it still names its base, and a figure that is none reads as zero', changeText(2, null) === '+2.0% on the capital' && changeText(undefined, '') === '0.0% on the capital');
+  is('… the model carries it beside the figure it is made of', m.pnl.change_text === changeText(m.pnl.change_pct, m.pnl.since) && /on the capital since 3 Sep$/.test(m.pnl.change_text));
+  {
+    const tg = fs.readFileSync(new URL('../worker-tg-bot/index.js', import.meta.url), 'utf8'), page = fs.readFileSync(new URL('../dashboard/app.js', import.meta.url), 'utf8');
+    is('the Telegram card and the page both print the model\'s string, and neither has a wording of its own left beside it', /p\.change_text \|\| `\$\{pct\} on the capital since/.test(tg) && /p\.change_text \? esc\(p\.change_text\) : pct \+ ' on the capital'/.test(page) && !/`\$\{pct\} since \$\{day\(p\.since\)\}`/.test(tg));
+  }
   is('the P&L names what the re-sets themselves cost: both re-sets counted (one definition, 2026-09-19), none of them with a range on record to value', m.pnl.at_resets && m.pnl.at_resets.count === 2 && m.pnl.at_resets.valued === 0 && m.pnl.at_resets.lost_to_price_bnb === 0);
   is('the day is counted: re-sets, top-ups and the newest action', m.day.resets === 1 && m.day.top_ups === 1 && m.day.errors === 0 && m.day.last.step === undefined && /re-set/.test(m.day.last.what));
   is('the last day lists the runs of the last 24 h only, newest first', m.last_24h.length === 2 && m.last_24h[0].step === 'rebalance' && m.last_24h[1].step === 'increase' && /7397034/.test(m.last_24h[0].what));

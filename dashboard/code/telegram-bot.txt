@@ -3134,7 +3134,7 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 🌐 <a href="https://www.dextools.io/token/bobai">DEXTools.io</a>
 😉 <a href="https://funtok.io/coins/bob-6">FunTok</a>
 🦎 <a href="https://www.geckoterminal.com/bsc/pools/${BOBAI_PAIR}">GeckoTerminal</a>
-🩷 <a href="https://tradegenius.com/asset/${BOBAI_TOKEN}?network=56">Genius</a>
+🟪 <a href="https://tradegenius.com/asset/${BOBAI_TOKEN}?network=56">Genius</a>
 🐊 <a href="https://gmgn.ai/bsc/token/${BOBAI_TOKEN}">GMGN.AI</a>
 🫆 <a href="https://app.insightx.network/atlas/bsc/${BOBAI_TOKEN}">InsightX</a>
 

@@ -2,7 +2,7 @@
 # Thirteen self-tests. No accounts, no tracking, no backend.
 #
 # This is the complete brainscreener bundle as a single file, so it can be read in
-# one fetch. 52 files, 9976 lines.
+# one fetch. 52 files, 9991 lines.
 # Download as a zip: https://brainonbnb.com/code/brainscreener.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -212,9 +212,9 @@
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/i18n/en/adhs-result.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-result.js?v=5"></script>
 </body>
 </html>
 
@@ -285,7 +285,7 @@
       <h1>Structured self-test in three sections.</h1>
       <p>
         This instrument combines the <strong>Adult ADHD Self-Report Scale (ASRS v1.1)</strong>
-        by the WHO with the <strong>Wender Utah Rating Scale, short version (WURS-K)</strong> for the
+        by the WHO with a childhood scale <strong>based on the Wender Utah Rating Scale, short version (WURS-K)</strong> for the
         retrospective assessment of childhood symptoms — in line with the current
         standard of adult ADHD diagnostics under DSM-5-TR and ICD-11.
       </p>
@@ -332,7 +332,7 @@
       <div id="sectionB"></div>
 
       <div class="section-banner" data-section="W" hidden>
-        <h2>Section 3 · WURS-K (childhood)</h2>
+        <h2>Section 3 · Childhood (based on the WURS-K)</h2>
         <p id="wurskIntro" style="font-weight:500;">&nbsp;</p>
       </div>
       <div id="sectionW"></div>
@@ -362,7 +362,7 @@
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/adhs.js?v=4"></script>
 </body>
@@ -500,9 +500,9 @@
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -615,7 +615,7 @@
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
@@ -2213,7 +2213,7 @@ window.ADHS_DATA = (function () {
 
   // -------- WURS-K, short version (Retz-Junginger et al. 2002), translation ----
   // Introductory sentence: "As a child (aged about 8 to 10), I was / I had ..."
-  // Scoring: sum score 0..100; established cutoff for childhood ADHD symptoms >= 30.
+  // Scoring: sum score 0..100; established cutoff for childhood ADHD symptoms >= 36 (see evaluate).
   const WURSK_INTRO = "As a child (aged between about 8 and 10 years), I was / I had ...";
   const WURSK = [
     { id: "W1",  text: "difficulty concentrating, easily distracted" },
@@ -2273,8 +2273,13 @@ window.ADHS_DATA = (function () {
     // ----- WURS-K Summenscore -----
     const wurskSum = WURSK.reduce((s, i) => s + (get(i.id) || 0), 0);
     const wurskMax = WURSK.length * 4; // = 100
-    // Etablierter Cutoff: >= 30 spricht für relevante kindliche ADHS-Symptomatik.
-    const wurskElevated = wurskSum >= 30;
+    // The 25 childhood items are freely worded, BASED ON the WURS-K (Retz-Junginger 2002).
+    // Original: 21 scored items (0..84) + 4 unscored control items, cutoff >= 30.
+    // Here all 25 items count (0..100) — with the unchanged cutoff of 30 the scale fired too
+    // early. The threshold is therefore converted proportionally: 30/84 * 100 = 35.7 -> >= 36.
+    // A guide value, not validated separately for this item version (2026-09-20).
+    const WURSK_CUTOFF = 36;
+    const wurskElevated = wurskSum >= WURSK_CUTOFF;
 
     // ----- Gesamteinordnung -----
     // Konvention: Erwachsenen-ADHS-Hinweis erfordert (a) aktuelle Symptomatik UND (b) Hinweise auf Kindheit.
@@ -2291,7 +2296,7 @@ window.ADHS_DATA = (function () {
         inattElevated, hypElevated,
       },
       wursk: {
-        sum: wurskSum, max: wurskMax, elevated: wurskElevated,
+        sum: wurskSum, max: wurskMax, elevated: wurskElevated, cutoff: WURSK_CUTOFF,
       },
       overall: { flag: overallFlag, partAPositive, retroPositive: wurskElevated },
     };
@@ -2399,6 +2404,7 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
 
 
   // ---- Subscales ----
+  const cutoff = result.wursk.cutoff || 36; // older stored results do not carry the field
   const subscales = [
     {
       label: "ASRS Part A · Screening items",
@@ -2419,10 +2425,10 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
       note: `Sum score: ${result.asrs.hypSum} / ${result.asrs.hypMax} (clinically relevant cutoff ≥17). ${result.asrs.hypElevated ? "<strong>Elevated.</strong>" : "Within the normal range."}`,
     },
     {
-      label: "WURS-K · Childhood symptoms (retrospective)",
+      label: "Childhood scale (based on the WURS-K) · retrospective",
       raw: result.wursk.sum, max: result.wursk.max,
-      threshold: 30,
-      note: `Sum score: ${result.wursk.sum} / ${result.wursk.max} (a cutoff ≥30 indicates relevant childhood ADHD symptoms). ${result.wursk.elevated ? "<strong>Elevated.</strong>" : "Within the normal range."}`,
+      threshold: cutoff,
+      note: `Sum score: ${result.wursk.sum} / ${result.wursk.max} (guide threshold ≥&nbsp;${cutoff}: the WURS-K cutoff of 30 out of 84 points, converted proportionally to the 25 items scored here). ${result.wursk.elevated ? "<strong>Elevated.</strong>" : "Within the normal range."}`,
     },
   ];
 
@@ -2452,7 +2458,9 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
     best-validated brief instruments internationally. The <strong>WURS-K</strong>
     complements the picture with a retrospective assessment of childhood, since an
     ADHD diagnosis requires symptoms to have been present before the age of
-    12&nbsp;years (DSM-5-TR Criterion B).
+    12&nbsp;years (DSM-5-TR Criterion B). The childhood items are freely worded, <strong>based on</strong> the
+    WURS-K (Retz-Junginger et al. 2002); the threshold of ≥&nbsp;${cutoff} out of 100 is converted proportionally from the original
+    cutoff (≥&nbsp;30 out of 84 points across 21 scored items) and has not been validated separately for this version.
   `;
 
   // ---- Next steps ----
@@ -2654,7 +2662,7 @@ window.TEST_DATA = (function () {
         note: `Strict cutoff: ≥&nbsp;32. ${result.cutoffStrict ? "<strong>Met.</strong>" : (result.cutoffSensitive ? "More sensitive cutoff (≥&nbsp;26) met." : "Not met.")}` },
       ...Object.keys(SUB_LABELS).map((k) => ({
         label: `Subscale · ${SUB_LABELS[k]}`,
-        raw: result.subs[k], max: 10, threshold: 6,
+        raw: result.subs[k], max: 10, threshold: 6, thresholdLabel: "Guide value",
         note: `${result.subs[k]} of 10 items answered in the autistic direction.${result.subs[k] >= 6 ? " <strong>Markedly pronounced.</strong>" : ""}`,
       })),
     ];
@@ -2836,10 +2844,10 @@ window.TEST_DATA = (function () {
         note: `Cutoff for hazardous drinking: ≥&nbsp;8. For women, often ≥&nbsp;5 (Bradley et al. 2007). Current category: <strong>${result.level}</strong>.` },
       { label: "Items 1–3 · Quantity & frequency of consumption (AUDIT-C)", raw: result.consumption, max: 12, threshold: 4,
         note: `AUDIT-C cutoff: ≥&nbsp;4 (men) / ≥&nbsp;3 (women). Also established as a stand-alone brief screener.` },
-      { label: "Items 4–6 · Dependence symptoms", raw: result.dependence, max: 12, threshold: 4,
-        note: `Elevated scores suggest loss of control, neglect of obligations and morning drinking — core symptoms of dependence.` },
-      { label: "Items 7–10 · Alcohol-related problems", raw: result.harm, max: 16, threshold: 4,
-        note: `Feelings of guilt, blackouts, injuries, feedback from others — indications of harm that has already occurred.` },
+      { label: "Items 4–6 · Dependence symptoms", raw: result.dependence, max: 12, threshold: 1,
+        note: `Elevated scores suggest loss of control, neglect of obligations and morning drinking — core symptoms of dependence. According to the WHO manual, any score above 0 already points to incipient or existing dependence.` },
+      { label: "Items 7–10 · Alcohol-related problems", raw: result.harm, max: 16, threshold: 1,
+        note: `Feelings of guilt, blackouts, injuries, feedback from others — indications of harm that has already occurred. According to the WHO manual, any score above 0 indicates that alcohol-related harm is already being experienced.` },
     ];
 
     const context = `
@@ -3138,7 +3146,7 @@ window.TEST_DATA = (function () {
                    (isHigh ? `Tends to be ${DOMAINS[k].high}.` : (v.T < 45 ? `Tends to be ${DOMAINS[k].low}.` : `Within the average range.`));
       return {
         label: `Domain · ${DOMAINS[k].name} (${DOMAINS[k].short})`,
-        raw: v.T, max: 80, threshold: 50,
+        raw: v.T, max: 80, threshold: 50, thresholdLabel: "Norm mean",
         valueLabel: `T = ${v.T} · ${v.level}`,
         note,
       };
@@ -3152,7 +3160,7 @@ window.TEST_DATA = (function () {
         const v = result.facets[f];
         facetSubs.push({
           label: `Facet · ${FACET_LABELS[f]} (${DOMAINS[d].short})`,
-          raw: Math.round(v.mean * 20), max: 100, threshold: Math.round(FACET_NORMS[f] * 20),
+          raw: Math.round(v.mean * 20), max: 100, threshold: Math.round(FACET_NORMS[f] * 20), thresholdLabel: "Norm mean",
           valueLabel: `M = ${v.mean.toFixed(2)} / 5 · ${v.level}`,
           note: `Population mean (US norm, Soto & John 2017): ${FACET_NORMS[f].toFixed(2)}.`,
         });
@@ -3523,7 +3531,8 @@ window.TEST_DATA = (function () {
 //   "Always" = 3, "Usually" = 2, "Often" = 1, "Sometimes/Rarely/Never" = 0.
 //   Item 25 is REVERSE: "Always/Usually/Often" = 0, "Sometimes" = 1, "Rarely" = 2, "Never" = 3.
 // Total cutoff: >= 20 = clinically relevant, further assessment indicated.
-// Subscale cutoffs (Garner 2007): Diet >= 10, Bulimia >= 4, Oral Control >= 4.
+// Subscales: NO published cutoffs (formerly attributed to "Garner 2007" — wrongly).
+// Guide values, our own setting: Diet >= 10, Bulimia >= 4, Oral Control >= 4.
 
 window.TEST_DATA = (function () {
   const SCALE = {
@@ -3603,13 +3612,17 @@ window.TEST_DATA = (function () {
     const subFlags = {};
     for (const k of Object.keys(subs)) subFlags[k] = subs[k] >= SUB_CUTOFFS[k];
 
+    // Classification (revised 2026-09-20): ONLY the total cutoff >= 20 is published, plus Garner's
+    // behavioural criteria (vomiting among them); there are no subscale cutoffs. A bulimia subscale
+    // >= 4 alone used to mean "high" (total 4/78 -> "prompt assessment strongly recommended"),
+    // while "always vomit after eating" (3 points, total 3) passed as "unremarkable".
+    const purging = score(get("E9")) >= 1; // vomits after eating "often" or more
     let flag;
-    if (total >= 30 || subs.bulimia >= 4) flag = "high";
-    else if (cutoffReached) flag = "moderate";
-    else if (Object.values(subFlags).some(Boolean)) flag = "moderate";
+    if (total >= 30 || (subFlags.bulimia && purging)) flag = "high";
+    else if (cutoffReached || purging || Object.values(subFlags).some(Boolean)) flag = "moderate";
     else flag = "low";
 
-    return { total, max: 78, subs, subFlags, cutoffReached, flag };
+    return { total, max: 78, subs, subFlags, cutoffReached, purging, flag };
   }
 
   function renderResult(result) {
@@ -3642,8 +3655,8 @@ window.TEST_DATA = (function () {
         note: `Cutoff for further assessment: ≥&nbsp;20. ${result.cutoffReached ? "<strong>Cutoff reached.</strong>" : "Cutoff not reached."}` },
       ...Object.keys(SUB_LABELS).map((k) => ({
         label: `Subscale · ${SUB_LABELS[k]}`,
-        raw: result.subs[k], max: SUB_MAX[k], threshold: SUB_CUTOFFS[k],
-        note: `Cutoff: ≥&nbsp;${SUB_CUTOFFS[k]}. ${result.subFlags[k] ? "<strong>Elevated.</strong>" : "Within the normal range."}`,
+        raw: result.subs[k], max: SUB_MAX[k], threshold: SUB_CUTOFFS[k], thresholdLabel: "Guide value",
+        note: `Guide value: ≥&nbsp;${SUB_CUTOFFS[k]} (no published subscale cutoff). ${result.subFlags[k] ? "<strong>Markedly elevated.</strong>" : "Below the guide value."}`,
       })),
     ];
 
@@ -3656,7 +3669,10 @@ window.TEST_DATA = (function () {
       Reference period: <strong>the past 6 months</strong>.
     `;
 
+    const purgingNote = result.purging ? " <strong>Regardless of the total score:</strong> you report vomiting after eating often or more frequently. Regular vomiting is one of the behavioural criteria for which the EAT-26 (Garner) calls for a specialist assessment — even below the cutoff." : "";
+
     const next = [];
+    if (result.purging) next.push("Regular vomiting after eating should be assessed by a doctor soon — including physically (e.g. electrolytes, teeth, oesophagus).");
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with a service specialising in eating disorders.");
       next.push("In the case of acute medical risk (e.&nbsp;g. low BMI &lt; 17.5, electrolyte imbalance, cardiac arrhythmia), a somatic assessment is urgently needed.");
@@ -3676,7 +3692,7 @@ window.TEST_DATA = (function () {
       unit: `/ 78 points`,
       gauge: Math.min(1, result.total / 40),
       flag: result.flag,
-      interpretationHTML: interp,
+      interpretationHTML: interp + purgingNote,
       subscales: subscaleEntries,
       contextHTML: context,
       nextSteps: next,
@@ -4198,18 +4214,18 @@ window.IQ_DATA = (function () {
   function addNumber(id, level, q, options, answerIdx) {
     N.push({ id, type: "numeric", domain: "Gq", level, question: q, options, answer: answerIdx });
   }
-  addNumber("N1", 1, "2, 4, 6, 8, ?", ["9", "10", "12", "14"], 1);
-  addNumber("N2", 1, "3, 6, 12, 24, ?", ["36", "42", "48", "60"], 2);
-  addNumber("N3", 1, "1, 4, 9, 16, ?", ["20", "23", "25", "32"], 2);
+  addNumber("N1", 1, "2, 4, 6, 8, ?", ["10", "11", "12", "14"], 0);
+  addNumber("N2", 1, "3, 6, 12, 24, ?", ["30", "36", "42", "48"], 3);
+  addNumber("N3", 1, "1, 4, 9, 16, ?", ["24", "25", "27", "32"], 1);
   addNumber("N4", 2, "1, 1, 2, 3, 5, 8, ?", ["10", "11", "13", "16"], 2);
-  addNumber("N5", 2, "2, 5, 11, 23, ?", ["35", "41", "47", "53"], 2);
+  addNumber("N5", 2, "2, 5, 11, 23, ?", ["47", "49", "52", "56"], 0);
   addNumber("N6", 2, "81, 27, 9, 3, ?", ["0", "1", "2", "3"], 1);
-  addNumber("N7", 2, "1, 3, 6, 10, 15, ?", ["18", "20", "21", "22"], 2);
-  addNumber("N8", 3, "7, 14, 28, 56, ?", ["84", "98", "112", "120"], 2);
+  addNumber("N7", 2, "1, 3, 6, 10, 15, ?", ["18", "19", "20", "21"], 3);
+  addNumber("N8", 3, "7, 14, 28, 56, ?", ["98", "112", "120", "126"], 1);
   addNumber("N9", 3, "5, 8, 13, 20, 29, ?", ["35", "38", "40", "42"], 2);
   addNumber("N10", 3, "2, 3, 5, 7, 11, ?", ["12", "13", "15", "17"], 1);
-  addNumber("N11", 3, "1, 8, 27, 64, ?", ["100", "120", "125", "128"], 2);
-  addNumber("N12", 4, "4, 9, 19, 39, 79, ?", ["129", "139", "159", "199"], 2);
+  addNumber("N11", 3, "1, 8, 27, 64, ?", ["100", "115", "120", "125"], 3);
+  addNumber("N12", 4, "4, 9, 19, 39, 79, ?", ["159", "169", "179", "199"], 0);
 
   // -------------------- Verbal analogies (Gc) --------------------
   const V = [];
@@ -4261,7 +4277,7 @@ window.IQ_DATA = (function () {
     ["A", "B", "C", "D"], 2);
   addLogic("L5", 3,
     "Five people each shake hands with each other exactly once. How many handshakes are there?",
-    ["8", "9", "10", "12"], 2);
+    ["10", "12", "15", "20"], 0);
   addLogic("L6", 3,
     "The following is true: “If Anna lies, then Ben lies too.” Ben is telling the truth. What necessarily follows?",
     [
@@ -4272,7 +4288,7 @@ window.IQ_DATA = (function () {
     ], 1);
   addLogic("L7", 3,
     "A cube has 6 faces. How many edges does it have?",
-    ["6", "8", "12", "16"], 2);
+    ["6", "8", "10", "12"], 3);
   addLogic("L8", 4,
     "Three cards lie side by side: one red, one green, one blue. The following holds: the red one lies to the left of the green one. The blue one lies between the other two. In what order (from left to right) do they lie?",
     ["red, blue, green", "blue, red, green", "red, green, blue", "green, blue, red"], 0);
@@ -4778,7 +4794,7 @@ window.TEST_DATA = (function () {
 //   Washing:      5, 11, 17    Checking:    2, 8, 14    Ordering:    3, 9, 15
 //   Obsessing:    6, 12, 18    Hoarding:    1, 7, 13    Neutralising: 4, 10, 16
 // Cutoffs:
-//   Total >= 21 (Foa et al. 2002, classic cutoff). Sensitivity ~74%, specificity ~75%.
+//   Total >= 21 (Foa et al. 2002, classic cutoff). Sensitivity ~66%, specificity ~64%.
 //   Alternative more recent recommendation: >= 14 (more sensitive, less specific).
 
 window.TEST_DATA = (function () {
@@ -4857,7 +4873,7 @@ window.TEST_DATA = (function () {
     const interp = `
       Your <strong>OCI-R total score</strong> is <strong>${result.total} of 72 points</strong>.
       ${result.cutoffReached
-        ? `The classic cutoff of ≥&nbsp;21 (Foa et al. 2002) is reached — sensitivity approx.&nbsp;74&nbsp;%, specificity approx.&nbsp;75&nbsp;% for obsessive-compulsive disorder.`
+        ? `The classic cutoff of ≥&nbsp;21 (Foa et al. 2002) is reached — sensitivity approx.&nbsp;66&nbsp;%, specificity approx.&nbsp;64&nbsp;% for obsessive-compulsive disorder.`
         : (result.sensitiveCutoff
             ? `The standard cutoff of ≥&nbsp;21 is not reached, but the more sensitive cutoff of ≥&nbsp;14 (Abramovitch et al. 2020) is. A specialist assessment is worthwhile if the symptoms are distressing.`
             : `Neither of the established cutoffs (≥&nbsp;14 sensitive; ≥&nbsp;21 specific) is reached.`)}
@@ -4866,8 +4882,8 @@ window.TEST_DATA = (function () {
 
     const subscaleEntries = Object.keys(SUBSCALE_LABELS).map((key) => ({
       label: `Subscale · ${SUBSCALE_LABELS[key]}`,
-      raw: result.subs[key], max: 12, threshold: 6,
-      note: `${result.subs[key]} of 12 points.${result.subs[key] >= 6 ? " <strong>Clinically notable</strong> (≥&nbsp;6 as the subscale cutoff)." : ""}`,
+      raw: result.subs[key], max: 12, threshold: 6, thresholdLabel: "Guide value",
+      note: `${result.subs[key]} of 12 points.${result.subs[key] >= 6 ? " <strong>Markedly elevated</strong> (≥&nbsp;6 of 12 — a guide value, not a validated subscale cutoff)." : ""}`,
     }));
 
     subscaleEntries.unshift({
@@ -5076,22 +5092,22 @@ window.TEST_DATA = (function () {
       },
       {
         label: "Cluster B · Intrusion (re-experiencing)",
-        raw: cs.B, max: cm.B, threshold: 4,
+        raw: cs.B, max: cm.B, threshold: null,
         note: `Symptoms rated ≥ “moderately”: ${result.clusterCountsAtLeast2.B}/5. DSM-5 requires at least 1.`,
       },
       {
         label: "Cluster C · Avoidance",
-        raw: cs.C, max: cm.C, threshold: 2,
+        raw: cs.C, max: cm.C, threshold: null,
         note: `Symptoms rated ≥ “moderately”: ${result.clusterCountsAtLeast2.C}/2. DSM-5 requires at least 1.`,
       },
       {
         label: "Cluster D · Negative cognitions / mood",
-        raw: cs.D, max: cm.D, threshold: 6,
+        raw: cs.D, max: cm.D, threshold: null,
         note: `Symptoms rated ≥ “moderately”: ${result.clusterCountsAtLeast2.D}/7. DSM-5 requires at least 2.`,
       },
       {
         label: "Cluster E · Arousal / reactivity",
-        raw: cs.E, max: cm.E, threshold: 6,
+        raw: cs.E, max: cm.E, threshold: null,
         note: `Symptoms rated ≥ “moderately”: ${result.clusterCountsAtLeast2.E}/6. DSM-5 requires at least 2.`,
       },
     ];
@@ -5422,6 +5438,8 @@ window.TEST_DATA = (function () {
     { v: 3, label: "Severe" },
     { v: 4, label: "Extreme or cannot do" },
   ] };
+  // Work / school: an additional "Not applicable" (v = -1) — left out of the score, see evaluate().
+  const SCALE_WORK = { cols: 6, options: [...SCALE.options, { v: -1, label: "Not applicable" }] };
 
   // Section 1: Cognition
   const D1 = [
@@ -5494,18 +5512,16 @@ window.TEST_DATA = (function () {
   };
 
   function evaluate(answers) {
-    const get = (id) => (typeof answers[id] === "number" ? answers[id] : 0);
+    const rawVal = (id) => (typeof answers[id] === "number" ? answers[id] : 0);
+    // "Not applicable" (v = -1, work items only) counts neither in the numerator nor in the
+    // denominator (WHO manual: without work/school the 32-item scoring applies). Until 2026-09-20
+    // "None throughout" was taken as not applicable — which inflated the percentage of people who
+    // work and have NO difficulty there (e.g. 32/128 = 25 % instead of 32/144 = 22 %).
+    const get = (id) => Math.max(0, rawVal(id));
+    const applicable = (it) => rawVal(it.id) >= 0;
 
-    // Check whether the work items are "not applicable" - heuristically, if all = 0 AND at least 1 other value > 0
-    const workValues = D5_WORK.map(i => get(i.id));
-    const workAllZero = workValues.every(v => v === 0);
-    const otherValues = ALL_ITEMS.filter(i => i.domain !== "work").map(i => get(i.id));
-    const otherHasValues = otherValues.some(v => v > 0);
-    const workNotApplicable = workAllZero && otherHasValues;
-
-    const itemsForScoring = workNotApplicable
-      ? ALL_ITEMS.filter(i => i.domain !== "work")
-      : ALL_ITEMS;
+    const workNotApplicable = D5_WORK.every((i) => !applicable(i));
+    const itemsForScoring = ALL_ITEMS.filter(applicable);
 
     const total = itemsForScoring.reduce((s, it) => s + get(it.id), 0);
     const max = itemsForScoring.length * 4;
@@ -5513,7 +5529,7 @@ window.TEST_DATA = (function () {
 
     const domains = {};
     for (const key of Object.keys(DOMAIN_LABELS)) {
-      const items = ALL_ITEMS.filter(i => i.domain === key);
+      const items = ALL_ITEMS.filter(i => i.domain === key && applicable(i));
       const sum = items.reduce((s, i) => s + get(i.id), 0);
       const dMax = items.length * 4;
       domains[key] = {
@@ -5547,17 +5563,16 @@ window.TEST_DATA = (function () {
     const interp = `
       Your <strong>WHODAS 2.0 total score</strong> is <strong>${result.total} / ${result.max} points</strong>
       (= <strong>${result.pct}&nbsp;%</strong> of the maximum impairment). This corresponds to <strong>${result.level}</strong>.
-      ${result.workNotApplicable ? `The "work / school" items were identified as <em>not applicable</em> and excluded from scoring (${ALL_ITEMS.filter(i=>i.domain==="work").length} items).` : ""}
-      For comparison: in the WHO World Health Survey (general population &gt; 60,000 adults)
-      the median is approx. 5–10&nbsp;%, the 75th percentile approx. 15&nbsp;%, and the 90th percentile
-      approx. 30&nbsp;%. Scores of 25&nbsp;% or above are considered clinically notable (DSM-5-TR recommendation).
+      ${result.workNotApplicable ? `The “work / school” questions were answered “Not applicable” and are not counted in the total score.` : ""}
+      There is no officially recommended clinical cutoff for the WHODAS 2.0 (WHO 2010).
+      The levels used here (25&nbsp;% and above “moderate”, 50&nbsp;% and above “severe”) follow the ICF severity grades and serve as a guide.
     `;
 
     const totalSub = {
       label: "WHODAS 2.0 total score", raw: result.total, max: result.max,
-      threshold: Math.round(result.max * 0.25),
+      threshold: Math.round(result.max * 0.25), thresholdLabel: "Guide value",
       valueLabel: `${result.total} / ${result.max} · ${result.pct} %`,
-      note: `Clinical cutoff approx. 25&nbsp;% of the maximum impairment. Current proportion: <strong>${result.pct}&nbsp;%</strong>.`,
+      note: `Guide mark: 25&nbsp;% of the maximum impairment (not an official cutoff). Current proportion: <strong>${result.pct}&nbsp;%</strong>.`,
     };
 
     const domainSubs = Object.keys(DOMAIN_LABELS).map((k) => {
@@ -5565,14 +5580,14 @@ window.TEST_DATA = (function () {
       if (v.skipped) {
         return {
           label: DOMAIN_LABELS[k] + " · not assessed",
-          raw: 0, max: v.max, threshold: null,
+          raw: 0, max: 16, threshold: null,
           valueLabel: "not applicable",
-          note: "Work/school items identified as not applicable — excluded from overall scoring.",
+          note: "Answered “Not applicable” — not counted in the total score.",
         };
       }
       return {
         label: DOMAIN_LABELS[k],
-        raw: v.sum, max: v.max, threshold: Math.round(v.max * 0.25),
+        raw: v.sum, max: v.max, threshold: Math.round(v.max * 0.25), thresholdLabel: "Guide value",
         valueLabel: `${v.sum} / ${v.max} · ${v.pct} %`,
         note: `${v.pct < 25 ? "In the largely unremarkable range." : v.pct < 50 ? "Moderately impaired." : "Severely impaired."}`,
       };
@@ -5676,8 +5691,8 @@ window.TEST_DATA = (function () {
       {
         id: "work",
         title: "D5 · Life activities (work / school)",
-        intro: "<strong>If you are not currently employed or in education:</strong> answer the items with reference to your most recent occupation. If you have never been employed or this does not apply to you: please select “None” throughout — the items will then be excluded from scoring.",
-        items: D5_WORK, scale: SCALE,
+        intro: "Refer to the last 30 days. <strong>If you were neither working nor in education during that time,</strong> select “Not applicable” for all four questions — they are then left out of the score. “None” means: you work and had no difficulties doing so.",
+        items: D5_WORK, scale: SCALE_WORK,
       },
       {
         id: "participation",
@@ -6370,7 +6385,7 @@ window.TEST_DATA = (function () {
           </div>
           <div class="subscale-bar" style="position:relative;">
             <div style="width:${pct}%;"></div>
-            ${tPct != null ? `<span style="position:absolute; left:${tPct}%; top:-3px; bottom:-3px; width:1.5px; background:var(--gold);" title="Cutoff"></span>` : ""}
+            ${tPct != null ? `<span style="position:absolute; left:${tPct}%; top:-3px; bottom:-3px; width:1.5px; background:var(--gold);" title="${s.thresholdLabel || "Cutoff"}"></span>` : ""}
           </div>
           <div class="note">${s.note}</div>
         </div>
@@ -6985,9 +7000,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -7100,7 +7115,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
@@ -7238,9 +7253,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -7353,7 +7368,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
@@ -7867,9 +7882,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -7982,7 +7997,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
@@ -8122,7 +8137,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -8804,10 +8819,10 @@ window.TEST_DATA = (function () {
         Discuss the result with the professional treating you.
         <br><br>
         <span class="small">
-          Structure based on <strong>CHC theory</strong> (Cattell-Horn-Carroll). Norming
-          on the standard score scale (M&nbsp;=&nbsp;100, SD&nbsp;=&nbsp;15) based on
-          internal calibration. The 95% confidence interval accounts for the
-          standard error of measurement.
+          Structure based on <strong>CHC theory</strong> (Cattell-Horn-Carroll). Conversion to the
+          standard score scale (M&nbsp;=&nbsp;100, SD&nbsp;=&nbsp;15) rests on an <strong>assumed</strong>
+          raw-score distribution (mean 22 of 40 items, SD&nbsp;6) — the test has <strong>not been normed on a
+          sample</strong>. The 95% interval (±&nbsp;10 points) is likewise an approximation.
         </span>
       </div>
 
@@ -8834,7 +8849,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/iq-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/iq-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/i18n/en/iq-result.js?v=4"></script>
 </body>
@@ -8975,7 +8990,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/iq-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/iq-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/iq.js?v=5"></script>
 </body>
@@ -9115,7 +9130,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -9366,9 +9381,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -9481,7 +9496,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
@@ -9619,9 +9634,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -9734,7 +9749,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
@@ -9874,7 +9889,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -10125,9 +10140,9 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/result-engine.js?v=4"></script>
+<script src="/brainscreener/assets/js/result-engine.js?v=5"></script>
 </body>
 </html>
 
@@ -10240,7 +10255,7 @@ window.TEST_DATA = (function () {
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=4"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>

@@ -108,12 +108,12 @@
           <div class="ts-row" data-phase="bobai-liq-2">
             <div class="ts-when">Aug 8 &rarr; Sep 9, 05:30 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost II</div>
-            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>0.2%</b> BOB burn &middot; <b>1%</b> Creator &middot; <b>0.8%</b> &rarr; <a href="#liq-boost-bobai">BOBAI liq add + LP burn</a></div>
+            <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>0.2%</b> BOB burn &middot; <b>1%</b> Creator &middot; <b>0.8%</b> &rarr; <a href="/#liq-boost-bobai-2">BOBAI liq add + LP burn</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-2-lp">
             <div class="ts-when">Sep 9, 05:30 UTC &rarr; Sep 16, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost II + DeFi Agent</div>
-            <div class="ts-split"><b>0.9%</b> BOBAI burn &middot; <b>0.1%</b> BOB burn &middot; <b>0.9%</b> Creator &middot; <b>0.8%</b> &rarr; <a href="#liq-boost-bobai">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a></div>
+            <div class="ts-split"><b>0.9%</b> BOBAI burn &middot; <b>0.1%</b> BOB burn &middot; <b>0.9%</b> Creator &middot; <b>0.8%</b> &rarr; <a href="/#liq-boost-bobai-2">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a></div>
           </div>
           <div class="ts-row" data-phase="sunshine">
             <div class="ts-when">Sep 17 &rarr; Sep 19, 18:00 UTC, 2026</div>
@@ -121,8 +121,13 @@
             <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.8%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-3">
-            <div class="ts-when">Sep 19, 18:00 UTC &rarr; Nov 20, 2026</div>
+            <div class="ts-when">Sep 19, 18:00 UTC &rarr; Sep 20, 06:00 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent</div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
+          </div>
+          <div class="ts-row" data-phase="bobai-liq-3-raised">
+            <div class="ts-when">Sep 20, 06:00 UTC &rarr; Nov 20, 2026</div>
+            <div class="ts-name">$BOBAI Liq Boost III raised to 0.5% + Giggle Academy pot + DeFi Agent</div>
             <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
@@ -273,40 +278,12 @@
       </div>
     </div>
   </section>
-  <!-- Liquidity Boost II ended 2026-09-16 23:59 UTC: the card moved from the first
-       screen to the end of the page (2026-09-17), without its countdown. -->
-  <section class="liq-boost fi" id="liq-boost-bobai">
-    <div class="lb-card">
-      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost II</em></div>
-      <div class="lb-sub">0.8% of every trade was permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; Aug 8 &ndash; Sep 16, 2026 &middot; <span style="color:var(--green)">&#x2713; Campaign Complete</span></div>
-      <div class="lb-stats">
-        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb2-count">0</div></div>
-        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb2-bnb">0.0000</div></div>
-        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb2-lp">0</div></div>
-      </div>
-      <!-- The three figures above are the campaign; the per-add list is the
-           receipt. Folded (2026-09-02) so the first screen after the hero is
-           one card, not a table. -->
-      <details class="lb-archive lb-inner">
-        <summary>
-          <div class="lb-arch-head"><div class="lb-arch-title">Every add, with its transaction</div></div>
-          <div class="lb-arch-arr">&#x25BE;</div>
-        </summary>
-        <div class="lb-table" style="margin-top:6px">
-          <div class="txw">
-            <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
-            <tbody id="bb2-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
-          </div>
-        </div>
-      </details>
-    </div>
-  </section>
   </main>
   <footer><div class="fi2">
     <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/roadmap">Roadmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=86" defer></script>
+<script src="app.js?v=87" defer></script>
 </body>
 </html>

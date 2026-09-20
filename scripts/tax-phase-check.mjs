@@ -29,21 +29,24 @@ const { TAX_PHASES, taxPhaseAt } = new Function(`${snippet}; return { TAX_PHASES
 ok('the tool answers with the phase (tokenomicsNow is what the case returns)', /case 'bobai_tokenomics': return tokenomicsNow\(\);/.test(w) && /current_phase: taxPhaseAt\(\)/.test(w));
 
 const iso = (name) => (app.match(new RegExp(name + "=new Date\\('([^']+)'\\)")) || [])[1];
-const sun = TAX_PHASES.find((p) => p.id === 'sunshine'), bb3 = TAX_PHASES.find((p) => p.id === 'bobai-liq-3'), fin = TAX_PHASES.find((p) => p.id === 'standard-final');
+const sun = TAX_PHASES.find((p) => p.id === 'sunshine'), bb3 = TAX_PHASES.find((p) => p.id === 'bobai-liq-3'), bb3r = TAX_PHASES.find((p) => p.id === 'bobai-liq-3-raised'), fin = TAX_PHASES.find((p) => p.id === 'standard-final');
 // 2026-09-19: Liquidity Boost III splits the pot's window in two — the pot alone, then the pot with the boost, to the same end.
-ok('the campaign windows are the page\'s own (GG_START … BB3_START … GG_END)', !!sun && !!bb3 && iso('GG_START') === sun.from && iso('BB3_START') === sun.until && sun.until === bb3.from && iso('GG_END') === bb3.until, `${iso('GG_START')} … ${iso('BB3_START')} … ${iso('GG_END')}`);
-ok('the standard split begins where the campaign ends', !!fin && fin.from === bb3.until && fin.until === null);
+// 2026-09-20: the boost was raised from 0.3% to 0.5% at 06:00 UTC; the page and the tool tell it as a window of its own (BB3R_START). The bots carry no such window — they pay 0.5% since the deploy of 05:52 UTC, and no run moved money in between.
+ok('the campaign windows are the page\'s own (GG_START … BB3_START … BB3R_START … GG_END)', !!sun && !!bb3 && !!bb3r && iso('GG_START') === sun.from && iso('BB3_START') === sun.until && sun.until === bb3.from && iso('BB3R_START') === bb3.until && bb3.until === bb3r.from && iso('GG_END') === bb3r.until, `${iso('GG_START')} … ${iso('BB3_START')} … ${iso('BB3R_START')} … ${iso('GG_END')}`);
+ok('the standard split begins where the campaign ends', !!fin && fin.from === bb3r.until && fin.until === null);
 const rowOf = (id) => (app.match(new RegExp("\\{id:'" + id + "'[^}]+\\}")) || [''])[0];
 const pctOf = (row, k) => Number((row.match(new RegExp(k + ":'([0-9.]+)%'")) || [])[1]);
 const row = rowOf('sunshine'), pct = (k) => pctOf(row, k);
 ok('the percentages are the page\'s row for the same window', pct('creatorPct') === sun.split_pct.creator && pct('bobPct') === sun.split_pct.bob_burn && pct('bobaiPct') === sun.split_pct.bobai_burn && pct('lpPct') === sun.split_pct.defi_agent && pct('gigglePct') === sun.split_pct.giggle_academy_pot, row.slice(0, 40) + '…');
 const row3 = rowOf('bobai-liq-3'), pct3 = (k) => pctOf(row3, k);
 ok('and the Liquidity Boost III row says what the tool says, liq add included', !!bb3 && pct3('creatorPct') === bb3.split_pct.creator && pct3('bobPct') === bb3.split_pct.bob_burn && pct3('bobaiPct') === bb3.split_pct.bobai_burn && pct3('liqPct') === bb3.split_pct.bobai_liquidity_add && pct3('lpPct') === bb3.split_pct.defi_agent && pct3('gigglePct') === bb3.split_pct.giggle_academy_pot && /Liq Boost III/.test(row3), row3.slice(0, 40) + '…');
+const row3r = rowOf('bobai-liq-3-raised'), pct3r = (k) => pctOf(row3r, k);
+ok('and so does the raised row: 0.3% BOB burn, 0.5% liq add', !!bb3r && pct3r('creatorPct') === bb3r.split_pct.creator && pct3r('bobPct') === bb3r.split_pct.bob_burn && pct3r('bobaiPct') === bb3r.split_pct.bobai_burn && pct3r('liqPct') === bb3r.split_pct.bobai_liquidity_add && pct3r('lpPct') === bb3r.split_pct.defi_agent && pct3r('gigglePct') === bb3r.split_pct.giggle_academy_pot && bb3r.split_pct.bob_burn === 0.3 && bb3r.split_pct.bobai_liquidity_add === 0.5 && bb3.split_pct.bob_burn === 0.5 && bb3.split_pct.bobai_liquidity_add === 0.3, row3r.slice(0, 40) + '…');
 ok('every window adds up to the 3% the contract takes', TAX_PHASES.every((p) => Math.abs(Object.values(p.split_pct).reduce((a, b) => a + b, 0) - 3) < 1e-9));
 ok('the bot carries all three dates', bot.includes('2026-09-17T00:01:00Z') && bot.includes(sun.until) && bot.includes('2026-11-20T00:01:00Z'));
 const at = (d) => taxPhaseAt(Date.parse(d));
-ok('a day inside the campaign answers with it and names what follows', at('2026-10-01T00:00:00Z')?.id === 'bobai-liq-3' && at('2026-10-01T00:00:00Z')?.next?.id === 'standard-final' && at('2026-10-01T00:00:00Z')?.total_pct === 3 && at('2026-09-18T12:00:00Z')?.id === 'sunshine' && at('2026-09-18T12:00:00Z')?.next?.id === 'bobai-liq-3');
-ok('the minute it ends the standard split answers, with nothing after it', at('2026-11-20T00:01:00Z')?.id === 'standard-final' && at('2026-11-20T00:01:00Z')?.next === null && at('2026-11-20T00:00:59Z')?.id === 'bobai-liq-3');
+ok('a day inside the campaign answers with it and names what follows', at('2026-10-01T00:00:00Z')?.id === 'bobai-liq-3-raised' && at('2026-10-01T00:00:00Z')?.next?.id === 'standard-final' && at('2026-09-20T05:59:59Z')?.id === 'bobai-liq-3' && at('2026-09-20T06:00:00Z')?.id === 'bobai-liq-3-raised' && at('2026-10-01T00:00:00Z')?.total_pct === 3 && at('2026-09-18T12:00:00Z')?.id === 'sunshine' && at('2026-09-18T12:00:00Z')?.next?.id === 'bobai-liq-3');
+ok('the minute it ends the standard split answers, with nothing after it', at('2026-11-20T00:01:00Z')?.id === 'standard-final' && at('2026-11-20T00:01:00Z')?.next === null && at('2026-11-20T00:00:59Z')?.id === 'bobai-liq-3-raised');
 
 // ── the two bots, run as they stand ─────────────────────────────────────────
 const fallback = src('../buyback-bot.js');

@@ -635,6 +635,8 @@ const BB2_END=new Date('2026-09-16T23:59:59Z').getTime();
 // Round three (2026-09-19): 0.3% out of the BOB-burn slice, to the same end as the Giggle pot. Same log, split by window.
 const BB3_START=new Date('2026-09-19T18:00:00Z').getTime();
 const BB3_END=new Date('2026-11-20T00:01:00Z').getTime();
+// 2026-09-20 06:00 UTC: the boost raised from 0.3% to 0.5% (the 0.2% out of the BOB burn). The schedule tells it as two windows; the card and its log are one.
+const BB3R_START=new Date('2026-09-20T06:00:00Z').getTime();
 // DeFi Agent share and Giggle Academy pot — the same instants the buyback worker switches on.
 const LP_SHARE_START=new Date('2026-09-09T05:30:00Z').getTime();
 const GG_START=new Date('2026-09-17T00:01:00Z').getTime();
@@ -908,7 +910,9 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     {id:'bobai-liq-2-lp',start:LP_SHARE_START, end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'(−0.1% → DeFi Agent)', bobNote:'(−0.8% → $BOBAI liq add, −0.1% → DeFi Agent)', bobaiNote:'(−0.1% → DeFi Agent)', creatorPct:'0.9%', bobPct:'0.1%', bobaiPct:'0.9%', liqPct:'0.8%', lpPct:'0.3%'},
     {id:'sunshine',      start:GG_START, end:BB3_START, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.8%', bobaiPct:'0.8%', lpPct:'0.3%', gigglePct:'0.3%'},
     // 2026-09-19: Liq Boost III — 0.5% out of the BOB-burn slice into the BOBAI/BNB pool, LP burned; ends with the pot (0.3% until 2026-09-20, one add).
-    {id:'bobai-liq-3',   start:BB3_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.5% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.3%', bobaiPct:'0.8%', liqPct:'0.5%', lpPct:'0.3%', gigglePct:'0.3%'},
+    {id:'bobai-liq-3',   start:BB3_START, end:BB3R_START, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.3% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.5%', bobaiPct:'0.8%', liqPct:'0.3%', lpPct:'0.3%', gigglePct:'0.3%'},
+    // 2026-09-20 06:00 UTC: Liq Boost III raised to 0.5% — another 0.2% out of the BOB-burn slice (0.5 → 0.3%); creator and BOBAI burn do not move.
+    {id:'bobai-liq-3-raised', start:BB3R_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.5% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.3%', bobaiPct:'0.8%', liqPct:'0.5%', lpPct:'0.3%', gigglePct:'0.3%'},
     {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'}
   ];
   // Size the scroll window to exactly: 1 past phase (context) + active + everything upcoming.

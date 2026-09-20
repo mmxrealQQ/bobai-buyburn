@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 4702 lines.
+# one fetch. 12 files, 4713 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2811,6 +2811,8 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null) {
 // and the schedule on the page. Only the windows still ahead or running are
 // listed; the finished campaigns live on the page's schedule.
 const BB3_START = Date.parse('2026-09-19T18:00:00Z');
+// 2026-09-20 06:00 UTC: Liq Boost III raised from 0.3% to 0.5%, the 0.2% out of the BOB burn — the page's schedule (app.js BB3R_START) tells it as two windows, so does this table.
+const BB3R_START = Date.parse('2026-09-20T06:00:00Z');
 const BOT_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
 const TAX_PHASES_TG = [
   { from: GG_START, until: BB3_START, when: 'Sep 17 → Sep 19, 18:00 UTC, 2026', name: 'Giggle Academy pot + DeFi Agent',
@@ -2821,7 +2823,16 @@ const TAX_PHASES_TG = [
       ['💧', '0.3%', 'DeFi Agent', ''],
       ['☀️', '0.3%', 'Giggle Academy pot', ''],
     ] },
-  { from: BB3_START, until: GG_END, when: 'Sep 19, 18:00 UTC → Nov 20, 2026', name: '$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent',
+  { from: BB3_START, until: BB3R_START, when: 'Sep 19, 18:00 UTC → Sep 20, 06:00 UTC, 2026', name: '$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent',
+    slices: [
+      ['👤', '0.8%', 'Creator', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['👷', '0.5%', 'Burn $BOB (Build On BNB)', '−0.3% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['🧠', '0.8%', 'Burn $BOBAI', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['🔒', '0.3%', 'BOBAI liq add + LP burn', ''],
+      ['💧', '0.3%', 'DeFi Agent', ''],
+      ['☀️', '0.3%', 'Giggle Academy pot', ''],
+    ] },
+  { from: BB3R_START, until: GG_END, when: 'Sep 20, 06:00 UTC → Nov 20, 2026', name: '$BOBAI Liq Boost III raised to 0.5% + Giggle Academy pot + DeFi Agent',
     slices: [
       ['👤', '0.8%', 'Creator', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
       ['👷', '0.3%', 'Burn $BOB (Build On BNB)', '−0.5% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot'],

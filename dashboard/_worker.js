@@ -7,6 +7,7 @@ import { useKeyedRpcs } from './scanner-chain.js';
 import { feeTiers } from './tier-scan.js';
 import { rangePlan } from './range-scan.js';
 import { swapRoute } from './swap-route.js';
+import { preflight } from './preflight.js';
 import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -409,6 +410,7 @@ const AGENT_GUIDE = {
     { ask: 'Find an AI agent on BNB Chain that can do a given thing — every ERC-8004 agent that actually answers, matched on what it exposes', call: 'find_agents_on_bnb_chain', args: { query: '…' } },
     { ask: 'The measured state of the ERC-8004 registry: registered, readable, reachable, by operator', call: 'bnb_agent_census' },
     { ask: 'Who has actually been hired and paid through the ERC-8183 escrow (optionally one provider)', call: 'bnb_agent_employment', args: { address: '0x… (optional)' } },
+    { ask: 'BEFORE A TRADE of any BSC token, at your size: what stops it, what to weigh, the route, the slippage it needs and what the round trip costs — one short answer', call: 'bsc_token_preflight', args: { address: '0x…', usd: 250 } },
     { ask: 'What a trade of ANY BSC token would really cost: impact, swap fee and the transfer tax measured from executed trades', call: 'bsc_pool_scan', args: { address: '0x…' } },
     { ask: 'Which PancakeSwap fee tier actually pays its liquidity providers for a pair', call: 'pancakeswap_fee_tiers', args: { address: '0x…' } },
     { ask: 'Which price range for a PancakeSwap V3 position, replayed through the swaps that happened', call: 'pancakeswap_range_plan', args: { address: '0x…', capitalUsd: 1000 } },
@@ -526,7 +528,7 @@ function howToBuy() {
   };
 }
 
-// The seven tools that are about somebody other than us, listed from
+// The eight tools that are about somebody other than us, listed from
 // MCP_TOOLS itself so skill.md cannot drift from tools/list again (2026-09-18:
 // it described a 14-tool token server for three weeks after the scanner and
 // Brain Plaza were added, and llms.txt sent every agent to it first).
@@ -535,6 +537,7 @@ const MEASURE_REST = {
   bnb_agent_census: 'https://brainonbnb.com/api-registry.json',
   bnb_agent_employment: 'https://brainonbnb.com/api-jobs.json',
   bsc_pool_scan: 'https://brainonbnb.com/api/pool-scan?address=0x…',
+  bsc_token_preflight: 'https://brainonbnb.com/api/preflight?address=0x…&usd=250',
   pancakeswap_fee_tiers: 'https://brainonbnb.com/api/fee-tiers?address=0x…',
   pancakeswap_range_plan: 'https://brainonbnb.com/api/range-plan?address=0x…&capitalUsd=1000',
   pancakeswap_best_route: 'https://brainonbnb.com/api/best-route?address=0x…&usd=250',
@@ -746,6 +749,9 @@ const MCP_TOOLS = [
   // what it will actually cost, and no router tells it — the headline slippage
   // a swap UI shows leaves out the transfer tax and the swap fee.
   { name: 'bsc_pool_scan', description: 'Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cost per trade size (price impact + swap fee + transfer tax together, not the headline slippage a router shows), the USD size that moves the price 1% in each direction, the transfer tax MEASURED from executed trades rather than taken from a label, how much of the token\'s liquidity the readable pool actually holds, and whether the LP is burned or still withdrawable — plus our own sell simulation on the router from a fresh address (sellability). A token still raising on four.meme with no pool yet is measured from four.meme\'s own contract instead (curve: raise progress, price, buy/sell cost per size, fee). Works on PancakeSwap V2/V3, Uniswap V2 and Biswap. Read tax.measured and tax.source before using the cost columns: a tax that could not be measured comes back null with a warning, never as 0%; quotable: false with a reason is an answer, not an error. Also returned: deeperPoolElsewhere (a bigger pool for the same token than the one read), tax.simulated (an independent cross-check next to the measured tax), venues[] and contract.properties (the GoPlus contract flags, true/false/null, with the ones it did not check named). No API key; pool figures are never cached, contract properties (from GoPlus) for up to 6 h.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or any BscScan / DexScreener / PancakeSwap link containing one' } }, required: ['address'], additionalProperties: false } },
+  // NAMED preflight, with no verb a router refuses (see pancakeswap_best_route
+  // below): "pretrade" splits into a word our own dispatcher would not call.
+  { name: 'bsc_token_preflight', description: 'For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matter before signing - can I get in, and can I get out again - and what the trip costs. Returns stop[] (facts that end an automated trade: the sell does not go through from a fresh address, nothing quotes, half the money is gone on an immediate round trip) and caution[] (facts to weigh, each with its figure and the line it was measured against: a transfer tax that is high, unknown or changeable by the owner; a size that moves the price more than 1%; a deeper pool elsewhere; LP that can still be withdrawn; contract flags), then the figures: the best PancakeSwap route at this size, what you pay and receive, the slippage in bps this size really needs (a fee-on-transfer token reverts below about 1500), the round trip with the transfer tax MEASURED from executed trades applied, the 1% depth in both directions, LP burned. About 1.5 KB - built from bsc_pool_scan and pancakeswap_best_route, which stay available under details for every figure behind it. A token still on its four.meme launch curve is answered from four.meme\'s own contract. It does not say "safe" and returns no score: it cannot see an owner who has not acted yet, and says so. No API key, nothing cached.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, a pool/pair address, or a link containing one' }, usd: { type: 'number', description: 'Trade size in dollars, optional - defaults to 250' } }, required: ['address'], additionalProperties: false } },
   { name: 'pancakeswap_fee_tiers', description: 'For a liquidity provider deciding WHERE to put liquidity on PancakeSwap. A pair lives in up to five pools at once — V2 at 0.25% and V3 at 0.01%, 0.05%, 0.25% and 1.00% — and every source ranks them by the money already parked in them, which does not say which one pays. This measures each tier over a live window: swaps, turnover, the fees the pool actually paid out, and those fees per $1,000 of capital — over TWO denominators. The first is everything the pool holds, which is what every interface shows. The second is the capital standing within 2% of the current price, reconstructed by walking the tick book of the pool itself, because concentrated liquidity parked far from the price earns nothing and a new dollar only competes with the capital that is at the price. The two rankings disagree often, and both are returned. It also names tiers holding real money that did not trade at all. Measured, never annualised: the window is about an hour of chain and is reported with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap pool address to pin the pair' } }, required: ['address'], additionalProperties: false } },
   { name: 'pancakeswap_range_plan', description: 'For a liquidity provider who has picked a PancakeSwap V3 pool and now has to pick a PRICE RANGE - the decision concentrated liquidity actually forces, and the one every interface answers with a preset. This does not model and does not forecast. It replays: the V3 Swap event carries the liquidity that was active when each trade went through, so a position of a stated size is walked through the swaps that really happened in a live window and asked, at each one, whether it was in range and what share of the active liquidity it was. Returns per candidate width the fees it would have collected, how much of the window it stayed in range, and how many times the price walked out. Impermanent loss is not in it, and it is worst exactly where the fees are best. The window is about an hour and travels with the answer.', inputSchema: { type: 'object', properties: { address: { type: 'string', description: 'A BSC token address, or a PancakeSwap V3 pool address to pin the pool' }, capitalUsd: { type: 'number', description: 'Size of the position in dollars, optional - defaults to 1000' } }, required: ['address'], additionalProperties: false } },
   // NAMED best_route AND NOT swap_route, deliberately. Our own dispatcher — and
@@ -816,6 +822,22 @@ async function runTool(rawName, args) {
         // worth passing on, because "that pool cannot be priced" and "the chain
         // did not answer" call for completely different next steps.
         throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Scan failed.'));
+      }
+    }
+    case 'bsc_token_preflight': {
+      const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
+      if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one.');
+      const usd = Number(args?.usd);
+      try {
+        return await preflight(m[0].toLowerCase(), { usd: usd > 0 ? usd : undefined }, WORKER_ENV);
+      } catch (e) {
+        if (/too many subrequests/i.test(String(e?.message || ''))) {
+          throw new Error(
+            'This token trades in too many places to measure inside one request here. ' +
+            'The installable skill (npx skills add https://brainonbnb.com) runs the identical measurement with no such ceiling.',
+          );
+        }
+        throw new Error(e?.detail ? `${e.headline} ${e.detail}` : (e?.message || 'Preflight failed.'));
       }
     }
     case 'pancakeswap_fee_tiers': {
@@ -1171,7 +1193,7 @@ const REST_TOOLS = {
 
 // The routes /stats/detail may name. A path outside this list is counted as
 // 'other': a crawler guessing at /api/… must not be able to invent names.
-const COUNTED_API = new Set([...Object.keys(REST_TOOLS), '/api/wallet', '/api/pool-scan', '/api/fee-tiers',
+const COUNTED_API = new Set([...Object.keys(REST_TOOLS), '/api/wallet', '/api/pool-scan', '/api/preflight', '/api/fee-tiers',
   '/api/range-plan', '/api/best-route', '/api/total-supply', '/api/circulating-supply', '/api/nft/state']);
 
 // What kind of caller, coarsely — never the string itself. Order matters:
@@ -1311,6 +1333,7 @@ export default {
     const WITH_ADDRESS = {
       '/api/wallet': 'bobai_wallet_balance',
       '/api/pool-scan': 'bsc_pool_scan',
+      '/api/preflight': 'bsc_token_preflight',
       '/api/fee-tiers': 'pancakeswap_fee_tiers',
       '/api/range-plan': 'pancakeswap_range_plan',
       '/api/best-route': 'pancakeswap_best_route',
@@ -1320,7 +1343,7 @@ export default {
       // it is not cached the way the static answers are. Sixty seconds of a
       // stale depth figure is exactly the kind of number somebody would trade
       // on and be wrong about.
-      const isScan = url.pathname === '/api/pool-scan' || url.pathname === '/api/fee-tiers'
+      const isScan = url.pathname === '/api/pool-scan' || url.pathname === '/api/preflight' || url.pathname === '/api/fee-tiers'
         || url.pathname === '/api/range-plan' || url.pathname === '/api/best-route';
       const headers = {
         'Content-Type': 'application/json',

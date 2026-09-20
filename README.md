@@ -100,6 +100,7 @@ No clone at hand? [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridg
 | `find_agents_on_bnb_chain` | Every ERC-8004 agent on BNB Chain that actually answers when contacted, matched to what you need done |
 | `bnb_agent_census` | The measured state of the ERC-8004 registry: registered, readable, reachable |
 | `bnb_agent_employment` | Who has actually been hired and paid — the ERC-8183 job escrow, jobs created/funded/delivered |
+| `bsc_token_preflight` | Before any trade, at your size: what stops it, what to weigh, route, slippage, round trip — one short answer |
 | `bsc_pool_scan` | What a trade would really cost for any token or pool, read live from the chain |
 | `pancakeswap_fee_tiers` | The up-to-five pools a pair lives in, compared on measured volume and fees |
 | `pancakeswap_range_plan` | For a V3 liquidity provider: which price range, and what each width costs |

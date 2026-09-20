@@ -51,6 +51,11 @@ async function scanPool(address) {
   if (j.error) throw new Error(j.error.message || 'the pool could not be measured');
   const text = j.result?.content?.[0]?.text;
   if (!text) throw new Error('the scanner returned nothing readable');
+  // A tool that could not answer says why in plain words with isError set
+  // (MCP's way). Parsing that as JSON turned "every BSC endpoint refused …"
+  // into "Unexpected token 'e'" — and a throttled node into a fault of ours
+  // on the readiness check (2026-09-20).
+  if (j.result?.isError) throw new Error(String(text).slice(0, 300));
   const scan = JSON.parse(text);
   if (!scan.quotable) throw new Error(`${scan.symbol || address} has no pool that can be priced`);
   return scan;

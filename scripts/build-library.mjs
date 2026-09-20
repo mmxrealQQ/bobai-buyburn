@@ -353,7 +353,7 @@ discoverable to agents rather than only to people.`,
        alt: 'there is nothing to secure here, which is why it can be pointed at an agent without a second thought'},
     ],
     run: ['node mcp/server.mjs', 'or deploy the Pages worker and point your client at /mcp'],
-    entries: ['mcp/server.mjs', 'dashboard/_worker.js', 'dashboard/llms.txt', 'scripts/bobai-agent-card.json'],
+    entries: ['mcp/server.mjs', 'dashboard/_worker.js', 'dashboard/preflight.js', 'dashboard/llms.txt', 'scripts/bobai-agent-card.json'],
   },
   {
     group: 'apps',

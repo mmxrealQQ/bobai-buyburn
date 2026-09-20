@@ -597,11 +597,11 @@
    "group": "apps",
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
-   "files": 4,
-   "lines": 2005,
-   "zipBytes": 52262,
-   "txtBytes": 150159,
-   "sha256": "398d062da7cdd28b",
+   "files": 5,
+   "lines": 2213,
+   "zipBytes": 58531,
+   "txtBytes": 167748,
+   "sha256": "2f5c1f471ade12bc",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -622,6 +622,7 @@
    "paths": [
     "dashboard/_worker.js",
     "dashboard/llms.txt",
+    "dashboard/preflight.js",
     "mcp/server.mjs",
     "scripts/bobai-agent-card.json"
    ]
@@ -632,10 +633,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 41,
-   "lines": 13778,
-   "zipBytes": 303254,
-   "txtBytes": 853153,
-   "sha256": "02bf11e239e215cd",
+   "lines": 13793,
+   "zipBytes": 303733,
+   "txtBytes": 854188,
+   "sha256": "4da643168dba045a",
    "reqs": [
     {
      "what": "A wallet to be paid into",

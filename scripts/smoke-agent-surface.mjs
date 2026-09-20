@@ -160,6 +160,8 @@ section('Free surface');
       // exercise the argument path, but $250 is the size the round trip was
       // measured at and keeps the check comparable between runs.
       pancakeswap_best_route: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', usd: 250 },
+      // Same token and size as the route above: the preflight is built from it.
+      bsc_token_preflight: { address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', usd: 250 },
     };
     const args = WITH_ARGS[t.name] || {};
     const ask = () => fetch(`${SITE}/mcp`, {

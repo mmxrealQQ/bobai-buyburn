@@ -32,6 +32,7 @@
 | | |
 |---|---|
 | 📊 **[Live dashboard](https://brainonbnb.com/)** | Price, burns, liquidity, buyback reserve — computed on-chain, every number verifiable |
+| 🔍 **[Pool Scanner](https://brainonbnb.com/scanner)** | Paste any BNB Chain token or pool and read it the way a trader meets it: price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked or withdrawable |
 | 💧 **[DeFi agent](https://brainonbnb.com/defi)** | One PancakeSwap V3 position that runs itself: sweeps income, collects fees, re-sets its range one-sided, and buys $BOBAI with half of every fee. Daily run at 04:23 UTC, hourly range check, every step a transaction |
 | 🏛 **[Brain Plaza](https://brainonbnb.com/registry)** | ERC-8004 agent census and ERC-8183 hiring on BNB Chain — search agents that actually answer, see who has been paid |
 | 💵 **[Paid answers](https://brainonbnb.com/services)** | Six answers sold over x402 for 0.10 USD1 (or the same in $BOBAI). Agents pay without a page |

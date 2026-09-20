@@ -179,7 +179,13 @@ if (depth.length === CATS.length) {
   const maxQ = Math.max(...quote), minQ = Math.min(...quote);
   if (minH === 0) problems.push('a category has no hire button at all while another has ' + maxH);
   else if (maxH >= minH * 3) {
-    problems.push(`the deepest category offers ${maxH} hire buttons and the thinnest ${minH} — "all four, equally deep" is the stated bar`);
+    // A note, not a problem, by the operator's decision of 2026-09-20: after the
+    // census of Sep 19 the chain lists 12 rebalancers against 4 health-factor
+    // agents, 8 of the 12 silent when asked. The page shows what is registered
+    // and says who does not quote; trimming rows to look even would be padding
+    // in reverse. What stays a problem is the rule below — the agents that
+    // actually QUOTE must not run three to one across the categories.
+    notes.push(`the deepest category offers ${maxH} hire buttons and the thinnest ${minH} — what the chain lists; judged by the quoting agents below`);
   }
   if (minQ && maxQ >= minQ * 3) {
     problems.push(`quoting agents run from ${minQ} to ${maxQ} across the four categories — the thin ones read as an afterthought`);

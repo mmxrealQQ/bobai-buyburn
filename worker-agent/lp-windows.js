@@ -660,6 +660,12 @@ export async function measure(address, usd) {
   if (j.error) throw new Error(j.error.message || 'the range could not be replayed');
   const text = j.result?.content?.[0]?.text;
   if (!text) throw new Error('the replay returned nothing readable');
+  // A tool that could not answer says why in plain words with isError set.
+  // Parsed as JSON, "every BSC endpoint refused …" became "Unexpected token
+  // 'e'" — which CHAIN_REFUSED below does not match, so the one refusal the
+  // retry exists for was never retried and the hour's window went missing
+  // (2026-09-20; the same line in grid.js, lp-tiers.js and rebalance.js).
+  if (j.result?.isError) throw new Error(String(text).slice(0, 300));
   const plan = JSON.parse(text);
   if (plan.error) throw new Error(plan.error);
   if (!plan.measured_window || !Array.isArray(plan.ranges)) throw new Error('the replay came back without a window');

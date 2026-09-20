@@ -243,15 +243,21 @@
     toResult(location.pathname.replace(/[^/]*$/, "") + "iq-result", payload, stored);
   }
 
-  // ---------- beforeunload Warnung ----------
+  // ---------- leaving and coming back ----------
+  // No "Leave site?" prompt (removed 2026-09-20): it was the one native dialog
+  // left on these pages — in-app browsers block those silently — and it
+  // protected nothing: every answer is saved as it is given and the test
+  // resumes where it stopped. An active beforeunload listener also kept the
+  // page out of the back/forward cache.
   let testInProgress = false;
-  window.addEventListener("beforeunload", (e) => {
-    const answered = Object.keys(answers).length;
-    if (testInProgress && answered > 0 && answered < D.TOTAL) {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    }
+  // A page restored from that cache is the DOM as it was left. If the stored
+  // answers have changed since ("Repeat test", "start over"), it would show old
+  // ticks over an empty store — then it is loaded afresh.
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    let stored = {};
+    try { stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch {}
+    if (Object.keys(stored).length !== Object.keys(answers).length) location.reload();
   });
 
   // ---------- Reset ----------

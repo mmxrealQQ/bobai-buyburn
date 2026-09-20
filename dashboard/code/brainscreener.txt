@@ -2,7 +2,7 @@
 # Thirteen self-tests. No accounts, no tracking, no backend.
 #
 # This is the complete brainscreener bundle as a single file, so it can be read in
-# one fetch. 52 files, 9956 lines.
+# one fetch. 52 files, 9976 lines.
 # Download as a zip: https://brainonbnb.com/code/brainscreener.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -364,7 +364,7 @@
 
 <script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/adhs.js?v=3"></script>
+<script src="/brainscreener/assets/js/adhs.js?v=4"></script>
 </body>
 </html>
 
@@ -617,7 +617,7 @@
 
 <script src="/brainscreener/assets/js/i18n/en/aq50-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -1845,14 +1845,21 @@ img { max-width: 100%; height: auto; display: block; }
     toResult(location.pathname.replace(/[^/]*$/, "") + "adhd-result", payload, stored);
   });
 
-  // ---------- beforeunload Warnung ----------
+  // ---------- leaving and coming back ----------
+  // No "Leave site?" prompt (removed 2026-09-20): it was the one native dialog
+  // left on these pages — in-app browsers block those silently — and it
+  // protected nothing: every answer is saved as it is given and the test
+  // resumes where it stopped. An active beforeunload listener also kept the
+  // page out of the back/forward cache.
   let testInProgress = false;
-  window.addEventListener("beforeunload", (e) => {
-    if (testInProgress && Object.keys(answers).length > 0 && Object.keys(answers).length < TOTAL_ITEMS) {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    }
+  // A page restored from that cache is the DOM as it was left. If the stored
+  // answers have changed since ("Repeat test", "start over"), it would show old
+  // ticks over an empty store — then it is loaded afresh.
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    let stored = {};
+    try { stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch {}
+    if (Object.keys(stored).length !== Object.keys(answers).length) location.reload();
   });
 
   // ---------- Reset ----------
@@ -5933,15 +5940,21 @@ window.TEST_DATA = (function () {
     toResult(location.pathname.replace(/[^/]*$/, "") + "iq-result", payload, stored);
   }
 
-  // ---------- beforeunload Warnung ----------
+  // ---------- leaving and coming back ----------
+  // No "Leave site?" prompt (removed 2026-09-20): it was the one native dialog
+  // left on these pages — in-app browsers block those silently — and it
+  // protected nothing: every answer is saved as it is given and the test
+  // resumes where it stopped. An active beforeunload listener also kept the
+  // page out of the back/forward cache.
   let testInProgress = false;
-  window.addEventListener("beforeunload", (e) => {
-    const answered = Object.keys(answers).length;
-    if (testInProgress && answered > 0 && answered < D.TOTAL) {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    }
+  // A page restored from that cache is the DOM as it was left. If the stored
+  // answers have changed since ("Repeat test", "start over"), it would show old
+  // ticks over an empty store — then it is loaded afresh.
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    let stored = {};
+    try { stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch {}
+    if (Object.keys(stored).length !== Object.keys(answers).length) location.reload();
   });
 
   // ---------- Reset ----------
@@ -6701,14 +6714,21 @@ window.TEST_DATA = (function () {
     toResult(D.meta.resultPath, payload, stored);
   });
 
-  // ---------- beforeunload ----------
+  // ---------- leaving and coming back ----------
+  // No "Leave site?" prompt (removed 2026-09-20): it was the one native dialog
+  // left on these pages — in-app browsers block those silently — and it
+  // protected nothing: every answer is saved as it is given and the test
+  // resumes where it stopped. An active beforeunload listener also kept the
+  // page out of the back/forward cache.
   let testInProgress = false;
-  window.addEventListener("beforeunload", (e) => {
-    if (testInProgress && Object.keys(answers).length > 0 && Object.keys(answers).length < TOTAL_ITEMS) {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    }
+  // A page restored from that cache is the DOM as it was left. If the stored
+  // answers have changed since ("Repeat test", "start over"), it would show old
+  // ticks over an empty store — then it is loaded afresh.
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    let stored = {};
+    try { stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch {}
+    if (Object.keys(stored).length !== Object.keys(answers).length) location.reload();
   });
 
   // ---------- Reset ----------
@@ -7082,7 +7102,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -7335,7 +7355,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/bfi2-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -7630,7 +7650,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/charakter-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -7964,7 +7984,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/eat26-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -8217,7 +8237,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/gad7-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -8316,7 +8336,7 @@ window.TEST_DATA = (function () {
         </div>
       </div>
       <div class="hero-art" aria-hidden="true">
-        <img src="/brainscreener/assets/images/hero.webp" alt="" loading="eager" />
+        <img src="/brainscreener/assets/images/hero-1200.webp" alt="" width="1200" height="800" loading="eager" fetchpriority="high" decoding="async" />
       </div>
     </div>
   </section>
@@ -8333,7 +8353,7 @@ window.TEST_DATA = (function () {
       <div class="test-cards">
 
         <article class="card">
-          <div class="card-img"><img src="/brainscreener/assets/images/adhs-card.webp" alt="" loading="lazy" /></div>
+          <div class="card-img"><img src="/brainscreener/assets/images/adhs-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
           <div class="card-body">
             <div class="meta">ADHD in adults</div>
             <h3>ADHD screening</h3>
@@ -8349,7 +8369,7 @@ window.TEST_DATA = (function () {
         </article>
 
         <article class="card">
-          <div class="card-img"><img src="/brainscreener/assets/images/iq-card.webp" alt="" loading="lazy" /></div>
+          <div class="card-img"><img src="/brainscreener/assets/images/iq-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
           <div class="card-body">
             <div class="meta">Cognitive performance</div>
             <h3>IQ test</h3>
@@ -8365,7 +8385,7 @@ window.TEST_DATA = (function () {
         </article>
 
         <article class="card">
-          <div class="card-img"><img src="/brainscreener/assets/images/charakter-card.webp" alt="" loading="lazy" /></div>
+          <div class="card-img"><img src="/brainscreener/assets/images/charakter-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
           <div class="card-body">
             <div class="meta">Dark character traits</div>
             <h3>Character profile</h3>
@@ -8402,7 +8422,7 @@ window.TEST_DATA = (function () {
         <div class="test-grid">
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/phq9-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/phq9-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">PHQ-9</div>
               <h3>Depression</h3>
@@ -8417,7 +8437,7 @@ window.TEST_DATA = (function () {
           </article>
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/gad7-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/gad7-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">GAD-7</div>
               <h3>Anxiety</h3>
@@ -8432,7 +8452,7 @@ window.TEST_DATA = (function () {
           </article>
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/mdq-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/mdq-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">MDQ</div>
               <h3>Bipolar spectrum</h3>
@@ -8458,7 +8478,7 @@ window.TEST_DATA = (function () {
         <div class="test-grid">
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/pcl5-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/pcl5-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">PCL-5 · DSM-5</div>
               <h3>Trauma / PTSD</h3>
@@ -8473,7 +8493,7 @@ window.TEST_DATA = (function () {
           </article>
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/ocir-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/ocir-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">OCI-R</div>
               <h3>Obsessive-compulsive symptoms</h3>
@@ -8488,7 +8508,7 @@ window.TEST_DATA = (function () {
           </article>
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/eat26-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/eat26-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">EAT-26</div>
               <h3>Eating disorders</h3>
@@ -8514,7 +8534,7 @@ window.TEST_DATA = (function () {
         <div class="test-grid">
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/audit-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/audit-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">AUDIT · WHO</div>
               <h3>Alcohol use</h3>
@@ -8529,7 +8549,7 @@ window.TEST_DATA = (function () {
           </article>
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/aq50-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/aq50-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">AQ-50</div>
               <h3>Autism spectrum</h3>
@@ -8555,7 +8575,7 @@ window.TEST_DATA = (function () {
         <div class="test-grid">
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/bfi2-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/bfi2-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">BFI-2 · full version</div>
               <h3>Personality (Big Five)</h3>
@@ -8570,7 +8590,7 @@ window.TEST_DATA = (function () {
           </article>
 
           <article class="card card-compact">
-            <div class="card-img"><img src="/brainscreener/assets/images/whodas36-card.webp" alt="" loading="lazy" /></div>
+            <div class="card-img"><img src="/brainscreener/assets/images/whodas36-card-768.webp" alt="" width="768" height="768" loading="lazy" decoding="async" /></div>
             <div class="card-body">
               <div class="meta">WHODAS 2.0 · WHO</div>
               <h3>Daily functioning</h3>
@@ -8594,7 +8614,7 @@ window.TEST_DATA = (function () {
   <section class="method" id="method">
     <div class="container method-grid">
       <div class="method-img">
-        <img src="/brainscreener/assets/images/method.webp" alt="" loading="lazy" />
+        <img src="/brainscreener/assets/images/method-1000.webp" alt="" width="1000" height="1000" loading="lazy" decoding="async" />
       </div>
       <div>
         <span class="eyebrow">Methodology</span>
@@ -8957,7 +8977,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/iq-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/iq.js?v=4"></script>
+<script src="/brainscreener/assets/js/iq.js?v=5"></script>
 </body>
 </html>
 
@@ -9210,7 +9230,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/mdq-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -9463,7 +9483,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/ocir-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -9716,7 +9736,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/pcl5-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -9969,7 +9989,7 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/phq9-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>
 
@@ -10222,6 +10242,6 @@ window.TEST_DATA = (function () {
 
 <script src="/brainscreener/assets/js/i18n/en/whodas36-data.js?v=3"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=4"></script>
 </body>
 </html>

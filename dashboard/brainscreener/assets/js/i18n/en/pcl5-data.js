@@ -118,22 +118,22 @@ window.TEST_DATA = (function () {
       },
       {
         label: "Cluster B · Intrusion (re-experiencing)",
-        raw: cs.B, max: cm.B, threshold: 4,
+        raw: cs.B, max: cm.B, threshold: null,
         note: `Symptoms rated ≥ “moderately”: ${result.clusterCountsAtLeast2.B}/5. DSM-5 requires at least 1.`,
       },
       {
         label: "Cluster C · Avoidance",
-        raw: cs.C, max: cm.C, threshold: 2,
+        raw: cs.C, max: cm.C, threshold: null,
         note: `Symptoms rated ≥ “moderately”: ${result.clusterCountsAtLeast2.C}/2. DSM-5 requires at least 1.`,
       },
       {
         label: "Cluster D · Negative cognitions / mood",
-        raw: cs.D, max: cm.D, threshold: 6,
+        raw: cs.D, max: cm.D, threshold: null,
         note: `Symptoms rated ≥ “moderately”: ${result.clusterCountsAtLeast2.D}/7. DSM-5 requires at least 2.`,
       },
       {
         label: "Cluster E · Arousal / reactivity",
-        raw: cs.E, max: cm.E, threshold: 6,
+        raw: cs.E, max: cm.E, threshold: null,
         note: `Symptoms rated ≥ “moderately”: ${result.clusterCountsAtLeast2.E}/6. DSM-5 requires at least 2.`,
       },
     ];

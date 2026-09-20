@@ -125,7 +125,7 @@
           </div>
           <div class="subscale-bar" style="position:relative;">
             <div style="width:${pct}%;"></div>
-            ${tPct != null ? `<span style="position:absolute; left:${tPct}%; top:-3px; bottom:-3px; width:1.5px; background:var(--gold);" title="Cutoff"></span>` : ""}
+            ${tPct != null ? `<span style="position:absolute; left:${tPct}%; top:-3px; bottom:-3px; width:1.5px; background:var(--gold);" title="${s.thresholdLabel || "Cutoff"}"></span>` : ""}
           </div>
           <div class="note">${s.note}</div>
         </div>

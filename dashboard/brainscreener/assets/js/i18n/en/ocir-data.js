@@ -13,7 +13,7 @@
 //   Washing:      5, 11, 17    Checking:    2, 8, 14    Ordering:    3, 9, 15
 //   Obsessing:    6, 12, 18    Hoarding:    1, 7, 13    Neutralising: 4, 10, 16
 // Cutoffs:
-//   Total >= 21 (Foa et al. 2002, classic cutoff). Sensitivity ~74%, specificity ~75%.
+//   Total >= 21 (Foa et al. 2002, classic cutoff). Sensitivity ~66%, specificity ~64%.
 //   Alternative more recent recommendation: >= 14 (more sensitive, less specific).
 
 window.TEST_DATA = (function () {
@@ -92,7 +92,7 @@ window.TEST_DATA = (function () {
     const interp = `
       Your <strong>OCI-R total score</strong> is <strong>${result.total} of 72 points</strong>.
       ${result.cutoffReached
-        ? `The classic cutoff of ≥&nbsp;21 (Foa et al. 2002) is reached — sensitivity approx.&nbsp;74&nbsp;%, specificity approx.&nbsp;75&nbsp;% for obsessive-compulsive disorder.`
+        ? `The classic cutoff of ≥&nbsp;21 (Foa et al. 2002) is reached — sensitivity approx.&nbsp;66&nbsp;%, specificity approx.&nbsp;64&nbsp;% for obsessive-compulsive disorder.`
         : (result.sensitiveCutoff
             ? `The standard cutoff of ≥&nbsp;21 is not reached, but the more sensitive cutoff of ≥&nbsp;14 (Abramovitch et al. 2020) is. A specialist assessment is worthwhile if the symptoms are distressing.`
             : `Neither of the established cutoffs (≥&nbsp;14 sensitive; ≥&nbsp;21 specific) is reached.`)}
@@ -101,8 +101,8 @@ window.TEST_DATA = (function () {
 
     const subscaleEntries = Object.keys(SUBSCALE_LABELS).map((key) => ({
       label: `Subscale · ${SUBSCALE_LABELS[key]}`,
-      raw: result.subs[key], max: 12, threshold: 6,
-      note: `${result.subs[key]} of 12 points.${result.subs[key] >= 6 ? " <strong>Clinically notable</strong> (≥&nbsp;6 as the subscale cutoff)." : ""}`,
+      raw: result.subs[key], max: 12, threshold: 6, thresholdLabel: "Guide value",
+      note: `${result.subs[key]} of 12 points.${result.subs[key] >= 6 ? " <strong>Markedly elevated</strong> (≥&nbsp;6 of 12 — a guide value, not a validated subscale cutoff)." : ""}`,
     }));
 
     subscaleEntries.unshift({

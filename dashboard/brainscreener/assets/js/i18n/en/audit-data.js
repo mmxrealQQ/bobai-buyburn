@@ -92,10 +92,10 @@ window.TEST_DATA = (function () {
         note: `Cutoff for hazardous drinking: ≥&nbsp;8. For women, often ≥&nbsp;5 (Bradley et al. 2007). Current category: <strong>${result.level}</strong>.` },
       { label: "Items 1–3 · Quantity & frequency of consumption (AUDIT-C)", raw: result.consumption, max: 12, threshold: 4,
         note: `AUDIT-C cutoff: ≥&nbsp;4 (men) / ≥&nbsp;3 (women). Also established as a stand-alone brief screener.` },
-      { label: "Items 4–6 · Dependence symptoms", raw: result.dependence, max: 12, threshold: 4,
-        note: `Elevated scores suggest loss of control, neglect of obligations and morning drinking — core symptoms of dependence.` },
-      { label: "Items 7–10 · Alcohol-related problems", raw: result.harm, max: 16, threshold: 4,
-        note: `Feelings of guilt, blackouts, injuries, feedback from others — indications of harm that has already occurred.` },
+      { label: "Items 4–6 · Dependence symptoms", raw: result.dependence, max: 12, threshold: 1,
+        note: `Elevated scores suggest loss of control, neglect of obligations and morning drinking — core symptoms of dependence. According to the WHO manual, any score above 0 already points to incipient or existing dependence.` },
+      { label: "Items 7–10 · Alcohol-related problems", raw: result.harm, max: 16, threshold: 1,
+        note: `Feelings of guilt, blackouts, injuries, feedback from others — indications of harm that has already occurred. According to the WHO manual, any score above 0 indicates that alcohol-related harm is already being experienced.` },
     ];
 
     const context = `

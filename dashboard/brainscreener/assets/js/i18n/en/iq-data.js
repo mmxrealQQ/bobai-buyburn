@@ -305,18 +305,18 @@ window.IQ_DATA = (function () {
   function addNumber(id, level, q, options, answerIdx) {
     N.push({ id, type: "numeric", domain: "Gq", level, question: q, options, answer: answerIdx });
   }
-  addNumber("N1", 1, "2, 4, 6, 8, ?", ["9", "10", "12", "14"], 1);
-  addNumber("N2", 1, "3, 6, 12, 24, ?", ["36", "42", "48", "60"], 2);
-  addNumber("N3", 1, "1, 4, 9, 16, ?", ["20", "23", "25", "32"], 2);
+  addNumber("N1", 1, "2, 4, 6, 8, ?", ["10", "11", "12", "14"], 0);
+  addNumber("N2", 1, "3, 6, 12, 24, ?", ["30", "36", "42", "48"], 3);
+  addNumber("N3", 1, "1, 4, 9, 16, ?", ["24", "25", "27", "32"], 1);
   addNumber("N4", 2, "1, 1, 2, 3, 5, 8, ?", ["10", "11", "13", "16"], 2);
-  addNumber("N5", 2, "2, 5, 11, 23, ?", ["35", "41", "47", "53"], 2);
+  addNumber("N5", 2, "2, 5, 11, 23, ?", ["47", "49", "52", "56"], 0);
   addNumber("N6", 2, "81, 27, 9, 3, ?", ["0", "1", "2", "3"], 1);
-  addNumber("N7", 2, "1, 3, 6, 10, 15, ?", ["18", "20", "21", "22"], 2);
-  addNumber("N8", 3, "7, 14, 28, 56, ?", ["84", "98", "112", "120"], 2);
+  addNumber("N7", 2, "1, 3, 6, 10, 15, ?", ["18", "19", "20", "21"], 3);
+  addNumber("N8", 3, "7, 14, 28, 56, ?", ["98", "112", "120", "126"], 1);
   addNumber("N9", 3, "5, 8, 13, 20, 29, ?", ["35", "38", "40", "42"], 2);
   addNumber("N10", 3, "2, 3, 5, 7, 11, ?", ["12", "13", "15", "17"], 1);
-  addNumber("N11", 3, "1, 8, 27, 64, ?", ["100", "120", "125", "128"], 2);
-  addNumber("N12", 4, "4, 9, 19, 39, 79, ?", ["129", "139", "159", "199"], 2);
+  addNumber("N11", 3, "1, 8, 27, 64, ?", ["100", "115", "120", "125"], 3);
+  addNumber("N12", 4, "4, 9, 19, 39, 79, ?", ["159", "169", "179", "199"], 0);
 
   // -------------------- Verbal analogies (Gc) --------------------
   const V = [];
@@ -368,7 +368,7 @@ window.IQ_DATA = (function () {
     ["A", "B", "C", "D"], 2);
   addLogic("L5", 3,
     "Five people each shake hands with each other exactly once. How many handshakes are there?",
-    ["8", "9", "10", "12"], 2);
+    ["10", "12", "15", "20"], 0);
   addLogic("L6", 3,
     "The following is true: “If Anna lies, then Ben lies too.” Ben is telling the truth. What necessarily follows?",
     [
@@ -379,7 +379,7 @@ window.IQ_DATA = (function () {
     ], 1);
   addLogic("L7", 3,
     "A cube has 6 faces. How many edges does it have?",
-    ["6", "8", "12", "16"], 2);
+    ["6", "8", "10", "12"], 3);
   addLogic("L8", 4,
     "Three cards lie side by side: one red, one green, one blue. The following holds: the red one lies to the left of the green one. The blue one lies between the other two. In what order (from left to right) do they lie?",
     ["red, blue, green", "blue, red, green", "red, green, blue", "green, blue, red"], 0);

@@ -9,7 +9,8 @@
 //   "Always" = 3, "Usually" = 2, "Often" = 1, "Sometimes/Rarely/Never" = 0.
 //   Item 25 is REVERSE: "Always/Usually/Often" = 0, "Sometimes" = 1, "Rarely" = 2, "Never" = 3.
 // Total cutoff: >= 20 = clinically relevant, further assessment indicated.
-// Subscale cutoffs (Garner 2007): Diet >= 10, Bulimia >= 4, Oral Control >= 4.
+// Subscales: NO published cutoffs (formerly attributed to "Garner 2007" — wrongly).
+// Guide values, our own setting: Diet >= 10, Bulimia >= 4, Oral Control >= 4.
 
 window.TEST_DATA = (function () {
   const SCALE = {
@@ -89,13 +90,17 @@ window.TEST_DATA = (function () {
     const subFlags = {};
     for (const k of Object.keys(subs)) subFlags[k] = subs[k] >= SUB_CUTOFFS[k];
 
+    // Classification (revised 2026-09-20): ONLY the total cutoff >= 20 is published, plus Garner's
+    // behavioural criteria (vomiting among them); there are no subscale cutoffs. A bulimia subscale
+    // >= 4 alone used to mean "high" (total 4/78 -> "prompt assessment strongly recommended"),
+    // while "always vomit after eating" (3 points, total 3) passed as "unremarkable".
+    const purging = score(get("E9")) >= 1; // vomits after eating "often" or more
     let flag;
-    if (total >= 30 || subs.bulimia >= 4) flag = "high";
-    else if (cutoffReached) flag = "moderate";
-    else if (Object.values(subFlags).some(Boolean)) flag = "moderate";
+    if (total >= 30 || (subFlags.bulimia && purging)) flag = "high";
+    else if (cutoffReached || purging || Object.values(subFlags).some(Boolean)) flag = "moderate";
     else flag = "low";
 
-    return { total, max: 78, subs, subFlags, cutoffReached, flag };
+    return { total, max: 78, subs, subFlags, cutoffReached, purging, flag };
   }
 
   function renderResult(result) {
@@ -128,8 +133,8 @@ window.TEST_DATA = (function () {
         note: `Cutoff for further assessment: ≥&nbsp;20. ${result.cutoffReached ? "<strong>Cutoff reached.</strong>" : "Cutoff not reached."}` },
       ...Object.keys(SUB_LABELS).map((k) => ({
         label: `Subscale · ${SUB_LABELS[k]}`,
-        raw: result.subs[k], max: SUB_MAX[k], threshold: SUB_CUTOFFS[k],
-        note: `Cutoff: ≥&nbsp;${SUB_CUTOFFS[k]}. ${result.subFlags[k] ? "<strong>Elevated.</strong>" : "Within the normal range."}`,
+        raw: result.subs[k], max: SUB_MAX[k], threshold: SUB_CUTOFFS[k], thresholdLabel: "Guide value",
+        note: `Guide value: ≥&nbsp;${SUB_CUTOFFS[k]} (no published subscale cutoff). ${result.subFlags[k] ? "<strong>Markedly elevated.</strong>" : "Below the guide value."}`,
       })),
     ];
 
@@ -142,7 +147,10 @@ window.TEST_DATA = (function () {
       Reference period: <strong>the past 6 months</strong>.
     `;
 
+    const purgingNote = result.purging ? " <strong>Regardless of the total score:</strong> you report vomiting after eating often or more frequently. Regular vomiting is one of the behavioural criteria for which the EAT-26 (Garner) calls for a specialist assessment — even below the cutoff." : "";
+
     const next = [];
+    if (result.purging) next.push("Regular vomiting after eating should be assessed by a doctor soon — including physically (e.g. electrolytes, teeth, oesophagus).");
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with a service specialising in eating disorders.");
       next.push("In the case of acute medical risk (e.&nbsp;g. low BMI &lt; 17.5, electrolyte imbalance, cardiac arrhythmia), a somatic assessment is urgently needed.");
@@ -162,7 +170,7 @@ window.TEST_DATA = (function () {
       unit: `/ 78 points`,
       gauge: Math.min(1, result.total / 40),
       flag: result.flag,
-      interpretationHTML: interp,
+      interpretationHTML: interp + purgingNote,
       subscales: subscaleEntries,
       contextHTML: context,
       nextSteps: next,

@@ -209,7 +209,7 @@ window.TEST_DATA = (function () {
                    (isHigh ? `Tends to be ${DOMAINS[k].high}.` : (v.T < 45 ? `Tends to be ${DOMAINS[k].low}.` : `Within the average range.`));
       return {
         label: `Domain · ${DOMAINS[k].name} (${DOMAINS[k].short})`,
-        raw: v.T, max: 80, threshold: 50,
+        raw: v.T, max: 80, threshold: 50, thresholdLabel: "Norm mean",
         valueLabel: `T = ${v.T} · ${v.level}`,
         note,
       };
@@ -223,7 +223,7 @@ window.TEST_DATA = (function () {
         const v = result.facets[f];
         facetSubs.push({
           label: `Facet · ${FACET_LABELS[f]} (${DOMAINS[d].short})`,
-          raw: Math.round(v.mean * 20), max: 100, threshold: Math.round(FACET_NORMS[f] * 20),
+          raw: Math.round(v.mean * 20), max: 100, threshold: Math.round(FACET_NORMS[f] * 20), thresholdLabel: "Norm mean",
           valueLabel: `M = ${v.mean.toFixed(2)} / 5 · ${v.level}`,
           note: `Population mean (US norm, Soto & John 2017): ${FACET_NORMS[f].toFixed(2)}.`,
         });

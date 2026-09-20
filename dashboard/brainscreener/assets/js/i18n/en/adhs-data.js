@@ -55,7 +55,7 @@ window.ADHS_DATA = (function () {
 
   // -------- WURS-K, short version (Retz-Junginger et al. 2002), translation ----
   // Introductory sentence: "As a child (aged about 8 to 10), I was / I had ..."
-  // Scoring: sum score 0..100; established cutoff for childhood ADHD symptoms >= 30.
+  // Scoring: sum score 0..100; established cutoff for childhood ADHD symptoms >= 36 (see evaluate).
   const WURSK_INTRO = "As a child (aged between about 8 and 10 years), I was / I had ...";
   const WURSK = [
     { id: "W1",  text: "difficulty concentrating, easily distracted" },
@@ -115,8 +115,13 @@ window.ADHS_DATA = (function () {
     // ----- WURS-K Summenscore -----
     const wurskSum = WURSK.reduce((s, i) => s + (get(i.id) || 0), 0);
     const wurskMax = WURSK.length * 4; // = 100
-    // Etablierter Cutoff: >= 30 spricht für relevante kindliche ADHS-Symptomatik.
-    const wurskElevated = wurskSum >= 30;
+    // The 25 childhood items are freely worded, BASED ON the WURS-K (Retz-Junginger 2002).
+    // Original: 21 scored items (0..84) + 4 unscored control items, cutoff >= 30.
+    // Here all 25 items count (0..100) — with the unchanged cutoff of 30 the scale fired too
+    // early. The threshold is therefore converted proportionally: 30/84 * 100 = 35.7 -> >= 36.
+    // A guide value, not validated separately for this item version (2026-09-20).
+    const WURSK_CUTOFF = 36;
+    const wurskElevated = wurskSum >= WURSK_CUTOFF;
 
     // ----- Gesamteinordnung -----
     // Konvention: Erwachsenen-ADHS-Hinweis erfordert (a) aktuelle Symptomatik UND (b) Hinweise auf Kindheit.
@@ -133,7 +138,7 @@ window.ADHS_DATA = (function () {
         inattElevated, hypElevated,
       },
       wursk: {
-        sum: wurskSum, max: wurskMax, elevated: wurskElevated,
+        sum: wurskSum, max: wurskMax, elevated: wurskElevated, cutoff: WURSK_CUTOFF,
       },
       overall: { flag: overallFlag, partAPositive, retroPositive: wurskElevated },
     };

@@ -143,7 +143,7 @@ window.TEST_DATA = (function () {
         note: `Strict cutoff: ≥&nbsp;32. ${result.cutoffStrict ? "<strong>Met.</strong>" : (result.cutoffSensitive ? "More sensitive cutoff (≥&nbsp;26) met." : "Not met.")}` },
       ...Object.keys(SUB_LABELS).map((k) => ({
         label: `Subscale · ${SUB_LABELS[k]}`,
-        raw: result.subs[k], max: 10, threshold: 6,
+        raw: result.subs[k], max: 10, threshold: 6, thresholdLabel: "Guide value",
         note: `${result.subs[k]} of 10 items answered in the autistic direction.${result.subs[k] >= 6 ? " <strong>Markedly pronounced.</strong>" : ""}`,
       })),
     ];

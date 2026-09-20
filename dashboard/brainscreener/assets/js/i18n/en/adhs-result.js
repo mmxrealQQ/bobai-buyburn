@@ -83,6 +83,7 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
 
 
   // ---- Subscales ----
+  const cutoff = result.wursk.cutoff || 36; // older stored results do not carry the field
   const subscales = [
     {
       label: "ASRS Part A · Screening items",
@@ -103,10 +104,10 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
       note: `Sum score: ${result.asrs.hypSum} / ${result.asrs.hypMax} (clinically relevant cutoff ≥17). ${result.asrs.hypElevated ? "<strong>Elevated.</strong>" : "Within the normal range."}`,
     },
     {
-      label: "WURS-K · Childhood symptoms (retrospective)",
+      label: "Childhood scale (based on the WURS-K) · retrospective",
       raw: result.wursk.sum, max: result.wursk.max,
-      threshold: 30,
-      note: `Sum score: ${result.wursk.sum} / ${result.wursk.max} (a cutoff ≥30 indicates relevant childhood ADHD symptoms). ${result.wursk.elevated ? "<strong>Elevated.</strong>" : "Within the normal range."}`,
+      threshold: cutoff,
+      note: `Sum score: ${result.wursk.sum} / ${result.wursk.max} (guide threshold ≥&nbsp;${cutoff}: the WURS-K cutoff of 30 out of 84 points, converted proportionally to the 25 items scored here). ${result.wursk.elevated ? "<strong>Elevated.</strong>" : "Within the normal range."}`,
     },
   ];
 
@@ -136,7 +137,9 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
     best-validated brief instruments internationally. The <strong>WURS-K</strong>
     complements the picture with a retrospective assessment of childhood, since an
     ADHD diagnosis requires symptoms to have been present before the age of
-    12&nbsp;years (DSM-5-TR Criterion B).
+    12&nbsp;years (DSM-5-TR Criterion B). The childhood items are freely worded, <strong>based on</strong> the
+    WURS-K (Retz-Junginger et al. 2002); the threshold of ≥&nbsp;${cutoff} out of 100 is converted proportionally from the original
+    cutoff (≥&nbsp;30 out of 84 points across 21 scored items) and has not been validated separately for this version.
   `;
 
   // ---- Next steps ----

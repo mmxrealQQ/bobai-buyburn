@@ -26,6 +26,8 @@ window.TEST_DATA = (function () {
     { v: 3, label: "Severe" },
     { v: 4, label: "Extreme or cannot do" },
   ] };
+  // Work / school: an additional "Not applicable" (v = -1) — left out of the score, see evaluate().
+  const SCALE_WORK = { cols: 6, options: [...SCALE.options, { v: -1, label: "Not applicable" }] };
 
   // Section 1: Cognition
   const D1 = [
@@ -98,18 +100,16 @@ window.TEST_DATA = (function () {
   };
 
   function evaluate(answers) {
-    const get = (id) => (typeof answers[id] === "number" ? answers[id] : 0);
+    const rawVal = (id) => (typeof answers[id] === "number" ? answers[id] : 0);
+    // "Not applicable" (v = -1, work items only) counts neither in the numerator nor in the
+    // denominator (WHO manual: without work/school the 32-item scoring applies). Until 2026-09-20
+    // "None throughout" was taken as not applicable — which inflated the percentage of people who
+    // work and have NO difficulty there (e.g. 32/128 = 25 % instead of 32/144 = 22 %).
+    const get = (id) => Math.max(0, rawVal(id));
+    const applicable = (it) => rawVal(it.id) >= 0;
 
-    // Check whether the work items are "not applicable" - heuristically, if all = 0 AND at least 1 other value > 0
-    const workValues = D5_WORK.map(i => get(i.id));
-    const workAllZero = workValues.every(v => v === 0);
-    const otherValues = ALL_ITEMS.filter(i => i.domain !== "work").map(i => get(i.id));
-    const otherHasValues = otherValues.some(v => v > 0);
-    const workNotApplicable = workAllZero && otherHasValues;
-
-    const itemsForScoring = workNotApplicable
-      ? ALL_ITEMS.filter(i => i.domain !== "work")
-      : ALL_ITEMS;
+    const workNotApplicable = D5_WORK.every((i) => !applicable(i));
+    const itemsForScoring = ALL_ITEMS.filter(applicable);
 
     const total = itemsForScoring.reduce((s, it) => s + get(it.id), 0);
     const max = itemsForScoring.length * 4;
@@ -117,7 +117,7 @@ window.TEST_DATA = (function () {
 
     const domains = {};
     for (const key of Object.keys(DOMAIN_LABELS)) {
-      const items = ALL_ITEMS.filter(i => i.domain === key);
+      const items = ALL_ITEMS.filter(i => i.domain === key && applicable(i));
       const sum = items.reduce((s, i) => s + get(i.id), 0);
       const dMax = items.length * 4;
       domains[key] = {
@@ -151,17 +151,16 @@ window.TEST_DATA = (function () {
     const interp = `
       Your <strong>WHODAS 2.0 total score</strong> is <strong>${result.total} / ${result.max} points</strong>
       (= <strong>${result.pct}&nbsp;%</strong> of the maximum impairment). This corresponds to <strong>${result.level}</strong>.
-      ${result.workNotApplicable ? `The "work / school" items were identified as <em>not applicable</em> and excluded from scoring (${ALL_ITEMS.filter(i=>i.domain==="work").length} items).` : ""}
-      For comparison: in the WHO World Health Survey (general population &gt; 60,000 adults)
-      the median is approx. 5–10&nbsp;%, the 75th percentile approx. 15&nbsp;%, and the 90th percentile
-      approx. 30&nbsp;%. Scores of 25&nbsp;% or above are considered clinically notable (DSM-5-TR recommendation).
+      ${result.workNotApplicable ? `The “work / school” questions were answered “Not applicable” and are not counted in the total score.` : ""}
+      There is no officially recommended clinical cutoff for the WHODAS 2.0 (WHO 2010).
+      The levels used here (25&nbsp;% and above “moderate”, 50&nbsp;% and above “severe”) follow the ICF severity grades and serve as a guide.
     `;
 
     const totalSub = {
       label: "WHODAS 2.0 total score", raw: result.total, max: result.max,
-      threshold: Math.round(result.max * 0.25),
+      threshold: Math.round(result.max * 0.25), thresholdLabel: "Guide value",
       valueLabel: `${result.total} / ${result.max} · ${result.pct} %`,
-      note: `Clinical cutoff approx. 25&nbsp;% of the maximum impairment. Current proportion: <strong>${result.pct}&nbsp;%</strong>.`,
+      note: `Guide mark: 25&nbsp;% of the maximum impairment (not an official cutoff). Current proportion: <strong>${result.pct}&nbsp;%</strong>.`,
     };
 
     const domainSubs = Object.keys(DOMAIN_LABELS).map((k) => {
@@ -169,14 +168,14 @@ window.TEST_DATA = (function () {
       if (v.skipped) {
         return {
           label: DOMAIN_LABELS[k] + " · not assessed",
-          raw: 0, max: v.max, threshold: null,
+          raw: 0, max: 16, threshold: null,
           valueLabel: "not applicable",
-          note: "Work/school items identified as not applicable — excluded from overall scoring.",
+          note: "Answered “Not applicable” — not counted in the total score.",
         };
       }
       return {
         label: DOMAIN_LABELS[k],
-        raw: v.sum, max: v.max, threshold: Math.round(v.max * 0.25),
+        raw: v.sum, max: v.max, threshold: Math.round(v.max * 0.25), thresholdLabel: "Guide value",
         valueLabel: `${v.sum} / ${v.max} · ${v.pct} %`,
         note: `${v.pct < 25 ? "In the largely unremarkable range." : v.pct < 50 ? "Moderately impaired." : "Severely impaired."}`,
       };
@@ -280,8 +279,8 @@ window.TEST_DATA = (function () {
       {
         id: "work",
         title: "D5 · Life activities (work / school)",
-        intro: "<strong>If you are not currently employed or in education:</strong> answer the items with reference to your most recent occupation. If you have never been employed or this does not apply to you: please select “None” throughout — the items will then be excluded from scoring.",
-        items: D5_WORK, scale: SCALE,
+        intro: "Refer to the last 30 days. <strong>If you were neither working nor in education during that time,</strong> select “Not applicable” for all four questions — they are then left out of the score. “None” means: you work and had no difficulties doing so.",
+        items: D5_WORK, scale: SCALE_WORK,
       },
       {
         id: "participation",

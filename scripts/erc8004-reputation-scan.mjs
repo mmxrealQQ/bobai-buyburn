@@ -262,8 +262,17 @@ if (SELFTEST) {
   if (past && !Number.isNaN(asNumber(past)) && (past.tag1 || past.value)) {
     problems.push('reading past the last index returned a record instead of nothing — absent ratings would be published as real ones');
   }
-  const none = await getClients(304493);
-  if (none.length) problems.push(`#304493 was expected to have no raters and returned ${none.length}`);
+  // An id nobody can have rated: far past the last one the registry has issued.
+  // Until 2026-09-20 this pin named our own #304493 as "unrated" — true the day
+  // it was written, and false once two wallets had rated it; the self-test then
+  // failed for a fact about the chain, not about the decoder.
+  const NEVER_ISSUED = 4_000_000_000;
+  const none = await getClients(NEVER_ISSUED);
+  if (none.length) problems.push(`id ${NEVER_ISSUED} was never issued and still returned ${none.length} raters`);
+  // And the same call on an agent that IS rated must not come back empty — or
+  // an empty answer above would prove nothing.
+  const some = await getClients(KNOWN.id);
+  if (!some.length) problems.push(`#${KNOWN.id} carries the known attestation and returned no raters`);
 
   // The signed-value pin. Until 1 September this decoder read `value` as
   // uint128, which is right for every record on this chain today and wrong for

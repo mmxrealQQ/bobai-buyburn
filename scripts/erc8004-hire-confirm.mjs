@@ -28,8 +28,10 @@ import 'dotenv/config';
 // OUR OWN QUOTE RUN MUST SAY IT IS OURS (2026-09-18). Without HIT_SECRET the
 // header was skipped in silence, and the run of 2026-09-09 stands on the
 // public track record as one to four "outside callers" for some fifteen
-// operators. The run refuses to start without the secret.
-if (!process.env.HIT_SECRET && !process.argv.includes('--self-test')) {
+// operators. The run refuses to start without the secret. (Until 2026-09-20 a
+// `--self-test` argument lifted this refusal — and this script has no self-test,
+// so the argument started the real pass, unmarked. `--dry` is the way to look.)
+if (!process.env.HIT_SECRET) {
   console.error('HIT_SECRET is not set (.env). Without it every quote this run asks for is filed as a stranger\'s question on /sessions. Not started.');
   process.exit(2);
 }

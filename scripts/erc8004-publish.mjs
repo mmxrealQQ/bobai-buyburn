@@ -922,7 +922,9 @@ fs.writeFileSync(path.join(DIR, 'hireable.json'), JSON.stringify({
   measured_at: api.measured_at,
   agents: categorised.flatMap(({ cat, rows }) => rows
     .filter((r) => canHire(r) && r.agentId)
-    .map((r) => ({ id: r.agentId, label: r.label, category: cat.id, ours: !!r.ours }))),
+    // The seed is the sentence the button puts into the panel. A row that has
+    // one is asked with it, so the pass tests the button and not a paraphrase.
+    .map((r) => ({ id: r.agentId, label: r.label, category: cat.id, ours: !!r.ours, ...(r.seed ? { seed: r.seed } : {}) }))),
 }, null, 2) + '\n');
 
 // ---------------------------------------------------------------------------

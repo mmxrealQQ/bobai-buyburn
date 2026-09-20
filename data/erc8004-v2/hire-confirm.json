@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-09-19T07:41:36.641Z",
+  "measured_at": "2026-09-20T05:31:04.801Z",
   "asked": 32,
-  "quoted": 14,
+  "quoted": 15,
   "agents": [
     {
       "id": 269223,
@@ -119,10 +119,10 @@
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
       "category": "rebalancing",
       "ours": true,
-      "quotes": false,
-      "price": null,
+      "quotes": true,
+      "price": "0.1 $U",
       "endpoint": "https://agent.brainonbnb.com/a2a",
-      "reason": "seller answered, but its reply carries no price"
+      "reason": null
     },
     {
       "id": 269233,

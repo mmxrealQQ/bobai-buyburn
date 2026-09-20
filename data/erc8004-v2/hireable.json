@@ -71,7 +71,8 @@
       "id": 304494,
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
       "category": "rebalancing",
-      "ours": true
+      "ours": true,
+      "seed": "rebalance holdings [{\"token\":\"0x245c386dcfed896f5c346107596141e5edcbffff\",\"usd\":1000}] — what should the range be"
     },
     {
       "id": 269233,
@@ -113,7 +114,8 @@
       "id": 302258,
       "label": "Brain on BNB — BSC Grid Planner",
       "category": "grid-trading",
-      "ours": true
+      "ours": true,
+      "seed": "grid plan for 0x245c386dcfed896f5c346107596141e5edcbffff, 10 levels across a 15% band, $1000 capital"
     },
     {
       "id": 265876,
@@ -161,13 +163,15 @@
       "id": 304493,
       "label": "Brain on BNB — Venus Yield Ranking",
       "category": "yield-optimization",
-      "ours": true
+      "ours": true,
+      "seed": "where is the best yield on BNB Chain for USDT right now"
     },
     {
       "id": 310460,
       "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
-      "ours": true
+      "ours": true,
+      "seed": "which PancakeSwap fee tier is actually paying for 0x245c386dcfed896f5c346107596141e5edcbffff, placing $1000 of liquidity"
     },
     {
       "id": 266933,
@@ -191,7 +195,8 @@
       "id": 302257,
       "label": "Brain on BNB — Venus Health Factor Monitor",
       "category": "health-factor",
-      "ours": true
+      "ours": true,
+      "seed": "health factor and liquidation distance for the Venus position at <ADDR>"
     }
   ]
 }

@@ -280,6 +280,15 @@ const a2aSend = async (endpoint, data, timeoutMs = 25000, local = null, asText =
 // Walk the response rather than indexing a fixed path: the two dialects nest
 // the payload at different depths, and one of them wraps it in an artifact
 // while the other returns a bare message.
+// The reason a seller gave for not quoting, when its reply carries one in the
+// plain shape { accepted: false, reason }. Anything else is not guessed at. The
+// text is a stranger's and is shown on our page: one line, capped.
+export const declineReason = (result) => {
+  if (!result || typeof result !== 'object' || result.accepted !== false || typeof result.reason !== 'string') return null;
+  const where = typeof result.buy_it_here === 'string' ? ` Buy it here: ${result.buy_it_here}` : '';
+  return (result.reason + where).replace(/\s+/g, ' ').trim().slice(0, 300) || null;
+};
+
 const findQuote = (node, depth = 0) => {
   if (!node || depth > 8) return null;
   if (Array.isArray(node)) {
@@ -403,7 +412,14 @@ export async function negotiate(endpoint, task, terms, local = null, skill = 'ne
   const rpc = res.rpc;
   if (rpc.error) return { ok: false, error: rpc.error.message || 'seller rejected the negotiation', seller_ms, loopback };
   const quote = findQuote(rpc.result);
-  if (!quote) return { ok: false, error: 'seller answered, but its reply carries no price', seller_ms, loopback };
+  if (!quote) {
+    // A seller that declines and says why has answered the buyer's question;
+    // "carries no price" threw that sentence away. Found 2026-09-20 on our own
+    // seller: asked for the position plan through the escrow it replies
+    // accepted:false with the reason and where to buy it instead.
+    const why = declineReason(rpc.result);
+    return { ok: false, error: why ? `seller declined: ${why}` : 'seller answered, but its reply carries no price', seller_ms, loopback };
+  }
   return { ok: true, quote, seller_ms, loopback };
 }
 

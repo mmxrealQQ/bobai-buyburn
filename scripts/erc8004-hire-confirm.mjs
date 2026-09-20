@@ -68,6 +68,18 @@ const TASK = {
   'health-factor': 'monitor the health factor on my Venus position',
 };
 
+// A row whose button carries a seed sentence is asked with THAT sentence — it is
+// what the panel sends when a visitor presses the button, and the promise on the
+// page is that it works as written. Found 2026-09-20: our own Portfolio Rebalance
+// Pricer stood on /registry as "did not answer when we asked it for a price"
+// while its button quoted 0.1 $U, because the category sentence above names "my
+// liquidity position", which our seller has read as the position plan (sold per
+// x402, not through the escrow) since 2026-09-18. `<ADDR>` is the page's
+// placeholder for the visitor's wallet; without one the page falls back to the
+// same token address.
+const SEED_ADDR = '0x245c386dcfed896f5c346107596141e5edcbffff';
+const taskFor = (a) => (a.seed ? String(a.seed).replace('<ADDR>', SEED_ADDR) : (TASK[a.category] || TASK.rebalancing));
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const results = [];
@@ -87,7 +99,7 @@ for (const a of agents) {
       // `-r dotenv/config` so HIT_SECRET is set; the header is skipped, not
       // faked, when it is not.
       headers: { 'content-type': 'application/json', ...(process.env.HIT_SECRET ? { 'x-hit-secret': process.env.HIT_SECRET } : {}) },
-      body: JSON.stringify({ agent: String(a.id), task: TASK[a.category] || TASK.rebalancing }),
+      body: JSON.stringify({ agent: String(a.id), task: taskFor(a) }),
       signal: AbortSignal.timeout(90000),
     });
     body = await r.json();

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4255 lines.
+# one fetch. 7 files, 4257 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1424,7 +1424,9 @@ fs.writeFileSync(path.join(DIR, 'hireable.json'), JSON.stringify({
   measured_at: api.measured_at,
   agents: categorised.flatMap(({ cat, rows }) => rows
     .filter((r) => canHire(r) && r.agentId)
-    .map((r) => ({ id: r.agentId, label: r.label, category: cat.id, ours: !!r.ours }))),
+    // The seed is the sentence the button puts into the panel. A row that has
+    // one is asked with it, so the pass tests the button and not a paraphrase.
+    .map((r) => ({ id: r.agentId, label: r.label, category: cat.id, ours: !!r.ours, ...(r.seed ? { seed: r.seed } : {}) }))),
 }, null, 2) + '\n');
 
 // ---------------------------------------------------------------------------

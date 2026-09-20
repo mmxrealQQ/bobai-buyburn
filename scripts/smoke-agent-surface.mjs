@@ -218,6 +218,25 @@ for (const p of ['/.well-known/agent-skills/index.json', '/.well-known/skills/in
   const sellerUrl = (paid?.description.match(/https:\/\/agent\.brainonbnb\.com\/\.well-known\/agent-card\.json/) || [])[0];
   ok('the apex card says what is sold and where it is negotiated, and that card answers with a negotiate skill', !!paid && /^PAID/.test(paid.description) && !!sellerUrl && (seller?.skills || []).some((s) => s.id === 'negotiate'));
   ok('… beside the free tools, which are still all there', (apex?.skills || []).some((s) => s.id === 'find_agents') && (apex?.skills || []).some((s) => s.id === 'pool_watch') && (apex?.skills || []).length >= 22);
+  // The hire path, asked the way the page asks it (2026-09-20). Our Portfolio
+  // Rebalance Pricer stood on /registry as "did not answer when we asked it for
+  // a price" for a day while its button quoted: the quote pass had asked a
+  // paraphrase our seller reads as the position plan. Both directions are
+  // pinned — the button's sentence is priced, and a request the seller declines
+  // comes back with the seller's reason instead of "carries no price". Only
+  // with HIT_SECRET (.env), so the two questions are filed as ours on /sessions
+  // and not as a stranger's.
+  let hitSecret = process.env.HIT_SECRET;
+  if (!hitSecret) { try { await import('dotenv/config'); hitSecret = process.env.HIT_SECRET; } catch { /* no dotenv, no key: skipped below */ } }
+  if (hitSecret) {
+    const hire = (task) => fetch(`${AGENT}/hire`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-hit-secret': hitSecret }, body: JSON.stringify({ agent: '304494', task }), signal: AbortSignal.timeout(90000) }).then((r) => r.json()).catch(() => null);
+    const seeded = await hire('rebalance holdings [{"token":"0x245c386dcfed896f5c346107596141e5edcbffff","usd":1000}] — what should the range be');
+    ok('the rebalancer\'s own button sentence is quoted a price through /hire', !!seeded?.negotiated && /\d/.test(seeded?.quote?.price || ''), JSON.stringify(seeded || {}).slice(0, 160));
+    const declined = await hire('quote rebalancing my liquidity position back to its target range');
+    ok('… and a request the seller declines carries the seller\'s reason, not "no price"', declined?.negotiated === false && /^seller declined: /.test(declined?.error || '') && /x402/.test(declined?.error || ''), JSON.stringify(declined || {}).slice(0, 200));
+  } else {
+    console.log('  --    hire-path pins skipped: HIT_SECRET is not set, and the questions would be filed as a stranger\'s');
+  }
 }
 {
   const j = await fetch(`${SITE}/.well-known/skills/index.json`).then((r) => r.json()).catch(() => null);

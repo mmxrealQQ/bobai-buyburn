@@ -521,10 +521,10 @@
    "title": "brainScreener",
    "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
    "files": 52,
-   "lines": 9595,
-   "zipBytes": 179357,
-   "txtBytes": 506966,
-   "sha256": "735a27aee599faca",
+   "lines": 9956,
+   "zipBytes": 191875,
+   "txtBytes": 541507,
+   "sha256": "8d9a96fb0bff3e32",
    "reqs": [
     {
      "what": "A static host",
@@ -598,10 +598,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
-   "lines": 1942,
-   "zipBytes": 50476,
-   "txtBytes": 145243,
-   "sha256": "b05f85c2d28cb3db",
+   "lines": 1955,
+   "zipBytes": 50847,
+   "txtBytes": 146537,
+   "sha256": "aec7963170e08be2",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

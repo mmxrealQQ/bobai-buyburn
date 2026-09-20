@@ -150,7 +150,7 @@
         '<p style="margin:0 0 12px;line-height:1.55;"><strong>PDF printing is not available in this in-app browser.</strong></p>' +
         '<p style="margin:0 0 16px;line-height:1.55;">Open this page in your regular browser (Safari or Chrome) — your result travels along in the link automatically. Use the <strong>&#8942; / share menu &rarr; &ldquo;Open in browser&rdquo;</strong>, or copy the link below.</p>' +
         '<div style="display:flex;gap:8px;margin:0 0 18px;">' +
-          '<input id="bsPrintUrl" type="text" readonly style="flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line,#ddd);border-radius:8px;font-size:12px;background:var(--bg-soft,#f7f7f5);color:inherit;" />' +
+          '<input id="bsPrintUrl" type="text" readonly style="flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line,#ddd);border-radius:8px;font-size:12px;background:var(--bg-alt,#0b0b20);color:var(--ink,#e8e9f4);" />' +
           '<button type="button" class="btn btn-primary" id="bsPrintCopy">Copy link</button>' +
         '</div>' +
         '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">' +
@@ -189,5 +189,24 @@
     };
   }
 
-  window.BS_PRINT = { loadPayload: loadPayload, attachPrint: attachPrint };
+  // A storage that cannot throw (2026-09-20). With site data blocked ("block all
+  // cookies", hardened webviews) the mere READ of window.sessionStorage throws;
+  // the engines read it at top level, so the script died before the Start
+  // button got its handler and the page did nothing. Same three methods, kept in
+  // memory when the real one is unavailable — the test then works within the
+  // page, and the engines hand the answers to the result page through the hash
+  // when setItem reports false. Nothing is sent anywhere either way.
+  var mem = {};
+  var real = null;
+  try { real = window.sessionStorage; real.getItem("brainscreener.probe"); } catch { real = null; }
+  window.BS_STORE = {
+    persistent: !!real,
+    getItem: function (k) { try { if (real) return real.getItem(k); } catch {} return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+    setItem: function (k, v) { try { if (real) { real.setItem(k, String(v)); return true; } } catch {} mem[k] = String(v); return false; },
+    removeItem: function (k) { try { if (real) real.removeItem(k); } catch {} delete mem[k]; },
+  };
+
+  // `encode` is export only: decodeHash above still drops `result` and takes
+  // nothing but `answers` (plus code and time) from a URL.
+  window.BS_PRINT = { loadPayload: loadPayload, attachPrint: attachPrint, encode: encodePayload };
 })();

@@ -5,22 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050510" />
   <title>AUDIT — Alcohol Screening · brainScreener</title>
-  <meta name="description" content="WHO AUDIT alcohol test online: 10 questions on hazardous, harmful and dependent drinking (Saunders et al. 1993). Anonymous, free, instant results, printable as PDF." />
+  <meta name="description" content="AUDIT alcohol use test online (WHO): 10 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://brainonbnb.com/brainscreener/audit" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="brainScreener" />
   <meta property="og:title" content="AUDIT — Alcohol Screening · brainScreener" />
-  <meta property="og:description" content="WHO AUDIT alcohol test online: 10 questions on hazardous, harmful and dependent drinking (Saunders et al. 1993). Anonymous, free, instant results, printable as PDF." />
+  <meta property="og:description" content="AUDIT alcohol use test online (WHO): 10 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/audit" />
   <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=7" />
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=8" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"AUDIT — Alcohol Screening · brainScreener","description":"WHO AUDIT alcohol test online: 10 questions on hazardous, harmful and dependent drinking (Saunders et al. 1993). Anonymous, free, instant results, printable as PDF.","url":"https://brainonbnb.com/brainscreener/audit","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Alcohol use disorder"}}</script>
+  <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"AUDIT — Alcohol Screening · brainScreener","description":"AUDIT alcohol use test online (WHO): 10 questions, about 3–4 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis.","url":"https://brainonbnb.com/brainscreener/audit","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Alcohol use disorder"}}</script>
 </head>
 <body>
 
@@ -28,9 +32,9 @@
   <div class="container nav">
     <a href="/brainscreener/" class="brand" aria-label="brainScreener">
       <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-text"><strong>brainScreener</strong><span>Screening</span></span>
+      <span class="brand-text"><strong>brainScreener</strong><span>Self-tests</span></span>
     </a>
-    <nav class="nav-links">
+    <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
       <a href="/brainscreener/#tests">All tests</a>
       <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
@@ -41,7 +45,7 @@
 <div class="test-progress" id="progressWrap" hidden>
   <div class="container">
     <div class="progress-label">
-      <span id="progressText">—</span>
+      <span id="progressText" aria-live="polite">—</span>
       <span id="progressCount">0 / 0</span>
     </div>
     <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -52,13 +56,13 @@
   <div class="container-narrow">
 
     <section id="intro" class="test-intro">
-      <span class="eyebrow" id="testEyebrow">—</span>
-      <h1 id="testTitle">—</h1>
-      <p id="testIntro">—</p>
+      <span class="eyebrow" id="testEyebrow">Alcohol consumption</span>
+      <h1 id="testTitle">AUDIT · Alcohol Screening (WHO)</h1>
+      <p id="testIntro">The WHO's <strong>Alcohol Use Disorders Identification Test (AUDIT)</strong> captures not only dependence but all levels of problematic alcohol consumption — from hazardous drinking to dependence. 10 items, reference period: <strong>the last year</strong>.</p>
       <ul class="meta-list" style="list-style:none; padding:0; margin:24px 0 18px;">
-        <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">—</span></li>
-        <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">—</span></li>
-        <li style="padding:6px 0; display:flex; justify-content:space-between;"><span>Source</span><span id="metaSources" style="text-align:right; max-width:60%;">—</span></li>
+        <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Duration</span><span id="metaDuration">approx. 3–4 minutes</span></li>
+        <li style="padding:6px 0; border-bottom:1px dashed var(--line); display:flex; justify-content:space-between;"><span>Items</span><span id="metaItems">10 items · 3 subscales</span></li>
+        <li style="padding:6px 0; display:flex; justify-content:space-between;"><span>Source</span><span id="metaSources" style="text-align:right; max-width:60%;">Saunders et al. 1993 · WHO/Babor et al. 2001 · USPSTF 2024</span></li>
       </ul>
       <p class="small muted">Please answer all questions honestly and spontaneously. There are no right or wrong answers. Your data never leaves your browser.</p>
 
@@ -66,7 +70,7 @@
         <label for="probandCode">Assessment code <span class="muted small">(optional, appears on the PDF report)</span></label>
         <input type="text" id="probandCode" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="e.g. PSY-2026-001" aria-describedby="probandCodeHint" />
-        <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It is only printed on the document and never stored.</p>
+        <p id="probandCodeHint" class="small muted" style="margin:6px 0 0;">Allows the anonymous matching of the result to your file. It stays in this browser tab only, appears on the printed document and is never sent anywhere.</p>
       </div>
 
       <div class="btn-row">
@@ -85,21 +89,22 @@
           <button type="button" class="btn btn-primary" id="btnSubmit" hidden>Show results</button>
         </div>
       </div>
-      <p class="small muted center" id="missingNote" hidden style="margin-top:18px;">Please answer all questions in this section to continue.</p>
+      <p class="small muted center" id="missingNote" role="alert" hidden style="margin-top:18px;">Please answer all questions in this section to continue.</p>
     </form>
+    <p class="small center" id="restartRow" hidden style="margin-top:16px;"><button type="button" class="btn-link" id="btnRestart">Delete my answers and start over</button></p>
 
   </div>
 </main>
 
 <footer class="site-footer">
   <div class="container">
-    <a href="/brainscreener/" class="brand"><span class="brand-mark"></span><span class="brand-text"><strong>brainScreener</strong><span>Screening</span></span></a>
+    <a href="/brainscreener/" class="brand"><span class="brand-mark"></span><span class="brand-text"><strong>brainScreener</strong><span>Self-tests</span></span></a>
     <small>Anonymous · No warranty · Not a substitute for medical diagnosis<br>Part of <a href="/">brainonbnb.com</a> · Test library adapted with thanks from <a href="https://adhsiq.ch" target="_blank" rel="noopener">adhsiq.ch</a></small>
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/audit-data.js"></script>
-<script src="/brainscreener/assets/js/test-engine.js?v=2"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/audit-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/test-engine.js?v=3"></script>
 </body>
 </html>

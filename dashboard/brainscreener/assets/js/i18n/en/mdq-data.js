@@ -139,9 +139,9 @@ window.TEST_DATA = (function () {
       durationText: "approx. 3–4 minutes",
       itemsText: "13 + 2 items",
       sources: "Hirschfeld et al. 2000 · Hu et al. 2020 · DSM-5-TR",
-      testPath: "/brainscreener/mdq.html",
-      retestPath: "/brainscreener/mdq.html",
-      resultPath: "/brainscreener/mdq-result.html",
+      testPath: "/brainscreener/mdq",
+      retestPath: "/brainscreener/mdq",
+      resultPath: "/brainscreener/mdq-result",
     },
     ui: {
       question: "Question",

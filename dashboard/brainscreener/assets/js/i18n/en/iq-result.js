@@ -10,7 +10,7 @@
       <div class="result-card">
         <h2>No result found</h2>
         <p>Please take the test first to obtain a report.</p>
-        <p><a class="btn btn-primary" href="/brainscreener/iq.html">Go to the IQ test</a></p>
+        <p><a class="btn btn-primary" href="/brainscreener/iq">Go to the IQ test</a></p>
       </div>`;
     return;
   }
@@ -49,7 +49,7 @@
   document.getElementById("interpretationText").innerHTML = `
     Your estimated IQ score of <strong>${result.iq}</strong> falls in the
     <strong>“${result.band}”</strong> range. Statistically, this corresponds to a percentile of
-    <strong>${result.percentile}</strong> — i.e. about ${result.percentile}%
+    <strong>${result.percentile >= 99 ? "99 or above" : result.percentile <= 1 ? "1 or below" : result.percentile}</strong> — i.e. ${result.percentile >= 99 ? "99% or more" : result.percentile <= 1 ? "1% or fewer" : "about " + result.percentile + "%"}
     of the general population obtain the same or a lower score.
     Taking the standard error of measurement into account, your “true” score lies
     with 95&nbsp;% probability between <strong>${result.ciLow}</strong> and
@@ -97,6 +97,12 @@
   `;
 
   // ---- Buttons ----
+
+  // "Repeat test" starts a fresh test; it used to open the old form with every answer still ticked (2026-09-20).
+  const btnRetryEl = document.getElementById("btnRetry");
+  if (btnRetryEl) btnRetryEl.addEventListener("click", () => {
+    try { ["answers","code","startTs"].forEach((k) => sessionStorage.removeItem("brainscreener.iq." + k + ".v1")); } catch {}
+  });
   if (window.BS_PRINT) BS_PRINT.attachPrint(document.getElementById("btnPrint"), RESULT_KEY);
   else document.getElementById("btnPrint").addEventListener("click", () => window.print());
 

@@ -1,5 +1,30 @@
 // ADHS-Test - Controller (Rendering, Navigation, Persistenz, Auswertung)
 (function () {
+  // The storage that cannot throw (print-fallback.js, BS_STORE): with site data
+  // blocked, reading window.sessionStorage throws, and this file read it at top
+  // level — the script died before "Start test" had its handler (2026-09-20).
+  // The name is shadowed on purpose, so every call below is the safe one.
+  const sessionStorage = window.BS_STORE || (function () {
+    let real = null;
+    try { real = window.sessionStorage; real.getItem("brainscreener.probe"); } catch { real = null; }
+    const mem = {};
+    return {
+      getItem(k) { try { if (real) return real.getItem(k); } catch {} return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+      setItem(k, v) { try { if (real) { real.setItem(k, String(v)); return true; } } catch {} mem[k] = String(v); return false; },
+      removeItem(k) { try { if (real) real.removeItem(k); } catch {} delete mem[k]; },
+    };
+  })();
+  // Where the result page is, and how the answers reach it when they could not
+  // be stored: through the URL fragment the print fallback already reads (only
+  // `answers` are taken from it, the page evaluates them itself).
+  const toResult = (path, payload, stored) => {
+    let target = path;
+    if (!stored && window.BS_PRINT && BS_PRINT.encode) {
+      const enc = BS_PRINT.encode({ answers: payload.answers, probandCode: payload.probandCode, ts: payload.ts });
+      if (enc) target += "#r=" + enc;
+    }
+    location.href = target;
+  };
   const D = window.ADHS_DATA;
   // UI-Strings: deutsche Defaults, übersetzte Datendateien liefern D.ui mit.
   const UI = Object.assign({
@@ -8,6 +33,8 @@
     sectionLabels: { A: "Abschnitt 1 von 3 · ASRS Part A", B: "Abschnitt 2 von 3 · ASRS Part B", W: "Abschnitt 3 von 3 · WURS-K" },
     resetConfirm: "Wirklich alle bisherigen Antworten löschen und neu starten?",
   }, (D && D.ui) || {});
+  // JS scrolling overrides the CSS reduced-motion rule, so it asks for itself.
+  const SCROLL = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) ? "auto" : "smooth";
   const STORAGE_KEY = "brainscreener.adhs.answers.v1";
   const CODE_KEY    = "brainscreener.adhs.code.v1";
   const RESULT_KEY  = "brainscreener.adhs.result.v1";
@@ -82,7 +109,7 @@
       answers[id] = val;
       saveAnswers();
       const itemEl = input.closest(".item");
-      if (itemEl) itemEl.classList.add("is-answered");
+      if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
       updateProgress();
       hideMissing();
     }
@@ -112,7 +139,7 @@
     btnNext.hidden = (sec === "W");
     btnSubmit.hidden = (sec !== "W");
     updateProgress();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: SCROLL });
   }
 
   function sectionItemIds(sec) {
@@ -132,9 +159,11 @@
       if (typeof answers[id] !== "number") {
         const el = form.querySelector(`.item[data-id="${id}"]`);
         if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.style.outline = "2px solid var(--gold)";
-          setTimeout(() => { el.style.outline = ""; }, 1400);
+          // The mark stays until the question is answered, and its first option takes the focus.
+          el.classList.add("is-missing");
+          el.scrollIntoView({ behavior: SCROLL, block: "center" });
+          const first = el.querySelector("input");
+          if (first) first.focus({ preventScroll: true });
         }
         break;
       }
@@ -168,10 +197,10 @@
       result, answers, probandCode,
       ts: new Date().toISOString(),
     };
-    try { sessionStorage.setItem(RESULT_KEY, JSON.stringify(payload)); } catch {}
+    const stored = sessionStorage.setItem(RESULT_KEY, JSON.stringify(payload));
     testInProgress = false;  // unlock beforeunload
-    // Sprachversion beibehalten: /brainscreener/adhs -> /brainscreener/adhd-result.html usw.
-    location.href = location.pathname.replace(/[^/]*$/, "") + "adhd-result.html";
+    // Sprachversion beibehalten: /brainscreener/adhd -> /brainscreener/adhd-result (extensionless: the .html form answers 308).
+    toResult(location.pathname.replace(/[^/]*$/, "") + "adhd-result", payload, stored);
   });
 
   // ---------- beforeunload Warnung ----------
@@ -232,6 +261,22 @@
     });
   }
 
+
+  // The reset button lives in the intro, which is hidden exactly when answers
+  // exist — so a running or resumed test had no way to start again. This one
+  // sits under the questions and is shown with them (2026-09-20).
+  const btnRestart = document.getElementById("btnRestart");
+  const showRestart = () => { const row = document.getElementById("restartRow"); if (row) row.hidden = false; };
+  if (btnRestart) btnRestart.addEventListener("click", () => {
+    showConfirm(UI.resetConfirm, UI.confirmResetOk || "Delete answers", () => {
+      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(CODE_KEY);
+      sessionStorage.removeItem(RESULT_KEY);
+      answers = {};
+      testInProgress = false; location.reload();
+    });
+  });
+
   // ---------- Start ----------
   const probandInput = document.getElementById("probandCode");
   // restore code if previously entered
@@ -251,6 +296,7 @@
     form.hidden = false;
     actionsRow.hidden = false;
     progressWrap.hidden = false;
+    showRestart();
     testInProgress = true;
     renderAll();
     showSection("A");
@@ -262,6 +308,7 @@
     form.hidden = false;
     actionsRow.hidden = false;
     progressWrap.hidden = false;
+    showRestart();
     testInProgress = true;
     renderAll();
     // springe zur ersten Sektion mit Luecken

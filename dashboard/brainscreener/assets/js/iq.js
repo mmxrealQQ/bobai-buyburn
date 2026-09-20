@@ -1,5 +1,30 @@
 // IQ-Test - Controller (Item-Navigation, Timer, Persistenz)
 (function () {
+  // The storage that cannot throw (print-fallback.js, BS_STORE): with site data
+  // blocked, reading window.sessionStorage throws, and this file read it at top
+  // level — the script died before "Start test" had its handler (2026-09-20).
+  // The name is shadowed on purpose, so every call below is the safe one.
+  const sessionStorage = window.BS_STORE || (function () {
+    let real = null;
+    try { real = window.sessionStorage; real.getItem("brainscreener.probe"); } catch { real = null; }
+    const mem = {};
+    return {
+      getItem(k) { try { if (real) return real.getItem(k); } catch {} return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+      setItem(k, v) { try { if (real) { real.setItem(k, String(v)); return true; } } catch {} mem[k] = String(v); return false; },
+      removeItem(k) { try { if (real) real.removeItem(k); } catch {} delete mem[k]; },
+    };
+  })();
+  // Where the result page is, and how the answers reach it when they could not
+  // be stored: through the URL fragment the print fallback already reads (only
+  // `answers` are taken from it, the page evaluates them itself).
+  const toResult = (path, payload, stored) => {
+    let target = path;
+    if (!stored && window.BS_PRINT && BS_PRINT.encode) {
+      const enc = BS_PRINT.encode({ answers: payload.answers, probandCode: payload.probandCode, ts: payload.ts });
+      if (enc) target += "#r=" + enc;
+    }
+    location.href = target;
+  };
   const D = window.IQ_DATA;
   // UI-Strings: deutsche Defaults, übersetzte Datendateien liefern D.ui mit.
   const UI = Object.assign({
@@ -21,6 +46,8 @@
       Gv: "Visuell-räumlich · Mustererkennung",
     },
   }, (D && D.ui) || {});
+  // JS scrolling overrides the CSS reduced-motion rule, so it asks for itself.
+  const SCROLL = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) ? "auto" : "smooth";
   const STORAGE_KEY = "brainscreener.iq.answers.v1";
   const TIME_KEY = "brainscreener.iq.startTs.v1";
   const CODE_KEY = "brainscreener.iq.code.v1";
@@ -119,7 +146,7 @@
 
     progressText.textContent = UI.itemOf(i + 1, D.TOTAL);
     updateProgress();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: SCROLL });
   }
 
   function mcqHTML(it) {
@@ -210,10 +237,10 @@
       ts: new Date().toISOString(),
       durationSec: startTs ? Math.floor((Date.now() - startTs) / 1000) : null,
     };
-    try { sessionStorage.setItem(RESULT_KEY, JSON.stringify(payload)); } catch {}
+    const stored = sessionStorage.setItem(RESULT_KEY, JSON.stringify(payload));
     testInProgress = false;
-    // Sprachversion beibehalten: /brainscreener/iq -> /brainscreener/iq-result.html usw.
-    location.href = location.pathname.replace(/[^/]*$/, "") + "iq-result.html";
+    // Sprachversion beibehalten: /brainscreener/iq -> /brainscreener/iq-result (extensionless: the .html form answers 308).
+    toResult(location.pathname.replace(/[^/]*$/, "") + "iq-result", payload, stored);
   }
 
   // ---------- beforeunload Warnung ----------

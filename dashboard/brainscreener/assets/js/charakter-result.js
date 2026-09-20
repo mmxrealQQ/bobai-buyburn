@@ -17,7 +17,7 @@
       <div class="result-card">
         <h2>${NU.noResultTitle || "No result found"}</h2>
         <p>${NU.noResultText || "Please take the test first to receive a report."}</p>
-        <p><a class="btn btn-primary" href="/brainscreener/character.html">${NU.toTest || "Go to the test"}</a></p>
+        <p><a class="btn btn-primary" href="/brainscreener/character">${NU.toTest || "Go to the test"}</a></p>
       </div>`;
     return;
   }
@@ -136,6 +136,12 @@
   }
 
   // ---- Print ----
+
+  // "Repeat test" starts a fresh test; it used to open the old form with every answer still ticked (2026-09-20).
+  const btnRetryEl = document.getElementById("btnRetry");
+  if (btnRetryEl) btnRetryEl.addEventListener("click", () => {
+    try { ["answers","code"].forEach((k) => sessionStorage.removeItem("brainscreener.charakter." + k + ".v1")); } catch {}
+  });
   const btnPrint = document.getElementById("btnPrint");
   if (btnPrint) {
     if (window.BS_PRINT) BS_PRINT.attachPrint(btnPrint, RESULT_KEY);

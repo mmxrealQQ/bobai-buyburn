@@ -148,9 +148,9 @@ window.TEST_DATA = (function () {
       durationText: "approx. 3–4 minutes",
       itemsText: "10 items · 3 subscales",
       sources: "Saunders et al. 1993 · WHO/Babor et al. 2001 · USPSTF 2024",
-      testPath: "/brainscreener/audit.html",
-      retestPath: "/brainscreener/audit.html",
-      resultPath: "/brainscreener/audit-result.html",
+      testPath: "/brainscreener/audit",
+      retestPath: "/brainscreener/audit",
+      resultPath: "/brainscreener/audit-result",
     },
     ui: {
       question: "Question",

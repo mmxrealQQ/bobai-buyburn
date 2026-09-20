@@ -48,7 +48,10 @@ window.TEST_DATA = (function () {
 
     // DSM-5-TR major depression algorithm (PHQ-9 as criteria check):
     // at least 1 core symptom (P1 or P2) >=2, plus a total of >=5 items >=2.
-    const itemsAtLeast2 = ITEMS.filter((it) => get(it.id) >= 2);
+    // Item 9 counts if present at all — the PHQ instruction manual (Kroenke,
+    // Spitzer & Williams): "count item 9 if present at all, regardless of
+    // duration". Until 2026-09-20 it was counted from 2 like the others.
+    const itemsAtLeast2 = ITEMS.filter((it) => get(it.id) >= (it.id === "P9" ? 1 : 2));
     const coreSymptom   = get("P1") >= 2 || get("P2") >= 2;
     const mddAlgorithm  = coreSymptom && itemsAtLeast2.length >= 5;
 
@@ -76,7 +79,19 @@ window.TEST_DATA = (function () {
         sub: "The picture is consistent with major depression requiring treatment.",
       },
     };
-    const cfg = flagMap[result.flag];
+    // A low total must never read "unremarkable" beside an endorsed item 9
+    // (2026-09-20): item 9 = 3 with everything else 0 is a total of 3 — and the
+    // headline said "No indications…" over a green gauge, with the crisis
+    // information several screens further down. The score and the cut-offs are
+    // untouched; only the words and the order of the page change.
+    const risk = result.q9 >= 1;
+    let cfg = flagMap[result.flag];
+    if (risk && result.flag === "low") {
+      cfg = {
+        title: "Low total score, but one answer needs attention",
+        sub: "You reported thoughts of being better off dead or of hurting yourself. Please read the crisis information first.",
+      };
+    }
 
     const interp = `
       Your <strong>PHQ-9 total score</strong> is <strong>${result.total} of 27 points</strong> — this corresponds to <strong>${result.severity}</strong> severity.
@@ -99,12 +114,12 @@ window.TEST_DATA = (function () {
         raw: result.q9, max: 3, threshold: 1,
         note: result.q9 === 0
           ? "No such thoughts reported."
-          : `<strong>Important:</strong> You have indicated that over the last 2 weeks you experienced thoughts that you would be better off dead or of hurting yourself (frequency: ${["—","several days","more than half the days","nearly every day"][result.q9]}). Please speak with a professional promptly — see the crisis information below.`,
+          : `<strong>Important:</strong> You have indicated that over the last 2 weeks you experienced thoughts that you would be better off dead or of hurting yourself (frequency: ${["—","several days","more than half the days","nearly every day"][result.q9]}). Please speak with a professional promptly — see the crisis information at the top of this page.`,
       },
       {
-        label: `Number of symptoms rated "more than half the days"`,
+        label: `Number of symptoms rated "more than half the days" (item 9 counts from "several days")`,
         raw: result.itemsAtLeast2, max: 9, threshold: 5,
-        note: `${result.itemsAtLeast2} of 9 items with a value of ≥&nbsp;2. DSM-5-TR algorithm for major depression: ≥&nbsp;5 plus at least one core symptom.`,
+        note: `${result.itemsAtLeast2} of 9 items count (a value of ≥&nbsp;2; item 9 from ≥&nbsp;1, as the PHQ manual specifies). DSM-5-TR algorithm for major depression: ≥&nbsp;5 plus at least one core symptom.`,
       },
     ];
 
@@ -119,8 +134,8 @@ window.TEST_DATA = (function () {
     `;
 
     const next = [];
-    if (result.q9 >= 1) {
-      next.push("<strong>Important:</strong> If you are currently experiencing thoughts of death or self-harm, please contact a professional or one of the crisis services listed below without delay. In acute danger: call your local emergency number (112 / 911 / 999) immediately.");
+    if (risk) {
+      next.push("<strong>Important:</strong> If you are currently experiencing thoughts of death or self-harm, please contact a professional or one of the crisis services listed at the top of this page without delay. In acute danger: call your local emergency number (112 / 911 / 999) immediately.");
     }
     if (result.flag === "high") {
       next.push("Arrange an appointment promptly with your general practitioner or directly with a psychiatric / psychotherapeutic practice. The printed result can help structure the initial consultation.");
@@ -128,6 +143,8 @@ window.TEST_DATA = (function () {
     } else if (result.flag === "moderate") {
       next.push("A specialist or psychotherapeutic assessment is recommended, especially if the symptoms have persisted for more than 2 weeks or interfere with everyday life.");
       next.push("Consider accompanying progress monitoring — the PHQ-9 is a standardised instrument for this purpose (complete it again every 2–4 weeks).");
+    } else if (risk) {
+      next.push("Even with a low total score, thoughts of death or self-harm are a reason to talk to a doctor or therapist soon.");
     } else {
       next.push("The current values are within a largely unremarkable range. Stay attentive in case the symptoms change.");
       next.push("Sleep, exercise, social contact and daily structure are the most effective everyday protective factors.");
@@ -140,11 +157,14 @@ window.TEST_DATA = (function () {
       value: result.total,
       unit: `/ 27 points · ${result.severity}`,
       gauge: result.total / 27,
-      flag: result.flag,
+      // The colour only: a green dial over "needs attention" would contradict the headline.
+      flag: risk && result.flag === "low" ? "moderate" : result.flag,
       interpretationHTML: interp,
       subscales,
       contextHTML: context,
       nextSteps: next,
+      // result-engine moves the page's crisis box directly under the score.
+      crisisFirst: risk,
     };
   }
 
@@ -157,10 +177,10 @@ window.TEST_DATA = (function () {
       intro: `This instrument is the <strong>Patient Health Questionnaire-9 (PHQ-9)</strong> — the most widely used self-report questionnaire internationally for assessing depressive symptoms. It directly maps the nine DSM-5-TR symptom criteria of major depression. Reference period: <strong>last 2 weeks</strong>.`,
       durationText: "approx. 3–4 minutes",
       itemsText: "9 items",
-      sources: "Kroenke, Spitzer & Williams 2001 · Löwe et al. (Pfizer, dt.) 2002 · USPSTF 2023",
-      testPath: "/brainscreener/phq9.html",
-      retestPath: "/brainscreener/phq9.html",
-      resultPath: "/brainscreener/phq9-result.html",
+      sources: "Kroenke, Spitzer & Williams 2001 · Löwe et al. (Pfizer, German version) 2002 · USPSTF 2023",
+      testPath: "/brainscreener/phq9",
+      retestPath: "/brainscreener/phq9",
+      resultPath: "/brainscreener/phq9-result",
     },
     ui: {
       question: "Question",

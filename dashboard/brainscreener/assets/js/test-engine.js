@@ -11,6 +11,31 @@
 //  #actionsRow, #btnNext, #btnBack, #btnSubmit, #missingNote, #btnStart, #btnReset, #probandCode
 
 (function () {
+  // The storage that cannot throw (print-fallback.js, BS_STORE): with site data
+  // blocked, reading window.sessionStorage throws, and this file read it at top
+  // level — the script died before "Start test" had its handler (2026-09-20).
+  // The name is shadowed on purpose, so every call below is the safe one.
+  const sessionStorage = window.BS_STORE || (function () {
+    let real = null;
+    try { real = window.sessionStorage; real.getItem("brainscreener.probe"); } catch { real = null; }
+    const mem = {};
+    return {
+      getItem(k) { try { if (real) return real.getItem(k); } catch {} return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+      setItem(k, v) { try { if (real) { real.setItem(k, String(v)); return true; } } catch {} mem[k] = String(v); return false; },
+      removeItem(k) { try { if (real) real.removeItem(k); } catch {} delete mem[k]; },
+    };
+  })();
+  // Where the result page is, and how the answers reach it when they could not
+  // be stored: through the URL fragment the print fallback already reads (only
+  // `answers` are taken from it, the page evaluates them itself).
+  const toResult = (path, payload, stored) => {
+    let target = path;
+    if (!stored && window.BS_PRINT && BS_PRINT.encode) {
+      const enc = BS_PRINT.encode({ answers: payload.answers, probandCode: payload.probandCode, ts: payload.ts });
+      if (enc) target += "#r=" + enc;
+    }
+    location.href = target;
+  };
   const D = window.TEST_DATA;
   if (!D) {
     console.error("[test-engine] window.TEST_DATA fehlt");
@@ -75,7 +100,8 @@
   // ---------- Storage ----------
   let answers = loadAnswers();
   function loadAnswers() {
-    try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); }
+    // A stored "null" or an array is not a set of answers.
+    try { const a = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}"); return a && typeof a === "object" && !Array.isArray(a) ? a : {}; }
     catch { return {}; }
   }
   function saveAnswers() {
@@ -93,7 +119,8 @@
         <span>${opt.label}</span>
       </label>
     `).join("");
-    return `<div class="likert cols-${cols}">${opts}</div>`;
+    // A screen reader used to say "Not at all, radio button, 1 of 4" without the question.
+    return `<div class="likert cols-${cols}" role="radiogroup" aria-labelledby="q-${itemId}">${opts}</div>`;
   }
 
   function itemHTML(item, idx, defaultScale) {
@@ -101,7 +128,7 @@
     return `
       <div class="item ${answers[item.id] !== undefined ? 'is-answered' : ''}" data-id="${item.id}">
         <div class="item-num">${UI.question} ${idx}</div>
-        <div class="item-q">${item.text}</div>
+        <div class="item-q" id="q-${item.id}">${item.text}</div>
         ${buildLikert(item.id, scale)}
       </div>
     `;
@@ -114,7 +141,7 @@
       const banner = document.createElement("div");
       banner.className = "section-banner";
       banner.dataset.section = sec.id;
-      banner.innerHTML = `<h2>${sec.title}</h2>${sec.intro ? `<p>${sec.intro}</p>` : ""}`;
+      banner.innerHTML = `<h2 tabindex="-1">${sec.title}</h2>${sec.intro ? `<p>${sec.intro}</p>` : ""}`;
       banner.hidden = (i !== 0);
       const items = document.createElement("div");
       items.dataset.itemsFor = sec.id;
@@ -148,7 +175,7 @@
       answers[id] = val;
       saveAnswers();
       const itemEl = input.closest(".item");
-      if (itemEl) itemEl.classList.add("is-answered");
+      if (itemEl) { itemEl.classList.add("is-answered"); itemEl.classList.remove("is-missing"); }
       updateProgress();
       if (missingNote) missingNote.hidden = true;
     }
@@ -158,6 +185,8 @@
     const answered = Object.keys(answers).length;
     const pct = Math.round((answered / TOTAL_ITEMS) * 100);
     if (progressFill) progressFill.style.width = pct + "%";
+    const bar = progressFill && progressFill.parentElement;
+    if (bar) { bar.setAttribute("role", "progressbar"); bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", String(TOTAL_ITEMS)); bar.setAttribute("aria-valuenow", String(answered)); bar.setAttribute("aria-label", "Questions answered"); }
     if (progressCount) progressCount.textContent = fmt(UI.answersCount, { answered, total: TOTAL_ITEMS });
     if (progressText) {
       const sec = D.sections[currentIdx];
@@ -169,6 +198,9 @@
   }
 
   // ---------- Navigation ----------
+  // JS scrolling overrides the CSS reduced-motion rule, so it asks for itself.
+  const SCROLL = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) ? "auto" : "smooth";
+  let sectionShownOnce = false;
   function showSection(idx) {
     currentIdx = idx;
     D.sections.forEach((sec, i) => {
@@ -181,7 +213,10 @@
     if (btnNext)   btnNext.hidden   = (idx === D.sections.length - 1);
     if (btnSubmit) btnSubmit.hidden = (idx !== D.sections.length - 1);
     updateProgress();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: SCROLL });
+    // Focus used to stay on "Next" at the bottom while the page scrolled to the top.
+    if (sectionShownOnce) { const h = form.querySelector(`.section-banner[data-section="${D.sections[idx].id}"] h2`); if (h) h.focus({ preventScroll: true }); }
+    sectionShownOnce = true;
   }
 
   function sectionItemIds(idx) {
@@ -198,9 +233,13 @@
       if (typeof answers[id] !== "number") {
         const el = form.querySelector(`.item[data-id="${id}"]`);
         if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.style.outline = "2px solid var(--gold)";
-          setTimeout(() => { el.style.outline = ""; }, 1400);
+          // The mark stays until the question is answered (it used to vanish after
+          // 1.4 s), and the first option takes the focus so a keyboard or screen
+          // reader lands on the open question instead of staying on the button.
+          el.classList.add("is-missing");
+          el.scrollIntoView({ behavior: SCROLL, block: "center" });
+          const first = el.querySelector("input");
+          if (first) first.focus({ preventScroll: true });
         }
         break;
       }
@@ -227,9 +266,9 @@
     const result = D.evaluate(answers);
     const probandCode = (sessionStorage.getItem(CODE_KEY) || "").trim();
     const payload = { result, answers, probandCode, ts: new Date().toISOString(), testId: D.id };
-    try { sessionStorage.setItem(RESULT_KEY, JSON.stringify(payload)); } catch {}
+    const stored = sessionStorage.setItem(RESULT_KEY, JSON.stringify(payload));
     testInProgress = false;
-    location.href = D.meta.resultPath;
+    toResult(D.meta.resultPath, payload, stored);
   });
 
   // ---------- beforeunload ----------
@@ -291,6 +330,22 @@
     });
   }
 
+
+  // The reset button lives in the intro, which is hidden exactly when answers
+  // exist — so a running or resumed test had no way to start again. This one
+  // sits under the questions and is shown with them (2026-09-20).
+  const btnRestart = document.getElementById("btnRestart");
+  const showRestart = () => { const row = document.getElementById("restartRow"); if (row) row.hidden = false; };
+  if (btnRestart) btnRestart.addEventListener("click", () => {
+    showConfirm(UI.resetConfirm, UI.confirmResetOk || "Delete answers", () => {
+      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(CODE_KEY);
+      sessionStorage.removeItem(RESULT_KEY);
+      answers = {};
+      testInProgress = false; location.reload();
+    });
+  });
+
   // ---------- Code-Feld ----------
   if (probandInput) {
     const saved = sessionStorage.getItem(CODE_KEY) || "";
@@ -309,6 +364,7 @@
     form.hidden = false;
     if (actionsRow) actionsRow.hidden = false;
     if (progressWrap) progressWrap.hidden = false;
+    showRestart();
     testInProgress = true;
     ensureSectionContainers();
     renderAllItems();
@@ -323,6 +379,7 @@
     form.hidden = false;
     if (actionsRow) actionsRow.hidden = false;
     if (progressWrap) progressWrap.hidden = false;
+    showRestart();
     testInProgress = true;
     ensureSectionContainers();
     renderAllItems();

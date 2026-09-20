@@ -229,9 +229,9 @@ window.TEST_DATA = (function () {
       durationText: "approx. 8–12 minutes",
       itemsText: "36 items · 6 domains",
       sources: "WHO 2010 · Üstün et al. 2010 · DSM-5-TR (APA 2022) · ICF (WHO 2024)",
-      testPath: "/brainscreener/whodas36.html",
-      retestPath: "/brainscreener/whodas36.html",
-      resultPath: "/brainscreener/whodas36-result.html",
+      testPath: "/brainscreener/whodas36",
+      retestPath: "/brainscreener/whodas36",
+      resultPath: "/brainscreener/whodas36-result",
     },
     ui: {
       question: "Question",

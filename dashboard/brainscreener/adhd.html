@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050510" />
   <title>ADHD test for adults — ASRS v1.1 + WURS-K · brainScreener</title>
-  <meta name="description" content="ADHD test for adults online: ASRS v1.1 (WHO) for current symptoms plus WURS-K for childhood — 43 questions to DSM-5-TR standard. Anonymous, free, instant results, printable as PDF." />
+  <meta name="description" content="ADHD test for adults online (ASRS v1.1 + WURS-K): 43 questions, about 10–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://brainonbnb.com/brainscreener/adhd" />
   <meta property="og:type" content="website" />
@@ -18,9 +18,13 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="en_GB" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=7" />
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=8" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"ADHD test for adults — ASRS v1.1 + WURS-K","description":"Anonymous ADHD screening for adults: ASRS v1.1 (WHO) and WURS-K, 43 questions to DSM-5-TR standard.","url":"https://brainonbnb.com/brainscreener/adhd","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Attention deficit hyperactivity disorder (ADHD)"}}</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
 <body>
 
@@ -28,11 +32,11 @@
   <div class="container nav">
     <a href="/brainscreener/" class="brand" aria-label="brainScreener home page">
       <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-text"><strong>brainScreener</strong><span>Screening</span></span>
+      <span class="brand-text"><strong>brainScreener</strong><span>Self-tests</span></span>
     </a>
-    <nav class="nav-links">
+    <nav class="nav-links" aria-label="Primary">
       <a href="/brainscreener/">Home</a>
-      <a href="/brainscreener/iq.html">IQ test</a>
+      <a href="/brainscreener/iq">IQ test</a>
       <a class="back-btn" href="/" title="Back to Dashboard"><span>&larr;</span> Dashboard</a>
     </nav>
   </div>
@@ -41,7 +45,7 @@
 <div class="test-progress" id="progressWrap" hidden>
   <div class="container">
     <div class="progress-label">
-      <span id="progressText">Section 1 of 3</span>
+      <span id="progressText" aria-live="polite">Section 1 of 3</span>
       <span id="progressCount">0 / 43 answers</span>
     </div>
     <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
@@ -117,24 +121,25 @@
         </div>
       </div>
 
-      <p class="small muted center" id="missingNote" hidden style="margin-top:18px;">
+      <p class="small muted center" id="missingNote" role="alert" hidden style="margin-top:18px;">
         Please answer all questions in this section to continue.
       </p>
 
     </form>
+    <p class="small center" id="restartRow" hidden style="margin-top:16px;"><button type="button" class="btn-link" id="btnRestart">Delete my answers and start over</button></p>
 
   </div>
 </main>
 
 <footer class="site-footer">
   <div class="container">
-    <a href="/brainscreener/" class="brand"><span class="brand-mark"></span><span class="brand-text"><strong>brainScreener</strong><span>Screening</span></span></a>
+    <a href="/brainscreener/" class="brand"><span class="brand-mark"></span><span class="brand-text"><strong>brainScreener</strong><span>Self-tests</span></span></a>
     <small>Anonymous · No warranty · No substitute for medical diagnostics<br>Part of <a href="/">brainonbnb.com</a> · Test library adapted with thanks from <a href="https://adhsiq.ch" target="_blank" rel="noopener">adhsiq.ch</a></small>
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/adhs-data.js"></script>
-<script src="/brainscreener/assets/js/adhs.js?v=2"></script>
-<script src="/brainscreener/assets/js/print-fallback.js?v=3"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=3"></script>
+<script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
+<script src="/brainscreener/assets/js/adhs.js?v=3"></script>
 </body>
 </html>

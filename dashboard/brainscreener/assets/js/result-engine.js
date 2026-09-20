@@ -29,24 +29,29 @@
   const root = document.querySelector(".result-shell .container-narrow");
   if (!root) { console.error("[result-engine] .result-shell .container-narrow fehlt"); return; }
 
-  if (!payload) {
+  const showNoResult = () => {
     root.innerHTML = `
       <div class="result-card">
         <h2>${UI.noResultTitle}</h2>
         <p>${UI.noResultText}</p>
         <p><a class="btn btn-primary" href="${D.meta.testPath}">${UI.toTest}</a></p>
       </div>`;
-    return;
-  }
+  };
+  if (!payload || typeof payload !== "object") { showNoResult(); return; }
 
   const { ts, probandCode } = payload;
   // Ergebnis aus den (sprachneutralen) Antworten in der Sprache DIESER Seite neu
   // berechnen — so kann ein Test z. B. auf Französisch ausgefüllt und auf Deutsch
   // gedruckt werden. Fallback: gespeichertes Ergebnis (ältere Sessions).
-  const result = (payload.answers && typeof D.evaluate === "function")
-    ? D.evaluate(payload.answers)
-    : payload.result;
-  const r = D.renderResult(result, payload);
+  // A payload that cannot be evaluated (an empty object, a damaged entry) used
+  // to leave a page full of dashes; it is the "no result" card now (2026-09-20).
+  let r = null;
+  try {
+    const hasAnswers = payload.answers && typeof payload.answers === "object" && !Array.isArray(payload.answers);
+    const result = (hasAnswers && typeof D.evaluate === "function") ? D.evaluate(payload.answers) : payload.result;
+    if (result) r = D.renderResult(result, payload);
+  } catch (e) { console.error("[result-engine]", e); }
+  if (!r) { showNoResult(); return; }
 
   // --- Header / Datum / Code ---
   const date = ts ? new Date(ts) : new Date();
@@ -85,7 +90,10 @@
       gaugeWrap.innerHTML = r.customGaugeHTML;
       gaugeWrap.classList.add("gauge-custom");
     } else if (r.gauge != null) {
-      gaugeWrap.innerHTML = gaugeSVG(r.gauge, r.flag);
+      // The dial carries the score itself. It used to print the fill as "NN%",
+      // which read as a probability: "37%" beside "10 / 27", and for the MDQ a
+      // home-made composite as a percentage (2026-09-20).
+      gaugeWrap.innerHTML = gaugeSVG(r.gauge, r.flag, r.gaugeLabel != null ? r.gaugeLabel : r.value);
     } else {
       gaugeWrap.innerHTML = "";
       gaugeWrap.hidden = true;
@@ -94,6 +102,13 @@
   // Krisenbox optional ausblenden
   if (r.hideCrisis) {
     document.querySelectorAll(".crisis-box").forEach((el) => el.hidden = true);
+  }
+  // A result that reports thoughts of death or self-harm puts the crisis
+  // information directly under the score instead of at the end of the page.
+  if (r.crisisFirst) {
+    const box = document.querySelector(".crisis-box");
+    const anchor = document.getElementById("interpretation");
+    if (box && anchor && anchor.parentNode) { box.hidden = false; anchor.parentNode.insertBefore(box, anchor); }
   }
 
   // --- Subskalen ---
@@ -132,6 +147,12 @@
   }
   const btnRetry = document.getElementById("btnRetry");
   if (btnRetry && D.meta.retestPath) btnRetry.setAttribute("href", D.meta.retestPath);
+  // "Repeat test" starts a fresh test. It used to open the old form with every
+  // answer still ticked and "Show results" ready — the reset button lives in
+  // the intro, which is hidden exactly when answers exist.
+  if (btnRetry) btnRetry.addEventListener("click", () => {
+    try { ["answers", "code"].forEach((k) => sessionStorage.removeItem(`brainscreener.${D.id}.${k}.v1`)); } catch {}
+  });
 
   // ---------- helpers ----------
   function setText(id, v) {
@@ -143,8 +164,10 @@
     if (el && v != null) el.innerHTML = v;
   }
 
-  function gaugeSVG(value, flag) {
+  function gaugeSVG(value, flag, label) {
     const v = Math.max(0, Math.min(1, value));
+    // Only a short score fits the arc; five T-values do not, and then the arc stays empty.
+    const text = label != null && String(label).trim().length <= 6 ? String(label).trim() : "";
     // Hoehe aus dem Bogen ableiten: 10 px Luft oben fuer die runde Strichkappe,
     // 36 px unten fuer die Skalenbeschriftung (sonst faellt sie aus der viewBox).
     const w = 360, r = 140, cx = w / 2, cy = r + 10, h = cy + 36;
@@ -162,7 +185,7 @@
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${px} ${py}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>
         <circle cx="${px}" cy="${py}" r="10" fill="var(--ink)" />
-        <text x="${cx}" y="${cy - 30}" text-anchor="middle" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="36" fill="var(--ink)" font-weight="500">${Math.round(v * 100)}%</text>
+        <text x="${cx}" y="${cy - 30}" text-anchor="middle" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="36" fill="var(--ink)" font-weight="500">${text.replace(/[<>&]/g, "")}</text>
         <text x="${cx - r + 6}" y="${cy + 22}" font-size="11" fill="var(--ink-mute)">${UI.gaugeLow}</text>
         <text x="${cx + r - 30}" y="${cy + 22}" font-size="11" fill="var(--ink-mute)">${UI.gaugeHigh}</text>
       </svg>`;

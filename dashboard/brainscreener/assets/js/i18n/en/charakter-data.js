@@ -214,9 +214,9 @@ window.TEST_DATA = (function () {
       durationText: "approx. 6–8 minutes",
       itemsText: "28 statements · 4 dimensions",
       sources: "Dark Tetrad · based on Paulhus & Williams 2002, Jones & Paulhus 2014 (SD3), Buckels et al. 2013",
-      testPath: "/brainscreener/character.html",
-      retestPath: "/brainscreener/character.html",
-      resultPath: "/brainscreener/character-result.html",
+      testPath: "/brainscreener/character",
+      retestPath: "/brainscreener/character",
+      resultPath: "/brainscreener/character-result",
     },
     ui: {
       question: "Question",

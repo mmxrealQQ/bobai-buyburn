@@ -93,7 +93,7 @@ window.TEST_DATA = (function () {
     A: { name: "Agreeableness",             short: "A", m: 3.57, sd: 0.55, color: "#A9B8A3",
          high: "warm-hearted, trusting, cooperative, willing to compromise",
          low:  "critical, direct, competitive, less willing to compromise" },
-    C: { name: "Conscientiousness",         short: "C", m: 3.62, sd: 0.65, color: "#1F3A3D",
+    C: { name: "Conscientiousness",         short: "C", m: 3.62, sd: 0.65, color: "#4FA3B8",
          high: "organized, goal-directed, disciplined, reliable",
          low:  "spontaneous, flexible, less structured, open-ended in approach" },
     N: { name: "Negative Emotionality",     short: "N", m: 2.62, sd: 0.79, color: "#B5564A",
@@ -170,21 +170,21 @@ window.TEST_DATA = (function () {
       const filled = x - padX;
       return `
         <g>
-          <rect x="${padX}" y="${y}" width="${barAreaW}" height="${barH}" rx="3" fill="#EFEBE4"/>
-          <line x1="${tToX(50)}" y1="${y - 3}" x2="${tToX(50)}" y2="${y + barH + 3}" stroke="#7A8A8C" stroke-width="1" stroke-dasharray="2,2"/>
+          <rect x="${padX}" y="${y}" width="${barAreaW}" height="${barH}" rx="3" fill="var(--bg-alt)"/>
+          <line x1="${tToX(50)}" y1="${y - 3}" x2="${tToX(50)}" y2="${y + barH + 3}" stroke="var(--ink-mute)" stroke-width="1" stroke-dasharray="2,2"/>
           <rect x="${padX}" y="${y}" width="${filled}" height="${barH}" rx="3" fill="${DOMAINS[d].color}" opacity="0.85"/>
-          <text x="${padX - 8}" y="${y + barH/2 + 4}" text-anchor="end" font-size="11" fill="#1F3A3D" font-weight="600">${d}</text>
-          <text x="${padX + barAreaW + 6}" y="${y + barH/2 + 4}" font-size="11" fill="#1F3A3D" font-variant-numeric="tabular-nums">T=${domains[d].T}</text>
+          <text x="${padX - 8}" y="${y + barH/2 + 4}" text-anchor="end" font-size="11" fill="var(--ink)" font-weight="600">${d}</text>
+          <text x="${padX + barAreaW + 6}" y="${y + barH/2 + 4}" font-size="11" fill="var(--ink)" font-variant-numeric="tabular-nums">T=${domains[d].T}</text>
         </g>`;
     }).join("");
 
     return `
       <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Big Five personality profile">
-        <text x="${padX}" y="16" font-size="10" fill="#7A8A8C">T-scores (M=50, SD=10) — dashed line: German population mean</text>
+        <text x="${padX}" y="16" font-size="10" fill="var(--ink-mute)">T-scores (M=50, SD=10) — dashed line: German population mean</text>
         ${bars}
-        <text x="${padX}" y="${h - 6}" font-size="10" fill="#7A8A8C">20</text>
-        <text x="${tToX(50) - 4}" y="${h - 6}" font-size="10" fill="#7A8A8C">50</text>
-        <text x="${padX + barAreaW - 14}" y="${h - 6}" font-size="10" fill="#7A8A8C">80</text>
+        <text x="${padX}" y="${h - 6}" font-size="10" fill="var(--ink-mute)">20</text>
+        <text x="${tToX(50) - 4}" y="${h - 6}" font-size="10" fill="var(--ink-mute)">50</text>
+        <text x="${padX + barAreaW - 14}" y="${h - 6}" font-size="10" fill="var(--ink-mute)">80</text>
       </svg>`;
   }
 
@@ -281,10 +281,10 @@ window.TEST_DATA = (function () {
       intro: `The <strong>Big Five Inventory-2 (BFI-2)</strong> is the scientifically current full-length instrument (Soto & John 2017) for the hierarchical assessment of personality — 5 domains plus 15 facets (3 per domain). 60 items, German validation by Danner et al. 2019. <em>Not a test of pathology</em>: the result describes your individual personality profile with a high level of differentiation.`,
       durationText: "approx. 10–14 minutes",
       itemsText: "60 items · 5 domains · 15 facets",
-      sources: "Soto & John 2017 · Danner et al. (dt.) 2019",
-      testPath: "/brainscreener/bfi2.html",
-      retestPath: "/brainscreener/bfi2.html",
-      resultPath: "/brainscreener/bfi2-result.html",
+      sources: "Soto & John 2017 · Danner et al. (German version) 2019",
+      testPath: "/brainscreener/bfi2",
+      retestPath: "/brainscreener/bfi2",
+      resultPath: "/brainscreener/bfi2-result",
     },
     ui: {
       question: "Question",

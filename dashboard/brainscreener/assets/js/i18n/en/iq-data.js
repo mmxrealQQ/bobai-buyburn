@@ -424,7 +424,8 @@ window.IQ_DATA = (function () {
     const ciHigh = Math.min(155, iq + 10);
 
     // Percentile from z
-    const pct = Math.round(normalCdf(z) * 100);
+    // Never 0 or 100: "about 100% of the population obtain the same or a lower score" is not a statement a 40-item test can make.
+    const pct = Math.min(99, Math.max(1, Math.round(normalCdf(z) * 100)));
 
     // Classification according to common convention
     let band;

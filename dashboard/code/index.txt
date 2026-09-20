@@ -257,7 +257,7 @@ txt: https://brainonbnb.com/code/browser-game.txt
 brainScreener
 -------------
 Thirteen self-tests. No accounts, no tracking, no backend.
-52 files, 9595 lines
+52 files, 9956 lines
 needs:
   - A static host
       ours: Cloudflare Pages
@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-4 files, 1942 lines
+4 files, 1955 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally

@@ -201,6 +201,9 @@ img { max-width: 100%; height: auto; display: block; }
 .btn-outline:hover { background: rgba(240, 185, 11, 0.08); border-color: var(--gold); color: var(--gold); }
 .btn-ghost { background: transparent; color: var(--ink-soft); }
 .btn-ghost:hover { color: var(--ink); }
+/* A quiet text button: "Delete my answers and start over" under a running test. */
+.btn-link { background: none; border: 0; padding: 6px 4px; font: inherit; font-size: 0.88rem; color: var(--ink-mute); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.btn-link:hover { color: var(--ink); }
 .btn-lg { padding: 16px 34px; font-size: 1.02rem; }
 .btn-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 28px; }
 
@@ -757,11 +760,15 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* ====================== ACCESSIBILITY / FOCUS =================== */
+/* No border-radius here: it sets the radius of the focused ELEMENT, and this rule
+   comes later than .btn (999px) and .back-btn — tabbing onto a pill button turned
+   it into a near-square box. Outlines follow the element's own radius anyway. */
 *:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
-  border-radius: 3px;
 }
+/* An open question stays marked until it is answered (test-engine.js, adhs.js). */
+.item.is-missing { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
 .likert label:focus-within { box-shadow: 0 0 0 2px var(--gold); }
 .mcq label:focus-within { box-shadow: 0 0 0 2px var(--gold); }
 .iq-options-svg label:focus-within { box-shadow: 0 0 0 2px var(--gold); }

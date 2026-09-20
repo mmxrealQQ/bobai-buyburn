@@ -54,8 +54,15 @@ window.TEST_DATA = (function () {
     { id: "E22", sub: "diet",     text: "Feel uncomfortable after eating sweets." },
     { id: "E23", sub: "diet",     text: "Engage in dieting behavior." },
     { id: "E24", sub: "diet",     text: "Like my stomach to be empty." },
-    { id: "E25", sub: "bulimia",  text: "Enjoy trying new rich foods.", reverse: true },
-    { id: "E26", sub: "diet",     text: "Have the impulse to vomit after meals." },
+    // The subscale follows the ITEM, not its position (2026-09-20). In the
+    // published order (Garner et al. 1982) "Have the impulse to vomit after
+    // meals" is no. 25 and belongs to Bulimia & Food Preoccupation, "Enjoy trying
+    // new rich foods" is no. 26, reverse-scored, and belongs to Dieting. This
+    // file lists the two the other way round and had kept the subscale by
+    // number — so "Never" on rich foods scored 3 bulimia points, and one more
+    // point reached the bulimia flag for someone who never vomits.
+    { id: "E25", sub: "diet",     text: "Enjoy trying new rich foods.", reverse: true },
+    { id: "E26", sub: "bulimia",  text: "Have the impulse to vomit after meals." },
   ];
 
   const SUB_LABELS = {
@@ -171,10 +178,10 @@ window.TEST_DATA = (function () {
       intro: `The <strong>Eating Attitudes Test (EAT-26)</strong> is the most widely used self-report screener for eating disorder symptoms worldwide. 26 items, three subscales (Dieting, Bulimia, Oral Control). It is no substitute for a diagnosis, but it is well established as an early warning tool.`,
       durationText: "approx. 5–7 minutes",
       itemsText: "26 items · 3 subscales",
-      sources: "Garner, Olmsted, Bohr & Garfinkel 1982 · Garner 2007 · Berger et al. (dt.) 2011",
-      testPath: "/brainscreener/eat26.html",
-      retestPath: "/brainscreener/eat26.html",
-      resultPath: "/brainscreener/eat26-result.html",
+      sources: "Garner, Olmsted, Bohr & Garfinkel 1982 · Garner 2007 · Berger et al. (German version) 2011",
+      testPath: "/brainscreener/eat26",
+      retestPath: "/brainscreener/eat26",
+      resultPath: "/brainscreener/eat26-result",
     },
     ui: {
       question: "Question",

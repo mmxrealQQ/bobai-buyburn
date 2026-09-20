@@ -10,7 +10,7 @@
       <div class="result-card">
         <h2>No result found</h2>
         <p>Please take the test first to receive a report.</p>
-        <p><a class="btn btn-primary" href="/brainscreener/adhd.html">Go to the ADHD test</a></p>
+        <p><a class="btn btn-primary" href="/brainscreener/adhd">Go to the ADHD test</a></p>
       </div>`;
     return;
   }
@@ -44,8 +44,8 @@
       gauge: 0.85,
       text: `On <strong>ASRS Part A</strong> you marked ${result.asrs.partAMarks} of 6 items within the diagnostically
 relevant response range (cutoff: ≥4). Clinically, this counts as a <strong>strong indication</strong>
-of adult ADHD, supported by high sensitivity and specificity
-(&gt;90&nbsp;%) in the WHO validation study. ${result.overall.retroPositive ? "The WURS-K additionally points to relevant childhood symptoms, which further supports this finding." : "The WURS-K scores are below the cutoff – retrospective recall is, however, prone to error; a specialist medical assessment remains indicated."}`,
+of adult ADHD: in the WHO validation study (Kessler et al. 2005) the six-item screener showed a very high
+specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.retroPositive ? "The WURS-K additionally points to relevant childhood symptoms, which further supports this finding." : "The WURS-K scores are below the cutoff – retrospective recall is, however, prone to error; a specialist medical assessment remains indicated."}`,
     },
     moderate: {
       title: "Partially positive screening",
@@ -69,11 +69,18 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
   document.getElementById("overallTitle").textContent = stripTags(cfg.title);
   document.getElementById("overallSubtitle").textContent = stripTags(cfg.sub);
   document.getElementById("overallValue").textContent = cfg.val;
-  document.getElementById("overallUnit").textContent = "Probability";
+  // "Probability" beside a constant "85%" read as an 85 % chance of having ADHD. It is a screening level.
+  document.getElementById("overallUnit").textContent = "Screening level";
   document.getElementById("interpretationText").innerHTML = cfg.text;
 
   // Gauge
-  document.getElementById("gaugeWrap").innerHTML = gaugeSVG(cfg.gauge, flag);
+  document.getElementById("gaugeWrap").innerHTML = gaugeSVG(cfg.gauge, flag, cfg.val);
+  // "Repeat test" starts a fresh test; it used to open the old form with every answer still ticked (2026-09-20).
+  const btnRetryEl = document.getElementById("btnRetry");
+  if (btnRetryEl) btnRetryEl.addEventListener("click", () => {
+    try { ["answers","code"].forEach((k) => sessionStorage.removeItem("brainscreener.adhs." + k + ".v1")); } catch {}
+  });
+
 
   // ---- Subscales ----
   const subscales = [
@@ -154,7 +161,7 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
   // ---- helpers ----
   function stripTags(s) { return s.replace(/<[^>]*>/g, ""); }
 
-  function gaugeSVG(value /* 0..1 */, flag) {
+  function gaugeSVG(value /* 0..1 */, flag, label) {
     // Halbkreis-Gauge. Hoehe aus dem Bogen ableiten: 10 px Luft oben fuer die runde
     // Strichkappe, 36 px unten fuer die Skalenbeschriftung (sonst faellt sie aus der viewBox).
     const w = 360, r = 140, cx = w / 2, cy = r + 10, h = cy + 36;
@@ -175,7 +182,7 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
         <path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${ax} ${ay}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>
         <circle cx="${px}" cy="${py}" r="10" fill="var(--ink)" />
-        <text x="${cx}" y="${cy - 30}" text-anchor="middle" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="36" fill="var(--ink)" font-weight="500">${Math.round(value * 100)}%</text>
+        <text x="${cx}" y="${cy - 30}" text-anchor="middle" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="36" fill="var(--ink)" font-weight="500">${String(label || "").replace(/[<>&]/g, "")}</text>
         <text x="${cx - r + 6}" y="${cy + 22}" font-size="11" fill="var(--ink-mute)">low</text>
         <text x="${cx + r - 30}" y="${cy + 22}" font-size="11" fill="var(--ink-mute)">high</text>
       </svg>`;

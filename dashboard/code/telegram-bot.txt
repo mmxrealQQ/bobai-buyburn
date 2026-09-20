@@ -3340,11 +3340,11 @@ Here's what I can do:
 🔔 /alerts — Buy & burn alert tiers
 ⚙️ /bot — What the bot does: the 3% split now & upcoming
 🔥 /burn — Burned by the bot & at the dead address, BOBAI and BOB, in USD
-☀️ /giggle — Giggle Academy pot: countdown & BNB collected
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address
-💧 /liq — Liquidity depth, price impact & trade cost
 🤖 /defi — The DeFi agent as a portfolio: put in, worth, P&L, last 24 h
+☀️ /giggle — Giggle Academy pot: countdown & BNB collected
+💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links

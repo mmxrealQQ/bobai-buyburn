@@ -192,7 +192,7 @@
    "lines": 4702,
    "zipBytes": 74148,
    "txtBytes": 218958,
-   "sha256": "c3d9e623b085eeb2",
+   "sha256": "ac220c8a7bbb50b9",
    "reqs": [
     {
      "what": "A bot token",

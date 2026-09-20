@@ -264,7 +264,7 @@ async function bump(env, kind, n = 1) {
 
 async function flushCounters(env) {
   if (flushing) return flushing;
-  if (!pending.size) return;
+  if (!pending.size && !detailDirty.size) return;
   lastFlush = Date.now();
   flushing = (async () => {
     for (const [key, n] of [...pending]) {
@@ -272,8 +272,67 @@ async function flushCounters(env) {
       const cur = Number((await env.AGENT.get(key)) || 0);
       await env.AGENT.put(key, String(cur + n), { expirationTtl: 60 * 60 * 24 * 400 });
     }
+    await flushDetail(env);
   })().finally(() => { flushing = null; });
   return flushing;
+}
+
+// WHAT WAS ASKED FOR, not only how often (2026-09-20). The counters above say
+// "1,600 MCP requests a day" and cannot say whether that is one registry
+// pinging tools/list or agents calling bsc_pool_scan — and a service cannot be
+// built toward a demand nobody has looked at. This keeps, per day, how often
+// each named thing was asked for: an MCP method and tool, an /api/ route (the
+// site's own pages apart from callers from outside), a step of the paid path.
+// A name is a tool, a route, a client's software name or a coarse user-agent
+// family — never an address, an argument, an IP or a wallet.
+//
+// ONE KEY PER ISOLATE AND DAY, written whole. The counters above read, add and
+// write one shared key, and KV answers a read from another colo up to a minute
+// late, so two isolates lose each other's increments. Here an isolate only
+// ever writes its own key (detail:<day>:<isolate>), so nothing is read before
+// a write and nothing can be lost to a race; the reader adds the keys up. It
+// costs one KV write per flush, whatever the number of names.
+// These names never enter count:* — /stats and its public total are untouched.
+const ISOLATE = Math.random().toString(36).slice(2, 10);
+const DETAIL_MAX_NAMES = 300; // per isolate and day; a caller can invent names
+const detail = new Map(); // day -> { name: n }, this isolate's whole day
+const detailDirty = new Set();
+const cleanDetail = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9_:./-]/g, '').slice(0, 64);
+
+function bumpDetail(env, names) {
+  const day = today();
+  let m = detail.get(day);
+  if (!m) { m = {}; detail.set(day, m); for (const d of detail.keys()) if (d !== day && !detailDirty.has(d)) detail.delete(d); }
+  for (const raw of [].concat(names || []).slice(0, 4)) {
+    let name = cleanDetail(raw);
+    if (!name) continue;
+    if (!(name in m) && Object.keys(m).length >= DETAIL_MAX_NAMES) name = 'other';
+    m[name] = (m[name] || 0) + 1;
+  }
+  detailDirty.add(day);
+  if (Date.now() - lastFlush < FLUSH_MS) return;
+  return flushCounters(env);
+}
+
+async function flushDetail(env) {
+  for (const day of [...detailDirty]) {
+    detailDirty.delete(day);
+    await env.AGENT.put(`detail:${day}:${ISOLATE}`, JSON.stringify(detail.get(day) || {}), { expirationTtl: 60 * 60 * 24 * 90 });
+  }
+}
+
+// One day added up. A day with more isolates than one request may read is
+// reported as truncated rather than shown as if it were whole.
+async function readDetail(env, day) {
+  const list = await listAll(env, `detail:${day}:`);
+  const keys = list.keys.slice(0, 800);
+  const values = await Promise.all(keys.map((k) => env.AGENT.get(k.name)));
+  const sum = {};
+  for (const v of values) {
+    let m; try { m = JSON.parse(v || '{}'); } catch { m = {}; }
+    for (const [name, n] of Object.entries(m)) sum[name] = (sum[name] || 0) + Number(n || 0);
+  }
+  return { day, isolates: list.keys.length, truncated: list.keys.length > keys.length, names: sum };
 }
 
 async function readCounters(env) {
@@ -1181,6 +1240,10 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
+    // Names a step of the paid path for /stats/detail (bumpDetail). Our own
+    // smoke test says who it is and is left out, as on the dashboard worker.
+    const selfTest = request.headers.get('user-agent') === 'bobai-smoke-test';
+    const note = (name) => { if (!selfTest) ctx.waitUntil(Promise.resolve(bumpDetail(env, name)).catch(() => {})); };
 
     if (request.method === 'OPTIONS')
       return new Response(null, {
@@ -1200,6 +1263,7 @@ export default {
     // the two cannot disagree — an agent that budgets from this file and then
     // calls /watch finds exactly the terms it was promised.
     if (path === '/.well-known/x402') {
+      note('sell:catalog');
       return json(buildCatalog({
         payTo,
         price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1`,
@@ -1453,6 +1517,7 @@ export default {
     if (path === '/example') {
       const id = url.searchParams.get('service') || '';
       if (!SERVICES[id]) return json({ error: id ? `unknown service "${id.slice(0, 40)}"` : 'service is required', services: Object.keys(SERVICES) }, 400);
+      note(`sell:example:${id}`);
       try {
         const ex = await exampleFor(id, env, { fresh: url.searchParams.get('fresh') === '1' && request.headers.get('x-hit-secret') === env.HIT_SECRET });
         return json(ex, 200, { 'Cache-Control': 'public, max-age=3600' });
@@ -2135,9 +2200,26 @@ ${pageTail}`;
       if (request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'no' }, 403);
       const body = await request.json().catch(() => ({}));
       const kind = String(body.kind || '').replace(/[^a-z0-9_]/gi, '').slice(0, 32);
-      if (!kind) return json({ error: 'kind required' }, 400);
-      ctx.waitUntil(bump(env, kind));
+      // `detail` names what was asked for (bumpDetail); it may come alone —
+      // the MCP relay counts the request once and names the method afterwards.
+      const names = [].concat(body.detail || []).map(cleanDetail).filter(Boolean);
+      if (!kind && !names.length) return json({ error: 'kind required' }, 400);
+      if (kind) ctx.waitUntil(bump(env, kind));
+      if (names.length) ctx.waitUntil(Promise.resolve(bumpDetail(env, names)));
       return json({ ok: true });
+    }
+
+    // What was asked for, one day at a time (readDetail). Open like /stats:
+    // names of tools and routes and how often, nothing about who.
+    if (path === '/stats/detail') {
+      const day = url.searchParams.get('day') || today();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: 'day must be YYYY-MM-DD' }, 400);
+      const d = await readDetail(env, day);
+      const sorted = Object.fromEntries(Object.entries(d.names).sort((a, b) => b[1] - a[1]));
+      return json({
+        ...d, names: sorted,
+        note: 'How often each named thing was asked for on that UTC day: mcp:<method>[:<tool>], mcp:client:<software name>, rest:site|ext:<route> (site = our own pages in a browser, ext = everyone else), rest:unknown for a path we do not serve, ua:<family> for ext callers, sell:<step> for the paid path. Counted since 2026-09-20. Written every five minutes; an evicted isolate loses those minutes. Separate from /stats: nothing here enters its totals.',
+      });
     }
 
     // MCP, carrying exactly one tool: the paid watch.
@@ -2188,10 +2270,12 @@ ${pageTail}`;
       if (method === 'ping') return rpcOk(id, {});
       if (method === 'tools/list') {
         ctx.waitUntil(bump(env, 'mcp'));
+        note('paidmcp:tools_list');
         return rpcOk(id, { tools: [WATCH_TOOL] });
       }
       if (method === 'tools/call') {
         ctx.waitUntil(bump(env, 'mcp'));
+        note(`paidmcp:call:${params?.name === 'bsc_pool_watch' ? (params?.arguments?.payment ? 'watch:paid' : 'watch:terms') : 'unknown'}`);
         if (params?.name !== 'bsc_pool_watch') return rpcErr(id ?? null, -32602, 'Unknown tool: ' + params?.name);
         if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
         const a = params?.arguments || {};
@@ -2268,6 +2352,7 @@ ${pageTail}`;
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const id = url.searchParams.get('service') || '';
       if (request.method === 'GET') {
+        if (!id) note('sell:answer:index');
         if (!id) return json({
           what: 'Any of the six answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
           price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer, by direct transfer or through the x402 facilitator — or the same price in $BOBAI, quoted on each 402`,
@@ -2277,12 +2362,15 @@ ${pageTail}`;
           catalogue: 'https://agent.brainonbnb.com/.well-known/x402',
         });
         const out = await sellAnswer(env, ctx, payTo, id, {}, null);
+        note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:terms`);
         return json(out.body, out.status, out.headers || {});
       }
       if (request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
         const proof = request.headers.get('PAYMENT-SIGNATURE');
         const out = await sellAnswer(env, ctx, payTo, id, body || {}, proof);
+        // terms = asked the price; paid:<status> = came back with a proof.
+        note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:${proof ? 'paid:' + out.status : 'terms'}`);
         return json(out.body, out.status, out.headers || {});
       }
     }
@@ -2290,6 +2378,7 @@ ${pageTail}`;
     if (path === '/watch' && request.method === 'GET') {
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const terms = await purchaseWatch(env, ctx, payTo, {}, null);
+      note('sell:watch:terms');
       return json({
         service: 'pool watch',
         what: `Continuous depth monitoring of one BSC pool for ${WATCH_DAYS} days, with a callback when depth falls below a threshold you set.`,
@@ -2324,6 +2413,7 @@ ${pageTail}`;
       // the unpaid call, which sells nothing and charges nothing.
       if (!proof) {
         const out = await purchaseWatch(env, ctx, payTo, spec || {}, null);
+        note('sell:watch:terms');
         return json(out.body, out.status, out.headers || {});
       }
 
@@ -2333,6 +2423,7 @@ ${pageTail}`;
       if (!specOk) return json({ error: 'token and pair must both be BSC addresses' }, 400);
 
       const out = await purchaseWatch(env, ctx, payTo, spec, proof);
+      note(`sell:watch:paid:${out.status}`);
       return json(out.body, out.status, out.headers || {});
     }
 

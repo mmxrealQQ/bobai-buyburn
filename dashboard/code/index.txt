@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-4 files, 1955 lines
+4 files, 2005 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-41 files, 13687 lines
+41 files, 13778 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

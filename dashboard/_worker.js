@@ -970,7 +970,11 @@ function getPrompt(name, args) {
 const rpcOk = (id, result) => ({ jsonrpc: '2.0', id, result });
 const rpcErr = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
-async function handleMcp(request) {
+// `note` names the method (and the tool, and the client's software name) for
+// /stats/detail — see count() in fetch. A tool name a caller made up is
+// counted as 'unknown', so the names stay ours.
+const MCP_CLIENT = (s) => String(s || 'unknown').toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32) || 'unknown';
+async function handleMcp(request, note = () => {}) {
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
@@ -979,12 +983,16 @@ async function handleMcp(request) {
   };
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (request.method === 'GET') {
+    note('mcp:get');
     return new Response(JSON.stringify({ name: 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', tools: MCP_TOOLS.map(t => t.name), prompts: MCP_PROMPTS.map(p => p.name), resources: MCP_RESOURCES.map(r => r.uri) }), { headers: cors });
   }
   let body;
   try { body = await request.json(); } catch { return new Response(JSON.stringify(rpcErr(null, -32700, 'Parse error')), { headers: cors }); }
   const { id, method, params } = body || {};
   if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
+  if (method === 'initialize') note(['mcp:initialize', `mcp:client:${MCP_CLIENT(body?.params?.clientInfo?.name)}`]);
+  else if (method === 'tools/call') note(`mcp:call:${MCP_TOOLS.some((t) => t.name === params?.name) ? params.name : 'unknown'}`);
+  else note(`mcp:${['tools/list', 'resources/list', 'resources/templates/list', 'resources/read', 'prompts/list', 'prompts/get', 'ping'].includes(method) ? method.replace(/\//g, '_') : 'other'}`);
   try {
     if (method === 'initialize') {
       console.log('[mcp] initialize', body?.params?.clientInfo?.name || 'unknown-client');
@@ -1161,6 +1169,26 @@ const REST_TOOLS = {
   '/api/purchase-guide': 'bobai_purchase_guide',
 };
 
+// The routes /stats/detail may name. A path outside this list is counted as
+// 'other': a crawler guessing at /api/… must not be able to invent names.
+const COUNTED_API = new Set([...Object.keys(REST_TOOLS), '/api/wallet', '/api/pool-scan', '/api/fee-tiers',
+  '/api/range-plan', '/api/best-route', '/api/total-supply', '/api/circulating-supply', '/api/nft/state']);
+
+// What kind of caller, coarsely — never the string itself. Order matters:
+// crawlers and tools put "Mozilla" in front of their own name.
+function uaFamily(ua) {
+  const s = String(ua || '').toLowerCase();
+  if (!s) return 'none';
+  if (/bot|crawl|spider|slurp|preview|monitor|uptime|scan/.test(s)) return 'crawler';
+  if (/claude|anthropic|openai|gpt|perplexity|langchain|llama|mcp|agent/.test(s)) return 'ai';
+  if (/python|aiohttp|httpx|requests/.test(s)) return 'python';
+  if (/node|undici|axios|got\/|bun\/|deno/.test(s)) return 'node';
+  if (/curl|wget|httpie|postman|insomnia/.test(s)) return 'cli';
+  if (/go-http|okhttp|java|rust|reqwest|ruby|php|dart/.test(s)) return 'lib';
+  if (/mozilla|chrome|safari|firefox|edg\//.test(s)) return 'browser';
+  return 'other';
+}
+
 // An ETag is a fingerprint of a response. The browser sends it back next time
 // ("If-None-Match"), and if nothing changed we answer 304 with no body — a few
 // hundred bytes instead of the whole file. The log proxy below rebuilds its
@@ -1203,24 +1231,46 @@ export default {
     // header can only ever cause UNDER-counting, never over-counting, which is
     // the safe direction for a number we publish.
     const isSelfTest = request.headers.get('user-agent') === 'bobai-smoke-test';
-    const count = (kind) => {
+    // `detail` names WHAT was asked for (agent worker, bumpDetail): a tool, a
+    // route, a client's software name, a coarse user-agent family. Still no
+    // address, no argument, no IP. It goes into /stats/detail and into none of
+    // the public totals. kind may be null: the MCP request is counted once
+    // here, and handleMcp names its method once the body has been read.
+    const count = (kind, detail) => {
       if (!env.HIT_SECRET || isSelfTest) return;
       ctx.waitUntil(
         fetch('https://agent.brainonbnb.com/hit', {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-hit-secret': env.HIT_SECRET },
-          body: JSON.stringify({ kind }),
+          body: JSON.stringify({ ...(kind ? { kind } : {}), ...(detail ? { detail } : {}) }),
           signal: AbortSignal.timeout(3000),
         }).catch(() => {}),
       );
     };
-    if (url.pathname === '/mcp') count('mcp');
-    else if (url.pathname.startsWith('/api/')) count('rest');
+    if (url.pathname === '/mcp') count('mcp', `mcpua:${uaFamily(request.headers.get('user-agent'))}`);
+    else if (url.pathname.startsWith('/api/')) {
+      // The site's own pages call /api/ from the visitor's browser, and that
+      // was most of "rest". A browser says where a fetch comes from; an agent,
+      // a script or a crawler does not — so ext is everyone who is not a page
+      // of ours, and only for those is the kind of caller worth a name.
+      const fromSite = request.headers.get('sec-fetch-site') === 'same-origin'
+        || /^https:\/\/(www\.)?brainonbnb\.com\//.test(request.headers.get('referer') || '');
+      // A path we do not serve is its own line, whoever claims to send it: in
+      // the first live minutes 25 such requests arrived marked as coming from
+      // our own pages, and no page of ours asks for one (a referer is free to
+      // set). They would have read as the site's own traffic.
+      const family = uaFamily(request.headers.get('user-agent'));
+      if (!COUNTED_API.has(url.pathname)) count('rest', ['rest:unknown', `uaunknown:${family}`]);
+      else {
+        const route = url.pathname.slice(5);
+        count('rest', fromSite ? [`rest:site:${route}`] : [`rest:ext:${route}`, `ua:${family}`]);
+      }
+    }
     else if (url.pathname === '/skill.md') count('skill_doc');
     else if (url.pathname.startsWith('/skills/')) count('skill_download');
     else if (url.pathname.startsWith('/.well-known/')) count('discovery');
 
-    if (url.pathname === '/mcp') return handleMcp(request);
+    if (url.pathname === '/mcp') return handleMcp(request, (name) => count(null, name));
 
     // Same-origin proxy for the bot-worker log store (KV via logs.brainonbnb.com).
     // Keeps the page independent of the visitor's DNS/CORS for the logs subdomain.

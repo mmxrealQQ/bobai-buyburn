@@ -25,12 +25,11 @@
 // demand - the same caveat scripts/hire-own-agent.mjs carries.
 import 'dotenv/config';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { rmSync } from 'node:fs';
 import { createPublicClient, createWalletClient, http, formatUnits, getAddress, parseAbi } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const SEND = process.argv.includes('--send');
 const AGENT_ID = (process.argv.find((a) => a.startsWith('--agent=')) || '--agent=302258').slice(8);
@@ -54,7 +53,7 @@ console.log(`holds    ${formatUnits(uBal, 18)} $U · ${formatUnits(bnbBal, 18)} 
 console.log(`mode     ${SEND ? 'SEND — this spends real money' : 'plan only — nothing is broadcast'}\n`);
 
 // ---- browser ---------------------------------------------------------------
-const profile = mkdtempSync(join(tmpdir(), `cdp-wallet-${process.pid}-`));
+const profile = scratchDir(`cdp-wallet-${process.pid}-`);
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--window-size=1280,1600', '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 const cleanup = () => { try { chrome.kill(); } catch {} try { rmSync(profile, { recursive: true, force: true }); } catch {} };

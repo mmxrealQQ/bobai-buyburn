@@ -3,15 +3,13 @@
 // expected values, (b) the real pool tiles above do NOT move, (c) the
 // hypothetical warning appears and disappears again.
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = 9337;
 const URL = 'https://brainonbnb.com/?probe=' + Math.floor(Math.random() * 1e9);
 
-const profile = mkdtempSync(join(tmpdir(), 'cdp-'));
+const profile = scratchDir('cdp-');
 const chrome = spawn(CHROME, [
   '--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
   '--window-size=1280,1200', '--hide-scrollbars', '--no-first-run',

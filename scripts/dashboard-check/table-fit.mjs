@@ -12,9 +12,9 @@
 //   WIDTHS=390,360 node scripts/dashboard-check/table-fit.mjs
 //   SELFTEST=1 node scripts/dashboard-check/table-fit.mjs      a table is forced wide first; the run passes only if that is reported
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = Number(process.env.PORT || 9377);
@@ -22,7 +22,7 @@ const WIDTHS = (process.env.WIDTHS || '430,390,375,360,340,320').split(',').map(
 const SELFTEST = process.env.SELFTEST === '1';
 const SITE = process.env.SITE || 'https://brainonbnb.com/';
 
-const profile = mkdtempSync(join(tmpdir(), 'tablefit-'));
+const profile = scratchDir('tablefit-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 let wsUrl;

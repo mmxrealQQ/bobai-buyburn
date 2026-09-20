@@ -21,6 +21,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { scratchDir } from './lib/scratch.mjs';
 
 const LIVE = 'https://brainonbnb.com';
 const LOCAL = 'http://127.0.0.1:8899';
@@ -106,7 +107,7 @@ if (!pages.length) {
 // debugger already listening, attaches to that stale browser instead of its
 // own, and sits there doing nothing at 0.5% CPU until somebody notices. It cost
 // half an hour of "still running" before the cause was obvious.
-const tmp = path.join(process.env.TEMP || '.', 'layout-audit-' + process.pid);
+const tmp = scratchDir('layout-audit-');
 const chrome = spawn(CHROME, [
   '--headless=new',
   '--remote-debugging-port=' + PORT,

@@ -12,9 +12,7 @@
 // from our poller being broken, which is the misreading this whole feature
 // exists to prevent.
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 // Port and profile carry the pid: an abandoned run used to hold both and make
@@ -22,7 +20,7 @@ const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = 9400 + (process.pid % 120);
 const URL = 'https://brainonbnb.com/registry?probe=' + Math.floor(Math.random() * 1e9);
 
-const profile = mkdtempSync(join(tmpdir(), `cdp-tele-${process.pid}-`));
+const profile = scratchDir(`cdp-tele-${process.pid}-`);
 const chrome = spawn(CHROME, [
   '--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
   '--window-size=1280,1400', '--hide-scrollbars', '--no-first-run',

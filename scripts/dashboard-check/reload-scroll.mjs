@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const BASE = process.argv.includes('--local') ? 'http://127.0.0.1:8899' : 'https://brainonbnb.com';
 const PORT = 9700 + (process.pid % 200);
@@ -15,7 +16,7 @@ const CHROME = [
 ].find((p) => fs.existsSync(p));
 if (!CHROME) { console.error('Chrome not found'); process.exit(1); }
 
-const tmp = path.join(process.env.TEMP || '.', 'test-scroll-' + process.pid);
+const tmp = scratchDir('test-scroll-');
 const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=' + PORT, '--user-data-dir=' + tmp,
   '--hide-scrollbars', '--no-first-run', '--disable-gpu',

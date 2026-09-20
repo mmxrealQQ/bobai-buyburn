@@ -23,9 +23,9 @@
 // them with two near-identical files would mean fixing every assertion twice
 // and forgetting once. PANEL picks which button gets pressed.
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = Number(process.env.PORT || 9341);
@@ -45,7 +45,7 @@ const BTN = `[data-card="${CARD}"] .sc-tierbtn`, OUT = `[data-card="${CARD}"] .t
 // scanner.js is exactly how a fixed page kept reporting the old bug.
 const URL = `https://brainonbnb.com/scanner?token=${TOKEN}&probe=${Math.floor(Math.random() * 1e9)}`;
 
-const profile = mkdtempSync(join(tmpdir(), 'tierpanel-'));
+const profile = scratchDir('tierpanel-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

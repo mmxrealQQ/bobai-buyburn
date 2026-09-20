@@ -1,14 +1,12 @@
 // 390px check for the new depth pills: does anything overflow, do the buttons
 // stay tappable, and do the bars keep a visible length in the simulated state?
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = 9338;
 const URL = 'https://brainonbnb.com/?probe=' + Math.floor(Math.random() * 1e9);
-const profile = mkdtempSync(join(tmpdir(), 'cdp2-'));
+const profile = scratchDir('cdp2-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 const wait = ms => new Promise(r => setTimeout(r, ms));

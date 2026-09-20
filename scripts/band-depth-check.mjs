@@ -24,9 +24,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { scratchDir } from './lib/scratch.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
-const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'band-check-'));
+const stage = scratchDir('band-check-');
 // Same trick build-skill.mjs uses: the repo root is CommonJS, so these files
 // have to arrive as .mjs before Node will read their exports.
 for (const f of ['scanner-chain.js', 'tier-scan.js']) {

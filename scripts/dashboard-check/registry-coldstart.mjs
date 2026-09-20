@@ -26,9 +26,8 @@
 //   node scripts/dashboard-check/registry-coldstart.mjs
 //   node scripts/dashboard-check/registry-coldstart.mjs --self-test
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { rmSync } from 'node:fs';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = Number(process.env.PORT || 9700) + (process.pid % 90);
@@ -45,7 +44,7 @@ const CATS = [
   { id: 'cat-health-factor', label: 'Health Factor Monitoring' },
 ];
 
-const profile = mkdtempSync(join(tmpdir(), `coldstart-${process.pid}-`));
+const profile = scratchDir(`coldstart-${process.pid}-`);
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

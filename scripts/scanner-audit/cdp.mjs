@@ -1,13 +1,11 @@
 // Minimal CDP driver — no puppeteer, Node's global WebSocket only.
 import {spawn} from 'node:child_process';
-import {mkdtempSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {scratchDir} from '../lib/scratch.mjs';
 
 const CHROME='C:/Program Files/Google/Chrome/Application/chrome.exe';
 
 export async function launch(port=9333,w=1280,h=900){
-  const dir=mkdtempSync(join(tmpdir(),'cdp-'));
+  const dir=scratchDir('cdp-');
   const p=spawn(CHROME,['--headless=new','--remote-debugging-port='+port,
     '--user-data-dir='+dir,'--window-size='+w+','+h,'--hide-scrollbars',
     '--no-first-run','--no-default-browser-check','--disable-extensions'],

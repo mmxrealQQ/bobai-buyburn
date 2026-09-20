@@ -26,9 +26,9 @@
 // size (what the browser ended up holding), because the two answer different
 // questions and quoting one for the other is how a page looks half its weight.
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = Number(process.env.PORT || 9351);
@@ -44,7 +44,7 @@ const W = Number(process.env.W || 1280);
 // that came back from cache measures the cache.
 const URL = `https://brainonbnb.com${PATHNAME}${PATHNAME.includes('?') ? '&' : '?'}probe=${Math.floor(Math.random() * 1e9)}`;
 
-const profile = mkdtempSync(join(tmpdir(), 'pageweight-'));
+const profile = scratchDir('pageweight-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

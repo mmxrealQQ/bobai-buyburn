@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { verdict } from '../../worker-agent/lp-windows.js';
+import { scratchDir } from './scratch.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', '..');
 
@@ -25,7 +26,7 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace
 // build-skill.mjs uses to ship them. Not copies: read fresh from the one source
 // on every run, so a fix to the measurement is a fix here too.
 export async function loadTools() {
-  const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'lp-decide-'));
+  const stage = scratchDir('lp-decide-');
   for (const f of ['scanner-chain.js', 'tier-scan.js', 'range-scan.js']) {
     let src = fs.readFileSync(path.join(ROOT, 'dashboard', f), 'utf8');
     src = src.split("'./scanner-chain.js'").join("'./scanner-chain.mjs'");

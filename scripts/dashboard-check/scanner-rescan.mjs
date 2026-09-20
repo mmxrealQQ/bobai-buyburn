@@ -15,9 +15,8 @@
 //   node scripts/dashboard-check/scanner-rescan.mjs
 //   node scripts/dashboard-check/scanner-rescan.mjs --self-test
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { rmSync } from 'node:fs';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = Number(process.env.PORT || 9347);
@@ -29,7 +28,7 @@ const BASE = process.env.BASE || 'https://brainonbnb.com';
 // exactly how a fixed page keeps reporting the old bug.
 const url = (t) => `${BASE}/scanner?token=${t}&probe=${Math.floor(Math.random() * 1e9)}`;
 
-const profile = mkdtempSync(join(tmpdir(), 'rescan-'));
+const profile = scratchDir('rescan-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

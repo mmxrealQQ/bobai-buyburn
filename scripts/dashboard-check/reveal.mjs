@@ -27,9 +27,9 @@
 //   node scripts/dashboard-check/reveal.mjs            live site, every width
 //   PAGE=/registry node scripts/dashboard-check/reveal.mjs
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = Number(process.env.PORT || 9377);
@@ -37,7 +37,7 @@ const PAGE = process.env.PAGE || '/';
 const SITE = process.env.SITE || 'https://brainonbnb.com';
 const WIDTHS = (process.env.W || '390,768,1440').split(',').map(Number);
 
-const profile = mkdtempSync(join(tmpdir(), 'reveal-'));
+const profile = scratchDir('reveal-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

@@ -15,9 +15,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { scratchDir } from './lib/scratch.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'sellsim-'));
+const stage = scratchDir('sellsim-');
 fs.writeFileSync(path.join(stage, 'scanner-chain.mjs'), fs.readFileSync(path.join(ROOT, 'dashboard', 'scanner-chain.js'), 'utf8'));
 const C = await import('file://' + path.join(stage, 'scanner-chain.mjs').split(path.sep).join('/'));
 

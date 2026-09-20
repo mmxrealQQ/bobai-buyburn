@@ -5,9 +5,7 @@
 // so seconds apart is close enough to compare — and a source mismatch shows up
 // as a constant offset on every dollar figure, not as noise.
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = 9341;
@@ -38,7 +36,7 @@ async function fromChain() {
 }
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
-const profile = mkdtempSync(join(tmpdir(), 'cdp3-'));
+const profile = scratchDir('cdp3-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,
   `--user-data-dir=${profile}`, '--window-size=1280,1200', '--hide-scrollbars', '--no-first-run'], { stdio: 'ignore' });
 

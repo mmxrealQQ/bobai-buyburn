@@ -34,6 +34,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { scratchDir } from './lib/scratch.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const MIRROR = path.resolve(ROOT, '..', 'brainonbnb-public');
@@ -67,7 +68,7 @@ function countFiles (dir) {
 // ---------------------------------------------------------------- self-test
 if (args.includes('--self-test')) {
   const fails = [];
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'srcpub-'));
+  const tmp = scratchDir('srcpub-');
   try {
     // Build a miniature of the real thing and clone it over file:// — the same
     // code path, minus the network.
@@ -129,7 +130,7 @@ if (args.includes('--self-test')) {
 if (args.includes('--verify')) {
   const url = args[args.indexOf('--verify') + 1];
   if (!url) { console.error('--verify needs a URL'); process.exit(1); }
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'srcver-'));
+  const tmp = scratchDir('srcver-');
   try {
     console.log(`cloning ${url} …`);
     git(['clone', '--quiet', url, path.join(tmp, 'c')]);
@@ -151,7 +152,7 @@ if (args.includes('--verify')) {
 
 // ------------------------------------------------------------------- build
 function buildBare (srcTree, dest, message) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'srcbuild-'));
+  const tmp = scratchDir('srcbuild-');
   const work = path.join(tmp, 'w');
   fs.cpSync(srcTree, work, { recursive: true });
   git(['init', '--quiet', '-b', 'main'], work);

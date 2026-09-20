@@ -19,9 +19,9 @@
 //   node scripts/dashboard-check/scanner-honeypot.mjs
 //   node scripts/dashboard-check/scanner-honeypot.mjs --self-test
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = Number(process.env.PORT || 9349);
@@ -30,7 +30,7 @@ const TOKEN = process.env.TOKEN || '0x245c386dcfed896f5c346107596141e5edcbffff';
 const BASE = process.env.BASE || 'https://brainonbnb.com';
 const url = `${BASE}/scanner?token=${TOKEN}&probe=${Math.floor(Math.random() * 1e9)}`;
 
-const profile = mkdtempSync(join(tmpdir(), 'hp-'));
+const profile = scratchDir('hp-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, '--window-size=1280,900', '--hide-scrollbars', '--no-first-run', 'about:blank'], { stdio: 'ignore' });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function target() {

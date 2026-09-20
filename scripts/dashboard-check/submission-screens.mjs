@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { scratchDir } from '../lib/scratch.mjs';
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const OUT = path.resolve('temp/submission-screens');
@@ -22,7 +23,7 @@ const PAGES = [
   ['lp-windows', 'https://agent.brainonbnb.com/lp/windows'],
 ];
 const port = 9400 + (process.pid % 100);
-const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shots-'));
+const profile = scratchDir('shots-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--window-size=1440,900', '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 process.on('exit', () => { try { chrome.kill(); } catch {} });

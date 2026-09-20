@@ -26,9 +26,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { scratchDir } from './lib/scratch.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
-const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'range-check-'));
+const stage = scratchDir('range-check-');
 for (const f of ['scanner-chain.js', 'range-scan.js']) {
   let src = fs.readFileSync(path.join(ROOT, 'dashboard', f), 'utf8');
   src = src.split("'./scanner-chain.js'").join("'./scanner-chain.mjs'");

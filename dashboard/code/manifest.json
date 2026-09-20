@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1797,
-   "zipBytes": 25675,
-   "txtBytes": 79155,
-   "sha256": "58526bd28612459c",
+   "lines": 1801,
+   "zipBytes": 25855,
+   "txtBytes": 79552,
+   "sha256": "c41abef01b35de0d",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -190,9 +190,9 @@
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
    "lines": 4702,
-   "zipBytes": 74148,
+   "zipBytes": 74150,
    "txtBytes": 218958,
-   "sha256": "ac220c8a7bbb50b9",
+   "sha256": "c5f75ad0a1c8ba37",
    "reqs": [
     {
      "what": "A bot token",
@@ -599,9 +599,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
    "lines": 1941,
-   "zipBytes": 50422,
-   "txtBytes": 145001,
-   "sha256": "df92ff84ad69d816",
+   "zipBytes": 50434,
+   "txtBytes": 145021,
+   "sha256": "70e7b80f9e359623",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

@@ -2824,9 +2824,9 @@ const TAX_PHASES_TG = [
   { from: BB3_START, until: GG_END, when: 'Sep 19, 18:00 UTC → Nov 20, 2026', name: '$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent',
     slices: [
       ['👤', '0.8%', 'Creator', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
-      ['👷', '0.5%', 'Burn $BOB (Build On BNB)', '−0.3% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot'],
+      ['👷', '0.3%', 'Burn $BOB (Build On BNB)', '−0.5% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot'],
       ['🧠', '0.8%', 'Burn $BOBAI', '−0.1% → DeFi Agent, −0.1% → Giggle pot'],
-      ['🔒', '0.3%', 'BOBAI liq add + LP burn', ''],
+      ['🔒', '0.5%', 'BOBAI liq add + LP burn', ''],
       ['💧', '0.3%', 'DeFi Agent', ''],
       ['☀️', '0.3%', 'Giggle Academy pot', ''],
     ] },

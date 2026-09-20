@@ -462,7 +462,7 @@ const TOKENOMICS = {
 // holds the three against each other. Percent of each trade.
 const TAX_PHASES = [
   { id: 'sunshine', from: '2026-09-17T00:01:00Z', until: '2026-09-19T18:00:00Z', split_pct: { creator: 0.8, bob_burn: 0.8, bobai_burn: 0.8, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
-  { id: 'bobai-liq-3', from: '2026-09-19T18:00:00Z', until: '2026-11-20T00:01:00Z', split_pct: { creator: 0.8, bob_burn: 0.5, bobai_burn: 0.8, bobai_liquidity_add: 0.3, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
+  { id: 'bobai-liq-3', from: '2026-09-19T18:00:00Z', until: '2026-11-20T00:01:00Z', split_pct: { creator: 0.8, bob_burn: 0.3, bobai_burn: 0.8, bobai_liquidity_add: 0.5, defi_agent: 0.3, giggle_academy_pot: 0.3 } },
   { id: 'standard-final', from: '2026-11-20T00:01:00Z', until: null, split_pct: { creator: 1, bob_burn: 1, bobai_burn: 1 } },
 ];
 function taxPhaseAt(nowMs = Date.now()) {

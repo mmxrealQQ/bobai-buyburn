@@ -907,8 +907,8 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     // of each into the Giggle Academy pot. Both end Nov 20, 00:01 UTC. Same windows as the bot.
     {id:'bobai-liq-2-lp',start:LP_SHARE_START, end:new Date('2026-09-17T00:01:00Z').getTime(), creatorNote:'(−0.1% → DeFi Agent)', bobNote:'(−0.8% → $BOBAI liq add, −0.1% → DeFi Agent)', bobaiNote:'(−0.1% → DeFi Agent)', creatorPct:'0.9%', bobPct:'0.1%', bobaiPct:'0.9%', liqPct:'0.8%', lpPct:'0.3%'},
     {id:'sunshine',      start:GG_START, end:BB3_START, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.8%', bobaiPct:'0.8%', lpPct:'0.3%', gigglePct:'0.3%'},
-    // 2026-09-19: Liq Boost III — 0.3% more out of the BOB-burn slice into the BOBAI/BNB pool, LP burned; ends with the pot.
-    {id:'bobai-liq-3',   start:BB3_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.3% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.5%', bobaiPct:'0.8%', liqPct:'0.3%', lpPct:'0.3%', gigglePct:'0.3%'},
+    // 2026-09-19: Liq Boost III — 0.5% out of the BOB-burn slice into the BOBAI/BNB pool, LP burned; ends with the pot (0.3% until 2026-09-20, one add).
+    {id:'bobai-liq-3',   start:BB3_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.5% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.3%', bobaiPct:'0.8%', liqPct:'0.5%', lpPct:'0.3%', gigglePct:'0.3%'},
     {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'}
   ];
   // Size the scroll window to exactly: 1 past phase (context) + active + everything upcoming.

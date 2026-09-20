@@ -261,6 +261,7 @@ export async function rangePlan(input, opts = {}) {
       full_range: w === FULL,
       _crossings: crossings,
       _fees: fees,
+      _sLo: sLo, _sHi: sHi,
       // Filled in below, once, in the unit somebody would actually type.
       price_range: null,
       swaps_in_range: inRange,
@@ -272,12 +273,21 @@ export async function rangePlan(input, opts = {}) {
   });
   // The price bounds, expressed the way somebody would type them into a
   // position: in quote per token, not in roots.
-  const priceOfToken = tokenIs0 ? (sP * sP) * (10 ** tokDec / 10 ** qDec) : 1 / ((sP * sP) * (10 ** qDec / 10 ** tokDec));
+  //
+  // THE EDGES THE FEES WERE COUNTED BETWEEN (2026-09-20). Since the ranges are
+  // snapped onto the grid the replay walks the snapped position, and this line
+  // still printed price ± width: on the 0.25% tier (spacing 50, half a percent
+  // a step) the row called ±0.5% was replayed from −0.56% to +0.94% (CAKE/USDT,
+  // measured) and shown as ±0.5%. The bounds are the ones the position was replayed with;
+  // width_pct stays the width that was asked for.
+  const priceAt = (sq) => (tokenIs0 ? (sq * sq) * (10 ** tokDec / 10 ** qDec) : 1 / ((sq * sq) * (10 ** qDec / 10 ** tokDec)));
+  const priceOfToken = priceAt(sP);
   rows.forEach((r) => {
-    if (r.full_range) { r.price_range = null; return; }
-    const f = 1 + r.width_pct / 100;
-    r.price_range = { low: +(priceOfToken / f).toPrecision(8), high: +(priceOfToken * f).toPrecision(8),
+    if (r.full_range) { r.price_range = null; delete r._sLo; delete r._sHi; return; }
+    const a = priceAt(r._sLo), b = priceAt(r._sHi);
+    r.price_range = { low: +Math.min(a, b).toPrecision(8), high: +Math.max(a, b).toPrecision(8),
       unit: `${qSym} per ${tokSym || 'token'}` };
+    delete r._sLo; delete r._sHi;
   });
 
   // The cost of one re-entry, in dollars, from the live BNB price rather than

@@ -522,9 +522,9 @@
    "tagline": "Thirteen self-tests. No accounts, no tracking, no backend.",
    "files": 52,
    "lines": 9991,
-   "zipBytes": 193979,
-   "txtBytes": 546901,
-   "sha256": "885b68f5aa8a0556",
+   "zipBytes": 194033,
+   "txtBytes": 547254,
+   "sha256": "693414a43b02c9b6",
    "reqs": [
     {
      "what": "A static host",
@@ -599,9 +599,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 4,
    "lines": 1955,
-   "zipBytes": 50847,
-   "txtBytes": 146537,
-   "sha256": "aec7963170e08be2",
+   "zipBytes": 50863,
+   "txtBytes": 146568,
+   "sha256": "0912b7486747e77e",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

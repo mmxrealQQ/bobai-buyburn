@@ -92,10 +92,19 @@ for (const [name, addr] of list) {
   //    with L — comparing those would test the market, not the arithmetic.
   const held = rows.filter((r) => r.times_it_crossed_the_edge === 0 && r.fees_usd_in_window > 0
     && r.share_of_window_in_range_pct === 100);
+  // THE WIDTH THAT WAS REPLAYED, NOT THE ONE THAT WAS ASKED FOR (2026-09-20).
+  // Since 2026-09-18 the replay snaps every range outward onto the pool's tick
+  // grid, as the manager would mint it, and this check went on dividing the
+  // nominal widths. Nobody saw it while the 0.05% tier (spacing 10) was chosen;
+  // on the 0.25% tier (spacing 50, half a percent a step) in an hour quiet
+  // enough for ±0.5% to hold, "±0.5%" and "±1%" are 3 and 5 steps wide — fees
+  // 1.66 to 1, correct, and 17% off a ratio of 2. The width is read off the
+  // bounds the row says it was replayed between.
+  const span = (r) => Math.log(r.price_range.high / r.price_range.low);
   let worst = 0, pairs = 0, detail = [];
   for (let i = 1; i < held.length; i++) {
     const a = held[i - 1], b = held[i];
-    const widthRatio = b.width_pct / a.width_pct;
+    const widthRatio = span(b) / span(a);
     const feeRatio = a.fees_usd_in_window / b.fees_usd_in_window;
     const off = Math.abs(feeRatio / widthRatio - 1) * 100;
     pairs += 1; worst = Math.max(worst, off);
@@ -107,6 +116,27 @@ for (const [name, addr] of list) {
   ok(`${name}: fees scale inversely with width across ranges that held`,
     pairs === 0 || worst < 12,
     pairs === 0 ? 'no two widths both held the whole window — nothing to compare' : detail.join('  '));
+
+  // 3b. The bounds a row prints are the bounds it was replayed between: on the
+  //     pool's grid, and never inside the width that was asked for. A price is
+  //     1.0001^tick up to the decimals and the side it is quoted from, neither
+  //     of which moves a multiple of the spacing off the grid.
+  const sp = plan.tick_spacing || 1;
+  const dec = 10 ** ((plan.pair.quote.decimals || 18) - (plan.pair.token.decimals || 18));
+  const offGrid = (price) => { const t = Math.log(price * dec) / Math.log(1.0001) / sp; return Math.abs(t - Math.round(t)) * sp; };
+  const onGrid = (r) => offGrid(r.price_range.low) < 0.05 && offGrid(r.price_range.high) < 0.05;
+  const covers = (r) => r.price_range.low <= plan.price_now / (1 + r.width_pct / 100) * (1 + 1e-6)
+    && r.price_range.high >= plan.price_now * (1 + r.width_pct / 100) * (1 - 1e-6);
+  const loose = sp > 1 ? rows.filter((r) => !onGrid(r) || !covers(r)) : rows.filter((r) => !covers(r));
+  ok(`${name}: the bounds shown are the snapped ones the fees were counted between`, loose.length === 0,
+    loose.length ? loose.map((r) => `±${r.width_pct}%: ${r.price_range.low} – ${r.price_range.high}`).join(', ')
+      : `spacing ${sp}: ` + rows.slice(0, 2).map((r) => `±${r.width_pct}% runs ${((r.price_range.low / plan.price_now - 1) * 100).toFixed(2)}% to +${((r.price_range.high / plan.price_now - 1) * 100).toFixed(2)}%`).join(', '));
+  if (SELF && sp > 1) {
+    // The line as it was until 2026-09-20 — price ± width — has to be caught.
+    const nominal = rows.map((r) => ({ ...r, price_range: { low: plan.price_now / (1 + r.width_pct / 100), high: plan.price_now * (1 + r.width_pct / 100) } }));
+    ok('SELF: bounds printed as price ± width are caught as off the grid', nominal.some((r) => !onGrid(r)),
+      `${nominal.filter((r) => !onGrid(r)).length} of ${nominal.length} rows off the grid`);
+  }
 
   // 4. "Held" has to mean held. The first build called a range held when it was
   //    never seen LEAVING, which a range the price only wandered into halfway

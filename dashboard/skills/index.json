@@ -6,10 +6,10 @@
       "description": "Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid — per dollar of capital in it, and per dollar of capital standing within 2% of the price, which is the only part of it earning. And it replays candidate V3 price ranges against the swaps that really happened, reporting what each width would have collected and how much of the window it stayed in range. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, which fee tier and which price range to provide liquidity in, or which PancakeSwap route a swap should take and whether the proceeds can be sold back.",
       "type": "archive",
       "url": "https://brainonbnb.com/skills/bsc-pool-depth.tar.gz",
-      "digest": "sha256:fc69cd492af55781b6d155783e909d62257806e0d3df5c4c2c44c827028d8ab9",
+      "digest": "sha256:399a469e5960fd7e183bf9fe614bb1097200c18c9533f60e37b0784f3e4ab522",
       "version": "1.3.0",
       "license": "MIT",
-      "bytes": 72561
+      "bytes": 72795
     }
   ]
 }

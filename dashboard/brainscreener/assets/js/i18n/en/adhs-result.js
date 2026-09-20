@@ -45,14 +45,14 @@
       text: `On <strong>ASRS Part A</strong> you marked ${result.asrs.partAMarks} of 6 items within the diagnostically
 relevant response range (cutoff: ≥4). Clinically, this counts as a <strong>strong indication</strong>
 of adult ADHD: in the WHO validation study (Kessler et al. 2005) the six-item screener showed a very high
-specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.retroPositive ? "The WURS-K additionally points to relevant childhood symptoms, which further supports this finding." : "The WURS-K scores are below the cutoff – retrospective recall is, however, prone to error; a specialist medical assessment remains indicated."}`,
+specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.retroPositive ? "The childhood scale additionally points to relevant childhood symptoms, which further supports this finding." : "The childhood scale is below its threshold – retrospective recall is, however, prone to error; a specialist medical assessment remains indicated."}`,
     },
     moderate: {
       title: "Partially positive screening",
       sub: "There are indications of ADHD-typical symptoms, without the central cutoffs being fully reached.",
       val: "Moderate",
       gauge: 0.55,
-      text: `Individual subscales lie within the clinically relevant range (inattention: ${result.asrs.inattSum}/${result.asrs.inattMax}; hyperactivity/impulsivity: ${result.asrs.hypSum}/${result.asrs.hypMax}; WURS-K: ${result.wursk.sum}/${result.wursk.max}). This level of symptoms may point to ADHD, but can also be caused by other factors (sleep deprivation, stress, other conditions). A specialist medical evaluation is recommended if the symptoms are burdensome in everyday life.`,
+      text: `Individual subscales lie within the clinically relevant range (inattention: ${result.asrs.inattSum}/${result.asrs.inattMax}; hyperactivity/impulsivity: ${result.asrs.hypSum}/${result.asrs.hypMax}; childhood scale: ${result.wursk.sum}/${result.wursk.max}). This level of symptoms may point to ADHD, but can also be caused by other factors (sleep deprivation, stress, other conditions). A specialist medical evaluation is recommended if the symptoms are burdensome in everyday life.`,
     },
     low: {
       title: "Unremarkable screening",
@@ -60,7 +60,7 @@ specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.
       val: "Low",
       gauge: 0.18,
       text: `Both on <strong>ASRS Part A</strong> (${result.asrs.partAMarks}/6 marked) and on the subscales
-and the WURS-K (${result.wursk.sum}/${result.wursk.max}), the scores remain below the
+and the childhood scale (${result.wursk.sum}/${result.wursk.max}), the scores remain below the
 established cutoffs. A screening cannot, however, capture every presentation of the disorder.
 If you feel subjectively highly burdened, a specialist medical assessment may still be worthwhile.`,
     },
@@ -134,7 +134,7 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
   document.getElementById("contextText").innerHTML = `
     The <strong>ASRS v1.1</strong> is a WHO instrument for the self-assessment of current
     ADHD symptoms in adults (reference period: 6 months). It is one of the
-    best-validated brief instruments internationally. The <strong>WURS-K</strong>
+    best-validated brief instruments internationally. The <strong>childhood scale</strong>
     complements the picture with a retrospective assessment of childhood, since an
     ADHD diagnosis requires symptoms to have been present before the age of
     12&nbsp;years (DSM-5-TR Criterion B). The childhood items are freely worded, <strong>based on</strong> the

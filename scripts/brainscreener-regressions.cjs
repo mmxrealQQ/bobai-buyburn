@@ -5,6 +5,7 @@
 //  4) IQ: Perzentil bleibt in 1..99.  5) IQ: keine feste Antwortposition verraet die Loesung.
 //  6) WHODAS: "Keine" bei Arbeit ist nicht "trifft nicht zu" (Nenner 144 vs. 128).
 //  7) ADHS-Kindheits-Skala (in Anlehnung an WURS-K): Schwelle 36/100 statt 30.
+//  8) Seiten, Ergebnistext und llms.txt nennen die WURS-K nur als Vorlage ("based on"), nie als eingesetztes Instrument.
 const fs = require("fs");
 const path = require("path");
 
@@ -93,6 +94,31 @@ for (const [lang, dir] of Object.entries(dirs)) {
   const childhood = (sum) => { const o = {}; let rest = sum; for (const it of adhs.WURSK) { const v = Math.min(4, rest); o[it.id] = v; rest -= v; } return adhs.evaluate(o); };
   const c35 = childhood(35), c36 = childhood(36);
   check(`${lang} ADHS-Kindheits-Skala: 35 unauffaellig, 36 erhoeht`, c35.wursk.sum === 35 && !c35.wursk.elevated && c35.overall.flag === "low" && c36.wursk.sum === 36 && c36.wursk.elevated && c36.overall.flag === "moderate" && c36.wursk.cutoff === 36 && c36.wursk.max === 100);
+}
+
+// ---- 8) The childhood scale is BASED ON the WURS-K and is named so wherever a visitor or a crawler reads it ----
+// (until 20.09.2026 titles, descriptions, JSON-LD, llms.txt and the result text still listed "ASRS v1.1 + WURS-K" as the instruments used)
+{
+  const bs = path.join(__dirname, "..", "dashboard", "brainscreener");
+  const read = [
+    ...fs.readdirSync(bs).filter((f) => f.endsWith(".html")).map((f) => path.join(bs, f)),
+    path.join(root, "adhs-result.js"),
+    path.join(__dirname, "..", "dashboard", "llms.txt"),
+  ];
+  const named = (text) => {
+    const bad = [];
+    const flat = text.replace(/\s+/g, " ");
+    for (let i = flat.indexOf("WURS-K"); i !== -1; i = flat.indexOf("WURS-K", i + 1)) {
+      const before = flat.slice(Math.max(0, i - 90), i).replace(/<[^>]+>/g, " "), after = flat.slice(i + 6, i + 20);
+      if (!/based on/i.test(before) && !/^ cutoff/.test(after)) bad.push(flat.slice(Math.max(0, i - 40), i + 6));
+    }
+    return bad;
+  };
+  const bad = read.flatMap((f) => named(fs.readFileSync(f, "utf8")).map((s) => path.basename(f) + ": …" + s));
+  check("WURS-K steht nirgends als eingesetztes Instrument", bad.length === 0, bad.slice(0, 4).join(" | "));
+  check("… und der Pruefer faengt die alte Schreibweise", named("ADHD test for adults — ASRS v1.1 + WURS-K").length === 1 && named("a childhood scale based on the WURS-K").length === 0);
+  const label = load(path.join(root, "adhs-data.js"), "ADHS_DATA").ui.sectionLabels.W;
+  check("ADHS Abschnitt 3 heisst nicht WURS-K", !/WURS/.test(label), label);
 }
 
 console.log(ok ? "\nAlles sauber." : "\nFEHLER");

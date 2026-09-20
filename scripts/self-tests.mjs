@@ -15,7 +15,9 @@
 // for the argument (includes('--self-test') / has('self-test')), so a new
 // checker is picked up the day it is written. A file that only MENTIONS the
 // argument in a comment is not run — starting a script that has no self-test
-// branch with an argument it ignores would start the script itself.
+// branch with an argument it ignores would start the script itself. The one
+// other kind: a file named *-regressions.cjs/.mjs is a test and nothing else,
+// and runs without the argument.
 // Nothing here moves money or writes on-chain: every script in this folder
 // acts only with --confirm, and none is given it.
 import fs from 'node:fs';
@@ -35,11 +37,16 @@ const SELF = path.basename(import.meta.filename);
 // canary and gave no verdict in five minutes). They run with --browser only.
 const NEEDS_BROWSER = new Set(['layout-audit.mjs']);
 
+// A file named *-regressions is nothing but a test (offline, no argument): it is
+// run as it is. Added 2026-09-20, the day brainscreener-regressions.cjs arrived
+// from another project's session and stood in no run at all.
+const IS_A_TEST = /-regressions\.[cm]js$/;
+
 const dirs = ['scripts', ...(BROWSER ? ['scripts/dashboard-check'] : [])];
 const files = dirs.flatMap((d) => fs.readdirSync(path.join(ROOT, d))
-  .filter((f) => f.endsWith('.mjs') && f !== SELF)
+  .filter((f) => /\.[cm]js$/.test(f) && f !== SELF)
   .map((f) => path.join(d, f)))
-  .filter((rel) => BRANCH.test(fs.readFileSync(path.join(ROOT, rel), 'utf8')))
+  .filter((rel) => IS_A_TEST.test(rel) || BRANCH.test(fs.readFileSync(path.join(ROOT, rel), 'utf8')))
   .filter((rel) => BROWSER || !NEEDS_BROWSER.has(path.basename(rel)))
   .filter((rel) => !only || path.basename(rel).includes(only))
   .sort();
@@ -51,7 +58,7 @@ const failed = [];
 const t0 = Date.now();
 for (const rel of files) {
   const started = Date.now();
-  const r = spawnSync(process.execPath, [path.join(ROOT, rel), '--self-test'], { cwd: ROOT, encoding: 'utf8', timeout: TIMEOUT_MS, maxBuffer: 32 * 1024 * 1024 });
+  const r = spawnSync(process.execPath, [path.join(ROOT, rel), ...(IS_A_TEST.test(rel) ? [] : ['--self-test'])], { cwd: ROOT, encoding: 'utf8', timeout: TIMEOUT_MS, maxBuffer: 32 * 1024 * 1024 });
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   const timedOut = r.error && r.error.code === 'ETIMEDOUT';
   const pass = !r.error && r.status === 0;

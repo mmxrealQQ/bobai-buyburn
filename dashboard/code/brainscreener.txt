@@ -88,7 +88,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="brainScreener" />
   <meta property="og:title" content="Your results — ADHD screening · brainScreener" />
-  <meta property="og:description" content="Anonymous results of the ADHD screening (ASRS v1.1 + WURS-K), generated client-side." />
+  <meta property="og:description" content="Anonymous results of the ADHD screening (ASRS v1.1 + childhood scale), generated client-side." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/adhd-result" />
   <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
@@ -186,7 +186,7 @@
         a detailed history and, where appropriate, further psychometric testing.
         Discuss the result with the doctor or psychologist treating you.
         <br><br>
-        <span class="small">Instruments used: <strong>ASRS v1.1</strong> (Kessler et al., WHO), <strong>WURS-K</strong> (Retz-Junginger et al., 2002). Reference framework: DSM-5-TR (APA, 2022), ICD-11 (WHO, 2022).</span>
+        <span class="small">Instruments used: <strong>ASRS v1.1</strong> (Kessler et al., WHO), a childhood scale <strong>based on the WURS-K</strong> (Retz-Junginger et al., 2002). Reference framework: DSM-5-TR (APA, 2022), ICD-11 (WHO, 2022).</span>
       </div>
 
       <div class="print-footer">
@@ -212,9 +212,9 @@
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/i18n/en/adhs-result.js?v=5"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-result.js?v=6"></script>
 </body>
 </html>
 
@@ -228,14 +228,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#050510" />
-  <title>ADHD test for adults — ASRS v1.1 + WURS-K · brainScreener</title>
-  <meta name="description" content="ADHD test for adults online (ASRS v1.1 + WURS-K): 43 questions, about 10–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
+  <title>ADHD test for adults — ASRS v1.1 + childhood scale · brainScreener</title>
+  <meta name="description" content="ADHD test for adults online (ASRS v1.1 + a childhood scale based on the WURS-K): 43 questions, about 10–12 minutes. Anonymous, free, no sign-up. Instant result, printable as PDF. Not a diagnosis." />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://brainonbnb.com/brainscreener/adhd" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="brainScreener" />
-  <meta property="og:title" content="ADHD test for adults — ASRS v1.1 + WURS-K · brainScreener" />
-  <meta property="og:description" content="ADHD test for adults online: ASRS v1.1 (WHO) plus WURS-K, 43 questions to DSM-5-TR standard. Anonymous, free, instant results." />
+  <meta property="og:title" content="ADHD test for adults — ASRS v1.1 + childhood scale · brainScreener" />
+  <meta property="og:description" content="ADHD test for adults online: ASRS v1.1 (WHO) plus a childhood scale based on the WURS-K, 43 questions to DSM-5-TR standard. Anonymous, free, instant results." />
   <meta property="og:url" content="https://brainonbnb.com/brainscreener/adhd" />
   <meta property="og:image" content="https://brainonbnb.com/brainscreener/assets/images/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
@@ -246,7 +246,7 @@
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="/brainscreener/apple-touch-icon.png" />
   <link rel="stylesheet" href="/brainscreener/assets/css/main.css?v=8" />
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"ADHD test for adults — ASRS v1.1 + WURS-K","description":"Anonymous ADHD screening for adults: ASRS v1.1 (WHO) and WURS-K, 43 questions to DSM-5-TR standard.","url":"https://brainonbnb.com/brainscreener/adhd","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Attention deficit hyperactivity disorder (ADHD)"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalWebPage","name":"ADHD test for adults — ASRS v1.1 + childhood scale","description":"Anonymous ADHD screening for adults: ASRS v1.1 (WHO) and a childhood scale based on the WURS-K, 43 questions to DSM-5-TR standard.","url":"https://brainonbnb.com/brainscreener/adhd","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"brainScreener","url":"https://brainonbnb.com/brainscreener/"},"audience":{"@type":"MedicalAudience","audienceType":"Patient"},"about":{"@type":"MedicalCondition","name":"Attention deficit hyperactivity disorder (ADHD)"}}</script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23101026'/%3E%3Ccircle cx='12' cy='12' r='5' fill='%23F0B90B'/%3E%3Ccircle cx='20' cy='20' r='3' fill='%23ffd54f'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brainscreener/apple-touch-icon.png" />
 </head>
@@ -362,7 +362,7 @@
   </div>
 </footer>
 
-<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=4"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
 <script src="/brainscreener/assets/js/adhs.js?v=4"></script>
 </body>
@@ -2156,7 +2156,7 @@ img { max-width: 100%; height: auto; display: block; }
 === FILE: dashboard/brainscreener/assets/js/i18n/en/adhs-data.js
 ==============================================================================
 
-// ADHD screening: ASRS v1.1 (WHO, 18 items) + WURS-K (25 items, retrospective)
+// ADHD screening: ASRS v1.1 (WHO, 18 items) + a childhood scale based on the WURS-K (25 items, retrospective)
 // Sources / references:
 //  - Kessler RC et al. (2005), WHO Adult ADHD Self-Report Scale (ASRS) v1.1
 //  - Retz-Junginger P et al. (2002), Wender Utah Rating Scale Kurzform (WURS-K)
@@ -2211,9 +2211,9 @@ window.ADHS_DATA = (function () {
     { id: "B18", partA: false, dim: "H", text: "How often do you interrupt others when they are busy?" },
   ];
 
-  // -------- WURS-K, short version (Retz-Junginger et al. 2002), translation ----
+  // -------- Childhood scale, 25 freely worded items BASED ON the WURS-K (Retz-Junginger et al. 2002) ----
   // Introductory sentence: "As a child (aged about 8 to 10), I was / I had ..."
-  // Scoring: sum score 0..100; established cutoff for childhood ADHD symptoms >= 36 (see evaluate).
+  // Scoring: sum score 0..100; guide threshold >= 36, converted from the WURS-K cutoff, not validated for this version (see evaluate).
   const WURSK_INTRO = "As a child (aged between about 8 and 10 years), I was / I had ...";
   const WURSK = [
     { id: "W1",  text: "difficulty concentrating, easily distracted" },
@@ -2309,7 +2309,7 @@ window.ADHS_DATA = (function () {
     ui: {
       question: "Question",
       answersCount: (a, t) => `${a} / ${t} answered`,
-      sectionLabels: { A: "Section 1 of 3 · ASRS Part A", B: "Section 2 of 3 · ASRS Part B", W: "Section 3 of 3 · WURS-K" },
+      sectionLabels: { A: "Section 1 of 3 · ASRS Part A", B: "Section 2 of 3 · ASRS Part B", W: "Section 3 of 3 · Childhood" },
       resetConfirm: "Do you really want to delete all previous answers and start over?",
     },
   };
@@ -2366,14 +2366,14 @@ window.ADHS_DATA = (function () {
       text: `On <strong>ASRS Part A</strong> you marked ${result.asrs.partAMarks} of 6 items within the diagnostically
 relevant response range (cutoff: ≥4). Clinically, this counts as a <strong>strong indication</strong>
 of adult ADHD: in the WHO validation study (Kessler et al. 2005) the six-item screener showed a very high
-specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.retroPositive ? "The WURS-K additionally points to relevant childhood symptoms, which further supports this finding." : "The WURS-K scores are below the cutoff – retrospective recall is, however, prone to error; a specialist medical assessment remains indicated."}`,
+specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.retroPositive ? "The childhood scale additionally points to relevant childhood symptoms, which further supports this finding." : "The childhood scale is below its threshold – retrospective recall is, however, prone to error; a specialist medical assessment remains indicated."}`,
     },
     moderate: {
       title: "Partially positive screening",
       sub: "There are indications of ADHD-typical symptoms, without the central cutoffs being fully reached.",
       val: "Moderate",
       gauge: 0.55,
-      text: `Individual subscales lie within the clinically relevant range (inattention: ${result.asrs.inattSum}/${result.asrs.inattMax}; hyperactivity/impulsivity: ${result.asrs.hypSum}/${result.asrs.hypMax}; WURS-K: ${result.wursk.sum}/${result.wursk.max}). This level of symptoms may point to ADHD, but can also be caused by other factors (sleep deprivation, stress, other conditions). A specialist medical evaluation is recommended if the symptoms are burdensome in everyday life.`,
+      text: `Individual subscales lie within the clinically relevant range (inattention: ${result.asrs.inattSum}/${result.asrs.inattMax}; hyperactivity/impulsivity: ${result.asrs.hypSum}/${result.asrs.hypMax}; childhood scale: ${result.wursk.sum}/${result.wursk.max}). This level of symptoms may point to ADHD, but can also be caused by other factors (sleep deprivation, stress, other conditions). A specialist medical evaluation is recommended if the symptoms are burdensome in everyday life.`,
     },
     low: {
       title: "Unremarkable screening",
@@ -2381,7 +2381,7 @@ specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.
       val: "Low",
       gauge: 0.18,
       text: `Both on <strong>ASRS Part A</strong> (${result.asrs.partAMarks}/6 marked) and on the subscales
-and the WURS-K (${result.wursk.sum}/${result.wursk.max}), the scores remain below the
+and the childhood scale (${result.wursk.sum}/${result.wursk.max}), the scores remain below the
 established cutoffs. A screening cannot, however, capture every presentation of the disorder.
 If you feel subjectively highly burdened, a specialist medical assessment may still be worthwhile.`,
     },
@@ -2455,7 +2455,7 @@ If you feel subjectively highly burdened, a specialist medical assessment may st
   document.getElementById("contextText").innerHTML = `
     The <strong>ASRS v1.1</strong> is a WHO instrument for the self-assessment of current
     ADHD symptoms in adults (reference period: 6 months). It is one of the
-    best-validated brief instruments internationally. The <strong>WURS-K</strong>
+    best-validated brief instruments internationally. The <strong>childhood scale</strong>
     complements the picture with a retrospective assessment of childhood, since an
     ADHD diagnosis requires symptoms to have been present before the age of
     12&nbsp;years (DSM-5-TR Criterion B). The childhood items are freely worded, <strong>based on</strong> the
@@ -8296,7 +8296,7 @@ window.TEST_DATA = (function () {
     "@type": "ItemList",
     "name": "brainScreener test library",
     "itemListElement": [
-      {"@type":"ListItem","position":1,"name":"ADHD screening (ASRS v1.1 + WURS-K)","url":"https://brainonbnb.com/brainscreener/adhd"},
+      {"@type":"ListItem","position":1,"name":"ADHD screening (ASRS v1.1 + childhood scale)","url":"https://brainonbnb.com/brainscreener/adhd"},
       {"@type":"ListItem","position":2,"name":"IQ test (CHC model)","url":"https://brainonbnb.com/brainscreener/iq"},
       {"@type":"ListItem","position":3,"name":"Character profile (Dark Tetrad)","url":"https://brainonbnb.com/brainscreener/character"},
       {"@type":"ListItem","position":4,"name":"PHQ-9 depression test","url":"https://brainonbnb.com/brainscreener/phq9"},
@@ -8362,7 +8362,7 @@ window.TEST_DATA = (function () {
       <div class="tests-head">
         <span class="eyebrow">In focus</span>
         <h2>ADHD, IQ and character.</h2>
-        <p>The ADHD screening combines two published scales (ASRS v1.1 and WURS-K). The IQ test and the character profile are our own instruments: they follow established models (CHC, Dark Tetrad), are not clinically validated and give an orientation only.</p>
+        <p>The ADHD screening combines the published ASRS v1.1 with a childhood scale based on the WURS-K. The IQ test and the character profile are our own instruments: they follow established models (CHC, Dark Tetrad), are not clinically validated and give an orientation only.</p>
       </div>
 
       <div class="test-cards">
@@ -8372,7 +8372,7 @@ window.TEST_DATA = (function () {
           <div class="card-body">
             <div class="meta">ADHD in adults</div>
             <h3>ADHD screening</h3>
-            <p>Structured self-report based on the <strong>ASRS&nbsp;v1.1</strong> (WHO) for current symptoms, combined with the <strong>WURS-K</strong> for the retrospective assessment of childhood symptoms — in line with the current standard of adult ADHD diagnostics under DSM-5-TR and ICD-11.</p>
+            <p>Structured self-report based on the <strong>ASRS&nbsp;v1.1</strong> (WHO) for current symptoms, combined with a childhood scale <strong>based on the WURS-K</strong> for the retrospective assessment of childhood symptoms — in line with the current standard of adult ADHD diagnostics under DSM-5-TR and ICD-11.</p>
             <ul class="meta-list">
               <li><span>Duration</span><span>approx. 10–12 min</span></li>
               <li><span>Items</span><span>43 (18 + 25)</span></li>

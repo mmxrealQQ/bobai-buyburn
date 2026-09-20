@@ -1600,7 +1600,7 @@ $BOBAI is a registered ERC-8004 agent (#49467 on BNB Chain). It is a data source
 - brainScreener: https://brainonbnb.com/brainscreener/ — 13 free, anonymous psychological self-tests. No registration, no ads; scoring runs in the browser and no answer is ever transmitted (answers stay in the browser tab until it is closed). A screening gives an indication, never a diagnosis. English edition of adhsiq.ch, adapted with permission and thanks. Direct links:
   - Depression (PHQ-9): https://brainonbnb.com/brainscreener/phq9 — 9 questions, 3–4 min
   - Anxiety (GAD-7): https://brainonbnb.com/brainscreener/gad7 — 7 questions, 2–3 min
-  - ADHD in adults (ASRS v1.1 + WURS-K): https://brainonbnb.com/brainscreener/adhd — 43 questions, 10–12 min
+  - ADHD in adults (ASRS v1.1 + a childhood scale based on the WURS-K): https://brainonbnb.com/brainscreener/adhd — 43 questions, 10–12 min
   - Trauma / PTSD (PCL-5): https://brainonbnb.com/brainscreener/pcl5 — 20 questions, 5–7 min
   - Obsessive-compulsive symptoms (OCI-R): https://brainonbnb.com/brainscreener/ocir — 18 questions, 4–5 min
   - Eating disorders (EAT-26): https://brainonbnb.com/brainscreener/eat26 — 26 questions, 5–7 min

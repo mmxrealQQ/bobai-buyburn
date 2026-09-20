@@ -1,4 +1,4 @@
-// ADHD screening: ASRS v1.1 (WHO, 18 items) + WURS-K (25 items, retrospective)
+// ADHD screening: ASRS v1.1 (WHO, 18 items) + a childhood scale based on the WURS-K (25 items, retrospective)
 // Sources / references:
 //  - Kessler RC et al. (2005), WHO Adult ADHD Self-Report Scale (ASRS) v1.1
 //  - Retz-Junginger P et al. (2002), Wender Utah Rating Scale Kurzform (WURS-K)
@@ -53,9 +53,9 @@ window.ADHS_DATA = (function () {
     { id: "B18", partA: false, dim: "H", text: "How often do you interrupt others when they are busy?" },
   ];
 
-  // -------- WURS-K, short version (Retz-Junginger et al. 2002), translation ----
+  // -------- Childhood scale, 25 freely worded items BASED ON the WURS-K (Retz-Junginger et al. 2002) ----
   // Introductory sentence: "As a child (aged about 8 to 10), I was / I had ..."
-  // Scoring: sum score 0..100; established cutoff for childhood ADHD symptoms >= 36 (see evaluate).
+  // Scoring: sum score 0..100; guide threshold >= 36, converted from the WURS-K cutoff, not validated for this version (see evaluate).
   const WURSK_INTRO = "As a child (aged between about 8 and 10 years), I was / I had ...";
   const WURSK = [
     { id: "W1",  text: "difficulty concentrating, easily distracted" },
@@ -151,7 +151,7 @@ window.ADHS_DATA = (function () {
     ui: {
       question: "Question",
       answersCount: (a, t) => `${a} / ${t} answered`,
-      sectionLabels: { A: "Section 1 of 3 · ASRS Part A", B: "Section 2 of 3 · ASRS Part B", W: "Section 3 of 3 · WURS-K" },
+      sectionLabels: { A: "Section 1 of 3 · ASRS Part A", B: "Section 2 of 3 · ASRS Part B", W: "Section 3 of 3 · Childhood" },
       resetConfirm: "Do you really want to delete all previous answers and start over?",
     },
   };

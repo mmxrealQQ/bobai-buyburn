@@ -12,6 +12,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
+// The stylesheet version is the homepage's, read at build time — the template
+// carried a literal v=37 and the next run would have put the built page back.
+const STYLES_V = (fs.readFileSync(path.join(ROOT, 'dashboard', 'index.html'), 'utf8').match(/styles\.css\?v=(\d+)/) || [null, '52'])[1];
 const report = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'advantage', 'report.json'), 'utf8'));
 
 if (!report.tasks?.length) {
@@ -165,7 +168,7 @@ const html = `<!DOCTYPE html>
 <meta property="og:url" content="https://brainonbnb.com/advantage">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=37">
+<link rel="stylesheet" href="/styles.css?v=${STYLES_V}">
 <style>
   .adv{max-width:960px;margin:0 auto}
   .hero h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(28px,5vw,44px);line-height:1.08;margin:0 0 14px}

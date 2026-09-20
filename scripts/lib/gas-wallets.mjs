@@ -150,13 +150,15 @@ export const SOURCE = {
 
 // Wallets deliberately NOT refilled, listed so the omission is a decision on
 // the record rather than an oversight:
-//   0x5E4102520A71B2AA18a1208330d4848dea4BD105  WC26 prize pool — paid out
-//     2026-07-20 and frozen. It should not receive anything again.
+//   0x5E4102520A71B2AA18a1208330d4848dea4BD105  WC26 prize pool, paid out
+//     2026-07-20 — since 2026-09-17 the Giggle Academy pot: the buyback bot
+//     sends it 0.3% of every trade until Nov 20. It only receives and signs
+//     nothing, so it needs no gas.
 //   0xEAC21928DE023677A25eb925D1cb1b0786FaF946  ecosystem buyback — zero
 //     balance, zero transactions ever. Nothing runs on it (databrain was shut
 //     down), so funding it would be funding an idea, not a bot.
 export const NOT_REFILLED = [
-  { address: '0x5E4102520A71B2AA18a1208330d4848dea4BD105', why: 'WC26 prize pool, frozen since the payout' },
+  { address: '0x5E4102520A71B2AA18a1208330d4848dea4BD105', why: 'WC26 prize pool, now the Giggle pot — it only receives' },
   { address: '0xEAC21928DE023677A25eb925D1cb1b0786FaF946', why: 'ecosystem buyback, never used' },
 ];
 

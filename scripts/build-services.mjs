@@ -37,6 +37,12 @@ import { SERVICE_BY_SLUG } from './lib/own-agents.mjs';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'dashboard', 'services.html');
 const SELFTEST = process.argv.includes('--self-test');
+// The stylesheet version is the homepage's, read at build time — the template
+// carried a literal v=37 while the site was at v=52 (same fix as erc8004-publish).
+const STYLES_V = (fs.readFileSync(path.join(ROOT, 'dashboard', 'index.html'), 'utf8').match(/styles\.css\?v=(\d+)/) || [null, '52'])[1];
+// Declared up here because page() reads it and the self-test calls page() before
+// the build fetches the figure — as a const further down it made --self-test throw.
+let ASKED_FLOOR = 0;
 
 const esc = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -202,7 +208,7 @@ function page() {
 <meta property="og:url" content="https://brainonbnb.com/services">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=37">
+<link rel="stylesheet" href="/styles.css?v=${STYLES_V}">
 <style>
   .sv{max-width:1000px;margin:0 auto;padding:0 20px 60px}
   .sv-hero{padding:106px 0 8px}
@@ -438,7 +444,7 @@ if (problems.length) {
 // stranger. The count at build time is baked in as a floor, the same way the
 // census floor works: the live figure replaces it when it arrives and can only
 // be larger, since the counter never goes down.
-const ASKED_FLOOR = await fetch('https://agent.brainonbnb.com/stats', { signal: AbortSignal.timeout(20000) })
+ASKED_FLOOR = await fetch('https://agent.brainonbnb.com/stats', { signal: AbortSignal.timeout(20000) })
   .then((r) => (r.ok ? r.json() : null)).then((d) => Number(d?.asked?.total) || 0).catch(() => 0);
 if (!ASKED_FLOOR) console.warn('  /stats did not answer at build time — the requests tile opens with a dash until the live figure arrives');
 const html = page();

@@ -214,7 +214,7 @@
 
 <script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/i18n/en/adhs-result.js?v=6"></script>
+<script src="/brainscreener/assets/js/i18n/en/adhs-result.js?v=7"></script>
 </body>
 </html>
 
@@ -364,7 +364,7 @@
 
 <script src="/brainscreener/assets/js/i18n/en/adhs-data.js?v=5"></script>
 <script src="/brainscreener/assets/js/print-fallback.js?v=4"></script>
-<script src="/brainscreener/assets/js/adhs.js?v=4"></script>
+<script src="/brainscreener/assets/js/adhs.js?v=5"></script>
 </body>
 </html>
 
@@ -1672,7 +1672,7 @@ img { max-width: 100%; height: auto; display: block; }
   const UI = Object.assign({
     question: "Frage",
     answersCount: (a, t) => `${a} / ${t} Antworten`,
-    sectionLabels: { A: "Abschnitt 1 von 3 · ASRS Part A", B: "Abschnitt 2 von 3 · ASRS Part B", W: "Abschnitt 3 von 3 · WURS-K" },
+    sectionLabels: { A: "Abschnitt 1 von 3 · ASRS Part A", B: "Abschnitt 2 von 3 · ASRS Part B", W: "Abschnitt 3 von 3 · Kindheit" },
     resetConfirm: "Wirklich alle bisherigen Antworten löschen und neu starten?",
   }, (D && D.ui) || {});
   // JS scrolling overrides the CSS reduced-motion rule, so it asks for itself.
@@ -2382,7 +2382,7 @@ specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.
       gauge: 0.18,
       text: `Both on <strong>ASRS Part A</strong> (${result.asrs.partAMarks}/6 marked) and on the subscales
 and the childhood scale (${result.wursk.sum}/${result.wursk.max}), the scores remain below the
-established cutoffs. A screening cannot, however, capture every presentation of the disorder.
+respective thresholds. A screening cannot, however, capture every presentation of the disorder.
 If you feel subjectively highly burdened, a specialist medical assessment may still be worthwhile.`,
     },
   };

@@ -30,7 +30,7 @@
   const UI = Object.assign({
     question: "Frage",
     answersCount: (a, t) => `${a} / ${t} Antworten`,
-    sectionLabels: { A: "Abschnitt 1 von 3 · ASRS Part A", B: "Abschnitt 2 von 3 · ASRS Part B", W: "Abschnitt 3 von 3 · WURS-K" },
+    sectionLabels: { A: "Abschnitt 1 von 3 · ASRS Part A", B: "Abschnitt 2 von 3 · ASRS Part B", W: "Abschnitt 3 von 3 · Kindheit" },
     resetConfirm: "Wirklich alle bisherigen Antworten löschen und neu starten?",
   }, (D && D.ui) || {});
   // JS scrolling overrides the CSS reduced-motion rule, so it asks for itself.

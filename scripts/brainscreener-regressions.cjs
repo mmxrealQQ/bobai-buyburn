@@ -119,6 +119,14 @@ for (const [lang, dir] of Object.entries(dirs)) {
   check("… und der Pruefer faengt die alte Schreibweise", named("ADHD test for adults — ASRS v1.1 + WURS-K").length === 1 && named("a childhood scale based on the WURS-K").length === 0);
   const label = load(path.join(root, "adhs-data.js"), "ADHS_DATA").ui.sectionLabels.W;
   check("ADHS Abschnitt 3 heisst nicht WURS-K", !/WURS/.test(label), label);
+  // The engine carries a German fallback for the same label; the data file overrides it, so no page shows it
+  // and the check above never saw it (found by the adhsiq session, 20.09.2026).
+  const engine = fs.readFileSync(path.join(bs, "assets", "js", "adhs.js"), "utf8");
+  const fallback = (engine.match(/sectionLabels:\s*\{[^}]*\}/) || [""])[0];
+  check("… auch nicht im Fallback der Engine (adhs.js)", fallback.length > 0 && !/WURS/.test(fallback), fallback.slice(0, 120));
+  // The childhood threshold (36/100) is converted proportionally and not validated: the ADHD result may not call it "established".
+  const resultText = fs.readFileSync(path.join(root, "adhs-result.js"), "utf8");
+  check("ADHS-Ergebnistext nennt die umgerechnete Schwelle nicht \"established\"", !/established cutoffs?/i.test(resultText));
 }
 
 console.log(ok ? "\nAlles sauber." : "\nFEHLER");

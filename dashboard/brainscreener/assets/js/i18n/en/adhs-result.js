@@ -61,7 +61,7 @@ specificity (99.5&nbsp;%) at a sensitivity of about 69&nbsp;%. ${result.overall.
       gauge: 0.18,
       text: `Both on <strong>ASRS Part A</strong> (${result.asrs.partAMarks}/6 marked) and on the subscales
 and the childhood scale (${result.wursk.sum}/${result.wursk.max}), the scores remain below the
-established cutoffs. A screening cannot, however, capture every presentation of the disorder.
+respective thresholds. A screening cannot, however, capture every presentation of the disorder.
 If you feel subjectively highly burdened, a specialist medical assessment may still be worthwhile.`,
     },
   };

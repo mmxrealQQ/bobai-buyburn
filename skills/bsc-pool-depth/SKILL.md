@@ -1,7 +1,7 @@
 ---
 name: bsc-pool-depth
-description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid — per dollar of capital in it, and per dollar of capital standing within 2% of the price, which is the only part of it earning. And it replays candidate V3 price ranges against the swaps that really happened, reporting what each width would have collected and how much of the window it stayed in range. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, which fee tier and which price range to provide liquidity in, or which PancakeSwap route a swap should take and whether the proceeds can be sold back.
-version: 1.3.0
+description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. One pre-trade check answers at your size: what stops the trade (the sell does not go through, nothing quotes), what to weigh, entry, exit, tax and depth. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid per dollar of capital in it, and per dollar standing within 2% of the price. And it replays candidate V3 price ranges against the swaps that really happened. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, whether it can be sold again, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, which fee tier and which price range to provide liquidity in, or which PancakeSwap route a swap should take.
+version: 1.4.0
 license: MIT
 metadata:
   author: brainonbnb
@@ -38,7 +38,37 @@ reserves. A venue whose fee has not been verified is not scanned and not
 guessed at, because applying PancakeSwap's 0.25% to a Uniswap pool understates
 the cost by 0.05 points with nothing to say so.
 
-## Usage
+## Before a trade: one answer at your size
+
+```bash
+node scripts/preflight.mjs <token-or-pool-address> --usd 250
+```
+
+What an automated trade asks before it signs is always the same: can I get in
+and out again, and what does the trip cost. This runs the pool scan and the
+route check below and returns the part a decision is made on — one short
+answer instead of two long ones to join:
+
+| Field | What it tells you |
+|---|---|
+| `stop[]` | Facts that end the trade: `not_sellable` (a test sell from a fresh address did not go through), `not_buyable`, `not_quotable`, `sell_not_quotable`, and the route's own refusal as `round_trip`. Empty is not a verdict — read `caution[]` |
+| `caution[]` | Facts to weigh, each with its figure and the line it was measured against in the sentence, so you can disagree with the line: a tax of 10% or more on one side, a tax the owner can change, a tax nobody could establish, a size above the 1% depth, a deeper pool elsewhere, LP that can be withdrawn from a thin pool, contract flags, unverified source, a sell simulation that did not run |
+| `entry` | The PancakeSwap route that returns the most at this size, what you would receive, and `slippage_bps_needed` |
+| `exit` | `sellable`, and the round trip: `round_trip_keep_pct`, its cost, and how much of that cost is the pools alone rather than the tax |
+| `tax` · `depth` · `lp_burned_pct` | The measured figures behind the lines above |
+| `cannot_see` | What no read of the chain shows, in every answer |
+
+`--usd` is the size you are about to trade (default 250); every figure is for
+that size. A missing figure stays `null`: an unknown tax is never 0, and a
+simulation that did not run is "not checked", never "sellable". When the route
+check cannot answer — a venue outside PancakeSwap — entry and exit come from
+the measured pool's cost ladder, read between its rungs, and `no_route_quote`
+says so. A token still on its four.meme curve is answered from the curve.
+
+There is no "safe" in it and no score. Run the two long forms below when you
+want every figure behind the short one.
+
+## Usage: the full pool scan
 
 ```bash
 node scripts/scan.mjs <token-or-pool-address>

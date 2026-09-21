@@ -75,5 +75,29 @@ ok('on the four.meme curve: said so, the curve’s figures, and no sell quote ST
 o = shape({ address: '0xd', symbol: 'D', name: 'D', quotable: false, reason: 'No pool at a venue whose swap fee has been verified here.' }, null, 100);
 ok('no readable market: a stop with the scan’s reason, entry and exit null', codes(o.stop) === 'not_quotable' && o.entry === null && o.exit === null && /No pool/.test(o.stop[0].why));
 
+// ---- the installable skill carries it, and what it carries resolves ---------
+// build-skill.mjs pulls dashboard files into the tarball under new names and
+// rewrites './x.js' to './x.mjs' only for files it pulls. A module pulled
+// without the ones it imports, or a CLI importing a name nothing lands under,
+// builds cleanly and throws on the installer's machine.
+{
+  const fs = await import('node:fs');
+  const root = path.resolve(import.meta.dirname, '..');
+  const build = fs.readFileSync(path.join(root, 'scripts/build-skill.mjs'), 'utf8');
+  const pulled = Object.fromEntries([...build.matchAll(/'(dashboard\/[\w-]+\.js)':\s*'scripts\/([\w-]+\.mjs)'/g)].map((m) => [m[1], m[2]]));
+  const cliDir = path.join(root, 'skills/bsc-pool-depth/scripts');
+  const clis = fs.readdirSync(cliDir);
+  const members = new Set([...clis, ...Object.values(pulled)]);
+  const imports = (src) => [...src.matchAll(/from\s+'\.\/([\w-]+)\.(?:js|mjs)'/g)].map((m) => m[1] + '.mjs');
+  const missing = [];
+  for (const f of clis) for (const i of imports(fs.readFileSync(path.join(cliDir, f), 'utf8'))) if (!members.has(i)) missing.push(`${f} -> ${i}`);
+  for (const [from, to] of Object.entries(pulled)) for (const i of imports(fs.readFileSync(path.join(root, from), 'utf8'))) if (!members.has(i)) missing.push(`${to} -> ${i}`);
+  ok('the skill pulls preflight.js and has a CLI on it', pulled['dashboard/preflight.js'] === 'token-preflight.mjs' && clis.includes('preflight.mjs'), JSON.stringify(pulled));
+  ok('every import inside the skill tarball lands on a file in it', missing.length === 0, missing.join(', '));
+  const probe = new Set([...members].filter((m) => m !== 'swap-route.mjs'));
+  ok('… and the check sees a pulled file that is missing', imports(fs.readFileSync(path.join(root, 'dashboard/preflight.js'), 'utf8')).some((i) => !probe.has(i)));
+  ok('a CLI and a pulled file never share a name', !clis.some((c) => Object.values(pulled).includes(c)));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\npreflight: all pins hold');
 process.exit(fails ? 1 : 0);

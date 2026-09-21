@@ -31,6 +31,9 @@ const PULLED = {
   'dashboard/tier-scan.js': 'scripts/tier-scan.mjs',
   'dashboard/range-scan.js': 'scripts/range-scan.mjs',
   'dashboard/swap-route.js': 'scripts/swap-route.mjs',
+  // Not 'preflight.mjs': that name is the CLI's, as scan.mjs sits on
+  // scanner-scan.mjs and route.mjs on swap-route.mjs.
+  'dashboard/preflight.js': 'scripts/token-preflight.mjs',
 };
 
 const SKILLS = ['bsc-pool-depth'];

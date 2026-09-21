@@ -121,12 +121,13 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
   ok(count(buyBar(1417, rest)) === 141, 'the $1,417 THUNDER buy draws all 141 brains (it arrived as sixty and "×141")');
   ok(count(buyBar(5, rest)) === 1 && count(buyBar(250, rest)) === 25, 'a small buy draws one brain per $10, at least one');
   ok(count(buyBar(2490, rest)) === 249, 'a $2,490 buy, just under KRAKEN, draws its 249');
-  ok(count(buyBar(2500, rest)) > 700 && count(buyBar(2500, rest)) === count(buyBar(90000, rest)), 'from KRAKEN on the caption is filled to the last brain that fits, whatever the size', String(count(buyBar(2500, rest))));
+  ok(count(buyBar(2500, rest)) === 250 && count(buyBar(3000, rest)) === 300 && count(buyBar(5000, rest)) === 500, 'a KRAKEN buy is its amount too: $2,500 is 250 brains, $3,000 is 300, $5,000 is 500');
   let worst = 0, firstCapped = 0, spelled = false;
   for (let usd = 10; usd <= 100000; usd += 10) { const b = buyBar(usd, rest); worst = Math.max(worst, captionChars(`${b}\n${rest}`)); if (!firstCapped && count(b) < usd / 10) firstCapped = usd; if (b.includes('×')) spelled = true; }
   ok(worst <= 1024, 'no size from $10 to $100,000 leaves the 1024 characters — the picture always comes', String(worst));
   ok(worst >= 1016, 'and past the room the bar is filled to what fits, not cut short', String(worst));
   ok(!spelled, 'no "×N" anywhere');
+  ok(firstCapped > 7000 && count(buyBar(90000, rest)) === count(buyBar(firstCapped, rest)), 'the room is only the ceiling: every brain up to past $7,000, and past it the row stops at what fits', String(firstCapped));
 }
 
 // The burn bar by the same rule: one flame per $2, every flame that fits.
@@ -136,7 +137,8 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
   const count = (s) => [...s].filter((ch) => ch === '🔥').length;
   ok(count(burnBar(10, rest)) === 5, 'a small burn draws one flame per $2');
   ok(count(burnBar(248, rest)) === 124, 'a $248 burn, just under SUPERNOVA, draws all 124 flames (it stopped at 60)');
-  ok(count(burnBar(250, rest)) > 800 && count(burnBar(250, rest)) === count(burnBar(9000, rest)), 'from SUPERNOVA on the caption is filled to the last flame that fits', String(count(burnBar(250, rest))));
+  ok(count(burnBar(250, rest)) === 125 && count(burnBar(400, rest)) === 200 && count(burnBar(1000, rest)) === 500, 'a SUPERNOVA burn is its amount too: $250 is 125 flames, $400 is 200, $1,000 is 500');
+  ok(count(burnBar(9000, rest)) === count(burnBar(50000, rest)) && count(burnBar(9000, rest)) > 800, 'past the room the row stops at what fits');
   let worst = 0, spelled = false; for (let usd = 2; usd <= 50000; usd += 2) { const b = burnBar(usd, rest); worst = Math.max(worst, captionChars(`${b}\n${rest}`)); if (b.includes('×')) spelled = true; }
   ok(worst <= 1024 && worst >= 1016 && !spelled, 'no burn leaves the caption, the biggest fills it, no "×N"', `${worst} ${spelled}`);
 }

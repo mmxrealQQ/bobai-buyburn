@@ -104,7 +104,27 @@ ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `sm
   ok(codeIsContract(null) === true && codeIsContract(undefined) === true, 'a code read that did not answer stays "contract": a router is never cascade-added on a guess');
 }
 
-// The burn bar is capped like the buy bar: a caption Telegram refuses is a burn nobody hears about.
+// The buy bar draws EVERY brain (one per $10) and still never leaves Telegram's
+// limits: 1024 UTF-16 units for a caption after the HTML is parsed, 4096 for a
+// text message. `rest` is a real alert body with its tags and links.
+{
+  const { buyBar } = worker;
+  const rest = '<b>⚡ THUNDER BUY!</b>\n\n🪙 <b>6,012,345 BOBAI</b>\n💎 1.8342 BNB <b>($1,417.22)</b>\n💵 Price: $0.00023571\n👤 <a href="https://bscscan.com/address/0x1234567890abcdef1234567890abcdef12345678">0x1234...5678</a>\n🎁 <a href="https://brainonbnb.com/nft/104">THUNDER NFT #104 · Legendary</a> dropped to the buyer\n\n🔗 <a href="https://bscscan.com/tx/0xabc">TX</a> · <a href="https://dexscreener.com/bsc/0x0">Chart</a> · <a href="https://four.meme/token/0x0">Four.Meme</a>\n\n🔥 Burned: 10.31% of supply';
+  const visible = (html) => html.replace(/<[^>]+>/g, '').length;
+  const count = (s) => [...s].filter((ch) => ch === '🧠').length;
+  const thunder = buyBar(1417, rest);
+  ok(thunder.own === null && count(thunder.caption) === 141 && !thunder.caption.includes('×'), 'the $1,417 THUNDER buy draws all 141 brains in its caption — no "×141"');
+  ok(visible(`${thunder.caption}\n${rest}`) <= 1024, 'and that caption is inside the 1024 units', String(visible(`${thunder.caption}\n${rest}`)));
+  ok(count(buyBar(5, rest).caption) === 1 && count(buyBar(250, rest).caption) === 25, 'a small buy draws one brain per $10, at least one');
+  let edge = 0; for (let usd = 10; usd < 9000; usd += 10) { const b = buyBar(usd, rest); if (b.own) break; edge = usd; if (visible(`${b.caption}\n${rest}`) > 1024) { edge = -usd; break; } }
+  ok(edge > 3000, 'every size that stays in the caption fits it, up to past $3,000', String(edge));
+  const kraken = buyBar(8000, rest);
+  ok(kraken.own && count(kraken.own) === 800 && kraken.own.length <= 4096 && kraken.caption === '🧠 ×800', 'an $8,000 buy: all 800 brains in a message of their own, the count in the caption');
+  const absurd = buyBar(50000, rest);
+  ok(absurd.own.length <= 4096 && absurd.own.endsWith('×5000') && count(absurd.own) > 2000, 'only past what a text message holds is the count spelled out', String(absurd.own.length));
+}
+
+// The burn bar is capped: a caption Telegram refuses is a burn nobody hears about.
 {
   const { getBurnEmojis } = worker;
   const big = getBurnEmojis(5000);

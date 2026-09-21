@@ -724,12 +724,27 @@ async function fetchLiquidityStats() {
 
 // ==================== BUY BOT ====================
 
-function getBuyEmojis(usdValue) {
-  // Each 🧠 = $10, drawn up to 60: past that the caption would leave
-  // Telegram's 1024-unit limit and the biggest buy would arrive without its
-  // picture, so the count is spelled out instead.
+// EVERY BRAIN IS DRAWN (2026-09-21). Each 🧠 = $10. The bar used to stop at 60
+// and spell the rest ("×141") — on exactly the buys the row of brains is there
+// for: the THUNDER buy of that night arrived as sixty and a number. The cap was
+// a guess at Telegram's limit; this measures it. A caption holds 1024 UTF-16
+// units counted AFTER the HTML is parsed, a 🧠 is two of them, and the rest of
+// the alert is known when the bar is made — so the bar takes the room that is
+// really left (about 350 brains, a $3,500 buy). A buy past that gets its
+// brains in a message of their own just ahead of the picture (a text message
+// holds 4096 units: 2,040 brains, a $20,400 buy) and the caption carries the
+// count; only past THAT is the count spelled out. Pure, exported for the pins.
+const CAPTION_UNITS = 1024, TEXT_UNITS = 4096, BAR_MARGIN = 24;
+const visibleUnits = (html) => String(html).replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot);/g, '&').length;
+export function buyBar(usdValue, restHtml) {
   const count = Math.max(Math.floor(usdValue / 10), 1);
-  const bar = '🧠'.repeat(Math.min(count, 60)) + (count > 60 ? ` ×${count}` : '');
+  const room = Math.floor((CAPTION_UNITS - visibleUnits(restHtml) - 1 - BAR_MARGIN) / 2);
+  if (count <= room) return { count, caption: '🧠'.repeat(count), own: null };
+  const drawn = Math.min(count, Math.floor((TEXT_UNITS - BAR_MARGIN) / 2));
+  return { count, caption: `🧠 ×${count}`, own: '🧠'.repeat(drawn) + (count > drawn ? ` ×${count}` : '') };
+}
+
+function getBuyEmojis(usdValue) {
   let icon;
   if (usdValue >= 2500) icon = '🦑 KRAKEN BUY!';
   else if (usdValue >= 1000) icon = '⚡ THUNDER BUY!';
@@ -737,7 +752,7 @@ function getBuyEmojis(usdValue) {
   else if (usdValue >= 250) icon = '🚀 HUGE BUY!';
   else if (usdValue >= 150) icon = '💎 BIG BUY!';
   else icon = '💰 NICE BUY!';
-  return { bar, icon };
+  return { icon };
 }
 
 export function getBurnEmojis(usdValue) {
@@ -824,11 +839,10 @@ function nftProgressBar(minted, cap) {
 
 async function postBuyAlert(trade, burnedPct, nftLine = '') {
   const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
-  const { bar, icon } = getBuyEmojis(usdValue);
+  const { icon } = getBuyEmojis(usdValue);
   const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
 
-  const message = `${bar}
-<b>${icon}</b>
+  const rest = `<b>${icon}</b>
 
 🪙 <b>${formatNumber(bobaiAmount)} BOBAI</b>
 💎 ${bnbAmount.toFixed(4)} BNB <b>(${formatUsd(usdValue)})</b>
@@ -838,6 +852,16 @@ async function postBuyAlert(trade, burnedPct, nftLine = '') {
 🔗 <a href="https://bscscan.com/tx/${txHash}">TX</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a> · <a href="https://four.meme/token/${BOBAI_TOKEN}">Four.Meme</a>
 
 🔥 Burned: ${burnedPct}% of supply`;
+
+  // Every brain: in the caption while it fits, otherwise in a message of their
+  // own just ahead of the picture (silent, so the group is pinged once). If
+  // that message fails the alert still goes out, with the count in its caption.
+  const brains = buyBar(usdValue, rest);
+  const message = `${brains.caption}\n${rest}`;
+  if (brains.own) {
+    try { await tg('sendMessage', { chat_id: TG_CHAT_ID, text: brains.own, disable_notification: true }); }
+    catch (err) { console.error('[BUY] brain row failed:', err.message || err); }
+  }
 
   // 1) Try the rich photo alert
   try {

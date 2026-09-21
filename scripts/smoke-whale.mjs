@@ -104,32 +104,35 @@ ok(line === '💀 below 10M (3): 0xaaaa 4.2M🟢 · 0xcccc 13K · 0xbbbb 0', `sm
   ok(codeIsContract(null) === true && codeIsContract(undefined) === true, 'a code read that did not answer stays "contract": a router is never cascade-added on a guess');
 }
 
-// The buy bar draws EVERY brain (one per $10) and still never leaves Telegram's
-// limits: 1024 UTF-16 units for a caption after the HTML is parsed, 4096 for a
-// text message. `rest` is a real alert body with its tags and links.
+// The buy bar draws EVERY brain (one per $10) that fits beside the picture.
+// Telegram's caption limit was measured on 2026-09-21 with /previewbuy: 1024
+// characters counted as CODE POINTS after the HTML is parsed — 1024 went out
+// with its picture, 1025 came back "message caption is too long". `rest` is a
+// real alert body with its tags and links.
+const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
 {
   const { buyBar } = worker;
   const rest = '<b>⚡ THUNDER BUY!</b>\n\n🪙 <b>6,012,345 BOBAI</b>\n💎 1.8342 BNB <b>($1,417.22)</b>\n💵 Price: $0.00023571\n👤 <a href="https://bscscan.com/address/0x1234567890abcdef1234567890abcdef12345678">0x1234...5678</a>\n🎁 <a href="https://brainonbnb.com/nft/104">THUNDER NFT #104 · Legendary</a> dropped to the buyer\n\n🔗 <a href="https://bscscan.com/tx/0xabc">TX</a> · <a href="https://dexscreener.com/bsc/0x0">Chart</a> · <a href="https://four.meme/token/0x0">Four.Meme</a>\n\n🔥 Burned: 10.31% of supply';
-  const visible = (html) => html.replace(/<[^>]+>/g, '').length;
   const count = (s) => [...s].filter((ch) => ch === '🧠').length;
-  const thunder = buyBar(1417, rest);
-  ok(thunder.own === null && count(thunder.caption) === 141 && !thunder.caption.includes('×'), 'the $1,417 THUNDER buy draws all 141 brains in its caption — no "×141"');
-  ok(visible(`${thunder.caption}\n${rest}`) <= 1024, 'and that caption is inside the 1024 units', String(visible(`${thunder.caption}\n${rest}`)));
-  ok(count(buyBar(5, rest).caption) === 1 && count(buyBar(250, rest).caption) === 25, 'a small buy draws one brain per $10, at least one');
-  let edge = 0; for (let usd = 10; usd < 9000; usd += 10) { const b = buyBar(usd, rest); if (b.own) break; edge = usd; if (visible(`${b.caption}\n${rest}`) > 1024) { edge = -usd; break; } }
-  ok(edge > 3000, 'every size that stays in the caption fits it, up to past $3,000', String(edge));
-  const kraken = buyBar(8000, rest);
-  ok(kraken.own && count(kraken.own) === 800 && kraken.own.length <= 4096 && kraken.caption === '🧠 ×800', 'an $8,000 buy: all 800 brains in a message of their own, the count in the caption');
-  const absurd = buyBar(50000, rest);
-  ok(absurd.own.length <= 4096 && absurd.own.endsWith('×5000') && count(absurd.own) > 2000, 'only past what a text message holds is the count spelled out', String(absurd.own.length));
+  ok(count(buyBar(1417, rest)) === 141, 'the $1,417 THUNDER buy draws all 141 brains (it arrived as sixty and "×141")');
+  ok(count(buyBar(5, rest)) === 1 && count(buyBar(250, rest)) === 25, 'a small buy draws one brain per $10, at least one');
+  ok(count(buyBar(5000, rest)) === 500, 'a $5,000 buy draws all 500');
+  let worst = 0, firstCapped = 0, spelled = false;
+  for (let usd = 10; usd <= 100000; usd += 10) { const b = buyBar(usd, rest); worst = Math.max(worst, captionChars(`${b}\n${rest}`)); if (!firstCapped && count(b) < usd / 10) firstCapped = usd; if (b.includes('×')) spelled = true; }
+  ok(worst <= 1024, 'no size from $10 to $100,000 leaves the 1024 characters — the picture always comes', String(worst));
+  ok(worst >= 1016, 'and past the room the bar is filled to what fits, not cut short', String(worst));
+  ok(firstCapped > 7000 && !spelled, 'every brain up to past $7,000, and no "×N" anywhere', `${firstCapped} ${spelled}`);
 }
 
-// The burn bar is capped: a caption Telegram refuses is a burn nobody hears about.
+// The burn bar by the same rule: one flame per $2, every flame that fits.
 {
-  const { getBurnEmojis } = worker;
-  const big = getBurnEmojis(5000);
-  ok([...getBurnEmojis(10).bar].length === 5 && !getBurnEmojis(10).bar.includes('×'), 'a small burn draws one flame per $2');
-  ok([...big.bar].filter((ch) => ch === '🔥').length === 60 && big.bar.endsWith('×2500') && big.bar.length < 200, 'a $5000 burn draws 60 flames and spells the count — the caption stays inside the limit');
+  const { burnBar } = worker;
+  const rest = '<b>☄️ APOCALYPSE BURN!</b>\n\n🪙 <b>+1,234,567 BOBAI</b> burned <b>($284.12)</b>\n📊 Total burned: <b>104,512,345 BOBAI</b>\n🔥 <b>10.5%</b> of total supply\n\n🔗 <a href="https://bscscan.com/token/0x0?a=0xdead">View Burns</a> · <a href="https://dexscreener.com/bsc/0x0">Chart</a>';
+  const count = (s) => [...s].filter((ch) => ch === '🔥').length;
+  ok(count(burnBar(10, rest)) === 5, 'a small burn draws one flame per $2');
+  ok(count(burnBar(284, rest)) === 142, 'a $284 burn draws all 142 flames (it stopped at 60)');
+  let worst = 0, spelled = false; for (let usd = 2; usd <= 50000; usd += 2) { const b = burnBar(usd, rest); worst = Math.max(worst, captionChars(`${b}\n${rest}`)); if (b.includes('×')) spelled = true; }
+  ok(worst <= 1024 && worst >= 1016 && !spelled, 'no burn leaves the caption, the biggest fills it, no "×N"', `${worst} ${spelled}`);
 }
 
 // The free endpoints' cut is counted from the head that was read, never before the range asked for.

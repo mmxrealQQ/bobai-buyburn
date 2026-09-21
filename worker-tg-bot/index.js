@@ -724,25 +724,28 @@ async function fetchLiquidityStats() {
 
 // ==================== BUY BOT ====================
 
-// EVERY BRAIN IS DRAWN (2026-09-21). Each 🧠 = $10. The bar used to stop at 60
-// and spell the rest ("×141") — on exactly the buys the row of brains is there
-// for: the THUNDER buy of that night arrived as sixty and a number. The cap was
-// a guess at Telegram's limit; this measures it. A caption holds 1024 UTF-16
-// units counted AFTER the HTML is parsed, a 🧠 is two of them, and the rest of
-// the alert is known when the bar is made — so the bar takes the room that is
-// really left (about 350 brains, a $3,500 buy). A buy past that gets its
-// brains in a message of their own just ahead of the picture (a text message
-// holds 4096 units: 2,040 brains, a $20,400 buy) and the caption carries the
-// count; only past THAT is the count spelled out. Pure, exported for the pins.
-const CAPTION_UNITS = 1024, TEXT_UNITS = 4096, BAR_MARGIN = 24;
-const visibleUnits = (html) => String(html).replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot);/g, '&').length;
-export function buyBar(usdValue, restHtml) {
-  const count = Math.max(Math.floor(usdValue / 10), 1);
-  const room = Math.floor((CAPTION_UNITS - visibleUnits(restHtml) - 1 - BAR_MARGIN) / 2);
-  if (count <= room) return { count, caption: '🧠'.repeat(count), own: null };
-  const drawn = Math.min(count, Math.floor((TEXT_UNITS - BAR_MARGIN) / 2));
-  return { count, caption: `🧠 ×${count}`, own: '🧠'.repeat(drawn) + (count > drawn ? ` ×${count}` : '') };
+// EVERY BRAIN IS DRAWN (2026-09-21). Each 🧠 = $10, each 🔥 = $2. Both bars
+// used to stop at 60 and spell the rest ("×141") — on exactly the alerts the
+// row is there for: the THUNDER buy of that night arrived as sixty brains and
+// a number. The sixty was a guess at Telegram's limit; the limit was then
+// MEASURED against Telegram with /previewbuy: a photo caption holds 1024
+// characters counted as CODE POINTS after the HTML is parsed (a caption of
+// 1024 went out with its picture, one of 1025 came back "message caption is
+// too long"; in UTF-16 units that same caption was 1,859 long, so it is not
+// units). A 🧠 or 🔥 is one. The rest of the alert is known when the bar is
+// made, so the bar takes the room that is really left — about 750 brains (a
+// $7,500 buy) and about 850 flames (a $1,700 burn). Past that it draws what
+// fits and stops: the picture always comes with the alert, and the amount is
+// in the text below anyway — no "×N". Pure, exported for the pins.
+const CAPTION_CHARS = 1024, BAR_MARGIN = 4;
+const visibleText = (html) => String(html).replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot);/g, '&');
+const codePoints = (s) => [...s].length;
+export function emojiBar(emoji, count, restHtml) {
+  const room = Math.max(1, Math.floor((CAPTION_CHARS - codePoints(visibleText(restHtml)) - 1 - BAR_MARGIN) / codePoints(emoji)));
+  return emoji.repeat(Math.min(count, room));
 }
+export const buyBar = (usdValue, restHtml) => emojiBar('🧠', Math.max(Math.floor(usdValue / 10), 1), restHtml);
+export const burnBar = (usdValue, restHtml) => emojiBar('🔥', Math.max(Math.floor(usdValue / 2), 1), restHtml);
 
 function getBuyEmojis(usdValue) {
   let icon;
@@ -755,13 +758,7 @@ function getBuyEmojis(usdValue) {
   return { icon };
 }
 
-export function getBurnEmojis(usdValue) {
-  // Each 🔥 = $2, drawn up to 60 like the buy bar (2026-09-18): uncapped, a
-  // burn from about $900 on left Telegram's 1024-unit caption limit, the photo
-  // was refused, nothing was posted and the burn watcher met the same refusal
-  // on every run after it — the biggest burn would have been the silent one.
-  const count = Math.max(Math.floor(usdValue / 2), 1);
-  const bar = '🔥'.repeat(Math.min(count, 60)) + (count > 60 ? ` ×${count}` : '');
+function getBurnEmojis(usdValue) {
   let icon;
   if (usdValue >= 250) icon = '💥 SUPERNOVA BURN!';
   else if (usdValue >= 150) icon = '☄️ APOCALYPSE BURN!';
@@ -769,7 +766,7 @@ export function getBurnEmojis(usdValue) {
   else if (usdValue >= 15) icon = '🌋 BIG BURN!';
   else if (usdValue >= 5) icon = '🕯️ NICE BURN!';
   else icon = '♻️ BURN';
-  return { bar, icon };
+  return { icon };
 }
 
 // One-shot fetch of the full NFT state (tiers + drops) from the dashboard API.
@@ -839,7 +836,10 @@ function nftProgressBar(minted, cap) {
 
 // `chatId` is the group, always — except for /previewbuy, which shows the
 // operator privately what an alert of a given size looks like.
-async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID) {
+// `uncapped` is the preview's alone: it draws every brain whatever the room,
+// to show what Telegram does with a caption past its limit.
+let lastPhotoRefusal = null, lastCaption = null;
+async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID, uncapped = false) {
   const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
   const { icon } = getBuyEmojis(usdValue);
   const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
@@ -855,15 +855,11 @@ async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID)
 
 🔥 Burned: ${burnedPct}% of supply`;
 
-  // Every brain: in the caption while it fits, otherwise in a message of their
-  // own just ahead of the picture (silent, so the group is pinged once). If
-  // that message fails the alert still goes out, with the count in its caption.
-  const brains = buyBar(usdValue, rest);
-  const message = `${brains.caption}\n${rest}`;
-  if (brains.own) {
-    try { await tg('sendMessage', { chat_id: chatId, text: brains.own, disable_notification: true }); }
-    catch (err) { console.error('[BUY] brain row failed:', err.message || err); }
-  }
+  // One alert, one message: every brain that fits the caption, the count
+  // spelled out only past that.
+  const message = `${uncapped ? '🧠'.repeat(Math.max(Math.floor(usdValue / 10), 1)) : buyBar(usdValue, rest)}\n${rest}`;
+  lastPhotoRefusal = null;
+  lastCaption = { code_points: [...visibleText(message)].length, utf16_units: visibleText(message).length };
 
   // 1) Try the rich photo alert
   try {
@@ -875,8 +871,9 @@ async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID)
     });
     if (photoRes?.ok === true) {
       console.log('[BUY] photo alert sent', txHash);
-      return true;
+      return 'photo';
     }
+    lastPhotoRefusal = photoRes?.description || 'refused';
     console.error('[BUY] sendPhoto failed, falling back to text:', JSON.stringify(photoRes));
   } catch (err) {
     console.error('[BUY] sendPhoto threw, falling back to text:', err.message || err);
@@ -893,7 +890,7 @@ async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID)
     });
     if (textRes?.ok === true) {
       console.log('[BUY] text fallback sent', txHash);
-      return true;
+      return 'text';
     }
     console.error('[BUY] text fallback failed:', JSON.stringify(textRes));
   } catch (err) {
@@ -913,16 +910,16 @@ async function postBurnAlert(newBurned, prevBurned, totalSupply, tokenPrice) {
     const burnedUsdStr = hasPrice ? formatUsd(burnedUsd) : 'n/a';
     const percent = totalSupply > 0 ? (newBurned / totalSupply * 100).toFixed(1) : '?';
     // When price unavailable, fall back to the smallest burn emoji bucket
-    const { bar, icon } = getBurnEmojis(burnedUsd);
+    const { icon } = getBurnEmojis(burnedUsd);
 
-    const message = `${bar}
-<b>${icon}</b>
+    const rest = `<b>${icon}</b>
 
 🪙 <b>+${formatNumber(burnedDelta)} BOBAI</b> burned <b>(${burnedUsdStr})</b>
 📊 Total burned: <b>${formatNumber(newBurned)} BOBAI</b>
 🔥 <b>${percent}%</b> of total supply
 
 🔗 <a href="https://bscscan.com/token/${BOBAI_TOKEN}?a=${DEAD}">View Burns</a> · <a href="https://dexscreener.com/bsc/${BOBAI_TOKEN}">Chart</a>`;
+    const message = `${burnBar(burnedUsd, rest)}\n${rest}`;
 
     // 1) The photo alert
     try {
@@ -2962,8 +2959,8 @@ export default {
       const usd = Math.min(100000, Math.max(1, Number(body.usd) || 1417));
       const price = 0.00023, bnbUsd = 780;
       const sent = await postBuyAlert({ bnbAmount: usd / bnbUsd, bobaiAmount: usd / price, usdValue: usd, buyer: '0x000000000000000000000000000000000000dEaD', txHash: '0x' + '0'.repeat(64) },
-        '0.00', '\n🧪 <i>Preview — made-up figures, sent to the operator only</i>', OPERATOR_CHAT_ID);
-      return new Response(JSON.stringify({ ok: sent, usd }), { headers: { 'content-type': 'application/json' } });
+        '0.00', '\n🧪 <i>Preview — made-up figures, sent to the operator only</i>', OPERATOR_CHAT_ID, body.uncapped === true);
+      return new Response(JSON.stringify({ ok: !!sent, went_out_as: sent || null, photo_refused: lastPhotoRefusal, caption: lastCaption, usd }), { headers: { 'content-type': 'application/json' } });
     }
 
     if (url.pathname === '/broadcast' && request.method === 'POST') {

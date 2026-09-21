@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 4758 lines
+12 files, 4779 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work

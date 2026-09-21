@@ -15,7 +15,11 @@ const worker = await import(pathToFileURL(path.join(ROOT, 'worker-tg-bot', 'inde
 const { isQuietMove, walletsEmptyFor, renderDailyRecap, renderSmallWalletsLine } = worker;
 
 const fails = [];
-const ok = (cond, what) => { if (!cond) fails.push(what); };
+// Counted, not typed: the closing line said "47 pins" as a literal for weeks,
+// whatever ran (2026-09-21). A pin whose condition is not a boolean is a pin
+// written the wrong way round — ok('name', cond) is always true — and fails.
+let pins = 0;
+const ok = (cond, what) => { pins++; if (typeof cond !== 'boolean') fails.push('NOT A BOOLEAN (arguments swapped?): ' + String(what ?? cond).slice(0, 80)); else if (!cond) fails.push(what); };
 const DAY = 86_400_000;
 
 // Quiet floor: under $5 on the wallet's own trades and transfers in, never on
@@ -137,6 +141,32 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
   ok(worst <= 1024 && worst >= 1016 && !spelled, 'no burn leaves the caption, the biggest fills it, no "×N"', `${worst} ${spelled}`);
 }
 
+// The net under the row: a Telegram that calls the caption too long all the
+// same still gets the alert WITH its picture — half the row, then a quarter —
+// and any other refusal is not retried. Telegram is played by a fetch that
+// accepts at most 500 characters.
+{
+  const { sendPhotoWithRow } = worker;
+  const realFetch = globalThis.fetch;
+  const seen = [];
+  const play = (limit, otherError = null) => { seen.length = 0; globalThis.fetch = async (_u, init) => {
+    const cap = [...String(JSON.parse(init.body).caption)].length; seen.push(cap);
+    const body = otherError ? { ok: false, description: otherError } : cap <= limit ? { ok: true } : { ok: false, description: 'Bad Request: message caption is too long' };
+    return new Response(JSON.stringify(body));
+  }; };
+  try {
+    play(500);
+    const r = await sendPhotoWithRow('1', 'photo', '🧠'.repeat(760), 'rest of the alert');
+    ok(r.ok && r.shortened && seen.length === 2 && seen[1] <= 500, 'a caption refused as too long goes out again with half the row — the picture stays', JSON.stringify(seen));
+    play(2000);
+    const fine = await sendPhotoWithRow('1', 'photo', '🧠'.repeat(760), 'rest');
+    ok(fine.ok && !fine.shortened && seen.length === 1, 'a caption that fits is sent once, whole');
+    play(0, 'Bad Request: wrong file identifier');
+    const other = await sendPhotoWithRow('1', 'photo', '🧠'.repeat(760), 'rest');
+    ok(!other.ok && seen.length === 1, 'any other refusal is not retried — the text fallback takes it', JSON.stringify(seen));
+  } finally { globalThis.fetch = realFetch; }
+}
+
 // The free endpoints' cut is counted from the head that was read, never before the range asked for.
 {
   const { narrowedFrom } = worker;
@@ -172,7 +202,7 @@ const captionChars = (html) => [...html.replace(/<[^>]+>/g, '')].length;
 }
 
 if (fails.length) { console.error('SMOKE-WHALE FAILED'); for (const f of fails) console.error('  ' + f); process.exit(1); }
-console.log('smoke-whale ok: 47 pins');
+console.log(`smoke-whale ok: ${pins} pins`);
 
 // ---------------------------------------------------------------- --render
 if (process.argv.includes('--render')) {

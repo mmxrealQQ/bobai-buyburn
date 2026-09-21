@@ -740,16 +740,21 @@ async function fetchLiquidityStats() {
 const CAPTION_CHARS = 1024, BAR_MARGIN = 4;
 const visibleText = (html) => String(html).replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot);/g, '&');
 const codePoints = (s) => [...s].length;
-export function emojiBar(emoji, count, restHtml) {
+// The top tier of each alert — a KRAKEN buy, a SUPERNOVA burn — fills the
+// caption to the last brain or flame that fits, whatever its size (the
+// operator's rule, 2026-09-21): below it the row is the amount, from it on the
+// row is the wall.
+export function emojiBar(emoji, count, restHtml, fill = false) {
   const room = Math.max(1, Math.floor((CAPTION_CHARS - codePoints(visibleText(restHtml)) - 1 - BAR_MARGIN) / codePoints(emoji)));
-  return emoji.repeat(Math.min(count, room));
+  return emoji.repeat(fill ? room : Math.min(count, room));
 }
-export const buyBar = (usdValue, restHtml) => emojiBar('🧠', Math.max(Math.floor(usdValue / 10), 1), restHtml);
-export const burnBar = (usdValue, restHtml) => emojiBar('🔥', Math.max(Math.floor(usdValue / 2), 1), restHtml);
+const KRAKEN_USD = 2500, SUPERNOVA_USD = 250;
+export const buyBar = (usdValue, restHtml) => emojiBar('🧠', Math.max(Math.floor(usdValue / 10), 1), restHtml, usdValue >= KRAKEN_USD);
+export const burnBar = (usdValue, restHtml) => emojiBar('🔥', Math.max(Math.floor(usdValue / 2), 1), restHtml, usdValue >= SUPERNOVA_USD);
 
 function getBuyEmojis(usdValue) {
   let icon;
-  if (usdValue >= 2500) icon = '🦑 KRAKEN BUY!';
+  if (usdValue >= KRAKEN_USD) icon = '🦑 KRAKEN BUY!';
   else if (usdValue >= 1000) icon = '⚡ THUNDER BUY!';
   else if (usdValue >= 500) icon = '🐋 WHALE BUY!';
   else if (usdValue >= 250) icon = '🚀 HUGE BUY!';
@@ -760,7 +765,7 @@ function getBuyEmojis(usdValue) {
 
 function getBurnEmojis(usdValue) {
   let icon;
-  if (usdValue >= 250) icon = '💥 SUPERNOVA BURN!';
+  if (usdValue >= SUPERNOVA_USD) icon = '💥 SUPERNOVA BURN!';
   else if (usdValue >= 150) icon = '☄️ APOCALYPSE BURN!';
   else if (usdValue >= 50) icon = '💀 MEGA BURN!';
   else if (usdValue >= 15) icon = '🌋 BIG BURN!';

@@ -696,12 +696,16 @@ export const MULTICALL3='0xca11bde05977b3631167028862be2a173976ca11';
 const w256=v=>BigInt(v).toString(16).padStart(64,'0');
 const MC_CHUNK=500;
 
-const encodeAggregate3=calls=>{
+const encodeAggregate3=(calls,allowFailure=false)=>{
   const structs=calls.map(c=>{
     const d=c.data.slice(2),pad=d+'0'.repeat((64-(d.length%64))%64);
-    // (address target, bool allowFailure, bytes callData) — allowFailure is on,
-    // so one reverting call cannot take the other four hundred with it.
-    return '0'.repeat(24)+c.to.slice(2).toLowerCase()+w256(0)+w256(0x60)+w256(d.length/2)+pad;
+    // (address target, bool allowFailure, bytes callData). This comment said
+    // "allowFailure is on" for weeks over a word that encodes it OFF: for the
+    // reads below that never mattered — a reverting read fails the aggregate
+    // and the plain batch answers instead. The sell simulation is the first
+    // caller for which a failing call IS the answer, found by its own negative
+    // pin (2026-09-21): it passes true. The reads keep what they always had.
+    return '0'.repeat(24)+c.to.slice(2).toLowerCase()+w256(allowFailure?1:0)+w256(0x60)+w256(d.length/2)+pad;
   });
   let off=32*calls.length,offs='';
   for(const s of structs){offs+=w256(off);off+=s.length/2}
@@ -1162,9 +1166,107 @@ function revertText(err){
   if(d&&d.startsWith('0x08c379a0')){try{const len=parseInt(d.slice(74,138),16);const hex=d.slice(138,138+len*2);let s='';for(let i=0;i<hex.length;i+=2)s+=String.fromCharCode(parseInt(hex.substr(i,2),16));return s}catch(e){}}
   return m;
 }
+// ---- the same test for a PancakeSwap V3 pool (2026-09-21) -------------------
+// "This token trades on V3 — not simulated" was the answer for five of the six
+// tokens trending that day: the question the preflight exists for, "can I get
+// out again", unanswered for most of what is actually being traded.
+//
+// No new contract is needed. Multicall3 already sits at a known address and
+// calls whatever it is handed, IN ONE eth_call and therefore in one state: it
+// is given a test balance by storage override, and then (1) reads its balance
+// of the quote token, (2) approves PancakeSwap's V3 SwapRouter, (3) sells
+// through exactInputSingle on the pool's own fee tier, (4) reads its balance
+// again. The router was asked on-chain what it is bound to before it was
+// written down here: factory() answers PancakeSwap's V3 factory and WETH9()
+// WBNB. A revert of step 3 with the router's reason is "not sellable"; the
+// difference of 4 and 1 is what really arrived. There is no buy leg: that
+// would need a balance of the QUOTE token placed by override too, a second
+// slot search, and the outbound calls a scan has left do not pay for it — the
+// buy side stays with the executed trades.
+//
+// As in the V2 test the seller is a contract, and a "no contracts may trade"
+// rule refuses a contract where a wallet sails through. A V3 revert is
+// therefore reported with that caveat in the sentence, not as a bare verdict.
+const V3_SWAP_ROUTER='0x1b81d678ffb9c0263b24a97847620c99d213eb14';
+const SEL_APPROVE='0x095ea7b3', SEL_EXACT_INPUT_SINGLE='0x414bf389';
+const decodeAggregate3Raw=(hex,n)=>{
+  const b=hex.slice(2),at=o=>b.slice(o*2,o*2+64);
+  const arr=Number(BigInt('0x'+at(0)));
+  if(Number(BigInt('0x'+at(arr)))!==n)throw new Error('multicall returned a different count');
+  const head=arr+32,out=[];
+  for(let i=0;i<n;i++){
+    const o=head+Number(BigInt('0x'+at(head+i*32)));
+    const dOff=o+Number(BigInt('0x'+at(o+32)));
+    const bytes=Number(BigInt('0x'+at(dOff)));
+    out.push({ok:BigInt('0x'+at(o))===1n,data:'0x'+b.slice((dOff+32)*2,(dOff+32)*2+bytes*2)});
+  }
+  return out;
+};
+// `withoutBalance` is the checker's negative: the same calls with no test
+// balance placed, which the router must refuse — or a pass proves nothing.
+export async function simulateV3Sell(token,pool,withoutBalance=false){
+  const url=RPCS[0];
+  token=token.toLowerCase();pool=String(pool).toLowerCase();
+  const head=await rpcBatch([call(pool,S.token0),call(pool,S.token1),call(pool,S.fee),call(pool,S.factory),call(token,SEL_BAL+pad32(pool))],url);
+  const t0=addrAt(head[0]),t1=addrAt(head[1]),fac=addrAt(head[3]);
+  const quote=t0===token?t1:t1===token?t0:null;
+  if(!quote)return {ok:false,reason:'the pool that was read does not hold this token'};
+  if(fac!==V3FACTORY)return {ok:false,reason:'the sell test trades through PancakeSwap\'s V3 router, and this pool belongs to another venue — not run, not cleared'};
+  const fee=BigInt(head[2]),held=BigInt(head[4]||'0x0');
+  const amount=held/1000n>0n?held/1000n:1n;
+  const amtHex='0x'+pad32(amount);
+  // The test balance goes to Multicall3, found the way the V2 test finds it:
+  // the slot whose override makes balanceOf() answer the amount.
+  const holderKey=pad32(MULTICALL3);
+  const balCalls=[],balKeys=[];
+  for(let slot=0;slot<40;slot++){const k=keccakHex(holderKey+pad32(BigInt(slot)));balKeys.push(k);
+    balCalls.push({jsonrpc:'2.0',id:slot,method:'eth_call',params:[{to:token,data:SEL_BAL+holderKey},'latest',{[token]:{stateDiff:{[k]:amtHex}}}]})}
+  let b1=await searchSlot(balCalls.slice(0,12),amount,url);
+  if(!b1.hit)b1=await searchSlot(balCalls.slice(12),amount,b1.url);
+  if(!b1.hit)return {ok:false,reason:'could not place a test balance in this contract (non-standard storage) — not checked, not cleared'};
+  const balKey=balKeys[b1.hit.id];
+  const deadline=pad32(BigInt(Math.floor(Date.now()/1000)+600));
+  const swap=SEL_EXACT_INPUT_SINGLE+pad32(token)+pad32(quote)+pad32(fee)+holderKey+deadline+pad32(amount)+pad32(0n)+pad32(0n);
+  const calls=[
+    {to:quote,data:SEL_BAL+holderKey},
+    {to:token,data:SEL_APPROVE+pad32(V3_SWAP_ROUTER)+pad32(amount)},
+    {to:V3_SWAP_ROUTER,data:swap},
+    {to:quote,data:SEL_BAL+holderKey},
+  ];
+  const body={jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:CALLER,to:MULTICALL3,data:encodeAggregate3(calls,true),gas:'0x2dc6c0'},'latest',...(withoutBalance?[]:[{[token]:{stateDiff:{[balKey]:amtHex}}}])]};
+  let res=null;
+  for(const u of [b1.url,...RPCS.filter(x=>x!==b1.url)]){
+    let j=null;try{j=await postRaw(u,body)}catch(e){continue}
+    if(j&&j.result&&j.result!=='0x'){res=j.result;break}
+  }
+  if(!res)return {ok:false,reason:'every node refused the simulation call (rate limit or unsupported) — not checked, not cleared'};
+  const out=decodeAggregate3Raw(res,4);
+  const named={pair:pool,path:[token,quote],through_scanned_pool:true,venue:'PancakeSwap V3'};
+  const size_note='one part in a thousand of what the pool holds of this token, sold from a contract at a fresh address';
+  const source='eth_call with a state override: Multicall3 holds a test balance, approves PancakeSwap\'s V3 SwapRouter and sells through exactInputSingle on this pool\'s fee tier, at this block';
+  if(!out[1].ok)return {ok:false,reason:'the token refused the approve() the test needs — not checked, not cleared'};
+  if(!out[2].ok){
+    const why=revertText({data:out[2].data,message:'the swap reverted'});
+    return {ok:true,sellable:false,buyable:null,sell_error:why,buy_error:null,amount:amount.toString(),size_note,...named,tax:null,source,
+      note:'The seller in this test is a contract. A token that lets only plain wallets trade refuses it and still sells for a person — and a V3 pool refuses ANY token that takes a cut on the way in, which is also what this looks like.'};
+  }
+  const before=BigInt(out[0].data||'0x0'),after=BigInt(out[3].data||'0x0');
+  const received=after-before;
+  const paid=out[2].data&&out[2].data.length>=66?BigInt(out[2].data.slice(0,66)):null;
+  if(!(received>0n))return {ok:true,sellable:false,buyable:null,sell_error:'the swap went through and nothing arrived',buy_error:null,amount:amount.toString(),size_note,...named,tax:null,source};
+  // What the pool says it paid against what arrived: a quote token that takes
+  // a cut on the way out would show here. The token's own sell tax cannot — a
+  // V3 pool does not accept a transfer that arrives short, so a sell that went
+  // through paid none on the way in.
+  const sellTax=paid&&paid>0n?Math.max(0,Math.min(1,1-Number(received)/Number(paid))):0;
+  return {ok:true,sellable:true,buyable:null,sell_error:null,buy_error:null,amount:amount.toString(),size_note,...named,
+    tax:{sell_pct:+(sellTax*100).toFixed(2),buy_pct:null,method:'simulated at this block: what the V3 pool paid for the whole amount against what arrived; a V3 pool accepts no transfer that arrives short, so a sell that goes through paid no tax on the way in. The buy side is not simulated on V3.'},
+    source};
+}
 export async function simulateRoundTrip(token,pair,tokenIs0,kind){
   try{
-    if(kind!=='v2')return {ok:false,reason:'the simulation covers PancakeSwap V2 pairs; this token trades on V3'};
+    if(kind==='v3')return await simulateV3Sell(token,pair);
+    if(kind!=='v2')return {ok:false,reason:'the simulation covers PancakeSwap V2 pairs and V3 pools; this pool is neither'};
     token=token.toLowerCase();
     const url=RPCS[0];
     // THE PAIR THE PROBE REALLY TRADES THROUGH (2026-09-18). The probe sells

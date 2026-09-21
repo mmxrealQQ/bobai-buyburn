@@ -81,8 +81,25 @@ for (const [name, token, pair] of PAIRS) {
   const direct = await C.simulateRoundTrip(PAIRS[0][1], PAIRS[0][2], true, 'v2');
   ok('a pair against BNB is one hop, through the pool that was read', direct.through_scanned_pool === true && direct.path.length === 2 && direct.pair === PAIRS[0][2], JSON.stringify(direct.path));
 }
-ok('a V3-only token is reported as not simulated, not as sellable',
-  (await C.simulateRoundTrip(PAIRS[1][1], PAIRS[1][2], true, 'v3')).ok === false);
+// A V3 POOL IS TESTED TOO (2026-09-21). Until then "this token trades on V3"
+// meant "not simulated" — for most of what was being traded. CAKE's V3 pool
+// against BNB at 0.25%, found by asking the factory, not written down.
+{
+  const CAKE = PAIRS[1][1], WBNB = '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c';
+  const getPool = '0x1698ee82' + CAKE.slice(2).padStart(64, '0') + WBNB.slice(2).padStart(64, '0') + (2500).toString(16).padStart(64, '0');
+  const pool = C.addrAt((await C.rpcBatch([C.call('0x0bfbcf9fa4f9c56b0f40a671ad40e0805a091865', getPool)]))[0]);
+  const r = await C.simulateRoundTrip(CAKE, pool, true, 'v3');
+  ok('CAKE through its V3 pool: the sell goes through THAT pool, and says so',
+    r.ok && r.sellable === true && r.through_scanned_pool === true && r.pair === pool && r.venue === 'PancakeSwap V3', JSON.stringify({ ok: r.ok, sellable: r.sellable, pair: r.pair, reason: r.reason, err: r.sell_error }));
+  ok('… with 0% on the sell, and the buy side said to be not simulated', r.tax && r.tax.sell_pct === 0 && r.tax.buy_pct === null && r.buyable === null, JSON.stringify(r.tax));
+  // The negative: the same calls with no test balance placed. The router must
+  // refuse them — if this "sold", the pass above would prove nothing.
+  const neg = await C.simulateV3Sell(CAKE, pool, true);
+  ok('the same sell with NO balance is refused, and carries the refusal', neg.ok === true && neg.sellable === false && !!neg.sell_error, JSON.stringify({ sellable: neg.sellable, err: neg.sell_error }));
+  // A V2 pair handed over as "v3" holds no fee(): not a PancakeSwap V3 pool.
+  const wrong = await C.simulateRoundTrip(PAIRS[1][1], PAIRS[1][2], true, 'v3');
+  ok('a pool that is not PancakeSwap V3 is "not run", never "sellable"', wrong.ok === false && wrong.sellable === undefined, JSON.stringify(wrong).slice(0, 140));
+}
 
 // The negative: the same sell with no allowance. The router must refuse it,
 // and the refusal must arrive as sellable:false with the router's reason.

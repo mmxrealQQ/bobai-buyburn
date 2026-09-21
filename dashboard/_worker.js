@@ -1272,7 +1272,24 @@ export default {
         }).catch(() => {}),
       );
     };
-    if (url.pathname === '/mcp') count('mcp', `mcpua:${uaFamily(request.headers.get('user-agent'))}`);
+    // Our own agent worker asks this surface too — the DeFi agent's hourly
+    // width record, and every paid answer it sells, are built from the pool
+    // scan, the fee tiers and the range plan over /mcp. On 2026-09-21 those
+    // three led mcp:call:* in /stats/detail, and nothing could say how much of
+    // that was us. How such a request arrives was read off the live worker
+    // (wrangler tail, 2026-09-21), not assumed: a Worker in ANOTHER zone
+    // carries cf-worker with its zone; ours, in the same zone, carries no
+    // cf-worker and no user-agent, and Cloudflare's own Worker address as
+    // cf-connecting-ip — a header Cloudflare writes and a caller outside
+    // cannot set. Such a request is left out of the public totals — they
+    // answer "how much did other people ask for" — and named own:* in the
+    // detail.
+    const isOwn = request.headers.get('cf-connecting-ip') === '2a06:98c0:3600::103' && !request.headers.get('cf-worker');
+    if (isOwn) {
+      if (url.pathname === '/mcp') return handleMcp(request, (name) => count(null, [].concat(name).map((n) => `own:${n}`)));
+      if (url.pathname.startsWith('/api/')) count(null, `own:rest:${COUNTED_API.has(url.pathname) ? url.pathname.slice(5) : 'unknown'}`);
+    }
+    else if (url.pathname === '/mcp') count('mcp', `mcpua:${uaFamily(request.headers.get('user-agent'))}`);
     else if (url.pathname.startsWith('/api/')) {
       // The site's own pages call /api/ from the visitor's browser, and that
       // was most of "rest". A browser says where a fetch comes from; an agent,
@@ -1285,7 +1302,10 @@ export default {
       // our own pages, and no page of ours asks for one (a referer is free to
       // set). They would have read as the site's own traffic.
       const family = uaFamily(request.headers.get('user-agent'));
-      if (!COUNTED_API.has(url.pathname)) count('rest', ['rest:unknown', `uaunknown:${family}`]);
+      // Named in the detail and kept out of the public total since 2026-09-21:
+      // that day 2,240 of them had arrived by 05:30 UTC, all but four from one
+      // crawler — "requests answered" is not the word for a path nobody serves.
+      if (!COUNTED_API.has(url.pathname)) count(null, ['rest:unknown', `uaunknown:${family}`]);
       else {
         const route = url.pathname.slice(5);
         count('rest', fromSite ? [`rest:site:${route}`] : [`rest:ext:${route}`, `ua:${family}`]);

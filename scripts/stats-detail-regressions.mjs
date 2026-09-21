@@ -122,11 +122,23 @@ console.log('\ndashboard/_worker.js: what is posted to /hit');
   await call('/api/links', { headers: { 'user-agent': 'node' } });
   ok('a caller from outside: rest:ext and its family', details().join() === 'rest:ext:links,ua:node', details().join());
   await call('/api/made-up-by-a-crawler', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; SomeBot/1.0)' } });
-  ok('a route we do not serve is "unknown"; a crawler is no browser', details().join() === 'rest:unknown,uaunknown:crawler' && kinds() === 'rest', details().join());
+  ok('a route we do not serve is "unknown", a crawler is no browser — and it is not a request answered: no kind', details().join() === 'rest:unknown,uaunknown:crawler' && kinds() === '', `${details().join()} | ${kinds()}`);
   await call('/api/.env', { headers: { 'sec-fetch-site': 'same-origin', referer: 'https://brainonbnb.com/', 'user-agent': 'Mozilla/5.0 Chrome' } });
   ok('and it stays "unknown" when it claims to come from our own page', details().join() === 'rest:unknown,uaunknown:browser', details().join());
   await rpc('tools/list', undefined, { 'user-agent': 'bobai-smoke-test' });
   ok('our smoke test posts nothing', posted.length === 0, JSON.stringify(posted));
+  // Our own agent worker asks over /mcp every hour. The headers are the ones
+  // read off the live worker on 2026-09-21: Cloudflare's Worker address as
+  // cf-connecting-ip, no cf-worker (that one marks a Worker in ANOTHER zone).
+  const OWN = { 'cf-connecting-ip': '2a06:98c0:3600::103' };
+  await rpc('tools/call', { name: 'bobai_links' }, OWN);
+  ok('our own worker: own:mcp:call, and no kind for the public totals', details().join() === 'own:mcp:call:bobai_links' && kinds() === '', `${details().join()} | ${kinds()}`);
+  await call('/api/links', { headers: OWN });
+  ok('… over REST the same', details().join() === 'own:rest:links' && kinds() === '', `${details().join()} | ${kinds()}`);
+  await rpc('tools/call', { name: 'bobai_links' }, { ...OWN, 'cf-worker': 'someone-else.example' });
+  ok('a Worker in another zone is a caller from outside', details().includes('mcp:call:bobai_links') && kinds() === 'mcp', `${details().join()} | ${kinds()}`);
+  await rpc('tools/call', { name: 'bobai_links' }, { 'cf-connecting-ip': '203.0.113.7' });
+  ok('and so is every other address', details().includes('mcp:call:bobai_links') && kinds() === 'mcp', `${details().join()} | ${kinds()}`);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nstats-detail: all pins hold');

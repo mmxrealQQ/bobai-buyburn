@@ -837,7 +837,9 @@ function nftProgressBar(minted, cap) {
   return '▰'.repeat(filled) + '░'.repeat(10 - filled);
 }
 
-async function postBuyAlert(trade, burnedPct, nftLine = '') {
+// `chatId` is the group, always — except for /previewbuy, which shows the
+// operator privately what an alert of a given size looks like.
+async function postBuyAlert(trade, burnedPct, nftLine = '', chatId = TG_CHAT_ID) {
   const { bnbAmount, bobaiAmount, usdValue, buyer, txHash } = trade;
   const { icon } = getBuyEmojis(usdValue);
   const pricePerToken = bobaiAmount > 0 ? usdValue / bobaiAmount : 0;
@@ -859,14 +861,14 @@ async function postBuyAlert(trade, burnedPct, nftLine = '') {
   const brains = buyBar(usdValue, rest);
   const message = `${brains.caption}\n${rest}`;
   if (brains.own) {
-    try { await tg('sendMessage', { chat_id: TG_CHAT_ID, text: brains.own, disable_notification: true }); }
+    try { await tg('sendMessage', { chat_id: chatId, text: brains.own, disable_notification: true }); }
     catch (err) { console.error('[BUY] brain row failed:', err.message || err); }
   }
 
   // 1) Try the rich photo alert
   try {
     const photoRes = await tg('sendPhoto', {
-      chat_id: TG_CHAT_ID,
+      chat_id: chatId,
       photo: PHOTO_BIGBUY,
       caption: message,
       parse_mode: 'HTML',
@@ -884,7 +886,7 @@ async function postBuyAlert(trade, burnedPct, nftLine = '') {
   // photo file_id is ever rejected by Telegram. Same content, no image.
   try {
     const textRes = await tg('sendMessage', {
-      chat_id: TG_CHAT_ID,
+      chat_id: chatId,
       text: message,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
@@ -2945,6 +2947,23 @@ export default {
         daily: { whale_recap: await env.KV.get('last_daily_summary'), lp_card: await env.KV.get('lp_report_date') },
         webhook_secured: Boolean(env.TG_WEBHOOK_SECRET) && Boolean(await env.KV.get('webhook_secret_version')),
       }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+
+    // === /previewbuy — what a buy alert of a given size looks like ===
+    // POST {"usd": 1417} with X-Broadcast-Secret. Runs the real postBuyAlert
+    // with made-up trade figures and sends it to the OPERATOR's private chat,
+    // which is the only chat this route can reach: there is no target field.
+    if (url.pathname === '/previewbuy' && request.method === 'POST') {
+      const want = env.BROADCAST_SECRET || '';
+      if (!want || (request.headers.get('x-broadcast-secret') || '') !== want)
+        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
+      let body = {};
+      try { body = await request.json(); } catch { }
+      const usd = Math.min(100000, Math.max(1, Number(body.usd) || 1417));
+      const price = 0.00023, bnbUsd = 780;
+      const sent = await postBuyAlert({ bnbAmount: usd / bnbUsd, bobaiAmount: usd / price, usdValue: usd, buyer: '0x000000000000000000000000000000000000dEaD', txHash: '0x' + '0'.repeat(64) },
+        '0.00', '\n🧪 <i>Preview — made-up figures, sent to the operator only</i>', OPERATOR_CHAT_ID);
+      return new Response(JSON.stringify({ ok: sent, usd }), { headers: { 'content-type': 'application/json' } });
     }
 
     if (url.pathname === '/broadcast' && request.method === 'POST') {

@@ -519,6 +519,21 @@ export async function scan(input, env) {
   const taxS = tax.ok && tax.sell != null && !simOverS ? tax.sell : sS != null ? sS : isFinite(gS) ? gS : 0;
   const simulated = sB != null || sS != null;
   const usedTax = tax.ok || simulated || isFinite(gB) || isFinite(gS);
+  // WHERE EACH SIDE CAME FROM (2026-09-21). One `source` for both sides said
+  // "measured from executed trades" about TUT with three sells read and NO
+  // buy: its buy figure was a label, or the literal 0 above — the "zero is a
+  // claim" case, under the word "measured". Each side carries its own origin,
+  // and a side nothing could establish is null in the answer (the arithmetic
+  // still has to use a number, and uses the 0).
+  const origin = (measuredSide, simOver, s, g) =>
+    tax.ok && measuredSide != null && !simOver ? 'measured' : s != null ? 'simulated' : isFinite(g) ? 'label' : 'unknown';
+  const srcB = origin(tax.buy, simOverB, sB, gB), srcS = origin(tax.sell, simOverS, sS, gS);
+  const SOURCE_WORDS = {
+    measured: 'measured from executed trades on-chain',
+    simulated: 'simulated on-chain at this block, from a fresh address',
+    label: 'labelled by GoPlus, unverified',
+    unknown: 'unknown — nothing could establish it',
+  };
 
   let rows, up, down, upMin = null, downMin = null;
   if (pool.kind === 'v2') {
@@ -601,9 +616,12 @@ export async function scan(input, env) {
       // BOBAI itself surfaced this: with GoPlus unreachable the answer came
       // back "0% tax" for a token that charges 3%. The arithmetic below still
       // has to use a number, so it uses zero and says so here.
-      buyPct: usedTax ? +(taxB * 100).toFixed(3) : null,
-      sellPct: usedTax ? +(taxS * 100).toFixed(3) : null,
-      measured: !!tax.ok,
+      buyPct: srcB !== 'unknown' ? +(taxB * 100).toFixed(3) : null,
+      sellPct: srcS !== 'unknown' ? +(taxS * 100).toFixed(3) : null,
+      // Per side: measured | simulated | label | unknown. `measured` below is
+      // true only when BOTH sides were read off executed trades.
+      buySource: srcB, sellSource: srcS,
+      measured: srcB === 'measured' && srcS === 'measured',
       // Why not, when not: a quiet pool and a throttled log endpoint are
       // different answers for a caller — one is final, the other says retry.
       ...(tax.ok ? {} : { reason: tax.reason || null }),
@@ -616,7 +634,9 @@ export async function scan(input, env) {
       // from a fresh address and its gap read; labelled means a reputation
       // service said so and nothing verified it. Those disagree in practice,
       // sometimes by more than a point.
-      source: tax.ok && (simOverB || simOverS) ? 'simulated on-chain at this block — executed trades showed no fee leg (a reflection-style transfer hides it), the simulated trade did' : tax.ok ? 'measured from executed trades on-chain' : simulated ? 'simulated on-chain at this block, from a fresh address' : usedTax ? 'labelled by GoPlus, unverified' : 'unknown',
+      source: tax.ok && (simOverB || simOverS) ? 'simulated on-chain at this block — executed trades showed no fee leg (a reflection-style transfer hides it), the simulated trade did'
+        : srcB === srcS ? SOURCE_WORDS[srcB]
+        : `buy: ${SOURCE_WORDS[srcB]}; sell: ${SOURCE_WORDS[srcS]}`,
       ...(simulated ? { simulated: { buyPct: sB == null ? null : +(sB * 100).toFixed(2), sellPct: sS == null ? null : +(sS * 100).toFixed(2), method: sim.tax.method } } : {}),
       ...(usedTax ? {} : { warning: 'No transfer tax could be established — neither from executed trades nor from a label. The cost figures below therefore EXCLUDE any transfer tax. If this token takes a cut on transfer, a real trade costs more than shown.' }),
       // How many executed trades each median stands on, and their spread — a

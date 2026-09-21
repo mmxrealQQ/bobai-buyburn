@@ -183,7 +183,7 @@ txt: https://brainonbnb.com/code/prize-pool-bot.txt
 Pool Scanner
 ------------
 Reads any BNB Chain pool. No backend at all.
-6 files, 6031 lines
+6 files, 6051 lines
 needs:
   - A static host
       ours: Cloudflare Pages
@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 2243 lines
+5 files, 2258 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally

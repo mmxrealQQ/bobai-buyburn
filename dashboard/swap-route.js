@@ -27,7 +27,7 @@
 import {
   QUOTES, BNB_PAIR, WBNB, QUOTER, SEL as S, V3_FEES,
   call, hx, addrAt, res2, decStr, rpcBatch, quoteCall,
-  classify, priceToken, discover, measureTax, simulateRoundTrip, V2_FEE, decOf,
+  classify, priceToken, discover, measureTax, simulateRoundTrip, V2_FEE, decOf, rpc,
 } from './scanner-chain.js';
 
 export class RouteError extends Error {
@@ -186,11 +186,29 @@ export async function swapRoute(input, opts = {}) {
   // the same route. Both legs are quoted by the venue, and the amounts carried
   // between them are the ones that would really arrive: the tax comes off what
   // the buy delivers, and again off what the sell hands to the pool.
+  //
+  // BOTH LEGS AT ONE BLOCK (2026-09-21). The buy was quoted before the tax was
+  // measured and the sell after it — seconds apart, on a pool that moves every
+  // block. AKE at 0.01%, five calls in a row: a $10 trip "keeping" 99.45%, a
+  // $2,600 one 100.15% (a round trip cannot return more than went in), and the
+  // slippage figure, which is derived from it, swinging from 58 to 95 bps. A
+  // V2 leg never had this — both its legs are arithmetic on one read of the
+  // reserves. For a V3 leg the head block is taken once, the winning buy is
+  // quoted AGAIN at that block and the sell at the same one. If the node will
+  // not answer at a named block, it falls back to what it did before.
+  let tag = 'latest';
+  if (best.kind === 'v3') {
+    try {
+      const head = await rpc('eth_blockNumber', []);
+      const again = out0((await rpcBatch([call(QUOTER, quoteCall(quote, token, amountInRaw, best.feeRaw))], undefined, head))[0]);
+      if (again != null && again > 0) { tag = head; best.out = again / 10 ** dec; }
+    } catch { /* the quotes below run at 'latest', as before */ }
+  }
   const received = best.out * (1 - taxBuy);
   const reachesPool = received * (1 - taxSell);
   let backOut = null;
   if (best.kind === 'v3') {
-    const r = await rpcBatch([call(QUOTER, quoteCall(token, quote, BigInt(Math.floor(reachesPool * 10 ** dec)), best.feeRaw))]);
+    const r = await rpcBatch([call(QUOTER, quoteCall(token, quote, BigInt(Math.floor(reachesPool * 10 ** dec)), best.feeRaw))], undefined, tag);
     const g = out0(r[0]);
     backOut = g == null ? null : g / 1e18;
   } else {
@@ -208,7 +226,7 @@ export async function swapRoute(input, opts = {}) {
     const leg = legs.find((l) => l.kind === 'v2');
     poolOnly = v2Out(best.out, leg.reserves.token, leg.reserves.quote, V2_FEE);
   } else {
-    const r = await rpcBatch([call(QUOTER, quoteCall(token, quote, BigInt(Math.floor(best.out * 10 ** dec)), best.feeRaw))]);
+    const r = await rpcBatch([call(QUOTER, quoteCall(token, quote, BigInt(Math.floor(best.out * 10 ** dec)), best.feeRaw))], undefined, tag);
     const g = out0(r[0]);
     poolOnly = g == null ? null : g / 1e18;
   }

@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2243 lines.
+# one fetch. 5 files, 2258 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1815,8 +1815,20 @@ export function shape(s, r, usd, routeError = null) {
 
   // ---- the tax
   const t = s.tax || {};
-  const taxBuy = r?.transfer_tax?.buy_pct ?? t.buyPct ?? null;
-  const taxSell = r?.transfer_tax?.sell_pct ?? t.sellPct ?? null;
+  // Each side's number stays with the source it came from: the route's where
+  // the route has one, the scan's otherwise — never the scan's figure under
+  // the route's sentence ("0%, not measurable" was one answer, 2026-09-21).
+  const fromRoute = (k) => r?.transfer_tax?.[k] != null;
+  const taxBuy = fromRoute('buy_pct') ? r.transfer_tax.buy_pct : t.buyPct ?? null;
+  const taxSell = fromRoute('sell_pct') ? r.transfer_tax.sell_pct : t.sellPct ?? null;
+  const WORDS = { measured: 'measured from executed trades on-chain', simulated: 'simulated on-chain at this block, from a fresh address', label: 'labelled by GoPlus, unverified', unknown: 'unknown — nothing could establish it' };
+  const sideSource = (k, scanSide) => (fromRoute(k) ? r.transfer_tax.source : WORDS[scanSide] || t.source || null);
+  const buySource = sideSource('buy_pct', t.buySource), sellSource = sideSource('sell_pct', t.sellSource);
+  for (const [side, v, src] of [['buy', taxBuy, t.buySource], ['sell', taxSell, t.sellSource]]) {
+    if (fromRoute(`${side}_pct`)) continue;
+    if (v != null && src === 'label') caution.push({ code: `${side}_tax_label_only`, why: `The ${side} tax of ${v}% is a GoPlus label: no executed ${side} could be read and no simulation ran for it. A label has read 0% on tokens that charged more.` });
+    else if (v == null && (taxBuy != null || taxSell != null)) caution.push({ code: `${side}_tax_unknown`, why: `No ${side} tax could be established — only the other side was. The costs below exclude it on the ${side}.` });
+  }
   if (taxBuy == null && taxSell == null)
     caution.push({ code: 'tax_unknown', why: 'No transfer tax could be established, neither from executed trades nor by simulation. The costs below exclude it; if the token takes a cut, the trade costs more and needs about 1500 bps of slippage.' });
   for (const [side, v] of [['buy', taxBuy], ['sell', taxSell]])
@@ -1875,8 +1887,11 @@ export function shape(s, r, usd, routeError = null) {
     ...head,
     block: s.block ?? null, measured_at: s.measuredAt ?? null,
     stop, caution, entry, exit,
-    tax: { buy_pct: taxBuy, sell_pct: taxSell, source: r?.transfer_tax?.source || t.source || null },
-    depth: { one_percent_buy_usd: d.buyUsd ?? null, one_percent_sell_usd: d.sellUsd ?? null, pool_hard_side_usd: s.pool?.liquidityUsd ?? null },
+    tax: { buy_pct: taxBuy, sell_pct: taxSell, buy_source: buySource, sell_source: sellSource,
+      source: buySource === sellSource ? buySource : `buy: ${buySource}; sell: ${sellSource}` },
+    // `pool` names what the depth describes — the pool the scan measured, which
+    // is not always the pool the best route goes through (entry.pool).
+    depth: { pool: s.pool?.address ?? null, one_percent_buy_usd: d.buyUsd ?? null, one_percent_sell_usd: d.sellUsd ?? null, pool_hard_side_usd: s.pool?.liquidityUsd ?? null },
     lp_burned_pct: s.lp?.burnedPct ?? null,
     cannot_see: [
       'An owner who has not acted yet, a proxy not yet upgraded, a blacklist you are not on today: this is the trip as it stands at this block.',

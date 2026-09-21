@@ -75,6 +75,15 @@ ok('on the four.meme curve: said so, the curve’s figures, and no sell quote ST
 o = shape({ address: '0xd', symbol: 'D', name: 'D', quotable: false, reason: 'No pool at a venue whose swap fee has been verified here.' }, null, 100);
 ok('no readable market: a stop with the scan’s reason, entry and exit null', codes(o.stop) === 'not_quotable' && o.entry === null && o.exit === null && /No pool/.test(o.stop[0].why));
 
+// Each side of the tax keeps its own origin: a label never travels under the
+// word "measured", and the scan's figure never under the route's sentence.
+o = shape(scan({ tax: { buyPct: 0, sellPct: 0, buySource: 'label', sellSource: 'measured', measured: false, source: 'x' } }), route({ transfer_tax: { buy_pct: null, sell_pct: 0, source: 'route measured it' } }), 250);
+ok('a buy side known only from a label is said, with the figure, and keeps its own source', codes(o.caution).includes('buy_tax_label_only') && /labelled by GoPlus/.test(o.tax.buy_source) && o.tax.sell_source === 'route measured it' && /^buy: .*; sell: /.test(o.tax.source), JSON.stringify(o.tax));
+o = shape(scan({ tax: { buyPct: null, sellPct: 2.5, buySource: 'unknown', sellSource: 'measured', measured: false, source: 'x' } }), route({ transfer_tax: { buy_pct: null, sell_pct: null, source: 'not measurable (quiet)' } }), 250);
+ok('a side nothing could establish stays null and is named', o.tax.buy_pct === null && o.tax.sell_pct === 2.5 && codes(o.caution).includes('buy_tax_unknown') && !/not measurable/.test(o.tax.sell_source), JSON.stringify(o.tax));
+o = shape(scan({ tax: { buyPct: 3, sellPct: 3, buySource: 'measured', sellSource: 'measured', measured: true, source: 'measured from executed trades on-chain' } }), route({ transfer_tax: { buy_pct: 3, sell_pct: 3, source: 'measured from executed trades on-chain' } }), 250);
+ok('two measured sides raise nothing and read as one source; depth names its pool', !codes(o.caution).includes('tax_label_only') && !/;/.test(o.tax.source) && o.depth.pool === '0x' + 'b'.repeat(40), JSON.stringify([o.tax.source, o.depth.pool]));
+
 // A sell test that had to run on the token's side pair against BNB is a fact
 // about that pair: it neither clears the pool measured here nor stops it.
 o = shape(scan({ sellability: { ok: true, sellable: true, buyable: true, through_scanned_pool: false, pair: '0xside' } }), route(), 250);

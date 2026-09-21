@@ -75,6 +75,15 @@ ok('on the four.meme curve: said so, the curve’s figures, and no sell quote ST
 o = shape({ address: '0xd', symbol: 'D', name: 'D', quotable: false, reason: 'No pool at a venue whose swap fee has been verified here.' }, null, 100);
 ok('no readable market: a stop with the scan’s reason, entry and exit null', codes(o.stop) === 'not_quotable' && o.entry === null && o.exit === null && /No pool/.test(o.stop[0].why));
 
+// A sell test that had to run on the token's side pair against BNB is a fact
+// about that pair: it neither clears the pool measured here nor stops it.
+o = shape(scan({ sellability: { ok: true, sellable: true, buyable: true, through_scanned_pool: false, pair: '0xside' } }), route(), 250);
+ok('a sell test on ANOTHER pair does not clear the exit: sellable null, and said so', o.exit.sellable === null && codes(o.caution).includes('sell_tested_on_another_pair') && o.stop.length === 0, JSON.stringify([o.exit.sellable, codes(o.caution)]));
+o = shape(scan({ sellability: { ok: true, sellable: false, buyable: true, sell_error: 'x', through_scanned_pool: false, pair: '0xside' } }), route(), 250);
+ok('… and a refusal on that other pair does not stop the trade here', !codes(o.stop).includes('not_sellable') && /did NOT go through there/.test(o.caution.find((c) => c.code === 'sell_tested_on_another_pair')?.why || ''), codes(o.stop));
+o = shape(scan({ sellability: { ok: true, sellable: false, buyable: true, sell_error: 'x', through_scanned_pool: true, pair: '0xmain' } }), route(), 250);
+ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).includes('not_sellable') && o.exit.sellable === false, codes(o.stop));
+
 // ---- the installable skill carries it, and what it carries resolves ---------
 // build-skill.mjs pulls dashboard files into the tarball under new names and
 // rewrites './x.js' to './x.mjs' only for files it pulls. A module pulled

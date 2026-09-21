@@ -1,7 +1,7 @@
 ---
 name: bsc-pool-depth
 description: Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades rather than off a label. One pre-trade check answers at your size: what stops the trade (the sell does not go through, nothing quotes), what to weigh, entry, exit, tax and depth. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid per dollar of capital in it, and per dollar standing within 2% of the price. And it replays candidate V3 price ranges against the swaps that really happened. Works on any BEP-20 token or pool address. Use when asked whether a token is liquid enough to trade, whether it can be sold again, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, which fee tier and which price range to provide liquidity in, or which PancakeSwap route a swap should take.
-version: 1.4.0
+version: 1.4.1
 license: MIT
 metadata:
   author: brainonbnb
@@ -94,7 +94,7 @@ JSON on stdout. The fields that carry the answer:
 | `pool.shareOfLiquidity` | What fraction of the token's liquidity this pool holds. A low number means you are looking at a side pocket |
 | `lp.burnedPct` | Share of LP tokens sent to a burn address and therefore unwithdrawable (V2 pools only) |
 | `quotable` | `false` when no pool is deep or representative enough to quote honestly — read `reason` |
-| `sellability` | Our own sell test: a sell of one part in a thousand of the reserve, simulated on the router from a fresh address at this block. `sellable:false` carries the router's own reason; `buyable` and `tax.{buy_pct,sell_pct}` are a second, independent tax reading; `ok:false` means not checked, never "safe" |
+| `sellability` | Our own sell test: a sell of one part in a thousand of the reserve, simulated on the router from a fresh address at this block. `sellable:false` carries the router's own reason; `buyable` and `tax.{buy_pct,sell_pct}` are a second, independent tax reading; `ok:false` means not checked, never "safe". `pair` and `path` name what it really traded through: the pool that was read where the router can (a pair against USDT is sold token → USDT → BNB); `through_scanned_pool:false` means it had to use the token's side pair against BNB — a fact about that pair, "not checked" for the pool above |
 | `deeperPoolElsewhere` | Present when a bigger pool for the same token exists than the one read: its pair and liquidity in USD. Decision-relevant: the figures above describe the pool that was read |
 | `tax.simulated` | The tax as a simulated trade at this block measured it, returned beside `tax.measured` as an independent cross-check |
 | `contract.properties` · `contract.notChecked` | The contract flags the page shows as chips, three-state (`true` / `false` / `null` = GoPlus returned no value, which is not "no"), with the unchecked ones named. `slippage_modifiable` is the one to read next to a measured tax: it says the rate can be raised later |

@@ -166,8 +166,11 @@ export async function swapRoute(input, opts = {}) {
   let taxSource = 'measured from executed trades on-chain';
   if (!tax.ok || tax.buy == null || tax.sell == null) {
     const sim = await simulateRoundTrip(token, best.pool, addrAt(zero[0]) === token, best.kind).catch(() => null);
-    const sb = sim && sim.ok && sim.tax && sim.tax.buy_pct != null ? sim.tax.buy_pct / 100 : null;
-    const ss = sim && sim.ok && sim.tax && sim.tax.sell_pct != null ? sim.tax.sell_pct / 100 : null;
+    // Only a simulation that went through THIS pool speaks for it (see
+    // simulateRoundTrip): a side pair's 0% is not this route's tax.
+    const here = sim && sim.ok && sim.through_scanned_pool !== false;
+    const sb = here && sim.tax && sim.tax.buy_pct != null ? sim.tax.buy_pct / 100 : null;
+    const ss = here && sim.tax && sim.tax.sell_pct != null ? sim.tax.sell_pct / 100 : null;
     if (sb != null || ss != null) {
       const hadTrades = tax.ok;
       tax = { ...tax, ok: true, buy: hadTrades && tax.buy != null ? tax.buy : sb, sell: hadTrades && tax.sell != null ? tax.sell : ss };

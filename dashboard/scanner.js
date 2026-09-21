@@ -13,7 +13,7 @@
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf} from './scanner-chain.js?v=27';
+  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf} from './scanner-chain.js?v=28';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -779,8 +779,11 @@ function taxCard(tax,gp,gpOk,sim){
   // The simulated pair, when the probe could read what arrived. Second to a
   // real executed trade, ahead of a label: it happened on the chain, at this
   // block, just not with anyone's money.
-  const sB=sim&&sim.tax&&sim.tax.buy_pct!=null?sim.tax.buy_pct:null,
-        sS=sim&&sim.tax&&sim.tax.sell_pct!=null?sim.tax.sell_pct:null;
+  // Only a simulated trade through the pool that was read speaks for its tax
+  // (simulateRoundTrip names the pair it traded).
+  const simHere=sim&&sim.through_scanned_pool!==false;
+  const sB=simHere&&sim.tax&&sim.tax.buy_pct!=null?sim.tax.buy_pct:null,
+        sS=simHere&&sim.tax&&sim.tax.sell_pct!=null?sim.tax.sell_pct:null;
   if(tax.ok){
     const mB=tax.buy!=null?tax.buy*100:null,mS=tax.sell!=null?tax.sell*100:null;
     c.appendChild(statRow([
@@ -860,7 +863,8 @@ function flagsCard(gp,gpOk,sim){
     x.appendChild(el('b',null,label));x.appendChild(el('span',null,note));return x};
   // THE SELL TEST FIRST. It is the one line a buyer will act on. A simulation
   // that could not run says so and is never drawn as a pass.
-  if(sim&&sim.ok&&sim.sellable)g.appendChild(chip('ok','Sell test: goes through','A sell of '+'one part in a thousand of the pool'+' went through on the chain just now, from an address with no history. It says nothing about tomorrow: an owner with a switch can still flip it.'));
+  if(sim&&sim.ok&&sim.through_scanned_pool===false)g.appendChild(chip('unk','Sell test: ran on another pair','The router could not trade through the pool measured above, so the test went through this token’s PancakeSwap V2 pair against BNB ('+String(sim.pair).slice(0,10)+'…) and '+(sim.sellable?'went through there':'was refused there'+(sim.sell_error?': '+sim.sell_error:''))+'. A tax or a sell block tied to the main pool does not show on a side pair: for the pool above this is “not checked”.'));
+  else if(sim&&sim.ok&&sim.sellable)g.appendChild(chip('ok','Sell test: goes through','A sell of '+'one part in a thousand of the pool'+' went through on the chain just now, from an address with no history. It says nothing about tomorrow: an owner with a switch can still flip it.'));
   else if(sim&&sim.ok&&!sim.sellable)g.appendChild(chip('bad','Sell test: REVERTED','The router refused the sell'+(sim.sell_error?': '+sim.sell_error:'')+'. That is what a honeypot looks like from outside — and also what a trading pause or a max-wallet rule looks like. Do not buy what you cannot sell.'));
   else g.appendChild(chip('unk','Sell test: not run',(sim&&sim.reason)||'The simulation could not run for this token.'));
   if(!gpOk){c.appendChild(g);return c;}
@@ -1440,8 +1444,9 @@ async function scanOnce(input){
     const gB=lab2(gp.buy_tax),gS=lab2(gp.sell_tax);
     // Which tax the cost columns use, per direction: an executed trade first,
     // the simulation second, the label last, zero (and said so) never quietly.
-    const sB=sim&&sim.tax&&sim.tax.buy_pct!=null?sim.tax.buy_pct/100:null,
-          sS=sim&&sim.tax&&sim.tax.sell_pct!=null?sim.tax.sell_pct/100:null;
+    const simHere=sim&&sim.through_scanned_pool!==false;
+    const sB=simHere&&sim.tax&&sim.tax.buy_pct!=null?sim.tax.buy_pct/100:null,
+          sS=simHere&&sim.tax&&sim.tax.sell_pct!=null?sim.tax.sell_pct/100:null;
     // A measured ~0 the simulation contradicts is a hidden fee leg (reflection-style
     // transfers emit only the net amount): the simulated figure stands for that side.
     const hid=(m,si)=>m!=null&&si!=null&&m<0.0015&&si-m>0.0015;

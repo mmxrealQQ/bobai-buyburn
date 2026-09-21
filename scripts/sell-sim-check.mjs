@@ -64,6 +64,23 @@ for (const [name, token, pair] of PAIRS) {
   ok(`${name}: the simulated sell tax reads ${want}%`, r.tax && r.tax.sell_pct != null && Math.abs(r.tax.sell_pct - want) < 0.3, JSON.stringify(r.tax));
   ok(`${name}: the simulated buy tax reads ${want}%`, r.tax && r.tax.buy_pct != null && Math.abs(r.tax.buy_pct - want) < 0.3, JSON.stringify(r.tax));
 }
+// THROUGH THE POOL THAT WAS READ (2026-09-21). Asked about a pair against
+// USDT, the test used to trade the token's pair against BNB instead and call
+// that "sellable" — for ARK a four-dollar pair beside a $28M market. CAKE has
+// both pairs: the same token, asked through its USDT pair, must route
+// token -> USDT -> BNB, say so, and still read CAKE's 0%.
+{
+  const CAKE = PAIRS[1][1], USDT = '0x55d398326f99059ff775485246999027b3197955';
+  const pair = C.addrAt((await C.rpcBatch([C.call('0xca143ce32fe78f1f7019d7d551a6402fc5350c73', C.getPair(CAKE, USDT))]))[0]);
+  const t0 = await C.rpcBatch([C.call(pair, C.SEL.token0)]);
+  const r = await C.simulateRoundTrip(CAKE, pair, C.addrAt(t0[0]) === CAKE, 'v2');
+  ok('CAKE through its USDT pair: the test trades THAT pair, in two hops, and says so',
+    r.ok && r.through_scanned_pool === true && r.pair === pair && Array.isArray(r.path) && r.path.length === 3 && r.path[1] === USDT, JSON.stringify({ pair: r.pair, path: r.path, through: r.through_scanned_pool, reason: r.reason }));
+  ok('… sells, buys, and reads 0% both ways from the probe’s own quote',
+    r.ok && r.sellable === true && r.buyable === true && r.tax && Math.abs(r.tax.sell_pct) < 0.3 && Math.abs(r.tax.buy_pct) < 0.3, JSON.stringify(r.tax));
+  const direct = await C.simulateRoundTrip(PAIRS[0][1], PAIRS[0][2], true, 'v2');
+  ok('a pair against BNB is one hop, through the pool that was read', direct.through_scanned_pool === true && direct.path.length === 2 && direct.pair === PAIRS[0][2], JSON.stringify(direct.path));
+}
 ok('a V3-only token is reported as not simulated, not as sellable',
   (await C.simulateRoundTrip(PAIRS[1][1], PAIRS[1][2], true, 'v3')).ok === false);
 

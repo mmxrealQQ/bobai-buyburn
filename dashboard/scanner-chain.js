@@ -40,6 +40,10 @@ export const LOGS_RPCS=['https://bsc-rpc.publicnode.com','https://bsc.publicnode
 // pool and width records counted that as "hours" — a day of them took a day
 // and a half of runs, and the fee estimate rested on 62% of each hour's swaps.
 export const WINDOW_BLOCKS=7900;
+// The tax read asks for the newest trades first (measureTax): about three
+// minutes of chain, and a quarter of the hour when the hour itself is refused
+// for the size of its answer.
+export const TAX_SHORT_BLOCKS=400,TAX_MID_BLOCKS=2000;
 // Live bindings: useKeyedRpcs() below moves a keyed endpoint to the front.
 export let RPC=RPCS[0],
   LOGS_RPC=LOGS_RPCS[0];
@@ -538,36 +542,41 @@ export async function measureTax(token,pair,tokenIs0,kind){
     // ~12,000 as "archive"). Until 2026-09-12 this read 4,999 blocks (38 min)
     // while every other reading on the page said "the last hour", and a thin
     // pool was simulated where an hour of trades would have measured it.
-    const from=head-(WINDOW_BLOCKS-1);
-    let logs=null;
     const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
-    // Both log hosts, and a second pass after a beat. The two publicnode names
-    // throttle together (one operator, one budget), and a page that has just
-    // fired a thirty-call batch at them gets a 403 for a second or two. With a
-    // single host and no retry that second was reported to the visitor as
-    // "could not be measured" — seen live on 2026-09-03 on a pool that had
-    // traded minutes earlier. A retry is cheap; a false "unmeasured" is not.
-    const filter={address:pair,topics:topic,fromBlock:'0x'+from.toString(16),toBlock:'0x'+head.toString(16)};
-    for(let pass=0;pass<2&&!logs;pass++){
-      if(pass)await new Promise(r=>setTimeout(r,900));
-      for(const url of LOGS_RPCS){
-        try{logs=await rpc('eth_getLogs',[filter],url);if(logs)break}catch(e){logs=null}
+    // THE NEWEST TRADES FIRST, THE HOUR ONLY WHEN THEY ARE NOT ENOUGH
+    // (2026-09-21). This read the whole hour and then used its newest sixteen
+    // receipts. On the pools traded most that hour is more than the endpoint
+    // returns at all — "query exceeds max results 20000", a fixed limit, not
+    // throttling — and the same filter was sent four times and the whole read
+    // repeated by the caller: AKE, 23,000 swaps an hour, came back after 16 s
+    // with a GoPlus label where the measurement belongs. The last few minutes
+    // of such a pool hold hundreds of swaps and answer in 60 ms. So: the short
+    // window first; the hour only when it did not yield three buys and three
+    // sells; and when the hour is refused for its size, a quarter of it.
+    // Both log hosts, and a second pass after a beat, as before: the two
+    // publicnode names throttle together, and a page that has just fired a
+    // thirty-call batch gets a 403 for a second or two (2026-09-03). A refusal
+    // for SIZE is not retried — the same range has the same size.
+    let tooLarge=false;
+    const fetchWindow=async blocks=>{
+      const filter={address:pair,topics:topic,fromBlock:'0x'+(head-(blocks-1)).toString(16),toBlock:'0x'+head.toString(16)};
+      for(let pass=0;pass<2;pass++){
+        if(pass)await new Promise(r=>setTimeout(r,900));
+        for(const url of LOGS_RPCS){
+          try{const l=await rpc('eth_getLogs',[filter],url);if(l)return l}
+          catch(e){if(/max results|exceeds|too (large|many)|limit/i.test(String(e&&e.message))){tooLarge=true;return null}}
+        }
       }
-    }
-    // A refused range and a quiet pool arrive as the same emptiness and mean
-    // opposite things. Only one of them may be stated as a fact about somebody
-    // else's pool.
-    if(!logs)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
-    if(!logs.length){
-      const span=await windowSpan(from,head);
-      return {ok:false,reason:'this pool has not traded in the last '+(span||'~7,900 blocks'),block:head,windowBlocks:WINDOW_BLOCKS};
-    }
+      return null;
+    };
     const U=h=>BigInt('0x'+h);
     const buys=[],sells=[];const seen=new Set();
     // Receipts are one round trip each, and a busy pool can offer thousands of
     // swaps. Sixteen is enough to find three of each on any pool with two-sided
     // flow, and bounds the wait when a pool is all arb and nothing qualifies.
     let tried=0;
+    const enough=()=>(buys.length>=3&&sells.length>=3)||tried>=16;
+    const take=async logs=>{
     for(const L of logs.slice().reverse()){
       if(buys.length>=3&&sells.length>=3)break;
       if(tried>=16)break;
@@ -632,14 +641,35 @@ export async function measureTax(token,pair,tokenIs0,kind){
           if(total>0n){const t=1-Number(inn.v)/Number(total);if(t<0.5)keep(sells,t)}}
       }
     }
+    };
+    let windowBlocks=0,sawLogs=false;
+    const steps=[TAX_SHORT_BLOCKS,WINDOW_BLOCKS];
+    for(let si=0;si<steps.length&&!enough();si++){
+      const logs=await fetchWindow(steps[si]);
+      if(logs===null){
+        if(steps[si]===WINDOW_BLOCKS&&tooLarge)steps.push(TAX_MID_BLOCKS);
+        continue;
+      }
+      windowBlocks=Math.max(windowBlocks,steps[si]);
+      if(logs.length)sawLogs=true;
+      await take(logs);
+    }
+    // A refused range and a quiet pool arrive as the same emptiness and mean
+    // opposite things. Only one of them may be stated as a fact about somebody
+    // else's pool — and a quiet pool only for the window that really answered.
+    if(!windowBlocks)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
+    if(!sawLogs){
+      const span=await windowSpan(head-(windowBlocks-1),head);
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks'),block:head,windowBlocks};
+    }
     // Exempt wallets exist — the deployer, the tax sink, routers on an allow
     // list — and they trade at 0%. Taking the median rather than the mean keeps
     // one exempt trade from dragging the figure below what a normal wallet pays.
     const med=a=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);
       return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
     const b=med(buys),s=med(sells);
-    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks:WINDOW_BLOCKS};
-    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks:WINDOW_BLOCKS,
+    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks};
+    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,
       spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
   }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
 }
@@ -1144,9 +1174,35 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     // token with no BNB pair on PancakeSwap V2 read "sell REVERTED" — a false
     // honeypot. The reserves are now those of the pair the router will use;
     // without one the test says it was not run, which is what happened.
-    const wp=addrAt((await rpcBatch([call(V2FACTORY,getPair(token,WBNB))],url))[0]);
-    if(!wp||wp===NULLA)return {ok:false,reason:'the sell test trades through PancakeSwap V2 against BNB, and this token has no such pair — not run, not cleared'};
-    if(wp!==String(pair).toLowerCase()){pair=wp;tokenIs0=BigInt(token)<BigInt(WBNB);}
+    //
+    // THROUGH THE POOL THAT WAS SCANNED, WHEN THE ROUTER CAN (2026-09-21). That
+    // fix sent every token whose market is NOT against BNB to its token/BNB
+    // pair, whatever that pair holds. ARK: a $28M ARK/USDT pool charging 2.5%
+    // on a sell (three executed sells), and the test sold 0.0006 ARK into an
+    // ARK/BNB pair holding four dollars — "sellable: true, tax 0/0", about a
+    // market nobody trades in. A tax or a sell block tied to the main pair
+    // (`to == pair`, the usual pattern) is invisible from a side pair, and a
+    // broken side pair reads as a false "not sellable". The router routes
+    // through two pairs as readily as one: when the scanned pool is a
+    // PancakeSwap V2 pair against a quote that has its own BNB pair there, the
+    // test sells token -> quote -> BNB and buys back the same way. Whatever it
+    // traded through is NAMED in the answer (`pair`, `through_scanned_pool`),
+    // so a caller never has to guess which market "sellable" is about.
+    pair=String(pair).toLowerCase();
+    const head=await rpcBatch([call(V2FACTORY,getPair(token,WBNB)),call(pair,S.token0),call(pair,S.token1),call(pair,S.factory)],url);
+    const wp=addrAt(head[0]),t0=addrAt(head[1]),t1=addrAt(head[2]),fac=addrAt(head[3]);
+    const quote=t0===token?t1:t1===token?t0:null;
+    let path=[token,WBNB],through=wp===pair;
+    if(!through&&fac===V2FACTORY&&quote&&quote!==WBNB){
+      const qp=addrAt((await rpcBatch([call(V2FACTORY,getPair(quote,WBNB))],url))[0]);
+      if(qp&&qp!==NULLA){path=[token,quote,WBNB];through=true}
+    }
+    if(!through){
+      if(!wp||wp===NULLA)return {ok:false,reason:'the sell test trades through PancakeSwap V2 against BNB, and neither this token nor the pool that was read has a route there — not run, not cleared'};
+      pair=wp;tokenIs0=BigInt(token)<BigInt(WBNB);
+    }
+    const named={pair,path,through_scanned_pool:through,
+      ...(through?{}:{pair_note:'NOT the pool that was read: this token\'s PancakeSwap V2 pair against BNB, the only one this router could trade. A tax or a sell block tied to the main pool does not show here.'})};
     // A realistic size: one part in a thousand of what the pair holds.
     const res=await rpcBatch([call(pair,SEL.reserves)],url);
     const rr=res2(res[0]);if(!rr)return {ok:false,reason:'the pair reserves could not be read'};
@@ -1170,9 +1226,9 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
 
     // 1. The probe: a contract at PROBE sells and buys, and reports what
     // arrived. That is the sell test AND the tax, in one call each.
-    const pr=await probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node);
+    const pr=await probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node,path);
     if(pr.supported&&pr.sell.ok&&pr.buy.ok){
-      return {ok:true,sellable:true,buyable:true,sell_error:null,buy_error:null,amount:amount.toString(),size_note,
+      return {ok:true,sellable:true,buyable:true,sell_error:null,buy_error:null,amount:amount.toString(),size_note,...named,
         tax:{sell_pct:pr.sellTax==null?null:+(pr.sellTax*100).toFixed(2),buy_pct:pr.buyTax==null?null:+(pr.buyTax*100).toFixed(2),
           method:'simulated at this block: what the pair would pay for the whole amount against what arrived after the transfer, from a fresh address with no history'},
         source:'eth_call with a state override on the PancakeSwap V2 router, at this block; the seller is a contract placed at a fresh address so what came back could be read'};
@@ -1182,22 +1238,23 @@ export async function simulateRoundTrip(token,pair,tokenIs0,kind){
     // through. So the same sell is asked from a plain address before anything
     // is called refused — and when the node does not support code overrides at
     // all, the plain address is simply the only path.
-    const plain=await plainRoundTrip(token,amount,amtHex,balKey,node);
+    const plain=await plainRoundTrip(token,amount,amtHex,balKey,node,path);
     if(!plain.ok)return pr.supported
-      ? {ok:true,sellable:pr.sell.ok,buyable:pr.buy.ok,sell_error:pr.sell.error,buy_error:pr.buy.error,amount:amount.toString(),size_note,tax:null,
+      ? {ok:true,sellable:pr.sell.ok,buyable:pr.buy.ok,sell_error:pr.sell.error,buy_error:pr.buy.error,amount:amount.toString(),size_note,...named,tax:null,
          source:'eth_call with a state override on the PancakeSwap V2 router, at this block; the seller was a contract at a fresh address'}
       : plain;
     if(pr.supported&&plain.sellable&&!pr.sell.ok){
-      return {...plain,tax:null,contract_refused:pr.sell.error,
+      return {...plain,...named,tax:null,contract_refused:pr.sell.error,
         note:'A plain wallet sells; a contract as the seller was refused ('+pr.sell.error+'). That is what an anti-bot rule looks like, and it means the tax could not be measured by simulation.'};
     }
-    return {...plain,tax:null};
+    return {...plain,...named,tax:null};
   }catch(e){return {ok:false,reason:'the simulation could not run: '+String(e.message||e).slice(0,80)}}
 }
-async function probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node){
+async function probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,node,path=[token,WBNB]){
+  const words=a=>pad32(BigInt(a.length))+a.map(x=>pad32(x)).join('');
   const override={[token]:{stateDiff:{[balKey]:amtHex}},[PROBE]:{code:SELL_PROBE_CODE,balance:'0x'+pad32(10n**18n)},[CALLER]:{balance:'0x'+pad32(10n**18n)}};
-  const sellData=SEL_PROBE_SELL+pad32(V2_ROUTER)+pad32(amount)+pad32(0x60n)+pad32(2n)+pad32(token)+pad32(WBNB);
-  const buyData=SEL_PROBE_BUY+pad32(V2_ROUTER)+pad32(0x40n)+pad32(2n)+pad32(WBNB)+pad32(token);
+  const sellData=SEL_PROBE_SELL+pad32(V2_ROUTER)+pad32(amount)+pad32(0x60n)+words(path);
+  const buyData=SEL_PROBE_BUY+pad32(V2_ROUTER)+pad32(0x40n)+words(path.slice().reverse());
   const calls=[
     {jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:CALLER,to:PROBE,data:sellData,gas:'0x1e8480'},'latest',override]},
     {jsonrpc:'2.0',id:2,method:'eth_call',params:[{from:CALLER,to:PROBE,data:buyData,value:'0x'+pad32(10n**16n),gas:'0x1e8480'},'latest',override]},
@@ -1216,7 +1273,11 @@ async function probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,nod
   // A result that decodes to nothing is a node that ran the call without the
   // code override and returned empty — that is "unsupported", not "sold".
   if((!sell.error&&!sv)||(!buy.error&&!bv))return {supported:false};
-  const sellTax=sv?sellTaxFromReceived(reserveTok,reserveQ,amount,sv[1]):null;
+  // One hop: solved exactly against the pair's reserves. Two hops: the probe's
+  // own quote for the whole amount against what arrived — at one part in a
+  // thousand of the reserve the curve bends that by under 0.01 points.
+  const sellTax=!sv?null:path.length===2?sellTaxFromReceived(reserveTok,reserveQ,amount,sv[1])
+    :sv[0]>0n?Math.max(0,Math.min(1,1-Number(sv[1])/Number(sv[0]))):null;
   const buyTax=bv&&bv[0]>0n?Math.max(0,Math.min(1,1-Number(bv[1])/Number(bv[0]))):null;
   return {supported:true,
     sell:{ok:!sell.error,error:sell.error?revertText(sell.error):null,quoted:sv?sv[0].toString():null,received:sv?sv[1].toString():null},
@@ -1226,7 +1287,8 @@ async function probeRoundTrip(token,amount,amtHex,balKey,reserveTok,reserveQ,nod
 // The plain-address path: the original simulation. It needs the allowance
 // placed by storage override too, since a wallet cannot approve inside an
 // eth_call, and it learns only whether the router accepted the sell.
-async function plainRoundTrip(token,amount,amtHex,balKey,node){
+async function plainRoundTrip(token,amount,amtHex,balKey,node,path=[token,WBNB]){
+  const words=a=>pad32(BigInt(a.length))+a.map(x=>pad32(x)).join('');
   try{
     const probeKey=pad32(PROBE), routerKey=pad32(V2_ROUTER);
     const alCalls=[],alKeys=[];
@@ -1239,8 +1301,8 @@ async function plainRoundTrip(token,amount,amtHex,balKey,node){
     const alKey=alKeys[alHit.id];
     const deadline=pad32(BigInt(Math.floor(Date.now()/1000)+600));
     const override={[token]:{stateDiff:{[balKey]:amtHex,[alKey]:amtHex}},[PROBE]:{balance:'0x'+pad32(10n**18n)}};
-    const sellData=SEL_SELL_FOT+pad32(amount)+pad32(0n)+pad32(0xa0n)+probeKey+deadline+pad32(2n)+pad32(token)+pad32(WBNB);
-    const buyData=SEL_BUY_FOT+pad32(0n)+pad32(0x80n)+probeKey+deadline+pad32(2n)+pad32(WBNB)+pad32(token);
+    const sellData=SEL_SELL_FOT+pad32(amount)+pad32(0n)+pad32(0xa0n)+probeKey+deadline+words(path);
+    const buyData=SEL_BUY_FOT+pad32(0n)+pad32(0x80n)+probeKey+deadline+words(path.slice().reverse());
     const calls=[
       {jsonrpc:'2.0',id:1,method:'eth_call',params:[{from:PROBE,to:V2_ROUTER,data:sellData,gas:'0x1e8480'},'latest',override]},
       {jsonrpc:'2.0',id:2,method:'eth_call',params:[{from:PROBE,to:V2_ROUTER,data:buyData,value:'0x'+pad32(10n**16n),gas:'0x1e8480'},'latest',override]},

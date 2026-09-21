@@ -347,17 +347,27 @@ export async function scan(input, env) {
   const supply = nameInfo[2] ? Number(hx(nameInfo[2])) / Math.pow(10, tokDec) : null;
   const burned = (Number(hx(nameInfo[3])) + Number(hx(nameInfo[4]))) / Math.pow(10, tokDec);
 
-  // Venues from DexScreener, which indexes the small DEXes; GoPlus's list is
-  // the fallback and only covers what it happens to know.
+  // Venues from DexScreener, which indexes the small DEXes, AND from GoPlus,
+  // whose list is already in hand — merged by pair, the larger figure per pair.
+  // GoPlus was only the fallback until 2026-09-21, and DexScreener does not
+  // index Pancake Infinity: ZAMA, $1.2M there, was answered "quotable" from a
+  // $75 pool as holding a third of the token's liquidity, with a round trip
+  // "returning 1%" — a liquid token that read like a honeypot. The right
+  // refusal came only on the calls where DexScreener happened to fail.
   const dsAll = await venues(token);
-  const others = dsAll
-    ? dsAll
-        .filter((x) => !pool || x.pair !== pool.pair.toLowerCase())
-        .map((x) => ({ pair: x.pair, name: x.name + (x.quote ? ' · ' + x.quote : ''), liquidity: x.liq }))
-    : (gp.dex || [])
-        .filter((x) => x.pair && (!pool || x.pair.toLowerCase() !== pool.pair.toLowerCase()))
-        .map((x) => ({ pair: x.pair, name: x.name || x.liquidity_type || 'Unknown', liquidity: parseFloat(x.liquidity) || 0 }))
-        .sort((a, b) => b.liquidity - a.liquidity);
+  const mineKey = pool ? pool.pair.toLowerCase() : null;
+  const byPair = new Map();
+  for (const x of dsAll || [])
+    if (x.pair && x.pair.toLowerCase() !== mineKey)
+      byPair.set(x.pair.toLowerCase(), { pair: x.pair, name: x.name + (x.quote ? ' · ' + x.quote : ''), liquidity: x.liq || 0 });
+  for (const x of gp.dex || []) {
+    const key = String(x.pair || '').toLowerCase();
+    if (!key || key === mineKey) continue;
+    const liq = parseFloat(x.liquidity) || 0, had = byPair.get(key);
+    if (!had) byPair.set(key, { pair: x.pair, name: x.name || x.liquidity_type || 'Unknown', liquidity: liq });
+    else if (liq > had.liquidity) had.liquidity = liq;
+  }
+  const others = [...byPair.values()].sort((a, b) => b.liquidity - a.liquidity);
   const otherLiq = others.reduce((s, x) => s + (x.liquidity || 0), 0);
   const hard = pool ? (pool.q || 0) * pool.usd : 0;
 
@@ -429,9 +439,15 @@ export async function scan(input, env) {
   if (!pool || (share < 0.25 && !deepEnough))
     return {
       address: token, name, symbol: symb, quotable: false,
-      reason: pool
+      // …and WHERE the market is, when an index knows: "not quotable" alone
+      // reads as "nothing there" about a token with a million dollars at a
+      // venue this tool cannot read.
+      reason: (pool
         ? 'The readable pool holds too small a share of this token’s liquidity to describe its market.'
-        : 'No pool at a venue whose swap fee has been verified here.',
+        : 'No pool at a venue whose swap fee has been verified here.')
+        + (others[0] && others[0].liquidity >= 1000
+          ? ` Most of it sits at ${others[0].name} (about $${Math.round(others[0].liquidity).toLocaleString('en-US')} by index figures, not measured here).`
+          : ''),
       liquidity: { readablePoolUsd: Math.round(hard), elsewhereUsd: Math.round(otherLiq), shareOfLiquidity: +share.toFixed(4) },
       venues: others.slice(0, 12),
       source: 'measured on BNB Smart Chain via public RPC',
@@ -485,8 +501,13 @@ export async function scan(input, env) {
   const gS = label(gp.sell_tax);
   // Per direction: an executed trade first, the simulated trade second (the
   // probe read what arrived at this block), the label last.
-  const sB = sim && sim.tax && sim.tax.buy_pct != null ? sim.tax.buy_pct / 100 : null;
-  const sS = sim && sim.tax && sim.tax.sell_pct != null ? sim.tax.sell_pct / 100 : null;
+  // …and only a simulated trade through the pool that was READ. A test that had
+  // to go through the token's side pair against BNB says what that pair
+  // charges; taken as this market's tax it put 0% on ARK beside three executed
+  // sells at 2.5% (2026-09-21). It is still returned, under its own pair.
+  const simHere = !!sim && sim.through_scanned_pool !== false;
+  const sB = simHere && sim.tax && sim.tax.buy_pct != null ? sim.tax.buy_pct / 100 : null;
+  const sS = simHere && sim.tax && sim.tax.sell_pct != null ? sim.tax.sell_pct / 100 : null;
   // A MEASURED ZERO THAT THE SIMULATION CONTRADICTS IS NOT A MEASUREMENT
   // (2026-09-18). A reflection-style token emits only the net Transfer: the
   // executed trade then reads 0% "measured", and that outranked the simulation,

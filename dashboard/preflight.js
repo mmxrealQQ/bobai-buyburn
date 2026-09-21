@@ -79,12 +79,19 @@ export function shape(s, r, usd, routeError = null) {
   }
 
   // ---- exit first: a buy that works and a sell that does not is the trap
+  // A test that had to go through the token's side pair against BNB (the
+  // scanner names the pair it traded) is a fact about THAT pair. It neither
+  // stops a trade in the pool measured here nor clears it: a sell block tied
+  // to the main pool does not show on a side pair, and a dead side pair
+  // reverts on a token that sells fine.
   const sim = s.sellability || {};
-  if (sim.ok && sim.sellable === false)
+  const simHere = sim.ok && sim.through_scanned_pool !== false;
+  if (simHere && sim.sellable === false)
     stop.push({ code: 'not_sellable', why: `A test balance sold on the router from a fresh address did not go through${sim.sell_error ? `: ${String(sim.sell_error).slice(0, 140)}` : '.'}` });
-  if (sim.ok && sim.buyable === false)
+  if (simHere && sim.buyable === false)
     stop.push({ code: 'not_buyable', why: `A test buy on the router did not go through${sim.buy_error ? `: ${String(sim.buy_error).slice(0, 140)}` : '.'}` });
   if (!sim.ok) caution.push({ code: 'sell_not_simulated', why: `The sell simulation did not run${sim.reason ? ` (${String(sim.reason).slice(0, 120)})` : ''} — that is "not checked", never "sellable".` });
+  else if (!simHere) caution.push({ code: 'sell_tested_on_another_pair', why: `The sell test could not trade through the pool measured here; it went through this token’s PancakeSwap V2 pair against BNB (${sim.pair}) and ${sim.sellable === false ? 'did NOT go through there' : 'went through there'}. That says nothing certain about the pool you would trade in — "not checked" for it.` });
   for (const why of (r?.refuse_to_trade || [])) stop.push({ code: 'round_trip', why });
 
   // ---- the tax
@@ -128,7 +135,7 @@ export function shape(s, r, usd, routeError = null) {
       slippage_bps_needed: r.slippage_bps_needed ?? null,
     };
     exit = {
-      sellable: sim.ok ? sim.sellable !== false : null,
+      sellable: simHere ? sim.sellable !== false : null,
       round_trip_keep_pct: keep,
       round_trip_cost_pct: keep == null ? null : round(100 - keep, 2),
       of_which_pools_only_pct: r.round_trip?.you_keep_pct_pools_only == null ? null : round(100 - r.round_trip.you_keep_pct_pools_only, 2),
@@ -141,7 +148,7 @@ export function shape(s, r, usd, routeError = null) {
     const fot = (taxBuy ?? 0) > 0.1 || (taxSell ?? 0) > 0.1;
     entry = { route: null, pool: s.pool?.address ?? null, venue: s.pool?.venue ?? null, cost_pct: round(buy.pct, 3),
       slippage_bps_needed: fot || (taxBuy == null && taxSell == null) ? 1500 : (buy.pct == null ? null : Math.max(50, Math.ceil((buy.pct + 0.5) * 100))) };
-    exit = { sellable: sim.ok ? sim.sellable !== false : null, cost_pct: round(sell.pct, 3),
+    exit = { sellable: simHere ? sim.sellable !== false : null, cost_pct: round(sell.pct, 3),
       round_trip_cost_pct: buy.pct == null || sell.pct == null ? null : round(buy.pct + sell.pct, 2) };
   }
 

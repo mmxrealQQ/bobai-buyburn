@@ -39,7 +39,7 @@ import {
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB, reserveCollect, RESERVE_COLLECT_MIN_BNB,
   widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
-import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP, isReset } from '../shared/lp-flow.js';
+import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP, isReset, capSeries, SERIES_CAP, increaseIntoPosition } from '../shared/lp-flow.js';
 import { resetLosses } from '../worker-agent/lp-windows.js';
 import { alertsOf } from '../shared/lp-alerts.js';
 
@@ -239,6 +239,20 @@ if (SELF) {
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 11 && near(fl.gas.bnb, 0.00016));
   is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.008));
   is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-09T12:00:00Z');
+  // The value series cap keeps the point the profit is measured from
+  // (2026-09-24, D1).
+  {
+    const pts = [{ at: 'none' }, ...Array.from({ length: 9 }, (_, i) => ({ at: `p${i}`, value_bnb: 1 + i / 10 }))];
+    const c = capSeries(pts, 5);
+    is('the capped series keeps the first valued point as its base', c.length === 5 && c[0].at === 'p0' && c[4].at === 'p8');
+    is('a pointless run before it may go, the base may not', !c.some((p) => p.at === 'none'));
+    is('a series under the cap is untouched', capSeries(pts, 20).length === 10 && SERIES_CAP === 400);
+    is('without the base the old slice would have moved the basis', pts.slice(-5)[0].at !== 'p0');
+  }
+  // The record page prints what an increase put in the way the sums count it
+  // (2026-09-24, D2): 2026-09-15 read 0.01347 (wbnb_used) for 0.32355.
+  is('an increase is what left the wallet less its gas, not the WBNB leg', near(increaseIntoPosition({ bnb_spent: '0.3236', wbnb_used: '0.01347', txs: [{ gas_bnb: 0.00005 }] }), 0.32355));
+  is('a record before bnb_spent falls back to the WBNB leg', near(increaseIntoPosition({ wbnb_used: '0.01347' }), 0.01347));
   // The cap and its archive (2026-09-15): what the cap pushes out is not
   // lost to the sums, and a record under the cap archives nothing.
   {

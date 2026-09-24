@@ -615,7 +615,13 @@ export function calibration(points, rows, widthClass, { minHours = 20, maxHours 
     capital_bnb: Number(capitalBnb.toFixed(6)),
     measured_usd_per_day_on_50: r4(measured),
     replay_usd_per_day_on_50: replay == null ? null : r4(replay),
+    // The replay's own window: not the same hours as the position's, and the
+    // page names both rather than implying one period (2026-09-24, D6).
+    replay_hours: row ? r2(row.earnings.hours) : null,
     factor: factor == null ? null : r2(factor),
+    // Which way the replay is off, from the figure itself. The page said
+    // "overstates" as a fixed sentence and read it beside 170%.
+    replay_is: factor == null ? null : factor < 0.9 ? 'above' : factor > 1.1 ? 'below' : 'close',
     basis: `the position's own fees over ${r2(hours)} h against the replay's gross fees for the ±${widthClass}% width, both on $50 a day; the pick compares widths with each other and is not scaled`,
   };
 }

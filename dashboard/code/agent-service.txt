@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 13937 lines.
+# one fetch. 41 files, 13967 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2194,6 +2194,11 @@ const r6 = (v) => Number(v.toFixed(6));
 // it; gas has its own line below. Counted in both, it left the profit twice
 // (2026-09-18: 0.00087 BNB over 28 steps, 6.5% of the profit on the card).
 const gasOf = (step) => (step && Array.isArray(step.txs) ? step.txs : []).reduce((a, t) => a + n(t.gas_bnb), 0);
+// What an increase put into the position, gas excluded — the one figure the
+// sums below and the record page both print (2026-09-24, D2: the page printed
+// wbnb_used, which leaves out the BNB swapped to the other side; 0.01347
+// against 0.32355 on 2026-09-15).
+export const increaseIntoPosition = (inc) => (inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used));
 
 // WHAT COUNTS AS A RE-SET (2026-09-19). Three places counted and said 15, 14
 // and 13 on the same record: the loss table counted every re-set it could
@@ -2248,7 +2253,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     const inc = st.increase;
     if (inc && inc.acted && !inc.error) {
       increases += 1;
-      intoPosition += inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used);
+      intoPosition += increaseIntoPosition(inc);
       keptWaiting = 0;   // an increase takes everything above the reserve, kept fees with it
     }
     // The ladder step (2026-09-16) puts BNB into the reserve range: capital
@@ -2387,6 +2392,21 @@ export function trimHistory(history, entry, cap = HISTORY_CAP) {
   const all = (Array.isArray(history) ? history : []).concat(entry === undefined ? [] : [entry]);
   const over = Math.max(0, all.length - cap);
   return { kept: all.slice(over), dropped: all.slice(0, over) };
+}
+
+// The value series, capped (2026-09-24, D1 of the review). Every point
+// carries its own running totals, so the newest points are enough — except
+// for the one the profit is measured from: the first point with a value is
+// the capital the record starts on. slice(-400) would have dropped it from
+// about late November 2026 and moved the basis silently forward (twenty
+// points gone read as 13% less profit). It is kept in front of the tail.
+export const SERIES_CAP = 400;
+export function capSeries(series, cap = SERIES_CAP) {
+  const all = Array.isArray(series) ? series : [];
+  if (all.length <= cap) return all;
+  const tail = all.slice(-(cap - 1));
+  const base = all.find((p) => p && p.value_bnb != null);
+  return base && !tail.includes(base) ? [base, ...tail] : all.slice(-cap);
 }
 
 // The record with its archived runs back in front of the history, and how
@@ -6199,7 +6219,7 @@ import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
-import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY } from '../shared/lp-flow.js';
+import { moneyFlow, flowLines, withArchive, ARCHIVE_KEY, capSeries, increaseIntoPosition } from '../shared/lp-flow.js';
 
 // The DeFi agent's record with its archived runs merged back in (lp-flow.js):
 // the shape every sum over the history expects. Readers that only want the
@@ -6848,7 +6868,7 @@ async function recordLpSeries(env) {
   if (!point) return { recorded: false, why: 'already recorded', points: series.length };
   point.bnb_usd = await bnbUsd().catch(() => null);
   series.push(lpSeriesPoint(point));
-  const kept = series.slice(-400);
+  const kept = capSeries(series);
   await env.AGENT.put(LP_SERIES_KEY, JSON.stringify(kept));
   return { recorded: true, points: kept.length, point };
 }
@@ -8049,7 +8069,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 <dt>Wait</dt><dd>${(() => { const dt = v.delay_test || {}; const ds = dt.delays || []; if (!ds.length) return `${h(dt.in_use_hours ?? 2)} h outside the range before a re-set — the wait the agent uses; whether another wait would net more is replayed once a day of prices is on record`; const line = ds.map((d) => `${h(d.hours)} h: ${d.net_usd_per_day == null ? 'nothing' : `$${h(f(d.net_usd_per_day, 2))} a day at ±${h(d.width)}% after ${h(d.resets)} re-set${d.resets === 1 ? '' : 's'}`}${d.in_use ? ' (in use)' : ''}`).join(' · '); return `<b>${h(dt.in_use_hours)} h</b> outside the range before a re-set is what the agent uses — ${dt.wait_basis === 'measured' ? 'measured' : 'set'}: ${h(dt.why || '')}. Replayed with every wait: ${line}. A measured wait needs 120 h of prices and a tenth more per day than the set wait; under either bar the set wait stands.`; })()}</dd>
 <dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, 2))} — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
 <dt>Re-sets so far</dt><dd>${v.resets && v.resets.resets ? `${h(v.resets.resets)} on record: <b>${h(f(v.resets.lost_to_price_bnb, 5))} BNB</b> lost to the price against holding by the trades of the centred re-sets (a one-sided re-set, since 2026-09-16, trades nothing and realises nothing)${v.resets.rows[0] && v.resets.rows[0].lost_to_price_usd != null ? ` (≈ $${h(f(v.resets.rows.reduce((a, r) => a + (r.lost_to_price_usd || 0), 0), 2))})` : ''}, ${h(f(v.resets.execution_bnb, 5))} BNB of execution (gas, swap fee${v.resets.impact_measured ? ', impact measured on ' + h(v.resets.impact_measured) : ', impact not yet measured'}) — the table below` : 'none on record yet'}</dd>
-<dt>Measured</dt><dd>${v.calibration ? `the agent's own position at ±${h(v.calibration.position_width_pct)}% earned <b>$${h(f(v.calibration.measured_usd_per_day_on_50, 2))} a day on $50</b> over the last ${h(f(v.calibration.hours, 0))} h, against $${h(f(v.calibration.replay_usd_per_day_on_50, 2))} the replay puts on that width${v.calibration.factor != null ? ` — ${h(f(v.calibration.factor * 100, 0))}% of the replay's figure` : ''}. The replay overstates every width alike, so the pick between widths stands; the dollar beside it is an estimate, this line is the measurement.` : 'the position has not earned for a day yet on the series — the replay\'s dollars are estimates until it has'}</dd>
+<dt>Measured</dt><dd>${v.calibration ? `the agent's own position at ±${h(v.calibration.position_width_pct)}% earned <b>$${h(f(v.calibration.measured_usd_per_day_on_50, 2))} a day on $50</b> over the last ${h(f(v.calibration.hours, 0))} h, against $${h(f(v.calibration.replay_usd_per_day_on_50, 2))} the replay puts on that width${v.calibration.replay_hours != null ? ` over its own ${h(f(v.calibration.replay_hours, 0))} h` : ''}${v.calibration.factor != null ? ` — ${h(f(v.calibration.factor * 100, 0))}% of the replay's figure` : ''}. ${v.calibration.replay_is === 'above' ? 'Here the replay says more than the position earned' : v.calibration.replay_is === 'below' ? 'Here the position earned more than the replay says' : v.calibration.replay_is === 'close' ? 'Here the two are within a tenth of each other' : 'The two cannot be set against each other yet'}; the two cover different hours, so this is a check on the dollars, not a correction. The pick compares widths with each other on the same replay and is not scaled; the dollar beside it is an estimate, this line is the measurement.` : 'the position has not earned for a day yet on the series — the replay\'s dollars are estimates until it has'}</dd>
 <dt>Held a full day</dt><dd>${v.day_pick ? `±${h(v.day_pick.width)}% is the narrowest width that stayed in range through every tested 24-hour window (${h(v.day_pick.day.held)} of ${h(v.day_pick.day.tested)}).${v.day_pick.width !== (pick && pick.width) ? ' It is not the pick: the pick is the width that ended the most ahead against holding over the week.' : ''}` : 'no width has held through every tested day yet'}</dd>
 <dt>Record</dt><dd>${h(v.windows)} windows, ${h(when(v.from))} to ${h(when(v.to))}, blocks ${h(v.from_block)} to ${h(v.to_block)}${v.price_samples ? `; ${h(v.price_samples)} ten-minute price samples since ${h(when(v.price_samples_since))} walked beside the hourly heads` : '; the ten-minute price tape starts with the next check'}${v.overlapping_runs_not_counted ? `; ${h(v.overlapping_runs_not_counted)} overlapping run${v.overlapping_runs_not_counted === 1 ? '' : 's'} counted once` : ''}${v.thin ? ' — thin: too few windows to lean on yet' : ''}</dd>
 </dl></div>
@@ -8198,7 +8218,11 @@ ${pageTail}`;
         for (const x of Array.isArray(s.sweep) ? s.sweep : []) if (x.acted && !x.error) parts.push(`swept ${f(x.sold, 2)} ${x.token || ''} → ${f(x.received_bnb, 5)} BNB into the DeFi wallet`);
         if (s.collect?.acted && !s.collect.error && (Number(s.collect.bobai_bnb ?? s.collect.forwarded_bnb) > 0 || Number(s.collect.kept_bnb) > 0)) parts.push(`collected fees → ${f(s.collect.bobai_bnb ?? s.collect.forwarded_bnb, 5)} BNB into BOBAI held in the wallet${Number(s.collect.kept_bnb) > 0 ? `, ${f(s.collect.kept_bnb, 5)} BNB kept as capital` : ''}`);
         if (s.rebalance?.acted && !s.rebalance.error) parts.push(`range re-set${s.rebalance.width_pct ? ` ±${s.rebalance.width_pct}%` : ''}${s.rebalance.new_position ? `, position #${s.rebalance.new_position}` : ''}`);
-        if (s.increase?.acted && !s.increase.error) parts.push(`added ${f(s.increase.wbnb_used, 5)} BNB to the position`);
+        // New BNB in, as the sums count it; an increase that only put the
+        // wallet's leftovers back in brought no new BNB and says what it put.
+        if (s.increase?.acted && !s.increase.error) parts.push(increaseIntoPosition(s.increase) >= 0.00001 || !(Number(s.increase.other_used) > 0)
+          ? `added ${f(increaseIntoPosition(s.increase), 5)} BNB to the position`
+          : `put the wallet's leftover ${f(s.increase.other_used, 4)} ${String(s.increase.would_add?.other_token || '').toLowerCase() === '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' ? 'CAKE' : 'of the other token'}${Number(s.increase.wbnb_used) > 0 ? ` and ${f(s.increase.wbnb_used, 5)} WBNB` : ''} into the position — no new BNB`);
         if (s.ladder?.acted && !s.ladder.error) parts.push(s.ladder.new_reserve && !s.ladder.old_reserve ? `opened a reserve range below the price with ${f(s.ladder.bnb_spent, 4)} BNB (#${s.ladder.new_reserve})` : s.ladder.old_reserve ? `re-set the reserve range beside the price (#${s.ladder.old_reserve} → #${s.ladder.new_reserve})` : s.ladder.merged_reserve ? `merged the reserve range into the main one (#${s.ladder.merged_reserve})` : `grew the reserve range by ${f(s.ladder.bnb_spent, 4)} BNB`);
         const errs = [...(Array.isArray(s.sweep) ? s.sweep : []), s.collect, s.rebalance, s.increase, s.ladder].filter((x) => x && x.error).map((x) => x.error);
         if (e.error) errs.push(e.error);
@@ -10532,7 +10556,13 @@ export function calibration(points, rows, widthClass, { minHours = 20, maxHours 
     capital_bnb: Number(capitalBnb.toFixed(6)),
     measured_usd_per_day_on_50: r4(measured),
     replay_usd_per_day_on_50: replay == null ? null : r4(replay),
+    // The replay's own window: not the same hours as the position's, and the
+    // page names both rather than implying one period (2026-09-24, D6).
+    replay_hours: row ? r2(row.earnings.hours) : null,
     factor: factor == null ? null : r2(factor),
+    // Which way the replay is off, from the figure itself. The page said
+    // "overstates" as a fixed sentence and read it beside 170%.
+    replay_is: factor == null ? null : factor < 0.9 ? 'above' : factor > 1.1 ? 'below' : 'close',
     basis: `the position's own fees over ${r2(hours)} h against the replay's gross fees for the ±${widthClass}% width, both on $50 a day; the pick compares widths with each other and is not scaled`,
   };
 }

@@ -27,6 +27,11 @@ const r6 = (v) => Number(v.toFixed(6));
 // it; gas has its own line below. Counted in both, it left the profit twice
 // (2026-09-18: 0.00087 BNB over 28 steps, 6.5% of the profit on the card).
 const gasOf = (step) => (step && Array.isArray(step.txs) ? step.txs : []).reduce((a, t) => a + n(t.gas_bnb), 0);
+// What an increase put into the position, gas excluded — the one figure the
+// sums below and the record page both print (2026-09-24, D2: the page printed
+// wbnb_used, which leaves out the BNB swapped to the other side; 0.01347
+// against 0.32355 on 2026-09-15).
+export const increaseIntoPosition = (inc) => (inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used));
 
 // WHAT COUNTS AS A RE-SET (2026-09-19). Three places counted and said 15, 14
 // and 13 on the same record: the loss table counted every re-set it could
@@ -81,7 +86,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     const inc = st.increase;
     if (inc && inc.acted && !inc.error) {
       increases += 1;
-      intoPosition += inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used);
+      intoPosition += increaseIntoPosition(inc);
       keptWaiting = 0;   // an increase takes everything above the reserve, kept fees with it
     }
     // The ladder step (2026-09-16) puts BNB into the reserve range: capital
@@ -220,6 +225,21 @@ export function trimHistory(history, entry, cap = HISTORY_CAP) {
   const all = (Array.isArray(history) ? history : []).concat(entry === undefined ? [] : [entry]);
   const over = Math.max(0, all.length - cap);
   return { kept: all.slice(over), dropped: all.slice(0, over) };
+}
+
+// The value series, capped (2026-09-24, D1 of the review). Every point
+// carries its own running totals, so the newest points are enough — except
+// for the one the profit is measured from: the first point with a value is
+// the capital the record starts on. slice(-400) would have dropped it from
+// about late November 2026 and moved the basis silently forward (twenty
+// points gone read as 13% less profit). It is kept in front of the tail.
+export const SERIES_CAP = 400;
+export function capSeries(series, cap = SERIES_CAP) {
+  const all = Array.isArray(series) ? series : [];
+  if (all.length <= cap) return all;
+  const tail = all.slice(-(cap - 1));
+  const base = all.find((p) => p && p.value_bnb != null);
+  return base && !tail.includes(base) ? [base, ...tail] : all.slice(-cap);
 }
 
 // The record with its archived runs back in front of the history, and how

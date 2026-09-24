@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 16 files, 6487 lines.
+# one fetch. 16 files, 6527 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -55,7 +55,7 @@ import {
   splitFees, FEE_SHARE_KEPT_PCT, resetForward, MIN_RESET_FORWARD_BNB, reserveCollect, RESERVE_COLLECT_MIN_BNB,
   widthUpgrade, widthClassOf, rangeLeft, RANGE_LEFT_TICKS, ONE_SIDED_GAP_TICKS, pickWidth, WIDTH_UPGRADE_ENABLED, ladderDecision, LADDER_GATE, ladderHeal, resumeSide, ladderActsInWatch,
 } from '../shared/lp-guards.js';
-import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP, isReset } from '../shared/lp-flow.js';
+import { moneyFlow, flowLines, trimHistory, withArchive, HISTORY_CAP, isReset, capSeries, SERIES_CAP, increaseIntoPosition } from '../shared/lp-flow.js';
 import { resetLosses } from '../worker-agent/lp-windows.js';
 import { alertsOf } from '../shared/lp-alerts.js';
 
@@ -255,6 +255,20 @@ if (SELF) {
   is('gas is summed over every transaction, the failed run included', fl.gas.transactions === 11 && near(fl.gas.bnb, 0.00016));
   is('a failed collect adds no fees', near(fl.in.fees.collected_bnb, 0.008));
   is('since = first run that acted, last_moved = the newest', fl.since === '2026-09-03T05:23:00Z' && fl.last_moved === '2026-09-09T12:00:00Z');
+  // The value series cap keeps the point the profit is measured from
+  // (2026-09-24, D1).
+  {
+    const pts = [{ at: 'none' }, ...Array.from({ length: 9 }, (_, i) => ({ at: `p${i}`, value_bnb: 1 + i / 10 }))];
+    const c = capSeries(pts, 5);
+    is('the capped series keeps the first valued point as its base', c.length === 5 && c[0].at === 'p0' && c[4].at === 'p8');
+    is('a pointless run before it may go, the base may not', !c.some((p) => p.at === 'none'));
+    is('a series under the cap is untouched', capSeries(pts, 20).length === 10 && SERIES_CAP === 400);
+    is('without the base the old slice would have moved the basis', pts.slice(-5)[0].at !== 'p0');
+  }
+  // The record page prints what an increase put in the way the sums count it
+  // (2026-09-24, D2): 2026-09-15 read 0.01347 (wbnb_used) for 0.32355.
+  is('an increase is what left the wallet less its gas, not the WBNB leg', near(increaseIntoPosition({ bnb_spent: '0.3236', wbnb_used: '0.01347', txs: [{ gas_bnb: 0.00005 }] }), 0.32355));
+  is('a record before bnb_spent falls back to the WBNB leg', near(increaseIntoPosition({ wbnb_used: '0.01347' }), 0.01347));
   // The cap and its archive (2026-09-15): what the cap pushes out is not
   // lost to the sums, and a record under the cap archives nothing.
   {
@@ -3557,6 +3571,11 @@ const r6 = (v) => Number(v.toFixed(6));
 // it; gas has its own line below. Counted in both, it left the profit twice
 // (2026-09-18: 0.00087 BNB over 28 steps, 6.5% of the profit on the card).
 const gasOf = (step) => (step && Array.isArray(step.txs) ? step.txs : []).reduce((a, t) => a + n(t.gas_bnb), 0);
+// What an increase put into the position, gas excluded — the one figure the
+// sums below and the record page both print (2026-09-24, D2: the page printed
+// wbnb_used, which leaves out the BNB swapped to the other side; 0.01347
+// against 0.32355 on 2026-09-15).
+export const increaseIntoPosition = (inc) => (inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used));
 
 // WHAT COUNTS AS A RE-SET (2026-09-19). Three places counted and said 15, 14
 // and 13 on the same record: the loss table counted every re-set it could
@@ -3611,7 +3630,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     const inc = st.increase;
     if (inc && inc.acted && !inc.error) {
       increases += 1;
-      intoPosition += inc.bnb_spent != null ? Math.max(0, n(inc.bnb_spent) - gasOf(inc)) : n(inc.wbnb_used);
+      intoPosition += increaseIntoPosition(inc);
       keptWaiting = 0;   // an increase takes everything above the reserve, kept fees with it
     }
     // The ladder step (2026-09-16) puts BNB into the reserve range: capital
@@ -3750,6 +3769,21 @@ export function trimHistory(history, entry, cap = HISTORY_CAP) {
   const all = (Array.isArray(history) ? history : []).concat(entry === undefined ? [] : [entry]);
   const over = Math.max(0, all.length - cap);
   return { kept: all.slice(over), dropped: all.slice(0, over) };
+}
+
+// The value series, capped (2026-09-24, D1 of the review). Every point
+// carries its own running totals, so the newest points are enough — except
+// for the one the profit is measured from: the first point with a value is
+// the capital the record starts on. slice(-400) would have dropped it from
+// about late November 2026 and moved the basis silently forward (twenty
+// points gone read as 13% less profit). It is kept in front of the tail.
+export const SERIES_CAP = 400;
+export function capSeries(series, cap = SERIES_CAP) {
+  const all = Array.isArray(series) ? series : [];
+  if (all.length <= cap) return all;
+  const tail = all.slice(-(cap - 1));
+  const base = all.find((p) => p && p.value_bnb != null);
+  return base && !tail.includes(base) ? [base, ...tail] : all.slice(-cap);
 }
 
 // The record with its archived runs back in front of the history, and how
@@ -5795,7 +5829,13 @@ export function calibration(points, rows, widthClass, { minHours = 20, maxHours 
     capital_bnb: Number(capitalBnb.toFixed(6)),
     measured_usd_per_day_on_50: r4(measured),
     replay_usd_per_day_on_50: replay == null ? null : r4(replay),
+    // The replay's own window: not the same hours as the position's, and the
+    // page names both rather than implying one period (2026-09-24, D6).
+    replay_hours: row ? r2(row.earnings.hours) : null,
     factor: factor == null ? null : r2(factor),
+    // Which way the replay is off, from the figure itself. The page said
+    // "overstates" as a fixed sentence and read it beside 170%.
+    replay_is: factor == null ? null : factor < 0.9 ? 'above' : factor > 1.1 ? 'below' : 'close',
     basis: `the position's own fees over ${r2(hours)} h against the replay's gross fees for the ±${widthClass}% width, both on $50 a day; the pick compares widths with each other and is not scaled`,
   };
 }

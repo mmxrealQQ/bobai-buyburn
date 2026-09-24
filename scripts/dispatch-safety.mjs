@@ -22,7 +22,7 @@
 // Usage:
 //   node scripts/dispatch-safety.mjs --self-test   fixtures, no network
 //   node scripts/dispatch-safety.mjs               and measure the live server
-import { isReadOnly, argsFromTask, addressesInTask, answersAsked, askedAction, usdInTask, KNOWN_TOKENS } from '../worker-agent/dispatch.js';
+import { isReadOnly, argsFromTask, addressesInTask, answersAsked, askedAction, usdInTask, taskTerms, scoreTool, KNOWN_TOKENS } from '../worker-agent/dispatch.js';
 
 const SITE = process.env.SITE || 'https://brainonbnb.com';
 const args = process.argv.slice(2);
@@ -143,6 +143,18 @@ if (args.includes('--self-test')) {
     if (argsFromTask(sizeSchema, t)?.usd !== undefined) fails.push(`a dollar size was invented from "${t}"`);
   if (argsFromTask(sizeSchema, 'a $500 trade of FOO') !== null) fails.push('a dollar figure alone called a tool with nothing else to go on');
   if (argsFromTask({ required: ['address'], properties: { address: { type: 'string' }, depth: { type: 'number' } } }, 'CAKE $500')?.depth !== undefined) fails.push('a dollar size was put into a parameter that is not about dollars');
+  // Tool choice reads content words, whole (2026-09-24, P2). Filler, an
+  // address and a figure are not topics; "get", "can" and "out" inside
+  // `topaz_get_user_dex_positions`, "scan" and "route" once outscored the tool
+  // the question was about.
+  const tt = taskTerms('check before a trade: 50000 $ of 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82, can I get out again');
+  for (const w of ['can', 'get', 'of', '50000', '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82']) if (tt.includes(w)) fails.push(`"${w}" was kept as a topic word`);
+  for (const w of ['check', 'trade', 'out']) if (!tt.includes(w)) fails.push(`"${w}" was dropped as a topic word`);
+  const stranger = { name: 'topaz_get_user_dex_positions', description: 'Get a wallet user DEX positions, can scan routes' };
+  const preflightTool = { name: 'bsc_token_preflight', description: 'The check to run before every trade: can I get in, and can I get out again' };
+  if (scoreTool(stranger, tt) >= scoreTool(preflightTool, tt)) fails.push('a tool matching only filler scored at least as high as the tool the question was about');
+  if (scoreTool({ name: 'get_routes', description: 'rescan about' }, ['scan', 'out', 'can']) !== 0) fails.push('a term matched inside another word');
+  if (scoreTool({ name: 'get_pools', description: '' }, ['pool']) !== 3) fails.push('a plural in a tool name did not match the singular in the task');
   if (argsFromTask({ required: ['symbol'], properties: { symbol: { type: 'string' } } }, 'price of CAKE 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82') !== null) fails.push('a parameter the task cannot name was filled anyway');
   const a2 = argsFromTask({ required: ['token', 'chainId'], properties: { token: { type: 'string' }, chainId: { type: 'number' } } }, 'scan 0x245c386dcfed896f5c346107596141e5edcbffff');
   if (!a2 || a2.token !== '0x245c386dcfed896f5c346107596141e5edcbffff' || a2.chainId !== 56) fails.push('the chain this router serves was not filled in beside the address');

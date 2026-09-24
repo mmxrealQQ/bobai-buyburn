@@ -32,7 +32,7 @@ async function loadAgents() {
 }
 
 // Words that match everything and therefore mean nothing here.
-const STOP = new Set(['the', 'a', 'an', 'and', 'or', 'for', 'with', 'that', 'this',
+export const STOP = new Set(['the', 'a', 'an', 'and', 'or', 'for', 'with', 'that', 'this',
   'can', 'who', 'what', 'is', 'are', 'to', 'of', 'in', 'on', 'me', 'my', 'i',
   'agent', 'agents', 'need', 'want', 'find', 'looking', 'someone', 'something']);
 

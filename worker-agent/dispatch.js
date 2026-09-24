@@ -23,6 +23,7 @@
 import { cappedText } from './net.js';
 import { recordSession } from './sessions.js';
 import { PROOF_IDS } from '../shared/agent-registrations.js';
+import { STOP as FIND_STOP } from './find.js';
 
 // Our own registered agents can come back as the best match. They are not
 // strangers, and calling them "not affiliated with us" would be untrue.
@@ -445,10 +446,31 @@ async function a2aCall(url, data, timeoutMs = 15000) {
 
 // Scores how well a tool matches the request. Same idea as the broker's
 // scoring, applied one level down — which tool of this agent, not which agent.
-const scoreTool = (tool, terms) => {
-  const hay = `${tool.name} ${tool.description || ''}`.toLowerCase();
+//
+// 2026-09-24: it matched substrings of every word in the task, so "can I get
+// out again" gave a stranger's `topaz_get_user_dex_positions` a score from
+// "get", "can" (in "scan") and "out" (in "route"), and since the first agent
+// with any score wins, a pre-trade question was answered with somebody's DEX
+// positions. Terms are now content words only — no filler, no address, no
+// figure (those are arguments, not topics) — and they match whole words.
+const TERM_STOP = new Set([...FIND_STOP,
+  'get', 'give', 'tell', 'show', 'how', 'much', 'many',
+  'does', 'do', 'did', 'will', 'would', 'should', 'could', 'which', 'when', 'where', 'why', 'there',
+  'it', 'its', 'be', 'from', 'at', 'by', 'about', 'please', 'some', 'any', 'all', 'one', 'you', 'your',
+  'if', 'so', 'up', 'now', 'just', 'like', 'into', 'than', 'then', 'has', 'have', 'was', 'were', 'am',
+  'usd', 'dollar', 'dollars', 'bsc', 'bnb', 'chain', 'token', 'tokens',
+]);
+export const taskTerms = (task) => [...new Set(String(task || '').toLowerCase()
+  .replace(/0x[0-9a-f]{6,}/g, ' ')
+  .split(/[^a-z0-9]+/)
+  .filter((t) => t.length > 1 && !/^\d/.test(t) && !TERM_STOP.has(t)))];
+const wordsOf = (s) => new Set(String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+const hasWord = (words, t) => words.has(t) || words.has(t + 's') || (t.endsWith('s') && words.has(t.slice(0, -1)));
+export const scoreTool = (tool, terms) => {
+  const name = wordsOf(tool.name);
+  const desc = wordsOf(tool.description);
   let s = 0;
-  for (const t of terms) if (hay.includes(t)) s += hay.startsWith(t) ? 3 : 2;
+  for (const t of terms) s += hasWord(name, t) ? 3 : hasWord(desc, t) ? 2 : 0;
   return s;
 };
 
@@ -510,7 +532,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
     } };
   }
 
-  const terms = task.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2);
+  const terms = taskTerms(task);
 
   // If the request itself asks for an action, say so instead of quietly
   // answering an adjacent read-only question. Asked to "build swap calldata and
@@ -546,7 +568,36 @@ export async function handleDispatch(url, body, env, opts = {}) {
     catch { return String(agent.id); }
   };
 
-  for (const agent of candidates.slice(0, 4)) {
+  // Which agent is tried first is decided by its tools, not only by the
+  // broker's rank. The broker ranks agents on everything they describe; the
+  // loop below used to take the first one with ANY matching tool, so a
+  // stranger whose tool matched one word of the task answered it before an
+  // agent whose tool matched the question (2026-09-24, P2 of the review). The
+  // four surfaces are read in parallel, once, and reused below; ties keep the
+  // broker's order.
+  const a2aOnly = (agent) => (agent.speaks || []).includes('a2a') && !(agent.speaks || []).includes('mcp');
+  const mcpEndpointOf = (agent) => {
+    const speaks = agent.speaks || [];
+    if (!speaks.includes('mcp') && !(agent.endpoints || []).some((e) => /\/mcp(\/|$)/i.test(e))) return null;
+    return (agent.endpoints || []).find((e) => /\/mcp(\/|$)/i.test(e))
+      || (() => { try { return new URL(agent.endpoints[0]).origin + '/mcp'; } catch { return null; } })();
+  };
+  const pool = candidates.slice(0, 4);
+  const surfaces = await Promise.all(pool.map(async (agent) => {
+    if (a2aOnly(agent)) {
+      const found = await a2aCard((agent.endpoints || [])[0]).catch(() => null);
+      const skills = (found?.card?.skills || []).filter((sk) => skillIsReadOnly(sk) && !SELLING_SKILLS.has(String(sk.id || sk.name || '').toLowerCase()));
+      return { found, best: Math.max(0, ...skills.map((sk) => scoreTool({ name: sk.id || sk.name, description: sk.description }, terms))) };
+    }
+    const endpoint = mcpEndpointOf(agent);
+    const listed = endpoint ? await rpcCall(endpoint, 'tools/list', {}).catch(() => null) : null;
+    const tools = (listed?.result?.tools || []).filter(isReadOnly);
+    return { listed, best: Math.max(0, ...tools.map((t) => scoreTool(t, terms))) };
+  }));
+  const order = pool.map((agent, i) => ({ agent, i, ...surfaces[i] }))
+    .sort((a, b) => b.best - a.best || a.i - b.i);
+
+  for (const { agent, found: prefetchedCard, listed: prefetchedTools } of order) {
     const speaks = agent.speaks || [];
     const first = (agent.endpoints || [])[0];
 
@@ -555,7 +606,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
     // speaks both is answered over MCP, where a call is a question rather than
     // the opening of a negotiation.
     if (speaks.includes('a2a') && !speaks.includes('mcp')) {
-      const found = await a2aCard(first).catch(() => null);
+      const found = prefetchedCard;
       if (!found) { attempts.push({ agent: agent.name, endpoint: first, outcome: 'advertises A2A but serves no card naming an endpoint and skills' }); continue; }
       const { card, url } = found;
 
@@ -643,12 +694,11 @@ export async function handleDispatch(url, body, env, opts = {}) {
       attempts.push({ agent: agent.name, endpoint: first || null, outcome: 'speaks neither MCP nor A2A' });
       continue;
     }
-    const endpoint = (agent.endpoints || []).find((e) => /\/mcp(\/|$)/i.test(e))
-      || (() => { try { return new URL(agent.endpoints[0]).origin + '/mcp'; } catch { return null; } })();
+    const endpoint = mcpEndpointOf(agent);
     if (!endpoint) continue;
 
-    // Ask the agent what it has, now, rather than trusting the census snapshot.
-    const listed = await rpcCall(endpoint, 'tools/list', {}).catch(() => null);
+    // Asked above, now, rather than trusting the census snapshot.
+    const listed = prefetchedTools;
     const tools = listed?.result?.tools || [];
     if (!tools.length) { attempts.push({ agent: agent.name, endpoint, outcome: 'did not answer tools/list' }); continue; }
 

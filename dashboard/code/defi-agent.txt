@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 6737 lines.
+# one fetch. 17 files, 6751 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -310,6 +310,11 @@ if (SELF) {
     is('the whole bill stays gas.bnb; the part the fees are net of is named, the rest is what a profit takes off', near(g.bnb, 0.0004) && near(g.netted_in_fees_bnb, 0.0003) && near(g.to_subtract_bnb, 0.0001) && g.transactions === 4);
     const failed = moneyFlow({ history: [{ at: '2026-09-21T04:23:00Z', acted: true, steps: { collect: { ...c, error: 'x' } } }], last: {} }).gas;
     is('a failed collect produced no fees, so none of its gas is netted', near(failed.netted_in_fees_bnb, 0) && near(failed.to_subtract_bnb, 0.0004));
+  }
+  // The x402 wallet is swept for both coins it is paid in (2026-09-24, the operator's go).
+  {
+    const x = INCOME_SOURCES.filter((s0) => s0.wallet.toLowerCase() === '0x690e950214980bc329823a2db2fd90c06bd54de4');
+    is('the x402 wallet is swept for USD1 and for USDC, with its own key, each once', x.length === 2 && x.every((s0) => s0.keyEnv === 'X402_PRIVATE_KEY') && x.map((s0) => s0.symbol).sort().join() === 'USD1,USDC' && new Set(INCOME_SOURCES.map((s0) => s0.key)).size === INCOME_SOURCES.length);
   }
   is('fees owed that no step read are null, not zero (2026-09-24, D7)', moneyFlow({ history: [], last: { steps: {} } }).waiting.fees_owed_bnb === null);
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
@@ -1979,6 +1984,15 @@ export const INCOME_SOURCES = [
     wallet: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
     token: '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d', symbol: 'USD1', decimals: 18,
     earns: 'USD1 paid by agents for pool watches',
+  },
+  // The same wallet, the other coin (2026-09-24, the operator's go): since
+  // e29b14e worker-lp settles standard x402 payments (USDC through Permit2)
+  // into this wallet, and a sweep that knew only USD1 left them there.
+  {
+    key: 'x402-usdc', name: 'x402 service (USDC)', keyEnv: 'X402_PRIVATE_KEY',
+    wallet: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
+    token: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', symbol: 'USDC', decimals: 18,
+    earns: 'USDC paid by agents through standard x402, settled by worker-lp',
   },
   {
     key: 'provider', name: 'agent provider', keyEnv: 'AGENT_PROVIDER_PRIVATE_KEY',

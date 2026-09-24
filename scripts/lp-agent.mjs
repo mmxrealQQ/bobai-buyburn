@@ -295,6 +295,11 @@ if (SELF) {
     const failed = moneyFlow({ history: [{ at: '2026-09-21T04:23:00Z', acted: true, steps: { collect: { ...c, error: 'x' } } }], last: {} }).gas;
     is('a failed collect produced no fees, so none of its gas is netted', near(failed.netted_in_fees_bnb, 0) && near(failed.to_subtract_bnb, 0.0004));
   }
+  // The x402 wallet is swept for both coins it is paid in (2026-09-24, the operator's go).
+  {
+    const x = INCOME_SOURCES.filter((s0) => s0.wallet.toLowerCase() === '0x690e950214980bc329823a2db2fd90c06bd54de4');
+    is('the x402 wallet is swept for USD1 and for USDC, with its own key, each once', x.length === 2 && x.every((s0) => s0.keyEnv === 'X402_PRIVATE_KEY') && x.map((s0) => s0.symbol).sort().join() === 'USD1,USDC' && new Set(INCOME_SOURCES.map((s0) => s0.key)).size === INCOME_SOURCES.length);
+  }
   is('fees owed that no step read are null, not zero (2026-09-24, D7)', moneyFlow({ history: [], last: { steps: {} } }).waiting.fees_owed_bnb === null);
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
   // The newest owed figure wins (2026-09-12): an hourly check's rebalance step

@@ -19,6 +19,7 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 import { permit2Mismatch, settleCalldata, permit2Id, PERMIT2_PROXY, QUEUE_PREFIX } from '../shared/x402-permit2.js';
 import { settleX402Queue } from '../worker-lp/x402-settle.js';
+import { INCOME_SOURCES, planSweep, executeSweep, readBnbUsd, ADDR } from '../shared/lp-agent.js';
 
 const FORK_URL = process.env.BSC_RPC_KEYED_URL_2;
 const ANVIL = process.env.ANVIL || path.join(os.homedir(), '.foundry', 'bin', process.platform === 'win32' ? 'anvil.exe' : 'anvil');
@@ -95,7 +96,7 @@ console.log('\nA PAYMENT AT THE PRICE — checked at the door, settled by the qu
 const p1 = await pay();
 const d1 = await door(p1);
 ok('the door accepts it and simulates the settle without a key', d1.ok, d1.reason || '');
-const before = await usdcOf(PAYTO), buyerBefore = await usdcOf(buyer.address);
+let before = await usdcOf(PAYTO); const buyerBefore = await usdcOf(buyer.address);
 const r1 = await run();
 const q1 = rec(d1.id);
 ok('the queue settles it from the settler wallet', q1.state === 'settled' && /^0x[0-9a-f]{64}$/.test(q1.tx), JSON.stringify(r1.results));
@@ -103,6 +104,27 @@ ok('the price arrived at the x402 wallet, and left the buyer', (await usdcOf(PAY
 ok('the earnings record says settled, with the transaction', earn(d1.id).settle === 'settled' && earn(d1.id).settle_tx === q1.tx && earn(d1.id).amount === PRICE.toString());
 const r1b = await run();
 ok('a settled payment is not sent again', (r1b.results || []).length === 0 && (await usdcOf(PAYTO)) - before === PRICE);
+
+console.log('\nTHE DAILY SWEEP TAKES THE USDC TOO — sold for BNB, straight to the DeFi wallet');
+{
+  const src = INCOME_SOURCES.find((x) => x.key === 'x402-usdc');
+  ok('the USDC source is the x402 wallet, its key and USDC', !!src && src.wallet.toLowerCase() === PAYTO.toLowerCase() && src.keyEnv === 'X402_PRIVATE_KEY' && src.token === USDC && src.decimals === 18);
+  await wait(await wb.writeContract({ address: USDC, abi: erc20Abi, functionName: 'transfer', args: [PAYTO, parseUnits('5', 18)] }));
+  await test.setBalance({ address: PAYTO, value: parseEther('0.01') });
+  await test.impersonateAccount({ address: PAYTO });
+  const held = await usdcOf(PAYTO);
+  const plan = await planSweep(pub, src, await readBnbUsd(pub));
+  ok('the planner takes it: a dollar on the route, above the floor', plan.no == null, plan.no || `${plan.summary.sweeping} USDC -> ${plan.summary.bnb_equivalent} BNB`);
+  const lpBefore = await pub.getBalance({ address: ADDR.LP_WALLET });
+  const wx = createWalletClient({ account: PAYTO, chain, transport: http(LOCAL) });
+  const done = await executeSweep(pub, wx, { address: PAYTO }, plan, () => {}, { txs: [] });
+  const lpAfter = await pub.getBalance({ address: ADDR.LP_WALLET });
+  ok('the USDC left the x402 wallet and the BNB arrived at the DeFi wallet', held - (await usdcOf(PAYTO)) === plan.amount && lpAfter - lpBefore > 0n && Number(done.received_bnb) >= Number(plan.summary.bnb_equivalent) * 0.97, `${done.sold} USDC -> ${done.received_bnb} BNB`);
+  ok('… with nothing left approved to the router', (await pub.readContract({ address: USDC, abi: erc20Abi, functionName: 'allowance', args: [PAYTO, ADDR.V2_ROUTER] })) === 0n);
+  await test.stopImpersonatingAccount({ address: PAYTO });
+  // The checks below count what settles from here on, the sweep having moved the rest.
+  before = (await usdcOf(PAYTO)) - PRICE;
+}
 
 console.log('\nTHE SAME SIGNATURE TWICE — the chain settles a nonce once');
 ok('the door refuses it before any answer goes out', !(await door(p1)).ok);

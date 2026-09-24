@@ -82,6 +82,15 @@ export const INCOME_SOURCES = [
     token: '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d', symbol: 'USD1', decimals: 18,
     earns: 'USD1 paid by agents for pool watches',
   },
+  // The same wallet, the other coin (2026-09-24, the operator's go): since
+  // e29b14e worker-lp settles standard x402 payments (USDC through Permit2)
+  // into this wallet, and a sweep that knew only USD1 left them there.
+  {
+    key: 'x402-usdc', name: 'x402 service (USDC)', keyEnv: 'X402_PRIVATE_KEY',
+    wallet: '0x690E950214980BC329823A2DB2fD90C06Bd54dE4',
+    token: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', symbol: 'USDC', decimals: 18,
+    earns: 'USDC paid by agents through standard x402, settled by worker-lp',
+  },
   {
     key: 'provider', name: 'agent provider', keyEnv: 'AGENT_PROVIDER_PRIVATE_KEY',
     wallet: '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963',

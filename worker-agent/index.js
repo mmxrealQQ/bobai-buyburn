@@ -28,6 +28,7 @@
 import { runCensusTick, runFrontierTick } from './census.js';
 import { handleFind } from './find.js';
 import { dexterAccepts, verifyAndSettle, parsePaymentHeader, v2Shape } from './x402.js';
+import { permit2Mismatch, settleCalldata, permit2Id, PERMIT2_PROXY, QUEUE_PREFIX } from '../shared/x402-permit2.js';
 import { handleDispatch } from './dispatch.js';
 import { readSessions, MAX_SESSIONS, trackRecord, sessionOrigins, originOf, ORIGIN_MARKED_SINCE } from './sessions.js';
 import { runCanary } from './canary.js';
@@ -943,7 +944,26 @@ const WATCH_TOOL = {
 async function chargeX402(env, { payTo, price, description, resource, proof, sold, alt = null }) {
   const parsed = parsePaymentHeader(proof);
   let check, tx, asset = 'USD1';
-  if (parsed.kind === 'x402') {
+  let queued = null;
+  const inner = parsed.kind === 'x402' && parsed.value && parsed.value.payload;
+  if (inner && inner.permit2Authorization) {
+    // A PERMIT2 PAYMENT IS SETTLED BY US, NOT THE FACILITATOR (2026-09-24, A8;
+    // the operator's go, route 2). Its settle reverted inside the facilitator
+    // twice on a payment that settles on chain. Here, with no key and nothing
+    // sent: every field against our terms, then the settle as an eth_call —
+    // it proves signature, balance and allowance at this block. The answer
+    // goes out; worker-lp sends the settle from the x402 wallet within ten
+    // minutes (shared/x402-permit2.js). The Permit2 nonce settles once.
+    const accepts = dexterAccepts({ payTo, amountAtomic: price.toString(), description, resource });
+    const bad = permit2Mismatch(inner, accepts);
+    if (bad) return { ok: false, status: 402, body: { error: 'payment not accepted', stage: 'verify', reason: bad } };
+    try { await rpc('eth_call', [{ from: payTo, to: PERMIT2_PROXY, data: settleCalldata(inner) }, 'latest']); }
+    catch (e) { return { ok: false, status: 402, body: { error: 'payment not accepted', stage: 'verify', reason: 'the payment would not settle: ' + String(e && e.message || e).split('\n')[0].slice(0, 200) } }; }
+    tx = permit2Id(inner);
+    asset = 'USDC';
+    check = { ok: true, paid: BigInt(inner.permit2Authorization.permitted.amount), from: inner.permit2Authorization.from };
+    queued = { payload: inner, req: accepts, at: Date.now(), for: sold, state: 'pending' };
+  } else if (parsed.kind === 'x402') {
     const accepts = dexterAccepts({ payTo, amountAtomic: price.toString(), description, resource });
     const r = await verifyAndSettle(parsed.value, accepts);
     if (!r.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', stage: r.stage, reason: r.reason } };
@@ -965,6 +985,9 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
   }
   const claim = await claimPayment(env, tx, sold);
   if (!claim.ok) return { ok: false, status: 402, body: { error: 'payment not accepted', reason: claim.reason } };
+  // Queued once the claim is ours: worker-lp settles it; the earnings record
+  // below says it is pending until then.
+  if (queued) await env.AGENT.put(QUEUE_PREFIX + tx, JSON.stringify(queued), { expirationTtl: 14 * 86400 });
   // earn: records USD1 amounts only — /stats sums them as dollars. A payment
   // in another coin is recorded with its coin and its dollar price at the
   // quote, so the total stays a dollar figure and the coin stays visible.
@@ -973,7 +996,7 @@ async function chargeX402(env, { payTo, price, description, resource, proof, sol
   const from = (check.from || '').toLowerCase() || null;
   const earn = asset === 'USD1'
     ? { at: Date.now(), amount: check.paid.toString(), tx, for: sold, from }
-    : { at: Date.now(), amount: price.toString(), tx, for: sold, from, paid_in: asset, paid_atomic: check.paid.toString() };
+    : { at: Date.now(), amount: price.toString(), tx, for: sold, from, paid_in: asset, paid_atomic: check.paid.toString(), ...(queued ? { settle: 'pending' } : {}) };
   // The earnings record is permanent, like the mark: what was earned does not
   // stop having been earned after 400 days.
   await env.AGENT.put(`earn:${tx}`, JSON.stringify(earn));
@@ -1018,7 +1041,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
       body: {
         error: 'payment required',
         service: service.id, name: service.name, what: service.deliverables, needs: service.needs,
-        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
+        how: `Pay ${fmtUsd1(ANSWER_PRICE)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(ANSWER_PRICE)} USD1${bobai ? ` or ${bobai.tokens.toLocaleString('en-US')} $BOBAI` : ''} to ${payTo} on BNB Smart Chain, then repeat this POST with header PAYMENT-SIGNATURE: <transaction hash> and a JSON body {"task":"<what you want, with the address in it>"} or {"params":{…}} using the field names under needs.`,
         ...(bobai ? { in_bobai: { tokens: bobai.tokens, usd_per_bobai: bobai.usd_per_bobai, note: '$BOBAI paid here stays in the income wallet as $BOBAI — off the market — until the DeFi agent’s sweep learns the token. USD1 is swept into the liquidity position the day it clears the gas floor.' } } : {}),
         example: `https://agent.brainonbnb.com/example?service=${serviceId} — what the answer looks like, free`,
         or_escrow: 'The same answer is sold through the ERC-8183 escrow on https://brainonbnb.com/registry, for buyers who want a kernel between them and the seller.',
@@ -1101,8 +1124,8 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         // Both assets named (2026-09-18): accepts[0] is the facilitator route
         // and settles in USDC, the direct route is USD1 — a client that budgets
         // off the one-asset sentence holds the wrong token for the other route.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator (accepts[0]) — either lands in the same wallet`,
-        how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets) — either lands in the same wallet`,
+        how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
         needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair (0x…); left out, it is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
@@ -1334,7 +1357,7 @@ export default {
         payment: {
           protocol: 'x402', network: NETWORK, payTo,
           // What a 402 here accepts, in the order the accepts[] carries it.
-          accepts: ['USDC through the x402 facilitator (accepts[0])', 'USD1 by direct transfer, transaction hash in PAYMENT-SIGNATURE', '$BOBAI by direct transfer, at the quote in the 402'],
+          accepts: ['USDC by standard x402 (accepts[0], Permit2), settled by us within ten minutes', 'USD1 by direct transfer, transaction hash in PAYMENT-SIGNATURE', '$BOBAI by direct transfer, at the quote in the 402'],
           asset: USD1, symbol: 'USD1',
         },
         start_here: { find: 'https://agent.brainonbnb.com/find?q=venus+health+factor', example_answer: 'https://agent.brainonbnb.com/example?service=health_factor', hire: 'https://agent.brainonbnb.com/hire?agent=302257&task=health+factor', card: 'https://agent.brainonbnb.com/.well-known/agent.json' },
@@ -2406,7 +2429,7 @@ ${pageTail}`;
         if (!id) note('sell:answer:index');
         if (!id) return json({
           what: 'Any of the six answers this project sells, one payment each, delivered at once — no escrow, no job, no dispute window.',
-          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer, by direct transfer or through the x402 facilitator — or the same price in $BOBAI, quoted on each 402`,
+          price: `${fmtUsd1(ANSWER_PRICE)} USD1 per answer, by direct transfer or in USDC by standard x402 — or the same price in $BOBAI, quoted on each 402`,
           services: Object.values(SERVICES).map((s) => ({ id: s.id, name: s.name, needs: s.needs, terms: `POST https://agent.brainonbnb.com/answer?service=${s.id}`, example: `https://agent.brainonbnb.com/example?service=${s.id}` })),
           how: 'POST /answer?service=<id> once without payment: the 402 names the price and the wallet. Pay, then POST again with PAYMENT-SIGNATURE and a body naming the task.',
           or_escrow: 'The same answers through the ERC-8183 escrow: https://brainonbnb.com/registry',
@@ -2436,7 +2459,7 @@ ${pageTail}`;
         // Both schemes in accepts[] are quoted, because only one of them is
         // USD1: a client that takes the facilitator route pays the same amount
         // in USDC, and a price line naming one asset hides the other.
-        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator — either lands in the same wallet`,
+        price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC by standard x402 — either lands in the same wallet`,
         buy: 'POST this same URL with {"token":"0x…","depthBelowUsd":1000,"callback":"https://…"} — pair optional, found from the token (its PancakeSwap V2 pair with WBNB, or with quote)',
         how: terms.body.how,
         accepts: terms.body.accepts,

@@ -62,7 +62,10 @@ export function dexterAccepts({ payTo, amountAtomic, description, resource }) {
     resource,
     description,
     mimeType: 'application/json',
-    maxTimeoutSeconds: 120,
+    // The client signs its Permit2 deadline as now + maxTimeoutSeconds, and
+    // worker-lp settles the queue every ten minutes: 120 s expired before the
+    // first run could send it (2026-09-24, A8). An hour covers six runs.
+    maxTimeoutSeconds: 3600,
     extra: {
       name: DEXTER_ASSET.name,
       version: DEXTER_ASSET.version,

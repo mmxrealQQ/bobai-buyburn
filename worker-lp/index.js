@@ -29,6 +29,7 @@
 import { createPublicClient, createWalletClient, http, fallback } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { settleX402Queue } from './x402-settle.js';
 import {
   RPCS, INCOME_SOURCES,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
@@ -557,5 +558,10 @@ export default {
     const watch = event.cron !== DAILY_CRON && event.cron !== HOURLY_CRON;
     const steps = event.cron === DAILY_CRON ? STEPS : ['rebalance', 'ladder', 'increase'];
     ctx.waitUntil(agentTick(env, { steps, watch }).catch(async (e) => record(env, { at: new Date().toISOString(), ok: false, acted: false, error: String(e.message).slice(0, 300) })));
+    // The x402 Permit2 queue (A8, 2026-09-24): apart from the agent's run, so
+    // nothing in it can stop a re-set, and nothing in a re-set can stop it.
+    ctx.waitUntil(settleX402Queue(env, RPCS)
+      .then((r) => (r && (r.results || []).length ? env.AGENT.put('x402:settle:last', JSON.stringify({ at: new Date().toISOString(), ...r })) : null))
+      .catch((e) => env.AGENT.put('x402:settle:last', JSON.stringify({ at: new Date().toISOString(), error: String(e && e.message || e).slice(0, 300) }))));
   },
 };

@@ -52,11 +52,11 @@
    "group": "bots",
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
-   "files": 16,
-   "lines": 6624,
-   "zipBytes": 167650,
-   "txtBytes": 519621,
-   "sha256": "d0b93bbd3ad1d138",
+   "files": 17,
+   "lines": 6737,
+   "zipBytes": 170329,
+   "txtBytes": 526722,
+   "sha256": "7c9625e1a27053ef",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -105,7 +105,8 @@
     "worker-agent/lp-windows.js",
     "worker-lp/index.js",
     "worker-lp/package.json",
-    "worker-lp/wrangler.toml"
+    "worker-lp/wrangler.toml",
+    "worker-lp/x402-settle.js"
    ]
   },
   {
@@ -632,11 +633,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 41,
-   "lines": 14163,
-   "zipBytes": 313110,
-   "txtBytes": 880901,
-   "sha256": "f3099c64a339aa4a",
+   "files": 42,
+   "lines": 14273,
+   "zipBytes": 316279,
+   "txtBytes": 888536,
+   "sha256": "9651cc5e3cc15309",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -680,6 +681,7 @@
     "shared/lp-guards.js",
     "shared/own-jobs.js",
     "shared/package.json",
+    "shared/x402-permit2.js",
     "worker-agent/canary.js",
     "worker-agent/catalog.js",
     "worker-agent/categories.js",

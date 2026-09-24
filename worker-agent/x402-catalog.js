@@ -68,9 +68,12 @@ No API key, no account, no signup. Measurement only — nothing here is financia
 Two ways to pay the same price into the same wallet, advertised side by side in
 every 402. A client takes whichever it can execute:
 
-1. **Standard x402**, scheme \`exact\`, settled through the public Dexter
-   facilitator (\`https://x402.dexter.cash\`) via Permit2. Gas is sponsored, so
-   neither side pays it. Any stock x402 v2 client does this unattended.
+1. **Standard x402**, scheme \`exact\`, USDC through Permit2 (accepts[0]). The
+   answer comes back at once; we settle the signed transfer on chain within
+   ten minutes and pay its gas. A stock x402 v2 client does this unattended
+   once it allows the asset: the official client ships with no default asset
+   on BNB Chain, so add USDC \`0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d\` on
+   \`eip155:56\` to its \`spendControls.allowedAssets\`.
 2. **Direct transfer** — send USD1 yourself, then repeat the request with the
    transaction hash in \`PAYMENT-SIGNATURE\`. Needs no facilitator and no
    signature support, which is why it exists.

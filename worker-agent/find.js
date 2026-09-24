@@ -34,7 +34,31 @@ async function loadAgents() {
 // Words that match everything and therefore mean nothing here.
 export const STOP = new Set(['the', 'a', 'an', 'and', 'or', 'for', 'with', 'that', 'this',
   'can', 'who', 'what', 'is', 'are', 'to', 'of', 'in', 'on', 'me', 'my', 'i',
-  'agent', 'agents', 'need', 'want', 'find', 'looking', 'someone', 'something']);
+  'agent', 'agents', 'need', 'want', 'find', 'looking', 'someone', 'something',
+  // Filler of a whole sentence (2026-09-24). Words that carry meaning in one
+  // question and none in another ("out", "again") are left to the weights.
+  'get', 'give', 'tell', 'show', 'how', 'much', 'many', 'does', 'do', 'did', 'will',
+  'would', 'should', 'could', 'which', 'when', 'where', 'why', 'there', 'it', 'its',
+  'be', 'from', 'at', 'by', 'about', 'please', 'some', 'any', 'all', 'you', 'your',
+  'if', 'so', 'up', 'now', 'just', 'into', 'than', 'then', 'has', 'have', 'was',
+  'were', 'am']);
+
+// A term matches a whole word (a plural counts as its singular): as a
+// substring "out" matched "route" and "about", and every agent with long
+// descriptions matched everything (2026-09-24, P6).
+const WORD_RE = new Map();
+const hasWord = (text, t) => {
+  let re = WORD_RE.get(t);
+  if (!re) {
+    // A word of four letters or more also matches as the start of a longer
+    // one ("safe" finds "safety", "scan" finds "scanner"); a shorter one must
+    // stand alone, or "out" is back in "outcome".
+    const body = t.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+    re = new RegExp('(^|[^a-z0-9])' + body + (t.length >= 4 ? '' : '(s|es)?(?![a-z0-9])'));
+    WORD_RE.set(t, re);
+  }
+  return re.test(text);
+};
 
 const terms = (q) => String(q || '')
   .toLowerCase()
@@ -42,9 +66,36 @@ const terms = (q) => String(q || '')
   .filter((t) => t.length > 1 && !STOP.has(t))
   .slice(0, 12);
 
+// Everything an agent says about itself, in one string, for counting how
+// many agents use a word at all.
+const hayOf = (a) => [
+  ...(a.tools || []).map((t) => `${t.name} ${t.description || ''}`),
+  ...(a.skills || []).map(String), a.name || '', a.description || '',
+  ...(a.declared_services || []).map((x) => x.name || ''),
+].join(' ').toLowerCase();
+
+// HOW MUCH A WORD SAYS (2026-09-24, P6 of the review). Every term used to
+// count the same, so a whole sentence ranked first whoever wrote the longest
+// descriptions: 'check', 'get' and 'out' are in most of the 900, and for a
+// pre-trade question two agents with forty tools each scored 139 and 122
+// against the pre-trade check's 72. A word now weighs by how few agents use
+// it (inverse document frequency over the pool searched): about 1 for a word
+// one agent in ten uses, well under that for one most use, up to about 3 for
+// a word nearly nobody does.
+export function termWeights(pool, ts) {
+  const hays = pool.map(hayOf);
+  const n = hays.length;
+  const w = {};
+  for (const t of ts) {
+    const df = hays.reduce((c, h) => c + (hasWord(h, t) ? 1 : 0), 0);
+    w[t] = Math.log((n + 1) / (df + 1)) / Math.LN10;
+  }
+  return w;
+}
+
 // Where a term is found matters. A tool name is a commitment the agent made in
 // code; a description is a sentence somebody wrote. Both count, not equally.
-function score(agent, ts) {
+export function score(agent, ts, w = null) {
   if (!ts.length) return 0;
   const tools = (agent.tools || []).map((t) => `${t.name} ${t.description || ''}`.toLowerCase());
   const skills = (agent.skills || []).map((s) => String(s).toLowerCase());
@@ -55,15 +106,19 @@ function score(agent, ts) {
   let s = 0;
   let hit = 0;
   for (const t of ts) {
-    let any = false;
-    if (tools.some((x) => x.includes(t))) { s += 6; any = true; }
-    if (skills.some((x) => x.includes(t))) { s += 5; any = true; }
-    if (name.includes(t)) { s += 4; any = true; }
-    if (svc.includes(t)) { s += 2; any = true; }
-    if (desc.includes(t)) { s += 2; any = true; }
-    if (any) hit++;
+    const k = w ? (w[t] ?? 1) : 1;
+    let here = 0;
+    if (tools.some((x) => hasWord(x, t))) here += 6;
+    if (skills.some((x) => hasWord(x, t))) here += 5;
+    if (hasWord(name, t)) here += 4;
+    if (hasWord(svc, t)) here += 2;
+    if (hasWord(desc, t)) here += 2;
+    s += here * k;
+    // Only a word that says something counts toward covering the question.
+    if (here && k >= 0.5) hit++;
   }
-  if (!hit) return 0;
+  if (!s) return 0;
+  hit = Math.max(hit, 1);
   // Matching more of the query beats matching one word emphatically.
   s *= 1 + (hit - 1) * 0.6;
   // Speaking a protocol is not relevance, but among equally relevant results
@@ -122,8 +177,9 @@ export async function handleFind(url) {
   }
 
   const ts = terms(q);
+  const weights = ts.length ? termWeights(pool, ts) : null;
   const scored = pool
-    .map((a) => ({ a, s: score(a, ts) }))
+    .map((a) => ({ a, s: score(a, ts, weights) }))
     .filter((x) => (ts.length ? x.s > 0 : true))
     .sort((x, y) => y.s - x.s || x.a.id - y.a.id)
     .slice(0, limit);

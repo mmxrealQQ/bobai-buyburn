@@ -476,6 +476,9 @@ const TERM_STOP = new Set([...FIND_STOP,
   'it', 'its', 'be', 'from', 'at', 'by', 'about', 'please', 'some', 'any', 'all', 'one', 'you', 'your',
   'if', 'so', 'up', 'now', 'just', 'like', 'into', 'than', 'then', 'has', 'have', 'was', 'were', 'am',
   'usd', 'dollar', 'dollars', 'bsc', 'bnb', 'chain', 'token', 'tokens',
+  // Praise, not a topic: "best yield for USDT" went to pancakeswap_best_route
+  // on the word in its name (2026-09-24).
+  'best', 'good', 'top', 'right',
 ]);
 export const taskTerms = (task) => [...new Set(String(task || '').toLowerCase()
   .replace(/0x[0-9a-f]{6,}/g, ' ')
@@ -525,7 +528,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
   // larger of the two protocols, ignored by the thing whose whole job is to
   // reach agents. Which protocol an agent speaks is decided per candidate
   // below, from what it actually advertises.
-  findUrl.searchParams.set('limit', '8');
+  findUrl.searchParams.set('limit', '12');
   const { handleFind } = await import('./find.js');
   const found = await handleFind(findUrl);
   // Our own registration is in the index like everybody else's, and for a real
@@ -536,6 +539,10 @@ export async function handleDispatch(url, body, env, opts = {}) {
   // nobody is asking us about.
   const candidates = (found.body?.results || [])
     .filter((a) => (a.endpoints || []).length)
+    // One that speaks neither protocol can only be skipped below; it used to
+    // take one of the four places, and on 2026-09-24 pushed the one agent that
+    // answers a Venus health factor out of them.
+    .filter((a) => (a.speaks || []).some((p) => p === 'mcp' || p === 'a2a') || (a.endpoints || []).some((e) => /\/mcp(\/|$)/i.test(e)))
     .filter((a) => !opts.excludeOperator || !(a.endpoints || []).some((e) => {
       try { return new URL(e).hostname.replace(/^www\./, '') === opts.excludeOperator; } catch { return false; }
     }));
@@ -609,7 +616,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
   const askedAddrs = String(task).match(/0x[0-9a-fA-F]{40}/g) || [];
   const takesAddress = (t) => Object.keys(t?.inputSchema?.properties || {}).some((n) => ADDRESS_LIKE.test(n.toLowerCase()));
   const fits = (t) => !askedAddrs.length || takesAddress(t);
-  const pool = candidates.slice(0, 4);
+  const pool = candidates.slice(0, 6);
   const surfaces = await Promise.all(pool.map(async (agent) => {
     if (a2aOnly(agent)) {
       const found = await a2aCard((agent.endpoints || [])[0]).catch(() => null);

@@ -23,6 +23,7 @@
 //   node scripts/dispatch-safety.mjs --self-test   fixtures, no network
 //   node scripts/dispatch-safety.mjs               and measure the live server
 import { isReadOnly, argsFromTask, addressesInTask, answersAsked, askedAction, usdInTask, taskTerms, scoreTool, KNOWN_TOKENS } from '../worker-agent/dispatch.js';
+import { termWeights as findTermWeights, score as findScore } from '../worker-agent/find.js';
 
 const SITE = process.env.SITE || 'https://brainonbnb.com';
 const args = process.argv.slice(2);
@@ -139,6 +140,20 @@ if (args.includes('--self-test')) {
     if (askedAction(t).length) fails.push(`a question about an action was refused as an order: "${t}"`);
   for (const t of ['I need to sell my CAKE', 'I am going to buy BOBAI', 'I want you to swap 1 BNB', 'help me to transfer USDT'])
     if (!askedAction(t).length) fails.push(`an order was not recognised as one: "${t}"`);
+  // The broker weighs a word by how rare it is and matches it whole
+  // (2026-09-24, P6): long descriptions no longer win a whole sentence.
+  {
+    const verbose = { id: 1, name: 'Everything Agent', description: 'get out again, check and route everything, a check before anything', tools: [] };
+    const safety = { id: 2, name: 'Token Safety', description: 'honeypot and tax check for a token', tools: [] };
+    const others = Array.from({ length: 20 }, (_, i) => ({ id: 10 + i, name: `other ${i}`, description: 'check a thing', tools: [] }));
+    const poolF = [verbose, safety, ...others];
+    const tsF = ['check', 'safe'];
+    const wF = findTermWeights(poolF, tsF);
+    if (!(wF.check < wF.safe)) fails.push('a word nearly every agent uses weighed as much as a rare one');
+    if (!(findScore(safety, tsF, wF) > findScore(verbose, tsF, wF))) fails.push('"safe" did not find "Token Safety" ahead of a long description that only says "check"');
+    if (findScore({ name: 'x', description: 'rescan the route', tools: [] }, ['scan'], null) !== 0) fails.push('a term matched inside another word');
+    if (findScore({ name: 'x', description: 'a pool scanner', tools: [] }, ['scan'], null) === 0) fails.push('a four-letter term did not find the word it starts');
+  }
   // Control words judge tool names only; in a sentence they are questions.
   for (const t of ['stop loss level for CAKE', 'set of pools for BOBAI', 'start price of the CAKE pool'])
     if (askedAction(t).length) fails.push(`a question was refused as an order on a control word: "${t}"`);
@@ -159,7 +174,7 @@ if (args.includes('--self-test')) {
   // the question was about.
   const tt = taskTerms('check before a trade: 50000 $ of 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82, can I get out again');
   for (const w of ['can', 'get', 'of', '50000', '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82']) if (tt.includes(w)) fails.push(`"${w}" was kept as a topic word`);
-  for (const w of ['check', 'trade', 'out']) if (!tt.includes(w)) fails.push(`"${w}" was dropped as a topic word`);
+  for (const w of ['check', 'trade', 'before', 'out']) if (!tt.includes(w)) fails.push(`"${w}" was dropped as a topic word`);
   const stranger = { name: 'topaz_get_user_dex_positions', description: 'Get a wallet user DEX positions, can scan routes' };
   const preflightTool = { name: 'bsc_token_preflight', description: 'The check to run before every trade: can I get in, and can I get out again' };
   if (scoreTool(stranger, tt) >= scoreTool(preflightTool, tt)) fails.push('a tool matching only filler scored at least as high as the tool the question was about');

@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 16 files, 6582 lines.
+# one fetch. 16 files, 6624 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -47,7 +47,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote, swapFloor, bobaiBuyFloor, requoteOnce, POOL_SWAP_FLOOR_BPS,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition, mintedIn, heldIds, HELD_IDS_CAP, shareShortfallSale,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition, mintedIn, heldIds, HELD_IDS_CAP, shareShortfallSale, gasPriceNow, GAS_BUMP_PLAIN, GAS_BUMP_RESET,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
@@ -288,6 +288,29 @@ if (SELF) {
   }
   is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
+  // The gas bump per step (2026-09-24, D4, the operator's go): the plain
+  // steps pay the node's price, a re-set and the ladder keep 1.5x; the floor
+  // still lifts a price under 0.05 gwei.
+  {
+    const node = (g) => ({ getGasPrice: async () => g });
+    const at005 = 50_000_000n, at1 = 1_000_000_000n;
+    is('a collect, sweep or top-up pays the price the node names', (await gasPriceNow(node(at1), GAS_BUMP_PLAIN)) === at1 && (await gasPriceNow(node(at005), GAS_BUMP_PLAIN)) === at005);
+    is('a re-set and the ladder keep the 1.5x margin', (await gasPriceNow(node(at1), GAS_BUMP_RESET)) === 1_500_000_000n);
+    is('the 0.05 gwei floor still holds under a plain step', (await gasPriceNow(node(10_000_000n), GAS_BUMP_PLAIN)) === at005);
+    const src = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');
+    const bumpIn = (fn) => { const i = src.indexOf('export async function ' + fn + '('); const j = src.indexOf('export async function', i + 10); return (src.slice(i, j > 0 ? j : undefined).match(/sender\(pub, wallet, txs, log, (GAS_BUMP_\w+)\)/) || [])[1]; };
+    is('each step names its bump (source pin): plain for collect, sweep, increase; reset for rebalance, relocate, ladder',
+      ['executeCollect', 'executeSweep', 'executeIncrease'].every((f) => bumpIn(f) === 'GAS_BUMP_PLAIN') && ['executeRebalance', 'executeRelocate', 'executeLadder'].every((f) => bumpIn(f) === 'GAS_BUMP_RESET'));
+  }
+  // D5 (2026-09-24, the operator's go): the collect's fees are net of the gas
+  // of its collect, sale and unwrap; only the $BOBAI buy's gas is still to take off.
+  {
+    const c = { acted: true, produced_bnb: '0.01', kept_bnb: '0.005', bobai_bnb: '0.005', kept_pct: 50, txs: [{ label: 'collect', gas_bnb: 0.0001 }, { label: 'sell the other', gas_bnb: 0.0001 }, { label: 'unwrap', gas_bnb: 0.0001 }, { label: 'buy BOBAI with the profit share and hold it', gas_bnb: 0.0001 }] };
+    const g = moneyFlow({ history: [{ at: '2026-09-21T04:23:00Z', acted: true, steps: { collect: c } }], last: {} }).gas;
+    is('the whole bill stays gas.bnb; the part the fees are net of is named, the rest is what a profit takes off', near(g.bnb, 0.0004) && near(g.netted_in_fees_bnb, 0.0003) && near(g.to_subtract_bnb, 0.0001) && g.transactions === 4);
+    const failed = moneyFlow({ history: [{ at: '2026-09-21T04:23:00Z', acted: true, steps: { collect: { ...c, error: 'x' } } }], last: {} }).gas;
+    is('a failed collect produced no fees, so none of its gas is netted', near(failed.netted_in_fees_bnb, 0) && near(failed.to_subtract_bnb, 0.0004));
+  }
   is('fees owed that no step read are null, not zero (2026-09-24, D7)', moneyFlow({ history: [], last: { steps: {} } }).waiting.fees_owed_bnb === null);
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
   // The newest owed figure wins (2026-09-12): an hourly check's rebalance step
@@ -2016,11 +2039,20 @@ const read = (pub, address, abi, functionName, args = []) => pub.readContract({ 
 // reserves in lp-guards.js are still priced at 1 gwei — that is the safety
 // margin — but paying 1 gwei on a chain that clears at 0.05 was paying
 // twenty times the fare, measured 2026-09-02.
-export async function gasPriceNow(pub) {
+// THE BUMP IS PER STEP (2026-09-24, D4 of the review; the operator's go).
+// Every transaction paid 1.5x the node's price: 0.075 gwei on a chain that
+// clears at 0.05, a third of all the agent's gas, while the buyback bot has
+// run at the plain price without a gap. A step that only collects, sells,
+// buys or tops up can wait a block and pays the price (bumpTenths 10); a
+// re-set or a ladder move, where a half-done sequence leaves the position
+// out of the pool, keeps the margin (15). Floor and cap unchanged.
+export const GAS_BUMP_PLAIN = 10n;
+export const GAS_BUMP_RESET = 15n;
+export async function gasPriceNow(pub, bumpTenths = GAS_BUMP_RESET) {
   const g = await pub.getGasPrice().catch(() => null);
   if (g == null) return GAS_PRICE;
   const floor = 50_000_000n, cap = 3_000_000_000n;
-  const bumped = (g * 15n) / 10n;
+  const bumped = (g * BigInt(bumpTenths)) / 10n;
   return bumped < floor ? floor : bumped > cap ? cap : bumped;
 }
 
@@ -2031,7 +2063,7 @@ export async function gasPriceNow(pub) {
 // so a step that sent and then failed on a READ reported no transactions
 // at all. The collect of that morning recorded an empty list against a
 // collect that had already run on chain.
-export function sender(pub, wallet, txs, log = () => {}) {
+export function sender(pub, wallet, txs, log = () => {}, bumpTenths = GAS_BUMP_RESET) {
   let price = null;
   const send = async (label, req) => {
     // Whatever throws — a simulation that reverts before sending, a sent
@@ -2042,7 +2074,7 @@ export function sender(pub, wallet, txs, log = () => {}) {
     // nonce of 34.
     let sent = false;
     try {
-      if (price == null) price = await gasPriceNow(pub);
+      if (price == null) price = await gasPriceNow(pub, bumpTenths);
       const hash = req.to
         ? await wallet.sendTransaction({ ...req, gasPrice: price })
         : await wallet.writeContract({ ...req, gasPrice: price });
@@ -2436,7 +2468,7 @@ export async function planCollect(pub, address, ladder = null) {
 // capital for the next increase, so the position grows out of its own fees —
 // and the rest goes to the buyback wallet. The record carries both figures.
 export async function executeCollect(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   const otherBefore = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -2531,7 +2563,7 @@ export async function planSweep(pub, source, feed = null) {
 // straight to the DeFi wallet — one transaction fewer, and the income
 // wallet never holds BNB it could be tempted to keep.
 export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   const before = await pub.getBalance({ address: ADDR.LP_WALLET });
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
   // 3% floor: both pairs are deep and both tokens are dollars; the guard has
@@ -2902,7 +2934,7 @@ async function wrapWaiting(pub, send, address) {
 }
 
 export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = false, txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_RESET);
   send.owner = account.address;
   // A resumed re-set (plan.resume) has no position to unwind: the earlier run
   // already did that and stopped before its mint.
@@ -3137,7 +3169,7 @@ export async function planRelocate(pub, address, { toPool = null, widthOverride 
 
 export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = true, txs = [] } = {}) {
   if (!plan.from || !plan.to || !plan.target || !plan.ticks) throw new Error('the plan carries no move');
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_RESET);
   send.owner = account.address;
   const swaps = [];
   // 1. What the old range owes, read now, so the record counts it as fees
@@ -3286,7 +3318,7 @@ export async function planIncrease(pub, address, position = null, ladder = null)
 }
 
 export async function executeIncrease(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   // 1. BNB above the reserve becomes WBNB. Nothing to wrap when the capital
@@ -3405,7 +3437,7 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
 // alone — the caller re-sets the main range next and that mint takes what
 // came back. No trade in any of them.
 export async function executeLadder(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_RESET);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   const held = () => heldIds(pub, account.address);
@@ -3617,6 +3649,8 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const bySource = {};
   let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0, bobaiUnits = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
+  // Gas the fees are already net of (2026-09-24, D5, the operator's go).
+  let gasNetted = 0;
   let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
   let lastKeptPct = null;
   let first = null, lastMoved = null;
@@ -3647,6 +3681,12 @@ export function moneyFlow(rec, { earned = null } = {}) {
         // older records sent it to the buyback wallet (c.forwarded_bnb).
         feesForwarded += n(c.bobai_bnb ?? c.forwarded_bnb);
         bobaiUnits += n(c.bobai_units);
+        // A collect measures what it produced as the wallet's balance after
+        // its collect, sale and unwrap against before: their gas is already
+        // out of produced_bnb. Only the $BOBAI buy comes after that reading.
+        // Subtracting all of it again took the collects' gas off the profit
+        // twice (0.000187 BNB, 0.63% of the profit, on 2026-09-21).
+        for (const t of (Array.isArray(c.txs) ? c.txs : [])) if (!/^buy BOBAI/.test(String(t.label || ''))) gasNetted += n(t.gas_bnb);
       }
     }
     const inc = st.increase;
@@ -3737,7 +3777,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
       increases,
       resets,
     },
-    gas: { bnb: r6(gas), transactions: txs },
+    // bnb: every transaction's gas, what it all cost. to_subtract_bnb: the part
+    // no fee figure is already net of — the one a profit takes off.
+    gas: { bnb: r6(gas), transactions: txs, netted_in_fees_bnb: r6(gasNetted), to_subtract_bnb: r6(Math.max(0, gas - gasNetted)) },
     waiting,
     rule: keptPct == null ? null : { fee_share_kept_pct: keptPct, fee_share_bobai_pct: 100 - keptPct },
     paid_for: earned ? { x402_answers: n(earned.count), usd1: n(earned.totalUsd1) } : null,

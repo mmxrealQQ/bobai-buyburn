@@ -141,11 +141,20 @@ const read = (pub, address, abi, functionName, args = []) => pub.readContract({ 
 // reserves in lp-guards.js are still priced at 1 gwei — that is the safety
 // margin — but paying 1 gwei on a chain that clears at 0.05 was paying
 // twenty times the fare, measured 2026-09-02.
-export async function gasPriceNow(pub) {
+// THE BUMP IS PER STEP (2026-09-24, D4 of the review; the operator's go).
+// Every transaction paid 1.5x the node's price: 0.075 gwei on a chain that
+// clears at 0.05, a third of all the agent's gas, while the buyback bot has
+// run at the plain price without a gap. A step that only collects, sells,
+// buys or tops up can wait a block and pays the price (bumpTenths 10); a
+// re-set or a ladder move, where a half-done sequence leaves the position
+// out of the pool, keeps the margin (15). Floor and cap unchanged.
+export const GAS_BUMP_PLAIN = 10n;
+export const GAS_BUMP_RESET = 15n;
+export async function gasPriceNow(pub, bumpTenths = GAS_BUMP_RESET) {
   const g = await pub.getGasPrice().catch(() => null);
   if (g == null) return GAS_PRICE;
   const floor = 50_000_000n, cap = 3_000_000_000n;
-  const bumped = (g * 15n) / 10n;
+  const bumped = (g * BigInt(bumpTenths)) / 10n;
   return bumped < floor ? floor : bumped > cap ? cap : bumped;
 }
 
@@ -156,7 +165,7 @@ export async function gasPriceNow(pub) {
 // so a step that sent and then failed on a READ reported no transactions
 // at all. The collect of that morning recorded an empty list against a
 // collect that had already run on chain.
-export function sender(pub, wallet, txs, log = () => {}) {
+export function sender(pub, wallet, txs, log = () => {}, bumpTenths = GAS_BUMP_RESET) {
   let price = null;
   const send = async (label, req) => {
     // Whatever throws — a simulation that reverts before sending, a sent
@@ -167,7 +176,7 @@ export function sender(pub, wallet, txs, log = () => {}) {
     // nonce of 34.
     let sent = false;
     try {
-      if (price == null) price = await gasPriceNow(pub);
+      if (price == null) price = await gasPriceNow(pub, bumpTenths);
       const hash = req.to
         ? await wallet.sendTransaction({ ...req, gasPrice: price })
         : await wallet.writeContract({ ...req, gasPrice: price });
@@ -561,7 +570,7 @@ export async function planCollect(pub, address, ladder = null) {
 // capital for the next increase, so the position grows out of its own fees —
 // and the rest goes to the buyback wallet. The record carries both figures.
 export async function executeCollect(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   const otherBefore = await read(pub, plan.other, ABI.ERC20, 'balanceOf', [account.address]);
@@ -656,7 +665,7 @@ export async function planSweep(pub, source, feed = null) {
 // straight to the DeFi wallet — one transaction fewer, and the income
 // wallet never holds BNB it could be tempted to keep.
 export async function executeSweep(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   const before = await pub.getBalance({ address: ADDR.LP_WALLET });
   await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, plan.amount] });
   // 3% floor: both pairs are deep and both tokens are dollars; the guard has
@@ -1027,7 +1036,7 @@ async function wrapWaiting(pub, send, address) {
 }
 
 export async function executeRebalance(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = false, txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_RESET);
   send.owner = account.address;
   // A resumed re-set (plan.resume) has no position to unwind: the earlier run
   // already did that and stopped before its mint.
@@ -1262,7 +1271,7 @@ export async function planRelocate(pub, address, { toPool = null, widthOverride 
 
 export async function executeRelocate(pub, wallet, account, plan, log = () => {}, { keptPct = FEE_SHARE_KEPT_PCT, wrapFirst = true, txs = [] } = {}) {
   if (!plan.from || !plan.to || !plan.target || !plan.ticks) throw new Error('the plan carries no move');
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_RESET);
   send.owner = account.address;
   const swaps = [];
   // 1. What the old range owes, read now, so the record counts it as fees
@@ -1411,7 +1420,7 @@ export async function planIncrease(pub, address, position = null, ladder = null)
 }
 
 export async function executeIncrease(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_PLAIN);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   // 1. BNB above the reserve becomes WBNB. Nothing to wrap when the capital
@@ -1530,7 +1539,7 @@ export async function planLadder(pub, address, { record = null, ladder = null, p
 // alone — the caller re-sets the main range next and that mint takes what
 // came back. No trade in any of them.
 export async function executeLadder(pub, wallet, account, plan, log = () => {}, { txs = [] } = {}) {
-  const send = sender(pub, wallet, txs, log);
+  const send = sender(pub, wallet, txs, log, GAS_BUMP_RESET);
   send.owner = account.address;
   const before = await pub.getBalance({ address: account.address });
   const held = () => heldIds(pub, account.address);

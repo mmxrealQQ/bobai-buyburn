@@ -31,7 +31,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
   RPCS, INCOME_SOURCES, ADDR, splitForRange, amountsForRange, minsForRange, MINT_DRIFT_TICKS, tradeToRatio, TRADE_DUST_WBNB, unwindCalls, ticksAround, readBnbUsd, sender, v3SwapArgs, swapNote, swapFloor, bobaiBuyFloor, requoteOnce, POOL_SWAP_FLOOR_BPS,
   planSweep, executeSweep, planCollect, executeCollect, planIncrease, executeIncrease,
-  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition, mintedIn, heldIds, HELD_IDS_CAP, shareShortfallSale,
+  planRebalance, planRelocate, executeRelocate, executeRebalance, ticksAdjacent, positionSide, planLadder, healLadder, readPosition, mintedIn, heldIds, HELD_IDS_CAP, shareShortfallSale, gasPriceNow, GAS_BUMP_PLAIN, GAS_BUMP_RESET,
 } from '../shared/lp-agent.js';
 import {
   refuseCollect, refuseSweep, refuseIncrease, refuseRebalance, refuseRelocate, HOME_POOL, rebalanceWait, depositForcesReset, DEPOSIT_RESET_SHARE, RESET_AFTER_HOURS,
@@ -272,6 +272,29 @@ if (SELF) {
   }
   is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
+  // The gas bump per step (2026-09-24, D4, the operator's go): the plain
+  // steps pay the node's price, a re-set and the ladder keep 1.5x; the floor
+  // still lifts a price under 0.05 gwei.
+  {
+    const node = (g) => ({ getGasPrice: async () => g });
+    const at005 = 50_000_000n, at1 = 1_000_000_000n;
+    is('a collect, sweep or top-up pays the price the node names', (await gasPriceNow(node(at1), GAS_BUMP_PLAIN)) === at1 && (await gasPriceNow(node(at005), GAS_BUMP_PLAIN)) === at005);
+    is('a re-set and the ladder keep the 1.5x margin', (await gasPriceNow(node(at1), GAS_BUMP_RESET)) === 1_500_000_000n);
+    is('the 0.05 gwei floor still holds under a plain step', (await gasPriceNow(node(10_000_000n), GAS_BUMP_PLAIN)) === at005);
+    const src = (await import('node:fs')).readFileSync(new URL('../shared/lp-agent.js', import.meta.url), 'utf8');
+    const bumpIn = (fn) => { const i = src.indexOf('export async function ' + fn + '('); const j = src.indexOf('export async function', i + 10); return (src.slice(i, j > 0 ? j : undefined).match(/sender\(pub, wallet, txs, log, (GAS_BUMP_\w+)\)/) || [])[1]; };
+    is('each step names its bump (source pin): plain for collect, sweep, increase; reset for rebalance, relocate, ladder',
+      ['executeCollect', 'executeSweep', 'executeIncrease'].every((f) => bumpIn(f) === 'GAS_BUMP_PLAIN') && ['executeRebalance', 'executeRelocate', 'executeLadder'].every((f) => bumpIn(f) === 'GAS_BUMP_RESET'));
+  }
+  // D5 (2026-09-24, the operator's go): the collect's fees are net of the gas
+  // of its collect, sale and unwrap; only the $BOBAI buy's gas is still to take off.
+  {
+    const c = { acted: true, produced_bnb: '0.01', kept_bnb: '0.005', bobai_bnb: '0.005', kept_pct: 50, txs: [{ label: 'collect', gas_bnb: 0.0001 }, { label: 'sell the other', gas_bnb: 0.0001 }, { label: 'unwrap', gas_bnb: 0.0001 }, { label: 'buy BOBAI with the profit share and hold it', gas_bnb: 0.0001 }] };
+    const g = moneyFlow({ history: [{ at: '2026-09-21T04:23:00Z', acted: true, steps: { collect: c } }], last: {} }).gas;
+    is('the whole bill stays gas.bnb; the part the fees are net of is named, the rest is what a profit takes off', near(g.bnb, 0.0004) && near(g.netted_in_fees_bnb, 0.0003) && near(g.to_subtract_bnb, 0.0001) && g.transactions === 4);
+    const failed = moneyFlow({ history: [{ at: '2026-09-21T04:23:00Z', acted: true, steps: { collect: { ...c, error: 'x' } } }], last: {} }).gas;
+    is('a failed collect produced no fees, so none of its gas is netted', near(failed.netted_in_fees_bnb, 0) && near(failed.to_subtract_bnb, 0.0004));
+  }
   is('fees owed that no step read are null, not zero (2026-09-24, D7)', moneyFlow({ history: [], last: { steps: {} } }).waiting.fees_owed_bnb === null);
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
   // The newest owed figure wins (2026-09-12): an hourly check's rebalance step

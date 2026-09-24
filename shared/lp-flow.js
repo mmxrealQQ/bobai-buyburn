@@ -51,6 +51,8 @@ export function moneyFlow(rec, { earned = null } = {}) {
   const bySource = {};
   let feesProduced = 0, feesKept = 0, feesForwarded = 0, collects = 0, bobaiUnits = 0;
   let intoPosition = 0, increases = 0, resets = 0, gas = 0, txs = 0;
+  // Gas the fees are already net of (2026-09-24, D5, the operator's go).
+  let gasNetted = 0;
   let feesFolded = 0, resetsWithFees = 0, resetForwarded = 0;
   let lastKeptPct = null;
   let first = null, lastMoved = null;
@@ -81,6 +83,12 @@ export function moneyFlow(rec, { earned = null } = {}) {
         // older records sent it to the buyback wallet (c.forwarded_bnb).
         feesForwarded += n(c.bobai_bnb ?? c.forwarded_bnb);
         bobaiUnits += n(c.bobai_units);
+        // A collect measures what it produced as the wallet's balance after
+        // its collect, sale and unwrap against before: their gas is already
+        // out of produced_bnb. Only the $BOBAI buy comes after that reading.
+        // Subtracting all of it again took the collects' gas off the profit
+        // twice (0.000187 BNB, 0.63% of the profit, on 2026-09-21).
+        for (const t of (Array.isArray(c.txs) ? c.txs : [])) if (!/^buy BOBAI/.test(String(t.label || ''))) gasNetted += n(t.gas_bnb);
       }
     }
     const inc = st.increase;
@@ -171,7 +179,9 @@ export function moneyFlow(rec, { earned = null } = {}) {
       increases,
       resets,
     },
-    gas: { bnb: r6(gas), transactions: txs },
+    // bnb: every transaction's gas, what it all cost. to_subtract_bnb: the part
+    // no fee figure is already net of — the one a profit takes off.
+    gas: { bnb: r6(gas), transactions: txs, netted_in_fees_bnb: r6(gasNetted), to_subtract_bnb: r6(Math.max(0, gas - gasNetted)) },
     waiting,
     rule: keptPct == null ? null : { fee_share_kept_pct: keptPct, fee_share_bobai_pct: 100 - keptPct },
     paid_for: earned ? { x402_answers: n(earned.count), usd1: n(earned.totalUsd1) } : null,

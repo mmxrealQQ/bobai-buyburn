@@ -1161,7 +1161,9 @@ async function buildLpSeries(env) {
         return { ...p, capital_bnb: capital, on_capital_pct: capital > 0 ? +(((p.value_bnb - capital) / capital) * 100).toFixed(2) : null };
       });
       const liveFlow = recAll ? moneyFlow(recAll) : null;
-      const gas_bnb = liveFlow ? liveFlow.gas.bnb : null;
+      // The gas the profit takes off: not the part the collects' fees are
+      // already net of (D5). The whole bill stays in the flow as gas.bnb.
+      const gas_bnb = liveFlow ? (liveFlow.gas.to_subtract_bnb ?? liveFlow.gas.bnb) : null;
       const totals = liveFlow ? {
         bobai_spent_total_bnb: liveFlow.out.bobai_bnb,
         bobai_units_total: liveFlow.out.bobai_units,

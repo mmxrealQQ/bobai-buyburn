@@ -22,7 +22,7 @@
 // Usage:
 //   node scripts/dispatch-safety.mjs --self-test   fixtures, no network
 //   node scripts/dispatch-safety.mjs               and measure the live server
-import { isReadOnly, argsFromTask, addressesInTask, answersAsked, askedAction, KNOWN_TOKENS } from '../worker-agent/dispatch.js';
+import { isReadOnly, argsFromTask, addressesInTask, answersAsked, askedAction, usdInTask, KNOWN_TOKENS } from '../worker-agent/dispatch.js';
 
 const SITE = process.env.SITE || 'https://brainonbnb.com';
 const args = process.argv.slice(2);
@@ -127,6 +127,22 @@ if (args.includes('--self-test')) {
     if (!askedAction(t).length) fails.push(`an order was not recognised as one: "${t}"`);
   for (const t of ['what would a $BOBAI trade cost', 'the swap fee of the CAKE pool', 'how much does a transaction cost on BSC', 'price impact of a $500 buy', 'is the sell tax measured'])
     if (askedAction(t).length) fails.push(`a question about an action was refused as an order: "${t}"`);
+  // "to" before a verb is an order only after a word of intent (2026-09-24).
+  for (const t of ['what does it cost to buy BOBAI', 'how much slippage to sell 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', 'is it safe to swap CAKE'])
+    if (askedAction(t).length) fails.push(`a question about an action was refused as an order: "${t}"`);
+  for (const t of ['I need to sell my CAKE', 'I am going to buy BOBAI', 'I want you to swap 1 BNB', 'help me to transfer USDT'])
+    if (!askedAction(t).length) fails.push(`an order was not recognised as one: "${t}"`);
+  // The dollar size in the task is the size answered, and only a figure
+  // marked as dollars is one.
+  const sizeSchema = { required: ['address'], properties: { address: { type: 'string' }, usd: { type: 'number' } } };
+  for (const [t, want] of [['preflight 50000 $ of 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', 50000], ['a $2k buy of CAKE', 2000], ['cost of $500.', 500], ['2,000 USD into CAKE', 2000], ['$1.5k of CAKE', 1500]]) {
+    const a = argsFromTask(sizeSchema, t) || { usd: usdInTask(t) };
+    if (a.usd !== want) fails.push(`the dollar size in "${t}" was read as ${a.usd}, not ${want}`);
+  }
+  for (const t of ['preflight 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', 'what would a $BOBAI trade cost for CAKE', 'buy 500 CAKE', 'CAKE in block 123692264'])
+    if (argsFromTask(sizeSchema, t)?.usd !== undefined) fails.push(`a dollar size was invented from "${t}"`);
+  if (argsFromTask(sizeSchema, 'a $500 trade of FOO') !== null) fails.push('a dollar figure alone called a tool with nothing else to go on');
+  if (argsFromTask({ required: ['address'], properties: { address: { type: 'string' }, depth: { type: 'number' } } }, 'CAKE $500')?.depth !== undefined) fails.push('a dollar size was put into a parameter that is not about dollars');
   if (argsFromTask({ required: ['symbol'], properties: { symbol: { type: 'string' } } }, 'price of CAKE 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82') !== null) fails.push('a parameter the task cannot name was filled anyway');
   const a2 = argsFromTask({ required: ['token', 'chainId'], properties: { token: { type: 'string' }, chainId: { type: 'number' } } }, 'scan 0x245c386dcfed896f5c346107596141e5edcbffff');
   if (!a2 || a2.token !== '0x245c386dcfed896f5c346107596141e5edcbffff' || a2.chainId !== 56) fails.push('the chain this router serves was not filled in beside the address');

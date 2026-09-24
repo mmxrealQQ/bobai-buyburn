@@ -156,7 +156,15 @@ export async function lpTierPlan(input = {}) {
       : { reason: t.reason }),
   }));
 
-  const best = traded[0] || null;
+  // The tier for THIS size is the one whose line above pays this capital the
+  // most (2026-09-24, A5 of the review). The pool-wide rankings divide by the
+  // capital already there without this position in it, so a tier holding $76
+  // at the price came out "best paying" while its own line paid this buyer a
+  // twelfth of another's. The move below is computed from the same lines, so
+  // the answer cannot disagree with itself.
+  const atPrice = traded.length > 0 && traded.every((t) => t.working_capital_usd != null);
+  const yourLine = (t) => earned(t, atPrice ? t.working_capital_usd : null) ?? 0;
+  const best = traded.slice().sort((a, b) => yourLine(b) - yourLine(a))[0] || null;
   const mostCapital = m.most_capital_tier
     ? priced.find((t) => t.tier === m.most_capital_tier) || null
     : null;
@@ -176,24 +184,19 @@ export async function lpTierPlan(input = {}) {
   let noMove = null;
   if (!best) noMove = 'No tier traded in the measured window, so there is nothing to compare.';
   else if (!mostCapital) noMove = `The tier holding the most capital (${m.most_capital_tier}) could not be priced this run, so the comparison would be against a blank.`;
-  else if (best.tier === mostCapital.tier) noMove = 'The tier holding the most capital is also the one paying best. Nothing to move.';
-  if (best && mostCapital && best.tier !== mostCapital.tier) {
-    // The gap is taken on the basis the position would actually be held on. If
-    // both tiers could be read at the price, that is the at-the-price figure,
-    // which is the one a move is decided by; if either could not, it falls back
-    // to the pool-average basis and says so rather than mixing the two — a gap
-    // where one side is measured at the price and the other across the whole
-    // balance is not a gap, it is two different questions subtracted.
-    const bothAtPrice = best.working_capital_usd != null && mostCapital.working_capital_usd != null;
-    const gain = (t) => {
-      const denom = (bothAtPrice ? t.working_capital_usd : t.capital_usd) + capitalUsd;
-      return denom > 0 && t.fees_paid_usd != null ? t.fees_paid_usd * (capitalUsd / denom) : 0;
-    };
-    const perWindow = bothAtPrice
-      ? gain(best) - gain(mostCapital)
-      : ((best.fees_per_1000_usd_parked - mostCapital.fees_per_1000_usd_parked) / 1000) * capitalUsd;
-    const windows = perWindow > 0 ? MOVE_GAS_USD / perWindow : null;
-    const minutes = windows != null && m.measured_window?.minutes
+  else if (best.tier === mostCapital.tier) noMove = 'The tier holding the most capital also pays this size best. Nothing to move.';
+  // The gap is the difference of the two lines above, on one basis for every
+  // tier: at the price when all of them could be read there, otherwise spread
+  // like the pool — never one of each. It used to be recomputed here from the
+  // full fee (the protocol's share included), so on 2026-09-24 the move
+  // claimed $0.147 a window where the lines differed by $0.091.
+  const perWindow = best && mostCapital ? yourLine(best) - (mostCapital.fees_paid_usd == null ? 0 : yourLine(mostCapital)) : null;
+  if (best && mostCapital && best.tier !== mostCapital.tier && !(perWindow > 0)) {
+    noMove = `The tier holding the most capital (${mostCapital.tier}) pays this size at least as well as any other. Nothing to move.`;
+  }
+  if (best && mostCapital && best.tier !== mostCapital.tier && perWindow > 0) {
+    const windows = MOVE_GAS_USD / perWindow;
+    const minutes = m.measured_window?.minutes
       ? windows * m.measured_window.minutes
       : null;
     move = {
@@ -201,9 +204,9 @@ export async function lpTierPlan(input = {}) {
       to: best.tier,
       extra_fees_usd_per_window: round(perWindow, 6),
       assumed_move_cost_usd: MOVE_GAS_USD,
-      windows_to_break_even: windows == null ? null : round(windows, 2),
+      windows_to_break_even: round(windows, 2),
       hours_to_break_even_if_this_rate_held: minutes == null ? null : round(minutes / 60, 2),
-      measured_on: bothAtPrice
+      measured_on: atPrice
         ? `capital standing within ${m.band_pct ?? 2}% of the price in both tiers, with this position's own size in the denominator`
         : 'the whole pool balance in both tiers — the at-the-price figure was unreadable for one of them',
       caveat: 'The rate is a single measured window. This is what would have to hold for the move to pay, not a forecast that it will.',
@@ -221,6 +224,11 @@ export async function lpTierPlan(input = {}) {
     tiers_found: m.tiers_found ?? (m.tiers || []).length,
     tiers_measured: m.tiers_measured ?? (m.tiers || []).filter((t) => t.measured).length,
     tiers: perTier,
+    // The answer for the capital named in the request: the tier whose line
+    // pays it the most. The two pool-wide rankings below it are kept, and
+    // can differ from it — they leave this position out of the denominator.
+    best_tier_for_your_size: best ? best.tier : null,
+    best_tier_for_your_size_basis: best ? (atPrice ? `capital within ${m.band_pct ?? 2}% of the price, this position included` : 'the whole pool balance, this position included') : null,
     best_paying_tier: m.best_paying_tier,
     most_capital_tier: m.most_capital_tier,
     // The same two questions asked over the capital that was actually earning.

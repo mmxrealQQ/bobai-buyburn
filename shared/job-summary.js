@@ -79,19 +79,24 @@ export function summarize(service, result) {
     }
     if (service === 'lp_tier_plan' && r.plan) {
       const p = r.plan, w = p.measured_window || {};
-      const best = (p.tiers || []).find((t) => t.tier === p.best_paying_tier) || null;
+      // The tier for the buyer's own size (2026-09-24); older plans carry only
+      // the pool-wide ranking.
+      const bestTier = p.best_tier_for_your_size || p.best_paying_tier;
+      const pays = p.best_tier_for_your_size ? 'pays your size best' : 'pays best';
+      const best = (p.tiers || []).find((t) => t.tier === bestTier) || null;
       return {
         headline: p.no_move_because
-          ? `${p.best_paying_tier || '—'} pays best — ${String(p.no_move_because).split('. ')[0]}.`
-          : `${p.best_paying_tier || '—'} pays best of ${p.tiers_measured ?? '—'} tiers measured`,
+          ? `${bestTier || '—'} ${pays} — ${String(p.no_move_because).split('. ')[0]}.`
+          : `${bestTier || '—'} ${pays} of ${p.tiers_measured ?? '—'} tiers measured`,
         subject: p.pair?.token?.symbol || null,
         facts: [
           ['Pair', `${p.pair?.token?.symbol || '—'} / ${p.pair?.quote?.symbol || '—'}`],
           ['Window', w.minutes != null ? `${n(w.minutes, 1)} min, ${n(w.blocks, 0)} blocks — not annualised` : '—'],
           ['Tiers found / measured', `${p.tiers_found ?? '—'} / ${p.tiers_measured ?? '—'}`],
           ['Most capital sits in', p.most_capital_tier || '—'],
-          best ? ['Fees in the window, at the price', usd(best.your_fees_usd_in_window_if_placed_at_the_price)] : ['Move worth it', p.move_worth_it == null ? 'nothing to move' : String(p.move_worth_it)],
-        ],
+          best ? ['Your fees in the window, at the price', usd(best.your_fees_usd_in_window_if_placed_at_the_price)] : null,
+          p.move_worth_it ? ['Move worth it', `${p.move_worth_it.from} → ${p.move_worth_it.to}: ${usd(p.move_worth_it.extra_fees_usd_per_window)} more a window, pays back ${usd(p.move_worth_it.assumed_move_cost_usd)} in ${n(p.move_worth_it.hours_to_break_even_if_this_rate_held, 1)} h if the rate held`] : ['Move worth it', 'nothing to move'],
+        ].filter(Boolean),
       };
     }
     if (service === 'lp_position_plan' && r.plan) {

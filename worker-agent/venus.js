@@ -90,10 +90,10 @@ const addrAt = (hex, i) => '0x' + word(hex, i).slice(24);
 // call at a time is 200+ requests and takes long enough that the price moves
 // underneath the answer, which is exactly the kind of quiet inconsistency a
 // health factor must not have.
-async function batchCall(calls, { rpcs = BATCH_RPCS } = {}) {
+async function batchCall(calls, { rpcs = BATCH_RPCS, block = 'latest' } = {}) {
   const payload = calls.map((c, i) => ({
     jsonrpc: '2.0', id: i, method: 'eth_call',
-    params: [{ to: c.to, data: c.data }, 'latest'],
+    params: [{ to: c.to, data: c.data }, block],
   }));
   for (let attempt = 0; attempt < rpcs.length * 2; attempt++) {
     const url = rpcs[attempt % rpcs.length];
@@ -123,6 +123,29 @@ async function batchCall(calls, { rpcs = BATCH_RPCS } = {}) {
   throw new Error('no BSC endpoint answered the batch');
 }
 
+// One block for every read of a position (2026-09-24). The protocol's own
+// getAccountLiquidity and the per-market reads are two round trips; on
+// 'latest' they can land on different blocks, and on a position of a few
+// million an oracle tick between them is a four-figure "disagreement" — the
+// delivered example said DISAGREES by $1,109 on a position that agrees to the
+// cent when both are read at one block. One block behind the head, so an
+// endpoint a block late can still answer it.
+async function pinnedBlock(rpcs = BATCH_RPCS) {
+  for (const url of rpcs) {
+    try {
+      const r = await fetch(url, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] }),
+        signal: AbortSignal.timeout(8000),
+      });
+      const j = await r.json();
+      const n = parseInt(j?.result, 16);
+      if (n > 1) return '0x' + (n - 1).toString(16);
+    } catch { /* next endpoint */ }
+  }
+  return 'latest';
+}
+
 const decodeString = (hex) => {
   if (!hex || hex === '0x') return null;
   try {
@@ -149,11 +172,12 @@ export async function healthFactor(account) {
 
   // Round 1: which markets is this account in, what does the protocol itself
   // say about its liquidity, and which oracle is authoritative right now.
+  const block = await pinnedBlock();
   const [assetsRaw, liqRaw, oracleRaw] = await batchCall([
     { to: UNITROLLER, data: SEL.getAssetsIn + addrArg(account) },
     { to: UNITROLLER, data: SEL.getAccountLiquidity + addrArg(account) },
     { to: UNITROLLER, data: SEL.oracle },
-  ]);
+  ], { block });
 
   const oracle = addrAt(oracleRaw, 0);
   const venusError = Number(uint(liqRaw, 0));
@@ -181,7 +205,7 @@ export async function healthFactor(account) {
     calls.push({ to: oracle, data: SEL.getUnderlyingPrice + addrArg(m) });
     calls.push({ to: m, data: SEL.symbol });
   }
-  const res = await batchCall(calls);
+  const res = await batchCall(calls, { block });
 
   let weightedCollateral = 0n; // collateral after the protocol's own haircut
   let rawCollateral = 0n;      // before it, so the haircut is visible
@@ -288,7 +312,9 @@ export async function healthFactor(account) {
       venus_headroom_usd: num(venusHeadroom),
       our_headroom_usd: num(ourHeadroom),
       difference_usd: num(drift),
+      difference_pct: venusHeadroom === 0n ? null : Number(drift * 1000000n / (venusHeadroom < 0n ? -venusHeadroom : venusHeadroom)) / 10000,
       agrees,
+      block: block === 'latest' ? null : parseInt(block, 16),
       venus_error_code: venusError,
     },
     measured_at: new Date().toISOString(),

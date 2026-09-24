@@ -133,7 +133,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     income: lastSweeps.filter((s) => s.balance > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.balance), bnb: s.bnb_equivalent != null ? n(s.bnb_equivalent) : null })),
     // The newest figure: the hourly check's rebalance step reads what the
     // position owes now; the daily collect's figure is up to a day old.
-    fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
+    fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : null,   // not read is not zero (2026-09-24, D7)
     wallet_spendable_bnb: ls.increase && ls.increase.spendable_bnb != null ? r6(n(ls.increase.spendable_bnb)) : null,
   };
   // KEPT FEES THAT WAIT ARE STILL THE AGENT'S (2026-09-18). A collect books

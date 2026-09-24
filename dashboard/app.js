@@ -1134,8 +1134,9 @@ function fillLpPortfolio(){
       + src('📈 Price', signed(p.from_price_bnb), dir(p.from_price_bnb))
       + src('🧾 Fees', signed(p.from_fees_bnb), dir(p.from_fees_bnb))
       + src('⛽ Gas', n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB', n(p.gas_bnb) > 0 ? 'down' : '')
-      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? src('⚖️ Vs. holding 50/50', signed(p.vs_holding.vs_holding_bnb), dir(p.vs_holding.vs_holding_bnb)) : '')
-      + '</div>';
+      + '</div>'
+      // Not a term of the sum above (2026-09-24, D7): a comparison beside it.
+      + (p.vs_holding && p.vs_holding.vs_holding_bnb != null ? '<div class="pf-eq">Beside it, not part of the sum — against simply holding 50/50: <b>' + signed(p.vs_holding.vs_holding_bnb) + '</b>' + (p.vs_holding.vs_holding_pct != null ? ' (' + (p.vs_holding.vs_holding_pct > 0 ? '+' : '') + Number(p.vs_holding.vs_holding_pct).toFixed(1) + '%)' : '') + '</div>' : '');
     const counts = [];
     if(d.resets) counts.push(d.resets + ' re-set' + (d.resets === 1 ? '' : 's'));
     if(d.top_ups) counts.push(d.top_ups + ' top-up' + (d.top_ups === 1 ? '' : 's'));
@@ -1175,8 +1176,8 @@ function fillLpSeries(){
       if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 04:23 UTC run.'; return; }
       // One line, not the portfolio again: the portfolio above already says
       // what went in and what came out. The table is the evidence.
-      sum.textContent = 'Since ' + String(s.since || '').slice(0, 10) + ': ' + pts.length + ' runs with a position' + (s.time_in_range ? ', in range ' + s.time_in_range.in_range_pct + '% of the time since ' + String(s.time_in_range.from || '').slice(0, 10) + ' (' + s.time_in_range.samples + ' ten-minute readings of the price)' : ', in range on ' + (s.days_in_range || 0) + ' of ' + (s.runs_with_a_position || 0)) + '. Worth is the position in BNB; "on the capital" is that value against everything that had gone in by then — the first point, what the operator added, what the deposit watch put in — so a deposit is not a gain.';
-      const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>On the capital</th><th>Range</th><th>Fees owed (BNB)</th><th>Into $BOBAI (BNB)</th><th>Did</th></tr>';
+      sum.textContent = 'Since ' + String(s.since || '').slice(0, 10) + ': ' + pts.length + ' runs with a position' + (s.time_in_range ? ', in range ' + s.time_in_range.in_range_pct + '% of the time since ' + String(s.time_in_range.from || '').slice(0, 10) + ' (' + s.time_in_range.samples + ' ten-minute readings of the price)' : ', in range on ' + (s.days_in_range || 0) + ' of ' + (s.runs_with_a_position || 0)) + '. Worth is the position in BNB; "position vs capital" is the position alone against everything that had gone in by then — the first point, what the operator added, what the deposit watch put in — so a deposit is not a gain. The Result above adds what the position produced beside itself (the $BOBAI bought from fees, fees still owed) and takes off the gas, so the two differ.';
+      const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>Position vs capital</th><th>Range</th><th>Fees owed (BNB)</th><th>Into $BOBAI (BNB)</th><th>Did</th></tr>';
       const rows = pts.slice().reverse().map(p => {
         // The worker's own figure (series point capital_bnb / on_capital_pct); the page computes nothing.
         const chg = p.on_capital_pct;

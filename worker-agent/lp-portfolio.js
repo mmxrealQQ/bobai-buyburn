@@ -157,6 +157,9 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // 2026-09-12: "einfacher, uebersichtlicher, klarer"). What the pick nets
   // a day stays in the record (/lp/windows), not on the card.
   let next;
+  // (2026-09-24, D7) "after 0 h out of range" read as nonsense: a wait of
+  // zero is the first hourly check that finds the price outside.
+  const waitText = waitH === 0 ? 'at the first hourly check that finds it out of range' : `after ${waitH ?? 2} h out of range`;
   // At the edge is read off the ticks, not off a flag: the ten-minute watch
   // keeps no rebalance step when it did nothing, so the flag would only be
   // there after the hourly check; the position's own ticks are always there.
@@ -166,11 +169,11 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const atEdge = rb.at_edge === true || inc.at_edge === true || !!(edgeRead && edgeRead.outside && !edgeRead.left);
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
     : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
   else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
     : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
   // Where the position was left: the newest tick the record saw.
@@ -202,7 +205,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
     worth: { bnb: r4(value.now), usd: usd(value.now), beside_bnb: r4(besideBnb), beside_usd: usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
     holdings: {
-      position_bnb: r4(value.now), fees_owed_bnb: r5(sum.fees_owed_now_bnb),
+      position_bnb: r4(value.now), fees_owed_bnb: sum.fees_owed_now_bnb == null ? null : r5(sum.fees_owed_now_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
       // What the held $BOBAI is worth now, at the pair's own price — read by
       // the route, so the model can say "3,895 $BOBAI (≈ $x)" beside the

@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 16 files, 6577 lines.
+# one fetch. 16 files, 6582 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -288,6 +288,7 @@ if (SELF) {
   }
   is('a record whose last collect names no share takes it from the last re-set', moneyFlow({ history: rec.history, last: { at: '2026-09-08T19:50:00Z', steps: {} } }).rule.fee_share_kept_pct === 50);
   is('waiting lists only wallets holding something', fl.waiting.income.length === 1 && fl.waiting.income[0].token === 'USD1');
+  is('fees owed that no step read are null, not zero (2026-09-24, D7)', moneyFlow({ history: [], last: { steps: {} } }).waiting.fees_owed_bnb === null);
   is('waiting carries the fees owed and the spendable BNB', near(fl.waiting.fees_owed_bnb, 0.000016) && near(fl.waiting.wallet_spendable_bnb, 0.0075));
   // The newest owed figure wins (2026-09-12): an hourly check's rebalance step
   // folded into the last record reads what the position owes now; the daily
@@ -1330,10 +1331,11 @@ if (process.argv.includes('--self-test')) {
   is('the model carries no pool record: the agent stays in CAKE/BNB (2026-09-11)', !('pool_record' in m) && !m.links.pools);
   // The one sentence about what comes next, both ways: in range, out of range, with and without a width the record names.
   const w2 = { width_pct: 2, wait_hours: 3, net_usd_per_day: 0.16 };
-  is('out of range with a width named: the sentence says when the re-set comes, how wide, and that it trades nothing', /^Out of range for 2\.0 h\. Re-set after 3 h out of range: one-sided beside the price, ±2% wide, no trade\.$/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
+  is('out of range with a width named: the sentence says when the re-set comes, how wide, and that it trades nothing', /^Out of range for 2\.0 h\. Re-set after 3 h out of range: the new range one-sided beside the price, ±2% wide, no trade\.$/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
+  is('a wait of zero reads as the first hourly check, not "after 0 h"', (() => { const w0 = { width_pct: 5, wait_hours: 0 }; const t = lpPortfolio(rec, series, { now: NOW, width: w0, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next; return /at the first hourly check that finds it out of range/.test(t) && !/after 0 h/.test(t); })());
   is('out of range with no width named yet: the re-set waits for the record', /^Out of range\. Re-set after the wait; the width record has no day of prices yet\.$/.test(m.next) && m.pool.width_pct === 1);
   is('at the edge of the range: not left, says so', (() => { const r3 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, at_edge: true } } } }; return /^At the edge of its range, not left\./.test(lpPortfolio(r3, series, { now: NOW }).next); })());
-  is('in range with a width named: holds and earns, re-set only after the wait', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; return /^Holds and earns\. A re-set only after 3 h out of range: one-sided beside the price, ±2% wide, no trade\.$/.test(lpPortfolio(r2, series, { now: NOW, width: w2 }).next); })());
+  is('in range with a width named: holds and earns, re-set only after the wait', (() => { const r2 = { ...rec, last_check: { ...rec.last_check, steps: { increase: { ...rec.last_check.steps.increase, in_range: true } } } }; return /^Holds and earns\. A re-set only after 3 h out of range: the new range one-sided beside the price, ±2% wide, no trade\.$/.test(lpPortfolio(r2, series, { now: NOW, width: w2 }).next); })());
   is('the sentence carries no dollar figure (2026-09-12: the card stays simple; what a width nets lives in /lp/windows)', !/\$/.test(lpPortfolio(rec, series, { now: NOW, width: w2, outsideSince: new Date(NOW - 2 * 36e5).toISOString() }).next));
   // One wording of the return for every surface (2026-09-19): base AND period, made in the model.
   is('the return is said once, with its base and its period', changeText(-1.21, '2026-09-03') === '−1.2% on the capital since 3 Sep' && changeText(1.31, '2026-09-03T05:23:19.275Z') === '+1.3% on the capital since 3 Sep' && changeText(0, '2026-12-24') === '0.0% on the capital since 24 Dec');
@@ -3697,7 +3699,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     income: lastSweeps.filter((s) => s.balance > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.balance), bnb: s.bnb_equivalent != null ? n(s.bnb_equivalent) : null })),
     // The newest figure: the hourly check's rebalance step reads what the
     // position owes now; the daily collect's figure is up to a day old.
-    fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
+    fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : null,   // not read is not zero (2026-09-24, D7)
     wallet_spendable_bnb: ls.increase && ls.increase.spendable_bnb != null ? r6(n(ls.increase.spendable_bnb)) : null,
   };
   // KEPT FEES THAT WAIT ARE STILL THE AGENT'S (2026-09-18). A collect books
@@ -4948,6 +4950,9 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // 2026-09-12: "einfacher, uebersichtlicher, klarer"). What the pick nets
   // a day stays in the record (/lp/windows), not on the card.
   let next;
+  // (2026-09-24, D7) "after 0 h out of range" read as nonsense: a wait of
+  // zero is the first hourly check that finds the price outside.
+  const waitText = waitH === 0 ? 'at the first hourly check that finds it out of range' : `after ${waitH ?? 2} h out of range`;
   // At the edge is read off the ticks, not off a flag: the ten-minute watch
   // keeps no rebalance step when it did nothing, so the flag would only be
   // there after the hourly check; the position's own ticks are always there.
@@ -4957,11 +4962,11 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const atEdge = rb.at_edge === true || inc.at_edge === true || !!(edgeRead && edgeRead.outside && !edgeRead.left);
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
     : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
   else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
     : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
   // Where the position was left: the newest tick the record saw.
@@ -4993,7 +4998,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
     worth: { bnb: r4(value.now), usd: usd(value.now), beside_bnb: r4(besideBnb), beside_usd: usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
     holdings: {
-      position_bnb: r4(value.now), fees_owed_bnb: r5(sum.fees_owed_now_bnb),
+      position_bnb: r4(value.now), fees_owed_bnb: sum.fees_owed_now_bnb == null ? null : r5(sum.fees_owed_now_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
       // What the held $BOBAI is worth now, at the pair's own price — read by
       // the route, so the model can say "3,895 $BOBAI (≈ $x)" beside the

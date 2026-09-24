@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 14093 lines.
+# one fetch. 41 files, 14096 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2300,7 +2300,7 @@ export function moneyFlow(rec, { earned = null } = {}) {
     income: lastSweeps.filter((s) => s.balance > 0).map((s) => ({ source: s.source || null, token: s.token || s.source || null, amount: n(s.balance), bnb: s.bnb_equivalent != null ? n(s.bnb_equivalent) : null })),
     // The newest figure: the hourly check's rebalance step reads what the
     // position owes now; the daily collect's figure is up to a day old.
-    fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : 0,
+    fees_owed_bnb: ls.rebalance && ls.rebalance.fees_owed_bnb != null ? r6(n(ls.rebalance.fees_owed_bnb)) : ls.collect && ls.collect.owed ? r6(n(ls.collect.owed.bnb_equivalent)) : null,   // not read is not zero (2026-09-24, D7)
     wallet_spendable_bnb: ls.increase && ls.increase.spendable_bnb != null ? r6(n(ls.increase.spendable_bnb)) : null,
   };
   // KEPT FEES THAT WAIT ARE STILL THE AGENT'S (2026-09-18). A collect books
@@ -7488,7 +7488,7 @@ async function buildLpSeries(env) {
         summary: lpSeriesSummary(withCapital, { gas_bnb, owed_now_bnb, totals, value_now_bnb, time_in_range: lpTimeInRange(withCapital, await readLpTicks(env)) }),
         points: withCapital,
         record: 'https://agent.brainonbnb.com/lp/agent',
-        cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',
+        cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and a run between them — an hourly check or the deposit watch — gets a point of its own when it acted (a re-set, a top-up from a deposit) or found a position the series did not know. A run that found no position is not a point',
       };
 }
 
@@ -8161,7 +8161,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font
 <div class="card"><dl>
 <dt>Width</dt><dd>${pick ? `<b>±${h(pick.width)}%</b> — ${h(pick.basis || '')}${pick.earnings_7d ? `: about $${h(f(pick.earnings_7d.fees_usd, 2))} of fees on $${h(usd)} in ${h(f(pick.earnings_7d.hours, 0))} h (${h(f(pick.earnings_7d.hours_in_range, 0))} h of them inside the range) after ${h(pick.earnings_7d.resets)} one-sided re-set${pick.earnings_7d.resets === 1 ? '' : 's'} at $${h(f(pick.earnings_7d.reset_cost_usd, 2))} each; the liquidity ended ${pick.earnings_7d.vs_holding_usd < 0 ? '$' + h(f(-pick.earnings_7d.vs_holding_usd, 2)) + ' behind' : '$' + h(f(pick.earnings_7d.vs_holding_usd, 2)) + ' ahead of'} holding its minted amounts` : ''}` : `none yet — ${h(v.hours_of_prices || 0)} h of prices are on record and 24 h are needed before a width may be picked`}</dd>
 <dt>Wait</dt><dd>${(() => { const dt = v.delay_test || {}; const ds = dt.delays || []; if (!ds.length) return `${h(dt.in_use_hours ?? 2)} h outside the range before a re-set — the wait the agent uses; whether another wait would net more is replayed once a day of prices is on record`; const line = ds.map((d) => `${h(d.hours)} h: ${d.net_usd_per_day == null ? 'nothing' : `$${h(f(d.net_usd_per_day, 2))} a day at ±${h(d.width)}% after ${h(d.resets)} re-set${d.resets === 1 ? '' : 's'}`}${d.in_use ? ' (in use)' : ''}`).join(' · '); return `<b>${h(dt.in_use_hours)} h</b> outside the range before a re-set is what the agent uses — ${dt.wait_basis === 'measured' ? 'measured' : 'set'}: ${h(dt.why || '')}. Replayed with every wait: ${line}. A measured wait needs 120 h of prices and a tenth more per day than the set wait; under either bar the set wait stands.`; })()}</dd>
-<dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, 2))} — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
+<dt>Re-set cost</dt><dd>$${h(f(v.reset_cost && v.reset_cost.usd, v.reset_cost && Number(v.reset_cost.usd) > 0 && Number(v.reset_cost.usd) < 0.01 ? 4 : 2))} per $50 — ${h(v.reset_cost && v.reset_cost.basis)}</dd>
 <dt>Re-sets so far</dt><dd>${v.resets && v.resets.resets ? `${h(v.resets.resets)} on record: <b>${h(f(v.resets.lost_to_price_bnb, 5))} BNB</b> lost to the price against holding by the trades of the centred re-sets (a one-sided re-set, since 2026-09-16, trades nothing and realises nothing)${v.resets.rows[0] && v.resets.rows[0].lost_to_price_usd != null ? ` (≈ $${h(f(v.resets.rows.reduce((a, r) => a + (r.lost_to_price_usd || 0), 0), 2))})` : ''}, ${h(f(v.resets.execution_bnb, 5))} BNB of execution (gas, swap fee${v.resets.impact_measured ? ', impact measured on ' + h(v.resets.impact_measured) : ', impact not yet measured'}) — the table below` : 'none on record yet'}</dd>
 <dt>Measured</dt><dd>${v.calibration ? `the agent's own position at ±${h(v.calibration.position_width_pct)}% earned <b>$${h(f(v.calibration.measured_usd_per_day_on_50, 2))} a day on $50</b> over the last ${h(f(v.calibration.hours, 0))} h, against $${h(f(v.calibration.replay_usd_per_day_on_50, 2))} the replay puts on that width${v.calibration.replay_hours != null ? ` over its own ${h(f(v.calibration.replay_hours, 0))} h` : ''}${v.calibration.factor != null ? ` — ${h(f(v.calibration.factor * 100, 0))}% of the replay's figure` : ''}. ${v.calibration.replay_is === 'above' ? 'Here the replay says more than the position earned' : v.calibration.replay_is === 'below' ? 'Here the position earned more than the replay says' : v.calibration.replay_is === 'close' ? 'Here the two are within a tenth of each other' : 'The two cannot be set against each other yet'}; the two cover different hours, so this is a check on the dollars, not a correction. The pick compares widths with each other on the same replay and is not scaled; the dollar beside it is an estimate, this line is the measurement.` : 'the position has not earned for a day yet on the series — the replay\'s dollars are estimates until it has'}</dd>
 <dt>Held a full day</dt><dd>${v.day_pick ? `±${h(v.day_pick.width)}% is the narrowest width that stayed in range through every tested 24-hour window (${h(v.day_pick.day.held)} of ${h(v.day_pick.day.tested)}).${v.day_pick.width !== (pick && pick.width) ? ' It is not the pick: the pick is the width that ended the most ahead against holding over the week.' : ''}` : 'no width has held through every tested day yet'}</dd>
@@ -8345,7 +8345,7 @@ ${rsv ? `<dt>Reserve range</dt><dd>PancakeSwap V3 <a href="https://pancakeswap.f
 <div class="card"><div class="flow">
 <div><b>Came in</b><span>${h(fl.came_in)}</span>${flow.paid_for && flow.paid_for.x402_answers ? `<i>The x402 service has been paid ${h(f(flow.paid_for.usd1, 2))} USD1 for ${h(flow.paid_for.x402_answers)} answer${flow.paid_for.x402_answers === 1 ? '' : 's'} since it opened. What of it has reached the income wallet is under Waiting and is swept once it is worth more than the gas; the rest went through the earlier path, which burned it directly.</i>` : ''}</div>
 <div><b>Went out</b><span>${h(fl.went_out)}${flow.out.bobai_bnb > 0 && usd(flow.out.bobai_bnb) ? ` — the BOBAI share${usd(flow.out.bobai_bnb)}${flow.out.bobai_units > 0 ? `, ${h(Math.round(flow.out.bobai_units).toLocaleString('en-US'))} BOBAI held` : ''}` : ''}</span><i>${flow.out.resets} re-set${flow.out.resets === 1 ? '' : 's'} of the range · ${h(fl.cost)}${usd(flow.gas.bnb)}</i></div>
-<div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the DeFi wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
+<div><b>Waiting</b><span>${flow.waiting.income.length ? flow.waiting.income.map((w) => `${f(w.amount, 2)} ${h(w.token)} on the ${h(w.source || 'income')} wallet`).join(', ') : 'no income on the wallets'}; ${flow.waiting.fees_owed_bnb == null ? 'fees owed by the position not read at the last run' : `${f(flow.waiting.fees_owed_bnb, 6)} BNB of fees owed by the position`}${flow.waiting.wallet_spendable_bnb != null ? `; ${f(flow.waiting.wallet_spendable_bnb, 5)} BNB in the DeFi wallet above the reserve` : ''}</span><i>Each moves once it is worth more than the gas it costs.</i></div>
 <div><b>The rule</b><span>${flow.rule ? `${h(flow.rule.fee_share_kept_pct)}% of every collect stays as capital, ${h(flow.rule.fee_share_bobai_pct)}% buys $BOBAI the agent holds in its own wallet, never sold.` : 'The share of the fees kept as capital is named with the next collect.'} Income goes in as capital in full. The capital never leaves.</span><i>Set in the open: LP_FEE_KEEP_PCT in worker-lp/wrangler.toml, in <a href="https://brainonbnb.com/source">the published source</a>.</i></div>
 </div></div>
 <h2>The last run, step by step</h2>${fromDaily ? `<p class="note" style="margin:0 0 8px">The newest run, ${h(when(last.at))}, was an hourly range check; it has the rebalance step only. The other steps run once a day and are shown from ${h(dailyWhen)}.</p>` : ''}
@@ -9490,6 +9490,9 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   // 2026-09-12: "einfacher, uebersichtlicher, klarer"). What the pick nets
   // a day stays in the record (/lp/windows), not on the card.
   let next;
+  // (2026-09-24, D7) "after 0 h out of range" read as nonsense: a wait of
+  // zero is the first hourly check that finds the price outside.
+  const waitText = waitH === 0 ? 'at the first hourly check that finds it out of range' : `after ${waitH ?? 2} h out of range`;
   // At the edge is read off the ticks, not off a flag: the ten-minute watch
   // keeps no rebalance step when it did nothing, so the flag would only be
   // there after the hourly check; the position's own ticks are always there.
@@ -9499,11 +9502,11 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
   const atEdge = rb.at_edge === true || inc.at_edge === true || !!(edgeRead && edgeRead.outside && !edgeRead.left);
   if (!position) next = 'No position yet. The first deposit above the floor opens one.';
   else if (inRange) next = pick
-    ? `Holds and earns. A re-set only after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Holds and earns. A re-set only ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
     : 'Holds and earns. A re-set only after the wait out of range; the width record has no day of prices yet.';
   else if (atEdge) next = 'At the edge of its range, not left. Earns again from the first tick back inside.';
   else next = pick
-    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after ${waitH ?? 2} h out of range: one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
+    ? `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set ${waitText}: the new range one-sided beside the price, ±${pick.width_pct}% wide, no trade.`
     : `Out of range${outH != null ? ` for ${hm(outH)}` : ''}. Re-set after the wait; the width record has no day of prices yet.`;
   const losses = resetLosses(rec);
   // Where the position was left: the newest tick the record saw.
@@ -9535,7 +9538,7 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
     put_in: { bnb: r4(putIn), usd: usd(putIn), sources },
     worth: { bnb: r4(value.now), usd: usd(value.now), beside_bnb: r4(besideBnb), beside_usd: usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
     holdings: {
-      position_bnb: r4(value.now), fees_owed_bnb: r5(sum.fees_owed_now_bnb),
+      position_bnb: r4(value.now), fees_owed_bnb: sum.fees_owed_now_bnb == null ? null : r5(sum.fees_owed_now_bnb),
       bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
       // What the held $BOBAI is worth now, at the pair's own price — read by
       // the route, so the model can say "3,895 $BOBAI (≈ $x)" beside the

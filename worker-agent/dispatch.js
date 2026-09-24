@@ -64,6 +64,17 @@ const MUTATING_VERBS = new Set([
   // the list above was written from the verbs of a swap.
   'liquidate', 'harvest', 'repay',
 ]);
+// 2026-09-24: an agent's controls. `pause` on a stranger's yield optimiser
+// ("Emergency stop … the only state-changing tool exposed") passed as a
+// reader and was CALLED for "is this token safe 0x…" — it needs an API key,
+// so it most likely refused, but the router must never be the one to try.
+// Kept apart from MUTATING_VERBS because they judge tool NAMES only: in a
+// visitor's sentence 'stop loss' or 'start price' is a question, not an order.
+const CONTROL_VERBS = new Set([
+  'pause', 'unpause', 'resume', 'stop', 'halt', 'start', 'restart', 'activate',
+  'deactivate', 'enable', 'disable', 'kill', 'shutdown', 'freeze', 'unfreeze',
+  'set', 'reset', 'toggle', 'configure', 'emergency',
+]);
 // Verbs a lending READER is named after too (`borrow_rates`, `supply_apy`,
 // `get_open_positions`): they only disqualify a tool whose whole name is the
 // verb — `borrow`, `rebalance` — where there is no noun for it to be about.
@@ -126,6 +137,8 @@ const UNAMBIGUOUS_ACTIONS = new Set([
   'submit', 'submits', 'revoke', 'revokes', 'authorize', 'authorizes',
   'deploy', 'deploys', 'calldata',
 ]);
+
+const STATE_CHANGE = /\bstate[- ]?chang|\bchanges?\s+(the\s+)?state\b|\bemergency\s+stop\b|\b(pauses|halts|stops|disables|enables|activates|deactivates|resumes)\s+(the\s+|all\s+|this\s+|an?\s+)?(agent|trading|bot|strategy|migrations?|contract|protocol|vault)\b/i;
 
 // The ambiguous ones — swap, transfer, burn, trade, stake and the rest are all
 // things a measurement tool legitimately talks ABOUT. They only count against a
@@ -274,6 +287,7 @@ export function isReadOnly(tool) {
   // A mutating verb anywhere in the name disqualifies it, wherever it sits, and
   // this is checked FIRST so that no declaration below can talk its way past it.
   if (segs.some((seg) => MUTATING_VERBS.has(seg))) return false;
+  if (segs.some((seg) => CONTROL_VERBS.has(seg))) return false;
   if (segs.some((seg) => VERBS_INSIDE_A_SEGMENT.some((v) => seg.includes(v)))) return false;
   if (segs.length === 1 && SOLO_ACTIONS.has(segs[0])) return false;
 
@@ -327,6 +341,9 @@ export function isReadOnly(tool) {
   // contradicting itself, and the half of the contradiction that costs money is
   // the half to believe.
   if (segments(desc).some((seg) => UNAMBIGUOUS_ACTIONS.has(seg))) return false;
+  // A description that says the tool changes state is believed, whatever
+  // else it says and whatever the server declares.
+  if (STATE_CHANGE.test(desc)) return false;
   if (hint !== true && ACTION_ON_OBJECT.test(desc)) return false;
   return true;
 }
@@ -582,6 +599,16 @@ export async function handleDispatch(url, body, env, opts = {}) {
     return (agent.endpoints || []).find((e) => /\/mcp(\/|$)/i.test(e))
       || (() => { try { return new URL(agent.endpoints[0]).origin + '/mcp'; } catch { return null; } })();
   };
+  // A task that names an address is about that address (2026-09-24, P4). A
+  // tool with no address parameter cannot answer it: 'is this token safe
+  // 0x…' came back as a yield agent's get_metadata, about itself, marked
+  // dispatched. Such a tool is not a candidate for such a task.
+  // Only an address the visitor pasted: a symbol read as one ('best yield for
+  // USDT') names an asset to filter by, and a tool may well answer it without
+  // taking an address.
+  const askedAddrs = String(task).match(/0x[0-9a-fA-F]{40}/g) || [];
+  const takesAddress = (t) => Object.keys(t?.inputSchema?.properties || {}).some((n) => ADDRESS_LIKE.test(n.toLowerCase()));
+  const fits = (t) => !askedAddrs.length || takesAddress(t);
   const pool = candidates.slice(0, 4);
   const surfaces = await Promise.all(pool.map(async (agent) => {
     if (a2aOnly(agent)) {
@@ -591,7 +618,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
     }
     const endpoint = mcpEndpointOf(agent);
     const listed = endpoint ? await rpcCall(endpoint, 'tools/list', {}).catch(() => null) : null;
-    const tools = (listed?.result?.tools || []).filter(isReadOnly);
+    const tools = (listed?.result?.tools || []).filter(isReadOnly).filter(fits);
     return { listed, best: Math.max(0, ...tools.map((t) => scoreTool(t, terms))) };
   }));
   const order = pool.map((agent, i) => ({ agent, i, ...surfaces[i] }))
@@ -703,14 +730,15 @@ export async function handleDispatch(url, body, env, opts = {}) {
     if (!tools.length) { attempts.push({ agent: agent.name, endpoint, outcome: 'did not answer tools/list' }); continue; }
 
     const safe = tools.filter(isReadOnly);
+    const fitting = safe.filter(fits);
     const blocked = tools.filter((t) => !isReadOnly(t)).map((t) => t.name);
-    const ranked = safe.map((t) => ({ t, s: scoreTool(t, terms) })).sort((a, b) => b.s - a.s);
+    const ranked = fitting.map((t) => ({ t, s: scoreTool(t, terms) })).sort((a, b) => b.s - a.s);
     const pick = ranked[0]?.s > 0 ? ranked[0].t : null;
 
     if (!pick) {
       attempts.push({
         agent: agent.name, endpoint,
-        outcome: safe.length ? 'no read-only tool matched the task' : 'exposes no read-only tools',
+        outcome: !safe.length ? 'exposes no read-only tools' : !fitting.length ? 'no read-only tool takes the address the task is about' : 'no read-only tool matched the task',
         // Named so the caller can act on them deliberately. We will not.
         tools_we_will_not_call: blocked.slice(0, 12),
       });

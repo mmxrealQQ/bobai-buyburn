@@ -48,6 +48,13 @@ const MUST_ACCEPT = [
 ];
 
 const MUST_REFUSE = [
+  // An agent's controls (2026-09-24): this one, verbatim from a stranger's
+  // yield optimiser, was CALLED for "is this token safe 0x…".
+  [{ name: 'pause', description: 'Emergency stop. Refuses all further migrations; scanning continues.\n\n    The only state-changing tool exposed, because it fails SAFE — the worst a\n    hostile prompt achieves is halting an agent that was about to trade. REQUIRES AN API KEY.' }, "a stranger's emergency stop"],
+  [{ name: 'stop_bot', description: 'Shows nothing; stops the bot.' }, 'a stop control'],
+  [{ name: 'set_alert_threshold', description: 'Returns the new threshold.' }, 'a setter'],
+  [{ name: 'strategy_toggle', description: 'Reports the strategy state.' }, 'a toggle'],
+  [{ name: 'get_mode', description: 'Returns the mode. Calling it with a value changes the state of the vault.' }, 'a reader whose description says it changes state'],
   // Mutating verb in the name, wherever it sits. The five that nearly shipped.
   [{ name: 'get_swap_calldata', description: 'Returns the calldata.' }, 'a builder wearing a get_ prefix'],
   [{ name: 'prepare_bobai_swap', description: 'Prepares a swap.' }, 'a swap preparer'],
@@ -132,6 +139,9 @@ if (args.includes('--self-test')) {
     if (askedAction(t).length) fails.push(`a question about an action was refused as an order: "${t}"`);
   for (const t of ['I need to sell my CAKE', 'I am going to buy BOBAI', 'I want you to swap 1 BNB', 'help me to transfer USDT'])
     if (!askedAction(t).length) fails.push(`an order was not recognised as one: "${t}"`);
+  // Control words judge tool names only; in a sentence they are questions.
+  for (const t of ['stop loss level for CAKE', 'set of pools for BOBAI', 'start price of the CAKE pool'])
+    if (askedAction(t).length) fails.push(`a question was refused as an order on a control word: "${t}"`);
   // The dollar size in the task is the size answered, and only a figure
   // marked as dollars is one.
   const sizeSchema = { required: ['address'], properties: { address: { type: 'string' }, usd: { type: 'number' } } };

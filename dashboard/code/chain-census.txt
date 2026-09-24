@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 4257 lines.
+# one fetch. 7 files, 4269 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2430,7 +2430,19 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
             s=s.replace(/\\b(tvl|apy|apr|usd|bnb|lp|id|url|tx|dex|amm|v2|v3)\\b/g,function(m){return m.toUpperCase()});
             return s.charAt(0).toUpperCase()+s.slice(1)};
           var flat=function(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&Object.keys(r).length&&Object.keys(r).length<=40&&Object.keys(r).every(function(k){return r[k]==null||typeof r[k]!=='object'}))};
-          var renderResult=function(r){var raw=esc(typeof r==='string'?r:JSON.stringify(r,null,1)).slice(0,3000);if(!flat(r))return '<pre>'+raw+'</pre>';return '<table class="rg-ans">'+Object.keys(r).map(function(k){return '<tr><th title="'+esc(k)+'">'+esc(label(k))+'</th><td>'+esc(fmtVal(r[k]))+'</td></tr>'}).join('')+'</table><details class="rg-raw"><summary>as the agent sent it</summary><pre>'+raw+'</pre></details>'};
+          // A nested answer shows its top-level figures first (2026-09-24, P7):
+          // the raw JSON was cut at 3000 characters, after escaping, and the
+          // verdict of our own LP tools stands near character 3900 — so it was
+          // never on the page. Cut before escaping (an entity is never halved),
+          // and at 20000; scalars and lists of scalars lead as a table.
+          var scalarList=function(v){return Array.isArray(v)&&v.every(function(x){return x==null||typeof x!=='object'})};
+          var rowVal=function(v){return scalarList(v)?(v.length?v.map(fmtVal).join(' · '):'none'):fmtVal(v)};
+          var rows=function(r,ks){return '<table class="rg-ans">'+ks.map(function(k){return '<tr><th title="'+esc(k)+'">'+esc(label(k))+'</th><td>'+esc(rowVal(r[k]))+'</td></tr>'}).join('')+'</table>'};
+          var renderResult=function(r){var txt=typeof r==='string'?r:JSON.stringify(r,null,1);var raw=esc(txt.length>20000?txt.slice(0,20000)+' …':txt);
+            if(flat(r))return rows(r,Object.keys(r))+'<details class="rg-raw"><summary>as the agent sent it</summary><pre>'+raw+'</pre></details>';
+            if(r&&typeof r==='object'&&!Array.isArray(r)){var ks=Object.keys(r).filter(function(k){return r[k]==null||typeof r[k]!=='object'||scalarList(r[k])}).slice(0,40);
+              if(ks.length)return rows(r,ks)+'<details class="rg-raw"><summary>the whole answer, as the agent sent it</summary><pre>'+raw+'</pre></details>'}
+            return '<pre>'+raw+'</pre>'};
           if(d.dispatched && d.answered_by){
             var ab=d.answered_by;
             o.innerHTML='<div class="rg-who">'+esc(ab.agent)+' &middot; '+esc(ab.tool||ab.skill||'')+(ab.operator?' &middot; <span class="rg-note">'+esc(ab.operator)+(ab.id?' &middot; #'+esc(String(ab.id)):'')+'</span>':'')+'</div>'+

@@ -196,7 +196,9 @@ const CAKE = '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82';
 // Deliberately narrow. A revert IS an answer and never matches here, and an
 // agent bug — a TypeError, a bad field — matches nothing in this list, so it
 // keeps its own classification and stays red where it belongs.
-const CHAIN_REFUSED = /every BSC endpoint refused|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
+// "no BSC endpoint answered the batch" is venus.js's way of saying the same
+// (2026-09-24: yield_plan read as agent_error on it).
+const CHAIN_REFUSED = /every BSC endpoint refused|no BSC endpoint answered|rate limit|capacity|too many|quota|429|timed out|timeout|aborted|network|fetch failed/i;
 
 const isChainRefusal = (e) => {
   const m = String(e?.message || e);

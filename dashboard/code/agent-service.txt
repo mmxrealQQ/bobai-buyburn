@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 41 files, 14117 lines.
+# one fetch. 41 files, 14163 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6781,6 +6781,44 @@ const WATCH_QUOTES = new Set([WBNB, '0x55d398326f99059ff775485246999027b3197955'
 // stopped fitting. On a constant-product pair the quote that moves the price
 // by 1% is reserve x (sqrt(1.01) - 1), 0.4988% of it.
 const ONE_PCT_OF_RESERVE = Math.sqrt(1.01) - 1;
+// THE SPEC, READ BEFORE ANY MONEY MOVES (2026-09-24, A7 step 1). The 402's
+// own example had no pair, and the paid call required one: a trader who
+// followed it was refused after paying for nothing — the order was right
+// (400 before the charge), the example led there. And quote, callback and
+// threshold were only checked inside createWatch, after the payment, so a
+// typo in the callback cost a credit round trip. Now: pair is optional —
+// the token's PancakeSwap V2 pair with the quote (WBNB by default) is looked
+// up at the V2 factory — and a pair that is given must answer getReserves,
+// i.e. be a V2 pair (the watch reads reserves; a V3 pool would read nothing),
+// holding this token. Every refusal comes before the payment.
+const V2_FACTORY = '0xca143ce32fe78f1f7019d7d551a6402fc5350c73';
+const addrArg32 = (a) => String(a).toLowerCase().replace(/^0x/, '').padStart(64, '0');
+async function resolveWatchSpec(spec) {
+  const out = { ...(spec || {}) };
+  if (!/^0x[a-fA-F0-9]{40}$/.test(out.token || '')) return { error: 'token must be a BSC address (0x…)' };
+  const quote = String(out.quote || WBNB).toLowerCase();
+  if (!WATCH_QUOTES.has(quote)) return { error: 'this watch prices pools quoted in BNB, USDT, BUSD, USDC or USD1 — name one of those as quote, or leave it out for BNB' };
+  if (out.callback != null && !/^https:\/\/[^\s]{4,400}$/.test(String(out.callback))) return { error: 'callback must be an https:// URL' };
+  if (out.depthBelowUsd != null && !(Number(out.depthBelowUsd) > 0)) return { error: 'depthBelowUsd must be a positive number of dollars' };
+  const token = out.token.toLowerCase();
+  let pair = out.pair ? String(out.pair).toLowerCase() : null;
+  if (pair && !/^0x[a-f0-9]{40}$/.test(pair)) return { error: 'pair must be a BSC address (0x…), or left out to be found from the token' };
+  if (!pair) {
+    const got = await call(V2_FACTORY, '0xe6a43905' + addrArg32(token) + addrArg32(quote)).catch(() => null);
+    const found = got && got.length >= 66 ? '0x' + got.slice(-40).toLowerCase() : null;
+    if (!found || /^0x0{40}$/.test(found)) return { error: 'this token has no PancakeSwap V2 pair with that quote — the watch reads V2 reserves; name a V2 pair, or another quote' };
+    pair = found; out.pair_found = true;
+  }
+  const res = await call(pair, SEL.getReserves).catch(() => null);
+  if (!res || res.length < 2 + 64 * 2) return { error: 'that pair does not answer as a PancakeSwap V2 pair (no reserves) — the watch reads V2 reserves, a V3 or Infinity pool cannot be watched' };
+  const t0 = await call(pair, SEL.token0).catch(() => null);
+  const t1 = await call(pair, '0xd21220a7').catch(() => null);
+  const sides = [t0, t1].map((x) => (x && x.length >= 66 ? '0x' + x.slice(-40).toLowerCase() : null));
+  if (!sides.includes(token)) return { error: 'that pair does not hold this token' };
+  if (!sides.includes(quote)) return { error: 'that pair is not quoted in the quote named (WBNB by default) — name its quote' };
+  return { spec: { ...out, token, pair, quote } };
+}
+
 async function createWatch(env, spec, payment) {
   const quoteOf = String(spec.quote || WBNB).toLowerCase();
   if (!WATCH_QUOTES.has(quoteOf)) throw new Error('this watch prices pools quoted in BNB, USDT, BUSD, USDC or USD1 — name one of those as quote, or leave it out for BNB');
@@ -7159,10 +7197,10 @@ const WATCH_TOOL = {
     + 'has to still be running in an hour.',
   inputSchema: {
     type: 'object',
-    required: ['token', 'pair'],
+    required: ['token'],
     properties: {
       token: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$', description: 'The BEP-20 token address.' },
-      pair: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$', description: 'The PancakeSwap pair holding it.' },
+      pair: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$', description: 'Optional. The PancakeSwap V2 pair holding it; left out, it is found from the token and the quote.' },
       quote: { type: 'string', description: 'Optional. The other side of the pair, if it is not WBNB.' },
       depthBelowUsd: {
         type: 'number',
@@ -7357,7 +7395,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         // off the one-asset sentence holds the wrong token for the other route.
         price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator (accepts[0]) — either lands in the same wallet`,
         how: `Pay ${fmtUsd1(WATCH_PRICE_USD1)} in USDC through the x402 facilitator (accepts[0]), or send ${fmtUsd1(WATCH_PRICE_USD1)} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
-        needs: { token: 'the token to watch (0x…)', pair: 'the pool/pair address (0x…) — required, a PancakeSwap V2 pair', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
+        needs: { token: 'the token to watch (0x…)', pair: 'optional: the PancakeSwap V2 pair (0x…); left out, it is found from the token and the quote', quote: 'optional: the quote token, WBNB by default', depthBelowUsd: 'fire the callback when the pool can no longer absorb this USD size at 1% impact', callback: 'an https URL we POST to' },
         example: { token: '0x…', depthBelowUsd: 1000, callback: 'https://…' },
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
         free_alternative: 'https://brainonbnb.com/api/pool-scan?address=0x… — one reading, no payment, no watching',
@@ -7395,13 +7433,13 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
   // A caller who mistypes a field has to be told, or they are paying for
   // something they did not ask for.
   const KNOWN = new Set(['token', 'pair', 'quote', 'depthBelowUsd', 'callback']);
-  const ignored = Object.keys(spec || {}).filter((k) => !KNOWN.has(k));
+  const ignored = Object.keys(spec || {}).filter((k) => !KNOWN.has(k) && k !== 'pair_found');
 
   return { status: 200, body: {
     ok: true,
     watch: watch.id,
     expires: new Date(watch.expiresAt).toISOString(),
-    watching: { token: watch.token, pair: watch.pair, depthBelowUsd: watch.depthBelowUsd },
+    watching: { token: watch.token, pair: watch.pair, depthBelowUsd: watch.depthBelowUsd, ...(spec && spec.pair_found ? { pair_note: 'found from the token: its PancakeSwap V2 pair with ' + (watch.quote === WBNB ? 'WBNB' : watch.quote) } : {}) },
     callback: watch.callback ? 'will POST on trigger' : 'none set — read it back at the url below',
     // Spelled out, not left as a pattern to fill in. This is the only copy of
     // the id the buyer will ever be handed.
@@ -8580,13 +8618,17 @@ ${pageTail}`;
         if (params?.name !== 'bsc_pool_watch') return rpcErr(id ?? null, -32602, 'Unknown tool: ' + params?.name);
         if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
         const a = params?.arguments || {};
-        if (!/^0x[a-fA-F0-9]{40}$/.test(a.token || '') || !/^0x[a-fA-F0-9]{40}$/.test(a.pair || '')) {
+        const { payment, ...spec0 } = a;
+        // The same reading of the spec as the HTTP door, before any payment
+        // (A7): pair optional, found from the token; every refusal first.
+        const ready = await resolveWatchSpec(spec0).catch(() => ({ error: 'the pair could not be read right now' }));
+        if (ready.error) {
           return rpcOk(id, {
             isError: true,
-            content: [{ type: 'text', text: 'token and pair must both be BSC addresses (0x + 40 hex).' }],
+            content: [{ type: 'text', text: ready.error + (payment ? ' Nothing was charged.' : '') }],
           });
         }
-        const { payment, ...spec } = a;
+        const spec = ready.spec;
         const out = await purchaseWatch(env, ctx, payTo, spec, payment || null);
         // A 402 here is not a failure — it is the price list, which is what a
         // first call is for. Reporting it as an error would make every client
@@ -8687,7 +8729,7 @@ ${pageTail}`;
         // USD1: a client that takes the facilitator route pays the same amount
         // in USDC, and a price line naming one asset hides the other.
         price: `${fmtUsd1(WATCH_PRICE_USD1)} USD1 by direct transfer, or the same amount in USDC through the x402 facilitator — either lands in the same wallet`,
-        buy: 'POST this same URL with {"token":"0x…","pair":"0x…","depthBelowUsd":1000,"callback":"https://…"}',
+        buy: 'POST this same URL with {"token":"0x…","depthBelowUsd":1000,"callback":"https://…"} — pair optional, found from the token (its PancakeSwap V2 pair with WBNB, or with quote)',
         how: terms.body.how,
         accepts: terms.body.accepts,
         read_back: 'GET /watch/<id> — returned to you when the purchase settles',
@@ -8700,9 +8742,6 @@ ${pageTail}`;
       if (!payTo) return json({ error: 'service not configured to receive payments yet' }, 503);
       const spec = await request.json().catch(() => null);
       const proof = request.headers.get('PAYMENT-SIGNATURE');
-      const specOk = spec
-        && /^0x[a-fA-F0-9]{40}$/.test(spec.token || '')
-        && /^0x[a-fA-F0-9]{40}$/.test(spec.pair || '');
 
       // Price discovery must not require a valid body. An x402 client — or an
       // aggregator indexing the catalogue at /.well-known/x402 — probes the
@@ -8715,15 +8754,22 @@ ${pageTail}`;
       if (!proof) {
         const out = await purchaseWatch(env, ctx, payTo, spec || {}, null);
         note('sell:watch:terms');
+        // A buyer who already named the token sees, before paying, which pair
+        // would be watched — or why none can be (2026-09-24, A7).
+        if (spec && spec.token && out.body && typeof out.body === 'object') {
+          const ready = await resolveWatchSpec(spec).catch(() => ({ error: 'the pair could not be read right now' }));
+          out.body.would_watch = ready.error ? { refused: ready.error } : { token: ready.spec.token, pair: ready.spec.pair, quote: ready.spec.quote, pair_found: !!ready.spec.pair_found };
+        }
         return json(out.body, out.status, out.headers || {});
       }
 
       // A payment is on the table, so the spec has to be right before it is
       // spent. This ordering is deliberate — a caller who pays with a malformed
       // body gets told, not charged.
-      if (!specOk) return json({ error: 'token and pair must both be BSC addresses' }, 400);
+      const ready = await resolveWatchSpec(spec);
+      if (ready.error) return json({ error: ready.error, payment: 'not taken — nothing was charged' }, 400);
 
-      const out = await purchaseWatch(env, ctx, payTo, spec, proof);
+      const out = await purchaseWatch(env, ctx, payTo, ready.spec, proof);
       note(`sell:watch:paid:${out.status}`);
       return json(out.body, out.status, out.headers || {});
     }

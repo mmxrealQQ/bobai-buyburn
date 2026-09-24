@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 6153 lines.
+# one fetch. 6 files, 6158 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4582,6 +4582,11 @@ export { flagsCard };
        2026-09-05 it is there from the first pixel, on the operator's word: the
        header should look the same on arrival as after a scroll. */
     .nb-group{display:flex;gap:8px;align-items:center}
+    /* Brain Terminal: same gold as Buy, with a live dot, because it is live (2026-09-24, operator's word: left of Buy, in yellow). */
+    .nbt{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-family:inherit}
+    .nbt-dot{width:7px;height:7px;border-radius:50%;background:#0b3d1f;box-shadow:0 0 0 2px rgba(0,0,0,.25);animation:nbtPulse 1.6s ease-in-out infinite}
+    @keyframes nbtPulse{50%{background:#00c96b;box-shadow:0 0 8px #00e676}}
+    @media (prefers-reduced-motion:reduce){.nbt-dot{animation:none;background:#00c96b}}
     .nb2{position:relative;background:transparent;color:var(--gold);padding:8px 18px;border-radius:10px;font-weight:700;font-size:.78rem;text-decoration:none;transition:all .25s;border:1px solid rgba(240,185,11,.45);letter-spacing:.3px;overflow:hidden}
     /* A static ring animated via transform/opacity instead of a growing
        box-shadow — see the ground rule in the POLISH LAYER. .nb2 is not used

@@ -915,6 +915,8 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     {id:'bobai-liq-3-raised', start:BB3R_START, end:GG_END, creatorNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', bobNote:'(−0.5% → Liq Boost III, −0.1% → DeFi Agent, −0.1% → Giggle pot)', bobaiNote:'(−0.1% → DeFi Agent, −0.1% → Giggle pot)', creatorPct:'0.8%', bobPct:'0.3%', bobaiPct:'0.8%', liqPct:'0.5%', lpPct:'0.3%', gigglePct:'0.3%'},
     {id:'standard-final',start:new Date('2026-11-20T00:01:00Z').getTime(), end:Infinity, creatorNote:'', bobNote:'', creatorPct:'1%', bobPct:'1%', bobaiPct:'1%'}
   ];
+  // The Brain Terminal draws its streams from this same table, so the popup and the schedule can never disagree.
+  window.__bobaiPhase=()=>{const n=Date.now();return phases.find(p=>n>=p.start&&n<p.end)||null};
   // Size the scroll window to exactly: 1 past phase (context) + active + everything upcoming.
   // Capped at MAX_VISIBLE so long schedules stay compact; older phases remain reachable by scrolling.
   // Measured from live row heights so it also works on mobile, where rows wrap to multiple lines.

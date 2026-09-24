@@ -445,7 +445,7 @@ const TOKENOMICS = {
   mechanism: [
     '3% tax on every $BOBAI trade (rate hardcoded, distribution transparent & published)',
     'the tax accumulates in the public buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
-    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases re-route slices for a dated window, announced before they start (Sep 17 to Nov 20, 2026: 0.8/0.8/0.8 plus 0.3% to the DeFi agent and 0.3% to the Giggle Academy pot) — live schedule on the dashboard',
+    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases re-route slices for a dated window, announced before they start (Sep 20 to Nov 20, 2026: 0.8% creator / 0.3% $BOB burn / 0.8% $BOBAI burn, plus 0.5% to Liquidity Boost III with the LP burned, 0.3% to the DeFi agent and 0.3% to the Giggle Academy pot) — live schedule on the dashboard',
     'bought-back $BOBAI is sent to the dead address = permanent, irreversible burn',
     'more volume -> more buybacks -> more burned -> lower circulating supply',
   ],

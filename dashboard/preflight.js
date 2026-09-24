@@ -174,6 +174,17 @@ export function shape(s, r, usd, routeError = null) {
     // is not always the pool the best route goes through (entry.pool).
     depth: { pool: s.pool?.address ?? null, one_percent_buy_usd: d.buyUsd ?? null, one_percent_sell_usd: d.sellUsd ?? null, pool_hard_side_usd: s.pool?.liquidityUsd ?? null },
     lp_burned_pct: s.lp?.burnedPct ?? null,
+    // What stays open after this answer, and the one thing here that costs
+    // money (2026-09-24, A3 of the review): nothing a trading agent touched
+    // ever named it. Neutral and only where it works — the watch reads V2
+    // reserves, so a V3 or Infinity pool gets no pointer. Price and term come
+    // from the watch's own 402 answer, not from this text.
+    keep_watching: s.pool?.kind === 'v2' && s.pool?.address ? {
+      why: 'This answer is one block. If you hold, the depth that lets you out can leave after it.',
+      what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set.',
+      how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
+      terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
+    } : null,
     cannot_see: [
       'An owner who has not acted yet, a proxy not yet upgraded, a blacklist you are not on today: this is the trip as it stands at this block.',
       'Anything off-chain — the team, the socials, the deployer’s history.',

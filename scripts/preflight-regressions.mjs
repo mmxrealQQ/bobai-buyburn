@@ -117,5 +117,16 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('a CLI and a pulled file never share a name', !clis.some((c) => Object.values(pulled).includes(c)));
 }
 
+// A3 (2026-09-24): the one paid follow-up is named, and only where it works —
+// the watch reads V2 reserves.
+{
+  const v2 = shape(scan({ pool: { address: '0x' + 'c'.repeat(40), kind: 'v2', venue: 'PancakeSwap', liquidityUsd: 40000 } }), route(), 500);
+  ok('a V2 pool names the watch, with this token, this pair and this size filled in',
+    !!v2.keep_watching && v2.keep_watching.how.includes('0x' + 'c'.repeat(40)) && v2.keep_watching.how.includes(v2.token.address) && v2.keep_watching.how.includes('"depthBelowUsd":500'), JSON.stringify(v2.keep_watching));
+  ok('… and states no price of its own (the 402 does)', !/\$\s?\d|USD1|\d+\s?days?/i.test(JSON.stringify(v2.keep_watching)));
+  const v3 = shape(scan({ pool: { address: '0x' + 'd'.repeat(40), kind: 'v3', venue: 'PancakeSwap V3', liquidityUsd: 40000 } }), route(), 500);
+  ok('a V3 pool gets no pointer to a watch that cannot read it', v3.keep_watching === null);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\npreflight: all pins hold');
 process.exit(fails ? 1 : 0);

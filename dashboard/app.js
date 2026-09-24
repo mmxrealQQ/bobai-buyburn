@@ -1175,7 +1175,7 @@ function fillLpSeries(){
       if(!pts.length){ sum.textContent = 'No run recorded yet. The first point lands after the next 04:23 UTC run.'; return; }
       // One line, not the portfolio again: the portfolio above already says
       // what went in and what came out. The table is the evidence.
-      sum.textContent = 'Since ' + String(s.since || '').slice(0, 10) + ': ' + pts.length + ' runs with a position, in range on ' + (s.days_in_range || 0) + ' of ' + (s.runs_with_a_position || 0) + '. Worth is the position in BNB; "on the capital" is that value against everything that had gone in by then — the first point, what the operator added, what the deposit watch put in — so a deposit is not a gain.';
+      sum.textContent = 'Since ' + String(s.since || '').slice(0, 10) + ': ' + pts.length + ' runs with a position' + (s.time_in_range ? ', in range ' + s.time_in_range.in_range_pct + '% of the time since ' + String(s.time_in_range.from || '').slice(0, 10) + ' (' + s.time_in_range.samples + ' ten-minute readings of the price)' : ', in range on ' + (s.days_in_range || 0) + ' of ' + (s.runs_with_a_position || 0)) + '. Worth is the position in BNB; "on the capital" is that value against everything that had gone in by then — the first point, what the operator added, what the deposit watch put in — so a deposit is not a gain.';
       const head = '<tr><th>Run</th><th>Position</th><th>Worth (BNB)</th><th>On the capital</th><th>Range</th><th>Fees owed (BNB)</th><th>Into $BOBAI (BNB)</th><th>Did</th></tr>';
       const rows = pts.slice().reverse().map(p => {
         // The worker's own figure (series point capital_bnb / on_capital_pct); the page computes nothing.

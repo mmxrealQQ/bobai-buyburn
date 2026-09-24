@@ -232,6 +232,8 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, wi
       // it produced, against a wallet that simply held (holdingBenchmark).
       vs_holding: vsHold,
       in_range_runs: n(sum.days_in_range), runs: n(sum.runs_with_a_position), since: String(sum.since || '').slice(0, 10),
+      // The share of time, from the ten-minute tape; the run counts beside it lean high (D3).
+      time_in_range_pct: sum.time_in_range ? sum.time_in_range.in_range_pct : null,
       other_token: poolLabel ? poolLabel.split('/')[0] : 'the other side',
     },
     last_24h: day,

@@ -626,6 +626,34 @@ export function calibration(points, rows, widthClass, { minHours = 20, maxHours 
   };
 }
 
+// TIME IN RANGE (2026-09-24, D3 of the review). "In range on 64 of 71" counted
+// the agent's runs, and a run happens when the agent acts — mostly while the
+// price is inside — so the count leaned high: from the ten-minute tape it was
+// nearer three quarters since 2026-09-03. Here every tape sample is held
+// against the range that stood at that moment: the newest series point at or
+// before it that carries ticks, as long as no later point has named another
+// position without its ticks (then the range is unknown and the sample is
+// not counted either way). In range: lower <= tick < upper. Pure.
+export function timeInRange(series, tape) {
+  const pts = (Array.isArray(series) ? series : []).filter((p) => p && p.at).slice().sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const samples = (Array.isArray(tape) ? tape : []).filter((x) => x && x.at && Number.isFinite(Number(x.tick))).slice().sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  let i = 0, state = null, inside = 0, outside = 0, unknown = 0, first = null, last = null;
+  for (const x of samples) {
+    const t = Date.parse(x.at);
+    while (i < pts.length && Date.parse(pts[i].at) <= t) {
+      const p = pts[i++];
+      if (Array.isArray(p.ticks) && p.ticks.length === 2) state = { position: p.position ?? null, lo: Number(p.ticks[0]), hi: Number(p.ticks[1]) };
+      else if (p.position != null && state && p.position !== state.position) state = null;
+    }
+    if (!state) { unknown += 1; continue; }
+    const tk = Number(x.tick);
+    if (tk >= state.lo && tk < state.hi) inside += 1; else outside += 1;
+    first = first || x.at; last = x.at;
+  }
+  const n = inside + outside;
+  return n ? { in_range_pct: Math.round((inside / n) * 1000) / 10, samples: n, in_range_samples: inside, unknown_samples: unknown, from: first, to: last } : null;
+}
+
 const DAY_MS = 24 * 3600 * 1000;
 const MIN_LATER_MS = 20 * 3600 * 1000;
 function dayHold(used, widthPct) {

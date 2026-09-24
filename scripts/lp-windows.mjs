@@ -34,7 +34,7 @@
 //   node scripts/lp-windows.mjs --self-test     pin the verdict's rules, both ways
 import fs from 'node:fs';
 import path from 'node:path';
-import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, deriveWidths, appendTick, priceSeries, MAX_WINDOWS, MAX_TICKS, calibration, widthShare, inRangeFeeRate } from '../worker-agent/lp-windows.js';
+import { verdict, appendWindow, mergeLogs, windowFromPlan, earningsTest, rangeValue, measuredResetCost, resetSwapFee, resetLosses, deriveWidths, appendTick, priceSeries, MAX_WINDOWS, MAX_TICKS, calibration, widthShare, inRangeFeeRate, timeInRange } from '../worker-agent/lp-windows.js';
 import { RESET_AFTER_HOURS, MIN_HOURS_FOR_EARNINGS, WAIT_PICK_MIN_HOURS, WAIT_PICK_MARGIN, waitInUse, DERIVED_WIDTHS, RECORD_WIDTHS, widthClassOf } from '../shared/lp-guards.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
@@ -72,6 +72,26 @@ if (SELF_TEST) {
   const win = (from, to, rows) => ({ at: new Date(from * 1000).toISOString(), from_block: from, to_block: to, minutes: 37, swaps: 100, pool_fees_usd: 1, rebalance_cost_usd: 0.48, rows });
   const good = [row(0.5, true, 0.09), row(1, true, 0.04), row('full', true, 0.0002)];
 
+  // Time in range from the tape, not runs (2026-09-24, D3).
+  {
+    const at = (h) => new Date(Date.UTC(2026, 8, 1) + h * 36e5).toISOString();
+    const series = [
+      { at: at(0), position: '1', ticks: [-100, 100], in_range: true },
+      { at: at(5), position: '1', in_range: true },           // a run without ticks: the range stands
+      { at: at(10), position: '2' },                          // a new position, ticks unknown
+      { at: at(12), position: '2', ticks: [0, 200], in_range: true },
+    ];
+    const tape = [
+      { at: at(1), tick: 0 }, { at: at(2), tick: 150 }, { at: at(6), tick: -100 }, { at: at(7), tick: 100 },
+      { at: at(11), tick: 50 },                                // range unknown: counted neither way
+      { at: at(13), tick: 50 }, { at: at(14), tick: 199 },
+    ];
+    const r = timeInRange(series, tape);
+    t('time in range counts samples against the range that stood then (lower inclusive, upper not)', r && r.samples === 6 && r.in_range_samples === 4 && r.in_range_pct === 66.7);
+    t('a sample under a new position with no ticks yet is unknown, not in or out', r && r.unknown_samples === 1);
+    t('runs taken only while inside would say 100%; the tape does not', r.in_range_pct < 100);
+    t('no tape, no figure', timeInRange(series, []) === null);
+  }
   // Thin: one window decides nothing, however good it looks.
   let v = verdict({ windows: [win(100, 200, good)] });
   t('one window is thin and picks nothing', v.thin && v.pick === null && v.windows === 1);

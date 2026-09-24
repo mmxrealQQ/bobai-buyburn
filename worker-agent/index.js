@@ -56,7 +56,7 @@ import { refreshTelemetry, readTelemetry } from './telemetry.js';
 import { registrations, OWN_AGENT_IDS, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
 import { handleSession } from './session.js';
 import { handleSessionRevoke, readRevocations, annotateRoles } from './session-revoke.js';
-import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict } from './lp-windows.js';
+import { recordLpWindow, readLpWindows, noteLpWindowError, verdict as lpVerdict, measuredResetCost, calibration as lpCalibration, watchedPool, resetLosses, readLpTicks, widthVerdict, timeInRange as lpTimeInRange } from './lp-windows.js';
 import { widthClassOf, HOME_POOL, pickWidth } from '../shared/lp-guards.js';
 import { lpPortfolio } from './lp-portfolio.js';
 import { tickOwnJobs, readOwnJobs } from './own-jobs.js';
@@ -715,7 +715,7 @@ function lpFeesWhere(p) {
   parts.push(`${f5(p.fees_owed_bnb)} still owed by the position`);
   return parts.join(', ');
 }
-function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals = null, value_now_bnb = null } = {}) {
+function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals = null, value_now_bnb = null, time_in_range = null } = {}) {
   if (!series.length) return null;
   const first = series[0], last0 = series[series.length - 1];
   // The totals (fees, buyback share, kept, swept) are the record's own
@@ -759,6 +759,9 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     days_in_range: series.filter((p) => p.in_range === true).length,
     days_out_of_range: series.filter((p) => p.in_range === false).length,
     days_it_acted: series.filter((p) => p.acted).length,
+    // The share of TIME in range, from the ten-minute tape (2026-09-24, D3):
+    // the run counts above lean high, a run happens when the agent acts.
+    time_in_range,
   };
   // Profit, the way the operator asks it ("was haben wir fuer profit?"): what
   // the position is worth now against the first point, plus the fees it has
@@ -802,7 +805,7 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
   out.sentence = `Since ${String(out.since).slice(0, 10)}: ${out.points} run${out.points === 1 ? '' : 's'}`
     + (v && v.start != null ? `, position worth ${f(v.start, 4)} → ${f(v.now, 4)} BNB${v.added_by_hand_bnb ? ` of which ${f(v.added_by_hand_bnb, 4)} BNB was added by the operator` : ''} (${pct(v.change_pct)}${v.added_by_hand_bnb ? ' on the capital' : ''})` : '')
     + (out.price_move_pct_since_start != null ? `, the pair moved ${pct(out.price_move_pct_since_start)}` : '')
-    + `, in range on ${out.days_in_range} of ${out.runs_with_a_position}`
+    + (time_in_range ? `, in range ${time_in_range.in_range_pct}% of the time since ${String(time_in_range.from).slice(0, 10)} (${time_in_range.samples} ten-minute readings)` : `, in range on ${out.days_in_range} of ${out.runs_with_a_position} runs`)
     + `, fees put into BOBAI held in the wallet ${f(out.fees_into_bobai_bnb, 5)} BNB${out.bobai_held_units > 0 ? ` (${Math.round(out.bobai_held_units).toLocaleString('en-US')} BOBAI held)` : ''}`
     + (out.fees_kept_as_capital_bnb ? `, kept as capital ${f(out.fees_kept_as_capital_bnb, 5)} BNB` : '')
     + `, income put in ${f(out.income_put_in_bnb, 5)} BNB` + (out.deposits_put_in_bnb > 0 ? `, deposits the agent put in ${f(out.deposits_put_in_bnb, 5)} BNB` : '') + '.';
@@ -1209,7 +1212,7 @@ async function buildLpSeries(env) {
       }
       return {
         what_this_is: 'One point per run of the DeFi agent, taken from its own record: position value in BNB, in range or not, fees owed, fees already put into $BOBAI the agent holds (until 2026-09-09: sent to the buyback bot) and kept as capital, income already put in, and the profit so far netted against the gas on record. Not a counter; every figure is in the record it came from.',
-        summary: lpSeriesSummary(withCapital, { gas_bnb, owed_now_bnb, totals, value_now_bnb }),
+        summary: lpSeriesSummary(withCapital, { gas_bnb, owed_now_bnb, totals, value_now_bnb, time_in_range: lpTimeInRange(withCapital, await readLpTicks(env)) }),
         points: withCapital,
         record: 'https://agent.brainonbnb.com/lp/agent',
         cadence: 'daily, after the 04:23 UTC run; the range itself is checked every hour, and an hourly check gets a point of its own only when it re-set the position or found one the series did not know. A run that found no position is not a point',

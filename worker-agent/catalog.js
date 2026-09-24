@@ -31,6 +31,10 @@ export const fmtUsd1 = (v) => {
 
 export const CAPABILITIES = {
   free: [
+    // The check an agent runs before a trade, in one call. Live since
+    // 2026-09-20 over MCP and REST but missing here, so /services, /stats and
+    // the x402 page never named the one thing a trading agent comes for.
+    { name: 'before a trade: can I get in, can I get out', where: 'https://brainonbnb.com/api/preflight?address=0x...&usd=250 · MCP tool bsc_token_preflight', example: 'https://brainonbnb.com/api/preflight?address=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82&usd=250', what: 'for any BSC token, at your size: what stops the trade (the sell does not go through from a fresh address, nothing quotes, the round trip loses half), what to weigh — each with its figure and the line it was measured against — then the best route, the slippage it needs and the round trip with the transfer tax measured from executed trades. About 1.5 KB. No "safe" and no score.' },
     { name: 'pool scan (browser)', where: 'https://brainonbnb.com/scanner', what: 'measure any BSC pool: real trade cost, depth, tax from executed trades, a simulated sell — and a token still on its four.meme launch curve, read from four.meme\'s own contract' },
     { name: 'agent skill', where: 'npx skills add https://brainonbnb.com', what: 'the same measurement as an installable skill for any MCP-capable agent' },
     { name: 'MCP server', where: 'https://brainonbnb.com/mcp', what: 'read-only tools over MCP: measure any BSC pool before trading it (or the four.meme curve a new token is still on), search the ERC-8004 registry, read the census, plus live $BOBAI on-chain data' },

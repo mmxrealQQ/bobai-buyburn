@@ -455,6 +455,10 @@ async function fetchIndexerStats(env = null) {
 // by a third party; a missed tick shows as a gap, not as a wrong number.
 const SWAP_LEDGER_KEY = 'swap_buckets';
 const LEDGER_HOURS = 24;
+// Kept for a week since 2026-09-26: the Brain Terminal's 7D chart reads the same buckets (/candles). The figures of
+// /price still cover exactly LEDGER_HOURS (ledgerStats cuts its own window); the key only grows from ~145 to ~1,010
+// buckets (~150 KB), written as often as before.
+const LEDGER_KEEP_HOURS = 168;
 const BUCKET_MINUTES = 10;
 // BSC clears a block every ~0.45 s in 2026: ten minutes is ~1,330 blocks.
 // 1,600 leaves headroom so a late tick never opens a hole; a bucket carries
@@ -482,7 +486,7 @@ async function recordSwapBucket(env) {
   // next tick reads from the same block again.
   const logs = await getSwapLogs('0x' + from.toString(16), env, { narrow: false });
   if (!Array.isArray(logs)) throw new Error('swap logs unavailable');
-  let buys = 0, sells = 0, volWei = 0n;
+  let buys = 0, sells = 0, volWei = 0n, hi = 0, lo = 0;
   for (const log of logs) {
     const b = parseInt(log.blockNumber, 16);
     if (b < from || b > latest) continue;
@@ -494,10 +498,13 @@ async function recordSwapBucket(env) {
     else if (amount0In > 0n && amount1Out > 0n) sells++;
     else continue;
     volWei += amount1In + amount1Out;
+    // the swap's own price, BNB per BOBAI: the candle's wick (the bucket's close is the reserves after it)
+    const px = Number(amount1In + amount1Out) / Number(amount0In + amount0Out);
+    if (px > 0 && Number.isFinite(px)) { hi = Math.max(hi, px); lo = lo ? Math.min(lo, px) : px; }
   }
   const pair = await readPairOnchain();
-  const bucket = { t: Date.now(), from, to: latest, buys, sells, vol_bnb: Number(volWei) / 1e18, price_bnb: pair ? pair.priceInBnb : null, price_usd: pair ? pair.price : null, bnb_usd: pair ? pair.bnbUsd : null };
-  const cutoff = Date.now() - LEDGER_HOURS * 3600 * 1000;
+  const bucket = { t: Date.now(), from, to: latest, buys, sells, vol_bnb: Number(volWei) / 1e18, price_bnb: pair ? pair.priceInBnb : null, price_usd: pair ? pair.price : null, bnb_usd: pair ? pair.bnbUsd : null, ...(hi ? { hi_bnb: hi, lo_bnb: lo } : {}) };
+  const cutoff = Date.now() - LEDGER_KEEP_HOURS * 3600 * 1000;
   const kept = ledger.filter((x) => x.t >= cutoff).concat(bucket);
   await env.KV.put(SWAP_LEDGER_KEY, JSON.stringify(kept));
   console.log('[LEDGER] bucket', from, '-', latest, buys, 'buys', sells, 'sells', bucket.vol_bnb.toFixed(4), 'BNB');
@@ -2943,6 +2950,16 @@ export default {
         indexers: [gecko, dex],
         ledger: await (async () => { const l = await readSwapLedger(env); const st = ledgerStats(l, pair ? pair.priceInBnb : 0); return st ? { buckets: l.length, hours: Number(st.hours.toFixed(2)), trades: st.trades, vol_bnb: Number(st.vol_bnb.toFixed(4)), h1: st.h1, h6: st.h6, h24: st.h24 } : { buckets: 0 }; })(),
       }, null, 2), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+
+    // === /candles — the 24-hour ledger above, readable by anyone (2026-09-26) ===
+    // The Brain Terminal draws BOBAI's chart from it: one ten-minute bucket per candle, the close from the pool's
+    // reserves, the wicks from the swaps' own prices. Public on-chain figures only; one KV read, cached a minute.
+    if (url.pathname === '/candles' && request.method === 'GET') {
+      const rows = (await readSwapLedger(env)).filter((x) => x.price_bnb > 0).map((x) => ({ t: x.t, c: x.price_bnb, h: x.hi_bnb || null, l: x.lo_bnb || null, v: x.vol_bnb, b: x.buys, s: x.sells, u: x.bnb_usd }));
+      return new Response(JSON.stringify({ minutes: BUCKET_MINUTES, source: 'PancakeSwap pool Swap events + reserves, read every ten minutes', rows }), {
+        headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60', 'access-control-allow-origin': '*' },
+      });
     }
 
     if (url.pathname === '/health' && request.method === 'GET') {

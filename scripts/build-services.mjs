@@ -33,6 +33,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CAPABILITIES, DELIVERIES, SOLD_BY } from '../worker-agent/catalog.js';
 import { SERVICE_BY_SLUG } from './lib/own-agents.mjs';
+import { THANKS, DEFI_WALLET } from '../shared/thanks.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'dashboard', 'services.html');
@@ -323,6 +324,16 @@ ${GROUPS.filter(([k]) => (CAPABILITIES[k] || []).length).map(([k, title, sub]) =
     <ul class="sv-caps">
 ${CAPABILITIES[k].map(capRow).join('\n')}
     </ul>`).join('\n')}
+  </section>
+
+  <section class="sv-sec">
+    <h2>If it helped you</h2>
+    <p class="sv-sub">Everything free here stays free, and every answer carries a short thank-you saying so. A tip is welcome and never required; it changes nothing about the answers.</p>
+    <ul class="sv-not">
+      <li><b>Over x402, in one step.</b> <a href="${esc(THANKS.tip.x402)}">${esc(THANKS.tip.x402.replace('https://', ''))}</a> answers 402; set the amount with <code>?usd=</code> (0.10 to 1000), paid in USDC or USD1 on BNB Smart Chain.</li>
+      <li><b>Or in BNB</b> to the DeFi agent, <a href="https://bscscan.com/address/${DEFI_WALLET}">${DEFI_WALLET.slice(0, 6)}…${DEFI_WALLET.slice(-4)}</a>.</li>
+      <li><b>Where it goes.</b> ${esc(THANKS.tip.what_it_does)}</li>
+    </ul>
   </section>
 
   <section class="sv-sec">

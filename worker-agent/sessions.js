@@ -83,7 +83,12 @@ export async function readSessions(env) {
 // requests whose origin was not recorded (nearly all of them ours). They age
 // out of the rolling log on their own.
 export const ORIGIN_MARKED_SINCE = '2026-09-08T18:50:00.000Z';
+// A burst from one caller (2026-09-26, the operator's decision): on 2026-09-20 somebody sent the same task 156
+// times in 50 seconds and the router asked the same agent each time. Those entries stay in the log, marked with
+// `repeat`, and are left out of every operator's record — one caller hammering a question is not 156 tests of an
+// agent. Since the same day a repeat within a minute is answered from the edge cache and never reaches the log.
 export function originOf(s) {
+  if (s.repeat) return 'repeats_of_one_caller';
   if (s.probe) return 'our_scheduled_checks';
   if (s.ours) return 'our_quote_runs';
   if (s.tool === 'erc8183:negotiate' && String(s.at || '') < ORIGIN_MARKED_SINCE) return 'quote_requests_before_marking';
@@ -91,22 +96,23 @@ export function originOf(s) {
 }
 export function sessionOrigins(sessions, ownAgentIds = []) {
   const own = new Set(ownAgentIds.map(String));
-  const out = { outside_callers: 0, our_scheduled_checks: 0, our_quote_runs: 0, quote_requests_before_marking: 0, to_our_own_agents: 0 };
+  const out = { outside_callers: 0, our_scheduled_checks: 0, our_quote_runs: 0, quote_requests_before_marking: 0, repeats_of_one_caller: 0, to_our_own_agents: 0 };
   for (const s of sessions) {
     out[originOf(s)] += 1;
     if (own.has(String(s.agent))) out.to_our_own_agents += 1;
   }
-  out.note = `outside_callers are sessions that carry no mark of ours — a task the operator typed into the page himself looks the same as a stranger's, so this is an upper bound on strangers, not a count of them. our_scheduled_checks is the daily canary; our_quote_runs is the registry publish asking every Hire button for a price through the live /hire (marked since ${ORIGIN_MARKED_SINCE.slice(0, 10)}); quote_requests_before_marking are negotiate calls from before that date whose origin was not recorded, nearly all of them ours. to_our_own_agents counts, across all four, the sessions routed to this project's own five agents.`;
+  out.note = `outside_callers are sessions that carry no mark of ours — a task the operator typed into the page himself looks the same as a stranger's, so this is an upper bound on strangers, not a count of them. our_scheduled_checks is the daily canary; our_quote_runs is the registry publish asking every Hire button for a price through the live /hire (marked since ${ORIGIN_MARKED_SINCE.slice(0, 10)}); quote_requests_before_marking are negotiate calls from before that date whose origin was not recorded, nearly all of them ours. repeats_of_one_caller is one caller sending the same task over and over within a minute, kept in the log but left out of every track record. to_our_own_agents counts, across all four, the sessions routed to this project's own five agents.`;
   return out;
 }
 
 // The track record, derived rather than declared. Every number here comes from
 // the log above; there is no field an operator can set.
 export function trackRecord(sessions) {
-  const by = new Map();
+  const by = new Map(), repeats = new Map();
   for (const s of sessions) {
     const k = s.operator || s.agent;
     if (!k || s.unlisted) continue;
+    if (s.repeat) { repeats.set(k, (repeats.get(k) || 0) + 1); continue; }
     if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, quoteRuns: 0, unmarked: 0, times: [], tools: new Set(), last: null, failures: [] });
     const r = by.get(k);
     r.asked++;
@@ -148,6 +154,7 @@ export function trackRecord(sessions) {
       tools_used: [...r.tools].slice(0, 8),
       last_seen: r.last,
       ...(r.failures.length ? { recent_failures: r.failures } : {}),
+      ...(repeats.get(r.operator) ? { repeats_left_out: repeats.get(r.operator) } : {}),
     }))
     // Coerced: the operator key arrives as whatever the caller passed, and an
     // agent id is a number. localeCompare on a number throws, which took the

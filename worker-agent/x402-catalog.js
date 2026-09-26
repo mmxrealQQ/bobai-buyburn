@@ -51,6 +51,8 @@ const ANSWER_NAMES = {
 const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/watch',
   ...ANSWER_IDS.map((id) => `https://agent.brainonbnb.com/answer?service=${id}`),
+  // a voluntary tip (2026-09-26): it answers 402 like the others, at the amount the tipper names
+  'https://agent.brainonbnb.com/tip',
 ];
 
 function instructions({ payTo, price, days, asset, network }) {
@@ -84,6 +86,8 @@ every 402. A client takes whichever it can execute:
 |----------|-------------|-------|
 | \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price} |
 ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1 |`).join('\n')}
+
+| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free. The money takes the path all our income takes, into the DeFi agent's pool. | you choose |
 
 Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the

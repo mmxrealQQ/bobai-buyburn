@@ -757,7 +757,16 @@ section('The marketplace, from the front door');
   ok('a fabricated proof is refused with a reason, and nothing is produced', ansBogus.status === 402 && /not accepted/.test(bogusBody.error || '') && !!bogusBody.reason && !bogusBody.result);
   ok('an unknown service does not ask for money', (await fetch(`${AGENT}/answer?service=nope`, { method: 'POST' })).status === 400);
   const x402cat = await fetch(`${AGENT}/.well-known/x402`).then((r) => r.json()).catch(() => null);
-  ok('the x402 catalogue lists the watch and the six answers', !!x402cat && Array.isArray(x402cat.resources) && x402cat.resources.length === 7 && x402cat.resources.filter((u) => /\/answer\?service=/.test(u)).length === 6);
+  ok('the x402 catalogue lists the watch, the six answers and the tip', !!x402cat && Array.isArray(x402cat.resources) && x402cat.resources.length === 8 && x402cat.resources.filter((u) => /\/answer\?service=/.test(u)).length === 6 && x402cat.resources.some((u) => /\/tip$/.test(u)));
+  // The voluntary tip (2026-09-26): a 402 at the amount the tipper names, into the same wallet as the paid
+  // services, refusals before any money; and every free answer from outside names it in its thank-you note.
+  const tip = await fetch(`${AGENT}/tip?usd=2`).then(async (r) => ({ status: r.status, j: await r.json().catch(() => null) })).catch(() => null);
+  ok('a tip answers 402 at the amount asked, USDC and USD1', !!tip && tip.status === 402 && tip.j?.accepts?.length === 2 && tip.j.accepts.every((a) => a.maxAmountRequired === '2000000000000000000'));
+  ok('a tip goes to the same wallet as the paid answers', !!tip?.j && tip.j.accepts.every((a) => a.payTo === x402cat?.instructions?.match(/Pay to\*\*: `(0x[0-9a-fA-F]{40})`/)?.[1]));
+  ok('a tip below the floor is refused before any payment', (await fetch(`${AGENT}/tip?usd=0.01`)).status === 400);
+  ok('a tip with a made-up proof is refused', (await fetch(`${AGENT}/tip`, { headers: { 'PAYMENT-SIGNATURE': '0x' + '12'.repeat(32) } })).status === 402);
+  const thx = await fetch(`${SITE}/api/price`, { headers: { 'user-agent': 'bobai-smoke-test' } }).then((r) => r.json()).catch(() => null);
+  ok('a free answer to an outside caller carries the tip note', /\/tip/.test(thx?._thanks?.tip?.x402 || ''));
   // The funnel and the attestation (2026-09-03, point 3). The router names
   // the agent by id so the page can offer its paid version; the attest route
   // prepares one measurement and refuses everything that is not a delivered
@@ -907,8 +916,10 @@ section('Transparency');
   // 262 of our own quote runs and not one stranger in the newest forty.
   const s = await fetch(`${AGENT}/sessions?format=json`).then((r) => r.json()).catch(() => null);
   const w = s?.of_which || {};
-  ok('the session headline is split by who asked', !!s && ['outside_callers', 'our_scheduled_checks', 'our_quote_runs', 'quote_requests_before_marking', 'to_our_own_agents'].every((k) => typeof w[k] === 'number'));
-  ok('… and the four origins add up to the sessions recorded', !!s && w.outside_callers + w.our_scheduled_checks + w.our_quote_runs + w.quote_requests_before_marking === s.sessions_recorded);
+  ok('the session headline is split by who asked', !!s && ['outside_callers', 'our_scheduled_checks', 'our_quote_runs', 'quote_requests_before_marking', 'repeats_of_one_caller', 'to_our_own_agents'].every((k) => typeof w[k] === 'number'));
+  ok('… and the five origins add up to the sessions recorded', !!s && w.outside_callers + w.our_scheduled_checks + w.our_quote_runs + w.quote_requests_before_marking + w.repeats_of_one_caller === s.sessions_recorded);
+  // The burst of 2026-09-20 (one caller, 156 identical tasks in 50 s): marked, kept in the log, out of every record.
+  ok('repeats of one caller stay in no operator record', Array.isArray(s?.track_record) && s.track_record.every((r) => !(r.operator === 'synergix.lol' && r.tasks_routed >= 156)));
   ok('every operator row says how many of its tasks came from outside', Array.isArray(s?.track_record) && s.track_record.every((r) => typeof r.from_outside_callers === 'number' && r.from_outside_callers >= 0 && r.from_outside_callers <= r.tasks_routed));
 }
 {

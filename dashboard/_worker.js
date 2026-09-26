@@ -9,6 +9,7 @@ import { rangePlan } from './range-scan.js';
 import { swapRoute } from './swap-route.js';
 import { preflight } from './preflight.js';
 import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
+import { withThanks, THANKS_LINE } from '../shared/thanks.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -390,7 +391,7 @@ async function getSmartMoney() {
 }
 
 // The introduction an MCP client shows its model on connect.
-const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe".';
+const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; each answer carries a short thank-you note with where a voluntary tip would go — never required, and the answer is the same either way.';
 
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
@@ -1059,7 +1060,8 @@ async function handleMcp(request, note = () => {}) {
       // that as a result with isError, which the model gets to read, not as a
       // JSON-RPC error many clients swallow. Protocol errors stay errors below.
       try {
-        const out = await runTool(params?.name, params?.arguments || {});
+        // every answer carries the thank-you note (shared/thanks.js): free, a tip welcome, never required
+        const out = withThanks(await runTool(params?.name, params?.arguments || {}));
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] })), { headers: cors });
       } catch (e) {
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: e.message || String(e) }], isError: true })), { headers: cors });
@@ -1395,7 +1397,11 @@ export default {
           // was handed on, so every REST caller was answered for $250 and $1,000.
           ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || '', ...(url.searchParams.get('usd') != null ? { usd: url.searchParams.get('usd') } : {}), ...(url.searchParams.get('capitalUsd') != null ? { capitalUsd: url.searchParams.get('capitalUsd') } : {}) })
           : await runTool(REST_TOOLS[url.pathname], {});
-        return new Response(JSON.stringify(out, null, 2), { headers });
+        // A caller from outside gets the thank-you note with the answer (2026-09-26): free, a tip welcome, never
+        // required. The site's own pages read these routes for their figures and get them without it.
+        const siteCall = request.headers.get('sec-fetch-site') === 'same-origin' || /^https:\/\/(www\.)?brainonbnb\.com\//.test(request.headers.get('referer') || '');
+        if (siteCall) return new Response(JSON.stringify(out, null, 2), { headers });
+        return new Response(JSON.stringify(withThanks(out), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
       } catch (e) {
         // 400 for a malformed address, 503 when the chain or a log endpoint
         // did not answer, 422 for every determinate answer ("that address is

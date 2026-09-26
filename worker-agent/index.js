@@ -35,6 +35,7 @@ import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
+import { withThanks, THANKS_LINE } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
@@ -192,6 +193,12 @@ async function listAll(env, prefix) {
   } while (cursor);
   return { keys, list_complete: true };
 }
+// A free answer to a caller from outside carries the thank-you note (shared/thanks.js, 2026-09-26): free, a tip
+// welcome, never required. The site's own pages, which read some of these routes for their figures, get none.
+const fromOurSite = (request) => /^https:\/\/(www\.)?brainonbnb\.com(\/|$)/.test(request.headers.get('origin') || request.headers.get('referer') || '');
+const thankJson = (request, obj, status = 200, extra = {}) => status === 200 && !fromOurSite(request)
+  ? json(withThanks(obj), status, { ...extra, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' })
+  : json(obj, status, extra);
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj, null, 2), {
     status,
@@ -1082,6 +1089,60 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   } };
 }
 
+// A tip, over x402 (2026-09-26, the operator's go). Everything free here says thank you and names this door
+// (shared/thanks.js); an agent with an x402 wallet can walk through it in one step. The tipper picks the
+// amount (?usd=, default 1, between TIP_MIN and TIP_MAX), pays it into the same x402 wallet the paid services
+// use — by standard x402 in USDC, or a direct USD1 transfer with its hash — and gets a thank-you back. Nothing
+// is sold and nothing unlocks: the free answers are the same with or without one. The money takes the path all
+// our income takes: the DeFi agent's daily sweep moves it into its pool. The minimum keeps a settle's gas
+// (paid from the x402 wallet for Permit2) far under the tip itself.
+const TIP_MIN = 0.1, TIP_MAX = 1000;
+function tipAmount(q) {
+  const usd = q == null || q === '' ? 1 : Number(q);
+  if (!Number.isFinite(usd) || usd < TIP_MIN || usd > TIP_MAX) return null;
+  const cents = Math.round(usd * 100);
+  return { usd: cents / 100, atomic: BigInt(cents) * 10n ** 16n };
+}
+async function tipRoute(env, ctx, payTo, q, proof) {
+  const amt = tipAmount(q);
+  if (!amt) return { status: 400, body: { error: `a tip is between ${TIP_MIN} and ${TIP_MAX} (dollars, in USDC or USD1): ?usd=<amount>`, example: 'https://agent.brainonbnb.com/tip?usd=1' } };
+  const resource = `https://agent.brainonbnb.com/tip?usd=${amt.usd}`;
+  const description = `A voluntary tip of ${amt.usd} to BOBAI — thank you`;
+  if (!proof) {
+    const requirements = {
+      x402Version: 2,
+      accepts: [
+        dexterAccepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
+        {
+          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
+          description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+        },
+      ],
+    };
+    return {
+      status: 402,
+      headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
+      body: {
+        error: 'payment required',
+        what: 'A voluntary tip. Everything else here is free, and stays free whether you tip or not.',
+        amount: `${amt.usd} — change it with ?usd=<amount> (${TIP_MIN} to ${TIP_MAX})`,
+        how: `Pay ${amt.usd} USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${amt.usd} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        where_it_goes: "The x402 wallet of BOBAI's agent services; the DeFi agent's daily sweep moves it into its PancakeSwap pool, and half of what the pool earns buys $BOBAI the agent keeps.",
+        accepts: v2Shape(requirements, { url: resource }).accepts,
+      },
+    };
+  }
+  const pay = await chargeX402(env, { payTo, price: amt.atomic, description, resource, proof, sold: 'tip' });
+  if (!pay.ok) return { status: pay.status, body: pay.body };
+  await settlePayment(env, pay.tx, pay.claim, 'delivered').catch(() => {});
+  ctx.waitUntil(bump(env, 'tip'));
+  return { status: 200, body: {
+    ok: true, thanks: 'Thank you! Your tip arrived. BOBAI puts it to work: into the DeFi agent\'s pool with the next sweep, and half of what it earns buys $BOBAI.',
+    paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx, by: 'BOBAI · https://brainonbnb.com',
+  } };
+}
+
 async function purchaseWatch(env, ctx, payTo, spec, proof) {
   if (!proof) {
     // The 402 itself. accepts[] is an array because a second scheme
@@ -1600,7 +1661,7 @@ export default {
     // matching — open, no key, so another agent can use it mid-task.
     if (path === '/find') {
       const r = await handleFind(url);
-      return json(r.body, r.status);
+      return thankJson(request, r.body, r.status);
     }
     // The DeFi agent's free look at anybody's PancakeSwap V3 position:
     // in range or not, room left, value, fees owed. Open, no key, read live.
@@ -1608,7 +1669,7 @@ export default {
     if (path === '/lp/look') {
       const params = { position: url.searchParams.get('position') || undefined, address: url.searchParams.get('address') || undefined };
       if (!params.position && !params.address) return json({ error: 'give ?position=<PancakeSwap V3 token id> or ?address=<wallet> (a wallet with several positions is answered with their ids)', example: '/lp/look?position=7324788' }, 400);
-      try { return json(await lpPositionLook(params, env), 200, { 'Cache-Control': 'no-store' }); }
+      try { return thankJson(request, await lpPositionLook(params, env), 200, { 'Cache-Control': 'no-store' }); }
       catch (e) { return json({ error: String(e.shortMessage || e.message).slice(0, 200) }, 400); }
     }
 
@@ -1617,9 +1678,26 @@ export default {
     // moved. This is the free half of the marketplace: it answers questions.
     if (path === '/dispatch') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
+      // The same task twice within a minute gets the first answer back, not a second call (2026-09-26). On
+      // 2026-09-20 one caller sent "can I ask you a question please?" 156 times in 50 seconds: the router asked the
+      // same third-party agent 156 times, wrote 156 failures into that operator's public record, and pushed the
+      // rest of the log out of its 400-entry window. A repeat is answered from the edge cache and not recorded.
+      const task = String(body?.task || url.searchParams.get('task') || '').trim().toLowerCase().slice(0, 300);
+      const dry = body?.dry_run === true || url.searchParams.get('dry') === '1';
+      let ck = null;
+      if (task && !dry) {
+        const h = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(task)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+        ck = new Request(`https://agent.brainonbnb.com/__dispatch-cache/${h}`);
+        const hit = await caches.default.match(ck).catch(() => null);
+        if (hit) {
+          ctx.waitUntil(bump(env, 'dispatch_repeat'));
+          return thankJson(request, { ...(await hit.json()), repeated: 'The same task was answered less than a minute ago; this is that answer. The agent was not asked again, and the repeat is not in the log.' }, 200);
+        }
+      }
       const r = await handleDispatch(url, body, env);
       ctx.waitUntil(bump(env, 'dispatch'));
-      return json(r.body, r.status);
+      if (ck && r.status === 200) ctx.waitUntil(caches.default.put(ck, new Response(JSON.stringify(r.body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } })).catch(() => {}));
+      return thankJson(request, r.body, r.status);
     }
 
     // Hire: negotiate a price with a seller agent over A2A and hand back the
@@ -2447,6 +2525,16 @@ ${pageTail}`;
         note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:${proof ? 'paid:' + out.status : 'terms'}`);
         return json(out.body, out.status, out.headers || {});
       }
+    }
+
+    // A voluntary tip over x402 (tipRoute above). GET or POST: without PAYMENT-SIGNATURE the 402 with the terms,
+    // with it the payment is checked and a thank-you comes back.
+    if (path === '/tip' && (request.method === 'GET' || request.method === 'POST')) {
+      if (!payTo) return json({ error: 'not configured to receive payments yet' }, 503);
+      const proof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
+      const out = await tipRoute(env, ctx, payTo, url.searchParams.get('usd'), proof);
+      note(`tip:${proof ? 'paid:' + out.status : 'terms'}`);
+      return json(out.body, out.status, out.headers || {});
     }
 
     if (path === '/watch' && request.method === 'GET') {

@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2283 lines.
+# one fetch. 5 files, 2294 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -25,6 +25,7 @@ import { rangePlan } from './range-scan.js';
 import { swapRoute } from './swap-route.js';
 import { preflight } from './preflight.js';
 import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
+import { withThanks, THANKS_LINE } from '../shared/thanks.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -406,7 +407,7 @@ async function getSmartMoney() {
 }
 
 // The introduction an MCP client shows its model on connect.
-const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe".';
+const MCP_INSTRUCTIONS = 'Read-only measurement for ANY token on BNB Smart Chain, not only $BOBAI. Before a trade, call bsc_token_preflight with the token address and your size in USD: it answers whether you can get in and out again, what stops the trade and what to weigh, with the route, the slippage it needs and the round trip with the transfer tax measured from executed trades. bsc_pool_scan and pancakeswap_best_route give the figures behind it; find_agents_on_bnb_chain searches the ERC-8004 registry. Nothing here signs, holds a key or moves funds, and no answer says "safe". Everything here is free; each answer carries a short thank-you note with where a voluntary tip would go — never required, and the answer is the same either way.';
 
 // Interactive entry point for any agent that discovers $BOBAI.
 // Answers "what can I ask? / what can I do?" and routes to the exact tool.
@@ -1075,7 +1076,8 @@ async function handleMcp(request, note = () => {}) {
       // that as a result with isError, which the model gets to read, not as a
       // JSON-RPC error many clients swallow. Protocol errors stay errors below.
       try {
-        const out = await runTool(params?.name, params?.arguments || {});
+        // every answer carries the thank-you note (shared/thanks.js): free, a tip welcome, never required
+        const out = withThanks(await runTool(params?.name, params?.arguments || {}));
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] })), { headers: cors });
       } catch (e) {
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: e.message || String(e) }], isError: true })), { headers: cors });
@@ -1411,7 +1413,11 @@ export default {
           // was handed on, so every REST caller was answered for $250 and $1,000.
           ? await runTool(WITH_ADDRESS[url.pathname], { address: url.searchParams.get('address') || '', ...(url.searchParams.get('usd') != null ? { usd: url.searchParams.get('usd') } : {}), ...(url.searchParams.get('capitalUsd') != null ? { capitalUsd: url.searchParams.get('capitalUsd') } : {}) })
           : await runTool(REST_TOOLS[url.pathname], {});
-        return new Response(JSON.stringify(out, null, 2), { headers });
+        // A caller from outside gets the thank-you note with the answer (2026-09-26): free, a tip welcome, never
+        // required. The site's own pages read these routes for their figures and get them without it.
+        const siteCall = request.headers.get('sec-fetch-site') === 'same-origin' || /^https:\/\/(www\.)?brainonbnb\.com\//.test(request.headers.get('referer') || '');
+        if (siteCall) return new Response(JSON.stringify(out, null, 2), { headers });
+        return new Response(JSON.stringify(withThanks(out), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
       } catch (e) {
         // 400 for a malformed address, 503 when the chain or a log endpoint
         // did not answer, 422 for every determinate answer ("that address is
@@ -1865,6 +1871,11 @@ export function shape(s, r, usd, routeError = null) {
   if (s.lp && s.lp.burnedPct != null && s.lp.burnedPct < 50 && (s.pool?.liquidityUsd ?? 0) < THIN_POOL_USD)
     caution.push({ code: 'lp_withdrawable', why: `${s.lp.burnedPct}% of the LP is burned and the pool holds $${s.pool.liquidityUsd} on its hard side (line drawn at $${THIN_POOL_USD}): whoever holds the rest of the LP can take the liquidity out.` });
   const flags = Object.entries(props).filter(([k, v]) => v === true && k !== 'is_open_source' && k !== 'is_in_dex').map(([k]) => k);
+  // Who else can sell (2026-09-26): one wallet that could take a quarter of the pool, or a handful holding half
+  // the float, moves this price far more than any trade you size.
+  const hd = s.holders;
+  if (hd && (hd.largestSellTakesPctOfPool >= 25 || hd.top10PctOfCirculating >= 50))
+    caution.push({ code: 'holders_concentrated', why: `The largest wallet (it may be an exchange’s; the list does not say whose) holds ${hd.largestPct}% of the circulating supply${hd.largestSellTakesPctOfPool != null ? ` — selling it all at once would take about ${hd.largestSellTakesPctOfPool}% of this pool's hard side` : ''}; the top ${hd.wallets} hold ${hd.top10PctOfCirculating}% (lines drawn at 25% of the pool and 50% of the float; balances read on-chain, the list is GoPlus's).` });
   if (flags.length) caution.push({ code: 'contract_flags', why: `GoPlus reads these as true: ${flags.join(', ')}. A label, not a measurement — and none of them has to have been used yet.` });
   if (s.contract?.openSource === false) caution.push({ code: 'source_not_verified', why: 'The contract source is not verified, so nobody has read what it can do.' });
 

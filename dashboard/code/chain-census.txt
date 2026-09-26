@@ -1977,7 +1977,7 @@ const page = `<!doctype html>
         <div class="rg-do-c">
           <div class="rg-do-h"><span class="rg-do-n">1</span>Say what you need</div>
           <div class="rg-try">
-            <input id="rg-task" type="text" placeholder="protocol stats and pool statistics" aria-label="Task">
+            <input id="rg-task" type="text" placeholder="What do you need?" aria-label="Task">
             <button id="rg-go" type="button">Dispatch</button>
           </div>
           <!-- Three questions the router is known to answer, so the first try

@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 6158 lines.
+# one fetch. 6 files, 6242 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2169,6 +2169,40 @@ export async function scan(input, env) {
     }
   }
 
+  // WHO HOLDS IT (2026-09-26). The first thing a trader asks after "can I get out" is "who else can": ten wallets
+  // holding half the float can empty the pool in one afternoon. No RPC call can list holders, so the list is the
+  // one GoPlus already returned with the contract properties — no extra request — and every balance on it is then
+  // read from the chain at this block, so the shares are measured, not copied. Left out, because they sell nothing:
+  // the burn addresses, the pools (this one and every venue found), and balances GoPlus marks as locked. The share
+  // is of the circulating supply (total less burned), the float a holder could actually sell into.
+  let holders = null;
+  if (Array.isArray(gp.holders) && gp.holders.length && supply > 0) {
+    const skip = new Set([DEAD, NULLA, mineKey, ...others.map((o) => String(o.pair || '').toLowerCase())]);
+    const list = gp.holders
+      .filter((h) => h && /^0x[0-9a-fA-F]{40}$/.test(h.address || '') && !skip.has(h.address.toLowerCase()) && String(h.is_locked) !== '1')
+      .slice(0, 10);
+    const bals = list.length ? await rpcBatch(list.map((h) => call(token, balOf(h.address.toLowerCase())))).catch(() => null) : null;
+    const circ = supply - burned;
+    if (bals && circ > 0) {
+      const rows = list.map((h, i) => ({ address: h.address.toLowerCase(), pct: +(Number(hx(bals[i])) / Math.pow(10, tokDec) / circ * 100).toFixed(2), contract: String(h.is_contract) === '1', ...(h.tag ? { tag: String(h.tag).slice(0, 40) } : {}) }))
+        .filter((r) => r.pct > 0).sort((a, b) => b.pct - a.pct);
+      const top10 = +rows.reduce((a, r) => a + r.pct, 0).toFixed(2);
+      holders = {
+        count: gp.holder_count != null ? Number(gp.holder_count) : null,
+        top10PctOfCirculating: top10,
+        wallets: rows.length, // up to ten: what is left of GoPlus's list once pools, burn addresses and locks are out
+        largestPct: rows.length ? rows[0].pct : 0,
+        // What the largest wallet would take out of the market's hard side by selling everything at once, read on a
+        // constant-product pool (fee and tax ignored, so it is the upper end) and scaled to all the liquidity found
+        // (this pool's share of it), so a token that trades mostly elsewhere is not judged by its thinnest pool.
+        // A V3 pool's depth depends on its ticks, so it is not claimed there.
+        ...(pool.kind === 'v2' && pool.tok > 0 && share > 0 && rows.length ? { largestSellTakesPctOfPool: +((rows[0].pct / 100 * circ) / (pool.tok / share + rows[0].pct / 100 * circ) * 100).toFixed(1) } : {}),
+        top: rows.slice(0, 5),
+        note: 'Shares of the circulating supply, each balance read on-chain at this block. Burn addresses, pools and locked balances are left out: they cannot sell into the pool. The holder list and count come from GoPlus; a holder outside its list is not seen here, and a wallet may be an exchange’s — the list does not say whose.',
+      };
+    }
+  }
+
   return {
     address: token, name, symbol: symb, quotable: true,
     // "At this block" has to name the block (2026-09-12): the head the tax
@@ -2260,6 +2294,7 @@ export async function scan(input, env) {
           },
         }
       : {}),
+    ...(holders ? { holders } : {}),
     venues: others.slice(0, 12),
     ...(deeper ? { deeperPoolElsewhere: { pair: deeper.pair, liquidityUsd: Math.round(deeper.hard) } } : {}),
     contract: {
@@ -2492,6 +2527,19 @@ export async function scan(input, env) {
     .vn-n{font-size:.75rem;font-weight:600;min-width:160px;flex:1}
     .vn-v{font-family:'Space Grotesk',sans-serif;font-size:.83rem;font-weight:700;
       color:var(--gold);min-width:90px;text-align:right}
+
+    /* who holds it (2026-09-26): three figures, then the five largest wallets as bars */
+    .hd-k{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    .hd-f{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
+    .hd-f b{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.25rem;color:var(--gold)}
+    .hd-f span{font-size:.7rem;color:var(--muted)}
+    #sc-out .hd-l{display:block;margin-top:12px}
+    #sc-out .hd-r{width:100%}
+    .hd-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr 64px;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)}
+    .hd-r:last-child{border-bottom:0}
+    .hd-b{display:block;height:8px;border-radius:9px;background:linear-gradient(90deg,var(--gold),rgba(240,185,11,.35))}
+    .hd-p{font-family:'Space Grotesk',sans-serif;font-size:.8rem;font-weight:700;text-align:right}
+    @media (max-width:520px){.hd-k{grid-template-columns:1fr 1fr 1fr;gap:6px}.hd-f{padding:8px}.hd-f b{font-size:1rem}.hd-r{grid-template-columns:110px 1fr 54px;gap:8px}}
 
     .sc-what{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));
       gap:12px;margin-top:34px}
@@ -2783,7 +2831,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=64" type="module"></script>
+<script src="scanner.js?v=65" type="module"></script>
 </body>
 </html>
 
@@ -3905,8 +3953,42 @@ function render(d){
   o.appendChild(routeCard(addr));
   o.appendChild(tierCard(addr));
   o.appendChild(rangeCard(addr));
+  if(d.holders)o.appendChild(holdersCard(d.holders,d.symb,addr));
   o.appendChild(flagsCard(gp,gpOk,d.sim));
-  o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties come from GoPlus and are attributed as such. This page describes a pool — it does not check the deployer’s history, the holder distribution, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
+  o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties and the holder list come from GoPlus and are attributed as such; every holder balance is read on-chain. This page describes a pool — it does not check the deployer’s history, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
+}
+// WHO HOLDS IT (2026-09-26): the same rule as the API (scanner-scan.js). GoPlus's holder list, already in hand,
+// and each balance on it read from the chain here; burn addresses, pools and locked balances left out, because
+// they cannot sell into the pool. Shares of the circulating supply — the float a holder could actually sell.
+async function readHolders(gp,token,tokDec,supply,burned,pool,others){
+  if(!gp||!Array.isArray(gp.holders)||!gp.holders.length||!(supply>0))return null;
+  const skip=new Set([DEAD,NULLA,String(pool&&pool.pair||'').toLowerCase(),...(others||[]).map(o=>String(o.pair||'').toLowerCase())]);
+  const list=gp.holders.filter(h=>h&&/^0x[0-9a-fA-F]{40}$/.test(h.address||'')&&!skip.has(h.address.toLowerCase())&&String(h.is_locked)!=='1').slice(0,10);
+  if(!list.length)return null;
+  const bals=await rpcBatch(list.map(h=>call(token,balOf(h.address.toLowerCase()))));
+  const circ=supply-(burned||0);if(!(circ>0))return null;
+  const rows=list.map((h,i)=>({address:h.address.toLowerCase(),pct:Number(hx(bals[i]))/Math.pow(10,tokDec)/circ*100,contract:String(h.is_contract)==='1'}))
+    .filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
+  return {count:gp.holder_count!=null?Number(gp.holder_count):null,top10:rows.reduce((a,r)=>a+r.pct,0),rows};
+}
+function holdersCard(h,symb,token){
+  const c=card('Who holds it','The largest wallets that could sell into the pool, as a share of the circulating '+(symb||'')+' — burn addresses, pools and locked balances left out. The list is GoPlus’s; every balance was read on-chain just now.');
+  const k=el('div','hd-k');
+  const fig=(v,lab)=>{const b=el('div','hd-f');b.appendChild(el('b','',v));b.appendChild(el('span','',lab));k.appendChild(b)};
+  fig(h.top10.toFixed(1)+'%','held by the top '+Math.min(10,h.rows.length));
+  fig(h.rows.length?h.rows[0].pct.toFixed(1)+'%':'—','the largest single wallet');
+  fig(h.count!=null?h.count.toLocaleString('en-US'):'—','holders');
+  c.appendChild(k);
+  const l=el('div','hd-l');const mx=h.rows.length?h.rows[0].pct:1;
+  h.rows.slice(0,5).forEach(r=>{
+    const row=el('div','hd-r');
+    row.appendChild(link(short(r.address)+(r.contract?' · contract':''),'https://bscscan.com/token/'+token+'?a='+r.address,'lk dim'));
+    const bar=el('i','hd-b');bar.style.width=Math.max(2,r.pct/mx*100)+'%';row.appendChild(bar);
+    row.appendChild(el('span','hd-p',r.pct.toFixed(2)+'%'));
+    l.appendChild(row);
+  });
+  c.appendChild(l);
+  return c;
 }
 
 // ---- the "not measurable here" path ---------------------------------------
@@ -4283,9 +4365,11 @@ async function scanOnce(input){
       }
     }
 
+    let holders=null;
+    try{holders=await readHolders(gp,token,tokDec,supply,burned,pool,others)}catch(e){}
     render({gp,gpOk,sim,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
-      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq});
+      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq,holders});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
     remember(token,symb);
   }catch(e){

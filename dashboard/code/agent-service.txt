@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 42 files, 14282 lines.
+# one fetch. 43 files, 14421 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3191,6 +3191,51 @@ export function summarise(record, now) {
   "private": true,
   "type": "module",
   "//": "Marker only, no dependencies. The repo root is CommonJS while worker-agent declares type:module, so a .js file here would be CommonJS to Node and its named exports invisible to the ESM workers and scripts that import it — the bundlers accept the file either way, which is why that breaks in Node long after a deploy has succeeded. This file is what makes one shared module readable from both sides."
+}
+
+==============================================================================
+=== FILE: shared/thanks.js
+==============================================================================
+
+// A thank-you on every answer we give away (2026-09-26, the operator's idea).
+//
+// Everything BOBAI measures for other agents is free: no key, no account, no fee. Whoever calls it gets the
+// same answer as anyone else, and with it one short note: thank you, and if it helped, a tip is welcome —
+// voluntary, never required, and the answer does not change either way. The note is data, not an instruction:
+// it tells the operator behind the caller where a tip would go and what it does there, nothing more.
+//
+// Where a tip goes is where our money already goes (see the money flow in shared/lp-agent.js): an x402 tip lands
+// in the x402 wallet the paid services use and the DeFi agent's daily sweep takes it; BNB sent straight to the
+// DeFi agent's wallet is picked up by its deposit watch. Either way it works in its PancakeSwap pool, and half
+// of what that pool earns buys $BOBAI the agent keeps. ONE SOURCE: the worker at brainonbnb.com (REST + MCP) and
+// the agent server at agent.brainonbnb.com both import this object; neither re-words it.
+
+export const DEFI_WALLET = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
+export const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
+
+export const THANKS = Object.freeze({
+  note: 'Thank you for using BOBAI. This answer is free: no key, no account, no fee. If it helped you, a tip is welcome, entirely voluntary and never required. The answer is the same either way.',
+  tip: {
+    x402: 'https://agent.brainonbnb.com/tip?usd=1',
+    x402_how: 'An x402 client tips in one step: that URL answers 402, the amount is yours to set with ?usd= (0.10 to 1000), paid in USDC or USD1 on BNB Smart Chain.',
+    or_bnb_to: DEFI_WALLET,
+    what_it_does: "Either way it ends up with BOBAI's DeFi agent, which puts it to work in its PancakeSwap pool; half of what the pool earns buys $BOBAI that the agent keeps.",
+  },
+  bobai: {
+    token: BOBAI_TOKEN,
+    what_it_is: 'The token of the project that runs these tools. Every trade pays 3% tax, split on-chain: BOBAI bought back and burned, liquidity added and burned, the DeFi agent and more.',
+    pancakeswap: `https://pancakeswap.finance/swap?chain=bsc&outputCurrency=${BOBAI_TOKEN}`,
+  },
+  by: 'BOBAI · https://brainonbnb.com',
+});
+
+// The same in one line, for an HTTP header and for places where a JSON field does not fit.
+export const THANKS_LINE = `Free to use. A voluntary tip is welcome, never required: x402 at https://agent.brainonbnb.com/tip or BNB to ${DEFI_WALLET}. brainonbnb.com`;
+
+// Adds the note to an answer that is a plain JSON object; anything else (a bare number, a list, a string) is
+// returned untouched, because callers parse those exactly as they are.
+export function withThanks(out) {
+  return out && typeof out === 'object' && !Array.isArray(out) ? { ...out, _thanks: THANKS } : out;
 }
 
 ==============================================================================
@@ -6422,6 +6467,7 @@ import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
+import { withThanks, THANKS_LINE } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
@@ -6579,6 +6625,12 @@ async function listAll(env, prefix) {
   } while (cursor);
   return { keys, list_complete: true };
 }
+// A free answer to a caller from outside carries the thank-you note (shared/thanks.js, 2026-09-26): free, a tip
+// welcome, never required. The site's own pages, which read some of these routes for their figures, get none.
+const fromOurSite = (request) => /^https:\/\/(www\.)?brainonbnb\.com(\/|$)/.test(request.headers.get('origin') || request.headers.get('referer') || '');
+const thankJson = (request, obj, status = 200, extra = {}) => status === 200 && !fromOurSite(request)
+  ? json(withThanks(obj), status, { ...extra, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' })
+  : json(obj, status, extra);
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj, null, 2), {
     status,
@@ -7469,6 +7521,60 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   } };
 }
 
+// A tip, over x402 (2026-09-26, the operator's go). Everything free here says thank you and names this door
+// (shared/thanks.js); an agent with an x402 wallet can walk through it in one step. The tipper picks the
+// amount (?usd=, default 1, between TIP_MIN and TIP_MAX), pays it into the same x402 wallet the paid services
+// use — by standard x402 in USDC, or a direct USD1 transfer with its hash — and gets a thank-you back. Nothing
+// is sold and nothing unlocks: the free answers are the same with or without one. The money takes the path all
+// our income takes: the DeFi agent's daily sweep moves it into its pool. The minimum keeps a settle's gas
+// (paid from the x402 wallet for Permit2) far under the tip itself.
+const TIP_MIN = 0.1, TIP_MAX = 1000;
+function tipAmount(q) {
+  const usd = q == null || q === '' ? 1 : Number(q);
+  if (!Number.isFinite(usd) || usd < TIP_MIN || usd > TIP_MAX) return null;
+  const cents = Math.round(usd * 100);
+  return { usd: cents / 100, atomic: BigInt(cents) * 10n ** 16n };
+}
+async function tipRoute(env, ctx, payTo, q, proof) {
+  const amt = tipAmount(q);
+  if (!amt) return { status: 400, body: { error: `a tip is between ${TIP_MIN} and ${TIP_MAX} (dollars, in USDC or USD1): ?usd=<amount>`, example: 'https://agent.brainonbnb.com/tip?usd=1' } };
+  const resource = `https://agent.brainonbnb.com/tip?usd=${amt.usd}`;
+  const description = `A voluntary tip of ${amt.usd} to BOBAI — thank you`;
+  if (!proof) {
+    const requirements = {
+      x402Version: 2,
+      accepts: [
+        dexterAccepts({ payTo, amountAtomic: amt.atomic.toString(), description, resource }),
+        {
+          scheme: 'exact', network: NETWORK, asset: USD1, maxAmountRequired: amt.atomic.toString(), payTo, resource,
+          description: `${description} — direct transfer, then send the transaction hash in PAYMENT-SIGNATURE`,
+          extra: { name: 'World Liberty Financial USD', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer' },
+        },
+      ],
+    };
+    return {
+      status: 402,
+      headers: { 'PAYMENT-REQUIRED': b64(v2Shape(requirements, { url: resource, description })), 'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED' },
+      body: {
+        error: 'payment required',
+        what: 'A voluntary tip. Everything else here is free, and stays free whether you tip or not.',
+        amount: `${amt.usd} — change it with ?usd=<amount> (${TIP_MIN} to ${TIP_MAX})`,
+        how: `Pay ${amt.usd} USDC by standard x402 (accepts[0], Permit2; a stock client must allow USDC on eip155:56 in spendControls.allowedAssets), or send ${amt.usd} USD1 to ${payTo} on BNB Smart Chain and repeat this request with header PAYMENT-SIGNATURE: <transaction hash>.`,
+        where_it_goes: "The x402 wallet of BOBAI's agent services; the DeFi agent's daily sweep moves it into its PancakeSwap pool, and half of what the pool earns buys $BOBAI the agent keeps.",
+        accepts: v2Shape(requirements, { url: resource }).accepts,
+      },
+    };
+  }
+  const pay = await chargeX402(env, { payTo, price: amt.atomic, description, resource, proof, sold: 'tip' });
+  if (!pay.ok) return { status: pay.status, body: pay.body };
+  await settlePayment(env, pay.tx, pay.claim, 'delivered').catch(() => {});
+  ctx.waitUntil(bump(env, 'tip'));
+  return { status: 200, body: {
+    ok: true, thanks: 'Thank you! Your tip arrived. BOBAI puts it to work: into the DeFi agent\'s pool with the next sweep, and half of what it earns buys $BOBAI.',
+    paid: `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`, tx: pay.tx, by: 'BOBAI · https://brainonbnb.com',
+  } };
+}
+
 async function purchaseWatch(env, ctx, payTo, spec, proof) {
   if (!proof) {
     // The 402 itself. accepts[] is an array because a second scheme
@@ -7987,7 +8093,7 @@ export default {
     // matching — open, no key, so another agent can use it mid-task.
     if (path === '/find') {
       const r = await handleFind(url);
-      return json(r.body, r.status);
+      return thankJson(request, r.body, r.status);
     }
     // The DeFi agent's free look at anybody's PancakeSwap V3 position:
     // in range or not, room left, value, fees owed. Open, no key, read live.
@@ -7995,7 +8101,7 @@ export default {
     if (path === '/lp/look') {
       const params = { position: url.searchParams.get('position') || undefined, address: url.searchParams.get('address') || undefined };
       if (!params.position && !params.address) return json({ error: 'give ?position=<PancakeSwap V3 token id> or ?address=<wallet> (a wallet with several positions is answered with their ids)', example: '/lp/look?position=7324788' }, 400);
-      try { return json(await lpPositionLook(params, env), 200, { 'Cache-Control': 'no-store' }); }
+      try { return thankJson(request, await lpPositionLook(params, env), 200, { 'Cache-Control': 'no-store' }); }
       catch (e) { return json({ error: String(e.shortMessage || e.message).slice(0, 200) }, 400); }
     }
 
@@ -8004,9 +8110,26 @@ export default {
     // moved. This is the free half of the marketplace: it answers questions.
     if (path === '/dispatch') {
       const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
+      // The same task twice within a minute gets the first answer back, not a second call (2026-09-26). On
+      // 2026-09-20 one caller sent "can I ask you a question please?" 156 times in 50 seconds: the router asked the
+      // same third-party agent 156 times, wrote 156 failures into that operator's public record, and pushed the
+      // rest of the log out of its 400-entry window. A repeat is answered from the edge cache and not recorded.
+      const task = String(body?.task || url.searchParams.get('task') || '').trim().toLowerCase().slice(0, 300);
+      const dry = body?.dry_run === true || url.searchParams.get('dry') === '1';
+      let ck = null;
+      if (task && !dry) {
+        const h = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(task)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+        ck = new Request(`https://agent.brainonbnb.com/__dispatch-cache/${h}`);
+        const hit = await caches.default.match(ck).catch(() => null);
+        if (hit) {
+          ctx.waitUntil(bump(env, 'dispatch_repeat'));
+          return thankJson(request, { ...(await hit.json()), repeated: 'The same task was answered less than a minute ago; this is that answer. The agent was not asked again, and the repeat is not in the log.' }, 200);
+        }
+      }
       const r = await handleDispatch(url, body, env);
       ctx.waitUntil(bump(env, 'dispatch'));
-      return json(r.body, r.status);
+      if (ck && r.status === 200) ctx.waitUntil(caches.default.put(ck, new Response(JSON.stringify(r.body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } })).catch(() => {}));
+      return thankJson(request, r.body, r.status);
     }
 
     // Hire: negotiate a price with a seller agent over A2A and hand back the
@@ -8834,6 +8957,16 @@ ${pageTail}`;
         note(`sell:answer:${SERVICES[id] ? id : 'unknown'}:${proof ? 'paid:' + out.status : 'terms'}`);
         return json(out.body, out.status, out.headers || {});
       }
+    }
+
+    // A voluntary tip over x402 (tipRoute above). GET or POST: without PAYMENT-SIGNATURE the 402 with the terms,
+    // with it the payment is checked and a thank-you comes back.
+    if (path === '/tip' && (request.method === 'GET' || request.method === 'POST')) {
+      if (!payTo) return json({ error: 'not configured to receive payments yet' }, 503);
+      const proof = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-PAYMENT');
+      const out = await tipRoute(env, ctx, payTo, url.searchParams.get('usd'), proof);
+      note(`tip:${proof ? 'paid:' + out.status : 'terms'}`);
+      return json(out.body, out.status, out.headers || {});
     }
 
     if (path === '/watch' && request.method === 'GET') {
@@ -12463,7 +12596,12 @@ export async function readSessions(env) {
 // requests whose origin was not recorded (nearly all of them ours). They age
 // out of the rolling log on their own.
 export const ORIGIN_MARKED_SINCE = '2026-09-08T18:50:00.000Z';
+// A burst from one caller (2026-09-26, the operator's decision): on 2026-09-20 somebody sent the same task 156
+// times in 50 seconds and the router asked the same agent each time. Those entries stay in the log, marked with
+// `repeat`, and are left out of every operator's record — one caller hammering a question is not 156 tests of an
+// agent. Since the same day a repeat within a minute is answered from the edge cache and never reaches the log.
 export function originOf(s) {
+  if (s.repeat) return 'repeats_of_one_caller';
   if (s.probe) return 'our_scheduled_checks';
   if (s.ours) return 'our_quote_runs';
   if (s.tool === 'erc8183:negotiate' && String(s.at || '') < ORIGIN_MARKED_SINCE) return 'quote_requests_before_marking';
@@ -12471,22 +12609,23 @@ export function originOf(s) {
 }
 export function sessionOrigins(sessions, ownAgentIds = []) {
   const own = new Set(ownAgentIds.map(String));
-  const out = { outside_callers: 0, our_scheduled_checks: 0, our_quote_runs: 0, quote_requests_before_marking: 0, to_our_own_agents: 0 };
+  const out = { outside_callers: 0, our_scheduled_checks: 0, our_quote_runs: 0, quote_requests_before_marking: 0, repeats_of_one_caller: 0, to_our_own_agents: 0 };
   for (const s of sessions) {
     out[originOf(s)] += 1;
     if (own.has(String(s.agent))) out.to_our_own_agents += 1;
   }
-  out.note = `outside_callers are sessions that carry no mark of ours — a task the operator typed into the page himself looks the same as a stranger's, so this is an upper bound on strangers, not a count of them. our_scheduled_checks is the daily canary; our_quote_runs is the registry publish asking every Hire button for a price through the live /hire (marked since ${ORIGIN_MARKED_SINCE.slice(0, 10)}); quote_requests_before_marking are negotiate calls from before that date whose origin was not recorded, nearly all of them ours. to_our_own_agents counts, across all four, the sessions routed to this project's own five agents.`;
+  out.note = `outside_callers are sessions that carry no mark of ours — a task the operator typed into the page himself looks the same as a stranger's, so this is an upper bound on strangers, not a count of them. our_scheduled_checks is the daily canary; our_quote_runs is the registry publish asking every Hire button for a price through the live /hire (marked since ${ORIGIN_MARKED_SINCE.slice(0, 10)}); quote_requests_before_marking are negotiate calls from before that date whose origin was not recorded, nearly all of them ours. repeats_of_one_caller is one caller sending the same task over and over within a minute, kept in the log but left out of every track record. to_our_own_agents counts, across all four, the sessions routed to this project's own five agents.`;
   return out;
 }
 
 // The track record, derived rather than declared. Every number here comes from
 // the log above; there is no field an operator can set.
 export function trackRecord(sessions) {
-  const by = new Map();
+  const by = new Map(), repeats = new Map();
   for (const s of sessions) {
     const k = s.operator || s.agent;
     if (!k || s.unlisted) continue;
+    if (s.repeat) { repeats.set(k, (repeats.get(k) || 0) + 1); continue; }
     if (!by.has(k)) by.set(k, { operator: k, agent: s.agent, asked: 0, answered: 0, probes: 0, quoteRuns: 0, unmarked: 0, times: [], tools: new Set(), last: null, failures: [] });
     const r = by.get(k);
     r.asked++;
@@ -12528,6 +12667,7 @@ export function trackRecord(sessions) {
       tools_used: [...r.tools].slice(0, 8),
       last_seen: r.last,
       ...(r.failures.length ? { recent_failures: r.failures } : {}),
+      ...(repeats.get(r.operator) ? { repeats_left_out: repeats.get(r.operator) } : {}),
     }))
     // Coerced: the operator key arrives as whatever the caller passed, and an
     // agent id is a number. localeCompare on a number throws, which took the
@@ -13825,6 +13965,8 @@ const ANSWER_NAMES = {
 const PAID_RESOURCES = [
   'https://agent.brainonbnb.com/watch',
   ...ANSWER_IDS.map((id) => `https://agent.brainonbnb.com/answer?service=${id}`),
+  // a voluntary tip (2026-09-26): it answers 402 like the others, at the amount the tipper names
+  'https://agent.brainonbnb.com/tip',
 ];
 
 function instructions({ payTo, price, days, asset, network }) {
@@ -13858,6 +14000,8 @@ every 402. A client takes whichever it can execute:
 |----------|-------------|-------|
 | \`POST /watch\` | Watch one PancakeSwap pool around the clock for ${days} days. Records depth every 15 minutes and POSTs your callback when the pool can no longer absorb a trade of your chosen size. | ${price} |
 ${ANSWER_IDS.map((id) => `| \`POST /answer?service=${id}\` | ${ANSWER_NAMES[id]}. One payment, the answer at once: send \`{"task":"…"}\` with the address in it, or \`{"params":{…}}\`. Free preview of the shape at \`GET /example?service=${id}\`. | 0.10 USD1 |`).join('\n')}
+
+| \`GET /tip?usd=1\` | A voluntary tip, any amount from 0.10 to 1000. Nothing is sold and nothing unlocks: everything free here stays free. The money takes the path all our income takes, into the DeFi agent's pool. | you choose |
 
 Call any of them once **without** payment and it answers 402 with the price,
 the payment options and the inputs it needs. That call is free and is the

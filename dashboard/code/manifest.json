@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 4781,
-   "zipBytes": 76352,
-   "txtBytes": 225265,
-   "sha256": "3a96d53f36df3556",
+   "lines": 4798,
+   "zipBytes": 76913,
+   "txtBytes": 226830,
+   "sha256": "4745454dfc0e5467",
    "reqs": [
     {
      "what": "A bot token",
@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 6158,
-   "zipBytes": 131752,
-   "txtBytes": 396812,
-   "sha256": "979bf9ae4232208e",
+   "lines": 6242,
+   "zipBytes": 133840,
+   "txtBytes": 403572,
+   "sha256": "6d0a518c80952fb9",
    "reqs": [
     {
      "what": "A static host",
@@ -599,10 +599,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 2283,
-   "zipBytes": 61069,
-   "txtBytes": 175512,
-   "sha256": "2812146b19aaf959",
+   "lines": 2294,
+   "zipBytes": 61626,
+   "txtBytes": 177208,
+   "sha256": "6d4abd73ac3c6b05",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -633,11 +633,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 42,
-   "lines": 14282,
-   "zipBytes": 316427,
-   "txtBytes": 889072,
-   "sha256": "bb95d15548a71525",
+   "files": 43,
+   "lines": 14421,
+   "zipBytes": 320188,
+   "txtBytes": 899850,
+   "sha256": "ba1c7d5403aa8cc8",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -681,6 +681,7 @@
     "shared/lp-guards.js",
     "shared/own-jobs.js",
     "shared/package.json",
+    "shared/thanks.js",
     "shared/x402-permit2.js",
     "worker-agent/canary.js",
     "worker-agent/catalog.js",
@@ -723,8 +724,8 @@
    "files": 7,
    "lines": 4269,
    "zipBytes": 90955,
-   "txtBytes": 258111,
-   "sha256": "c3e5b560149e7603",
+   "txtBytes": 258094,
+   "sha256": "ed810f95eabdb165",
    "reqs": [
     {
      "what": "Node 18+ and time",

@@ -132,6 +132,11 @@ export function shape(s, r, usd, routeError = null) {
   if (s.lp && s.lp.burnedPct != null && s.lp.burnedPct < 50 && (s.pool?.liquidityUsd ?? 0) < THIN_POOL_USD)
     caution.push({ code: 'lp_withdrawable', why: `${s.lp.burnedPct}% of the LP is burned and the pool holds $${s.pool.liquidityUsd} on its hard side (line drawn at $${THIN_POOL_USD}): whoever holds the rest of the LP can take the liquidity out.` });
   const flags = Object.entries(props).filter(([k, v]) => v === true && k !== 'is_open_source' && k !== 'is_in_dex').map(([k]) => k);
+  // Who else can sell (2026-09-26): one wallet that could take a quarter of the pool, or a handful holding half
+  // the float, moves this price far more than any trade you size.
+  const hd = s.holders;
+  if (hd && (hd.largestSellTakesPctOfPool >= 25 || hd.top10PctOfCirculating >= 50))
+    caution.push({ code: 'holders_concentrated', why: `The largest wallet (it may be an exchange’s; the list does not say whose) holds ${hd.largestPct}% of the circulating supply${hd.largestSellTakesPctOfPool != null ? ` — selling it all at once would take about ${hd.largestSellTakesPctOfPool}% of this pool's hard side` : ''}; the top ${hd.wallets} hold ${hd.top10PctOfCirculating}% (lines drawn at 25% of the pool and 50% of the float; balances read on-chain, the list is GoPlus's).` });
   if (flags.length) caution.push({ code: 'contract_flags', why: `GoPlus reads these as true: ${flags.join(', ')}. A label, not a measurement — and none of them has to have been used yet.` });
   if (s.contract?.openSource === false) caution.push({ code: 'source_not_verified', why: 'The contract source is not verified, so nobody has read what it can do.' });
 

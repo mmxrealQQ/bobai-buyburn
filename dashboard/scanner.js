@@ -1112,8 +1112,42 @@ function render(d){
   o.appendChild(routeCard(addr));
   o.appendChild(tierCard(addr));
   o.appendChild(rangeCard(addr));
+  if(d.holders)o.appendChild(holdersCard(d.holders,d.symb,addr));
   o.appendChild(flagsCard(gp,gpOk,d.sim));
-  o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties come from GoPlus and are attributed as such. This page describes a pool — it does not check the deployer’s history, the holder distribution, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
+  o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties and the holder list come from GoPlus and are attributed as such; every holder balance is read on-chain. This page describes a pool — it does not check the deployer’s history, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
+}
+// WHO HOLDS IT (2026-09-26): the same rule as the API (scanner-scan.js). GoPlus's holder list, already in hand,
+// and each balance on it read from the chain here; burn addresses, pools and locked balances left out, because
+// they cannot sell into the pool. Shares of the circulating supply — the float a holder could actually sell.
+async function readHolders(gp,token,tokDec,supply,burned,pool,others){
+  if(!gp||!Array.isArray(gp.holders)||!gp.holders.length||!(supply>0))return null;
+  const skip=new Set([DEAD,NULLA,String(pool&&pool.pair||'').toLowerCase(),...(others||[]).map(o=>String(o.pair||'').toLowerCase())]);
+  const list=gp.holders.filter(h=>h&&/^0x[0-9a-fA-F]{40}$/.test(h.address||'')&&!skip.has(h.address.toLowerCase())&&String(h.is_locked)!=='1').slice(0,10);
+  if(!list.length)return null;
+  const bals=await rpcBatch(list.map(h=>call(token,balOf(h.address.toLowerCase()))));
+  const circ=supply-(burned||0);if(!(circ>0))return null;
+  const rows=list.map((h,i)=>({address:h.address.toLowerCase(),pct:Number(hx(bals[i]))/Math.pow(10,tokDec)/circ*100,contract:String(h.is_contract)==='1'}))
+    .filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
+  return {count:gp.holder_count!=null?Number(gp.holder_count):null,top10:rows.reduce((a,r)=>a+r.pct,0),rows};
+}
+function holdersCard(h,symb,token){
+  const c=card('Who holds it','The largest wallets that could sell into the pool, as a share of the circulating '+(symb||'')+' — burn addresses, pools and locked balances left out. The list is GoPlus’s; every balance was read on-chain just now.');
+  const k=el('div','hd-k');
+  const fig=(v,lab)=>{const b=el('div','hd-f');b.appendChild(el('b','',v));b.appendChild(el('span','',lab));k.appendChild(b)};
+  fig(h.top10.toFixed(1)+'%','held by the top '+Math.min(10,h.rows.length));
+  fig(h.rows.length?h.rows[0].pct.toFixed(1)+'%':'—','the largest single wallet');
+  fig(h.count!=null?h.count.toLocaleString('en-US'):'—','holders');
+  c.appendChild(k);
+  const l=el('div','hd-l');const mx=h.rows.length?h.rows[0].pct:1;
+  h.rows.slice(0,5).forEach(r=>{
+    const row=el('div','hd-r');
+    row.appendChild(link(short(r.address)+(r.contract?' · contract':''),'https://bscscan.com/token/'+token+'?a='+r.address,'lk dim'));
+    const bar=el('i','hd-b');bar.style.width=Math.max(2,r.pct/mx*100)+'%';row.appendChild(bar);
+    row.appendChild(el('span','hd-p',r.pct.toFixed(2)+'%'));
+    l.appendChild(row);
+  });
+  c.appendChild(l);
+  return c;
 }
 
 // ---- the "not measurable here" path ---------------------------------------
@@ -1490,9 +1524,11 @@ async function scanOnce(input){
       }
     }
 
+    let holders=null;
+    try{holders=await readHolders(gp,token,tokDec,supply,burned,pool,others)}catch(e){}
     render({gp,gpOk,sim,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
-      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq});
+      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq,holders});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
     remember(token,symb);
   }catch(e){

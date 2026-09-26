@@ -567,6 +567,40 @@ export async function scan(input, env) {
     }
   }
 
+  // WHO HOLDS IT (2026-09-26). The first thing a trader asks after "can I get out" is "who else can": ten wallets
+  // holding half the float can empty the pool in one afternoon. No RPC call can list holders, so the list is the
+  // one GoPlus already returned with the contract properties — no extra request — and every balance on it is then
+  // read from the chain at this block, so the shares are measured, not copied. Left out, because they sell nothing:
+  // the burn addresses, the pools (this one and every venue found), and balances GoPlus marks as locked. The share
+  // is of the circulating supply (total less burned), the float a holder could actually sell into.
+  let holders = null;
+  if (Array.isArray(gp.holders) && gp.holders.length && supply > 0) {
+    const skip = new Set([DEAD, NULLA, mineKey, ...others.map((o) => String(o.pair || '').toLowerCase())]);
+    const list = gp.holders
+      .filter((h) => h && /^0x[0-9a-fA-F]{40}$/.test(h.address || '') && !skip.has(h.address.toLowerCase()) && String(h.is_locked) !== '1')
+      .slice(0, 10);
+    const bals = list.length ? await rpcBatch(list.map((h) => call(token, balOf(h.address.toLowerCase())))).catch(() => null) : null;
+    const circ = supply - burned;
+    if (bals && circ > 0) {
+      const rows = list.map((h, i) => ({ address: h.address.toLowerCase(), pct: +(Number(hx(bals[i])) / Math.pow(10, tokDec) / circ * 100).toFixed(2), contract: String(h.is_contract) === '1', ...(h.tag ? { tag: String(h.tag).slice(0, 40) } : {}) }))
+        .filter((r) => r.pct > 0).sort((a, b) => b.pct - a.pct);
+      const top10 = +rows.reduce((a, r) => a + r.pct, 0).toFixed(2);
+      holders = {
+        count: gp.holder_count != null ? Number(gp.holder_count) : null,
+        top10PctOfCirculating: top10,
+        wallets: rows.length, // up to ten: what is left of GoPlus's list once pools, burn addresses and locks are out
+        largestPct: rows.length ? rows[0].pct : 0,
+        // What the largest wallet would take out of the market's hard side by selling everything at once, read on a
+        // constant-product pool (fee and tax ignored, so it is the upper end) and scaled to all the liquidity found
+        // (this pool's share of it), so a token that trades mostly elsewhere is not judged by its thinnest pool.
+        // A V3 pool's depth depends on its ticks, so it is not claimed there.
+        ...(pool.kind === 'v2' && pool.tok > 0 && share > 0 && rows.length ? { largestSellTakesPctOfPool: +((rows[0].pct / 100 * circ) / (pool.tok / share + rows[0].pct / 100 * circ) * 100).toFixed(1) } : {}),
+        top: rows.slice(0, 5),
+        note: 'Shares of the circulating supply, each balance read on-chain at this block. Burn addresses, pools and locked balances are left out: they cannot sell into the pool. The holder list and count come from GoPlus; a holder outside its list is not seen here, and a wallet may be an exchange’s — the list does not say whose.',
+      };
+    }
+  }
+
   return {
     address: token, name, symbol: symb, quotable: true,
     // "At this block" has to name the block (2026-09-12): the head the tax
@@ -658,6 +692,7 @@ export async function scan(input, env) {
           },
         }
       : {}),
+    ...(holders ? { holders } : {}),
     venues: others.slice(0, 12),
     ...(deeper ? { deeperPoolElsewhere: { pair: deeper.pair, liquidityUsd: Math.round(deeper.hard) } } : {}),
     contract: {

@@ -38,6 +38,15 @@ const route = (over = {}) => ({
 
 let o = shape(scan(), route(), 250);
 ok('a healthy pair: nothing stops, nothing to weigh, and the figures are the route’s', o.stop.length === 0 && o.caution.length === 0 && o.entry.slippage_bps_needed === 56 && o.exit.round_trip_cost_pct === 0.6, JSON.stringify([o.stop, o.caution, o.exit]));
+// Who else can sell (2026-09-26), both ways: a wallet that could take a quarter of the pool is said, a spread-out
+// token is not, and a scan without the holder block (GoPlus silent) adds nothing.
+o = shape(scan({ holders: { wallets: 8, top10PctOfCirculating: 36.3, largestPct: 8.2, largestSellTakesPctOfPool: 31 } }), route(), 250);
+ok('a wallet that could take 31% of the pool is a caution, with its figures', codes(o.caution).includes('holders_concentrated') && /31%/.test(o.caution.find((c) => c.code === 'holders_concentrated')?.why || ''), codes(o.caution));
+o = shape(scan({ holders: { wallets: 10, top10PctOfCirculating: 22, largestPct: 4, largestSellTakesPctOfPool: 9 } }), route(), 250);
+ok('… a spread-out holder list is not', !codes(o.caution).includes('holders_concentrated'), codes(o.caution));
+o = shape(scan({ holders: { wallets: 10, top10PctOfCirculating: 61, largestPct: 12 } }), route(), 250);
+ok('… and half the float in ten wallets is, even on a V3 pool with no sell figure', codes(o.caution).includes('holders_concentrated'), codes(o.caution));
+o = shape(scan(), route(), 250);
 ok('it never says safe and carries no score', !/\bsafe\b/i.test(JSON.stringify({ ...o, cannot_see: [] })) && !('score' in o));
 
 o = shape(scan({ sellability: { ok: true, sellable: false, buyable: true, sell_error: 'TRANSFER_FROM_FAILED' } }), route(), 250);

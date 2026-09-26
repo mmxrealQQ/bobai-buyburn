@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-09-19T07:39:00.822Z",
+  "measured_at": "2026-09-26T05:04:57.405Z",
   "agents": [
     {
       "id": 269223,
@@ -52,12 +52,6 @@
     {
       "id": 336622,
       "label": "RangeKeeper",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 341628,
-      "label": "IVL Rebalancer",
       "category": "rebalancing",
       "ours": false
     },
@@ -130,12 +124,6 @@
       "ours": false
     },
     {
-      "id": 341225,
-      "label": "yieldrouter — capacity-aware yield optimisation",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
       "id": 116171,
       "label": "Moments",
       "category": "yield-optimization",
@@ -182,12 +170,6 @@
     {
       "id": 270183,
       "label": "AgentCensus Health Factor Monitor",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
-      "id": 259573,
-      "label": "HealthGuard",
       "category": "health-factor",
       "ours": false
     },

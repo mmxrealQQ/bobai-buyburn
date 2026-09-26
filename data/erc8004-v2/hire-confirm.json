@@ -1,8 +1,8 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-09-20T05:31:04.801Z",
-  "asked": 32,
-  "quoted": 15,
+  "measured_at": "2026-09-26T05:07:02.985Z",
+  "asked": 29,
+  "quoted": 14,
   "agents": [
     {
       "id": 269223,
@@ -93,16 +93,6 @@
       "price": null,
       "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
       "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
-    },
-    {
-      "id": 341628,
-      "label": "IVL Rebalancer",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://ivl-mainnet.onrender.com/",
-      "reason": "the seller's quote cannot be funded here: it prices in 0x55d398326f99059fF775485246999027B3197955, and this escrow settles in $U (0xcE24439F"
     },
     {
       "id": 346444,
@@ -215,16 +205,6 @@
       "reason": null
     },
     {
-      "id": 341225,
-      "label": "yieldrouter — capacity-aware yield optimisation",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://tanned-retriever-swimsuit.ngrok-free.dev/",
-      "reason": null
-    },
-    {
       "id": 116171,
       "label": "Moments",
       "category": "yield-optimization",
@@ -303,16 +283,6 @@
       "price": null,
       "endpoint": "https://agentcensus.xyz/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
-    },
-    {
-      "id": 259573,
-      "label": "HealthGuard",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://bnb-agent-market.vercel.app/agents/healthguard",
-      "reason": "the endpoint its card names answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
       "id": 302257,

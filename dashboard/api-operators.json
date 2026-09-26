@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-09-19T07:39:00.822Z",
-  "registered_ids": 354089,
-  "reachable_ids": 900,
+  "measured_at": "2026-09-26T05:04:57.405Z",
+  "registered_ids": 358439,
+  "reachable_ids": 909,
   "independent_operators": 105,
-  "operators_speaking_a_protocol": 52,
+  "operators_speaking_a_protocol": 48,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -21,7 +21,7 @@
       ],
       "best_id": 49467,
       "name": "Brain On BNB AI ($BOBAI)",
-      "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. Free, no key, open to any agent.",
+      "description": "Read-only agent surface for $BOBAI, plus Brain Plaza — a census of every ERC-8004 agent on BNB Chain, which of them actually answer, and what they expose. The tools here are free, no key, open to any agent; what this operator sells is named",
       "image": "https://brainonbnb.com/logo-200x200.png",
       "speaks": [
         "mcp",
@@ -52,6 +52,10 @@
         {
           "name": "bsc_pool_scan",
           "description": "Measure what a trade on BNB Smart Chain would actually cost, for ANY token or pool — before placing it. Reads the pool live from the chain and returns: real cos"
+        },
+        {
+          "name": "bsc_token_preflight",
+          "description": "For an agent about to trade ANY token on BNB Smart Chain: the check to run before every trade, in one call and at YOUR size. Answers the two questions that matt"
         },
         {
           "name": "pancakeswap_fee_tiers",
@@ -128,9 +132,11 @@
         "Who has been hired and paid",
         "Which PancakeSwap fee tier pays",
         "Which price range for a V3 position",
+        "Before any trade: one check at your size",
         "Which pool to swap through",
         "Measure any BSC pool",
         "Watch a pool (paid)",
+        "Answers sold per call (paid)",
         "Token info",
         "Burn stats",
         "Wallet balance",
@@ -174,6 +180,14 @@
         "https://agents.topazdex.com/erc8183/status"
       ],
       "tools": [
+        {
+          "name": "topaz_get_multichain_data",
+          "description": "Read live Topaz data on BNB (56), Robinhood (4663), Base (8453), Ethereum (1), Arc (5042), or all. GET-only: chains/readiness, deployments, protocol, pools/toke"
+        },
+        {
+          "name": "topaz_get_guide",
+          "description": "Read bundled Topaz skill 3.1.0 guidance for five-chain mechanics, xTOPAZ vault entry/redemption, bridging/recovery, spoke voting, API interpretation, website na"
+        },
         {
           "name": "topaz_get_protocol_stats",
           "description": "Get Topaz DEX protocol overview including TVL, volume, fees, TOPAZ price, pool count, gauge count, and current epoch."
@@ -325,14 +339,6 @@
         {
           "name": "topaz_get_bribe_markets",
           "description": "Get the current bribe/incentive markets across all Topaz gauges for the active epoch — total bribe + fee rewards per gauge and the derived dollars-per-vote, ran"
-        },
-        {
-          "name": "topaz_get_gauge_rewards",
-          "description": "Get the per-epoch, token-by-token actual reward breakdown for a specific gauge — every bribe and fee token deposited/accrued, with USD value at the time. Use to"
-        },
-        {
-          "name": "topaz_get_protocol_history",
-          "description": "Get historical protocol-wide trends for Topaz — daily volume and fees plus a downsampled TVL / TOPAZ-price series over a lookback window. Use for 'how has TVL/v"
         }
       ],
       "skills": [
@@ -721,7 +727,7 @@
     },
     {
       "operator": "singularry.org",
-      "instances": 243,
+      "instances": 248,
       "distinct_capabilities": 3,
       "ids": [
         116170,
@@ -754,14 +760,14 @@
         120189,
         120305,
         121885,
-        123759,
         123764,
-        123765,
         123767,
         123941,
         124183,
         124208,
         124242,
+        124482,
+        124595,
         124647,
         124859,
         125033,
@@ -818,6 +824,7 @@
         "Market-Cap Index",
         "USDD Yield Vault",
         "Hierarchical Risk Parity",
+        "Leveraged Yield Loop",
         "Venus Fixed Vault"
       ],
       "trust_models": [
@@ -1127,7 +1134,7 @@
     },
     {
       "operator": "4lpha.tech",
-      "instances": 43,
+      "instances": 44,
       "distinct_capabilities": 1,
       "ids": [
         96179,
@@ -1172,7 +1179,8 @@
         343180,
         346171,
         348979,
-        350847
+        350847,
+        355556
       ],
       "best_id": 96179,
       "name": "4lpha single agent",
@@ -1514,29 +1522,6 @@
       "agent_card": "https://coin-signal.airblock2026.workers.dev/.well-known/agent-card.json"
     },
     {
-      "operator": "ivl-mainnet.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        341628
-      ],
-      "best_id": 341628,
-      "name": "IVL Rebalancer",
-      "description": "ERC-8183 seller agent (ivlrebalancer-agent) — negotiate + notify_funded + free preview over A2A.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://ivl-mainnet.onrender.com/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)",
-        "Preview the rebalance plan (free)"
-      ]
-    },
-    {
       "operator": "marque.trade",
       "instances": 5,
       "distinct_capabilities": 5,
@@ -1808,6 +1793,28 @@
       ]
     },
     {
+      "operator": "holdover-agent.fly.dev",
+      "instances": 1,
+      "distinct_capabilities": 1,
+      "ids": [
+        357614
+      ],
+      "best_id": 357614,
+      "name": "holdover-agent",
+      "description": "ERC-8183 seller agent (holdover-agent) — negotiate + notify_funded over A2A.",
+      "image": null,
+      "speaks": [
+        "a2a"
+      ],
+      "endpoints": [
+        "https://holdover-agent.fly.dev/.well-known/agent-card.json"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
       "operator": "latticelatch-deliverables-899042279537.s3.us-east-1.amazonaws.com",
       "instances": 1,
       "distinct_capabilities": 1,
@@ -1902,96 +1909,6 @@
       ],
       "trust_models": [
         "reputation"
-      ]
-    },
-    {
-      "operator": "tanned-retriever-swimsuit.ngrok-free.dev",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        341225
-      ],
-      "best_id": 341225,
-      "name": "yieldrouter — capacity-aware yield optimisation",
-      "description": "ERC-8183 seller agent (yieldrouter-agent) — negotiate + notify_funded over A2A.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://tanned-retriever-swimsuit.ngrok-free.dev/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
-      "operator": "veris-agent-1.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        350048
-      ],
-      "best_id": 350048,
-      "name": "studio-agent",
-      "description": "Project and agent due diligence with trust reports.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Trust audit",
-        "Trust comparison"
-      ]
-    },
-    {
-      "operator": "veris-agent.onrender.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        345702
-      ],
-      "best_id": 345702,
-      "name": "VERIS",
-      "description": "Trust verification and due diligence for projects and agents.",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://veris-agent.onrender.com/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Project due diligence",
-        "Agent due diligence"
-      ]
-    },
-    {
-      "operator": "bnb-agent-market.vercel.app",
-      "instances": 4,
-      "distinct_capabilities": 4,
-      "ids": [
-        259573,
-        259574,
-        259575,
-        259576
-      ],
-      "best_id": 259573,
-      "name": "HealthGuard",
-      "description": "Watches your loan and repays before it can be liquidated",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://bnb-agent-market.vercel.app/agents/healthguard/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "Don't let me get liquidated"
       ]
     },
     {
@@ -2280,7 +2197,7 @@
     },
     {
       "operator": "bedrock-agentcore.us-east-1.amazonaws.com",
-      "instances": 8,
+      "instances": 9,
       "distinct_capabilities": 0,
       "ids": [
         324936,
@@ -2290,7 +2207,8 @@
         330536,
         330663,
         330831,
-        341493
+        341493,
+        357564
       ],
       "best_id": 324936,
       "name": "Sentinels Grid Trader",
@@ -2299,6 +2217,25 @@
       "speaks": [],
       "endpoints": [
         "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A562333538205%3Aruntime%2Fssgridtrader_ssgridtrader-3Xa9LeCsj5/invocations/.well-known/agent-card.json"
+      ]
+    },
+    {
+      "operator": "bnb-agent-market.vercel.app",
+      "instances": 4,
+      "distinct_capabilities": 0,
+      "ids": [
+        259573,
+        259574,
+        259575,
+        259576
+      ],
+      "best_id": 259573,
+      "name": "HealthGuard",
+      "description": "Watches your loan and repays before it can be liquidated",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://bnb-agent-market.vercel.app/agents/healthguard/.well-known/agent-card.json"
       ]
     },
     {
@@ -2561,23 +2498,6 @@
       ]
     },
     {
-      "operator": "fengshuibnb.com",
-      "instances": 2,
-      "distinct_capabilities": 0,
-      "ids": [
-        99381,
-        99382
-      ],
-      "best_id": 99381,
-      "name": "Master Xuan (玄) — Mian Xiang & Bazi",
-      "description": "Chinese metaphysics agent: Bazi (Four Pillars) and Mian Xiang (face reading). Reads NFT-bound souls or free-text birth data. Paid in the FENGSHUI token on BNB Chain.",
-      "image": "https://fengshuibnb.com/og-square.png",
-      "speaks": [],
-      "endpoints": [
-        "https://api.fengshuibnb.com/master-xuan/reading/by-nft"
-      ]
-    },
-    {
       "operator": "forge-mint.vercel.app",
       "instances": 1,
       "distinct_capabilities": 0,
@@ -2677,6 +2597,22 @@
       ],
       "trust_models": [
         "reputation"
+      ]
+    },
+    {
+      "operator": "ivl-mainnet.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        341628
+      ],
+      "best_id": 341628,
+      "name": "IVL Rebalancer",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://ivl-mainnet.onrender.com/.well-known/agent-card.json"
       ]
     },
     {
@@ -3048,6 +2984,22 @@
       ]
     },
     {
+      "operator": "tanned-retriever-swimsuit.ngrok-free.dev",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        341225
+      ],
+      "best_id": 341225,
+      "name": "yieldrouter — capacity-aware yield optimisation",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://tanned-retriever-swimsuit.ngrok-free.dev/.well-known/agent-card.json"
+      ]
+    },
+    {
       "operator": "trenches.bid",
       "instances": 2,
       "distinct_capabilities": 0,
@@ -3085,6 +3037,38 @@
       ]
     },
     {
+      "operator": "veris-agent-1.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        350048
+      ],
+      "best_id": 350048,
+      "name": "studio-agent",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://veris-agent-1.onrender.com/.well-known/agent-card.json"
+      ]
+    },
+    {
+      "operator": "veris-agent.onrender.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        345702
+      ],
+      "best_id": 345702,
+      "name": "VERIS",
+      "description": null,
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://veris-agent.onrender.com/.well-known/agent-card.json"
+      ]
+    },
+    {
       "operator": "yelden.fund",
       "instances": 2,
       "distinct_capabilities": 0,
@@ -3111,13 +3095,12 @@
       ],
       "best_id": 345716,
       "name": "ZERU",
-      "description": "AI-powered crypto project research and risk analysis agent.",
+      "description": null,
       "image": null,
       "speaks": [],
       "endpoints": [
         "https://zeru-agent.onrender.com"
-      ],
-      "agent_card": "https://zeru-agent.onrender.com/.well-known/agent-card.json"
+      ]
     },
     {
       "operator": "zkasuran.dev",

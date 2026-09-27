@@ -266,6 +266,15 @@ export function pickWidth(rows, { current = null, key = 'earnings_7d', margin = 
   });
   if (cur && cur.width !== best.width) {
     const bar = r4(cur.score + Math.max(Math.abs(cur.score) * margin, minLead));
+    // BOTH WINDOWS (operator's go, 2026-09-27): a change must also lead on the whole record, not only on the week.
+    // The week's ranking swaps near-tied widths from hour to hour: on 27.9. it moved the agent toward ±3% ($0.03
+    // ahead of ±10% over 7 days on $50) while over the full 403 h ±3% ended $0.49 BEHIND ±10% — the week alone would
+    // have traded a steady width for a worse one on noise. Without a full record on the rows the week decides alone.
+    if (best.score >= bar && key !== 'earnings') {
+      const full = (c) => { const e = c.row.earnings; return e && typeof e.vs_holding_usd === 'number' && typeof e.fees_usd === 'number' ? r4(Number(e.fees_usd) - Number(e.resets || 0) * Number(e.reset_cost_usd || 0) + Number(e.vs_holding_usd)) : null; };
+      const fb = full(best), fc = full(cur);
+      if (fb != null && fc != null && fb <= fc) return shape(cur, true, `±${cur.width}% stays: ±${best.width}% led the last ${Math.round(cur.hours)} h ($${best.score.toFixed(2)} against $${cur.score.toFixed(2)} on $50, fees in), but over the whole record of ${Math.round(Number(cur.row.earnings.hours))} h it ended $${fb.toFixed(2)} against $${fc.toFixed(2)} for ±${cur.width}% — a change has to lead on both. The week: ${table}`);
+    }
     if (best.score < bar) return shape(cur, true, `±${cur.width}% stays: ±${best.width}% ended $${best.score.toFixed(2)} against holding (fees in) over the last ${Math.round(cur.hours)} h on $50, ±${cur.width}% $${cur.score.toFixed(2)} — under the bar of $${bar.toFixed(2)} for a change (${Math.round(margin * 100)}% of its own score, at least $${minLead.toFixed(2)}). The week: ${table}`);
     return shape(best, false, `±${best.width}% ended the most ahead against holding over the last ${Math.round(best.hours)} h on $50, fees in: $${best.score.toFixed(2)} ($${best.fees.toFixed(2)} of fees, ${best.vs >= 0 ? '+' : '−'}$${Math.abs(best.vs).toFixed(2)} against holding), over the bar of $${bar.toFixed(2)} against the ±${cur.width}% in use. The week: ${table}`);
   }

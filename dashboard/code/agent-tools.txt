@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 2302 lines.
+# one fetch. 5 files, 2314 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1536,6 +1536,18 @@ export default {
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         });
       }
+    }
+
+    // SHARE CARDS (2026-09-27): brainonbnb.com/m/<moment> is a page whose preview card X, Telegram and WhatsApp draw
+    // big, and /m/<moment>.png is that card — drawn by the bobai-cards worker from the logs and the chain, never an
+    // uploaded picture. The cards are cached here for ten minutes: the Cache API does nothing on a workers.dev host.
+    if (url.pathname.startsWith('/m/')) {
+      const png = url.pathname.endsWith('.png') && request.method === 'GET';
+      if (png) { const hit = await caches.default.match(request); if (hit) return hit; }
+      const r = await fetch('https://bobai-cards.bobbuildonbnb.workers.dev' + url.pathname + url.search, { method: request.method === 'HEAD' ? 'HEAD' : 'GET' });
+      const res = new Response(r.body, r);
+      if (png && r.ok) ctx.waitUntil(caches.default.put(request, res.clone()));
+      return res;
     }
 
     // The public source repository, served over git's plain-HTTP protocol.

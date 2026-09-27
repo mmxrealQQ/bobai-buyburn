@@ -431,6 +431,14 @@ if (SELF) {
   is('a width in use that is the best stays and says so', (() => { const r = pickWidth(week, { current: 10 }); return r.width === 10 && r.kept_current === true && /the width in use/.test(r.basis); })());
   is('a ranging week (no loss to the trend) picks the narrowest, which earns the most', pickWidth([wk(1, 2.5, 0), wk(3, 1.4, 0), wk(10, 0.5, 0)]).width === 1);
   is('a tie goes to the wider width', pickWidth([wk(3, 1, -0.3), wk(5, 0.7, 0)]).width === 5);
+  // BOTH WINDOWS (2026-09-27): a change must lead on the week AND on the whole record. The live rows of 27.9.:
+  // ±3% led the week by three cents, and ended $0.49 behind ±10% over the full 403 h.
+  const both = (w, f7, v7, f, v, resets = 0) => ({ width: w, earnings: { hours: 403.83, fees_usd: f, vs_holding_usd: v, resets, reset_cost_usd: 0.0023 }, earnings_7d: { hours: 168.82, hours_in_range: 160, fees_usd: f7, vs_holding_usd: v7 } });
+  const live27 = [both(3, 2.1076, -3.7349, 4.0661, -6.2, 40), both(10, 0.7195, -2.5799, 1.4351, -3.3444, 15)];
+  is('±10% in use stays when ±3% leads the week but trails the whole record (27.9.)', (() => { const r = pickWidth(live27, { current: 10 }); return r.width === 10 && r.kept_current === true && /lead on both/.test(r.basis) && r.best_width === 3; })());
+  is('… and the change goes through when the challenger leads the whole record too', (() => { const r = pickWidth([both(3, 2.1076, -3.7349, 4.0661, -2.0, 40), live27[1]], { current: 10 }); return r.width === 3 && r.kept_current === false; })());
+  is('… rows without a full record: the week decides alone, as before', pickWidth(week, { current: 4 }).width === 10);
+  is('… no width in use: the week picks, the full record is not asked', pickWidth(live27).width === 3);
   is('full range, rows without a week and rows without the holding line are never picked', pickWidth([{ width: 'full', earnings_7d: { hours: 168, hours_in_range: 168, fees_usd: 1, vs_holding_usd: 0 } }, { width: 2, earnings_7d: null }, { width: 3, earnings_7d: { hours: 168, hours_in_range: 100, fees_usd: 1 } }]) === null);
   is('a row with no hours does not count', pickWidth([{ width: 2, earnings_7d: { hours: 0, hours_in_range: 0, fees_usd: 0, vs_holding_usd: 0 } }]) === null);
   is('the pick carries fees, the holding line, the share of hours in range and the week', pk.fees_usd === 0.54 && pk.vs_holding_usd === -0.05 && pk.in_range_share === 0.9 && pk.hours === 168 && pk.best_width === 10);

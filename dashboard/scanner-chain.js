@@ -1699,7 +1699,9 @@ export async function readHolders({gp,token,tokDec,supply,burned,skip=[],poolTok
     .filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
   const excluded=exc.map((x,i)=>({...x,pct:pctAt(pick.length+i)})).filter(x=>x.pct>0).sort((a,b)=>b.pct-a.pct);
   if(!rows.length)return unknown('every wallet GoPlus lists reads a zero balance at this block');
-  return {
+  // All ten rows, not enumerable (2026-09-27): readFlow needs the whole top ten to tell a top holder's sell from
+  // anyone's, and the answer's JSON keeps showing five.
+  return Object.defineProperty({
     count,
     top10PctOfCirculating:+rows.reduce((a,r)=>a+r.pct,0).toFixed(2),
     wallets:rows.length, // up to ten: what is left of GoPlus's list once pools, burn, lock and exchange addresses are out
@@ -1711,7 +1713,7 @@ export async function readHolders({gp,token,tokDec,supply,burned,skip=[],poolTok
     top:rows.slice(0,5),
     ...(excluded.length?{excluded}:{}),
     note:'Shares of the circulating supply, each balance read on-chain at this block. Pools, burn addresses, locked balances and the known exchange and staking wallets (named under excluded, with their share) are left out: none of them is one holder who can sell into the pool. The holder list and count come from GoPlus; a holder outside its list is not seen here.',
-  };
+  },'all',{value:rows,enumerable:false});
 }
 
 // WHO HOLDS THE LP (constant-product pairs). The burned share was always read;
@@ -1906,13 +1908,234 @@ export async function readActivity(token,pair,tokenIs0,kind,tax,quoteUsd){
       catch(e){if(/max results|exceeds|too (large|many)/i.test(String(e&&e.message)))break}
     }
   }
-  let sellers=null;
+  let sellers=null,toPair=null;
   for(const url of LOGS_RPCS){
     try{
       const l=await rpc('eth_getLogs',[{address:token,topics:[XFER_T,null,'0x'+pad(pair)],...range(blocks)}],url);
-      if(l){sellers=new Map();for(const x of l)if(!sellers.has(x.transactionHash)&&x.topics[1])sellers.set(x.transactionHash,('0x'+x.topics[1].slice(26)).toLowerCase());break}
+      if(l){toPair=l;sellers=new Map();for(const x of l)if(!sellers.has(x.transactionHash)&&x.topics[1])sellers.set(x.transactionHash,('0x'+x.topics[1].slice(26)).toLowerCase());break}
     }catch(e){}
   }
-  return {...activityFromSwaps(logs,{kind,tokenIs0,sellers,quoteUsd}),
+  const out={...activityFromSwaps(logs,{kind,tokenIs0,sellers,quoteUsd}),
     window:{blocks,minutes:Math.round(blocks*0.45/60),toBlock:head}};
+  // The raw logs ride along for readFlow (2026-09-27), NOT enumerable: the answer's JSON stays what it was, and
+  // the flow read attributes each sell to its wallet off these instead of fetching them a second time.
+  Object.defineProperty(out,'raw',{value:{swaps:logs,toPair},enumerable:false});
+  return out;
+}
+
+// WHO IS SELLING: THE DEPLOYER, THE TOP HOLDERS, THE LAUNCH SNIPERS (2026-09-27).
+// Activity said how many sold; not WHO. The three sellers a buyer fears are the
+// wallet that made the token, the wallets holding most of it, and the bots that
+// bought in the launch block — and all three are visible in logs already read:
+// readActivity's swaps plus the token's transfers into the pool name every
+// seller, and a pool under an hour old has its launch block inside the swaps.
+// Two reads more, no more: ONE log read (the token's transfers FROM the creator,
+// plus its mints from 0x0 when the token is young enough for its first mint to
+// be in the window; one address, a topic OR — publicnode serves that, it refuses
+// only address-less filters) and ONE mixed batch (balanceOf + eth_getCode, 24
+// entries, under the 25 a public batch takes). What is not covered is said as
+// not read, never as "nobody sold".
+//
+// Matching a sell to a wallet: a Swap names the router, not the seller. The
+// transfer that funds it sits in the same transaction just BEFORE it (V2: the
+// router moves the token in, then calls swap; V3: the pool calls back for it and
+// emits Swap after) — so each sell takes the latest unused transfer-to-pool
+// before its own log index. First-per-transaction (readActivity's cheap map) gave
+// a four.meme tax token's own tax swap-back, which runs inside the user's sell,
+// the user's sell as well.
+// The launch window is counted in blocks but meant in seconds: "the launch block and the next two" was nine
+// seconds at 3 s blocks and is 1.35 s at 0.45 s — measured the same day on six pools under ten minutes old, not
+// one swap landed that early (CURECANCER's first buy came ten blocks, 4.5 s, after the liquidity). Ten blocks is
+// the same few seconds a human cannot click in and a bot does.
+const FLOW_TOP_SELL_PCT=25,FLOW_SNIPE_BLOCKS=10,FLOW_BIG_PCT=2;
+export function swapAmounts(L,kind,tokenIs0){
+  const d=String(L&&L.data||'').slice(2),U=h=>BigInt('0x'+(h||'0'));
+  if(kind==='v3'){
+    if(d.length<128)return null;
+    const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),t=tokenIs0?a:b,q=tokenIs0?b:a;
+    return {tokOut:t<0n?-t:0n,tokIn:t>0n?t:0n,qIn:q>0n?q:0n,qOut:q<0n?-q:0n};
+  }
+  if(d.length<256)return null;
+  const a0i=U(d.slice(0,64)),a1i=U(d.slice(64,128)),a0o=U(d.slice(128,192)),a1o=U(d.slice(192,256));
+  return {tokOut:tokenIs0?a0o:a1o,tokIn:tokenIs0?a0i:a1i,qIn:tokenIs0?a1i:a0i,qOut:tokenIs0?a1o:a0o};
+}
+// Pure: per-wallet sells over the window, and the buys of the launch blocks. Exported for the offline pins.
+export function flowFromLogs({swaps,toPair,kind,tokenIs0,launchBlock=null}){
+  const at=t=>('0x'+String(t).slice(26)).toLowerCase(),li=x=>parseInt(x&&x.logIndex,16)||0;
+  const byTx=new Map();
+  for(const x of toPair||[]){
+    if(!x.topics||x.topics.length<3)continue;
+    if(!byTx.has(x.transactionHash))byTx.set(x.transactionHash,[]);
+    byTx.get(x.transactionHash).push({from:at(x.topics[1]),v:hx(x.data),i:li(x),used:false});
+  }
+  const sellers=new Map(),early=new Map(),bought=new Map();let unattributed=0,sells=0;
+  for(const L of (swaps||[]).slice().sort((a,b)=>(parseInt(a.blockNumber,16)-parseInt(b.blockNumber,16))||(li(a)-li(b)))){
+    const s=swapAmounts(L,kind,tokenIs0);if(!s)continue;
+    if(s.tokIn>0n&&s.tokOut===0n){
+      sells++;
+      const t=(byTx.get(L.transactionHash)||[]).filter(x=>!x.used&&x.i<li(L)).sort((a,b)=>b.i-a.i)[0];
+      if(!t){unattributed++;continue}
+      t.used=true;
+      const r=sellers.get(t.from)||{address:t.from,sells:0,tok:0n,quote:0,txs:[]};
+      r.sells++;r.tok+=t.v;r.quote+=Number(s.qOut)/1e18;if(r.txs.length<3)r.txs.push(L.transactionHash);
+      sellers.set(t.from,r);
+    }else if(s.tokOut>0n&&s.tokIn===0n&&L.topics&&L.topics[2]){
+      // What each wallet BOUGHT in the window too: a wallet that bought and sold inside the hour is a flipper, not
+      // a holder leaving — without this every busy new pool read as "five top holders dumping" (2026-09-27).
+      const to=at(L.topics[2]),b=parseInt(L.blockNumber,16);
+      bought.set(to,(bought.get(to)||0n)+s.tokOut);
+      if(launchBlock!=null&&b>=launchBlock&&b<launchBlock+FLOW_SNIPE_BLOCKS){
+        const r=early.get(to)||{address:to,tok:0n,block:b};
+        r.tok+=s.tokOut;early.set(to,r);
+      }
+    }
+  }
+  return {sellers,early,bought,sells,unattributed};
+}
+export async function readFlow({token,pair,kind,tokenIs0,activity,holders,custody,gp,ageToken,agePool,supply,burned,tokDec=18,quoteUsd=0,pools=[]}){
+  const raw=activity&&activity.raw;
+  if(!raw||!activity.window||!(activity.window.toBlock>0))return null;
+  token=token.toLowerCase();pair=pair.toLowerCase();
+  const head=activity.window.toBlock,blocks=activity.window.blocks,from=head-(blocks-1);
+  const circ=(supply||0)-(burned||0);
+  const addr=v=>/^0x[0-9a-fA-F]{40}$/.test(v||'')?v.toLowerCase():null;
+  const poolSet=new Set([pair,...pools.map(p=>String(p||'').toLowerCase())]);
+  // Not a person: the pool, the token itself (its own tax swap-back), the burn and zero addresses, four.meme's
+  // manager (it mints every four.meme token), and the named exchanges, lockers and farms.
+  const notPerson=a=>!a||poolSet.has(a)||a===token||a===FOURMEME_MANAGER||!!knownHolder(a);
+  // The launch block: the pair's first LP mint when its whole ledger was read (lpCustody); a V3 pool's creation
+  // block when that was dated exactly. Only for a pool under an hour old, and only when the swaps reach back to it.
+  const young=agePool&&agePool.ageHours!=null&&agePool.ageHours<1;
+  const launch=young?(custody&&custody.pairCreatedBlock)||(agePool.exact?agePool.createdBlock:null):null;
+  const launchCovered=launch!=null&&launch>=from;
+  const f=flowFromLogs({swaps:raw.swaps,toPair:raw.toPair,kind,tokenIs0,launchBlock:launchCovered?launch:null});
+
+  // ONE log read. A token born inside the hour: ALL its transfers since its birth — its first mint names the
+  // deployer and whatever the deployer handed out before the pool opened is in it (a fresh token's "holders" that
+  // sell straight away are often the deployer's own wallets). A few hundred logs for a token minutes old; a launch
+  // too busy for one answer is refused for size and read as not covered, never retried. An older token: only what
+  // left the creator's wallet over the hour.
+  const creator=addr(gp&&gp.creator_address);
+  const creatorUse=creator&&!notPerson(creator)&&creator!==NULLA?creator:null;
+  const hourFrom=head-(WINDOW_BLOCKS-1);
+  const tokenYoung=!!(ageToken&&ageToken.createdBlock>=hourFrom);
+  let xlogs=null,flt=null;
+  if(tokenYoung)flt={address:token,topics:[XFER_T],fromBlock:'0x'+Math.max(hourFrom,ageToken.createdAfterBlock||ageToken.createdBlock).toString(16),toBlock:'0x'+head.toString(16)};
+  else if(creatorUse)flt={address:token,topics:[XFER_T,'0x'+pad(creatorUse)],fromBlock:'0x'+hourFrom.toString(16),toBlock:'0x'+head.toString(16)};
+  if(flt)for(const url of LOGS_RPCS){
+    try{const l=await rpc('eth_getLogs',[flt],url);if(l){xlogs=l;break}}
+    catch(e){if(/max results|exceeds|too (large|many)/i.test(String(e&&e.message)))break}
+  }
+  const at=t=>('0x'+String(t).slice(26)).toLowerCase(),lpFirst=addr(custody&&custody.firstLiquidityFrom);
+  // hops: sender -> (recipient -> txs), kept for the two senders that can be the deployer.
+  let mintTo=null;const hops=new Map();
+  for(const l of (xlogs||[]).slice().sort((a,b)=>(parseInt(a.blockNumber,16)-parseInt(b.blockNumber,16))||(parseInt(a.logIndex,16)-parseInt(b.logIndex,16)))){
+    if(!l.topics||l.topics.length<3)continue;
+    const fr=at(l.topics[1]),to=at(l.topics[2]);
+    // The first mint is the deployer's only when it lands at the token's birth (a mintable token mints later too).
+    if(fr===NULLA&&!mintTo&&tokenYoung&&parseInt(l.blockNumber,16)<=ageToken.createdBlock+20)mintTo=to;
+    if((fr===creatorUse||fr===lpFirst||(fr===mintTo&&fr!==NULLA))&&!notPerson(to)&&to!==fr&&to!==NULLA&&to!==DEAD){
+      if(!hops.has(fr))hops.set(fr,new Map());
+      const m=hops.get(fr);if(!m.has(to))m.set(to,new Set());m.get(to).add(l.transactionHash);
+    }
+  }
+  const hd=await Promise.resolve(holders).catch(()=>null);
+  const top10=new Set(hd&&!hd.unknown&&Array.isArray(hd.all)?hd.all.map(r=>r.address):[]);
+
+  // ONE batch: balances of the deployer candidates, the launch buyers and the largest sellers; code of the
+  // candidates, of wallets the creator paid that then sold, and of top-holder sellers (a contract that sells its
+  // whole balance on a schedule — a tax or reward dispenser — is not a holder dumping).
+  const cands=[...new Set([mintTo,creatorUse,lpFirst].filter(a=>a&&!notPerson(a)&&a!==NULLA&&a!==DEAD))];
+  const sellerRows=[...f.sellers.values()].filter(r=>!notPerson(r.address)).sort((a,b)=>b.quote-a.quote);
+  const early=[...f.early.values()].filter(r=>!notPerson(r.address)).sort((a,b)=>(b.tok>a.tok?1:b.tok<a.tok?-1:0));
+  const funded=new Set([...hops.values()].flatMap(m=>[...m.keys()]));
+  const hopSellers=sellerRows.filter(r=>funded.has(r.address));
+  const topSellers=sellerRows.filter(r=>top10.has(r.address));
+  const balList=[...new Set([...cands,...early.slice(0,6).map(r=>r.address),...topSellers.slice(0,4).map(r=>r.address),...sellerRows.map(r=>r.address)])].slice(0,16);
+  const codeList=[...new Set([...cands,...hopSellers.slice(0,4).map(r=>r.address),...topSellers.map(r=>r.address),...sellerRows.slice(0,3).map(r=>r.address)])].slice(0,24-balList.length);
+  const got=await rawBatch([
+    ...balList.map(a=>({method:'eth_call',params:[{to:token,data:balOf(a)},'latest']})),
+    ...codeList.map(a=>({method:'eth_getCode',params:[a,'latest']})),
+  ],RPCS,25).catch(()=>null);
+  const bal=new Map(),code=new Map();
+  if(got){balList.forEach((a,i)=>bal.set(a,hx(got[i])));codeList.forEach((a,i)=>code.set(a,!!(got[balList.length+i]&&got[balList.length+i]!=='0x')))}
+  const tokN=v=>Number(v)/Math.pow(10,tokDec);
+  // A balance above the whole supply is not a holding, it is a contract that answers what it likes: RAYCAT's
+  // deployer read 2^256 minus a little (an underflowed balance — it can sell without limit), and printed as a
+  // percentage it became 1e59%. Null there, and the wallet is named under balanceAboveSupply.
+  const above=new Set();
+  const pctC=(v,a)=>{const x=tokN(v);if(supply>0&&x>supply*1.0001){if(a)above.add(a);return null}return circ>0?+(x/circ*100).toFixed(2):null};
+  const usd=q=>quoteUsd>0?Math.round(q*quoteUsd):null;
+
+  // The deployer: the first mint's recipient when that is a wallet, else the creator GoPlus names, else whoever
+  // added the first liquidity. A contract (a launchpad, a factory) is not the person, and is passed over.
+  const isContract=a=>code.has(a)?code.get(a):null;
+  const dep=[[mintTo,'first mint'],[creatorUse,'contract creator (GoPlus)'],[lpFirst,'added the first liquidity']]
+    .find(([a])=>a&&cands.includes(a)&&isContract(a)!==true)||null;
+  let deployer=null;
+  if(dep){
+    const a=dep[0],s=f.sellers.get(a);
+    const lpRow=custody&&Array.isArray(custody.holders)?custody.holders.find(h=>h.address===a):null;
+    const hop=hops.get(a)||new Map();
+    const hopSold=hopSellers.filter(r=>{
+      // One hop counts when the sell is the same transaction as the deployer's transfer (a routed sell through an
+      // aggregator's executor) or the recipient is a plain wallet — never a shared router selling for others.
+      const txs=hop.get(r.address);return !!txs&&(r.txs.some(t=>txs.has(t))||isContract(r.address)===false);
+    });
+    const soldQ=(s?s.quote:0)+hopSold.reduce((x,r)=>x+r.quote,0);
+    deployer={address:a,source:dep[1],contract:isContract(a),
+      balancePctOfCirculating:bal.has(a)?pctC(bal.get(a),a):null,
+      lpPct:lpRow?lpRow.pct:custody&&custody.read==='complete'?0:null,
+      sold:!raw.toPair?null:{sells:(s?s.sells:0)+hopSold.reduce((x,r)=>x+r.sells,0),quote:+soldQ.toFixed(6),usd:usd(soldQ),
+        ...(s?{byDeployer:{sells:s.sells,usd:usd(s.quote),pctOfCirculating:pctC(s.tok)}}:{}),
+        ...(hopSold.length?{viaWalletsItFunded:hopSold.slice(0,3).map(r=>({address:r.address,sells:r.sells,usd:usd(r.quote)}))}:{})},
+      ...(xlogs&&(tokenYoung||a===creatorUse)?{}:{oneHopNotRead:true}),
+    };
+  }
+  // Top holders who sold a real part of what they held: sold / (held now + sold) over the window. The holder list
+  // is GoPlus's top ten (readHolders); without one, a seller that held at least FLOW_BIG_PCT% of the float before
+  // the window counts, and the basis says so.
+  // A token born inside the window has no holder from BEFORE it: every wallet got its tokens in the hour, most of
+  // them through an aggregator whose Swap names the aggregator, not the wallet (妈妈属兔, 8 minutes old: a wallet
+  // "held 4.26% and sold all of it" — bought through 0x3537… minutes earlier). The deployer's own hand-outs are
+  // what matters there, and dev_selling reads them from the full transfer log. So no top-holder line for it.
+  // The size fallback (no holder list) also needs the pool to be older than the window: under an hour, with the
+  // token's age not read, a wallet's "balance before" is its aggregator buys and nothing else.
+  const basis=tokenYoung?'none':top10.size?'holder list':young?'none':'size';
+  const topSelling=[];
+  if(basis!=='none')for(const r of sellerRows){
+    if(!bal.has(r.address)||isContract(r.address)===true)continue;
+    // Net of what it bought in the same window: held before = now + sold − bought.
+    const now=bal.get(r.address),net=r.tok-(f.bought.get(r.address)||0n);
+    if(!(net>0n))continue;
+    const before=now+net,soldPct=+(Number(net)/Number(before)*100).toFixed(1);
+    const isTop=top10.size?top10.has(r.address):pctC(before)>=FLOW_BIG_PCT;
+    const counted=deployer&&(r.address===deployer.address||(deployer.sold&&(deployer.sold.viaWalletsItFunded||[]).some(v=>v.address===r.address)));
+    if(isTop&&soldPct>FLOW_TOP_SELL_PCT&&!counted)
+      topSelling.push({address:r.address,sells:r.sells,usd:usd(r.quote),soldPctOfBalance:soldPct,heldPctBefore:pctC(before),holdsPctNow:pctC(now)});
+  }
+  // Launch buyers still holding.
+  let snipers=null;
+  if(young)snipers=!launchCovered?{read:false,reason:launch==null?'the launch block could not be dated exactly':'the swaps read do not reach back to the launch block'}
+    :(()=>{const rows=early.filter(r=>bal.has(r.address)).map(r=>({address:r.address,block:r.block,boughtPctOfCirculating:pctC(r.tok),holdsPctNow:pctC(bal.get(r.address),r.address),
+        ...(deployer&&r.address===deployer.address?{deployer:true}:{})}));
+      const held=rows.reduce((s,r)=>s+(r.holdsPctNow||0),0);
+      return {read:true,launchBlock:launch,blocks:FLOW_SNIPE_BLOCKS,wallets:early.length,holdPctOfCirculating:+held.toFixed(2),
+        top:rows.sort((a,b)=>(b.holdsPctNow||0)-(a.holdsPctNow||0)).slice(0,5),...(early.length>rows.length?{walletsNotRead:early.length-rows.length}:{})}})();
+  const sellersUnknown=!raw.toPair;
+  return {
+    window:{blocks,minutes:activity.window.minutes,toBlock:head},
+    deployer,
+    ...(dep?{}:{deployerUnknown:creator&&!creatorUse?'the creator GoPlus names is a launchpad, pool or known address, not a wallet':cands.length?'every candidate (first mint, creator, first liquidity) is a contract':'no creator known and no first mint inside the hour'}),
+    sellers:sellersUnknown?null:{sells:f.sells,wallets:f.sellers.size,unattributed:f.unattributed,
+      top:sellerRows.slice(0,5).map(r=>({address:r.address,sells:r.sells,usd:usd(r.quote),
+        ...(deployer&&r.address===deployer.address?{deployer:true}:{}),...(deployer&&(hops.get(deployer.address)||new Map()).has(r.address)?{fundedByDeployer:true}:{}),
+        ...(top10.has(r.address)?{topHolder:true}:{}),...(bal.has(r.address)?{holdsPctNow:pctC(bal.get(r.address),r.address)}:{})}))},
+    ...(sellersUnknown?{sellersUnknown:'the token’s transfers into the pool could not be read'}:{}),
+    topHolderSelling:topSelling.slice(0,5),topHolderBasis:basis,
+    snipers,
+    ...(got?{}:{balancesUnread:'the balance and code batch was refused by every endpoint: holdings and wallet-or-contract are not known'}),
+    ...(above.size?{balanceAboveSupply:[...above].slice(0,3)}:{}),
+    note:'Sells are the swaps in the window read, each attributed to the wallet whose transfer funded it; a router or aggregator selling for a wallet shows as itself. The deployer is the first mint’s recipient, else the creator GoPlus names, else whoever added the first liquidity; one hop = wallets the deployer sent tokens to (since its birth for a token under an hour old, else in the last hour). Balances read at this block.',
+  };
 }

@@ -76,6 +76,32 @@ ok('LP already withdrawn (99.88% of all ever minted) is said, with who', /99\.88
 o = shape(scan({ lp: { burnedPct: 0, custody: cust({ largestWallet: null, withdrawnSinceCreation: [{ address: '0xlp', pctOfLpEverMinted: 12 }] }) } }), route(), 250);
 ok('… an ordinary 12% withdrawal is not', !codes(o.caution).includes('lp_withdrawn'), codes(o.caution));
 
+// WHO IS SELLING (2026-09-27): the scan's flow block, each line both ways.
+const flow = (over = {}) => ({ window: { blocks: 7900, minutes: 59 }, deployer: { address: '0xdep', source: 'first mint', contract: false, balancePctOfCirculating: 12, lpPct: 100,
+  sold: { sells: 0, quote: 0, usd: 0 } }, sellers: { sells: 3, wallets: 3, unattributed: 0, top: [] }, topHolderSelling: [], topHolderBasis: 'holder list', snipers: null, ...over });
+o = shape(scan({ flow: flow({ deployer: { address: '0xdep', source: 'first mint', balancePctOfCirculating: 12, lpPct: 100, sold: { sells: 2, quote: 3, usd: 1800, byDeployer: { sells: 1, usd: 1200 }, viaWalletsItFunded: [{ address: '0xhop', sells: 1, usd: 600 }] } } }) }), route(), 250);
+const ds = o.caution.find((c) => c.code === 'dev_selling')?.why || '';
+ok('the deployer selling is a caution: itself and the wallet it funded, the dollars, what it still holds and its LP', /0xdep/.test(ds) && /0xhop/.test(ds) && /\$1800/.test(ds) && /12%/.test(ds) && /100% of the LP/.test(ds) && o.flow?.deployer?.sold_usd === 1800, ds);
+o = shape(scan({ flow: flow() }), route(), 250);
+ok('… a deployer with no sell in the window raises nothing, and the compact flow still says who it is', !codes(o.caution).includes('dev_selling') && o.flow?.deployer?.address === '0xdep' && o.flow.deployer.sells === 0, codes(o.caution));
+o = shape(scan({ flow: flow({ deployer: { address: '0xdep', source: 'first mint', balancePctOfCirculating: 0, lpPct: 0, sold: { sells: 1, quote: 0.0000004, usd: 0, byDeployer: { sells: 1, usd: 0 } } } }) }), route(), 250);
+ok('… nor a dust sell worth under a dollar into a pool already emptied (BUL)', !codes(o.caution).includes('dev_selling'), codes(o.caution));
+o = shape(scan({ flow: flow({ deployer: { address: '0xdep', source: 'first mint', balancePctOfCirculating: null, lpPct: 0, sold: null } }) }), route(), 250);
+ok('… and sellers that could not be read are not a deployer sell (sold null stays null)', !codes(o.caution).includes('dev_selling') && o.flow.deployer.sold_usd === null, JSON.stringify(o.flow));
+o = shape(scan({ flow: flow({ balanceAboveSupply: ['0xdep'], deployer: { address: '0xdep', source: 'first mint', balancePctOfCirculating: null, lpPct: 0, sold: { sells: 1, usd: 16339, byDeployer: { sells: 1, usd: 16339 } } } }) }), route(), 250);
+ok('a deployer whose balance reads above the supply is said so in the sell line (RAYCAT)', /ABOVE the whole supply/.test(o.caution.find((c) => c.code === 'dev_selling')?.why || ''), codes(o.caution));
+o = shape(scan({ flow: flow({ topHolderSelling: [{ address: '0xwhale', sells: 2, usd: 900, soldPctOfBalance: 50, heldPctBefore: 8, holdsPctNow: 4 }] }) }), route(), 250);
+ok('a top holder selling half of its balance is a caution, with its figures and the line', /0xwhale sold 50%/.test(o.caution.find((c) => c.code === 'top_holder_selling')?.why || '') && o.flow.top_holders_selling === 1, codes(o.caution));
+o = shape(scan({ flow: flow() }), route(), 250);
+ok('… none selling, none said', !codes(o.caution).includes('top_holder_selling'));
+o = shape(scan({ flow: flow({ snipers: { read: true, launchBlock: 5, blocks: 10, wallets: 34, holdPctOfCirculating: 66.54, top: [] } }) }), route(), 250);
+ok('launch buyers still holding 66.54% is sniped_launch, with the count and the line', /34 wallets .*66\.54%/.test(o.caution.find((c) => c.code === 'sniped_launch')?.why || '') && o.flow.snipers_hold_pct === 66.54, codes(o.caution));
+o = shape(scan({ flow: flow({ snipers: { read: true, launchBlock: 5, blocks: 10, wallets: 3, holdPctOfCirculating: 4.2, top: [] } }) }), route(), 250);
+ok('… 4.2% is not, and an unread sniper figure is null, never 0', !codes(o.caution).includes('sniped_launch')
+  && shape(scan({ flow: flow({ snipers: { read: false, reason: 'x' } }) }), route(), 250).flow.snipers_hold_pct === null, codes(o.caution));
+o = shape(scan(), route(), 250);
+ok('… and a scan without a flow block says flow null, and none of the three', o.flow === null && !/dev_selling|top_holder_selling|sniped_launch/.test(codes(o.caution)));
+
 o = shape(scan(), route(), 250);
 ok('it never says safe and carries no score', !/\bsafe\b/i.test(JSON.stringify({ ...o, cannot_see: [] })) && !('score' in o));
 

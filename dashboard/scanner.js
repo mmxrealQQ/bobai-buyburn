@@ -14,7 +14,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity} from './scanner-chain.js?v=30';
+  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=31';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -1146,6 +1146,7 @@ function render(d){
   }
 
   o.appendChild(ageActivityCard(d));
+  const fc=flowCard(d);if(fc)o.appendChild(fc);
   o.appendChild(routeCard(addr));
   o.appendChild(tierCard(addr));
   o.appendChild(rangeCard(addr));
@@ -1203,6 +1204,49 @@ function ageActivityCard(d){
     {v:a&&a.largestSellUsd?usd(a.largestSellUsd):'—',l:'Largest single sell',dim:!a||!a.largestSellUsd,s:a&&a.largestSellUsd?'in the same window':'no sell in the window'},
   ]));
   if(a)c.appendChild(el('p','cd-foot','A buy is counted to the address the pool paid, a sell to the address that sent the token in — a router or aggregator acting for many wallets counts once.'));
+  return c;
+}
+
+// WHO IS SELLING (2026-09-27, readFlow). Drawn only when it has something to say: a deployer, a top holder or
+// launch buyers to name — or, with a deployer known and the sellers read, the plain "no deployer sell in the last
+// N minutes", which is itself an answer. Nothing read, no card.
+function flowCard(d){
+  const f=d.flow;if(!f)return null;
+  const dep=f.deployer,ths=f.topHolderSelling||[],sn=f.snipers,min=f.window&&f.window.minutes;
+  const depSold=dep&&dep.sold&&dep.sold.sells>0,snOk=sn&&sn.read&&sn.wallets>0;
+  if(!dep&&!ths.length&&!snOk)return null;
+  if(dep&&!dep.sold&&!ths.length&&!snOk)return null;
+  const c=card('Who is selling','The pool’s sells over the last '+min+' minutes, each put to the wallet whose tokens funded it — the deployer, the wallets it handed tokens to, and holders selling a real part of what they held'+(sn&&sn.read?'; and who bought in the first seconds after the liquidity went in':'')+'.');
+  const above=new Set(f.balanceAboveSupply||[]);
+  if(dep){
+    const holds=above.has(dep.address)?'above the supply':dep.balancePctOfCirculating!=null?pc(dep.balancePctOfCirculating):'—';
+    c.appendChild(statRow([
+      {v:depSold?usd(dep.sold.usd):'none',l:'Deployer sold',tone:depSold?' bad':' good',
+        s:depSold?(dep.sold.byDeployer?dep.sold.byDeployer.sells+' sell'+(dep.sold.byDeployer.sells===1?'':'s')+' itself':'not itself')+((dep.sold.viaWalletsItFunded||[]).length?' · '+dep.sold.viaWalletsItFunded.length+' wallet(s) it funded':''):'in the last '+min+' minutes'+(dep.oneHopNotRead?' (its own wallet only)':''),
+        link:{t:short(dep.address),href:'https://bscscan.com/address/'+dep.address}},
+      {v:holds,l:'Deployer holds',tone:above.has(dep.address)?' bad':'',dim:dep.balancePctOfCirculating==null&&!above.has(dep.address),s:above.has(dep.address)?'its balance reads larger than the whole supply':'of the circulating supply · '+dep.source},
+      {v:dep.lpPct!=null?pc(dep.lpPct):'—',l:'Deployer’s LP share',dim:dep.lpPct==null,s:dep.lpPct!=null?'of the pool’s LP tokens':'not read (V3, or not on the LP list)'},
+    ]));
+  }
+  if(ths.length){
+    const l=el('div','hd-l');
+    ths.forEach(r=>{
+      const row=el('div','hd-r');
+      row.appendChild(link(short(r.address)+' · sold '+pc(r.soldPctOfBalance,1)+' of '+pc(r.heldPctBefore),'https://bscscan.com/token/'+d.addr+'?a='+r.address,'lk dim'));
+      const bar=el('i','hd-b');bar.style.width=Math.max(2,Math.min(100,r.soldPctOfBalance))+'%';row.appendChild(bar);
+      row.appendChild(el('span','hd-p',usd(r.usd)));
+      l.appendChild(row);
+    });
+    c.appendChild(el('p','cd-foot','Holders that sold more than a quarter of what they held before the window'+(f.topHolderBasis==='size'?' (no holder list for this token: any seller that held 2% or more of the float counts)':' (from the top ten of the holder list)')+':'));
+    c.appendChild(l);
+  }
+  if(snOk){
+    c.appendChild(statRow([
+      {v:nf(sn.wallets),l:'Launch buyers',s:'bought within '+sn.blocks+' blocks of the liquidity (block '+sn.launchBlock+')'},
+      {v:pc(sn.holdPctOfCirculating),l:'They still hold',tone:sn.holdPctOfCirculating>10?' bad':'',s:'of the circulating supply'+(sn.walletsNotRead?' · '+sn.walletsNotRead+' more not read':'')},
+    ]));
+  }
+  c.appendChild(el('p','cd-foot','A sell is put to the wallet whose transfer funded it; one sold through an aggregator shows as the aggregator. The deployer is the first mint’s recipient, else the token’s creator, else whoever added the first liquidity.'));
   return c;
 }
 
@@ -1602,15 +1646,18 @@ async function scanOnce(input){
     const ages=await agesP;
     const age={pool:custody&&custody.pairCreatedAt?{createdAt:custody.pairCreatedAt,ageHours:(Date.now()-Date.parse(custody.pairCreatedAt))/3.6e6,exact:true}
       :(ages&&ages[pool.pair.toLowerCase()])||null,token:(ages&&ages[token])||null};
-    let holders=null;
-    try{holders=await readHolders({gp,token,tokDec,supply,burned,skip:[pool.pair,...others.map(o=>o.pair)],
+    const holdersP=readHolders({gp,token,tokDec,supply,burned,skip:[pool.pair,...others.map(o=>o.pair)],
       poolTok:pool.kind==='v2'?pool.tok:0,share,
-      lpOwners:[...(custody?custody.holders.filter(h=>h.kind==='wallet'||h.kind==='unclassified').map(h=>h.address):[]),...(gp.creator_address?[gp.creator_address]:[])]})}
-    catch(e){holders={unknown:true,reason:'the balances could not be read from the chain'}}
+      lpOwners:[...(custody?custody.holders.filter(h=>h.kind==='wallet'||h.kind==='unclassified').map(h=>h.address):[]),...(gp.creator_address?[gp.creator_address]:[])]})
+      .catch(()=>({unknown:true,reason:'the balances could not be read from the chain'}));
+    // Who is selling (readFlow, 2026-09-27): its log read runs beside the holder read, the same code as the API.
+    const [holders,flow]=await Promise.all([holdersP,
+      readFlow({token,pair:pool.pair,kind:pool.kind,tokenIs0,activity,holders:holdersP,custody,gp,ageToken:age.token,agePool:age.pool,
+        supply,burned,tokDec,quoteUsd:pool.usd,pools:others.map(o=>o.pair)}).catch(()=>null)]);
     render({gp,gpOk,sim,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
       supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq,holders,
-      custody,activity,age});
+      custody,activity,age,flow});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
     remember(token,symb);
   }catch(e){

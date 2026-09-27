@@ -38,7 +38,11 @@ globalThis.fetch = async (url, init) => {
       const at = p1 === 'latest' ? chain.head : parseInt(p1, 16);
       result = born != null && at >= born ? '0x6080' : '0x';
     } else if (q.method === 'eth_getBlockByNumber') result = { timestamp: '0x' + (1.7e9 + parseInt(p0, 16)).toString(16) };
-    else if (q.method === 'eth_getLogs') result = chain.logs.filter((l) => l.address === p0.address.toLowerCase());
+    else if (q.method === 'eth_getLogs') {
+      // Topic filters as a node applies them: null any, a string equal, an array any-of (readFlow asks by topic).
+      const hit = (want, have) => want == null || (Array.isArray(want) ? want.some((x) => x === have) : want === have);
+      result = chain.logs.filter((l) => l.address === p0.address.toLowerCase() && (p0.topics || []).every((t, i) => hit(t, l.topics[i])));
+    }
     return { jsonrpc: '2.0', id: q.id, result };
   };
   const out = Array.isArray(body) ? body.map(one) : one(body);
@@ -109,6 +113,73 @@ const neg = (v) => (BigInt(1) << 256n) - v;
 const v3 = (a0, a1, to) => ({ data: '0x' + w(a0 < 0n ? neg(-a0) : a0) + w(a1 < 0n ? neg(-a1) : a1) + w(0n).repeat(3), topics: [C.SWAP_V3_T, topicOf(A('0')), topicOf(to)], transactionHash: '0x' + to.slice(2, 6) });
 act = C.activityFromSwaps([v3(-100n * E18, 2n * E18, A('1')), v3(80n * E18, -E18, A('2'))], { kind: 'v3', tokenIs0: true, sellers: new Map(), quoteUsd: 1 });
 ok('V3 signed amounts: token out is a buy, token in is a sell', act.buys === 1 && act.sells === 1 && act.volumeQuote === 3 && act.largestSellQuote === 1, JSON.stringify(act));
+
+// ---- 2026-09-27: WHO IS SELLING (flowFromLogs, readFlow) ---------------------
+// The deployer, one hop from it, top holders, launch snipers — each both ways.
+{
+  const TK = '0x' + 'ab'.repeat(20), PR = '0x' + 'cd'.repeat(20), DEPL = '0x' + 'de'.repeat(20), H = A('4'), F = A('6'), U = A('8'), W = A('9');
+  const blk = (n) => '0x' + n.toString(16);
+  const sw = (tx, li, b, { tokIn = 0n, qOut = 0n, qIn = 0n, tokOut = 0n, to = A('0') }) => ({ address: PR, data: '0x' + w(tokIn) + w(qIn) + w(tokOut) + w(qOut), topics: [C.SWAP_T, topicOf(A('0')), topicOf(to)], transactionHash: tx, logIndex: blk(li), blockNumber: blk(b) });
+  const tx = (from, to, v, txh, li, b) => ({ address: TK, topics: [C.XFER_T, topicOf(from), topicOf(to)], data: '0x' + w(v), transactionHash: txh, logIndex: blk(li), blockNumber: blk(b) });
+  // A four.meme-style tax token: its own swap-back (TK -> pool) runs INSIDE the user's sell, before the user's transfer.
+  const swaps = [
+    sw('0xd1', 2, 999100, { tokIn: 50n * E18, qOut: E18 }),
+    sw('0xh1', 2, 999200, { tokIn: 100n * E18, qOut: 2n * E18 }),
+    sw('0xf1', 1, 999300, { qIn: E18, tokOut: 60n * E18, to: F }), sw('0xf2', 2, 999400, { tokIn: 60n * E18, qOut: E18 }),
+    sw('0xu1', 2, 999500, { tokIn: 5n * E18, qOut: E18 / 10n }), sw('0xu1', 5, 999500, { tokIn: 10n * E18, qOut: E18 / 5n }),
+    sw('0xw1', 2, 999600, { tokIn: 20n * E18, qOut: E18 / 2n }),
+  ];
+  const toPair = [tx(DEPL, PR, 50n * E18, '0xd1', 1, 999100), tx(H, PR, 100n * E18, '0xh1', 1, 999200), tx(F, PR, 60n * E18, '0xf2', 1, 999400),
+    tx(TK, PR, 5n * E18, '0xu1', 1, 999500), tx(U, PR, 10n * E18, '0xu1', 4, 999500), tx(W, PR, 20n * E18, '0xw1', 1, 999600)];
+  const fl = C.flowFromLogs({ swaps, toPair, kind: 'v2', tokenIs0: true });
+  ok('a sell is put to the transfer just before it: the tax swap-back to the token, the user’s sell to the user (first-per-tx gave both to the token)',
+    fl.sellers.get(U)?.sells === 1 && fl.sellers.get(U).tok === 10n * E18 && fl.sellers.get(TK)?.sells === 1 && fl.sellers.get(TK).tok === 5n * E18 && fl.unattributed === 0, JSON.stringify([...fl.sellers.keys()]));
+  ok('… and a buy is not a sell (the flipper has one sell, and its buy is counted as bought)', fl.sellers.get(F)?.sells === 1 && fl.bought.get(F) === 60n * E18 && fl.sells === 6);
+
+  const base = { token: TK, pair: PR, kind: 'v2', tokenIs0: true, supply: 1000, burned: 0, tokDec: 18, quoteUsd: 600,
+    activity: { window: { blocks: 7900, minutes: 59, toBlock: chain.head }, raw: { swaps, toPair } },
+    ageToken: { createdBlock: 1, createdAfterBlock: 0, ageHours: 5000 }, agePool: { ageHours: 5000 },
+    custody: { read: 'partial', holders: [{ address: DEPL, pct: 40, kind: 'wallet' }] } };
+  chain.logs = [tx(DEPL, W, 20n * E18, '0xw0', 1, 999000)];
+  chain.balances[TK] = { [DEPL]: 100n * E18, [H]: 100n * E18, [F]: 0n, [U]: 50n * E18, [W]: 0n };
+  chain.code = {};
+  let f = await C.readFlow({ ...base, gp: { creator_address: DEPL }, holders: { count: 900, all: [{ address: H }, { address: F }, { address: U }] } });
+  ok('the deployer selling is named: its own sell and the one of the wallet it paid, in dollars, with what it holds and its LP share',
+    f.deployer?.address === DEPL && f.deployer.sold.sells === 2 && f.deployer.sold.byDeployer?.sells === 1 && f.deployer.sold.viaWalletsItFunded?.[0]?.address === W
+    && f.deployer.sold.usd === 900 && f.deployer.balancePctOfCirculating === 10 && f.deployer.lpPct === 40, JSON.stringify(f.deployer));
+  ok('a top-ten holder selling half of what it held is named; the flipper (bought and sold in the hour) and a 17% trim are not',
+    f.topHolderSelling.length === 1 && f.topHolderSelling[0].address === H && f.topHolderSelling[0].soldPctOfBalance === 50 && f.topHolderBasis === 'holder list', JSON.stringify(f.topHolderSelling));
+  ok('… an old pool has no sniper read at all (null, not zero)', f.snipers === null);
+  chain.code = { [W]: 1 };
+  f = await C.readFlow({ ...base, gp: { creator_address: DEPL }, holders: { unknown: true } });
+  ok('a CONTRACT the deployer paid, selling in another transaction, is not the deployer (a shared router sells for everyone)',
+    f.deployer.sold.sells === 1 && !f.deployer.sold.viaWalletsItFunded, JSON.stringify(f.deployer.sold));
+  chain.code = {};
+  f = await C.readFlow({ ...base, activity: { ...base.activity, raw: { swaps: swaps.filter((x) => x.transactionHash !== '0xd1' && x.transactionHash !== '0xw1'), toPair } }, gp: { creator_address: DEPL }, holders: { unknown: true } });
+  ok('… and a deployer that did not sell reads 0 sells', f.deployer.sold.sells === 0 && f.deployer.sold.usd === 0, JSON.stringify(f.deployer.sold));
+  f = await C.readFlow({ ...base, activity: { ...base.activity, raw: { swaps, toPair: null } }, gp: { creator_address: DEPL }, holders: { unknown: true } });
+  ok('… while sellers that could not be read are null and said, never 0', f.deployer.sold === null && f.sellers === null && !!f.sellersUnknown, JSON.stringify(f.deployer));
+  chain.balances[TK][DEPL] = (1n << 256n) - 1n;
+  f = await C.readFlow({ ...base, gp: { creator_address: DEPL }, holders: { unknown: true } });
+  ok('a balance above the whole supply (RAYCAT’s underflowed deployer) is named, not printed as 1e59%', f.deployer.balancePctOfCirculating === null && f.balanceAboveSupply?.includes(DEPL), JSON.stringify(f.deployer));
+
+  // A pool eight minutes old: launch block L, buys in L and L+1 still held, a buy at L+15 is not a sniper.
+  const L = 999000;
+  const lswaps = [sw('0xs1', 1, L, { qIn: E18, tokOut: 200n * E18, to: A('1') }), sw('0xs2', 1, L + 1, { qIn: E18, tokOut: 150n * E18, to: A('2') }), sw('0xs3', 1, L + 15, { qIn: E18, tokOut: 100n * E18, to: A('3') })];
+  chain.logs = [tx(C.NULLA, DEPL, 1000n * E18, '0xm', 0, L - 5)];
+  chain.balances[TK] = { [A('1')]: 200n * E18, [A('2')]: 150n * E18, [A('3')]: 100n * E18, [DEPL]: 0n };
+  const young = { ...base, activity: { window: { blocks: 7900, minutes: 59, toBlock: chain.head }, raw: { swaps: lswaps, toPair: [] } },
+    ageToken: { createdBlock: L - 5, createdAfterBlock: L - 6, ageHours: 0.2 }, agePool: { ageHours: 0.13 },
+    custody: { read: 'complete', pairCreatedBlock: L, holders: [{ address: DEPL, pct: 100, kind: 'wallet' }] }, gp: {}, holders: { unknown: true } };
+  f = await C.readFlow(young);
+  ok('launch buyers within ten blocks of the liquidity are counted with what they still hold; one at +15 blocks is not',
+    f.snipers?.read === true && f.snipers.wallets === 2 && f.snipers.holdPctOfCirculating === 35 && f.snipers.launchBlock === L, JSON.stringify(f.snipers));
+  ok('… the deployer of a token born in the hour is its first mint’s recipient, and there is no top-holder line (nobody held before)',
+    f.deployer?.address === DEPL && f.deployer.source === 'first mint' && f.topHolderBasis === 'none' && f.deployer.lpPct === 100, JSON.stringify([f.deployer, f.topHolderBasis]));
+  f = await C.readFlow({ ...young, activity: { ...young.activity, window: { blocks: 400, minutes: 3, toBlock: chain.head } } });
+  ok('… and swaps that do not reach back to the launch block say so instead of "no snipers"', f.snipers?.read === false && /reach back/.test(f.snipers.reason), JSON.stringify(f.snipers));
+  chain.logs = []; chain.code = {};
+}
 
 console.log(fails ? `\n${fails} FAILED` : '\nscanner: all pins hold');
 process.exit(fails ? 1 : 0);

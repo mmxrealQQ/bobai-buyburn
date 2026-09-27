@@ -20,7 +20,7 @@ import {
   classify, priceToken, discover,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
-  readHolders, lpCustody, contractAges, readActivity,
+  readHolders, lpCustody, contractAges, readActivity, readFlow,
 } from './scanner-chain.js';
 
 const parseInput = (s) => {
@@ -626,11 +626,17 @@ export async function scan(input, env) {
     ...(custody ? custody.holders.filter((h) => h.kind === 'wallet' || h.kind === 'unclassified').map((h) => h.address) : []),
     ...(gp.creator_address ? [gp.creator_address] : []),
   ];
-  let holders;
-  try {
-    holders = await readHolders({ gp, token, tokDec, supply, burned, skip: [mineKey, ...others.map((o) => o.pair)],
-      poolTok: pool.kind === 'v2' ? pool.tok : 0, share, lpOwners });
-  } catch { holders = { unknown: true, count: null, reason: 'the balances could not be read from the chain' }; }
+  const holdersP = readHolders({ gp, token, tokDec, supply, burned, skip: [mineKey, ...others.map((o) => o.pair)],
+    poolTok: pool.kind === 'v2' ? pool.tok : 0, share, lpOwners })
+    .catch(() => ({ unknown: true, count: null, reason: 'the balances could not be read from the chain' }));
+  // WHO IS SELLING (2026-09-27, readFlow in scanner-chain.js): the deployer, the
+  // top holders and the launch snipers, off the swaps activity already read.
+  // Its one log read runs beside the holder read; its one batch after it.
+  const [holders, flow] = await Promise.all([
+    holdersP,
+    readFlow({ token, pair: pool.pair, kind: pool.kind, tokenIs0, activity, holders: holdersP, custody, gp,
+      ageToken, agePool, supply, burned, tokDec, quoteUsd: pool.usd, pools: others.map((o) => o.pair) }).catch(() => null),
+  ]);
 
   return {
     address: token, name, symbol: symb, quotable: true,
@@ -667,6 +673,10 @@ export async function scan(input, env) {
     },
     // Who trades it, over the window the tax read covered (window.minutes).
     activity: activity || null,
+    // Who sold over that window — the deployer (and wallets it paid), top holders
+    // selling a quarter or more of their balance, and for a pool under an hour
+    // old the launch-block buyers still holding. null when the reads failed.
+    flow: flow || null,
     // What a trade of each size actually costs, tax and slippage and swap fee
     // together — not the headline slippage a router shows.
     // A rung the pool cannot fill (V3, more than sits in range) carries null

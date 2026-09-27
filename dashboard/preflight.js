@@ -154,6 +154,27 @@ export function shape(s, r, usd, routeError = null) {
   const gone = (cu?.withdrawnSinceCreation || [])[0];
   if (gone && gone.pctOfLpEverMinted >= 50)
     caution.push({ code: 'lp_withdrawn', why: `${gone.pctOfLpEverMinted}% of all the LP ever minted for this pair has already been withdrawn, by ${gone.address}${gone.tokenCreator ? ' (the token’s creator)' : gone.addedFirstLiquidity ? ' (the wallet that added the first liquidity)' : ''}. The pool measured here is what is left.` });
+  // WHO IS SELLING (2026-09-27, the scan's flow block): the three sellers a buyer
+  // fears, each only on what the logs show over the window read. The deployer or
+  // a wallet it paid selling at all is the line (any size: the one wallet that
+  // knows the token best is leaving); a top-ten holder only past a quarter of its
+  // balance (whales trim); launch-block buyers only past a tenth of the float.
+  const fl = s.flow;
+  const dep = fl?.deployer;
+  // …but not a dust sell worth under a dollar: BUL's deployer "sold 1× — about $0" into a pool it had already
+  // emptied, and lp_withdrawn says that one.
+  if (dep?.sold?.sells > 0 && (dep.sold.usd == null ? dep.sold.quote > 0 : dep.sold.usd >= 1)) {
+    const via = dep.sold.viaWalletsItFunded || [];
+    caution.push({ code: 'dev_selling', why: `The deployer (${dep.address}, ${dep.source}) ${dep.sold.byDeployer ? `sold ${dep.sold.byDeployer.sells}×` : 'did not sell itself'}${via.length ? `${dep.sold.byDeployer ? ' and' : ', but'} ${via.length} wallet${via.length === 1 ? '' : 's'} it sent tokens to sold (${via.map((v) => v.address).join(', ')})` : ''} into this pool in the last ${fl.window?.minutes ?? '?'} minutes${dep.sold.usd != null ? ` — about $${dep.sold.usd}` : ''}; ${(fl.balanceAboveSupply || []).includes(dep.address) ? 'its balance reads ABOVE the whole supply — the contract lets it sell without limit' : dep.balancePctOfCirculating != null ? `it still holds ${dep.balancePctOfCirculating}% of the circulating supply` : 'what it still holds could not be read'}${dep.lpPct ? ` and ${dep.lpPct}% of the LP` : ''}.` });
+  }
+  const ths = fl?.topHolderSelling || [];
+  if (ths.length) {
+    const w = ths[0];
+    caution.push({ code: 'top_holder_selling', why: `${ths.length === 1 ? 'A top holder' : `${ths.length} top holders`} sold into this pool in the last ${fl.window?.minutes ?? '?'} minutes: ${w.address} sold ${w.soldPctOfBalance}% of what it held (${w.heldPctBefore}% of the circulating supply before, ${w.holdsPctNow}% now${w.usd != null ? `, about $${w.usd}` : ''}) (line drawn at 25% of its balance; ${fl.topHolderBasis === 'size' ? 'no holder list — a seller that held 2% or more counts' : 'the top ten of the holder list'}).` });
+  }
+  const sn = fl?.snipers;
+  if (sn?.read && sn.holdPctOfCirculating > 10)
+    caution.push({ code: 'sniped_launch', why: `${sn.wallets} wallet${sn.wallets === 1 ? '' : 's'} bought in the first ${sn.blocks} blocks after the liquidity went in (block ${sn.launchBlock}) and still hold${sn.wallets === 1 ? 's' : ''} ${sn.holdPctOfCirculating}% of the circulating supply (line drawn at 10%)${sn.top?.some((x) => x.deployer) ? ' — the deployer among them' : ''}: a supply that can be sold into you.` });
   const flags = Object.entries(props).filter(([k, v]) => v === true && k !== 'is_open_source' && k !== 'is_in_dex').map(([k]) => k);
   // Who else can sell (2026-09-26): one wallet that could take a quarter of the pool, or a handful holding half
   // the float, moves this price far more than any trade you size.
@@ -219,6 +240,11 @@ export function shape(s, r, usd, routeError = null) {
     age_hours: { pool: s.age?.pool?.ageHours ?? null, token: s.age?.token?.ageHours ?? null },
     activity: s.activity ? { window_minutes: s.activity.window?.minutes ?? null, swaps: s.activity.swaps, buys: s.activity.buys, sells: s.activity.sells,
       unique_traders: s.activity.uniqueTraders, volume_usd: s.activity.volumeUsd, largest_sell_usd: s.activity.largestSellUsd } : null,
+    // Who sold over the same window (the scan's flow, 2026-09-27): the deployer, top holders, launch snipers.
+    flow: fl ? { window_minutes: fl.window?.minutes ?? null,
+      deployer: dep ? { address: dep.address, holds_pct: dep.balancePctOfCirculating, lp_pct: dep.lpPct, sold_usd: dep.sold ? dep.sold.usd : null, sells: dep.sold ? dep.sold.sells : null } : null,
+      sellers: fl.sellers ? fl.sellers.wallets : null, top_holders_selling: ths.length,
+      snipers_hold_pct: sn?.read ? sn.holdPctOfCirculating : null } : null,
     // What stays open after this answer, and the one thing here that costs
     // money (2026-09-24, A3 of the review): nothing a trading agent touched
     // ever named it. Neutral and only where it works — the watch reads V2

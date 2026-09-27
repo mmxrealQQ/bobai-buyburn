@@ -158,6 +158,7 @@ const delivery = (d) => `      <article class="sv-buy">
 ${needsList(d.needs)}
         ${d.agent ? `<p class="sv-cost">Delivered by agent <a href="https://8004scan.io/agents/bsc/${d.agent}" rel="noopener">#${d.agent}</a> &middot; <a href="${esc(d.where)}">hire it on Brain Plaza &rarr;</a></p>`
           : `<p class="sv-cost">Sold per answer only, no escrow: <code>${esc(d.x402)}</code> &middot; paid in USD1 or $BOBAI &middot; <a href="/defi">what the agent does on our own position &rarr;</a></p>`}
+        <p class="sv-cost"><a href="https://agent.brainonbnb.com/example?service=${esc(d.id)}" rel="noopener">see a real answer &rarr;</a></p>
       </article>`;
 
 const capRow = (c) => {
@@ -183,7 +184,7 @@ const GROUPS = [
   ['broker', 'Finding somebody else', 'We will happily point you at an agent that is not ours.'],
   ['hire', 'Handing over a task', 'One call, and it finds the agent, runs the task and names who produced the answer.'],
   ['record', 'Checking our claims', 'The track record is derived from a log, not typed in by the operator it flatters.'],
-  ['paid', 'The one thing that costs money', 'Everything else here is a measurement taken once. This one keeps running after you close the tab, which is the whole reason it is not free.'],
+  ['paid', 'What costs money', 'Everything above is free. Two things are not: a watch that keeps running after you close the tab, and an answer handed over at once with no escrow in between.'],
 ];
 
 function page() {

@@ -103,7 +103,8 @@ const CHECKS=`(()=>{
   return {ok:!!txt, err:etxt.slice(0,220), rows, bad, overflow:ov,
     clipped:clipped.slice(0,6), head:(document.querySelector('.hd-t')?.innerText||'').replace(/\\n/g,' '),
     stats:[...document.querySelectorAll('.st')].map(s=>s.innerText.replace(/\\n/g,' | ')).slice(0,12),
-    warns:[...document.querySelectorAll('.warn b')].map(b=>b.textContent).slice(0,5)};
+    warns:[...document.querySelectorAll('.warn b')].map(b=>b.textContent).slice(0,5),
+    cards:[...document.querySelectorAll('.cd-h h3')].map(h=>h.textContent)};
 })()`;
 
 const {port}=await launch(PORT,W,H);
@@ -144,10 +145,18 @@ for(const r of results){
   const issues=[...(r.bad||[]),...(r.clipped||[]),...r.errs];
   if(r.overflow)issues.push('HORIZONTAL OVERFLOW');
   if(!r.ok&&!r.err)issues.push('BLANK PAGE — no result, no error');
+  // 2026-09-27, both ways: a measured pool always shows who holds the token (or says it is not known yet) and how
+  // old the pool is and who trades it; a page with no pool measured (curve, one-sided, elsewhere) shows neither.
+  const measured=!!r.rows?.[0]?.length, cards=r.cards||[];
+  const hasHolders=cards.some(c=>/^Who holds it/.test(c)), hasAge=cards.includes('How old, and who trades it');
+  if(measured&&!hasHolders)issues.push('measured pool without a "Who holds it" card (unknown must be said, not left out)');
+  if(measured&&!hasAge)issues.push('measured pool without the "How old, and who trades it" card');
+  if(!measured&&r.ok&&(hasAge||hasHolders))issues.push('age/holder card drawn on a page that measured no pool');
   const tag=issues.length?'FAIL':'ok  ';
   if(issues.length)fails++;
   console.log(`\n[${tag}] ${r.label} ${r.addr} (${(r.ms/1000).toFixed(1)}s)`);
   if(r.head)console.log('   ',r.head);
+  if(process.env.STATS){console.log('    stats:',(r.stats||[]).join(' || '));console.log('    cards:',(r.cards||[]).join(' / '))}
   if(r.err)console.log('    ERRBOX:',r.err.replace(/\n/g,' ').slice(0,180));
   if(r.warns?.length)console.log('    warns:',r.warns.join(' | '));
   if(r.rows?.[0]?.length)console.log('    buy :',r.rows[0].map(x=>`${x.size}${x.imp}/${x.pay}[${x.bar}px]`).join(' '));

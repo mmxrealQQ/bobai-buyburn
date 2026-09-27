@@ -26,6 +26,7 @@ const scan = (over = {}) => ({
   sellability: { ok: true, sellable: true, buyable: true },
   tax: { buyPct: 0, sellPct: 0, measured: true, source: 'measured from executed trades on-chain' },
   lp: { burnedPct: 99.9 }, contract: { openSource: true, properties: { is_open_source: true, is_mintable: false } },
+  holders: { count: 5000, wallets: 10, top10PctOfCirculating: 18, largestPct: 3, largestSellTakesPctOfPool: 4, top: [] },
   ...over,
 });
 const route = (over = {}) => ({
@@ -39,13 +40,42 @@ const route = (over = {}) => ({
 let o = shape(scan(), route(), 250);
 ok('a healthy pair: nothing stops, nothing to weigh, and the figures are the route’s', o.stop.length === 0 && o.caution.length === 0 && o.entry.slippage_bps_needed === 56 && o.exit.round_trip_cost_pct === 0.6, JSON.stringify([o.stop, o.caution, o.exit]));
 // Who else can sell (2026-09-26), both ways: a wallet that could take a quarter of the pool is said, a spread-out
-// token is not, and a scan without the holder block (GoPlus silent) adds nothing.
+// token is not. Since 2026-09-27 a scan without a real holder list is NOT silent: holders_unknown (below).
 o = shape(scan({ holders: { wallets: 8, top10PctOfCirculating: 36.3, largestPct: 8.2, largestSellTakesPctOfPool: 31 } }), route(), 250);
 ok('a wallet that could take 31% of the pool is a caution, with its figures', codes(o.caution).includes('holders_concentrated') && /31%/.test(o.caution.find((c) => c.code === 'holders_concentrated')?.why || ''), codes(o.caution));
 o = shape(scan({ holders: { wallets: 10, top10PctOfCirculating: 22, largestPct: 4, largestSellTakesPctOfPool: 9 } }), route(), 250);
 ok('… a spread-out holder list is not', !codes(o.caution).includes('holders_concentrated'), codes(o.caution));
 o = shape(scan({ holders: { wallets: 10, top10PctOfCirculating: 61, largestPct: 12 } }), route(), 250);
 ok('… and half the float in ten wallets is, even on a V3 pool with no sell figure', codes(o.caution).includes('holders_concentrated'), codes(o.caution));
+// B1 (2026-09-27): no holder list is "unknown", said — GoPlus answers 0 or 3 holders for a token minutes old.
+o = shape(scan({ holders: { unknown: true, count: 3, reason: 'GoPlus counts 3 holders — too few to be the market' } }), route(), 250);
+ok('a holder list GoPlus has not built is a caution, with its reason', codes(o.caution).includes('holders_unknown') && /3 holders/.test(o.caution.find((c) => c.code === 'holders_unknown')?.why || '') && !codes(o.caution).includes('holders_concentrated'), codes(o.caution));
+o = shape(scan({ holders: undefined }), route(), 250);
+ok('… and a scan with no holder block at all says the same, never nothing', codes(o.caution).includes('holders_unknown'), codes(o.caution));
+o = shape(scan(), route(), 250);
+ok('… while a real, spread-out list raises neither', !codes(o.caution).includes('holders_unknown') && !codes(o.caution).includes('holders_concentrated'), codes(o.caution));
+// B2: exchange, lock and staking wallets are out of the figure and named in the sentence.
+o = shape(scan({ holders: { count: 1.9e6, wallets: 4, top10PctOfCirculating: 9.6, largestPct: 3.45, largestSellTakesPctOfPool: 47, top: [{ address: '0x86', pct: 3.45, contract: true }], excluded: [{ address: '0xf977', kind: 'exchange', name: 'Binance 8', pct: 23.47 }] } }), route(), 250);
+const hc = o.caution.find((c) => c.code === 'holders_concentrated')?.why || '';
+ok('the concentration line names what it left out (Binance 8) and says the largest is a contract', /Binance 8 23\.47%/.test(hc) && /a contract/.test(hc) && /3\.45%/.test(hc) && !/may be an exchange/.test(hc), hc);
+
+// I1 (2026-09-27): who holds the LP, by name.
+const cust = (over = {}) => ({ read: 'complete', burnedPct: 0, lockedPct: 0, farmPct: 0, exchangeFeePct: 0, walletPct: 100, contractPct: 0, unreadPct: 0,
+  largestWallet: { address: '0xdep', pct: 100, deployer: true, tokenCreator: true, addedFirstLiquidity: true }, holders: [], ...over });
+o = shape(scan({ lp: { burnedPct: 0, custody: cust() }, pool: { address: '0xp', kind: 'v2', venue: 'PancakeSwap V2', liquidityUsd: 61064 } }), route(), 250);
+const lpp = o.caution.find((c) => c.code === 'lp_pullable')?.why || '';
+ok('a creator holding 100% of the LP is named: who, how much, in dollars — and the vaguer line is not added', /token’s creator \(0xdep\) holds 100% .*all of the liquidity.*\$61064/.test(lpp) && !codes(o.caution).includes('lp_withdrawable') && o.lp_custody?.largest_wallet?.deployer === true, codes(o.caution) + ' ' + lpp);
+o = shape(scan({ lp: { burnedPct: 0, custody: cust({ walletPct: 0, farmPct: 82, unreadPct: 18, read: 'partial', largestWallet: null }) }, pool: { address: '0xp', kind: 'v2', venue: 'PancakeSwap V2', liquidityUsd: 40000 } }), route(), 250);
+ok('… LP read as farms, burned or locked raises neither line, even at 0% burned on a thin pool', !codes(o.caution).includes('lp_pullable') && !codes(o.caution).includes('lp_withdrawable'), codes(o.caution));
+o = shape(scan({ lp: { burnedPct: 0, custody: cust({ read: 'partial', unreadPct: 80, walletPct: 20, largestWallet: { address: '0xw', pct: 20 } }) }, pool: { address: '0xp', kind: 'v2', venue: 'PancakeSwap V2', liquidityUsd: 40000 } }), route(), 250);
+ok('… a read that attributed under half of the LP falls back to the burned-share line', codes(o.caution).includes('lp_withdrawable') && !codes(o.caution).includes('lp_pullable'), codes(o.caution));
+o = shape(scan({ lp: { burnedPct: 0, custody: cust({ largestWallet: { address: '0xw', pct: 6 } }) }, pool: { address: '0xp', kind: 'v2', venue: 'PancakeSwap V2', liquidityUsd: 40000 } }), route(), 250);
+ok('… and a wallet under the 10% line is not named', !codes(o.caution).includes('lp_pullable'), codes(o.caution));
+o = shape(scan({ lp: { burnedPct: 0, custody: cust({ largestWallet: null, withdrawnSinceCreation: [{ address: '0xrug', pctOfLpEverMinted: 99.88 }] }) } }), route(), 250);
+ok('LP already withdrawn (99.88% of all ever minted) is said, with who', /99\.88%.*0xrug/.test(o.caution.find((c) => c.code === 'lp_withdrawn')?.why || ''), codes(o.caution));
+o = shape(scan({ lp: { burnedPct: 0, custody: cust({ largestWallet: null, withdrawnSinceCreation: [{ address: '0xlp', pctOfLpEverMinted: 12 }] }) } }), route(), 250);
+ok('… an ordinary 12% withdrawal is not', !codes(o.caution).includes('lp_withdrawn'), codes(o.caution));
+
 o = shape(scan(), route(), 250);
 ok('it never says safe and carries no score', !/\bsafe\b/i.test(JSON.stringify({ ...o, cannot_see: [] })) && !('score' in o));
 

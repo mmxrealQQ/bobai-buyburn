@@ -32,6 +32,12 @@ that is not a token at all).
 - impact or cost that does not rise with trade size
 - an element overflowing its parent, or the page scrolling sideways
 - uncaught exceptions
+- a measured pool without the "Who holds it" card (an unknown holder list is
+  drawn as unknown, never left out) or the "How old, and who trades it" card —
+  and either card on a page that measured no pool (2026-09-27)
+
+`TOKENS=0x…,0x…` audits only those addresses; `STATS=1` also prints each
+page's stat tiles and card headings.
 
 RPC 403s in the console are the public endpoints throttling a machine that has
 just scanned forty tokens in a row. The failover handles them and they are

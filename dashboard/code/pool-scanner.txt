@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 6242 lines.
+# one fetch. 6 files, 6714 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -48,6 +48,12 @@ export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com'
 // probably share a budget — but two hostnames spread a burst of five tier
 // queries better than one does, and the caller cannot be asked to go slower.
 export const LOGS_RPCS=['https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
+// OLD STATE. Measured 2026-09-27: publicnode answers eth_getCode and eth_getLogs only for about the last 9,000
+// blocks ("Archive requests require a personal token"), defibit and Binance's dataseed say "missing trie node",
+// and blastapi — already in RPCS above — answers eth_getCode at any block, 147 calls in one batch in 0.5 s. That
+// is what dates a pool or a token (contractAges): when did its code first exist. A keyed endpoint, when the
+// Worker has one, goes in front (useKeyedRpcs); nothing else here needs history.
+export const ARCHIVE_RPCS=['https://bsc-mainnet.public.blastapi.io'];
 // THE WINDOW. One eth_getLogs call of this many blocks at the head: an hour of
 // chain at BSC's 0.45 s blocks (7,900 blocks = 59 min, so hourly windows taken
 // at the same minute never overlap). Measured 2026-09-09: the free log
@@ -171,7 +177,9 @@ let epi=0;
 export function useKeyedRpcs(urls){
   const add=(urls||[]).map(u=>String(u||'').trim()).filter(u=>/^https:\/\//.test(u));
   if(!add.length)return false;
-  for(const list of [RPCS,LOGS_RPCS]){
+  // …and in front of the one public endpoint that serves old state (ARCHIVE_RPCS, 2026-09-27): a personal
+  // publicnode token answers the "archive" reads the free one refuses.
+  for(const list of [RPCS,LOGS_RPCS,ARCHIVE_RPCS]){
     const rest=list.filter(u=>!add.includes(u));
     list.splice(0,list.length,...add,...rest);
   }
@@ -315,7 +323,13 @@ export async function discover(token,tokDec,bnbUsd){
     }
     c.hard=(c.q||0)*c.usd;
   });
-  return cands.filter(c=>c.hard>0&&c.tok>0).sort((a,b)=>b.hard-a.hard);
+  const out=cands.filter(c=>c.hard>0&&c.tok>0).sort((a,b)=>b.hard-a.hard);
+  // The pools that exist and hold only the token (2026-09-27): a one-sided V3
+  // position above the price, like Muskonomy's 1% pool. Not candidates — there
+  // is nothing to sell into — but the refusal has to say they were found, not
+  // that no pool exists at a verified venue.
+  out.oneSided=cands.filter(c=>!(c.hard>0)&&c.tok>0);
+  return out;
 }
 
 // === V2 MATH ===
@@ -658,7 +672,9 @@ export async function measureTax(token,pair,tokenIs0,kind){
       }
     }
     };
-    let windowBlocks=0,sawLogs=false;
+    // swapLogs (2026-09-27): the swaps of the widest window that answered, handed on so the activity read
+    // (readActivity) counts buys, sells and volume off the same logs instead of fetching them again.
+    let windowBlocks=0,sawLogs=false,swapLogs=null;
     const steps=[TAX_SHORT_BLOCKS,WINDOW_BLOCKS];
     for(let si=0;si<steps.length&&!enough();si++){
       const logs=await fetchWindow(steps[si]);
@@ -666,6 +682,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
         if(steps[si]===WINDOW_BLOCKS&&tooLarge)steps.push(TAX_MID_BLOCKS);
         continue;
       }
+      if(steps[si]>=windowBlocks)swapLogs=logs;
       windowBlocks=Math.max(windowBlocks,steps[si]);
       if(logs.length)sawLogs=true;
       await take(logs);
@@ -676,7 +693,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
     if(!windowBlocks)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
     if(!sawLogs){
       const span=await windowSpan(head-(windowBlocks-1),head);
-      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks'),block:head,windowBlocks};
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks'),block:head,windowBlocks,swapLogs};
     }
     // Exempt wallets exist — the deployer, the tax sink, routers on an allow
     // list — and they trade at 0%. Taking the median rather than the mean keeps
@@ -684,8 +701,8 @@ export async function measureTax(token,pair,tokenIs0,kind){
     const med=a=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);
       return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
     const b=med(buys),s=med(sells);
-    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks};
-    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,
+    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks,swapLogs};
+    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,swapLogs,
       spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
   }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
 }
@@ -1596,6 +1613,326 @@ export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},siz
   return {head,blocks,tokensSeen:seen.size,list:out};
 }
 
+// === WHO HOLDS WHAT, SINCE WHEN, AND WHO TRADES IT (2026-09-27) ===
+//
+// A live review of three tokens minutes old (GOL, AIMU, SUPE) found the scan
+// silent on what a trader asks right after "can I get out": who else holds the
+// token, who holds the LIQUIDITY, how old is this, and is anybody trading it.
+// Everything below answers from the chain. GoPlus's lists are used as
+// candidates at most; every balance is read at this block.
+
+// Addresses whose balance is not one seller's float. CAKE's largest "wallet"
+// was Binance 8 with 23% of the float, and the concentration line read that as
+// one holder who could dump it (review 2026-09-27). Checked on-chain the same
+// day: every exchange address has no code (hot wallets are plain accounts,
+// which is exactly why they have to be named — no call tells them apart), every
+// lock, staking and locker address has code. The names are the public labels
+// these addresses go by, not something the chain states. Kinds: burn (can never
+// move), exchange (customers' coins, not one holder's), lock (staked or
+// time-locked tokens), staking (a farm holding many stakers' LP), locker (an LP
+// timelock).
+export const KNOWN_HOLDERS={
+  '0x000000000000000000000000000000000000dead':['burn','dead address'],
+  '0x0000000000000000000000000000000000000000':['burn','zero address'],
+  '0xdead000000000000000042069420694206942069':['burn','dead address'],
+  '0xf977814e90da44bfa03b6295a0616a897441acec':['exchange','Binance 8'],
+  '0x8894e0a0c962cb723c1976a4421c95949be2d4e3':['exchange','Binance hot wallet 6'],
+  '0xe2fc31f816a9b94326492132018c3aecc4a93ae1':['exchange','Binance hot wallet 7'],
+  '0x3c783c21a0383057d128bae431894a5c19f9cf06':['exchange','Binance hot wallet 8'],
+  '0xdccf3b77da55107280bd850ea519df3705d1a75a':['exchange','Binance hot wallet 11'],
+  '0x5a52e96bacdabb82fd05763e25335261b270efcb':['exchange','Binance hot wallet 20'],
+  '0x28c6c06298d514db089934071355e5743bf21d60':['exchange','Binance 14'],
+  '0x45c54210128a065de780c4b0df3d16664f7f859e':['lock','PancakeSwap CAKE pool (veCAKE)'],
+  '0x5692db8177a81a6c6afc8084c2976c9933ec1bab':['lock','PancakeSwap veCAKE'],
+  '0x73feaa1ee314f8c655e354234017be2193c9e24e':['staking','PancakeSwap MasterChef v1'],
+  '0xa5f8c5dbd5f286960b9d90548680ae5ebff07652':['staking','PancakeSwap MasterChef v2'],
+  '0x556b9306565093c855aea9ae92a594704c2cd59e':['staking','PancakeSwap MasterChef v3'],
+  '0x009cf7bc57584b7998236eff51b98a168dcea9b0':['staking','PancakeSwap SyrupBar'],
+  '0x407993575c91ce7643a4d4ccacc9a98c36ee1bbe':['locker','PinkLock v2'],
+  '0x7ee058420e5937496f5a2096f04caa7721cf70cc':['locker','PinkLock v1'],
+  '0xc765bddb93b0d1c1a88282ba0fa6b2d00e3e0c83':['locker','Unicrypt'],
+};
+export const knownHolder=a=>{const k=KNOWN_HOLDERS[String(a||'').toLowerCase()];return k?{kind:k[0],name:k[1]}:null};
+
+// A batch of mixed methods, one endpoint after another until one answers EVERY
+// entry — an archive refusal arrives per entry, so a partial answer moves on
+// like a refused one. null when none does; never a quiet half.
+async function rawBatch(reqs,urls,chunk=25){
+  if(!reqs.length)return [];
+  for(const url of urls){
+    const out=[];let ok=true;
+    for(let i=0;i<reqs.length;i+=chunk){
+      const part=reqs.slice(i,i+chunk);
+      const j=await tryPost(url,part.map((r,k)=>({jsonrpc:'2.0',id:k,...r})));
+      if(!Array.isArray(j)||j.length!==part.length||j.some(x=>x.error)){ok=false;break}
+      const s=[];for(const x of j)s[x.id]=x.result;out.push(...s);
+    }
+    if(ok)return out;
+  }
+  return null;
+}
+
+// WHO HOLDS THE TOKEN — one implementation for the page and the API (the page
+// kept its own copy until 2026-09-27). GoPlus's list, already in hand, is the
+// candidate list and every balance on it is read here. Two things changed with
+// the review. The known exchange, lock and burn addresses above are taken out
+// of the concentration figure and named apart, with their own share. And a
+// list GoPlus has not really built is said to be unknown instead of being read:
+// for a token minutes old it answers holder_count "0", or "3" with the pool,
+// the dead address and the deployer as the whole list — the old code then said
+// nothing at all, a silence a reader hears as "spread out". `skip` are the
+// pools; `lpOwners` the wallets that hold the LP (a list that is only them is
+// the pool's own plumbing, not holders); `poolTok` the pool's token reserve on
+// a constant-product pair (0 elsewhere: a V3 pool's depth depends on its ticks).
+export async function readHolders({gp,token,tokDec,supply,burned,skip=[],poolTok=0,share=1,lpOwners=[]}){
+  const hc=gp&&gp.holder_count;
+  const count=hc!=null&&String(hc).trim()!==''&&isFinite(Number(hc))?Number(hc):null;
+  const unknown=reason=>({unknown:true,count,reason});
+  const gpOk=!!(gp&&(gp.token_name||gp.dex||gp.is_open_source!=null));
+  if(!(supply>0))return unknown('the total supply could not be read');
+  if(!gpOk)return unknown('GoPlus, which supplies the holder list, did not answer');
+  const list=(Array.isArray(gp.holders)?gp.holders:[]).filter(h=>h&&/^0x[0-9a-fA-F]{40}$/.test(h.address||''));
+  if(!list.length)return unknown('GoPlus lists no holders for this token yet — its index lags new tokens');
+  if(count!=null&&count<10)return unknown('GoPlus counts '+count+' holder'+(count===1?'':'s')+' — too few to be the market; its index has not caught up');
+  const skipS=new Set(skip.map(x=>String(x||'').toLowerCase())),own=new Set(lpOwners.map(x=>String(x||'').toLowerCase()));
+  const named=[],cand=[];
+  for(const h of list){
+    const a=h.address.toLowerCase();
+    if(skipS.has(a))continue;
+    const k=knownHolder(a);
+    if(k){if(k.kind!=='burn')named.push({address:a,kind:k.kind,name:k.name});continue}
+    if(String(h.is_locked)==='1'){named.push({address:a,kind:'lock',name:'locked, per GoPlus'});continue}
+    cand.push(h);
+  }
+  if(!cand.length||cand.every(h=>own.has(h.address.toLowerCase())))
+    return unknown('the only holders GoPlus lists are pools, burn or lock addresses and the wallet holding the LP — that is the pool’s plumbing, not a holder list');
+  const pick=cand.slice(0,10),exc=named.slice(0,6);
+  const bals=await rpcBatch([...pick,...exc].map(h=>call(token,balOf(h.address.toLowerCase()))));
+  const circ=supply-(burned||0);
+  if(!(circ>0))return unknown('nothing circulates: the burned balance reads as the whole supply');
+  const pctAt=i=>+(Number(hx(bals[i]))/Math.pow(10,tokDec)/circ*100).toFixed(2);
+  const rows=pick.map((h,i)=>({address:h.address.toLowerCase(),pct:pctAt(i),contract:String(h.is_contract)==='1',...(h.tag?{tag:String(h.tag).slice(0,40)}:{})}))
+    .filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
+  const excluded=exc.map((x,i)=>({...x,pct:pctAt(pick.length+i)})).filter(x=>x.pct>0).sort((a,b)=>b.pct-a.pct);
+  if(!rows.length)return unknown('every wallet GoPlus lists reads a zero balance at this block');
+  return {
+    count,
+    top10PctOfCirculating:+rows.reduce((a,r)=>a+r.pct,0).toFixed(2),
+    wallets:rows.length, // up to ten: what is left of GoPlus's list once pools, burn, lock and exchange addresses are out
+    largestPct:rows[0].pct,
+    // What the largest wallet would take out of the market's hard side by selling everything at once, on a
+    // constant-product pool (fee and tax ignored, so the upper end) scaled to all the liquidity found (this
+    // pool's share of it), so a token that trades mostly elsewhere is not judged by its thinnest pool.
+    ...(poolTok>0&&share>0?{largestSellTakesPctOfPool:+((rows[0].pct/100*circ)/(poolTok/share+rows[0].pct/100*circ)*100).toFixed(1)}:{}),
+    top:rows.slice(0,5),
+    ...(excluded.length?{excluded}:{}),
+    note:'Shares of the circulating supply, each balance read on-chain at this block. Pools, burn addresses, locked balances and the known exchange and staking wallets (named under excluded, with their share) are left out: none of them is one holder who can sell into the pool. The holder list and count come from GoPlus; a holder outside its list is not seen here.',
+  };
+}
+
+// WHO HOLDS THE LP (constant-product pairs). The burned share was always read;
+// who holds the REST was GoPlus's lp_holders, which for GOL, minutes old,
+// listed only the zero address while one wallet held every LP token there was
+// (review 2026-09-27). A pair's own Transfer log IS its LP ledger, and the
+// public log node serves the last hour of it (ARCHIVE_RPCS says why not more).
+// The pair's very first mint sends 1000 wei of LP to the zero address
+// (MINIMUM_LIQUIDITY): when that transfer is inside the hour, the hour is the
+// whole ledger and the list is complete and on-chain — exactly the new pools
+// GoPlus has not indexed. Older pairs: the candidates are GoPlus's lp_holders,
+// the token's creator and owner, the known lockers and farms, and whoever moved
+// LP in the hour; each balance is read at this block and the share nobody on
+// that list holds is returned as unread, never as fine. One log read, one
+// balance batch, one code batch (a wallet and a contract are told apart by
+// eth_getCode, not by a label).
+export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
+  if(!(lpTot>0)||!pair)return null;
+  pair=pair.toLowerCase();
+  let logs=null;
+  if(head>0){
+    const f={address:pair,topics:[XFER_T],fromBlock:'0x'+(head-(WINDOW_BLOCKS-1)).toString(16),toBlock:'0x'+head.toString(16)};
+    for(const url of LOGS_RPCS){try{logs=await rpc('eth_getLogs',[f],url);if(logs)break}catch(e){}}
+  }
+  const at=t=>('0x'+String(t).slice(26)).toLowerCase();
+  // withdrawn: LP sent back to the pair, which is how removeLiquidity burns it — GOL's first liquidity was
+  // gone half an hour after it went in, and "who holds the LP" alone answered that with the venue's fee share.
+  const ledger=new Map(),withdrawn=new Map();let firstLp=null,created=null,minted=0n;
+  for(const l of logs||[]){
+    if(!l.topics||l.topics.length<3)continue;
+    const fr=at(l.topics[1]),to=at(l.topics[2]),v=hx(l.data);
+    if(fr===NULLA&&to!==NULLA)minted+=v;
+    if(to===pair&&fr!==NULLA)withdrawn.set(fr,(withdrawn.get(fr)||0n)+v);
+    if(fr===NULLA&&to===NULLA&&!created)created={block:parseInt(l.blockNumber,16),ts:l.blockTimestamp?parseInt(l.blockTimestamp,16):null};
+    if(fr===NULLA&&to!==NULLA&&!firstLp)firstLp=to;
+    if(fr!==NULLA)ledger.set(fr,(ledger.get(fr)||0n)-v);
+    ledger.set(to,(ledger.get(to)||0n)+v);
+  }
+  const complete=!!created;
+  const addr=v=>/^0x[0-9a-fA-F]{40}$/.test(v||'')?v.toLowerCase():null;
+  const creator=addr(gp&&gp.creator_address),owner=addr(gp&&gp.owner_address);
+  const cands=new Set();
+  if(complete)[...ledger].filter(([,v])=>v>0n).sort((x,y)=>(y[1]>x[1]?1:y[1]<x[1]?-1:0)).forEach(([a])=>cands.add(a));
+  else{
+    [DEAD,NULLA,feeTo,creator,owner,firstLp].forEach(a=>{if(a)cands.add(a)});
+    for(const h of (gp&&Array.isArray(gp.lp_holders)?gp.lp_holders:[]))if(addr(h&&h.address))cands.add(h.address.toLowerCase());
+    for(const [a,k] of Object.entries(KNOWN_HOLDERS))if(k[0]==='locker'||k[0]==='staking')cands.add(a);
+    for(const a of ledger.keys())cands.add(a);
+  }
+  cands.delete(pair);
+  const list=[...cands].filter(Boolean).slice(0,24);
+  const [bals,codes]=await Promise.all([
+    rpcBatch(list.map(a=>call(pair,balOf(a)))),
+    rawBatch(list.map(a=>({method:'eth_getCode',params:[a,'latest']})),RPCS).catch(()=>null),
+  ]);
+  const gpLocked=new Set((gp&&Array.isArray(gp.lp_holders)?gp.lp_holders:[]).filter(h=>String(h&&h.is_locked)==='1'&&addr(h.address)).map(h=>h.address.toLowerCase()));
+  const rows=list.map((a,i)=>{
+    const k=knownHolder(a),code=codes?!!(codes[i]&&codes[i]!=='0x'):null;
+    const kind=k&&k.kind==='burn'?'burned':a===feeTo?'exchange_fee':k&&k.kind==='locker'?'locked'
+      :gpLocked.has(a)&&code?'locked':k&&k.kind==='staking'?'farm':code===null?'unclassified':code?'contract':'wallet';
+    return {address:a,pct:Math.floor(Number(hx(bals[i]))/1e18/lpTot*1e6)/1e4,kind,
+      ...(k&&k.kind!=='burn'?{name:k.name}:{}),...(a===creator?{tokenCreator:true}:{}),
+      ...(a===firstLp?{addedFirstLiquidity:true}:{}),...(a===owner&&owner!==NULLA?{tokenOwner:true}:{})};
+  }).filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
+  const sum=k=>+rows.filter(r=>r.kind===k).reduce((s,r)=>s+r.pct,0).toFixed(4);
+  const read=rows.reduce((s,r)=>s+r.pct,0);
+  const lw=rows.find(r=>r.kind==='wallet'||r.kind==='unclassified')||null;
+  return {
+    read:complete?'complete':'partial',
+    burnedPct:sum('burned'),lockedPct:sum('locked'),farmPct:sum('farm'),exchangeFeePct:sum('exchange_fee'),
+    walletPct:+(sum('wallet')+sum('unclassified')).toFixed(4),contractPct:sum('contract'),
+    unreadPct:complete?0:Math.max(0,+(100-read).toFixed(2)),
+    largestWallet:lw?{address:lw.address,pct:+lw.pct.toFixed(2),deployer:!!(lw.tokenCreator||lw.addedFirstLiquidity),
+      ...(lw.tokenCreator?{tokenCreator:true}:{}),...(lw.addedFirstLiquidity?{addedFirstLiquidity:true}:{})}:null,
+    holders:rows.filter(r=>r.pct>=0.01).slice(0,8).map(r=>({...r,pct:+r.pct.toFixed(2)})),
+    ...(firstLp?{firstLiquidityFrom:firstLp}:{}),
+    ...(complete&&withdrawn.size&&minted>0n?{withdrawnSinceCreation:[...withdrawn].sort((x,y)=>(y[1]>x[1]?1:y[1]<x[1]?-1:0)).slice(0,3)
+      .map(([a,v])=>({address:a,pctOfLpEverMinted:+(Number(v)/Number(minted)*100).toFixed(2),...(a===creator?{tokenCreator:true}:{}),...(a===firstLp?{addedFirstLiquidity:true}:{})}))}:{}),
+    ...(created?{pairCreatedBlock:created.block,...(created.ts?{pairCreatedAt:new Date(created.ts*1000).toISOString()}:{})}:{}),
+    source:complete
+      ?'every LP transfer since the pair was created (it is younger than the hour of logs a public node serves), each balance read at this block'
+      :'candidates only — GoPlus’s LP holder list, the token’s creator and owner, the known lockers and farms, and whoever moved LP in the last hour — each balance read at this block; unreadPct is the LP nobody on that list holds',
+    note:'A wallet (no contract code) can withdraw its share of the pool whenever it likes. burned can never move; locked sits in a known LP locker until it expires; farm is a staking contract holding many stakers’ LP; exchange_fee is the venue’s own protocol cut; contract is code this list does not know.',
+  };
+}
+
+// WHEN DID IT COME INTO BEING. No public log node answers that beyond the last
+// ~9,000 blocks, but whether an address had code at a block the archive
+// endpoint does (ARCHIVE_RPCS), and creation is the first block with code.
+// Searched, not scanned: round one asks at 2^6 … 2^27 blocks back (the bracket
+// is then within a factor of two), round two splits that bracket thirty ways
+// (within ~3% of the age), a third splits it again (~0.1%) while it is still
+// wider than 20 blocks. The block headers ride in the same batch,
+// so the answer is a time and not a block count read through an assumed block
+// time (BSC's has changed three times). All addresses share one request per
+// round: two, sometimes three requests, run beside the tax read. null for an
+// address when no archive endpoint answered — "not read", never "new".
+export async function contractAges(addrs){
+  let head;try{head=parseInt(await rpc('eth_blockNumber',[]),16)}catch(e){return null}
+  const now=Math.floor(Date.now()/1000);
+  const st=addrs.map(a=>({a:String(a||'').toLowerCase(),lo:0,hi:head,ok:false}));
+  const ts=new Map();
+  for(let round=0;round<3;round++){
+    // Always the third round while the bracket is wider than 20 blocks: a tolerance counted in blocks is not
+    // one in time (CAKE's 1.8M-block bracket from 2020, at 3 s a block, was two months wide).
+    const open=st.filter(s=>!s.none&&s.hi-s.lo>(round===0?1:20));
+    if(!open.length)break;
+    const reqs=[],who=[],blocks=new Set();
+    for(const s of open){
+      let bs=[];
+      // Round one also asks near the head whether there is code at all: an address without any would otherwise
+      // be "dated" to the head — a wallet read as a contract born this minute. Five blocks back, because the
+      // archive endpoint can trail the node that named the head by a block or two, and a block it does not have
+      // yet fails the whole batch.
+      if(round===0){bs.push(head-5);for(let k=6;k<=27;k++)bs.push(head-2**k)}
+      else{const n=Math.min(30,s.hi-s.lo-1);for(let i=1;i<=n;i++)bs.push(s.lo+Math.round((s.hi-s.lo)*i/(n+1)))}
+      for(const b of new Set(bs.filter(b=>b>s.lo&&b<s.hi))){reqs.push({method:'eth_getCode',params:[s.a,'0x'+b.toString(16)]});who.push([s,b]);blocks.add(b)}
+    }
+    const hdr=[...blocks].filter(b=>!ts.has(b));
+    const out=await rawBatch([...reqs,...hdr.map(b=>({method:'eth_getBlockByNumber',params:['0x'+b.toString(16),false]}))],ARCHIVE_RPCS,200);
+    if(!out)break;
+    hdr.forEach((b,i)=>{const h=out[reqs.length+i];if(h&&h.timestamp)ts.set(b,parseInt(h.timestamp,16))});
+    for(const s of open){
+      const seen=who.map((w,i)=>[w,out[i]]).filter(([w])=>w[0]===s).map(([w,c])=>[w[1],!!(c&&c!=='0x')]);
+      const firstWith=Math.min(s.hi,...seen.filter(([,has])=>has).map(([b])=>b));
+      s.hi=firstWith;
+      s.lo=Math.max(s.lo,...seen.filter(([b,has])=>!has&&b<firstWith).map(([b])=>b));
+      if(round===0&&!seen.some(([b,has])=>b===head-5&&has))s.none=true;
+      s.ok=true;
+    }
+  }
+  const res={};
+  for(const s of st){
+    if(!s.ok||s.none){res[s.a]=null;continue}
+    const t=s.hi===head?now:ts.get(s.hi);
+    res[s.a]=t?{createdBlock:s.hi,createdAfterBlock:s.lo,createdAt:new Date(t*1000).toISOString(),
+      ageHours:+(Math.max(0,now-t)/3600).toFixed(2),exact:s.hi-s.lo<=1}:null;
+  }
+  return res;
+}
+
+// WHO TRADES IT. The tax read already fetched the pool's swaps (measureTax,
+// swapLogs); counted, they say whether anybody trades this and which way —
+// swaps, buys against sells, how many addresses, the volume and the largest
+// single sell, over the window that was read, which is returned with them. When
+// the tax read stopped at its three-minute window on a pool that is not busy,
+// the hour is fetched once more for this: three quiet minutes say nothing about
+// a market. The sellers take one more small read — the token's transfers INTO
+// the pool, the pool as a topic — because a sell's Swap names the router, not
+// the wallet. A buy's Swap names its recipient. A router or aggregator that
+// receives for many wallets counts as one address.
+export function activityFromSwaps(logs,{kind,tokenIs0,sellers=null,quoteUsd=0}={}){
+  const U=h=>BigInt('0x'+(h||'0'));
+  let buys=0,sells=0,qBuy=0,qSell=0,maxSell=0,maxSellTx=null;
+  const buyers=new Set(),sellersSeen=new Set();
+  for(const L of logs||[]){
+    const d=String(L&&L.data||'').slice(2);
+    let tokOut,tokIn,qIn,qOut;
+    if(kind==='v3'){
+      if(d.length<128)continue;
+      const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),t=tokenIs0?a:b,q=tokenIs0?b:a;
+      tokOut=t<0n?-t:0n;tokIn=t>0n?t:0n;qIn=q>0n?q:0n;qOut=q<0n?-q:0n;
+    }else{
+      if(d.length<256)continue;
+      const a0i=U(d.slice(0,64)),a1i=U(d.slice(64,128)),a0o=U(d.slice(128,192)),a1o=U(d.slice(192,256));
+      tokOut=tokenIs0?a0o:a1o;tokIn=tokenIs0?a0i:a1i;qIn=tokenIs0?a1i:a0i;qOut=tokenIs0?a1o:a0o;
+    }
+    const to=L.topics&&L.topics[2]?('0x'+L.topics[2].slice(26)).toLowerCase():null;
+    if(tokOut>0n&&tokIn===0n){buys++;qBuy+=Number(qIn)/1e18;if(to)buyers.add(to)}
+    else if(tokIn>0n&&tokOut===0n){
+      sells++;const q=Number(qOut)/1e18;qSell+=q;
+      if(q>maxSell){maxSell=q;maxSellTx=L.transactionHash||null}
+      const w=sellers&&sellers.get(L.transactionHash);if(w)sellersSeen.add(w);
+    }
+  }
+  const usd=v=>quoteUsd>0?Math.round(v*quoteUsd):null;
+  return {swaps:(logs||[]).length,buys,sells,
+    uniqueBuyers:buyers.size,uniqueSellers:sellers?sellersSeen.size:null,
+    uniqueTraders:sellers?new Set([...buyers,...sellersSeen]).size:null,
+    volumeQuote:+(qBuy+qSell).toFixed(6),volumeUsd:usd(qBuy+qSell),buyVolumeUsd:usd(qBuy),sellVolumeUsd:usd(qSell),
+    largestSellQuote:+maxSell.toFixed(6),largestSellUsd:usd(maxSell),largestSellTx:maxSellTx};
+}
+export async function readActivity(token,pair,tokenIs0,kind,tax,quoteUsd){
+  if(!tax||!Array.isArray(tax.swapLogs)||!(tax.block>0))return null;
+  const head=tax.block;
+  let logs=tax.swapLogs,blocks=tax.windowBlocks||0;
+  const range=b=>({fromBlock:'0x'+(head-(b-1)).toString(16),toBlock:'0x'+head.toString(16)});
+  const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
+  if(blocks<WINDOW_BLOCKS&&logs.length<300){
+    for(const url of LOGS_RPCS){
+      try{const l=await rpc('eth_getLogs',[{address:pair,topics:topic,...range(WINDOW_BLOCKS)}],url);if(l){logs=l;blocks=WINDOW_BLOCKS;break}}
+      catch(e){if(/max results|exceeds|too (large|many)/i.test(String(e&&e.message)))break}
+    }
+  }
+  let sellers=null;
+  for(const url of LOGS_RPCS){
+    try{
+      const l=await rpc('eth_getLogs',[{address:token,topics:[XFER_T,null,'0x'+pad(pair)],...range(blocks)}],url);
+      if(l){sellers=new Map();for(const x of l)if(!sellers.has(x.transactionHash)&&x.topics[1])sellers.set(x.transactionHash,('0x'+x.topics[1].slice(26)).toLowerCase());break}
+    }catch(e){}
+  }
+  return {...activityFromSwaps(logs,{kind,tokenIs0,sellers,quoteUsd}),
+    window:{blocks,minutes:Math.round(blocks*0.45/60),toBlock:head}};
+}
+
 ==============================================================================
 === FILE: dashboard/scanner-scan.js
 ==============================================================================
@@ -1622,6 +1959,7 @@ import {
   classify, priceToken, discover,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
+  readHolders, lpCustody, contractAges, readActivity,
 } from './scanner-chain.js';
 
 const parseInput = (s) => {
@@ -1838,7 +2176,7 @@ export async function scan(input, env) {
     );
   }
 
-  let token, pool = null, tokDec, bnbUsd, hop, deeper = null;
+  let token, pool = null, tokDec, bnbUsd, hop, deeper = null, oneSided = [];
 
   const base = await rpcBatch([call(BNB_PAIR, S.reserves), call(BNB_PAIR, S.token0)]);
   const br = res2(base[0]);
@@ -1924,12 +2262,17 @@ export async function scan(input, env) {
       );
       if (alt) deeper = alt;
     } catch { /* a missing alternative is not a failed scan */ }
+    // A pasted pool with nothing on its quote side is the one-sided case below
+    // (2026-09-27): Muskonomy's 1% pool pasted directly came back quotable, at
+    // $0 of liquidity, with a ladder priced off a sqrt no trade could reach.
+    if (!(pool.q > 0)) { oneSided = [pool]; pool = null; }
   } else {
     token = input;
     const info = await rpcBatch([call(token, S.decimals), call(token, S.symbol), call(token, S.name)]);
     tokDec = decOf(info[0]);
     const cands = await discover(token, tokDec, bnbUsd);
     pool = cands[0] || null;
+    oneSided = cands.oneSided || [];
     hop = { direct: true, sym: pool ? pool.sym : 'BNB' };
     if (pool && pool.kind === 'v3') {
       const s = await rpcBatch([call(pool.pair, S.slot0), call(pool.pair, S.token0)]);
@@ -1986,6 +2329,23 @@ export async function scan(input, env) {
   const share = !pool ? 0
     : mine != null && mine + otherLiq > 0 ? mine / (mine + otherLiq)
     : otherLiq > 0 ? hard / (hard + otherLiq) : 1;
+
+  // THE LIST THAT IS RETURNED (2026-09-27): dust out, the scanned pool in. The
+  // review found venues[] listing pools worth $0.003 to $10 and not the pool
+  // every figure came from, so the list read as the market with its main pool
+  // missing. Under $100 is not a place anyone trades (the page drew the same
+  // line long ago); the measured pool leads, marked scanned, at the index's
+  // figure for it where there is one (both sides, like the rest of the list) and
+  // twice its measured quote side otherwise. otherLiq and the share above still
+  // count everything, dust included — they answer a different question.
+  const VENUE_DUST_USD = 100;
+  const poolName = (p) => (p.venue || (p.kind === 'v3' ? 'PancakeSwap V3' : 'PancakeSwap V2'))
+    + (p.kind === 'v3' ? ' ' + +(p.fee * 100).toFixed(4) + '%' : '') + ' · ' + (p.sym || '?');
+  const venueList = () => [
+    ...(pool ? [{ pair: pool.pair, name: poolName(pool), liquidity: Math.round(mine != null ? mine : hard * 2), scanned: true }] : []),
+    ...others.filter((x) => (x.liquidity || 0) >= VENUE_DUST_USD),
+  ].slice(0, 12);
+  const venuesDust = others.filter((x) => (x.liquidity || 0) < VENUE_DUST_USD).length;
 
   if (!pool && !others.length && !gpOk && !(supply > 0) && !decStr(nameInfo[0]))
     throw new ScanError(
@@ -2044,14 +2404,22 @@ export async function scan(input, env) {
       // …and WHERE the market is, when an index knows: "not quotable" alone
       // reads as "nothing there" about a token with a million dollars at a
       // venue this tool cannot read.
+      // A pool that exists and holds only the token is its own answer (2026-09-27):
+      // Muskonomy's one-sided 1% V3 pool read "no pool at a venue whose swap fee
+      // has been verified", which sends a reader looking for a venue problem
+      // when the fact is that there is nothing in the pool to be paid out of.
       reason: (pool
         ? 'The readable pool holds too small a share of this token’s liquidity to describe its market.'
-        : 'No pool at a venue whose swap fee has been verified here.')
+        : oneSided.length
+          ? `Pool found (${poolName(oneSided[0])}, ${oneSided[0].pair}), but it holds no ${oneSided[0].sym} to sell into — only the token’s own side, so a sell has nothing to be paid out of.`
+          : 'No pool at a venue whose swap fee has been verified here.')
         + (others[0] && others[0].liquidity >= 1000
           ? ` Most of it sits at ${others[0].name} (about $${Math.round(others[0].liquidity).toLocaleString('en-US')} by index figures, not measured here).`
           : ''),
       liquidity: { readablePoolUsd: Math.round(hard), elsewhereUsd: Math.round(otherLiq), shareOfLiquidity: +share.toFixed(4) },
-      venues: others.slice(0, 12),
+      ...(oneSided.length ? { oneSidedPools: oneSided.slice(0, 4).map((c) => ({ pair: c.pair, name: poolName(c), tokenReserve: c.tok, quoteReserve: 0 })) } : {}),
+      venues: venueList(),
+      ...(venuesDust ? { venuesUnder100Usd: venuesDust } : {}),
       source: 'measured on BNB Smart Chain via public RPC',
     };
 
@@ -2075,6 +2443,9 @@ export async function scan(input, env) {
     pool.kind === 'v2'
       ? await rpcBatch([call(pool.pair, S.token0)]).then((r) => addrAt(r[0]) === token)
       : pool.tokenIs0;
+  // How old the pool and the token are (contractAges): two or three archive
+  // reads, started here so they run beside the tax read and cost no wait.
+  const agesP = contractAges([pool.pair, token]).catch(() => null);
   let tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   // Can it be sold at all? Asked of the chain, not of a label (see the
   // function's header). V2 pairs only; anything else says so.
@@ -2169,39 +2540,36 @@ export async function scan(input, env) {
     }
   }
 
-  // WHO HOLDS IT (2026-09-26). The first thing a trader asks after "can I get out" is "who else can": ten wallets
-  // holding half the float can empty the pool in one afternoon. No RPC call can list holders, so the list is the
-  // one GoPlus already returned with the contract properties — no extra request — and every balance on it is then
-  // read from the chain at this block, so the shares are measured, not copied. Left out, because they sell nothing:
-  // the burn addresses, the pools (this one and every venue found), and balances GoPlus marks as locked. The share
-  // is of the circulating supply (total less burned), the float a holder could actually sell into.
-  let holders = null;
-  if (Array.isArray(gp.holders) && gp.holders.length && supply > 0) {
-    const skip = new Set([DEAD, NULLA, mineKey, ...others.map((o) => String(o.pair || '').toLowerCase())]);
-    const list = gp.holders
-      .filter((h) => h && /^0x[0-9a-fA-F]{40}$/.test(h.address || '') && !skip.has(h.address.toLowerCase()) && String(h.is_locked) !== '1')
-      .slice(0, 10);
-    const bals = list.length ? await rpcBatch(list.map((h) => call(token, balOf(h.address.toLowerCase())))).catch(() => null) : null;
-    const circ = supply - burned;
-    if (bals && circ > 0) {
-      const rows = list.map((h, i) => ({ address: h.address.toLowerCase(), pct: +(Number(hx(bals[i])) / Math.pow(10, tokDec) / circ * 100).toFixed(2), contract: String(h.is_contract) === '1', ...(h.tag ? { tag: String(h.tag).slice(0, 40) } : {}) }))
-        .filter((r) => r.pct > 0).sort((a, b) => b.pct - a.pct);
-      const top10 = +rows.reduce((a, r) => a + r.pct, 0).toFixed(2);
-      holders = {
-        count: gp.holder_count != null ? Number(gp.holder_count) : null,
-        top10PctOfCirculating: top10,
-        wallets: rows.length, // up to ten: what is left of GoPlus's list once pools, burn addresses and locks are out
-        largestPct: rows.length ? rows[0].pct : 0,
-        // What the largest wallet would take out of the market's hard side by selling everything at once, read on a
-        // constant-product pool (fee and tax ignored, so it is the upper end) and scaled to all the liquidity found
-        // (this pool's share of it), so a token that trades mostly elsewhere is not judged by its thinnest pool.
-        // A V3 pool's depth depends on its ticks, so it is not claimed there.
-        ...(pool.kind === 'v2' && pool.tok > 0 && share > 0 && rows.length ? { largestSellTakesPctOfPool: +((rows[0].pct / 100 * circ) / (pool.tok / share + rows[0].pct / 100 * circ) * 100).toFixed(1) } : {}),
-        top: rows.slice(0, 5),
-        note: 'Shares of the circulating supply, each balance read on-chain at this block. Burn addresses, pools and locked balances are left out: they cannot sell into the pool. The holder list and count come from GoPlus; a holder outside its list is not seen here, and a wallet may be an exchange’s — the list does not say whose.',
-      };
-    }
-  }
+  // WHO HOLDS THE LP, WHO TRADES IT (2026-09-27): the LP ledger of a V2 pair
+  // (lpCustody) and the swaps the tax read already fetched (readActivity) —
+  // side by side, each at most two log reads and a balance batch.
+  const [custody, activity] = await Promise.all([
+    pool.kind === 'v2' ? lpCustody({ pair: pool.pair, lpTot, feeTo, gp, head: tax.block }).catch(() => null) : null,
+    readActivity(token, pool.pair.toLowerCase(), tokenIs0, pool.kind, tax, pool.usd).catch(() => null),
+  ]);
+  const ages = await agesP;
+  // A pair young enough for its whole LP ledger to be in the log window carries
+  // its exact creation block (its first mint); the code search is the fallback.
+  const agePool = (custody && custody.pairCreatedAt
+    ? { createdBlock: custody.pairCreatedBlock, createdAt: custody.pairCreatedAt, ageHours: +((Date.now() - Date.parse(custody.pairCreatedAt)) / 3.6e6).toFixed(2), exact: true }
+    : null) || (ages && ages[pool.pair.toLowerCase()]) || null;
+  const ageToken = ages && ages[token];
+
+  // WHO HOLDS IT (2026-09-26; one implementation with the page since
+  // 2026-09-27, readHolders in scanner-chain.js). Ten wallets holding half the
+  // float can empty the pool in one afternoon. The list is GoPlus's, each
+  // balance read on-chain; pools, burn, lock and known exchange addresses are
+  // left out and named apart. When GoPlus has no real list (a token minutes
+  // old) the answer says the holders are unknown rather than saying nothing.
+  const lpOwners = [
+    ...(custody ? custody.holders.filter((h) => h.kind === 'wallet' || h.kind === 'unclassified').map((h) => h.address) : []),
+    ...(gp.creator_address ? [gp.creator_address] : []),
+  ];
+  let holders;
+  try {
+    holders = await readHolders({ gp, token, tokDec, supply, burned, skip: [mineKey, ...others.map((o) => o.pair)],
+      poolTok: pool.kind === 'v2' ? pool.tok : 0, share, lpOwners });
+  } catch { holders = { unknown: true, count: null, reason: 'the balances could not be read from the chain' }; }
 
   return {
     address: token, name, symbol: symb, quotable: true,
@@ -2227,6 +2595,17 @@ export async function scan(input, env) {
       shareOfLiquidity: +share.toFixed(4),
       partialMarket: partial != null,
     },
+    // How old the pool and the token are: the first block their code existed,
+    // found on the archive endpoint (contractAges), or null when it did not
+    // answer. `exact` false means createdBlock is the first block SEEN with code
+    // and the creation lies after createdAfterBlock — within a few percent of
+    // the age.
+    age: {
+      pool: agePool, token: ageToken || null,
+      source: 'first block with contract code, searched on an archive BSC endpoint; the time is that block’s own timestamp',
+    },
+    // Who trades it, over the window the tax read covered (window.minutes).
+    activity: activity || null,
     // What a trade of each size actually costs, tax and slippage and swap fee
     // together — not the headline slippage a router shows.
     // A rung the pool cannot fill (V3, more than sits in range) carries null
@@ -2290,12 +2669,23 @@ export async function scan(input, env) {
             burnedPct: lpTot > 0 ? Math.floor(((lpDead + lpNull) / lpTot) * 1e6) / 1e4 : null,
             exchangeFeeShare: lpFee > 0 ? +((lpFee / lpTot) * 100).toFixed(2) : 0,
             feeToAddress: feeTo,
+            // Who holds the rest, wallet by wallet (lpCustody). null when the
+            // reads failed — then only burnedPct above is known.
+            custody: custody || null,
             note: 'LP held at the burn addresses cannot be withdrawn. Any balance at the factory feeTo() belongs to the exchange, not to the token team.',
           },
         }
-      : {}),
-    ...(holders ? { holders } : {}),
-    venues: others.slice(0, 12),
+      : {
+          // Said, not left out (2026-09-27): a V3 pool's liquidity sits in
+          // position NFTs, and who holds them is not read here.
+          lp: {
+            burnedPct: null, custody: null,
+            note: 'Concentrated-liquidity pool: liquidity is held as position NFTs, not LP tokens, so nothing is burned and who holds the positions is NOT read here. Any position can be withdrawn by its owner at any time.',
+          },
+        }),
+    holders,
+    venues: venueList(),
+    ...(venuesDust ? { venuesUnder100Usd: venuesDust } : {}),
     ...(deeper ? { deeperPoolElsewhere: { pair: deeper.pair, liquidityUsd: Math.round(deeper.hard) } } : {}),
     contract: {
       openSource: gp.is_open_source === '1' ? true : gp.is_open_source === '0' ? false : null,
@@ -2831,7 +3221,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=65" type="module"></script>
+<script src="scanner.js?v=66" type="module"></script>
 </body>
 </html>
 
@@ -2854,7 +3244,8 @@ export async function scan(input, env) {
 import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as S,
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
-  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf} from './scanner-chain.js?v=29';
+  curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
+  readHolders,lpCustody,contractAges,readActivity} from './scanner-chain.js?v=30';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -3512,7 +3903,23 @@ function verdictCard(d,pool,gp,gpOk,tax){
   // 3. Who can remove the liquidity. On a concentrated-liquidity pool there are
   //    no LP tokens to burn, so the honest line is that this question does not
   //    apply rather than a reassuring one that does not mean anything.
-  if(pool.kind==='v2'){
+  // The LP ledger, when it was read (lpCustody, 2026-09-27), answers this by name — before GoPlus's list.
+  const cu=d.custody,cuRead=cu&&(cu.read==='complete'||(cu.unreadPct??100)<50);
+  const gone=cu&&(cu.withdrawnSinceCreation||[])[0];
+  const lw=cu&&cu.largestWallet;
+  if(pool.kind==='v2'&&cuRead&&gone&&gone.pctOfLpEverMinted>=50){
+    line('bad','Most of the liquidity has already been pulled.',
+      pc(gone.pctOfLpEverMinted)+' of all the LP ever minted for this pool was withdrawn by '+short(gone.address)+
+      (gone.tokenCreator?', the token’s creator':gone.addedFirstLiquidity?', the wallet that added it':'')+'. What this page measures is what was left behind.');
+  }else if(pool.kind==='v2'&&cuRead&&lw&&lw.pct>=10){
+    line('bad',(lw.tokenCreator?'The token’s creator':lw.addedFirstLiquidity?'The wallet that added the liquidity':'One wallet')+' can withdraw '+(lw.pct>=99.99?'all of':pc(lw.pct)+' of')+' this liquidity.',
+      short(lw.address)+' holds '+pc(lw.pct)+' of the LP tokens as a plain wallet — no lock, no burn — and can take that share of the pool out in one transaction, at any moment. '+
+      (cu.read==='complete'?'Every LP transfer since the pool was created was read.':pc(cu.unreadPct)+' of the LP could not be attributed.'));
+  }else if(pool.kind==='v2'&&cuRead&&(d.lpTot>0?(d.lpDead+d.lpNull)/d.lpTot*100:0)<99){
+    line(cu.walletPct<10&&cu.unreadPct<10?'good':'mid','No single wallet can pull much of this liquidity.',
+      'Of the LP: '+[['burned',cu.burnedPct],['locked',cu.lockedPct],['in farms',cu.farmPct],['at the exchange',cu.exchangeFeePct],['in wallets',cu.walletPct],['in other contracts',cu.contractPct],['not attributed',cu.unreadPct]]
+        .filter(([,v])=>v>=0.01).map(([k,v])=>pc(v)+' '+k).join(', ')+'. The largest wallet holds '+(lw?pc(lw.pct):'none of it')+'.');
+  }else if(pool.kind==='v2'){
     const burnedPct=d.lpTot>0?(d.lpDead+d.lpNull)/d.lpTot*100:0;
     const feePct=d.lpTot>0&&d.lpFee>0?d.lpFee/d.lpTot*100:0;
     const free=Math.max(0,100-burnedPct-feePct);
@@ -3892,6 +4299,25 @@ function render(d){
               :'on-chain, '+pc(Math.max(0,100-burnedPct-feePct))+' of the LP is simply not burned',
         link:gpOk&&big?{t:short(big.address),href:'https://bscscan.com/address/'+big.address}:null},
     ]));
+    // The ledger, wallet by wallet (lpCustody, 2026-09-27): who holds the LP that is not burned, and what each is.
+    if(d.custody&&d.custody.holders&&d.custody.holders.length){
+      const cu=d.custody,KIND={burned:'burned',locked:'locked',farm:'farm',exchange_fee:'exchange fee',contract:'contract',wallet:'wallet',unclassified:'not classified'};
+      const l=el('div','hd-l');const mx=cu.holders[0].pct||1;
+      cu.holders.slice(0,6).forEach(r=>{
+        const row=el('div','hd-r');
+        row.appendChild(link(short(r.address)+' · '+(r.name||KIND[r.kind]||r.kind)+(r.tokenCreator?' · token creator':r.addedFirstLiquidity?' · added the liquidity':''),'https://bscscan.com/token/'+pool.pair+'?a='+r.address,'lk dim'));
+        const bar=el('i','hd-b');bar.style.width=Math.max(2,r.pct/mx*100)+'%';row.appendChild(bar);
+        row.appendChild(el('span','hd-p',pc(r.pct)));
+        l.appendChild(row);
+      });
+      lp.appendChild(l);
+      const gone=(cu.withdrawnSinceCreation||[])[0];
+      lp.appendChild(el('p','cd-foot',(cu.read==='complete'
+        ?'Every LP transfer since this pool was created was read from the chain — it is younger than the hour of logs a public node serves — so this list is complete.'
+        :'Read for the likely holders only (GoPlus’s LP list, the token’s creator and owner, the known lockers and farms, whoever moved LP in the last hour); '+pc(cu.unreadPct)+' of the LP is held by nobody on that list and is not attributed.')+
+        (gone?' Already withdrawn: '+pc(gone.pctOfLpEverMinted)+' of all the LP ever minted, by '+short(gone.address)+'.':'')+
+        ' A wallet can withdraw its share at any moment; a known locker only when the lock expires.'));
+    }
     // Named rather than left in the withdrawable bucket. On a pool that has run
     // for a while this is usually the entire unburned remainder, and reading it
     // as "somebody can pull this" is the wrong conclusion about the one holder
@@ -3908,7 +4334,7 @@ function render(d){
     o.appendChild(lp);
   }else{
     const lp=card('LP ownership does not apply here',
-      'This is a concentrated-liquidity pool. Liquidity is held as individual positions rather than as fungible LP tokens, so “LP burned” has no meaning at this venue — there is no LP token to burn. Depth can still leave at any time if position holders withdraw.');
+      'This is a concentrated-liquidity pool. Liquidity is held as individual positions rather than as fungible LP tokens, so “LP burned” has no meaning at this venue — there is no LP token to burn. Who holds the positions is not read here. Depth can still leave at any time if position holders withdraw.');
     o.appendChild(lp);
   }
 
@@ -3950,6 +4376,7 @@ function render(d){
       ' for this token, each holding less than '+usd(dustLine)+'. Everything tradable sits in the pool measured above.'));
   }
 
+  o.appendChild(ageActivityCard(d));
   o.appendChild(routeCard(addr));
   o.appendChild(tierCard(addr));
   o.appendChild(rangeCard(addr));
@@ -3957,30 +4384,23 @@ function render(d){
   o.appendChild(flagsCard(gp,gpOk,d.sim));
   o.appendChild(el('p','dis','Pool figures are read live from BNB Chain the moment you press Scan. The transfer tax is measured from recent executed trades where possible. Contract properties and the holder list come from GoPlus and are attributed as such; every holder balance is read on-chain. This page describes a pool — it does not check the deployer’s history, the socials, or anything off-chain; it cannot see an upgrade that has not happened yet; and it is not advice.'));
 }
-// WHO HOLDS IT (2026-09-26): the same rule as the API (scanner-scan.js). GoPlus's holder list, already in hand,
-// and each balance on it read from the chain here; burn addresses, pools and locked balances left out, because
-// they cannot sell into the pool. Shares of the circulating supply — the float a holder could actually sell.
-async function readHolders(gp,token,tokDec,supply,burned,pool,others){
-  if(!gp||!Array.isArray(gp.holders)||!gp.holders.length||!(supply>0))return null;
-  const skip=new Set([DEAD,NULLA,String(pool&&pool.pair||'').toLowerCase(),...(others||[]).map(o=>String(o.pair||'').toLowerCase())]);
-  const list=gp.holders.filter(h=>h&&/^0x[0-9a-fA-F]{40}$/.test(h.address||'')&&!skip.has(h.address.toLowerCase())&&String(h.is_locked)!=='1').slice(0,10);
-  if(!list.length)return null;
-  const bals=await rpcBatch(list.map(h=>call(token,balOf(h.address.toLowerCase()))));
-  const circ=supply-(burned||0);if(!(circ>0))return null;
-  const rows=list.map((h,i)=>({address:h.address.toLowerCase(),pct:Number(hx(bals[i]))/Math.pow(10,tokDec)/circ*100,contract:String(h.is_contract)==='1'}))
-    .filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
-  return {count:gp.holder_count!=null?Number(gp.holder_count):null,top10:rows.reduce((a,r)=>a+r.pct,0),rows};
-}
 function holdersCard(h,symb,token){
-  const c=card('Who holds it','The largest wallets that could sell into the pool, as a share of the circulating '+(symb||'')+' — burn addresses, pools and locked balances left out. The list is GoPlus’s; every balance was read on-chain just now.');
+  // Unknown is a state, not a blank (2026-09-27): a token minutes old has no holder list anywhere yet, and the
+  // card used to be left out — which reads as "nothing to see". It is drawn, dimmed, with the reason.
+  if(h.unknown){
+    const c=card('Who holds it — not known yet','The holder list comes from GoPlus, and for this token it is not usable: '+(h.reason||'no list')+'. Unknown is not the same as spread out — on a new token the deployer and a few wallets often hold most of it.');
+    return c;
+  }
+  const c=card('Who holds it','The largest wallets that could sell into the pool, as a share of the circulating '+(symb||'')+' — pools, burn addresses, locked balances and the known exchange and staking wallets left out. The list is GoPlus’s; every balance was read on-chain just now.');
   const k=el('div','hd-k');
   const fig=(v,lab)=>{const b=el('div','hd-f');b.appendChild(el('b','',v));b.appendChild(el('span','',lab));k.appendChild(b)};
-  fig(h.top10.toFixed(1)+'%','held by the top '+Math.min(10,h.rows.length));
-  fig(h.rows.length?h.rows[0].pct.toFixed(1)+'%':'—','the largest single wallet');
+  const rows=h.top||[];
+  fig(h.top10PctOfCirculating.toFixed(1)+'%','held by the top '+Math.min(10,h.wallets||rows.length));
+  fig(rows.length?rows[0].pct.toFixed(1)+'%':'—','the largest single wallet');
   fig(h.count!=null?h.count.toLocaleString('en-US'):'—','holders');
   c.appendChild(k);
-  const l=el('div','hd-l');const mx=h.rows.length?h.rows[0].pct:1;
-  h.rows.slice(0,5).forEach(r=>{
+  const l=el('div','hd-l');const mx=rows.length?rows[0].pct:1;
+  rows.slice(0,5).forEach(r=>{
     const row=el('div','hd-r');
     row.appendChild(link(short(r.address)+(r.contract?' · contract':''),'https://bscscan.com/token/'+token+'?a='+r.address,'lk dim'));
     const bar=el('i','hd-b');bar.style.width=Math.max(2,r.pct/mx*100)+'%';row.appendChild(bar);
@@ -3988,11 +4408,37 @@ function holdersCard(h,symb,token){
     l.appendChild(row);
   });
   c.appendChild(l);
+  // Named apart rather than dropped silently: Binance 8 holds a quarter of CAKE's float, and a reader should see
+  // that it was left out on purpose — customers' coins at an exchange are not one holder who can sell.
+  if(h.excluded&&h.excluded.length)c.appendChild(el('p','cd-foot','Left out of the figures above: '+
+    h.excluded.map(x=>x.name+' '+x.pct.toFixed(2)+'%').join(' · ')+' — exchange, lock and staking wallets, not one holder who could sell.'));
+  return c;
+}
+
+// HOW OLD, AND WHO TRADES IT (2026-09-27). The pool's and the token's age from the first block their code
+// existed (contractAges), and the swaps of the window the tax read covered (readActivity). The window is named,
+// because "12 swaps" means nothing without it.
+const ageText=a=>{if(!a||!(a.ageHours>=0))return '—';const h=a.ageHours;
+  return h<1?Math.max(1,Math.round(h*60))+' min':h<48?(h<10?h.toFixed(1):Math.round(h))+' h':Math.round(h/24).toLocaleString('en-US')+' days'};
+function ageActivityCard(d){
+  const a=d.activity,ag=d.age||{};
+  const c=card('How old, and who trades it',
+    'Age is read off the chain: the first block the pool’s and the token’s contract code existed. Activity counts the swaps in this pool'+
+    (a&&a.window?' over the last '+a.window.minutes+' minutes ('+a.window.blocks.toLocaleString('en-US')+' blocks)':'')+'.');
+  c.appendChild(statRow([
+    {v:ageText(ag.pool),l:'Pool age',dim:!ag.pool,s:ag.pool?'created '+String(ag.pool.createdAt).slice(0,16).replace('T',' ')+' UTC'+(ag.pool.exact?'':' (first block seen with code)'):'the archive node did not answer'},
+    {v:ageText(ag.token),l:'Token age',dim:!ag.token,s:ag.token?'created '+String(ag.token.createdAt).slice(0,16).replace('T',' ')+' UTC':'the archive node did not answer'},
+    {v:a?nf(a.swaps):'—',l:'Swaps',dim:!a,s:a?nf(a.buys)+' buys · '+nf(a.sells)+' sells':'the log node did not answer'},
+    {v:a&&a.uniqueTraders!=null?nf(a.uniqueTraders):'—',l:'Addresses trading',dim:!a||a.uniqueTraders==null,s:a?(a.uniqueTraders!=null?nf(a.uniqueBuyers)+' bought · '+nf(a.uniqueSellers)+' sold':'sellers could not be read'):'—'},
+    {v:a&&a.volumeUsd!=null?usd(a.volumeUsd):'—',l:'Volume',dim:!a,s:a&&a.buyVolumeUsd!=null?usd(a.buyVolumeUsd)+' bought · '+usd(a.sellVolumeUsd)+' sold':'—'},
+    {v:a&&a.largestSellUsd?usd(a.largestSellUsd):'—',l:'Largest single sell',dim:!a||!a.largestSellUsd,s:a&&a.largestSellUsd?'in the same window':'no sell in the window'},
+  ]));
+  if(a)c.appendChild(el('p','cd-foot','A buy is counted to the address the pool paid, a sell to the address that sent the token in — a router or aggregator acting for many wallets counts once.'));
   return c;
 }
 
 // ---- the "not measurable here" path ---------------------------------------
-function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool){
+function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool,oneSided){
   const o=$('sc-out');o.hidden=false;$('sc-err').hidden=true;o.textContent='';
   const teaser=$('sc-what');if(teaser)teaser.hidden=true;
   const head=el('header','hd');
@@ -4002,12 +4448,22 @@ function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool){
     link('DexScreener ↗','https://dexscreener.com/bsc/'+addr)));
   o.appendChild(head);
   const w=el('div','warn');
+  // A pool that exists and holds only the token (Muskonomy's one-sided 1% V3 pool, 2026-09-27) is its own answer.
+  const os=!hasPool&&oneSided&&oneSided[0];
+  if(os){
+    w.appendChild(el('b',null,'Pool found, but it holds no '+os.sym+' to sell into.'));
+    w.appendChild(el('span',null,'The '+(os.kind==='v3'?'PancakeSwap V3 '+String(+(os.fee*100).toFixed(4))+'%':(os.venue||'PancakeSwap V2'))+' pool '+short(os.pair)+
+      ' holds '+nf(os.tok||0)+' '+symb+' and no '+os.sym+': only the token’s own side, so a sell has nothing to be paid out of. There is no price anybody could get here yet, so no cost is shown.'));
+  }else{
   w.appendChild(el('b',null,'No pool here can be measured exactly.'));
   w.appendChild(el('span',null,(hasPool
     ? 'The readable pool holds '+usd(hard)+' — '+pc(share*100)+' of the '+usd(hard+otherLiq)+' GoPlus sees across all venues. The rest sits'
     : 'It has no readable PancakeSwap pool. Its '+usd(otherLiq)+' of liquidity sits')+
     ' in venues this page cannot quote exactly. Deriving depth from the sliver that is readable would produce a number that is not merely imprecise but wrong, so none is shown. The contract properties below are unaffected — they belong to the token, not to a venue.'));
+  }
   o.appendChild(w);
+  // Dust is not a venue (the $100 line the pool path already draws).
+  others=others.filter(x=>(x.liquidity||0)>=100);
   if(others.length){
     const ov=card('Where it actually trades','As reported by GoPlus.');
     const l=el('div','vn');
@@ -4146,7 +4602,7 @@ async function scanOnce(input){
     // A pasted pool tells us the venue directly. Which side is "the token" is
     // then the only open question: it is the side that is not the quote, and
     // the quote is whichever side can be priced.
-    let token,pool=null,tokDec,bnbUsd,hop,deeper=null;
+    let token,pool=null,tokDec,bnbUsd,hop,deeper=null,oneSided=[];
     const base=await rpcBatch([call(BNB_PAIR,S.reserves),call(BNB_PAIR,S.token0)]);
     const br=res2(base[0]),bIs0=addrAt(base[1])===WBNB;
     bnbUsd=br?(bIs0?br[1]/br[0]:br[0]/br[1]):0;
@@ -4205,13 +4661,15 @@ async function scanOnce(input){
           .find(c=>c.pair.toLowerCase()!==pool.pair.toLowerCase()&&c.hard>(pool.q||0)*pool.usd*1.15);
         if(alt)deeper=alt;
       }catch(e){}
+      // A pasted pool with nothing on its quote side is the one-sided case (2026-09-27, as in scanner-scan.js).
+      if(!(pool.q>0)){oneSided=[pool];pool=null}
     }else{
       token=input;
       at('asking the factories which pools exist…');
       const info=await rpcBatch([call(token,S.decimals),call(token,S.symbol),call(token,S.name)]);
       tokDec=decOf(info[0]);
       const cands=await discover(token,tokDec,bnbUsd);
-      pool=cands[0]||null;
+      pool=cands[0]||null;oneSided=cands.oneSided||[];
       hop={direct:true,sym:pool?pool.sym:'BNB'};
       if(pool&&pool.kind==='v3'){
         const s=await rpcBatch([call(pool.pair,S.slot0),call(pool.pair,S.token0)]);
@@ -4291,7 +4749,7 @@ async function scanOnce(input){
       }
     }
     if(!pool||(share<0.25&&!deepEnough))
-      return renderElsewhere(gp,token,name,symb,hard,others,otherLiq,share,!!pool);
+      return renderElsewhere(gp,token,name,symb,hard,others,otherLiq,share,!!pool,oneSided);
     const partial=share<0.25?share:null;
 
     // PRICE. For a constant-product pair the ratio of the two reserves IS the
@@ -4307,6 +4765,8 @@ async function scanOnce(input){
     }else px=(pool.q/pool.tok)*pool.usd;
     if(!(px>0))return fail('That pool is empty.','Both sides read back as zero — there is nothing to measure.');
 
+    // How old the pool and the token are (contractAges, 2026-09-27): archive reads started now, beside the tax read.
+    const agesP=contractAges([pool.pair,token]).catch(()=>null);
     at('measuring the tax from real trades…');
     const tokenIs0=pool.kind==='v2'
       ? (await rpcBatch([call(pool.pair,S.token0)]).then(r=>addrAt(r[0])===token))
@@ -4365,11 +4825,23 @@ async function scanOnce(input){
       }
     }
 
+    // Who holds the LP and who trades it (2026-09-27): the same reads the API makes, from scanner-chain.js.
+    at('reading who holds the LP and who trades it…');
+    const [custody,activity]=await Promise.all([
+      pool.kind==='v2'?lpCustody({pair:pool.pair,lpTot,feeTo,gp,head:tax.block}).catch(()=>null):null,
+      readActivity(token,pool.pair.toLowerCase(),tokenIs0,pool.kind,tax,pool.usd).catch(()=>null)]);
+    const ages=await agesP;
+    const age={pool:custody&&custody.pairCreatedAt?{createdAt:custody.pairCreatedAt,ageHours:(Date.now()-Date.parse(custody.pairCreatedAt))/3.6e6,exact:true}
+      :(ages&&ages[pool.pair.toLowerCase()])||null,token:(ages&&ages[token])||null};
     let holders=null;
-    try{holders=await readHolders(gp,token,tokDec,supply,burned,pool,others)}catch(e){}
+    try{holders=await readHolders({gp,token,tokDec,supply,burned,skip:[pool.pair,...others.map(o=>o.pair)],
+      poolTok:pool.kind==='v2'?pool.tok:0,share,
+      lpOwners:[...(custody?custody.holders.filter(h=>h.kind==='wallet'||h.kind==='unclassified').map(h=>h.address):[]),...(gp.creator_address?[gp.creator_address]:[])]})}
+    catch(e){holders={unknown:true,reason:'the balances could not be read from the chain'}}
     render({gp,gpOk,sim,addr:token,pool,name,symb,px,q:pool.q,tok:pool.tok,
       quoteUsd:pool.usd,quoteSym:pool.sym,rows,up,down,upMin,downMin,tax,usedTax,
-      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq,holders});
+      supply,burned,lpTot,lpDead,lpNull,lpFee,feeTo,others,hop,deeper,taxB,taxS,simB,simS,partial,mineUsd,otherLiq,holders,
+      custody,activity,age});
     try{history.replaceState(null,'','?token='+token)}catch(e){}
     remember(token,symb);
   }catch(e){

@@ -20,6 +20,7 @@ import {
   classify, priceToken, discover,
   ladderV2, onePctV2, ladderV3, onePctV3, measureTax, venues, simulateRoundTrip,
   STEPS, curveInfo, curveLadder, decOf,
+  readHolders, lpCustody, contractAges, readActivity,
 } from './scanner-chain.js';
 
 const parseInput = (s) => {
@@ -236,7 +237,7 @@ export async function scan(input, env) {
     );
   }
 
-  let token, pool = null, tokDec, bnbUsd, hop, deeper = null;
+  let token, pool = null, tokDec, bnbUsd, hop, deeper = null, oneSided = [];
 
   const base = await rpcBatch([call(BNB_PAIR, S.reserves), call(BNB_PAIR, S.token0)]);
   const br = res2(base[0]);
@@ -322,12 +323,17 @@ export async function scan(input, env) {
       );
       if (alt) deeper = alt;
     } catch { /* a missing alternative is not a failed scan */ }
+    // A pasted pool with nothing on its quote side is the one-sided case below
+    // (2026-09-27): Muskonomy's 1% pool pasted directly came back quotable, at
+    // $0 of liquidity, with a ladder priced off a sqrt no trade could reach.
+    if (!(pool.q > 0)) { oneSided = [pool]; pool = null; }
   } else {
     token = input;
     const info = await rpcBatch([call(token, S.decimals), call(token, S.symbol), call(token, S.name)]);
     tokDec = decOf(info[0]);
     const cands = await discover(token, tokDec, bnbUsd);
     pool = cands[0] || null;
+    oneSided = cands.oneSided || [];
     hop = { direct: true, sym: pool ? pool.sym : 'BNB' };
     if (pool && pool.kind === 'v3') {
       const s = await rpcBatch([call(pool.pair, S.slot0), call(pool.pair, S.token0)]);
@@ -384,6 +390,23 @@ export async function scan(input, env) {
   const share = !pool ? 0
     : mine != null && mine + otherLiq > 0 ? mine / (mine + otherLiq)
     : otherLiq > 0 ? hard / (hard + otherLiq) : 1;
+
+  // THE LIST THAT IS RETURNED (2026-09-27): dust out, the scanned pool in. The
+  // review found venues[] listing pools worth $0.003 to $10 and not the pool
+  // every figure came from, so the list read as the market with its main pool
+  // missing. Under $100 is not a place anyone trades (the page drew the same
+  // line long ago); the measured pool leads, marked scanned, at the index's
+  // figure for it where there is one (both sides, like the rest of the list) and
+  // twice its measured quote side otherwise. otherLiq and the share above still
+  // count everything, dust included — they answer a different question.
+  const VENUE_DUST_USD = 100;
+  const poolName = (p) => (p.venue || (p.kind === 'v3' ? 'PancakeSwap V3' : 'PancakeSwap V2'))
+    + (p.kind === 'v3' ? ' ' + +(p.fee * 100).toFixed(4) + '%' : '') + ' · ' + (p.sym || '?');
+  const venueList = () => [
+    ...(pool ? [{ pair: pool.pair, name: poolName(pool), liquidity: Math.round(mine != null ? mine : hard * 2), scanned: true }] : []),
+    ...others.filter((x) => (x.liquidity || 0) >= VENUE_DUST_USD),
+  ].slice(0, 12);
+  const venuesDust = others.filter((x) => (x.liquidity || 0) < VENUE_DUST_USD).length;
 
   if (!pool && !others.length && !gpOk && !(supply > 0) && !decStr(nameInfo[0]))
     throw new ScanError(
@@ -442,14 +465,22 @@ export async function scan(input, env) {
       // …and WHERE the market is, when an index knows: "not quotable" alone
       // reads as "nothing there" about a token with a million dollars at a
       // venue this tool cannot read.
+      // A pool that exists and holds only the token is its own answer (2026-09-27):
+      // Muskonomy's one-sided 1% V3 pool read "no pool at a venue whose swap fee
+      // has been verified", which sends a reader looking for a venue problem
+      // when the fact is that there is nothing in the pool to be paid out of.
       reason: (pool
         ? 'The readable pool holds too small a share of this token’s liquidity to describe its market.'
-        : 'No pool at a venue whose swap fee has been verified here.')
+        : oneSided.length
+          ? `Pool found (${poolName(oneSided[0])}, ${oneSided[0].pair}), but it holds no ${oneSided[0].sym} to sell into — only the token’s own side, so a sell has nothing to be paid out of.`
+          : 'No pool at a venue whose swap fee has been verified here.')
         + (others[0] && others[0].liquidity >= 1000
           ? ` Most of it sits at ${others[0].name} (about $${Math.round(others[0].liquidity).toLocaleString('en-US')} by index figures, not measured here).`
           : ''),
       liquidity: { readablePoolUsd: Math.round(hard), elsewhereUsd: Math.round(otherLiq), shareOfLiquidity: +share.toFixed(4) },
-      venues: others.slice(0, 12),
+      ...(oneSided.length ? { oneSidedPools: oneSided.slice(0, 4).map((c) => ({ pair: c.pair, name: poolName(c), tokenReserve: c.tok, quoteReserve: 0 })) } : {}),
+      venues: venueList(),
+      ...(venuesDust ? { venuesUnder100Usd: venuesDust } : {}),
       source: 'measured on BNB Smart Chain via public RPC',
     };
 
@@ -473,6 +504,9 @@ export async function scan(input, env) {
     pool.kind === 'v2'
       ? await rpcBatch([call(pool.pair, S.token0)]).then((r) => addrAt(r[0]) === token)
       : pool.tokenIs0;
+  // How old the pool and the token are (contractAges): two or three archive
+  // reads, started here so they run beside the tax read and cost no wait.
+  const agesP = contractAges([pool.pair, token]).catch(() => null);
   let tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
   // Can it be sold at all? Asked of the chain, not of a label (see the
   // function's header). V2 pairs only; anything else says so.
@@ -567,39 +601,36 @@ export async function scan(input, env) {
     }
   }
 
-  // WHO HOLDS IT (2026-09-26). The first thing a trader asks after "can I get out" is "who else can": ten wallets
-  // holding half the float can empty the pool in one afternoon. No RPC call can list holders, so the list is the
-  // one GoPlus already returned with the contract properties — no extra request — and every balance on it is then
-  // read from the chain at this block, so the shares are measured, not copied. Left out, because they sell nothing:
-  // the burn addresses, the pools (this one and every venue found), and balances GoPlus marks as locked. The share
-  // is of the circulating supply (total less burned), the float a holder could actually sell into.
-  let holders = null;
-  if (Array.isArray(gp.holders) && gp.holders.length && supply > 0) {
-    const skip = new Set([DEAD, NULLA, mineKey, ...others.map((o) => String(o.pair || '').toLowerCase())]);
-    const list = gp.holders
-      .filter((h) => h && /^0x[0-9a-fA-F]{40}$/.test(h.address || '') && !skip.has(h.address.toLowerCase()) && String(h.is_locked) !== '1')
-      .slice(0, 10);
-    const bals = list.length ? await rpcBatch(list.map((h) => call(token, balOf(h.address.toLowerCase())))).catch(() => null) : null;
-    const circ = supply - burned;
-    if (bals && circ > 0) {
-      const rows = list.map((h, i) => ({ address: h.address.toLowerCase(), pct: +(Number(hx(bals[i])) / Math.pow(10, tokDec) / circ * 100).toFixed(2), contract: String(h.is_contract) === '1', ...(h.tag ? { tag: String(h.tag).slice(0, 40) } : {}) }))
-        .filter((r) => r.pct > 0).sort((a, b) => b.pct - a.pct);
-      const top10 = +rows.reduce((a, r) => a + r.pct, 0).toFixed(2);
-      holders = {
-        count: gp.holder_count != null ? Number(gp.holder_count) : null,
-        top10PctOfCirculating: top10,
-        wallets: rows.length, // up to ten: what is left of GoPlus's list once pools, burn addresses and locks are out
-        largestPct: rows.length ? rows[0].pct : 0,
-        // What the largest wallet would take out of the market's hard side by selling everything at once, read on a
-        // constant-product pool (fee and tax ignored, so it is the upper end) and scaled to all the liquidity found
-        // (this pool's share of it), so a token that trades mostly elsewhere is not judged by its thinnest pool.
-        // A V3 pool's depth depends on its ticks, so it is not claimed there.
-        ...(pool.kind === 'v2' && pool.tok > 0 && share > 0 && rows.length ? { largestSellTakesPctOfPool: +((rows[0].pct / 100 * circ) / (pool.tok / share + rows[0].pct / 100 * circ) * 100).toFixed(1) } : {}),
-        top: rows.slice(0, 5),
-        note: 'Shares of the circulating supply, each balance read on-chain at this block. Burn addresses, pools and locked balances are left out: they cannot sell into the pool. The holder list and count come from GoPlus; a holder outside its list is not seen here, and a wallet may be an exchange’s — the list does not say whose.',
-      };
-    }
-  }
+  // WHO HOLDS THE LP, WHO TRADES IT (2026-09-27): the LP ledger of a V2 pair
+  // (lpCustody) and the swaps the tax read already fetched (readActivity) —
+  // side by side, each at most two log reads and a balance batch.
+  const [custody, activity] = await Promise.all([
+    pool.kind === 'v2' ? lpCustody({ pair: pool.pair, lpTot, feeTo, gp, head: tax.block }).catch(() => null) : null,
+    readActivity(token, pool.pair.toLowerCase(), tokenIs0, pool.kind, tax, pool.usd).catch(() => null),
+  ]);
+  const ages = await agesP;
+  // A pair young enough for its whole LP ledger to be in the log window carries
+  // its exact creation block (its first mint); the code search is the fallback.
+  const agePool = (custody && custody.pairCreatedAt
+    ? { createdBlock: custody.pairCreatedBlock, createdAt: custody.pairCreatedAt, ageHours: +((Date.now() - Date.parse(custody.pairCreatedAt)) / 3.6e6).toFixed(2), exact: true }
+    : null) || (ages && ages[pool.pair.toLowerCase()]) || null;
+  const ageToken = ages && ages[token];
+
+  // WHO HOLDS IT (2026-09-26; one implementation with the page since
+  // 2026-09-27, readHolders in scanner-chain.js). Ten wallets holding half the
+  // float can empty the pool in one afternoon. The list is GoPlus's, each
+  // balance read on-chain; pools, burn, lock and known exchange addresses are
+  // left out and named apart. When GoPlus has no real list (a token minutes
+  // old) the answer says the holders are unknown rather than saying nothing.
+  const lpOwners = [
+    ...(custody ? custody.holders.filter((h) => h.kind === 'wallet' || h.kind === 'unclassified').map((h) => h.address) : []),
+    ...(gp.creator_address ? [gp.creator_address] : []),
+  ];
+  let holders;
+  try {
+    holders = await readHolders({ gp, token, tokDec, supply, burned, skip: [mineKey, ...others.map((o) => o.pair)],
+      poolTok: pool.kind === 'v2' ? pool.tok : 0, share, lpOwners });
+  } catch { holders = { unknown: true, count: null, reason: 'the balances could not be read from the chain' }; }
 
   return {
     address: token, name, symbol: symb, quotable: true,
@@ -625,6 +656,17 @@ export async function scan(input, env) {
       shareOfLiquidity: +share.toFixed(4),
       partialMarket: partial != null,
     },
+    // How old the pool and the token are: the first block their code existed,
+    // found on the archive endpoint (contractAges), or null when it did not
+    // answer. `exact` false means createdBlock is the first block SEEN with code
+    // and the creation lies after createdAfterBlock — within a few percent of
+    // the age.
+    age: {
+      pool: agePool, token: ageToken || null,
+      source: 'first block with contract code, searched on an archive BSC endpoint; the time is that block’s own timestamp',
+    },
+    // Who trades it, over the window the tax read covered (window.minutes).
+    activity: activity || null,
     // What a trade of each size actually costs, tax and slippage and swap fee
     // together — not the headline slippage a router shows.
     // A rung the pool cannot fill (V3, more than sits in range) carries null
@@ -688,12 +730,23 @@ export async function scan(input, env) {
             burnedPct: lpTot > 0 ? Math.floor(((lpDead + lpNull) / lpTot) * 1e6) / 1e4 : null,
             exchangeFeeShare: lpFee > 0 ? +((lpFee / lpTot) * 100).toFixed(2) : 0,
             feeToAddress: feeTo,
+            // Who holds the rest, wallet by wallet (lpCustody). null when the
+            // reads failed — then only burnedPct above is known.
+            custody: custody || null,
             note: 'LP held at the burn addresses cannot be withdrawn. Any balance at the factory feeTo() belongs to the exchange, not to the token team.',
           },
         }
-      : {}),
-    ...(holders ? { holders } : {}),
-    venues: others.slice(0, 12),
+      : {
+          // Said, not left out (2026-09-27): a V3 pool's liquidity sits in
+          // position NFTs, and who holds them is not read here.
+          lp: {
+            burnedPct: null, custody: null,
+            note: 'Concentrated-liquidity pool: liquidity is held as position NFTs, not LP tokens, so nothing is burned and who holds the positions is NOT read here. Any position can be withdrawn by its owner at any time.',
+          },
+        }),
+    holders,
+    venues: venueList(),
+    ...(venuesDust ? { venuesUnder100Usd: venuesDust } : {}),
     ...(deeper ? { deeperPoolElsewhere: { pair: deeper.pair, liquidityUsd: Math.round(deeper.hard) } } : {}),
     contract: {
       openSource: gp.is_open_source === '1' ? true : gp.is_open_source === '0' ? false : null,

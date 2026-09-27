@@ -32,6 +32,12 @@ export const RPCS=['https://bsc.publicnode.com','https://bsc-rpc.publicnode.com'
 // probably share a budget — but two hostnames spread a burst of five tier
 // queries better than one does, and the caller cannot be asked to go slower.
 export const LOGS_RPCS=['https://bsc-rpc.publicnode.com','https://bsc.publicnode.com'];
+// OLD STATE. Measured 2026-09-27: publicnode answers eth_getCode and eth_getLogs only for about the last 9,000
+// blocks ("Archive requests require a personal token"), defibit and Binance's dataseed say "missing trie node",
+// and blastapi — already in RPCS above — answers eth_getCode at any block, 147 calls in one batch in 0.5 s. That
+// is what dates a pool or a token (contractAges): when did its code first exist. A keyed endpoint, when the
+// Worker has one, goes in front (useKeyedRpcs); nothing else here needs history.
+export const ARCHIVE_RPCS=['https://bsc-mainnet.public.blastapi.io'];
 // THE WINDOW. One eth_getLogs call of this many blocks at the head: an hour of
 // chain at BSC's 0.45 s blocks (7,900 blocks = 59 min, so hourly windows taken
 // at the same minute never overlap). Measured 2026-09-09: the free log
@@ -155,7 +161,9 @@ let epi=0;
 export function useKeyedRpcs(urls){
   const add=(urls||[]).map(u=>String(u||'').trim()).filter(u=>/^https:\/\//.test(u));
   if(!add.length)return false;
-  for(const list of [RPCS,LOGS_RPCS]){
+  // …and in front of the one public endpoint that serves old state (ARCHIVE_RPCS, 2026-09-27): a personal
+  // publicnode token answers the "archive" reads the free one refuses.
+  for(const list of [RPCS,LOGS_RPCS,ARCHIVE_RPCS]){
     const rest=list.filter(u=>!add.includes(u));
     list.splice(0,list.length,...add,...rest);
   }
@@ -299,7 +307,13 @@ export async function discover(token,tokDec,bnbUsd){
     }
     c.hard=(c.q||0)*c.usd;
   });
-  return cands.filter(c=>c.hard>0&&c.tok>0).sort((a,b)=>b.hard-a.hard);
+  const out=cands.filter(c=>c.hard>0&&c.tok>0).sort((a,b)=>b.hard-a.hard);
+  // The pools that exist and hold only the token (2026-09-27): a one-sided V3
+  // position above the price, like Muskonomy's 1% pool. Not candidates — there
+  // is nothing to sell into — but the refusal has to say they were found, not
+  // that no pool exists at a verified venue.
+  out.oneSided=cands.filter(c=>!(c.hard>0)&&c.tok>0);
+  return out;
 }
 
 // === V2 MATH ===
@@ -642,7 +656,9 @@ export async function measureTax(token,pair,tokenIs0,kind){
       }
     }
     };
-    let windowBlocks=0,sawLogs=false;
+    // swapLogs (2026-09-27): the swaps of the widest window that answered, handed on so the activity read
+    // (readActivity) counts buys, sells and volume off the same logs instead of fetching them again.
+    let windowBlocks=0,sawLogs=false,swapLogs=null;
     const steps=[TAX_SHORT_BLOCKS,WINDOW_BLOCKS];
     for(let si=0;si<steps.length&&!enough();si++){
       const logs=await fetchWindow(steps[si]);
@@ -650,6 +666,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
         if(steps[si]===WINDOW_BLOCKS&&tooLarge)steps.push(TAX_MID_BLOCKS);
         continue;
       }
+      if(steps[si]>=windowBlocks)swapLogs=logs;
       windowBlocks=Math.max(windowBlocks,steps[si]);
       if(logs.length)sawLogs=true;
       await take(logs);
@@ -660,7 +677,7 @@ export async function measureTax(token,pair,tokenIs0,kind){
     if(!windowBlocks)return {ok:false,reason:'the log endpoint refused the range',block:head,windowBlocks:WINDOW_BLOCKS};
     if(!sawLogs){
       const span=await windowSpan(head-(windowBlocks-1),head);
-      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks'),block:head,windowBlocks};
+      return {ok:false,reason:'this pool has not traded in the last '+(span||'~'+windowBlocks.toLocaleString('en-US')+' blocks'),block:head,windowBlocks,swapLogs};
     }
     // Exempt wallets exist — the deployer, the tax sink, routers on an allow
     // list — and they trade at 0%. Taking the median rather than the mean keeps
@@ -668,8 +685,8 @@ export async function measureTax(token,pair,tokenIs0,kind){
     const med=a=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);
       return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2};
     const b=med(buys),s=med(sells);
-    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks};
-    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,
+    if(b==null&&s==null)return {ok:false,reason:'no readable transfers in recent trades',block:head,windowBlocks,swapLogs};
+    return {ok:true,buy:b,sell:s,nBuy:buys.length,nSell:sells.length,block:head,windowBlocks,swapLogs,
       spread:{buy:buys.map(x=>+(x*100).toFixed(2)),sell:sells.map(x=>+(x*100).toFixed(2))}};
   }catch(e){return {ok:false,reason:'the log endpoint did not answer'}}
 }
@@ -1578,4 +1595,324 @@ export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},siz
       buyCost:r.buyCost??null,sellCost:r.sellCost??null,buyNote:r.buyNote||null,feePct:cv.feePct});
   }
   return {head,blocks,tokensSeen:seen.size,list:out};
+}
+
+// === WHO HOLDS WHAT, SINCE WHEN, AND WHO TRADES IT (2026-09-27) ===
+//
+// A live review of three tokens minutes old (GOL, AIMU, SUPE) found the scan
+// silent on what a trader asks right after "can I get out": who else holds the
+// token, who holds the LIQUIDITY, how old is this, and is anybody trading it.
+// Everything below answers from the chain. GoPlus's lists are used as
+// candidates at most; every balance is read at this block.
+
+// Addresses whose balance is not one seller's float. CAKE's largest "wallet"
+// was Binance 8 with 23% of the float, and the concentration line read that as
+// one holder who could dump it (review 2026-09-27). Checked on-chain the same
+// day: every exchange address has no code (hot wallets are plain accounts,
+// which is exactly why they have to be named — no call tells them apart), every
+// lock, staking and locker address has code. The names are the public labels
+// these addresses go by, not something the chain states. Kinds: burn (can never
+// move), exchange (customers' coins, not one holder's), lock (staked or
+// time-locked tokens), staking (a farm holding many stakers' LP), locker (an LP
+// timelock).
+export const KNOWN_HOLDERS={
+  '0x000000000000000000000000000000000000dead':['burn','dead address'],
+  '0x0000000000000000000000000000000000000000':['burn','zero address'],
+  '0xdead000000000000000042069420694206942069':['burn','dead address'],
+  '0xf977814e90da44bfa03b6295a0616a897441acec':['exchange','Binance 8'],
+  '0x8894e0a0c962cb723c1976a4421c95949be2d4e3':['exchange','Binance hot wallet 6'],
+  '0xe2fc31f816a9b94326492132018c3aecc4a93ae1':['exchange','Binance hot wallet 7'],
+  '0x3c783c21a0383057d128bae431894a5c19f9cf06':['exchange','Binance hot wallet 8'],
+  '0xdccf3b77da55107280bd850ea519df3705d1a75a':['exchange','Binance hot wallet 11'],
+  '0x5a52e96bacdabb82fd05763e25335261b270efcb':['exchange','Binance hot wallet 20'],
+  '0x28c6c06298d514db089934071355e5743bf21d60':['exchange','Binance 14'],
+  '0x45c54210128a065de780c4b0df3d16664f7f859e':['lock','PancakeSwap CAKE pool (veCAKE)'],
+  '0x5692db8177a81a6c6afc8084c2976c9933ec1bab':['lock','PancakeSwap veCAKE'],
+  '0x73feaa1ee314f8c655e354234017be2193c9e24e':['staking','PancakeSwap MasterChef v1'],
+  '0xa5f8c5dbd5f286960b9d90548680ae5ebff07652':['staking','PancakeSwap MasterChef v2'],
+  '0x556b9306565093c855aea9ae92a594704c2cd59e':['staking','PancakeSwap MasterChef v3'],
+  '0x009cf7bc57584b7998236eff51b98a168dcea9b0':['staking','PancakeSwap SyrupBar'],
+  '0x407993575c91ce7643a4d4ccacc9a98c36ee1bbe':['locker','PinkLock v2'],
+  '0x7ee058420e5937496f5a2096f04caa7721cf70cc':['locker','PinkLock v1'],
+  '0xc765bddb93b0d1c1a88282ba0fa6b2d00e3e0c83':['locker','Unicrypt'],
+};
+export const knownHolder=a=>{const k=KNOWN_HOLDERS[String(a||'').toLowerCase()];return k?{kind:k[0],name:k[1]}:null};
+
+// A batch of mixed methods, one endpoint after another until one answers EVERY
+// entry — an archive refusal arrives per entry, so a partial answer moves on
+// like a refused one. null when none does; never a quiet half.
+async function rawBatch(reqs,urls,chunk=25){
+  if(!reqs.length)return [];
+  for(const url of urls){
+    const out=[];let ok=true;
+    for(let i=0;i<reqs.length;i+=chunk){
+      const part=reqs.slice(i,i+chunk);
+      const j=await tryPost(url,part.map((r,k)=>({jsonrpc:'2.0',id:k,...r})));
+      if(!Array.isArray(j)||j.length!==part.length||j.some(x=>x.error)){ok=false;break}
+      const s=[];for(const x of j)s[x.id]=x.result;out.push(...s);
+    }
+    if(ok)return out;
+  }
+  return null;
+}
+
+// WHO HOLDS THE TOKEN — one implementation for the page and the API (the page
+// kept its own copy until 2026-09-27). GoPlus's list, already in hand, is the
+// candidate list and every balance on it is read here. Two things changed with
+// the review. The known exchange, lock and burn addresses above are taken out
+// of the concentration figure and named apart, with their own share. And a
+// list GoPlus has not really built is said to be unknown instead of being read:
+// for a token minutes old it answers holder_count "0", or "3" with the pool,
+// the dead address and the deployer as the whole list — the old code then said
+// nothing at all, a silence a reader hears as "spread out". `skip` are the
+// pools; `lpOwners` the wallets that hold the LP (a list that is only them is
+// the pool's own plumbing, not holders); `poolTok` the pool's token reserve on
+// a constant-product pair (0 elsewhere: a V3 pool's depth depends on its ticks).
+export async function readHolders({gp,token,tokDec,supply,burned,skip=[],poolTok=0,share=1,lpOwners=[]}){
+  const hc=gp&&gp.holder_count;
+  const count=hc!=null&&String(hc).trim()!==''&&isFinite(Number(hc))?Number(hc):null;
+  const unknown=reason=>({unknown:true,count,reason});
+  const gpOk=!!(gp&&(gp.token_name||gp.dex||gp.is_open_source!=null));
+  if(!(supply>0))return unknown('the total supply could not be read');
+  if(!gpOk)return unknown('GoPlus, which supplies the holder list, did not answer');
+  const list=(Array.isArray(gp.holders)?gp.holders:[]).filter(h=>h&&/^0x[0-9a-fA-F]{40}$/.test(h.address||''));
+  if(!list.length)return unknown('GoPlus lists no holders for this token yet — its index lags new tokens');
+  if(count!=null&&count<10)return unknown('GoPlus counts '+count+' holder'+(count===1?'':'s')+' — too few to be the market; its index has not caught up');
+  const skipS=new Set(skip.map(x=>String(x||'').toLowerCase())),own=new Set(lpOwners.map(x=>String(x||'').toLowerCase()));
+  const named=[],cand=[];
+  for(const h of list){
+    const a=h.address.toLowerCase();
+    if(skipS.has(a))continue;
+    const k=knownHolder(a);
+    if(k){if(k.kind!=='burn')named.push({address:a,kind:k.kind,name:k.name});continue}
+    if(String(h.is_locked)==='1'){named.push({address:a,kind:'lock',name:'locked, per GoPlus'});continue}
+    cand.push(h);
+  }
+  if(!cand.length||cand.every(h=>own.has(h.address.toLowerCase())))
+    return unknown('the only holders GoPlus lists are pools, burn or lock addresses and the wallet holding the LP — that is the pool’s plumbing, not a holder list');
+  const pick=cand.slice(0,10),exc=named.slice(0,6);
+  const bals=await rpcBatch([...pick,...exc].map(h=>call(token,balOf(h.address.toLowerCase()))));
+  const circ=supply-(burned||0);
+  if(!(circ>0))return unknown('nothing circulates: the burned balance reads as the whole supply');
+  const pctAt=i=>+(Number(hx(bals[i]))/Math.pow(10,tokDec)/circ*100).toFixed(2);
+  const rows=pick.map((h,i)=>({address:h.address.toLowerCase(),pct:pctAt(i),contract:String(h.is_contract)==='1',...(h.tag?{tag:String(h.tag).slice(0,40)}:{})}))
+    .filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
+  const excluded=exc.map((x,i)=>({...x,pct:pctAt(pick.length+i)})).filter(x=>x.pct>0).sort((a,b)=>b.pct-a.pct);
+  if(!rows.length)return unknown('every wallet GoPlus lists reads a zero balance at this block');
+  return {
+    count,
+    top10PctOfCirculating:+rows.reduce((a,r)=>a+r.pct,0).toFixed(2),
+    wallets:rows.length, // up to ten: what is left of GoPlus's list once pools, burn, lock and exchange addresses are out
+    largestPct:rows[0].pct,
+    // What the largest wallet would take out of the market's hard side by selling everything at once, on a
+    // constant-product pool (fee and tax ignored, so the upper end) scaled to all the liquidity found (this
+    // pool's share of it), so a token that trades mostly elsewhere is not judged by its thinnest pool.
+    ...(poolTok>0&&share>0?{largestSellTakesPctOfPool:+((rows[0].pct/100*circ)/(poolTok/share+rows[0].pct/100*circ)*100).toFixed(1)}:{}),
+    top:rows.slice(0,5),
+    ...(excluded.length?{excluded}:{}),
+    note:'Shares of the circulating supply, each balance read on-chain at this block. Pools, burn addresses, locked balances and the known exchange and staking wallets (named under excluded, with their share) are left out: none of them is one holder who can sell into the pool. The holder list and count come from GoPlus; a holder outside its list is not seen here.',
+  };
+}
+
+// WHO HOLDS THE LP (constant-product pairs). The burned share was always read;
+// who holds the REST was GoPlus's lp_holders, which for GOL, minutes old,
+// listed only the zero address while one wallet held every LP token there was
+// (review 2026-09-27). A pair's own Transfer log IS its LP ledger, and the
+// public log node serves the last hour of it (ARCHIVE_RPCS says why not more).
+// The pair's very first mint sends 1000 wei of LP to the zero address
+// (MINIMUM_LIQUIDITY): when that transfer is inside the hour, the hour is the
+// whole ledger and the list is complete and on-chain — exactly the new pools
+// GoPlus has not indexed. Older pairs: the candidates are GoPlus's lp_holders,
+// the token's creator and owner, the known lockers and farms, and whoever moved
+// LP in the hour; each balance is read at this block and the share nobody on
+// that list holds is returned as unread, never as fine. One log read, one
+// balance batch, one code batch (a wallet and a contract are told apart by
+// eth_getCode, not by a label).
+export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
+  if(!(lpTot>0)||!pair)return null;
+  pair=pair.toLowerCase();
+  let logs=null;
+  if(head>0){
+    const f={address:pair,topics:[XFER_T],fromBlock:'0x'+(head-(WINDOW_BLOCKS-1)).toString(16),toBlock:'0x'+head.toString(16)};
+    for(const url of LOGS_RPCS){try{logs=await rpc('eth_getLogs',[f],url);if(logs)break}catch(e){}}
+  }
+  const at=t=>('0x'+String(t).slice(26)).toLowerCase();
+  // withdrawn: LP sent back to the pair, which is how removeLiquidity burns it — GOL's first liquidity was
+  // gone half an hour after it went in, and "who holds the LP" alone answered that with the venue's fee share.
+  const ledger=new Map(),withdrawn=new Map();let firstLp=null,created=null,minted=0n;
+  for(const l of logs||[]){
+    if(!l.topics||l.topics.length<3)continue;
+    const fr=at(l.topics[1]),to=at(l.topics[2]),v=hx(l.data);
+    if(fr===NULLA&&to!==NULLA)minted+=v;
+    if(to===pair&&fr!==NULLA)withdrawn.set(fr,(withdrawn.get(fr)||0n)+v);
+    if(fr===NULLA&&to===NULLA&&!created)created={block:parseInt(l.blockNumber,16),ts:l.blockTimestamp?parseInt(l.blockTimestamp,16):null};
+    if(fr===NULLA&&to!==NULLA&&!firstLp)firstLp=to;
+    if(fr!==NULLA)ledger.set(fr,(ledger.get(fr)||0n)-v);
+    ledger.set(to,(ledger.get(to)||0n)+v);
+  }
+  const complete=!!created;
+  const addr=v=>/^0x[0-9a-fA-F]{40}$/.test(v||'')?v.toLowerCase():null;
+  const creator=addr(gp&&gp.creator_address),owner=addr(gp&&gp.owner_address);
+  const cands=new Set();
+  if(complete)[...ledger].filter(([,v])=>v>0n).sort((x,y)=>(y[1]>x[1]?1:y[1]<x[1]?-1:0)).forEach(([a])=>cands.add(a));
+  else{
+    [DEAD,NULLA,feeTo,creator,owner,firstLp].forEach(a=>{if(a)cands.add(a)});
+    for(const h of (gp&&Array.isArray(gp.lp_holders)?gp.lp_holders:[]))if(addr(h&&h.address))cands.add(h.address.toLowerCase());
+    for(const [a,k] of Object.entries(KNOWN_HOLDERS))if(k[0]==='locker'||k[0]==='staking')cands.add(a);
+    for(const a of ledger.keys())cands.add(a);
+  }
+  cands.delete(pair);
+  const list=[...cands].filter(Boolean).slice(0,24);
+  const [bals,codes]=await Promise.all([
+    rpcBatch(list.map(a=>call(pair,balOf(a)))),
+    rawBatch(list.map(a=>({method:'eth_getCode',params:[a,'latest']})),RPCS).catch(()=>null),
+  ]);
+  const gpLocked=new Set((gp&&Array.isArray(gp.lp_holders)?gp.lp_holders:[]).filter(h=>String(h&&h.is_locked)==='1'&&addr(h.address)).map(h=>h.address.toLowerCase()));
+  const rows=list.map((a,i)=>{
+    const k=knownHolder(a),code=codes?!!(codes[i]&&codes[i]!=='0x'):null;
+    const kind=k&&k.kind==='burn'?'burned':a===feeTo?'exchange_fee':k&&k.kind==='locker'?'locked'
+      :gpLocked.has(a)&&code?'locked':k&&k.kind==='staking'?'farm':code===null?'unclassified':code?'contract':'wallet';
+    return {address:a,pct:Math.floor(Number(hx(bals[i]))/1e18/lpTot*1e6)/1e4,kind,
+      ...(k&&k.kind!=='burn'?{name:k.name}:{}),...(a===creator?{tokenCreator:true}:{}),
+      ...(a===firstLp?{addedFirstLiquidity:true}:{}),...(a===owner&&owner!==NULLA?{tokenOwner:true}:{})};
+  }).filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
+  const sum=k=>+rows.filter(r=>r.kind===k).reduce((s,r)=>s+r.pct,0).toFixed(4);
+  const read=rows.reduce((s,r)=>s+r.pct,0);
+  const lw=rows.find(r=>r.kind==='wallet'||r.kind==='unclassified')||null;
+  return {
+    read:complete?'complete':'partial',
+    burnedPct:sum('burned'),lockedPct:sum('locked'),farmPct:sum('farm'),exchangeFeePct:sum('exchange_fee'),
+    walletPct:+(sum('wallet')+sum('unclassified')).toFixed(4),contractPct:sum('contract'),
+    unreadPct:complete?0:Math.max(0,+(100-read).toFixed(2)),
+    largestWallet:lw?{address:lw.address,pct:+lw.pct.toFixed(2),deployer:!!(lw.tokenCreator||lw.addedFirstLiquidity),
+      ...(lw.tokenCreator?{tokenCreator:true}:{}),...(lw.addedFirstLiquidity?{addedFirstLiquidity:true}:{})}:null,
+    holders:rows.filter(r=>r.pct>=0.01).slice(0,8).map(r=>({...r,pct:+r.pct.toFixed(2)})),
+    ...(firstLp?{firstLiquidityFrom:firstLp}:{}),
+    ...(complete&&withdrawn.size&&minted>0n?{withdrawnSinceCreation:[...withdrawn].sort((x,y)=>(y[1]>x[1]?1:y[1]<x[1]?-1:0)).slice(0,3)
+      .map(([a,v])=>({address:a,pctOfLpEverMinted:+(Number(v)/Number(minted)*100).toFixed(2),...(a===creator?{tokenCreator:true}:{}),...(a===firstLp?{addedFirstLiquidity:true}:{})}))}:{}),
+    ...(created?{pairCreatedBlock:created.block,...(created.ts?{pairCreatedAt:new Date(created.ts*1000).toISOString()}:{})}:{}),
+    source:complete
+      ?'every LP transfer since the pair was created (it is younger than the hour of logs a public node serves), each balance read at this block'
+      :'candidates only — GoPlus’s LP holder list, the token’s creator and owner, the known lockers and farms, and whoever moved LP in the last hour — each balance read at this block; unreadPct is the LP nobody on that list holds',
+    note:'A wallet (no contract code) can withdraw its share of the pool whenever it likes. burned can never move; locked sits in a known LP locker until it expires; farm is a staking contract holding many stakers’ LP; exchange_fee is the venue’s own protocol cut; contract is code this list does not know.',
+  };
+}
+
+// WHEN DID IT COME INTO BEING. No public log node answers that beyond the last
+// ~9,000 blocks, but whether an address had code at a block the archive
+// endpoint does (ARCHIVE_RPCS), and creation is the first block with code.
+// Searched, not scanned: round one asks at 2^6 … 2^27 blocks back (the bracket
+// is then within a factor of two), round two splits that bracket thirty ways
+// (within ~3% of the age), a third splits it again (~0.1%) while it is still
+// wider than 20 blocks. The block headers ride in the same batch,
+// so the answer is a time and not a block count read through an assumed block
+// time (BSC's has changed three times). All addresses share one request per
+// round: two, sometimes three requests, run beside the tax read. null for an
+// address when no archive endpoint answered — "not read", never "new".
+export async function contractAges(addrs){
+  let head;try{head=parseInt(await rpc('eth_blockNumber',[]),16)}catch(e){return null}
+  const now=Math.floor(Date.now()/1000);
+  const st=addrs.map(a=>({a:String(a||'').toLowerCase(),lo:0,hi:head,ok:false}));
+  const ts=new Map();
+  for(let round=0;round<3;round++){
+    // Always the third round while the bracket is wider than 20 blocks: a tolerance counted in blocks is not
+    // one in time (CAKE's 1.8M-block bracket from 2020, at 3 s a block, was two months wide).
+    const open=st.filter(s=>!s.none&&s.hi-s.lo>(round===0?1:20));
+    if(!open.length)break;
+    const reqs=[],who=[],blocks=new Set();
+    for(const s of open){
+      let bs=[];
+      // Round one also asks near the head whether there is code at all: an address without any would otherwise
+      // be "dated" to the head — a wallet read as a contract born this minute. Five blocks back, because the
+      // archive endpoint can trail the node that named the head by a block or two, and a block it does not have
+      // yet fails the whole batch.
+      if(round===0){bs.push(head-5);for(let k=6;k<=27;k++)bs.push(head-2**k)}
+      else{const n=Math.min(30,s.hi-s.lo-1);for(let i=1;i<=n;i++)bs.push(s.lo+Math.round((s.hi-s.lo)*i/(n+1)))}
+      for(const b of new Set(bs.filter(b=>b>s.lo&&b<s.hi))){reqs.push({method:'eth_getCode',params:[s.a,'0x'+b.toString(16)]});who.push([s,b]);blocks.add(b)}
+    }
+    const hdr=[...blocks].filter(b=>!ts.has(b));
+    const out=await rawBatch([...reqs,...hdr.map(b=>({method:'eth_getBlockByNumber',params:['0x'+b.toString(16),false]}))],ARCHIVE_RPCS,200);
+    if(!out)break;
+    hdr.forEach((b,i)=>{const h=out[reqs.length+i];if(h&&h.timestamp)ts.set(b,parseInt(h.timestamp,16))});
+    for(const s of open){
+      const seen=who.map((w,i)=>[w,out[i]]).filter(([w])=>w[0]===s).map(([w,c])=>[w[1],!!(c&&c!=='0x')]);
+      const firstWith=Math.min(s.hi,...seen.filter(([,has])=>has).map(([b])=>b));
+      s.hi=firstWith;
+      s.lo=Math.max(s.lo,...seen.filter(([b,has])=>!has&&b<firstWith).map(([b])=>b));
+      if(round===0&&!seen.some(([b,has])=>b===head-5&&has))s.none=true;
+      s.ok=true;
+    }
+  }
+  const res={};
+  for(const s of st){
+    if(!s.ok||s.none){res[s.a]=null;continue}
+    const t=s.hi===head?now:ts.get(s.hi);
+    res[s.a]=t?{createdBlock:s.hi,createdAfterBlock:s.lo,createdAt:new Date(t*1000).toISOString(),
+      ageHours:+(Math.max(0,now-t)/3600).toFixed(2),exact:s.hi-s.lo<=1}:null;
+  }
+  return res;
+}
+
+// WHO TRADES IT. The tax read already fetched the pool's swaps (measureTax,
+// swapLogs); counted, they say whether anybody trades this and which way —
+// swaps, buys against sells, how many addresses, the volume and the largest
+// single sell, over the window that was read, which is returned with them. When
+// the tax read stopped at its three-minute window on a pool that is not busy,
+// the hour is fetched once more for this: three quiet minutes say nothing about
+// a market. The sellers take one more small read — the token's transfers INTO
+// the pool, the pool as a topic — because a sell's Swap names the router, not
+// the wallet. A buy's Swap names its recipient. A router or aggregator that
+// receives for many wallets counts as one address.
+export function activityFromSwaps(logs,{kind,tokenIs0,sellers=null,quoteUsd=0}={}){
+  const U=h=>BigInt('0x'+(h||'0'));
+  let buys=0,sells=0,qBuy=0,qSell=0,maxSell=0,maxSellTx=null;
+  const buyers=new Set(),sellersSeen=new Set();
+  for(const L of logs||[]){
+    const d=String(L&&L.data||'').slice(2);
+    let tokOut,tokIn,qIn,qOut;
+    if(kind==='v3'){
+      if(d.length<128)continue;
+      const a=int256(d.slice(0,64)),b=int256(d.slice(64,128)),t=tokenIs0?a:b,q=tokenIs0?b:a;
+      tokOut=t<0n?-t:0n;tokIn=t>0n?t:0n;qIn=q>0n?q:0n;qOut=q<0n?-q:0n;
+    }else{
+      if(d.length<256)continue;
+      const a0i=U(d.slice(0,64)),a1i=U(d.slice(64,128)),a0o=U(d.slice(128,192)),a1o=U(d.slice(192,256));
+      tokOut=tokenIs0?a0o:a1o;tokIn=tokenIs0?a0i:a1i;qIn=tokenIs0?a1i:a0i;qOut=tokenIs0?a1o:a0o;
+    }
+    const to=L.topics&&L.topics[2]?('0x'+L.topics[2].slice(26)).toLowerCase():null;
+    if(tokOut>0n&&tokIn===0n){buys++;qBuy+=Number(qIn)/1e18;if(to)buyers.add(to)}
+    else if(tokIn>0n&&tokOut===0n){
+      sells++;const q=Number(qOut)/1e18;qSell+=q;
+      if(q>maxSell){maxSell=q;maxSellTx=L.transactionHash||null}
+      const w=sellers&&sellers.get(L.transactionHash);if(w)sellersSeen.add(w);
+    }
+  }
+  const usd=v=>quoteUsd>0?Math.round(v*quoteUsd):null;
+  return {swaps:(logs||[]).length,buys,sells,
+    uniqueBuyers:buyers.size,uniqueSellers:sellers?sellersSeen.size:null,
+    uniqueTraders:sellers?new Set([...buyers,...sellersSeen]).size:null,
+    volumeQuote:+(qBuy+qSell).toFixed(6),volumeUsd:usd(qBuy+qSell),buyVolumeUsd:usd(qBuy),sellVolumeUsd:usd(qSell),
+    largestSellQuote:+maxSell.toFixed(6),largestSellUsd:usd(maxSell),largestSellTx:maxSellTx};
+}
+export async function readActivity(token,pair,tokenIs0,kind,tax,quoteUsd){
+  if(!tax||!Array.isArray(tax.swapLogs)||!(tax.block>0))return null;
+  const head=tax.block;
+  let logs=tax.swapLogs,blocks=tax.windowBlocks||0;
+  const range=b=>({fromBlock:'0x'+(head-(b-1)).toString(16),toBlock:'0x'+head.toString(16)});
+  const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
+  if(blocks<WINDOW_BLOCKS&&logs.length<300){
+    for(const url of LOGS_RPCS){
+      try{const l=await rpc('eth_getLogs',[{address:pair,topics:topic,...range(WINDOW_BLOCKS)}],url);if(l){logs=l;blocks=WINDOW_BLOCKS;break}}
+      catch(e){if(/max results|exceeds|too (large|many)/i.test(String(e&&e.message)))break}
+    }
+  }
+  let sellers=null;
+  for(const url of LOGS_RPCS){
+    try{
+      const l=await rpc('eth_getLogs',[{address:token,topics:[XFER_T,null,'0x'+pad(pair)],...range(blocks)}],url);
+      if(l){sellers=new Map();for(const x of l)if(!sellers.has(x.transactionHash)&&x.topics[1])sellers.set(x.transactionHash,('0x'+x.topics[1].slice(26)).toLowerCase());break}
+    }catch(e){}
+  }
+  return {...activityFromSwaps(logs,{kind,tokenIs0,sellers,quoteUsd}),
+    window:{blocks,minutes:Math.round(blocks*0.45/60),toBlock:head}};
 }

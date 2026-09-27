@@ -9,7 +9,8 @@
 // trip with the tax applied, the slippage this size needs), and puts what an
 // agent decides on into one short answer: what stops the trade, what to weigh,
 // the figures, and what it cannot see. Six kilobytes and three of the scan and
-// the route become about one and a half.
+// the route become about three (one and a half until 2026-09-27, when who holds
+// the LP, the pool's age and its last hour of swaps joined it).
 //
 // WHY A THIRD TOOL OVER TWO THAT EXIST (2026-09-20). An agent that trades asks
 // this before every trade, and "call two tools, join them on the pool address
@@ -31,6 +32,7 @@ export class PreflightError extends Error {
 const DEFAULT_USD = 250;
 const HIGH_TAX_PCT = 10;         // one side; named in the sentence
 const THIN_POOL_USD = 250000;    // below this an unburned LP is worth a line
+const LP_PULL_PCT = 10;          // one wallet holding this much of the LP is named
 const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixed(d));
 
 // The cost of a size the ladder does not carry, read between the two rungs
@@ -129,14 +131,44 @@ export function shape(s, r, usd, routeError = null) {
     caution.push({ code: 'partial_market', why: `The pool measured holds ${round((s.pool.shareOfLiquidity || 0) * 100, 1)}% of this token’s liquidity; the rest trades elsewhere.` });
 
   // ---- who can pull what
-  if (s.lp && s.lp.burnedPct != null && s.lp.burnedPct < 50 && (s.pool?.liquidityUsd ?? 0) < THIN_POOL_USD)
+  // WHO HOLDS THE LP, by name (2026-09-27). The scan now reads the LP ledger
+  // (lp.custody): complete for a pair younger than the hour of logs a public
+  // node serves, candidates-only for an older one. Where it attributed most of
+  // the LP, the sentence names the wallet and its share instead of inferring
+  // "whoever holds the rest" from the burned share alone — AIMU, 34 minutes
+  // old, has one wallet, its creator, holding 100% of the LP, and that is the
+  // line an agent needs. Only where the read did not cover half does the old
+  // burned-share line stand in for it.
+  const cu = s.lp?.custody;
+  const cuRead = cu && (cu.read === 'complete' || (cu.unreadPct ?? 100) < 50);
+  const lw = cu?.largestWallet;
+  if (cuRead && lw && lw.pct >= LP_PULL_PCT) {
+    const who = lw.tokenCreator ? 'The token’s creator' : lw.addedFirstLiquidity ? 'The wallet that added the first liquidity' : 'One wallet';
+    const hardUsd = s.pool?.liquidityUsd;
+    caution.push({ code: 'lp_pullable', why: `${who} (${lw.address}) holds ${lw.pct}% of the LP and can withdraw ${lw.pct >= 99.99 ? 'all of the liquidity' : 'that share of the liquidity'}${hardUsd != null ? ` — about $${Math.round(hardUsd * lw.pct / 100)} of the pool’s hard side` : ''} — at any moment (line drawn at ${LP_PULL_PCT}% of the LP; ${cu.read === 'complete' ? 'every LP transfer since the pair was created was read' : `${cu.unreadPct}% of the LP could not be attributed`}).` });
+  } else if (!cuRead && s.lp && s.lp.burnedPct != null && s.lp.burnedPct < 50 && (s.pool?.liquidityUsd ?? 0) < THIN_POOL_USD)
     caution.push({ code: 'lp_withdrawable', why: `${s.lp.burnedPct}% of the LP is burned and the pool holds $${s.pool.liquidityUsd} on its hard side (line drawn at $${THIN_POOL_USD}): whoever holds the rest of the LP can take the liquidity out.` });
+  // Liquidity that has ALREADY gone: GOL and SUPE, half an hour old at the
+  // review, had 99.9% of all the LP ever minted withdrawn — the pool the scan
+  // measured is what was left behind.
+  const gone = (cu?.withdrawnSinceCreation || [])[0];
+  if (gone && gone.pctOfLpEverMinted >= 50)
+    caution.push({ code: 'lp_withdrawn', why: `${gone.pctOfLpEverMinted}% of all the LP ever minted for this pair has already been withdrawn, by ${gone.address}${gone.tokenCreator ? ' (the token’s creator)' : gone.addedFirstLiquidity ? ' (the wallet that added the first liquidity)' : ''}. The pool measured here is what is left.` });
   const flags = Object.entries(props).filter(([k, v]) => v === true && k !== 'is_open_source' && k !== 'is_in_dex').map(([k]) => k);
   // Who else can sell (2026-09-26): one wallet that could take a quarter of the pool, or a handful holding half
   // the float, moves this price far more than any trade you size.
+  // Known exchange, lock and burn addresses are out of these figures and named
+  // apart (2026-09-27): CAKE's "largest wallet" was Binance 8. A list GoPlus has
+  // not built yet (a token minutes old: 0 or 3 holders) is unknown, and said —
+  // silence here read as "spread out".
   const hd = s.holders;
-  if (hd && (hd.largestSellTakesPctOfPool >= 25 || hd.top10PctOfCirculating >= 50))
-    caution.push({ code: 'holders_concentrated', why: `The largest wallet (it may be an exchange’s; the list does not say whose) holds ${hd.largestPct}% of the circulating supply${hd.largestSellTakesPctOfPool != null ? ` — selling it all at once would take about ${hd.largestSellTakesPctOfPool}% of this pool's hard side` : ''}; the top ${hd.wallets} hold ${hd.top10PctOfCirculating}% (lines drawn at 25% of the pool and 50% of the float; balances read on-chain, the list is GoPlus's).` });
+  if (!hd || hd.unknown)
+    caution.push({ code: 'holders_unknown', why: `Who holds this token could not be read${hd?.reason ? `: ${hd.reason}` : ''}. Unknown, not spread out — on a new token the deployer and a few wallets often hold most of it.` });
+  else if (hd.largestSellTakesPctOfPool >= 25 || hd.top10PctOfCirculating >= 50) {
+    const big = hd.top?.[0];
+    const named = (hd.excluded || []).slice(0, 3).map((x) => `${x.name} ${x.pct}%`).join(', ');
+    caution.push({ code: 'holders_concentrated', why: `The largest wallet${big?.contract ? ' (a contract the list does not name)' : ''} holds ${hd.largestPct}% of the circulating supply${hd.largestSellTakesPctOfPool != null ? ` — selling it all at once would take about ${hd.largestSellTakesPctOfPool}% of this pool's hard side` : ''}; the top ${hd.wallets} hold ${hd.top10PctOfCirculating}% (lines drawn at 25% of the pool and 50% of the float; balances read on-chain, the list is GoPlus's${named ? `; left out as exchange, lock or staking wallets: ${named}` : ''}).` });
+  }
   if (flags.length) caution.push({ code: 'contract_flags', why: `GoPlus reads these as true: ${flags.join(', ')}. A label, not a measurement — and none of them has to have been used yet.` });
   if (s.contract?.openSource === false) caution.push({ code: 'source_not_verified', why: 'The contract source is not verified, so nobody has read what it can do.' });
 
@@ -179,6 +211,14 @@ export function shape(s, r, usd, routeError = null) {
     // is not always the pool the best route goes through (entry.pool).
     depth: { pool: s.pool?.address ?? null, one_percent_buy_usd: d.buyUsd ?? null, one_percent_sell_usd: d.sellUsd ?? null, pool_hard_side_usd: s.pool?.liquidityUsd ?? null },
     lp_burned_pct: s.lp?.burnedPct ?? null,
+    // Who holds the rest (2026-09-27), in the scan's own words — null on a V3
+    // pool (position NFTs, not read) or when the reads failed.
+    lp_custody: cu ? { read: cu.read, burned_pct: cu.burnedPct, locked_pct: cu.lockedPct, wallet_pct: cu.walletPct, unread_pct: cu.unreadPct,
+      largest_wallet: lw ? { address: lw.address, pct: lw.pct, deployer: !!lw.deployer } : null } : null,
+    // How old, and who trades it over the window read (the scan's age and activity).
+    age_hours: { pool: s.age?.pool?.ageHours ?? null, token: s.age?.token?.ageHours ?? null },
+    activity: s.activity ? { window_minutes: s.activity.window?.minutes ?? null, swaps: s.activity.swaps, buys: s.activity.buys, sells: s.activity.sells,
+      unique_traders: s.activity.uniqueTraders, volume_usd: s.activity.volumeUsd, largest_sell_usd: s.activity.largestSellUsd } : null,
     // What stays open after this answer, and the one thing here that costs
     // money (2026-09-24, A3 of the review): nothing a trading agent touched
     // ever named it. Neutral and only where it works — the watch reads V2

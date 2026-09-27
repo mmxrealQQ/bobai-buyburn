@@ -989,7 +989,8 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     // it names every part, liq add included, so the parts add up to the 3%
     // (2026-09-12: "0.9/0.1/0.9 + 0.3" left 0.8% unexplained).
     const st=document.getElementById('step-split');
-    if(st)st.textContent=active?(active.creatorPct+'/'+active.bobPct+'/'+active.bobaiPct+(active.liqPct?' + '+active.liqPct+' '+(active.liqLabel||'$BOBAI liq add'):'')+(active.lpPct?' + '+active.lpPct+' DeFi Agent':'')+(active.gigglePct?' + '+active.gigglePct+' Giggle':'')):'~1/1/1';
+    // every part by name (2026-09-27): "0.8%/0.3%/0.8% + 0.5% …" left a reader to guess which number was which
+    if(st)st.textContent=active?[[active.bobaiPct,'$BOBAI burn'],[active.bobPct,'$BOB burn'],[active.liqPct,active.liqLabel||'liquidity'],[active.lpPct,'DeFi agent'],[active.gigglePct,'Giggle pot'],[active.creatorPct,'creator']].filter(p=>p[0]).map(p=>p[0]+' '+p[1]).join(' · '):'~1/1/1';
   }
   apply();setInterval(apply,60000);
 }();

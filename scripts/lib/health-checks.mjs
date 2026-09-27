@@ -571,6 +571,13 @@ ok('Health', 'the buyback-wallet rule passes its own pins (tax held through a ru
   ok('Site', 'the source mirror can still be cloned', /^[0-9a-f]{40}\s+refs\/heads\/main/m.test(refs || ''), refs ? refs.trim().split('\n')[0].slice(0, 60) : 'info/refs did not answer');
   const csp = (await fetch(SITE).catch(() => null))?.headers.get('content-security-policy') || '';
   ok('Site', 'CSP allows the agent subdomain', csp.includes('agent.brainonbnb.com'));
+  // SHARE CARDS (2026-09-27): brainonbnb.com/m/<moment> is what X, Telegram and WhatsApp draw as the big preview of a
+  // shared moment. The page must name its image, and the image must come back as a real PNG drawn by bobai-cards.
+  const mPage = await fetch(SITE + '/m/now').then((r) => (r.ok ? r.text() : '')).catch(() => '');
+  ok('Site', 'the share page names its card image', /og:image" content="https:\/\/brainonbnb\.com\/m\/now\.png/.test(mPage));
+  const mImg = await fetch(SITE + '/m/now.png').catch(() => null);
+  const mBytes = mImg?.ok ? (await mImg.arrayBuffer()).byteLength : 0;
+  ok('Site', 'the share card image is drawn', !!mImg?.ok && /image\/png/.test(mImg.headers.get('content-type') || '') && mBytes > 50000, mImg ? `${mImg.status} · ${Math.round(mBytes / 1024)} KB` : 'no answer');
 }
 
 return results;

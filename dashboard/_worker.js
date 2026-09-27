@@ -1522,6 +1522,18 @@ export default {
       }
     }
 
+    // SHARE CARDS (2026-09-27): brainonbnb.com/m/<moment> is a page whose preview card X, Telegram and WhatsApp draw
+    // big, and /m/<moment>.png is that card — drawn by the bobai-cards worker from the logs and the chain, never an
+    // uploaded picture. The cards are cached here for ten minutes: the Cache API does nothing on a workers.dev host.
+    if (url.pathname.startsWith('/m/')) {
+      const png = url.pathname.endsWith('.png') && request.method === 'GET';
+      if (png) { const hit = await caches.default.match(request); if (hit) return hit; }
+      const r = await fetch('https://bobai-cards.bobbuildonbnb.workers.dev' + url.pathname + url.search, { method: request.method === 'HEAD' ? 'HEAD' : 'GET' });
+      const res = new Response(r.body, r);
+      if (png && r.ok) ctx.waitUntil(caches.default.put(request, res.clone()));
+      return res;
+    }
+
     // The public source repository, served over git's plain-HTTP protocol.
     //
     // This needs its own branch for one reason: Pages answers an unknown path

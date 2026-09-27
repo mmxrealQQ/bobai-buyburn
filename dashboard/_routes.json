@@ -11,7 +11,8 @@
     "/.well-known/agent-skills/index.json",
     "/.well-known/x402",
     "/source.git",
-    "/source.git/*"
+    "/source.git/*",
+    "/m/*"
   ],
   "exclude": []
 }

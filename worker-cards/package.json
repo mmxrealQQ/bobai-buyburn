@@ -1,0 +1,13 @@
+{
+  "name": "bobai-cards",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/render.mjs",
+    "dev": "wrangler dev",
+    "dry": "wrangler deploy --dry-run --outdir dist"
+  },
+  "dependencies": {
+    "@resvg/resvg-wasm": "2.6.2"
+  }
+}

@@ -1,0 +1,21 @@
+name = "bobai-cards"
+main = "src/index.js"
+compatibility_date = "2026-03-17"
+# node:buffer for the base64 data URIs of the figure stills (render.js); nothing else from Node is used
+compatibility_flags = ["nodejs_compat"]
+
+# No route on purpose: the public address is brainonbnb.com/m/*, served by the dashboard worker, which
+# forwards to this one (proxy snippet: see the header of src/index.js). The
+# workers.dev address stays reachable for testing; its Cache API is a no-op, the isolate memory cache still
+# holds. If this worker ever gets its own zone route instead, caches.default starts working by itself.
+
+# Fonts and figure stills are bundled as raw bytes (ArrayBuffer imports); the .wasm uses wrangler's
+# default CompiledWasm rule. Bundle budget: < 8 MB (the stills are ~3 MB of it; rebuild them with
+# tools/make-assets.py, never by hand, and never touch the logo bytes).
+[[rules]]
+type = "Data"
+globs = ["**/*.ttf", "**/*.png"]
+fallthrough = false
+
+[observability]
+enabled = true

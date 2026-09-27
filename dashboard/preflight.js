@@ -163,9 +163,15 @@ export function shape(s, r, usd, routeError = null) {
   const dep = fl?.deployer;
   // …but not a dust sell worth under a dollar: BUL's deployer "sold 1× — about $0" into a pool it had already
   // emptied, and lp_withdrawn says that one.
-  if (dep?.sold?.sells > 0 && (dep.sold.usd == null ? dep.sold.quote > 0 : dep.sold.usd >= 1)) {
+  // Netted against liquidity it put back (2026-09-27): BOBAI's own creator sells a third, then adds the BNB and
+  // the rest to the same pair and burns the LP — true as "sold $X", misleading as a caution. The line stands only
+  // on what did NOT go back in, at the same dollar floor.
+  const back = dep?.sold?.addedBack;
+  const leftQ = back ? dep.sold.netQuote : dep?.sold?.quote, leftUsd = back ? dep.sold.netUsd : dep?.sold?.usd;
+  const LP_FATE = { burned: 'its LP burned', kept: 'its LP kept by the wallet — withdrawable', 'partly burned': `${back?.lpBurnedPct}% of its LP burned`, 'not read': 'where its LP went not read' };
+  if (dep?.sold?.sells > 0 && (leftUsd == null ? leftQ > 0 : leftUsd >= 1)) {
     const via = dep.sold.viaWalletsItFunded || [];
-    caution.push({ code: 'dev_selling', why: `The deployer (${dep.address}, ${dep.source}) ${dep.sold.byDeployer ? `sold ${dep.sold.byDeployer.sells}×` : 'did not sell itself'}${via.length ? `${dep.sold.byDeployer ? ' and' : ', but'} ${via.length} wallet${via.length === 1 ? '' : 's'} it sent tokens to sold (${via.map((v) => v.address).join(', ')})` : ''} into this pool in the last ${fl.window?.minutes ?? '?'} minutes${dep.sold.usd != null ? ` — about $${dep.sold.usd}` : ''}; ${(fl.balanceAboveSupply || []).includes(dep.address) ? 'its balance reads ABOVE the whole supply — the contract lets it sell without limit' : dep.balancePctOfCirculating != null ? `it still holds ${dep.balancePctOfCirculating}% of the circulating supply` : 'what it still holds could not be read'}${dep.lpPct ? ` and ${dep.lpPct}% of the LP` : ''}.` });
+    caution.push({ code: 'dev_selling', why: `The deployer (${dep.address}, ${dep.source}) ${dep.sold.byDeployer ? `sold ${dep.sold.byDeployer.sells}×` : 'did not sell itself'}${via.length ? `${dep.sold.byDeployer ? ' and' : ', but'} ${via.length} wallet${via.length === 1 ? '' : 's'} it sent tokens to sold (${via.map((v) => v.address).join(', ')})` : ''} into this pool in the last ${fl.window?.minutes ?? '?'} minutes${dep.sold.usd != null ? ` — about $${dep.sold.usd}` : ''}${back ? ` and added $${back.usd ?? '?'} back as liquidity (${LP_FATE[back.lp]}), so about $${leftUsd ?? '?'} left the pool` : ''}; ${(fl.balanceAboveSupply || []).includes(dep.address) ? 'its balance reads ABOVE the whole supply — the contract lets it sell without limit' : dep.balancePctOfCirculating != null ? `it still holds ${dep.balancePctOfCirculating}% of the circulating supply` : 'what it still holds could not be read'}${dep.lpPct ? ` and ${dep.lpPct}% of the LP` : ''}.` });
   }
   const ths = fl?.topHolderSelling || [];
   if (ths.length) {
@@ -242,7 +248,8 @@ export function shape(s, r, usd, routeError = null) {
       unique_traders: s.activity.uniqueTraders, volume_usd: s.activity.volumeUsd, largest_sell_usd: s.activity.largestSellUsd } : null,
     // Who sold over the same window (the scan's flow, 2026-09-27): the deployer, top holders, launch snipers.
     flow: fl ? { window_minutes: fl.window?.minutes ?? null,
-      deployer: dep ? { address: dep.address, holds_pct: dep.balancePctOfCirculating, lp_pct: dep.lpPct, sold_usd: dep.sold ? dep.sold.usd : null, sells: dep.sold ? dep.sold.sells : null } : null,
+      deployer: dep ? { address: dep.address, holds_pct: dep.balancePctOfCirculating, lp_pct: dep.lpPct, sold_usd: dep.sold ? dep.sold.usd : null, sells: dep.sold ? dep.sold.sells : null,
+        ...(back ? { added_back_usd: back.usd, added_back_lp: back.lp, net_sold_usd: dep.sold.netUsd } : {}) } : null,
       sellers: fl.sellers ? fl.sellers.wallets : null, top_holders_selling: ths.length,
       snipers_hold_pct: sn?.read ? sn.holdPctOfCirculating : null } : null,
     // What stays open after this answer, and the one thing here that costs

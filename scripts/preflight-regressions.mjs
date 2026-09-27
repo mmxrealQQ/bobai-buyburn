@@ -99,6 +99,15 @@ ok('launch buyers still holding 66.54% is sniped_launch, with the count and the 
 o = shape(scan({ flow: flow({ snipers: { read: true, launchBlock: 5, blocks: 10, wallets: 3, holdPctOfCirculating: 4.2, top: [] } }) }), route(), 250);
 ok('… 4.2% is not, and an unread sniper figure is null, never 0', !codes(o.caution).includes('sniped_launch')
   && shape(scan({ flow: flow({ snipers: { read: false, reason: 'x' } }) }), route(), 250).flow.snipers_hold_pct === null, codes(o.caution));
+// Netted against liquidity put back (2026-09-27): BOBAI's own creator run sells, adds it all back, burns the LP.
+const backed = (addedBack, netUsd, netQuote) => flow({ deployer: { address: '0xdep', source: 'contract creator (GoPlus)', balancePctOfCirculating: 0, lpPct: null,
+  sold: { sells: 3, quote: 0.0503, usd: 30, byDeployer: { sells: 3, usd: 30 }, addedBack, netQuote, netUsd } } });
+o = shape(scan({ flow: backed({ adds: 1, quote: 0.0519, usd: 31, lp: 'burned', lpBurnedPct: 100 }, 0, 0) }), route(), 250);
+ok('a deployer that sold and put it all back as liquidity (LP burned) raises no dev_selling, and the summary says so', !codes(o.caution).includes('dev_selling') && o.flow.deployer.added_back_usd === 31 && o.flow.deployer.added_back_lp === 'burned' && o.flow.deployer.net_sold_usd === 0, codes(o.caution));
+o = shape(scan({ flow: backed({ adds: 1, quote: 0.5, usd: 300, lp: 'kept' }, 1500, 2.5) }), route(), 250);
+const dsb = o.caution.find((c) => c.code === 'dev_selling')?.why || '';
+ok('… one that put back only part is a caution on the part that left, naming both halves and the LP it kept', /added \$300 back as liquidity \(its LP kept by the wallet/.test(dsb) && /about \$1500 left the pool/.test(dsb), dsb);
+
 o = shape(scan(), route(), 250);
 ok('… and a scan without a flow block says flow null, and none of the three', o.flow === null && !/dev_selling|top_holder_selling|sniped_launch/.test(codes(o.caution)));
 

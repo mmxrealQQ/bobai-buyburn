@@ -529,7 +529,9 @@ export const SWAP_T='0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840
       // Both are accepted; only the first is ever seen at this venue.
       SWAP_V3_T='0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83',
       SWAP_V3_UNI='0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67',
-      XFER_T='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+      XFER_T='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+      // A V2 pair's Mint(sender, amount0, amount1): liquidity added. Taken off BOBAI's own add (0xcfa93c73…).
+      MINT_T='0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f';
 // V3 states the two amounts as SIGNED integers from the pool's point of view:
 // positive went in, negative came out. V2 states four unsigned ones instead.
 const TWO256=1n<<256n,TWO255=1n<<255n;
@@ -1735,9 +1737,14 @@ export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
   pair=pair.toLowerCase();
   let logs=null;
   if(head>0){
-    const f={address:pair,topics:[XFER_T],fromBlock:'0x'+(head-(WINDOW_BLOCKS-1)).toString(16),toBlock:'0x'+head.toString(16)};
+    // The pair's Mint events ride in the same read (a topic OR, one address — 2026-09-27): readFlow nets a
+    // wallet's sells against the liquidity it put back (BOBAI's own creator sells a third, then adds the BNB and
+    // the rest as liquidity and burns the LP). The ledger below reads Transfers only.
+    const f={address:pair,topics:[[XFER_T,MINT_T]],fromBlock:'0x'+(head-(WINDOW_BLOCKS-1)).toString(16),toBlock:'0x'+head.toString(16)};
     for(const url of LOGS_RPCS){try{logs=await rpc('eth_getLogs',[f],url);if(logs)break}catch(e){}}
   }
+  const rawLogs=logs;
+  logs=(logs||[]).filter(l=>l.topics&&l.topics[0]===XFER_T);
   const at=t=>('0x'+String(t).slice(26)).toLowerCase();
   // withdrawn: LP sent back to the pair, which is how removeLiquidity burns it — GOL's first liquidity was
   // gone half an hour after it went in, and "who holds the LP" alone answered that with the venue's fee share.
@@ -1781,7 +1788,8 @@ export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
   const sum=k=>+rows.filter(r=>r.kind===k).reduce((s,r)=>s+r.pct,0).toFixed(4);
   const read=rows.reduce((s,r)=>s+r.pct,0);
   const lw=rows.find(r=>r.kind==='wallet'||r.kind==='unclassified')||null;
-  return {
+  // The pair's logs of the hour (LP Transfers and Mints) ride along for readFlow, not enumerable.
+  return Object.defineProperty({
     read:complete?'complete':'partial',
     burnedPct:sum('burned'),lockedPct:sum('locked'),farmPct:sum('farm'),exchangeFeePct:sum('exchange_fee'),
     walletPct:+(sum('wallet')+sum('unclassified')).toFixed(4),contractPct:sum('contract'),
@@ -1797,7 +1805,7 @@ export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
       ?'every LP transfer since the pair was created (it is younger than the hour of logs a public node serves), each balance read at this block'
       :'candidates only — GoPlus’s LP holder list, the token’s creator and owner, the known lockers and farms, and whoever moved LP in the last hour — each balance read at this block; unreadPct is the LP nobody on that list holds',
     note:'A wallet (no contract code) can withdraw its share of the pool whenever it likes. burned can never move; locked sits in a known LP locker until it expires; farm is a staking contract holding many stakers’ LP; exchange_fee is the venue’s own protocol cut; contract is code this list does not know.',
-  };
+  },'raw',{value:rawLogs||null,enumerable:false});
 }
 
 // WHEN DID IT COME INTO BEING. No public log node answers that beyond the last
@@ -1960,7 +1968,7 @@ export function swapAmounts(L,kind,tokenIs0){
   return {tokOut:tokenIs0?a0o:a1o,tokIn:tokenIs0?a0i:a1i,qIn:tokenIs0?a1i:a0i,qOut:tokenIs0?a1o:a0o};
 }
 // Pure: per-wallet sells over the window, and the buys of the launch blocks. Exported for the offline pins.
-export function flowFromLogs({swaps,toPair,kind,tokenIs0,launchBlock=null}){
+export function flowFromLogs({swaps,toPair,kind,tokenIs0,launchBlock=null,lpLogs=null,pair=null}){
   const at=t=>('0x'+String(t).slice(26)).toLowerCase(),li=x=>parseInt(x&&x.logIndex,16)||0;
   const byTx=new Map();
   for(const x of toPair||[]){
@@ -1990,7 +1998,37 @@ export function flowFromLogs({swaps,toPair,kind,tokenIs0,launchBlock=null}){
       }
     }
   }
-  return {sellers,early,bought,sells,unattributed};
+  // LIQUIDITY PUT BACK (2026-09-27). BOBAI's own creator wallet sells a third of its tokens in three chunks, adds
+  // the BNB and the rest as liquidity, and burns the LP — two minutes, and "the deployer sold $X" was true and
+  // misleading for the hour after. From the pair's own logs (lpLogs: its LP Transfers and Mints, lpCustody's
+  // read): each Mint is put to the wallet whose token transfer into the pair funded it (the unused transfer before
+  // it in the same transaction — a sell has taken its own already), else to the LP's recipient; its quote side is
+  // what went back. The LP's fate is read from the same log: minted straight to a burn address, or sent there by
+  // its holder later in the window (from the pair itself to 0x0 is a withdrawal, not a burn).
+  const adds=new Map(),lpBurnedBy=new Map();const pairA=pair?pair.toLowerCase():null;
+  const burnA=a=>a===NULLA||a===DEAD||a==='0xdead000000000000000042069420694206942069';
+  const lpl=(lpLogs||[]).slice().sort((a,b)=>(parseInt(a.blockNumber,16)-parseInt(b.blockNumber,16))||(li(a)-li(b)));
+  for(const M of lpl){
+    if(!M.topics)continue;
+    if(M.topics[0]===XFER_T&&M.topics.length>=3){
+      const fr=at(M.topics[1]),to=at(M.topics[2]);
+      if(fr!==NULLA&&fr!==pairA&&burnA(to))lpBurnedBy.set(fr,(lpBurnedBy.get(fr)||0n)+hx(M.data));
+      continue;
+    }
+    if(M.topics[0]!==MINT_T)continue;
+    const d=String(M.data||'').slice(2);if(d.length<128)continue;
+    const a0=BigInt('0x'+d.slice(0,64)),a1=BigInt('0x'+d.slice(64,128));
+    const lpMint=lpl.filter(x=>x.transactionHash===M.transactionHash&&x.topics[0]===XFER_T&&x.topics.length>=3&&at(x.topics[1])===NULLA&&at(x.topics[2])!==NULLA&&li(x)<li(M)).pop();
+    const lpTo=lpMint?at(lpMint.topics[2]):null,lp=lpMint?hx(lpMint.data):0n;
+    const t=(byTx.get(M.transactionHash)||[]).filter(x=>!x.used&&x.i<li(M)).sort((a,b)=>(b.v>a.v?1:b.v<a.v?-1:0))[0];
+    if(t)t.used=true;
+    const who=t?t.from:lpTo;if(!who)continue;
+    const r=adds.get(who)||{address:who,adds:0,tok:0n,quote:0,lpToBurn:0n,lpKept:0n,lpTo:new Set(),txs:[]};
+    r.adds++;r.tok+=tokenIs0?a0:a1;r.quote+=Number(tokenIs0?a1:a0)/1e18;if(r.txs.length<3)r.txs.push(M.transactionHash);
+    if(lpTo){r.lpTo.add(lpTo);if(burnA(lpTo))r.lpToBurn+=lp;else r.lpKept+=lp}
+    adds.set(who,r);
+  }
+  return {sellers,early,bought,sells,unattributed,adds,lpBurnedBy};
 }
 export async function readFlow({token,pair,kind,tokenIs0,activity,holders,custody,gp,ageToken,agePool,supply,burned,tokDec=18,quoteUsd=0,pools=[]}){
   const raw=activity&&activity.raw;
@@ -2008,7 +2046,7 @@ export async function readFlow({token,pair,kind,tokenIs0,activity,holders,custod
   const young=agePool&&agePool.ageHours!=null&&agePool.ageHours<1;
   const launch=young?(custody&&custody.pairCreatedBlock)||(agePool.exact?agePool.createdBlock:null):null;
   const launchCovered=launch!=null&&launch>=from;
-  const f=flowFromLogs({swaps:raw.swaps,toPair:raw.toPair,kind,tokenIs0,launchBlock:launchCovered?launch:null});
+  const f=flowFromLogs({swaps:raw.swaps,toPair:raw.toPair,kind,tokenIs0,launchBlock:launchCovered?launch:null,lpLogs:custody&&custody.raw,pair});
 
   // ONE log read. A token born inside the hour: ALL its transfers since its birth — its first mint names the
   // deployer and whatever the deployer handed out before the pool opened is in it (a fresh token's "holders" that
@@ -2083,12 +2121,30 @@ export async function readFlow({token,pair,kind,tokenIs0,activity,holders,custod
       const txs=hop.get(r.address);return !!txs&&(r.txs.some(t=>txs.has(t))||isContract(r.address)===false);
     });
     const soldQ=(s?s.quote:0)+hopSold.reduce((x,r)=>x+r.quote,0);
+    // What the deployer (or a wallet it paid) put back as liquidity in the window, and where that LP went. Sells
+    // are netted against the quote side added: dev_selling is about what LEFT the pool (preflight).
+    const addRows=[a,...hop.keys()].map(w=>f.adds.get(w)).filter(Boolean);
+    const addQ=addRows.reduce((x,r)=>x+r.quote,0);
+    let lpBurn=0n,lpKept=0n;
+    for(const r of addRows){
+      lpBurn+=r.lpToBurn;
+      let kept=r.lpKept;
+      for(const w of r.lpTo){const b=f.lpBurnedBy.get(w)||0n;const take=b<kept?b:kept;lpBurn+=take;kept-=take}
+      lpKept+=kept;
+    }
+    const lpTotal=lpBurn+lpKept,netQ=Math.max(0,soldQ-addQ);
+    const addedBack=addRows.length?{adds:addRows.reduce((x,r)=>x+r.adds,0),quote:+addQ.toFixed(6),usd:usd(addQ),
+      lp:lpTotal===0n?'not read':lpKept===0n?'burned':lpBurn===0n?'kept':'partly burned',
+      ...(lpTotal>0n?{lpBurnedPct:+(Number(lpBurn)/Number(lpTotal)*100).toFixed(1)}:{}),
+      txs:addRows.flatMap(r=>r.txs).slice(0,3)}:null;
     deployer={address:a,source:dep[1],contract:isContract(a),
       balancePctOfCirculating:bal.has(a)?pctC(bal.get(a),a):null,
       lpPct:lpRow?lpRow.pct:custody&&custody.read==='complete'?0:null,
       sold:!raw.toPair?null:{sells:(s?s.sells:0)+hopSold.reduce((x,r)=>x+r.sells,0),quote:+soldQ.toFixed(6),usd:usd(soldQ),
         ...(s?{byDeployer:{sells:s.sells,usd:usd(s.quote),pctOfCirculating:pctC(s.tok)}}:{}),
-        ...(hopSold.length?{viaWalletsItFunded:hopSold.slice(0,3).map(r=>({address:r.address,sells:r.sells,usd:usd(r.quote)}))}:{})},
+        ...(hopSold.length?{viaWalletsItFunded:hopSold.slice(0,3).map(r=>({address:r.address,sells:r.sells,usd:usd(r.quote)}))}:{}),
+        ...(addedBack?{addedBack,netQuote:+netQ.toFixed(6),netUsd:usd(netQ)}:{})},
+      ...(custody&&custody.raw?{}:{addsNotRead:true}),
       ...(xlogs&&(tokenYoung||a===creatorUse)?{}:{oneHopNotRead:true}),
     };
   }

@@ -14,7 +14,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   balOf,call,hx,addrAt,res2,decStr,rpcBatch,classify,priceToken,discover,
   ladderV2,onePctV2,ladderV3,onePctV3,measureTax,venues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=31';
+  readHolders,lpCustody,contractAges,readActivity,readFlow} from './scanner-chain.js?v=32';
 
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -1213,6 +1213,9 @@ function ageActivityCard(d){
 function flowCard(d){
   const f=d.flow;if(!f)return null;
   const dep=f.deployer,ths=f.topHolderSelling||[],sn=f.snipers,min=f.window&&f.window.minutes;
+  // Liquidity the deployer put back in the same window is netted (2026-09-27): BOBAI's own creator sells a third,
+  // adds the rest with the BNB and burns the LP; the card says both halves.
+  const back=dep&&dep.sold&&dep.sold.addedBack;
   const depSold=dep&&dep.sold&&dep.sold.sells>0,snOk=sn&&sn.read&&sn.wallets>0;
   if(!dep&&!ths.length&&!snOk)return null;
   if(dep&&!dep.sold&&!ths.length&&!snOk)return null;
@@ -1221,8 +1224,8 @@ function flowCard(d){
   if(dep){
     const holds=above.has(dep.address)?'above the supply':dep.balancePctOfCirculating!=null?pc(dep.balancePctOfCirculating):'—';
     c.appendChild(statRow([
-      {v:depSold?usd(dep.sold.usd):'none',l:'Deployer sold',tone:depSold?' bad':' good',
-        s:depSold?(dep.sold.byDeployer?dep.sold.byDeployer.sells+' sell'+(dep.sold.byDeployer.sells===1?'':'s')+' itself':'not itself')+((dep.sold.viaWalletsItFunded||[]).length?' · '+dep.sold.viaWalletsItFunded.length+' wallet(s) it funded':''):'in the last '+min+' minutes'+(dep.oneHopNotRead?' (its own wallet only)':''),
+      {v:depSold?usd(dep.sold.usd):'none',l:'Deployer sold',tone:!depSold?' good':back&&!(dep.sold.netUsd>=1)?' mid':' bad',
+        s:depSold?(dep.sold.byDeployer?dep.sold.byDeployer.sells+' sell'+(dep.sold.byDeployer.sells===1?'':'s')+' itself':'not itself')+((dep.sold.viaWalletsItFunded||[]).length?' · '+dep.sold.viaWalletsItFunded.length+' wallet(s) it funded':'')+(back?' · '+usd(back.usd)+' added back as liquidity, LP '+back.lp+' · net '+usd(dep.sold.netUsd):''):'in the last '+min+' minutes'+(dep.oneHopNotRead?' (its own wallet only)':''),
         link:{t:short(dep.address),href:'https://bscscan.com/address/'+dep.address}},
       {v:holds,l:'Deployer holds',tone:above.has(dep.address)?' bad':'',dim:dep.balancePctOfCirculating==null&&!above.has(dep.address),s:above.has(dep.address)?'its balance reads larger than the whole supply':'of the circulating supply · '+dep.source},
       {v:dep.lpPct!=null?pc(dep.lpPct):'—',l:'Deployer’s LP share',dim:dep.lpPct==null,s:dep.lpPct!=null?'of the pool’s LP tokens':'not read (V3, or not on the LP list)'},

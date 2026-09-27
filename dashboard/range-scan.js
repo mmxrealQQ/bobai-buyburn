@@ -80,8 +80,18 @@ function liquidityFor(usd, sLo, sHi, sP, p0PerUnit, p1PerUnit) {
 export async function rangePlan(input, opts = {}) {
   // Lowercased at the door, for the reason spelled out in tier-scan.js: every
   // address comparison downstream is against a lowercase value from addrAt.
-  const address = String(input || '').toLowerCase();
+  let address = String(input || '').toLowerCase();
   const capitalUsd = Number(opts.capitalUsd) > 0 ? Number(opts.capitalUsd) : 1000;
+  // THE PAIR THAT WAS ASKED FOR (2026-09-27). "best CAKE/BNB range" reached
+  // this tool with CAKE alone, and the token branch below took the deepest
+  // V3 quote on its own: the answer was about Cake/USDT 0.25%, a pool the
+  // visitor never named. An optional quote now pins the other side; without
+  // one nothing changes. Only the quotes discover() searches can be pinned,
+  // and a pair written the other way round (BNB/CAKE) is read the right way.
+  const isQuote = (x) => QUOTES.some(([q]) => q === x);
+  let wantQuote = /^0x[0-9a-f]{40}$/.test(String(opts.quote || '').toLowerCase()) ? String(opts.quote).toLowerCase() : null;
+  if (wantQuote === address) wantQuote = null;
+  if (wantQuote && !isQuote(wantQuote) && isQuote(address)) [address, wantQuote] = [wantQuote, address];
 
   let what;
   try { what = await classify(address); }
@@ -112,9 +122,12 @@ export async function rangePlan(input, opts = {}) {
   } else {
     const info0 = await rpcBatch([call(address, S.decimals)]);
     const dec0 = decOf(info0[0]);
-    const cands = (await discover(address, dec0, bnbUsd)).filter((c) => c.kind === 'v3');
+    if (wantQuote && !isQuote(wantQuote))
+      throw new RangeError('That pair is not one this tool searches.',
+        `Ranges are planned against ${QUOTES.map(([, s]) => s).join(', ')}. Give one of those as the quote, or the V3 pool address itself to pin the pool.`);
+    const cands = (await discover(address, dec0, bnbUsd)).filter((c) => c.kind === 'v3' && (!wantQuote || c.quote === wantQuote));
     if (!cands.length)
-      throw new RangeError('That token has no PancakeSwap V3 pool.',
+      throw new RangeError(wantQuote ? 'That pair has no PancakeSwap V3 pool.' : 'That token has no PancakeSwap V3 pool.',
         'A range is a V3 idea. On a V2 pool your liquidity spans every price by construction and there is nothing to choose.');
     quote = cands[0].quote;
     const sameQuote = cands.filter((c) => c.quote === quote);
@@ -332,6 +345,7 @@ export async function rangePlan(input, opts = {}) {
     narrowest_mintable_width_pct: +((Math.exp((spacing * TICK_LN) / 2) - 1) * 100).toFixed(3),
     widths_this_tier_cannot_hold_pct: notMintable,
     tier_chosen_because: chosen,
+    quote_chosen_because: what.kind === 'v3pool' ? null : wantQuote ? 'the quote asked for' : 'the quote with the deepest V3 pool for this token — pass quote to pin another',
     price_now: +priceOfToken.toPrecision(8),
     capital_considered_usd: capitalUsd,
     measured_window: {

@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 6751 lines.
+# one fetch. 17 files, 6756 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5122,6 +5122,7 @@ import { createPublicClient, http, fallback, formatEther } from 'viem';
 import { bsc } from 'viem/chains';
 import { ADDR, ABI, RPCS, readPool, splitForRange, planRebalance, planIncrease, readBnbUsd } from '../shared/lp-agent.js';
 import { widthVerdict } from './lp-windows.js';
+import { HOME_POOL } from '../shared/lp-guards.js';
 
 const MAX128 = (1n << 128n) - 1n;
 const ZERO = '0x0000000000000000000000000000000000000000';
@@ -5276,6 +5277,10 @@ export async function lpPositionPlan(params = {}, env = null) {
   const rb = strip(rebalance);
   if (rb && rb.why) lines.push(`Re-set: ${rb.why}`);
   else if (rb && rb.new_ticks) lines.push(`Re-set due: the agent would move the range to ticks ${rb.new_ticks.join(' … ')} (±${rb.width_pct}%, ${rb.width_basis || 'from the width record'}).`);
+  // The width record is measured on the agent's own pool (review 2026-09-21): on any other pool the
+  // width is borrowed, and the answer says so instead of passing it off as this pool's own measurement.
+  const foreignPool = String(facts.pool?.address || '').toLowerCase() !== String(HOME_POOL.pool).toLowerCase();
+  if (foreignPool && rb && (rb.new_ticks || rb.width_pct)) lines.push(`The width comes from the price record of ${HOME_POOL.label}, the pool this agent runs on; this pool's own swings may call for a different one.`);
   const ic = strip(increase);
   if (ic && ic.why) lines.push(`Grow: ${ic.why}`);
   else if (ic && ic.would_add) lines.push(`Grow: the capital beside the position would add ${ic.would_add.wbnb} WBNB and ${ic.would_add.other} of the other side${ic.would_add.buying_other ? `, buying ${ic.would_add.buying_other} of it first` : ic.would_add.selling_other ? `, selling ${ic.would_add.selling_other} of the other side first` : ''}.`);
@@ -5283,7 +5288,7 @@ export async function lpPositionPlan(params = {}, env = null) {
     ...facts,
     collect: { pays_for_gas: collectPays, floor_bnb: 0.002 },
     rebalance: rb, increase: ic,
-    width_record: record ? { width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,
+    width_record: record ? { measured_on: HOME_POOL.label, applies_to_this_pool: !foreignPool, width_pct: record.earnings_pick?.width ?? null, expected_net_usd_per_day_on_50: record.earnings_pick?.earnings?.net_usd_per_day ?? null, hours_of_prices: record.hours_of_prices ?? null, source: 'https://agent.brainonbnb.com/lp/windows' } : null,
     verdict: lines.join(' '),
     what_this_is_not: 'An execution. This agent signs nothing on your position; it tells you what it would do, from the same code that runs its own. Measurement, not advice.',
     measured_at: new Date().toISOString(),

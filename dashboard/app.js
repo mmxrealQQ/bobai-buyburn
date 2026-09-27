@@ -208,6 +208,10 @@ function pcEdge(v){return v==null?'—':v>0&&v<0.001?'<0.001%':(v>=99.9995&&v<10
 let BNBP=0,GG_BNB=0;
 // The BOB tile's second line: dollars from chain(), the bot's own share from the burn log (bdata) — either may land first.
 let BOB_USD=0,BOB_DEAD=0,BOB_OURS=0;
+// Every headline figure as this page computed it, for the Brain Terminal (2026-09-25): it shows
+// the same numbers from the same reads, never a second computation. 'bobai:nums' fires on each refresh.
+const NUMS=window.__bobaiNums={chain:null,lpLocked:null,burns:null,liq:null,gg:null,bb3:null};
+function numsOut(){try{dispatchEvent(new Event('bobai:nums'))}catch(e){}}
 function bobSub(){const e=document.getElementById('bob-burned-usd');if(!e)return;const p=[];if(BOB_USD>0)p.push('≈$'+nf(BOB_USD,BOB_USD>=1000?0:2));if(BOB_OURS>0){const ou=BOB_DEAD>0&&BOB_USD>0?BOB_USD*BOB_OURS/BOB_DEAD:0;p.push(nf(BOB_OURS)+' by the bot'+(BOB_DEAD>0?' ('+(BOB_OURS/BOB_DEAD*100).toFixed(1)+'%'+(ou>0?', ≈$'+nf(ou,ou>=1000?0:2):'')+')':''))}e.textContent=p.join(' · ')}
 function ggUsd(){const e=document.getElementById("gg-usd");if(!e||!(BNBP>0))return;e.textContent="$"+(GG_BNB*BNBP).toFixed(2)}
 const BOBAI='0x245c386dcfed896f5c346107596141e5edcbffff',BW='0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',BOB='0x51363f073b1e4920fda7aa9e9d84ba97ede1560e',BOBP='0x3c79593e01A7f7FeD5d0735B16621e2D52A6bC58',
@@ -337,6 +341,10 @@ async function chain(){
       const hH=q[15],h0=BigInt('0x'+hH.slice(2,66)),h1=BigInt('0x'+hH.slice(66,130)),bobP=(Number(h1)/Number(h0))*bnbP;
       BOB_USD=bobAmt>0&&bobP>0?bobAmt*bobP:0;BOB_DEAD=bobAmt;bobSub()}catch(e){}
     window.__bobaiPx=pU;window.__tgPoolRender&&window.__tgPoolRender();
+    // The Brain Terminal reads these instead of a chain read of its own: one source, one figure.
+    NUMS.chain={at:Date.now(),bobDead:bobAmt,bobaiDead:bAmt,priceUsd:pU,bnbUsd:bnbP,
+      bobUsdPrice:(()=>{try{const hH=q[15];return Number(BigInt('0x'+hH.slice(66,130)))/Number(BigInt('0x'+hH.slice(2,66)))*bnbP}catch(e){return 0}})(),
+      queuedBobai:u18(q[8]),walletBnb:u18(q[0])+u18(q[1])};
     depth(bR,wR,bnbP,pU*circ);
   }catch(e){}
   // LP lock lives in its own try: it reads two extra words of the same batch, and
@@ -345,7 +353,7 @@ async function chain(){
     const tot=Number(BigInt(q[9])),dead=Number(BigInt(q[10]));
     // 99.9996% is not 100.000%: the same 0.31 LP is named below, so the share
     // says '>99.999%' instead of rounding the remainder out of existence.
-    if(tot>0)put('lq-lp',pcEdge(dead/tot*100));
+    if(tot>0){put('lq-lp',pcEdge(dead/tot*100));NUMS.lpLocked=pcEdge(dead/tot*100)}
     window.__lpDead=dead/1e18;sources();
     // THE OTHER SIDE OF THE BURN FIGURE.
     // "99.998% burned" says what is locked; it says nothing about the rest, and
@@ -595,6 +603,7 @@ function bdata(b){try{if(b&&b.length>0){BOB_OURS=b.reduce((s,x)=>s+(parseFloat(x
 // again — it is fetched exactly once, at load.
 async function logs(){
   const [burns,bb]=await Promise.all([gj('burns.json'),gj('bobai-liq-log.json')]);
+  if(burns)NUMS.burns=burns;if(bb)NUMS.liq=bb;
   bdata(burns);bbdata(bb);bb2data(bb);bb3data(bb);bbsrc(bb);ggdata(burns);
 }
 // Static file, appended once per manual run: read once at load, and fetched
@@ -607,6 +616,7 @@ async function go(){
   if(busy)return;busy=true;
   try{
     await Promise.all([chain(),logs()]);
+    numsOut();
     const el=document.getElementById('last-update');
     if(el)el.textContent='Updated '+new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
   }finally{busy=false}
@@ -644,14 +654,14 @@ const GG_END=new Date('2026-11-20T00:01:00Z').getTime();
 // The Giggle card: sends and their sum from burns.json (giggleBnb/giggleTx per bot run).
 function ggdata(b){try{if(!b)return;const entries=b.filter(x=>x&&x.giggleTx);const cEl=document.getElementById('gg-count');if(!cEl)return;cEl.textContent=entries.length;let total=0;const rows=[];
 // The pot grows in the order the sends happened; the table shows the newest first. Until 2026-09-19 the sum ran down the table as it is shown, so the newest send carried its own amount as "Pot" and the oldest carried the whole pot.
-const chrono=[...entries].sort((a,b)=>new Date(a.time)-new Date(b.time));for(const x of chrono){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.giggleBnb||0);total+=bnb;const tx=x.giggleTx;rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(5)+' BNB</td><td>'+total.toFixed(4)+' BNB</td><td><a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a></td></tr>')}document.getElementById('gg-bnb').textContent=total.toFixed(4)+' BNB';GG_BNB=total;ggUsd();rows.reverse();if(rows.length)paintRows('gg-tx-body',rows)}catch(e){console.error('ggdata error:',e)}}
+const chrono=[...entries].sort((a,b)=>new Date(a.time)-new Date(b.time));for(const x of chrono){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.giggleBnb||0);total+=bnb;const tx=x.giggleTx;rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(5)+' BNB</td><td>'+total.toFixed(4)+' BNB</td><td><a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a></td></tr>')}document.getElementById('gg-bnb').textContent=total.toFixed(4)+' BNB';GG_BNB=total;NUMS.gg={bnb:total,count:entries.length,end:GG_END};ggUsd();rows.reverse();if(rows.length)paintRows('gg-tx-body',rows)}catch(e){console.error('ggdata error:',e)}}
 function bbdata(all){try{if(!all||all.length===0)return;const entries=all.filter(x=>new Date(x.time).getTime()<BB2_START);if(entries.length===0)return;const bbC=document.getElementById('bb-count');if(!bbC)return;bbC.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb-lp').textContent=nf(totalLp,2);paintRows('bb-tx-body',rows)}catch(e){console.error('bbdata error:',e)}}
 
 // === BOBAI LIQ BOOST II DATA (live campaign) ===
 function bb2data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB2_START&&t<=BB2_END});const cEl=document.getElementById('bb2-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb2-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb2-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb2-tx-body',rows)}catch(e){console.error('bb2data error:',e)}}
 
 // === BOBAI LIQ BOOST III DATA (live campaign, from BB3_START; the same log as I and II) ===
-function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB3_START&&t<BB3_END});const cEl=document.getElementById('bb3-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}document.getElementById('bb3-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb3-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb3-tx-body',rows)}catch(e){console.error('bb3data error:',e)}}
+function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=new Date(x.time).getTime();return t>=BB3_START&&t<BB3_END});const cEl=document.getElementById('bb3-count');if(!cEl)return;cEl.textContent=entries.length;let totalBnb=0;let totalLp=0;const rows=[];for(const x of[...entries].reverse()){const t=new Date(x.time).toISOString().replace('T',' ').slice(0,19)+' UTC';const bnb=parseFloat(x.bnb||0);totalBnb+=bnb;const lp=x.lpBurned||'--';if(lp!=='--')totalLp+=parseFloat(lp);const tx=x.addLiqTx||'';rows.push('<tr><td>'+t+'</td><td>'+bnb.toFixed(4)+' BNB</td><td>'+(lp==='--'?'--':nf(lp,4))+'</td><td>'+(tx?'<a class="txl" href="https://bscscan.com/tx/'+tx+'" target="_blank" rel="noopener">'+tx.slice(0,6)+'…'+tx.slice(-4)+'</a>':'--')+'</td></tr>')}NUMS.bb3={count:entries.length,bnb:totalBnb,lp:totalLp,start:BB3_START,end:BB3_END};document.getElementById('bb3-bnb').textContent=totalBnb.toFixed(4)+' BNB';document.getElementById('bb3-lp').textContent=nf(totalLp,2);if(rows.length)paintRows('bb3-tx-body',rows)}catch(e){console.error('bb3data error:',e)}}
 
 // === THE LIBRARY: copy buttons and the in-page code viewer ===
 // Reading the code should not cost a download. The viewer fetches the bundle's
@@ -932,6 +942,8 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
     const shown=rows.slice(from,from+MAX_VISIBLE);
     if(!shown.length)return;
     const h=shown.reduce((s,r)=>s+r.offsetHeight,0)+ROW_GAP*(shown.length-1);
+    // Hidden (the Brain page keeps this block in a closed window): nothing to measure yet, fit again on open.
+    if(!h)return;
     cont.style.maxHeight=h+'px';
     // Only jump on the first fit / when the phase actually rolls over — never yank a
     // visitor who scrolled back to read earlier phases.
@@ -941,6 +953,8 @@ function bb3data(all){try{if(!all)return;const entries=all.filter(x=>{const t=ne
   let rzT;
   addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(fitSchedule,150)});
   addEventListener('load',fitSchedule);
+  // the Brain page opens this block in a window; a hidden window forgets its scroll, so each opening fits anew
+  window.__bobaiFitSchedule=()=>{scrolledFor=null;fitSchedule()};
   function apply(){
     const now=Date.now();
     let active=null;

@@ -2424,7 +2424,9 @@ ${pageTail}`;
       if (method === 'tools/call') {
         ctx.waitUntil(bump(env, 'mcp'));
         note(`paidmcp:call:${params?.name === 'bsc_pool_watch' ? (params?.arguments?.payment ? 'watch:paid' : 'watch:terms') : 'unknown'}`);
-        if (params?.name !== 'bsc_pool_watch') return rpcErr(id ?? null, -32602, 'Unknown tool: ' + params?.name);
+        // This server sells one tool. A stranger who tried the free ones here (bsc_token_preflight …) met a bare
+        // "Unknown tool" and a dead end (2026-09-27): the error now names the server that has them.
+        if (params?.name !== 'bsc_pool_watch') return rpcErr(id ?? null, -32602, `Unknown tool: ${params?.name}. This server is the paid pool watch only; the free tools (bsc_token_preflight, bsc_pool_scan, pancakeswap_range_plan …) are at https://brainonbnb.com/mcp`);
         if (!payTo) return rpcErr(id ?? null, -32000, 'service not configured to receive payments yet');
         const a = params?.arguments || {};
         const { payment, ...spec0 } = a;

@@ -44,7 +44,7 @@ txt: https://brainonbnb.com/code/buyback-bot.txt
 DeFi Agent — a PancakeSwap V3 range that runs itself
 ----------------------------------------------------
 A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
-17 files, 6751 lines
+17 files, 6756 lines
 needs:
   - A wallet that holds the position
       ours: one BSC wallet used for nothing else
@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 2294 lines
+5 files, 2302 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -288,7 +288,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-43 files, 14421 lines
+43 files, 14534 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

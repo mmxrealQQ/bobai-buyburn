@@ -22,7 +22,8 @@
 // Usage:
 //   node scripts/dispatch-safety.mjs --self-test   fixtures, no network
 //   node scripts/dispatch-safety.mjs               and measure the live server
-import { isReadOnly, argsFromTask, addressesInTask, answersAsked, askedAction, usdInTask, taskTerms, scoreTool, KNOWN_TOKENS } from '../worker-agent/dispatch.js';
+import { isReadOnly, argsFromTask, addressesInTask, answersAsked, askedAction, usdInTask, taskTerms, scoreTool, rankTool, answersField, capAnswer, handleDispatch, KNOWN_TOKENS } from '../worker-agent/dispatch.js';
+import fsPins from 'node:fs';
 import { termWeights as findTermWeights, score as findScore } from '../worker-agent/find.js';
 
 const SITE = process.env.SITE || 'https://brainonbnb.com';
@@ -184,6 +185,125 @@ if (args.includes('--self-test')) {
   const a2 = argsFromTask({ required: ['token', 'chainId'], properties: { token: { type: 'string' }, chainId: { type: 'number' } } }, 'scan 0x245c386dcfed896f5c346107596141e5edcbffff');
   if (!a2 || a2.token !== '0x245c386dcfed896f5c346107596141e5edcbffff' || a2.chainId !== 56) fails.push('the chain this router serves was not filled in beside the address');
   if (argsFromTask({ required: [] }, 'anything') !== null) fails.push('a tool with no required arguments was given some');
+
+  // ---- the three routing defects of 2026-09-27, both ways ----
+  // 1. A named pair reaches the tool whole. "best CAKE/BNB range" passed CAKE
+  //    alone and was answered for Cake/USDT.
+  const rangeSchema = { required: ['address'], properties: { address: { type: 'string' }, capitalUsd: { type: 'number' }, quote: { type: 'string' } } };
+  const r1 = argsFromTask(rangeSchema, 'best CAKE/BNB range');
+  if (!r1 || r1.address !== KNOWN_TOKENS.CAKE || r1.quote !== KNOWN_TOKENS.WBNB) fails.push(`"best CAKE/BNB range" did not pass BNB as the quote (got ${JSON.stringify(r1)})`);
+  if (argsFromTask(rangeSchema, 'best CAKE range')?.quote !== undefined) fails.push('a quote was invented for a task that names one token');
+  const qtSchema = { required: ['address'], properties: { address: { type: 'string' }, quoteToken: { type: 'string' } } };
+  if (argsFromTask(qtSchema, 'range for CAKE')?.quoteToken !== undefined) fails.push('a quote parameter was handed the token itself when only one was named');
+  if (argsFromTask(qtSchema, 'range for CAKE/USDT')?.quoteToken !== KNOWN_TOKENS.USDT) fails.push('a quoteToken parameter did not get the second token of the pair');
+  // The range tool must be able to take it: without the parameter the pair is
+  // dropped again at the tool, whatever the router passes.
+  {
+    const rd = (p) => fsPins.readFileSync(new URL(p, import.meta.url), 'utf8');
+    const line = (src) => src.split('\n').find((l) => l.includes("name: 'pancakeswap_range_plan'")) || '';
+    if (!/quote: \{ type: 'string'/.test(line(rd('../dashboard/_worker.js')))) fails.push('pancakeswap_range_plan on /mcp declares no quote parameter — a named pair is dropped');
+    if (!/quote: \{ type: 'string'/.test(line(rd('../mcp/server.mjs'))) || !/params: \{[^}]*quote: 'quote'/.test(line(rd('../mcp/server.mjs')))) fails.push('the stdio server\'s pancakeswap_range_plan does not declare and forward quote');
+    if (!/opts\.quote/.test(rd('../dashboard/range-scan.js'))) fails.push('rangePlan reads no quote — it picks the deepest quote whatever was asked');
+  }
+  // 2. A size in the task prefers the tool that takes a size; a size alone
+  //    picks nothing, and no size adds nothing.
+  {
+    const t2 = 'is 0x245c386dcfed896f5c346107596141e5edcbffff safe to buy for $500';
+    const stranger2 = { name: 'analyse', description: 'Is the token safe: proxy, owner, liquidity.', inputSchema: { properties: { token: { type: 'string' } } } };
+    const ours2 = { name: 'bsc_token_preflight', description: 'Before a trade: is it safe to get in and out.', inputSchema: { properties: { address: { type: 'string' }, usd: { type: 'number' } } } };
+    const tt2 = taskTerms(t2);
+    if (scoreTool(stranger2, tt2) !== scoreTool(ours2, tt2)) fails.push('fixture drift: the two safety tools no longer tie on words, so the size pin tests nothing');
+    if (!(rankTool(ours2, tt2, t2) > rankTool(stranger2, tt2, t2))) fails.push('a task with a dollar size did not prefer the tool that takes the size — the $500 is dropped again');
+    const t2n = 'is 0x245c386dcfed896f5c346107596141e5edcbffff safe to buy';
+    if (rankTool(ours2, taskTerms(t2n), t2n) !== scoreTool(ours2, taskTerms(t2n))) fails.push('a task with no dollar size still ranked a size-taking tool up');
+    if (rankTool({ name: 'xyz_usd', description: 'nothing', inputSchema: { properties: { usd: { type: 'number' } } } }, tt2, t2) !== 0) fails.push('a dollar figure alone ranked a tool that matched no word of the task');
+  }
+  //    An answer too long to pass on is shortened by its shape, never cut
+  //    inside a string: 28,809 characters cut at 12,000 reached the Plaza
+  //    page as JSON that no longer parsed.
+  {
+    const big = JSON.stringify({ verdict: 'caution', holders: Array.from({ length: 400 }, (_, i) => ({ address: '0x' + String(i).padStart(40, '0'), note: 'x'.repeat(40) })), log: 'y'.repeat(9000) });
+    const c = capAnswer(big, 12000);
+    const out = JSON.stringify(c.value);
+    if (typeof c.value !== 'object' || c.value === null) fails.push('an oversized JSON answer came back as text, not as JSON');
+    else if (out.length > 12000) fails.push(`an oversized JSON answer was not brought under the cap (${out.length})`);
+    else if (c.value.verdict !== 'caution') fails.push('shortening an oversized answer lost its short fields');
+    if (!c.cut) fails.push('an oversized answer was shortened without saying so');
+    if (big.slice(0, 12000) === (typeof c.value === 'string' ? c.value : null)) fails.push('an oversized JSON answer was cut mid-string, the old way');
+    const small = capAnswer('{"hf":2.4}');
+    if (small.cut || small.value?.hf !== 2.4) fails.push('a small JSON answer was not passed on as it came');
+    const txt = capAnswer('z'.repeat(13000), 12000);
+    if (typeof txt.value !== 'string' || !txt.cut || !/more characters cut\]$/.test(txt.value)) fails.push('an oversized plain-text answer was not cut and marked');
+  }
+  // 3. An answer without the field asked for is not the answer.
+  {
+    const t3 = 'health factor of 0xd319e1F8e987cf78333cEA853F455366640929cF on Venus';
+    if (answersField('{"account":"0xd319e1F8e987cf78333cEA853F455366640929cF","markets":[],"debt_usd":1}', t3)) fails.push('an answer with no health factor passed as the answer to a health-factor question');
+    if (!answersField('{"account":"0xd319…","pools":[{"health_factor":2.41}]}', t3)) fails.push('an answer carrying health_factor was rejected');
+    if (!answersField('{"healthFactor":"2.4"}', t3)) fails.push('an answer carrying healthFactor was rejected');
+    if (!answersField('{"tvl":1}', 'tvl of the CAKE pool')) fails.push('a task that names no known field had its answer rejected');
+    const named = { name: 'get_health_factor', description: 'venus' };
+    if (rankTool(named, taskTerms(t3), t3) - scoreTool(named, taskTerms(t3)) !== 3) fails.push('a tool named after the asked field was not ranked up');
+  }
+  // All three through the real dispatcher, over fixtures: the broker, the
+  // tool lists and the answers are served from memory, so this pins the loop
+  // itself — which tool is called, with what, and what is passed on.
+  {
+    const CAKE = KNOWN_TOKENS.CAKE, BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff', ACC = '0xd319e1F8e987cf78333cEA853F455366640929cF';
+    const S = (props, req) => ({ type: 'object', properties: props, required: req });
+    const servers = {
+      'https://stranger.example/mcp': [
+        { name: 'analyse', description: 'Token safety: is the token safe, proxy, owner, liquidity. Read-only.', inputSchema: S({ token: { type: 'string' } }, ['token']),
+          answer: () => JSON.stringify({ subject: BOBAI, verdict: 'caution', holders: Array.from({ length: 500 }, (_, i) => ({ address: '0x' + String(i).padStart(40, '0'), share: i })) }) },
+      ],
+      'https://ours.example/mcp': [
+        { name: 'bsc_token_preflight', description: 'Before a trade: is it safe to get in and out, at your size.', inputSchema: S({ address: { type: 'string' }, usd: { type: 'number' } }, ['address']),
+          answer: (a) => JSON.stringify({ token: a.address, size_usd: a.usd ?? 250 }) },
+        { name: 'pancakeswap_range_plan', description: 'Which price range for a V3 position: returns the fees each width collected.', inputSchema: S({ address: { type: 'string' }, capitalUsd: { type: 'number' }, quote: { type: 'string' } }, ['address']),
+          answer: (a) => JSON.stringify({ token: a.address, quote: a.quote ?? 'deepest' }) },
+      ],
+      'https://guardian.example/mcp': [
+        { name: 'get_position', description: 'Every Venus market the account touches; they count toward the health factor.', inputSchema: S({ account: { type: 'string' } }, []),
+          answer: (a) => JSON.stringify({ account: a.account, markets: [] }) },
+        { name: 'get_risk', description: 'Health factor and liquidation distance.', inputSchema: S({ account: { type: 'string' } }, []),
+          answer: (a) => JSON.stringify({ account: a.account, health_factor: 2.41 }) },
+      ],
+    };
+    const agents = [
+      { id: 900001, name: 'Token Safety Analyse', description: 'token safety', speaks: ['mcp'], endpoints: ['https://stranger.example/mcp'], tools: servers['https://stranger.example/mcp'] },
+      { id: 900002, name: 'Pre-trade', description: 'before a trade; price ranges', speaks: ['mcp'], endpoints: ['https://ours.example/mcp'], tools: servers['https://ours.example/mcp'] },
+      { id: 900003, name: 'Lending Guardian', description: 'venus health factor', speaks: ['mcp'], endpoints: ['https://guardian.example/mcp'], tools: servers['https://guardian.example/mcp'] },
+    ].map((a) => ({ ...a, tools: a.tools.map(({ name, description }) => ({ name, description })) }));
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (u, init = {}) => {
+      const url = String(u);
+      if (url.endsWith('/api-agents.json')) return new Response(JSON.stringify({ agents }));
+      const tools = servers[url];
+      if (!tools) return new Response('not here', { status: 404 });
+      const { method, params } = JSON.parse(init.body || '{}');
+      if (method === 'tools/list') return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { tools: tools.map(({ answer, ...t }) => t) } }));
+      const t = tools.find((x) => x.name === params?.name);
+      return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text: t.answer(params.arguments || {}) }] } }));
+    };
+    const ask = async (task) => (await handleDispatch(new URL('https://agent.brainonbnb.com/dispatch'), { task }, null, {})).body;
+    try {
+      const d1 = await ask('best CAKE/BNB range');
+      if (d1.answered_by?.tool !== 'pancakeswap_range_plan' || d1.arguments_taken_from_task?.quote !== KNOWN_TOKENS.WBNB) fails.push(`dispatch: "best CAKE/BNB range" did not reach the range tool with BNB as quote (${d1.answered_by?.tool}, ${JSON.stringify(d1.arguments_taken_from_task)})`);
+      const d2 = await ask(`is ${BOBAI} safe to buy for $500`);
+      if (d2.answered_by?.tool !== 'bsc_token_preflight' || d2.arguments_taken_from_task?.usd !== 500) fails.push(`dispatch: a sized pre-trade question went to ${d2.answered_by?.tool} with ${JSON.stringify(d2.arguments_taken_from_task)}, not to the preflight at $500`);
+      const d2b = await ask(`analyse token safety of ${BOBAI}`);
+      if (d2b.answered_by?.tool !== 'analyse') fails.push(`dispatch fixture drift: the oversized answer was not produced (${d2b.answered_by?.tool})`);
+      else if (typeof d2b.result !== 'object' || !d2b.truncated || JSON.stringify(d2b.result).length > 12000) fails.push('dispatch: an oversized JSON answer was not passed on as shortened JSON');
+      const d3 = await ask(`health factor of ${ACC} on Venus`);
+      if (d3.answered_by?.tool !== 'get_risk' || d3.result?.health_factor !== 2.41) fails.push(`dispatch: a health-factor question was answered by ${d3.answered_by?.tool}, without the health factor`);
+      if (!(d3.attempts || []).some((x) => x.tool === 'get_position' && /without the health factor/.test(x.outcome))) fails.push('dispatch: the answer without the health factor was not named in attempts');
+    } catch (e) {
+      fails.push(`dispatch over fixtures threw: ${e?.message || e}`);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  }
+
   if (fails.length) { for (const f of fails) console.log('  x ' + f); process.exitCode = 1; }
   else console.log('argument filler: an address in the task is passed on, nothing is guessed, a tool with no arguments gets none');
   console.log(`self-test passed: ${MUST_ACCEPT.length} readers reachable, ${MUST_REFUSE.length} writers refused, declarations honoured in both directions`);

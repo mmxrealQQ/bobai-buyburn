@@ -219,6 +219,7 @@ export function usdInTask(task) {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 const USD_LIKE = /usd|dollar/;
+const QUOTE_LIKE = /quote/;
 const isNum = (type) => type === 'number' || type === 'integer';
 
 export function argsFromTask(schema, task) {
@@ -243,9 +244,20 @@ export function argsFromTask(schema, task) {
       return null;
     }
   }
+  // THE OTHER SIDE OF A NAMED PAIR (2026-09-27). "best CAKE/BNB range" read
+  // both symbols and passed CAKE alone; the range tool then picked the deepest
+  // quote itself and answered for Cake/USDT. A quote parameter takes the next
+  // address the task named and nothing else: with only one named, it stays
+  // empty — the generic fill below used to hand it the token itself.
+  if (Object.keys(out).length) {
+    for (const name of Object.keys(props)) {
+      if (name in out || !QUOTE_LIKE.test(name.toLowerCase()) || String(props[name]?.type || 'string') !== 'string') continue;
+      if (ai < addrs.length) out[name] = addrs[ai++];
+    }
+  }
   if (addrs.length) {
     for (const name of Object.keys(props)) {
-      if (name in out || req.includes(name)) continue;
+      if (name in out || req.includes(name) || QUOTE_LIKE.test(name.toLowerCase())) continue;
       const p = props[name] || {};
       if (ADDRESS_LIKE.test(name.toLowerCase()) && String(p.type || 'string') === 'string') out[name] = addrs[Math.min(ai, addrs.length - 1)];
     }
@@ -494,6 +506,83 @@ export const scoreTool = (tool, terms) => {
   return s;
 };
 
+// WHAT A TASK ASKS FOR BY NAME, and how to see it in an answer (2026-09-27).
+// "health factor of 0xd319… on Venus" went to a stranger's get_position —
+// every market priced, and no health factor in it — because its description
+// said "health", "factor" and "Venus" once each; the same agent's get_risk,
+// which answers exactly that, scored lower. An answer without the thing asked
+// for is not the answer: the next tool, then the next agent, gets its turn.
+// Kept to fields that a sentence names unmistakably and an answer cannot
+// carry under another name; add one only with both patterns.
+const ASKED_FIELDS = [
+  { name: 'health factor', asks: /\bhealth[\s_-]*factors?\b/i, answered: /health[\s_-]*factor|healthfactor|"hf"\s*:/i, inName: /health_?factor/ },
+];
+export const askedFields = (task) => ASKED_FIELDS.filter((f) => f.asks.test(String(task || '')));
+export function answersField(content, task) {
+  const text = typeof content === 'string' ? content : JSON.stringify(content ?? '');
+  return askedFields(task).every((f) => f.answered.test(text));
+}
+const takesUsd = (t) => Object.entries(t?.inputSchema?.properties || {})
+  .some(([n, p]) => USD_LIKE.test(n.toLowerCase()) && isNum(String(p?.type || '')));
+// How a tool ranks for THIS task: its words first, then two things the words
+// cannot see. A task with a dollar size prefers the tool that takes one —
+// "is 0x245c… safe to buy for $500" scored a stranger's `analyse` and our
+// bsc_token_preflight the same on "safe", the broker's order broke the tie,
+// and the $500 was dropped because `analyse` has nowhere to put it (P1 of
+// 2026-09-24 fills a size only into a tool that takes it). And a tool NAMED
+// after the field asked for beats one that only mentions it. Both only add
+// to a tool that already matched a word: neither picks a tool on its own.
+export const rankTool = (tool, terms, task) => {
+  const s = scoreTool(tool, terms);
+  if (!s) return 0;
+  const name = String(tool?.name || '').toLowerCase();
+  return s
+    + (usdInTask(task) != null && takesUsd(tool) ? 3 : 0)
+    + (askedFields(task).some((f) => f.inName.test(name)) ? 3 : 0);
+};
+
+// AN ANSWER TOO LONG TO PASS ON WHOLE IS SHORTENED BY ITS SHAPE (2026-09-27).
+// A stranger's 28,809-character JSON answer was cut at 12,000 characters in
+// the middle of a string; what reached the Plaza page was text that no longer
+// parsed, shown as a wall of broken JSON. A JSON answer now keeps its
+// structure: long lists keep their first items, long strings their start,
+// and every cut says where it was made, tightening until it fits. Only an
+// answer that never was JSON is cut as text — a string is valid anywhere.
+const pruneJson = (v, items, chars, depth = 0) => {
+  if (typeof v === 'string') return v.length > chars ? `${v.slice(0, chars)}… [${v.length - chars} more characters cut]` : v;
+  if (Array.isArray(v)) {
+    const out = v.slice(0, items).map((x) => pruneJson(x, items, chars, depth + 1));
+    if (v.length > items) out.push(`… ${v.length - items} more items cut`);
+    return out;
+  }
+  if (v && typeof v === 'object') {
+    if (depth > 6) return '[nested object cut]';
+    const ks = Object.keys(v);
+    const keep = items * 4;
+    const o = {};
+    for (const k of ks.slice(0, keep)) o[k] = pruneJson(v[k], items, chars, depth + 1);
+    if (ks.length > keep) o['…'] = `${ks.length - keep} more keys cut`;
+    return o;
+  }
+  return v;
+};
+export function capAnswer(content, max = 12000) {
+  const text = typeof content === 'string' ? content : JSON.stringify(content);
+  let parsed = typeof content === 'string' ? null : content;
+  if (parsed === null) { try { parsed = JSON.parse(text); } catch { /* plain text is fine */ } }
+  if (text.length <= max) return { value: parsed ?? text, cut: null };
+  if (parsed && typeof parsed === 'object') {
+    for (const [items, chars] of [[50, 2000], [20, 600], [10, 240], [5, 120], [3, 60], [1, 40]]) {
+      const v = pruneJson(parsed, items, chars);
+      if (JSON.stringify(v).length <= max) return { value: v, cut: `Answer was ${text.length} characters of JSON; long lists and strings were shortened to fit ${max}, each cut marked where it was made. What is shown is still the agent's JSON.` };
+    }
+    const keys = Array.isArray(parsed) ? null : Object.keys(parsed).slice(0, 50);
+    return { value: { _cut: `Answer was ${text.length} characters of JSON and too wide to shorten to ${max}; only its outline is shown.`, ...(keys ? { keys } : { items: parsed.length }) },
+      cut: `Answer was ${text.length} characters of JSON; only its outline is shown.` };
+  }
+  return { value: `${text.slice(0, max)} … [${text.length - max} more characters cut]`, cut: `Answer was ${text.length} characters; showing the first ${max}.` };
+}
+
 export async function handleDispatch(url, body, env, opts = {}) {
   const task = String(body?.task || url.searchParams.get('task') || '').slice(0, 300);
   const dry = body?.dry_run === true || url.searchParams.get('dry') === '1';
@@ -621,17 +710,17 @@ export async function handleDispatch(url, body, env, opts = {}) {
     if (a2aOnly(agent)) {
       const found = await a2aCard((agent.endpoints || [])[0]).catch(() => null);
       const skills = (found?.card?.skills || []).filter((sk) => skillIsReadOnly(sk) && !SELLING_SKILLS.has(String(sk.id || sk.name || '').toLowerCase()));
-      return { found, best: Math.max(0, ...skills.map((sk) => scoreTool({ name: sk.id || sk.name, description: sk.description }, terms))) };
+      return { found, best: Math.max(0, ...skills.map((sk) => rankTool({ name: sk.id || sk.name, description: sk.description }, terms, task))) };
     }
     const endpoint = mcpEndpointOf(agent);
     const listed = endpoint ? await rpcCall(endpoint, 'tools/list', {}).catch(() => null) : null;
     const tools = (listed?.result?.tools || []).filter(isReadOnly).filter(fits);
-    return { listed, best: Math.max(0, ...tools.map((t) => scoreTool(t, terms))) };
+    return { listed, best: Math.max(0, ...tools.map((t) => rankTool(t, terms, task))) };
   }));
   const order = pool.map((agent, i) => ({ agent, i, ...surfaces[i] }))
     .sort((a, b) => b.best - a.best || a.i - b.i);
 
-  for (const { agent, found: prefetchedCard, listed: prefetchedTools } of order) {
+  agents: for (const { agent, found: prefetchedCard, listed: prefetchedTools } of order) {
     const speaks = agent.speaks || [];
     const first = (agent.endpoints || [])[0];
 
@@ -664,7 +753,7 @@ export async function handleDispatch(url, body, env, opts = {}) {
       const selling = (sk) => SELLING_SKILLS.has(String(sk.id || sk.name || '').toLowerCase());
       const safe = (card.skills || []).filter((sk) => skillIsReadOnly(sk) && !selling(sk));
       const blocked = (card.skills || []).filter((sk) => !skillIsReadOnly(sk) || selling(sk)).map((sk) => sk.id || sk.name);
-      const ranked = safe.map((sk) => ({ sk, s: scoreTool({ name: sk.id || sk.name, description: sk.description }, terms) }))
+      const ranked = safe.map((sk) => ({ sk, s: rankTool({ name: sk.id || sk.name, description: sk.description }, terms, task) }))
         .sort((a, b) => b.s - a.s);
       const pick = ranked[0]?.s > 0 ? ranked[0].sk : null;
       if (!pick) {
@@ -701,13 +790,18 @@ export async function handleDispatch(url, body, env, opts = {}) {
         continue;
       }
 
-      const MAXA = 12000;
       const textA = typeof payload === 'string' ? payload : JSON.stringify(payload);
-      const overA = textA.length > MAXA;
-      const bodyA = overA ? textA.slice(0, MAXA) : textA;
+      // Without the field the task asks for it is not the answer (2026-09-27).
+      if (!answersField(textA, task)) {
+        const why = `answered without the ${askedFields(task).map((f) => f.name).join(', ')} the task asks for`;
+        attempts.push({ agent: agent.name, endpoint: url, skill: pick.id || pick.name, outcome: why });
+        if (env) await recordSession(env, { task, operator: operatorOf(agent), agent: agent.name, tool: pick.id || pick.name, ms: tookA, ok: false, probe, outcome: why });
+        continue;
+      }
+      const capA = capAnswer(payload);
       if (env) await recordSession(env, {
         task, operator: operatorOf(agent), agent: agent.name, tool: pick.id || pick.name, ms: tookA, ok: true, probe,
-        outcome: 'answered', excerpt: bodyA.slice(0, 200),
+        outcome: 'answered', excerpt: textA.slice(0, 200),
       });
       return { status: 200, body: {
         task, dispatched: true, took_ms: tookA, protocol: 'a2a',
@@ -715,8 +809,8 @@ export async function handleDispatch(url, body, env, opts = {}) {
           id: agent.id, agent: agent.name, operator: operatorOf(agent), endpoint: url, skill: pick.id || pick.name,
           registry_note: registryNote(agent), ...(isOurs(agent) ? { ours: true } : {}),
         },
-        result: overA ? bodyA : payload,
-        ...(overA ? { truncated: `Answer was ${textA.length} characters; showing the first ${MAXA}.` } : {}),
+        result: capA.value,
+        ...(capA.cut ? { truncated: capA.cut } : {}),
         content_warning: contentWarning(agent),
         attempts,
         disclaimer: 'We routed the question and repeat the answer verbatim. We did not verify it, and we make no claim about its accuracy. Read-only skills only: nothing that signs, sends or trades is ever called on your behalf.',
@@ -739,8 +833,8 @@ export async function handleDispatch(url, body, env, opts = {}) {
     const safe = tools.filter(isReadOnly);
     const fitting = safe.filter(fits);
     const blocked = tools.filter((t) => !isReadOnly(t)).map((t) => t.name);
-    const ranked = fitting.map((t) => ({ t, s: scoreTool(t, terms) })).sort((a, b) => b.s - a.s);
-    const pick = ranked[0]?.s > 0 ? ranked[0].t : null;
+    const ranked = fitting.map((t) => ({ t, s: rankTool(t, terms, task) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
+    const pick = ranked[0]?.t || null;
 
     if (!pick) {
       attempts.push({
@@ -761,102 +855,114 @@ export async function handleDispatch(url, body, env, opts = {}) {
       } };
     }
 
-    // Called with no arguments: we do not invent inputs on a stranger's
-    // endpoint. A tool needing arguments is returned as a pointer instead —
-    // UNLESS every required argument is sitting in the task as the visitor
-    // typed it. "Measure the pool of token 0x0e09…" carries the address; a
-    // router that answers "this tool needs an address" to that sentence is
-    // refusing to read. Only what the task literally contains is passed on
-    // (addresses, and the chain this router serves); nothing is guessed, and
-    // the answer says which arguments were taken from the task.
-    const taken = argsFromTask(pick.inputSchema, task);
-    // A question about somebody's account, with no account in it, must not
-    // be routed to a tool whose optional `account` defaults to its own
-    // wallet: "a Venus health factor" came back as has_position:false for
-    // an address the visitor never asked about. Ask for the address instead.
-    {
-      const props = pick.inputSchema?.properties || {};
-      const reqd = Array.isArray(pick.inputSchema?.required) ? pick.inputSchema.required : [];
-      const optAddr = Object.keys(props).find((n) => ADDRESS_LIKE.test(n.toLowerCase()) && !reqd.includes(n) && String(props[n]?.type || 'string') === 'string');
-      if (optAddr && !addressesInTask(task).addrs.length && /health factor|position|balance|account|wallet|portfolio|holding/i.test(task)) {
+    // ONE AGENT, MORE THAN ONE OF ITS TOOLS — only while the answers come
+    // back without the field the task asks for (2026-09-27). The Venus
+    // guardian that answered "health factor of 0xd319…" with get_position
+    // also has get_risk and get_pools, both of which carry it; the first
+    // miss used to end the agent's turn and the miss was the answer. Every
+    // other outcome still moves on to the next agent, as before.
+    for (const { t: pick } of ranked.slice(0, askedFields(task).length ? 3 : 1)) {
+      // Called with no arguments: we do not invent inputs on a stranger's
+      // endpoint. A tool needing arguments is returned as a pointer instead —
+      // UNLESS every required argument is sitting in the task as the visitor
+      // typed it. "Measure the pool of token 0x0e09…" carries the address; a
+      // router that answers "this tool needs an address" to that sentence is
+      // refusing to read. Only what the task literally contains is passed on
+      // (addresses, and the chain this router serves); nothing is guessed, and
+      // the answer says which arguments were taken from the task.
+      const taken = argsFromTask(pick.inputSchema, task);
+      // A question about somebody's account, with no account in it, must not
+      // be routed to a tool whose optional `account` defaults to its own
+      // wallet: "a Venus health factor" came back as has_position:false for
+      // an address the visitor never asked about. Ask for the address instead.
+      {
+        const props = pick.inputSchema?.properties || {};
+        const reqd = Array.isArray(pick.inputSchema?.required) ? pick.inputSchema.required : [];
+        const optAddr = Object.keys(props).find((n) => ADDRESS_LIKE.test(n.toLowerCase()) && !reqd.includes(n) && String(props[n]?.type || 'string') === 'string');
+        if (optAddr && !addressesInTask(task).addrs.length && /health factor|position|balance|account|wallet|portfolio|holding/i.test(task)) {
+          deferred = deferred || {
+            task, dispatched: false, protocol: 'mcp',
+            reason: `The task names no account. The best-matching tool, ${pick.name} on ${agent.name}, answers about its own default account when none is given, and that would not be an answer to you. Put the address in the sentence and it is passed on as ${optAddr}.`,
+            call_it_yourself: { endpoint, tool: pick.name, input_schema: pick.inputSchema, agent: agent.name },
+          };
+          attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: 'needs the account in the question; not called about another account' });
+          continue agents;
+        }
+      }
+      const needsArgs = Array.isArray(pick.inputSchema?.required) && pick.inputSchema.required.length > 0 && !taken;
+      if (needsArgs) {
         deferred = deferred || {
           task, dispatched: false, protocol: 'mcp',
-          reason: `The task names no account. The best-matching tool, ${pick.name} on ${agent.name}, answers about its own default account when none is given, and that would not be an answer to you. Put the address in the sentence and it is passed on as ${optAddr}.`,
+          reason: 'The best-matching tool needs arguments, and we do not invent inputs for a third-party agent.',
           call_it_yourself: { endpoint, tool: pick.name, input_schema: pick.inputSchema, agent: agent.name },
         };
-        attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: 'needs the account in the question; not called about another account' });
+        attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: 'needs arguments this router does not invent' });
+        continue agents;
+      }
+
+      const started = Date.now();
+      const res = await rpcCall(endpoint, 'tools/call', { name: pick.name, arguments: taken || {} }, 15000).catch(() => null);
+      const took = Date.now() - started;
+      const content = res?.result?.content?.[0]?.text;
+      // MCP says a tool FAILED with result.isError, not with a JSON-RPC error:
+      // "Error: account required" arrived as ordinary content, was recorded
+      // ok:true and printed as the answer (2026-09-18).
+      const toolFailed = res?.result?.isError === true;
+      const asked = addressesInTask(task);
+      const offTarget = !!content && !res?.error && !toolFailed && !answersAsked(content, asked.addrs);
+      if (res?.error || !content || offTarget || toolFailed) {
+        const why = toolFailed ? `the tool reported an error: ${String(content || 'no message').replace(/\s+/g, ' ').slice(0, 100)}` : offTarget ? 'answered about a different address than the one asked' : (res?.error?.message || 'no usable result');
+        attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: why });
+        // A failure is a fact about this operator and belongs in the record just
+        // as much as a success does.
+        if (env) await recordSession(env, { task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: false, probe, outcome: why });
+        continue agents;
+      }
+      // Answered, but not what was asked: the agent's next tool is tried.
+      if (!answersField(content, task)) {
+        const why = `answered without the ${askedFields(task).map((f) => f.name).join(', ')} the task asks for`;
+        attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: why });
+        if (env) await recordSession(env, { task, operator: operatorOf(agent), agent: agent.name, tool: pick.name, ms: took, ok: false, probe, outcome: why });
         continue;
       }
+
+      // Size is capped whatever shape the answer takes. The first version capped
+      // only the text branch, so a JSON reply passed through whole — 36 KB from
+      // one agent in testing, and nothing stopping a hostile one from sending
+      // megabytes. Serialised first, measured, then shortened by its shape
+      // (capAnswer), never cut in the middle of a string.
+      const cap = capAnswer(content);
+
+      if (env) await recordSession(env, {
+        task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: true, probe,
+        outcome: 'answered', excerpt: content.slice(0, 200),
+      });
+
+      return { status: 200, body: {
+        task,
+        dispatched: true,
+        took_ms: took,
+        protocol: 'mcp',
+        ...(taken ? { arguments_taken_from_task: taken } : {}),
+        ...(asked.symbols_read_as ? { symbols_read_as: asked.symbols_read_as } : {}),
+        answered_by: {
+          id: agent.id,
+          agent: agent.name,
+          operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(),
+          endpoint,
+          tool: pick.name,
+          registry_note: registryNote(agent), ...(isOurs(agent) ? { ours: true } : {}),
+        },
+        result: cap.value,
+        ...(cap.cut ? { truncated: cap.cut } : {}),
+        // Said plainly because the caller is often itself an AI agent, and this
+        // text came from a server we do not control and did not audit. It is
+        // data to be evaluated, never instructions to be followed.
+        content_warning: contentWarning(agent),
+        attempts,
+        disclaimer: 'We routed the question and repeat the answer verbatim. We did not verify it, and we make no claim about its accuracy. Read-only tools only: nothing that signs, sends or trades is ever called on your behalf.',
+      } };
     }
-    const needsArgs = Array.isArray(pick.inputSchema?.required) && pick.inputSchema.required.length > 0 && !taken;
-    if (needsArgs) {
-      deferred = deferred || {
-        task, dispatched: false, protocol: 'mcp',
-        reason: 'The best-matching tool needs arguments, and we do not invent inputs for a third-party agent.',
-        call_it_yourself: { endpoint, tool: pick.name, input_schema: pick.inputSchema, agent: agent.name },
-      };
-      attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: 'needs arguments this router does not invent' });
-      continue;
-    }
-
-    const started = Date.now();
-    const res = await rpcCall(endpoint, 'tools/call', { name: pick.name, arguments: taken || {} }, 15000).catch(() => null);
-    const took = Date.now() - started;
-    const content = res?.result?.content?.[0]?.text;
-    // MCP says a tool FAILED with result.isError, not with a JSON-RPC error:
-    // "Error: account required" arrived as ordinary content, was recorded
-    // ok:true and printed as the answer (2026-09-18).
-    const toolFailed = res?.result?.isError === true;
-    const asked = addressesInTask(task);
-    const offTarget = !!content && !res?.error && !toolFailed && !answersAsked(content, asked.addrs);
-    if (res?.error || !content || offTarget || toolFailed) {
-      const why = toolFailed ? `the tool reported an error: ${String(content || 'no message').replace(/\s+/g, ' ').slice(0, 100)}` : offTarget ? 'answered about a different address than the one asked' : (res?.error?.message || 'no usable result');
-      attempts.push({ agent: agent.name, endpoint, tool: pick.name, outcome: why });
-      // A failure is a fact about this operator and belongs in the record just
-      // as much as a success does.
-      if (env) await recordSession(env, { task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: false, probe, outcome: why });
-      continue;
-    }
-
-    // Size is capped whatever shape the answer takes. The first version capped
-    // only the text branch, so a JSON reply passed through whole — 36 KB from
-    // one agent in testing, and nothing stopping a hostile one from sending
-    // megabytes. Serialised first, measured, then parsed.
-    const MAX = 12000;
-    const oversized = content.length > MAX;
-    const body = oversized ? content.slice(0, MAX) : content;
-    let parsed = null;
-    if (!oversized) { try { parsed = JSON.parse(body); } catch { /* plain text is fine */ } }
-
-    if (env) await recordSession(env, {
-      task, operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(), agent: agent.name, tool: pick.name, ms: took, ok: true, probe,
-      outcome: 'answered', excerpt: body.slice(0, 200),
-    });
-
-    return { status: 200, body: {
-      task,
-      dispatched: true,
-      took_ms: took,
-      protocol: 'mcp',
-      ...(taken ? { arguments_taken_from_task: taken } : {}),
-      ...(asked.symbols_read_as ? { symbols_read_as: asked.symbols_read_as } : {}),
-      answered_by: {
-        id: agent.id,
-        agent: agent.name,
-        operator: (function(){ try { return new URL(agent.endpoints[0]).hostname.replace(/^www\./,''); } catch { return String(agent.id); } })(),
-        endpoint,
-        tool: pick.name,
-        registry_note: registryNote(agent), ...(isOurs(agent) ? { ours: true } : {}),
-      },
-      result: parsed ?? body,
-      ...(oversized ? { truncated: `Answer was ${content.length} characters; showing the first ${MAX}.` } : {}),
-      // Said plainly because the caller is often itself an AI agent, and this
-      // text came from a server we do not control and did not audit. It is
-      // data to be evaluated, never instructions to be followed.
-      content_warning: contentWarning(agent),
-      attempts,
-      disclaimer: 'We routed the question and repeat the answer verbatim. We did not verify it, and we make no claim about its accuracy. Read-only tools only: nothing that signs, sends or trades is ever called on your behalf.',
-    } };
   }
 
   if (hireable.length) {

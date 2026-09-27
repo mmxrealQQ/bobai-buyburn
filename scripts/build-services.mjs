@@ -184,7 +184,7 @@ const GROUPS = [
   ['broker', 'Finding somebody else', 'We will happily point you at an agent that is not ours.'],
   ['hire', 'Handing over a task', 'One call, and it finds the agent, runs the task and names who produced the answer.'],
   ['record', 'Checking our claims', 'The track record is derived from a log, not typed in by the operator it flatters.'],
-  ['paid', 'What costs money', 'Everything above is free. Two things are not: a watch that keeps running after you close the tab, and an answer handed over at once with no escrow in between.'],
+  ['paid', 'What costs money', 'The lists above are free. Apart from the deliveries under “Hire us to deliver it”, two things cost money: a watch that keeps running after you close the tab, and any of those deliveries handed over at once, with no escrow in between.'],
 ];
 
 function page() {
@@ -287,7 +287,7 @@ function page() {
       <p class="primer-what"><b>Three ways to get the same work.</b> Pick whichever suits you &mdash; they run the same code underneath.</p>
       <ul class="primer-do">
         <li><b>Open a page and look</b>Free, no account. Paste a token address, or browse the agent marketplace. This is where most people start.</li>
-        <li><b>Pay ten cents for an answer</b>${N_DELIVERIES_CAP} specific questions we answer on request, delivered on-chain. You need a wallet and about $0.10 for this one.</li>
+        <li><b>Pay ten cents for an answer</b>${N_DELIVERIES_CAP} specific questions we answer on request: through an on-chain escrow, or paid per answer and handed over at once. You need a wallet and about $0.10 for this one.</li>
         <li><b>Let your own AI call us</b>If you use an AI assistant that can call tools, it can use ours directly. One command to install.</li>
       </ul>
       <p class="primer-how"><b>Not sure where to start?</b> Open <a href="/scanner">the Pool Scanner</a> and paste any BNB Chain token address. It shows you what a trade would really cost &mdash; the shortest way to see what kind of answers this whole site produces.</p>

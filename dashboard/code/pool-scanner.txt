@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7053 lines.
+# one fetch. 6 files, 7054 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3212,7 +3212,8 @@ export async function scan(input, env) {
     .hd-f{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
     .hd-f b{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.25rem;color:var(--gold)}
     .hd-f span{font-size:.7rem;color:var(--muted)}
-    #sc-out .hd-l{display:block;margin-top:12px}
+    /* the header links apart again (2026-09-28): display:block here had switched off .hd-l's gap, the four links ran together */
+    #sc-out .hd-l{display:flex;flex-wrap:wrap;gap:8px 20px;width:100%;margin-top:12px}
     #sc-out .hd-r{width:100%}
     .hd-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr 64px;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)}
     .hd-r:last-child{border-bottom:0}
@@ -3510,7 +3511,7 @@ export async function scan(input, env) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=68" type="module"></script>
+<script src="scanner.js?v=69" type="module"></script>
 </body>
 </html>
 
@@ -4460,10 +4461,10 @@ function render(d){
   const lnk=el('div','hd-l');
   lnk.append(link(short(addr),'https://bscscan.com/token/'+addr),
     link('Pool '+short(pool.pair),'https://bscscan.com/address/'+pool.pair),
-    link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair),
+    link('DexScreener','https://dexscreener.com/bsc/'+pool.pair),
     // The same reading as an agent gets it: the page proves the API works,
     // so the page names the API (2026-09-12).
-    link('Same reading as JSON ↗','/api/pool-scan?address='+addr));
+    link('Same reading as JSON','/api/pool-scan?address='+addr));
   head.appendChild(lnk);
   o.appendChild(head);
 
@@ -4781,7 +4782,7 @@ function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool,on
   const ttl=el('div','hd-t');ttl.appendChild(el('h2',null,symb));ttl.appendChild(el('span','hd-n',name));
   head.appendChild(ttl);
   head.appendChild(frag(el('div','hd-l'),link(short(addr),'https://bscscan.com/token/'+addr),
-    link('DexScreener ↗','https://dexscreener.com/bsc/'+addr)));
+    link('DexScreener','https://dexscreener.com/bsc/'+addr)));
   o.appendChild(head);
   const w=el('div','warn');
   // A pool that exists and holds only the token (Muskonomy's one-sided 1% V3 pool, 2026-09-27) is its own answer.
@@ -4834,7 +4835,7 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
   const ttl=el('div','hd-t');ttl.appendChild(el('h2',null,symb));ttl.appendChild(el('span','hd-n',name));
   head.appendChild(ttl);
   head.appendChild(frag(el('div','hd-l'),link(short(addr),'https://bscscan.com/token/'+addr),
-    link('four.meme ↗','https://four.meme/token/'+addr)));
+    link('four.meme','https://four.meme/token/'+addr)));
   o.appendChild(head);
 
   const q=cv.quoteSym||'the quote token';

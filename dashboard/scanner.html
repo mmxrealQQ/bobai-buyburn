@@ -211,7 +211,8 @@
     .hd-f{padding:10px 12px;border:1px solid var(--border);border-radius:12px}
     .hd-f b{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.25rem;color:var(--gold)}
     .hd-f span{font-size:.7rem;color:var(--muted)}
-    #sc-out .hd-l{display:block;margin-top:12px}
+    /* the header links apart again (2026-09-28): display:block here had switched off .hd-l's gap, the four links ran together */
+    #sc-out .hd-l{display:flex;flex-wrap:wrap;gap:8px 20px;width:100%;margin-top:12px}
     #sc-out .hd-r{width:100%}
     .hd-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr 64px;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)}
     .hd-r:last-child{border-bottom:0}
@@ -509,6 +510,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=68" type="module"></script>
+<script src="scanner.js?v=69" type="module"></script>
 </body>
 </html>

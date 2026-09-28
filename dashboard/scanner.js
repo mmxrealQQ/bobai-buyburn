@@ -940,10 +940,10 @@ function render(d){
   const lnk=el('div','hd-l');
   lnk.append(link(short(addr),'https://bscscan.com/token/'+addr),
     link('Pool '+short(pool.pair),'https://bscscan.com/address/'+pool.pair),
-    link('DexScreener ↗','https://dexscreener.com/bsc/'+pool.pair),
+    link('DexScreener','https://dexscreener.com/bsc/'+pool.pair),
     // The same reading as an agent gets it: the page proves the API works,
     // so the page names the API (2026-09-12).
-    link('Same reading as JSON ↗','/api/pool-scan?address='+addr));
+    link('Same reading as JSON','/api/pool-scan?address='+addr));
   head.appendChild(lnk);
   o.appendChild(head);
 
@@ -1261,7 +1261,7 @@ function renderElsewhere(gp,addr,name,symb,hard,others,otherLiq,share,hasPool,on
   const ttl=el('div','hd-t');ttl.appendChild(el('h2',null,symb));ttl.appendChild(el('span','hd-n',name));
   head.appendChild(ttl);
   head.appendChild(frag(el('div','hd-l'),link(short(addr),'https://bscscan.com/token/'+addr),
-    link('DexScreener ↗','https://dexscreener.com/bsc/'+addr)));
+    link('DexScreener','https://dexscreener.com/bsc/'+addr)));
   o.appendChild(head);
   const w=el('div','warn');
   // A pool that exists and holds only the token (Muskonomy's one-sided 1% V3 pool, 2026-09-27) is its own answer.
@@ -1314,7 +1314,7 @@ function renderCurve(gp,addr,name,symb,cv,rows,quoteUsd){
   const ttl=el('div','hd-t');ttl.appendChild(el('h2',null,symb));ttl.appendChild(el('span','hd-n',name));
   head.appendChild(ttl);
   head.appendChild(frag(el('div','hd-l'),link(short(addr),'https://bscscan.com/token/'+addr),
-    link('four.meme ↗','https://four.meme/token/'+addr)));
+    link('four.meme','https://four.meme/token/'+addr)));
   o.appendChild(head);
 
   const q=cv.quoteSym||'the quote token';

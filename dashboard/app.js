@@ -335,9 +335,11 @@ async function chain(){
     // ONE FIGURE ON BOTH PAGES (operator, 2026-09-28: Classic said $38, the Brain Terminal $41): what the next
     // buyback works with is the tax queued in the token AND the BNB already in the buyback wallet. The tile shows
     // that sum in dollars, the line below it the split — the same figure and split as the terminal's.
-    const wBnb=u18(q[0])+u18(q[1]),pendUsd=pend*pU+wBnb*bnbP;
+    // THE GAS RESERVE IS NOT QUEUED (2026-09-28): the buyback wallet keeps 0.003 BNB for gas and splits only above
+    // 0.004 (worker/index.js GAS_RESERVE + MIN_BNB), so only the BNB above the reserve counts, as in the terminal.
+    const wBnb=u18(q[0])+u18(q[1]),sBnb=wBnb>0.004?wBnb-0.003:0,pendUsd=pend*pU+sBnb*bnbP;
     if(pendUsd>0)put('wallet-bnb','$'+nf(pendUsd,pendUsd>=1000?0:2));
-    if(tp)tp.textContent=nf(pend)+' BOBAI tax + '+wBnb.toFixed(4)+' BNB';
+    if(tp)tp.textContent=nf(pend)+' BOBAI tax'+(sBnb>0?' + '+sBnb.toFixed(4)+' BNB to split':'');
     // What the burned supply is worth today, under each tile in the small white of the queued tax
     // (2026-09-19). BOB is token0 in its pair, verified on-chain; the same BNB price as everything else here.
     try{const bobUsd=bAmt>0?bAmt*pU:0;put('bobai-burned-usd',bobUsd>0?'≈$'+nf(bobUsd,bobUsd>=1000?0:2):'');

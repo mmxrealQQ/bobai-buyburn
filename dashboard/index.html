@@ -168,8 +168,8 @@
        rel=preload lets Cloudflare announce the file in an Early Hint, so the
        browser starts fetching it while the HTML is still on its way. Same URL
        as the stylesheet below, so it is one request, not two. -->
-  <link rel="preload" href="styles.css?v=53" as="style">
-  <link rel="stylesheet" href="styles.css?v=53">
+  <link rel="preload" href="styles.css?v=54" as="style">
+  <link rel="stylesheet" href="styles.css?v=54">
   <!-- Safari remembers the scroll position and puts it back when the page is
        reopened - the homepage used to come up in the middle of the hero. A
        landing page should always start at the top; #hash deep links stay intact.
@@ -254,7 +254,7 @@
   <section class="sbar" id="stats"><div class="sg">
     <div class="sc fi"><div class="l">Market Cap</div><div class="v ld" id="mcap">--</div></div>
     <div class="sc fi"><div class="l">Liquidity</div><div class="v ld" id="volume">--</div></div>
-    <div class="sc fi"><div class="l">Buyback</div><div class="v ld" id="wallet-bnb">--</div><div class="vsub" id="tax-pending"></div></div>
+    <div class="sc fi"><div class="l">Buyback</div><div class="v ld" id="wallet-bnb">--</div><div class="vsub" id="tax-pending"></div><div class="tfill" id="tax-fill" hidden><b><i></i></b><span></span></div></div>
     <div class="sc fi"><div class="l">$BOB <span class="bob-sub">(Build On BNB)</span> Burned</div><div class="v ld" id="total-burned">--</div><div class="vsub" id="bob-burned-usd"></div></div>
     <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v ld" id="total-bobai-burned">--</div><div class="vsub" id="bobai-burned-usd"></div></div>
     <div class="sc fi"><div class="l">Burns</div><div class="v ld" id="burn-count">--</div></div>
@@ -1338,6 +1338,6 @@
      gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
      wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
      Bei Aenderungen an app.js die ?v= hochzaehlen. -->
-<script src="app.js?v=96" defer></script>
+<script src="app.js?v=97" defer></script>
 </body>
 </html>

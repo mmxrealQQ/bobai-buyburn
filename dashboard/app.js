@@ -305,6 +305,7 @@ async function chain(){
       call(P,balOf(FEETO)),               // 13 LP minted to PancakeSwap as protocol fee
       call(BNBFEED,'0x50d25bcd'),         // 14 Chainlink BNB/USD, latestAnswer()
       call(BOBP,'0x0902f1ac'),            // 15 BOB/WBNB reserves, to price the BOB burned
+      call(BOBAI,'0x110395bd'),           // 16 minDispatch(): queued tax at which the token sends it on
     ]);
   }catch(e){return}
   // Each tile decodes in its own try/catch so one bad word of calldata can't
@@ -340,6 +341,14 @@ async function chain(){
     const wBnb=u18(q[0])+u18(q[1]),sBnb=wBnb>0.004?wBnb-0.003:0,pendUsd=pend*pU+sBnb*bnbP;
     if(pendUsd>0)put('wallet-bnb','$'+nf(pendUsd,pendUsd>=1000?0:2));
     if(tp)tp.textContent=nf(pend)+' BOBAI tax'+(sBnb>0?' + '+sBnb.toFixed(4)+' BNB to split':'');
+    // HOW FULL THE QUEUE IS (operator, 2026-09-29): the token sends its tax on once it holds minDispatch()
+    // (400,000 BOBAI when this was written), read live so a changed threshold shows up by itself.
+    try{const md=u18(q[16]),fl=document.getElementById('tax-fill');
+      if(fl&&md>0){const p=Math.min(pend/md*100,100);
+        fl.querySelector('i').style.width=p.toFixed(1)+'%';
+        fl.querySelector('span').textContent=(p<10?p.toFixed(1):p.toFixed(0))+'% / 100%';
+        fl.title=nf(pend)+' of '+nf(md)+' BOBAI — at 100% the token sends the tax on to the buyback';
+        fl.hidden=false}}catch(e){}
     // What the burned supply is worth today, under each tile in the small white of the queued tax
     // (2026-09-19). BOB is token0 in its pair, verified on-chain; the same BNB price as everything else here.
     try{const bobUsd=bAmt>0?bAmt*pU:0;put('bobai-burned-usd',bobUsd>0?'≈$'+nf(bobUsd,bobUsd>=1000?0:2):'');

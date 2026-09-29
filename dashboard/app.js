@@ -358,7 +358,7 @@ async function chain(){
     // The Brain Terminal reads these instead of a chain read of its own: one source, one figure.
     NUMS.chain={at:Date.now(),bobDead:bobAmt,bobaiDead:bAmt,priceUsd:pU,bnbUsd:bnbP,
       bobUsdPrice:(()=>{try{const hH=q[15];return Number(BigInt('0x'+hH.slice(66,130)))/Number(BigInt('0x'+hH.slice(2,66)))*bnbP}catch(e){return 0}})(),
-      queuedBobai:u18(q[8]),walletBnb:u18(q[0])+u18(q[1])};
+      queuedBobai:u18(q[8]),walletBnb:u18(q[0])+u18(q[1]),minDispatch:u18(q[16])};
     depth(bR,wR,bnbP,pU*circ);
   }catch(e){}
   // LP lock lives in its own try: it reads two extra words of the same batch, and
@@ -367,7 +367,7 @@ async function chain(){
     const tot=Number(BigInt(q[9])),dead=Number(BigInt(q[10]));
     // 99.9996% is not 100.000%: the same 0.31 LP is named below, so the share
     // says '>99.999%' instead of rounding the remainder out of existence.
-    if(tot>0){put('lq-lp',pcEdge(dead/tot*100));NUMS.lpLocked=pcEdge(dead/tot*100)}
+    if(tot>0){put('lq-lp',pcEdge(dead/tot*100));NUMS.lpLocked=pcEdge(dead/tot*100);NUMS.lpPct=dead/tot*100}
     window.__lpDead=dead/1e18;sources();
     // THE OTHER SIDE OF THE BURN FIGURE.
     // "99.998% burned" says what is locked; it says nothing about the rest, and

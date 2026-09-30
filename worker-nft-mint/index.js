@@ -578,7 +578,9 @@ export default {
           const drops = dropsRaw ? JSON.parse(dropsRaw) : [];
           drops.unshift({
             to: buyer, tier, rarity,
-            usd: Math.round(usd),
+            // with cents (2026-09-30, operator: the TG alert said $249.62, this log kept 250 — the Brain Terminal read a
+            // HUGE BUY out of a BIG one). The same sum TG counts: WBNB in per tx x Chainlink BNB/USD
+            usd: Math.round(usd * 100) / 100,
             mintTx: mintTxHash,
             buyTx: txHash,
             block: blockNum,

@@ -97,5 +97,5 @@ if (rc.status !== 'success') die('the mint reverted');
 // the id the simulation named may have gone to a buyer in between.
 const tl = rc.logs.find((l) => l.address.toLowerCase() === contract.toLowerCase() && l.topics.length === 4 && l.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef');
 const tokenId = tl ? Number(BigInt(tl.topics[3])) : Number(sim.result);
-const entry = { to: TO.toLowerCase(), tokenId, tier: TIER, rarity, ...(USD != null ? { usd: Math.round(USD) } : {}), mintTx: hash, ...(BUY_TX ? { buyTx: BUY_TX } : {}), block: Number(rc.blockNumber), ts: Math.floor(Date.now() / 1000), by_hand: WHY };
+const entry = { to: TO.toLowerCase(), tokenId, tier: TIER, rarity, ...(USD != null ? { usd: Math.round(USD * 100) / 100 } : {}), mintTx: hash, ...(BUY_TX ? { buyTx: BUY_TX } : {}), block: Number(rc.blockNumber), ts: Math.floor(Date.now() / 1000), by_hand: WHY };
 console.log(`minted #${tokenId} in block ${rc.blockNumber}.\nledger entry (KV recent_drops of bobai-nft-mint, newest first):\n${JSON.stringify(entry)}`);

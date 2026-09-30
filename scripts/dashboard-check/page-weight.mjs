@@ -42,7 +42,8 @@ const AS_JSON = process.argv.includes('--json');
 const W = Number(process.env.W || 1280);
 // A fresh query key per run: Cloudflare caches per key, and measuring a page
 // that came back from cache measures the cache.
-const URL = `https://brainonbnb.com${PATHNAME}${PATHNAME.includes('?') ? '&' : '?'}probe=${Math.floor(Math.random() * 1e9)}`;
+// BASE=https://golive.bobai-dashboard.pages.dev measures a preview instead of the live site
+const URL = `${(process.env.BASE || 'https://brainonbnb.com').replace(/\/$/, '')}${PATHNAME}${PATHNAME.includes('?') ? '&' : '?'}probe=${Math.floor(Math.random() * 1e9)}`;
 
 const profile = scratchDir('pageweight-');
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`,

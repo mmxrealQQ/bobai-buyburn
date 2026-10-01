@@ -1249,6 +1249,7 @@ function vidMove(p, urgent) {
 // (temp/terminal/home_points.py): no take passes through the standing pose in its middle, only at its first and
 // last frame. So a clip changes only where one ends: nothing is cut into, dissolved or slowed (tried the same day —
 // ramped speed at the cuts and 0.35 s dissolves — and he looked worse: "before it was better").
+window.__btVideo = () => VID.v; // trans.mjs: the one video element (not in the DOM), to time every presented frame
 window.__btVid = () => VID.v ? [VID.cur, +VID.v.currentTime.toFixed(2), +VID.v.playbackRate.toFixed(2), +(VID.v.duration || 0).toFixed(2)] : null; // for checks from outside (read-only)
 function vidGhost(dur = 0.35) {
   const { cv, ghost } = VID; if (!ghost || !VID.on) return;
@@ -2506,13 +2507,44 @@ stk.innerHTML = '<div class="st-c"><img alt="NFT card"><i class="st-w">MINTING�
 // it sits on the buy board's top-left corner (operator, 2026-09-28: "at the buy alert, not the outer frame"); the board
 // is made further down, so the sticker joins it when first shown
 let mintWaitX = null, nextMintX = null;
-function stkPlace() { if (stk.parentNode !== flipEl) flipEl.appendChild(stk); stk.classList.toggle('pt', portrait); }
+// THE CARD IN THE MIDDLE, OVER NO WORD (operator, 2026-10-01: "the NFT card covers the amount and the tax — put it in the
+// middle of the window, still tilted, 5-10% bigger, but covering no text"): it sat on the board's top-left corner, over
+// THIS BUY, BOUGHT and TAX at every size (qa/stkgeo.mjs). Now it lives in the window and takes the first free place of a
+// search that starts in the middle between the title and his head and widens left and right, then lower: free = no
+// visible text, not the board, not his face. The orbit's bot labels step aside while it shows (CSS .stk-on).
+function stkPlace() {
+  if (stk.parentNode !== win) win.appendChild(stk);
+  stk.classList.remove('pt'); stk.classList.toggle('ph', portrait); stk.style.left = stk.style.top = '';
+  const W = win.getBoundingClientRect(), sw = stk.offsetWidth || 108, sh = stk.offsetHeight || 162, pad = 6;
+  const R = e => e && e.getBoundingClientRect(), mc = R(momentEl.querySelector('.mc')), fb = R(flipEl), fr = R(fig);
+  const face = fr && fr.width ? { left: fr.left + fr.width * 0.18, right: fr.right - fr.width * 0.18, top: fr.top, bottom: fr.top + fr.height * 0.42 } : null;
+  const busy = [...win.querySelectorAll('*')].filter(e => !stk.contains(e) && !e.closest('#bt-labs .wk') && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 1))
+    .filter(e => e.checkVisibility ? e.checkVisibility({ opacityProperty: true, visibilityProperty: true }) : getComputedStyle(e).display !== 'none').map(R).filter(r => r.width > 0); // a hidden parent hides it too
+  // the scene's own labels (trades, the six places, the core) count even while they fade in: they show again under it
+  busy.push(...[...win.querySelectorAll('#bt-labs .lab:not(.wk)')].map(R).filter(r => r.width > 0));
+  if (fb && fb.width) busy.push(fb); if (face) busy.push(face);
+  const free = (x, y) => x >= W.left + pad && y >= W.top + pad && x + sw <= W.right - pad && y + sh <= W.bottom - pad
+    && !busy.some(r => r.right > x - pad && r.left < x + sw + pad && r.bottom > y - pad && r.top < y + sh + pad);
+  const cx = (face ? (face.left + face.right) / 2 : W.left + W.width / 2) - sw / 2;
+  // the best height: under the title when the title is above him (wide screens), above the scene card when the card is
+  // below him (phones, 1280 px: title and board sit in a card under his feet); then every other height, nearest first
+  const below = mc && mc.height && face && mc.top > face.bottom;
+  const yPref = below ? mc.top - sh - 10 : mc && mc.height ? (face && face.top - mc.bottom > sh + 20 ? mc.bottom + (face.top - mc.bottom - sh) / 2 : mc.bottom + 10) : W.top + W.height * 0.2;
+  const ys = []; for (let y = W.top + pad; y <= W.bottom - sh - pad; y += 12) ys.push(y);
+  ys.sort((a, b) => Math.abs(a - yPref) - Math.abs(b - yPref)); ys.unshift(yPref);
+  const dxs = [0]; for (let d = 20; d <= W.width / 2; d += 20) dxs.push(-d, d);
+  for (const y of ys) for (const dx of dxs) {
+    if (free(cx + dx, y)) { stk.style.left = Math.round(cx + dx - W.left) + 'px'; stk.style.top = Math.round(y - W.top) + 'px'; return; }
+  }
+  // nowhere free (a tiny window): the board's corner, as before
+  if (stk.parentNode !== flipEl) flipEl.appendChild(stk); stk.classList.toggle('pt', portrait);
+}
 function stkShow(src) {
-  stkPlace(); stk.hidden = false;
+  stk.hidden = false; win.classList.add('stk-on'); stkPlace(); // shown first, so it can be measured
   stk.classList.toggle('wait', !src); if (src) stk.querySelector('img').src = src;
   stk.classList.remove('go'); void stk.offsetWidth; stk.classList.add('go');
 }
-function stkHide() { stk.classList.remove('go'); stk.hidden = true; }
+function stkHide() { stk.classList.remove('go'); stk.hidden = true; win.classList.remove('stk-on'); }
 function stkCancel() { mintWaitX = null; stkHide(); }
 function closeMomentIn(ms) {
   const now = performance.now();

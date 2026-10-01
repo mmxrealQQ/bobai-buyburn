@@ -1934,6 +1934,9 @@ async function removeFromCaptchaIndex(env, userId) {
 // ==================== GUARD BOT HANDLERS ====================
 
 async function handleNewMember(msg, env) {
+  // Captcha belongs to the official chat only. A join anywhere else (the Intern
+  // chat) used to mute + kick that person in the official chat.
+  if (String(msg.chat?.id) !== TG_CHAT_ID) return;
   const members = msg.new_chat_members || [];
   for (const member of members) {
     if (member.is_bot) continue;

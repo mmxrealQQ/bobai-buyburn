@@ -765,8 +765,17 @@ section('The marketplace, from the front door');
   ok('a tip goes to the same wallet as the paid answers', !!tip?.j && tip.j.accepts.every((a) => a.payTo === x402cat?.instructions?.match(/Pay to\*\*: `(0x[0-9a-fA-F]{40})`/)?.[1]));
   ok('a tip below the floor is refused before any payment', (await fetch(`${AGENT}/tip?usd=0.01`)).status === 400);
   ok('a tip with a made-up proof is refused', (await fetch(`${AGENT}/tip`, { headers: { 'PAYMENT-SIGNATURE': '0x' + '12'.repeat(32) } })).status === 402);
-  const thx = await fetch(`${SITE}/api/price`, { headers: { 'user-agent': 'bobai-smoke-test' } }).then((r) => r.json()).catch(() => null);
-  ok('a free answer to an outside caller carries the tip note', /\/tip/.test(thx?._thanks?.tip?.x402 || ''));
+  // since 2026-10-01 only a caller's FIRST free answer carries it (shared/thanks.js firstCall); asked for with
+  // X-BOBAI-Thanks: always it is there every time, and right after that a plain call from the same caller has none
+  const thx = await fetch(`${SITE}/api/price`, { headers: { 'user-agent': 'bobai-smoke-test', 'x-bobai-thanks': 'always' } }).then((r) => r.json()).catch(() => null);
+  ok('a free answer to an outside caller can carry the tip note', /\/tip/.test(thx?._thanks?.tip?.x402 || ''));
+  await fetch(`${SITE}/api/price`, { headers: { 'user-agent': 'bobai-smoke-test' } }).catch(() => null);
+  const thx2 = await fetch(`${SITE}/api/price`, { headers: { 'user-agent': 'bobai-smoke-test' } }).then((r) => r.json()).catch(() => null);
+  ok('the tip note comes once, not on every answer', !!thx2 && !thx2._thanks);
+  const athx = await fetch(`${AGENT}/find?q=price`, { headers: { 'x-bobai-thanks': 'always' } }).then((r) => r.json()).catch(() => null);
+  await fetch(`${AGENT}/find?q=price`).catch(() => null);
+  const athx2 = await fetch(`${AGENT}/find?q=price`).then((r) => r.json()).catch(() => null);
+  ok('the agent server gives the note on request and not again after', /\/tip/.test(athx?._thanks?.tip?.x402 || '') && !!athx2 && !athx2._thanks);
   // The funnel and the attestation (2026-09-03, point 3). The router names
   // the agent by id so the page can offer its paid version; the attest route
   // prepares one measurement and refuses everything that is not a delivered

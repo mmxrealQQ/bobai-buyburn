@@ -38,3 +38,26 @@ export const THANKS_LINE = `Free to use. A voluntary tip is welcome, never requi
 export function withThanks(out) {
   return out && typeof out === 'object' && !Array.isArray(out) ? { ...out, _thanks: THANKS } : out;
 }
+
+// ONLY THE FIRST TIME (operator, 2026-10-01: "whoever uses our code or asks one of our agents gets the note, but
+// only once, the first time"). A caller is remembered by a hash of its IP (never the IP itself) in Cloudflare's
+// cache for a year — free, no KV write. The cache lives per data center and may be cleared, so now and then a
+// caller sees the note a second time; never the other way round: when the cache cannot answer, the note is given.
+// Both workers use the same key, so the site's MCP/REST and the agent server count as one place.
+// A caller who wants it again sends `X-BOBAI-Thanks: always` (our own smoke test does).
+const SEEN_TTL = 365 * 24 * 3600;
+export async function firstCall(request) {
+  try {
+    if (/^always$/i.test(request.headers.get('x-bobai-thanks') || '')) return true;
+    const ip = request.headers.get('cf-connecting-ip') || '';
+    if (!ip || typeof caches === 'undefined') return true;
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('bobai-thanks:' + ip));
+    const key = new Request('https://brainonbnb.com/__thanks-seen/' + [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join(''));
+    const cache = caches.default;
+    if (await cache.match(key)) return false;
+    await cache.put(key, new Response('1', { headers: { 'Cache-Control': `public, max-age=${SEEN_TTL}` } }));
+    return true;
+  } catch {
+    return true;
+  }
+}

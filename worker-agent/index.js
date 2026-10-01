@@ -35,7 +35,7 @@ import { runCanary } from './canary.js';
 import { buildCatalog } from './x402-catalog.js';
 import { handleHire, handleHireNotify, decodeJob, ERC8183 } from './hire.js';
 import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
-import { withThanks, THANKS_LINE } from '../shared/thanks.js';
+import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput } from './sell.js';
 import { summarize } from '../shared/job-summary.js';
@@ -196,7 +196,8 @@ async function listAll(env, prefix) {
 // A free answer to a caller from outside carries the thank-you note (shared/thanks.js, 2026-09-26): free, a tip
 // welcome, never required. The site's own pages, which read some of these routes for their figures, get none.
 const fromOurSite = (request) => /^https:\/\/(www\.)?brainonbnb\.com(\/|$)/.test(request.headers.get('origin') || request.headers.get('referer') || '');
-const thankJson = (request, obj, status = 200, extra = {}) => status === 200 && !fromOurSite(request)
+// only on a caller's first free answer (firstCall, 2026-10-01)
+const thankJson = async (request, obj, status = 200, extra = {}) => status === 200 && !fromOurSite(request) && await firstCall(request)
   ? json(withThanks(obj), status, { ...extra, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' })
   : json(obj, status, extra);
 const json = (obj, status = 200, extra = {}) =>

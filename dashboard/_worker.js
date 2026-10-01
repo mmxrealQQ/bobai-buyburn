@@ -9,7 +9,7 @@ import { rangePlan } from './range-scan.js';
 import { swapRoute } from './swap-route.js';
 import { preflight } from './preflight.js';
 import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
-import { withThanks, THANKS_LINE } from '../shared/thanks.js';
+import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 
 const TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
@@ -1068,8 +1068,9 @@ async function handleMcp(request, note = () => {}) {
       // that as a result with isError, which the model gets to read, not as a
       // JSON-RPC error many clients swallow. Protocol errors stay errors below.
       try {
-        // every answer carries the thank-you note (shared/thanks.js): free, a tip welcome, never required
-        const out = withThanks(await runTool(params?.name, params?.arguments || {}));
+        // the thank-you note (shared/thanks.js): free, a tip welcome, never required — on a caller's first answer only
+        const raw = await runTool(params?.name, params?.arguments || {});
+        const out = (await firstCall(request)) ? withThanks(raw) : raw;
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] })), { headers: cors });
       } catch (e) {
         return new Response(JSON.stringify(rpcOk(id, { content: [{ type: 'text', text: e.message || String(e) }], isError: true })), { headers: cors });
@@ -1408,7 +1409,7 @@ export default {
         // A caller from outside gets the thank-you note with the answer (2026-09-26): free, a tip welcome, never
         // required. The site's own pages read these routes for their figures and get them without it.
         const siteCall = request.headers.get('sec-fetch-site') === 'same-origin' || /^https:\/\/(www\.)?brainonbnb\.com\//.test(request.headers.get('referer') || '');
-        if (siteCall) return new Response(JSON.stringify(out, null, 2), { headers });
+        if (siteCall || !(await firstCall(request))) return new Response(JSON.stringify(out, null, 2), { headers }); // the note once per caller (2026-10-01)
         return new Response(JSON.stringify(withThanks(out), null, 2), { headers: { ...headers, 'X-Thanks': THANKS_LINE, 'Access-Control-Expose-Headers': 'X-Thanks' } });
       } catch (e) {
         // 400 for a malformed address, 503 when the chain or a log endpoint

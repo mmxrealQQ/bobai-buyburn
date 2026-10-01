@@ -1,0 +1,808 @@
+/* BOBAI BRAIN TERMINAL — the popup behind the yellow nav button. Everything is scoped under #bt so the
+ * terminal cannot restyle the homepage and the homepage cannot restyle it. Generated from the preview
+ * (temp/terminal/v3.html) by scratchpad scope.js; edit here after it ships. */
+#bt{
+  --gold:#F0B90B;--gold2:#ffd54f;--bg:#0b090a;--line:rgba(198,143,118,.16);--line2:rgba(198,143,118,.32);
+  --text:#eceaf5;--muted:#a0a2c0;--dim:#6f6f86;--ok:#00e676;--bad:#ff5a36;
+  --mono:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SF Mono',monospace;
+}
+#bt .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:bt-blink 1.6s steps(2) infinite}
+@keyframes bt-blink{50%{opacity:.25}}
+#bt{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;padding:14px}
+#bt.on{display:flex}
+#bt .bt-back{position:absolute;inset:0;background:rgba(3,2,3,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#bt .bt-win{position:relative;width:min(1320px,100%);height:min(840px,100%);overflow:hidden;background:var(--bg);
+  border:1px solid var(--line2);border-radius:22px;box-shadow:0 40px 140px rgba(0,0,0,.8),0 0 120px rgba(240,185,11,.08)}
+#bt #bt-gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+#bt .vign{position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(120% 90% at 40% 45%,transparent 55%,rgba(0,0,0,.65)),repeating-linear-gradient(180deg,rgba(255,255,255,.014) 0 1px,transparent 1px 3px)}
+#bt .fig{position:absolute;z-index:2;pointer-events:none;transform-origin:50% 100%;opacity:0;will-change:transform}
+#bt .fig img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .35s cubic-bezier(.4,0,.2,1)}
+#bt .fig img.on{opacity:1}
+#bt .fig .rgb{position:absolute;inset:0;opacity:0;mix-blend-mode:screen}
+#bt .fig.glitch .rgb.r{animation:bt-glR .4s steps(3)}
+#bt .fig.glitch .rgb.b{animation:bt-glB .4s steps(3)}
+@keyframes bt-glR{0%,100%{opacity:0}30%{opacity:.55;transform:translate(-7px,1px);filter:hue-rotate(150deg) saturate(3)}60%{opacity:.35;transform:translate(4px,-2px)}}
+@keyframes bt-glB{0%,100%{opacity:0}30%{opacity:.5;transform:translate(7px,-1px);filter:hue-rotate(280deg) saturate(3)}60%{opacity:.3;transform:translate(-4px,2px)}}
+#bt .fig .shadow{position:absolute;left:18%;right:18%;bottom:-2%;height:6%;border-radius:50%;background:radial-gradient(closest-side,rgba(240,185,11,.35),transparent);filter:blur(6px)}
+/* TELL ME A JOKE (2026-09-29): a gold pill just under the shadow at his feet; the HA badge wiggles on hover, jumps on a click */
+#bt .joke{position:absolute;z-index:5;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;
+  border-radius:999px;border:1px solid rgba(240,185,11,.55);background:rgba(18,14,10,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  color:#F0B90B;font:700 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;cursor:pointer;
+  box-shadow:0 0 18px rgba(240,185,11,.16),inset 0 0 12px rgba(240,185,11,.06);transition:opacity .4s,border-color .2s,box-shadow .2s,background .2s}
+#bt .joke:hover,#bt .joke:focus-visible{border-color:#F0B90B;background:rgba(40,30,8,.82);box-shadow:0 0 26px rgba(240,185,11,.35);outline:none}
+#bt .joke .jk-ha{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#F0B90B,#ffd54f);
+  color:#1a1206;flex:none}
+#bt .joke:hover .jk-ha{animation:bt-ha .5s ease-in-out 2}
+#bt .joke.hit .jk-ha{animation:bt-hahit .7s cubic-bezier(.3,1.6,.5,1)}
+@keyframes bt-ha{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+@keyframes bt-hahit{0%{transform:scale(1)}35%{transform:scale(1.35) rotate(-10deg)}100%{transform:scale(1)}}
+#bt .in-moment .joke,#bt .m-list .joke,#bt .m-log .joke{opacity:0;pointer-events:none}
+#bt .portrait .joke{font-size:9.5px;line-height:1.25;padding:5px 11px 5px 5px;gap:7px;border-radius:18px}
+#bt .portrait .joke .jk-t{white-space:normal;max-width:11ch;text-align:left}
+#bt .portrait .joke .jk-ha{width:21px;height:21px}
+@media (prefers-reduced-motion:reduce){#bt .joke .jk-ha{animation:none!important}}
+/* THINKING OF ONE (2026-09-29): the wrong moment for a joke — a thinking face, the label dimmed, three dots that think */
+#bt .joke .jk-th,#bt .joke .jk-d{display:none}
+#bt .joke.wait{border-color:rgba(240,185,11,.28);color:rgba(240,185,11,.62);background:rgba(18,14,10,.6);box-shadow:none}
+#bt .joke.wait .jk-ha{display:none}
+#bt .joke.wait .jk-th{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;flex:none;color:#1a1206;background:linear-gradient(135deg,rgba(240,185,11,.55),rgba(255,213,79,.5))}
+#bt .joke.wait .jk-th svg{animation:bt-think 2.4s ease-in-out infinite}
+#bt .joke.wait .jk-d{display:inline-flex;gap:3px;margin-left:-4px}
+#bt .joke.wait .jk-d i{width:3px;height:3px;border-radius:50%;background:currentColor;animation:bt-dot 1.2s infinite}
+#bt .joke.wait .jk-d i:nth-child(2){animation-delay:.2s}#bt .joke.wait .jk-d i:nth-child(3){animation-delay:.4s}
+#bt .joke.queued{color:#F0B90B;border-color:rgba(240,185,11,.55)}
+#bt .joke.ready-in{animation:bt-jkready .9s ease-out}
+@keyframes bt-think{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+@keyframes bt-dot{0%,100%{opacity:.2}40%{opacity:1}}
+@keyframes bt-jkready{0%{box-shadow:0 0 0 rgba(240,185,11,0)}40%{box-shadow:0 0 30px rgba(240,185,11,.55)}100%{box-shadow:0 0 18px rgba(240,185,11,.16)}}
+#bt .portrait .joke.wait .jk-th{width:21px;height:21px}
+@media (prefers-reduced-motion:reduce){#bt .joke.wait .jk-th svg,#bt .joke.wait .jk-d i,#bt .joke.ready-in{animation:none!important}}
+#bt .lab{position:absolute;z-index:3;pointer-events:none;transform:translate(-50%,-50%);text-align:left;white-space:nowrap;opacity:0;transition:opacity .6s}
+#bt .lab.show{opacity:1}
+#bt .dest{transform:translate(var(--off,26px),-50%)}
+#bt .core .cd{color:var(--gold2);margin-top:2px}
+#bt .lab.hot{pointer-events:auto;cursor:pointer}
+#bt .dest.hot{padding:4px 8px;margin:-4px -8px;border-radius:10px;transition:background .25s}
+#bt .dest.hot:hover{background:rgba(255,255,255,.04)}
+#bt .wk.hot:hover b{text-shadow:0 0 10px var(--c)}
+#bt .detail{position:absolute;z-index:6;left:18px;top:108px;width:min(330px,calc(100% - 36px));padding:14px 16px 12px;border-radius:16px;
+  border:1px solid color-mix(in srgb,var(--c,#F0B90B) 40%,transparent);background:linear-gradient(180deg,rgba(18,14,15,.88),rgba(10,8,9,.94));
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 40px color-mix(in srgb,var(--c,#F0B90B) 12%,transparent);
+  opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .35s,transform .35s}
+#bt .detail.on{opacity:1;transform:none;pointer-events:auto}
+#bt .detail .dh{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+#bt .detail .dh b{font:700 .95rem 'Space Grotesk',sans-serif;color:var(--c)}
+#bt .detail .dx{margin-left:auto;width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-size:16px;line-height:1}
+#bt .detail .dr div{display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid rgba(198,143,118,.08);font:12px var(--mono)}
+#bt .detail .dr span{color:var(--muted)}
+#bt .detail .dr b{color:var(--text);font-weight:600;text-align:right}
+#bt .detail p{margin:10px 0 8px;font:12.5px/1.5 Inter,sans-serif;color:#cfcbe0}
+#bt .detail .dl{display:flex;flex-wrap:wrap;gap:6px 12px}
+#bt .detail .dl a{font:600 11px var(--mono);color:var(--c);text-decoration:none;border-bottom:1px dotted currentColor}
+#bt .portrait .detail{left:12px;right:12px;width:auto;top:auto;bottom:122px}
+#bt .cine{position:absolute;z-index:6;left:50%;top:11%;transform:translateX(-50%);text-align:center;pointer-events:none;white-space:nowrap;opacity:0}
+#bt .cine .a{font:700 clamp(10px,1vw,13px) var(--mono);letter-spacing:.42em;color:#fff;opacity:.85}
+#bt .cine .b{font:700 clamp(20px,3.2vw,44px)/1.1 'Space Grotesk',sans-serif;letter-spacing:-.01em;color:var(--c);margin-top:6px;
+  text-shadow:0 0 28px color-mix(in srgb,var(--c) 35%,transparent)}
+#bt .cine .t{font:600 .66rem var(--mono);letter-spacing:.2em;color:var(--muted);margin-top:8px}
+#bt .cine.go{animation:bt-cine var(--d,2.6s) cubic-bezier(.2,.8,.2,1) forwards}
+#bt .cine.go .b{animation:bt-cineB var(--d,2.6s) cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes bt-cine{0%{opacity:0}8%{opacity:1}82%{opacity:1}100%{opacity:0}}
+@keyframes bt-cineB{0%{clip-path:inset(0 100% 0 0);transform:translateY(6px)}22%{clip-path:inset(0 0 0 0);transform:none}100%{transform:none}}
+#bt .dest .n{font:700 .64rem var(--mono);letter-spacing:.14em;color:var(--c);display:flex;align-items:center;gap:8px}
+#bt .dest .pc{font:700 .62rem var(--mono);padding:1px 6px;border-radius:999px;border:1px solid color-mix(in srgb,var(--c) 50%,transparent);background:color-mix(in srgb,var(--c) 14%,transparent)}
+#bt .dest .v{font:600 clamp(15px,1.55vw,21px) 'Space Grotesk',sans-serif;margin-top:2px;font-variant-numeric:tabular-nums;text-shadow:0 0 18px color-mix(in srgb,var(--c) 45%,transparent)}
+#bt .dest .s{font:500 .68rem var(--mono);color:var(--muted);margin-top:1px}
+/* wide screen: each label gets the room left to the window's right edge (--mw, set in placeLabels) */
+#bt .bt-win:not(.portrait) .dest{max-width:var(--mw,none);white-space:normal}
+#bt .bt-win:not(.portrait) .dest .n{white-space:nowrap}
+#bt .bt-win.tight .dest .s,#bt .bt-win.tight .core .s:not(.cd){display:none}
+/* and the log box a little narrower there, so the buyback label between it and the Giggle label has room */
+#bt .bt-win.tight .term:not(:hover):not(:focus-within){width:min(330px,calc(100% - 32px));height:auto;max-height:92px}
+#bt .bt-win:not(.portrait) .dest .v{font-size:clamp(13px,min(1.55vw,calc(var(--mw,400px) / 11.5)),21px)}
+#bt .dest.hit .v{animation:bt-pop .7s ease}
+@keyframes bt-pop{30%{color:#fff}}
+#bt .core{text-align:center;transform:translate(-50%,0);text-shadow:0 0 4px #000,0 0 8px #000,0 1px 2px #000} /* readable where it crosses his shoes (2026-09-28) */
+/* squeezed between the log and the Giggle coin (placeLabels sets max-width): its lines wrap instead of running under the coin */
+#bt .core[style*=max-width] .s{white-space:normal}
+#bt .core .n{font:700 .6rem var(--mono);letter-spacing:.16em;color:var(--gold)}
+#bt .core .v{font:600 15px 'Space Grotesk',sans-serif}
+#bt .core .s{font:.64rem var(--mono);color:var(--muted)}
+#bt .core .s span{display:block}
+#bt .src{text-align:center;transform:translate(-50%,18px)}
+#bt .src .n{font:700 .62rem var(--mono);letter-spacing:.14em;color:#9ae6b4}
+#bt .src .s{font:.64rem var(--mono);color:var(--muted)}
+#bt .wk{text-align:center;transition:opacity .4s}
+#bt .wk b{display:block;font:700 .56rem var(--mono);letter-spacing:.12em;color:var(--c)}
+#bt .wk i{display:block;font:normal .56rem var(--mono);color:var(--dim)}
+#bt .flt{position:absolute;z-index:4;pointer-events:none;font:700 13px var(--mono);color:var(--c);text-shadow:0 0 10px var(--c);transform:translate(-50%,-50%);animation:bt-flt 2.4s ease-out forwards;white-space:nowrap}
+@keyframes bt-flt{0%{opacity:0;transform:translate(-50%,-20%)}12%{opacity:1}100%{opacity:0;transform:translate(-50%,-260%)}}
+#bt .hud{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:flex-start;gap:14px;padding:16px 18px;pointer-events:none}
+#bt .hud>*{pointer-events:auto}
+#bt .ttl{font:700 1.02rem 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase}
+#bt .ttl b{color:var(--gold)}
+#bt .ttl small{display:block;margin-top:3px;font:500 .66rem var(--mono);letter-spacing:.04em;text-transform:none;color:var(--dim)}
+#bt .live{display:inline-flex;white-space:nowrap;align-items:center;gap:6px;font:700 .66rem var(--mono);letter-spacing:.16em;color:var(--ok);padding:4px 10px;border:1px solid rgba(0,230,118,.3);border-radius:999px;background:rgba(0,0,0,.35);margin-top:2px}
+#bt .live.rp{color:var(--gold2);border-color:rgba(240,185,11,.45)}
+#bt .live.rp .dot{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+#bt .clk{margin-left:auto;font:.76rem var(--mono);color:var(--muted);margin-top:8px}
+#bt .x{width:36px;height:36px;border-radius:11px;border:1px solid var(--line);background:rgba(0,0,0,.4);color:var(--muted);cursor:pointer;font-size:20px;line-height:1}
+#bt .shr{height:36px;padding:0 14px;border-radius:11px;border:1px solid rgba(240,185,11,.5);background:linear-gradient(180deg,rgba(240,185,11,.2),rgba(240,185,11,.06));color:var(--gold2);cursor:pointer;font:700 .66rem var(--mono);letter-spacing:.12em}
+#bt .shr:hover{background:linear-gradient(180deg,rgba(240,185,11,.32),rgba(240,185,11,.1))}
+#bt .shr[disabled]{opacity:.5;cursor:wait}
+#bt .portrait .shr{padding:0 10px;font-size:.58rem}
+#bt .x:hover{color:var(--text);border-color:var(--line2)}
+#bt .rclk{position:absolute;z-index:5;left:50%;top:58px;transform:translateX(-50%);text-align:center;pointer-events:none;opacity:0;transition:opacity .5s}
+#bt .rclk.on{opacity:1}
+#bt .rclk b{display:block;font:700 clamp(16px,1.8vw,24px) 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#fff;text-shadow:0 0 20px rgba(240,185,11,.45);font-variant-numeric:tabular-nums}
+#bt .rclk span{display:block;margin-top:2px;font:700 .58rem var(--mono);letter-spacing:.2em;color:var(--gold)}
+#bt .portrait .rclk{top:52px}
+#bt .portrait .rclk b{font-size:14px}
+#bt .phase{position:absolute;z-index:5;left:18px;top:64px;font:.64rem var(--mono);color:var(--dim);max-width:340px;line-height:1.5}
+#bt .term{position:absolute;z-index:5;left:16px;bottom:128px;width:min(360px,calc(100% - 32px));height:auto;max-height:176px;border-radius:14px;
+  border:1px solid var(--line);background:linear-gradient(180deg,rgba(14,11,12,.72),rgba(10,8,9,.88));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  display:flex;flex-direction:column;overflow:hidden}
+#bt .term .hd{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--line);font:600 .6rem var(--mono);letter-spacing:.14em;color:var(--dim)}
+#bt .term .hd i{width:7px;height:7px;border-radius:50%;background:#3a3032}
+#bt .term .hd span{margin-left:6px}
+/* as tall as its lines, up to the box's height; beyond that it scrolls (the newest line is kept in view) */
+#bt .term .bd{flex:0 1 auto;min-height:0;overflow-y:auto;padding:6px 10px;font:11.5px/1.55 var(--mono);display:flex;flex-direction:column;justify-content:flex-start}
+#bt .ln{display:flex;gap:8px;animation:bt-lnIn .3s ease;white-space:nowrap}
+#bt .ln.wrap{white-space:normal}
+#bt .ln.wrap .m{overflow:visible}
+#bt .cmd{display:flex;align-items:center;gap:8px;padding:7px 10px;border-top:1px solid var(--line);background:rgba(0,0,0,.25)}
+#bt .cmd label{font:700 11.5px var(--mono);color:var(--ok);flex:none}
+#bt .cmd input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font:11.5px var(--mono);caret-color:var(--gold)}
+#bt .cmd input::placeholder{color:#5d5d72}
+#bt .typing .term,#bt .term:hover,#bt .term:focus-within{height:auto;max-height:min(420px,62%);width:min(560px,calc(100% - 32px));z-index:7;background:linear-gradient(180deg,rgba(14,11,12,.94),rgba(10,8,9,.97))}
+#bt .typing .term .bd,#bt .term:hover .bd,#bt .term:focus-within .bd{overflow-y:auto;justify-content:flex-start}
+#bt .term:hover .ln,#bt .typing .term .ln,#bt .term:focus-within .ln{white-space:normal}
+#bt .term:hover .ln .m,#bt .typing .term .ln .m,#bt .term:focus-within .ln .m{overflow:visible;text-overflow:clip}
+#bt .term .bd{scrollbar-width:thin;scrollbar-color:#3a302c transparent}
+#bt .term{transition:height .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1)}
+#bt .ln .t{color:var(--dim);flex:none;width:9ch;pointer-events:auto}
+#bt .ln .g{color:var(--c);font-weight:700;flex:none;width:52px}
+#bt .ln .m{color:#d7d3e3;overflow:hidden;text-overflow:ellipsis}
+#bt .ln .m b{color:var(--c);font-weight:600}
+#bt .ln a{color:var(--muted);text-decoration:none;border-bottom:1px dotted #555;margin-left:6px;pointer-events:auto}
+#bt .ln a:hover{color:var(--gold2)}
+#bt .cur{display:inline-block;width:6px;height:12px;background:var(--gold);vertical-align:-1px;animation:bt-blink 1s steps(2) infinite}
+@keyframes bt-lnIn{from{opacity:0;transform:translateX(-6px)}}
+#bt .tl{position:absolute;z-index:5;left:0;right:0;bottom:0;height:112px;border-top:1px solid var(--line);background:linear-gradient(180deg,rgba(14,11,12,.82),rgba(6,5,6,.92));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex}
+#bt .tl canvas{flex:1;min-width:0;height:100%;cursor:pointer}
+#bt .tl button{flex:none;width:96px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--gold2);cursor:pointer;font:700 .64rem var(--mono);letter-spacing:.12em}
+#bt .tl button:hover{background:rgba(240,185,11,.07)}
+/* wide screen: the four spans stand in one slim column, the chosen one marked by a gold edge — the 2x2 grid with a
+   full gold square was the heaviest thing on the page (2026-09-28) */
+#bt .tl .tlw{flex:none;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+#bt .tl .tlw button{flex:1;width:54px;border:0;border-bottom:1px solid var(--line);font:700 .6rem var(--mono);letter-spacing:.1em;color:var(--dim);transition:color .2s,background .2s}
+#bt .tl .tlw button:last-child{border-bottom:0}
+#bt .tl .tlw button:hover{color:var(--gold2)}
+#bt .tl .tlw button.on{color:var(--gold);background:rgba(240,185,11,.09);box-shadow:inset 2px 0 0 var(--gold)}
+/* replay controls: pause and speed, only while a replay runs */
+#bt .tl .rpc{display:none;flex:none;flex-direction:column;border-left:1px solid var(--line)}
+#bt .tl.rpon .rpc{display:flex}
+#bt .tl .rpc button{flex:1;width:44px;border:0;font:700 .72rem var(--mono);letter-spacing:.04em;color:var(--gold2)}
+#bt .tl .rpc button:first-child{border-bottom:1px solid var(--line)}
+#bt .tl .rpc button.on{color:#0b090a;background:var(--gold)}
+#bt .tip{position:absolute;z-index:7;bottom:92px;transform:translateX(-50%);display:none;pointer-events:none;max-width:340px;white-space:normal;
+  padding:8px 11px;border-radius:10px;border:1px solid var(--line2);background:#161213;font:11.5px/1.45 var(--mono);box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#bt .tip b{color:var(--c)}
+#bt .intro{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  font:700 clamp(20px,3.4vw,40px) 'Space Grotesk',sans-serif;letter-spacing:.28em;color:#fff;text-shadow:0 0 30px rgba(240,185,11,.8);transition:opacity .9s}
+#bt .intro.out{opacity:0}
+#bt .portrait .dest{transform:translate(-50%,var(--off,20px));text-align:center}
+/* name above, share pill below it, on every label alike: some fit on one line and some did not, and the rows looked ragged */
+#bt .portrait .dest .n{flex-direction:column;align-items:center;font-size:10px;letter-spacing:.02em;gap:3px}
+/* a row of three has a third of the screen each: the label wraps inside it instead of spilling over its neighbour */
+#bt .portrait .dest{width:max-content;max-width:calc((100vw - 20px) / 3);white-space:normal}
+/* the figure line stays on one line: "12 adds · 0.1757 BNB" wrapped on a 360-375 px phone and ran into the next row
+   (2026-09-27); its name may wrap, the row nudging in placeLabels keeps the three apart */
+#bt .portrait .dest{max-width:none}
+#bt .portrait .dest .v{white-space:nowrap;font-size:min(12px,3.1vw)}
+#bt .portrait .dest .pc{font-size:10px;padding:0 3px}
+#bt .portrait .dest .v{font-size:12px}
+#bt .portrait .dest .s,#bt .portrait .wk,#bt .portrait .src .s,#bt .portrait .core .s:not(.cd){display:none}
+#bt .portrait .core{transform:translate(-100%,-50%);text-align:right}
+#bt .portrait .core .v{font-size:13px}
+#bt .portrait .cine{top:auto;bottom:122px;width:calc(100% - 32px);padding:10px 12px;border-radius:14px;background:rgba(10,8,9,.9);border:1px solid var(--line)}
+#bt .portrait .ttl{font-size:.82rem}
+#bt .portrait .cine .b{font-size:20px;white-space:normal;max-width:92vw}
+@media (max-width:820px){#bt{padding:0}
+#bt .bt-win{width:100%;height:100%;border-radius:0;border:0}
+#bt .ttl small,#bt .rclk{position:absolute;z-index:5;left:50%;top:58px;transform:translateX(-50%);text-align:center;pointer-events:none;opacity:0;transition:opacity .5s}
+#bt .rclk.on{opacity:1}
+#bt .rclk b{display:block;font:700 clamp(16px,1.8vw,24px) 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#fff;text-shadow:0 0 20px rgba(240,185,11,.45);font-variant-numeric:tabular-nums}
+#bt .rclk span{display:block;margin-top:2px;font:700 .58rem var(--mono);letter-spacing:.2em;color:var(--gold)}
+#bt .portrait .rclk{top:52px}
+#bt .portrait .rclk b{font-size:14px}
+#bt .phase{display:none}
+/* the subtitle never shows on a phone, and unwrapped it made the window 500 px wide (sideways scroll) */
+#bt .ttl small{display:none}
+#bt .term{height:auto;max-height:96px;bottom:94px}
+#bt .dest{transform:translate(12px,-50%)}
+#bt .dest .s{display:none}
+#bt .tl button{width:66px}
+
+}
+/* calm mode (/?calm#brain): no CSS motion either */
+#bt.calm .bt-open,#bt.calm .dot,#bt.calm .flt,#bt.calm .ln{animation:none}
+
+/* the popup inherits nothing from the page: its own type, colour and box model */
+#bt{font-family:Inter,system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;text-align:left;line-height:normal;letter-spacing:normal}
+#bt *,#bt *::before,#bt *::after{box-sizing:border-box}
+#bt button{font-family:inherit}
+/* share menu: where this moment can go */
+#bt .shm{position:absolute;z-index:8;top:64px;right:18px;width:min(360px,calc(100% - 36px));padding:12px;border-radius:16px;border:1px solid rgba(240,185,11,.35);
+  background:linear-gradient(180deg,rgba(20,16,17,.96),rgba(10,8,9,.98));box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 40px rgba(240,185,11,.1);
+  opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .3s,transform .3s}
+#bt .shm.on{opacity:1;transform:none;pointer-events:auto}
+#bt .shh{display:flex;align-items:center;margin-bottom:10px}
+#bt .shh b{font:700 .9rem 'Space Grotesk',sans-serif;color:var(--gold)}
+#bt .shx{margin-left:auto;width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-size:16px;line-height:1}
+#bt .shm img{display:block;width:100%;border-radius:10px;border:1px solid var(--line);margin-bottom:10px}
+/* which moment the card tells (B8) */
+#bt .shk{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:8px}
+#bt .shk button{height:30px;padding:0 2px;border-radius:8px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer;font:700 10px var(--mono);letter-spacing:.02em;white-space:nowrap}
+#bt .shk button.on{border-color:var(--gold);color:var(--gold2);background:rgba(240,185,11,.12)}
+/* the two formats of the same moment (B7) */
+#bt .shf{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+#bt .shf button{height:32px;border-radius:999px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer;font:600 11px var(--mono);letter-spacing:.04em}
+#bt .shf button.on{border-color:var(--gold);color:#0b090a;background:var(--gold)}
+#bt .shm.tall img{width:auto;max-width:100%;max-height:min(46vh,380px);margin-left:auto;margin-right:auto}
+/* phone: the menu never grows past the top of the window; the 4:5 preview stays small enough for the buttons */
+#bt .portrait .shm{top:auto;max-height:calc(100% - 178px - 56px);overflow-y:auto}
+#bt .portrait .shm.tall img{max-height:min(24vh,200px)}
+#bt .shb{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#bt .shb button{height:36px;border-radius:10px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--text);cursor:pointer;font:600 12px var(--mono);letter-spacing:.04em}
+#bt .shb button:hover{border-color:var(--gold);color:var(--gold2)}
+#bt .shb button.wide{grid-column:1/-1;background:linear-gradient(180deg,rgba(240,185,11,.22),rgba(240,185,11,.08));border-color:rgba(240,185,11,.5);color:var(--gold2)}
+#bt .shb button small{font-weight:400;color:var(--muted);margin-left:6px}
+#bt .shb button[hidden]{display:none}
+#bt .portrait .shm{top:auto;bottom:122px;left:12px;right:12px;width:auto}
+/* ---- phone, reworked (2026-09-24): one-line title, icon share, timeline controls on their own row ---- */
+#bt .portrait .hud{padding:12px 12px 0;gap:8px;align-items:center}
+#bt .portrait .ttl{font-size:.76rem;letter-spacing:.1em;white-space:nowrap}
+#bt .portrait .clk{display:none}
+#bt .portrait .live{position:absolute;left:12px;top:40px;font-size:10px;padding:2px 8px;margin:0}
+#bt .portrait .shr{margin-left:auto;width:36px;padding:0;font-size:0}
+#bt .portrait .shr::before{content:"\2197";font-size:17px;line-height:36px}
+/* the portrait look by the WINDOW, not the screen: in the new page the terminal is portrait inside a 1024 px wide
+   iPad, where the phone rules (max-width:820px) do not apply, and the subtitle pushed the share button out of the
+   window (2026-09-27) */
+#bt .portrait .ttl small{display:none}
+#bt .portrait .shr{flex-shrink:0}
+#bt .portrait .rclk{top:64px}
+#bt .portrait .rclk b{font-size:13px;letter-spacing:.1em}
+#bt .portrait .rclk span{font-size:.5rem}
+#bt .portrait .src{transform:translate(-14px,14px);text-align:left}
+#bt .portrait .tl{height:128px;flex-wrap:wrap}
+#bt .portrait .tl canvas{order:3;flex:0 0 100%;height:94px}
+#bt .portrait .tl .tlw{display:flex;flex-direction:row;flex:1;border-left:0;border-bottom:1px solid var(--line)}
+#bt .portrait .tl .tlw button{flex:1;width:auto;height:33px;border:0;border-right:1px solid var(--line);font-size:11px}
+#bt .portrait .tl .tlw button.on{color:#0b090a;background:var(--gold);box-shadow:none}
+#bt .portrait .tl #bt-rp{flex:0 0 auto;width:auto;padding:0 12px;height:33px;border-bottom:1px solid var(--line)}
+#bt .portrait .tl .rpc{flex-direction:row;height:33px;border-bottom:1px solid var(--line)}
+#bt .portrait .tl .rpc button{width:40px;height:33px;font-size:12px}
+#bt .portrait .tl .rpc button:first-child{border-bottom:0;border-right:1px solid var(--line)}
+#bt .portrait .term{bottom:112px}
+#bt .portrait .detail,#bt .portrait .shm,#bt .portrait .cine{bottom:112px}
+#bt .portrait .tip{bottom:110px}
+/* ---- phone views: BRAIN · MONEY · BOTS · LOG ---- */
+#bt .mtabs,#bt .mpanel{display:none}
+#bt .portrait .mtabs{display:grid;grid-template-columns:repeat(4,1fr);position:absolute;z-index:6;left:0;right:0;bottom:128px;height:42px;border-top:1px solid var(--line);background:rgba(10,8,9,.92)}
+#bt .portrait .mtabs button{border:0;border-right:1px solid var(--line);background:transparent;color:var(--dim);font:700 .64rem var(--mono);letter-spacing:.14em;cursor:pointer}
+#bt .portrait .mtabs button:last-child{border-right:0}
+#bt .portrait .mtabs button.on{color:#0b090a;background:var(--gold)}
+#bt .portrait .term{display:none}
+#bt .portrait.m-log .term{display:flex;left:10px;right:10px;width:auto;top:66px;bottom:178px;height:auto;max-height:none}
+#bt .portrait.m-log .term .bd{flex:1}
+#bt .portrait.m-log .term .bd{overflow-y:auto;justify-content:flex-start}
+#bt .portrait.m-log .term .ln{white-space:normal}
+#bt .portrait.m-log .term .ln .m{overflow:visible}
+#bt .portrait .term .hd span{font-size:10px}
+#bt .portrait .cmd{padding:2px 10px}
+#bt .portrait .cmd input{height:40px;font-size:16px}
+#bt .portrait.m-list .mpanel{display:flex;flex-direction:column;gap:6px;position:absolute;z-index:6;left:10px;right:10px;top:66px;bottom:178px;overflow-y:auto;padding:8px;
+  border-radius:14px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(14,11,12,.9),rgba(10,8,9,.95));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#bt .mrow{display:grid;grid-template-columns:1fr;gap:2px;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--c) 30%,transparent);
+  background:color-mix(in srgb,var(--c) 6%,transparent);color:var(--text);cursor:pointer;font-family:inherit}
+#bt .mrow .mn{display:flex;align-items:center;gap:6px;font:700 10.5px var(--mono);letter-spacing:.12em;color:var(--c)}
+#bt .mrow .mn i{font-style:normal;font-size:10px;padding:0 5px;border-radius:999px;border:1px solid color-mix(in srgb,var(--c) 50%,transparent)}
+#bt .mrow b{font:600 17px 'Space Grotesk',sans-serif}
+#bt .mrow small{font:.68rem var(--mono);color:var(--muted);line-height:1.4}
+#bt .portrait .detail,#bt .portrait .shm,#bt .portrait .cine{bottom:178px}
+#bt .portrait .detail{z-index:7}
+
+#bt .bt-win:focus{outline:none}
+#bt .shm.busy img{opacity:.35;transition:opacity .2s}
+#bt .shm.busy .shk,#bt .shm.busy .shf{cursor:progress}
+/* BOBAI speaks: a glass bubble above his head, letters typed in (the living BOBAI, 2026-09-25) */
+#bt .say{position:absolute;z-index:4;max-width:min(300px,70vw);padding:10px 14px;border-radius:16px 16px 16px 4px;border:1px solid rgba(240,185,11,.35);
+  background:linear-gradient(180deg,rgba(28,22,20,.92),rgba(14,11,12,.92));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  color:#f3efe6;font:500 14px/1.4 'Space Grotesk',sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.45),0 0 24px rgba(240,185,11,.08);
+  opacity:0;transform:translateY(6px) scale(.97);transition:opacity .35s,transform .35s;pointer-events:none}
+#bt .say.on{opacity:1;transform:none}
+#bt .say:empty{display:none}
+#bt .portrait .say{font-size:13px;max-width:min(230px,62vw)}
+/* the face layer: blink and talk frames snap on over the pose (no fade) */
+#bt .fig img.face{opacity:0;transition:none}
+#bt .fig img.face.on{opacity:1}
+/* the clip layer: over the still, which stays underneath as the fallback frame */
+#bt .fig canvas.vid{position:absolute;left:0;right:0;bottom:0;top:auto;width:100%;height:110.1852%;opacity:0;transition:opacity .25s}
+#bt .fig canvas.vid.on{opacity:1}
+#bt .fig.moving img[data-p]{opacity:0!important}
+/* one figure, one flow (2026-09-26): clip and still share their first and last frame, so they swap in one frame —
+   a fade let both be half-transparent for a moment and he flickered */
+#bt .fig img[data-p]{transition:none}
+#bt .fig canvas.vid:not(.ghost){transition:none}
+/* all takes again (2026-09-28): a take that starts inside the move fades in over the standing still */
+#bt .fig canvas.vid.soft:not(.ghost){transition:opacity .4s}
+/* the big moments: film bars, the tier title, the bar of brains or flames (TG alert ladder) */
+#bt .moment{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;--c:#F0B90B}
+#bt .moment.go{opacity:1}
+#bt .moment .lb{position:absolute;left:0;right:0;height:0;background:#000;transition:height .6s cubic-bezier(.2,.8,.2,1)}
+#bt .moment .lb.t{top:0}#bt .moment .lb.b{bottom:0}
+/* no cinema bars (2026-09-28): they covered the terminal's header — the frame stays the same in every moment */
+#bt .moment .lb{display:none}
+#bt .moment .mc{position:absolute;left:50%;top:9%;transform:translateX(-50%);text-align:center;width:min(92%,760px)}
+#bt .moment .k{font:700 11px var(--mono);letter-spacing:.42em;color:#fff;opacity:0}
+#bt .moment .h{font:800 clamp(20px,2.6vw,36px)/1.15 var(--mono);letter-spacing:.1em;color:var(--c);margin-top:6px;opacity:0;
+  text-shadow:0 0 30px color-mix(in srgb,var(--c) 60%,transparent),0 0 90px color-mix(in srgb,var(--c) 35%,transparent)}
+#bt .moment .s{font:600 clamp(12px,1.2vw,15px) var(--mono);letter-spacing:.06em;color:#eceaf5;margin-top:10px;opacity:0}
+#bt .moment .bar{margin-top:12px;font-size:clamp(14px,1.5vw,20px);line-height:1.25;letter-spacing:1px;max-width:100%}
+#bt .moment .bar span,#bt .moment .bar b{display:inline-block;opacity:0;transform:translateY(8px) scale(.6)}
+#bt .moment .bar b{font:700 13px var(--mono);letter-spacing:.1em;color:var(--c)}
+#bt .moment.go .k{animation:bt-mIn .5s .05s both}
+#bt .moment.go .h{animation:bt-mTitle .9s .12s cubic-bezier(.2,.9,.2,1.2) both}
+#bt .moment.go .s{animation:bt-mIn .6s .45s both}
+#bt .moment.go .bar span,#bt .moment.go .bar b{animation:bt-mIcon .35s both}
+@keyframes bt-mIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes bt-mTitle{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:none}}
+@keyframes bt-mIcon{to{opacity:1;transform:none}}
+#bt .portrait .moment .mc{top:13%}
+#bt .portrait .moment .bar{font-size:13px}
+/* during a moment: the replay clock and his bubble step aside, the destinations dim */
+#bt .in-moment .say{opacity:0!important}
+#bt .in-moment #bt-labs{opacity:.35;transition:opacity .4s}
+#bt #bt-labs{transition:opacity .6s}
+/* the bar sits under him, not over his head */
+#bt .moment .bar{position:absolute;left:50%;bottom:17%;transform:translateX(-50%);margin:0;white-space:nowrap;text-align:center;
+  padding:8px 14px;border-radius:999px;background:rgba(8,6,7,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid color-mix(in srgb,var(--c) 35%,transparent)}
+#bt .portrait .moment .bar{bottom:calc(178px + 10px);font-size:12px;max-width:94%;overflow:hidden}
+/* the NFT card flies in beside him */
+#bt .moment .card{position:absolute;right:30%;top:30%;width:clamp(110px,12vw,170px);text-align:center;opacity:0;transform:translateY(24px) rotate(8deg) scale(.8)}
+#bt .moment .card img{width:100%;border-radius:12px;border:2px solid var(--c);box-shadow:0 0 40px color-mix(in srgb,var(--c) 50%,transparent)}
+#bt .moment .card b{display:block;margin-top:6px;font:700 11px var(--mono);letter-spacing:.3em;color:var(--c)}
+#bt .moment.go .card{animation:bt-mCard 1s .9s cubic-bezier(.2,.9,.2,1.1) both}
+@keyframes bt-mCard{to{opacity:1;transform:rotate(-4deg)}}
+#bt .portrait .moment .card{right:6%;top:24%;width:92px}
+/* film bars: a strong top bar, a thin bottom one that leaves the timeline readable */
+
+/* phone: the bubble above his head, tail down */
+#bt .say.top{border-radius:16px 16px 16px 16px;text-align:center}
+#bt .say.top::after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;transform:translateX(-50%) rotate(45deg);
+  background:rgba(14,11,12,.92);border-right:1px solid rgba(240,185,11,.35);border-bottom:1px solid rgba(240,185,11,.35)}
+/* the one-time hint that everything answers */
+#bt .hint{position:absolute;z-index:6;left:50%;bottom:130px;transform:translate(-50%,8px);padding:8px 14px;border-radius:999px;
+  background:rgba(14,11,12,.88);border:1px solid rgba(240,185,11,.45);color:#f3efe6;font:600 12px var(--mono);letter-spacing:.04em;
+  opacity:0;transition:opacity .5s,transform .5s;pointer-events:none;white-space:nowrap}
+#bt .hint.on{opacity:1;transform:translate(-50%,0)}
+#bt .portrait .hint{bottom:160px;font-size:11px;white-space:normal;text-align:center;max-width:86%}
+/* labels that answer: a quiet dot says so */
+#bt .lab.hot .n::after{content:"";display:inline-block;width:5px;height:5px;margin-left:6px;border-radius:50%;background:currentColor;opacity:.55;vertical-align:middle;animation:bt-dot 2.4s ease-in-out infinite}
+@keyframes bt-dot{50%{opacity:.15}}
+/* the DeFi agent's range, live: its band in CAKE/BNB and where the price stands */
+#bt .moment .meter{position:absolute;left:50%;bottom:17%;transform:translateX(-50%);width:min(420px,80%);padding:10px 14px 12px;border-radius:14px;
+  background:rgba(8,6,7,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid color-mix(in srgb,var(--c) 40%,transparent);display:none}
+#bt .moment.defi .meter:not([hidden]){display:block}
+#bt .moment.defi .bar{display:none}
+#bt .meter .mt,#bt .meter .ms{font:700 10px var(--mono);letter-spacing:.2em;color:var(--c);text-align:center}
+#bt .meter .ms{margin-top:8px;color:#eceaf5;letter-spacing:.12em}
+#bt .meter.out .ms{color:#fbbf24}
+#bt .meter .track{position:relative;height:14px;margin-top:9px;border-radius:999px;background:rgba(255,255,255,.06)}
+#bt .meter .rng{position:absolute;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 45%,transparent),color-mix(in srgb,var(--c) 80%,transparent),color-mix(in srgb,var(--c) 45%,transparent));
+  box-shadow:0 0 18px color-mix(in srgb,var(--c) 55%,transparent)}
+#bt .meter .px{position:absolute;top:-5px;width:3px;height:24px;margin-left:-1.5px;border-radius:2px;background:#fff;box-shadow:0 0 10px #fff}
+#bt .moment.go .meter .rng{animation:bt-mRng 1.2s .5s both}
+@keyframes bt-mRng{from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0 0 0 0)}}
+#bt .portrait .moment .meter{bottom:calc(178px + 10px)}
+/* his line in a scene stays visible while the rest of the talk steps aside */
+#bt .in-moment .say.scene{opacity:1!important}
+/* title and end cards of the replay: centred, no bar, a slower landing */
+#bt .moment.story .mc{top:34%}
+#bt .moment.story .h{font-size:clamp(22px,3vw,40px)}
+#bt .moment.story .s{font-size:clamp(12px,1.3vw,16px);color:#f3efe6;letter-spacing:.08em;line-height:1.6}
+#bt .moment.story .bar,#bt .moment.story .card,#bt .moment.story .meter{display:none!important}
+#bt .story-on .fig{opacity:.3!important;transition:opacity .6s}
+#bt .fig{transition:opacity .6s}
+#bt .portrait .moment.story .mc{top:30%}
+/* phone: the scene's words sit on glass above the bar, below him — never over his face */
+#bt .portrait .moment .mc{top:auto;bottom:calc(178px + 64px);width:calc(100% - 24px);padding:12px 14px 14px;border-radius:16px;
+  background:rgba(8,6,7,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid color-mix(in srgb,var(--c) 30%,transparent)}
+#bt .portrait .moment .k{font-size:9.5px;letter-spacing:.28em}
+#bt .portrait .moment .h{font-size:20px}
+#bt .portrait .moment .s{font-size:11.5px;line-height:1.45;margin-top:8px}
+#bt .portrait .moment.defi .mc{bottom:calc(178px + 96px)}
+#bt .portrait .moment.story .mc{top:auto;bottom:calc(178px + 40px)}
+#bt .portrait .moment.story .h{font-size:22px}
+#bt .portrait .moment .card{top:18%;right:4%;width:84px}
+/* speech bubbles that look like speech bubbles: cream, round, a tail to his mouth, a soft pop (2026-09-25) */
+#bt .say{background:#fff7e6;color:#1d1512;border:2px solid #1d1512;border-radius:20px;padding:10px 16px 11px;
+  font:600 14.5px/1.35 'Space Grotesk',sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 4px rgba(240,185,11,.18);
+  backdrop-filter:none;-webkit-backdrop-filter:none;transform-origin:0% 100%;transform:scale(.6) translateY(10px);opacity:0;
+  transition:opacity .25s ease,transform .45s cubic-bezier(.2,1.6,.4,1)}
+#bt .say.on{opacity:1;transform:none}
+#bt .say::before{content:"";position:absolute;left:-12px;bottom:10px;width:0;height:0;border-style:solid;border-width:8px 14px 8px 0;border-color:transparent #1d1512 transparent transparent}
+#bt .say::after{content:"";position:absolute;left:-8px;bottom:12px;width:0;height:0;border-style:solid;border-width:6px 10px 6px 0;border-color:transparent #fff7e6 transparent transparent}
+#bt .say.top{transform-origin:50% 100%;border-radius:20px;text-align:center}
+#bt .say.top::before{left:50%;bottom:-14px;margin-left:-9px;border-width:14px 9px 0 9px;border-color:#1d1512 transparent transparent transparent;transform:none;background:none;width:0;height:0}
+#bt .say.top::after{left:50%;bottom:-9px;margin-left:-6px;border-width:10px 6px 0 6px;border-color:#fff7e6 transparent transparent transparent;transform:none;background:none;width:0;height:0}
+#bt .portrait .say{font-size:13.5px}
+/* phone: while he speaks, the bubble takes the title row and points down at his head (2026-09-25) */
+#bt .portrait .ttl,#bt .portrait .live{transition:opacity .25s}
+#bt .portrait.talking .ttl,#bt .portrait.talking .live{opacity:0}
+#bt .say.top::before{left:var(--tail,50%)}
+#bt .say.top::after{left:var(--tail,50%)}
+#bt .portrait .say.tight{font-size:12px;padding:8px 12px 9px}
+/* ---- BOBAI's flipchart (2026-09-25): a glass board on two legs beside him; he writes each figure with a pen of
+   light, then draws one chart. It replaces the sentence under the title and the bubble on top of it. ---- */
+#bt .moment .s{display:none}
+#bt .flip{position:absolute;z-index:6;padding:13px 16px 15px;border-radius:14px;text-align:left;
+  /* glass of light, like the brain: no black slab, only a whisper of tint, a grid of dots and a glowing edge */
+  background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--c) 9%,transparent),transparent 70%),
+    radial-gradient(circle,rgba(255,236,200,.07) .8px,transparent 1.2px) 0 0/11px 11px,rgba(10,8,9,.16);
+  border:1px solid color-mix(in srgb,var(--c) 38%,transparent);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);
+  box-shadow:0 0 26px color-mix(in srgb,var(--c) 16%,transparent),inset 0 0 22px color-mix(in srgb,var(--c) 7%,transparent);opacity:0;transform:translateY(14px) scale(.97)}
+#bt .flip[hidden]{display:none}
+#bt .moment.go .flip{animation:bt-flipIn .6s .2s cubic-bezier(.2,.9,.3,1) both}
+@keyframes bt-flipIn{to{opacity:1;transform:none}}
+#bt .flip .fl-h{font:700 10px var(--mono);letter-spacing:.3em;color:var(--c);padding-bottom:9px;margin-bottom:4px;border-bottom:1px dashed rgba(255,255,255,.13)}
+#bt .flip .fl-leg{position:absolute;bottom:-30px;width:1px;height:30px;background:linear-gradient(color-mix(in srgb,var(--c) 70%,transparent),transparent);box-shadow:0 0 6px var(--c)}
+#bt .flip .fl-leg.l{left:24%;transform:rotate(9deg)}#bt .flip .fl-leg.r{right:24%;transform:rotate(-9deg)}
+#bt .flip .fl-r{position:relative;padding:6px 0}
+#bt .flip .fl-i{display:flex;align-items:baseline;justify-content:space-between;gap:14px;clip-path:inset(-6px 100% -6px 0)}
+#bt .moment.go .flip .fl-i{animation:bt-write .55s var(--at,.6s) linear forwards}
+@keyframes bt-write{to{clip-path:inset(-6px 0 -6px 0)}}
+#bt .flip .fl-p{position:absolute;top:55%;left:0;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;opacity:0;
+  box-shadow:0 0 8px #fff,0 0 18px var(--fc,var(--c))}
+#bt .moment.go .flip .fl-p{animation:bt-pen .55s var(--at,.6s) linear both}
+@keyframes bt-pen{0%{left:0;opacity:1}88%{opacity:1}100%{left:100%;opacity:0}}
+#bt .flip .fl-r span{font:600 10px var(--mono);letter-spacing:.14em;color:var(--muted);white-space:nowrap}
+#bt .flip .fl-r b{font:700 21px/1.1 'Space Grotesk',sans-serif;color:var(--fc,#f3efe6);font-variant-numeric:tabular-nums;white-space:nowrap;
+  text-shadow:0 0 18px color-mix(in srgb,var(--fc,#ffffff) 30%,transparent)}
+#bt .flip .fl-s{display:flex;height:10px;margin-top:12px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.06);clip-path:inset(0 100% 0 0)}
+#bt .moment.go .flip .fl-s{animation:bt-write .8s var(--at,.6s) cubic-bezier(.4,0,.2,1) forwards}
+#bt .flip .fl-s i{height:100%;background:var(--sc);box-shadow:inset -2px 0 0 rgba(0,0,0,.5)}
+#bt .flip .fl-k{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:9px;font:600 9px var(--mono);letter-spacing:.1em;color:var(--muted);opacity:0}
+#bt .moment.go .flip .fl-k{animation:bt-mIn .5s var(--at,.6s) both}
+#bt .flip .fl-k span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--sc);margin-right:5px}
+#bt .flip .meter{position:static;transform:none;width:auto;margin:12px 0 0;padding:0;border:0;background:none;box-shadow:none;display:block;opacity:0}
+#bt .flip .meter[hidden]{display:none}
+#bt .moment.go .flip .meter{animation:bt-mIn .6s var(--at,.6s) both}
+/* the replay's closing score stands centred under the title */
+#bt .moment.story .flip{left:0!important;right:0;top:auto!important;bottom:18%;width:min(360px,80%)!important;margin:0 auto}
+#bt .moment.story .flip .fl-leg{display:none}
+/* phone: the board is the lower half of the scene card above the tabs */
+#bt .portrait .flip{position:relative;left:auto;top:auto;width:auto;margin-top:10px;padding:9px 12px 11px;box-shadow:none;background:radial-gradient(circle,rgba(255,236,200,.06) .8px,transparent 1.2px) 0 0/11px 11px,rgba(255,255,255,.02)}
+#bt .portrait .flip .fl-leg{display:none}
+#bt .portrait .flip .fl-r{padding:3px 0}
+#bt .portrait .flip .fl-r b{font-size:16px}
+#bt .portrait .flip .fl-h{padding-bottom:6px}
+#bt .portrait .moment.defi .mc{bottom:calc(178px + 64px)}
+#bt .portrait .moment.story .flip{position:relative;bottom:auto;width:auto!important;margin-top:10px}
+/* ---- BOBAI's chart (2026-09-26): candles of the pool, faint behind him and the brain; a scene dims it further ---- */
+#bt .chart{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:.78;transition:opacity 1.2s}
+#bt .in-moment .chart,#bt .has-detail .chart{opacity:.2}
+#bt .portrait .chart{opacity:.4;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+/* the board's diagrams (2026-09-26): a ring drawn arc by arc with its key, and a mini chart of the moment */
+#bt .flip .fl-r b{text-shadow:0 0 14px color-mix(in srgb,var(--fc,#F0B90B) 45%,transparent)}
+#bt .flip .fl-d{display:flex;align-items:center;gap:12px;margin-top:10px}
+#bt .flip .fl-d svg{flex:0 0 68px;width:68px;height:68px;transform:rotate(-90deg);overflow:visible}
+#bt .flip .fl-d svg text{transform:rotate(90deg);transform-origin:34px 34px;font:700 9px var(--mono);letter-spacing:.08em;fill:#f3efe6}
+#bt .flip .fl-d circle{fill:none;stroke-width:7;stroke:var(--sc);filter:drop-shadow(0 0 3px var(--sc))}
+#bt .flip .fl-d circle.fl-bg{stroke:rgba(255,255,255,.06);filter:none}
+#bt .moment.go .flip .fl-d circle:not(.fl-bg){animation:bt-arc .7s var(--at,.6s) cubic-bezier(.4,0,.2,1) forwards}
+@keyframes bt-arc{to{stroke-dasharray:var(--len) var(--c0)}}
+#bt .flip .fl-d .fl-k{flex:1;display:grid;grid-template-columns:1fr;gap:3px;margin:0}
+#bt .flip .fl-d .fl-k span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+#bt .flip .fl-d .fl-k span::before{display:none}
+#bt .flip .fl-d .fl-k em{width:7px;height:7px;border-radius:50%;background:var(--sc);box-shadow:0 0 6px var(--sc)}
+#bt .flip .fl-d .fl-k b{margin-left:auto;color:#f3efe6;font-weight:700}
+#bt .flip .fl-c{display:block;width:100%;height:62px;margin-top:10px;opacity:0;border-top:1px dashed rgba(255,255,255,.1);padding-top:4px}
+#bt .moment.go .flip .fl-c{animation:bt-mIn .6s var(--at,.6s) both}
+/* the NFT card of a drop, in its row on the board (2026-09-28) */
+#bt .flip .fl-i .fl-n{align-self:center;height:64px;width:auto;margin-left:-6px;border-radius:6px;border:1px solid var(--c);box-shadow:0 0 16px color-mix(in srgb,var(--c) 40%,transparent)}
+#bt .portrait .flip .fl-i .fl-n{height:46px}
+#bt .portrait .flip .fl-d svg{flex-basis:54px;width:54px;height:54px}
+#bt .portrait .flip .fl-d{margin-top:6px}
+#bt .portrait .flip .fl-c{height:46px;margin-top:6px}
+/* ---- the detail is a board too (2026-09-26): the same glass of light as the flipchart, figures glow, one diagram ---- */
+#bt .detail{background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--c,#F0B90B) 9%,transparent),transparent 70%),
+    radial-gradient(circle,rgba(255,236,200,.07) .8px,transparent 1.2px) 0 0/11px 11px,rgba(10,8,9,.34);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);border-color:color-mix(in srgb,var(--c,#F0B90B) 38%,transparent);
+  box-shadow:0 0 26px color-mix(in srgb,var(--c,#F0B90B) 16%,transparent),inset 0 0 22px color-mix(in srgb,var(--c,#F0B90B) 7%,transparent)}
+#bt .detail .dr div{border-bottom:1px dashed rgba(255,255,255,.07)}
+#bt .detail .dr b{text-shadow:0 0 12px color-mix(in srgb,var(--c,#F0B90B) 40%,transparent)}
+#bt .detail .dv{margin:10px 0 8px}
+#bt .db-c{font:700 9px var(--mono);letter-spacing:.2em;color:var(--c,#F0B90B);margin-bottom:7px}
+#bt .db-b{display:flex;align-items:flex-end;gap:3px;height:58px;padding-bottom:1px;border-bottom:1px solid rgba(255,255,255,.1)}
+#bt .db-b i{flex:1;height:var(--h);border-radius:2px 2px 0 0;background:linear-gradient(var(--c,#F0B90B),color-mix(in srgb,var(--c,#F0B90B) 35%,transparent));
+  box-shadow:0 0 8px color-mix(in srgb,var(--c,#F0B90B) 45%,transparent);transform-origin:bottom}
+#bt .db-b i.z{background:rgba(255,255,255,.12);box-shadow:none}
+#bt .db-b i:last-child{background:linear-gradient(#fff,var(--c,#F0B90B))}
+#bt .detail.draw .db-b i{animation:bt-grow .5s calc(.15s + var(--i) * .04s) cubic-bezier(.2,.9,.3,1) both}
+@keyframes bt-grow{from{transform:scaleY(0)}}
+#bt .db-x{display:flex;justify-content:space-between;margin-top:5px;font:600 8.5px var(--mono);letter-spacing:.12em;color:var(--muted)}
+#bt .db-x b{color:#f3efe6}
+#bt .dh-r{display:grid;grid-template-columns:78px 1fr 44px;align-items:center;gap:8px;padding:3px 0;font:600 9px var(--mono);letter-spacing:.1em;color:var(--muted)}
+#bt .dh-r i{height:7px;width:var(--w);min-width:2px;border-radius:9px;background:var(--c);box-shadow:0 0 8px var(--c);transform-origin:left}
+#bt .dh-r b{text-align:right;color:#f3efe6}
+#bt .detail.draw .dh-r i{animation:bt-growX .6s calc(.15s + var(--i) * .1s) cubic-bezier(.2,.9,.3,1) both}
+@keyframes bt-growX{from{transform:scaleX(0)}}
+#bt .detail .fl-d{display:flex;align-items:center;gap:12px}
+#bt .detail .fl-d svg{flex:0 0 68px;width:68px;height:68px;transform:rotate(-90deg)}
+#bt .detail .fl-d svg text{transform:rotate(90deg);transform-origin:34px 34px;font:700 11px var(--mono);fill:#f3efe6}
+#bt .detail .fl-d circle{fill:none;stroke-width:7;stroke:var(--sc);filter:drop-shadow(0 0 3px var(--sc))}
+#bt .detail .fl-d circle.fl-bg{stroke:rgba(255,255,255,.06);filter:none}
+#bt .detail.draw .fl-d circle:not(.fl-bg){animation:bt-arcD .8s calc(.15s + var(--i) * .25s) cubic-bezier(.4,0,.2,1) both}
+@keyframes bt-arcD{from{stroke-dasharray:0 var(--c0)}}
+#bt .detail .fl-k{flex:1;display:grid;gap:4px;font:600 9px var(--mono);letter-spacing:.1em;color:var(--muted)}
+#bt .detail .fl-k span{display:flex;align-items:center;gap:6px}
+#bt .detail .fl-k em{width:7px;height:7px;border-radius:50%;background:var(--sc);box-shadow:0 0 6px var(--sc)}
+#bt .detail .fl-k b{margin-left:auto;color:#f3efe6}
+#bt .dm{position:relative;height:14px;border-radius:99px;background:rgba(255,255,255,.06);margin-top:4px}
+#bt .dm .rng{position:absolute;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 45%,transparent),color-mix(in srgb,var(--c) 85%,transparent),color-mix(in srgb,var(--c) 45%,transparent));box-shadow:0 0 12px color-mix(in srgb,var(--c) 45%,transparent)}
+#bt .dm i{position:absolute;top:-5px;width:3px;height:24px;margin-left:-1.5px;border-radius:2px;background:#fff;box-shadow:0 0 10px #fff}
+#bt .dm.out i{background:#fbbf24;box-shadow:0 0 10px #fbbf24}
+#bt .detail.draw .dm .rng{animation:bt-growX .8s .15s cubic-bezier(.2,.9,.3,1) both}
+#bt .detail .fl-c{display:block;width:100%;height:70px}
+/* a short phone (360x640, measured 2026-09-26): the scene card covered BOBAI whole. The board keeps its figures and
+   the ring, the mini chart steps out, the ring shrinks and its key runs in two columns */
+@media (max-height:760px){
+  #bt .portrait .flip .fl-c{display:none}
+  #bt .portrait .flip .fl-d svg{flex-basis:44px;width:44px;height:44px}
+  #bt .portrait .flip .fl-d .fl-k{grid-template-columns:1fr 1fr;column-gap:10px}
+  #bt .portrait .flip .fl-r b{font-size:14px}
+  #bt .portrait .flip .fl-r{padding:2px 0}
+  #bt .portrait .moment .h{font-size:18px}
+  #bt .portrait .moment .mc{padding:9px 12px 10px}
+}
+/* ---- the chart, full size (2026-09-26): glass like the brain, the chart first, BOBAI's marks under the candles ---- */
+#bt .portrait .mtabs{grid-template-columns:repeat(5,1fr)}
+#bt .chart-open{position:absolute;z-index:4;padding:5px 10px;border-radius:8px;border:1px solid rgba(240,185,11,.35);background:rgba(11,9,10,.5);
+  color:var(--gold);font:700 9px var(--mono);letter-spacing:.18em;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .6s,background .2s}
+#bt .chart-open.show{opacity:.85;pointer-events:auto}
+#bt .chart-open:hover{background:rgba(240,185,11,.14);opacity:1}
+#bt .cx-on .chart-open{opacity:0;pointer-events:none}
+#bt .chartx{position:absolute;z-index:8;left:16px;right:16px;top:64px;bottom:124px;display:none;flex-direction:column;gap:10px;padding:14px 16px 12px;border-radius:18px;
+  border:1px solid rgba(240,185,11,.28);
+  background:radial-gradient(120% 80% at 30% 0%,rgba(240,185,11,.07),transparent 60%),radial-gradient(circle,rgba(255,236,200,.05) .8px,transparent 1.2px) 0 0/12px 12px,rgba(9,7,8,.72);
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 0 50px rgba(240,185,11,.1),inset 0 0 40px rgba(240,185,11,.04)}
+#bt .chartx.on{display:flex;animation:bt-cxIn .45s cubic-bezier(.2,.9,.3,1) both}
+@keyframes bt-cxIn{from{opacity:0;transform:translateY(12px) scale(.985)}}
+#bt .cx-h{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+#bt .cx-t b{font:800 20px 'Space Grotesk',sans-serif;color:var(--gold)}
+#bt .cx-t span{margin-left:8px;font:700 9px var(--mono);letter-spacing:.18em;color:var(--muted)}
+#bt .cx-p{display:flex;align-items:baseline;gap:10px}
+#bt .cx-p b{font:800 26px 'Space Grotesk',sans-serif;color:#f3efe6;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(240,185,11,.3)}
+#bt .cx-p i{font:700 12px var(--mono);font-style:normal}
+#bt .cx-tf{margin-left:auto;display:flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+#bt .cx-tf button{padding:6px 12px;border:0;background:transparent;color:var(--muted);font:700 10px var(--mono);letter-spacing:.14em;cursor:pointer}
+#bt .cx-tf button.on{background:var(--gold);color:#0b090a}
+#bt .cx-x{width:32px;height:32px;border-radius:9px;border:1px solid var(--line2);background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
+#bt .cx-s{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+#bt .cx-s div{padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
+#bt .cx-s span{display:block;font:700 8.5px var(--mono);letter-spacing:.16em;color:var(--muted)}
+#bt .cx-s b{display:block;margin-top:3px;font:700 14px 'Space Grotesk',sans-serif;color:#f3efe6;font-variant-numeric:tabular-nums;white-space:nowrap}
+#bt .cx-s i{font-style:normal}
+#bt .cx-c{position:relative;flex:1;min-height:0}
+#bt .cx-c canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:pan-y}
+#bt .cx-o{position:absolute;left:10px;top:8px;max-width:calc(100% - 100px);padding:7px 10px;border-radius:9px;background:rgba(11,9,10,.82);border:1px solid var(--line2);
+  font:600 10.5px var(--mono);color:#dcd8ea;pointer-events:none;opacity:0;transition:opacity .15s}
+#bt .cx-o.on{opacity:1}
+#bt .cx-o b{color:var(--gold);margin-right:6px}#bt .cx-o i{font-style:normal}#bt .cx-o div{margin-top:3px}
+#bt .cx-k{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font:700 8.5px var(--mono);letter-spacing:.12em;color:var(--muted)}
+#bt .cx-k span{color:var(--k)}
+#bt .cx-k em{margin-left:auto;font:600 11px var(--mono);letter-spacing:0;font-style:normal;color:#e8e3d4}
+#bt .cx-on .chart{opacity:0}
+/* phone: the chart is its own tab, between the scene's header and the tabs */
+#bt .portrait .chartx{left:8px;right:8px;top:62px;bottom:176px;padding:10px 10px 8px;gap:7px}
+#bt .portrait .cx-t span{display:none}
+#bt .portrait .cx-p b{font-size:20px}
+#bt .portrait .cx-x{width:30px;height:30px;margin-left:6px}
+#bt .portrait .cx-h{gap:10px}
+#bt .portrait .cx-s{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+#bt .portrait .cx-s div{padding:5px 7px;min-width:0}
+#bt .portrait .cx-s span{font-size:7.5px;letter-spacing:.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bt .portrait .cx-s b{font-size:12px;overflow:hidden;text-overflow:ellipsis}
+#bt .portrait .cx-s .cx-rg b{white-space:normal;font-size:11px;line-height:1.2}
+/* phone: the chart tab is the chart alone — the timeline below it showed the same candles a second time; the tabs
+   move down to the bottom edge and the chart takes the room */
+#bt .portrait.cx-on .tl{display:none}
+#bt .portrait.cx-on .mtabs{bottom:0}
+#bt .portrait.cx-on .hud .ttl,#bt .portrait.cx-on .hud .live{visibility:hidden}
+#bt .portrait .chartx{bottom:50px}
+#bt .portrait .cx-k em{margin-left:0;flex-basis:100%}
+#bt .portrait.cx-on .fig,#bt .portrait.cx-on #bt-labs,#bt .portrait.cx-on .say{visibility:hidden}
+/* 2026-09-26: the timeline is the chart; the small one behind BOBAI is gone, its OPEN button sits on the timeline */
+#bt .chart{display:none}
+/* 2026-09-26 (operator: "a bit larger, and in the middle"): centred over the timeline's candles (the canvas ends where
+   the 1H..7D and REPLAY buttons begin, about 190 px from the right), riding on its top edge */
+#bt .chart-open{z-index:6;left:calc(50% - 95px)!important;right:auto;top:auto!important;bottom:92px;transform:translateX(-50%);opacity:.95;pointer-events:auto;
+  padding:8px 20px;font-size:11px;letter-spacing:.2em;border-color:rgba(240,185,11,.6);background:rgba(11,9,10,.82);box-shadow:0 0 22px rgba(240,185,11,.18)}
+#bt .chart-open:hover{background:rgba(240,185,11,.18);box-shadow:0 0 30px rgba(240,185,11,.3)}
+#bt .portrait .chart-open{display:none}
+/* ---- EMBEDDED (2026-09-26): the new page's centre window. No backdrop, no close button, it fills its frame ---- */
+#bt.embed{position:absolute;inset:0;z-index:1;display:flex;padding:0}
+#bt.embed .bt-back,#bt.embed .hud .x{display:none}
+#bt.embed .bt-win{width:100%;height:100%;border-radius:inherit;border:0;box-shadow:none}
+/* the market's weather (2026-09-26): a breath of colour over the scene, faded over seconds */
+#bt .mood{position:absolute;inset:0;z-index:1;pointer-events:none;background-color:transparent;transition:background-color 6s ease;
+  -webkit-mask-image:radial-gradient(70% 60% at 45% 50%,#000,transparent 75%);mask-image:radial-gradient(70% 60% at 45% 50%,#000,transparent 75%)}
+/* embedded in the Brain page: the split line is window 02's job, and the chart view's head keeps to one row */
+#bt.embed .phase{display:none}
+#bt.embed .cx-t span{display:none}
+/* phone (2026-09-26, operator: "the destinations a bit smaller, so BOBAI can be larger") */
+#bt .portrait .dest .n{font-size:8.5px;gap:2px}
+#bt .portrait .dest .pc{font-size:8.5px;padding:0 2px}
+#bt .portrait .dest .v{font-size:10.5px}
+#bt .portrait .core .n{font-size:8.5px}
+#bt .portrait .core .v{font-size:12px}
+/* PHONE SCENES (2026-09-26, operator: "in the replay the card covers BOBAI — the six destinations can go meanwhile"):
+   while a scene plays, the destinations and the buyback label step aside and the scene card takes their place right
+   above the tabs; BOBAI stays free above it. They come back when the scene ends. */
+#bt .portrait.in-moment #bt-labs .dest,#bt .portrait.in-moment #bt-labs .core{opacity:0!important;transition:opacity .4s}
+#bt .portrait .moment .mc,#bt .portrait .moment.defi .mc,#bt .portrait .moment.story .mc{bottom:calc(178px + 8px)!important}
+#bt .portrait .moment .bar{display:none}
+#bt .portrait .flip .fl-c{display:none} /* the phone's timeline right below already shows the candles */
+/* ---- PHONE BOARD (2026-09-26, operator: "in the replay BOBAI is hard to see — make the board as transparent as on
+   the desktop, and smaller"): no dark slab any more, the desktop's glass of light; title smaller, the figures in two
+   columns, the ring smaller — the card is about half as tall and BOBAI stands free above it ---- */
+#bt .portrait .moment .mc{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--c) 8%,transparent),transparent 70%),
+    radial-gradient(circle,rgba(255,236,200,.06) .8px,transparent 1.2px) 0 0/11px 11px,rgba(10,8,9,.14);
+  backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);border:1px solid color-mix(in srgb,var(--c) 34%,transparent);
+  box-shadow:0 0 22px color-mix(in srgb,var(--c) 14%,transparent);padding:8px 11px 9px!important;width:calc(100% - 28px)}
+#bt .portrait .moment .k{font-size:8px;letter-spacing:.22em;text-shadow:0 1px 6px #000}
+#bt .portrait .moment .h{font-size:17px!important;margin-top:3px;text-shadow:0 0 14px color-mix(in srgb,var(--c) 45%,transparent),0 2px 10px #000}
+#bt .portrait .flip{background:none!important;border:0;box-shadow:none;padding:4px 2px 0!important;margin-top:6px}
+#bt .portrait .flip .fl-h{font-size:8px;padding-bottom:4px;margin-bottom:2px}
+#bt .portrait .flip .fl-b{display:grid;grid-template-columns:1fr 1fr;column-gap:14px}
+#bt .portrait .flip .fl-b>.fl-d,#bt .portrait .flip .fl-b>.meter,#bt .portrait .flip .fl-b>.fl-s,#bt .portrait .flip .fl-b>canvas{grid-column:1/-1}
+#bt .portrait .flip .fl-r{padding:2px 0}
+#bt .portrait .flip .fl-i{flex-direction:column;align-items:flex-start;gap:0}
+#bt .portrait .flip .fl-r span{font-size:7.5px;letter-spacing:.12em}
+#bt .portrait .flip .fl-r b{font-size:14px!important;text-shadow:0 1px 8px #000}
+#bt .portrait .flip .fl-d{margin-top:5px;gap:10px}
+#bt .portrait .flip .fl-d svg{flex-basis:46px!important;width:46px!important;height:46px!important}
+#bt .portrait .flip .fl-d .fl-k{display:grid;grid-template-columns:1fr 1fr;column-gap:10px;row-gap:1px;margin-top:0;font-size:7.5px}
+#bt .portrait .flip .meter{margin-top:6px}
+/* a board you tapped stays; a thin line says how to let it go */
+#bt .moment.go .mc,#bt .moment.go .flip{pointer-events:auto;cursor:pointer}
+#bt .moment.held .mc::after,#bt .moment.held:not(:has(.mc .flip)) .flip::after{content:"HELD · TAP TO CLOSE";display:block;margin-top:6px;text-align:center;font:700 8px var(--mono);letter-spacing:.24em;color:var(--c);opacity:.8}
+#bt .moment.held .mc{border-color:color-mix(in srgb,var(--c) 60%,transparent)}
+/* MOMENTS: the button in the head, the list over the scene */
+#bt .scn{height:36px;padding:0 12px;border-radius:11px;border:1px solid var(--line2);background:rgba(11,9,10,.45);color:var(--gold2);cursor:pointer;
+  font:700 .62rem var(--mono);letter-spacing:.14em;display:flex;align-items:center;gap:8px;margin-left:auto}
+#bt .scn b{min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:rgba(240,185,11,.16);color:var(--gold);font:800 10px var(--mono);display:grid;place-items:center}
+#bt .scn:hover,#bt .scn[aria-expanded="true"]{background:rgba(240,185,11,.14)}
+#bt .hud .scn + .shr{margin-left:0}
+#bt .scnl{position:absolute;z-index:9;right:16px;top:64px;width:min(360px,calc(100% - 32px));max-height:min(62%,520px);display:none;flex-direction:column;border-radius:16px;
+  border:1px solid rgba(240,185,11,.3);background:radial-gradient(120% 60% at 30% 0%,rgba(240,185,11,.07),transparent 60%),radial-gradient(circle,rgba(255,236,200,.05) .8px,transparent 1.2px) 0 0/12px 12px,rgba(9,7,8,.8);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 0 40px rgba(240,185,11,.12)}
+#bt .scnl.on{display:flex;animation:bt-cxIn .35s cubic-bezier(.2,.9,.3,1) both}
+#bt .scn-h{display:flex;align-items:baseline;gap:10px;padding:12px 12px 8px 14px;border-bottom:1px dashed rgba(255,255,255,.1)}
+#bt .scn-h b{font:800 11px var(--mono);letter-spacing:.2em;color:var(--gold)}
+#bt .scn-h span{font:600 9px var(--mono);letter-spacing:.06em;color:var(--muted)}
+#bt .scn-x{margin-left:auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);background:transparent;color:var(--muted);font-size:16px;cursor:pointer;align-self:center}
+#bt .scn-0{margin:14px;font:600 11px var(--mono);color:var(--muted)}
+#bt .scn-b{overflow-y:auto;padding:6px;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}
+#bt .scn-b button{display:grid;grid-template-columns:10px auto 1fr auto;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:10px;background:transparent;color:#e8e3d4;cursor:pointer;text-align:left}
+#bt .scn-b button:hover{background:color-mix(in srgb,var(--c) 10%,transparent)}
+#bt .scn-b i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+#bt .scn-b em{font:800 9px var(--mono);letter-spacing:.14em;font-style:normal;color:var(--c);white-space:nowrap}
+#bt .scn-b b{font:700 13px 'Space Grotesk',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bt .scn-b small{font:600 9.5px var(--mono);color:var(--muted);white-space:nowrap}
+#bt .in-moment .scnl{display:none}
+/* phone: a square button under the share button, the list across the scene */
+#bt .portrait .scn{position:absolute;right:12px;top:58px;height:32px;padding:0 9px;margin:0;font-size:.52rem;letter-spacing:.1em}
+#bt .portrait .scnl{left:8px;right:8px;top:100px;width:auto;max-height:calc(100% - 100px - 190px)}
+#bt .portrait .scn-h span{display:none}
+#bt .portrait.cx-on .scn{visibility:hidden}
+#bt .scn,#bt .shr{white-space:nowrap}
+#bt .scn-h b{white-space:nowrap}
+#bt .portrait .hud .scn + .shr{margin-left:auto}
+/* THE LABELS NAME, THE PAGE COUNTS (operator, 2026-09-27: "take the white numbers out — the page shows them cleanly,
+   and the terminal gets more room and a nicer view"): each destination keeps its name and its share of the tax;
+   its figures are one tap away on its board and in the windows around the terminal. */
+#bt .dest .v,#bt .dest .s{display:none}
+
+/* THE NFT STICKER (2026-09-28): on the window's top-left corner, over the frame, slapped on like a sticker */
+#bt .bt-stk{position:absolute;z-index:8;left:-40px;top:-48px;width:100px;pointer-events:none;transform-origin:30% 30%}
+#bt .bt-stk .st-c{position:relative;border-radius:8px;overflow:hidden;border:2px solid #fff;background:#15121c;aspect-ratio:3/4;
+  box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 34px color-mix(in srgb,#a78bfa 55%,transparent)}
+#bt .bt-stk img{display:block;width:100%;height:100%;object-fit:cover}
+#bt .bt-stk .st-w{display:none;position:absolute;inset:0;align-items:center;justify-content:center;font:800 8px var(--mono);letter-spacing:.14em;color:#e9e3ff;font-style:normal;
+  background:linear-gradient(115deg,#221a36 20%,#4b3a7a 40%,#221a36 60%);background-size:250% 100%;animation:bt-stkShim 1.6s linear infinite}
+#bt .bt-stk.wait img{visibility:hidden}
+#bt .bt-stk.wait .st-w{display:flex}
+#bt .bt-stk b{display:block;margin:4px auto 0;width:max-content;padding:2px 6px;border-radius:999px;background:#a78bfa;color:#120e1c;font:800 7.5px var(--mono);letter-spacing:.14em;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+#bt .bt-stk.go{animation:bt-stkIn .55s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes bt-stkIn{0%{opacity:0;transform:rotate(-24deg) scale(1.7)}70%{opacity:1;transform:rotate(-6deg) scale(.95)}100%{opacity:1;transform:rotate(-8deg) scale(1)}}
+@keyframes bt-stkShim{to{background-position:-250% 0}}
+#bt .bt-stk.pt{width:66px;left:auto;right:-8px;top:-30px}
+#bt .bt-stk.pt b{display:none}
+/* the buy board a size bigger on a wide screen (operator, 2026-09-28) */
+#bt .bt-win:not(.portrait) .moment:not(.story):not(.defi) .flip{zoom:1.12}
+@media (prefers-reduced-motion:reduce){#bt .bt-stk.go{animation:none;transform:rotate(-8deg)}#bt .bt-stk .st-w{animation:none}}
+
+/* the buyback ring shows how full it is: the tax line under its label goes (operator, 2026-09-28); the MONEY tab still reads it */
+#bt .lab.core .s:not(.cd){display:none}
+
+/* the trades label: one line on a wide screen, two on a phone (TRADES / 3% TAX) under its dot (2026-09-28) */
+#bt .lab.src .sep{font-style:normal}
+#bt .portrait .lab.src{text-align:center}
+#bt .portrait .lab.src .sep{display:none}
+#bt .portrait .lab.src .n span{display:block;line-height:1.3}
+#bt .bt-win:not(.portrait) .lab.src .n span{display:inline}
+#bt .portrait .lab.src .n .sep{display:none}
+
+/* THE NFT CARD ON ITS OWN (2026-09-28): big, in the middle of the window, slapped on, then gone */
+#bt .bt-nft{position:absolute;z-index:9;left:50%;top:41%;transform:translate(-50%,-50%);pointer-events:none;text-align:center}
+#bt .bt-nft[hidden]{display:none}
+#bt .bt-nft .nc{width:clamp(170px,17vw,230px);aspect-ratio:3/4;border-radius:14px;overflow:hidden;border:3px solid #fff;margin:0 auto;background:#15121c;
+  box-shadow:0 18px 50px rgba(0,0,0,.65),0 0 60px color-mix(in srgb,#a78bfa 60%,transparent);transform:rotate(-4deg)}
+#bt .bt-nft img{display:block;width:100%;height:100%;object-fit:cover}
+#bt .bt-nft b{display:inline-block;margin-top:14px;padding:4px 12px;border-radius:999px;background:#a78bfa;color:#120e1c;font:800 11px var(--mono);letter-spacing:.24em}
+#bt .bt-nft span{display:block;width:max-content;max-width:92vw;margin:7px auto 0;padding:4px 10px;border-radius:8px;background:rgba(12,9,18,.82);font:700 12px var(--mono);letter-spacing:.1em;color:#e9e3ff;white-space:nowrap}
+#bt .bt-nft.go .nc{animation:bt-nftIn .7s cubic-bezier(.2,1.4,.4,1) both}
+#bt .bt-nft.go b,#bt .bt-nft.go span{animation:bt-mIn .5s .45s both}
+#bt .bt-nft.out{opacity:0;transition:opacity .6s}
+@keyframes bt-nftIn{0%{opacity:0;transform:rotate(-22deg) scale(1.9)}65%{opacity:1;transform:rotate(-2deg) scale(.96)}100%{opacity:1;transform:rotate(-4deg) scale(1)}}
+#bt .portrait .bt-nft{top:36%}
+#bt .portrait .bt-nft .nc{width:140px}
+@media (prefers-reduced-motion:reduce){#bt .bt-nft.go .nc{animation:none}}
+#bt .portrait .bt-nft span{font-size:10.5px}
+#bt .nft-on .lab.core{opacity:0!important;transition:opacity .3s} /* the card's own line, not over the buyback label */
+/* ---- HIS MOOD (2026-09-29): a chip under the title; the mood itself moves in his clips ---- */
+#bt .mdc{--mc:#e8c465;--mb:rgba(240,185,11,.35);display:flex;width:max-content;align-items:center;gap:7px;margin-top:9px;padding:3px 10px 3px 5px;border-radius:999px;
+  border:1px solid var(--mb);background:rgba(0,0,0,.4);color:var(--mc);font:700 .6rem var(--mono);letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
+  transition:color 2s ease,border-color 2s ease,box-shadow 2s ease;cursor:default}
+#bt .mdc[hidden]{display:none} /* hidden until his chart has loaded (readCombo); own rule, after the block */
+#bt .mdc[data-mood=up]{--mc:#35e07a;--mb:rgba(53,224,122,.4)}
+#bt .mdc[data-mood=pump]{--mc:#4dff94;--mb:rgba(53,224,122,.6);box-shadow:0 0 14px rgba(53,224,122,.25)}
+#bt .mdc[data-mood=down]{--mc:#ff7a90;--mb:rgba(255,77,109,.4)}
+#bt .mdc[data-mood=dump]{--mc:#ff5a76;--mb:rgba(255,77,109,.6);box-shadow:0 0 14px rgba(255,77,109,.25)}
+#bt .mdc .mi{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:color-mix(in srgb,var(--mc) 18%,transparent)}
+#bt .mdc .mi svg{transition:transform 1.4s cubic-bezier(.3,1.4,.5,1)}
+#bt .mdc .mk{color:var(--dim);font-weight:500}
+#bt .mdc .mp{color:var(--dim);font-weight:500;letter-spacing:.06em}
+#bt .mdc[data-mood=pump] .mi svg{transform:rotate(-90deg)}#bt .mdc[data-mood=up] .mi svg{transform:rotate(-45deg)}
+#bt .mdc[data-mood=down] .mi svg{transform:rotate(45deg)}#bt .mdc[data-mood=dump] .mi svg{transform:rotate(90deg)}
+#bt .mdc .mi{animation:bt-mflat 3.2s ease-in-out infinite}
+#bt .mdc[data-mood=up] .mi{animation:bt-mup 1.8s ease-in-out infinite}#bt .mdc[data-mood=pump] .mi{animation:bt-mup .9s ease-in-out infinite}
+#bt .mdc[data-mood=down] .mi{animation:bt-mdown 2.2s ease-in-out infinite}#bt .mdc[data-mood=dump] .mi{animation:bt-mdown 1.2s ease-in-out infinite}
+#bt .mdc.turn{animation:bt-mturn 1.1s cubic-bezier(.3,1.5,.5,1)}
+@keyframes bt-mflat{0%,100%{transform:translateX(-1px)}50%{transform:translateX(1.5px)}}
+@keyframes bt-mup{0%,100%{transform:translateY(1px)}50%{transform:translateY(-2.5px)}}
+@keyframes bt-mdown{0%,100%{transform:translateY(-1px)}50%{transform:translateY(2.5px)}}
+@keyframes bt-mturn{0%{transform:scale(1)}35%{transform:scale(1.14);box-shadow:0 0 22px var(--mb)}100%{transform:scale(1)}}
+/* phone and portrait windows: under the LIVE badge (MOMENTS and share sit top right), out of the way while his bubble takes the title row */
+#bt .portrait .mdc{position:absolute;left:12px;top:63px;margin:0;font-size:8.5px;padding:2px 8px 2px 4px;gap:5px;transition:opacity .4s ease,color 2s ease,border-color 2s ease}
+#bt .portrait .mdc .mk{display:none}
+#bt .portrait .mdc .mi{width:15px;height:15px}
+#bt .talking .mdc{opacity:.5;transition:opacity .25s ease} /* phone (operator 2026-09-30): while he speaks the mood chip and MOMENTS stay, half as visible, his bubble on top */
+#bt .in-moment .mdc{opacity:0;transition:none}
+#bt .portrait.talking .scn{opacity:.5;transition:opacity .25s ease}
+#bt .portrait .say.top{z-index:6}
+/* the chip lives inside the title row, which hides while he speaks: the row goes invisible, the chip alone stays at half */
+#bt .portrait.talking .ttl{opacity:1;visibility:hidden}
+#bt .portrait.talking .ttl .mdc{visibility:visible} /* above the HUD (z 5): the dimmed chip and MOMENTS lie under his line, never over it */
+#bt .portrait .scn{transition:opacity .4s ease} /* a scene of the chain has the stage: its title runs where the chip sits (2026-09-30) */
+@media (prefers-reduced-motion:reduce){#bt .mdc .mi,#bt .mdc.turn{animation:none!important}}
+/* loud hours glow and bounce quicker, quiet ones slow down and dim a little */
+#bt .mdc[data-act=loud]{box-shadow:0 0 14px var(--mb)}
+#bt .mdc[data-act=loud] .mi{animation-duration:.8s}
+#bt .mdc[data-act=quiet]{opacity:.82}
+#bt .mdc[data-act=quiet] .mi{animation-duration:5s}

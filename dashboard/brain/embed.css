@@ -1,0 +1,28 @@
+/* A subpage shown inside a window of the Brain page (2026-09-26, stage 3). The page keeps all its own code; here it
+   loses its own nav and footer (the window is the frame), lets the window's glass show through, and its cards turn
+   to the same glass as the terminal's chart view. Added only when the page is loaded with ?embed=1. */
+html.bp-embed,html.bp-embed body{background:transparent!important}
+html.bp-embed body{padding-top:0!important;margin-top:0!important;min-height:0!important}
+html.bp-embed body::before,html.bp-embed body::after{display:none!important}
+html.bp-embed nav,html.bp-embed footer,html.bp-embed .ft,html.bp-embed .foot{display:none!important}
+/* the space a fixed nav needed at the top */
+html.bp-embed main,html.bp-embed .wrap,html.bp-embed .page,html.bp-embed .sc-wrap,html.bp-embed .rg-wrap,html.bp-embed .sv-wrap{padding-top:14px!important;margin-top:0!important}
+html.bp-embed body > section:first-of-type,html.bp-embed body > div:first-of-type{margin-top:0!important}
+/* glass cards, gold figures: the chart view's look */
+html.bp-embed .card,html.bp-embed .cd,html.bp-embed .rg-card,html.bp-embed .sv-card,html.bp-embed .sc-card,html.bp-embed .panel,html.bp-embed .box,
+html.bp-embed [class$="-card"],html.bp-embed details{
+  background:rgba(255,255,255,.025)!important;border-color:rgba(255,255,255,.07)!important;backdrop-filter:none!important;box-shadow:none!important}
+html.bp-embed h1,html.bp-embed h2{font-family:'Space Grotesk',sans-serif}
+html.bp-embed h1 em,html.bp-embed h2 em{color:#F0B90B}
+html.bp-embed th{color:#F0B90B!important;letter-spacing:.14em}
+html.bp-embed table{font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,monospace}
+html.bp-embed ::-webkit-scrollbar{width:8px;height:8px}
+html.bp-embed ::-webkit-scrollbar-thumb{background:rgba(240,185,11,.25);border-radius:8px}
+/* the page's own block frame: the window is the frame (as in the block windows) */
+html.bp-embed .blk-head,html.bp-embed .sep,html.bp-embed .syn{display:none!important}
+html.bp-embed .sec{background:none!important;border:0!important;box-shadow:none!important;max-width:none}
+html.bp-embed .sec::before,html.bp-embed .sec::after{display:none!important}
+/* the pages leave room at the top for their own fixed nav bar, which a window hides: in a phone window the first line
+   sat 130-290 px down (measured 2026-09-27). The first block starts at the top instead. */
+html.bp-embed .sec:first-of-type{margin-top:0!important;padding-top:18px!important}
+html.bp-embed .sv-hero{padding-top:18px!important}

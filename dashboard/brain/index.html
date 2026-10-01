@@ -5,6 +5,7 @@
      as a bright flash or a white screen. Value = --bg from the stylesheet. -->
 <html lang="en" style="background:#0a0814">
 <head>
+<base href="/">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Load the fonts WITHOUT blocking rendering. A plain <link rel=stylesheet>
@@ -213,116 +214,76 @@
     /* Coming back from the bfcache fires neither DOMContentLoaded nor load. */
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
+
+<link rel="stylesheet" href="brain/brain.css?v=1790853005783">
+<!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
+<link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
+<link rel="stylesheet" href="terminal/terminal.css?v=1790847117">
 </head>
-<body>
-<h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Brain On BNB AI ($BOBAI) — AI-Built Deflationary Meme Token on BNB Chain · brainonbnb · brainonbnbai · brainonbnb.com</h1>
-<div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
-<div class="page">
-<svg class="wrapnet" aria-hidden="true" preserveAspectRatio="none"></svg>
-
-
-  <nav><div class="nav">
-    <a href="/" class="nl"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"> <span>BOBAI</span></a>
-    <div class="nm"><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#burns">Burns</a><a href="#ecosystem">Ecosystem</a><a href="#roadmap">Roadmap</a><a href="#faq">FAQ</a><a href="#socials">Socials</a></div>
-    <div class="nb-group">
-      <button class="nb nbt" id="btOpen" type="button" aria-haspopup="dialog"><span class="nbt-dot" aria-hidden="true"></span>Brain Terminal</button>
-      <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+<body class="brainpage">
+<div class="bp-h" role="banner">
+  <a class="bp-logo" href="/"><img src="logo-sm.webp" width="34" height="34" alt=""><span class="bp-name"><span><b>$BOBAI</b> Brain On BNB AI</span><small>Where Memes Meet Intelligence</small></span></a>
+  <div class="bp-tick"></div>
+  <div class="bp-soc" role="navigation" aria-label="Socials"><a href="https://t.me/bobai_official" target="_blank" rel="noopener" aria-label="Telegram" title="Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 3.5 2.8 10.7c-1.3.5-1.3 1.2-.2 1.6l4.8 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.4-2.3 4.9 3.6c.9.5 1.5.2 1.8-.8L23 4.9c.3-1.4-.5-2-1.5-1.4Zm-3.3 3.6-8.9 8-.3 3.8-1.6-5.1 10.8-6.8c.5-.3.9 0 0 .1Z"/></svg></a><a href="https://x.com/BrainOnBNB" target="_blank" rel="noopener" aria-label="X Official" title="X Official"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg><i class="bp-ok" aria-hidden="true">✓</i></a><a href="https://x.com/BrainOnBNBAI" target="_blank" rel="noopener" aria-label="X Community" title="X Community"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg><small>CT</small></a></div>
+  <a class="bp-sw" href="/classic" title="The classic page — the same figures">Classic</a>
+  <a class="bp-buy" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Buy $BOBAI</a>
+</div>
+<div class="bp-grid" role="main">
+  <div class="bp-side l"><button class="bw-card" style="--c:#F0B90B" type="button" data-open="w01"><span class="bw-n">01</span><span class="bw-k">THE TOKEN</span><b class="bw-t">What $BOBAI is</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">of the supply burned for good</span><i class="bw-go" aria-hidden="true">⤢</i></button>
+<button class="bw-card" style="--c:#2dd4bf" type="button" data-open="w02"><span class="bw-n">02</span><span class="bw-k">TOKENOMICS</span><b class="bw-t">Where the 3% goes</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">until this split ends</span><i class="bw-go" aria-hidden="true">⤢</i></button>
+<button class="bw-card" style="--c:#ff7a3d" type="button" data-open="w03"><span class="bw-n">03</span><span class="bw-k">PROOF</span><b class="bw-t">Every burn, on-chain</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">BOBAI burned by the bot, 7 days</span><i class="bw-go" aria-hidden="true">⤢</i></button></div>
+  <div class="bp-center" role="region" aria-label="BOBAI Brain Terminal"><div class="bt embed" id="bt" role="region" aria-label="BOBAI Brain Terminal">
+  <div class="bt-back" data-close></div>
+  <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
+    <canvas id="bt-gl"></canvas>
+    <div class="vign"></div>
+    <div class="fig" id="bt-fig">
+      <div class="shadow"></div>
+      <img data-p="idle" class="on" data-src="fig/idle.webp" alt="BOBAI">
+      <img data-p="burn" data-src="fig/burn.webp" alt="">
+      <img data-p="liq" data-src="fig/liq.webp" alt="">
+      <img data-p="defi" data-src="fig/defi.webp" alt="">
+      <img data-p="giggle" data-src="fig/giggle.webp" alt="">
+      <img class="rgb r" alt=""><img class="rgb b" alt="">
     </div>
-  </div></nav>
-
-  <section class="hero">
-    <picture>
-      <!-- Phone landscape: its own 2:1 crop of the original, without the
-           artificially widened margins of the desktop image. -->
-      <source media="(orientation:landscape) and (max-height:520px)" srcset="hero-v3l.webp" type="image/webp">
-      <source media="(orientation:landscape) and (max-height:520px)" srcset="hero-v3l.jpg" type="image/jpeg">
-      <source media="(max-width:640px)" srcset="hero-v3m.webp?v=5" type="image/webp">
-      <source media="(max-width:640px)" srcset="hero-v3m.jpg?v=5" type="image/jpeg">
-      <source srcset="hero-v3.webp?v=4" type="image/webp">
-      <img src="hero-v3.jpg?v=4" alt="BOBAI — Where Memes Meet Intelligence" fetchpriority="high">
-    </picture>
-    <div class="hero-ov"><div class="hero-in"><div class="hero-tx">
-      <div class="hero-eb"><span class="dot"></span>Bot live &middot; runs every 10 minutes</div>
-      <h2 class="hero-h">Every trade burns.<br><em>The bot never sleeps.</em></h2>
-      <div class="hero-tag">Where Memes Meet Intelligence</div>
-      <div class="hero-cta">
-        <a class="hb2" href="#burns">See The Burns</a>
-      </div>
-    </div></div></div>
-  </section>
-
-  <section class="sbar" id="stats"><div class="sg">
-    <div class="sc fi"><div class="l">Market Cap</div><div class="v ld" id="mcap">--</div></div>
-    <div class="sc fi"><div class="l">Liquidity</div><div class="v ld" id="volume">--</div></div>
-    <div class="sc fi"><div class="l">Buyback</div><div class="v ld" id="wallet-bnb">--</div><div class="vsub" id="tax-pending"></div><div class="tfill" id="tax-fill" hidden><b><i></i></b><span></span></div></div>
-    <div class="sc fi"><div class="l">$BOB <span class="bob-sub">(Build On BNB)</span> Burned</div><div class="v ld" id="total-burned">--</div><div class="vsub" id="bob-burned-usd"></div></div>
-    <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v ld" id="total-bobai-burned">--</div><div class="vsub" id="bobai-burned-usd"></div></div>
-    <div class="sc fi"><div class="l">Burns</div><div class="v ld" id="burn-count">--</div></div>
-  </div></section>
-
-  <!-- Giggle Academy community pot ("Sunshine", announced on X 2026-07-13, built
-       2026-09-09). Sep 17 00:01 to Nov 20 00:01 UTC: 0.3% of every trade (0.1%
-       out of each of the three slices) goes as BNB to the old prize-pool wallet;
-       on UN World Children's Day it is donated in one piece through Giggle
-       Academy's own page. Before Sep 17 the clock counts down to the start,
-       during the window to the end. Sends and the total come from burns.json,
-       the same log every other number on this page reads. -->
-  <section class="liq-boost fi" id="giggle">
-    <div class="lb-card">
-      <div class="lb-title">☀️ <em>Giggle Academy</em> <em>Community Pot</em></div>
-      <div class="lb-sub" id="gg-sub">Sep 17 &rarr; Nov 20, 2026: 0.3% of every trade collects in BNB &middot; one donation on UN World Children&rsquo;s Day &middot; <span style="color:var(--gold)" id="gg-phase">collecting starts Sep 17</span></div>
-      <div class="lb-countdown">
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-days">--</div><div class="lb-cd-lbl">Days</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
-      </div>
-      <div class="lb-cd-caption" id="gg-cd-label">until collecting starts</div>
-      <div class="lb-stats">
-        <div class="lb-stat"><div class="l">Sends</div><div class="v" id="gg-count">0</div></div>
-        <div class="lb-stat"><div class="l">BNB Collected</div><div class="v" id="gg-bnb">0.0000</div></div>
-        <div class="lb-stat"><div class="l">Pot in USD</div><div class="v" id="gg-usd">$0.00</div></div>
-      </div>
-      <div class="lb-table" style="margin-top:20px">
-          <div class="txw">
-            <table><thead><tr><th style="width:38%">Time</th><th style="width:22%">BNB</th><th style="width:20%">Pot</th><th style="width:20%">TX</th></tr></thead>
-            <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The pot fills from trade tax &mdash; the first send lands with the first bot run that has BNB to split&hellip;</td></tr></tbody></table>
-          </div>
-        </div>
-      <p class="lb-note">WE are the donation. The pot is the old prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>; every send is a transaction of the buyback bot. On Nov 20 the BNB goes to Giggle Academy through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted here.</p>
-    </div>
-  </section>
-
-  <!-- $BOBAI Permalocked Liquidity Boost III (2026-09-19; 0.5% since 2026-09-20, one add ran at 0.3%): 0.5% of every trade out of the
-       BOB-burn slice into the BOBAI/BNB pool, LP burned — beside the Giggle pot and the DeFi
-       agent, ending with them Nov 20, 00:01 UTC. Own IDs (bb3-*); the adds come from the same
-       bobai-liq-log.json as rounds I and II, split by window, so the two archives stay frozen. -->
-  <section class="liq-boost fi" id="liq-boost-bobai-3">
-    <div class="lb-card">
-      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
-      <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.5% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">running now</span></div>
-      <div class="lb-countdown">
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-days">--</div><div class="lb-cd-lbl">Days</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
-      </div>
-      <div class="lb-cd-caption" id="bb3-cd-label">until the boost ends</div>
-      <div class="lb-stats">
-        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb3-count">0</div></div>
-        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb3-bnb">0.0000</div></div>
-        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb3-lp">0</div></div>
-      </div>
-      <div class="lb-table" style="margin-top:20px">
-        <div class="txw">
-          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
-          <tbody id="bb3-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
-        </div>
+    <div id="bt-labs"></div>
+    <div class="detail" id="bt-detail" aria-live="polite"></div>
+    <div class="shm" id="bt-shm" role="dialog" aria-label="Share this moment">
+      <div class="shh"><b>Share this moment</b><button class="shx" type="button" aria-label="Close">&times;</button></div>
+      <div class="shk" role="group" aria-label="Which moment"><button type="button" data-motif="now">NOW</button><button type="button" data-motif="burn">LAST BURN</button><button type="button" data-motif="liq">LAST LIQ</button><button type="button" data-motif="day">24 H</button><button type="button" data-motif="week">7 DAYS</button></div>
+      <div class="shf" role="group" aria-label="Image format"><button type="button" data-fmt="wide">16:9 · X / desktop</button><button type="button" data-fmt="tall">4:5 · phone feed</button></div>
+      <img alt="The image you are about to share">
+      <div class="shb">
+        <button type="button" data-to="sheet" class="wide">Share… <small>to any app on this device</small></button>
+        <button type="button" data-to="x">X</button><button type="button" data-to="telegram">Telegram</button>
+        <button type="button" data-to="whatsapp">WhatsApp</button><button type="button" data-to="discord">Discord</button>
+        <button type="button" data-to="copy">Copy image</button><button type="button" data-to="save">Save image</button>
       </div>
     </div>
-  </section>
-
-  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
-
-  <section class="sec" id="about">
+    <div class="hud">
+      <div class="ttl"><b>$BOBAI</b> Brain Terminal<small>what BOBAI does with every trade, every burn, every BNB · live from BNB Chain</small></div>
+      <span class="live" id="bt-live"><span class="dot"></span><span>LIVE</span></span>
+      <span class="clk" id="bt-clk"></span>
+      <button class="shr" id="bt-shr" type="button" title="Save this moment as an image to post">SHARE THIS MOMENT</button>
+      <button class="x" type="button" data-close aria-label="Close">&times;</button>
+    </div>
+    <div class="phase" id="bt-phase"></div>
+    <div class="rclk" id="bt-rclk"><b>—</b><span>—</span></div>
+    <div class="term"><div class="hd"><i></i><i></i><i></i><span>brain.log · live</span></div><div class="bd" id="bt-log"></div><form class="cmd" id="bt-cmd" autocomplete="off"><label for="bt-cmdIn">bobai@bsc:~$</label><input id="bt-cmdIn" type="text" spellcheck="false" placeholder="ask: help · burns · next — or paste any token 0x…" aria-label="Ask BOBAI or check a token"></form></div>
+    <div class="mpanel" id="bt-mpanel" aria-live="polite"></div>
+    <div class="mtabs" id="bt-mtabs" role="tablist" aria-label="Terminal views"><button type="button" data-v="brain" class="on">BRAIN</button><button type="button" data-v="money">MONEY</button><button type="button" data-v="bots">BOTS</button><button type="button" data-v="log">LOG</button></div>
+    <div class="tl"><canvas id="bt-tlc"></canvas><div class="tlw"><button type="button" data-w="1H">1H</button><button type="button" data-w="6H">6H</button><button type="button" data-w="24H" class="on">24H</button><button type="button" data-w="7D">7D</button></div><span class="rpc" id="bt-rpc"><button id="bt-rpp" type="button" aria-label="Pause the replay">❚❚</button><button id="bt-rps" type="button" aria-label="Replay speed">×1</button></span><button id="bt-rp" type="button">↺ REPLAY 24H</button></div>
+    <div class="tip" id="bt-tip"></div>
+    <div class="cine" id="bt-cine"><div class="a"></div><div class="b"></div><div class="t"></div></div>
+    <div class="intro" id="bt-intro"></div>
+  </div>
+</div>
+</div>
+  <div class="bp-side r"><button class="bw-card" style="--c:#60a5fa" type="button" data-open="w04"><span class="bw-n">04</span><span class="bw-k">ECOSYSTEM</span><b class="bw-t">Everything BOBAI runs</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">apps, agents and tools</span><i class="bw-go" aria-hidden="true">⤢</i></button>
+<button class="bw-card" style="--c:#F0B90B" type="button" data-open="w06"><span class="bw-n">05</span><span class="bw-k">ROADMAP</span><b class="bw-t">What comes next</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">the plan</span><i class="bw-go" aria-hidden="true">⤢</i></button>
+<button class="bw-card" style="--c:#60a5fa" type="button" data-open="w07"><span class="bw-n">06</span><span class="bw-k">QUESTIONS</span><b class="bw-t">Quick answers</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">FAQ</span><i class="bw-go" aria-hidden="true">⤢</i></button></div>
+</div>
+<div class="bw-win" style="--c:#F0B90B" id="w01" role="dialog" aria-modal="true" aria-label="THE TOKEN" hidden><div class="bw-frame"><div class="bw-bar"><i></i><i></i><i></i><span><b>01</b> · THE TOKEN<em>What $BOBAI is</em></span><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><div class="bw-body"><section class="sec" id="about">
     <div class="blk-head fi"><span class="blk-tag">Block 01 &middot; The Token</span><span class="blk-line"></span></div>
     <div class="about-hero fi">
       <div class="about-logo"><img src="logo.webp" width="256" height="256" alt="BOBAI" loading="lazy" decoding="async"></div>
@@ -423,11 +384,80 @@
         </div>
       </div>
     </div>
-  </section>
-
-  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
-
-  <section class="sec b-blue" id="tokenomics">
+  </section><section class="sec b-green" id="socials">
+    <div class="blk-head fi"><span class="blk-tag">Block 08 &middot; Socials</span><span class="blk-line"></span></div>
+    <div class="sh fi"><h2>Join A <em>Smart Drip</em></h2><p>Come for the burns, stay for the brain. The community lives on Telegram and X — and $BOBAI is listed, tradable and tracked everywhere below.</p></div>
+    <div class="cta-links fi">
+      <a class="secondary soc soc-tg" href="https://t.me/bobai_official" target="_blank" rel="noopener" aria-label="Join the BOBAI group on Telegram, @bobai_official">
+        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.259-1.91.176-.185 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        <span class="soc-l"><b>Join Telegram</b><em>@bobai_official</em></span>
+      </a>
+      <a class="secondary soc soc-x" href="https://x.com/BrainOnBNB" target="_blank" rel="noopener" aria-label="BOBAI on X, official account @BrainOnBNB">
+        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zM17.61 20.644h2.039L6.486 3.24H4.298z"/></svg>
+        <span class="soc-l"><b>X &middot; Official</b><em>@BrainOnBNB</em></span>
+      </a>
+      <a class="secondary soc soc-x" href="https://x.com/BrainOnBNBAI" target="_blank" rel="noopener" aria-label="BOBAI on X, community account @BrainOnBNBAI">
+        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zM17.61 20.644h2.039L6.486 3.24H4.298z"/></svg>
+        <span class="soc-l"><b>X &middot; Community</b><em>@BrainOnBNBAI</em></span>
+      </a>
+    </div>
+    <div class="fi">
+      <p class="ll">Listed on</p>
+      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-bscscan.webp" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener"><img src="ico-coingecko.webp" width="48" height="48" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-dexscreener.webp" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener"><img src="ico-dextools.webp" width="66" height="66" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank" rel="noopener"><img src="ico-geckoterminal.webp" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
+      <p class="ll">Markets</p>
+      <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo" loading="lazy" decoding="async">PancakeSwap · BOBAI/WBNB</a></div>
+      <p class="ll">Available on</p>
+      <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-binance.webp" alt="Binance Web3 Wallet logo" loading="lazy" decoding="async">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener"><img src="ico-bitget.webp" alt="Bitget Wallet logo" loading="lazy" decoding="async">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-gatedex.webp" alt="Gate DEX logo" loading="lazy" decoding="async">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-okx.png" alt="OKX Wallet logo" loading="lazy" decoding="async">OKX Wallet</a></div>
+      <p class="ll">Tracked by</p>
+      <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener"><img src="ico-birdeye.webp" alt="Birdeye logo" loading="lazy" decoding="async">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank" rel="noopener"><img src="ico-blockspot.webp" alt="Blockspot.io logo" loading="lazy" decoding="async">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener"><img src="ico-bubblemaps.webp" alt="Bubblemaps logo" loading="lazy" decoding="async">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank" rel="noopener"><img src="ico-coinmun.svg" alt="CoinMun logo" loading="lazy" decoding="async">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-fourmeme.webp" alt="Four.Meme logo" loading="lazy" decoding="async">Four.Meme</a><a href="https://funtok.io/coins/bob-6" target="_blank" rel="noopener"><img src="ico-funtok.svg" alt="FunTok logo" loading="lazy" decoding="async">FunTok</a><a href="https://tradegenius.com/asset/0x245c386dcfed896f5c346107596141e5edcbffff?network=56" target="_blank" rel="noopener"><img src="ico-genius.webp" alt="Genius logo" loading="lazy" decoding="async">Genius</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-gmgn.png" alt="GMGN.AI logo" loading="lazy" decoding="async">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-insightx.webp" alt="InsightX logo" loading="lazy" decoding="async">InsightX</a></div>
+    </div>
+  </section></div></div></div>
+<div class="bw-win" style="--c:#2dd4bf" id="w02" role="dialog" aria-modal="true" aria-label="TOKENOMICS" hidden><div class="bw-frame"><div class="bw-bar"><i></i><i></i><i></i><span><b>02</b> · TOKENOMICS<em>Where the 3% goes</em></span><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><div class="bw-body"><section class="liq-boost fi" id="liq-boost-bobai-3">
+    <div class="lb-card">
+      <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
+      <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.5% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">running now</span></div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-cd-caption" id="bb3-cd-label">until the boost ends</div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Liq Adds</div><div class="v" id="bb3-count">0</div></div>
+        <div class="lb-stat"><div class="l">Total BNB</div><div class="v" id="bb3-bnb">0.0000</div></div>
+        <div class="lb-stat"><div class="l">LP Burned</div><div class="v" id="bb3-lp">0</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+        <div class="txw">
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <tbody id="bb3-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section><section class="liq-boost fi" id="giggle">
+    <div class="lb-card">
+      <div class="lb-title">☀️ <em>Giggle Academy</em> <em>Community Pot</em></div>
+      <div class="lb-sub" id="gg-sub">Sep 17 &rarr; Nov 20, 2026: 0.3% of every trade collects in BNB &middot; one donation on UN World Children&rsquo;s Day &middot; <span style="color:var(--gold)" id="gg-phase">collecting starts Sep 17</span></div>
+      <div class="lb-countdown">
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-days">--</div><div class="lb-cd-lbl">Days</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
+        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
+      </div>
+      <div class="lb-cd-caption" id="gg-cd-label">until collecting starts</div>
+      <div class="lb-stats">
+        <div class="lb-stat"><div class="l">Sends</div><div class="v" id="gg-count">0</div></div>
+        <div class="lb-stat"><div class="l">BNB Collected</div><div class="v" id="gg-bnb">0.0000</div></div>
+        <div class="lb-stat"><div class="l">Pot in USD</div><div class="v" id="gg-usd">$0.00</div></div>
+      </div>
+      <div class="lb-table" style="margin-top:20px">
+          <div class="txw">
+            <table><thead><tr><th style="width:38%">Time</th><th style="width:22%">BNB</th><th style="width:20%">Pot</th><th style="width:20%">TX</th></tr></thead>
+            <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The pot fills from trade tax &mdash; the first send lands with the first bot run that has BNB to split&hellip;</td></tr></tbody></table>
+          </div>
+        </div>
+      <p class="lb-note">WE are the donation. The pot is the old prize-pool wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>; every send is a transaction of the buyback bot. On Nov 20 the BNB goes to Giggle Academy through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted here.</p>
+    </div>
+  </section><section class="sec b-blue" id="tokenomics">
     <div class="blk-head fi"><span class="blk-tag">Block 02 &middot; Tokenomics</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2><em>Token</em>omics</h2></div>
     <div class="tg4">
@@ -531,27 +561,8 @@
         </div>
       </div>
     </div>
-  </section>
-
-  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
-
-  <div class="band" id="burns">
-    <picture>
-      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-forge-l.webp" type="image/webp">
-      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-forge-l.jpg" type="image/jpeg">
-      <source media="(max-width:640px)" srcset="band-forge-m.webp" type="image/webp">
-      <source media="(max-width:640px)" srcset="band-forge-m.jpg" type="image/jpeg">
-      <source srcset="band-forge.webp" type="image/webp">
-      <img src="band-forge.jpg" alt="BOBAI feeding glowing coins into a furnace" loading="lazy" decoding="async">
-    </picture>
-    <div class="band-ov"><div class="band-in"><div class="band-tx">
-      <h2>On-Chain <em>Verification</em></h2>
-      <p class="burn-sub">Don't trust, verify. <span class="live-badge"><span class="live-dot"></span>Live</span></p>
-      <p class="burn-lead">Every buyback and every burn lands on BNB Chain with its own transaction hash. Nothing here is summarised or rounded &mdash; the table below is the chain itself, refreshed every 30 seconds.</p>
-    </div></div></div>
-  </div>
-
-  <section class="sec sec-after-band b-violet">
+  </section></div></div></div>
+<div class="bw-win" style="--c:#ff7a3d" id="w03" role="dialog" aria-modal="true" aria-label="PROOF" hidden><div class="bw-frame"><div class="bw-bar"><i></i><i></i><i></i><span><b>03</b> · PROOF<em>Every burn, on-chain</em></span><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><div class="bw-body"><section class="sec sec-after-band b-violet">
     <div class="blk-head fi"><span class="blk-tag">Block 03 &middot; Proof</span><span class="blk-line"></span></div>
     <div class="pgrid fi">
       <a class="ptile" href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">
@@ -712,27 +723,8 @@
         </details>
       </div>
     </div>
-  </section>
-
-  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
-
-  <div class="band" id="ecosystem">
-    <picture>
-      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-command-l.webp" type="image/webp">
-      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-command-l.jpg" type="image/jpeg">
-      <source media="(max-width:640px)" srcset="band-command-m.webp" type="image/webp">
-      <source media="(max-width:640px)" srcset="band-command-m.jpg" type="image/jpeg">
-      <source srcset="band-command.webp" type="image/webp">
-      <img src="band-command.jpg" alt="BOBAI at the controls of the burn machine" loading="lazy" decoding="async">
-    </picture>
-    <div class="band-ov"><div class="band-in"><div class="band-tx">
-      <h2>Built <em>By AI</em></h2>
-      <p class="burn-sub">Eight apps. One builder. Nobody at the wheel.</p>
-      <p class="burn-lead">The same AI that runs the buyback bot built everything else here. None of it is a roadmap promise. Go click around.</p>
-    </div></div></div>
-  </div>
-
-  <section class="sec sec-after-band b-green">
+  </section></div></div></div>
+<div class="bw-win" style="--c:#60a5fa" id="w04" role="dialog" aria-modal="true" aria-label="ECOSYSTEM" hidden><div class="bw-frame"><div class="bw-bar"><i></i><i></i><i></i><span><b>04</b> · ECOSYSTEM<em>Everything BOBAI runs</em></span><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><div class="bw-body"><section class="sec sec-after-band b-green">
     <div class="blk-head fi"><span class="blk-tag">Block 04 &middot; Ecosystem</span><span class="blk-line"></span></div>
     <div class="ecg">
       <a class="ec fi" href="nft/">
@@ -1195,27 +1187,8 @@
         </div>
       </details>
     </div>
-  </section>
-
-  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
-
-  <div class="band">
-    <picture>
-      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-brainchain-l.webp" type="image/webp">
-      <source media="(orientation:landscape) and (max-height:520px)" srcset="band-brainchain-l.jpg" type="image/jpeg">
-      <source media="(max-width:640px)" srcset="band-brainchain-m.webp" type="image/webp">
-      <source media="(max-width:640px)" srcset="band-brainchain-m.jpg" type="image/jpeg">
-      <source srcset="band-brainchain.webp" type="image/webp">
-      <img src="band-brainchain.jpg" alt="BOBAI's brain wired into a chain of glowing blocks" loading="lazy" decoding="async">
-    </picture>
-    <div class="band-ov"><div class="band-in"><div class="band-tx">
-      <h2>A Brain On <em>The Chain</em></h2>
-      <p class="burn-sub">One idea, wired block by block.</p>
-      <p class="burn-lead">Everything below is what that wiring has produced so far &mdash; and the one thing it still needs.</p>
-    </div></div></div>
-  </div>
-
-  <section class="sec sec-after-band" id="roadmap">
+  </section></div></div></div>
+<div class="bw-win" style="--c:#F0B90B" id="w06" role="dialog" aria-modal="true" aria-label="ROADMAP" hidden><div class="bw-frame"><div class="bw-bar"><i></i><i></i><i></i><span><b>05</b> · ROADMAP<em>What comes next</em></span><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><div class="bw-body"><section class="sec sec-after-band" id="roadmap">
     <div class="blk-head fi"><span class="blk-tag">Block 06 &middot; Roadmap</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2><em>Road</em>map</h2></div>
     <div class="rmg">
@@ -1250,11 +1223,8 @@
         <li><span class="ck">&#x2713;</span><span>Keep burning. Bot runs every 10 minutes.</span></li>
       </ul></div>
     </div>
-  </section>
-
-  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
-
-  <section class="sec b-blue" id="faq">
+  </section></div></div></div>
+<div class="bw-win" style="--c:#60a5fa" id="w07" role="dialog" aria-modal="true" aria-label="QUESTIONS" hidden><div class="bw-frame"><div class="bw-bar"><i></i><i></i><i></i><span><b>06</b> · QUESTIONS<em>Quick answers</em></span><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><div class="bw-body"><section class="sec b-blue" id="faq">
     <div class="blk-head fi"><span class="blk-tag">Block 07 &middot; Questions</span><span class="blk-line"></span></div>
     <div class="sh fi"><h2>Frequently <em>Asked</em></h2><p>Quick answers about Brain On BNB AI ($BOBAI).</p></div>
     <div class="faq-list fi">
@@ -1295,114 +1265,36 @@
         <div class="faq-body">Not necessarily the one with the most money in it. A pair lives in up to five PancakeSwap pools, and the tier holding the most capital is regularly not the one paying its liquidity providers best. The <a href="/scanner">Pool Scanner</a> measures what each tier actually paid over a live window; the figure is not annualised and impermanent loss is not in it.</div>
       </details>
     </div>
-  </section>
-
-  <div class="sep" aria-hidden="true"><svg class="syn" viewBox="0 0 24 64" fill="none"><path class="syn-t" d="M12 0 V64"/></svg></div>
-
-  <!-- Letztes Kettenglied: Community und alle Fundstellen an einem Ort. Vorher
-       hing beides label- und verbindungslos unter der Kette bzw. im Footer. -->
-  <section class="sec b-green" id="socials">
-    <div class="blk-head fi"><span class="blk-tag">Block 08 &middot; Socials</span><span class="blk-line"></span></div>
-    <div class="sh fi"><h2>Join A <em>Smart Drip</em></h2><p>Come for the burns, stay for the brain. The community lives on Telegram and X — and $BOBAI is listed, tradable and tracked everywhere below.</p></div>
-    <div class="cta-links fi">
-      <a class="secondary soc soc-tg" href="https://t.me/bobai_official" target="_blank" rel="noopener" aria-label="Join the BOBAI group on Telegram, @bobai_official">
-        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.259-1.91.176-.185 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-        <span class="soc-l"><b>Join Telegram</b><em>@bobai_official</em></span>
-      </a>
-      <a class="secondary soc soc-x" href="https://x.com/BrainOnBNB" target="_blank" rel="noopener" aria-label="BOBAI on X, official account @BrainOnBNB">
-        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zM17.61 20.644h2.039L6.486 3.24H4.298z"/></svg>
-        <span class="soc-l"><b>X &middot; Official</b><em>@BrainOnBNB</em></span>
-      </a>
-      <a class="secondary soc soc-x" href="https://x.com/BrainOnBNBAI" target="_blank" rel="noopener" aria-label="BOBAI on X, community account @BrainOnBNBAI">
-        <svg class="soc-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zM17.61 20.644h2.039L6.486 3.24H4.298z"/></svg>
-        <span class="soc-l"><b>X &middot; Community</b><em>@BrainOnBNBAI</em></span>
-      </a>
-    </div>
-    <div class="fi">
-      <p class="ll">Listed on</p>
-      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-bscscan.webp" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener"><img src="ico-coingecko.webp" width="48" height="48" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-dexscreener.webp" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener"><img src="ico-dextools.webp" width="66" height="66" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank" rel="noopener"><img src="ico-geckoterminal.webp" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
-      <p class="ll">Markets</p>
-      <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo" loading="lazy" decoding="async">PancakeSwap · BOBAI/WBNB</a></div>
-      <p class="ll">Available on</p>
-      <div class="lr"><a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-binance.webp" alt="Binance Web3 Wallet logo" loading="lazy" decoding="async">Binance Web3 Wallet</a><a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener"><img src="ico-bitget.webp" alt="Bitget Wallet logo" loading="lazy" decoding="async">Bitget Wallet</a><a href="https://web3.gate.com/trade/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-gatedex.webp" alt="Gate DEX logo" loading="lazy" decoding="async">Gate DEX</a><a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-okx.png" alt="OKX Wallet logo" loading="lazy" decoding="async">OKX Wallet</a></div>
-      <p class="ll">Tracked by</p>
-      <div class="lr lr-sm"><a href="https://birdeye.so/token/0x245c386dcfed896f5c346107596141e5edcbffff?chain=bsc" target="_blank" rel="noopener"><img src="ico-birdeye.webp" alt="Birdeye logo" loading="lazy" decoding="async">Birdeye</a><a href="https://blockspot.io/coin/brain-on-bnb-ai/" target="_blank" rel="noopener"><img src="ico-blockspot.webp" alt="Blockspot.io logo" loading="lazy" decoding="async">Blockspot.io</a><a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener"><img src="ico-bubblemaps.webp" alt="Bubblemaps logo" loading="lazy" decoding="async">Bubblemaps</a><a href="https://coinmun.com/coins/bob-6" target="_blank" rel="noopener"><img src="ico-coinmun.svg" alt="CoinMun logo" loading="lazy" decoding="async">CoinMun</a><a href="https://four.meme/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-fourmeme.webp" alt="Four.Meme logo" loading="lazy" decoding="async">Four.Meme</a><a href="https://funtok.io/coins/bob-6" target="_blank" rel="noopener"><img src="ico-funtok.svg" alt="FunTok logo" loading="lazy" decoding="async">FunTok</a><a href="https://tradegenius.com/asset/0x245c386dcfed896f5c346107596141e5edcbffff?network=56" target="_blank" rel="noopener"><img src="ico-genius.webp" alt="Genius logo" loading="lazy" decoding="async">Genius</a><a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-gmgn.png" alt="GMGN.AI logo" loading="lazy" decoding="async">GMGN.AI</a><a href="https://app.insightx.network/atlas/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-insightx.webp" alt="InsightX logo" loading="lazy" decoding="async">InsightX</a></div>
-    </div>
-  </section>
-
-<footer><div class="fi2">
+  </section></div></div></div>
+<div class="bw-win bw-page" id="wpage" role="dialog" aria-modal="true" aria-label="Page" hidden><div class="bw-frame"><div class="bw-bar"><span><b class="pg-k"></b><em class="pg-t">…</em></span><a class="pg-open" href="/" target="_blank" rel="noopener">open as a page ↗</a><button class="bw-x" type="button" data-close-win aria-label="Close">×</button></div><iframe class="pg-f" title="Page"></iframe></div></div>
+<div class="bp-hidden" hidden aria-hidden="true"><section class="hero">
+    
+    <div class="hero-ov"><div class="hero-in"><div class="hero-tx">
+      <div class="hero-eb"><span class="dot"></span>Bot live &middot; runs every 10 minutes</div>
+      <h2 class="hero-h">Every trade burns.<br><em>The bot never sleeps.</em></h2>
+      <div class="hero-tag">Where Memes Meet Intelligence</div>
+      <div class="hero-cta">
+        <a class="hb2" href="#burns">See The Burns</a>
+      </div>
+    </div></div></div>
+  </section><section class="sbar" id="stats"><div class="sg">
+    <div class="sc fi"><div class="l">Market Cap</div><div class="v ld" id="mcap">--</div></div>
+    <div class="sc fi"><div class="l">Liquidity</div><div class="v ld" id="volume">--</div></div>
+    <div class="sc fi"><div class="l">Buyback</div><div class="v ld" id="wallet-bnb">--</div><div class="vsub" id="tax-pending"></div><div class="tfill" id="tax-fill" hidden><b><i></i></b><span></span></div></div>
+    <div class="sc fi"><div class="l">$BOB <span class="bob-sub">(Build On BNB)</span> Burned</div><div class="v ld" id="total-burned">--</div><div class="vsub" id="bob-burned-usd"></div></div>
+    <div class="sc fi"><div class="l">$BOBAI Burned</div><div class="v ld" id="total-bobai-burned">--</div><div class="vsub" id="bobai-burned-usd"></div></div>
+    <div class="sc fi"><div class="l">Burns</div><div class="v ld" id="burn-count">--</div></div>
+  </div></section><footer><div class="fi2">
   <div class="fb"><img src="logo-sm.webp" width="96" height="96" alt="BOBAI"><span>BOBAI</span></div>
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Library</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai |<a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
-</div></footer>
-</div>
-
-<!-- Ausgelagert nach app.js: 28 KB, die zum Anzeigen der Seite nicht
-     gebraucht werden. defer = laedt parallel, laeuft nach dem Parsen, und
-     wird beim Aktualisieren aus dem Cache bedient statt neu uebertragen.
-     Bei Aenderungen an app.js die ?v= hochzaehlen. -->
+</div></footer></div>
 <script src="app.js?v=98" defer></script>
-<!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
-     load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1790847117">
-<div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
-  <div class="bt-back" data-close></div>
-  <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
-    <canvas id="bt-gl"></canvas>
-    <div class="vign"></div>
-    <div class="fig" id="bt-fig">
-      <div class="shadow"></div>
-      <img data-p="idle" class="on" data-src="fig/idle.webp" alt="BOBAI">
-      <img data-p="burn" data-src="fig/burn.webp" alt="">
-      <img data-p="liq" data-src="fig/liq.webp" alt="">
-      <img data-p="defi" data-src="fig/defi.webp" alt="">
-      <img data-p="giggle" data-src="fig/giggle.webp" alt="">
-      <img class="rgb r" alt=""><img class="rgb b" alt="">
-    </div>
-    <div id="bt-labs"></div>
-    <div class="detail" id="bt-detail" aria-live="polite"></div>
-    <div class="shm" id="bt-shm" role="dialog" aria-label="Share this moment">
-      <div class="shh"><b>Share this moment</b><button class="shx" type="button" aria-label="Close">&times;</button></div>
-      <div class="shk" role="group" aria-label="Which moment"><button type="button" data-motif="now">NOW</button><button type="button" data-motif="burn">LAST BURN</button><button type="button" data-motif="liq">LAST LIQ</button><button type="button" data-motif="day">24 H</button><button type="button" data-motif="week">7 DAYS</button></div>
-      <div class="shf" role="group" aria-label="Image format"><button type="button" data-fmt="wide">16:9 · X / desktop</button><button type="button" data-fmt="tall">4:5 · phone feed</button></div>
-      <img alt="The image you are about to share">
-      <div class="shb">
-        <button type="button" data-to="sheet" class="wide">Share… <small>to any app on this device</small></button>
-        <button type="button" data-to="x">X</button><button type="button" data-to="telegram">Telegram</button>
-        <button type="button" data-to="whatsapp">WhatsApp</button><button type="button" data-to="discord">Discord</button>
-        <button type="button" data-to="copy">Copy image</button><button type="button" data-to="save">Save image</button>
-      </div>
-    </div>
-    <div class="hud">
-      <div class="ttl"><b>$BOBAI</b> Brain Terminal<small>what BOBAI does with every trade, every burn, every BNB · live from BNB Chain</small></div>
-      <span class="live" id="bt-live"><span class="dot"></span><span>LIVE</span></span>
-      <span class="clk" id="bt-clk"></span>
-      <button class="shr" id="bt-shr" type="button" title="Save this moment as an image to post">SHARE THIS MOMENT</button>
-      <button class="x" type="button" data-close aria-label="Close">&times;</button>
-    </div>
-    <div class="phase" id="bt-phase"></div>
-    <div class="rclk" id="bt-rclk"><b>—</b><span>—</span></div>
-    <div class="term"><div class="hd"><i></i><i></i><i></i><span>brain.log · live</span></div><div class="bd" id="bt-log"></div><form class="cmd" id="bt-cmd" autocomplete="off"><label for="bt-cmdIn">bobai@bsc:~$</label><input id="bt-cmdIn" type="text" spellcheck="false" placeholder="ask: help · burns · next — or paste any token 0x…" aria-label="Ask BOBAI or check a token"></form></div>
-    <div class="mpanel" id="bt-mpanel" aria-live="polite"></div>
-    <div class="mtabs" id="bt-mtabs" role="tablist" aria-label="Terminal views"><button type="button" data-v="brain" class="on">BRAIN</button><button type="button" data-v="money">MONEY</button><button type="button" data-v="bots">BOTS</button><button type="button" data-v="log">LOG</button></div>
-    <div class="tl"><canvas id="bt-tlc"></canvas><div class="tlw"><button type="button" data-w="1H">1H</button><button type="button" data-w="6H">6H</button><button type="button" data-w="24H" class="on">24H</button><button type="button" data-w="7D">7D</button></div><span class="rpc" id="bt-rpc"><button id="bt-rpp" type="button" aria-label="Pause the replay">❚❚</button><button id="bt-rps" type="button" aria-label="Replay speed">×1</button></span><button id="bt-rp" type="button">↺ REPLAY 24H</button></div>
-    <div class="tip" id="bt-tip"></div>
-    <div class="cine" id="bt-cine"><div class="a"></div><div class="b"></div><div class="t"></div></div>
-    <div class="intro" id="bt-intro"></div>
-  </div>
-</div>
+<script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
-let mod = null;
-async function go() {
-  const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1790847117'); }
-  try { (await mod).open(); }
-  catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
-}
-// Classic's Brain Terminal button leads to the Brain page (lab, 2026-09-26); #brain still opens the pop-up here
-document.getElementById('btOpen').addEventListener('click', () => { location.href = '/'; });
-document.getElementById('bt-intro').addEventListener('click', () => { if (!mod) go(); });
-if (location.hash === '#brain') go();
+// the terminal opens with the page: it IS the page
+(async () => { try { (await import('./terminal/terminal.js?v=1790847117')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-
-</body>
-</html>
+<script src="brain/brain.js?v=1790853005784" defer></script>
+<script src="brain/cards.js?v=1790853005784" defer></script>
+<script src="brain/hero.js?v=1790853005784" defer></script>
+</body></html>
